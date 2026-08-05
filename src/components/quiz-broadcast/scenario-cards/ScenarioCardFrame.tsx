@@ -42,7 +42,20 @@ export function ScenarioCardFrame({
             alt={backgroundAlt}
             onError={onBackgroundError}
             className="h-full w-full object-cover"
-            style={{ objectPosition: "60% 50%" }}
+            // Every background this frame is ever given is a champion splash
+            // (ChampionScenarioCard and CombatCalculationScenarioCard are the
+            // only callers that pass one; ItemAnalysisScenarioCard passes null),
+            // and a splash puts the champion's head in its TOP third.
+            //
+            // The vertical anchor is a fraction of the crop OVERFLOW, so it only
+            // bites when the container is much wider than the art. On the 16:9
+            // broadcast stage the overflow is ~25px and 50% → 12% moves the
+            // image by ~9px — invisible. In the Ranked band (≈730×176, i.e.
+            // 4.1:1) the overflow is ~300px and 50% centred the crop on the
+            // champion's WAIST: the face was cut off on every splash sampled
+            // (Ahri, Darius, Ornn, Syndra, Anivia, Malphite, Yasuo, Lux, Thresh,
+            // Caitlyn). 12% frames the head and upper torso on all ten.
+            style={{ objectPosition: "60% 12%" }}
             loading="eager"
             decoding="async"
           />

@@ -20,6 +20,20 @@
        them automatically. */
     --app-viewport-h: calc(100dvh - var(--app-header-h) - var(--bottom-nav-clearance));
 
+    /* Scenario-card legibility unit (RA8). The Broadcast scenario cards size
+       everything in `cqmin`, which on the 16:9 OBS stage is ~10px and reads
+       beautifully — but inside the Ranked band the container is ~730x176, so
+       cqmin is 1.76px and the whole card collapsed to 2-5px type. The cards
+       therefore floor type and icons at `max(N cqmin, calc(M * var(--sc-fit)))`.
+       Read M exactly like a rem multiple: 1 == 16px on a band with room.
+       The `min()` is what keeps that promise honest — on a SHORT band (a phone,
+       a narrow arena column) 9.09cqh drops below 1rem and every floored element
+       scales down together, so a stack that fits at 176px still fits at 130px
+       instead of overflowing the frame. Custom properties substitute as tokens,
+       so the `cqh` here resolves against each USING element's own query
+       container, not against :root; with no container in scope it is 1rem. */
+    --sc-fit: min(1rem, 9.09cqh);
+
     --background: 209 40% 96%;
     --foreground: 222 47% 11%;
 

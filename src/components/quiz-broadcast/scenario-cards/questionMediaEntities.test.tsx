@@ -350,6 +350,11 @@ function question(metadata: unknown, id = "q1"): QuizQuestion {
 
 // ============================================================ entity contract
 
+/** The strip slot's fixed box. Sized off `--sc-fit` so it shrinks with a short
+ * band, but FIXED for any given band — the invariant these tests pin is that
+ * no status, and no failed image, may change it. */
+const SLOT_BOX = "h-[calc(2.25*var(--sc-fit))] w-[calc(2.25*var(--sc-fit))]";
+
 describe("getQuestionMediaEntities", () => {
   it("returns null for a subject-only payload frozen before this phase", () => {
     expect(getQuestionMediaEntities(question(LEGACY_SUBJECT_ONLY))).toBeNull();
@@ -596,7 +601,7 @@ describe("CombatCalculationScenarioCard entity strip", () => {
     fireEvent.error(within(slot).getByRole("presentation"));
     expect(within(slot).queryByRole("presentation")).not.toBeInTheDocument();
     expect(slot.textContent).toBe("J");
-    expect(slot.className).toContain("h-6 w-6");             // slot did not collapse
+    expect(slot.className).toContain(SLOT_BOX);             // slot did not collapse
     expect(stripIcons()).toHaveLength(3);                    // strip did not reflow
   });
 
@@ -1111,7 +1116,7 @@ describe("CombatCalculationScenarioCard status treatment", () => {
     const bought = stripIcons().find((n) => n.getAttribute("data-entity-status") === "purchased")!;
     expect(bought.className).toContain("ring-1");
     for (const slot of stripIcons()) {
-      expect(slot.className).toContain("h-6 w-6");   // no status resizes a slot
+      expect(slot.className).toContain(SLOT_BOX);   // no status resizes a slot
       expect(slot.textContent).toBe("");             // and none draws text
     }
   });
@@ -1129,7 +1134,7 @@ describe("CombatCalculationScenarioCard status treatment", () => {
     const sold = stripIcons().find((n) => n.getAttribute("data-entity-status") === "sold")!;
     fireEvent.error(within(sold).getByRole("presentation"));
     expect(sold.textContent).toBe("D");
-    expect(sold.className).toContain("h-6 w-6");
+    expect(sold.className).toContain(SLOT_BOX);
     expect(sold.getAttribute("aria-label")).toBe("Doran's Shield (item, sold)");
     expect(stripIcons()).toHaveLength(4);            // strip did not reflow
   });

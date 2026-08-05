@@ -8,7 +8,14 @@ import type { SubjectKind } from "./types";
  * - SubjectPlaceholderCard: neutral "?" card shown while a spoiler subject is hidden
  * - SubjectPlaceholder: bare "Mogsy" box when there is nothing to show
  * These keep their own float animation (not the Ken Burns frame).
+ *
+ * Sizing follows the same rules as ./primitives.tsx — `--sc-fit` floors on type
+ * and icons, and vertical rhythm in `cqh` rather than `%` — so these cards are
+ * unchanged on the 16:9 broadcast stage and legible in the short Ranked band,
+ * where cqmin is ~1.8px and this card rendered as an empty frame around a 19px
+ * icon and 2-3px labels. See that file for the derivation.
  */
+const TIGHT_LEADING = "leading-[min(1.5rem,1.25em)]";
 
 export function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; label?: string; kind: SubjectKind }) {
   const kindLabel =
@@ -40,29 +47,37 @@ export function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; lab
       />
       {/* gold inner trim */}
       <div className="pointer-events-none absolute inset-[6%] rounded-xl ring-1 ring-inset ring-[#d4b35a]/35" />
-      <div className="mt-[8%] text-[0.95cqmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">
+      <div
+        className={`mt-[14.22cqh] text-[max(0.95cqmin,calc(0.625*var(--sc-fit)))] ${TIGHT_LEADING} font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90`}
+      >
         {" "}
         {kindLabel}{" "}
       </div>
-      <div className="relative mt-[4%] flex items-center justify-center">
+      <div className="relative mt-[7.11cqh] flex items-center justify-center">
         <div className="absolute inset-0 rounded-2xl bg-[#d4b35a]/15 blur-2xl" />
         {!errored ? (
           <img
             src={iconUrl}
             alt={label || kindLabel}
             onError={() => setErrored(true)}
-            className="relative h-[11cqmin] w-[11cqmin] rounded-xl border border-[#d4b35a]/40 object-cover shadow-[0_10px_30px_-8px_rgba(0,0,0,0.8)]"
+            className="relative h-[max(11cqmin,calc(2.5*var(--sc-fit)))] w-[max(11cqmin,calc(2.5*var(--sc-fit)))] rounded-xl border border-[#d4b35a]/40 object-cover shadow-[0_10px_30px_-8px_rgba(0,0,0,0.8)]"
           />
         ) : (
-          <div className="relative flex h-[11cqmin] w-[11cqmin] items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[2cqmin] text-white/40">
+          <div className="relative flex h-[max(11cqmin,calc(2.5*var(--sc-fit)))] w-[max(11cqmin,calc(2.5*var(--sc-fit)))] items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[max(2cqmin,calc(1.125*var(--sc-fit)))] leading-none text-white/40">
             ?
           </div>
         )}
       </div>
       {label && (
-        <div className="mt-[6%] max-w-[86%] text-center">
-          <div className="text-[0.9cqmin] font-bold uppercase tracking-[0.32em] text-[#e8c97a]/80">{kindLabel}</div>
-          <div className="mt-1 text-[2.05cqmin] font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]">
+        <div className="mt-[10.67cqh] max-w-[86%] text-center">
+          <div
+            className={`text-[max(0.9cqmin,calc(0.625*var(--sc-fit)))] ${TIGHT_LEADING} font-bold uppercase tracking-[0.32em] text-[#e8c97a]/80`}
+          >
+            {kindLabel}
+          </div>
+          <div
+            className={`mt-1 text-[max(2.05cqmin,calc(0.9375*var(--sc-fit)))] ${TIGHT_LEADING} font-black uppercase tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)]`}
+          >
             {label}
           </div>
         </div>
@@ -102,13 +117,21 @@ export function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; 
       >
         ?
       </div>
-      <div className="relative z-10 flex flex-col items-center gap-[3%] px-[8%] text-center">
-        <div className="text-[0.95cqmin] font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90">{accent.label}</div>
-        <div className="text-[1.4cqmin] font-semibold uppercase tracking-[0.32em] text-white/55">
+      <div className="relative z-10 flex flex-col items-center gap-[5.33cqh] px-[8%] text-center">
+        <div
+          className={`text-[max(0.95cqmin,calc(0.625*var(--sc-fit)))] ${TIGHT_LEADING} font-bold uppercase tracking-[0.36em] text-[#e8c97a]/90`}
+        >
+          {accent.label}
+        </div>
+        <div
+          className={`text-[max(1.4cqmin,calc(0.8125*var(--sc-fit)))] ${TIGHT_LEADING} font-semibold uppercase tracking-[0.32em] text-white/70`}
+        >
           {category.replace(/_/g, " ")}
         </div>
-        <div className="mt-[2%] h-[2px] w-[44%] bg-gradient-to-r from-transparent via-[#d4b35a]/60 to-transparent" />
-        <div className="mt-[3%] text-[1.15cqmin] uppercase tracking-[0.28em] text-white/40">Reveal incoming…</div>
+        <div className="mt-[3.56cqh] h-[2px] w-[44%] bg-gradient-to-r from-transparent via-[#d4b35a]/60 to-transparent" />
+        <div className={`mt-[5.33cqh] text-[max(1.15cqmin,calc(0.6875*var(--sc-fit)))] ${TIGHT_LEADING} uppercase tracking-[0.28em] text-white/55`}>
+          Reveal incoming…
+        </div>
       </div>
     </motion.div>
   );
@@ -116,7 +139,9 @@ export function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; 
 
 export function SubjectPlaceholder() {
   return (
-    <div className="flex h-[78%] w-[80%] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-[1.4cqmin] uppercase tracking-[0.3em] text-white/30">
+    <div
+      className={`flex h-[78%] w-[80%] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-[max(1.4cqmin,calc(0.8125*var(--sc-fit)))] ${TIGHT_LEADING} uppercase tracking-[0.3em] text-white/30`}
+    >
       Mogsy
     </div>
   );

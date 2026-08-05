@@ -71,7 +71,10 @@ export function CombatCalculationScenarioCard({ subject }: { subject: CombatCool
           payloads without an entity collection. */}
       <ScenarioEntityStrip entities={subject.entities} />
 
-      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[5%]">
+      {/* pb in `cqh`, not `%`: a percentage padding resolves against the card's
+          WIDTH, which in the Ranked band reserved 33px of a 165px card for
+          bottom padding alone. 8.89cqh is the same 5% on the 16:9 stage. */}
+      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[8.89cqh]">
         <ScenarioTitle>{subject.champion}</ScenarioTitle>
 
         {subject.abilityName && (
@@ -84,7 +87,7 @@ export function CombatCalculationScenarioCard({ subject }: { subject: CombatCool
         )}
 
         {(subject.level != null || subject.abilityRank != null) && (
-          <div className="mt-[3%] flex flex-wrap gap-[0.8cqmin]">
+          <div className="mt-[5.33cqh] flex flex-wrap gap-[max(0.8cqmin,calc(0.25*var(--sc-fit)))]">
             {subject.level != null && <ConditionChip label="Level" value={subject.level} />}
             {subject.abilityRank != null && <ConditionChip label="Rank" value={subject.abilityRank} />}
           </div>
