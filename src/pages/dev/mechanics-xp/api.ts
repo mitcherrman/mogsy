@@ -141,3 +141,162 @@ export function simulateXp(body: {
     body: JSON.stringify(body),
   });
 }
+
+// --- Phase 1B: wave generation and breakpoint analysis -----------------------
+// All wave/XP math stays in the backend; this section only shapes requests
+// and types responses.
+
+export interface MissedMinionRuleInput {
+  wave_number?: number | null;
+  minion_type?: MinionType | null;
+  count?: number;
+  event_ids?: string[];
+}
+
+export interface BreakpointsParams {
+  patch: string;
+  startingLevel: number;
+  startingCumulativeXp: string;
+  startWave: number;
+  waveCount: number;
+  recipientCount: number;
+  orderingStrategy: string;
+  roundingStrategy: string;
+  missedMinions: MissedMinionRuleInput[];
+  targetLevels: number[];
+  superMinionsPerWave: number;
+}
+
+export interface BreakpointsBody {
+  patch: string;
+  starting_level: number;
+  starting_cumulative_xp: string;
+  start_wave: number;
+  wave_count: number;
+  recipient_count: number;
+  ordering_strategy: string;
+  rounding_strategy: string;
+  missed_minions: MissedMinionRuleInput[];
+  target_levels: number[];
+  super_minions_per_wave: number;
+}
+
+// Pure, testable request shaping: numbers coerced to integers, target levels
+// deduped and sorted, decimal XP passed through as a string untouched.
+export function buildBreakpointsBody(params: BreakpointsParams): BreakpointsBody {
+  return {
+    patch: params.patch,
+    starting_level: Math.floor(params.startingLevel),
+    starting_cumulative_xp: params.startingCumulativeXp.trim(),
+    start_wave: Math.floor(params.startWave),
+    wave_count: Math.floor(params.waveCount),
+    recipient_count: Math.floor(params.recipientCount),
+    ordering_strategy: params.orderingStrategy,
+    rounding_strategy: params.roundingStrategy,
+    missed_minions: params.missedMinions,
+    target_levels: [...new Set(params.targetLevels.map((n) => Math.floor(n)))].sort(
+      (a, b) => a - b,
+    ),
+    super_minions_per_wave: Math.floor(params.superMinionsPerWave),
+  };
+}
+
+export interface WaveSummary {
+  wave_number: number;
+  spawn_time_seconds: number;
+  spawn_time_display: string;
+  is_cannon_wave: boolean;
+  minion_counts: Record<string, number>;
+  omitted_count: number;
+  wave_xp: string;
+  cumulative_xp_after_wave: string | null;
+  level_after_wave: number | null;
+}
+
+export interface TargetLevelBreakpoint {
+  target_level: number;
+  reached: boolean;
+  wave_number: number | null;
+  event_id: string | null;
+  minion_type: string | null;
+  sequence_within_wave: number | null;
+  global_sequence: number | null;
+  spawn_time_seconds: number | null;
+  spawn_time_display: string | null;
+  cumulative_xp: string | null;
+  xp_over_threshold: string | null;
+}
+
+export interface OmittedEvent {
+  wave_number: number;
+  sequence_within_wave: number;
+  global_sequence: number;
+  minion_type: string;
+  event_id: string;
+  spawn_time_seconds: number;
+  spawn_time_display: string;
+}
+
+export interface BreakpointAnalysisResult {
+  request_summary: Record<string, unknown>;
+  generation: {
+    ruleset_id: string;
+    effective_patch: string;
+    verified_through: string;
+    waves: Array<{
+      wave_number: number;
+      spawn_time_display: string;
+      is_cannon_wave: boolean;
+      minion_counts: Record<string, number>;
+    }>;
+  };
+  simulation: SimulationResult;
+  target_level_breakpoints: TargetLevelBreakpoint[];
+  unreached_targets: number[];
+  wave_summaries: WaveSummary[];
+  omitted_events: OmittedEvent[];
+  warnings: string[];
+  applied_rules: SimulationResult["applied_rules"];
+}
+
+export interface BreakpointDelta {
+  target_level: number;
+  baseline_wave: number | null;
+  comparison_wave: number | null;
+  baseline_event: string | null;
+  comparison_event: string | null;
+  wave_delta: number | null;
+  event_delta: number | null;
+}
+
+export interface ComparisonResult {
+  baseline: BreakpointAnalysisResult;
+  comparison: BreakpointAnalysisResult;
+  level_breakpoint_deltas: BreakpointDelta[];
+  xp_difference: string;
+  first_divergence: {
+    ledger_index: number;
+    baseline_event: string | null;
+    comparison_event: string | null;
+  } | null;
+  warnings: string[];
+}
+
+export function analyzeBreakpoints(
+  body: BreakpointsBody,
+): Promise<BreakpointAnalysisResult> {
+  return request<BreakpointAnalysisResult>("/api/mechanics/xp/breakpoints", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function compareBreakpoints(
+  baseline: BreakpointsBody,
+  comparison: BreakpointsBody,
+): Promise<ComparisonResult> {
+  return request<ComparisonResult>("/api/mechanics/xp/breakpoints/compare", {
+    method: "POST",
+    body: JSON.stringify({ baseline, comparison }),
+  });
+}
