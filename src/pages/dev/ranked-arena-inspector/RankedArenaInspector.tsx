@@ -29,6 +29,9 @@ import {
   NUMERIC_QUESTION, RUNE_OPTION_QUESTION, SUMMONER_SPELL_OPTION_QUESTION,
 } from "@/lib/ranked-core/adapters/optionMediaFixtures";
 import type { BackendQuestionPayload } from "@/lib/ranked-core/adapters/optionMediaFixtures";
+// Namespaced: the RA7 fixture module and this file both name a SELL_SWAP_Q,
+// and the two are deliberately different questions (RA5's and RA7's).
+import * as RA7 from "@/lib/question-surface/familyLayoutFixtures";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import {
@@ -561,6 +564,33 @@ const STATES: InspectorState[] = [
     render: () => <Surface question={DAMAGE_Q} scenarioSource={LEGACY_SUBJECT_SCENARIO} /> },
   { key: "surface-media-statuses", label: "Surface — premise statuses (sell-swap)",
     render: () => <Surface question={SELL_SWAP_Q} scenarioSource={SELL_SWAP_SCENARIO} /> },
+  // --- RA7: family-specific premise layouts --------------------------------
+  // The payloads are shared with the RA7 unit tests (familyLayoutFixtures), so
+  // the pixels reviewed here and the DOM those tests assert on are one source.
+  // Each family is paired with the case that must FALL BACK, because the
+  // fallback is the contract that keeps this phase additive.
+  { key: "family-combat-physical", label: "Family — post-mitigation (physical, armor 60→100)",
+    render: () => <Surface question={RA7.PHYSICAL_DAMAGE_Q} scenarioSource={RA7.PHYSICAL_DAMAGE_SCENARIO} /> },
+  { key: "family-combat-magic", label: "Family — post-mitigation (magic, single MR)",
+    render: () => <Surface question={RA7.MAGIC_DAMAGE_Q} scenarioSource={RA7.MAGIC_DAMAGE_SCENARIO} /> },
+  { key: "family-combat-passive", label: "Family — post-mitigation (passive, no ability entity)",
+    render: () => <Surface question={RA7.PASSIVE_DAMAGE_Q} scenarioSource={RA7.PASSIVE_DAMAGE_SCENARIO} /> },
+  { key: "family-combat-selected", label: "Family — post-mitigation, selected (geometry must not move)",
+    render: () => <Surface question={RA7.PHYSICAL_DAMAGE_Q} scenarioSource={RA7.PHYSICAL_DAMAGE_SCENARIO}
+      selectedOptionId="2" /> },
+  { key: "family-combat-reveal", label: "Family — post-mitigation, revealed (geometry must not move)",
+    render: () => <Surface question={RA7.PHYSICAL_DAMAGE_Q} scenarioSource={RA7.PHYSICAL_DAMAGE_SCENARIO}
+      selectedOptionId="0" reveal={{ revealed: true, isCorrect: false, correctOptionId: "2" }} /> },
+  { key: "family-combat-fallback", label: "Family — same damage question, pre-RA7 payload (falls back)",
+    render: () => <Surface question={RA7.MAGIC_DAMAGE_Q} scenarioSource={RA7.LEGACY_DAMAGE_SCENARIO} /> },
+  { key: "family-lifecycle-sellswap", label: "Family — item lifecycle (kept / bought / sold)",
+    render: () => <Surface question={RA7.SELL_SWAP_Q} scenarioSource={RA7.SELL_SWAP_SCENARIO} /> },
+  { key: "family-lifecycle-purchases", label: "Family — item lifecycle (multi starting + multi bought)",
+    render: () => <Surface question={RA7.PURCHASE_HISTORY_Q} scenarioSource={RA7.PURCHASE_HISTORY_SCENARIO} /> },
+  { key: "family-lifecycle-history", label: "Family — one item with a history (started with, then sold)",
+    render: () => <Surface question={RA7.SELL_SWAP_Q} scenarioSource={RA7.ITEM_HISTORY_SCENARIO} /> },
+  { key: "family-lifecycle-fallback", label: "Family — static inventory, no transaction (falls back)",
+    render: () => <Surface question={RA7.STATIC_INVENTORY_Q} scenarioSource={RA7.STATIC_INVENTORY_SCENARIO} /> },
   // --- RA6: canonical media on the ANSWER OPTIONS --------------------------
   { key: "surface-option-media-item", label: "Options — item icons (recipe, premise + options)",
     render: () => <Surface {...OM_ITEM} /> },
