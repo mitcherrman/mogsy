@@ -15,10 +15,16 @@ export const GRAPH1_API_BASE = (
   "https://web-production-83e53.up.railway.app"
 ).replace(/\/+$/, "");
 
-export function useGraph1Dataset(datasetKey: string, apiBase?: string) {
+export function useGraph1Dataset(
+  datasetKey: string,
+  apiBase?: string,
+  options: { enabled?: boolean } = {},
+) {
   const base = (apiBase || GRAPH1_API_BASE).replace(/\/+$/, "");
   return useQuery<VisualizationDataset>({
     queryKey: ["graph1-dataset", base, datasetKey],
+    // the page holds off until the catalog names a dataset
+    enabled: options.enabled ?? true,
     staleTime: 60 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     retry: 1,
