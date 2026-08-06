@@ -12,25 +12,30 @@
  *
  * Paths are authored here rather than fetched, so they render identically in
  * the browser and in a Remotion frame with nothing to load or decode.
+ *
+ * The glyphs are stored as path DATA, not as JSX. Remotion's webpack config
+ * compiles this file with the classic JSX runtime, so module-scope JSX would
+ * emit a bare `React.createElement` call evaluated at import time and crash
+ * the bundle with "React is not defined" — the app's Vite build uses the
+ * automatic runtime and hides that. Keeping the constant to plain strings
+ * means both toolchains agree, and there is no React import to forget.
  */
 import type { Graph1PlayerRole } from "@/graph1/contract";
 
-const PATHS: Record<Graph1PlayerRole, JSX.Element> = {
+const PATHS: Record<Graph1PlayerRole, string[]> = {
   // upper-left corner block
-  Top: <path d="M2 2h5v2H4v3H2V2z" />,
+  Top: ["M2 2h5v2H4v3H2V2z"],
   // clustered leaves between the lanes
-  Jungle: (
-    <>
-      <path d="M5 8.5c0-2 1.2-3.6 3-4.2-.4 2-.2 3.4.6 4.4-1.2.6-2.6.5-3.6-.2z" />
-      <path d="M4.6 9.4c1.4.3 2.6 1.2 3.2 2.4-1.6.3-3-.4-3.6-1.6l.4-.8z" />
-    </>
-  ),
+  Jungle: [
+    "M5 8.5c0-2 1.2-3.6 3-4.2-.4 2-.2 3.4.6 4.4-1.2.6-2.6.5-3.6-.2z",
+    "M4.6 9.4c1.4.3 2.6 1.2 3.2 2.4-1.6.3-3-.4-3.6-1.6l.4-.8z",
+  ],
   // the diagonal lane
-  Mid: <path d="M2.4 7.6 7.6 2.4l1 1-5.2 5.2-1-1z" />,
+  Mid: ["M2.4 7.6 7.6 2.4l1 1-5.2 5.2-1-1z"],
   // lower-right corner block
-  Bot: <path d="M8 8v3H6v-1H4V8h4z" />,
+  Bot: ["M8 8v3H6v-1H4V8h4z"],
   // shield
-  Support: <path d="M6 2 9.5 3.4v3C9.5 8.4 8 10 6 10.6 4 10 2.5 8.4 2.5 6.4v-3L6 2z" />,
+  Support: ["M6 2 9.5 3.4v3C9.5 8.4 8 10 6 10.6 4 10 2.5 8.4 2.5 6.4v-3L6 2z"],
 };
 
 export interface RoleGlyphProps {
@@ -53,7 +58,9 @@ export default function RoleGlyph({ role, className }: RoleGlyphProps) {
       className={className}
       fill="currentColor"
     >
-      {PATHS[role]}
+      {PATHS[role].map((d) => (
+        <path key={d} d={d} />
+      ))}
     </svg>
   );
 }
