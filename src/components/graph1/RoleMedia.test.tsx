@@ -128,6 +128,24 @@ describe("RoleGlyph", () => {
     const b = render(<RoleGlyph role="Jungle" />).container.innerHTML;
     expect(a).toBe(b);
   });
+
+  it("holds no module-scope JSX, so both JSX runtimes can load it", async () => {
+    // Regression guard: the glyph table was once `Record<Role, JSX.Element>`
+    // with JSX literals at module scope. Vite (automatic runtime) was happy;
+    // Remotion's webpack uses the CLASSIC runtime, so those literals compiled
+    // to a bare React.createElement evaluated at import time and crashed the
+    // video bundle with "React is not defined". Vitest also uses the
+    // automatic runtime, so no rendering test can reproduce it — what keeps
+    // the module runtime-agnostic is that its constant is plain path data.
+    const source = await import("./RoleGlyph.tsx?raw").then((m) => m.default);
+    const table = source.slice(
+      source.indexOf("const PATHS"),
+      source.indexOf("export interface RoleGlyphProps"),
+    );
+    // JSX element literals: a fragment, or a lowercase intrinsic tag
+    expect(table).not.toMatch(/<>|<(path|svg|g|circle|rect)\b/);
+    expect(table).toContain("Record<Graph1PlayerRole, string[]>");
+  });
 });
 
 describe("browser / Remotion parity", () => {
