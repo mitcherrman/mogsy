@@ -21,12 +21,21 @@ import type { Graph1EntityPresentation } from "@/graph1/contract";
 import { entityColor } from "@/graph1/colors";
 import type { RaceFrameState, RaceRow } from "@/graph1/engine";
 import { cn } from "@/lib/utils";
+import RoleGlyph from "./RoleGlyph";
 
 const ROW_HEIGHT = 52;
 
+/**
+ * Layer switches. The two original fields keep their names and meaning; the
+ * Phase 2 additions are optional and default ON, so a caller that passes only
+ * the original pair renders exactly what it rendered before.
+ */
 export interface RaceRendererDisplay {
   showWinOverlay: boolean;
   showSecondaryEntityLabel: boolean;
+  showEntityMedia?: boolean;
+  showRankNumber?: boolean;
+  showValueLabel?: boolean;
 }
 
 /** Injectable <img> substitute. The Remotion composition passes remotion's
@@ -42,6 +51,12 @@ const NativeLazyImg: RaceRendererImageComponent = ({ src, alt, className }) => (
   <img src={src} alt={alt} loading="lazy" className={className} />
 );
 
+/**
+ * Media ladder: validated image -> role-enhanced initials -> plain initials.
+ * `media.role` is only ever present on initials media and only for a lane
+ * position, so an unresolved or non-playing role simply lands on the last
+ * rung — there is no broken-image state to fall back from.
+ */
 function Avatar({
   entity,
   imageComponent: ImageComponent,
@@ -58,13 +73,21 @@ function Avatar({
       />
     );
   }
+  const role = entity.media.kind === "initials" ? entity.media.role : undefined;
   return (
     <div
       aria-hidden
-      className="h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-xs font-bold text-white"
+      data-avatar={role ? "role-initials" : "initials"}
+      className="relative h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-xs font-bold text-white"
       style={{ backgroundColor: entityColor(entity.id).base }}
     >
       {entity.media.value}
+      {role && (
+        <RoleGlyph
+          role={role}
+          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-sm bg-background/80 p-px text-foreground"
+        />
+      )}
     </div>
   );
 }
@@ -118,10 +141,14 @@ function Row({
         opacity: row.opacity,
       }}
     >
-      <span className="w-7 text-right text-sm font-semibold tabular-nums text-muted-foreground">
-        {row.rank}
-      </span>
-      <Avatar entity={entity} imageComponent={imageComponent} />
+      {display.showRankNumber !== false && (
+        <span className="w-7 text-right text-sm font-semibold tabular-nums text-muted-foreground">
+          {row.rank}
+        </span>
+      )}
+      {display.showEntityMedia !== false && (
+        <Avatar entity={entity} imageComponent={imageComponent} />
+      )}
       <div className="relative h-9 min-w-0 flex-1">
         {/* total-games bar: dim base color; remainder past the win segment
             reads as losses */}
@@ -163,14 +190,16 @@ function Row({
           )}
         </div>
       </div>
-      <span className="w-24 text-right tabular-nums">
-        <span className="text-sm font-bold">{row.displayValue}</span>
-        {display.showWinOverlay && (
-          <span className="ml-1 hidden text-[11px] text-muted-foreground md:inline">
-            {row.displayWins}W–{row.displayLosses}L
-          </span>
-        )}
-      </span>
+      {display.showValueLabel !== false && (
+        <span className="w-24 text-right tabular-nums">
+          <span className="text-sm font-bold">{row.displayValue}</span>
+          {display.showWinOverlay && (
+            <span className="ml-1 hidden text-[11px] text-muted-foreground md:inline">
+              {row.displayWins}W–{row.displayLosses}L
+            </span>
+          )}
+        </span>
+      )}
     </div>
   );
 }
