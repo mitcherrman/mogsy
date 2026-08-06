@@ -3,6 +3,7 @@
 // no XP math of its own. Not linked from any navigation; DEV-gated below.
 
 import { useEffect, useMemo, useState } from "react";
+import WaveBreakpointsSection from "./WaveBreakpointsSection";
 import {
   MINION_TYPES,
   MinionEventInput,
@@ -391,6 +392,8 @@ export default function MechanicsXpPage() {
           </div>
         </section>
       )}
+
+      <WaveBreakpointsSection />
     </div>
   );
 }
