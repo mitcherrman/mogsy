@@ -21,6 +21,7 @@ import type { Graph1EntityPresentation } from "@/graph1/contract";
 import { entityColor } from "@/graph1/colors";
 import type { RaceFrameState, RaceRow } from "@/graph1/engine";
 import { cn } from "@/lib/utils";
+import RoleGlyph from "./RoleGlyph";
 
 const ROW_HEIGHT = 52;
 
@@ -50,6 +51,12 @@ const NativeLazyImg: RaceRendererImageComponent = ({ src, alt, className }) => (
   <img src={src} alt={alt} loading="lazy" className={className} />
 );
 
+/**
+ * Media ladder: validated image -> role-enhanced initials -> plain initials.
+ * `media.role` is only ever present on initials media and only for a lane
+ * position, so an unresolved or non-playing role simply lands on the last
+ * rung — there is no broken-image state to fall back from.
+ */
 function Avatar({
   entity,
   imageComponent: ImageComponent,
@@ -66,13 +73,21 @@ function Avatar({
       />
     );
   }
+  const role = entity.media.kind === "initials" ? entity.media.role : undefined;
   return (
     <div
       aria-hidden
-      className="h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-xs font-bold text-white"
+      data-avatar={role ? "role-initials" : "initials"}
+      className="relative h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-xs font-bold text-white"
       style={{ backgroundColor: entityColor(entity.id).base }}
     >
       {entity.media.value}
+      {role && (
+        <RoleGlyph
+          role={role}
+          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-sm bg-background/80 p-px text-foreground"
+        />
+      )}
     </div>
   );
 }
