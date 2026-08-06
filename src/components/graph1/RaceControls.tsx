@@ -6,7 +6,10 @@
 import { Button } from "@/components/ui/button";
 import { Pause, Play, RotateCcw } from "lucide-react";
 
-const SPEEDS = [0.5, 1, 2, 4, 8, 10];
+import {
+  FALLBACK_SPEED_OPTIONS,
+  FALLBACK_TOP_N_OPTIONS,
+} from "@/graph1/controlState";
 
 export interface RaceControlsProps {
   playing: boolean;
@@ -19,6 +22,11 @@ export interface RaceControlsProps {
   onRestart: () => void;
   onSpeed: (s: number) => void;
   onSeekPosition: (p: number) => void;
+  /** dataset-declared choices; both fall back to the Phase 1 lists */
+  speedOptions?: number[];
+  topN?: number;
+  topNOptions?: number[];
+  onTopN?: (n: number) => void;
 }
 
 export default function RaceControls({
@@ -31,7 +39,15 @@ export default function RaceControls({
   onRestart,
   onSpeed,
   onSeekPosition,
+  speedOptions,
+  topN,
+  topNOptions,
+  onTopN,
 }: RaceControlsProps) {
+  const speeds = speedOptions?.length ? speedOptions : FALLBACK_SPEED_OPTIONS;
+  const topNChoices = topNOptions?.length
+    ? topNOptions
+    : FALLBACK_TOP_N_OPTIONS;
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-1.5">
@@ -84,13 +100,31 @@ export default function RaceControls({
           onChange={(e) => onSpeed(Number(e.target.value))}
           className="rounded border border-border bg-background px-1.5 py-1 text-xs"
         >
-          {SPEEDS.map((s) => (
+          {speeds.map((s) => (
             <option key={s} value={s}>
               {s}×
             </option>
           ))}
         </select>
       </label>
+
+      {onTopN && topN !== undefined && (
+        <label className="flex items-center gap-1 text-xs text-muted-foreground">
+          Rows
+          <select
+            aria-label="Rows shown"
+            value={topN}
+            onChange={(e) => onTopN(Number(e.target.value))}
+            className="rounded border border-border bg-background px-1.5 py-1 text-xs"
+          >
+            {topNChoices.map((n) => (
+              <option key={n} value={n}>
+                Top {n}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <span role="status" aria-live="polite" className="sr-only">
         {playing ? "Playing" : "Paused"}

@@ -24,9 +24,17 @@ import { cn } from "@/lib/utils";
 
 const ROW_HEIGHT = 52;
 
+/**
+ * Layer switches. The two original fields keep their names and meaning; the
+ * Phase 2 additions are optional and default ON, so a caller that passes only
+ * the original pair renders exactly what it rendered before.
+ */
 export interface RaceRendererDisplay {
   showWinOverlay: boolean;
   showSecondaryEntityLabel: boolean;
+  showEntityMedia?: boolean;
+  showRankNumber?: boolean;
+  showValueLabel?: boolean;
 }
 
 /** Injectable <img> substitute. The Remotion composition passes remotion's
@@ -118,10 +126,14 @@ function Row({
         opacity: row.opacity,
       }}
     >
-      <span className="w-7 text-right text-sm font-semibold tabular-nums text-muted-foreground">
-        {row.rank}
-      </span>
-      <Avatar entity={entity} imageComponent={imageComponent} />
+      {display.showRankNumber !== false && (
+        <span className="w-7 text-right text-sm font-semibold tabular-nums text-muted-foreground">
+          {row.rank}
+        </span>
+      )}
+      {display.showEntityMedia !== false && (
+        <Avatar entity={entity} imageComponent={imageComponent} />
+      )}
       <div className="relative h-9 min-w-0 flex-1">
         {/* total-games bar: dim base color; remainder past the win segment
             reads as losses */}
@@ -163,14 +175,16 @@ function Row({
           )}
         </div>
       </div>
-      <span className="w-24 text-right tabular-nums">
-        <span className="text-sm font-bold">{row.displayValue}</span>
-        {display.showWinOverlay && (
-          <span className="ml-1 hidden text-[11px] text-muted-foreground md:inline">
-            {row.displayWins}W–{row.displayLosses}L
-          </span>
-        )}
-      </span>
+      {display.showValueLabel !== false && (
+        <span className="w-24 text-right tabular-nums">
+          <span className="text-sm font-bold">{row.displayValue}</span>
+          {display.showWinOverlay && (
+            <span className="ml-1 hidden text-[11px] text-muted-foreground md:inline">
+              {row.displayWins}W–{row.displayLosses}L
+            </span>
+          )}
+        </span>
+      )}
     </div>
   );
 }
