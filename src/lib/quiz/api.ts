@@ -114,15 +114,8 @@ export type QuizAchievementsResponse = {
   unlocked_count?: number;
 };
 
-export type QuizLeaderboardEntry = {
-  user_id: string;
-  display_name?: string;
-  rank?: string;
-  rank_icon?: string;
-  xp?: number;
-  accuracy?: number;
-  attempts?: number;
-};
+// QuizLeaderboardEntry removed with getLeaderboard: it typed the response of
+// /api/quiz/leaderboard, which the backend does not serve.
 
 export type DailyChallengeQuestion = QuizQuestion & {
   position?: number;
@@ -226,18 +219,10 @@ export type DailyChallengeSubmitResult = QuizAnswerResult & {
   daily_bonus_xp_earned?: number;
 };
 
-export type QuizOverride = {
-  id: number | string;
-  question_id: number | string;
-  question_key?: string;
-  category?: string;
-  new_correct_answer?: string;
-  new_explanation?: string;
-  notes?: string;
-  active?: boolean;
-  created_at?: string;
-  updated_at?: string;
-};
+// QuizOverride removed with listOverrides/setOverrideActive: it typed the
+// rows returned by /api/quiz/admin/overrides, which the backend does not
+// serve. Creating an override is a separate, real endpoint and needs no type
+// here — overrideQuestion posts a literal payload.
 
 /** Resolve a backend-provided icon path to an absolute URL. */
 export function resolveQuizAssetUrl(path?: string | null): string | undefined {
@@ -720,18 +705,12 @@ export const quizApi = {
     }),
   /** Progression for a user. Pass `"anonymous"` for guest aggregate. */
   getProgress: (userId: string) => request<QuizProgress>(`/api/quiz/progress/${encodeURIComponent(userId)}`),
-  /** Reserved for future leaderboard pages. */
-  getLeaderboard: (params?: { limit?: number; offset?: number }) =>
-    request<{ entries: QuizLeaderboardEntry[]; total?: number }>(
-      `/api/quiz/leaderboard?limit=${params?.limit ?? 50}&offset=${params?.offset ?? 0}`,
-    ),
-  listOverrides: (activeOnly = false) =>
-    request<{ overrides: QuizOverride[] }>(`/api/quiz/admin/overrides${activeOnly ? "?active=true" : ""}`),
-  setOverrideActive: (overrideId: number | string, active: boolean) =>
-    request<{ ok?: boolean }>(
-      `/api/quiz/admin/overrides/${encodeURIComponent(String(overrideId))}/${active ? "activate" : "deactivate"}`,
-      { method: "POST" },
-    ),
+  // getLeaderboard, listOverrides and setOverrideActive were removed: the
+  // backend exposes no /api/quiz/leaderboard and no /api/quiz/admin/overrides
+  // routes, so every call 404'd. getLeaderboard had no call sites at all; the
+  // other two backed the Active Overrides panel in QuizAdmin, removed with
+  // them. Applying an override (POST /api/quiz/admin/override-question) is a
+  // real endpoint and is untouched.
   /** Category breakdown for a user. Pass `"anonymous"` for guest aggregate. */
   getCategories: (userId: string) =>
     request<{ categories: QuizCategoryStat[] }>(`/api/quiz/categories/${encodeURIComponent(userId)}`),
