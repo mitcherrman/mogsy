@@ -100,7 +100,7 @@ interface Backend {
   rows: CandidateSummary[];
   detailOverride: Partial<CandidateDetail>;
   errors: Record<string, Response | undefined>; // keyed by "accept"|"reject"|"revise"|...
-  calls: { accept: unknown[]; reject: unknown[]; revise: unknown[]; export: number; validate: number };
+  calls: { accept: unknown[]; reject: unknown[]; revise: unknown[]; export: number; validate: number; preview: string[]; detail: string[] };
   lastListUrl: string | null;
 }
 let backend: Backend;
@@ -116,9 +116,26 @@ const install = () => {
       backend.lastListUrl = u;
       return json(backend.rows);
     }
+    // RA9 operator preview projection (read-only, no correct answer).
+    const previewMatch = u.match(/\/questions\/candidates\/([^/?]+)\/public-view$/);
+    if (previewMatch && method === "GET") {
+      const id = decodeURIComponent(previewMatch[1]);
+      backend.calls.preview.push(id);
+      if (backend.errors.preview) return backend.errors.preview;
+      return json({
+        question_id: id,
+        prompt: "How much effective HP does 170 base grant against 100 armor?",
+        options: ["340", "170", "255", "425"],
+        category: "tank_hp",
+        module_id: "quiz",
+        derived_status: "unreviewed",
+      });
+    }
     const detailMatch = u.match(/\/questions\/candidates\/([^/?]+)$/);
     if (detailMatch && method === "GET") {
       const id = decodeURIComponent(detailMatch[1]);
+      backend.calls.detail.push(id);
+      if (backend.errors.detail) return backend.errors.detail;
       return json(DETAIL(id, backend.detailOverride));
     }
     if (u.includes("/accept")) {
@@ -156,7 +173,7 @@ beforeEach(() => {
     rows: ROWS,
     detailOverride: {},
     errors: {},
-    calls: { accept: [], reject: [], revise: [], export: 0, validate: 0 },
+    calls: { accept: [], reject: [], revise: [], export: 0, validate: 0, preview: [], detail: [] },
     lastListUrl: null,
   };
   install();
@@ -327,5 +344,167 @@ describe("RankedDuelReviewPanel — auth", () => {
     render(<RankedDuelReviewPanel />);
     await waitFor(() => expect(screen.getByText(/Admin key missing or invalid/i)).toBeTruthy());
     expect(screen.queryByTestId("rd-cand-tank_hp:seed1:f1")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RA9 — Data/Preview sub-tabs and URL-controlled selection
+// ---------------------------------------------------------------------------
+
+describe("RankedDuelReviewPanel — Data/Preview sub-tabs", () => {
+  const openCandidate = async () => {
+    render(<RankedDuelReviewPanel />);
+    fireEvent.click(await screen.findByTestId("rd-cand-tank_hp:seed1:f1"));
+    await screen.findByTestId("rd-correct-answer");
+  };
+
+  it("opens on Data with every review action present", async () => {
+    await openCandidate();
+    expect(screen.getByTestId("rd-subtab-data").dataset.active).toBe("true");
+    expect(screen.getByTestId("rd-correct-answer")).toBeInTheDocument();
+    expect(screen.getByTestId("rd-mode-accept")).toBeInTheDocument();
+    expect(screen.getByTestId("rd-mode-reject")).toBeInTheDocument();
+    expect(screen.getByTestId("rd-mode-revise")).toBeInTheDocument();
+  });
+
+  it("does not load the preview until the operator opens it", async () => {
+    await openCandidate();
+    expect(backend.calls.preview).toEqual([]);
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await waitFor(() => expect(backend.calls.preview).toEqual(["tank_hp:seed1:f1"]));
+  });
+
+  it("hides Data while Preview is shown, and restores it", async () => {
+    await openCandidate();
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await screen.findByTestId("rd-preview");
+    expect(screen.getByTestId("rd-data-region")).toHaveAttribute("hidden");
+    expect(screen.getByTestId("rd-preview-region")).not.toHaveAttribute("hidden");
+
+    fireEvent.click(screen.getByTestId("rd-subtab-data"));
+    expect(screen.getByTestId("rd-data-region")).not.toHaveAttribute("hidden");
+    expect(screen.getByTestId("rd-preview-region")).toHaveAttribute("hidden");
+  });
+
+  it("keeps an in-progress revision draft across a trip to Preview", async () => {
+    setReviewer("m");
+    await openCandidate();
+    fireEvent.click(screen.getByTestId("rd-mode-revise"));
+    fireEvent.change(screen.getByTestId("rd-revise-question"), {
+      target: { value: "edited prompt in progress" },
+    });
+
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await screen.findByTestId("rd-preview");
+    fireEvent.click(screen.getByTestId("rd-subtab-data"));
+
+    expect((screen.getByTestId("rd-revise-question") as HTMLTextAreaElement).value).toBe(
+      "edited prompt in progress",
+    );
+  });
+
+  it("does not refetch the projection when toggling back to Preview", async () => {
+    await openCandidate();
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await waitFor(() => expect(backend.calls.preview).toHaveLength(1));
+    fireEvent.click(screen.getByTestId("rd-subtab-data"));
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await screen.findByTestId("rd-preview");
+    expect(backend.calls.preview).toHaveLength(1);
+  });
+
+  it("still accepts a candidate while the Preview tab exists", async () => {
+    setReviewer("m");
+    await openCandidate();
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await screen.findByTestId("rd-preview");
+    fireEvent.click(screen.getByTestId("rd-subtab-data"));
+
+    fireEvent.click(screen.getByTestId("rd-mode-accept"));
+    fireEvent.click(screen.getByTestId("rd-accept-submit"));
+    await waitFor(() => expect(backend.calls.accept).toHaveLength(1));
+    expect(backend.calls.accept[0]).toMatchObject({
+      reviewer: "m",
+      source_hash: "sha256:aaa",
+    });
+  });
+
+  it("still rejects a candidate while the Preview tab exists", async () => {
+    setReviewer("m");
+    await openCandidate();
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await screen.findByTestId("rd-preview");
+    fireEvent.click(screen.getByTestId("rd-subtab-data"));
+
+    fireEvent.click(screen.getByTestId("rd-mode-reject"));
+    fireEvent.change(screen.getByTestId("rd-reject-reason"), {
+      target: { value: "wrong numbers" },
+    });
+    fireEvent.click(screen.getByTestId("rd-reject-submit"));
+    await waitFor(() => expect(backend.calls.reject).toHaveLength(1));
+  });
+
+  it("never lets a preview write a review decision", async () => {
+    await openCandidate();
+    fireEvent.click(screen.getByTestId("rd-subtab-preview"));
+    await screen.findByTestId("rd-preview");
+    await waitFor(() => expect(screen.getByTestId("answer-grid")).toBeInTheDocument());
+
+    // Scoped to the grid: the hidden Data region lists the same option text.
+    fireEvent.click(within(screen.getByTestId("answer-grid")).getByText("255"));
+    fireEvent.click(screen.getByTestId("preview-state-locked"));
+    fireEvent.click(screen.getByTestId("preview-state-reveal"));
+
+    expect(backend.calls.accept).toEqual([]);
+    expect(backend.calls.reject).toEqual([]);
+    expect(backend.calls.revise).toEqual([]);
+    expect(backend.calls.export).toBe(0);
+  });
+});
+
+describe("RankedDuelReviewPanel — URL-controlled selection", () => {
+  it("loads the candidate given by the controlled prop", async () => {
+    render(<RankedDuelReviewPanel selectedCandidateId="tank_hp:seed2:f2" onSelectCandidate={vi.fn()} />);
+    await screen.findByTestId("rd-correct-answer");
+    expect(backend.calls.detail).toEqual(["tank_hp:seed2:f2"]);
+  });
+
+  it("asks the owner to change selection rather than selecting itself", async () => {
+    const onSelectCandidate = vi.fn();
+    render(<RankedDuelReviewPanel selectedCandidateId={null} onSelectCandidate={onSelectCandidate} />);
+    fireEvent.click(await screen.findByTestId("rd-cand-tank_hp:seed1:f1"));
+    expect(onSelectCandidate).toHaveBeenCalledWith("tank_hp:seed1:f1");
+    // Controlled: nothing opened, because the prop did not change.
+    expect(backend.calls.detail).toEqual([]);
+  });
+
+  it("follows the controlled prop when it changes (Back/Forward)", async () => {
+    const { rerender } = render(
+      <RankedDuelReviewPanel selectedCandidateId="tank_hp:seed1:f1" onSelectCandidate={vi.fn()} />,
+    );
+    await screen.findByTestId("rd-correct-answer");
+
+    rerender(<RankedDuelReviewPanel selectedCandidateId="tank_hp:seed2:f2" onSelectCandidate={vi.fn()} />);
+    await waitFor(() => expect(backend.calls.detail).toEqual(["tank_hp:seed1:f1", "tank_hp:seed2:f2"]));
+
+    rerender(<RankedDuelReviewPanel selectedCandidateId={null} onSelectCandidate={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText(/Select a candidate to review/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("reports an unknown candidate id from the URL instead of showing nothing", async () => {
+    backend.errors.detail = errBody(404, "candidate_not_found", "Unknown candidate ID: nope");
+    render(<RankedDuelReviewPanel selectedCandidateId="nope" onSelectCandidate={vi.fn()} />);
+    const err = await screen.findByTestId("rd-detail-error");
+    expect(err.textContent).toMatch(/no longer exists/i);
+    expect(err.textContent).toContain("nope");
+  });
+
+  it("keeps its own selection when used uncontrolled", async () => {
+    render(<RankedDuelReviewPanel />);
+    fireEvent.click(await screen.findByTestId("rd-cand-tank_hp:seed1:f1"));
+    await screen.findByTestId("rd-correct-answer");
+    expect(backend.calls.detail).toEqual(["tank_hp:seed1:f1"]);
   });
 });

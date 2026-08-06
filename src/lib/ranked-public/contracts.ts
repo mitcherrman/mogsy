@@ -428,6 +428,21 @@ function readQuestion(value: unknown): PublicQuestionSource | null {
   };
 }
 
+/**
+ * Read a STANDALONE public question payload — the same block a live round
+ * transports, delivered by an endpoint that returns only the question.
+ *
+ * Exported for the admin candidate preview (RA9), which reads exactly this
+ * shape from `/api/admin/ranked-duel/questions/candidates/{id}/public-view`.
+ * It reuses this reader rather than growing a second copy of the transport
+ * normalization, so presentation/option-media handling and the
+ * `assertNoCorrectness` guard cannot diverge between the two callers. Pure and
+ * unchanged for the live path — this is a re-export, not a new behaviour.
+ */
+export function readPublicQuestion(value: unknown): PublicQuestionSource | null {
+  return readQuestion(value);
+}
+
 function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundView,
   "schemaVersion" | "serverTime"> {
   assertNoCorrectness(payload, "public payload");

@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   FileDown,
+  FileText,
+  Eye,
   ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,7 @@ import type {
   ValidateReport,
 } from "@/lib/ranked-duel-review/types";
 import { getReviewer, setReviewer } from "./reviewerIdentity";
+import { CandidatePreview } from "./CandidatePreview";
 
 const STATUS_STYLE: Record<DerivedStatus, string> = {
   unreviewed: "bg-muted text-muted-foreground",
@@ -73,14 +76,49 @@ function StatusBadge({ status }: { status: DerivedStatus }) {
 
 type ActionMode = null | "accept" | "reject" | "revise";
 
-export function RankedDuelReviewPanel() {
+/**
+ * Candidate detail views. "Data" is the existing review material and every
+ * decision action; "Preview" (RA9) renders the real Ranked question surface for
+ * the same candidate. They are sibling views of one candidate, not two pages —
+ * the detail region hosts both and the review actions never move.
+ */
+type DetailSubTab = "data" | "preview";
+
+const DETAIL_SUB_TABS: ReadonlyArray<{
+  id: DetailSubTab;
+  label: string;
+  icon: typeof FileText;
+}> = [
+  { id: "data", label: "Data", icon: FileText },
+  { id: "preview", label: "Preview", icon: Eye },
+];
+
+export interface RankedDuelReviewPanelProps {
+  /**
+   * URL-controlled candidate selection (`?candidateId=`). When provided the
+   * panel is CONTROLLED: selection lives in the URL, so Back/Forward and a
+   * pasted deep link drive which candidate is open. Omit both props and the
+   * panel keeps its own selection (standalone use).
+   */
+  selectedCandidateId?: string | null;
+  onSelectCandidate?: (candidateId: string | null) => void;
+}
+
+export function RankedDuelReviewPanel({
+  selectedCandidateId,
+  onSelectCandidate,
+}: RankedDuelReviewPanelProps = {}) {
   const [reviewer, setReviewerState] = useState(getReviewer);
   const [status, setStatus] = useState<ReviewStatus | null>(null);
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
   const [filters, setFilters] = useState<CandidateListParams>({});
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CandidateDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const controlled = selectedCandidateId !== undefined;
+  const selectedId = controlled ? selectedCandidateId : internalSelectedId;
 
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -99,6 +137,7 @@ export function RankedDuelReviewPanel() {
   const [exportBusy, setExportBusy] = useState(false);
 
   const gen = useRef(0);
+  const detailGen = useRef(0);
 
   const reload = useCallback(async (activeFilters: CandidateListParams) => {
     const myGen = ++gen.current;
@@ -127,23 +166,51 @@ export function RankedDuelReviewPanel() {
     void reload(filters);
   }, [reload, filters]);
 
+  /** Selection is the URL when controlled, so this only ever REQUESTS one. */
+  const selectCandidate = useCallback(
+    (candidateId: string | null) => {
+      if (controlled) onSelectCandidate?.(candidateId);
+      else setInternalSelectedId(candidateId);
+    },
+    [controlled, onSelectCandidate],
+  );
+
   const loadDetail = useCallback(async (candidateId: string) => {
-    setSelectedId(candidateId);
+    const myGen = ++detailGen.current;
     setActionMode(null);
     setActionError(null);
     setActionStale(false);
     setOverwrite(false);
+    setDetailError(null);
     setLoadingDetail(true);
     try {
       const d = await rankedReviewApi.getCandidate(candidateId);
+      if (myGen !== detailGen.current) return;
       setDetail(d);
     } catch (err) {
+      if (myGen !== detailGen.current) return;
       setDetail(null);
-      setActionError(describeReviewError(err));
+      // A bad ?candidateId= deep link lands here; it must be VISIBLE, not
+      // silently render the "select a candidate" empty state.
+      setDetailError(describeReviewError(err));
     } finally {
-      setLoadingDetail(false);
+      if (myGen === detailGen.current) setLoadingDetail(false);
     }
   }, []);
+
+  // Selection (URL or internal) is the single trigger for loading a detail, so
+  // a pasted deep link, a list click, and browser Back/Forward all take the
+  // exact same path.
+  useEffect(() => {
+    if (!selectedId) {
+      detailGen.current += 1;
+      setDetail(null);
+      setDetailError(null);
+      setLoadingDetail(false);
+      return;
+    }
+    void loadDetail(selectedId);
+  }, [selectedId, loadDetail]);
 
   const refreshAfterDecision = useCallback(async () => {
     await reload(filters);
@@ -334,7 +401,7 @@ export function RankedDuelReviewPanel() {
                 <button
                   key={c.candidate_id}
                   data-testid={`rd-cand-${c.candidate_id}`}
-                  onClick={() => loadDetail(c.candidate_id)}
+                  onClick={() => selectCandidate(c.candidate_id)}
                   className={`w-full rounded-md border px-2 py-1.5 text-left transition-colors ${
                     selectedId === c.candidate_id
                       ? "border-primary/50 bg-primary/10"
@@ -364,6 +431,24 @@ export function RankedDuelReviewPanel() {
               {selectedId && loadingDetail && (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading detail" />
+                </div>
+              )}
+              {selectedId && !loadingDetail && !detail && detailError && (
+                <div
+                  className="space-y-1.5 rounded border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive"
+                  data-testid="rd-detail-error"
+                >
+                  <p>{detailError}</p>
+                  <p className="font-mono text-[10px] opacity-80">{selectedId}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[11px]"
+                    data-testid="rd-detail-clear"
+                    onClick={() => selectCandidate(null)}
+                  >
+                    Clear selection
+                  </Button>
                 </div>
               )}
               {selectedId && !loadingDetail && detail && (
@@ -574,7 +659,18 @@ function CandidateDetailView({
 }) {
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
+  const [subTab, setSubTab] = useState<DetailSubTab>("data");
+  // Preview mounts on first open and STAYS mounted (hidden when inactive), so
+  // switching back and forth neither refetches the projection nor resets the
+  // preview state. Data is always mounted, so an in-progress revision draft or
+  // a half-typed reject reason survives a trip to the Preview tab.
+  const [previewOpened, setPreviewOpened] = useState(false);
   const alreadyDecided = detail.derived_status !== "unreviewed";
+
+  const showSubTab = (tab: DetailSubTab) => {
+    if (tab === "preview") setPreviewOpened(true);
+    setSubTab(tab);
+  };
 
   return (
     <div className="space-y-3 text-xs">
@@ -585,6 +681,37 @@ function CandidateDetailView({
         {detail.difficulty_target && <Badge variant="outline">{detail.difficulty_target}</Badge>}
       </div>
 
+      <div
+        className="flex items-center gap-1"
+        role="tablist"
+        aria-label="Candidate detail view"
+        data-testid="rd-subtabs"
+      >
+        {DETAIL_SUB_TABS.map((tab) => (
+          <Button
+            key={tab.id}
+            size="sm"
+            role="tab"
+            aria-selected={subTab === tab.id}
+            variant={subTab === tab.id ? "default" : "outline"}
+            className="h-7 gap-1 text-[11px]"
+            data-testid={`rd-subtab-${tab.id}`}
+            data-active={subTab === tab.id}
+            onClick={() => showSubTab(tab.id)}
+          >
+            <tab.icon className="h-3.5 w-3.5" aria-hidden />
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+
+      {previewOpened && (
+        <div hidden={subTab !== "preview"} data-testid="rd-preview-region">
+          <CandidatePreview detail={detail} />
+        </div>
+      )}
+
+      <div hidden={subTab !== "data"} data-testid="rd-data-region" className="space-y-3">
       <div>
         <p className="text-[11px] font-semibold text-muted-foreground">Prompt</p>
         <p className="text-sm">{detail.question_text}</p>
@@ -755,6 +882,7 @@ function CandidateDetailView({
             )}
           </div>
         )}
+      </div>
       </div>
 
       <p className="text-[10px] text-muted-foreground">

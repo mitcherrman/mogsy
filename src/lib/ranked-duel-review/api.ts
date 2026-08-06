@@ -16,6 +16,7 @@ import type {
   AcceptBody,
   CandidateDetail,
   CandidateListParams,
+  CandidatePublicView,
   CandidateSummary,
   DecisionResult,
   ExportResult,
@@ -171,6 +172,20 @@ export const rankedReviewApi = {
   getCandidate: (candidateId: string, signal?: AbortSignal) =>
     request<CandidateDetail>(
       `${RANKED_REVIEW_BASE}/candidates/${encodeURIComponent(candidateId)}`,
+      { signal },
+    ),
+
+  /**
+   * Public-question projection of one candidate, for operator preview (RA9).
+   *
+   * A read like any other here — it writes nothing, and carries NO correct
+   * answer or index (the preview's reveal state builds that from the detail
+   * response above). It lives on this client, and not a new one, because it is
+   * the same admin API under the same auth and the same typed errors.
+   */
+  candidatePublicView: (candidateId: string, signal?: AbortSignal) =>
+    request<CandidatePublicView>(
+      `${RANKED_REVIEW_BASE}/candidates/${encodeURIComponent(candidateId)}/public-view`,
       { signal },
     ),
 
