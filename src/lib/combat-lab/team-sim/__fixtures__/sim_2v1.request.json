@@ -1,0 +1,77 @@
+{
+  "scenario_id": "phase4b-2v1",
+  "team_a": {
+    "team_id": "A",
+    "combatants": [
+      {
+        "runtime_id": "A1",
+        "champion": "Ashe",
+        "level": 11,
+        "starting_hp": 800.0
+      },
+      {
+        "runtime_id": "A2",
+        "champion": "Lux",
+        "level": 11,
+        "starting_hp": 800.0
+      }
+    ]
+  },
+  "team_b": {
+    "team_id": "B",
+    "combatants": [
+      {
+        "runtime_id": "B1",
+        "champion": "Garen",
+        "level": 16,
+        "starting_hp": 700.0
+      }
+    ]
+  },
+  "action_plans": {
+    "A1": {
+      "steps": [
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    },
+    "A2": {
+      "steps": [
+        {
+          "type": "active",
+          "slot": "Q"
+        },
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    },
+    "B1": {
+      "steps": [
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    }
+  },
+  "targeting": {
+    "A1": "first_living",
+    "A2": "first_living",
+    "B1": {
+      "policy": "fixed",
+      "priority": [
+        "A2",
+        "A1"
+      ]
+    }
+  },
+  "limits": {
+    "max_duration": 40.0,
+    "max_events": 300,
+    "max_trace_events": 300
+  }
+}

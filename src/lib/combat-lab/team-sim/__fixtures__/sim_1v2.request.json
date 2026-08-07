@@ -1,0 +1,72 @@
+{
+  "scenario_id": "phase4b-1v2",
+  "team_a": {
+    "team_id": "A",
+    "combatants": [
+      {
+        "runtime_id": "A1",
+        "champion": "Darius",
+        "level": 14,
+        "items": [
+          "Trinity Force"
+        ],
+        "starting_hp": 2200.0
+      }
+    ]
+  },
+  "team_b": {
+    "team_id": "B",
+    "combatants": [
+      {
+        "runtime_id": "B1",
+        "champion": "Lux",
+        "level": 11,
+        "starting_hp": 350.0
+      },
+      {
+        "runtime_id": "B2",
+        "champion": "Ashe",
+        "level": 11,
+        "starting_hp": 350.0
+      }
+    ]
+  },
+  "action_plans": {
+    "A1": {
+      "steps": [
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    },
+    "B1": {
+      "steps": [
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    },
+    "B2": {
+      "steps": [
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    }
+  },
+  "targeting": {
+    "A1": {
+      "policy": "lowest_hp"
+    },
+    "B1": "first_living",
+    "B2": "first_living"
+  },
+  "limits": {
+    "max_duration": 40.0,
+    "max_events": 300,
+    "max_trace_events": 300
+  }
+}

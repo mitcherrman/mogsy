@@ -147,6 +147,9 @@ const Graph1RacePage = lazy(() => import("./pages/dev/graph1/Graph1RacePage"));
 // Dev-only League mechanics XP calculator (MECH1) — thin client over the
 // backend league_mechanics engine, not linked from any navigation.
 const MechanicsXpPage = lazy(() => import("./pages/dev/mechanics-xp/MechanicsXpPage"));
+// Dev-only SIM2 team-combat editor (Phase 4B) — deterministic 1v1–2v2 over the
+// backend team-simulate API. Additive: /combat-lab keeps its 1v1 surface.
+const TeamSimPage = lazy(() => import("./pages/dev/team-sim/TeamSimPage"));
 
 // Dev-only entrance concept — visual iteration on the Mogzy entry screen.
 // Purely presentational, no app state, not linked from any navigation.
@@ -394,6 +397,7 @@ const App = () => (
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
                   <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />
+                  <Route path="/dev/combat-lab/team-sim" element={<Suspense fallback={<RouteFallback />}><TeamSimPage /></Suspense>} />
                   <Route path="/quiz/mastery" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneysPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/mastery/:masterySetId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneyPlayerPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />

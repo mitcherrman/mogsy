@@ -1,0 +1,1 @@
+{"detail":[{"type":"value_error","loc":["body","team_a","combatants",0,"ability_ranks"],"msg":"Value error, ability rank Q=9 out of range; Q accepts 1..5","input":{"Q":9},"ctx":{"error":{}}}]}
