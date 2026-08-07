@@ -21,6 +21,7 @@ export function RunPanel({
   creditsLoading,
   issues,
   isPending,
+  pendingKind,
   onRun,
   onReset,
   hasResult,
@@ -31,13 +32,24 @@ export function RunPanel({
   credits: CombatLabCreditStatus | null | undefined;
   creditsLoading: boolean;
   issues: DraftIssue[];
+  /** Something is on the wire; every submit control is disabled. */
   isPending: boolean;
+  /**
+   * WHAT is on the wire (Phase 4E). Run must be disabled for either, but only
+   * a simulation may be DESCRIBED as one: a free recovery reported as
+   * "Simulating…" is this page overclaiming about money, which is the one
+   * thing the whole Combat Lab surface is built not to do.
+   */
+  pendingKind?: "simulation" | "recovery" | null;
   onRun: () => void;
   onReset: () => void;
   hasResult: boolean;
   onClearResult: () => void;
 }) {
   const blocked = issues.length > 0;
+  // Absent `pendingKind` (no Phase 4E wiring) falls back to the pre-4E
+  // reading, where the only thing that could be in flight was a simulation.
+  const simulating = isPending && pendingKind !== "recovery";
 
   return (
     <Card className="space-y-3 p-3" data-testid="run-panel">
@@ -64,13 +76,14 @@ export function RunPanel({
         onClick={onRun}
         data-testid="run-simulation"
       >
-        {isPending ? "Simulating…" : "Run simulation"}
+        {simulating ? "Simulating…" : "Run simulation"}
       </Button>
 
       {isPending ? (
         <p className="text-[11px] text-muted-foreground" role="status">
-          Running. The editor stays open; a second request cannot be sent until this
-          one finishes.
+          {simulating
+            ? "Running. The editor stays open; a second request cannot be sent until this one finishes."
+            : "Collecting an earlier result. Nothing is being simulated and no credit is being used; a new run cannot start until it finishes."}
         </p>
       ) : null}
 

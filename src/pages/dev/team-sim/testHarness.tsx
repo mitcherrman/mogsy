@@ -1,10 +1,10 @@
 /**
  * Shared harness for the team-sim page tests.
  *
- * One global `fetch` stub serves all three endpoints the page touches
- * (catalog, credits, simulate) with the REAL captured payloads, and records
- * every call — which is what makes "one click, one POST" an assertion about
- * the wire rather than about component internals.
+ * One global `fetch` stub serves every endpoint the page touches (catalog,
+ * credits, simulate, and the Phase 4E recovery pair) with the REAL captured
+ * payloads, and records every call — which is what makes "one click, one POST"
+ * an assertion about the wire rather than about component internals.
  *
  * The test QueryClient deliberately sets `mutations: { retry: 3 }`. If the
  * simulation hook ever stopped setting `retry: false` explicitly, that default
@@ -62,6 +62,17 @@ export type HarnessOptions = {
   credits?: FetchOutcome | (() => FetchOutcome);
   /** Consumed in order; the last entry repeats. */
   simulate?: FetchOutcome[];
+  /**
+   * Phase 4E discovery (GET .../recoverable/v1). A function is re-evaluated
+   * per call, so a test can watch the list change after a recovery.
+   *
+   * Defaults to an EMPTY list rather than 404: every page render now makes
+   * this call, and leaving it unstubbed would turn "no recoverable requests"
+   * into a rendered error in every pre-existing suite.
+   */
+  recoverable?: FetchOutcome | (() => FetchOutcome);
+  /** Phase 4E recovery (POST .../recover/v1/{id}); consumed in order. */
+  recover?: FetchOutcome[];
   /** Account the page is signed in as. `null` = signed out. */
   accountId?: string | null;
   /**
@@ -97,14 +108,54 @@ export const DEFAULT_CREDITS = {
   },
 };
 
+/** An empty Phase 4E discovery response, in the endpoint's own shape. */
+export const EMPTY_RECOVERABLE = {
+  contract_version: "sim2.team-simulate.v1",
+  endpoint: "POST /api/combat-lab/team-simulate/v1",
+  retention_seconds: 86400,
+  limit: 50,
+  count: 0,
+  recoverable_requests: [],
+};
+
+/** One completed discovery entry, with the fields the panel actually reads. */
+export function recoverableEntry(
+  overrides: Partial<Record<string, unknown>> = {}
+) {
+  return {
+    recovery_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    status: "completed",
+    replay_available: true,
+    created_at: "2026-08-07T09:15:00.000000+00:00",
+    expires_at: "2026-08-08T09:15:00.000000+00:00",
+    completed_at: "2026-08-07T09:15:02.000000+00:00",
+    credit_cost: 1,
+    credits_charged: 1,
+    contract_version: "sim2.team-simulate.v1",
+    team_shape: "1v1",
+    champions: { a: ["Vayne"], b: ["Garen"] },
+    winner: "A",
+    termination_reason: "team_elimination",
+    event_count: 42,
+    response_bytes: 36917,
+    ...overrides,
+  };
+}
+
+export function recoverableListing(entries: unknown[]) {
+  return { ...EMPTY_RECOVERABLE, count: entries.length, recoverable_requests: entries };
+}
+
 export class TeamSimHarness {
   calls: StubbedCall[] = [];
   private simulateQueue: FetchOutcome[];
+  private recoverQueue: FetchOutcome[];
   private options: HarnessOptions;
 
   constructor(options: HarnessOptions = {}) {
     this.options = options;
     this.simulateQueue = [...(options.simulate ?? [])];
+    this.recoverQueue = [...(options.recover ?? [])];
   }
 
   get postCalls(): StubbedCall[] {
@@ -117,6 +168,18 @@ export class TeamSimHarness {
 
   get creditCalls(): StubbedCall[] {
     return this.calls.filter((c) => c.url.includes("/api/combat-lab/credits"));
+  }
+
+  /** Phase 4E discovery reads. */
+  get recoverableCalls(): StubbedCall[] {
+    return this.calls.filter((c) =>
+      c.url.includes("/team-simulate/recoverable/v1")
+    );
+  }
+
+  /** Phase 4E recovery collects. */
+  get recoverCalls(): StubbedCall[] {
+    return this.calls.filter((c) => c.url.includes("/team-simulate/recover/v1/"));
   }
 
   /** Body of the most recent simulation POST, parsed. */
@@ -160,6 +223,23 @@ export class TeamSimHarness {
   }
 
   private resolve(href: string): FetchOutcome {
+    // Phase 4E routes are matched FIRST. `/team-simulate/recoverable/v1` does
+    // not contain `/team-simulate/v1` as a substring today, but the simulate
+    // branch below is a substring match on a billable endpoint and must never
+    // be the thing that decides a recovery call.
+    if (href.includes("/team-simulate/recoverable/v1")) {
+      const spec = this.options.recoverable;
+      if (typeof spec === "function") return spec();
+      return spec ?? { status: 200, body: EMPTY_RECOVERABLE };
+    }
+    if (href.includes("/team-simulate/recover/v1/")) {
+      if (this.recoverQueue.length === 0) {
+        throw new Error(`unexpected recovery POST: ${href}`);
+      }
+      return this.recoverQueue.length === 1
+        ? this.recoverQueue[0]
+        : (this.recoverQueue.shift() as FetchOutcome);
+    }
     if (href.includes("/team-simulate/catalog/v1")) {
       return (
         this.options.catalog ?? {

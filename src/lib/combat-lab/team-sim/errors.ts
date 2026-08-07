@@ -39,6 +39,10 @@ export type TeamSimErrorKind =
   | "idempotency_key_rejected"
   | "service_unavailable"
   | "result_unreadable"
+  /** Phase 4E: no such recoverable record for this account (404). */
+  | "recovery_not_found"
+  /** Phase 4E: an abandoned reservation. Nothing stored, nothing charged. */
+  | "recovery_stale"
   | "server_error"
   | "network"
   | "malformed_response";
@@ -73,9 +77,18 @@ const KIND_BY_CODE: Record<number, Record<string, TeamSimErrorKind>> = {
     idempotency_key_required: "idempotency_key_rejected",
     idempotency_key_invalid: "idempotency_key_rejected",
   },
+  // Phase 4E. A 404 on the recovery endpoint is the ONE answer it gives for
+  // "unknown, not yours, malformed, or expired" — the client must not try to
+  // tell those apart either, so there is a single kind for all of them.
+  404: {
+    recovery_not_found: "recovery_not_found",
+  },
   409: {
     idempotency_conflict: "idempotency_conflict",
     idempotency_in_progress: "idempotency_in_progress",
+    // Phase 4E. Distinct from in_progress because it means the opposite:
+    // in_progress says "ask again", stale says "this will never resolve".
+    recovery_stale_pending: "recovery_stale",
   },
   // The endpoint's two 503s make OPPOSITE statements about money:
   // `idempotency_unavailable` is a fail-closed refusal (nothing ran, nothing
@@ -185,6 +198,12 @@ const DEFAULT_MESSAGE: Record<TeamSimErrorKind, string> = {
   service_unavailable: "The server did not accept the request.",
   result_unreadable:
     "The server accepted and charged this request but cannot read back its result. Check your credit balance before running it again.",
+  // Says nothing about WHY, because the server deliberately does not — one
+  // answer covers unknown, not-yours, malformed and expired.
+  recovery_not_found:
+    "That simulation is no longer available to recover. Results are kept for a limited time after they are produced.",
+  recovery_stale:
+    "That simulation never finished and was not charged. No result was stored for it — run the scenario again to produce one.",
   server_error: "The simulation failed on the server.",
   network:
     "The request did not complete. The status of this simulation is unknown.",
@@ -353,3 +372,38 @@ export function isRecoverable(error: TeamSimError | null): boolean {
 export const RECOVERY_ACTION_LABEL = "Check this request";
 export const RECOVERY_ACTION_HINT =
   "Resends the identical request with its original identifier. The server returns the result it already produced, or reports it still running. It cannot charge a second time.";
+
+/* ─────────────────── Phase 4E server-side recovery ─────────────────── */
+
+/**
+ * The Phase 4D card speaks for THIS tab's own unresolved request. This one
+ * speaks for records only the SERVER still remembers — which is the case after
+ * the browser's copy is gone entirely, so the copy must not imply the request
+ * came from here.
+ */
+export const SERVER_RECOVERY_TITLE = "Recent simulations you can recover";
+export const SERVER_RECOVERY_BODY =
+  "These simulations were run on this account recently. Recovering one returns the result the server already produced — it does not run a new simulation and does not use a credit.";
+export const SERVER_RECOVERY_ACTION_LABEL = "Recover";
+export const SERVER_RECOVERY_CHECK_LABEL = "Check status";
+export const SERVER_RECOVERY_EMPTY =
+  "No recent simulations are waiting to be recovered.";
+export const SERVER_RECOVERY_LOADING = "Looking for recent simulations…";
+
+/**
+ * Discovery failed. Deliberately mild: this list is an extra way to find a
+ * result, not the only one, and its absence does not mean anything was lost.
+ */
+export const SERVER_RECOVERY_UNAVAILABLE =
+  "Recent simulations could not be listed right now. Nothing was lost — try again in a moment.";
+export const SERVER_RECOVERY_RETRY_LABEL = "Try again";
+
+/**
+ * What a `stale` entry means, said where the operator is looking at it. The
+ * backend guarantees this by constraint, not by inference: a record that never
+ * completed structurally carries no charge.
+ */
+export const SERVER_RECOVERY_STALE_HINT =
+  "This one never finished and was not charged. Run the scenario again to produce a result.";
+export const SERVER_RECOVERY_PENDING_HINT =
+  "Still running on the server. Checking never starts a second simulation.";

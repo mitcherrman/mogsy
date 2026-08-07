@@ -21,6 +21,24 @@ export const TEAM_SIM_CATALOG_PATH =
 export const TEAM_SIM_SIMULATE_PATH = "/api/combat-lab/team-simulate/v1";
 
 /**
+ * Phase 4E server-side recovery. Two authenticated, account-scoped surfaces:
+ * a bounded list of the caller's own unresolved/completed requests, and a
+ * collector for one of them by opaque handle. Neither charges credits and
+ * neither runs a simulation.
+ *
+ * Hard-coded here rather than read from the catalog, deliberately. These are
+ * how a paid result is collected after the browser lost everything — and a
+ * catalog fetch is exactly the kind of thing that may also be failing at that
+ * moment. Gating recovery on the catalog would make one outage hide the
+ * other. A test asserts these agree with `catalog.recovery` when the catalog
+ * IS available, so drift is caught without creating the dependency.
+ */
+export const TEAM_SIM_RECOVERABLE_PATH =
+  "/api/combat-lab/team-simulate/recoverable/v1";
+export const TEAM_SIM_RECOVER_PATH =
+  "/api/combat-lab/team-simulate/recover/v1";
+
+/**
  * Phase 4C headers. Named here rather than inlined at the fetch call, so the
  * catalog's published `billing.idempotency_header` can be checked against the
  * value this client actually sends.
@@ -115,6 +133,43 @@ export type CatalogBilling = {
   replay_is_byte_identical: boolean;
 };
 
+/**
+ * `recovery` (Phase 4E): the backend's statement of how a paid request is
+ * discovered and collected once the browser no longer holds its key.
+ *
+ * OPTIONAL on {@link TeamSimCatalog}. A backend that predates Phase 4E simply
+ * does not publish it, and the frontend must not treat that as "recovery is
+ * off" — the paths are hard-coded above and the recovery UI is driven by the
+ * discovery response, never by this block. It exists so the published contract
+ * is describable and so a drift test can compare the two.
+ */
+export type CatalogRecovery = {
+  supported: boolean;
+  discovery_path: string;
+  discovery_method: string;
+  recovery_path: string;
+  recovery_method: string;
+  requires_account: boolean;
+  discovery_is_read_only: boolean;
+  recovery_charges: number;
+  recovery_invokes_scheduler: boolean;
+  recovery_replayed_header: string;
+  max_results: number;
+  paginated: boolean;
+  order: string;
+  retention_seconds: number;
+  recovery_id_format: string;
+  statuses: string[];
+  replay_available_statuses: string[];
+  not_found_status: number;
+  not_found_code: string;
+  in_progress_status: number;
+  in_progress_code: string;
+  stale_status: number;
+  stale_code: string;
+  note?: string;
+};
+
 export type TeamSimCatalog = {
   catalog_contract_version: string;
   contract_version: string;
@@ -190,9 +245,57 @@ export type TeamSimCatalog = {
   };
   /** Phase 4C. See {@link CatalogBilling}. */
   billing: CatalogBilling;
+  /** Phase 4E. Optional by design — see {@link CatalogRecovery}. */
+  recovery?: CatalogRecovery;
   rate_limit: { scope: string; limit: number; window_seconds: number };
   execution_assumptions: Record<string, unknown>;
   unsupported_mechanics: string[];
+};
+
+/* ─────────────────────── recovery discovery (4E) ─────────────────── */
+
+/**
+ * `completed` — a stored result exists; collecting it is free.
+ * `pending`   — running right now. Checking says so; it starts nothing.
+ * `stale`     — the reservation was abandoned. Nothing was stored and nothing
+ *               was charged, and the server cannot resume it: the ledger keeps
+ *               a digest of the request, never its body.
+ */
+export type RecoverableStatus = "completed" | "pending" | "stale";
+
+/**
+ * One entry in the recovery list.
+ *
+ * `recovery_id` is an opaque server handle, not the idempotency key — the key
+ * never leaves the client that minted it. `team_shape` and `champions` are
+ * null for a record created before this contract existed; the UI reports that
+ * rather than inventing a description.
+ */
+export type RecoverableRequest = {
+  recovery_id: string;
+  status: RecoverableStatus;
+  replay_available: boolean;
+  created_at: string;
+  expires_at: string;
+  completed_at: string | null;
+  credit_cost: number;
+  credits_charged: number;
+  contract_version: string;
+  team_shape: string | null;
+  champions: { a: string[]; b: string[] } | null;
+  winner: string | null;
+  termination_reason: string | null;
+  event_count: number | null;
+  response_bytes: number | null;
+};
+
+export type RecoverableListing = {
+  contract_version: string;
+  endpoint: string;
+  retention_seconds: number;
+  limit: number;
+  count: number;
+  recoverable_requests: RecoverableRequest[];
 };
 
 /* ───────────────────────────── request ───────────────────────────── */

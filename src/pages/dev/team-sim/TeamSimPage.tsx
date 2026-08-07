@@ -47,6 +47,7 @@ import {
 import {
   isResultStale,
   useCombatLabCredits,
+  useRecoverableRequests,
   useRecoveryScope,
   useTeamSimCatalog,
   useTeamSimulation,
@@ -71,6 +72,7 @@ import {
 } from "./components/RecoveryPanel";
 import { ResultPanel } from "./components/ResultPanel";
 import { RunPanel } from "./components/RunPanel";
+import { ServerRecoveryPanel } from "./components/ServerRecoveryPanel";
 import { TeamSizeSelector } from "./components/TeamSizeSelector";
 
 export default function TeamSimPage() {
@@ -81,6 +83,11 @@ export default function TeamSimPage() {
   const identity = useRecoveryScope();
   const runner = useTeamSimulation(identity);
   const creditsQuery = useCombatLabCredits();
+  // Phase 4E. Deliberately NOT inside the catalog gate and NOT conditional on
+  // it: this is how a paid result is found after the browser lost everything,
+  // and the catalog is exactly the kind of thing that may also be failing at
+  // that moment. One outage must not hide the other.
+  const recoverableQuery = useRecoverableRequests(identity);
 
   // A leaving tab cannot stop a billable request, but it can destroy the only
   // record of it. Two windows need the warning, not one:
@@ -199,6 +206,33 @@ export default function TeamSimPage() {
           recoveryPersisted={runner.identityReady}
         />
       ) : null}
+
+      {/* Phase 4E. BELOW the editor and above the results: secondary to the
+          thing the operator came here to do, but ahead of the output, because
+          it is about output they may already have paid for.
+
+          Suppressed whenever this page already owns a recovery — the local
+          record carries the request and key, a server entry carries neither,
+          and the two cannot be matched without guessing. See
+          `serverRecoverySuppressed`. */}
+      {runner.serverRecoverySuppressed ? null : (
+        <ServerRecoveryPanel
+          entries={recoverableQuery.data?.recoverable_requests ?? []}
+          loading={recoverableQuery.isPending && recoverableQuery.fetchStatus !== "idle"}
+          // `isError` only, and only when there is no usable list: a failed
+          // REFETCH must not replace records already on screen with an error.
+          error={
+            recoverableQuery.isError && !recoverableQuery.data
+              ? recoverableQuery.error
+              : null
+          }
+          onRecover={runner.recoverServer}
+          onRetry={() => recoverableQuery.refetch()}
+          busy={runner.isPending}
+          recoveryError={runner.serverRecoveryFailure}
+          onDismissRecoveryError={runner.dismissServerRecoveryFailure}
+        />
+      )}
 
       {/* Survives every catalog state: a charged result is never discarded
           because a refetch failed or the query cache was cleared. */}
@@ -392,6 +426,7 @@ function TeamSimEditor({
             creditsLoading={creditsLoading}
             issues={validation.issues}
             isPending={runner.isPending}
+            pendingKind={runner.pendingKind}
             onRun={onRun}
             onReset={() => dispatch({ type: "reset", index })}
             hasResult={runner.lastRun !== null}
@@ -533,13 +568,21 @@ function ResultWorkspace({
     <div className="space-y-4" data-testid="result-workspace">
       <ResultPanel
         response={run.response}
-        quotedCreditCost={run.prepared.creditCost}
+        // Phase 4E: a server-recovered result has no prepared request here.
+        // The quoted cost comes from the discovery entry that named it — the
+        // only description of that run this browser has.
+        quotedCreditCost={
+          run.prepared?.creditCost ?? run.recoveredFromServer?.creditCost ?? null
+        }
         stale={runner.resultStale}
         replayed={run.replayed}
       />
       <EffectiveBuildsPanel
         response={run.response}
-        configuredDigest={run.prepared.catalogDigest}
+        // Null for a server recovery: the catalog it was configured against
+        // was never loaded here, so the panel reports the comparison as
+        // unavailable instead of claiming agreement.
+        configuredDigest={run.prepared?.catalogDigest ?? null}
         loadedDigest={loadedDigest}
         onRefreshCatalog={onRefreshCatalog}
         refreshing={refreshing}

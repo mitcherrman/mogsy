@@ -27,7 +27,12 @@ export function EffectiveBuildsPanel({
   refreshing,
 }: {
   response: TeamSimulationResponse;
-  configuredDigest: string;
+  /**
+   * Null when this page did not configure the request — a result collected by
+   * Phase 4E recovery id. The comparison is then reported as unavailable, not
+   * as agreement.
+   */
+  configuredDigest: string | null;
   loadedDigest: string | null;
   onRefreshCatalog: () => void;
   refreshing: boolean;
@@ -76,6 +81,31 @@ export function EffectiveBuildsPanel({
             {refreshing ? "Refreshing…" : "Refresh catalog"}
           </Button>
         </div>
+      ) : report.configuredDigest === null ? (
+        // Phase 4E: recovered from the server, so the catalog this scenario
+        // was CONFIGURED against was never seen by this browser. Checked ahead
+        // of pageDrift because both of the branches below name a configured
+        // digest, and there is not one — reporting the executed digest in its
+        // place would invent an agreement between a known value and an
+        // unknown one.
+        <p
+          className="text-[11px] text-muted-foreground"
+          data-testid="digest-unknown"
+        >
+          Recovered result. It executed against catalog{" "}
+          <code className="font-mono">
+            {report.responseDigests.map((d) => d || "(none)").join(", ") || "—"}
+          </code>
+          ; the catalog it was originally configured against is not known to
+          this browser, so the two cannot be compared.
+          {report.pageDrift ? (
+            <>
+              {" "}
+              The page has since loaded{" "}
+              <code className="font-mono">{report.loadedDigest}</code>.
+            </>
+          ) : null}
+        </p>
       ) : report.pageDrift ? (
         // Not a defect in the result: configuration and execution agreed, and
         // the page has simply loaded a newer catalog since. Refreshing again

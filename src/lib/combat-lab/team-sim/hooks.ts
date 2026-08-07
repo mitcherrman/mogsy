@@ -36,6 +36,22 @@
  *     after the server proves resending it can say nothing new;
  *   - it is namespaced by account, so it is never visible to — or sendable
  *     by — anyone else.
+ *
+ * Phase 4E closes the last hole in that: storage that is GONE. A cleared
+ * session, a different browser, a different device — the ledger row still
+ * exists and the credit was still spent, and nothing local can name it.
+ * `useRecoverableRequests` asks the SERVER what this account has outstanding,
+ * and `recoverServer` collects one by opaque handle. Both are free, and the
+ * rules above are unchanged: the query fires on mount because it is a
+ * read-only list, and the recovery POST fires only from a click.
+ *
+ * Precedence between the two recovery surfaces is structural, not heuristic.
+ * The local record carries the original request and key; a server entry
+ * carries neither, and the two cannot be matched to each other without
+ * guessing — a wrong guess would HIDE a recoverable paid request. So while a
+ * local record exists the server list is not offered at all (see
+ * `serverRecoverable`), which is also the only configuration in which two
+ * buttons could ever describe one request.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -44,12 +60,18 @@ import { combatApi, type CombatLabCreditStatus } from "@/lib/combat-lab/api";
 import { deepEqual } from "@/lib/combat-lab/inputHistory";
 
 import {
+  fetchRecoverableRequests,
   fetchTeamSimCatalog,
+  recoverSimulation,
   submitTeamSimulation,
   type CatalogLoad,
   type SimulationOutcome,
 } from "./client";
-import type { TeamSimulationResponse } from "./contract";
+import type {
+  RecoverableListing,
+  RecoverableRequest,
+  TeamSimulationResponse,
+} from "./contract";
 import { isRecoverable, type TeamSimError } from "./errors";
 import { accountIdentitySource } from "./identity";
 import {
@@ -59,6 +81,7 @@ import {
   markState,
   readRecord,
   scopeForAccount,
+  UNIDENTIFIED_SCOPE,
   writeRecord,
   type RecoveryDiscardReason,
   type RecoveryWriteFailure,
@@ -69,6 +92,11 @@ import type { PreparedSimulation } from "./request";
 
 export const TEAM_SIM_CATALOG_KEY = ["combat-lab", "team-sim", "catalog"] as const;
 export const TEAM_SIM_CREDITS_KEY = ["combat-lab", "team-sim", "credits"] as const;
+export const TEAM_SIM_RECOVERABLE_KEY = [
+  "combat-lab",
+  "team-sim",
+  "recoverable",
+] as const;
 
 /** Matches the endpoint's own `Cache-Control: public, max-age=300`. */
 const CATALOG_STALE_MS = 5 * 60_000;
@@ -99,9 +127,71 @@ export function useCombatLabCredits() {
   });
 }
 
+/**
+ * A result collected from the SERVER's recovery endpoint (Phase 4E).
+ *
+ * Present on `CompletedRun` exactly when `prepared` is null, and vice versa:
+ * a server-recovered result has no prepared request in this browser — the
+ * request that produced it was made somewhere this page has never seen. The
+ * quoted cost and shape come from the discovery entry, which is the only
+ * description of it that exists here.
+ */
+export type ServerRecoverySource = {
+  recoveryId: string;
+  creditCost: number | null;
+  teamShape: string | null;
+};
+
+/**
+ * The account's recoverable requests, from the server (Phase 4E).
+ *
+ * Fires on mount, because it is a free authenticated GET and because the whole
+ * point is that it works when the browser knows nothing. It does NOT poll, does
+ * NOT refetch on focus, and does NOT refetch on reconnect: those are the three
+ * ways a "harmless" list starts hammering an account-scoped surface nobody
+ * asked about.
+ *
+ * Gated on a RESOLVED, IDENTIFIED account — `ready` is not enough. A signed-out
+ * visitor resolves to the `UNIDENTIFIED_SCOPE` sentinel, which is truthy, so a
+ * `!!scope` gate would issue one guaranteed-401 GET on every signed-out page
+ * load. There is nothing to recover without an account, and asking anyway
+ * would also risk briefly showing the previous account's records after a
+ * switch.
+ */
+export function useRecoverableRequests(identity: RecoveryScope) {
+  const { scope, ready } = identity;
+  const identified = !!scope && scope !== UNIDENTIFIED_SCOPE;
+  return useQuery<RecoverableListing, TeamSimError>({
+    // Keyed by scope, so a sign-out or an account switch cannot serve the
+    // previous account's cached list for even one render.
+    queryKey: [...TEAM_SIM_RECOVERABLE_KEY, scope ?? "anonymous"],
+    queryFn: fetchRecoverableRequests,
+    enabled: ready && identified,
+    // Records appear and expire server-side; a cached list is a stale claim
+    // about money, so it is re-read whenever the page asks rather than reused.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    // No `refetchInterval` key at all, not even `false`. The route-map guard in
+    // App.teamSimRoutes.test.ts forbids the IDENTIFIER anywhere in this file,
+    // which is what makes "nothing in here polls" checkable by reading rather
+    // than by tracing every option object. Writing it disabled would spend that
+    // guarantee to restate a default.
+    retry: 1,
+  });
+}
+
 export type CompletedRun = {
   response: TeamSimulationResponse;
-  prepared: PreparedSimulation;
+  /**
+   * The request this page built and sent — null for a result collected from
+   * the server by recovery id, where no such object exists. Consumers must
+   * treat null as "not knowable here", never as a default.
+   */
+  prepared: PreparedSimulation | null;
+  /** Set iff `prepared` is null. See {@link ServerRecoverySource}. */
+  recoveredFromServer?: ServerRecoverySource | null;
   /**
    * Draft snapshot as submitted, for "result is from a previous edit".
    *
@@ -139,7 +229,15 @@ export type RunBlock =
 
 export type TeamSimulationRunner = {
   status: "idle" | "pending" | "success" | "error";
+  /** Something is on the wire. Every submit control is disabled while true. */
   isPending: boolean;
+  /**
+   * WHAT is on the wire (Phase 4E). `isPending` alone is not enough once two
+   * different requests can raise it: a free recovery must not be described as
+   * a running simulation, on a surface whose whole job is to never overclaim
+   * about money.
+   */
+  pendingKind: "simulation" | "recovery" | null;
   /** Survives edits and failures; only a new SUCCESS replaces it. */
   lastRun: CompletedRun | null;
   lastFailure: FailedRun | null;
@@ -191,6 +289,40 @@ export type TeamSimulationRunner = {
    */
   lapsed: RecoveryDiscardReason | null;
   dismissLapsed: () => void;
+
+  /* ─────────────────────────── Phase 4E ─────────────────────────── */
+
+  /**
+   * Collect ONE server-discovered record. Explicit and click-driven, exactly
+   * like every other send in this file. Returns false — having sent nothing —
+   * when a request is already in flight or the account is not resolved.
+   *
+   * It cannot charge and cannot run a simulation, but it is still never
+   * automatic: a paid-request surface the page pokes on its own is a surface
+   * the operator cannot reason about.
+   */
+  recoverServer: (entry: RecoverableRequest) => boolean;
+  /**
+   * The last server-recovery attempt that failed — a 404 for a record that
+   * expired between listing and clicking, a 409 for one still running, or a
+   * transport failure. Kept separate from `lastFailure`, which is about a
+   * SIMULATION this page sent and carries a re-sendable request; this one has
+   * neither.
+   */
+  serverRecoveryFailure: TeamSimError | null;
+  dismissServerRecoveryFailure: () => void;
+  /**
+   * True when the server list must not be shown, because something on this
+   * page already owns a recovery for a request the list may also contain.
+   *
+   * The local record and a server entry cannot be matched to each other — the
+   * server never publishes the idempotency key and the client never learns the
+   * recovery id of a request it made — so any de-duplication would be a guess,
+   * and a wrong guess hides a paid result. Suppressing the whole list while a
+   * local recovery is on screen is the one rule that is provably safe, and
+   * Phase 4D already allows at most one such record per account.
+   */
+  serverRecoverySuppressed: boolean;
 };
 
 export type RecoveryScope = { scope: string | null; ready: boolean };
@@ -240,6 +372,8 @@ export function useTeamSimulation(
   const [restored, setRestored] = useState<TeamSimRecoveryRecord | null>(null);
   const [lapsed, setLapsed] = useState<RecoveryDiscardReason | null>(null);
   const [block, setBlock] = useState<RunBlock | null>(null);
+  const [serverRecoveryFailure, setServerRecoveryFailure] =
+    useState<TeamSimError | null>(null);
   const { scope, ready: identityReady } = identity;
   /**
    * In-flight state is OURS, not the library's.
@@ -254,6 +388,16 @@ export function useTeamSimulation(
    */
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
+  /**
+   * Which of the two mutations `pending` belongs to (Phase 4E).
+   *
+   * Set from the same places as `pending`, so they cannot disagree, and read
+   * by everything that would otherwise describe a free recovery as a running
+   * simulation — the RunPanel's copy, and the rule that decides whether the
+   * server list stays on screen while its own request is in flight.
+   */
+  const [pendingKind, setPendingKind] =
+    useState<"simulation" | "recovery" | null>(null);
 
   const mutation = useMutation<
     SimulationOutcome,
@@ -318,10 +462,93 @@ export function useTeamSimulation(
     onSettled: () => {
       inFlight.current = false;
       setPending(false);
+      setPendingKind(null);
       // Never guess the new balance — re-read the server's.
       queryClient.invalidateQueries({ queryKey: TEAM_SIM_CREDITS_KEY });
     },
   });
+
+  /**
+   * Collecting a server-discovered result (Phase 4E).
+   *
+   * A SECOND mutation rather than a branch inside the first, because the two
+   * carry different things and fail differently: this one has no prepared
+   * request, no idempotency key, and no browser record to keep or clear, so
+   * folding it into `mutation` would mean a variables object where half the
+   * fields are null and every handler has to ask which case it is in.
+   *
+   * What it shares is the part that must not diverge: the same synchronous
+   * `inFlight` ref and the same `pending` state, so a recovery and a
+   * simulation can never both be on the wire, and the same credit
+   * invalidation, so the balance is re-read rather than assumed.
+   */
+  const recoveryMutation = useMutation<
+    SimulationOutcome,
+    TeamSimError,
+    { entry: RecoverableRequest; scope: string }
+  >({
+    mutationKey: ["combat-lab", "team-sim", "recover-server"],
+    mutationFn: ({ entry }) => recoverSimulation(entry.recovery_id),
+    // Same reasoning as the simulation mutation: idempotency is not permission,
+    // and `networkMode: "always"` keeps an offline click a fast, honest failure
+    // instead of a paused mutation the library fires later on its own.
+    retry: false,
+    networkMode: "always",
+    onSuccess: (outcome, variables) => {
+      setServerRecoveryFailure(null);
+      setLastFailure(null);
+      // Not stale: there is no draft snapshot to compare against, and
+      // `isResultStale` reads a null `draftAtRun` as "make no claim".
+      setResultStale(false);
+      setLastRun({
+        response: outcome.response,
+        prepared: null,
+        recoveredFromServer: {
+          recoveryId: variables.entry.recovery_id,
+          creditCost: variables.entry.credit_cost ?? null,
+          teamShape: variables.entry.team_shape,
+        },
+        draftAtRun: null,
+        replayed: outcome.replayed,
+        scope: variables.scope,
+      });
+    },
+    onError: (error) => setServerRecoveryFailure(error),
+    onSettled: () => {
+      inFlight.current = false;
+      setPending(false);
+      setPendingKind(null);
+      // The list is the thing that just changed meaning — a collected record
+      // is still listed, and a 404/409 means the entry described something
+      // other than what the operator saw. Re-read both rather than guess.
+      queryClient.invalidateQueries({ queryKey: TEAM_SIM_RECOVERABLE_KEY });
+      queryClient.invalidateQueries({ queryKey: TEAM_SIM_CREDITS_KEY });
+    },
+  });
+
+  const recoverServer = useCallback(
+    (entry: RecoverableRequest) => {
+      if (inFlight.current) return false;
+      // The record belongs to whoever the server says it belongs to, and the
+      // server decides that from the bearer token. Requiring a resolved scope
+      // here is what keeps the RESULT attributed to the right account in this
+      // page's own state — `visibleRun` filters on it.
+      if (!identityReady || !scope) return false;
+      inFlight.current = true;
+      setPending(true);
+      setPendingKind("recovery");
+      setServerRecoveryFailure(null);
+      setBlock(null);
+      recoveryMutation.mutate({ entry, scope });
+      return true;
+    },
+    [identityReady, recoveryMutation, scope]
+  );
+
+  const dismissServerRecoveryFailure = useCallback(
+    () => setServerRecoveryFailure(null),
+    []
+  );
 
   /** Re-read this scope's slot. The only place `restored` is set from storage. */
   const refreshRestored = useCallback(
@@ -361,6 +588,7 @@ export function useTeamSimulation(
       if (inFlight.current) return false;
       inFlight.current = true;
       setPending(true);
+      setPendingKind("simulation");
       setLastFailure(null);
       setBlock(null);
       mutation.mutate({ prepared, draft, scope: forScope });
@@ -512,6 +740,10 @@ export function useTeamSimulation(
       setLastFailure(null);
       setResultStale(false);
       setBlock(null);
+      // Phase 4E: a recovery failure describes a record belonging to the
+      // account that is leaving. Its message ("that simulation is no longer
+      // available") would read as being about the arriving account's records.
+      setServerRecoveryFailure(null);
     }
     const record = refreshRestored(scope);
     // A record this page load did not create is one that outlived its tab.
@@ -530,7 +762,14 @@ export function useTeamSimulation(
     // at the page. Those differ when the account changed mid-flight, and
     // re-reading the owning scope there would load the previous account's slot
     // into this account's recovery offer.
-    clearScopeIfKey(lastRun.scope, lastRun.prepared.idempotencyKey);
+    //
+    // A server-recovered result (Phase 4E) has no key and therefore no local
+    // record to clear — by definition: the browser copy being gone is why the
+    // server was asked. Clearing anything on its behalf would delete some
+    // OTHER unresolved request's slot.
+    if (lastRun.prepared) {
+      clearScopeIfKey(lastRun.scope, lastRun.prepared.idempotencyKey);
+    }
     refreshRestored(scope);
   }, [lastRun, refreshRestored, scope]);
 
@@ -600,13 +839,42 @@ export function useTeamSimulation(
     restored &&
     !pending &&
     restored.idempotency_key !== visibleFailure?.prepared.idempotencyKey &&
-    restored.idempotency_key !== visibleRun?.prepared.idempotencyKey
+    restored.idempotency_key !== visibleRun?.prepared?.idempotencyKey
       ? restored
       : null;
+
+  /**
+   * When the SERVER list must stay off screen (Phase 4E).
+   *
+   * Three cases, all the same underlying rule — something here already owns a
+   * recovery that the list may also be describing, and the two cannot be
+   * matched to prove it either way:
+   *
+   *  - a stored record is being offered (`restored`), including while a Run
+   *    click is blocked on it;
+   *  - a failure with a live "Check this request" control is on screen;
+   *  - a request is in flight, so the page is already reporting one.
+   *
+   * `restored`, not `recoverable`: `recoverable` hides itself during a
+   * collision block, and that is exactly a moment when a second, unmatched
+   * recovery control would be at its most confusing.
+   */
+  const serverRecoverySuppressed =
+    // `pendingKind === "simulation"`, not bare `pending`. Suppressing on any
+    // in-flight request would unmount this panel the instant its OWN recovery
+    // is dispatched — the operator would click Recover and watch the list
+    // disappear with no feedback, and with the catalog down there would be
+    // nothing on screen at all. A simulation in flight is different: the
+    // RunPanel is already reporting it.
+    pendingKind === "simulation" ||
+    restored !== null ||
+    block?.kind === "unresolved" ||
+    isRecoverable(visibleFailure?.error ?? null);
 
   return {
     status: pending ? "pending" : mutation.status,
     isPending: pending,
+    pendingKind,
     lastRun: visibleRun,
     lastFailure: visibleFailure,
     resultStale,
@@ -623,6 +891,10 @@ export function useTeamSimulation(
     clearBlock,
     lapsed,
     dismissLapsed,
+    recoverServer,
+    serverRecoveryFailure,
+    dismissServerRecoveryFailure,
+    serverRecoverySuppressed,
   };
 }
 

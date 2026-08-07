@@ -20,8 +20,14 @@ import type {
 /* ─────────────────────── catalog digest agreement ─────────────────────── */
 
 export type DigestReport = {
-  /** Digest the request was configured against. */
-  configuredDigest: string;
+  /**
+   * Digest the request was configured against, or null when that is not
+   * knowable here — a result collected from the server by recovery id
+   * (Phase 4E) was configured in a browser session this page never saw.
+   * Null means "no configured-vs-executed comparison exists", never "they
+   * agreed".
+   */
+  configuredDigest: string | null;
   /** Digest of the catalog currently loaded in the page. */
   loadedDigest: string | null;
   /** Distinct digests stamped into the response's effective builds. */
@@ -43,7 +49,7 @@ export type DigestReport = {
 
 export function digestReport(
   response: TeamSimulationResponse,
-  configuredDigest: string,
+  configuredDigest: string | null,
   loadedDigest: string | null
 ): DigestReport {
   const stamped = Object.values(response.effective_builds).map(
@@ -51,13 +57,23 @@ export function digestReport(
   );
   const responseDigests = Array.from(new Set(stamped)).sort();
 
+  // With no configured digest there is nothing to compare execution against,
+  // so no mismatch is CLAIMED — the panel says the comparison is unavailable
+  // rather than implying agreement. Drift is still reported, measured against
+  // what the response actually executed on, which is knowable either way.
   const executionMismatch =
-    stamped.length === 0 ||
-    // An empty/absent digest is treated as disagreement rather than filtered
-    // out: dropping it would let one silent build hide behind its siblings and
-    // produce a confident "matched on every effective build".
-    stamped.some((digest) => digest !== configuredDigest);
-  const pageDrift = loadedDigest !== null && loadedDigest !== configuredDigest;
+    configuredDigest !== null &&
+    (stamped.length === 0 ||
+      // An empty/absent digest is treated as disagreement rather than filtered
+      // out: dropping it would let one silent build hide behind its siblings and
+      // produce a confident "matched on every effective build".
+      stamped.some((digest) => digest !== configuredDigest));
+  const pageDrift =
+    loadedDigest !== null &&
+    (configuredDigest !== null
+      ? loadedDigest !== configuredDigest
+      : responseDigests.length > 0 &&
+        responseDigests.some((digest) => digest !== loadedDigest));
 
   return {
     configuredDigest,

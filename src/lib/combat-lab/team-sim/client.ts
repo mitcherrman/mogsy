@@ -1,10 +1,13 @@
 /**
  * The only network layer for the SIM2 team-combat UI.
  *
- * Two calls, and nothing else in this feature is allowed to call `fetch`:
- *   - GET  the Phase 4A catalog (free, cacheable, ETag-revalidated)
- *   - POST one simulation       (billable, idempotent by key, never
- *                                automatically retried)
+ * Four calls, and nothing else in this feature is allowed to call `fetch`:
+ *   - GET  the Phase 4A catalog       (free, cacheable, ETag-revalidated)
+ *   - POST one simulation             (billable, idempotent by key, never
+ *                                      automatically retried)
+ *   - GET  the Phase 4E recovery list (free, authenticated, read-only)
+ *   - POST one recovery by handle     (free — the result was charged when it
+ *                                      was produced; never runs a simulation)
  *
  * The POST deliberately has NO client timeout and NO abort signal. Aborting a
  * billable request does not stop the server, it only destroys the evidence of
@@ -30,7 +33,12 @@ import {
   IDEMPOTENCY_HEADER,
   IDEMPOTENCY_REPLAYED_HEADER,
   TEAM_SIM_CATALOG_PATH,
+  TEAM_SIM_RECOVER_PATH,
+  TEAM_SIM_RECOVERABLE_PATH,
   TEAM_SIM_SIMULATE_PATH,
+  type RecoverableListing,
+  type RecoverableRequest,
+  type RecoverableStatus,
   type TeamSimCatalog,
   type TeamSimulationRequest,
   type TeamSimulationResponse,
@@ -199,6 +207,190 @@ export function assertSimulationResponse(body: unknown): TeamSimulationResponse 
     throw bad("team_summaries");
   }
   return body as TeamSimulationResponse;
+}
+
+/* ─────────────────────── Phase 4E server recovery ────────────────────── */
+
+const RECOVERABLE_STATUSES: readonly RecoverableStatus[] = [
+  "completed",
+  "pending",
+  "stale",
+];
+
+/**
+ * The caller's own recoverable requests. Free, read-only, account-scoped.
+ *
+ * A 401/403 here is ordinary — a signed-out visitor has nothing to recover —
+ * so the caller renders nothing rather than an alarm. Every other failure is a
+ * TeamSimError like the rest of this module, and none of them is retried
+ * automatically: this is a list, and a list that refetches itself would poll a
+ * paid-request surface nobody asked it to.
+ */
+export async function fetchRecoverableRequests(): Promise<RecoverableListing> {
+  const authHeaders = await getBackendAuthHeaders();
+
+  let response: Response;
+  try {
+    response = await fetch(`${COMBAT_API_BASE_URL}${TEAM_SIM_RECOVERABLE_PATH}`, {
+      method: "GET",
+      headers: { Accept: "application/json", ...authHeaders },
+    });
+  } catch (cause) {
+    throw errorFromTransportFailure(cause);
+  }
+
+  if (!response.ok) {
+    const body = await readJsonSafely(response);
+    throw errorFromResponse(response.status, body, response.headers);
+  }
+  return assertRecoverableListing(await readJsonSafely(response));
+}
+
+/**
+ * Collect one completed result by its opaque handle.
+ *
+ * POST, matching the endpoint — and matching what it is for the operator: an
+ * explicit, deliberate act. It cannot charge and cannot run a simulation, but
+ * it is never issued by anything except a click.
+ *
+ * The response is the ORIGINAL accepted body, so it is validated by exactly
+ * the same assertion a fresh simulation is. `replayed` comes from the same
+ * header, which the server always sets to `true` here.
+ */
+export async function recoverSimulation(
+  recoveryId: string
+): Promise<SimulationOutcome> {
+  const authHeaders = await getBackendAuthHeaders();
+  // The handle is opaque and server-minted, but it is going into a PATH, so it
+  // is encoded rather than trusted to be path-safe.
+  const url =
+    `${COMBAT_API_BASE_URL}${TEAM_SIM_RECOVER_PATH}/` +
+    encodeURIComponent(recoveryId);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json", ...authHeaders },
+    });
+  } catch (cause) {
+    throw errorFromTransportFailure(cause);
+  }
+
+  if (!response.ok) {
+    const body = await readJsonSafely(response);
+    throw errorFromResponse(response.status, body, response.headers);
+  }
+
+  const body = await readJsonSafely(response);
+  return {
+    response: assertSimulationResponse(body),
+    replayed: response.headers?.get?.(IDEMPOTENCY_REPLAYED_HEADER) === "true",
+  };
+}
+
+/**
+ * Validate a discovery payload, NORMALIZING entries rather than failing the
+ * list — and never handing the renderer a field it has not checked.
+ *
+ * Two rules, and the second is the one that is easy to get wrong:
+ *
+ *  - One malformed entry must not hide the others. This list is how somebody
+ *    finds a simulation they have already paid for; refusing to render all of
+ *    them because one is unreadable would be the worst possible trade. An
+ *    entry without a usable handle or status could not be recovered anyway, so
+ *    dropping it loses nothing that was ever actionable.
+ *
+ *  - Every field the UI RENDERS is checked here, not just the ones it acts on.
+ *    Validating only `recovery_id`/`status`/`replay_available` would let
+ *    `champions: {a: "Vayne"}` through to a `.join()` in the panel. There is no
+ *    error boundary on this route, so that throw unmounts the whole tree — a
+ *    blank page that hides every recoverable paid result AND any result already
+ *    on screen. A field that fails its check becomes null, which the panel
+ *    already renders as "unavailable"; the entry stays recoverable.
+ */
+export function assertRecoverableListing(body: unknown): RecoverableListing {
+  const bad = (field: string) =>
+    new TeamSimError({
+      kind: "malformed_response",
+      certainty: "rejected",
+      status: 200,
+      code: "recoverable_malformed",
+      message: `The recovery list is missing or invalid: ${field}.`,
+      detail: { field },
+    });
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw bad("body");
+  const b = body as Record<string, unknown>;
+  if (!Array.isArray(b.recoverable_requests)) throw bad("recoverable_requests");
+
+  const entries = b.recoverable_requests
+    .map(normalizeRecoverableRequest)
+    .filter((entry): entry is RecoverableRequest => entry !== null);
+  return {
+    contract_version: typeof b.contract_version === "string" ? b.contract_version : "",
+    endpoint: typeof b.endpoint === "string" ? b.endpoint : "",
+    retention_seconds:
+      typeof b.retention_seconds === "number" ? b.retention_seconds : 0,
+    limit: typeof b.limit === "number" ? b.limit : entries.length,
+    count: entries.length,
+    recoverable_requests: entries,
+  };
+}
+
+const str = (v: unknown): string | null => (typeof v === "string" ? v : null);
+const num = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+const strs = (v: unknown): string[] | null =>
+  Array.isArray(v) && v.every((e) => typeof e === "string") ? v : null;
+
+/** A timestamp the UI can actually format. An unparseable one renders as
+ *  "Invalid Date", which looks like a bug in the recovery surface rather than
+ *  in the value — so it is dropped instead. */
+const stamp = (v: unknown): string | null => {
+  const s = str(v);
+  return s && Number.isFinite(new Date(s).getTime()) ? s : null;
+};
+
+function normalizeRecoverableRequest(value: unknown): RecoverableRequest | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+
+  // Required to be actionable at all. Without a handle it cannot be recovered;
+  // without a known status the UI has no behaviour for it; without a creation
+  // time it cannot be placed in the list the operator is scanning.
+  const recovery_id = str(v.recovery_id);
+  const created_at = stamp(v.created_at);
+  if (!recovery_id || !created_at) return null;
+  if (!RECOVERABLE_STATUSES.includes(v.status as RecoverableStatus)) return null;
+
+  const champions = v.champions as Record<string, unknown> | undefined;
+  const a = champions ? strs(champions.a) : null;
+  const bTeam = champions ? strs(champions.b) : null;
+
+  return {
+    recovery_id,
+    status: v.status as RecoverableStatus,
+    // Derived from the status rather than trusted: `replay_available` and
+    // `status` are two statements of one fact, and the status is the one the
+    // UI already switches on. A backend that disagreed with itself must not
+    // put a "Recover" button on something with no stored result.
+    replay_available: v.status === "completed",
+    created_at,
+    expires_at: stamp(v.expires_at) ?? "",
+    completed_at: stamp(v.completed_at),
+    // A missing cost renders as "undefined credits" if passed through; 0 is
+    // the honest floor for a number the server did not state.
+    credit_cost: num(v.credit_cost) ?? 0,
+    credits_charged: num(v.credits_charged) ?? 0,
+    contract_version: str(v.contract_version) ?? "",
+    team_shape: str(v.team_shape),
+    champions: a === null && bTeam === null ? null : { a: a ?? [], b: bTeam ?? [] },
+    winner: str(v.winner),
+    termination_reason: str(v.termination_reason),
+    event_count: num(v.event_count),
+    response_bytes: num(v.response_bytes),
+  };
 }
 
 async function readJsonSafely(response: Response): Promise<unknown> {
