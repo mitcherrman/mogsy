@@ -41,13 +41,16 @@ export const TEAM_OF: Record<RuntimeId, TeamKey> = {
 };
 
 /**
- * Champion level bounds. The Phase 4A catalog publishes item, rune, rank,
- * plan and scheduler bounds but NOT the level range, so this mirrors the
- * schema's `level: int = Field(default=18, ge=1, le=18)`. The backend stays
- * the authority — an out-of-range level is a 422, never a clamp.
+ * Champion level bounds come from the CATALOG (`build_options.level`,
+ * Phase 4C). Through Phase 4B this file mirrored the schema's
+ * `level: int = Field(default=18, ge=1, le=18)` as local constants, because
+ * the Phase 4A catalog did not publish the range. It does now, so the mirror
+ * is gone and there is one authority again. The backend still enforces:
+ * an out-of-range level is a 422, never a clamp.
  */
-export const LEVEL_MIN = 1;
-export const LEVEL_MAX = 18;
+export function levelBounds(index: CatalogIndex) {
+  return index.levelBounds;
+}
 
 export type PlanStepKind = "basic_attack" | "slot" | "champion_action";
 
@@ -150,7 +153,7 @@ function makeCombatant(
   return {
     runtimeId,
     champion: defaultChampionFor(index, slotIndex),
-    level: LEVEL_MAX,
+    level: index.levelBounds.default,
     items: [],
     runes: [],
     abilityRanks: { ...index.rankDefaults },
@@ -534,11 +537,12 @@ export function validateDraft(
       });
     }
 
-    if (!Number.isInteger(c.level) || c.level < LEVEL_MIN || c.level > LEVEL_MAX) {
+    const levels = index.levelBounds;
+    if (!Number.isInteger(c.level) || c.level < levels.min || c.level > levels.max) {
       issues.push({
         runtimeId: id,
         field: "level",
-        message: `${id}: level must be a whole number from ${LEVEL_MIN} to ${LEVEL_MAX}.`,
+        message: `${id}: level must be a whole number from ${levels.min} to ${levels.max}.`,
       });
     }
 

@@ -20,6 +20,14 @@ export const TEAM_SIM_CATALOG_PATH =
   "/api/combat-lab/team-simulate/catalog/v1";
 export const TEAM_SIM_SIMULATE_PATH = "/api/combat-lab/team-simulate/v1";
 
+/**
+ * Phase 4C headers. Named here rather than inlined at the fetch call, so the
+ * catalog's published `billing.idempotency_header` can be checked against the
+ * value this client actually sends.
+ */
+export const IDEMPOTENCY_HEADER = "Idempotency-Key";
+export const IDEMPOTENCY_REPLAYED_HEADER = "Idempotency-Replayed";
+
 /** Generic per-slot cast, available on every champion. */
 export type AbilitySlot = "P" | "Q" | "W" | "E" | "R";
 /** Ranked ability slots (the passive has no rank). */
@@ -75,6 +83,38 @@ export type CatalogPricingRow = {
   credits: number;
 };
 
+/** `build_options.level` (Phase 4C). */
+export type CatalogLevelBounds = {
+  min: number;
+  max: number;
+  default: number;
+};
+
+/**
+ * `billing` (Phase 4C): the backend's own statement of how this endpoint
+ * charges and how a paid request is recovered. Every value here is read, never
+ * assumed — the same rule Phase 4B already applied to
+ * `pricing.charged_only_on_success`.
+ */
+export type CatalogBilling = {
+  unit: string;
+  charged_only_on_success: boolean;
+  idempotency_required: boolean;
+  idempotency_header: string;
+  idempotency_replayed_header: string;
+  idempotency_key_min_length: number;
+  idempotency_key_max_length: number;
+  idempotency_key_charset: string;
+  idempotency_retention_seconds: number;
+  idempotency_scope: string;
+  replay_charges: number;
+  conflict_status: number;
+  conflict_code: string;
+  in_progress_status: number;
+  in_progress_code: string;
+  replay_is_byte_identical: boolean;
+};
+
 export type TeamSimCatalog = {
   catalog_contract_version: string;
   contract_version: string;
@@ -111,6 +151,12 @@ export type TeamSimCatalog = {
     crit_modes: string[];
     max_items_per_combatant: number;
     max_runes_per_combatant: number;
+    /**
+     * Phase 4C. Before this the frontend mirrored the literals `1..18` from the
+     * Python schema; it now reads them, so a change to the level range reaches
+     * this UI through the catalog like every other bound.
+     */
+    level: CatalogLevelBounds;
     starting_hp: string;
   };
   targeting_policies: CatalogTargetingPolicy[];
@@ -142,6 +188,8 @@ export type TeamSimCatalog = {
     costs: CatalogPricingRow[];
     charged_only_on_success: boolean;
   };
+  /** Phase 4C. See {@link CatalogBilling}. */
+  billing: CatalogBilling;
   rate_limit: { scope: string; limit: number; window_seconds: number };
   execution_assumptions: Record<string, unknown>;
   unsupported_mechanics: string[];

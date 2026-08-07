@@ -20,11 +20,19 @@ export function ResultPanel({
   response,
   quotedCreditCost,
   stale,
+  replayed,
 }: {
   response: TeamSimulationResponse;
   /** Catalog-quoted price for the shape. The response reports no per-run cost. */
   quotedCreditCost: number | null;
   stale: boolean;
+  /**
+   * The server replayed a stored result rather than running a new simulation
+   * (Phase 4C). Shown rather than swallowed: "I collected the result I already
+   * paid for" and "I bought another one" look identical otherwise, which is
+   * precisely the ambiguity the idempotency key exists to remove.
+   */
+  replayed?: boolean;
 }) {
   const overview = resultOverview(response);
   const deaths = deathOrder(response);
@@ -40,6 +48,16 @@ export function ResultPanel({
         >
           Result from a previous configuration — the editor has changed since this
           simulation ran. Nothing re-runs automatically.
+        </p>
+      ) : null}
+
+      {replayed ? (
+        <p
+          className="rounded border border-emerald-500/60 bg-emerald-500/10 p-2 text-xs font-medium"
+          data-testid="replayed-result-banner"
+        >
+          Recovered — the server returned the result it had already produced for
+          this request. No new simulation ran and no credits were spent.
         </p>
       ) : null}
 

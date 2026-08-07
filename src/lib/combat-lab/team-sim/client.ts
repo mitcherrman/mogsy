@@ -3,13 +3,19 @@
  *
  * Two calls, and nothing else in this feature is allowed to call `fetch`:
  *   - GET  the Phase 4A catalog (free, cacheable, ETag-revalidated)
- *   - POST one simulation       (billable, non-idempotent, never retried)
+ *   - POST one simulation       (billable, idempotent by key, never
+ *                                automatically retried)
  *
  * The POST deliberately has NO client timeout and NO abort signal. Aborting a
  * billable request does not stop the server, it only destroys the evidence of
  * what happened — the request would complete, possibly charge, and the client
  * would be left in exactly the "uncertain" state this feature works hardest to
  * avoid. Letting it finish is the safer failure mode.
+ *
+ * Phase 4C: every POST carries the prepared request's `Idempotency-Key`. The
+ * key is supplied by the caller and never minted here — a key created at the
+ * fetch call would be new on every attempt, which would turn a recovery into a
+ * second billable simulation, exactly the bug the key exists to prevent.
  */
 import { COMBAT_API_BASE_URL } from "@/lib/combat-lab/api";
 import { getBackendAuthHeaders } from "@/lib/backend-auth";
@@ -21,6 +27,8 @@ import {
   TeamSimError,
 } from "./errors";
 import {
+  IDEMPOTENCY_HEADER,
+  IDEMPOTENCY_REPLAYED_HEADER,
   TEAM_SIM_CATALOG_PATH,
   TEAM_SIM_SIMULATE_PATH,
   type TeamSimCatalog,
@@ -106,16 +114,31 @@ export async function fetchTeamSimCatalog(): Promise<CatalogLoad> {
   return { catalog, etag: cachedEtag, fromCache: false };
 }
 
+/** A completed simulation, plus whether the server replayed a stored one. */
+export type SimulationOutcome = {
+  response: TeamSimulationResponse;
+  /**
+   * `Idempotency-Replayed: true` — this body was produced by an earlier
+   * request with the same key, and retrieving it cost nothing.
+   */
+  replayed: boolean;
+};
+
 /**
- * Run exactly one simulation. Billable.
+ * Run exactly one simulation. Billable, unless the server replays one.
+ *
+ * `idempotencyKey` is required by the endpoint and comes from the caller, so
+ * that recovering an uncertain request reuses the ORIGINAL key: same key plus
+ * same body is the only combination the backend replays instead of charging.
  *
  * Every failure becomes a TeamSimError whose `certainty` says whether the
  * server actually rejected the request. Callers never see a bare fetch
  * rejection, so "no answer" can never be mistaken for "rejected".
  */
 export async function submitTeamSimulation(
-  request: TeamSimulationRequest
-): Promise<TeamSimulationResponse> {
+  request: TeamSimulationRequest,
+  idempotencyKey: string
+): Promise<SimulationOutcome> {
   const authHeaders = await getBackendAuthHeaders();
 
   let response: Response;
@@ -125,6 +148,7 @@ export async function submitTeamSimulation(
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        [IDEMPOTENCY_HEADER]: idempotencyKey,
         ...authHeaders,
       },
       body: JSON.stringify(request),
@@ -139,7 +163,10 @@ export async function submitTeamSimulation(
   }
 
   const body = await readJsonSafely(response);
-  return assertSimulationResponse(body);
+  return {
+    response: assertSimulationResponse(body),
+    replayed: response.headers?.get?.(IDEMPOTENCY_REPLAYED_HEADER) === "true",
+  };
 }
 
 /**

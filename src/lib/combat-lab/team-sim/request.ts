@@ -9,7 +9,13 @@
  *  - field order and list order are deterministic, so the same draft always
  *    serializes to the same bytes;
  *  - the digest that configured the request is captured alongside it, which is
- *    what makes the post-response catalog-drift check meaningful.
+ *    what makes the post-response catalog-drift check meaningful;
+ *  - ONE idempotency key is minted here, with the body (Phase 4C). That
+ *    placement IS the key lifecycle: a new key exists only where a new body is
+ *    built, so a key can never outlive the request it identifies and a changed
+ *    body can never inherit one. Recovering an uncertain request means
+ *    resending this same prepared object — same key, same bytes, the only
+ *    combination the backend replays instead of charging again.
  */
 import type {
   TeamSimCombatantRequest,
@@ -46,7 +52,24 @@ export type PreparedSimulation = {
   catalogDigest: string;
   creditCost: number | null;
   teamShape: string;
+  /**
+   * The `Idempotency-Key` for this logical paid request (Phase 4C). Minted
+   * once, here, alongside the body.
+   */
+  idempotencyKey: string;
 };
+
+/**
+ * A fresh opaque key. `crypto.randomUUID` wherever it exists (every browser
+ * this app targets, and jsdom on Node 20+); the fallback covers non-secure
+ * contexts and stays well inside the backend's printable-ASCII 1–128 bound.
+ */
+export function newIdempotencyKey(): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  if (uuid) return uuid;
+  const rand = () => Math.random().toString(36).slice(2);
+  return `ts-${Date.now().toString(36)}-${rand()}${rand()}`;
+}
 
 function stepToWire(step: PlanStepDraft) {
   if (step.kind === "basic_attack") {
@@ -149,5 +172,6 @@ export function buildSimulationRequest(
     catalogDigest: index.digest,
     creditCost: creditCostFor(index, draft.teamSizeA, draft.teamSizeB),
     teamShape: `${draft.teamSizeA}v${draft.teamSizeB}`,
+    idempotencyKey: newIdempotencyKey(),
   };
 }

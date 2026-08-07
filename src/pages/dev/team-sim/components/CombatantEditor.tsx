@@ -16,8 +16,6 @@ import {
   type CatalogIndex,
 } from "@/lib/combat-lab/team-sim/catalog";
 import {
-  LEVEL_MAX,
-  LEVEL_MIN,
   type CombatantDraft,
   type DraftAction,
   type RuntimeId,
@@ -98,12 +96,15 @@ function CombatantEditorImpl({
               : "basic attack + generic slot casts only"
           }
         />
+        {/* Bounds from the catalog (Phase 4C), never local literals. */}
         <NumberField
           label={`${id} level`}
           value={combatant.level}
-          min={LEVEL_MIN}
-          max={LEVEL_MAX}
-          onChange={(level) => dispatch({ type: "setLevel", id, level: level ?? LEVEL_MIN })}
+          min={index.levelBounds.min}
+          max={index.levelBounds.max}
+          onChange={(level) =>
+            dispatch({ type: "setLevel", id, level: level ?? index.levelBounds.min })
+          }
         />
       </div>
 

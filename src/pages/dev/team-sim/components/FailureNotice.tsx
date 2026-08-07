@@ -4,10 +4,14 @@
  * The one rule this component exists to keep: never claim more certainty than
  * the response carries. A status the server actually returned for a rejected
  * request says the simulation did not run; a 5xx or a lost connection says the
- * outcome is unknown, and the operator is told not to retry automatically.
+ * outcome is unknown.
  *
- * Nothing here retries, and nothing here offers a "retry" button — running
- * again is the ordinary Run control, which is an explicit new action.
+ * Phase 4C adds ONE control, and only for outcomes that are genuinely
+ * uncertain: "Check this request" re-sends the identical request with its
+ * original idempotency key. That is not a retry in the dangerous sense — the
+ * backend replays the result it already produced, or reports it still running,
+ * and it cannot charge twice. Everything else is unchanged: nothing retries on
+ * its own, and starting a NEW simulation is still the ordinary Run control.
  */
 import { useState } from "react";
 
@@ -15,7 +19,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { CombatLabCreditStatus } from "@/lib/combat-lab/api";
 import {
+  isRecoverable,
+  RECOVERY_ACTION_HINT,
+  RECOVERY_ACTION_LABEL,
   UNCERTAIN_STATUS_WARNING,
+  UNCERTAIN_STATUS_WARNING_NO_RECOVERY,
+  UNRESOLVED_REQUEST_LEAVE_WARNING,
   type TeamSimError,
 } from "@/lib/combat-lab/team-sim/errors";
 
@@ -26,6 +35,11 @@ const TITLES: Record<string, string> = {
   request_too_large: "Scenario too large",
   invalid_request: "Scenario rejected",
   rate_limited: "Rate limited",
+  idempotency_conflict: "Request identifier already used",
+  idempotency_in_progress: "Still running",
+  idempotency_key_rejected: "Request identifier rejected",
+  service_unavailable: "Request refused",
+  result_unreadable: "Result unavailable",
   server_error: "Server failure",
   network: "No response",
   malformed_response: "Unreadable response",
@@ -35,16 +49,23 @@ export function FailureNotice({
   error,
   teamShape,
   chargedOnlyOnSuccess,
+  onRecover,
   onDismiss,
 }: {
   error: TeamSimError;
   teamShape: string;
-  /** `pricing.charged_only_on_success` from the catalog — read, not assumed. */
+  /**
+   * `billing.charged_only_on_success` from the catalog — read, not assumed.
+   * False also covers "no catalog is loaded", which is honestly not-knowable.
+   */
   chargedOnlyOnSuccess: boolean;
+  /** Re-send this exact request with its original key (Phase 4C). */
+  onRecover?: () => void;
   onDismiss: () => void;
 }) {
   const [showDetail, setShowDetail] = useState(false);
   const credits = (error.credits ?? null) as CombatLabCreditStatus | null;
+  const canRecover = !!onRecover && isRecoverable(error);
 
   return (
     <Card
@@ -84,7 +105,24 @@ export function FailureNotice({
           className="rounded border border-amber-500/60 bg-amber-500/10 p-2 text-xs font-medium"
           data-testid="uncertain-warning"
         >
-          {UNCERTAIN_STATUS_WARNING}
+          {/* The sentence follows the CONTROL, not the phase. Promising
+              "Check this request" while no such button is on screen would be
+              the worst of both worlds. */}
+          {canRecover
+            ? `${UNCERTAIN_STATUS_WARNING} ${UNRESOLVED_REQUEST_LEAVE_WARNING}`
+            : UNCERTAIN_STATUS_WARNING_NO_RECOVERY}
+        </p>
+      ) : error.kind === "idempotency_in_progress" ? (
+        // A rejection of THIS attempt that says nothing about the original
+        // request, which is still running. Claiming "nothing was charged"
+        // here would be wrong about the request the operator cares about.
+        <p
+          className="rounded border border-amber-500/60 bg-amber-500/10 p-2 text-xs font-medium"
+          data-testid="in-progress-note"
+        >
+          The original {teamShape} request is still running on the server. This
+          attempt started nothing new. Check again in a moment to collect its
+          result.
         </p>
       ) : (
         <p className="text-[11px] text-muted-foreground" data-testid="rejected-note">
@@ -95,6 +133,28 @@ export function FailureNotice({
           The balance shown above was re-read from the server.
         </p>
       )}
+
+      {canRecover ? (
+        <div className="space-y-1">
+          {/* No pending state here: `run` clears the failure synchronously, so
+              this whole notice unmounts the moment recovery starts and the
+              RunPanel takes over showing progress. A disabled/"Checking…"
+              branch would be unreachable code pretending to be feedback. */}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-[11px]"
+            onClick={onRecover}
+            data-testid="recover-request"
+          >
+            {RECOVERY_ACTION_LABEL}
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            {RECOVERY_ACTION_HINT}
+          </p>
+        </div>
+      ) : null}
 
       {error.retryAfterSeconds !== null ? (
         <p className="text-[11px] text-muted-foreground">

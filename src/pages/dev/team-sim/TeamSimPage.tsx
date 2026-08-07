@@ -51,6 +51,7 @@ import {
   useTeamSimulation,
   type TeamSimulationRunner,
 } from "@/lib/combat-lab/team-sim/hooks";
+import { isRecoverable } from "@/lib/combat-lab/team-sim/errors";
 import {
   buildSimulationRequest,
   DraftNotSubmittableError,
@@ -73,16 +74,22 @@ export default function TeamSimPage() {
   const creditsQuery = useCombatLabCredits();
 
   // A leaving tab cannot stop a billable request, but it can destroy the only
-  // record of it. Warn while one is in flight.
+  // record of it. Two windows need the warning, not one:
+  //   - a request in flight (Phase 4B), and
+  //   - a request whose outcome is UNRESOLVED (Phase 4C). The idempotency key
+  //     lives in this component's state and nowhere else, so a reload or a
+  //     navigation throws away the only safe way to ask what happened — after
+  //     which running again is a genuine second charge.
+  const unresolved = isRecoverable(runner.lastFailure?.error ?? null);
   useEffect(() => {
-    if (!runner.isPending) return;
+    if (!runner.isPending && !unresolved) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [runner.isPending]);
+  }, [runner.isPending, unresolved]);
 
   const catalogLoad = catalogQuery.data ?? null;
   // `isError` is true for a failed REFETCH too, so it is only fatal when there
@@ -134,6 +141,24 @@ export default function TeamSimPage() {
           Loading the simulation catalog…
         </Card>
       )}
+
+      {/* The editor — and with it the ordinary FailureNotice — only exists
+          while a catalog is loaded. `useAuthQuerySync` clears the query cache
+          on any identity change, so an unresolved paid request could otherwise
+          lose its only recovery control while its key was still alive in this
+          component's state. Recovery needs neither the catalog nor the index,
+          so it gets a fallback here. */}
+      {!catalogLoad && runner.lastFailure && unresolved ? (
+        <FailureNotice
+          error={runner.lastFailure.error}
+          teamShape={runner.lastFailure.prepared.teamShape}
+          // No catalog means no published billing statement, and "not
+          // knowable" is the honest reading of that.
+          chargedOnlyOnSuccess={false}
+          onRecover={runner.recover}
+          onDismiss={runner.dismissFailure}
+        />
+      ) : null}
 
       {/* Survives every catalog state: a charged result is never discarded
           because a refetch failed or the query cache was cleared. */}
@@ -341,7 +366,12 @@ function TeamSimEditor({
             <FailureNotice
               error={runner.lastFailure.error}
               teamShape={runner.lastFailure.prepared.teamShape}
-              chargedOnlyOnSuccess={index.catalog.pricing.charged_only_on_success}
+              chargedOnlyOnSuccess={index.billing.charged_only_on_success}
+              // Phase 4C: re-sends THAT request with its original key, so it
+              // resolves the uncertainty without buying a second simulation.
+              onRecover={
+                index.billing.idempotency_required ? runner.recover : undefined
+              }
               onDismiss={runner.dismissFailure}
             />
           ) : null}
@@ -460,6 +490,7 @@ function ResultWorkspace({
         response={run.response}
         quotedCreditCost={run.prepared.creditCost}
         stale={runner.resultStale}
+        replayed={run.replayed}
       />
       <EffectiveBuildsPanel
         response={run.response}

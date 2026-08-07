@@ -202,3 +202,62 @@ describe("credit cost matrix", () => {
     ]);
   });
 });
+
+/**
+ * Phase 4C catalog additions. Both blocks exist so the UI stops mirroring
+ * backend constants; these assertions are what make "mirroring" impossible to
+ * reintroduce quietly.
+ */
+describe("Phase 4C catalog contract", () => {
+  const index = indexCatalog(REAL_CATALOG);
+
+  it("publishes champion level bounds the editor can consume", () => {
+    expect(index.levelBounds).toEqual(REAL_CATALOG.build_options.level);
+    expect(index.levelBounds.min).toBe(1);
+    expect(index.levelBounds.max).toBe(18);
+    expect(index.levelBounds.default).toBeGreaterThanOrEqual(index.levelBounds.min);
+    expect(index.levelBounds.default).toBeLessThanOrEqual(index.levelBounds.max);
+  });
+
+  it("rejects a catalog with no level bounds instead of falling back", () => {
+    // A fallback would be the mirrored `1..18` literal this field removes, and
+    // it would be invisible the day it disagreed with the backend.
+    const stripped = {
+      ...REAL_CATALOG,
+      build_options: { ...REAL_CATALOG.build_options, level: undefined },
+    };
+    expect(() => assertTeamSimCatalog(stripped)).toThrow(MalformedCatalogError);
+  });
+
+  it("publishes the billing and recovery contract", () => {
+    expect(index.billing.idempotency_required).toBe(true);
+    expect(index.billing.idempotency_header).toBe("Idempotency-Key");
+    expect(index.billing.idempotency_replayed_header).toBe("Idempotency-Replayed");
+    expect(index.billing.replay_charges).toBe(0);
+    expect(index.billing.conflict_code).toBe("idempotency_conflict");
+    expect(index.billing.in_progress_code).toBe("idempotency_in_progress");
+    expect(index.billing.charged_only_on_success).toBe(
+      REAL_CATALOG.pricing.charged_only_on_success
+    );
+  });
+
+  it("rejects a catalog whose header names disagree with this client", () => {
+    // The dangerous version of this drift: the backend renames the header, the
+    // client keeps sending the old one, every request is un-deduplicated, and
+    // the UI still says idempotency is on.
+    const renamed = {
+      ...REAL_CATALOG,
+      billing: { ...REAL_CATALOG.billing, idempotency_header: "X-Request-Id" },
+    };
+    expect(() => assertTeamSimCatalog(renamed)).toThrow(MalformedCatalogError);
+  });
+
+  it("rejects a catalog with no billing block at all", () => {
+    const { billing, ...withoutBilling } = REAL_CATALOG;
+    expect(() => assertTeamSimCatalog(withoutBilling)).toThrow(MalformedCatalogError);
+  });
+
+  it("declares client-retry idempotency in execution_assumptions", () => {
+    expect(REAL_CATALOG.execution_assumptions.client_retry_idempotency).toBe(true);
+  });
+});

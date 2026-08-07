@@ -23,6 +23,7 @@ import {
   REAL_CATALOG_ETAG,
   REAL_ERROR_META,
   REAL_ERRORS,
+  REAL_REPLAY_PAIR,
   REAL_REQUESTS,
 } from "./__fixtures__";
 
@@ -156,24 +157,66 @@ describe("fetchTeamSimCatalog", () => {
 
 describe("submitTeamSimulation", () => {
   const request = REAL_REQUESTS["1v1"] as unknown as TeamSimulationRequest;
+  /** The key belongs to the prepared request; this module only forwards it. */
+  const KEY = "fixed-test-key";
 
-  it("POSTs to the versioned team-simulate endpoint with auth", async () => {
+  it("POSTs to the versioned team-simulate endpoint with auth and the key", async () => {
     stubFetch(() => ({ status: 200, body: REAL_1V1 }));
-    const response = await submitTeamSimulation(request);
+    const outcome = await submitTeamSimulation(request, KEY);
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toContain("/api/combat-lab/team-simulate/v1");
     expect(calls[0].init?.method).toBe("POST");
-    expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe(
-      "Bearer test-token"
+    const headers = calls[0].init?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer test-token");
+    expect(headers["Idempotency-Key"]).toBe(KEY);
+    expect(outcome.response.termination.reason).toBe(REAL_1V1.termination.reason);
+    expect(outcome.response.effective_builds.A1.champion).toBe("Ashe");
+  });
+
+  it("forwards the caller's key verbatim and never mints its own", async () => {
+    stubFetch(() => ({ status: 200, body: REAL_1V1 }));
+    await submitTeamSimulation(request, "key-a");
+    await submitTeamSimulation(request, "key-a");
+    const sent = calls.map(
+      (c) => (c.init?.headers as Record<string, string>)["Idempotency-Key"]
     );
-    expect(response.termination.reason).toBe(REAL_1V1.termination.reason);
-    expect(response.effective_builds.A1.champion).toBe("Ashe");
+    // Recovery only works if this module is a pure forwarder: a key minted
+    // here would be different on the second call and would buy a second run.
+    expect(sent).toEqual(["key-a", "key-a"]);
+  });
+
+  it("reports whether the server replayed a stored result", async () => {
+    stubFetch(() => ({
+      status: 200,
+      body: REAL_REPLAY_PAIR.replayed,
+      headers: { "idempotency-replayed": "true" },
+    }));
+    expect((await submitTeamSimulation(request, KEY)).replayed).toBe(true);
+
+    stubFetch(() => ({
+      status: 200,
+      body: REAL_REPLAY_PAIR.first,
+      headers: { "idempotency-replayed": "false" },
+    }));
+    expect((await submitTeamSimulation(request, KEY)).replayed).toBe(false);
+
+    // Absent header: a replay is never ASSUMED.
+    stubFetch(() => ({ status: 200, body: REAL_1V1 }));
+    expect((await submitTeamSimulation(request, KEY)).replayed).toBe(false);
+  });
+
+  it("captured a replay that is byte-identical to the original", () => {
+    // Both fixtures came from one live pair (same key, same body); the capture
+    // refused to write them unless the bytes matched.
+    expect(REAL_REPLAY_PAIR.replayed).toEqual(REAL_REPLAY_PAIR.first);
+    expect(REAL_REPLAY_PAIR.firstMeta.idempotency_replayed).toBe("false");
+    expect(REAL_REPLAY_PAIR.replayedMeta.idempotency_replayed).toBe("true");
   });
 
   it("parses the real 2v2 body with every block the UI renders", async () => {
     stubFetch(() => ({ status: 200, body: REAL_2V2 }));
-    const response = await submitTeamSimulation(request);
+    const { response } = await submitTeamSimulation(request, KEY);
     expect(response.termination.winner).toBe("A");
     expect(Object.keys(response.effective_builds).sort()).toEqual([
       "A1",
@@ -187,13 +230,25 @@ describe("submitTeamSimulation", () => {
   });
 
   it.each([
+    ["400" as const, "idempotency_key_rejected", "idempotency_key_required", "rejected"],
+    ["400_invalid" as const, "idempotency_key_rejected", "idempotency_key_invalid", "rejected"],
     ["401" as const, "auth_required", "AUTH_REQUIRED", "rejected"],
     ["402" as const, "insufficient_credits", "insufficient_credits", "rejected"],
     ["403" as const, "account_required", "ACCOUNT_REQUIRED", "rejected"],
+    ["409" as const, "idempotency_conflict", "idempotency_conflict", "rejected"],
+    ["409_in_progress" as const, "idempotency_in_progress", "idempotency_in_progress",
+      "rejected"],
     ["413" as const, "request_too_large", "request_too_large", "rejected"],
     ["422_item" as const, "invalid_request", "unknown_item", "rejected"],
     ["429" as const, "rate_limited", "rate_limited", "rejected"],
     ["500" as const, "server_error", "internal_error", "unknown"],
+    // The endpoint's own 503 is a documented fail-CLOSED refusal, so it is a
+    // REJECTION despite being a 5xx — the one place that distinction matters.
+    ["503" as const, "service_unavailable", "idempotency_unavailable", "rejected"],
+    // Its OTHER 503 says the opposite about money: the charge committed and
+    // only the result is lost. Never folded in with the one above.
+    ["503_unreadable" as const, "result_unreadable",
+      "idempotency_result_unreadable", "unknown"],
   ])(
     "maps the captured %s body to kind %s / code %s (%s)",
     async (key, kind, code, certainty) => {
@@ -201,7 +256,7 @@ describe("submitTeamSimulation", () => {
       const body = REAL_ERRORS[key as keyof typeof REAL_ERRORS];
       const status = REAL_ERROR_META[key as keyof typeof REAL_ERROR_META].status;
       stubFetch(() => ({ status, body }));
-      const error = (await submitTeamSimulation(request).catch((e) => e)) as TeamSimError;
+      const error = (await submitTeamSimulation(request, KEY).catch((e) => e)) as TeamSimError;
       expect(error).toBeInstanceOf(TeamSimError);
       expect(error.status).toBe(status);
       expect(error.kind).toBe(kind);
@@ -212,13 +267,13 @@ describe("submitTeamSimulation", () => {
 
   it("carries the credit block out of a real 402", async () => {
     stubFetch(() => ({ status: 402, body: REAL_ERRORS[402] }));
-    const error = (await submitTeamSimulation(request).catch((e) => e)) as TeamSimError;
+    const error = (await submitTeamSimulation(request, KEY).catch((e) => e)) as TeamSimError;
     expect(error.credits).toMatchObject({ blocked: true, credits_remaining: 0 });
   });
 
   it("flattens FastAPI's schema-error 422 into one readable message", async () => {
     stubFetch(() => ({ status: 422, body: REAL_ERRORS["422_schema"] }));
-    const error = (await submitTeamSimulation(request).catch((e) => e)) as TeamSimError;
+    const error = (await submitTeamSimulation(request, KEY).catch((e) => e)) as TeamSimError;
     expect(error.code).toBe("schema_invalid");
     expect(error.message).toContain("ability rank Q=9 out of range");
     expect(error.message).toContain("team_a.combatants.0.ability_ranks");
@@ -227,7 +282,7 @@ describe("submitTeamSimulation", () => {
   it("surfaces Retry-After on a 429 without ever retrying", async () => {
     const meta = REAL_ERROR_META[429];
     stubFetch(() => ({ status: meta.status, body: REAL_ERRORS[429], headers: meta.headers }));
-    const error = (await submitTeamSimulation(request).catch((e) => e)) as TeamSimError;
+    const error = (await submitTeamSimulation(request, KEY).catch((e) => e)) as TeamSimError;
     expect(error.retryAfterSeconds).toBe(Number(meta.headers["retry-after"]));
     expect(calls).toHaveLength(1);
   });
@@ -239,7 +294,7 @@ describe("submitTeamSimulation", () => {
         throw new TypeError("Network request failed");
       })
     );
-    const error = (await submitTeamSimulation(request).catch((e) => e)) as TeamSimError;
+    const error = (await submitTeamSimulation(request, KEY).catch((e) => e)) as TeamSimError;
     expect(error.kind).toBe("network");
     expect(error.isUncertain).toBe(true);
     expect(error.status).toBeNull();
@@ -247,13 +302,13 @@ describe("submitTeamSimulation", () => {
 
   it("sends exactly one request per call — the client never retries", async () => {
     stubFetch(() => ({ status: 500, body: REAL_ERRORS[500] }));
-    await submitTeamSimulation(request).catch(() => undefined);
+    await submitTeamSimulation(request, KEY).catch(() => undefined);
     expect(calls).toHaveLength(1);
   });
 
   it("treats an unreadable 200 body as uncertain (the run may have been charged)", async () => {
     stubFetch(() => ({ status: 200, body: { termination: {} } }));
-    const error = (await submitTeamSimulation(request).catch((e) => e)) as TeamSimError;
+    const error = (await submitTeamSimulation(request, KEY).catch((e) => e)) as TeamSimError;
     expect(error.kind).toBe("malformed_response");
     expect(error.isUncertain).toBe(true);
   });
@@ -273,4 +328,74 @@ describe("assertSimulationResponse", () => {
       expect(() => assertSimulationResponse(broken)).toThrow(new RegExp(field));
     }
   );
+});
+
+/**
+ * Phase 4C: statuses whose meaning depends on the CODE, not the number.
+ * Every case here was a confirmed adversarial-review finding — each one had
+ * the page stating a false fact about money or about what went wrong.
+ */
+describe("status-plus-code classification", () => {
+  const request = REAL_REQUESTS["1v1"] as unknown as TeamSimulationRequest;
+  const KEY = "fixed-test-key";
+
+  it("never claims 'nothing was charged' for a 503 it cannot identify", async () => {
+    // A proxy or a cold start returns a 503 with no code, or with no JSON at
+    // all. That is genuinely unknown; the endpoint's own fail-closed message
+    // must not be borrowed for it.
+    for (const body of [null, {}, { detail: "upstream unavailable" }]) {
+      stubFetch(() => ({ status: 503, body }));
+      const error = (await submitTeamSimulation(request, KEY).catch(
+        (e) => e
+      )) as TeamSimError;
+      expect(error.certainty).toBe("unknown");
+      expect(error.message).not.toContain("nothing was charged");
+      expect(error.message).not.toContain("Nothing ran");
+    }
+  });
+
+  it("does claim it for the endpoint's own fail-closed 503", async () => {
+    stubFetch(() => ({ status: 503, body: REAL_ERRORS[503] }));
+    const error = (await submitTeamSimulation(request, KEY).catch(
+      (e) => e
+    )) as TeamSimError;
+    expect(error.certainty).toBe("rejected");
+    expect(error.message).toContain("Nothing ran and nothing was charged");
+    // Never the backend's raw exception type name.
+    expect(error.message).not.toBe("LedgerUnavailable");
+  });
+
+  it("says a damaged stored result WAS charged", async () => {
+    stubFetch(() => ({ status: 503, body: REAL_ERRORS["503_unreadable"] }));
+    const error = (await submitTeamSimulation(request, KEY).catch(
+      (e) => e
+    )) as TeamSimError;
+    expect(error.kind).toBe("result_unreadable");
+    expect(error.message).toContain("charged");
+    expect(error.message).not.toContain("nothing was charged");
+  });
+
+  it("does not blame the idempotency key for a generic 400", async () => {
+    // FastAPI's own body reader emits a 400 with a bare STRING detail and no
+    // code. Calling that a key problem sends the operator round a loop that
+    // can never fix it.
+    for (const body of [null, { detail: "There was an error parsing the body" }]) {
+      stubFetch(() => ({ status: 400, body }));
+      const error = (await submitTeamSimulation(request, KEY).catch(
+        (e) => e
+      )) as TeamSimError;
+      expect(error.kind).toBe("invalid_request");
+      expect(error.certainty).toBe("rejected");
+    }
+  });
+
+  it("does blame it when the backend says so", async () => {
+    for (const key of ["400", "400_invalid"] as const) {
+      stubFetch(() => ({ status: 400, body: REAL_ERRORS[key] }));
+      const error = (await submitTeamSimulation(request, KEY).catch(
+        (e) => e
+      )) as TeamSimError;
+      expect(error.kind).toBe("idempotency_key_rejected");
+    }
+  });
 });

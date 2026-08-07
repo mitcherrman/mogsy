@@ -1,0 +1,1 @@
+{"detail":{"code":"idempotency_key_required","message":"this endpoint requires an Idempotency-Key header; generate one fresh random value per simulation you submit"}}

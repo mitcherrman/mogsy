@@ -7,17 +7,21 @@
  * "malformed catalog" a first-class state instead of a runtime crash halfway
  * through a selector.
  */
-import type {
-  AbilitySlot,
-  CatalogChampion,
-  CatalogChampionAction,
-  CatalogItem,
-  CatalogRune,
-  CritMode,
-  OnFailurePolicy,
-  RankedAbilitySlot,
-  TargetingPolicy,
-  TeamSimCatalog,
+import {
+  IDEMPOTENCY_HEADER,
+  IDEMPOTENCY_REPLAYED_HEADER,
+  type AbilitySlot,
+  type CatalogBilling,
+  type CatalogChampion,
+  type CatalogChampionAction,
+  type CatalogItem,
+  type CatalogLevelBounds,
+  type CatalogRune,
+  type CritMode,
+  type OnFailurePolicy,
+  type RankedAbilitySlot,
+  type TargetingPolicy,
+  type TeamSimCatalog,
 } from "./contract";
 
 export class MalformedCatalogError extends Error {
@@ -66,6 +70,14 @@ export function assertTeamSimCatalog(body: unknown): TeamSimCatalog {
   // a silently disabled limit and a guaranteed 422 from the schema.
   need(isNum(at(body.build_options, "max_items_per_combatant")), "build_options.max_items_per_combatant");
   need(isNum(at(body.build_options, "max_runes_per_combatant")), "build_options.max_runes_per_combatant");
+  // Phase 4C. Required, not optional-with-a-fallback: a fallback would be the
+  // mirrored `1..18` literal this field exists to remove, and it would be
+  // invisible when it silently disagreed with the backend.
+  const level = at(body.build_options, "level");
+  need(
+    isNum(at(level, "min")) && isNum(at(level, "max")) && isNum(at(level, "default")),
+    "build_options.level"
+  );
   need(Array.isArray(body.targeting_policies) && body.targeting_policies.length > 0, "targeting_policies");
   need(Array.isArray(at(body.action_plan_options, "on_failure")), "action_plan_options.on_failure");
   need(isNum(at(body.action_plan_options, "max_steps_per_plan")), "action_plan_options.max_steps_per_plan");
@@ -90,6 +102,23 @@ export function assertTeamSimCatalog(body: unknown): TeamSimCatalog {
       "pricing.costs[]"
     );
   }
+  // Phase 4C billing/recovery contract. The two header names are checked
+  // against the constants this client actually sends: a backend that renamed
+  // either one would otherwise be met by a client still sending the old header,
+  // which reads as "idempotency is on" while every request is un-deduplicated.
+  const billing = body.billing;
+  need(isObj(billing), "billing");
+  need(typeof at(billing, "idempotency_required") === "boolean",
+    "billing.idempotency_required");
+  need(at(billing, "idempotency_header") === IDEMPOTENCY_HEADER,
+    "billing.idempotency_header");
+  need(at(billing, "idempotency_replayed_header") === IDEMPOTENCY_REPLAYED_HEADER,
+    "billing.idempotency_replayed_header");
+  need(isNum(at(billing, "idempotency_key_max_length")),
+    "billing.idempotency_key_max_length");
+  need(typeof at(billing, "charged_only_on_success") === "boolean",
+    "billing.charged_only_on_success");
+
   need(Array.isArray(body.unsupported_mechanics), "unsupported_mechanics");
 
   for (const champion of body.champions as unknown[]) {
@@ -146,6 +175,10 @@ export type CatalogIndex = {
   rankBounds: Record<string, { min: number; max: number }>;
   rankDefaults: Record<string, number>;
   schedulerLimits: TeamSimCatalog["scheduler_limits"];
+  /** Phase 4C: read from the catalog, never mirrored from the Python schema. */
+  levelBounds: CatalogLevelBounds;
+  /** Phase 4C: the published billing + recovery contract. */
+  billing: CatalogBilling;
 };
 
 const INDEX_CACHE = new WeakMap<TeamSimCatalog, CatalogIndex>();
@@ -212,6 +245,8 @@ export function indexCatalog(catalog: TeamSimCatalog): CatalogIndex {
     rankBounds: catalog.ability_rules.rank_bounds,
     rankDefaults: catalog.ability_rules.defaults,
     schedulerLimits: catalog.scheduler_limits,
+    levelBounds: catalog.build_options.level,
+    billing: catalog.billing,
   };
   INDEX_CACHE.set(catalog, index);
   return index;

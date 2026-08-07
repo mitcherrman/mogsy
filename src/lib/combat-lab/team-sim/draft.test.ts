@@ -12,7 +12,6 @@ import {
   createDraft,
   describePlan,
   draftReducer,
-  LEVEL_MAX,
   validateDraft,
   type DraftAction,
   type TeamScenarioDraft,
@@ -50,7 +49,7 @@ describe("draft construction", () => {
     expect(new Set(champions).size).toBe(4);
     for (const c of Object.values(draft.combatants)) {
       expect(index.championByName.has(c.champion)).toBe(true);
-      expect(c.level).toBe(LEVEL_MAX);
+      expect(c.level).toBe(index.levelBounds.default);
       expect(c.plan.steps).toHaveLength(1);
       expect(c.plan.steps[0].kind).toBe("basic_attack");
       expect(c.plan.repeat).toBe(true);
@@ -162,7 +161,7 @@ describe("combatant editing", () => {
     );
     expect(draft.combatants.A1.items).toEqual(["Infinity Edge"]);
     expect(draft.combatants.B1.items).toEqual([]);
-    expect(draft.combatants.A1.level).toBe(LEVEL_MAX);
+    expect(draft.combatants.A1.level).toBe(index.levelBounds.default);
     expect(draft.combatants.B1.level).toBe(5);
   });
 
@@ -217,7 +216,7 @@ describe("combatant editing", () => {
       { type: "setLevel", id: "A1", level: 3 },
       { type: "resetCombatant", id: "A1", index }
     );
-    expect(draft.combatants.A1.level).toBe(LEVEL_MAX);
+    expect(draft.combatants.A1.level).toBe(index.levelBounds.default);
     expect(draft.combatants.B1.champion).toBe(b1);
   });
 });

@@ -14,6 +14,7 @@ import {
   REAL_CATALOG,
   REAL_ERRORS,
 } from "@/lib/combat-lab/team-sim/__fixtures__";
+import { UNCERTAIN_STATUS_WARNING } from "@/lib/combat-lab/team-sim/errors";
 
 import { DEFAULT_CREDITS, renderTeamSimPage } from "./testHarness";
 
@@ -469,8 +470,12 @@ describe("error surfaces", () => {
       runButton().click();
     });
     await screen.findByTestId("failure-notice");
+    // Read from the shared constant rather than restated. Phase 4C rewrote the
+    // sentence — the old one warned that retrying costs credits, which stopped
+    // being true when the endpoint began honoring Idempotency-Key — and a
+    // duplicated literal here would need editing in lockstep forever.
     expect(screen.getByTestId("uncertain-warning")).toHaveTextContent(
-      "The request status is uncertain. Do not retry automatically; retrying may use additional credits."
+      UNCERTAIN_STATUS_WARNING
     );
     expect(screen.queryByTestId("rejected-note")).not.toBeInTheDocument();
   });

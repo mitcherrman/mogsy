@@ -11,7 +11,12 @@ import {
   type DraftAction,
   type TeamScenarioDraft,
 } from "./draft";
-import { buildSimulationRequest, DraftNotSubmittableError, SCENARIO_ID } from "./request";
+import {
+  buildSimulationRequest,
+  DraftNotSubmittableError,
+  newIdempotencyKey,
+  SCENARIO_ID,
+} from "./request";
 import { REAL_CATALOG } from "./__fixtures__";
 
 const index = indexCatalog(REAL_CATALOG);
@@ -204,5 +209,74 @@ describe("buildSimulationRequest", () => {
       }
     );
     expect(() => buildSimulationRequest(draft, index)).toThrow(DraftNotSubmittableError);
+  });
+});
+
+/**
+ * Phase 4C key lifecycle at its source. `buildSimulationRequest` is the ONE
+ * place a key is minted, which is what makes every rule below structural
+ * rather than a convention some future caller has to remember.
+ */
+describe("idempotency key lifecycle", () => {
+  it("mints exactly one key per prepared request", () => {
+    const prepared = buildSimulationRequest(createDraft(index), index);
+    expect(typeof prepared.idempotencyKey).toBe("string");
+    expect(prepared.idempotencyKey.length).toBeGreaterThan(0);
+  });
+
+  it("gives every new build a DIFFERENT key, even for an identical draft", () => {
+    // An identical draft means an identical body — and still a new logical
+    // request, because the operator clicked Run again. Reusing a key here
+    // would make the second run silently replay the first.
+    const draft = createDraft(index);
+    const keys = new Set(
+      Array.from({ length: 25 }, () => buildSimulationRequest(draft, index).idempotencyKey)
+    );
+    expect(keys.size).toBe(25);
+  });
+
+  it("gives an edited draft a new key, so a changed body can never inherit one", () => {
+    const first = buildSimulationRequest(createDraft(index), index);
+    const edited = apply(createDraft(index), {
+      type: "setLevel",
+      id: "A1",
+      level: 7,
+    });
+    const second = buildSimulationRequest(edited, index);
+    expect(second.idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(second.request).not.toEqual(first.request);
+  });
+
+  it("keeps the key OUT of the request body", () => {
+    // The key is a header. In the body it would change the canonical request
+    // digest on every attempt, so the backend could never match a replay.
+    const prepared = buildSimulationRequest(createDraft(index), index);
+    expect(JSON.stringify(prepared.request)).not.toContain(prepared.idempotencyKey);
+  });
+
+  it("produces keys the backend's published bounds accept", () => {
+    const { billing } = index;
+    for (let i = 0; i < 50; i += 1) {
+      const key = newIdempotencyKey();
+      expect(key.length).toBeGreaterThanOrEqual(billing.idempotency_key_min_length);
+      expect(key.length).toBeLessThanOrEqual(billing.idempotency_key_max_length);
+      // billing.idempotency_key_charset: printable ASCII 0x21-0x7E.
+      expect(key).toMatch(/^[!-~]+$/);
+    }
+  });
+
+  it("still mints usable keys without crypto.randomUUID", () => {
+    const original = globalThis.crypto?.randomUUID;
+    try {
+      if (globalThis.crypto) {
+        // Deliberately unbind the API to exercise the fallback branch.
+        (globalThis.crypto as { randomUUID?: unknown }).randomUUID = undefined;
+      }
+      const keys = new Set(Array.from({ length: 50 }, () => newIdempotencyKey()));
+      expect(keys.size).toBe(50);
+      for (const key of keys) expect(key).toMatch(/^[!-~]+$/);
+    } finally {
+      if (globalThis.crypto && original) globalThis.crypto.randomUUID = original;
+    }
   });
 });
