@@ -3,7 +3,7 @@
  * deliberate click produces at most one billable POST, nothing retries, and
  * the UI never claims a charge outcome the response does not carry.
  */
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/lib/combat-lab/team-sim/__fixtures__";
 import { UNCERTAIN_STATUS_WARNING } from "@/lib/combat-lab/team-sim/errors";
 
+import { AssumptionsPanel } from "./components/AssumptionsPanel";
 import { DEFAULT_CREDITS, renderTeamSimPage } from "./testHarness";
 
 vi.mock("@/lib/backend-auth", () => ({
@@ -634,7 +635,26 @@ describe("assumptions", () => {
     await loadedPage();
     expect(screen.getByTestId("sequential-assumption")).toHaveTextContent(/sequentially/i);
     expect(screen.getByTestId("assumptions")).toHaveTextContent(/no combat AI/i);
-    expect(screen.getByTestId("assumptions")).toHaveTextContent(/no client-retry idempotency/i);
+  });
+
+  it("states the idempotency the CATALOG declares, not a hand-written claim", async () => {
+    await loadedPage();
+    const line = screen.getByTestId("idempotency-assumption");
+    // The real catalog publishes `client_retry_idempotency: true`, so the
+    // Phase 4B sentence asserting the opposite is now a false statement about
+    // money — sitting on the same screen as a "recover without another charge"
+    // control, and pointing the operator away from it.
+    expect(line).toHaveTextContent(/supports client-retry idempotency/i);
+    expect(line).toHaveTextContent(/Idempotency-Key/i);
+    expect(line).not.toHaveTextContent(/no client-retry idempotency/i);
+  });
+
+  it("falls back to the strict warning when the catalog declares nothing", async () => {
+    // Over-warning costs a click; under-warning costs credits.
+    render(<AssumptionsPanel unsupportedMechanics={[]} />);
+    expect(screen.getByTestId("idempotency-assumption")).toHaveTextContent(
+      /does not declare client-retry idempotency/i
+    );
   });
 
   it("lists the backend's unsupported mechanics when expanded", async () => {

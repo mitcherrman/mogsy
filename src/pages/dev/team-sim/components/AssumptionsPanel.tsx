@@ -31,9 +31,21 @@ export function AssumptionsPanel({
         scenario slot order — deterministic, but never simultaneous. There is no combat
         AI: every action and target below is exactly what was configured.
       </p>
-      <p className="text-[11px] text-muted-foreground">
-        This endpoint has no client-retry idempotency. A repeated request after a lost
-        response is a new billable simulation.
+      {/* Read from the catalog, not asserted.
+          This line was hand-written in Phase 4B, when it was true. The backend
+          has published `client_retry_idempotency: true` since Phase 4C, and by
+          Phase 4D this panel sits directly beneath a "recover without another
+          charge" control — so the stale sentence was not merely out of date,
+          it contradicted a live money claim on the same screen and pointed the
+          operator away from the one safe action. It now says what the catalog
+          says, and falls back to the strict warning when the catalog is absent
+          or silent: over-warning costs a click, under-warning costs credits. */}
+      <p className="text-[11px] text-muted-foreground" data-testid="idempotency-assumption">
+        {executionAssumptions?.client_retry_idempotency === true
+          ? typeof executionAssumptions?.retry_warning === "string"
+            ? `This endpoint supports client-retry idempotency: ${executionAssumptions.retry_warning}.`
+            : "This endpoint supports client-retry idempotency. Re-sending the identical request with the same Idempotency-Key returns the stored result instead of charging again; any other resend is a new billable simulation."
+          : "This endpoint does not declare client-retry idempotency. A repeated request after a lost response is a new billable simulation."}
       </p>
 
       <button

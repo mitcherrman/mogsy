@@ -283,6 +283,49 @@ export const UNRESOLVED_REQUEST_LEAVE_WARNING =
   "Checking is only possible while this page stays open — reloading or leaving discards the request identifier, and running again would be a new charge.";
 
 /**
+ * The same moment, once the request identifier is also written to browser
+ * session storage (Phase 4D).
+ *
+ * The old sentence is now FALSE in this configuration, and a false warning is
+ * not a harmless one: it pushes operators into a "must not reload" panic, and
+ * when they reload anyway and find the request waiting for them, it teaches
+ * them the warnings are noise. What is still true is narrower and worth
+ * saying — leaving interrupts the visible response, and the recovery survives
+ * only in THIS tab, for THIS account. It does not claim the simulation is
+ * cancelled, because it is not.
+ */
+export const UNRESOLVED_REQUEST_LEAVE_WARNING_RECOVERABLE =
+  "Leaving interrupts the response you are waiting for — it does not cancel the simulation. Reload this tab while signed in to the same account and the request can be checked again without another charge; closing the tab or the browser discards that option.";
+
+/* ─────────────────────── Phase 4D recovery surface ─────────────────────── */
+
+export const STORED_RECOVERY_TITLE = "Unfinished simulation";
+export const STORED_RECOVERY_BODY =
+  "A previous simulation from this tab was never resolved. It may have completed and been charged. Checking resends the identical request with its original identifier, so the server returns the result it already produced — it cannot charge a second time.";
+export const STORED_RECOVERY_ACTION_LABEL = "Recover simulation";
+export const STORED_RECOVERY_FORGET_LABEL = "Forget recovery";
+export const STORED_RECOVERY_FORGET_HINT =
+  "Forgetting only clears this browser's copy. The server may still have run and charged the request, and it will no longer be recoverable here — check your credit balance rather than assuming nothing happened.";
+
+/**
+ * Refusing a paid run because it could not be written down first.
+ *
+ * Stated as a completed fact ("was not sent"), because the operator's next
+ * decision depends on knowing that no credits are at risk right now.
+ */
+export const RECOVERY_STORAGE_BLOCKED_TITLE = "Browser recovery is unavailable";
+export const RECOVERY_STORAGE_BLOCKED_BODY =
+  "This simulation was NOT sent. The request identifier could not be saved to this browser's session storage, and without it a completed simulation could be charged with no way to collect its result. Enable site data for this site (private browsing and blocked storage are the usual causes), then run again.";
+
+export const RECOVERY_IDENTITY_PENDING_TITLE = "Confirming your account";
+export const RECOVERY_IDENTITY_PENDING_BODY =
+  "This simulation was NOT sent. Recovery information is stored per account, so the run waits until this browser has confirmed which account you are signed in as. Try again in a moment.";
+
+export const RECOVERY_COLLISION_TITLE = "An earlier request is still unresolved";
+export const RECOVERY_COLLISION_BODY =
+  "This simulation was NOT sent. One unresolved request is kept per account in this tab, and starting a new one would overwrite the identifier the earlier request needs. Recover it, or explicitly forget it first.";
+
+/**
  * Whether re-sending THIS request unchanged, with its original key, can tell
  * the operator anything new.
  *

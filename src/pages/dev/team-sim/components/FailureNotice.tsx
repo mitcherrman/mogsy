@@ -25,6 +25,7 @@ import {
   UNCERTAIN_STATUS_WARNING,
   UNCERTAIN_STATUS_WARNING_NO_RECOVERY,
   UNRESOLVED_REQUEST_LEAVE_WARNING,
+  UNRESOLVED_REQUEST_LEAVE_WARNING_RECOVERABLE,
   type TeamSimError,
 } from "@/lib/combat-lab/team-sim/errors";
 
@@ -51,6 +52,7 @@ export function FailureNotice({
   chargedOnlyOnSuccess,
   onRecover,
   onDismiss,
+  recoveryPersisted = false,
 }: {
   error: TeamSimError;
   teamShape: string;
@@ -62,6 +64,13 @@ export function FailureNotice({
   /** Re-send this exact request with its original key (Phase 4C). */
   onRecover?: () => void;
   onDismiss: () => void;
+  /**
+   * The key and body are also in browser session storage (Phase 4D), so a
+   * reload no longer destroys the recovery. Defaults to false, which keeps
+   * the stricter pre-4D sentence — a warning that overpromises durability is
+   * the one failure mode this flag must never have.
+   */
+  recoveryPersisted?: boolean;
 }) {
   const [showDetail, setShowDetail] = useState(false);
   const credits = (error.credits ?? null) as CombatLabCreditStatus | null;
@@ -109,7 +118,11 @@ export function FailureNotice({
               "Check this request" while no such button is on screen would be
               the worst of both worlds. */}
           {canRecover
-            ? `${UNCERTAIN_STATUS_WARNING} ${UNRESOLVED_REQUEST_LEAVE_WARNING}`
+            ? `${UNCERTAIN_STATUS_WARNING} ${
+                recoveryPersisted
+                  ? UNRESOLVED_REQUEST_LEAVE_WARNING_RECOVERABLE
+                  : UNRESOLVED_REQUEST_LEAVE_WARNING
+              }`
             : UNCERTAIN_STATUS_WARNING_NO_RECOVERY}
         </p>
       ) : error.kind === "idempotency_in_progress" ? (

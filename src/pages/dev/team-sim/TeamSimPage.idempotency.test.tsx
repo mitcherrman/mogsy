@@ -246,7 +246,7 @@ describe("recovering an uncertain request", () => {
     expect(screen.queryByTestId("recover-request")).not.toBeInTheDocument();
   });
 
-  it("starts a NEW request, with a new key, when the operator runs again after a failure", async () => {
+  it("starts a NEW request, with a new key, once the operator forgets the unresolved one", async () => {
     const { harness } = await loadedPage({
       simulate: [
         { status: 0, throws: new TypeError("Failed to fetch") },
@@ -255,12 +255,29 @@ describe("recovering an uncertain request", () => {
     });
     await clickRun();
     await screen.findByTestId("failure-notice", {}, FIND);
+
+    // Phase 4D changed this step deliberately. Before durable recovery, Run
+    // after an uncertain failure silently abandoned the previous request's
+    // identifier — survivable only because the identifier died with the tab
+    // anyway. Now that it is written down, overwriting it would throw away
+    // the one handle on a request the server may already have charged, so Run
+    // stops and asks instead. That click sends NOTHING.
+    await clickRun();
+    await screen.findByTestId("run-blocked-unresolved", {}, FIND);
+    expect(harness.postCalls).toHaveLength(1);
+
+    await act(async () => {
+      screen.getByTestId("collision-forget").click();
+    });
+    // Forgetting is not a run either — it only drops the browser's copy.
+    expect(harness.postCalls).toHaveLength(1);
+
     await clickRun();
     await waitFor(() => expect(harness.postCalls).toHaveLength(2));
 
     const keys = sentKeys(harness);
-    // Run is "simulate this scenario", not "find out what happened" — so it
-    // deliberately does NOT inherit the uncertain request's identity.
+    // The unchanged half of the rule: Run is "simulate this scenario", not
+    // "find out what happened", so it never inherits the previous identity.
     expect(keys[1]).not.toBe(keys[0]);
   });
 });

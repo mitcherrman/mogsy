@@ -17,10 +17,28 @@ import { vi } from "vitest";
 
 import { __resetCatalogCache } from "@/lib/combat-lab/team-sim/client";
 import {
+  __setAccountIdentitySource,
+  fixedIdentitySource,
+  type AccountIdentitySource,
+} from "@/lib/combat-lab/team-sim/identity";
+import {
   REAL_CATALOG,
   REAL_CATALOG_ETAG,
 } from "@/lib/combat-lab/team-sim/__fixtures__";
 import TeamSimPage from "./TeamSimPage";
+
+/**
+ * Default account for every page test (Phase 4D).
+ *
+ * The route has no `AuthProvider` here, so identity comes from the injected
+ * source rather than Supabase — which also keeps these tests off the network
+ * for auth entirely. A CONCRETE default matters: Phase 4D refuses to send a
+ * paid request until the account is known, so a harness that left identity
+ * unresolved would silently disarm every "one click, one POST" assertion in
+ * the Phase 4B and 4C suites.
+ */
+export const TEST_ACCOUNT_A = "acct-a-00000000-0000-4000-8000-000000000001";
+export const TEST_ACCOUNT_B = "acct-b-00000000-0000-4000-8000-000000000002";
 
 export type StubbedCall = {
   url: string;
@@ -44,6 +62,24 @@ export type HarnessOptions = {
   credits?: FetchOutcome | (() => FetchOutcome);
   /** Consumed in order; the last entry repeats. */
   simulate?: FetchOutcome[];
+  /** Account the page is signed in as. `null` = signed out. */
+  accountId?: string | null;
+  /**
+   * A source the test drives itself, for account switches DURING a page's
+   * life. It must be installed before the render, because the page subscribes
+   * to whichever source was active when it mounted.
+   */
+  identitySource?: AccountIdentitySource;
+  /**
+   * Runs SYNCHRONOUSLY inside the fetch stub, at call time.
+   *
+   * This is what makes "persisted before the POST" an assertion about
+   * ordering rather than about timing: the callback observes the world at the
+   * instant the request is handed to the network, before any await.
+   */
+  onCall?: (call: StubbedCall) => void;
+  /** Skip the sessionStorage reset, for tests that pre-seed a record. */
+  keepStorage?: boolean;
 };
 
 export const DEFAULT_CREDITS = {
@@ -95,12 +131,14 @@ export class TeamSimHarness {
       "fetch",
       vi.fn(async (url: string | URL, init?: RequestInit) => {
         const href = String(url);
-        this.calls.push({
+        const call: StubbedCall = {
           url: href,
           method: init?.method ?? "GET",
           body: init?.body ?? null,
           headers: (init?.headers ?? {}) as Record<string, string>,
-        });
+        };
+        this.calls.push(call);
+        this.options.onCall?.(call);
 
         const outcome = this.resolve(href);
         if (outcome.gate) await outcome.gate;
@@ -148,28 +186,54 @@ export class TeamSimHarness {
   }
 }
 
-export function renderTeamSimPage(options: HarnessOptions = {}): {
-  harness: TeamSimHarness;
-  view: RenderResult;
-} {
-  __resetCatalogCache();
-  const harness = new TeamSimHarness(options);
-  harness.install();
-
-  const client = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      // Intentionally hostile default — the hook must override it.
-      mutations: { retry: 3 },
-    },
-  });
-
-  const view = render(
+/** The page under its providers — reused so a "reload" is a real remount. */
+export function teamSimTree(client: QueryClient) {
+  return (
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/dev/combat-lab/team-sim"]}>
         <TeamSimPage />
       </MemoryRouter>
     </QueryClientProvider>
   );
-  return { harness, view };
+}
+
+export function makeTeamSimQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      // Intentionally hostile default — the hook must override it.
+      mutations: { retry: 3 },
+    },
+  });
+}
+
+export function renderTeamSimPage(options: HarnessOptions = {}): {
+  harness: TeamSimHarness;
+  view: RenderResult;
+  client: QueryClient;
+} {
+  __resetCatalogCache();
+  // sessionStorage is a real, shared jsdom object across tests in a file. A
+  // leaked recovery record would block the next test's Run click with a
+  // collision — a confusing failure a long way from its cause.
+  if (!options.keepStorage) {
+    try {
+      sessionStorage.clear();
+    } catch {
+      /* a test that stubbed storage into failing owns the cleanup */
+    }
+  }
+  __setAccountIdentitySource(
+    options.identitySource ??
+      fixedIdentitySource(
+        options.accountId === undefined ? TEST_ACCOUNT_A : options.accountId
+      )
+  );
+
+  const harness = new TeamSimHarness(options);
+  harness.install();
+
+  const client = makeTeamSimQueryClient();
+  const view = render(teamSimTree(client));
+  return { harness, view, client };
 }

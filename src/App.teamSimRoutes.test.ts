@@ -79,9 +79,16 @@ describe("team-sim route map", () => {
       resolve(process.cwd(), "src/lib/combat-lab/team-sim/hooks.ts"),
       "utf8"
     );
-    // The mutation must explicitly opt out; a query-client default must never
-    // be able to turn one charged simulation into several.
-    expect(hooks).toMatch(/mutationFn:[\s\S]{0,400}retry:\s*false/);
-    expect(hooks).not.toMatch(/retryDelay|retryOnMount|refetchInterval/);
+    // Comments are stripped first, the same way the /api/meta guard above
+    // does it. This assertion is about the mutation's CODE; when it read the
+    // raw file it measured prose distance instead, and every explanatory
+    // paragraph added between `mutationFn` and `retry` — exactly what a
+    // safety-critical block attracts — pushed the two further apart until the
+    // guard failed while the guarantee it protects was still intact.
+    const code = hooks
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "");
+    expect(code).toMatch(/mutationFn:[\s\S]{0,400}retry:\s*false/);
+    expect(code).not.toMatch(/retryDelay|retryOnMount|refetchInterval/);
   });
 });

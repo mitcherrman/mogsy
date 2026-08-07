@@ -47,6 +47,7 @@ import {
 import {
   isResultStale,
   useCombatLabCredits,
+  useRecoveryScope,
   useTeamSimCatalog,
   useTeamSimulation,
   type TeamSimulationRunner,
@@ -63,24 +64,33 @@ import { EffectiveBuildsPanel } from "./components/EffectiveBuildsPanel";
 import { EventTracePanel } from "./components/EventTracePanel";
 import { FailureNotice } from "./components/FailureNotice";
 import { NumberField } from "./components/controls";
+import {
+  RecoveryLapsedNotice,
+  RecoveryNotice,
+  RunBlockNotice,
+} from "./components/RecoveryPanel";
 import { ResultPanel } from "./components/ResultPanel";
 import { RunPanel } from "./components/RunPanel";
 import { TeamSizeSelector } from "./components/TeamSizeSelector";
 
 export default function TeamSimPage() {
   const catalogQuery = useTeamSimCatalog();
-  // Owned here, above the catalog gate — see the file header.
-  const runner = useTeamSimulation();
+  // Owned here, above the catalog gate — see the file header. Phase 4D: the
+  // account scope is resolved at the same level, because a restored recovery
+  // has to be addressable before (and without) a catalog.
+  const identity = useRecoveryScope();
+  const runner = useTeamSimulation(identity);
   const creditsQuery = useCombatLabCredits();
 
   // A leaving tab cannot stop a billable request, but it can destroy the only
   // record of it. Two windows need the warning, not one:
   //   - a request in flight (Phase 4B), and
-  //   - a request whose outcome is UNRESOLVED (Phase 4C). The idempotency key
-  //     lives in this component's state and nowhere else, so a reload or a
-  //     navigation throws away the only safe way to ask what happened — after
-  //     which running again is a genuine second charge.
-  const unresolved = isRecoverable(runner.lastFailure?.error ?? null);
+  //   - a request whose outcome is UNRESOLVED (Phase 4C/4D).
+  // Phase 4D changes what the guard is protecting, not whether it fires: the
+  // identifier now survives a reload, so the honest warning is about losing
+  // the RESPONSE and the tab-scoped recovery, not about losing the request.
+  const unresolved =
+    isRecoverable(runner.lastFailure?.error ?? null) || runner.recoverable !== null;
   useEffect(() => {
     if (!runner.isPending && !unresolved) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -100,6 +110,35 @@ export default function TeamSimPage() {
 
   return (
     <Shell>
+      {/* Above the catalog gate, and above the editor, because a restored
+          request needs neither: it is already built, already sent once, and
+          the only thing standing between the operator and the result they may
+          have paid for is one click. */}
+      {runner.recoverable && runner.block?.kind !== "unresolved" ? (
+        <RecoveryNotice
+          record={runner.recoverable}
+          onRecover={runner.recoverStored}
+          onForget={runner.forgetStored}
+          busy={runner.isPending}
+        />
+      ) : null}
+
+      {runner.lapsed && !runner.recoverable ? (
+        <RecoveryLapsedNotice
+          reason={runner.lapsed}
+          onDismiss={runner.dismissLapsed}
+        />
+      ) : null}
+
+      {runner.block ? (
+        <RunBlockNotice
+          block={runner.block}
+          onRecover={runner.recoverStored}
+          onForget={runner.forgetStored}
+          onCancel={runner.clearBlock}
+        />
+      ) : null}
+
       {catalogLoad ? (
         <TeamSimEditor
           catalogLoad={catalogLoad}
@@ -157,6 +196,7 @@ export default function TeamSimPage() {
           chargedOnlyOnSuccess={false}
           onRecover={runner.recover}
           onDismiss={runner.dismissFailure}
+          recoveryPersisted={runner.identityReady}
         />
       ) : null}
 
@@ -257,7 +297,9 @@ function TeamSimEditor({
       );
       return;
     }
-    runner.run(prepared, draft);
+    // The retention the BACKEND publishes decides how long this browser may
+    // offer the request back — never a number invented here.
+    runner.run(prepared, draft, index.billing.idempotency_retention_seconds);
   }, [draft, index, runner]);
 
   return (
@@ -373,6 +415,9 @@ function TeamSimEditor({
                 index.billing.idempotency_required ? runner.recover : undefined
               }
               onDismiss={runner.dismissFailure}
+              // Phase 4D: the identifier is on disk, so the leave-warning may
+              // stop telling the operator not to reload.
+              recoveryPersisted={runner.identityReady}
             />
           ) : null}
 
