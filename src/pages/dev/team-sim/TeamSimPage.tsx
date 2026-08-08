@@ -49,6 +49,7 @@ import {
   draftReducer,
   validateDraft,
   type RuntimeId,
+  type TeamKey,
   type TeamScenarioDraft,
   type TeamSize,
 } from "@/lib/combat-lab/team-sim/draft";
@@ -288,7 +289,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <p className="text-xs text-muted-foreground">
-          Deterministic 1v1–2v2 scheduled combat. Explicit plans and targeting only —
+          Deterministic 1v1–3v3 scheduled combat. Explicit plans and targeting only —
           the engine has no combat AI, no movement and no positioning.
         </p>
       </header>
@@ -366,10 +367,9 @@ function TeamSimEditor({
           teamSizeA={draft.teamSizeA}
           teamSizeB={draft.teamSizeB}
           disabled={runner.isPending}
-          onChange={(a: TeamSize, b: TeamSize) => {
-            dispatch({ type: "setTeamSize", team: "A", size: a });
-            dispatch({ type: "setTeamSize", team: "B", size: b });
-          }}
+          onChange={(team: TeamKey, size: TeamSize) =>
+            dispatch({ type: "setTeamSize", team, size })
+          }
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button

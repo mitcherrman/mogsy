@@ -17,7 +17,11 @@ import {
 import { UNCERTAIN_STATUS_WARNING } from "@/lib/combat-lab/team-sim/errors";
 
 import { AssumptionsPanel } from "./components/AssumptionsPanel";
-import { DEFAULT_CREDITS, renderTeamSimPage } from "./testHarness";
+import {
+  DEFAULT_CREDITS,
+  renderTeamSimPage,
+  selectTeamShape,
+} from "./testHarness";
 
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer test-token" }),
@@ -169,13 +173,13 @@ describe("team composition and cost preview", () => {
     const shapes = within(screen.getByTestId("team-size-selector"));
     expect(screen.getByTestId("cost-preview")).toHaveTextContent("1 credit");
 
-    fireEvent.click(shapes.getByRole("button", { name: /^1v2/ }));
+    selectTeamShape(1, 2);
     expect(screen.getByTestId("cost-preview")).toHaveTextContent("2 credits");
 
-    fireEvent.click(shapes.getByRole("button", { name: /^2v1/ }));
+    selectTeamShape(2, 1);
     expect(screen.getByTestId("cost-preview")).toHaveTextContent("2 credits");
 
-    fireEvent.click(shapes.getByRole("button", { name: /^2v2/ }));
+    selectTeamShape(2, 2);
     expect(screen.getByTestId("cost-preview")).toHaveTextContent("3 credits");
     expect(screen.getByTestId("combatant-A2")).toBeInTheDocument();
     expect(screen.getByTestId("combatant-B2")).toBeInTheDocument();
@@ -191,10 +195,10 @@ describe("team composition and cost preview", () => {
   it("keeps a shrunk team's configuration and omits it from the request", async () => {
     const { harness } = await loadedPage({ simulate: [ok(REAL_1V1)] });
     const shapes = within(screen.getByTestId("team-size-selector"));
-    fireEvent.click(shapes.getByRole("button", { name: /^2v2/ }));
+    selectTeamShape(2, 2);
     fireEvent.change(screen.getByLabelText("A2 champion"), { target: { value: "Ashe" } });
 
-    fireEvent.click(shapes.getByRole("button", { name: /^1v1/ }));
+    selectTeamShape(1, 1);
     await act(async () => {
       runButton().click();
     });
@@ -205,7 +209,7 @@ describe("team composition and cost preview", () => {
     expect(JSON.stringify(body)).not.toContain("A2");
 
     // Restoring 2v2 brings A2's champion back unchanged.
-    fireEvent.click(shapes.getByRole("button", { name: /^2v2/ }));
+    selectTeamShape(2, 2);
     expect((screen.getByLabelText("A2 champion") as HTMLSelectElement).value).toBe("Ashe");
   });
 });
@@ -261,9 +265,7 @@ describe("submission safety", () => {
     const { harness } = await loadedPage({ simulate: [ok(REAL_1V1)] });
     fireEvent.change(screen.getByLabelText("A1 champion"), { target: { value: "Ashe" } });
     fireEvent.change(screen.getByLabelText("A1 level"), { target: { value: "7" } });
-    fireEvent.click(
-      within(screen.getByTestId("team-size-selector")).getByRole("button", { name: /^2v2/ })
-    );
+    selectTeamShape(2, 2);
     await act(async () => {
       await Promise.resolve();
     });
@@ -506,9 +508,7 @@ describe("error surfaces", () => {
 describe("results", () => {
   it("renders the outcome, termination, counts and combatant metrics", async () => {
     await loadedPage({ simulate: [ok(REAL_2V2)] });
-    fireEvent.click(
-      within(screen.getByTestId("team-size-selector")).getByRole("button", { name: /^2v2/ })
-    );
+    selectTeamShape(2, 2);
     await act(async () => {
       runButton().click();
     });
@@ -682,9 +682,7 @@ describe("editing aids", () => {
 
   it("resets the whole scenario", async () => {
     await loadedPage();
-    fireEvent.click(
-      within(screen.getByTestId("team-size-selector")).getByRole("button", { name: /^2v2/ })
-    );
+    selectTeamShape(2, 2);
     fireEvent.click(screen.getByRole("button", { name: /Reset scenario/i }));
     expect(screen.queryByTestId("combatant-A2")).not.toBeInTheDocument();
     expect(screen.getByTestId("cost-preview")).toHaveTextContent("1 credit");

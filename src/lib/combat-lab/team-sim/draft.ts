@@ -3,9 +3,9 @@
  *
  * Separate from the wire payload on purpose. Three properties matter:
  *
- *  1. Combatants are keyed by RUNTIME ID (A1/A2/B1/B2) and all four entries
+ *  1. Combatants are keyed by RUNTIME ID (A1..A3 / B1..B3) and ALL entries
  *     exist for the whole session. Shrinking a team hides a slot, it never
- *     moves or destroys its configuration, so 2v2 -> 1v1 -> 2v2 round-trips
+ *     moves or destroys its configuration, so 3v3 -> 2v2 -> 3v3 round-trips
  *     without a champion's build silently landing on another runtime ID.
  *  2. Nothing in the draft is trusted at submit time. Validity is recomputed
  *     against the CURRENT catalog by `validateDraft`, so a catalog that
@@ -28,17 +28,59 @@ import {
   type CatalogIndex,
 } from "./catalog";
 
-export const RUNTIME_IDS = ["A1", "A2", "B1", "B2"] as const;
-export type RuntimeId = (typeof RUNTIME_IDS)[number];
-export type TeamKey = "A" | "B";
-export type TeamSize = 1 | 2;
+/**
+ * The largest team the editor can express. The BACKEND cap is authoritative
+ * and published as `index.maxTeamSize`; this is the editor's own structural
+ * limit, because the draft models a fixed set of runtime slots. The team-size
+ * control takes the smaller of the two, so a backend that raises its cap
+ * first does not produce slots this file has no state for.
+ */
+export const MAX_EDITOR_TEAM_SIZE = 3;
 
-export const TEAM_OF: Record<RuntimeId, TeamKey> = {
-  A1: "A",
-  A2: "A",
-  B1: "B",
-  B2: "B",
-};
+const TEAM_KEYS = ["A", "B"] as const;
+export type TeamKey = (typeof TEAM_KEYS)[number];
+
+/**
+ * Runtime IDs in scenario slot order: team A's slots, then team B's — the same
+ * order the scheduler assigns slot indices in, which is what makes the
+ * editor's ordering and the result's ordering agree by construction.
+ *
+ * Derived rather than listed. Phase 6A went from four slots to six, and every
+ * hand-written four-entry literal in this file (`TEAM_OF`, `enemiesOf`, the
+ * two `Record<RuntimeId, …>` seeds) was a place the third slot could have been
+ * silently dropped.
+ */
+export const RUNTIME_IDS = TEAM_KEYS.flatMap((team) =>
+  Array.from({ length: MAX_EDITOR_TEAM_SIZE }, (_, i) => `${team}${i + 1}`)
+) as RuntimeId[];
+
+/**
+ * NOTE: the `1 | 2 | 3` here and `MAX_EDITOR_TEAM_SIZE` above must move
+ * together — TypeScript cannot derive one from the other, and `RUNTIME_IDS`
+ * casts through this type. Raising the constant alone would mint an "A4" that
+ * is not a `RuntimeId`; `draft.3v3.test.ts` asserts the two agree.
+ */
+export type RuntimeId = `${TeamKey}${1 | 2 | 3}`;
+export type TeamSize = 1 | 2 | 3;
+
+export const TEAM_SIZES: readonly TeamSize[] = [1, 2, 3];
+
+export const TEAM_OF: Record<RuntimeId, TeamKey> = Object.fromEntries(
+  RUNTIME_IDS.map((id) => [id, id[0] as TeamKey])
+) as Record<RuntimeId, TeamKey>;
+
+/** All runtime IDs belonging to one team, in slot order. */
+export function runtimeIdsOfTeam(team: TeamKey): RuntimeId[] {
+  return RUNTIME_IDS.filter((id) => TEAM_OF[id] === team);
+}
+
+/** An empty per-runtime-ID record — one entry per slot, never a literal. */
+function byRuntime<T>(make: () => T): Record<RuntimeId, T> {
+  return Object.fromEntries(RUNTIME_IDS.map((id) => [id, make()])) as Record<
+    RuntimeId,
+    T
+  >;
+}
 
 /**
  * Champion level bounds come from the CATALOG (`build_options.level`,
@@ -100,7 +142,7 @@ export type SchedulerDraft = {
 export type TeamScenarioDraft = {
   teamSizeA: TeamSize;
   teamSizeB: TeamSize;
-  /** All four entries always present; team sizes decide which are active. */
+  /** Every slot always present; team sizes decide which are active. */
   combatants: Record<RuntimeId, CombatantDraft>;
   scheduler: SchedulerDraft;
   /** Monotonic source of deterministic plan-step ids. */
@@ -110,7 +152,7 @@ export type TeamScenarioDraft = {
 /* ─────────────────────────── construction ─────────────────────────── */
 
 export function enemiesOf(runtimeId: RuntimeId): RuntimeId[] {
-  return TEAM_OF[runtimeId] === "A" ? ["B1", "B2"] : ["A1", "A2"];
+  return runtimeIdsOfTeam(TEAM_OF[runtimeId] === "A" ? "B" : "A");
 }
 
 export function activeIdsForTeam(
@@ -118,8 +160,7 @@ export function activeIdsForTeam(
   team: TeamKey
 ): RuntimeId[] {
   const size = team === "A" ? draft.teamSizeA : draft.teamSizeB;
-  const ids: RuntimeId[] = team === "A" ? ["A1", "A2"] : ["B1", "B2"];
-  return ids.slice(0, size);
+  return runtimeIdsOfTeam(team).slice(0, size);
 }
 
 /** Active runtime IDs in scenario slot order: team A first, then team B. */
@@ -475,12 +516,7 @@ export type DraftValidation = {
   canSubmit: boolean;
 };
 
-const emptyByRuntime = (): Record<RuntimeId, string[]> => ({
-  A1: [],
-  A2: [],
-  B1: [],
-  B2: [],
-});
+const emptyByRuntime = (): Record<RuntimeId, string[]> => byRuntime(() => []);
 
 /**
  * Validate ACTIVE combatants against the currently loaded catalog.
@@ -495,9 +531,9 @@ export function validateDraft(
 ): DraftValidation {
   const issues: DraftIssue[] = [];
   const invalidStepIds = emptyByRuntime();
-  const stepIssues: Record<RuntimeId, Record<string, string>> = {
-    A1: {}, A2: {}, B1: {}, B2: {},
-  };
+  const stepIssues: Record<RuntimeId, Record<string, string>> = byRuntime(
+    () => ({})
+  );
   const invalidItems = emptyByRuntime();
   const invalidRunes = emptyByRuntime();
 

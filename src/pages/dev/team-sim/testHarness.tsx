@@ -11,7 +11,13 @@
  * would be inherited and the POST-count assertions would fail.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, type RenderResult } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+  type RenderResult,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
@@ -279,6 +285,25 @@ export class TeamSimHarness {
  * them and the page reads its own location. Defaulting to the internal alias
  * keeps every Phase 4B–4E suite rendering exactly what it was written against.
  */
+/**
+ * Select a team shape through the real control.
+ *
+ * Phase 6A replaced the per-shape button grid with one size row per team (see
+ * TeamSizeSelector), so "click the 2v2 button" is no longer something a user
+ * can do. Call sites go through this helper rather than learning the new
+ * markup, which is what keeps the standing 1v1–2v2 characterization asserting
+ * the same USER INTENT it always did instead of one specific widget.
+ */
+export function selectTeamShape(a: number, b: number) {
+  const selector = screen.getByTestId("team-size-selector");
+  fireEvent.click(
+    within(selector).getByRole("button", { name: `Team A: ${a}` })
+  );
+  fireEvent.click(
+    within(selector).getByRole("button", { name: `Team B: ${b}` })
+  );
+}
+
 export function teamSimTree(
   client: QueryClient,
   route: string = TEAM_SIM_DEV_ROUTE

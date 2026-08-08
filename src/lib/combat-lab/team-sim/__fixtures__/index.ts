@@ -36,6 +36,8 @@ import sim2v1Request from "./sim_2v1.request.json";
 import sim2v2 from "./sim_2v2.json";
 import sim2v2Request from "./sim_2v2.request.json";
 import sim2v2Truncated from "./sim_2v2_truncated.json";
+import sim3v3 from "./sim_3v3.json";
+import sim3v3Request from "./sim_3v3.request.json";
 import simActionFailed from "./sim_1v1_action_failed.json";
 import err401 from "./err_401_auth_required.json";
 import err402 from "./err_402_insufficient_credits.json";
@@ -69,6 +71,16 @@ export const REAL_1V2 = sim1v2 as unknown as TeamSimulationResponse;
 export const REAL_2V1 = sim2v1 as unknown as TeamSimulationResponse;
 export const REAL_2V2 = sim2v2 as unknown as TeamSimulationResponse;
 export const REAL_2V2_TRUNCATED = sim2v2Truncated as unknown as TeamSimulationResponse;
+/**
+ * SIM2 Phase 6A. A REAL six-champion run captured from the Phase 6A backend:
+ * Ashe/Lux/Jinx vs Garen/Malphite/Ornn, three targeting policies (one of them
+ * a fixed list covering all three opponents), terminating in a full team
+ * elimination with all three defenders dead, 219 events, charged 5 credits.
+ *
+ * Captured rather than hand-written for the reason every fixture here is: a
+ * result the UI renders has to be one the simulator can actually produce.
+ */
+export const REAL_3V3 = sim3v3 as unknown as TeamSimulationResponse;
 export const REAL_ACTION_FAILED = simActionFailed as unknown as TeamSimulationResponse;
 
 export const REAL_REQUESTS = {
@@ -76,6 +88,7 @@ export const REAL_REQUESTS = {
   "1v2": sim1v2Request,
   "2v1": sim2v1Request,
   "2v2": sim2v2Request,
+  "3v3": sim3v3Request,
 } as const;
 
 /**

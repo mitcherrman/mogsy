@@ -189,16 +189,32 @@ describe("credit cost matrix", () => {
     expect(creditCostFor(index, 2, 2)).toBe(3);
   });
 
+  it("prices the Phase 6A shapes at one credit per combatant beyond the first", () => {
+    expect(creditCostFor(index, 1, 3)).toBe(3);
+    expect(creditCostFor(index, 3, 1)).toBe(3);
+    expect(creditCostFor(index, 2, 3)).toBe(4);
+    expect(creditCostFor(index, 3, 2)).toBe(4);
+    expect(creditCostFor(index, 3, 3)).toBe(5);
+  });
+
   it("returns null (never a guess) for an unpriced shape", () => {
-    expect(creditCostFor(index, 3, 3)).toBeNull();
+    // Past the cap the catalog publishes no price, and the UI must say so
+    // rather than extrapolating the very obvious visible pattern.
+    expect(creditCostFor(index, 4, 4)).toBeNull();
+    expect(creditCostFor(index, 1, 4)).toBeNull();
   });
 
   it("lists shapes in deterministic (a, b) order", () => {
     expect(pricedTeamShapes(index).map((s) => `${s.a}v${s.b}`)).toEqual([
       "1v1",
       "1v2",
+      "1v3",
       "2v1",
       "2v2",
+      "2v3",
+      "3v1",
+      "3v2",
+      "3v3",
     ]);
   });
 });

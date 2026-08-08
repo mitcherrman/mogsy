@@ -13,6 +13,7 @@ import {
   describePlan,
   draftReducer,
   validateDraft,
+  RUNTIME_IDS,
   type DraftAction,
   type TeamScenarioDraft,
 } from "./draft";
@@ -35,18 +36,22 @@ const CHAMPION_WITH_ACTIONS = REAL_CATALOG.champions.find((c) => c.actions.lengt
 const SOME_ACTION = CHAMPION_WITH_ACTIONS.actions[0].active_name;
 
 describe("draft construction", () => {
-  it("starts as a 1v1 with all four runtime slots configured", () => {
+  it("starts as a 1v1 with every runtime slot configured", () => {
     const draft = createDraft(index);
     expect(draft.teamSizeA).toBe(1);
     expect(draft.teamSizeB).toBe(1);
-    expect(Object.keys(draft.combatants).sort()).toEqual(["A1", "A2", "B1", "B2"]);
+    // Asserted against RUNTIME_IDS rather than a literal list, so a future cap
+    // raise cannot leave this quietly checking a subset — plus one explicit
+    // check that Phase 6A's six slots are the ones actually being modelled.
+    expect(Object.keys(draft.combatants).sort()).toEqual([...RUNTIME_IDS].sort());
+    expect(RUNTIME_IDS).toEqual(["A1", "A2", "A3", "B1", "B2", "B3"]);
     expect(activeRuntimeIds(draft)).toEqual(["A1", "B1"]);
   });
 
   it("gives each slot a distinct catalog champion and a legal default plan", () => {
     const draft = createDraft(index);
     const champions = Object.values(draft.combatants).map((c) => c.champion);
-    expect(new Set(champions).size).toBe(4);
+    expect(new Set(champions).size).toBe(RUNTIME_IDS.length);
     for (const c of Object.values(draft.combatants)) {
       expect(index.championByName.has(c.champion)).toBe(true);
       expect(c.level).toBe(index.levelBounds.default);

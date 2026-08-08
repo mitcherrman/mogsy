@@ -18,7 +18,11 @@ import {
 } from "@/lib/combat-lab/team-sim/__fixtures__";
 import type { TeamSimulationRequest } from "@/lib/combat-lab/team-sim/contract";
 
-import { renderTeamSimPage, type TeamSimHarness } from "./testHarness";
+import {
+  renderTeamSimPage,
+  selectTeamShape,
+  type TeamSimHarness,
+} from "./testHarness";
 
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer test-token" }),
@@ -39,11 +43,12 @@ const FIND = { timeout: 8_000 };
 const card = (id: string) => within(screen.getByTestId(`combatant-${id}`));
 
 function setShape(shape: string) {
-  fireEvent.click(
-    within(screen.getByTestId("team-size-selector")).getByRole("button", {
-      name: new RegExp(`^${shape}`),
-    })
-  );
+  // Phase 6A: the control is two size rows rather than one button per shape,
+  // so "2v2" is now two clicks. The signature is unchanged on purpose — these
+  // are the PINNED 1v1–2v2 characterizations, and they must keep expressing
+  // the same intent and producing the same expected request bytes.
+  const [a, b] = shape.split("v").map(Number);
+  selectTeamShape(a, b);
 }
 
 function setChampion(id: string, champion: string) {
