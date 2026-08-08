@@ -10,7 +10,11 @@
  */
 import { useQuery } from "@tanstack/react-query";
 
-import { assertCatalog, type Graph1Catalog } from "./contract";
+import {
+  assertCatalog,
+  parseFamilyDatasetKey,
+  type Graph1Catalog,
+} from "./contract";
 import { GRAPH1_API_BASE } from "./useGraph1Dataset";
 
 export function useGraph1Catalog(apiBase?: string) {
@@ -43,7 +47,13 @@ export function resolveDatasetKey(
   requested: string | undefined,
 ): string | null {
   const datasets = catalog?.datasets ?? [];
-  if (datasets.length === 0) return null;
   if (requested && datasets.some((d) => d.key === requested)) return requested;
+  // A family instance key (`<family>:<entity>`) is NEVER in the catalog: the
+  // catalog lists fixed races, and a family has thousands of possible instances.
+  // It must pass through untouched so the backend can accept it or 404. Silently
+  // substituting datasets[0] here would render a DIFFERENT race than a shared
+  // link asked for, with nothing to tell the reader it had happened.
+  if (parseFamilyDatasetKey(requested)) return requested;
+  if (datasets.length === 0) return null;
   return datasets[0].key;
 }

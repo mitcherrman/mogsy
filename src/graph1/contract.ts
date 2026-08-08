@@ -163,10 +163,14 @@ export interface Graph1ControlSchema {
 export interface Graph1Coverage {
   source: string;
   sourceRevision?: string;
-  /** Source time (max imported_at of emitted rows) — deterministic builds. */
-  generatedAt: string;
-  firstEventAt: string;
-  lastEventAt: string;
+  /**
+   * Source time (max imported_at of emitted rows) — deterministic builds.
+   * All three are null for a zero-event race, because all three read the
+   * emitted rows and a valid focus entity may legitimately have none.
+   */
+  generatedAt: string | null;
+  firstEventAt: string | null;
+  lastEventAt: string | null;
   eligibleEventCount: number;
   excludedEventCount: number;
   distinctRankedEntityCount: number;
@@ -232,9 +236,52 @@ export interface Graph1CatalogEntry {
   snapshot?: Graph1CatalogSnapshot;
 }
 
+/**
+ * A parameterized race FAMILY (Phase 3A). Where a catalog entry is one fixed
+ * race, a family is a template the user binds to a focus entity they pick; the
+ * resulting dataset key is `<family.id>:<entity id>`.
+ *
+ * Declarative by contract: the backend must answer discovery without opening a
+ * database, so a family deliberately carries no entity counts and no entity
+ * list. `entitySource` names the endpoint that does.
+ */
+export interface Graph1Family {
+  id: string;
+  label: string;
+  focusEntityType: string;
+  rankedEntityType: Graph1EntityType;
+  mediaStrategy?: "champion-icon" | "role-initials";
+  keyTemplate?: string;
+  entitySource?: string;
+  display?: Graph1DisplayHints;
+  controls?: Graph1ControlSchema;
+  defaultTopN?: number;
+}
+
 export interface Graph1Catalog {
   schemaVersion: number;
   datasets: Graph1CatalogEntry[];
+  /** Empty against a backend that predates Phase 3A. */
+  families: Graph1Family[];
+}
+
+/** Build the dataset key for one family instance. */
+export function familyDatasetKey(familyId: string, entityId: string): string {
+  return `${familyId}:${entityId}`;
+}
+
+/**
+ * Split a dataset key into family + entity, or null when it is not a family key.
+ * A legacy key such as `faker-champions` has no separator and returns null,
+ * which is how the page tells the two kinds apart.
+ */
+export function parseFamilyDatasetKey(
+  key: string | undefined,
+): { familyId: string; entityId: string } | null {
+  if (!key) return null;
+  const at = key.indexOf(":");
+  if (at <= 0 || at === key.length - 1) return null;
+  return { familyId: key.slice(0, at), entityId: key.slice(at + 1) };
 }
 
 /**
@@ -252,7 +299,13 @@ export function assertCatalog(value: unknown): Graph1Catalog {
     (entry): entry is Graph1CatalogEntry =>
       !!entry && typeof entry.key === "string" && entry.key.length > 0,
   );
-  return { schemaVersion: catalog.schemaVersion ?? 1, datasets };
+  // `families` is additive: a pre-Phase-3A backend omits it entirely, which must
+  // degrade to "no parameterized families offered", never to a broken catalog.
+  const families = (Array.isArray(catalog.families) ? catalog.families : []).filter(
+    (family): family is Graph1Family =>
+      !!family && typeof family.id === "string" && family.id.length > 0,
+  );
+  return { schemaVersion: catalog.schemaVersion ?? 1, datasets, families };
 }
 
 /** The pre-Phase-2 hints, used whenever a payload omits `display`. */
@@ -305,8 +358,12 @@ export function assertDataset(value: unknown): VisualizationDataset {
   if (!ds || ds.schemaVersion !== 1 || ds.visualizationType !== "ranked-race") {
     throw new Error("GRAPH1: unsupported dataset schema");
   }
-  if (!Array.isArray(ds.events) || ds.events.length === 0) {
-    throw new Error("GRAPH1: dataset has no events");
+  if (!Array.isArray(ds.events)) {
+    throw new Error("GRAPH1: dataset has no events array");
   }
+  // An EMPTY event list is valid and must not throw. With a parameterized focus
+  // entity, "this entity has no matching games" is a real answer, and the race
+  // surface already has an empty state for it — rejecting the payload here would
+  // turn that into an error notice instead.
   return ds;
 }
