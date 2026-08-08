@@ -118,7 +118,14 @@ describe("legacy payload acceptance", () => {
     );
     const empty = legacyDataset();
     empty.events = [];
-    expect(() => assertDataset(empty)).toThrow(/no events/);
+    // Phase 3A: an empty event list is VALID. With a parameterized focus entity,
+    // "this entity has no matching games" is a real answer, and the race surface
+    // already has an empty state for it — throwing here turned that into an
+    // error notice. A missing/non-array `events` is still rejected.
+    expect(assertDataset(empty).events).toEqual([]);
+    const broken = legacyDataset() as unknown as Record<string, unknown>;
+    delete broken.events;
+    expect(() => assertDataset(broken)).toThrow(/no events array/);
   });
 });
 
