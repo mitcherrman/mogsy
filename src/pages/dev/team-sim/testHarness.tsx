@@ -16,6 +16,7 @@ import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
 import { __resetCatalogCache } from "@/lib/combat-lab/team-sim/client";
+import { TEAM_SIM_DEV_ROUTE } from "@/lib/combat-lab/team-sim/featureGate";
 import {
   __setAccountIdentitySource,
   fixedIdentitySource,
@@ -91,6 +92,11 @@ export type HarnessOptions = {
   onCall?: (call: StubbedCall) => void;
   /** Skip the sessionStorage reset, for tests that pre-seed a record. */
   keepStorage?: boolean;
+  /**
+   * Phase 5A: which of the two paths to render at. Defaults to the internal
+   * alias, which is what every Phase 4B–4E suite was written against.
+   */
+  route?: string;
 };
 
 export const DEFAULT_CREDITS = {
@@ -266,11 +272,20 @@ export class TeamSimHarness {
   }
 }
 
-/** The page under its providers — reused so a "reload" is a real remount. */
-export function teamSimTree(client: QueryClient) {
+/**
+ * The page under its providers — reused so a "reload" is a real remount.
+ *
+ * Phase 5A: the path is a parameter, because one module now answers to two of
+ * them and the page reads its own location. Defaulting to the internal alias
+ * keeps every Phase 4B–4E suite rendering exactly what it was written against.
+ */
+export function teamSimTree(
+  client: QueryClient,
+  route: string = TEAM_SIM_DEV_ROUTE
+) {
   return (
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/dev/combat-lab/team-sim"]}>
+      <MemoryRouter initialEntries={[route]}>
         <TeamSimPage />
       </MemoryRouter>
     </QueryClientProvider>
@@ -314,6 +329,6 @@ export function renderTeamSimPage(options: HarnessOptions = {}): {
   harness.install();
 
   const client = makeTeamSimQueryClient();
-  const view = render(teamSimTree(client));
+  const view = render(teamSimTree(client, options.route ?? TEAM_SIM_DEV_ROUTE));
   return { harness, view, client };
 }

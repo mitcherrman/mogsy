@@ -38,6 +38,12 @@ export type TeamSimErrorKind =
   | "idempotency_in_progress"
   | "idempotency_key_rejected"
   | "service_unavailable"
+  /**
+   * Phase 5A: this deployment is not accepting team simulations — the feature
+   * is switched off, or its shared-state requirements are not met. A proven
+   * refusal: nothing ran, nothing was charged, and retrying will not help.
+   */
+  | "feature_unavailable"
   | "result_unreadable"
   /** Phase 4E: no such recoverable record for this account (404). */
   | "recovery_not_found"
@@ -90,14 +96,39 @@ const KIND_BY_CODE: Record<number, Record<string, TeamSimErrorKind>> = {
     // in_progress says "ask again", stale says "this will never resolve".
     recovery_stale_pending: "recovery_stale",
   },
-  // The endpoint's two 503s make OPPOSITE statements about money:
-  // `idempotency_unavailable` is a fail-closed refusal (nothing ran, nothing
-  // charged); `idempotency_result_unreadable` means a completed record exists,
-  // so the charge DID commit and only the result is lost.
+  // The endpoint's three 503 codes do NOT make the same statement about money.
+  // `idempotency_unavailable` and Phase 5A's `team_simulation_unavailable` are
+  // fail-closed refusals (nothing ran, nothing charged);
+  // `idempotency_result_unreadable` means a completed record exists, so the
+  // charge DID commit and only the result is lost.
   503: {
     idempotency_result_unreadable: "result_unreadable",
+    // Phase 5A. Its own kind rather than the generic `service_unavailable`,
+    // because the advice differs: nothing the operator can do to this request
+    // will change the answer until the deployment is reconfigured, so "retry
+    // shortly" would be wrong.
+    team_simulation_unavailable: "feature_unavailable",
   },
 };
+
+/**
+ * The endpoint's 503 codes that PROVE the request was refused before it could
+ * run or charge — as opposed to a 503 from a proxy or a cold start, which
+ * proves nothing.
+ *
+ * Phase 5A added the second entry, and adding it was load-bearing rather than
+ * bookkeeping. `team_simulation_unavailable` comes from a dependency that runs
+ * before the body is read, before pricing, before the credit gate and before
+ * any ledger reservation, so nothing ran and nothing was charged. Left out of
+ * this set it would have inherited the 5xx default of certainty "unknown", and
+ * the UI would have warned an operator that their charge status was uncertain
+ * — and offered a recovery control — for a request the backend can prove never
+ * started.
+ */
+const PROVEN_REFUSAL_CODES: ReadonlySet<string> = new Set([
+  "idempotency_unavailable",
+  "team_simulation_unavailable",
+]);
 
 /** Anything the API layer throws for a failed simulation or catalog call. */
 export class TeamSimError extends Error {
@@ -196,6 +227,12 @@ const DEFAULT_MESSAGE: Record<TeamSimErrorKind, string> = {
   // two are not the same fact. The specific claim lives below, gated on the
   // endpoint's own code.
   service_unavailable: "The server did not accept the request.",
+  // Phase 5A. Says plainly that waiting will not fix it — the gate is
+  // deployment configuration, not load — and states the charge outcome,
+  // which this code is entitled to do because the refusal precedes every
+  // step that could spend a credit.
+  feature_unavailable:
+    "Team simulations are not available on this deployment right now. Nothing ran and nothing was charged — this is a configuration state, not a temporary load problem, so running it again will give the same answer.",
   result_unreadable:
     "The server accepted and charged this request but cannot read back its result. Check your credit balance before running it again.",
   // Says nothing about WHY, because the server deliberately does not — one
@@ -234,11 +271,12 @@ export function errorFromResponse(
 
   // A 5xx means the simulation may have started: the response carries no
   // credit outcome either way, so the charge status is not knowable here.
-  // The one exception is the endpoint's own 503 `idempotency_unavailable`,
-  // which is a documented fail-CLOSED refusal — nothing ran and nothing was
-  // charged. A 503 from anything else (a proxy, a cold start) never carries
-  // that code, so it keeps failing toward the warning.
-  const provenRefusal = status === 503 && code === "idempotency_unavailable";
+  // The exceptions are the endpoint's OWN fail-closed 503 codes, each of which
+  // is documented to refuse before anything could run or charge. A 503 from
+  // anything else (a proxy, a cold start) carries none of them, so it keeps
+  // failing toward the warning.
+  const provenRefusal =
+    status === 503 && code !== null && PROVEN_REFUSAL_CODES.has(code);
 
   return new TeamSimError({
     certainty: status >= 500 && !provenRefusal ? "unknown" : "rejected",
@@ -248,14 +286,18 @@ export function errorFromResponse(
     credits,
     retryAfterSeconds,
     detail: body,
-    // The endpoint's coded 503 carries the exception TYPE name as its message
+    // `idempotency_unavailable` carries the exception TYPE name as its message
     // (deliberately — it leaks nothing), which means nothing to an operator, so
-    // this is the one place the client writes better copy than the server. It
-    // is also the ONLY 503 allowed to claim nothing was charged: a 503 from a
-    // proxy or a cold start gets DEFAULT_MESSAGE, which makes no such claim.
-    message: provenRefusal
-      ? "The server refused the request because it could not record it. Nothing ran and nothing was charged."
-      : message || DEFAULT_MESSAGE[kind],
+    // this is the one place the client writes better copy than the server.
+    // `team_simulation_unavailable` is a proven refusal too but a DIFFERENT
+    // fact — the deployment is not serving, rather than the ledger being
+    // momentarily unreachable — so it keeps its own DEFAULT_MESSAGE instead of
+    // inheriting wording about a record that was never the problem. Everything
+    // else gets DEFAULT_MESSAGE, which claims nothing about charging.
+    message:
+      code === "idempotency_unavailable"
+        ? "The server refused the request because it could not record it. Nothing ran and nothing was charged."
+        : message || DEFAULT_MESSAGE[kind],
   });
 }
 

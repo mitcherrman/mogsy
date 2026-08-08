@@ -35,6 +35,7 @@ import {
   Crown,
   Lock,
   ArrowLeft,
+  Users,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import ChampionVisual from "@/components/combat-lab/ChampionVisual";
@@ -49,6 +50,13 @@ import {
   toneForSlot,
 } from "@/lib/combat-lab/abilityIcons";
 import { groupChampionActions, type ActionGroup } from "@/lib/combat-lab/actionGroups";
+// SIM2 Phase 5A. Two constants and a boolean — this page does NOT import the
+// team-sim slice itself, so the 1v1 surface keeps its own bundle and its own
+// failure domain. The App.teamSimRoutes guard asserts exactly that.
+import {
+  isTeamSimPublicRouteEnabled,
+  TEAM_SIM_ROUTE,
+} from "@/lib/combat-lab/team-sim/featureGate";
 import {
   getEventDisplayLabel,
   summarizeCombatResult,
@@ -821,6 +829,23 @@ export default function CombatLab() {
         <h1 className="min-w-0 text-sm font-bold tracking-wide text-foreground lg:flex-1 lg:whitespace-nowrap lg:text-base">
           COMBAT LAB: LEAGUE OF LEGENDS DAMAGE SIMULATOR
         </h1>
+        {/* SIM2 Phase 5A: the one entry point into the team simulator.
+            Rendered only when VITE_TEAM_SIM_ENABLED is on — the SAME flag that
+            registers the route — so the link and its destination appear and
+            disappear together and a visible link can never 404. Styled as a
+            sibling of the League Hub pill rather than as a new navigation
+            region: this is one more tool alongside the 1v1 sandbox, not a
+            reorganisation of it. */}
+        {isTeamSimPublicRouteEnabled() && (
+          <Link
+            to={TEAM_SIM_ROUTE}
+            data-testid="combat-lab-team-sim-entry"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:border-primary hover:bg-primary/20"
+          >
+            <Users className="h-3.5 w-3.5" aria-hidden="true" />
+            Team simulator (1v1–2v2)
+          </Link>
+        )}
         {/* Remaining simulations, hard right on desktop. `basis-full` keeps it
             on its own line once the row wraps on narrow screens. */}
         {creditStatus && (

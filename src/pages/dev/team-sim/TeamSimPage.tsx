@@ -1,8 +1,16 @@
 /**
- * SIM2 Phase 4B — deterministic team-combat editor and results (dev route).
+ * SIM2 — deterministic team-combat editor and results.
  *
- * `/dev/combat-lab/team-sim`. Additive: the production Combat Lab at
- * `/combat-lab` is untouched and remains the 1v1 surface.
+ * Served at TWO paths from this ONE module (SIM2 Phase 5A): the promoted
+ * `/combat-lab/team-sim`, registered only while VITE_TEAM_SIM_ENABLED is on,
+ * and the internal `/dev/combat-lab/team-sim` alias, always registered and
+ * never linked from navigation. They are the same element, not two pages —
+ * see App.tsx. Additive throughout: the Combat Lab at `/combat-lab` is
+ * untouched and remains the 1v1 surface.
+ *
+ * The file still lives under `pages/dev/` because moving it would rewrite the
+ * imports of eight Phase 4B–4E test modules for no behavioural gain; the path
+ * a user visits is decided in App.tsx, not by this directory.
  *
  * The whole page is built from the Phase 4A catalog
  * (`GET /api/combat-lab/team-simulate/catalog/v1`), which publishes the exact
@@ -23,7 +31,7 @@
  * on the wire.
  */
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -54,6 +62,7 @@ import {
   type TeamSimulationRunner,
 } from "@/lib/combat-lab/team-sim/hooks";
 import { isRecoverable } from "@/lib/combat-lab/team-sim/errors";
+import { COMBAT_LAB_ROUTE } from "@/lib/combat-lab/team-sim/featureGate";
 import {
   buildSimulationRequest,
   DraftNotSubmittableError,
@@ -250,16 +259,29 @@ export default function TeamSimPage() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
+  // Phase 5A: one component now answers to two paths, so the badge is derived
+  // from the path actually being viewed instead of being hard-coded "dev".
+  // Labelling the promoted route "dev" would tell a user the tool they are
+  // being charged for is a prototype; labelling the internal alias as
+  // production would hide that it is not linked from anywhere.
+  const { pathname } = useLocation();
+  const isInternalAlias = pathname.startsWith("/dev/");
+
   return (
     <main className="mx-auto w-full max-w-[1400px] space-y-4 px-3 py-4 sm:px-4">
       <header className="space-y-1">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-xl font-bold">Team combat simulator</h1>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            dev · SIM2 Phase 4B
-          </span>
+          {isInternalAlias ? (
+            <span
+              className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+              data-testid="team-sim-internal-badge"
+            >
+              internal · SIM2
+            </span>
+          ) : null}
           <Link
-            to="/combat-lab"
+            to={COMBAT_LAB_ROUTE}
             className="text-xs text-muted-foreground underline hover:text-foreground"
           >
             ← Combat Lab
