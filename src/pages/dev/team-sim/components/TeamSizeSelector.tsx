@@ -3,13 +3,18 @@
  * they currently form.
  *
  * Through Phase 5A this rendered one button per PRICED SHAPE, which was four
- * buttons and read well. Phase 6A takes the cap to three per side, and the
+ * buttons and read well. Phase 6A took the cap to three per side, and the
  * same design would have produced nine "1v1 1c / 1v2 2c / …" buttons — a grid
  * the operator has to scan to find the shape they want, growing quadratically
  * with a cap that is expected to keep rising. Two independent rows are linear
  * in the cap, read as what they are ("how many champions per team"), and put
  * the credit cost in one authoritative place instead of repeating it nine
  * times.
+ *
+ * Phase 6B is the payoff, and it needed no change here: a cap of five is 25
+ * priced shapes, which the per-shape design would have rendered as 25 buttons.
+ * This control renders ten, five per row, because it is derived from
+ * TEAM_SIZES rather than from the price table's cardinality.
  *
  * What did NOT change: the sizes offered are still exactly the ones the
  * catalog prices, so an unpriced shape cannot be selected, and changing shape

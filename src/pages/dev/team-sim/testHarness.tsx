@@ -304,6 +304,28 @@ export function selectTeamShape(a: number, b: number) {
   );
 }
 
+/**
+ * Open one combatant's editing controls.
+ *
+ * Phase 6B makes each card collapsible and keeps exactly ONE open per team (see
+ * CombatantEditor for why ten expanded cards is not a usable page), so the
+ * controls for A2 are not mounted until A2 is opened. Same treatment as
+ * `selectTeamShape` above and for the same reason: call sites express the user
+ * intent ("edit A2") rather than the markup, so the standing 1v1–2v2
+ * characterization keeps asserting what it always asserted — including that it
+ * still produces a byte-identical expected request.
+ *
+ * Idempotent-ish by design: the header toggles, so calling this on an
+ * already-open card would CLOSE it. It therefore checks first.
+ */
+export function openCombatant(id: string) {
+  const card = screen.getByTestId(`combatant-${id}`);
+  if (card.getAttribute("data-expanded") === "true") return;
+  fireEvent.click(
+    within(card).getByRole("button", { name: new RegExp(`^Edit ${id}\\b`) })
+  );
+}
+
 export function teamSimTree(
   client: QueryClient,
   route: string = TEAM_SIM_DEV_ROUTE

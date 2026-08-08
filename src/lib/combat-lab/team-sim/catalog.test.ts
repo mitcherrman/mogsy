@@ -199,22 +199,30 @@ describe("credit cost matrix", () => {
 
   it("returns null (never a guess) for an unpriced shape", () => {
     // Past the cap the catalog publishes no price, and the UI must say so
-    // rather than extrapolating the very obvious visible pattern.
-    expect(creditCostFor(index, 4, 4)).toBeNull();
-    expect(creditCostFor(index, 1, 4)).toBeNull();
+    // rather than extrapolating the very obvious visible pattern. Phase 6B
+    // prices 4 and 5, so the first UNPRICED size is now 6.
+    expect(creditCostFor(index, 6, 6)).toBeNull();
+    expect(creditCostFor(index, 1, 6)).toBeNull();
+    expect(creditCostFor(index, 6, 1)).toBeNull();
+  });
+
+  it("prices the Phase 6B shapes, 5v5 highest", () => {
+    expect(creditCostFor(index, 4, 4)).toBe(7);
+    expect(creditCostFor(index, 1, 5)).toBe(5);
+    expect(creditCostFor(index, 5, 1)).toBe(5);
+    expect(creditCostFor(index, 5, 5)).toBe(9);
   });
 
   it("lists shapes in deterministic (a, b) order", () => {
+    // 25 shapes at a cap of five, ascending by (a, b). Written out rather than
+    // generated: this test exists to catch a REORDERING, and generating the
+    // expectation the same way the code does would make it unable to.
     expect(pricedTeamShapes(index).map((s) => `${s.a}v${s.b}`)).toEqual([
-      "1v1",
-      "1v2",
-      "1v3",
-      "2v1",
-      "2v2",
-      "2v3",
-      "3v1",
-      "3v2",
-      "3v3",
+      "1v1", "1v2", "1v3", "1v4", "1v5",
+      "2v1", "2v2", "2v3", "2v4", "2v5",
+      "3v1", "3v2", "3v3", "3v4", "3v5",
+      "4v1", "4v2", "4v3", "4v4", "4v5",
+      "5v1", "5v2", "5v3", "5v4", "5v5",
     ]);
   });
 });

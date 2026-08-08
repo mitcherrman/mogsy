@@ -3,9 +3,9 @@
  *
  * Separate from the wire payload on purpose. Three properties matter:
  *
- *  1. Combatants are keyed by RUNTIME ID (A1..A3 / B1..B3) and ALL entries
+ *  1. Combatants are keyed by RUNTIME ID (A1..A5 / B1..B5) and ALL entries
  *     exist for the whole session. Shrinking a team hides a slot, it never
- *     moves or destroys its configuration, so 3v3 -> 2v2 -> 3v3 round-trips
+ *     moves or destroys its configuration, so 5v5 -> 2v2 -> 5v5 round-trips
  *     without a champion's build silently landing on another runtime ID.
  *  2. Nothing in the draft is trusted at submit time. Validity is recomputed
  *     against the CURRENT catalog by `validateDraft`, so a catalog that
@@ -34,8 +34,11 @@ import {
  * limit, because the draft models a fixed set of runtime slots. The team-size
  * control takes the smaller of the two, so a backend that raises its cap
  * first does not produce slots this file has no state for.
+ *
+ * Phase 6B: 5, matching the backend's final public cap. Five is a League team,
+ * so this is not expected to move again.
  */
-export const MAX_EDITOR_TEAM_SIZE = 3;
+export const MAX_EDITOR_TEAM_SIZE = 5;
 
 const TEAM_KEYS = ["A", "B"] as const;
 export type TeamKey = (typeof TEAM_KEYS)[number];
@@ -45,25 +48,27 @@ export type TeamKey = (typeof TEAM_KEYS)[number];
  * order the scheduler assigns slot indices in, which is what makes the
  * editor's ordering and the result's ordering agree by construction.
  *
- * Derived rather than listed. Phase 6A went from four slots to six, and every
- * hand-written four-entry literal in this file (`TEAM_OF`, `enemiesOf`, the
- * two `Record<RuntimeId, …>` seeds) was a place the third slot could have been
- * silently dropped.
+ * Derived rather than listed. Phase 6A went from four slots to six and Phase 6B
+ * from six to ten; every hand-written literal this file used to carry
+ * (`TEAM_OF`, `enemiesOf`, the two `Record<RuntimeId, …>` seeds) was a place a
+ * new slot could have been silently dropped. Phase 6B needed no edit to any of
+ * them, which is what that derivation bought.
  */
 export const RUNTIME_IDS = TEAM_KEYS.flatMap((team) =>
   Array.from({ length: MAX_EDITOR_TEAM_SIZE }, (_, i) => `${team}${i + 1}`)
 ) as RuntimeId[];
 
 /**
- * NOTE: the `1 | 2 | 3` here and `MAX_EDITOR_TEAM_SIZE` above must move
+ * NOTE: the `1 | 2 | 3 | 4 | 5` here and `MAX_EDITOR_TEAM_SIZE` above must move
  * together — TypeScript cannot derive one from the other, and `RUNTIME_IDS`
- * casts through this type. Raising the constant alone would mint an "A4" that
- * is not a `RuntimeId`; `draft.3v3.test.ts` asserts the two agree.
+ * casts through this type. Raising the constant alone would mint an "A6" that
+ * is not a `RuntimeId`, and lowering it would leave a `RuntimeId` with no slot;
+ * `draft.5v5.test.ts` asserts the two agree in both directions.
  */
-export type RuntimeId = `${TeamKey}${1 | 2 | 3}`;
-export type TeamSize = 1 | 2 | 3;
+export type RuntimeId = `${TeamKey}${1 | 2 | 3 | 4 | 5}`;
+export type TeamSize = 1 | 2 | 3 | 4 | 5;
 
-export const TEAM_SIZES: readonly TeamSize[] = [1, 2, 3];
+export const TEAM_SIZES: readonly TeamSize[] = [1, 2, 3, 4, 5];
 
 export const TEAM_OF: Record<RuntimeId, TeamKey> = Object.fromEntries(
   RUNTIME_IDS.map((id) => [id, id[0] as TeamKey])

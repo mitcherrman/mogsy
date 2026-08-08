@@ -42,9 +42,12 @@ describe("draft construction", () => {
     expect(draft.teamSizeB).toBe(1);
     // Asserted against RUNTIME_IDS rather than a literal list, so a future cap
     // raise cannot leave this quietly checking a subset — plus one explicit
-    // check that Phase 6A's six slots are the ones actually being modelled.
+    // check that Phase 6B's ten slots are the ones actually being modelled.
     expect(Object.keys(draft.combatants).sort()).toEqual([...RUNTIME_IDS].sort());
-    expect(RUNTIME_IDS).toEqual(["A1", "A2", "A3", "B1", "B2", "B3"]);
+    expect(RUNTIME_IDS).toEqual([
+      "A1", "A2", "A3", "A4", "A5",
+      "B1", "B2", "B3", "B4", "B5",
+    ]);
     expect(activeRuntimeIds(draft)).toEqual(["A1", "B1"]);
   });
 

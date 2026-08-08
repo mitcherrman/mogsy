@@ -18,6 +18,7 @@ import { UNCERTAIN_STATUS_WARNING } from "@/lib/combat-lab/team-sim/errors";
 
 import { AssumptionsPanel } from "./components/AssumptionsPanel";
 import {
+  openCombatant,
   DEFAULT_CREDITS,
   renderTeamSimPage,
   selectTeamShape,
@@ -196,6 +197,8 @@ describe("team composition and cost preview", () => {
     const { harness } = await loadedPage({ simulate: [ok(REAL_1V1)] });
     const shapes = within(screen.getByTestId("team-size-selector"));
     selectTeamShape(2, 2);
+    // Phase 6B: cards collapse, one open per team, so A2 is opened first.
+    openCombatant("A2");
     fireEvent.change(screen.getByLabelText("A2 champion"), { target: { value: "Ashe" } });
 
     selectTeamShape(1, 1);
@@ -210,6 +213,7 @@ describe("team composition and cost preview", () => {
 
     // Restoring 2v2 brings A2's champion back unchanged.
     selectTeamShape(2, 2);
+    openCombatant("A2");
     expect((screen.getByLabelText("A2 champion") as HTMLSelectElement).value).toBe("Ashe");
   });
 });

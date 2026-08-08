@@ -289,7 +289,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <p className="text-xs text-muted-foreground">
-          Deterministic 1v1–3v3 scheduled combat. Explicit plans and targeting only —
+          Deterministic 1v1–5v5 scheduled combat. Explicit plans and targeting only —
           the engine has no combat AI, no movement and no positioning.
         </p>
       </header>
@@ -337,6 +337,29 @@ function TeamSimEditor({
   const teamShape = `${draft.teamSizeA}v${draft.teamSizeB}`;
   const idsA = activeIdsForTeam(draft, "A");
   const idsB = activeIdsForTeam(draft, "B");
+
+  // Phase 6B: exactly one open combatant card per team (see CombatantEditor for
+  // why ten expanded cards is not a usable page). Kept HERE rather than in the
+  // sections so the two teams stay independent — opening B4 must not close A2.
+  const [openA, setOpenA] = useState<RuntimeId>("A1");
+  const [openB, setOpenB] = useState<RuntimeId>("B1");
+  // Shrinking a team can strand the open card on a now-inactive slot, which
+  // would render NO editor for that side. Fall back to the team's first slot;
+  // the stranded slot's configuration is untouched (it lives in the draft) and
+  // comes back the moment the team grows again.
+  const activeOpenA = idsA.includes(openA) ? openA : idsA[0];
+  const activeOpenB = idsB.includes(openB) ? openB : idsB[0];
+
+  // Which combatants have a submission-blocking issue, so a collapsed card can
+  // say so. Without this a validation error on a collapsed A4 would block Run
+  // with nothing on screen pointing at A4.
+  const flagged = useMemo(() => {
+    const ids = new Set<string>();
+    for (const issue of validation.issues) {
+      if (issue.runtimeId) ids.add(issue.runtimeId);
+    }
+    return ids;
+  }, [validation.issues]);
 
   const onRun = useCallback(() => {
     setPrepareError(null);
@@ -424,8 +447,13 @@ function TeamSimEditor({
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_18rem_1fr]">
-        <section className="min-w-0 space-y-3 lg:order-1" aria-label="Team A">
-          <h2 className="text-sm font-semibold">Team A</h2>
+        <section className="min-w-0 space-y-2 lg:order-1" aria-label="Team A">
+          <h2 className="text-sm font-semibold">
+            Team A{" "}
+            <span className="font-normal text-muted-foreground">
+              ({idsA.length})
+            </span>
+          </h2>
           {idsA.map((id) => (
             <CombatantEditor
               key={id}
@@ -436,6 +464,9 @@ function TeamSimEditor({
               dispatch={dispatch}
               stepIssues={validation.stepIssues[id]}
               disabled={runner.isPending}
+              expanded={id === activeOpenA}
+              onExpand={setOpenA}
+              hasIssues={flagged.has(id)}
             />
           ))}
         </section>
@@ -517,8 +548,13 @@ function TeamSimEditor({
           </Card>
         </section>
 
-        <section className="min-w-0 space-y-3 lg:order-3" aria-label="Team B">
-          <h2 className="text-sm font-semibold">Team B</h2>
+        <section className="min-w-0 space-y-2 lg:order-3" aria-label="Team B">
+          <h2 className="text-sm font-semibold">
+            Team B{" "}
+            <span className="font-normal text-muted-foreground">
+              ({idsB.length})
+            </span>
+          </h2>
           {idsB.map((id) => (
             <CombatantEditor
               key={id}
@@ -529,6 +565,9 @@ function TeamSimEditor({
               dispatch={dispatch}
               stepIssues={validation.stepIssues[id]}
               disabled={runner.isPending}
+              expanded={id === activeOpenB}
+              onExpand={setOpenB}
+              hasIssues={flagged.has(id)}
             />
           ))}
         </section>

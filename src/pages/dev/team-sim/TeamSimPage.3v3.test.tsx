@@ -23,6 +23,7 @@ import {
 } from "@/lib/combat-lab/team-sim/__fixtures__";
 
 import {
+  openCombatant,
   DEFAULT_CREDITS,
   recoverableEntry,
   recoverableListing,
@@ -30,6 +31,7 @@ import {
   selectTeamShape,
   type TeamSimHarness,
 } from "./testHarness";
+import { MAX_EDITOR_TEAM_SIZE } from "@/lib/combat-lab/team-sim/draft";
 
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer test-token" }),
@@ -112,9 +114,12 @@ describe("3v3 editing surface", () => {
     await loadedPage();
     selectTeamShape(3, 3);
 
+    // Phase 6B: one card open per team, so each slot is opened before it is
+    // read or edited. A1's value is captured while A1 is the open card.
+    openCombatant("A1");
+    const before = (screen.getByLabelText("A1 champion") as HTMLSelectElement).value;
+    openCombatant("A3");
     const a3 = screen.getByLabelText("A3 champion") as HTMLSelectElement;
-    const a1 = screen.getByLabelText("A1 champion") as HTMLSelectElement;
-    const before = a1.value;
 
     const other = REAL_CATALOG.champions.find((c) => c.name !== a3.value)!.name;
     act(() => {
@@ -125,6 +130,9 @@ describe("3v3 editing surface", () => {
     expect((screen.getByLabelText("A3 champion") as HTMLSelectElement).value).toBe(
       other
     );
+    // A1 is untouched -- which is the point of the test, and is now also a
+    // check that opening A3 did not disturb A1's stored configuration.
+    openCombatant("A1");
     expect((screen.getByLabelText("A1 champion") as HTMLSelectElement).value).toBe(
       before
     );
@@ -135,6 +143,7 @@ describe("3v3 editing surface", () => {
     selectTeamShape(3, 3);
 
     const pick = REAL_CATALOG.champions[4].name;
+    openCombatant("A3");
     const a3 = screen.getByLabelText("A3 champion") as HTMLSelectElement;
     act(() => {
       a3.value = pick;
@@ -145,6 +154,7 @@ describe("3v3 editing surface", () => {
     expect(screen.queryByTestId("combatant-A3")).not.toBeInTheDocument();
 
     selectTeamShape(3, 3);
+    openCombatant("A3");
     expect(
       (screen.getByLabelText("A3 champion") as HTMLSelectElement).value
     ).toBe(pick);
@@ -379,9 +389,15 @@ describe("3v3 layout", () => {
     expect(teamA.queryByTestId("combatant-B3")).not.toBeInTheDocument();
   });
 
-  it("advertises 1v1-3v3 in the page description", async () => {
+  it("advertises the current cap in the page description", async () => {
+    // Phase 6B: the page says 1v1-5v5 now. Derived from MAX_EDITOR_TEAM_SIZE so
+    // the description and the editor's actual reach cannot drift apart again.
     await loadedPage();
-    expect(screen.getByText(/1v1–3v3/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        new RegExp(`1v1–${MAX_EDITOR_TEAM_SIZE}v${MAX_EDITOR_TEAM_SIZE}`)
+      )
+    ).toBeInTheDocument();
   });
 });
 

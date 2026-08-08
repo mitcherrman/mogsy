@@ -55,11 +55,19 @@ const ALL_SHAPES: Array<[TeamSize, TeamSize]> = [1, 2, 3].flatMap((a) =>
 /* ───────────────────────────── slots ───────────────────────────── */
 
 describe("six runtime slots", () => {
-  it("models A1..A3 and B1..B3 in scenario slot order", () => {
-    expect(RUNTIME_IDS).toEqual(["A1", "A2", "A3", "B1", "B2", "B3"]);
-    expect(MAX_EDITOR_TEAM_SIZE).toBe(3);
-    expect(runtimeIdsOfTeam("A")).toEqual(["A1", "A2", "A3"]);
-    expect(runtimeIdsOfTeam("B")).toEqual(["B1", "B2", "B3"]);
+  // Phase 6B note. This file is the THIRD SLOT's characterization, and every
+  // property it pins is still true at a cap of five. What is no longer true is
+  // that three is the cap, so the handful of assertions that said so are now
+  // derived — a 3v3 must still be exactly A1..A3 vs B1..B3, but A3 is no longer
+  // the last slot team A has. The cap itself is pinned in draft.5v5.test.ts.
+  it("models A1..A3 and B1..B3 among the editor's slots, in slot order", () => {
+    expect(RUNTIME_IDS.slice(0, 3)).toEqual(["A1", "A2", "A3"]);
+    expect(MAX_EDITOR_TEAM_SIZE).toBeGreaterThanOrEqual(3);
+    expect(runtimeIdsOfTeam("A").slice(0, 3)).toEqual(["A1", "A2", "A3"]);
+    expect(runtimeIdsOfTeam("B").slice(0, 3)).toEqual(["B1", "B2", "B3"]);
+    // Team A's slots all precede team B's, which is what makes editor order
+    // and scheduler slot order agree.
+    expect(RUNTIME_IDS.indexOf("A3")).toBeLessThan(RUNTIME_IDS.indexOf("B1"));
   });
 
   it("assigns every slot to the team its ID names", () => {
@@ -69,8 +77,12 @@ describe("six runtime slots", () => {
   });
 
   it("gives A3 the full enemy team and B3 the full enemy team", () => {
-    expect(enemiesOf("A3")).toEqual(["B1", "B2", "B3"]);
-    expect(enemiesOf("B3")).toEqual(["A1", "A2", "A3"]);
+    // `enemiesOf` is structural (every slot of the other team), not shape-aware
+    // — `activeEnemiesOf` is the shape-aware one, asserted further down. At a
+    // cap of five that is five entries, still all on the opposing side.
+    expect(enemiesOf("A3")).toEqual(runtimeIdsOfTeam("B"));
+    expect(enemiesOf("B3")).toEqual(runtimeIdsOfTeam("A"));
+    expect(enemiesOf("A3").every((id) => id.startsWith("B"))).toBe(true);
   });
 
   it("creates a configured, valid draft for all six slots", () => {
@@ -81,10 +93,11 @@ describe("six runtime slots", () => {
       expect(index.championByName.has(c.champion)).toBe(true);
       expect(c.plan.steps).toHaveLength(1);
     }
-    // Six distinct default champions, so a 3v3 is not silently a mirror match.
+    // One distinct default champion PER SLOT, so no shape is silently a mirror
+    // match. Derived from the slot count so a cap raise keeps meaning this.
     expect(
       new Set(RUNTIME_IDS.map((id) => draft.combatants[id].champion)).size
-    ).toBe(6);
+    ).toBe(RUNTIME_IDS.length);
   });
 });
 

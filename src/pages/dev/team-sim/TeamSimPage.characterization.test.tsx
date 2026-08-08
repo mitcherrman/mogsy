@@ -19,6 +19,7 @@ import {
 import type { TeamSimulationRequest } from "@/lib/combat-lab/team-sim/contract";
 
 import {
+  openCombatant,
   renderTeamSimPage,
   selectTeamShape,
   type TeamSimHarness,
@@ -40,7 +41,19 @@ const FIND = { timeout: 8_000 };
 
 /* ───────────────────────── UI driving helpers ───────────────────────── */
 
-const card = (id: string) => within(screen.getByTestId(`combatant-${id}`));
+/**
+ * One combatant's card, OPENED.
+ *
+ * Phase 6B collapses cards and keeps one open per team, so a combatant's
+ * controls are not mounted until it is opened. Every id-scoped helper below
+ * goes through `openCombatant` for that reason. The signatures and the
+ * resulting request bytes are unchanged — these are the PINNED 1v1–2v2
+ * characterizations, and they must keep expressing the same intent.
+ */
+const card = (id: string) => {
+  openCombatant(id);
+  return within(screen.getByTestId(`combatant-${id}`));
+};
 
 function setShape(shape: string) {
   // Phase 6A: the control is two size rows rather than one button per shape,
@@ -52,10 +65,12 @@ function setShape(shape: string) {
 }
 
 function setChampion(id: string, champion: string) {
+  openCombatant(id);
   fireEvent.change(screen.getByLabelText(`${id} champion`), { target: { value: champion } });
 }
 
 function setLevel(id: string, level: number) {
+  openCombatant(id);
   fireEvent.change(screen.getByLabelText(`${id} level`), { target: { value: String(level) } });
 }
 
@@ -74,6 +89,7 @@ function setRank(id: string, slot: string, rank: number) {
 }
 
 function pick(kind: "items" | "runes", id: string, name: string) {
+  openCombatant(id);
   const picker = within(screen.getByTestId(`${kind}-${id}`));
   fireEvent.change(picker.getByLabelText(kind === "items" ? "Search Items" : "Search Runes"), {
     target: { value: name },
@@ -82,6 +98,7 @@ function pick(kind: "items" | "runes", id: string, name: string) {
 }
 
 function plan(id: string) {
+  openCombatant(id);
   return within(screen.getByLabelText(`Action plan for ${id}`));
 }
 
@@ -90,18 +107,21 @@ function addStep(id: string) {
 }
 
 function setStepAction(id: string, position: number, value: string) {
+  openCombatant(id);
   fireEvent.change(screen.getByLabelText(`${id} step ${position} action`), {
     target: { value },
   });
 }
 
 function setStepNotBefore(id: string, position: number, seconds: number) {
+  openCombatant(id);
   fireEvent.change(screen.getByLabelText(`${id} step ${position} not before (seconds)`), {
     target: { value: String(seconds) },
   });
 }
 
 function targeting(id: string) {
+  openCombatant(id);
   return within(screen.getByLabelText(`Targeting for ${id}`));
 }
 

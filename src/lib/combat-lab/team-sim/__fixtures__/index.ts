@@ -38,6 +38,10 @@ import sim2v2Request from "./sim_2v2.request.json";
 import sim2v2Truncated from "./sim_2v2_truncated.json";
 import sim3v3 from "./sim_3v3.json";
 import sim3v3Request from "./sim_3v3.request.json";
+import sim4v4 from "./sim_4v4.json";
+import sim4v4Request from "./sim_4v4.request.json";
+import sim5v5 from "./sim_5v5.json";
+import sim5v5Request from "./sim_5v5.request.json";
 import simActionFailed from "./sim_1v1_action_failed.json";
 import err401 from "./err_401_auth_required.json";
 import err402 from "./err_402_insufficient_credits.json";
@@ -81,6 +85,25 @@ export const REAL_2V2_TRUNCATED = sim2v2Truncated as unknown as TeamSimulationRe
  * result the UI renders has to be one the simulator can actually produce.
  */
 export const REAL_3V3 = sim3v3 as unknown as TeamSimulationResponse;
+
+/**
+ * SIM2 Phase 6B. REAL eight- and ten-champion runs captured from the Phase 6B
+ * backend, built the same way REAL_3V3 was so the three are comparable:
+ * distinct champions on both sides, per-combatant items/runes/ranks/crit modes,
+ * four targeting policies in play, and A1 on a fixed priority chain covering
+ * EVERY opponent in a deliberately non-slot order.
+ *
+ *   REAL_4V4  Ashe/Lux/Jinx/Caitlyn vs Garen/Malphite/Ornn/Darius,
+ *             team elimination (all four defenders dead), 228 events, 7 credits.
+ *   REAL_5V5  the above plus Ezreal vs Nasus,
+ *             team elimination (all five defenders dead), 284 events, 9 credits.
+ *
+ * Neither contains an inert combatant: every one of the eight/ten executed at
+ * least one action, which is what makes them usable as the "does the results UI
+ * render N of everything" fixture rather than merely large.
+ */
+export const REAL_4V4 = sim4v4 as unknown as TeamSimulationResponse;
+export const REAL_5V5 = sim5v5 as unknown as TeamSimulationResponse;
 export const REAL_ACTION_FAILED = simActionFailed as unknown as TeamSimulationResponse;
 
 export const REAL_REQUESTS = {
@@ -89,6 +112,8 @@ export const REAL_REQUESTS = {
   "2v1": sim2v1Request,
   "2v2": sim2v2Request,
   "3v3": sim3v3Request,
+  "4v4": sim4v4Request,
+  "5v5": sim5v5Request,
 } as const;
 
 /**
