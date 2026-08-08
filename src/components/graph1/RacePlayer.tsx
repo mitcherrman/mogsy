@@ -68,12 +68,20 @@ export interface RacePlayerProps {
   /** hoisted control state; omit both to let the player manage its own */
   state?: Graph1ControlState;
   onStateChange?: (next: Graph1ControlState) => void;
+  /**
+   * Routing key this payload came from. Supplied by the page; falls back to
+   * deriving it from `dataset.id`, which is `<key>@<scope>`. Passing it
+   * explicitly means the component never has to parse the id — and a dynamic
+   * family key such as `player-champions:Faker` stays intact.
+   */
+  datasetKey?: string;
 }
 
 export default function RacePlayer({
   dataset,
   state: controlledState,
   onStateChange,
+  datasetKey,
 }: RacePlayerProps) {
   const hints = resolveDisplayHints(dataset);
   const controls = dataset.definition.controls;
@@ -82,7 +90,11 @@ export default function RacePlayer({
   const toggleDefaults = useMemo(() => resolveDisplayToggles(dataset), [dataset]);
 
   const [ownState, setOwnState] = useState<Graph1ControlState>(() =>
-    initialControlState(dataset.id.split("@")[0], toggleDefaults, controls),
+    initialControlState(
+      datasetKey ?? dataset.id.split("@")[0],
+      toggleDefaults,
+      controls,
+    ),
   );
   const state = controlledState ?? ownState;
   const setState = onStateChange ?? setOwnState;
@@ -120,8 +132,14 @@ export default function RacePlayer({
         <h2 className="text-xl font-bold">{dataset.definition.title}</h2>
         <p className="text-sm text-muted-foreground">
           {dataset.definition.metric.label} · {dataset.definition.scope.label} ·{" "}
-          {coverage.eligibleEventCount.toLocaleString()} games ·{" "}
-          {coverage.firstEventAt.slice(0, 10)} → {coverage.lastEventAt.slice(0, 10)}
+          {coverage.eligibleEventCount.toLocaleString()} games
+          {coverage.firstEventAt && coverage.lastEventAt && (
+            <>
+              {" · "}
+              {coverage.firstEventAt.slice(0, 10)} →{" "}
+              {coverage.lastEventAt.slice(0, 10)}
+            </>
+          )}
         </p>
         {frame && toggles.eventHeader && (
           hints.contextMode === "event-header" ? (

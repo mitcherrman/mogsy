@@ -6,17 +6,29 @@
  * endpoint rather than a hardcoded list, so a newly declared race appears
  * here with no frontend change.
  *
+ * Phase 3A adds parameterized FAMILIES alongside the two fixed races. Choosing
+ * `Player -> champions` or `Champion -> players` selects a template; a searchable
+ * picker then binds it to any valid focus entity, producing the dataset key
+ * `<family>:<entity>`. Faker and Azir survive both as frozen legacy races and as
+ * the default focus values of the two families.
+ *
  * This page owns the URL. Control state (dataset, top-N, filters, non-default
  * display toggles) is mirrored into the query string so a race view can be
  * shared and reproduced exactly. A `?api=` override points the fetches at a
  * local backend and is carried through every URL update.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import EntityPicker from "@/components/graph1/EntityPicker";
 import RacePlayer from "@/components/graph1/RacePlayer";
 import { Button } from "@/components/ui/button";
-import { resolveDisplayToggles } from "@/graph1/contract";
+import {
+  familyDatasetKey,
+  parseFamilyDatasetKey,
+  resolveDisplayToggles,
+  type Graph1DisplayToggles,
+} from "@/graph1/contract";
 import {
   initialControlState,
   parseControlState,
@@ -26,6 +38,25 @@ import {
 import { reconcileFilters, deriveFacets } from "@/graph1/filters";
 import { resolveDatasetKey, useGraph1Catalog } from "@/graph1/useGraph1Catalog";
 import { useGraph1Dataset } from "@/graph1/useGraph1Dataset";
+import {
+  useDebounced,
+  useGraph1Champions,
+  useGraph1PlayerSearch,
+  type Graph1Entity,
+} from "@/graph1/useGraph1Entities";
+
+/**
+ * Default focus entity per family. These are the two races that shipped as
+ * hand-registered datasets and are now what the audit called for: example
+ * parameter values, not engineered datasets. Clicking a family lands on a race
+ * that already works, and the picker changes it from there.
+ */
+const FAMILY_DEFAULT_FOCUS: Record<string, string> = {
+  "player-champions": "Faker",
+  "champion-players": "azir",
+};
+
+const MAX_CHAMPION_ROWS = 40;
 
 function Notice({
   tone = "muted",
@@ -56,6 +87,14 @@ export default function Graph1RacePage() {
   const datasetKey = resolveDatasetKey(catalog.data, searchParams.get("d") ?? undefined);
   const entry = catalog.data?.datasets.find((d) => d.key === datasetKey);
 
+  // A family instance key is `<family>:<entity>`; a legacy key has no separator.
+  const instance = parseFamilyDatasetKey(datasetKey ?? undefined);
+  const families = catalog.data?.families ?? [];
+  const activeFamily = instance
+    ? families.find((f) => f.id === instance.familyId)
+    : undefined;
+  const focusType = activeFamily?.focusEntityType;
+
   const { data, isLoading, error } = useGraph1Dataset(
     datasetKey ?? "",
     apiOverride,
@@ -65,25 +104,26 @@ export default function Graph1RacePage() {
   // Toggle defaults come from the loaded payload when we have it, and from
   // the catalog entry beforehand, so the URL can be parsed against the right
   // baseline either way. Both resolve by VALUE, never by field presence.
-  const toggleDefaults = useMemo(
-    () =>
-      data
-        ? resolveDisplayToggles(data)
-        : {
-            winOverlay: entry?.display?.defaultToggles?.winOverlay ?? true,
-            eventHeader: entry?.display?.defaultToggles?.eventHeader ?? true,
-            contextLine: entry?.display?.defaultToggles?.contextLine ?? true,
-            entityMedia: entry?.display?.defaultToggles?.entityMedia ?? true,
-            rankNumber: entry?.display?.defaultToggles?.rankNumber ?? true,
-            valueLabel: entry?.display?.defaultToggles?.valueLabel ?? true,
-            dateLabel: entry?.display?.defaultToggles?.dateLabel ?? true,
-            secondaryLabel:
-              entry?.display?.defaultToggles?.secondaryLabel ?? true,
-          },
-    [data, entry],
-  );
+  const toggleDefaults = useMemo<Graph1DisplayToggles>(() => {
+    if (data) return resolveDisplayToggles(data);
+    // Pre-payload baseline: a fixed race has a catalog entry, a family instance
+    // has the family's declared defaults. Resolve by VALUE, never by presence.
+    const declared =
+      entry?.display?.defaultToggles ?? activeFamily?.display?.defaultToggles;
+    return {
+      winOverlay: declared?.winOverlay ?? true,
+      eventHeader: declared?.eventHeader ?? true,
+      contextLine: declared?.contextLine ?? true,
+      entityMedia: declared?.entityMedia ?? true,
+      rankNumber: declared?.rankNumber ?? true,
+      valueLabel: declared?.valueLabel ?? true,
+      dateLabel: declared?.dateLabel ?? true,
+      secondaryLabel: declared?.secondaryLabel ?? true,
+    };
+  }, [data, entry, activeFamily]);
 
-  const controls = data?.definition.controls ?? entry?.controls;
+  const controls =
+    data?.definition.controls ?? entry?.controls ?? activeFamily?.controls;
 
   const state = useMemo<Graph1ControlState | undefined>(() => {
     if (!datasetKey) return undefined;
@@ -98,13 +138,16 @@ export default function Graph1RacePage() {
   }, [searchParams, toggleDefaults, datasetKey, controls, data]);
 
   const commit = useCallback(
-    (next: Graph1ControlState) => {
+    (next: Graph1ControlState, { push = false }: { push?: boolean } = {}) => {
       setSearchParams(
         serializeControlState(next, toggleDefaults, {
           controls,
           preserve: searchParams,
         }),
-        { replace: true },
+        // Filter/toggle tweaks REPLACE so Back does not walk every slider nudge.
+        // Changing which race is shown is real navigation and PUSHES, so
+        // Back/Forward traverses the entities the reader looked at.
+        { replace: !push },
       );
     },
     [setSearchParams, toggleDefaults, controls, searchParams],
@@ -114,10 +157,63 @@ export default function Graph1RacePage() {
     (key: string) => {
       // a new race has its own facets and defaults: start clean rather than
       // carrying filters that mean nothing here
-      commit(initialControlState(key, toggleDefaults, controls));
+      commit(initialControlState(key, toggleDefaults, controls), { push: true });
     },
     [commit, toggleDefaults, controls],
   );
+
+  const selectFamily = useCallback(
+    (familyId: string) => {
+      const current = parseFamilyDatasetKey(datasetKey ?? undefined);
+      if (current?.familyId === familyId) return;
+      const entityId = FAMILY_DEFAULT_FOCUS[familyId];
+      if (!entityId) return;
+      selectDataset(familyDatasetKey(familyId, entityId));
+    },
+    [datasetKey, selectDataset],
+  );
+
+  const selectEntity = useCallback(
+    (entity: Graph1Entity) => {
+      if (!instance) return;
+      selectDataset(familyDatasetKey(instance.familyId, entity.id));
+    },
+    [instance, selectDataset],
+  );
+
+  // --- focus-entity pickers -------------------------------------------------
+  const [entityQuery, setEntityQuery] = useState("");
+  // A query typed for players means nothing for champions; clear on family change.
+  useEffect(() => setEntityQuery(""), [instance?.familyId]);
+
+  const debouncedQuery = useDebounced(entityQuery);
+  const championsQuery = useGraph1Champions(apiOverride, focusType === "champion");
+  const playersQuery = useGraph1PlayerSearch(
+    debouncedQuery,
+    apiOverride,
+    focusType === "player",
+  );
+
+  // 172 champions arrive once and filter locally, so typing costs no requests.
+  const championOptions = useMemo(() => {
+    const all = championsQuery.data?.entities ?? [];
+    const needle = entityQuery.trim().toLowerCase();
+    const matches = needle
+      ? all.filter(
+          (c) =>
+            c.label.toLowerCase().includes(needle) || c.id.includes(needle),
+        )
+      : all;
+    return {
+      rows: matches.slice(0, MAX_CHAMPION_ROWS),
+      hidden: Math.max(0, matches.length - MAX_CHAMPION_ROWS),
+    };
+  }, [championsQuery.data, entityQuery]);
+
+  const playerRows = playersQuery.data?.entities ?? [];
+  const focusLabel = data
+    ? data.entities[data.definition.focusEntity.id]?.displayName
+    : undefined;
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
@@ -152,6 +248,57 @@ export default function Graph1RacePage() {
           </nav>
         )}
 
+        {families.length > 0 && (
+          <nav aria-label="Race family" className="flex flex-wrap gap-2">
+            {families.map((family) => (
+              <Button
+                key={family.id}
+                type="button"
+                size="sm"
+                variant={family.id === instance?.familyId ? "default" : "outline"}
+                aria-pressed={family.id === instance?.familyId}
+                onClick={() => selectFamily(family.id)}
+              >
+                {family.label}
+              </Button>
+            ))}
+          </nav>
+        )}
+
+        {activeFamily && focusType === "player" && (
+          <EntityPicker
+            label="Player"
+            options={playerRows}
+            selectedId={instance?.entityId}
+            selectedLabel={focusLabel}
+            onSelect={selectEntity}
+            query={entityQuery}
+            onQueryChange={setEntityQuery}
+            placeholder="Search players…"
+            loading={playersQuery.isLoading || playersQuery.isFetching}
+            error={Boolean(playersQuery.error)}
+            hiddenCount={
+              playerRows.length >= (playersQuery.data?.limit ?? 25) ? 1 : 0
+            }
+          />
+        )}
+
+        {activeFamily && focusType === "champion" && (
+          <EntityPicker
+            label="Champion"
+            options={championOptions.rows}
+            selectedId={instance?.entityId}
+            selectedLabel={focusLabel}
+            onSelect={selectEntity}
+            query={entityQuery}
+            onQueryChange={setEntityQuery}
+            placeholder="Search champions…"
+            loading={championsQuery.isLoading}
+            error={Boolean(championsQuery.error)}
+            hiddenCount={championOptions.hidden}
+          />
+        )}
+
         {entry?.snapshot?.eventCount !== undefined && !data && (
           <Notice>
             {entry.snapshot.eventCount.toLocaleString()} games ·{" "}
@@ -164,14 +311,19 @@ export default function Graph1RacePage() {
       {isLoading && datasetKey && <Notice>Loading dataset…</Notice>}
       {error instanceof Error && (
         <Notice tone="error">
-          {error.message} — start the local API and pass
-          ?api=http://localhost:8321
+          {/* User-facing copy: a shared link may name a focus entity that is not
+              selectable, which is a 404 from the API, not a local-setup problem. */}
+          This race could not be loaded. The selected{" "}
+          {focusType ?? "dataset"} may no longer be available — try another from
+          the picker above.{" "}
+          <span className="opacity-70">({error.message})</span>
         </Notice>
       )}
       {data && state && (
         <RacePlayer
           key={data.id}
           dataset={data}
+          datasetKey={datasetKey ?? undefined}
           state={state}
           onStateChange={commit}
         />
