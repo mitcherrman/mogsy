@@ -61,6 +61,14 @@ import sim1v1First from "./sim_1v1_first.json";
 import sim1v1FirstMeta from "./sim_1v1_first.meta.json";
 import sim1v1Replayed from "./sim_1v1_replayed.json";
 import sim1v1ReplayedMeta from "./sim_1v1_replayed.meta.json";
+import catalogPhase7a from "./catalog_phase7a.json";
+import catalogPhase7aMeta from "./catalog_phase7a.meta.json";
+import simTraceSummary from "./sim_1v1_trace_summary.json";
+import simTraceStandard from "./sim_1v1_trace_standard.json";
+import simTraceFull from "./sim_1v1_trace_full.json";
+import simTraceSummaryRequest from "./sim_1v1_trace_summary.request.json";
+import simTraceStandardRequest from "./sim_1v1_trace_standard.request.json";
+import simTraceFullRequest from "./sim_1v1_trace_full.request.json";
 
 import type {
   TeamSimCatalog,
@@ -69,6 +77,49 @@ import type {
 
 export const REAL_CATALOG = catalogJson as unknown as TeamSimCatalog;
 export const REAL_CATALOG_ETAG = (catalogMeta as { etag: string }).etag;
+
+/**
+ * SIM2 Phase 7A. The catalog re-captured from the Phase 7A backend, which is
+ * the first one to publish `trace_options`.
+ *
+ * REAL_CATALOG is deliberately NOT replaced. Keeping both is what lets the
+ * suite exercise the compatibility path with a genuine artifact rather than a
+ * constructed one: against REAL_CATALOG (no trace_options) the request builder
+ * must OMIT `trace_detail` entirely, because a backend that does not publish
+ * the levels does not accept the field and `extra="forbid"` would 422 the
+ * simulation. Against REAL_CATALOG_PHASE7A it must send the selected level.
+ */
+export const REAL_CATALOG_PHASE7A = catalogPhase7a as unknown as TeamSimCatalog;
+export const REAL_CATALOG_PHASE7A_ETAG =
+  (catalogPhase7aMeta as { etag: string }).etag;
+
+/**
+ * SIM2 Phase 7A. ONE 1v1 scenario captured at all three trace levels — the
+ * requests are identical apart from `limits.trace_detail`, so a difference
+ * between these three responses can only be the level.
+ *
+ * The capture asserted, before writing, that termination, duration,
+ * event_count, both summary blocks, final targets and the pair-ledger digest
+ * are byte-identical across all three, and that the `standard` capture
+ * actually carries repeat rows. A future capture that broke either property
+ * fails at capture time rather than producing fixtures that would prove the
+ * wrong thing.
+ *
+ *   summary   11 rows of 30 simulated events, 19 omitted, 0 grouped
+ *   standard  24 rows of 30 simulated events,  6 omitted, 6 grouped (2 rows)
+ *   full      30 rows of 30 simulated events,  0 omitted, not compacted
+ */
+export const REAL_TRACE_LEVELS = {
+  summary: simTraceSummary as unknown as TeamSimulationResponse,
+  standard: simTraceStandard as unknown as TeamSimulationResponse,
+  full: simTraceFull as unknown as TeamSimulationResponse,
+} as const;
+
+export const REAL_TRACE_LEVEL_REQUESTS = {
+  summary: simTraceSummaryRequest,
+  standard: simTraceStandardRequest,
+  full: simTraceFullRequest,
+} as const;
 
 export const REAL_1V1 = sim1v1 as unknown as TeamSimulationResponse;
 export const REAL_1V2 = sim1v2 as unknown as TeamSimulationResponse;

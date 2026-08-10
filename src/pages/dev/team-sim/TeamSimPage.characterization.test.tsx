@@ -211,7 +211,12 @@ describe("characterization: 1v1", () => {
       // captured request relied on them. Same scenario, fuller payload.
       expect(body.action_plans).toMatchObject(expected.action_plans);
       expect(body.action_plans.A1.on_failure).toBe("skip");
+      // Unchanged by Phase 7A, and that is the point: the captured catalog
+      // these tests load publishes no `trace_options`, so the builder omits
+      // `trace_detail` and the captured pre-7A request body still matches
+      // EXACTLY. Neither the capture nor this assertion had to be rewritten.
       expect(body.limits).toEqual(expected.limits);
+      expect(body.limits).not.toHaveProperty("trace_detail");
       expect(Object.keys(body.targeting)).toEqual(["A1", "B1"]);
 
       expect(screen.getByTestId("result-outcome")).toHaveTextContent("Team A wins");
@@ -375,7 +380,10 @@ describe("characterization: 2v2 (required)", () => {
       expect(normalizeTargeting(body.targeting)).toEqual(
         normalizeTargeting(expected.targeting as unknown as Record<string, unknown>)
       );
+      // See the 1v1 above: the captured catalog predates trace_options, so
+      // the request omits trace_detail and the capture still matches exactly.
       expect(body.limits).toEqual(expected.limits);
+      expect(body.limits).not.toHaveProperty("trace_detail");
 
       // Independent builds really are independent.
       expect(body.team_a.combatants[0].items).toEqual([

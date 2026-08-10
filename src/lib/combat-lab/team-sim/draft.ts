@@ -20,11 +20,13 @@ import type {
   CritMode,
   OnFailurePolicy,
   TargetingPolicy,
+  TraceDetail,
 } from "./contract";
 import {
   championActionNames,
   creditCostFor,
   rankBoundsFor,
+  traceDetailOptions,
   type CatalogIndex,
 } from "./catalog";
 
@@ -142,6 +144,16 @@ export type SchedulerDraft = {
   maxDuration: number;
   maxEvents: number;
   maxTraceEvents: number;
+  /**
+   * Phase 7A. How much detail the RETURNED trace carries.
+   *
+   * Part of the DRAFT (and therefore of the request) rather than a view
+   * setting, and that placement is the whole UX rule: the backend decides the
+   * level while it builds the response and includes it in the request digest,
+   * so it cannot be re-applied to a result already fetched. Changing it here
+   * marks the next submission as different — it never re-fetches on its own.
+   */
+  traceDetail: TraceDetail;
 };
 
 export type TeamScenarioDraft = {
@@ -238,6 +250,9 @@ export function createDraft(index: CatalogIndex): TeamScenarioDraft {
       maxDuration: index.schedulerLimits.max_duration.default,
       maxEvents: index.schedulerLimits.max_events.default,
       maxTraceEvents: index.schedulerLimits.max_trace_events.default,
+      // The BACKEND's default, read from the catalog rather than mirrored, so
+      // a deployment that changes it changes the editor with no release here.
+      traceDetail: traceDetailOptions(index).default,
     },
     stepCounter: counter,
   };
@@ -566,6 +581,23 @@ export function validateDraft(
   boundedNumber(draft.scheduler.maxDuration, limits.max_duration.maximum, "Max duration", false);
   boundedNumber(draft.scheduler.maxEvents, limits.max_events.maximum, "Max events", true);
   boundedNumber(draft.scheduler.maxTraceEvents, limits.max_trace_events.maximum, "Max trace events", true);
+
+  // Phase 7A. Validated against the CATALOG's own list rather than the union
+  // type, for the same reason every other value here is: a draft restored from
+  // storage (or from a session against a different deployment) can name a
+  // level this backend does not accept, and that must surface as an editor
+  // issue rather than as a 422 on a submission the user has already committed
+  // to. `validateDraft` refuses to build while any issue stands.
+  const traceLevels = traceDetailOptions(index).allowed;
+  if (!traceLevels.includes(draft.scheduler.traceDetail)) {
+    issues.push({
+      runtimeId: null,
+      field: "scheduler",
+      message:
+        `Trace detail "${draft.scheduler.traceDetail}" is not offered by this ` +
+        `simulator (available: ${traceLevels.join(", ")}).`,
+    });
+  }
 
   for (const id of activeRuntimeIds(draft)) {
     const c = draft.combatants[id];

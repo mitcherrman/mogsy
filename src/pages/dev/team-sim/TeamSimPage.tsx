@@ -40,8 +40,10 @@ import type { CombatLabCreditStatus } from "@/lib/combat-lab/api";
 import {
   indexCatalog,
   creditCostFor,
+  traceDetailOptions,
   type CatalogIndex,
 } from "@/lib/combat-lab/team-sim/catalog";
+import { TRACE_DETAIL_LABELS } from "@/lib/combat-lab/team-sim/result";
 import {
   activeEnemiesOf,
   activeIdsForTeam,
@@ -74,7 +76,7 @@ import { CombatantEditor } from "./components/CombatantEditor";
 import { EffectiveBuildsPanel } from "./components/EffectiveBuildsPanel";
 import { EventTracePanel } from "./components/EventTracePanel";
 import { FailureNotice } from "./components/FailureNotice";
-import { NumberField } from "./components/controls";
+import { NumberField, SelectField } from "./components/controls";
 import {
   RecoveryLapsedNotice,
   RecoveryNotice,
@@ -316,6 +318,7 @@ function TeamSimEditor({
   refreshErrorMessage: string | null;
 }) {
   const index = useMemo(() => indexCatalog(catalogLoad.catalog), [catalogLoad.catalog]);
+  const traceOptions = useMemo(() => traceDetailOptions(index), [index]);
   const [draft, dispatch] = useReducer(draftReducer, index, createDraft);
   const [prepareError, setPrepareError] = useState<string | null>(null);
 
@@ -545,6 +548,36 @@ function TeamSimEditor({
                 })
               }
             />
+            {/* Phase 7A. Lives HERE, with the other settings for the NEXT run,
+                rather than above the trace: it is chosen before the simulation
+                and cannot be applied to a result already on screen. Changing it
+                never re-submits — see the hint, and TeamSimPage.trace.test. */}
+            {traceOptions.selectable ? (
+              <SelectField
+                label="Trace detail"
+                value={draft.scheduler.traceDetail}
+                options={traceOptions.allowed.map((level) => ({
+                  value: level,
+                  label: TRACE_DETAIL_LABELS[level] ?? level,
+                }))}
+                hint={
+                  <>
+                    {traceOptions.descriptions[draft.scheduler.traceDetail] ??
+                      "How much of the event trace comes back."}{" "}
+                    <span className="font-medium">
+                      Applies to the next run — the result below keeps the level
+                      it was fetched at
+                      {traceOptions.affectsDigest
+                        ? ", and re-running at another level costs a credit."
+                        : "."}
+                    </span>
+                  </>
+                }
+                onChange={(traceDetail) =>
+                  dispatch({ type: "setScheduler", patch: { traceDetail } })
+                }
+              />
+            ) : null}
           </Card>
         </section>
 

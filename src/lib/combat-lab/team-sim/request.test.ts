@@ -171,6 +171,12 @@ describe("buildSimulationRequest", () => {
       type: "setScheduler",
       patch: { maxDuration: 42, maxEvents: 500, maxTraceEvents: 250 },
     });
+    // REAL_CATALOG is a captured PRE-Phase-7A catalog: it publishes no
+    // `trace_options`, so the builder must omit `trace_detail` entirely. That
+    // is the compatibility contract, not an oversight — a backend that does not
+    // publish the levels does not accept the field, and `extra="forbid"` would
+    // turn it into a 422. toEqual (not toMatchObject) is what pins the
+    // ABSENCE. The published case is covered in request.trace.test.ts.
     expect(buildSimulationRequest(draft, index).request.limits).toEqual({
       max_duration: 42,
       max_events: 500,

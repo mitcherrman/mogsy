@@ -231,6 +231,18 @@ export type TeamSimCatalog = {
     request_body_bytes: number;
     json_nesting_depth: number;
   };
+  /**
+   * Phase 7A. Optional so a pre-7A catalog still parses; the page falls back
+   * to a single hard-coded level when it is absent rather than offering
+   * choices this deployment would reject.
+   */
+  trace_options?: {
+    default: TraceDetail;
+    allowed: TraceDetail[];
+    field: string;
+    affects_idempotency_digest: boolean;
+    descriptions: Partial<Record<TraceDetail, string>>;
+  };
   team_limits: {
     min_team_size: number;
     max_team_size: number;
@@ -335,10 +347,31 @@ export type TeamSimTeamRequest = {
   combatants: TeamSimCombatantRequest[];
 };
 
+/**
+ * How much of the event trace the response carries (Phase 7A). Orthogonal to
+ * `max_trace_events`, which bounds HOW MANY rows come back: this bounds how
+ * much each row carries, and which families appear at all.
+ *
+ * Every level runs the identical simulation and returns identical summaries,
+ * winner, damage totals, deaths and termination — so it is a presentation
+ * choice, never a different fight. It IS part of the backend's request
+ * digest, though, so changing it means a NEW paid run under a new idempotency
+ * key rather than a re-render of one already bought. That is why the page
+ * never re-submits on its own when the selector changes.
+ */
+export type TraceDetail = "summary" | "standard" | "full";
+
 export type TeamSimLimitsRequest = {
   max_duration: number;
   max_events: number;
   max_trace_events: number;
+  /**
+   * Optional on the wire, and that is deliberate rather than lax: a backend
+   * that does not publish `trace_options` does not accept this field either
+   * (every request model on the contract is `extra="forbid"`), so the request
+   * builder omits it entirely there instead of sending a level.
+   */
+  trace_detail?: TraceDetail;
 };
 
 export type TeamSimulationRequest = {
@@ -373,6 +406,20 @@ export type TeamSimEvent = {
   action_id: string | null;
   payload: Record<string, unknown> | null;
   meta: Record<string, unknown> | null;
+  /**
+   * Phase 7A repeat group. Present only when this row stands for MORE than
+   * one identical occurrence — one event never carries it — so `repeats` is
+   * a reliable "this is a collapsed row" signal rather than a count to check.
+   * The row keeps its own `seq`/`time` (the FIRST occurrence), and the block
+   * names the span the group covers.
+   */
+  repeats?: {
+    count: number;
+    first_seq: number;
+    last_seq: number;
+    first_time: number;
+    last_time: number;
+  };
 };
 
 export type TeamSimTermination = {
@@ -387,6 +434,19 @@ export type TeamSimTrace = {
   returned_event_count: number;
   rule: string;
   summaries_cover_full_simulation: boolean;
+  /**
+   * Phase 7A, all optional so a response from a pre-7A backend (or a
+   * recovered result stored before this phase) still types and renders. Read
+   * them through the helpers in ./result rather than directly, so the
+   * "absent means the old behaviour" reading lives in exactly one place.
+   */
+  detail?: TraceDetail;
+  /** True when the LEVEL removed or folded something (never true at `full`). */
+  compacted?: boolean;
+  /** simulated - returned: the level's removals plus any truncation. */
+  omitted_event_count?: number;
+  /** Of those, the ones folded into a `repeats` row rather than dropped. */
+  grouped_event_count?: number;
 };
 
 export type EffectiveBuildItem = { name: string; item_id: number | null };

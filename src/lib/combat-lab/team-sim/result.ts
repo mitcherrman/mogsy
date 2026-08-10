@@ -15,6 +15,7 @@ import type {
   EffectiveBuild,
   TeamSimEvent,
   TeamSimulationResponse,
+  TraceDetail,
 } from "./contract";
 
 /* ─────────────────────── catalog digest agreement ─────────────────────── */
@@ -131,6 +132,19 @@ export function isActionFailure(event: TeamSimEvent): boolean {
  * Deliberately returns text, not JSX, so it is unit-testable.
  */
 export function describeEvent(event: TeamSimEvent): string {
+  const base = describeOneEvent(event);
+  const repeats = event.repeats;
+  if (!repeats || repeats.count <= 1) return base;
+  // A collapsed row says so IN ITS OWN TEXT, not only through a badge: the
+  // span is what makes "this happened 12 times" readable rather than a row
+  // that looks like a single event at t=0.
+  return (
+    `${base} — ×${repeats.count} through ${formatSeconds(repeats.last_time)} ` +
+    `(#${repeats.first_seq}–${repeats.last_seq})`
+  );
+}
+
+function describeOneEvent(event: TeamSimEvent): string {
   const meta = (event.meta ?? {}) as Record<string, unknown>;
   const payload = (event.payload ?? {}) as Record<string, unknown>;
 
@@ -268,6 +282,64 @@ export function resultOverview(response: TeamSimulationResponse): ResultOverview
     truncated: response.trace.truncated,
     truncationRule: response.trace.rule,
   };
+}
+
+/* ────────────────────── trace completeness (Phase 7A) ────────────────────── */
+
+export type TraceReport = {
+  /** Null when the response predates trace levels — never guessed as a level. */
+  detail: TraceDetail | null;
+  simulated: number;
+  returned: number;
+  /** Simulated events not present as their own row, for ANY reason. */
+  omitted: number;
+  /** Of those, the ones folded into a `repeats` row rather than dropped. */
+  grouped: number;
+  truncated: boolean;
+  truncationRule: string;
+  compacted: boolean;
+};
+
+/**
+ * The two reasons a returned trace can be shorter than the simulation, read
+ * apart rather than conflated: the max_trace_events CAP (`truncated`) and the
+ * requested trace LEVEL (`compacted`).
+ *
+ * Every field is taken from the backend's own `trace` block; nothing here
+ * recomputes a count from `events.length`, because the backend's number is the
+ * authority on what it decided to send and a disagreement is worth showing
+ * rather than hiding. `omitted` falls back to the arithmetic only when the
+ * field is absent (a pre-Phase-7A response), and never goes negative.
+ */
+export function traceReport(response: TeamSimulationResponse): TraceReport {
+  const trace = response.trace;
+  const simulated = trace.simulated_event_count;
+  const returned = trace.returned_event_count;
+  const omitted = trace.omitted_event_count ?? Math.max(0, simulated - returned);
+  return {
+    detail: trace.detail ?? null,
+    simulated,
+    returned,
+    omitted,
+    grouped: trace.grouped_event_count ?? 0,
+    truncated: trace.truncated,
+    truncationRule: trace.rule,
+    // Never inferred from the counts: `compacted` is the backend's claim, and
+    // a pre-7A response that simply truncated must not be reported as
+    // compacted just because it returned fewer events than it simulated.
+    compacted: trace.compacted === true,
+  };
+}
+
+export const TRACE_DETAIL_LABELS: Record<TraceDetail, string> = {
+  summary: "Summary",
+  standard: "Standard",
+  full: "Full",
+};
+
+/** How many raw events a row stands for. 1 for an ordinary row. */
+export function repeatCount(event: TeamSimEvent): number {
+  return event.repeats?.count ?? 1;
 }
 
 /** Runtime IDs in scenario slot order, from the backend's own summaries. */

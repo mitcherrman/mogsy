@@ -23,7 +23,11 @@ import type {
   TeamSimTargetingRequest,
   TeamSimulationRequest,
 } from "./contract";
-import { creditCostFor, type CatalogIndex } from "./catalog";
+import {
+  creditCostFor,
+  traceDetailOptions,
+  type CatalogIndex,
+} from "./catalog";
 import {
   activeIdsForTeam,
   activePriority,
@@ -166,6 +170,23 @@ export function buildSimulationRequest(
       max_trace_events: draft.scheduler.maxTraceEvents,
     },
   };
+
+  // Phase 7A. Inside the BODY, so it is inside the backend's request digest:
+  // two levels are two different logical requests, and the fresh key minted
+  // below belongs to this one. That placement is what stops a level change from
+  // replaying the other level's stored bytes — and what makes a level change
+  // cost a credit, which is why the page never submits on its own when the
+  // selector moves.
+  //
+  // Set conditionally, and OMITTED rather than defaulted when the catalog does
+  // not publish trace_options: a backend old enough not to publish them does
+  // not accept the field either, and every request model on that contract is
+  // extra="forbid", so sending it would 422 the simulation instead of falling
+  // back. Same rule the optional `starting_hp` above follows.
+  const trace = traceDetailOptions(index);
+  if (trace.published) {
+    request.limits.trace_detail = draft.scheduler.traceDetail;
+  }
 
   return {
     request,

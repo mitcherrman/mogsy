@@ -22,6 +22,7 @@ import {
   type RankedAbilitySlot,
   type TargetingPolicy,
   type TeamSimCatalog,
+  type TraceDetail,
 } from "./contract";
 
 export class MalformedCatalogError extends Error {
@@ -179,6 +180,8 @@ export type CatalogIndex = {
   levelBounds: CatalogLevelBounds;
   /** Phase 4C: the published billing + recovery contract. */
   billing: CatalogBilling;
+  /** Phase 7A: raw block, or undefined against a pre-7A backend. */
+  traceOptions: TeamSimCatalog["trace_options"];
 };
 
 const INDEX_CACHE = new WeakMap<TeamSimCatalog, CatalogIndex>();
@@ -247,6 +250,7 @@ export function indexCatalog(catalog: TeamSimCatalog): CatalogIndex {
     schedulerLimits: catalog.scheduler_limits,
     levelBounds: catalog.build_options.level,
     billing: catalog.billing,
+    traceOptions: catalog.trace_options,
   };
   INDEX_CACHE.set(catalog, index);
   return index;
@@ -304,4 +308,63 @@ export function targetingPolicyInfo(
   policy: string
 ) {
   return index.catalog.targeting_policies.find((p) => p.policy === policy);
+}
+
+/**
+ * The trace-detail levels THIS deployment accepts, and the one it defaults to.
+ *
+ * Catalog-driven rather than hard-coded, because the backend owns the
+ * vocabulary and offering a level it would reject turns a paid submission into
+ * a 422.
+ *
+ * The pre-Phase-7A case is the one that actually matters, and it is NOT
+ * "assume `full`": a backend old enough to publish no `trace_options` does not
+ * accept a `trace_detail` field AT ALL — every request model on that contract
+ * is `extra="forbid"`, so sending the field would 422 the whole simulation
+ * rather than degrade to the old behaviour. `published: false` therefore means
+ * "omit the field", and `buildSimulationRequest` does exactly that. The label
+ * below is only what the UI calls the level such a backend implicitly returns;
+ * it is never put on the wire.
+ *
+ * Also defensive about the SHAPE: a catalog that declared a default outside its
+ * own allowed list would otherwise seed every new draft with a value that
+ * backend rejects, so the default falls back to the first allowed level.
+ */
+const PRE_PHASE7A_TRACE_DETAIL: TraceDetail = "full";
+
+export function traceDetailOptions(index: CatalogIndex): {
+  allowed: TraceDetail[];
+  default: TraceDetail;
+  descriptions: Partial<Record<TraceDetail, string>>;
+  /** False against a pre-7A backend: the field must not be sent at all. */
+  published: boolean;
+  /** False when there is nothing to choose between — no selector is shown. */
+  selectable: boolean;
+  /** Whether switching level forces a new paid run (it does, when published). */
+  affectsDigest: boolean;
+} {
+  const published = index.traceOptions;
+  const allowed = (published?.allowed ?? []).filter(
+    (level): level is TraceDetail =>
+      level === "summary" || level === "standard" || level === "full"
+  );
+  if (allowed.length === 0) {
+    return {
+      allowed: [PRE_PHASE7A_TRACE_DETAIL],
+      default: PRE_PHASE7A_TRACE_DETAIL,
+      descriptions: {},
+      published: false,
+      selectable: false,
+      affectsDigest: false,
+    };
+  }
+  const declared = published?.default;
+  return {
+    allowed,
+    default: declared && allowed.includes(declared) ? declared : allowed[0],
+    descriptions: published?.descriptions ?? {},
+    published: true,
+    selectable: allowed.length > 1,
+    affectsDigest: published?.affects_idempotency_digest !== false,
+  };
 }
