@@ -92,6 +92,7 @@ export const CHAMPION_ABILITY_ICON_FILES: Record<string, ChampionAbilityIconEntr
   "Leona": { folder: "Leona", Q: "LeonaShieldOfDaybreak", W: "LeonaSolarBarrier", E: "LeonaZenithBlade", R: "LeonaSolarFlare" },
   "Lillia": { folder: "Lillia", Q: "LilliaQ", W: "LilliaW", E: "LilliaE", R: "LilliaR" },
   "Lissandra": { folder: "Lissandra", Q: "LissandraQ", W: "LissandraW", E: "LissandraE", R: "LissandraR" },
+  "Locke": { folder: "Locke", Q: "LockeQ", W: "LockeW", E: "LockeE", R: "LockeR" },
   "Lucian": { folder: "Lucian", Q: "LucianQ", W: "LucianW", E: "LucianE", R: "LucianR" },
   "Lulu": { folder: "Lulu", Q: "LuluQ", W: "LuluW", E: "LuluE", R: "LuluR" },
   "Lux": { folder: "Lux", Q: "LuxLightBinding", W: "LuxPrismaticWave", E: "LuxLightStrikeKugel", R: "LuxR" },
