@@ -84,6 +84,22 @@ describe("step-space engine", () => {
     expect(stateAt(index, 6, { topN: 10 }).stepCount).toBe(6);
   });
 
+  it("at rest on a checkpoint the label names the SETTLED level", () => {
+    // paused/seeked exactly to position 3 the values ARE level 3's — the
+    // label must not name the next level (caught live in the browser)
+    const rest = stateAt(index, 3, { topN: 10 });
+    expect(rest.stepLabel).toBe("Level 3");
+    expect(
+      rest.rows.find((r) => r.entityId === "champion:Alpha")!.value,
+    ).toBe(UNITS.Alpha[2]);
+    // barely into the transition, the destination level takes over
+    expect(stateAt(index, 3.01, { topN: 10 }).stepLabel).toBe("Level 4");
+    // reduced motion shows floor-state values, so the settled label holds
+    expect(
+      stateAt(index, 3.5, { topN: 10, reducedMotion: true }).stepLabel,
+    ).toBe("Level 3");
+  });
+
   it("applies a whole step simultaneously during the transition", () => {
     // between level 1 and 2 every champion interpolates at the same fraction
     const frame = stateAt(index, 1.5, { topN: 10 });

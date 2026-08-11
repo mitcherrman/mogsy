@@ -225,7 +225,16 @@ export function stateAt(
   // display step: the in-flight step during a transition, the last step at
   // the end. Its first event supplies occurredAt/context (for chronological
   // datasets that IS event floor(position), the pre-4A behaviour).
-  const displayStep = Math.min(k, stepCount - 1);
+  //
+  // Progression datasets additionally correct the AT-REST boundary: paused
+  // exactly on integer position k, the settled state IS step k's checkpoint,
+  // so the label must name step k, not the next step. Mid-transition (f>0)
+  // the destination step is the honest label. Chronological datasets keep
+  // the original convention untouched.
+  const displayStep =
+    index.progression && f === 0 && k > 0
+      ? Math.min(k - 1, stepCount - 1)
+      : Math.min(k, stepCount - 1);
   const displayEventIndex = Math.min(
     index.stepStartIndices[displayStep],
     eventCount - 1,
