@@ -14,6 +14,8 @@ export type Graph1EntityType =
   | "team"
   | "league"
   | "tournament"
+  /** Phase 4A: the focus of a stat-growth race is the stat itself. */
+  | "stat"
   | "unknown";
 
 export interface Graph1EntityRef {
@@ -73,6 +75,8 @@ export interface Graph1EventContext {
   region?: string;
   tournament?: string;
   patch?: string | null;
+  /** Champion level this event belongs to (stat-growth races only). */
+  level?: number;
 }
 
 export interface Graph1Event {
@@ -127,7 +131,20 @@ export interface Graph1DisplayHints {
  * backend that predates Phase 2 omits the whole block — consumers must fall
  * back on VALUES, never on field presence.
  */
-export type Graph1MetricId = "cumulative_games" | "cumulative_wins";
+export type Graph1MetricId =
+  | "cumulative_games"
+  | "cumulative_wins"
+  /** Phase 4A: a calculated champion stat accumulated as integer display
+   * units over a level progression (monotone, so it races like a count). */
+  | "champion_stat_value";
+
+/** How to print accumulated integer units as a stat value: show
+ * `value / scale` with `decimals` decimals. Absent on count metrics, whose
+ * integers ARE the display value. */
+export interface Graph1ValueDisplay {
+  scale: number;
+  decimals: number;
+}
 
 export interface Graph1MetricSpec {
   id: Graph1MetricId;
@@ -135,6 +152,25 @@ export interface Graph1MetricSpec {
   unit: string;
   accumulation: "sum";
   default?: boolean;
+  valueDisplay?: Graph1ValueDisplay;
+}
+
+/**
+ * A discrete progression axis (Phase 4A). When present, playback advances one
+ * STEP (e.g. one champion level) per cadence beat, all of a step's events
+ * apply together during that step's transition, and the header labels the
+ * position with `stepLabels[step]` ("Level 7") instead of a calendar date.
+ * `stepEventCounts[i]` is how many consecutive events belong to step i; the
+ * counts must sum to `events.length` or the progression is ignored (per-event
+ * playback, exactly the pre-4A behaviour).
+ */
+export interface Graph1Progression {
+  kind: string; // "level" today; new kinds must stay discrete-step shaped
+  unitLabel: string; // "Level"
+  stepLabels: string[];
+  stepEventCounts: number[];
+  /** Milliseconds one step occupies at 1x. Optional; consumers default it. */
+  msPerStep?: number;
 }
 
 /** Allow-listed event fields a filter may read. Mirrors FILTER_SOURCES in
@@ -187,12 +223,16 @@ export interface VisualizationDataset {
     focusEntity: Graph1EntityRef;
     rankedEntityType: Graph1EntityType;
     metric: {
-      id: "cumulative_games";
+      id: Graph1MetricId;
       label: string;
-      unit: "games";
+      unit: string;
       accumulation: "sum";
+      /** Present on stat metrics only (Phase 4A). */
+      valueDisplay?: Graph1ValueDisplay;
     };
-    scope: { id: "all-pro"; label: string };
+    scope: { id: string; label: string };
+    /** Additive (Phase 4A). Absent on chronological (esports) payloads. */
+    progression?: Graph1Progression;
     display?: Graph1DisplayHints;
     /** Additive (Phase 2). Absent on pre-Phase-2 payloads. */
     controls?: Graph1ControlSchema;
@@ -253,6 +293,10 @@ export interface Graph1Family {
   mediaStrategy?: "champion-icon" | "role-initials";
   keyTemplate?: string;
   entitySource?: string;
+  /** Stat families ship their closed token set inline instead of an
+   * entitySource endpoint (Phase 4A). */
+  stats?: { id: string; label: string; unit: string }[];
+  defaultEntity?: string;
   display?: Graph1DisplayHints;
   controls?: Graph1ControlSchema;
   defaultTopN?: number;
@@ -323,6 +367,42 @@ export function resolveDisplayHints(
 /** True when any event carries winsDelta (absent only in pre-1.1 payloads). */
 export function datasetHasWins(dataset: VisualizationDataset): boolean {
   return dataset.events.some((e) => e.winsDelta !== undefined);
+}
+
+/**
+ * The dataset's progression axis, or null for per-event (chronological)
+ * playback. FAIL-SAFE: a progression whose step counts do not exactly cover
+ * the event list (wrong lengths, non-positive counts, wrong sum — e.g. after
+ * a filter removed events) is ignored rather than trusted, because a stale
+ * step map would mislabel levels and desynchronize playback.
+ */
+export function resolveProgression(
+  dataset: VisualizationDataset,
+): Graph1Progression | null {
+  const progression = dataset.definition.progression;
+  if (!progression) return null;
+  const counts = progression.stepEventCounts;
+  const labels = progression.stepLabels;
+  if (!Array.isArray(counts) || !Array.isArray(labels)) return null;
+  if (counts.length === 0 || counts.length !== labels.length) return null;
+  let sum = 0;
+  for (const count of counts) {
+    if (!Number.isInteger(count) || count <= 0) return null;
+    sum += count;
+  }
+  return sum === dataset.events.length ? progression : null;
+}
+
+/** The metric's value-display rule, or null for plain integer metrics. */
+export function resolveValueDisplay(
+  dataset: VisualizationDataset,
+): Graph1ValueDisplay | null {
+  const valueDisplay = dataset.definition.metric.valueDisplay;
+  if (!valueDisplay) return null;
+  if (!Number.isFinite(valueDisplay.scale) || valueDisplay.scale <= 0) {
+    return null;
+  }
+  return valueDisplay;
 }
 
 /**
