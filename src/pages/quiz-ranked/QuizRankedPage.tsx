@@ -51,7 +51,9 @@ function Frame({ children, size = "default" }:
 { children: React.ReactNode; size?: "default" | "wide" }) {
   return (
     <div className={`ranked-shell ranked-academy mx-auto w-full space-y-3 px-4 py-3 ${
-      size === "wide" ? "max-w-6xl" : "max-w-3xl"}`} data-testid="quiz-ranked">
+      // RA10: the live-match frame widens a step at xl so the centre question
+      // track (not the fixed duelist rails) absorbs every extra pixel.
+      size === "wide" ? "max-w-6xl xl:max-w-[76rem]" : "max-w-3xl"}`} data-testid="quiz-ranked">
       {/* md:pl clears the shell's fixed "League Hub" pill (left-4, ~7rem wide),
           which sits on this row now that the heading is one line. From 1440px
           the centred frame's own left margin clears it naturally. */}

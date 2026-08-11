@@ -12,7 +12,7 @@
  * collapsed — the full table can never mount under a live question on its own.
  */
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { CheckCircle2, ChevronDown, Hourglass, MinusCircle, XCircle } from "lucide-react";
 import type { SegmentResult } from "@/lib/ranked-public/contracts";
 import {
   SegmentTranscript,
@@ -24,6 +24,14 @@ const RESULT_LABEL: Record<SegmentResult, string> = {
   loss: "Loss",
   draw: "Draw",
   timeout: "Timeout",
+};
+
+/** RA10 combat-log glyphs: decorative, the copy beside them is unchanged. */
+const RESULT_ICON: Record<SegmentResult, React.JSX.Element> = {
+  win: <CheckCircle2 aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-400" />,
+  loss: <XCircle aria-hidden className="h-3.5 w-3.5 shrink-0 text-[#e2757b]" />,
+  draw: <MinusCircle aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />,
+  timeout: <Hourglass aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />,
 };
 
 export function SegmentResultBanner(props: SegmentTranscriptProps) {
@@ -48,18 +56,19 @@ export function SegmentResultBanner(props: SegmentTranscriptProps) {
       className="ranked-panel px-3 py-2 sm:px-4"
     >
       <div className="flex min-h-[2.25rem] flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-        <span role="status" className="text-sm font-semibold" data-testid="icd-banner-result">
-          Item Cost Duel — {you.segmentResult ? RESULT_LABEL[you.segmentResult] : "resolved"}
+        <span role="status" className="inline-flex items-center gap-1.5 text-sm font-semibold" data-testid="icd-banner-result">
+          {you.segmentResult && RESULT_ICON[you.segmentResult]}
+          <span>Item Cost Duel — {you.segmentResult ? RESULT_LABEL[you.segmentResult] : "resolved"}</span>
         </span>
-        <span data-testid="icd-banner-you" className="text-muted-foreground">
+        <span data-testid="icd-banner-you" className="text-muted-foreground sm:border-l sm:border-white/10 sm:pl-3">
           <span className="font-semibold text-foreground">You</span>{" "}
           <span className="tabular-nums">{you.correct}/{total} correct</span>
           {damageDealt !== null && (
-            <span className="tabular-nums"> · {damageDealt} dmg</span>
+            <span className="tabular-nums text-[#e8c97a]"> · {damageDealt} dmg</span>
           )}
         </span>
         {them && (
-          <span data-testid="icd-banner-opponent" className="text-muted-foreground">
+          <span data-testid="icd-banner-opponent" className="text-muted-foreground sm:border-l sm:border-white/10 sm:pl-3">
             <span className="font-semibold text-foreground">Opponent</span>{" "}
             <span className="tabular-nums">{them.correct}/{total} correct</span>
           </span>

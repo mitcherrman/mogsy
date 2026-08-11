@@ -196,7 +196,7 @@ export default function QuizAnswerOptions({
                     />
                   </div>
                   <div className="flex items-center gap-1.5 w-full justify-center">
-                    <span className={`text-xs font-bold ${letterClass}`}>
+                    <span data-choice-letter className={`text-xs font-bold ${letterClass}`}>
                       {String.fromCharCode(65 + idx)}.
                     </span>
                     <span className="text-center">{label}</span>
@@ -210,7 +210,7 @@ export default function QuizAnswerOptions({
                 </>
               ) : (
                 <>
-                  <span className={`mr-2 shrink-0 text-xs font-bold ${letterClass}`}>
+                  <span data-choice-letter className={`mr-2 shrink-0 text-xs font-bold ${letterClass}`}>
                     {String.fromCharCode(65 + idx)}.
                   </span>
                   {media && <OptionMediaIcon media={media[idx] ?? null} />}

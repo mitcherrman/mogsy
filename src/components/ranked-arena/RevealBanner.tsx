@@ -14,7 +14,7 @@
  * starts collapsed.
  */
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { CheckCircle2, ChevronDown, Hourglass, Swords, XCircle } from "lucide-react";
 import {
   ResolvedCombatantView,
   ResolvedRoundView,
@@ -25,6 +25,13 @@ const OUTCOME_COPY: Record<ResolvedCombatantView["outcome"], string> = {
   correct: "Correct",
   incorrect: "Incorrect",
   timed_out: "Timed out",
+};
+
+/** RA10 combat-log glyphs: decorative, the copy beside them is unchanged. */
+const OUTCOME_ICON: Record<ResolvedCombatantView["outcome"], React.JSX.Element> = {
+  correct: <CheckCircle2 aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-400" />,
+  incorrect: <XCircle aria-hidden className="h-3.5 w-3.5 shrink-0 text-[#e2757b]" />,
+  timed_out: <Hourglass aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />,
 };
 
 export interface RevealBannerProps {
@@ -43,14 +50,17 @@ function SideSummary({
   return (
     <span
       data-testid={`reveal-side-${player.playerId}`}
-      className="whitespace-nowrap text-muted-foreground"
+      className="inline-flex items-center gap-1 whitespace-nowrap text-muted-foreground sm:border-l sm:border-white/10 sm:pl-3"
     >
-      <span className="font-semibold text-foreground">{name}</span>{" "}
-      {OUTCOME_COPY[player.outcome]}
-      {player.finalDamageDealt > 0 && (
-        <span className="tabular-nums"> · {player.finalDamageDealt} dmg</span>
-      )}
-      {player.leveledUp && " · Level up"}
+      {OUTCOME_ICON[player.outcome]}
+      <span>
+        <span className="font-semibold text-foreground">{name}</span>{" "}
+        {OUTCOME_COPY[player.outcome]}
+        {player.finalDamageDealt > 0 && (
+          <span className="tabular-nums text-[#e8c97a]"> · {player.finalDamageDealt} dmg</span>
+        )}
+        {player.leveledUp && " · Level up"}
+      </span>
     </span>
   );
 }
@@ -84,10 +94,13 @@ export function RevealBanner({
         <span
           role="status"
           data-testid="reveal-headline"
-          className="text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold"
         >
-          Round {settlement.roundNumber} resolved
-          {settlement.endReason === "deadline_expired" && " — time expired"}
+          <Swords aria-hidden className="h-3.5 w-3.5 shrink-0 text-[#d5b66f]" />
+          <span>
+            Round {settlement.roundNumber} resolved
+            {settlement.endReason === "deadline_expired" && " — time expired"}
+          </span>
         </span>
         <SideSummary player={viewer} name={nameOf(viewer)} />
         <SideSummary player={opponent} name={nameOf(opponent)} />

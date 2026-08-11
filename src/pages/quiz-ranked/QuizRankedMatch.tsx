@@ -234,7 +234,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             <div className="ranked-eyebrow">
               Ranked Duel{m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}
             </div>
-            <h3 className="ranked-title text-base font-bold leading-tight">{roundLabel}</h3>
+            <h3 className="ranked-title text-lg font-bold leading-tight">{roundLabel}</h3>
           </div>
           {inTransition && (
             <span data-testid="ranked-round-transition"
@@ -243,7 +243,10 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        {/* RA10: the timer block sits behind a brass hairline, scoreboard-style,
+            so the clock reads as its own instrument. Border only — the strip's
+            reserved min-height is untouched. */}
+        <div className="flex items-center gap-3 sm:border-l sm:border-[#b9934c]/30 sm:pl-4">
           {(m.publicRound.playtest?.isPlaceholder || opponentLabel) && (
             <div className="hidden text-right sm:block">
               {m.publicRound.playtest?.isPlaceholder && (
@@ -276,8 +279,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       {/* Arena body: You ⚔ focus ⚔ Opponent. Ordinary flow — the centre column
           is NOT a scroll container; the page scrolls. `items-start` keeps the
           duelist panels at their natural height so a taller centre column can
-          never stretch them. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] lg:items-start">
+          never stretch them.
+
+          RA10: the question board is the centre of gravity — the duelist rails
+          give up a step at lg (14rem) where width is scarce and return to
+          15rem at xl, where the wider match frame (see Frame) has already
+          grown the centre track instead. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)]">
         <div className="lg:col-start-1 lg:row-start-1">
           <CombatantPanel combatant={combatants.player} />
         </div>
@@ -332,7 +340,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
               // `ranked-folio` is the RA4 academy skin for this exact box —
               // colour only. The padding, the reserved scenario-band box and
               // the answer grid inside are untouched, so nothing here moves.
-              className={`ranked-panel ranked-folio p-3 sm:p-4 transition-opacity duration-200 motion-reduce:transition-none ${
+              className={`ranked-panel ranked-folio p-3 sm:p-5 transition-opacity duration-200 motion-reduce:transition-none ${
                 m.revealHold || isProgression ? "opacity-60" : "opacity-100"}`}>
               <renderer.Viewport
                 // The FROZEN snapshot: the surface keeps rendering the round the

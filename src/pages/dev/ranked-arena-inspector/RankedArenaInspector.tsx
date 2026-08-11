@@ -18,6 +18,7 @@ import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
+import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
@@ -403,23 +404,37 @@ function Combatants({ p, o }: { p: CombatantView; o: CombatantView }) {
 }
 
 /**
- * Full arena composition — mirrors QuizRankedMatch's shared layout (top strip +
- * You⚔Question⚔Opponent grid + ability-hotbar/submission HUD) from static
- * fixtures, so the no-scroll desktop composition and responsive stack can be QA'd
- * without a live match. Presentation only; no controller/engine import.
+ * Full arena composition — mirrors QuizRankedMatch's shared layout (header
+ * plate + You⚔Question⚔Opponent grid + compact ability hotbar + status line +
+ * reveal banner) from static fixtures, so the no-scroll desktop composition
+ * and responsive stack can be QA'd without a live match. Carries the SAME
+ * `ranked-academy` theme class the live Frame applies, so the inspector shows
+ * the pixels the route ships. Presentation only; no controller/engine import.
  */
-function ArenaComposition({ selected = "0", locked = false }: { selected?: string | null; locked?: boolean }) {
+function ArenaComposition({
+  selected = "0",
+  locked = false,
+  question = ITEM_Q,
+  scenarioSource = ITEM_SCENARIO,
+}: {
+  selected?: string | null;
+  locked?: boolean;
+  question?: QuestionView;
+  scenarioSource?: QuizQuestion | null;
+}) {
   const perms = locked ? NO_INTERACTIONS : OPEN;
   return (
-    <div className="ranked-shell space-y-3">
-      <section className="ranked-panel flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2.5">
+    <div className="ranked-shell ranked-academy space-y-3">
+      <section className="ranked-panel ranked-header-plate flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
         <div>
           <div className="ranked-eyebrow">Ranked Duel · vs Bot</div>
           <h3 className="ranked-title text-lg font-bold leading-tight">Round 7</h3>
         </div>
-        <TimerDisplay timer={TIMER({ remainingSeconds: 18 })} label="Shared round timer" />
+        <div className="flex items-center gap-3 sm:border-l sm:border-[#b9934c]/30 sm:pl-4">
+          <TimerDisplay timer={TIMER({ remainingSeconds: 18 })} label="Shared round timer" />
+        </div>
       </section>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] lg:items-start">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)]">
         <div className="lg:col-start-1 lg:row-start-1">
           <CombatantPanel combatant={player()} />
         </div>
@@ -427,24 +442,24 @@ function ArenaComposition({ selected = "0", locked = false }: { selected?: strin
           <CombatantPanel combatant={opponent()} />
         </div>
         <section data-testid="ranked-question"
-          className="ranked-panel col-span-2 p-3 sm:p-4 lg:col-span-1 lg:col-start-2 lg:row-start-1">
-          <InteractiveScenarioSurface question={ITEM_Q} selectedOptionId={selected} permissions={perms}
-            onSelectOption={() => {}} variant="competitive" scenarioSource={ITEM_SCENARIO} />
+          className="ranked-panel ranked-folio col-span-2 p-3 sm:p-5 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          <InteractiveScenarioSurface question={question} selectedOptionId={selected} permissions={perms}
+            onSelectOption={() => {}} variant="competitive" scenarioSource={scenarioSource} />
         </section>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] lg:items-stretch">
-        <section className="ranked-panel p-3 sm:p-4">
+      <div className="flex flex-col gap-1.5">
+        <section className="ranked-panel px-3 py-2.5 sm:px-4">
           <AbilityTray abilities={ABILITIES([{ selected: true }])} selectedAbilityId="tank.fortify"
-            permissions={perms} onSelectAbility={() => {}} />
+            permissions={perms} onSelectAbility={() => {}} noAbilityLabel="Clear ability" />
         </section>
-        <section className="ranked-panel p-3 sm:p-4">
-          <SubmissionReview flow="direct"
-            submission={{ selectedOptionId: selected, selectedAbilityId: "tank.fortify",
-              phase: locked ? "locked" : "selecting" }}
-            answerLabel={selected ? "Rabadon's Deathcap" : null} abilityName="Fortify"
-            permissions={perms} onReview={() => {}} onEdit={() => {}} onConfirm={() => {}} />
-        </section>
+        <p className="line-clamp-2 min-h-[2.25rem] px-1 text-xs text-muted-foreground">
+          {locked ? "Answer locked — waiting for opponent…" : "Choose an answer to lock it in."}
+        </p>
       </div>
+      {/* The compact end-of-page result strip, from the same settlement
+          fixtures the reveal states use. */}
+      <RevealBanner settlement={settlement("solo-correct")} viewerSlot="p1"
+        namesByPlayerId={NAMES} />
     </div>
   );
 }
@@ -538,10 +553,21 @@ const STATES: InspectorState[] = [
       primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
 
   // --- full arena composition (layout QA) ---
-  { key: "arena-full", label: "Arena — full composition",
+  // RA10: one state per representative question surface, so centre prominence,
+  // hotbar compactness and combatant identity are judged against the real band
+  // families, not just the cinematic item card.
+  { key: "arena-full", label: "Arena — full composition (cinematic item)",
     render: () => <ArenaComposition /> },
   { key: "arena-locked", label: "Arena — sealed / locked",
     render: () => <ArenaComposition locked /> },
+  { key: "arena-combat", label: "Arena — combat family band",
+    render: () => <ArenaComposition question={RA7.PHYSICAL_DAMAGE_Q}
+      scenarioSource={RA7.PHYSICAL_DAMAGE_SCENARIO} selected={null} /> },
+  { key: "arena-lifecycle", label: "Arena — item lifecycle band",
+    render: () => <ArenaComposition question={RA7.SELL_SWAP_Q}
+      scenarioSource={RA7.SELL_SWAP_SCENARIO} selected={null} /> },
+  { key: "arena-compact", label: "Arena — compact fallback (no source)",
+    render: () => <ArenaComposition scenarioSource={null} selected={null} /> },
 
   // --- shared InteractiveScenarioSurface ---
   { key: "surface-text-fallback", label: "Surface — compact band (no source)",
@@ -662,15 +688,18 @@ export default function RankedArenaInspector() {
   const active = STATES.find((s) => s.key === stateKey) ?? STATES[0];
 
   return (
+    // `relative z-10` on the chrome: the arena states carry the real
+    // `ranked-academy` theme, whose backdrop is a fixed full-viewport layer —
+    // the inspector's own controls must stack above it to stay usable.
     <div className="mx-auto max-w-5xl p-4 space-y-4" data-testid="ranked-arena-inspector">
-      <header className="space-y-1">
+      <header className="relative z-10 space-y-1">
         <h1 className="text-lg font-bold">Ranked Arena Inspector</h1>
         <p className="text-xs text-muted-foreground">
           Canonical arena components rendered from static fixtures. No engine, no backend — visual QA only.
         </p>
       </header>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Viewport">
+      <div className="relative z-10 flex flex-wrap gap-2" role="group" aria-label="Viewport">
         {VIEWPORTS.map((v) => (
           <button key={v.key} type="button" data-testid={`inspector-viewport-${v.key}`}
             aria-pressed={viewport.key === v.key} onClick={() => setViewport(v)}
@@ -682,7 +711,7 @@ export default function RankedArenaInspector() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-[220px_1fr]">
-        <nav className="flex flex-col gap-1" aria-label="States">
+        <nav className="relative z-10 flex flex-col gap-1" aria-label="States">
           {STATES.map((s) => (
             <button key={s.key} type="button" data-testid={`inspector-state-${s.key}`}
               aria-pressed={stateKey === s.key} onClick={() => setStateKey(s.key)}
