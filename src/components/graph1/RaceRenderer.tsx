@@ -17,13 +17,31 @@
  */
 import type { ComponentType } from "react";
 
-import type { Graph1EntityPresentation } from "@/graph1/contract";
+import type {
+  Graph1EntityPresentation,
+  Graph1ValueDisplay,
+} from "@/graph1/contract";
 import { entityColor } from "@/graph1/colors";
 import type { RaceFrameState, RaceRow } from "@/graph1/engine";
 import { cn } from "@/lib/utils";
 import RoleGlyph from "./RoleGlyph";
 
 const ROW_HEIGHT = 52;
+
+/**
+ * The value printed beside a bar. Count metrics show the whole-unit integer
+ * at floor(position) — numbers step while bars glide (the Phase 1 look).
+ * Stat metrics (valueDisplay present) print the INTERPOLATED value scaled
+ * back to stat units, so the number rolls smoothly with the bar and lands
+ * exactly on the canonical value at every checkpoint.
+ */
+function formatRowValue(
+  row: RaceRow,
+  valueDisplay: Graph1ValueDisplay | null | undefined,
+): string {
+  if (!valueDisplay) return String(row.displayValue);
+  return (row.value / valueDisplay.scale).toFixed(valueDisplay.decimals);
+}
 
 /**
  * Layer switches. The two original fields keep their names and meaning; the
@@ -97,8 +115,9 @@ function rowAriaLabel(
   entity: Graph1EntityPresentation,
   metricLabel: string,
   display: RaceRendererDisplay,
+  valueDisplay: Graph1ValueDisplay | null | undefined,
 ): string {
-  let label = `Rank ${row.rank}: ${entity.displayName}, ${row.displayValue} ${metricLabel}`;
+  let label = `Rank ${row.rank}: ${entity.displayName}, ${formatRowValue(row, valueDisplay)} ${metricLabel}`;
   if (display.showWinOverlay) {
     label += `, ${row.displayWins} wins, ${row.displayLosses} losses`;
   }
@@ -115,12 +134,14 @@ function Row({
   metricLabel,
   display,
   imageComponent,
+  valueDisplay,
 }: {
   row: RaceRow;
   entity: Graph1EntityPresentation;
   metricLabel: string;
   display: RaceRendererDisplay;
   imageComponent: RaceRendererImageComponent;
+  valueDisplay?: Graph1ValueDisplay | null;
 }) {
   const color = entityColor(entity.id);
   const secondary =
@@ -133,7 +154,7 @@ function Row({
     <div
       data-entity-id={entity.id}
       role="listitem"
-      aria-label={rowAriaLabel(row, entity, metricLabel, display)}
+      aria-label={rowAriaLabel(row, entity, metricLabel, display, valueDisplay)}
       className="absolute inset-x-0 flex items-center gap-2 px-1"
       style={{
         height: ROW_HEIGHT,
@@ -192,7 +213,9 @@ function Row({
       </div>
       {display.showValueLabel !== false && (
         <span className="w-24 text-right tabular-nums">
-          <span className="text-sm font-bold">{row.displayValue}</span>
+          <span className="text-sm font-bold">
+            {formatRowValue(row, valueDisplay)}
+          </span>
           {display.showWinOverlay && (
             <span className="ml-1 hidden text-[11px] text-muted-foreground md:inline">
               {row.displayWins}W–{row.displayLosses}L
@@ -210,6 +233,8 @@ export interface RaceRendererProps {
   metricLabel: string;
   topN: number;
   display: RaceRendererDisplay;
+  /** stat metrics print scaled interpolated values; omit for count metrics */
+  valueDisplay?: Graph1ValueDisplay | null;
   /** defaults to a lazy native <img>; Remotion passes its <Img> */
   imageComponent?: RaceRendererImageComponent;
 }
@@ -220,6 +245,7 @@ export default function RaceRenderer({
   metricLabel,
   topN,
   display,
+  valueDisplay,
   imageComponent = NativeLazyImg,
 }: RaceRendererProps) {
   return (
@@ -241,6 +267,7 @@ export default function RaceRenderer({
               metricLabel={metricLabel}
               display={display}
               imageComponent={imageComponent}
+              valueDisplay={valueDisplay}
             />
           );
         })}

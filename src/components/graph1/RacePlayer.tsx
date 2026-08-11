@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 import {
   resolveDisplayHints,
   resolveDisplayToggles,
+  resolveValueDisplay,
   type VisualizationDataset,
 } from "@/graph1/contract";
 import {
@@ -122,6 +123,11 @@ export default function RacePlayer({
   const coverage = visible.coverage;
   const toggles = state.toggles;
   const ctx = frame?.currentContext;
+  // progression datasets label positions with steps ("Level 7"), print scaled
+  // stat values, and pace one level per beat; both resolve to null/absent on
+  // every chronological dataset, whose rendering is unchanged
+  const progression = index.progression;
+  const valueDisplay = resolveValueDisplay(dataset);
 
   const setFilters = (filters: Graph1FilterState) =>
     setState({ ...state, filters });
@@ -132,16 +138,40 @@ export default function RacePlayer({
         <h2 className="text-xl font-bold">{dataset.definition.title}</h2>
         <p className="text-sm text-muted-foreground">
           {dataset.definition.metric.label} · {dataset.definition.scope.label} ·{" "}
-          {coverage.eligibleEventCount.toLocaleString()} games
-          {coverage.firstEventAt && coverage.lastEventAt && (
+          {progression ? (
             <>
-              {" · "}
-              {coverage.firstEventAt.slice(0, 10)} →{" "}
-              {coverage.lastEventAt.slice(0, 10)}
+              {coverage.distinctRankedEntityCount.toLocaleString()} champions ·{" "}
+              {frame?.stepCount ?? progression.stepLabels.length}{" "}
+              {progression.unitLabel.toLowerCase()}s
+            </>
+          ) : (
+            <>
+              {coverage.eligibleEventCount.toLocaleString()} games
+              {coverage.firstEventAt && coverage.lastEventAt && (
+                <>
+                  {" · "}
+                  {coverage.firstEventAt.slice(0, 10)} →{" "}
+                  {coverage.lastEventAt.slice(0, 10)}
+                </>
+              )}
             </>
           )}
         </p>
-        {frame && toggles.eventHeader && (
+        {frame && toggles.eventHeader && progression && (
+          <div
+            className="min-h-[3.5rem] text-sm font-semibold tabular-nums"
+            aria-live="off"
+            data-testid="event-header"
+          >
+            <p>
+              <span className="text-2xl">{frame.stepLabel}</span>
+              <span className="ml-2 text-muted-foreground">
+                {frame.stepIndex + 1} of {frame.stepCount}
+              </span>
+            </p>
+          </div>
+        )}
+        {frame && toggles.eventHeader && !progression && (
           hints.contextMode === "event-header" ? (
             <div
               className="min-h-[3.5rem] text-sm font-semibold tabular-nums"
@@ -186,6 +216,7 @@ export default function RacePlayer({
           entities={visible.entities}
           metricLabel={dataset.definition.metric.label}
           topN={state.topN}
+          valueDisplay={valueDisplay}
           display={{
             showWinOverlay: toggles.winOverlay,
             showSecondaryEntityLabel:
@@ -209,7 +240,8 @@ export default function RacePlayer({
         playing={clock.playing}
         speed={clock.speed}
         position={position}
-        eventCount={index.eventCount}
+        eventCount={index.stepCount}
+        unitLabel={progression?.unitLabel ?? "game"}
         onPlay={clock.play}
         onPause={clock.pause}
         onRestart={clock.restart}
