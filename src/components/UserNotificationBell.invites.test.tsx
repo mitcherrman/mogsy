@@ -14,9 +14,18 @@ const invitesHook = vi.hoisted(() => ({
   disabled: false,
   busyToken: null as string | null,
   accept: vi.fn(),
+  acceptSwitch: vi.fn(),
   decline: vi.fn(),
   refresh: vi.fn(),
 }));
+
+const ok = (joinPath = "/quiz/stat-check/room/ABCD2345") => ({ ok: true, joinPath });
+const conflict = (details: Record<string, unknown>, code = "SC_ACTIVE_ROOM_EXISTS") => ({
+  ok: false,
+  code,
+  message: "You already have a Stat Check room.",
+  details,
+});
 vi.mock("@/hooks/useStatCheckInvites", () => ({
   useStatCheckInvites: () => invitesHook,
 }));
@@ -66,13 +75,26 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 
+/**
+ * Expiry is relative, not a fixed timestamp. The bell now hides invites whose
+ * `expiresAt` has passed, so a hard-coded date silently turned every one of
+ * these fixtures into an expired invite once that date went by — the suite
+ * would then fail on a calendar boundary rather than on a code change.
+ * `expiredInvite` exercises that filter deliberately instead.
+ */
 const invite = (token = "tok_a") => ({
   inviteToken: token,
   senderProfileId: "11111111-1111-4111-8111-111111111111",
   displayName: "Rivals",
   avatarUrl: null,
-  createdAt: "2026-08-02T12:00:00+00:00",
-  expiresAt: "2026-08-02T12:15:00+00:00",
+  createdAt: new Date(Date.now() - 60_000).toISOString(),
+  expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+});
+
+const expiredInvite = (token = "tok_expired") => ({
+  ...invite(token),
+  createdAt: new Date(Date.now() - 20 * 60_000).toISOString(),
+  expiresAt: new Date(Date.now() - 60_000).toISOString(),
 });
 
 afterEach(() => {
@@ -104,7 +126,7 @@ describe("UserNotificationBell — Stat Check invites", () => {
 
   it("accept navigates through the existing room route", async () => {
     invitesHook.invites = [invite()];
-    invitesHook.accept.mockResolvedValue("/quiz/stat-check/room/ABCD2345");
+    invitesHook.accept.mockResolvedValue(ok());
     await openBell();
     fireEvent.click(await screen.findByTestId("sc-invite-accept"));
 
@@ -112,14 +134,165 @@ describe("UserNotificationBell — Stat Check invites", () => {
     expect(invitesHook.accept).toHaveBeenCalledWith("tok_a");
   });
 
-  it("accept failure reports and does not navigate", async () => {
+  it("accept failure reports the backend message and does not navigate", async () => {
     invitesHook.invites = [invite()];
-    invitesHook.accept.mockResolvedValue(null);
+    invitesHook.accept.mockResolvedValue({
+      ok: false, code: "SC_INVITE_EXPIRED", message: "This invite has expired.", details: null,
+    });
     await openBell();
     fireEvent.click(await screen.findByTestId("sc-invite-accept"));
 
-    await waitFor(() => expect(toasts.error).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(toasts.error).toHaveBeenCalledWith("This invite has expired."),
+    );
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("SC_ACTIVE_ROOM_EXISTS on an empty room shows the switch confirmation", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue(
+      conflict({ room_state: "open", other_player_present: false, can_close: true }),
+    );
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+
+    expect(await screen.findByTestId("sc-room-conflict-dialog")).toBeTruthy();
+    expect(screen.getByText("Switch Stat Check rooms?")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "You already have a Stat Check room open. Leave it and join your friend's room?",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId("sc-conflict-switch").textContent).toBe("Switch and Join");
+    expect(screen.getByTestId("sc-conflict-keep").textContent).toBe("Keep My Room");
+    // The invite is NOT removed by a recoverable conflict.
+    expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("SC_ACTIVE_ROOM_EXISTS on an occupied room warns about the other player", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue(
+      conflict({ room_state: "open", other_player_present: true, can_close: true }),
+    );
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+
+    expect(
+      await screen.findByText(
+        "Another player is already waiting in your current room. Switching will close that room for everyone.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId("sc-conflict-switch").textContent).toBe("Close Room and Join");
+    expect(screen.getByTestId("sc-conflict-keep").textContent).toBe("Keep Current Room");
+  });
+
+  it("an active match is a blocking message with no switch offered", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue(
+      conflict({ room_state: "active", other_player_present: true, can_close: false }),
+    );
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+
+    expect(
+      await screen.findByText(
+        "Finish or leave your current match before joining this invite.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("sc-conflict-switch")).toBeNull();
+    expect(screen.getByTestId("sc-conflict-dismiss")).toBeTruthy();
+  });
+
+  it("a room the user does not own is blocking and uses the backend message", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue({
+      ok: false,
+      code: "SC_ACTIVE_ROOM_EXISTS",
+      message: "You are in another player's room. Leave it before joining this invite.",
+      details: { room_state: "open", other_player_present: true, can_close: false },
+    });
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+
+    expect(
+      await screen.findByText(
+        "You are in another player's room. Leave it before joining this invite.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("sc-conflict-switch")).toBeNull();
+  });
+
+  it("Keep My Room changes nothing", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue(
+      conflict({ room_state: "open", other_player_present: false, can_close: true }),
+    );
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("sc-conflict-keep"));
+
+    await waitFor(() => expect(screen.queryByTestId("sc-room-conflict-dialog")).toBeNull());
+    expect(invitesHook.acceptSwitch).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
+  });
+
+  it("Switch and Join calls accept-switch without the eviction confirmation", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue(
+      conflict({ room_state: "open", other_player_present: false, can_close: true }),
+    );
+    invitesHook.acceptSwitch.mockResolvedValue(ok());
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("sc-conflict-switch"));
+
+    await waitFor(() => expect(invitesHook.acceptSwitch).toHaveBeenCalledWith("tok_a", false));
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith("/quiz/stat-check/room/ABCD2345"),
+    );
+  });
+
+  it("Close Room and Join sends the eviction confirmation", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue(
+      conflict({ room_state: "open", other_player_present: true, can_close: true }),
+    );
+    invitesHook.acceptSwitch.mockResolvedValue(ok());
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("sc-conflict-switch"));
+
+    await waitFor(() => expect(invitesHook.acceptSwitch).toHaveBeenCalledWith("tok_a", true));
+  });
+
+  it("a failed switch keeps the invite and reports the backend reason", async () => {
+    invitesHook.invites = [invite()];
+    invitesHook.accept.mockResolvedValue(
+      conflict({ room_state: "open", other_player_present: false, can_close: true }),
+    );
+    invitesHook.acceptSwitch.mockResolvedValue({
+      ok: false, code: "SC_ROOM_FULL", message: "This room already has two players.",
+      details: null,
+    });
+    await openBell();
+    fireEvent.click(await screen.findByTestId("sc-invite-accept"));
+    fireEvent.click(await screen.findByTestId("sc-conflict-switch"));
+
+    await waitFor(() =>
+      expect(toasts.error).toHaveBeenCalledWith("This room already has two players."),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
+  });
+
+  it("opening the bell triggers an immediate refresh", async () => {
+    render(<UserNotificationBell />);
+    const bell = await screen.findByRole("button");
+    invitesHook.refresh.mockClear();
+    fireEvent.click(bell);
+    await waitFor(() => expect(invitesHook.refresh).toHaveBeenCalled());
   });
 
   it("decline calls the hook and never navigates", async () => {
@@ -147,7 +320,7 @@ describe("UserNotificationBell — Stat Check invites", () => {
 
   it("never writes to user_notifications", async () => {
     invitesHook.invites = [invite()];
-    invitesHook.accept.mockResolvedValue("/quiz/stat-check/room/ABCD2345");
+    invitesHook.accept.mockResolvedValue(ok());
     await openBell();
     fireEvent.click(await screen.findByTestId("sc-invite-accept"));
     await waitFor(() => expect(navigate).toHaveBeenCalled());

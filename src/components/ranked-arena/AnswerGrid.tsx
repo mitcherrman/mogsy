@@ -11,7 +11,10 @@
  *   opt-in via revealedCorrectOptionId, which controllers may only obtain
  *   from a resolved round;
  * - a disabled (locked) but unrevealed grid is achieved with a disabled
- *   fieldset so no reveal styling is implied.
+ *   fieldset so no reveal styling is implied;
+ * - optional canonical option media (RA6) is forwarded POSITIONALLY. It is
+ *   backend-resolved from the option text alone and is all-or-nothing per
+ *   question, so it carries no correctness and needs no gating here.
  */
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
 import {
@@ -66,6 +69,9 @@ export function AnswerGrid({
         answerResult={revealed ? { correct_answer: revealed.label } : null}
         onSelect={handleSelect}
         columns={wideTwoColumn ? "wide-2" : "auto"}
+        optionMedia={
+          options.some((o) => o.media) ? options.map((o) => o.media ?? null) : undefined
+        }
       />
     </fieldset>
   );

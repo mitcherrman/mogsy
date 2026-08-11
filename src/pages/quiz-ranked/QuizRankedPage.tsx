@@ -39,11 +39,18 @@ const CLASSES: { id: RankedClass; label: string; blurb: string }[] = [
  * the stacked eyebrow/title block spent ~65px of every desktop viewport
  * before the arena began. Hierarchy is preserved (h1 title, quiet eyebrow,
  * essential Back link), only the vertical cost changed.
+ *
+ * `ranked-academy` (RA4 Slice A) is the ONE place the Mogzy academy theme is
+ * switched on. It is a presentation class only — every rule it carries lives in
+ * index.css, it is applied nowhere else in the app, and no shared component
+ * (question surface, quiz answer grid, arena primitives) knows it exists. The
+ * background it paints is a fixed layer inside <main>, so it adds no height and
+ * cannot reach the navbar or any floating control.
  */
 function Frame({ children, size = "default" }:
 { children: React.ReactNode; size?: "default" | "wide" }) {
   return (
-    <div className={`ranked-shell mx-auto w-full space-y-3 px-4 py-3 ${
+    <div className={`ranked-shell ranked-academy mx-auto w-full space-y-3 px-4 py-3 ${
       size === "wide" ? "max-w-6xl" : "max-w-3xl"}`} data-testid="quiz-ranked">
       {/* md:pl clears the shell's fixed "League Hub" pill (left-4, ~7rem wide),
           which sits on this row now that the heading is one line. From 1440px

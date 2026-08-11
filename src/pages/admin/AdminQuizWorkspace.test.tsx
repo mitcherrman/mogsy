@@ -35,9 +35,24 @@ vi.mock("./AdminQuizReview", () => ({
   ),
 }));
 // The Ranked Duel panel fetches on mount and has its own dedicated test suite;
-// stub it here so the shell test stays about routing/tabs.
+// stub it here so the shell test stays about routing/tabs. The stub echoes its
+// controlled selection props, the same way the Review stub does, so the
+// workspace ↔ URL wiring for ?candidateId= is assertable here.
 vi.mock("@/components/admin/ranked-duel-review/RankedDuelReviewPanel", () => ({
-  RankedDuelReviewPanel: () => <div data-testid="ranked-duel-review-panel">ranked duel panel</div>,
+  RankedDuelReviewPanel: ({
+    selectedCandidateId,
+    onSelectCandidate,
+  }: {
+    selectedCandidateId?: string | null;
+    onSelectCandidate?: (id: string | null) => void;
+  }) => (
+    <div data-testid="ranked-duel-review-panel">
+      <span data-testid="rd-selected">{selectedCandidateId ?? "none"}</span>
+      <button data-testid="rd-select-a" onClick={() => onSelectCandidate?.("cand-a")} />
+      <button data-testid="rd-select-b" onClick={() => onSelectCandidate?.("cand-b")} />
+      <button data-testid="rd-clear" onClick={() => onSelectCandidate?.(null)} />
+    </div>
+  ),
 }));
 
 function LocationProbe() {
@@ -142,5 +157,83 @@ describe("AdminQuizWorkspace shell (/admin/quiz-content)", () => {
       renderAt("/admin/quiz-content?tab=bogus");
       expect(await screen.findByTestId("stub-builder")).toBeTruthy();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RA9 — Ranked candidate deep linking (?candidateId=)
+// ---------------------------------------------------------------------------
+
+describe("AdminQuizWorkspace — ranked candidate deep links", () => {
+  const sel = () => screen.getByTestId("rd-selected").textContent;
+  // Radix tab triggers activate on mouseDown, like the existing tab tests.
+  const switchTab = (name: RegExp) => {
+    const tab = screen.getByRole("tab", { name });
+    fireEvent.mouseDown(tab);
+    fireEvent.click(tab);
+  };
+
+  it("opens the candidate named in the URL", () => {
+    renderAt("/admin/quiz-content?tab=ranked-duel&candidateId=cand-a");
+    expect(sel()).toBe("cand-a");
+  });
+
+  it("has no selection when the param is absent or empty", () => {
+    renderAt("/admin/quiz-content?tab=ranked-duel");
+    expect(sel()).toBe("none");
+    cleanup();
+    renderAt("/admin/quiz-content?tab=ranked-duel&candidateId=");
+    expect(sel()).toBe("none");
+  });
+
+  it("writes the selection into the URL", async () => {
+    renderAt("/admin/quiz-content?tab=ranked-duel");
+    fireEvent.click(screen.getByTestId("rd-select-a"));
+    await waitFor(() => expect(loc()).toContain("candidateId=cand-a"));
+    expect(loc()).toContain("tab=ranked-duel");
+    expect(sel()).toBe("cand-a");
+  });
+
+  it("clears the param when the selection is cleared", async () => {
+    renderAt("/admin/quiz-content?tab=ranked-duel&candidateId=cand-a");
+    fireEvent.click(screen.getByTestId("rd-clear"));
+    await waitFor(() => expect(loc()).not.toContain("candidateId"));
+    expect(sel()).toBe("none");
+  });
+
+  it("restores the previous candidate on Back and re-applies it on Forward", async () => {
+    renderAt("/admin/quiz-content?tab=ranked-duel");
+    fireEvent.click(screen.getByTestId("rd-select-a"));
+    await waitFor(() => expect(sel()).toBe("cand-a"));
+    fireEvent.click(screen.getByTestId("rd-select-b"));
+    await waitFor(() => expect(sel()).toBe("cand-b"));
+
+    fireEvent.click(screen.getByTestId("nav-back"));
+    await waitFor(() => expect(sel()).toBe("cand-a"));
+
+    fireEvent.click(screen.getByTestId("nav-fwd"));
+    await waitFor(() => expect(sel()).toBe("cand-b"));
+  });
+
+  it("drops the candidate param when leaving the tab", async () => {
+    renderAt("/admin/quiz-content?tab=ranked-duel&candidateId=cand-a");
+    switchTab(/Quiz Builder/i);
+    await waitFor(() => expect(loc()).toContain("tab=builder"));
+    expect(loc()).not.toContain("candidateId");
+  });
+
+  it("keeps the two tabs' deep links independent", async () => {
+    renderAt("/admin/quiz-content?tab=review&questionId=42");
+    switchTab(/Ranked Duel Review/i);
+    await waitFor(() => expect(loc()).toContain("tab=ranked-duel"));
+    // Leaving Review drops ITS param; the ranked tab starts unselected.
+    expect(loc()).not.toContain("questionId");
+    expect(sel()).toBe("none");
+
+    fireEvent.click(screen.getByTestId("rd-select-a"));
+    await waitFor(() => expect(loc()).toContain("candidateId=cand-a"));
+    switchTab(/Quiz Review/i);
+    await waitFor(() => expect(loc()).toContain("tab=review"));
+    expect(loc()).not.toContain("candidateId");
   });
 });

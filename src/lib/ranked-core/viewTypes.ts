@@ -82,12 +82,38 @@ export interface AbilityView {
   unavailableReason?: string;
 }
 
+/**
+ * Canonical League entity an answer option NAMES (RA6).
+ *
+ * Backend-resolved and question-safe: it describes the option's own visible
+ * text, never the answer. The backend emits media for ALL options of a question
+ * or for none, so its presence on one option says nothing about that option.
+ *
+ * `icon` is a backend-relative path (`assets/…`) or a backend route
+ * (`api/ranked/media/…`) — never an absolute URL — and is resolved against the
+ * API origin by `resolveQuizAssetUrl`, exactly like every other League asset.
+ */
+export interface OptionMediaView {
+  /** Canonical entity type: item | champion | ability | rune | summoner_spell. */
+  type: string;
+  /** Canonical entity name. Display still uses `label`; this is for tests/debug. */
+  name: string;
+  icon: string;
+  /** Canonical id where the entity has one (numeric for items/runes/spells). */
+  id?: string | number;
+}
+
 export interface AnswerOptionView {
   /** Stable option id within the question (stringified backend index). */
   id: string;
   /** Backend submission index for this option. */
   index: number;
   label: string;
+  /**
+   * Optional canonical media for THIS option. Absent on every question whose
+   * options are quantities or free text, and on every round frozen before RA6.
+   */
+  media?: OptionMediaView | null;
 }
 
 export interface QuestionView {

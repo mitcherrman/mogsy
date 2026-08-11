@@ -414,14 +414,11 @@ export default function SwipePreset() {
       return;
     }
 
-    // Auto-hide logic is handled atomically by the database trigger check_and_auto_hide_image()
-    // Send a basic report notification (critical auto-hide notification is handled by the trigger)
-    await supabase.from("admin_notifications").insert({
-      type: "image_report",
-      title: `Image reported: ${item.name}`,
-      message: `A user reported an image for "${item.name}" as not representative.`,
-      metadata: { image_id: imageId, item_id: item.id },
-    });
+    // Both admin notifications — the per-report one and the auto-hide one — are
+    // emitted by check_and_auto_hide_image() on this same INSERT. The client no
+    // longer writes admin_notifications directly: holding that grant meant every
+    // authenticated session, including anonymous ones, could post to the
+    // moderation queue. See 20260802120000_admin_notification_insert_hardening.
 
     const images = itemImages.get(item.id);
     if (images && images.length > 1) {

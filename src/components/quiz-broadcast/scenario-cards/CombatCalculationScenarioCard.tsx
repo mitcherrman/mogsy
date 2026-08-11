@@ -6,6 +6,7 @@ import {
   ConditionChip,
   ScenarioBadge,
   ScenarioDivider,
+  ScenarioEntityStrip,
   ScenarioSection,
   ScenarioSubject,
   ScenarioTitle,
@@ -16,6 +17,9 @@ import {
  * Pure composition of the shared primitives:
  *
  *   ScenarioBadge      COMBAT CALCULATION (top-left, over clean art)
+ *   ScenarioEntityStrip WHO/WHAT ELSE IS IN THE PREMISE — icon strip, top-right
+ *                      (the second champion and the target's items live here;
+ *                      the fields below can only describe one side)
  *   ScenarioTitle      WHO — champion name
  *   ScenarioSubject    WHAT — ability icon + slot badge + name
  *   ConditionChip[]    UNDER WHAT CONDITIONS — level, rank
@@ -57,9 +61,20 @@ export function CombatCalculationScenarioCard({ subject }: { subject: CombatCool
       // Artwork breathes: scrim only where the information stack begins.
       gradientClass="bg-[linear-gradient(to_top,rgba(3,2,2,0.95)_0%,rgba(3,2,2,0.82)_30%,rgba(3,2,2,0.4)_48%,transparent_64%)]"
     >
-      <ScenarioBadge>Combat Calculation</ScenarioBadge>
+      {/* Label only. Premise families that are not calculations (ability
+          identity) reuse this card because it is the one that draws a champion,
+          an ability and an item row together; the chip says which. */}
+      <ScenarioBadge>{subject.badge ?? "Combat Calculation"}</ScenarioBadge>
 
-      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[5%]">
+      {/* Premise entities, opposite the badge and outside the stack below, so
+          the card's existing geometry is untouched. Renders nothing for
+          payloads without an entity collection. */}
+      <ScenarioEntityStrip entities={subject.entities} />
+
+      {/* pb in `cqh`, not `%`: a percentage padding resolves against the card's
+          WIDTH, which in the Ranked band reserved 33px of a 165px card for
+          bottom padding alone. 8.89cqh is the same 5% on the 16:9 stage. */}
+      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[8.89cqh]">
         <ScenarioTitle>{subject.champion}</ScenarioTitle>
 
         {subject.abilityName && (
@@ -72,7 +87,7 @@ export function CombatCalculationScenarioCard({ subject }: { subject: CombatCool
         )}
 
         {(subject.level != null || subject.abilityRank != null) && (
-          <div className="mt-[3%] flex flex-wrap gap-[0.8cqmin]">
+          <div className="mt-[5.33cqh] flex flex-wrap gap-[max(0.8cqmin,calc(0.25*var(--sc-fit)))]">
             {subject.level != null && <ConditionChip label="Level" value={subject.level} />}
             {subject.abilityRank != null && <ConditionChip label="Rank" value={subject.abilityRank} />}
           </div>

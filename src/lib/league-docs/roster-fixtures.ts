@@ -203,14 +203,20 @@ export const teamWithHistoricalNamesFixture: RosterTeamDetail = {
 };
 
 /**
- * Both "M1nG" and "m1ng" hit the same alias row: the backend matches aliases
- * case-insensitively but resolves to the canonical page "Flure". The separate
- * player page "M1ng" is NOT in these results.
+ * Searching the alias spelling "M1nG" returns BOTH identities, as two separate
+ * rows. That separation IS the anti-conflation guarantee — not a leak.
+ *
+ * Flure leads because "M1nG" is exactly its alias; the unrelated canonical
+ * player "M1ng" is listed in its own right, credited to no alias. The backend
+ * used to omit M1ng from search entirely — it has no memberships, and search
+ * was built from the membership table — which left Flure as the only answer a
+ * reader looking for M1ng was ever offered.
  */
 export const m1ngSearchFixture: RosterSearchResponse = {
   query: "M1nG",
   results: [
     { type: "player", page: "Flure", display_name: "Flure", matched_alias: "M1nG", region: null },
+    { type: "player", page: "M1ng", display_name: "M1ng", matched_alias: null, region: null },
   ],
 };
 

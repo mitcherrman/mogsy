@@ -60,12 +60,22 @@ export default function AdminQuizWorkspace() {
     return Number.isInteger(n) && n > 0 ? n : null;
   }, [searchParams]);
 
+  // Deep-linked Ranked candidate (?candidateId=<id>). Candidate IDs are opaque
+  // strings, so anything non-empty is passed through and the panel reports a
+  // bad one as a load error rather than the URL silently dropping it.
+  const candidateId = useMemo<string | null>(() => {
+    const raw = searchParams.get("candidateId");
+    return raw != null && raw.trim() !== "" ? raw : null;
+  }, [searchParams]);
+
   const setActiveTab = (tab: string) => {
     if (!isWorkspaceTab(tab)) return;
     const next = new URLSearchParams(searchParams);
     next.set("tab", tab);
-    // Leaving Review drops the question selection so the param can't go stale.
+    // Leaving a tab drops ITS selection so the param can't go stale, while the
+    // other tab's selection is left alone — each tab keeps its own deep link.
     if (tab !== "review") next.delete("questionId");
+    if (tab !== "ranked-duel") next.delete("candidateId");
     // replace: switching tabs shouldn't stack browser history entries.
     setSearchParams(next, { replace: true });
   };
@@ -77,6 +87,16 @@ export default function AdminQuizWorkspace() {
     next.set("tab", "review");
     if (id == null) next.delete("questionId");
     else next.set("questionId", String(id));
+    setSearchParams(next);
+  };
+
+  // Same rule for the Ranked candidate: pushed, so each selection is its own
+  // history entry and Back/Forward walks the candidates the operator opened.
+  const setCandidateId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", "ranked-duel");
+    if (id == null) next.delete("candidateId");
+    else next.set("candidateId", id);
     setSearchParams(next);
   };
 
@@ -146,9 +166,14 @@ export default function AdminQuizWorkspace() {
             </Suspense>
           </TabsContent>
 
-          {/* Ranked Duel — separate candidate/decision model; boundary only. */}
+          {/* Ranked Duel — separate candidate/decision model; boundary only.
+              Selection is URL-controlled (?candidateId=) on the same pattern as
+              Review, so deep links and Back/Forward drive the open candidate. */}
           <TabsContent value="ranked-duel" className="mt-0 min-h-0 flex-1 overflow-y-auto">
-            <RankedDuelReviewPanel />
+            <RankedDuelReviewPanel
+              selectedCandidateId={candidateId}
+              onSelectCandidate={setCandidateId}
+            />
           </TabsContent>
         </Tabs>
       </AdminAuthGate>

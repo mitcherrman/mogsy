@@ -20,6 +20,7 @@ import type {
   PrivateAbilitySource,
   PublicQuestionSource,
 } from "@/lib/ranked-core/adapters/adaptToViews";
+import type { OptionMediaView } from "@/lib/ranked-core/viewTypes";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -380,6 +381,39 @@ function readOptionalPresentation(value: unknown): Record<string, unknown> | nul
   return Object.keys(obj).length > 0 ? obj : null;
 }
 
+/**
+ * Optional canonical ANSWER-OPTION media (RA6). Positional: entry i describes
+ * option i.
+ *
+ * Tolerant like `readOptionalPresentation` and for the same reason: this block
+ * carries no secret and no combat value, so a malformed one must degrade to
+ * text-only answers rather than break an otherwise valid live match. Every
+ * entry must be well-formed — one bad entry drops the WHOLE array, matching the
+ * backend's all-or-nothing rule so a partial set can never single an option
+ * out. Length is checked against the options by the view adapter, which is the
+ * one place both are in hand.
+ */
+function readOptionMedia(value: unknown): OptionMediaView[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const entries: OptionMediaView[] = [];
+  for (const raw of value) {
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const entry = raw as Record<string, unknown>;
+    if (typeof entry.type !== "string" || !entry.type) return null;
+    if (typeof entry.name !== "string" || !entry.name) return null;
+    if (typeof entry.icon !== "string" || !entry.icon) return null;
+    entries.push({
+      type: entry.type,
+      name: entry.name,
+      icon: entry.icon,
+      ...(typeof entry.id === "string" || typeof entry.id === "number"
+        ? { id: entry.id }
+        : {}),
+    });
+  }
+  return entries;
+}
+
 function readQuestion(value: unknown): PublicQuestionSource | null {
   if (value === null || value === undefined) return null;
   const q = rec(value, "question");
@@ -390,7 +424,23 @@ function readQuestion(value: unknown): PublicQuestionSource | null {
     options: strList(q.options, "options"),
     category: nstr(q.category, "category"),
     presentation: readOptionalPresentation(q.presentation),
+    optionMedia: readOptionMedia(q.option_media),
   };
+}
+
+/**
+ * Read a STANDALONE public question payload — the same block a live round
+ * transports, delivered by an endpoint that returns only the question.
+ *
+ * Exported for the admin candidate preview (RA9), which reads exactly this
+ * shape from `/api/admin/ranked-duel/questions/candidates/{id}/public-view`.
+ * It reuses this reader rather than growing a second copy of the transport
+ * normalization, so presentation/option-media handling and the
+ * `assertNoCorrectness` guard cannot diverge between the two callers. Pure and
+ * unchanged for the live path — this is a re-export, not a new behaviour.
+ */
+export function readPublicQuestion(value: unknown): PublicQuestionSource | null {
+  return readQuestion(value);
 }
 
 function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundView,

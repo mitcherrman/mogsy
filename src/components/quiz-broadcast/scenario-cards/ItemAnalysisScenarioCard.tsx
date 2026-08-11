@@ -148,9 +148,10 @@ export function ItemAnalysisScenarioCard({
       )}
 
       {/* Bottom label + reveal-gated sections */}
-      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[5%]">
+      {/* pb in `cqh` — see CombatCalculationScenarioCard; same 5% on 16:9. */}
+      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[8.89cqh]">
         <ScenarioTitle>{item.name}</ScenarioTitle>
-        <div className="mt-[0.4cqmin] text-[0.95cqmin] font-semibold uppercase tracking-[0.24em] text-white/60">
+        <div className="mt-[0.4cqmin] text-[max(0.95cqmin,calc(0.625*var(--sc-fit)))] leading-[min(1.5rem,1.25em)] font-semibold uppercase tracking-[0.24em] text-white/70">
           {hasRecipe ? "Item · Build Path" : "Item"}
         </div>
 

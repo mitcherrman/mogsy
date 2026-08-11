@@ -22,7 +22,16 @@ import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
+import {
+  ABILITY_OPTION_QUESTION, CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION,
+  NUMERIC_QUESTION, RUNE_OPTION_QUESTION, SUMMONER_SPELL_OPTION_QUESTION,
+} from "@/lib/ranked-core/adapters/optionMediaFixtures";
+import type { BackendQuestionPayload } from "@/lib/ranked-core/adapters/optionMediaFixtures";
+// Namespaced: the RA7 fixture module and this file both name a SELL_SWAP_Q,
+// and the two are deliberately different questions (RA5's and RA7's).
+import * as RA7 from "@/lib/question-surface/familyLayoutFixtures";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 import {
@@ -163,9 +172,42 @@ const transportSource = (q: QuestionView, presentation: Record<string, unknown>)
     presentation,
   });
 
+// RA3-MEDIA-P5. Copied VERBATIM from ranked_public.question_media for the
+// shipped `placeholder-rm-ability` card. Two absences are the point: there is
+// no slot anywhere (it is the ANSWER), and the ability icon is a route rather
+// than an assets/ path, because the file on disk is `Q_DariusCleave.png` and
+// its name would hand the answer over. Before this the same question carried a
+// bare `{type: "ability", name, champion}` subject with no icon, which
+// classified as a label-only spell and rendered the empty card.
 const ABILITY_SCENARIO = transportSource(ABILITY_Q, {
-  assets: { subject: { type: "ability", name: "Decimate", champion: "Darius" } },
-  presentation: { scenario_type: "ability", role: "context", timing: "question", spoiler: false },
+  assets: {
+    subject: {
+      type: "combat_cooldown", champion: "Darius",
+      champion_icon: "assets/champions/Darius/icon.png",
+      champion_splash: "assets/champions/Darius/splash/0_default.jpg",
+      item_icons: [],
+      ability_name: "Decimate",
+      ability_icon: "api/ranked/media/ability-icon/Darius/Decimate.png",
+      badge: "Champion Ability",
+    },
+    entities: {
+      champions: [
+        { type: "champion", id: "Darius", name: "Darius", role: "subject",
+          icon: "assets/champions/Darius/icon.png",
+          splash: "assets/champions/Darius/splash/0_default.jpg",
+          loading: "assets/champions/Darius/loading/0_default.jpg", default_skin: 0 },
+      ],
+      items: [],
+      abilities: [
+        { type: "ability", id: "Darius:Decimate", name: "Decimate", champion: "Darius",
+          role: "subject", icon: "api/ranked/media/ability-icon/Darius/Decimate.png" },
+      ],
+      runes: [], summoner_spells: [],
+    },
+  },
+  presentation: {
+    scenario_type: "combat_calculation", role: "context", timing: "question", spoiler: false,
+  },
 });
 const RECIPE_SCENARIO = transportSource(RECIPE_Q, {
   assets: { subject: { type: "item", name: "Trinity Force", icon: "assets/items/3078.png" } },
@@ -189,6 +231,146 @@ const SPOILER_SCENARIO = transportSource(CHAMP_Q, {
   assets: { subject: { type: "champion", name: "Ahri" } },
   presentation: { scenario_type: "champion_profile", role: "answer", timing: "reveal", spoiler: true },
 });
+
+// --- normalized premise media entities (RA3-MEDIA-P4) --------------------
+// A real accepted-bank question, with the payload copied VERBATIM from
+// ranked_public.question_media. The two cases below are meant to be compared:
+// the same question, with and without the entity collection, so the theme
+// redesign can see exactly which entities the payload now makes available
+// (both champions, the ability, both items) and which it never did.
+const DAMAGE_Q: QuestionView = {
+  questionId: "sq-damage", category: "post_mitigation_damage",
+  prompt: "Syndra has Sorcerer's Shoes and Void Staff. Syndra hits Ornn with Unleashed Power "
+    + "for 750 raw magic damage. Ornn has 120 magic resist. How much post-mitigation damage "
+    + "is dealt after penetration?",
+  options: [
+    { id: "0", index: 0, label: "610" }, { id: "1", index: 1, label: "469" },
+    { id: "2", index: 2, label: "455" }, { id: "3", index: 3, label: "539" },
+  ],
+};
+const DAMAGE_SUBJECT = {
+  type: "combat_cooldown", champion: "Syndra",
+  champion_icon: "assets/champions/Syndra/icon.png",
+  champion_splash: "assets/champions/Syndra/splash/0_default.jpg",
+  item_icons: [
+    { name: "Sorcerer's Shoes", icon: "assets/items/3020.png" },
+    { name: "Void Staff", icon: "assets/items/3135.png" },
+  ],
+  ability_slot: "R", ability_name: "Unleashed Power",
+  ability_icon: "assets/champions/Syndra/R_SyndraR.png",
+};
+const DAMAGE_FLAGS = {
+  scenario_type: "combat_calculation", role: "context", timing: "question", spoiler: false,
+};
+const ENTITIES_SCENARIO = transportSource(DAMAGE_Q, {
+  assets: {
+    subject: DAMAGE_SUBJECT,
+    entities: {
+      champions: [
+        { type: "champion", id: "Syndra", name: "Syndra", role: "attacker",
+          icon: "assets/champions/Syndra/icon.png",
+          splash: "assets/champions/Syndra/splash/0_default.jpg",
+          loading: "assets/champions/Syndra/loading/0_default.jpg", default_skin: 0 },
+        { type: "champion", id: "Ornn", name: "Ornn", role: "target",
+          icon: "assets/champions/Ornn/icon.png",
+          splash: "assets/champions/Ornn/splash/0_default.jpg",
+          loading: "assets/champions/Ornn/loading/0_default.jpg", default_skin: 0 },
+      ],
+      items: [
+        { type: "item", id: 3020, name: "Sorcerer's Shoes", role: "attacker", icon: "assets/items/3020.png" },
+        { type: "item", id: 3135, name: "Void Staff", role: "attacker", icon: "assets/items/3135.png" },
+      ],
+      abilities: [
+        { type: "ability", id: "Syndra:R", name: "Unleashed Power", champion: "Syndra",
+          slot: "R", role: "attacker", icon: "assets/champions/Syndra/R_SyndraR.png" },
+      ],
+      runes: [], summoner_spells: [],
+    },
+  },
+  presentation: DAMAGE_FLAGS,
+});
+// The SAME question as it was frozen before RA3-MEDIA-P4: subject only. Must
+// render exactly as it always did, with no entity strip.
+const LEGACY_SUBJECT_SCENARIO = transportSource(DAMAGE_Q, {
+  assets: { subject: DAMAGE_SUBJECT },
+  presentation: DAMAGE_FLAGS,
+});
+
+// RA5 — a sell-swap, which rendered NOTHING at all before this phase. The
+// payload is verbatim `ranked_public.question_media` output for a real
+// accepted-bank candidate, so the temporary status treatment (faded + struck
+// sold, ringed purchase, neutral retained) is judged against what production
+// actually serves rather than against a hand-written shape.
+const SELL_SWAP_Q: QuestionView = {
+  questionId: "sq-sell-swap", category: "flat_inventory_stat",
+  prompt: "Ornn started with Doran's Shield and still has Sunfire Aegis. Later, Ornn sold "
+    + "Doran's Shield and bought Abyssal Mask. How much flat health do Ornn's items "
+    + "provide now?",
+  options: [
+    { id: "0", index: 0, label: "750" }, { id: "1", index: 1, label: "810" },
+    { id: "2", index: 2, label: "700" }, { id: "3", index: 3, label: "800" },
+  ],
+};
+const SELL_SWAP_SCENARIO = transportSource(SELL_SWAP_Q, {
+  assets: {
+    subject: {
+      type: "combat_cooldown", champion: "Ornn",
+      champion_icon: "assets/champions/Ornn/icon.png",
+      champion_splash: "assets/champions/Ornn/splash/0_default.jpg",
+      // The subject row asserts possession, so it is the CURRENT loadout. The
+      // sold item is in the strip above, tagged — not omitted, not in this row.
+      item_icons: [
+        { name: "Sunfire Aegis", icon: "assets/items/3068.png" },
+        { name: "Abyssal Mask", icon: "assets/items/8020.png" },
+      ],
+    },
+    entities: {
+      champions: [
+        { type: "champion", id: "Ornn", name: "Ornn", role: "subject",
+          icon: "assets/champions/Ornn/icon.png",
+          splash: "assets/champions/Ornn/splash/0_default.jpg",
+          loading: "assets/champions/Ornn/loading/0_default.jpg", default_skin: 0 },
+      ],
+      items: [
+        { type: "item", id: 3068, name: "Sunfire Aegis", role: "subject",
+          status: "retained", icon: "assets/items/3068.png" },
+        { type: "item", id: 8020, name: "Abyssal Mask", role: "subject",
+          status: "purchased", icon: "assets/items/8020.png" },
+        { type: "item", id: 1054, name: "Doran's Shield", role: "subject",
+          status: "sold", icon: "assets/items/1054.png" },
+      ],
+      abilities: [], runes: [], summoner_spells: [],
+    },
+  },
+  presentation: DAMAGE_FLAGS,
+});
+
+// --- canonical answer-option media (RA6) ---------------------------------
+// Payloads dumped VERBATIM from the backend (ranked_public.option_media via
+// QuestionRecord.public_view) and run through the SAME transport adapters the
+// live arena uses, so what renders here is what a real round would render —
+// including the premise band, which this phase does not touch.
+function optionMediaCase(payload: BackendQuestionPayload): {
+  question: QuestionView; scenarioSource: QuizQuestion | null;
+} {
+  const source = {
+    questionId: payload.question_id, prompt: payload.prompt,
+    options: payload.options, category: payload.category,
+    presentation: payload.presentation ?? null,
+    optionMedia: payload.option_media ?? null,
+  };
+  return {
+    question: questionViewFromPublicQuestion(source),
+    scenarioSource: scenarioSourceFromPublicQuestion(source),
+  };
+}
+
+const OM_ITEM = optionMediaCase(ITEM_OPTION_QUESTION);
+const OM_CHAMPION = optionMediaCase(CHAMPION_OPTION_QUESTION);
+const OM_ABILITY = optionMediaCase(ABILITY_OPTION_QUESTION);
+const OM_RUNE = optionMediaCase(RUNE_OPTION_QUESTION);
+const OM_SPELL = optionMediaCase(SUMMONER_SPELL_OPTION_QUESTION);
+const OM_NUMERIC = optionMediaCase(NUMERIC_QUESTION);
 
 function Surface(props: Partial<React.ComponentProps<typeof InteractiveScenarioSurface>>) {
   return (
@@ -370,12 +552,67 @@ const STATES: InspectorState[] = [
     render: () => <Surface question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
   { key: "surface-item", label: "Surface — item-rich",
     render: () => <Surface scenarioSource={ITEM_SCENARIO} /> },
-  { key: "surface-ability", label: "Surface — ability (icon-less → compact)",
+  { key: "surface-ability", label: "Surface — ability premise (champion + ability)",
     render: () => <Surface question={ABILITY_Q} scenarioSource={ABILITY_SCENARIO} /> },
   { key: "surface-recipe", label: "Surface — item-recipe (transport)",
     render: () => <Surface question={RECIPE_Q} scenarioSource={RECIPE_SCENARIO} /> },
   { key: "surface-comparison", label: "Surface — comparison (transport, falls back)",
     render: () => <Surface question={COMPARISON_Q} scenarioSource={COMPARISON_SCENARIO} /> },
+  { key: "surface-media-entities", label: "Surface — premise media entities (all)",
+    render: () => <Surface question={DAMAGE_Q} scenarioSource={ENTITIES_SCENARIO} /> },
+  { key: "surface-media-legacy", label: "Surface — same question, pre-entities payload",
+    render: () => <Surface question={DAMAGE_Q} scenarioSource={LEGACY_SUBJECT_SCENARIO} /> },
+  { key: "surface-media-statuses", label: "Surface — premise statuses (sell-swap)",
+    render: () => <Surface question={SELL_SWAP_Q} scenarioSource={SELL_SWAP_SCENARIO} /> },
+  // --- RA7: family-specific premise layouts --------------------------------
+  // The payloads are shared with the RA7 unit tests (familyLayoutFixtures), so
+  // the pixels reviewed here and the DOM those tests assert on are one source.
+  // Each family is paired with the case that must FALL BACK, because the
+  // fallback is the contract that keeps this phase additive.
+  { key: "family-combat-physical", label: "Family — post-mitigation (physical, armor 60→100)",
+    render: () => <Surface question={RA7.PHYSICAL_DAMAGE_Q} scenarioSource={RA7.PHYSICAL_DAMAGE_SCENARIO} /> },
+  { key: "family-combat-magic", label: "Family — post-mitigation (magic, single MR)",
+    render: () => <Surface question={RA7.MAGIC_DAMAGE_Q} scenarioSource={RA7.MAGIC_DAMAGE_SCENARIO} /> },
+  { key: "family-combat-passive", label: "Family — post-mitigation (passive, no ability entity)",
+    render: () => <Surface question={RA7.PASSIVE_DAMAGE_Q} scenarioSource={RA7.PASSIVE_DAMAGE_SCENARIO} /> },
+  { key: "family-combat-selected", label: "Family — post-mitigation, selected (geometry must not move)",
+    render: () => <Surface question={RA7.PHYSICAL_DAMAGE_Q} scenarioSource={RA7.PHYSICAL_DAMAGE_SCENARIO}
+      selectedOptionId="2" /> },
+  { key: "family-combat-reveal", label: "Family — post-mitigation, revealed (geometry must not move)",
+    render: () => <Surface question={RA7.PHYSICAL_DAMAGE_Q} scenarioSource={RA7.PHYSICAL_DAMAGE_SCENARIO}
+      selectedOptionId="0" reveal={{ revealed: true, isCorrect: false, correctOptionId: "2" }} /> },
+  { key: "family-combat-fallback", label: "Family — same damage question, pre-RA7 payload (falls back)",
+    render: () => <Surface question={RA7.MAGIC_DAMAGE_Q} scenarioSource={RA7.LEGACY_DAMAGE_SCENARIO} /> },
+  { key: "family-lifecycle-sellswap", label: "Family — item lifecycle (kept / bought / sold)",
+    render: () => <Surface question={RA7.SELL_SWAP_Q} scenarioSource={RA7.SELL_SWAP_SCENARIO} /> },
+  { key: "family-lifecycle-purchases", label: "Family — item lifecycle (multi starting + multi bought)",
+    render: () => <Surface question={RA7.PURCHASE_HISTORY_Q} scenarioSource={RA7.PURCHASE_HISTORY_SCENARIO} /> },
+  { key: "family-lifecycle-history", label: "Family — one item with a history (started with, then sold)",
+    render: () => <Surface question={RA7.SELL_SWAP_Q} scenarioSource={RA7.ITEM_HISTORY_SCENARIO} /> },
+  { key: "family-lifecycle-fallback", label: "Family — static inventory, no transaction (falls back)",
+    render: () => <Surface question={RA7.STATIC_INVENTORY_Q} scenarioSource={RA7.STATIC_INVENTORY_SCENARIO} /> },
+  // --- RA6: canonical media on the ANSWER OPTIONS --------------------------
+  { key: "surface-option-media-item", label: "Options — item icons (recipe, premise + options)",
+    render: () => <Surface {...OM_ITEM} /> },
+  { key: "surface-option-media-champion", label: "Options — champion icons",
+    render: () => <Surface {...OM_CHAMPION} /> },
+  { key: "surface-option-media-ability", label: "Options — ability icons (slot-neutral)",
+    render: () => <Surface {...OM_ABILITY} /> },
+  { key: "surface-option-media-rune", label: "Options — rune icons",
+    render: () => <Surface {...OM_RUNE} /> },
+  { key: "surface-option-media-spell", label: "Options — summoner-spell icons",
+    render: () => <Surface {...OM_SPELL} /> },
+  { key: "surface-option-media-none", label: "Options — numeric control (text-only)",
+    render: () => <Surface {...OM_NUMERIC} /> },
+  { key: "surface-option-media-selected", label: "Options — selected (geometry must not move)",
+    render: () => <Surface {...OM_CHAMPION} selectedOptionId="2" /> },
+  // Deliberately the SAME `competitive` variant as the two states above, so
+  // the three are a like-for-like geometry comparison; `standard` would change
+  // the column strategy for a reason that has nothing to do with reveal.
+  { key: "surface-option-media-reveal", label: "Options — revealed (geometry must not move)",
+    render: () => <Surface {...OM_CHAMPION} selectedOptionId="0"
+      reveal={{ revealed: true, isCorrect: false, correctOptionId: "2" }} /> },
+
   { key: "surface-prereveal-spoiler", label: "Surface — pre-reveal spoiler-safe",
     render: () => <Surface question={CHAMP_Q} scenarioSource={SPOILER_SCENARIO} /> },
   { key: "surface-postreveal-rich", label: "Surface — post-reveal rich subject",

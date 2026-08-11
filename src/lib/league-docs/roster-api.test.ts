@@ -172,8 +172,12 @@ describe("responses", () => {
   it("separates search results by type without merging identities", async () => {
     mockFetch(m1ngSearchFixture);
     const { results } = await searchRoster("M1nG");
-    expect(results).toHaveLength(1);
+    // Two players share the lowercase spelling "m1ng"; the client keeps them as
+    // two rows with their own canonical pages and never folds them together.
+    expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({ type: "player", page: "Flure", matched_alias: "M1nG" });
+    expect(results[1]).toMatchObject({ type: "player", page: "M1ng", matched_alias: null });
+    expect(new Set(results.map((r) => r.page)).size).toBe(2);
   });
 });
 

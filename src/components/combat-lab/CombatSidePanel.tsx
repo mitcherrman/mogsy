@@ -10,13 +10,28 @@ export default function CombatSidePanel({
   visual,
   children,
   className,
+  id,
+  tabIndex,
+  role,
+  ariaLabel,
 }: {
   visual: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Optional landmark identity so the column can be a navigable section. */
+  id?: string;
+  tabIndex?: number;
+  role?: string;
+  ariaLabel?: string;
 }) {
   return (
-    <div className={`flex flex-col gap-3 ${className ?? ""}`}>
+    <div
+      id={id}
+      tabIndex={tabIndex}
+      role={role}
+      aria-label={ariaLabel}
+      className={`flex flex-col gap-3 ${className ?? ""}`}
+    >
       {visual}
       <div className="flex min-h-0 flex-col gap-3">{children}</div>
     </div>

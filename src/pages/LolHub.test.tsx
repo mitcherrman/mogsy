@@ -32,6 +32,14 @@ vi.mock("@/hooks/useChampionAssets", () => ({
   getChampionSplash: () => null,
   getChampionLoading: () => null,
 }));
+// The Patch Brief provider fetches the live Patch Reports API; this file is
+// about hub navigation structure, so it stays on the neutral placeholder feed.
+vi.mock("@/components/lol/broadcast/usePatchBriefFeed", async () => {
+  const { INITIAL_BROADCAST_FEED } = await vi.importActual<
+    typeof import("@/components/lol/broadcast/broadcast-content")
+  >("@/components/lol/broadcast/broadcast-content");
+  return { usePatchBriefFeed: () => INITIAL_BROADCAST_FEED };
+});
 vi.mock("@/components/ads/AdSlot", () => ({
   default: ({ placement }: { placement: string }) => <div data-testid={`ad-${placement}`} />,
 }));
@@ -166,7 +174,12 @@ describe("LolHub — navigation structure", () => {
 
   it("does not render the old hero mode selector", () => {
     const { container } = renderHub();
-    expect(container.querySelectorAll("button[aria-pressed]")).toHaveLength(0);
+    // The Academy Radio surfaces legitimately use aria-pressed toggles; the
+    // guard is against mode-selector toggles anywhere OUTSIDE the radio.
+    const pressed = Array.from(container.querySelectorAll("button[aria-pressed]")).filter(
+      (b) => !b.closest('[data-testid^="academy-radio"]'),
+    );
+    expect(pressed).toHaveLength(0);
     expect(screen.queryByText("Train Your League Knowledge")).toBeNull();
   });
 
@@ -191,6 +204,53 @@ describe("LolHub — navigation structure", () => {
     renderHub();
     expect(mocks.trackFunnelEvent).toHaveBeenCalledWith("lol_landing_viewed");
     expect(screen.getByTestId("ad-lol_hub_mid")).toBeTruthy();
+  });
+});
+
+describe("LolHub — Academy Broadcast centerpiece", () => {
+  it("renders the centerpiece in the desktop lane and as a mobile stack", () => {
+    renderHub();
+    expect(screen.getByTestId("academy-broadcast-centerpiece")).toBeTruthy();
+    expect(screen.getByTestId("academy-broadcast-centerpiece-mobile")).toBeTruthy();
+    // The tome shows the honest placeholder; both docks read the same store
+    // and name the real runtime track.
+    expect(screen.getByTestId("academy-broadcast-surface")).toHaveTextContent(
+      "Transmission systems online",
+    );
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent("Tidecaller");
+    expect(screen.getByTestId("academy-radio-dock-mobile")).toHaveTextContent("Tidecaller");
+  });
+
+  it("keeps the radio dock below the broadcast surface, on desktop and mobile", () => {
+    renderHub();
+    for (const [surfaceId, dockId] of [
+      ["academy-broadcast-surface", "academy-radio-dock"],
+      ["academy-broadcast-surface-mobile", "academy-radio-dock-mobile"],
+    ] as const) {
+      const surface = screen.getByTestId(surfaceId);
+      const dock = screen.getByTestId(dockId);
+      expect(
+        surface.compareDocumentPosition(dock) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `${dockId} below ${surfaceId}`,
+      ).toBeTruthy();
+      expect(surface.contains(dock)).toBe(false);
+    }
+  });
+
+  it("mounting the hub never starts playback or creates an audio element", () => {
+    const created: string[] = [];
+    const nativeCreate = document.createElement.bind(document);
+    const spy = vi
+      .spyOn(document, "createElement")
+      .mockImplementation(((tag: string, options?: ElementCreationOptions) => {
+        created.push(tag);
+        return nativeCreate(tag, options);
+      }) as typeof document.createElement);
+
+    renderHub();
+
+    expect(created.filter((t) => t === "audio")).toHaveLength(0);
+    spy.mockRestore();
   });
 });
 

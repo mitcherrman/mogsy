@@ -11,6 +11,20 @@ export type MogzyStatus =
 
 export type PatchEntityType = "champion" | "item" | "rune" | "system";
 
+export type PatchEditorialDirection = "buff" | "nerf" | "adjustment";
+
+export type PatchEditorialSource =
+  | "riot_section"
+  | "riot_patch_highlights"
+  | "mogzy_inferred";
+
+export type PatchNumericDirection =
+  | "positive"
+  | "negative"
+  | "mixed"
+  | "neutral"
+  | "non_numeric";
+
 export type PatchReportChange = {
   group_title: string;
   ability_slot: string | null;
@@ -40,6 +54,15 @@ export type PatchReportCard = {
   mogzy_entity_ref: string | null;
   context_text: string | null;
   aggregate_status: MogzyStatus;
+  /**
+   * Backend-resolved editorial direction contract. Optional: payloads from
+   * backends predating the authority system omit these fields entirely, and
+   * consumers fall back to local numeric inference. When present, null means
+   * "authoritatively unclassified" (e.g. bugfix-only), not "unknown".
+   */
+  editorial_direction?: PatchEditorialDirection | null;
+  editorial_direction_source?: PatchEditorialSource | null;
+  numeric_direction?: PatchNumericDirection | null;
   changes: PatchReportChange[];
 };
 

@@ -14,6 +14,7 @@
 
 import type { QuizQuestion } from "@/lib/quiz/api";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { getQuestionMediaEntities } from "./questionMediaEntities";
 import type {
   ClassifiedSubject,
   CombatCooldownSubject,
@@ -70,7 +71,12 @@ export function classifySubject(question: QuizQuestion): ClassifiedSubject {
           iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
 
+      // "summoner_spell" is the canonical type emitted by the backend's
+      // quiz/asset_metadata.summoner_spell_subject_assets(). It renders through
+      // the same collectible treatment as an ability, so it joins this case
+      // rather than forking a second convention on the backend.
       case "spell":
+      case "summoner_spell":
       case "ability":
         return {
           kind: "spell",
@@ -303,8 +309,12 @@ export function getCombatCooldownSubject(question: QuizQuestion): CombatCooldown
   const rawItems = Array.isArray(subject.item_icons) ? subject.item_icons : [];
   return {
     champion,
+    // Absent whenever the backend withheld the slot — an ability-identity
+    // question, where the slot IS the answer. The card then labels the ability
+    // without a slot badge; nothing here may guess one back.
     abilitySlot: subject.ability_slot as string | undefined,
     abilityName: subject.ability_name as string | undefined,
+    badge: typeof subject.badge === "string" && subject.badge ? subject.badge : undefined,
     level: (subject.level as number | undefined) ?? (meta.level as number | undefined),
     abilityRank: (subject.ability_rank as number | undefined) ?? (meta.ability_rank as number | undefined),
     championIcon: resolveQuizAssetUrl(subject.champion_icon as string | undefined),
@@ -320,6 +330,9 @@ export function getCombatCooldownSubject(question: QuizQuestion): CombatCooldown
     }),
     totalAbilityHaste:
       typeof meta.total_ability_haste === "number" ? meta.total_ability_haste : undefined,
+    // Additive: null for every payload frozen before RA3-MEDIA-P4, so the
+    // fields above stay the sole input for legacy questions.
+    entities: getQuestionMediaEntities(question),
   };
 }
 

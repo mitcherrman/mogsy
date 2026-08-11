@@ -110,6 +110,34 @@ export interface CandidateDetail {
   validation_warnings: string[];
 }
 
+/**
+ * Public-question projection of one candidate (RA9 operator preview).
+ *
+ * The SAME shape a live Ranked round transports as its `question` block, which
+ * is why it is read by `ranked-public/contracts.readPublicQuestion` rather than
+ * by a reader of its own. Deliberately WITHOUT any correct answer or index —
+ * the preview's reveal state takes those from `CandidateDetail`, which is
+ * already admin-only.
+ */
+export interface CandidatePublicView {
+  question_id: string;
+  prompt: string;
+  options: string[];
+  category: string | null;
+  /** Question-safe premise metadata (Quiz/Broadcast `metadata` shape). */
+  presentation?: Record<string, unknown> | null;
+  /** Canonical answer-option media, POSITIONAL: entry i describes option i. */
+  option_media?: Array<{
+    type: string;
+    name: string;
+    icon: string;
+    id?: string | number;
+  }> | null;
+  /** Backend module identity ("quiz" for the candidate bank). */
+  module_id?: string;
+  derived_status?: DerivedStatus;
+}
+
 /** Result of an accept/reject/revise mutation. */
 export interface DecisionResult {
   candidate_id: string;

@@ -25,6 +25,9 @@ import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/ScenarioCard";
 import { selectScenario } from "@/components/quiz-broadcast/scenario-cards/classify";
 import { CompactScenarioBand } from "./CompactScenarioBand";
+import { FamilyScenarioBand } from "./family/FamilyScenarioBand";
+import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
+import { selectFamilyLayout, type FamilyLayout } from "@/lib/question-surface/familyLayout";
 import {
   AnswerOptionView,
   InteractionPermissions,
@@ -67,6 +70,11 @@ const BAND_ASPECT: Record<Exclude<SurfaceSettings["mediaScale"], "none">, string
 /**
  * Presentation of the scenario band, chosen by CONTENT CAPABILITY (never mode
  * identity):
+ *  - "family": the payload describes a premise the subject-shaped cards cannot
+ *    express — a combat RELATION (attacker → ability → target, with the stated
+ *    quantities) or an item TRANSACTION (started with / kept / bought / sold).
+ *    Renders the absolute-sized family band (RA7). Chosen FIRST, and only when
+ *    `selectFamilyLayout` can support the payload completely.
  *  - "cinematic": the source resolves to a real premium visual — champion
  *    splash, item/recipe, combat calc, a framed collectible, OR a spoiler-hidden
  *    subject (placeholder card) that will reveal into a rich subject. Keeps the
@@ -80,34 +88,46 @@ const BAND_ASPECT: Record<Exclude<SurfaceSettings["mediaScale"], "none">, string
  * decision consistent with what would actually render and avoids a second
  * capability heuristic. A spoiler subject classifies to "placeholder", so it
  * stays cinematic and the band does NOT resize when the reveal arrives.
+ *
+ * The family tier is decided from pre-reveal premise fields only and is
+ * therefore reveal-invariant by construction: nothing it reads can change when
+ * a round resolves, so the band cannot swap profile — or resize — mid-question.
  */
-type ScenarioBandProfile = "cinematic" | "compact" | "none";
+type ScenarioBandProfile = "family" | "cinematic" | "compact" | "none";
 
 function resolveBandProfile(
   scenarioSource: ScenarioSource | null | undefined,
   mediaScale: SurfaceSettings["mediaScale"],
+  familyLayout: FamilyLayout | null,
 ): ScenarioBandProfile {
   if (mediaScale === "none") return "none";
+  if (familyLayout) return "family";
   if (!scenarioSource) return "compact";
   return selectScenario(scenarioSource, false, null).card === "empty" ? "compact" : "cinematic";
 }
 
-/** Premium scenario band. Cinematic Broadcast card for rich content; a short,
- * readable CompactScenarioBand for low-content/text-driven scenarios. */
+/** Premium scenario band. Family band for relation/transaction premises;
+ * cinematic Broadcast card for rich subject content; a short, readable
+ * CompactScenarioBand for low-content/text-driven scenarios. */
 function HeroBand({
   profile,
   scenarioSource,
   question,
   reveal,
   settings,
+  familyLayout,
 }: {
   profile: ScenarioBandProfile;
   scenarioSource?: ScenarioSource | null;
   question: QuestionView;
   reveal?: SurfaceReveal | null;
   settings: SurfaceSettings;
+  familyLayout: FamilyLayout | null;
 }) {
   if (profile === "none") return null;
+  if (profile === "family" && familyLayout) {
+    return <FamilyScenarioBand layout={familyLayout} />;
+  }
   if (profile === "compact") return <CompactScenarioBand category={question.category} />;
 
   const revealed = reveal?.revealed === true;
@@ -157,7 +177,10 @@ export function InteractiveScenarioSurface({
   context = null,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
-  const bandProfile = resolveBandProfile(scenarioSource, settings.mediaScale);
+  // Pre-reveal premise fields only — see resolveBandProfile. Recomputed per
+  // render like the existing selectScenario call; both are pure and cheap.
+  const familyLayout = selectFamilyLayout(scenarioSource);
+  const bandProfile = resolveBandProfile(scenarioSource, settings.mediaScale, familyLayout);
   const revealed = reveal?.revealed === true;
   const revealedCorrectOptionId = revealed ? (reveal?.correctOptionId ?? null) : null;
   const correctLabel =
@@ -188,13 +211,19 @@ export function InteractiveScenarioSurface({
         question={question}
         reveal={reveal}
         settings={settings}
+        familyLayout={familyLayout}
       />
 
       <header className="space-y-1">
         {/* Category shows once: in the compact band when that is shown, else here. */}
         {question.category && bandProfile !== "compact" && (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {question.category}
+          // `scenario-category` is a styling HOOK, not new behaviour: the label
+          // is the same backend category, formatted exactly the way the compact
+          // band already formats it (underscores → spaces; the uppercasing is
+          // the CSS that was always here). Presentation layers scope their own
+          // treatment to this class.
+          <span className="scenario-category text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {formatCategoryLabel(question.category)}
           </span>
         )}
         <h2 className={`${promptSize} font-semibold leading-snug`}>{question.prompt}</h2>
