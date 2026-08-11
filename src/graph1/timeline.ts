@@ -23,36 +23,56 @@ export const DEFAULT_CADENCE: CadenceConfig = {
   yearPauseMs: 900,
 };
 
+/** Per-step duration when a progression dataset does not declare msPerStep. */
+export const DEFAULT_MS_PER_STEP = 1000;
+
 export interface Cadence {
-  /** cumulative time at which event step i BEGINS (ms); length eventCount+1,
+  /** cumulative time at which step i BEGINS (ms); length stepCount+1,
    * last entry == totalMs */
   stepStartMs: Float64Array;
   /** advance duration of step i (excludes any trailing pause) */
   advanceMs: number;
   totalMs: number;
+  /** position units — steps; equals the event count for chronological races */
+  stepCount: number;
+  /** @deprecated same value as stepCount, kept for pre-4A callers */
   eventCount: number;
 }
 
-/** A year boundary pause follows event i when event i+1 is a later year. */
+/**
+ * Chronological races: one event per base duration, plus a pause after event
+ * i when event i+1 is a later year. Progression races (Phase 4A): one LEVEL
+ * per `msPerStep`, no year pauses — the synthetic level timestamps would put
+ * one after every step, which is a tempo decision the dataset makes through
+ * msPerStep instead.
+ */
 export function buildCadence(
   index: RaceIndex,
   config: CadenceConfig,
 ): Cadence {
-  const n = index.eventCount;
+  const n = index.stepCount;
   const stepStartMs = new Float64Array(n + 1);
+  const advanceMs = index.progression
+    ? index.progression.msPerStep ?? DEFAULT_MS_PER_STEP
+    : config.baseMsPerEvent;
   let t = 0;
   for (let i = 0; i < n; i++) {
     stepStartMs[i] = t;
-    t += config.baseMsPerEvent;
-    if (i + 1 < n && index.eventYear[i + 1] > index.eventYear[i]) {
+    t += advanceMs;
+    if (
+      !index.progression &&
+      i + 1 < n &&
+      index.eventYear[i + 1] > index.eventYear[i]
+    ) {
       t += config.yearPauseMs;
     }
   }
   stepStartMs[n] = t;
   return {
     stepStartMs,
-    advanceMs: config.baseMsPerEvent,
+    advanceMs,
     totalMs: t,
+    stepCount: n,
     eventCount: n,
   };
 }
@@ -60,26 +80,26 @@ export function buildCadence(
 /** time (ms) -> fractional position. Within a step the position advances
  * over `advanceMs` then holds through any year pause. Monotonic, clamped. */
 export function positionAtTime(cadence: Cadence, timeMs: number): number {
-  const { stepStartMs, advanceMs, eventCount } = cadence;
+  const { stepStartMs, advanceMs, stepCount } = cadence;
   if (timeMs <= 0) return 0;
-  if (timeMs >= cadence.totalMs) return eventCount;
+  if (timeMs >= cadence.totalMs) return stepCount;
   // binary search: greatest i with stepStartMs[i] <= timeMs
   let lo = 0;
-  let hi = eventCount;
+  let hi = stepCount;
   while (lo < hi) {
     const mid = (lo + hi + 1) >> 1;
     if (stepStartMs[mid] <= timeMs) lo = mid;
     else hi = mid - 1;
   }
   const within = timeMs - stepStartMs[lo];
-  return Math.min(eventCount, lo + Math.min(1, within / advanceMs));
+  return Math.min(stepCount, lo + Math.min(1, within / advanceMs));
 }
 
 /** position -> earliest time (ms) that renders it; inverse for seeking. */
 export function timeAtPosition(cadence: Cadence, position: number): number {
-  const p = Math.max(0, Math.min(cadence.eventCount, position));
+  const p = Math.max(0, Math.min(cadence.stepCount, position));
   const k = Math.floor(p);
-  if (k >= cadence.eventCount) return cadence.totalMs;
+  if (k >= cadence.stepCount) return cadence.totalMs;
   return cadence.stepStartMs[k] + (p - k) * cadence.advanceMs;
 }
 

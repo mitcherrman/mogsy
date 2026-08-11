@@ -26,6 +26,7 @@ import RaceRenderer, {
 import {
   resolveDisplayHints,
   resolveDisplayToggles,
+  resolveValueDisplay,
 } from "../../graph1/contract";
 import { stateAt } from "../../graph1/engine";
 import { buildRaceIndex } from "../../graph1/raceIndex";
@@ -76,13 +77,15 @@ export const Graph1RaceVideo: React.FC<Graph1RaceVideoProps> = (props) => {
   );
   const position =
     raceFrame >= timing.raceFrames
-      ? index.eventCount
+      ? index.stepCount
       : positionAtFrame(cadence, raceFrame, fps, opts.speed);
   const frame = stateAt(index, position, { topN: opts.topN });
 
   const hints = resolveDisplayHints(dataset);
   const coverage = dataset.coverage;
   const ctx = frame.currentContext;
+  const progression = index.progression;
+  const valueDisplay = resolveValueDisplay(dataset);
 
   const scale = height / LOGICAL_HEIGHT;
   const logicalWidth = width / scale;
@@ -103,11 +106,36 @@ export const Graph1RaceVideo: React.FC<Graph1RaceVideoProps> = (props) => {
             <p className="text-sm text-muted-foreground">
               {dataset.definition.metric.label} ·{" "}
               {dataset.definition.scope.label} ·{" "}
-              {coverage.eligibleEventCount.toLocaleString("en-US")} games ·{" "}
-              {coverage.firstEventAt.slice(0, 10)} →{" "}
-              {coverage.lastEventAt.slice(0, 10)}
+              {progression ? (
+                <>
+                  {coverage.distinctRankedEntityCount.toLocaleString("en-US")}{" "}
+                  champions · {frame.stepCount}{" "}
+                  {progression.unitLabel.toLowerCase()}s
+                </>
+              ) : (
+                <>
+                  {coverage.eligibleEventCount.toLocaleString("en-US")} games
+                  {coverage.firstEventAt && coverage.lastEventAt && (
+                    <>
+                      {" · "}
+                      {coverage.firstEventAt.slice(0, 10)} →{" "}
+                      {coverage.lastEventAt.slice(0, 10)}
+                    </>
+                  )}
+                </>
+              )}
             </p>
-            {toggles.eventHeader && (
+            {toggles.eventHeader && progression && (
+              <div className="min-h-[3.5rem] text-sm font-semibold tabular-nums">
+                <p>
+                  <span className="text-3xl">{frame.stepLabel}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {frame.stepIndex + 1} of {frame.stepCount}
+                  </span>
+                </p>
+              </div>
+            )}
+            {toggles.eventHeader && !progression && (
               <div className="min-h-[3.5rem] text-sm font-semibold tabular-nums">
                 <p>
                   <span className="text-3xl">{frame.year}</span>
@@ -137,6 +165,7 @@ export const Graph1RaceVideo: React.FC<Graph1RaceVideoProps> = (props) => {
             entities={dataset.entities}
             metricLabel={dataset.definition.metric.label}
             topN={opts.topN}
+            valueDisplay={valueDisplay}
             display={{
               showWinOverlay: toggles.winOverlay,
               showSecondaryEntityLabel:

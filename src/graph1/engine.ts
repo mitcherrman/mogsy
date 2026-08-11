@@ -6,11 +6,16 @@
  * Math.random/DOM/React state — it is directly callable from a Remotion
  * frame (frame → position via timeline.ts → stateAt).
  *
- * Position semantics: fractional event index in [0, eventCount].
- *   k = floor(position) events are fully applied; f = position - k is the
- *   presentation progress of event k (bar/rank interpolation toward the
- *   state after k+1 events). Displayed integers always show whole-game
- *   totals at k — numbers step, bars glide.
+ * Position semantics: fractional STEP index in [0, stepCount].
+ *   k = floor(position) steps are fully applied; f = position - k is the
+ *   presentation progress of step k (bar/rank interpolation toward the state
+ *   after step k+1). A chronological dataset has one step per event, so this
+ *   is the original fractional-event-index semantics unchanged; a progression
+ *   dataset (Phase 4A) applies ALL of a step's events together during the
+ *   transition — every champion moves simultaneously between level
+ *   checkpoints, and the state at every integer position is exactly the
+ *   canonical state at that checkpoint. Displayed integers always show the
+ *   fully-applied totals at k — numbers step, bars glide.
  *
  * Ranking rule (total order, tested):
  *   1. higher cumulative total first
@@ -72,8 +77,16 @@ export interface RaceRow {
 
 export interface RaceFrameState {
   position: number;
-  eventIndex: number; // floor(position), clamped to last event
+  /** first event index of the current step, clamped to last event (equals
+   * floor(position) for chronological datasets) */
+  eventIndex: number;
   eventCount: number;
+  /** floor(position), clamped to the last step */
+  stepIndex: number;
+  stepCount: number;
+  /** progression label of the current step ("Level 7"), null when the
+   * dataset is chronological */
+  stepLabel: string | null;
   /** occurredAt of the event driving the current step (display context) */
   occurredAt: string;
   year: number;
@@ -111,30 +124,35 @@ export function stateAt(
   config: RaceDisplayConfig,
 ): RaceFrameState {
   const eventCount = index.eventCount;
-  const clamped = Math.max(0, Math.min(eventCount, position));
+  const stepCount = index.stepCount;
+  const clamped = Math.max(0, Math.min(stepCount, position));
   const k = Math.floor(clamped);
   const rawF = clamped - k;
   const f = config.reducedMotion ? 0 : rawF;
 
-  const before = stateAfter(index, k);
-  // state after k+1 events differs from k by exactly one +delta event
-  const nextEvent = k < eventCount ? k : -1;
-  const inFlightEntity = nextEvent >= 0 && f > 0
-    ? index.eventEntityIdx[nextEvent]
-    : -1;
+  const before = stateAfter(index, index.stepStartIndices[k]);
+  // the in-flight step applies events [rangeStart, rangeEnd) together — for a
+  // chronological dataset that range is exactly one +delta event, unchanged
+  const rangeStart = k < stepCount ? index.stepStartIndices[k] : -1;
+  const rangeEnd = k < stepCount ? index.stepStartIndices[k + 1] : -1;
+  const hasInFlight = f > 0 && rangeStart >= 0 && rangeEnd > rangeStart;
 
   const orderA = rankOrder(index, before.totals, before.attain);
 
   let orderB = orderA;
   let totalsB = before.totals;
   let winsB = before.wins;
-  if (inFlightEntity >= 0) {
+  let attainB = before.attain;
+  if (hasInFlight) {
     totalsB = before.totals.slice();
     winsB = before.wins.slice();
-    const attainB = before.attain.slice();
-    totalsB[inFlightEntity] += index.eventDelta[nextEvent];
-    winsB[inFlightEntity] += index.eventWinsDelta[nextEvent];
-    attainB[inFlightEntity] = nextEvent;
+    attainB = before.attain.slice();
+    for (let i = rangeStart; i < rangeEnd; i++) {
+      const e = index.eventEntityIdx[i];
+      totalsB[e] += index.eventDelta[i];
+      winsB[e] += index.eventWinsDelta[i];
+      attainB[e] = i;
+    }
     orderB = rankOrder(index, totalsB, attainB);
   }
 
@@ -173,9 +191,11 @@ export function stateAt(
     const winsW = winsB[e];
     const winsValue = winsA + (winsW - winsA) * f;
 
-    // latest counted event for this entity at the current position; the
+    // latest counted event for this entity at the current position; an
     // in-flight event becomes the context of the entity it increments
-    const latestIdx = e === inFlightEntity ? nextEvent : before.attain[e];
+    // (attainB holds the in-flight touch when there is one, else the
+    // last touch before the step — both semantics unchanged)
+    const latestIdx = attainB[e];
     const latestEvent = latestIdx >= 0 ? index.dataset.events[latestIdx] : null;
 
     let opacity = 1;
@@ -202,12 +222,33 @@ export function stateAt(
   }
   rows.sort((a, b) => a.y - b.y || (a.entityId < b.entityId ? -1 : 1));
 
-  const displayEventIndex = Math.min(k, eventCount - 1);
+  // display step: the in-flight step during a transition, the last step at
+  // the end. Its first event supplies occurredAt/context (for chronological
+  // datasets that IS event floor(position), the pre-4A behaviour).
+  //
+  // Progression datasets additionally correct the AT-REST boundary: paused
+  // exactly on integer position k, the settled state IS step k's checkpoint,
+  // so the label must name step k, not the next step. Mid-transition (f>0)
+  // the destination step is the honest label. Chronological datasets keep
+  // the original convention untouched.
+  const displayStep =
+    index.progression && f === 0 && k > 0
+      ? Math.min(k - 1, stepCount - 1)
+      : Math.min(k, stepCount - 1);
+  const displayEventIndex = Math.min(
+    index.stepStartIndices[displayStep],
+    eventCount - 1,
+  );
   const displayEvent = index.dataset.events[displayEventIndex];
   return {
     position: clamped,
     eventIndex: displayEventIndex,
     eventCount,
+    stepIndex: displayStep,
+    stepCount,
+    stepLabel: index.progression
+      ? index.progression.stepLabels[displayStep] ?? null
+      : null,
     occurredAt: displayEvent.occurredAt,
     year: index.eventYear[displayEventIndex],
     currentContext: displayEvent.context,

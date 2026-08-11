@@ -54,6 +54,10 @@ import {
 const FAMILY_DEFAULT_FOCUS: Record<string, string> = {
   "player-champions": "Faker",
   "champion-players": "azir",
+  // The stat family's tokens are stats, not roster entities; AD is the only
+  // one this phase, so selecting the family lands straight on the race and
+  // no picker is rendered (focusEntityType "stat" matches neither picker).
+  "champion-stat-growth": "attack-damage",
 };
 
 const MAX_CHAMPION_ROWS = 40;
@@ -166,11 +170,15 @@ export default function Graph1RacePage() {
     (familyId: string) => {
       const current = parseFamilyDatasetKey(datasetKey ?? undefined);
       if (current?.familyId === familyId) return;
-      const entityId = FAMILY_DEFAULT_FOCUS[familyId];
+      // catalog-declared default first (stat families ship one), then the
+      // hardcoded fallbacks that predate it
+      const entityId =
+        families.find((f) => f.id === familyId)?.defaultEntity ??
+        FAMILY_DEFAULT_FOCUS[familyId];
       if (!entityId) return;
       selectDataset(familyDatasetKey(familyId, entityId));
     },
-    [datasetKey, selectDataset],
+    [datasetKey, families, selectDataset],
   );
 
   const selectEntity = useCallback(

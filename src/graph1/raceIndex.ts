@@ -6,13 +6,25 @@
  * totals map per event (Phase 0 §H recommendation: client-side index, no
  * server checkpoints at these sizes).
  */
-import type { VisualizationDataset } from "./contract";
+import type { Graph1Progression, VisualizationDataset } from "./contract";
+import { resolveProgression } from "./contract";
 
 export const CHECKPOINT_INTERVAL = 256;
 
 export interface RaceIndex {
   dataset: VisualizationDataset;
   eventCount: number;
+  /**
+   * Discrete progression steps (Phase 4A). Position space is [0, stepCount];
+   * step s covers events [stepStartIndices[s], stepStartIndices[s+1]) and all
+   * of them apply together during that step's transition. Chronological
+   * datasets get the identity mapping — one step per event, stepCount ==
+   * eventCount — which reproduces pre-4A behaviour exactly.
+   */
+  stepCount: number;
+  stepStartIndices: Int32Array;
+  /** The validated progression declaration, or null for per-event races. */
+  progression: Graph1Progression | null;
   /** dense entity table: id <-> index */
   entityIds: string[];
   entityIndexById: Map<string, number>;
@@ -82,9 +94,30 @@ export function buildRaceIndex(dataset: VisualizationDataset): RaceIndex {
   let maxFinalTotal = 0;
   for (let e = 0; e < n; e++) maxFinalTotal = Math.max(maxFinalTotal, totals[e]);
 
+  // Step map: declared progression when it exactly covers the event list,
+  // else the identity mapping (one step per event — pre-4A semantics).
+  const progression = resolveProgression(dataset);
+  let stepStartIndices: Int32Array;
+  if (progression) {
+    const counts = progression.stepEventCounts;
+    stepStartIndices = new Int32Array(counts.length + 1);
+    let at = 0;
+    for (let s = 0; s < counts.length; s++) {
+      stepStartIndices[s] = at;
+      at += counts[s];
+    }
+    stepStartIndices[counts.length] = at;
+  } else {
+    stepStartIndices = new Int32Array(eventCount + 1);
+    for (let s = 0; s <= eventCount; s++) stepStartIndices[s] = s;
+  }
+
   return {
     dataset,
     eventCount,
+    stepCount: stepStartIndices.length - 1,
+    stepStartIndices,
+    progression,
     entityIds,
     entityIndexById,
     eventEntityIdx,

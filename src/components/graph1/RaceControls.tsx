@@ -14,7 +14,7 @@ import {
 export interface RaceControlsProps {
   playing: boolean;
   speed: number;
-  /** fractional event position and its bounds */
+  /** fractional position (steps) and its bounds */
   position: number;
   eventCount: number;
   onPlay: () => void;
@@ -27,6 +27,9 @@ export interface RaceControlsProps {
   topN?: number;
   topNOptions?: number[];
   onTopN?: (n: number) => void;
+  /** what one seek unit is — "game" (default) or a progression unit
+   * ("Level"); only the labels change, never the position math */
+  unitLabel?: string;
 }
 
 export default function RaceControls({
@@ -43,11 +46,14 @@ export default function RaceControls({
   topN,
   topNOptions,
   onTopN,
+  unitLabel = "game",
 }: RaceControlsProps) {
   const speeds = speedOptions?.length ? speedOptions : FALLBACK_SPEED_OPTIONS;
   const topNChoices = topNOptions?.length
     ? topNOptions
     : FALLBACK_TOP_N_OPTIONS;
+  const unitTitle =
+    unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1).toLowerCase();
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-1.5">
@@ -75,15 +81,15 @@ export default function RaceControls({
       </div>
 
       <label className="flex min-w-[200px] flex-1 items-center gap-2 text-xs">
-        <span className="sr-only">Seek by game</span>
+        <span className="sr-only">Seek by {unitLabel.toLowerCase()}</span>
         <input
           type="range"
           min={0}
           max={eventCount}
           step={1}
           value={Math.floor(position)}
-          aria-label="Seek by game"
-          aria-valuetext={`Game ${Math.floor(position)} of ${eventCount}`}
+          aria-label={`Seek by ${unitLabel.toLowerCase()}`}
+          aria-valuetext={`${unitTitle} ${Math.floor(position)} of ${eventCount}`}
           onChange={(e) => onSeekPosition(Number(e.target.value))}
           className="h-2 w-full flex-1 cursor-pointer accent-primary"
         />
