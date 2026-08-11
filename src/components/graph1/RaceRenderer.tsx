@@ -31,16 +31,25 @@ const ROW_HEIGHT = 52;
 /**
  * The value printed beside a bar. Count metrics show the whole-unit integer
  * at floor(position) — numbers step while bars glide (the Phase 1 look).
- * Stat metrics (valueDisplay present) print the INTERPOLATED value scaled
- * back to stat units, so the number rolls smoothly with the bar and lands
- * exactly on the canonical value at every checkpoint.
+ *
+ * Stat metrics (valueDisplay present) have two modes:
+ *   exact (default) — only canonical checkpoint values are ever printed: the
+ *   settled level's stat holds through the transition and switches directly
+ *   at the next checkpoint. Bars and ranks still animate; the number is
+ *   deliberately stepped because the intermediate numbers are not real
+ *   champion stats.
+ *   smooth — the interpolated value scaled to stat units, ticking with the
+ *   bar and landing exactly on the canonical value at every checkpoint (the
+ *   social-clip look).
  */
 function formatRowValue(
   row: RaceRow,
   valueDisplay: Graph1ValueDisplay | null | undefined,
+  exactValues: boolean,
 ): string {
   if (!valueDisplay) return String(row.displayValue);
-  return (row.value / valueDisplay.scale).toFixed(valueDisplay.decimals);
+  const units = exactValues ? row.checkpointValue : row.value;
+  return (units / valueDisplay.scale).toFixed(valueDisplay.decimals);
 }
 
 /**
@@ -54,6 +63,9 @@ export interface RaceRendererDisplay {
   showEntityMedia?: boolean;
   showRankNumber?: boolean;
   showValueLabel?: boolean;
+  /** stat metrics only: false interpolates the printed number between
+   * checkpoints (smooth mode). Omitted/true = exact checkpoint values. */
+  exactValues?: boolean;
 }
 
 /** Injectable <img> substitute. The Remotion composition passes remotion's
@@ -117,7 +129,7 @@ function rowAriaLabel(
   display: RaceRendererDisplay,
   valueDisplay: Graph1ValueDisplay | null | undefined,
 ): string {
-  let label = `Rank ${row.rank}: ${entity.displayName}, ${formatRowValue(row, valueDisplay)} ${metricLabel}`;
+  let label = `Rank ${row.rank}: ${entity.displayName}, ${formatRowValue(row, valueDisplay, display.exactValues !== false)} ${metricLabel}`;
   if (display.showWinOverlay) {
     label += `, ${row.displayWins} wins, ${row.displayLosses} losses`;
   }
@@ -214,7 +226,7 @@ function Row({
       {display.showValueLabel !== false && (
         <span className="w-24 text-right tabular-nums">
           <span className="text-sm font-bold">
-            {formatRowValue(row, valueDisplay)}
+            {formatRowValue(row, valueDisplay, display.exactValues !== false)}
           </span>
           {display.showWinOverlay && (
             <span className="ml-1 hidden text-[11px] text-muted-foreground md:inline">

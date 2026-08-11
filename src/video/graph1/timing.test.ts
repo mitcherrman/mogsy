@@ -28,6 +28,8 @@ describe("resolveRaceVideoOptions", () => {
       topN: 10,
       leadInSeconds: 2,
       outroSeconds: 4,
+      // exact checkpoint values by default — consistent with the browser
+      smoothValues: false,
     });
   });
 

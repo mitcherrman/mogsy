@@ -30,6 +30,10 @@ export interface RaceControlsProps {
   /** what one seek unit is — "game" (default) or a progression unit
    * ("Level"); only the labels change, never the position math */
   unitLabel?: string;
+  /** stat races only: value-animation mode. Both must be supplied for the
+   * control to render; count races omit them and see no new UI. */
+  exactValues?: boolean;
+  onExactValues?: (exact: boolean) => void;
 }
 
 export default function RaceControls({
@@ -47,6 +51,8 @@ export default function RaceControls({
   topNOptions,
   onTopN,
   unitLabel = "game",
+  exactValues,
+  onExactValues,
 }: RaceControlsProps) {
   const speeds = speedOptions?.length ? speedOptions : FALLBACK_SPEED_OPTIONS;
   const topNChoices = topNOptions?.length
@@ -113,6 +119,28 @@ export default function RaceControls({
           ))}
         </select>
       </label>
+
+      {onExactValues && exactValues !== undefined && (
+        <label
+          className="flex items-center gap-1 text-xs text-muted-foreground"
+          title={
+            "Exact levels: shows only the actual calculated stat at each " +
+            "champion level. Smooth: interpolates values between levels " +
+            "for smoother animation."
+          }
+        >
+          Values
+          <select
+            aria-label="Value animation"
+            value={exactValues ? "exact" : "smooth"}
+            onChange={(e) => onExactValues(e.target.value === "exact")}
+            className="rounded border border-border bg-background px-1.5 py-1 text-xs"
+          >
+            <option value="exact">Exact levels</option>
+            <option value="smooth">Smooth</option>
+          </select>
+        </label>
+      )}
 
       {onTopN && topN !== undefined && (
         <label className="flex items-center gap-1 text-xs text-muted-foreground">

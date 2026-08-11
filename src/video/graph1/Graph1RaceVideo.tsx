@@ -86,6 +86,9 @@ export const Graph1RaceVideo: React.FC<Graph1RaceVideoProps> = (props) => {
   const ctx = frame.currentContext;
   const progression = index.progression;
   const valueDisplay = resolveValueDisplay(dataset);
+  // exact checkpoint values unless the export explicitly asks for the
+  // smooth ticker — same default the browser player uses
+  const exactValues = toggles.exactValues !== false && !opts.smoothValues;
 
   const scale = height / LOGICAL_HEIGHT;
   const logicalWidth = width / scale;
@@ -128,9 +131,14 @@ export const Graph1RaceVideo: React.FC<Graph1RaceVideoProps> = (props) => {
             {toggles.eventHeader && progression && (
               <div className="min-h-[3.5rem] text-sm font-semibold tabular-nums">
                 <p>
-                  <span className="text-3xl">{frame.stepLabel}</span>
+                  <span className="text-3xl">
+                    {exactValues ? frame.settledStepLabel : frame.stepLabel}
+                  </span>
                   <span className="ml-2 text-muted-foreground">
-                    {frame.stepIndex + 1} of {frame.stepCount}
+                    {(exactValues
+                      ? frame.settledStepIndex
+                      : frame.stepIndex) + 1}{" "}
+                    of {frame.stepCount}
                   </span>
                 </p>
               </div>
@@ -167,6 +175,7 @@ export const Graph1RaceVideo: React.FC<Graph1RaceVideoProps> = (props) => {
             topN={opts.topN}
             valueDisplay={valueDisplay}
             display={{
+              exactValues,
               showWinOverlay: toggles.winOverlay,
               showSecondaryEntityLabel:
                 hints.showSecondaryEntityLabel && toggles.secondaryLabel,

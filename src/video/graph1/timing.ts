@@ -35,6 +35,10 @@ export interface Graph1RaceVideoProps {
   topN?: number;
   leadInSeconds?: number;
   outroSeconds?: number;
+  /** stat races only: interpolate the printed value between checkpoints
+   * (the pre-polish look). Default false — the video shows only canonical
+   * checkpoint values, consistent with the browser default. */
+  smoothValues?: boolean;
 }
 
 export interface Graph1RaceVideoOptions {
@@ -42,18 +46,20 @@ export interface Graph1RaceVideoOptions {
   topN: number;
   leadInSeconds: number;
   outroSeconds: number;
+  smoothValues: boolean;
 }
 
 export function resolveRaceVideoOptions(
   props: Pick<
     Graph1RaceVideoProps,
-    "speed" | "topN" | "leadInSeconds" | "outroSeconds"
+    "speed" | "topN" | "leadInSeconds" | "outroSeconds" | "smoothValues"
   >,
 ): Graph1RaceVideoOptions {
   const speed = props.speed ?? 1;
   const topN = props.topN ?? 10;
   const leadInSeconds = props.leadInSeconds ?? 2;
   const outroSeconds = props.outroSeconds ?? 4;
+  const smoothValues = props.smoothValues ?? false;
   if (!Number.isFinite(speed) || speed <= 0) {
     throw new Error(`GRAPH1 video: speed must be > 0, got ${speed}`);
   }
@@ -63,7 +69,7 @@ export function resolveRaceVideoOptions(
   if (leadInSeconds < 0 || outroSeconds < 0) {
     throw new Error("GRAPH1 video: lead-in/outro seconds must be >= 0");
   }
-  return { speed, topN, leadInSeconds, outroSeconds };
+  return { speed, topN, leadInSeconds, outroSeconds, smoothValues };
 }
 
 export interface Graph1RaceVideoTiming {
