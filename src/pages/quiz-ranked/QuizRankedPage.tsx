@@ -51,13 +51,21 @@ function Frame({ children, size = "default" }:
 { children: React.ReactNode; size?: "default" | "wide" }) {
   return (
     <div className={`ranked-shell ranked-academy mx-auto w-full space-y-3 px-4 py-3 ${
-      // RA10: the live-match frame widens a step at xl so the centre question
-      // track (not the fixed duelist rails) absorbs every extra pixel.
-      size === "wide" ? "max-w-6xl xl:max-w-[76rem]" : "max-w-3xl"}`} data-testid="quiz-ranked">
+      // RA10 widened the live-match frame a step at xl; RA11 lets it take the
+      // full stage at large desktops (the route is full-bleed now, so main's
+      // reading column no longer caps it). The centre question track — not the
+      // fixed duelist rails — absorbs every extra pixel.
+      size === "wide" ? "max-w-6xl xl:max-w-[76rem] min-[1500px]:max-w-[90rem]" : "max-w-3xl"}`}
+      data-testid="quiz-ranked">
       {/* md:pl clears the shell's fixed "League Hub" pill (left-4, ~7rem wide),
-          which sits on this row now that the heading is one line. From 1440px
-          the centred frame's own left margin clears it naturally. */}
-      <header className="flex min-h-7 items-center justify-between gap-3 md:pl-28 min-[1440px]:pl-0">
+          which sits on this row now that the heading is one line. The default
+          frame's own left margin clears it from 1440px; the wide frame runs
+          nearly stage-wide from 1500px, so it keeps the padding until its
+          margin genuinely exceeds the pill (~1700px). */}
+      <header className={`flex min-h-7 items-center justify-between gap-3 ${
+        size === "wide"
+          ? "md:pl-28 min-[1440px]:pl-0 min-[1500px]:pl-28 min-[1700px]:pl-0"
+          : "md:pl-28 min-[1440px]:pl-0"}`}>
         <div className="flex items-baseline gap-2.5">
           <h1 className="ranked-title text-lg font-bold leading-tight">Ranked Duel</h1>
           <span className="ranked-eyebrow hidden sm:inline">Competitive Mode</span>

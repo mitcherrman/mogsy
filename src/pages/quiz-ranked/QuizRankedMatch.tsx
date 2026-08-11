@@ -284,8 +284,12 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           RA10: the question board is the centre of gravity — the duelist rails
           give up a step at lg (14rem) where width is scarce and return to
           15rem at xl, where the wider match frame (see Frame) has already
-          grown the centre track instead. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)]">
+          grown the centre track instead.
+
+          RA11: from 1500px the frame runs stage-wide (90rem), so the rails
+          step OUT to 17rem and the gutters widen — the duelists move toward
+          the flanks while the centre track still absorbs most of the gain. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] min-[1500px]:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,17rem)] min-[1500px]:gap-4">
         <div className="lg:col-start-1 lg:row-start-1">
           <CombatantPanel combatant={combatants.player} />
         </div>
@@ -338,9 +342,11 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
               // `display:none` cost several hundred pixels of jump.
               data-input-open={inputOpen ? "true" : "false"}
               // `ranked-folio` is the RA4 academy skin for this exact box —
-              // colour only. The padding, the reserved scenario-band box and
-              // the answer grid inside are untouched, so nothing here moves.
-              className={`ranked-panel ranked-folio p-3 sm:p-5 transition-opacity duration-200 motion-reduce:transition-none ${
+              // colour only. The reserved scenario-band box and the answer
+              // grid inside are untouched. RA11 widens the HORIZONTAL padding
+              // on the big stage only — vertical rhythm (and with it the
+              // no-scroll desktop budget) is unchanged.
+              className={`ranked-panel ranked-folio p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none ${
                 m.revealHold || isProgression ? "opacity-60" : "opacity-100"}`}>
               <renderer.Viewport
                 // The FROZEN snapshot: the surface keeps rendering the round the
@@ -390,8 +396,11 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       {!moduleOwnsSubmission && (
           <div className="flex flex-col gap-1.5">
             {showAbilityTray && (
-              <section data-testid="ranked-abilities"
-                className="ranked-panel px-3 py-2.5 sm:px-4">
+              // RA11: no panel chrome around the tray any more — the tray IS
+              // the object (one connected spellbook-spine dock, see
+              // .ability-spine in index.css). A wrapper panel around it is
+              // exactly the "box containing cards" reading being retired.
+              <section data-testid="ranked-abilities">
                 <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
                   permissions={abilityPermissions} onSelectAbility={m.selectAbility}
                   noAbilityLabel="Clear ability" />

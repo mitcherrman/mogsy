@@ -164,5 +164,25 @@ export function abilityGlyphFor(abilityId: string): AbilityGlyph {
   return ABILITY_GLYPHS[abilityId] ?? SigilGlyph;
 }
 
+/**
+ * RA11 — resting art-tile treatment per ability FAMILY (the id's dot-prefix),
+ * so each class's slots carry a quiet identity tint inside the shared spine
+ * dock. Complete class strings (Tailwind JIT needs literals). Unknown
+ * families fall back to the neutral navy tile, keeping the tray
+ * roster-neutral; the armed state overrides all of these with brass.
+ */
+const FAMILY_TILE_ACCENTS: Record<string, string> = {
+  tank: "bg-gradient-to-b from-[#173349] to-[#0a1a2a] text-[#a8d4e8]",
+  mage: "bg-gradient-to-b from-[#2d1f4a] to-[#150f26] text-[#c7b3ee]",
+  marksman: "bg-gradient-to-b from-[#3f2a12] to-[#1d1206] text-[#e9ca8d]",
+};
+const NEUTRAL_TILE_ACCENT = "bg-gradient-to-b from-[#16283f] to-[#0a1626] text-[#d8c58e]";
+
+/** Resting tile classes for a backend ability id (family-derived). */
+export function abilityTileAccentFor(abilityId: string): string {
+  const family = abilityId.split(".")[0] ?? "";
+  return FAMILY_TILE_ACCENTS[family] ?? NEUTRAL_TILE_ACCENT;
+}
+
 /** Glyph for the explicit no-ability slot. */
 export const clearAbilityGlyph: AbilityGlyph = ClearGlyph;

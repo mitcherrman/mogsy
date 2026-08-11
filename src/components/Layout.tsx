@@ -63,7 +63,13 @@ export default function Layout() {
   // library hub, whose painted background and book grid span the viewport.
   const isStatCheckSurface =
     pathname === "/dev/stat-check" || pathname.startsWith("/quiz/stat-check");
-  const isFullBleed = isStatCheckSurface || pathname === "/lol";
+  // Ranked Duel qualifies too (RA11): its Frame carries its own centred
+  // max-width steps and px-4 gutters, and the academy backdrop is a fixed
+  // layer — the reading-column cap was the only thing keeping the arena
+  // confined at large desktop widths. The dev arena inspector escapes with
+  // it, or its "Full" viewport could never reach the arena's wide-stage tier.
+  const isFullBleed = isStatCheckSurface || pathname === "/lol"
+    || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector";
 
   // The friends drawer is a floating overlay. On the full-bleed Stat Check
   // gameplay surface it would sit on top of the tabletop and its trigger would

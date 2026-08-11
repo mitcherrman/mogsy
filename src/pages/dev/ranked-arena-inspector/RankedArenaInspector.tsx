@@ -434,7 +434,7 @@ function ArenaComposition({
           <TimerDisplay timer={TIMER({ remainingSeconds: 18 })} label="Shared round timer" />
         </div>
       </section>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)]">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] min-[1500px]:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,17rem)] min-[1500px]:gap-4">
         <div className="lg:col-start-1 lg:row-start-1">
           <CombatantPanel combatant={player()} />
         </div>
@@ -442,13 +442,14 @@ function ArenaComposition({
           <CombatantPanel combatant={opponent()} />
         </div>
         <section data-testid="ranked-question"
-          className="ranked-panel ranked-folio col-span-2 p-3 sm:p-5 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+          className="ranked-panel ranked-folio col-span-2 p-3 sm:p-5 min-[1500px]:px-7 lg:col-span-1 lg:col-start-2 lg:row-start-1">
           <InteractiveScenarioSurface question={question} selectedOptionId={selected} permissions={perms}
             onSelectOption={() => {}} variant="competitive" scenarioSource={scenarioSource} />
         </section>
       </div>
       <div className="flex flex-col gap-1.5">
-        <section className="ranked-panel px-3 py-2.5 sm:px-4">
+        {/* RA11: no panel wrapper — the tray renders its own spine dock. */}
+        <section>
           <AbilityTray abilities={ABILITIES([{ selected: true }])} selectedAbilityId="tank.fortify"
             permissions={perms} onSelectAbility={() => {}} noAbilityLabel="Clear ability" />
         </section>
@@ -691,7 +692,10 @@ export default function RankedArenaInspector() {
     // `relative z-10` on the chrome: the arena states carry the real
     // `ranked-academy` theme, whose backdrop is a fixed full-viewport layer —
     // the inspector's own controls must stack above it to stay usable.
-    <div className="mx-auto max-w-5xl p-4 space-y-4" data-testid="ranked-arena-inspector">
+    // RA11: the page container widened (max-w-5xl → 105rem) so the "Full"
+    // viewport can genuinely reach the arena's 1500px+ stage tier — the old
+    // cap silently clamped every wide-desktop QA pass to ~1024px.
+    <div className="mx-auto max-w-[105rem] p-4 space-y-4" data-testid="ranked-arena-inspector">
       <header className="relative z-10 space-y-1">
         <h1 className="text-lg font-bold">Ranked Arena Inspector</h1>
         <p className="text-xs text-muted-foreground">

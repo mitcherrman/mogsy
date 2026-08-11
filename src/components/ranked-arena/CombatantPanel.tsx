@@ -163,8 +163,11 @@ function ClassPortrait({
       data-testid="class-portrait"
       // Hidden on the narrow mobile cards, where 48px of art squeezed the
       // name to a single letter — the tag row shows a mini-crest there
-      // instead, so the class stays visible at every width.
-      className="relative hidden h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#0b1727] sm:block"
+      // instead, so the class stays visible at every width. On the RA11 wide
+      // stage (17rem rails) the bust takes one step up; the step is
+      // viewport-driven, never state-driven, so panel geometry stays constant
+      // within any given viewport.
+      className="relative hidden h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#0b1727] sm:block min-[1500px]:h-14 min-[1500px]:w-14"
       style={{
         boxShadow: `inset 0 0 0 1px ${identity.accent}33, inset 0 -8px 12px -8px rgba(0,0,0,0.8)`,
         backgroundImage: `radial-gradient(80% 70% at 50% 30%, ${identity.accentSoft}, transparent 75%)`,
