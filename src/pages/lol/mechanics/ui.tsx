@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { MechanicProvenance } from "@/lib/mechanics-explorer/api";
+import type { MechanicProvenance, StatValue } from "@/lib/mechanics-explorer/api";
 
 export const GOLD = "#c9a84c";
 
@@ -191,6 +191,117 @@ export function ResultSkeleton() {
         <div className="h-14 animate-pulse rounded-md bg-muted/40" />
         <div className="h-14 animate-pulse rounded-md bg-muted/40" />
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Choice chips — touch-friendly single-select row (5B2)
+// ---------------------------------------------------------------------------
+
+export interface ChoiceOption<T extends string> {
+  value: T;
+  label: string;
+  hint?: string;
+}
+
+/** Wrapping row of selectable chips; the accessible pattern is a radiogroup. */
+export function ChoiceChips<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  options: ReadonlyArray<ChoiceOption<T>>;
+  value: T;
+  onChange: (value: T) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div role="radiogroup" aria-label={ariaLabel} className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors",
+              selected
+                ? "border-[#c9a84c]/60 bg-[#c9a84c]/10 text-foreground"
+                : "border-border text-muted-foreground hover:border-[#c9a84c]/40 hover:text-foreground",
+            )}
+          >
+            {option.label}
+            {option.hint && (
+              <span className="ml-1 font-normal text-muted-foreground">{option.hint}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stat-with-status rendering (5B2) — verified / derived / unresolved
+// ---------------------------------------------------------------------------
+
+/**
+ * One backend StatValue as a table cell body: the exact value string when
+ * present, or an explicit Unresolved badge plus the backend's reason.
+ * Verified values carry no badge (it is the norm); non-verified statuses are
+ * always badged so uncertainty is visible, never blank or zero.
+ */
+export function StatValueCell({ stat, unit }: { stat: StatValue; unit?: string }) {
+  if (stat.value === null) {
+    return (
+      <div>
+        <MechanicStatusBadge status={stat.status} />
+        {stat.unresolved_reason && (
+          <p className="mt-1 max-w-sm text-[11px] leading-snug text-muted-foreground">
+            {stat.unresolved_reason}
+          </p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="font-semibold tabular-nums text-foreground">
+        {stat.value}
+        {unit ? ` ${unit}` : ""}
+      </span>
+      {stat.status !== "verified" && <MechanicStatusBadge status={stat.status} />}
+    </span>
+  );
+}
+
+/** Compact "doesn't apply here" list for structure sections (5B2). */
+export function NotApplicableNotes({
+  notes,
+}: {
+  notes: Array<{ name: string; reason: string }>;
+}) {
+  if (notes.length === 0) return null;
+  return (
+    <div
+      className="rounded-xl border border-border/60 bg-card/30 p-4"
+      data-testid="not-applicable-notes"
+    >
+      <h3 className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+        Doesn't apply here
+      </h3>
+      <ul className="mt-2 space-y-1.5">
+        {notes.map((note) => (
+          <li key={note.name} className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">{note.name}</span> — {note.reason}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

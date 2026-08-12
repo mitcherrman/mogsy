@@ -4,11 +4,13 @@ import { COMBAT_API_BASE_URL } from "@/lib/combat-lab/api";
 import {
   MechanicsApiError,
   fetchExplorerContext,
+  fetchMinion,
   fetchRespawn,
   fetchWaveByNumber,
   fetchWaveByTime,
   formatClock,
   parseGameTimeInput,
+  postStructureInspect,
 } from "./api";
 
 function mockFetchOnce(status: number, body: unknown) {
@@ -94,6 +96,91 @@ describe("mechanics explorer client", () => {
     const failure = await fetchExplorerContext().catch((e) => e);
     expect(failure.message).toBe("Request failed (500)");
     expect(failure.status).toBe(500);
+  });
+});
+
+describe("minion inspector client (5B2)", () => {
+  it("maps type and game time into the request path", async () => {
+    const fetchMock = mockFetchOnce(200, { minion_type: "siege" });
+    await fetchMinion("siege", 449);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain("/api/mechanics/explorer/minions/siege?");
+    expect(url).toContain("game_time_s=449");
+  });
+
+  it("passes verified and unresolved stat states through untouched", async () => {
+    mockFetchOnce(200, {
+      minion_type: "siege",
+      stats: {
+        health: { value: "1175", status: "verified" },
+        attack_damage: {
+          value: null,
+          status: "unresolved",
+          unresolved_reason: "unresolved from wave 15's spawn (7:30) onward",
+        },
+      },
+    });
+    const result = await fetchMinion("siege", 450);
+    expect(result.stats.health).toEqual({ value: "1175", status: "verified" });
+    expect(result.stats.attack_damage.value).toBeNull();
+    expect(result.stats.attack_damage.status).toBe("unresolved");
+    expect(result.stats.attack_damage.unresolved_reason).toContain("wave 15");
+  });
+
+  it("surfaces the structured error detail for unknown minion types", async () => {
+    mockFetchOnce(422, {
+      detail: { error: "unsupported_context", message: "Unknown minion type 'mega'" },
+    });
+    const failure = await fetchMinion("mega", 100).catch((e) => e);
+    expect(failure).toBeInstanceOf(MechanicsApiError);
+    expect(failure.code).toBe("unsupported_context");
+    expect(failure.message).toBe("Unknown minion type 'mega'");
+  });
+});
+
+describe("structure inspector client (5B2)", () => {
+  it("POSTs the request body verbatim to the inspect endpoint", async () => {
+    const fetchMock = mockFetchOnce(200, { identity: { structure: "turret_outer" } });
+    const body = {
+      structure: "turret_outer",
+      game_time_s: 700,
+      bulwark: { stacks: 2, nearby_enemy_champions: 3 },
+      backdoor: { enemy_minion_nearby: false, seconds_since_minion_state_change: 5 },
+    };
+    await postStructureInspect(body);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/mechanics/explorer/structures/inspect");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual(body);
+  });
+
+  it("parses applicable and inapplicable sections", async () => {
+    mockFetchOnce(200, {
+      identity: { structure: "nexus", kind: "nexus", display_name: "Nexus", lane: null },
+      plates: { applicable: false, reason: "not a turret" },
+      warming_up: { applicable: false, reason: "not a turret" },
+      dependencies: {
+        required_predecessors: ["both nexus turrets"],
+        targetability: { targetable: false, blocked_by: ["any inhibitor"], explanation: "…" },
+      },
+    });
+    const result = await postStructureInspect({ structure: "nexus", game_time_s: 1800 });
+    expect(result.plates.applicable).toBe(false);
+    if (!result.plates.applicable) expect(result.plates.reason).toBe("not a turret");
+    expect(result.dependencies.targetability?.targetable).toBe(false);
+  });
+
+  it("surfaces structured errors from the inspect endpoint", async () => {
+    mockFetchOnce(422, {
+      detail: { error: "invalid_input", message: "stacks must be <= 4" },
+    });
+    const failure = await postStructureInspect({
+      structure: "turret_outer",
+      game_time_s: 60,
+      bulwark: { stacks: 9, nearby_enemy_champions: 1 },
+    }).catch((e) => e);
+    expect(failure.code).toBe("invalid_input");
+    expect(failure.message).toBe("stacks must be <= 4");
   });
 });
 

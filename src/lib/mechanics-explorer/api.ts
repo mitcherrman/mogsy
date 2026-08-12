@@ -163,9 +163,10 @@ function detailToError(detail: unknown, status: number): MechanicsApiError {
   return new MechanicsApiError(`Request failed (${status})`, status);
 }
 
-async function request<T>(path: string): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${COMBAT_API_BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json" },
+    ...init,
   });
   if (!response.ok) {
     let detail: unknown = null;
@@ -200,6 +201,245 @@ export function fetchRespawn(params: { level: number; gameTimeS: number }): Prom
 export function fetchWaveByNumber(waveNumber: number): Promise<WaveLookupResult> {
   const query = new URLSearchParams({ wave_number: String(waveNumber) });
   return request<WaveLookupResult>(`${BASE}/wave?${query.toString()}`);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5B2: minion stat inspector
+// ---------------------------------------------------------------------------
+
+/**
+ * One stat with an explicit certification status. `value: null` always
+ * travels with `status: "unresolved"` and a backend reason — the UI must
+ * render that state, never a 0 or a guess.
+ */
+export interface StatValue {
+  value: string | null;
+  status: string;
+  unresolved_reason?: string;
+}
+
+/** Canonical minion vocabulary (the API also accepts the alias "cannon"). */
+export const MINION_TYPES = ["melee", "caster", "siege", "super"] as const;
+export type MinionTypeToken = (typeof MINION_TYPES)[number];
+
+export interface MinionResult {
+  context: ExplorerRequestContext;
+  minion_type: string;
+  requested_type: string;
+  game_time_s: number;
+  game_time_display: string;
+  upgrades: {
+    count: number;
+    last_upgrade_at_s: number | null;
+    next_upgrade_at_s: number;
+  };
+  stats: {
+    health: StatValue;
+    attack_damage: StatValue;
+    armor: StatValue;
+    magic_resist: StatValue;
+    attack_speed: StatValue;
+    attack_range: StatValue;
+    movement_speed: StatValue;
+    gold: StatValue;
+    experience: StatValue;
+  };
+  health_breakdown: { base: string; from_upgrades: string; capped: boolean };
+  minion_slayer: {
+    has_passive: boolean;
+    passive_name: string | null;
+    percent_current_health: string | null;
+    damage_type: string | null;
+    applies_to: string;
+  };
+  structure_damage: Record<string, { damage_multiplier: string; mechanic_id: string }>;
+  aggro: {
+    attacking_minion_triggers_aggro: boolean;
+    removed_in_patch: string;
+    champion_triggers: string[];
+    ignored_while_attacking_turret: boolean;
+  };
+  /** Present only for siege: the certified/unresolved AD boundary instant. */
+  siege_attack_damage_transition?: {
+    certified_strictly_before_s: number;
+    certified_strictly_before_display: string;
+    unresolved_from_display: string;
+  };
+  explanation: string;
+  provenance: MechanicProvenance[];
+}
+
+export function fetchMinion(
+  minionType: string,
+  gameTimeS: number,
+): Promise<MinionResult> {
+  const query = new URLSearchParams({ game_time_s: String(gameTimeS) });
+  return request<MinionResult>(
+    `${BASE}/minions/${encodeURIComponent(minionType)}?${query.toString()}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5B2: structure / turret inspector
+// ---------------------------------------------------------------------------
+
+export const STRUCTURE_TOKENS = [
+  "turret_outer",
+  "turret_inner",
+  "turret_inhibitor",
+  "turret_nexus",
+  "inhibitor",
+  "nexus",
+] as const;
+export type StructureToken = (typeof STRUCTURE_TOKENS)[number];
+
+export type LaneToken = "top" | "middle" | "bottom";
+
+export interface StructureInspectRequest {
+  structure: string;
+  game_time_s: number;
+  lane?: LaneToken;
+  bulwark?: { stacks: number; nearby_enemy_champions: number };
+  overgrowth?: { team_average_level: number; seconds_since_available: number };
+  backdoor?: {
+    enemy_minion_nearby: boolean;
+    seconds_since_minion_state_change?: number;
+  };
+  base_state?: {
+    lanes: Partial<
+      Record<
+        LaneToken,
+        {
+          outer_turret_destroyed?: boolean;
+          inner_turret_destroyed?: boolean;
+          inhibitor_turret_destroyed?: boolean;
+          inhibitor_destroyed?: boolean;
+        }
+      >
+    >;
+    nexus_turrets_destroyed: number;
+  };
+}
+
+/** A response section that either applies (with its payload) or says why not. */
+export type StructureSection<T> =
+  | ({ applicable: true } & T)
+  | { applicable: false; reason: string };
+
+export interface PlateThreshold {
+  index: number;
+  missing_hp_fraction: string;
+  remaining_hp_fraction: string;
+  health_at_threshold: string;
+  segment_health: string;
+  destroys_turret: boolean;
+  grants_bulwark_stack: boolean;
+}
+
+export interface StructureInspectResult {
+  context: ExplorerRequestContext;
+  identity: {
+    structure: string;
+    kind: string; // "turret" | "inhibitor" | "nexus"
+    display_name: string;
+    lane: string | null;
+  };
+  game_time_s: string;
+  game_time_display: string | null;
+  stats: {
+    max_health: string;
+    armor: string;
+    magic_resist: string;
+    // Turret-only fields:
+    attack_damage?: string;
+    attack_speed?: string;
+    attack_range?: string;
+    has_plating?: boolean;
+    respawn_health_fraction?: string | null;
+    // Both (nullability differs by kind):
+    health_regen_per_second?: string | null;
+    respawn_after_s?: string | null;
+    // Building-only fields:
+    last_hitter_gold?: string | null;
+    count_per_team?: number;
+  };
+  plates: StructureSection<{
+    plate_count: number;
+    thresholds: PlateThreshold[];
+    current_gold_per_plate: string;
+    gold_decayed: boolean;
+    gold_schedule: {
+      base_gold: string;
+      decays: boolean;
+      decay_start_s?: number;
+      per_minute_loss?: string;
+      floor_gold?: string;
+      floor_reached_at_s?: number;
+    };
+  }>;
+  warming_up: StructureSection<{
+    multipliers_by_consecutive_hit: Record<string, string>;
+    reset_after_s: string;
+    resets_on_target_switch: boolean;
+  }>;
+  penetration: {
+    flat_armor_penetration_applies: boolean;
+    percent_armor_penetration_applies: boolean;
+    armor_reduction_applies: boolean;
+    magic_penetration_applies: boolean;
+    magic_penetration_moot: boolean;
+    critical_strike_applies: boolean;
+    life_steal_applies: boolean;
+    turret_own_armor_penetration_fraction?: string;
+    melee_damage_taken_multiplier?: string;
+  };
+  bulwark: StructureSection<{
+    stacks: number;
+    nearby_enemy_champions: number;
+    per_stack: string;
+    bonus_armor: string;
+    bonus_magic_resist: string;
+    duration_s: string;
+    radius: string;
+    durations_overlap: boolean;
+  }> | null;
+  overgrowth: StructureSection<{
+    team_average_level: string;
+    seconds_since_available: string;
+    ramp_progress: string;
+    damage_fraction_of_turret_max_health: string;
+    damage: string;
+    level_interpolation_assumed: boolean;
+    suppressed_by_backdoor_protection: boolean;
+  }> | null;
+  backdoor: StructureSection<{
+    protection_active: boolean;
+    damage_reduction: string;
+    damage_multiplier: string;
+    applies_to_true_damage: boolean;
+    reactivation_delay_s: string;
+    seconds_until_active: string | null;
+    explanation: string;
+  }> | null;
+  dependencies: {
+    required_predecessors: string[];
+    targetability: {
+      targetable: boolean;
+      blocked_by: string[];
+      explanation: string;
+    } | null;
+  };
+  explanation: string;
+  provenance: MechanicProvenance[];
+}
+
+export function postStructureInspect(
+  body: StructureInspectRequest,
+): Promise<StructureInspectResult> {
+  return request<StructureInspectResult>(`${BASE}/structures/inspect`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export function fetchWaveByTime(gameTimeS: number): Promise<WaveLookupResult> {
