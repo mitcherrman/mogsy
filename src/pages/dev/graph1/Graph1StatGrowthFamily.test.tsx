@@ -58,7 +58,12 @@ const CATALOG = {
       rankedEntityType: "champion",
       mediaStrategy: "champion-icon",
       keyTemplate: "champion-stat-growth:{entity}",
-      stats: [{ id: "attack-damage", label: "Attack Damage", unit: "AD" }],
+      stats: [
+        { id: "armor", label: "Armor", unit: "Armor" },
+        { id: "attack-damage", label: "Attack Damage", unit: "AD" },
+        { id: "health", label: "Health", unit: "HP" },
+        { id: "magic-resist", label: "Magic Resist", unit: "MR" },
+      ],
       defaultEntity: "attack-damage",
       display: {
         contextMode: "event-header",
@@ -97,11 +102,18 @@ function mockFetch() {
       return { ok: true, status: 200, json: async () => CATALOG } as Response;
     }
     if (url.includes("/datasets/champion-stat-growth")) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => makeStatGrowthDataset(UNITS),
-      } as Response;
+      const stat = decodeURIComponent(url.split(":").pop()!);
+      const label = {
+        "attack-damage": "Attack Damage", health: "Health",
+        armor: "Armor", "magic-resist": "Magic Resist",
+      }[stat]!;
+      const ds = makeStatGrowthDataset(UNITS, {
+        decimals: stat === "health" ? 0 : 1,
+      });
+      ds.id = `champion-stat-growth:${stat}@base-stats`;
+      ds.definition.title = `Champion stat growth — ${label} by level`;
+      ds.definition.metric.label = label;
+      return { ok: true, status: 200, json: async () => ds } as Response;
     }
     return { ok: false, status: 404 } as Response;
   });
@@ -174,5 +186,52 @@ describe("champion stat growth on /dev/graph1", () => {
     ).toBeInTheDocument();
     const slider = await screen.findByLabelText("Seek by level");
     expect(slider).toHaveAttribute("max", "3");
+  });
+});
+
+
+describe("Phase 4B — four-stat selector", () => {
+  it("offers all four stats and switches datasets through d=", async () => {
+    renderPage("/dev/graph1?d=champion-stat-growth:attack-damage");
+    const selector = (await screen.findByLabelText("Stat")) as HTMLSelectElement;
+    expect(selector.value).toBe("attack-damage");
+    expect([...selector.options].map((o) => o.textContent)).toEqual([
+      "Armor",
+      "Attack Damage",
+      "Health",
+      "Magic Resist",
+    ]);
+
+    fireEvent.change(selector, { target: { value: "health" } });
+    await waitFor(() =>
+      expect(decodeURIComponent(locationSearch)).toContain(
+        "d=champion-stat-growth:health",
+      ),
+    );
+    // the new payload replaces the old — title and metric flip, no stale AD
+    expect(
+      await screen.findByText("Champion stat growth — Health by level"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Champion stat growth — Attack Damage by level"),
+    ).not.toBeInTheDocument();
+    expect(selector.value).toBe("health");
+  });
+
+  it("deep links hydrate each stat directly", async () => {
+    renderPage("/dev/graph1?d=champion-stat-growth:magic-resist");
+    expect(
+      await screen.findByText("Champion stat growth — Magic Resist by level"),
+    ).toBeInTheDocument();
+    const selector = (await screen.findByLabelText("Stat")) as HTMLSelectElement;
+    expect(selector.value).toBe("magic-resist");
+    // level header still canonical
+    expect(screen.getByTestId("event-header")).toHaveTextContent("Level 1");
+  });
+
+  it("esports surfaces expose no stat selector", async () => {
+    renderPage("/dev/graph1?d=faker-champions");
+    await screen.findByRole("button", { name: "Champion stat growth" });
+    expect(screen.queryByLabelText("Stat")).not.toBeInTheDocument();
   });
 });
