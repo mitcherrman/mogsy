@@ -442,6 +442,61 @@ export function postStructureInspect(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Phase 5B3: inhibitor / super-minion explorer
+// ---------------------------------------------------------------------------
+
+/** One lane's inhibitor timeline; omit `destroyed_at_s` for standing.
+ * `respawn_at_s` defaults to the canonical 5:00 after destruction. */
+export interface InhibitorTimelineInput {
+  destroyed_at_s?: number;
+  respawn_at_s?: number;
+}
+
+export interface SupersStateRequest {
+  wave_number?: number;
+  game_time_s?: number;
+  inhibitors?: Partial<Record<LaneToken, InhibitorTimelineInput>>;
+}
+
+export interface SupersLaneState {
+  inhibitor: {
+    down_at_spawn: boolean;
+    destroyed_at_s: number | null;
+    respawn_at_s: number | null;
+    respawn_display: string | null;
+  };
+  super_minion_count: number;
+  suppressed_by_cutoff: boolean;
+  waves_until_respawn: number | null;
+  composition: Record<string, number>;
+  is_cannon_wave: boolean;
+  siege_replaced_by_super: boolean;
+  explanation: string;
+  provenance: MechanicProvenance[];
+}
+
+export interface SupersStateResult {
+  context: ExplorerRequestContext;
+  wave: { wave_number: number; spawn_time_s: number; spawn_time_display: string };
+  derivation: {
+    queried_by: "wave_number" | "game_time";
+    game_time_s?: number;
+    game_time_display?: string;
+    resolution_rule?: string;
+  };
+  all_inhibitors_down_at_spawn: boolean;
+  lanes: Record<LaneToken, SupersLaneState>;
+  explanation: string;
+}
+
+export function postSupersState(body: SupersStateRequest): Promise<SupersStateResult> {
+  return request<SupersStateResult>(`${BASE}/supers/state`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export function fetchWaveByTime(gameTimeS: number): Promise<WaveLookupResult> {
   const query = new URLSearchParams({ game_time_s: String(gameTimeS) });
   return request<WaveLookupResult>(`${BASE}/wave?${query.toString()}`);

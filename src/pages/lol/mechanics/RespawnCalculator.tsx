@@ -11,10 +11,9 @@ import { Slider } from "@/components/ui/slider";
 import {
   fetchRespawn,
   parseGameTimeInput,
-  formatClock,
   type RespawnResult,
 } from "@/lib/mechanics-explorer/api";
-import { ErrorBanner, Panel, ProvenanceList, ResultSkeleton, StatRow } from "./ui";
+import { ErrorBanner, GameTimeField, Panel, ProvenanceList, ResultSkeleton, StatRow } from "./ui";
 
 interface RespawnCalculatorProps {
   level: number;
@@ -82,31 +81,15 @@ export default function RespawnCalculator({
               </p>
             )}
           </div>
-          <div>
-            <label
-              htmlFor="respawn-time"
-              className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground"
-            >
-              Game time of death
-            </label>
-            <Input
-              id="respawn-time"
-              value={timeText}
-              onChange={(e) => onTimeTextChange(e.target.value)}
-              placeholder="21:15"
-              inputMode="numeric"
-              className="mt-2 tabular-nums"
-            />
-            {parsedTime.ok ? (
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                Reading as {formatClock(parsedTime.seconds)} game time.
-              </p>
-            ) : (
-              <p className="mt-1.5 text-xs text-destructive" role="alert">
-                {parsedTime.error}
-              </p>
-            )}
-          </div>
+          <GameTimeField
+            id="respawn-time"
+            label="Game time of death"
+            value={timeText}
+            placeholder="21:15"
+            parsed={parsedTime}
+            onChange={onTimeTextChange}
+            inputClassName="w-full"
+          />
         </div>
       </Panel>
 

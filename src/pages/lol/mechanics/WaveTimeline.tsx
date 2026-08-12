@@ -15,13 +15,20 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchWaveByNumber,
   fetchWaveByTime,
-  formatClock,
   parseGameTimeInput,
   type WaveDetail,
   type WaveLookupResult,
   type WaveRef,
 } from "@/lib/mechanics-explorer/api";
-import { ErrorBanner, Panel, ProvenanceList, ResultSkeleton, StatRow } from "./ui";
+import {
+  CompositionChips,
+  ErrorBanner,
+  GameTimeField,
+  Panel,
+  ProvenanceList,
+  ResultSkeleton,
+  StatRow,
+} from "./ui";
 
 export type WaveLookupMode = "wave" | "time";
 
@@ -36,13 +43,6 @@ interface WaveTimelineProps {
 
 const WAVE_MIN = 1;
 const WAVE_MAX = 1000;
-
-const COMPOSITION_LABELS: Record<string, string> = {
-  melee: "Melee",
-  caster: "Caster",
-  cannon: "Cannon",
-  super: "Super",
-};
 
 export default function WaveTimeline({
   mode,
@@ -120,31 +120,13 @@ export default function WaveTimeline({
               )}
             </>
           ) : (
-            <>
-              <label
-                htmlFor="wave-time"
-                className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground"
-              >
-                Game time
-              </label>
-              <Input
-                id="wave-time"
-                value={timeText}
-                onChange={(e) => onTimeTextChange(e.target.value)}
-                placeholder="30:00"
-                inputMode="numeric"
-                className="mt-2 w-32 tabular-nums"
-              />
-              {parsedTime.ok ? (
-                <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  Reading as {formatClock(parsedTime.seconds)} game time.
-                </p>
-              ) : (
-                <p className="mt-1.5 text-xs text-destructive" role="alert">
-                  {parsedTime.error}
-                </p>
-              )}
-            </>
+            <GameTimeField
+              id="wave-time"
+              value={timeText}
+              placeholder="30:00"
+              parsed={parsedTime}
+              onChange={onTimeTextChange}
+            />
           )}
         </div>
       </Panel>
@@ -276,20 +258,8 @@ function WaveDetailView({
           )}
         </div>
         {/* Composition chips */}
-        <div className="mt-3 flex flex-wrap gap-2" data-testid="wave-composition">
-          {Object.entries(detail.composition)
-            .filter(([, count]) => count > 0)
-            .map(([type, count]) => (
-              <span
-                key={type}
-                className="rounded-md border border-border/60 bg-black/30 px-2 py-1 text-xs text-foreground"
-              >
-                <span className="font-bold tabular-nums">{count}</span>{" "}
-                <span className="text-muted-foreground">
-                  {COMPOSITION_LABELS[type] ?? type}
-                </span>
-              </span>
-            ))}
+        <div className="mt-3">
+          <CompositionChips composition={detail.composition} testId="wave-composition" />
         </div>
       </div>
 

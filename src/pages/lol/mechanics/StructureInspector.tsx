@@ -29,6 +29,7 @@ import {
 import {
   ChoiceChips,
   ErrorBanner,
+  GameTimeField,
   MechanicStatusBadge,
   NotApplicableNotes,
   Panel,
@@ -181,29 +182,13 @@ export default function StructureInspector({
           ariaLabel="Structure"
         />
         <div className="mt-3 max-w-xs">
-          <label
-            htmlFor="structure-time"
-            className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground"
-          >
-            Game time
-          </label>
-          <Input
+          <GameTimeField
             id="structure-time"
             value={timeText}
-            onChange={(e) => onTimeTextChange(e.target.value)}
             placeholder="11:40"
-            inputMode="numeric"
-            className="mt-2 w-32 tabular-nums"
+            parsed={parsedTime}
+            onChange={onTimeTextChange}
           />
-          {parsedTime.ok ? (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Reading as {formatClock(parsedTime.seconds)} game time.
-            </p>
-          ) : (
-            <p className="mt-1.5 text-xs text-destructive" role="alert">
-              {parsedTime.error}
-            </p>
-          )}
         </div>
       </Panel>
 

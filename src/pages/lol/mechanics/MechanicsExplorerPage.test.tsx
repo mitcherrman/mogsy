@@ -23,6 +23,7 @@ vi.mock("@/lib/mechanics-explorer/api", async (importOriginal) => {
     fetchWaveByTime: vi.fn(),
     fetchMinion: vi.fn(),
     postStructureInspect: vi.fn(),
+    postSupersState: vi.fn(),
   };
 });
 
@@ -207,18 +208,17 @@ afterEach(() => {
 });
 
 describe("Mechanics Explorer shell", () => {
-  it("renders the page, patch context, and 5B2 tab states at /lol/mechanics", async () => {
+  it("renders the page, patch context, and all five active tabs at /lol/mechanics", async () => {
     renderAt("/lol/mechanics");
     expect(screen.getByRole("heading", { name: "Mechanics Explorer" })).toBeInTheDocument();
     expect(await screen.findByText("Patch 26.15")).toBeInTheDocument();
     expect(screen.getByText("Summoner's Rift")).toBeInTheDocument();
 
-    // 5B2 enables Minions and Structures; only Supers remains "Soon".
-    expect(screen.getByRole("tab", { name: /Minions/ })).toBeEnabled();
-    expect(screen.getByRole("tab", { name: /Structures/ })).toBeEnabled();
-    expect(screen.getByRole("tab", { name: /Supers/ })).toBeDisabled();
-    expect(screen.getByRole("tab", { name: /Respawn/ })).toBeEnabled();
-    expect(screen.getByRole("tab", { name: /Waves/ })).toBeEnabled();
+    // 5B3: every tool is live — no remaining "Soon" state.
+    for (const name of [/Respawn/, /Waves/, /Minions/, /Structures/, /Supers/]) {
+      expect(screen.getByRole("tab", { name })).toBeEnabled();
+    }
+    expect(screen.queryByText("Soon")).not.toBeInTheDocument();
   });
 
   it("surfaces a context error with a retry affordance", async () => {

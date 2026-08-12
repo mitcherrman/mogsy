@@ -1,13 +1,15 @@
 // Mechanics Explorer — production surface for the Phase 5A canonical
 // mechanics engine (/api/mechanics/explorer). Phase 5B1 shipped the shell,
-// the Respawn Calculator and the Wave Timeline; Phase 5B2 adds the Minion
-// and Structure inspectors. Supers stays visibly "Soon" until 5B3.
+// the Respawn Calculator and the Wave Timeline; Phase 5B2 added the Minion
+// and Structure inspectors; Phase 5B3 completes the set with the Inhibitor /
+// Super-Minion explorer.
 //
 // Tool state lives in query parameters (?tool=respawn&level=11&time=21:15,
 // ?tool=waves&wave=29, ?tool=minions&type=melee&time=14:00,
-// ?tool=structures&type=turret_outer) so results are shareable. `time` is
-// shared across respawn/minions/structures on purpose — "at this game time"
-// carries over when switching tools. The dev XP calculator at
+// ?tool=structures&type=turret_outer, ?tool=supers&wave=29) so results are
+// shareable. `time` is shared across respawn/minions/structures and
+// `wave`/`at` across waves/supers on purpose — "at this game time / this
+// wave" carries over when switching tools. The dev XP calculator at
 // /dev/mechanics/xp is unrelated to this page and deliberately untouched.
 
 import { useQuery } from "@tanstack/react-query";
@@ -27,8 +29,9 @@ import {
 import MinionInspector from "./MinionInspector";
 import RespawnCalculator from "./RespawnCalculator";
 import StructureInspector from "./StructureInspector";
+import SupersExplorer from "./SupersExplorer";
 import WaveTimeline, { type WaveLookupMode } from "./WaveTimeline";
-import { ErrorBanner, GOLD, SoonChip } from "./ui";
+import { ErrorBanner, GOLD } from "./ui";
 
 const DEFAULTS = {
   level: 11,
@@ -37,7 +40,7 @@ const DEFAULTS = {
   at: "15:00",
 };
 
-const TOOLS = ["respawn", "waves", "minions", "structures"] as const;
+const TOOLS = ["respawn", "waves", "minions", "structures", "supers"] as const;
 type Tool = (typeof TOOLS)[number];
 
 /** Backend context tokens → reader-facing names (presentation only). */
@@ -93,10 +96,10 @@ export default function MechanicsExplorerPage() {
   return (
     <div>
       <SEOHead
-        title="Mechanics Explorer — LoL Death Timers, Waves, Minions & Turrets | Mogzy"
-        description="Interactive League of Legends mechanics tools backed by Mogzy's canonical mechanics engine: exact death timers, the full minion wave schedule, minion stats, and turret/structure mechanics — with sources for every number."
+        title="Mechanics Explorer — LoL Death Timers, Waves, Minions, Turrets & Supers | Mogzy"
+        description="Interactive League of Legends mechanics tools backed by Mogzy's canonical mechanics engine: exact death timers, the full minion wave schedule, minion stats, turret/structure mechanics, and the inhibitor super-minion rules — with sources for every number."
         path="/lol/mechanics"
-        keywords="lol death timer calculator, league respawn timer, minion wave timer, lol minion stats, turret plates gold, lol turret mechanics"
+        keywords="lol death timer calculator, league respawn timer, minion wave timer, lol minion stats, turret plates gold, lol super minions inhibitor"
       />
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
@@ -108,8 +111,8 @@ export default function MechanicsExplorerPage() {
           <h1 className="mt-1 text-3xl md:text-4xl font-bold text-foreground">Mechanics Explorer</h1>
           <p className="mt-3 text-sm text-muted-foreground max-w-2xl">
             The game's environment numbers, served straight from Mogzy's canonical mechanics engine —
-            death timers, minion waves, minion stats, turrets and structures, and (soon) super
-            minions. Every result names the rules and sources behind it.
+            death timers, minion waves, minion stats, turrets and structures, and super minions.
+            Every result names the rules and sources behind it.
           </p>
           <div className="mt-4" data-testid="mechanics-context">
             {contextQuery.data ? (
@@ -152,10 +155,9 @@ export default function MechanicsExplorerPage() {
               <Landmark className="h-3.5 w-3.5" />
               Structures
             </TabsTrigger>
-            <TabsTrigger value="supers" disabled className="gap-1.5 px-3 py-1.5 text-xs sm:text-sm">
+            <TabsTrigger value="supers" className="gap-1.5 px-3 py-1.5 text-xs sm:text-sm">
               <Shield className="h-3.5 w-3.5" />
               Supers
-              <SoonChip />
             </TabsTrigger>
           </TabsList>
 
@@ -198,6 +200,21 @@ export default function MechanicsExplorerPage() {
               timeText={timeText}
               onStructureTypeChange={(type) => patchParams({ type })}
               onTimeTextChange={(text) => patchParams({ time: text })}
+            />
+          </TabsContent>
+
+          <TabsContent value="supers" className="mt-4">
+            <SupersExplorer
+              mode={waveMode}
+              waveText={waveText}
+              timeText={atText}
+              onModeChange={(mode) =>
+                mode === "time"
+                  ? patchParams({ at: atText, wave: null })
+                  : patchParams({ wave: waveText, at: null })
+              }
+              onWaveTextChange={(text) => patchParams({ wave: text, at: null })}
+              onTimeTextChange={(text) => patchParams({ at: text, wave: null })}
             />
           </TabsContent>
         </Tabs>

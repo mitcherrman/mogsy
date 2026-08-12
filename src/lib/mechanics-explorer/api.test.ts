@@ -11,6 +11,7 @@ import {
   formatClock,
   parseGameTimeInput,
   postStructureInspect,
+  postSupersState,
 } from "./api";
 
 function mockFetchOnce(status: number, body: unknown) {
@@ -207,5 +208,79 @@ describe("game-time input parsing (presentation only)", () => {
   it("formats seconds back to a clock", () => {
     expect(formatClock(1800)).toBe("30:00");
     expect(formatClock(5)).toBe("0:05");
+  });
+});
+
+describe("supers explorer client (5B3)", () => {
+  it("POSTs the request body verbatim to the supers endpoint", async () => {
+    const fetchMock = mockFetchOnce(200, { wave: { wave_number: 29 } });
+    const body = {
+      wave_number: 29,
+      inhibitors: { top: { destroyed_at_s: 600 } },
+    };
+    await postSupersState(body);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/api/mechanics/explorer/supers/state");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual(body);
+  });
+
+  it("preserves lane states and the cutoff verdict untouched", async () => {
+    mockFetchOnce(200, {
+      wave: { wave_number: 29, spawn_time_s: 865, spawn_time_display: "14:25" },
+      all_inhibitors_down_at_spawn: false,
+      lanes: {
+        top: {
+          inhibitor: { down_at_spawn: true, destroyed_at_s: 600, respawn_at_s: 900, respawn_display: "15:00" },
+          super_minion_count: 0,
+          suppressed_by_cutoff: true,
+          waves_until_respawn: 2,
+          composition: { melee: 2, caster: 3, cannon: 1, super: 0 },
+          is_cannon_wave: true,
+          siege_replaced_by_super: false,
+          explanation: "cutoff",
+          provenance: [],
+        },
+        middle: {
+          inhibitor: { down_at_spawn: false, destroyed_at_s: null, respawn_at_s: null, respawn_display: null },
+          super_minion_count: 0,
+          suppressed_by_cutoff: false,
+          waves_until_respawn: null,
+          composition: { melee: 2, caster: 3, cannon: 1, super: 0 },
+          is_cannon_wave: true,
+          siege_replaced_by_super: false,
+          explanation: "standing",
+          provenance: [],
+        },
+        bottom: {
+          inhibitor: { down_at_spawn: false, destroyed_at_s: null, respawn_at_s: null, respawn_display: null },
+          super_minion_count: 0,
+          suppressed_by_cutoff: false,
+          waves_until_respawn: null,
+          composition: { melee: 2, caster: 3, cannon: 1, super: 0 },
+          is_cannon_wave: true,
+          siege_replaced_by_super: false,
+          explanation: "standing",
+          provenance: [],
+        },
+      },
+      explanation: "Wave 29 spawns at 14:25.",
+    });
+    const result = await postSupersState({ wave_number: 29 });
+    expect(result.lanes.top.suppressed_by_cutoff).toBe(true);
+    expect(result.lanes.top.waves_until_respawn).toBe(2);
+    expect(result.lanes.top.inhibitor.respawn_display).toBe("15:00");
+    expect(result.lanes.middle.super_minion_count).toBe(0);
+    expect(result.all_inhibitors_down_at_spawn).toBe(false);
+  });
+
+  it("surfaces structured errors from the supers endpoint", async () => {
+    mockFetchOnce(422, {
+      detail: { error: "invalid_input", message: "Provide exactly one of wave_number or game_time_s." },
+    });
+    const failure = await postSupersState({}).catch((e) => e);
+    expect(failure).toBeInstanceOf(MechanicsApiError);
+    expect(failure.code).toBe("invalid_input");
+    expect(failure.message).toBe("Provide exactly one of wave_number or game_time_s.");
   });
 });

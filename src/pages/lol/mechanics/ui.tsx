@@ -10,8 +10,14 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { MechanicProvenance, StatValue } from "@/lib/mechanics-explorer/api";
+import { formatClock } from "@/lib/mechanics-explorer/api";
+import type {
+  GameTimeParse,
+  MechanicProvenance,
+  StatValue,
+} from "@/lib/mechanics-explorer/api";
 
 export const GOLD = "#c9a84c";
 
@@ -302,6 +308,98 @@ export function NotApplicableNotes({
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared game-time input (5B3 polish) — one label/hint/error treatment for
+// every tool, so the MM:SS convention cannot drift between surfaces.
+// ---------------------------------------------------------------------------
+
+export function GameTimeField({
+  id,
+  label = "Game time",
+  value,
+  placeholder,
+  parsed,
+  onChange,
+  inputClassName,
+}: {
+  id: string;
+  label?: string;
+  value: string;
+  placeholder: string;
+  parsed: GameTimeParse;
+  onChange: (text: string) => void;
+  inputClassName?: string;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground"
+      >
+        {label}
+      </label>
+      <Input
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        inputMode="numeric"
+        className={cn("mt-2 tabular-nums", inputClassName ?? "w-32")}
+      />
+      {parsed.ok ? (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Reading as {formatClock(parsed.seconds)} game time.
+        </p>
+      ) : (
+        <p className="mt-1.5 text-xs text-destructive" role="alert">
+          {parsed.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Composition chips (5B3 polish) — one wave-composition treatment shared by
+// the Waves and Supers tools.
+// ---------------------------------------------------------------------------
+
+const COMPOSITION_LABELS: Record<string, string> = {
+  melee: "Melee",
+  caster: "Caster",
+  cannon: "Cannon",
+  super: "Super",
+};
+
+export function CompositionChips({
+  composition,
+  testId,
+}: {
+  composition: Record<string, number>;
+  testId?: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2" data-testid={testId}>
+      {Object.entries(composition)
+        .filter(([, count]) => count > 0)
+        .map(([type, count]) => (
+          <span
+            key={type}
+            className={cn(
+              "rounded-md border px-2 py-1 text-xs",
+              type === "super"
+                ? "border-[#c9a84c]/50 bg-[#c9a84c]/10 text-foreground"
+                : "border-border/60 bg-black/30 text-foreground",
+            )}
+          >
+            <span className="font-bold tabular-nums">{count}</span>{" "}
+            <span className="text-muted-foreground">{COMPOSITION_LABELS[type] ?? type}</span>
+          </span>
+        ))}
     </div>
   );
 }

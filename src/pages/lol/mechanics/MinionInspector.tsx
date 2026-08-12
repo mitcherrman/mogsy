@@ -9,7 +9,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Info } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import {
   MINION_TYPES,
   type MinionTypeToken,
@@ -22,6 +21,7 @@ import {
 import {
   ChoiceChips,
   ErrorBanner,
+  GameTimeField,
   Panel,
   ProvenanceList,
   ResultSkeleton,
@@ -85,29 +85,13 @@ export default function MinionInspector({
           ariaLabel="Minion type"
         />
         <div className="mt-3 max-w-xs">
-          <label
-            htmlFor="minion-time"
-            className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground"
-          >
-            Game time
-          </label>
-          <Input
+          <GameTimeField
             id="minion-time"
             value={timeText}
-            onChange={(e) => onTimeTextChange(e.target.value)}
             placeholder="14:00"
-            inputMode="numeric"
-            className="mt-2 w-32 tabular-nums"
+            parsed={parsedTime}
+            onChange={onTimeTextChange}
           />
-          {parsedTime.ok ? (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Reading as {formatClock(parsedTime.seconds)} game time.
-            </p>
-          ) : (
-            <p className="mt-1.5 text-xs text-destructive" role="alert">
-              {parsedTime.error}
-            </p>
-          )}
         </div>
       </Panel>
 
