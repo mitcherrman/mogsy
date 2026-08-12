@@ -12,7 +12,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +26,7 @@ import {
 } from "@/lib/mechanics-explorer/api";
 import type { WaveLookupMode } from "./WaveTimeline";
 import {
+  ChoiceChips,
   CompositionChips,
   ErrorBanner,
   GameTimeField,
@@ -150,18 +150,30 @@ export default function SupersExplorer({
   return (
     <div className="space-y-4">
       <Panel title="Scenario">
-        {/* Presets — populate inputs only; the engine computes the outcome. */}
-        <div className="flex flex-wrap gap-2" data-testid="supers-presets">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => applyPreset(preset)}
-              className="rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-[#c9a84c]/50 hover:text-foreground"
-            >
-              {preset.label}
-            </button>
-          ))}
+        {/* Presets — populate inputs only; the engine computes the outcome.
+            "Inside respawn cutoff" gets the accent: it demonstrates the
+            unusual look-ahead rule and should be one obvious click away. */}
+        <div className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+          Try an example
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2" data-testid="supers-presets">
+          {PRESETS.map((preset) => {
+            const featured = preset.label === "Inside respawn cutoff";
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className={
+                  featured
+                    ? "rounded-md border border-[#c9a84c]/60 bg-[#c9a84c]/10 px-3 py-1.5 text-xs font-semibold text-[#f0d78c] transition-colors hover:bg-[#c9a84c]/20"
+                    : "rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-[#c9a84c]/50 hover:text-foreground"
+                }
+              >
+                {featured ? `${preset.label} — see the unusual rule` : preset.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Wave selection */}
@@ -226,24 +238,25 @@ export default function SupersExplorer({
                 : null;
               return (
                 <div key={lane} className="rounded-md border border-border/50 p-3">
-                  <label className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-foreground">
                       {LANE_LABELS[lane]}
                     </span>
-                    <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      {input.destroyed ? "Destroyed" : "Standing"}
-                      <Switch
-                        checked={input.destroyed}
-                        onCheckedChange={(destroyed) =>
-                          setLaneInputs((previous) => ({
-                            ...previous,
-                            [lane]: { ...previous[lane], destroyed },
-                          }))
-                        }
-                        aria-label={`${LANE_LABELS[lane]} inhibitor destroyed`}
-                      />
-                    </span>
-                  </label>
+                    <ChoiceChips
+                      options={[
+                        { value: "standing", label: "Standing" },
+                        { value: "destroyed", label: "Destroyed" },
+                      ]}
+                      value={input.destroyed ? "destroyed" : "standing"}
+                      onChange={(state) =>
+                        setLaneInputs((previous) => ({
+                          ...previous,
+                          [lane]: { ...previous[lane], destroyed: state === "destroyed" },
+                        }))
+                      }
+                      ariaLabel={`${LANE_LABELS[lane]} inhibitor state`}
+                    />
+                  </div>
                   {input.destroyed && (
                     <div className="mt-2">
                       <label

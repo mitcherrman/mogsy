@@ -142,6 +142,49 @@ export default function WaveTimeline({
   );
 }
 
+/** Unambiguous composition sentence from returned values (presentation
+ * only): "3 melee minions, 3 caster minions, and 1 cannon minion" — never
+ * the ambiguous "including a cannon minion" form. */
+function waveSummary(detail: WaveDetail): string {
+  const labels: Array<[key: string, singular: string]> = [
+    ["melee", "melee minion"],
+    ["caster", "caster minion"],
+    ["cannon", "cannon minion"],
+    ["super", "super minion"],
+  ];
+  const parts = labels
+    .filter(([key]) => (detail.composition[key] ?? 0) > 0)
+    .map(([key, singular]) => {
+      const count = detail.composition[key];
+      return `${count} ${singular}${count === 1 ? "" : "s"}`;
+    });
+  const list =
+    parts.length === 0
+      ? "no minions"
+      : parts.length === 1
+        ? parts[0]
+        : parts.length === 2
+          ? `${parts[0]} and ${parts[1]}`
+          : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+  const sentences = [
+    `Wave ${detail.wave_number} spawns at ${detail.spawn_time_display} with ${list}.`,
+  ];
+  if (detail.cadence.is_first_wave_of_game) {
+    sentences.push("It is the first wave of the game.");
+  }
+  if (detail.cadence.is_first_wave_of_cadence) {
+    sentences.push(
+      `It is the first wave on the ${detail.cadence.interval_before_s}-second spawn cadence.`,
+    );
+  }
+  if (detail.cadence.is_last_wave_of_cadence) {
+    sentences.push(
+      `It is the last wave on the ${detail.cadence.interval_before_s}-second spawn cadence.`,
+    );
+  }
+  return sentences.join(" ");
+}
+
 function WaveLookupView({
   result,
   onJumpToWave,
@@ -182,7 +225,7 @@ function WaveLookupView({
 
       {result.wave && (
         <Panel title="Summary">
-          <p className="text-sm text-muted-foreground">{result.explanation}</p>
+          <p className="text-sm text-muted-foreground">{waveSummary(result.wave)}</p>
         </Panel>
       )}
 

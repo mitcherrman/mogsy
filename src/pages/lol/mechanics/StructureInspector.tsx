@@ -23,6 +23,7 @@ import {
   type StructureInspectResult,
   type StructureToken,
   formatClock,
+  formatDisplayNumber,
   parseGameTimeInput,
   postStructureInspect,
 } from "@/lib/mechanics-explorer/api";
@@ -193,11 +194,11 @@ export default function StructureInspector({
       </Panel>
 
       {/* What-if scenario controls, progressively disclosed */}
-      <Panel title="What-if scenarios (optional)">
+      <Panel title="Scenario mechanics (optional)">
         <div className="space-y-3">
           {isTurret && (
             <WhatIfRow
-              label="Bulwark stacks"
+              label="Bulwark"
               hint="Resistances from fallen plates"
               on={bulwarkOn}
               onToggle={setBulwarkOn}
@@ -350,6 +351,12 @@ export default function StructureInspector({
 // What-if building blocks
 // ---------------------------------------------------------------------------
 
+/**
+ * Inspect/expand disclosure for one scenario mechanic (5B4). Expanding
+ * includes the section in the request exactly as the old switch did —
+ * request behavior is unchanged; only the control now reads as "inspect
+ * this mechanic" rather than "turn this mechanic on/off".
+ */
 function WhatIfRow({
   label,
   hint,
@@ -366,16 +373,40 @@ function WhatIfRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-border/50 p-3" data-testid={testId}>
-      <label className="flex items-center justify-between gap-3">
+    <div
+      className={cn(
+        "rounded-md border p-3",
+        on ? "border-[#c9a84c]/40" : "border-border/50",
+      )}
+      data-testid={testId}
+    >
+      <button
+        type="button"
+        onClick={() => onToggle(!on)}
+        aria-expanded={on}
+        aria-label={`Inspect ${label}`}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
         <span>
           <span className="block text-sm font-semibold text-foreground">{label}</span>
           <span className="block text-[11px] text-muted-foreground">{hint}</span>
         </span>
-        <Switch checked={on} onCheckedChange={onToggle} aria-label={label} />
-      </label>
+        <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-muted-foreground">
+          {on ? "Close" : "Inspect"}
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", on && "rotate-180")} />
+        </span>
+      </button>
       {on && <div className="mt-3 space-y-3 border-t border-border/40 pt-3">{children}</div>}
     </div>
+  );
+}
+
+/** Eyebrow heading for one result group (5B4 information grouping). */
+function GroupHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="pt-1 text-[10px] uppercase tracking-[0.2em] font-bold text-[#c9a84c]/90">
+      {children}
+    </h3>
   );
 }
 
@@ -438,6 +469,7 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
 
   return (
     <div className="space-y-4" data-testid="structure-result">
+      <GroupHeading>Base stats</GroupHeading>
       {/* Identity + stats */}
       <div className="rounded-xl border border-border bg-gradient-to-br from-[#1e3a5f]/60 to-[#0a1428]/90 p-5">
         <div className="text-[10px] uppercase tracking-widest font-bold text-[#c9a84c]">
@@ -451,19 +483,22 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
           <span className="text-sm text-muted-foreground">max health</span>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <StatRow label="Armor" value={stats.armor} />
-          <StatRow label="Magic resist" value={stats.magic_resist} />
+          <StatRow label="Armor" value={formatDisplayNumber(stats.armor)} />
+          <StatRow label="Magic resist" value={formatDisplayNumber(stats.magic_resist)} />
           {stats.attack_damage !== undefined && (
-            <StatRow label="Attack damage" value={stats.attack_damage} />
+            <StatRow label="Attack damage" value={formatDisplayNumber(stats.attack_damage)} />
           )}
           {stats.attack_speed !== undefined && (
-            <StatRow label="Attack speed" value={stats.attack_speed} />
+            <StatRow label="Attack speed" value={formatDisplayNumber(stats.attack_speed)} />
           )}
           {stats.attack_range !== undefined && (
-            <StatRow label="Attack range" value={stats.attack_range} />
+            <StatRow label="Attack range" value={formatDisplayNumber(stats.attack_range)} />
           )}
           {stats.health_regen_per_second != null && (
-            <StatRow label="Health regen" value={`${stats.health_regen_per_second}/s`} />
+            <StatRow
+              label="Health regen"
+              value={`${formatDisplayNumber(stats.health_regen_per_second)}/s`}
+            />
           )}
           {stats.last_hitter_gold != null && (
             <StatRow label="Last-hit gold" value={stats.last_hitter_gold} />
@@ -483,7 +518,9 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
 
       {/* Plates */}
       {result.plates.applicable && (
-        <Panel title="Turret plates">
+        <>
+          <GroupHeading>Turret plates</GroupHeading>
+          <Panel>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1" data-testid="plate-gold">
             <span className="text-2xl font-bold tabular-nums text-foreground">
               {result.plates.current_gold_per_plate}g
@@ -546,9 +583,11 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
             Thresholds are fractions of missing health, so the five segments are deliberately
             unequal.
           </p>
-        </Panel>
+          </Panel>
+        </>
       )}
 
+      <GroupHeading>Combat rules</GroupHeading>
       {/* Warming Up */}
       {result.warming_up.applicable && (
         <Panel title="Warming Up (consecutive hits on a champion)">
@@ -560,7 +599,9 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
                   className="rounded-md border border-border/60 bg-black/30 px-2 py-1 text-xs"
                 >
                   <span className="text-muted-foreground">Hit {hit}:</span>{" "}
-                  <span className="font-bold tabular-nums text-foreground">×{multiplier}</span>
+                  <span className="font-bold tabular-nums text-foreground">
+                    ×{formatDisplayNumber(multiplier)}
+                  </span>
                 </span>
               ),
             )}
@@ -596,11 +637,13 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
               0,
             )}
             % of the target's armor; melee champions deal ×
-            {result.penetration.melee_damage_taken_multiplier} damage to it.
+            {formatDisplayNumber(result.penetration.melee_damage_taken_multiplier ?? "")} damage
+            to it.
           </p>
         )}
       </Panel>
 
+      <GroupHeading>Scenario mechanics</GroupHeading>
       {/* Bulwark */}
       {result.bulwark?.applicable && (
         <Panel title="Bulwark">
@@ -608,11 +651,14 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
             <StatRow label="Stacks" value={String(result.bulwark.stacks)} />
             <StatRow
               label="Per stack"
-              value={result.bulwark.per_stack}
+              value={formatDisplayNumber(result.bulwark.per_stack)}
               hint={`with ${result.bulwark.nearby_enemy_champions} enemies within ${result.bulwark.radius} range`}
             />
-            <StatRow label="Bonus armor" value={result.bulwark.bonus_armor} />
-            <StatRow label="Bonus magic resist" value={result.bulwark.bonus_magic_resist} />
+            <StatRow label="Bonus armor" value={formatDisplayNumber(result.bulwark.bonus_armor)} />
+            <StatRow
+              label="Bonus magic resist"
+              value={formatDisplayNumber(result.bulwark.bonus_magic_resist)}
+            />
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
             Each of the first four plates grants a stack lasting {result.bulwark.duration_s}s
@@ -673,7 +719,7 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
             </span>
             {result.backdoor.protection_active && (
               <span className="text-sm text-muted-foreground">
-                damage taken ×{result.backdoor.damage_multiplier}
+                damage taken ×{formatDisplayNumber(result.backdoor.damage_multiplier)}
                 {result.backdoor.applies_to_true_damage && " (including true damage)"}
               </span>
             )}

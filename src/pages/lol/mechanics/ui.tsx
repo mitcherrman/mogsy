@@ -12,7 +12,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { formatClock } from "@/lib/mechanics-explorer/api";
+import { formatClock, formatDisplayNumber } from "@/lib/mechanics-explorer/api";
 import type {
   GameTimeParse,
   MechanicProvenance,
@@ -278,7 +278,7 @@ export function StatValueCell({ stat, unit }: { stat: StatValue; unit?: string }
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
       <span className="font-semibold tabular-nums text-foreground">
-        {stat.value}
+        {formatDisplayNumber(stat.value)}
         {unit ? ` ${unit}` : ""}
       </span>
       {stat.status !== "verified" && <MechanicStatusBadge status={stat.status} />}

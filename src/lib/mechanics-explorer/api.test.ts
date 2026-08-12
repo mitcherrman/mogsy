@@ -9,6 +9,7 @@ import {
   fetchWaveByNumber,
   fetchWaveByTime,
   formatClock,
+  formatDisplayNumber,
   parseGameTimeInput,
   postStructureInspect,
   postSupersState,
@@ -282,5 +283,31 @@ describe("supers explorer client (5B3)", () => {
     expect(failure).toBeInstanceOf(MechanicsApiError);
     expect(failure.code).toBe("invalid_input");
     expect(failure.message).toBe("Provide exactly one of wave_number or game_time_s.");
+  });
+});
+
+describe("display-number formatting (5B4, presentation only)", () => {
+  it("trims trailing zeros without altering meaning", () => {
+    expect(formatDisplayNumber("3.060")).toBe("3.06");
+    expect(formatDisplayNumber("1.00")).toBe("1");
+    expect(formatDisplayNumber("50.0")).toBe("50");
+    expect(formatDisplayNumber("0.850")).toBe("0.85");
+  });
+
+  it("rounds long decimals half-up to two places without float artifacts", () => {
+    expect(formatDisplayNumber("44.6675")).toBe("44.67");
+    expect(formatDisplayNumber("44.848125")).toBe("44.85");
+    expect(formatDisplayNumber("42.680625")).toBe("42.68");
+    expect(formatDisplayNumber("5.525")).toBe("5.53");
+    expect(formatDisplayNumber("0.833")).toBe("0.83");
+    expect(formatDisplayNumber("2.999")).toBe("3");
+  });
+
+  it("preserves integers, short decimals, negatives and non-numeric text", () => {
+    expect(formatDisplayNumber("350")).toBe("350");
+    expect(formatDisplayNumber("46.5")).toBe("46.5");
+    expect(formatDisplayNumber("-30")).toBe("-30");
+    expect(formatDisplayNumber("-0.125")).toBe("-0.13");
+    expect(formatDisplayNumber("n/a")).toBe("n/a");
   });
 });

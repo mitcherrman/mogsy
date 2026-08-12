@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import {
   fetchRespawn,
+  formatDisplayNumber,
   parseGameTimeInput,
   type RespawnResult,
 } from "@/lib/mechanics-explorer/api";
-import { ErrorBanner, GameTimeField, Panel, ProvenanceList, ResultSkeleton, StatRow } from "./ui";
+import { ErrorBanner, GameTimeField, Panel, ProvenanceList, ResultSkeleton } from "./ui";
 
 interface RespawnCalculatorProps {
   level: number;
@@ -103,8 +104,21 @@ export default function RespawnCalculator({
   );
 }
 
+/** One step of the calculation flow strip (display-rounded API values). */
+function FlowStep({ value, label }: { value: string; label: string }) {
+  return (
+    <span className="inline-flex flex-col items-start rounded-md border border-border/50 bg-background/40 px-2.5 py-1.5">
+      <span className="text-sm font-semibold tabular-nums text-foreground">{value}</span>
+      <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+        {label}
+      </span>
+    </span>
+  );
+}
+
 function RespawnResultView({ result }: { result: RespawnResult }) {
   const timeShown = result.input.game_time_display ?? `${result.input.game_time_s}s`;
+  const fmt = formatDisplayNumber;
   return (
     <div className="space-y-4" data-testid="respawn-result">
       {/* Headline: what the player actually sees in game */}
@@ -120,21 +134,34 @@ function RespawnResultView({ result }: { result: RespawnResult }) {
             level {result.input.level}, dying at {timeShown}
           </span>
         </div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          Exact duration: <span className="tabular-nums">{result.duration_s}s</span> — the in-game
-          timer always rounds up.
-        </div>
-      </div>
 
-      {/* Breakdown */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <StatRow label="Base respawn (BRW)" value={`${result.base_respawn_wait_s}s`} />
-        <StatRow
-          label="Time increase factor"
-          value={`+${result.time_increase_factor_percent}%`}
-          hint={result.tif_active ? undefined : "Inactive before 15:00"}
-        />
-        <StatRow label="TIF adds" value={`+${result.time_increase_s}s`} />
+        {/* Calculation flow: base → TIF → exact → displayed (API values,
+            display-rounded; full precision stays in the explanation below) */}
+        <div
+          className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2"
+          data-testid="respawn-flow"
+        >
+          <FlowStep value={`${fmt(result.base_respawn_wait_s)}s`} label="base" />
+          <span aria-hidden className="text-muted-foreground">
+            →
+          </span>
+          <FlowStep
+            value={`+${fmt(result.time_increase_s)}s`}
+            label={`TIF (+${fmt(result.time_increase_factor_percent)}%)`}
+          />
+          <span aria-hidden className="text-muted-foreground">
+            →
+          </span>
+          <FlowStep value={`${fmt(result.duration_s)}s`} label="exact" />
+          <span aria-hidden className="text-muted-foreground">
+            →
+          </span>
+          <FlowStep value={`${result.displayed_timer_s}s`} label="displayed" />
+        </div>
+        <div className="mt-2 text-xs text-muted-foreground">
+          The in-game timer always rounds up
+          {!result.tif_active && "; the Time Increase Factor is inactive before 15:00"}.
+        </div>
       </div>
 
       {result.at_tif_cap && (
@@ -164,7 +191,9 @@ function RespawnResultView({ result }: { result: RespawnResult }) {
             This timestamp sits exactly on a published 30-second step boundary, where the source can
             be read two ways. The value above uses the canonical reading (
             <code className="text-xs">{result.step_rule}</code>); the alternate reading gives{" "}
-            <span className="font-semibold tabular-nums">{result.boundary.alternate_duration_s}s</span>
+            <span className="font-semibold tabular-nums">
+              {formatDisplayNumber(result.boundary.alternate_duration_s ?? "")}s
+            </span>
             . One second earlier or later, both readings agree.
           </p>
         </div>

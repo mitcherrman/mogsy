@@ -261,8 +261,8 @@ describe("Structure Inspector", () => {
   it("renders Warming Up multipliers and reset behavior from the API", async () => {
     renderAt("/lol/mechanics?tool=structures&time=11:40");
     const warming = await screen.findByTestId("warming-up");
-    expect(warming).toHaveTextContent("×1.00");
-    expect(warming).toHaveTextContent("×2.50");
+    expect(warming).toHaveTextContent("×1");
+    expect(warming).toHaveTextContent("×2.5");
     expect(
       screen.getByText(/switching between champion targets does not reset it/),
     ).toBeInTheDocument();
@@ -289,7 +289,7 @@ describe("Structure Inspector", () => {
   it("sends the Bulwark what-if and renders the returned stacks", async () => {
     renderAt("/lol/mechanics?tool=structures&time=11:40");
     await screen.findByTestId("structure-result");
-    fireEvent.click(screen.getByRole("switch", { name: "Bulwark stacks" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect Bulwark" }));
     await waitFor(() =>
       expect(mockInspect).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -304,7 +304,7 @@ describe("Structure Inspector", () => {
   it("marks Crystalline Overgrowth values as Derived with the interpolation note", async () => {
     renderAt("/lol/mechanics?tool=structures&time=11:40");
     await screen.findByTestId("structure-result");
-    fireEvent.click(screen.getByRole("switch", { name: "Crystalline Overgrowth" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect Crystalline Overgrowth" }));
     await waitFor(() =>
       expect(mockInspect).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -322,7 +322,7 @@ describe("Structure Inspector", () => {
   it("exposes backdoor as a plain enemy-minion-nearby scenario toggle", async () => {
     renderAt("/lol/mechanics?tool=structures&time=11:40");
     await screen.findByTestId("structure-result");
-    fireEvent.click(screen.getByRole("switch", { name: "Backdoor protection" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect Backdoor protection" }));
     // Default scenario: no minion nearby, 5s since the last one left.
     await waitFor(() =>
       expect(mockInspect).toHaveBeenCalledWith(
@@ -340,7 +340,7 @@ describe("Structure Inspector", () => {
   it("sends base state for targetability and renders the verdict", async () => {
     renderAt("/lol/mechanics?tool=structures&type=nexus&time=30:00");
     await screen.findByTestId("structure-result");
-    fireEvent.click(screen.getByRole("switch", { name: "Targetability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect Targetability" }));
     await waitFor(() =>
       expect(mockInspect).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -360,7 +360,7 @@ describe("Structure Inspector", () => {
     renderAt("/lol/mechanics?tool=structures&time=11:40");
     await screen.findByTestId("structure-result");
     const calls = mockInspect.mock.calls.length;
-    fireEvent.click(screen.getByRole("switch", { name: "Bulwark stacks" }));
+    fireEvent.click(screen.getByRole("button", { name: "Inspect Bulwark" }));
     fireEvent.change(screen.getByLabelText("Stacks (0–4)"), { target: { value: "9" } });
     expect(await screen.findByText(/Bulwark stacks must be a whole number/)).toBeInTheDocument();
     // No request carried stacks: 9.
@@ -383,5 +383,47 @@ describe("Structure Inspector", () => {
       await screen.findByText("Patch '25.24' is outside the certified range."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+});
+
+describe("Structure inspect controls (5B4)", () => {
+  it("scenario controls are inspect/expand disclosures, not top-level switches", async () => {
+    renderAt("/lol/mechanics?tool=structures&time=11:40");
+    await screen.findByTestId("structure-result");
+    // No top-level mechanic on/off switches remain…
+    expect(screen.queryByRole("switch", { name: "Bulwark stacks" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Backdoor protection" })).not.toBeInTheDocument();
+    // …the controls are expandable inspect buttons.
+    const inspect = screen.getByRole("button", { name: "Inspect Bulwark" });
+    expect(inspect).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(inspect);
+    expect(inspect).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByLabelText("Stacks (0–4)")).toBeInTheDocument();
+  });
+
+  it("the nested enemy-minion-nearby boolean still works inside the disclosure", async () => {
+    renderAt("/lol/mechanics?tool=structures&time=11:40");
+    await screen.findByTestId("structure-result");
+    fireEvent.click(screen.getByRole("button", { name: "Inspect Backdoor protection" }));
+    const nearby = screen.getByRole("switch", { name: "Enemy minion nearby" });
+    fireEvent.click(nearby);
+    await waitFor(() =>
+      expect(mockInspect).toHaveBeenCalledWith(
+        expect.objectContaining({ backdoor: { enemy_minion_nearby: true } }),
+      ),
+    );
+  });
+
+  it("groups the result under the four 5B4 headings with all content intact", async () => {
+    renderAt("/lol/mechanics?tool=structures&time=11:40");
+    await screen.findByTestId("structure-result");
+    for (const heading of ["Base stats", "Turret plates", "Combat rules"]) {
+      expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+    }
+    // All pre-5B4 content still renders.
+    expect(screen.getByTestId("plate-table")).toBeInTheDocument();
+    expect(screen.getByTestId("warming-up")).toBeInTheDocument();
+    expect(screen.getByTestId("penetration")).toBeInTheDocument();
+    expect(screen.getByTestId("dependencies")).toBeInTheDocument();
   });
 });

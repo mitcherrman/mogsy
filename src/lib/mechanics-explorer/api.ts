@@ -535,3 +535,44 @@ export function formatClock(seconds: number): string {
   const whole = Math.max(0, Math.floor(seconds));
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
+
+/** Exact half-up rounding of a decimal STRING — no float artifacts, so
+ * "5.525" rounds to "5.53" (Number-based toFixed would give "5.52"). */
+function roundDecimalString(text: string, places: number): string {
+  const negative = text.startsWith("-");
+  const [ints, decs = ""] = (negative ? text.slice(1) : text).split(".");
+  if (decs.length <= places) return text;
+  const digits = (ints + decs.slice(0, places)).split("").map(Number);
+  if (Number(decs[places]) >= 5) {
+    let i = digits.length - 1;
+    while (i >= 0 && digits[i] === 9) {
+      digits[i] = 0;
+      i -= 1;
+    }
+    if (i < 0) digits.unshift(1);
+    else digits[i] += 1;
+  }
+  const joined = digits.join("");
+  const intPart = joined.slice(0, joined.length - places) || "0";
+  const decPart = joined.slice(joined.length - places);
+  return `${negative ? "-" : ""}${intPart}.${decPart}`;
+}
+
+/**
+ * Display rounding for user-facing numbers (Phase 5B4): trailing zeros are
+ * trimmed ("3.060" → "3.06", "1.00" → "1") and long decimals are rounded
+ * half-up to two places ("44.848125" → "44.85"). Integers and short
+ * decimals pass through untouched; non-numeric strings are returned as-is.
+ * Presentation only — API values themselves are never altered, and deep
+ * provenance/explanation text keeps full precision.
+ */
+export function formatDisplayNumber(raw: string): string {
+  const text = raw.trim();
+  if (!/^-?\d+(\.\d+)?$/.test(text)) return raw;
+  if (!text.includes(".")) return text;
+  const trim = (value: string) => value.replace(/0+$/, "").replace(/\.$/, "");
+  const trimmed = trim(text);
+  if (!trimmed.includes(".")) return trimmed;
+  if (trimmed.split(".")[1].length <= 2) return trimmed;
+  return trim(roundDecimalString(trimmed, 2));
+}

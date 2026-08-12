@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -192,7 +192,11 @@ describe("Supers explorer", () => {
     renderAt("/lol/mechanics?tool=supers&wave=32");
     await screen.findByTestId("supers-board");
 
-    fireEvent.click(screen.getByRole("switch", { name: "Top inhibitor destroyed" }));
+    fireEvent.click(
+      within(screen.getByRole("radiogroup", { name: "Top inhibitor state" })).getByRole("radio", {
+        name: "Destroyed",
+      }),
+    );
     fireEvent.change(screen.getByLabelText("Destroyed at"), { target: { value: "15:00" } });
     await waitFor(() =>
       expect(mockSupers).toHaveBeenCalledWith({
@@ -311,7 +315,11 @@ describe("Supers explorer", () => {
     renderAt("/lol/mechanics?tool=supers&wave=32");
     await screen.findByTestId("supers-board");
     // Toggling a lane fires a request with the valid default time first.
-    fireEvent.click(screen.getByRole("switch", { name: "Mid inhibitor destroyed" }));
+    fireEvent.click(
+      within(screen.getByRole("radiogroup", { name: "Mid inhibitor state" })).getByRole("radio", {
+        name: "Destroyed",
+      }),
+    );
     await waitFor(() =>
       expect(mockSupers).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -350,5 +358,37 @@ describe("Supers explorer", () => {
       await screen.findByText("Provide exactly one of wave_number or game_time_s."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+});
+
+describe("Supers inhibitor state control (5B4)", () => {
+  it("exposes Standing and Destroyed as an explicit labeled two-state control", async () => {
+    renderAt("/lol/mechanics?tool=supers&wave=32");
+    await screen.findByTestId("supers-board");
+    const topState = screen.getByRole("radiogroup", { name: "Top inhibitor state" });
+    const standing = within(topState).getByRole("radio", { name: "Standing" });
+    const destroyed = within(topState).getByRole("radio", { name: "Destroyed" });
+    expect(standing).toHaveAttribute("aria-checked", "true");
+    expect(destroyed).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(destroyed);
+    expect(destroyed).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Destroyed at")).toBeInTheDocument();
+  });
+
+  it("features the cutoff preset prominently and keeps presets backend-driven", async () => {
+    renderAt("/lol/mechanics?tool=supers&wave=32");
+    await screen.findByTestId("supers-board");
+    expect(screen.getByText("Try an example")).toBeInTheDocument();
+    const featured = screen.getByRole("button", {
+      name: /Inside respawn cutoff — see the unusual rule/,
+    });
+    const calls = mockSupers.mock.calls.length;
+    fireEvent.click(featured);
+    // The preset only populated inputs; the backend was asked again.
+    await waitFor(() => expect(mockSupers.mock.calls.length).toBeGreaterThan(calls));
+    expect(mockSupers).toHaveBeenCalledWith({
+      wave_number: 29,
+      inhibitors: { top: { destroyed_at_s: 600 } },
+    });
   });
 });

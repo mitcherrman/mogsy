@@ -235,10 +235,15 @@ describe("Respawn calculator", () => {
     await waitFor(() =>
       expect(mockRespawn).toHaveBeenCalledWith({ level: 11, gameTimeS: 1275 }),
     );
-    expect(await screen.findByText("37s")).toBeInTheDocument();
-    expect(screen.getByText("Base respawn (BRW)")).toBeInTheDocument();
-    expect(screen.getByText("35s")).toBeInTheDocument();
-    expect(screen.getByText("+5.525%")).toBeInTheDocument();
+    expect((await screen.findAllByText("37s")).length).toBeGreaterThan(0);
+    const flow = screen.getByTestId("respawn-flow");
+    expect(flow).toHaveTextContent("35s");
+    expect(flow).toHaveTextContent("+1.93s");
+    expect(flow).toHaveTextContent("TIF (+5.53%)");
+    expect(flow).toHaveTextContent("36.93s");
+    expect(flow).toHaveTextContent("37s");
+    // Full precision stays available in the backend explanation below.
+    expect(screen.getByText(/base respawn is 35 seconds/)).toBeInTheDocument();
     // No boundary block and no cap note in the normal case.
     expect(screen.queryByTestId("respawn-boundary")).not.toBeInTheDocument();
     expect(screen.queryByTestId("tif-cap-note")).not.toBeInTheDocument();
@@ -246,23 +251,23 @@ describe("Respawn calculator", () => {
 
   it("renders the TIF cap state", async () => {
     renderAt("/lol/mechanics?tool=respawn&level=18&time=60:00");
-    expect(await screen.findByText("79s")).toBeInTheDocument();
+    expect((await screen.findAllByText("79s")).length).toBeGreaterThan(0);
     expect(screen.getByTestId("tif-cap-note")).toBeInTheDocument();
     expect(mockRespawn).toHaveBeenCalledWith({ level: 18, gameTimeS: 3600 });
   });
 
   it("shows the exact-boundary block with the alternate reading, uncollapsed", async () => {
     renderAt("/lol/mechanics?tool=respawn&level=14&time=15:30");
-    expect(await screen.findByText("43s")).toBeInTheDocument();
+    expect((await screen.findAllByText("43s")).length).toBeGreaterThan(0);
     const boundary = screen.getByTestId("respawn-boundary");
-    expect(boundary).toHaveTextContent("42.86125");
+    expect(boundary).toHaveTextContent("42.86");
     expect(boundary).toHaveTextContent("ceil_as_written");
     expect(boundary).toHaveTextContent(/canonical reading/i);
   });
 
   it("rejects invalid game-time input without firing a request or showing stale results", async () => {
     renderAt("/lol/mechanics");
-    await screen.findByText("37s");
+    await screen.findAllByText("37s");
     const calls = mockRespawn.mock.calls.length;
 
     fireEvent.change(screen.getByLabelText("Game time of death"), {
@@ -301,6 +306,13 @@ describe("Wave timeline", () => {
     expect(screen.getByTestId("cadence-transition")).toHaveTextContent(
       "First wave on the 25-second spawn cadence.",
     );
+    // 5B4 wording: an explicit list from returned composition, never "including".
+    expect(
+      screen.getByText(
+        /Wave 29 spawns at 14:25 with 2 melee minions, 3 caster minions, and 1 cannon minion\./,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/including a cannon/)).not.toBeInTheDocument();
   });
 
   it("handles the 30:00 canonical edge: wave 66 most recent, wave 67 next", async () => {
