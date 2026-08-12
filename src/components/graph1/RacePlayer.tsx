@@ -128,6 +128,9 @@ export default function RacePlayer({
   // every chronological dataset, whose rendering is unchanged
   const progression = index.progression;
   const valueDisplay = resolveValueDisplay(dataset);
+  // Exact-Levels vs Smooth is a stat-race concept; count races have no
+  // valueDisplay and always behave as before
+  const exactValues = toggles.exactValues !== false;
 
   const setFilters = (filters: Graph1FilterState) =>
     setState({ ...state, filters });
@@ -164,9 +167,16 @@ export default function RacePlayer({
             data-testid="event-header"
           >
             <p>
-              <span className="text-2xl">{frame.stepLabel}</span>
+              {/* Exact mode labels the SETTLED checkpoint so the level name,
+                  the held stat values and the ranking state always describe
+                  the same canonical level; smooth mode names the destination
+                  level its numbers are ticking toward. */}
+              <span className="text-2xl">
+                {exactValues ? frame.settledStepLabel : frame.stepLabel}
+              </span>
               <span className="ml-2 text-muted-foreground">
-                {frame.stepIndex + 1} of {frame.stepCount}
+                {(exactValues ? frame.settledStepIndex : frame.stepIndex) + 1}{" "}
+                of {frame.stepCount}
               </span>
             </p>
           </div>
@@ -218,6 +228,7 @@ export default function RacePlayer({
           topN={state.topN}
           valueDisplay={valueDisplay}
           display={{
+            exactValues,
             showWinOverlay: toggles.winOverlay,
             showSecondaryEntityLabel:
               hints.showSecondaryEntityLabel && toggles.secondaryLabel,
@@ -242,6 +253,16 @@ export default function RacePlayer({
         position={position}
         eventCount={index.stepCount}
         unitLabel={progression?.unitLabel ?? "game"}
+        exactValues={valueDisplay ? exactValues : undefined}
+        onExactValues={
+          valueDisplay
+            ? (exact) =>
+                setState({
+                  ...state,
+                  toggles: { ...toggles, exactValues: exact },
+                })
+            : undefined
+        }
         onPlay={clock.play}
         onPause={clock.pause}
         onRestart={clock.restart}

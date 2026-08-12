@@ -56,6 +56,11 @@ export interface RaceRow {
   winsValue: number;
   /** whole-game integer shown next to the bar (never fractional) */
   displayValue: number;
+  /** canonical units at the checkpoint the settled label names — the value
+   * Exact-Levels mode prints. During a step transition it HOLDS the settled
+   * step's value; during the pre-race rise (no step settled yet) it names the
+   * first checkpoint the bars are rising to. Never an interpolated number. */
+  checkpointValue: number;
   /** whole-game cumulative wins at floor(position) */
   displayWins: number;
   /** derived: displayValue - displayWins */
@@ -87,6 +92,11 @@ export interface RaceFrameState {
   /** progression label of the current step ("Level 7"), null when the
    * dataset is chronological */
   stepLabel: string | null;
+  /** the last SETTLED step — equal to stepIndex at rest, one behind it
+   * mid-transition. Exact-Levels mode labels the board with this so the
+   * level name always matches the held checkpoint values. */
+  settledStepIndex: number;
+  settledStepLabel: string | null;
   /** occurredAt of the event driving the current step (display context) */
   occurredAt: string;
   year: number;
@@ -187,6 +197,9 @@ export function stateAt(
     const valueA = before.totals[e];
     const valueB = totalsB[e];
     const value = valueA + (valueB - valueA) * f;
+    // the settled checkpoint's canonical units; the pre-race rise (k === 0,
+    // nothing settled) shows the first checkpoint the bars are rising to
+    const checkpointValue = k > 0 || f === 0 ? valueA : valueB;
     const winsA = before.wins[e];
     const winsW = winsB[e];
     const winsValue = winsA + (winsW - winsA) * f;
@@ -209,6 +222,7 @@ export function stateAt(
       value,
       winsValue,
       displayValue: valueA,
+      checkpointValue,
       displayWins: winsA,
       displayLosses: valueA - winsA,
       barFraction: Math.max(0, Math.min(1, value / leaderValue)),
@@ -240,6 +254,9 @@ export function stateAt(
     eventCount - 1,
   );
   const displayEvent = index.dataset.events[displayEventIndex];
+  // the settled step never advances mid-transition: paused or in flight it
+  // names the checkpoint whose values checkpointValue holds
+  const settledStepIndex = Math.min(Math.max(k - 1, 0), stepCount - 1);
   return {
     position: clamped,
     eventIndex: displayEventIndex,
@@ -248,6 +265,10 @@ export function stateAt(
     stepCount,
     stepLabel: index.progression
       ? index.progression.stepLabels[displayStep] ?? null
+      : null,
+    settledStepIndex,
+    settledStepLabel: index.progression
+      ? index.progression.stepLabels[settledStepIndex] ?? null
       : null,
     occurredAt: displayEvent.occurredAt,
     year: index.eventYear[displayEventIndex],

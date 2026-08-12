@@ -51,7 +51,8 @@ const propsArg = arg("--props");
 if (!propsArg) {
   console.error(
     "Usage: npx tsx scripts/render-graph1-video.ts --props <dataset.json> " +
-      "[--out out/<name>.mp4] [--speed N] [--top-n N] [--timing-only]",
+      "[--out out/<name>.mp4] [--speed N] [--top-n N] [--smooth-values] " +
+      "[--timing-only]",
   );
   process.exit(1);
 }
@@ -72,6 +73,12 @@ const leadIn = arg("--lead-in");
 if (leadIn !== undefined) props.leadInSeconds = Number(leadIn);
 const outro = arg("--outro");
 if (outro !== undefined) props.outroSeconds = Number(outro);
+// stat races print exact checkpoint values by default; this restores the
+// smooth interpolated ticker for social-clip exports
+if (process.argv.includes("--smooth-values")
+    || npmConfig("--smooth-values") === "true") {
+  props.smoothValues = true;
+}
 
 const opts = resolveRaceVideoOptions(props);
 const timing = raceVideoTimingForDataset(props, GRAPH1_FPS);

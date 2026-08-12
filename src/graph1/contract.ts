@@ -102,6 +102,12 @@ export interface Graph1DisplayToggles {
   valueLabel: boolean;
   dateLabel: boolean;
   secondaryLabel: boolean;
+  /** Stat races only (Phase 4A polish): ON shows only canonical checkpoint
+   * values (the settled level's exact stat); OFF interpolates the number
+   * between checkpoints for smoother social-clip playback. Turning it OFF
+   * removes the truth guarantee, never a layer — but it still fits the
+   * off-relative-to-defaults URL convention because exact is the default. */
+  exactValues: boolean;
 }
 
 export const GRAPH1_TOGGLE_KEYS = [
@@ -113,6 +119,7 @@ export const GRAPH1_TOGGLE_KEYS = [
   "valueLabel",
   "dateLabel",
   "secondaryLabel",
+  "exactValues",
 ] as const satisfies readonly (keyof Graph1DisplayToggles)[];
 
 /** Narrow declarative renderer hints — the shared renderer never branches on
@@ -428,6 +435,7 @@ export function resolveDisplayToggles(
     rankNumber: declared?.rankNumber ?? true,
     valueLabel: declared?.valueLabel ?? true,
     dateLabel: declared?.dateLabel ?? true,
+    exactValues: declared?.exactValues ?? true,
     secondaryLabel: declared?.secondaryLabel ?? true,
   };
 }

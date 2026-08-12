@@ -123,6 +123,7 @@ export default function Graph1RacePage() {
       valueLabel: declared?.valueLabel ?? true,
       dateLabel: declared?.dateLabel ?? true,
       secondaryLabel: declared?.secondaryLabel ?? true,
+      exactValues: declared?.exactValues ?? true,
     };
   }, [data, entry, activeFamily]);
 

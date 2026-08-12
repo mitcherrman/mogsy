@@ -12,7 +12,12 @@ import { buildRaceIndex } from "@/graph1/raceIndex";
 import { makeStatGrowthDataset } from "@/graph1/testFixtures";
 import { buildCadence, DEFAULT_CADENCE, positionAtFrame } from "@/graph1/timeline";
 
-import { GRAPH1_FPS, raceVideoTiming, raceVideoTimingForDataset } from "./timing";
+import {
+  GRAPH1_FPS,
+  raceVideoTiming,
+  raceVideoTimingForDataset,
+  resolveRaceVideoOptions,
+} from "./timing";
 
 const UNITS = {
   Alpha: [6000, 6360, 7100, 8000],
@@ -59,6 +64,22 @@ describe("Remotion accepts stat-growth payloads", () => {
     const alpha = final.rows.find((r) => r.entityId === "champion:Alpha")!;
     expect(alpha.value).toBe(8000);
     expect(alpha.rank).toBe(1);
+  });
+
+  it("value-animation mode: exact by default, smooth via explicit prop", () => {
+    // the composition prints checkpoint values unless the export opts into
+    // the smooth ticker; either way the mode never changes timing or state
+    expect(resolveRaceVideoOptions({}).smoothValues).toBe(false);
+    expect(resolveRaceVideoOptions({ smoothValues: true }).smoothValues).toBe(
+      true,
+    );
+    const dataset = assertDataset(makeStatGrowthDataset(UNITS, { msPerStep: 1000 }));
+    const exact = raceVideoTimingForDataset({ dataset }, GRAPH1_FPS);
+    const smooth = raceVideoTimingForDataset(
+      { dataset, smoothValues: true },
+      GRAPH1_FPS,
+    );
+    expect(smooth).toEqual(exact);
   });
 
   it("the id derives a usable render stem", () => {
