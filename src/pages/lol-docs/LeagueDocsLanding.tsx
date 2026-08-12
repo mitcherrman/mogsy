@@ -50,8 +50,9 @@ const CATEGORIES: Category[] = [
   },
   {
     title: "Mechanics",
-    description: "Armor, penetration, ability haste, on-hit effects, and more.",
+    description: "Interactive death-timer and minion-wave tools, straight from Mogzy's canonical mechanics engine.",
     Icon: BookOpen,
+    to: "/lol/mechanics",
   },
   {
     title: "Pro Data",

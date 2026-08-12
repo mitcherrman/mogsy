@@ -192,6 +192,10 @@ const LolGlossary = lazy(() => import("./pages/lol/Glossary"));
 // Patch Reports — public per-patch change reports with Mogzy data comparison.
 const PatchReports = lazy(() => import("./pages/lol/PatchReports"));
 
+// Mechanics Explorer — public tools over the canonical mechanics engine
+// (MECH1 Phase 5B1: respawn calculator + wave timeline).
+const MechanicsExplorerPage = lazy(() => import("./pages/lol/mechanics/MechanicsExplorerPage"));
+
 // Keep cached data warm so navigating back to a screen doesn't refetch.
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -359,6 +363,7 @@ const App = () => (
                   <Route path="/league-swipe/stats" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeStats /></Suspense>} />
                   <Route path="/league-swipe/:gameSlug" element={<Suspense fallback={<RouteFallback />}><LeagueSwipeGame /></Suspense>} />
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
+                  <Route path="/lol/mechanics" element={<Suspense fallback={<RouteFallback />}><MechanicsExplorerPage /></Suspense>} />
                   <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LeagueDocsLanding /></Suspense>} />
                   <Route path="/lol/docs/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionIndex /></Suspense>} />
                   <Route path="/lol/docs/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionDetail /></Suspense>} />
