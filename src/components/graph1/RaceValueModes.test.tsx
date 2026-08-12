@@ -62,6 +62,25 @@ describe("RaceRenderer value modes", () => {
     expect(screen.queryByText("65.0")).not.toBeInTheDocument();
   });
 
+  it("formatting is metric metadata: zero-decimal stats print whole numbers", () => {
+    // HP-style payload (decimals 0) — same renderer, no stat-specific branch
+    const hp = makeStatGrowthDataset(UNITS, { decimals: 0 });
+    const hpIndex = buildRaceIndex(hp);
+    render(
+      <RaceRenderer
+        frame={stateAt(hpIndex, 2, { topN: 10 })}
+        entities={hp.entities}
+        metricLabel="Health"
+        topN={10}
+        valueDisplay={{ scale: 100, decimals: 0 }}
+        display={baseDisplay}
+      />,
+    );
+    // Beta level 2 = 7400 units -> "74", never "74.0"
+    expect(screen.getByText("74")).toBeInTheDocument();
+    expect(screen.queryByText("74.0")).not.toBeInTheDocument();
+  });
+
   it("count metrics ignore the mode entirely", () => {
     render(
       <RaceRenderer

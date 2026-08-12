@@ -308,6 +308,32 @@ export default function Graph1RacePage() {
           />
         )}
 
+        {activeFamily && focusType === "stat" && (
+          /* The stat token set is closed and tiny (shipped inline by
+             discovery), so a plain select is the whole picker; the chosen
+             stat lives in the dataset key itself (d=champion-stat-growth:
+             <stat>) — no second URL parameter. */
+          <label className="flex w-fit items-center gap-2 text-xs text-muted-foreground">
+            Stat
+            <select
+              aria-label="Stat"
+              value={instance?.entityId ?? activeFamily.defaultEntity ?? ""}
+              onChange={(e) =>
+                selectDataset(
+                  familyDatasetKey(activeFamily.id, e.target.value),
+                )
+              }
+              className="rounded border border-border bg-background px-1.5 py-1 text-xs"
+            >
+              {(activeFamily.stats ?? []).map((stat) => (
+                <option key={stat.id} value={stat.id}>
+                  {stat.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         {entry?.snapshot?.eventCount !== undefined && !data && (
           <Notice>
             {entry.snapshot.eventCount.toLocaleString()} games ·{" "}
