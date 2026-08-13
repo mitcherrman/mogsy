@@ -61,6 +61,7 @@ const CATALOG = {
       stats: [
         { id: "armor", label: "Armor", unit: "Armor" },
         { id: "attack-damage", label: "Attack Damage", unit: "AD" },
+        { id: "attack-speed", label: "Attack Speed", unit: "AS" },
         { id: "health", label: "Health", unit: "HP" },
         { id: "magic-resist", label: "Magic Resist", unit: "MR" },
       ],
@@ -86,6 +87,12 @@ const UNITS = {
   Beta: [7000, 7100, 7250],
 };
 
+/** milli-AS units: Alpha 0.625 -> 0.702, Beta (flat) 0.850 */
+const AS_UNITS = {
+  Alpha: [625, 663, 702],
+  Beta: [850, 850, 850],
+};
+
 let locationSearch = "";
 let requestedUrls: string[] = [];
 
@@ -106,10 +113,15 @@ function mockFetch() {
       const label = {
         "attack-damage": "Attack Damage", health: "Health",
         armor: "Armor", "magic-resist": "Magic Resist",
+        "attack-speed": "Attack Speed",
       }[stat]!;
-      const ds = makeStatGrowthDataset(UNITS, {
-        decimals: stat === "health" ? 0 : 1,
-      });
+      // attack speed: milli-units, 3 decimals; the other stats centi-units
+      const ds = makeStatGrowthDataset(
+        stat === "attack-speed" ? AS_UNITS : UNITS,
+        stat === "attack-speed"
+          ? { scale: 1000, decimals: 3 }
+          : { decimals: stat === "health" ? 0 : 1 },
+      );
       ds.id = `champion-stat-growth:${stat}@base-stats`;
       ds.definition.title = `Champion stat growth — ${label} by level`;
       ds.definition.metric.label = label;
@@ -198,6 +210,7 @@ describe("Phase 4B — four-stat selector", () => {
     expect([...selector.options].map((o) => o.textContent)).toEqual([
       "Armor",
       "Attack Damage",
+      "Attack Speed",
       "Health",
       "Magic Resist",
     ]);
@@ -233,5 +246,50 @@ describe("Phase 4B — four-stat selector", () => {
     renderPage("/dev/graph1?d=faker-champions");
     await screen.findByRole("button", { name: "Champion stat growth" });
     expect(screen.queryByLabelText("Stat")).not.toBeInTheDocument();
+  });
+});
+
+
+describe("Phase 4C — attack speed", () => {
+  it("selects through d= and renders three-decimal AS values", async () => {
+    renderPage("/dev/graph1?d=champion-stat-growth:attack-speed");
+    expect(
+      await screen.findByText("Champion stat growth — Attack Speed by level"),
+    ).toBeInTheDocument();
+    const selector = (await screen.findByLabelText("Stat")) as HTMLSelectElement;
+    expect(selector.value).toBe("attack-speed");
+    expect([...selector.options].map((o) => o.textContent)).toContain(
+      "Attack Speed",
+    );
+    // seek to the level-2 checkpoint: exact 3-decimal milli-unit rendering
+    fireEvent.change(screen.getByLabelText("Seek by level"), {
+      target: { value: "2" },
+    });
+    expect(screen.getByText("0.850")).toBeInTheDocument(); // Beta flat
+    expect(screen.getByText("0.663")).toBeInTheDocument(); // Alpha level 2
+    expect(screen.getByTestId("event-header")).toHaveTextContent("Level 2");
+  });
+
+  it("switching from attack speed to health leaves no stale AS state", async () => {
+    renderPage("/dev/graph1?d=champion-stat-growth:attack-speed");
+    const selector = (await screen.findByLabelText("Stat")) as HTMLSelectElement;
+    fireEvent.change(selector, { target: { value: "health" } });
+    await waitFor(() =>
+      expect(decodeURIComponent(locationSearch)).toContain(
+        "d=champion-stat-growth:health",
+      ),
+    );
+    expect(
+      await screen.findByText("Champion stat growth — Health by level"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Champion stat growth — Attack Speed by level"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Seek by level"), {
+      target: { value: "2" },
+    });
+    // health prints whole numbers from centi-units — no 3-decimal leftovers
+    expect(screen.getByText("71")).toBeInTheDocument(); // Beta 7100 units
+    expect(screen.queryByText("0.663")).not.toBeInTheDocument();
   });
 });
