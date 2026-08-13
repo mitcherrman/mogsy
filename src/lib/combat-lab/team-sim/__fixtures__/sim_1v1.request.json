@@ -1,0 +1,55 @@
+{
+  "scenario_id": "phase4b-1v1",
+  "team_a": {
+    "team_id": "A",
+    "combatants": [
+      {
+        "runtime_id": "A1",
+        "champion": "Ashe",
+        "level": 11,
+        "items": [
+          "Infinity Edge"
+        ],
+        "starting_hp": 900.0
+      }
+    ]
+  },
+  "team_b": {
+    "team_id": "B",
+    "combatants": [
+      {
+        "runtime_id": "B1",
+        "champion": "Garen",
+        "level": 11,
+        "starting_hp": 400.0
+      }
+    ]
+  },
+  "action_plans": {
+    "A1": {
+      "steps": [
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    },
+    "B1": {
+      "steps": [
+        {
+          "type": "basic_attack"
+        }
+      ],
+      "repeat": true
+    }
+  },
+  "targeting": {
+    "A1": "first_living",
+    "B1": "first_living"
+  },
+  "limits": {
+    "max_duration": 30.0,
+    "max_events": 200,
+    "max_trace_events": 200
+  }
+}

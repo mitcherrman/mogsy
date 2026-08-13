@@ -1,0 +1,1 @@
+{"detail":{"code":"idempotency_key_invalid","message":"Idempotency-Key accepts printable ASCII only (no spaces, control characters, or non-ASCII)"}}

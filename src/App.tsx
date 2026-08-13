@@ -15,6 +15,12 @@ import AdminRoute from "./components/AdminRoute";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
+import TeamSimErrorBoundary from "@/components/combat-lab/TeamSimErrorBoundary";
+import {
+  isTeamSimPublicRouteEnabled,
+  TEAM_SIM_DEV_ROUTE,
+  TEAM_SIM_ROUTE,
+} from "@/lib/combat-lab/team-sim/featureGate";
 import { Suspense, type ReactElement } from "react";
 import { lazy } from "react";
 import { Routes as R } from "@/lib/route-prefetch";
@@ -147,6 +153,14 @@ const Graph1RacePage = lazy(() => import("./pages/dev/graph1/Graph1RacePage"));
 // Dev-only League mechanics XP calculator (MECH1) — thin client over the
 // backend league_mechanics engine, not linked from any navigation.
 const MechanicsXpPage = lazy(() => import("./pages/dev/mechanics-xp/MechanicsXpPage"));
+// SIM2 team-combat editor — deterministic 1v1–2v2 over the backend
+// team-simulate API. Additive: /combat-lab keeps its 1v1 surface.
+//
+// Phase 5A promotes it to a user-facing route behind VITE_TEAM_SIM_ENABLED and
+// keeps the internal /dev path as an ALIAS onto the SAME lazy module. One
+// implementation, two paths: a copied page could drift, and the copy that
+// drifted would be the one taking money.
+const TeamSimPage = lazy(() => import("./pages/dev/team-sim/TeamSimPage"));
 
 // Dev-only entrance concept — visual iteration on the Mogzy entry screen.
 // Purely presentational, no app state, not linked from any navigation.
@@ -219,6 +233,26 @@ import { StartupSurface } from "@/components/startup/StartupShells";
  * avoiding the full-screen logo "blink" between navigations.
  */
 const RouteFallback = () => <div aria-hidden className="min-h-[50vh]" />;
+
+/**
+ * SIM2 Phase 5A: the ONE element both team-sim paths render.
+ *
+ * Declared once and used by both <Route>s, so the promoted route and the
+ * internal alias cannot diverge — a React element is a description, and only
+ * whichever route matched ever mounts.
+ *
+ * The boundary is OUTSIDE the <Suspense>, which is the whole reason it is
+ * imported eagerly: a boundary inside the lazy chunk could not catch that
+ * chunk failing to load. It is also outside the page component itself, because
+ * a boundary cannot catch a throw from its own render.
+ */
+const teamSimElement = (
+  <TeamSimErrorBoundary>
+    <Suspense fallback={<RouteFallback />}>
+      <TeamSimPage />
+    </Suspense>
+  </TeamSimErrorBoundary>
+);
 
 /**
  * League-only public mode: wraps non-League route elements so they redirect
@@ -339,6 +373,18 @@ const App = () => (
                   </Route>
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />
+                  {/* SIM2 Phase 5A: the promoted, user-facing team simulator.
+                      Registered ONLY when the flag is on, so the path 404s
+                      like any other unknown route while the feature is off —
+                      rather than existing and refusing, which would advertise
+                      it. Not wrapped in ProtectedRoute, deliberately and to
+                      match /combat-lab above: the surface is browsable and the
+                      BACKEND is what requires a verified account, so an
+                      unauthenticated visitor can read the assumptions and the
+                      catalog but cannot spend anything. */}
+                  {isTeamSimPublicRouteEnabled() ? (
+                    <Route path={TEAM_SIM_ROUTE} element={teamSimElement} />
+                  ) : null}
                   <Route path="/lol/combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesIndex /></Suspense>} />
                   <Route path="/lol/combat-battles/:slug" element={<Suspense fallback={<RouteFallback />}><CombatBattleDetail /></Suspense>} />
                   <Route path="/admin/combat-battles" element={<AdminRoute><Suspense fallback={<RouteFallback />}><CombatBattlesAdmin /></Suspense></AdminRoute>} />
@@ -399,6 +445,11 @@ const App = () => (
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
                   <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />
+                  {/* The internal alias. Same element as the promoted route,
+                      always registered, never linked from navigation — this is
+                      how the feature stays reachable for internal work while
+                      the public flag is off. */}
+                  <Route path={TEAM_SIM_DEV_ROUTE} element={teamSimElement} />
                   <Route path="/quiz/mastery" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneysPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/mastery/:masterySetId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneyPlayerPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />

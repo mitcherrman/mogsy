@@ -1,0 +1,199 @@
+{
+ "scenario_id": "phase6b-4v4",
+ "team_a": {
+  "team_id": "A",
+  "combatants": [
+   {
+    "runtime_id": "A1",
+    "champion": "Ashe",
+    "level": 13,
+    "items": [
+     "Infinity Edge",
+     "Berserker's Greaves"
+    ],
+    "runes": [
+     "Press the Attack"
+    ],
+    "ability_ranks": {
+     "Q": 5,
+     "W": 4,
+     "E": 3,
+     "R": 2
+    },
+    "crit_mode": "force"
+   },
+   {
+    "runtime_id": "A2",
+    "champion": "Lux",
+    "level": 13,
+    "items": [
+     "Luden's Companion"
+    ],
+    "runes": [
+     "Electrocute"
+    ],
+    "ability_ranks": {
+     "Q": 5,
+     "W": 4,
+     "E": 3,
+     "R": 2
+    },
+    "crit_mode": "none"
+   },
+   {
+    "runtime_id": "A3",
+    "champion": "Jinx",
+    "level": 13,
+    "items": [
+     "Infinity Edge"
+    ],
+    "runes": [
+     "Lethal Tempo"
+    ],
+    "ability_ranks": {
+     "Q": 5,
+     "W": 4,
+     "E": 3,
+     "R": 2
+    },
+    "crit_mode": "expected"
+   },
+   {
+    "runtime_id": "A4",
+    "champion": "Caitlyn",
+    "level": 13,
+    "items": [
+     "Berserker's Greaves"
+    ],
+    "runes": [
+     "Fleet Footwork"
+    ],
+    "ability_ranks": {
+     "Q": 5,
+     "W": 4,
+     "E": 3,
+     "R": 2
+    },
+    "crit_mode": "expected"
+   }
+  ]
+ },
+ "team_b": {
+  "team_id": "B",
+  "combatants": [
+   {
+    "runtime_id": "B1",
+    "champion": "Garen",
+    "level": 13,
+    "starting_hp": 500.0
+   },
+   {
+    "runtime_id": "B2",
+    "champion": "Malphite",
+    "level": 13,
+    "starting_hp": 600.0
+   },
+   {
+    "runtime_id": "B3",
+    "champion": "Ornn",
+    "level": 13,
+    "starting_hp": 700.0
+   },
+   {
+    "runtime_id": "B4",
+    "champion": "Darius",
+    "level": 13,
+    "starting_hp": 800.0
+   }
+  ]
+ },
+ "action_plans": {
+  "A1": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  },
+  "A2": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  },
+  "A3": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  },
+  "A4": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  },
+  "B1": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  },
+  "B2": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  },
+  "B3": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  },
+  "B4": {
+   "steps": [
+    {
+     "type": "basic_attack"
+    }
+   ],
+   "repeat": true
+  }
+ },
+ "targeting": {
+  "A1": {
+   "policy": "fixed",
+   "priority": [
+    "B3",
+    "B1",
+    "B4",
+    "B2"
+   ]
+  },
+  "A2": "first_living",
+  "A3": "lowest_hp",
+  "A4": "lowest_hp_pct",
+  "B1": "first_living",
+  "B2": "first_living",
+  "B3": "first_living",
+  "B4": "first_living"
+ },
+ "limits": {
+  "max_duration": 180.0,
+  "max_events": 2000,
+  "max_trace_events": 1000
+ }
+}
