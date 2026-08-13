@@ -12,7 +12,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import SEOHead from "@/components/SEOHead";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
-import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { resolveEntryDestination } from "@/lib/welcome/academy-welcome";
 
 import AcademyFacade from "./AcademyFacade";
 import {
@@ -197,9 +197,11 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
     void startEntryMusic();
     // 2-4. glow intensifies, emblems pull inward, veil closes (see variants)
     setEntering(true);
-    // 5. hand off to the live League entry point
+    // 5. hand off — the Academy introduction on a first visit (HI1), otherwise
+    //    straight to the live League entry point exactly as before. Resolved
+    //    here rather than at render time so it reflects storage as of the click.
     window.setTimeout(
-      () => navigate(LEAGUE_HOME_ROUTE, { replace: true }),
+      () => navigate(resolveEntryDestination(), { replace: true }),
       prefersReducedMotion ? ENTRY_DURATION_REDUCED_MS : ENTRY_DURATION_MS,
     );
   }, [navigate, playLaunchChime, prefersReducedMotion]);

@@ -14,6 +14,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import MogzyEntryV2 from "./MogzyEntryV2";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
+import { installLocalStorageStub } from "@/test/localStorageStub";
 
 const ENTRY_DURATION_MS = 780;
 const ENTRY_DURATION_REDUCED_MS = 220;
@@ -45,11 +47,24 @@ class NoopResizeObserver {
   disconnect() {}
 }
 
+// The pinned jsdom does not provide a working Storage — see localStorageStub.
+const resetStorage = installLocalStorageStub();
+
 beforeEach(() => {
   mocks.reducedMotion = false;
   mocks.startEntryMusic.mockImplementation(() => Promise.resolve(true));
   vi.stubGlobal("ResizeObserver", NoopResizeObserver);
   vi.useFakeTimers({ shouldAdvanceTime: true });
+  resetStorage();
+  // HI1 made the entrance's destination conditional: a first-time visitor is
+  // sent to the Academy introduction instead of straight to /lol. This file is
+  // about the MUSIC contract — that playback never changes the chime, the
+  // transition timing, or the hand-off — so it runs as a RETURNING visitor,
+  // which is the case where the destination is still /lol. The timing
+  // assertions below are therefore unchanged, and still measure exactly what
+  // they measured before HI1. First-visit routing is covered separately in
+  // MogzyEntryV2.welcomeHandoff.test.tsx.
+  markAcademyWelcomeHandled("explored");
 });
 
 afterEach(() => {
@@ -57,6 +72,7 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  resetStorage();
 });
 
 function enterButton() {
