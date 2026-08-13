@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Compass, GraduationCap } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
@@ -10,7 +11,8 @@ import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
 import { useViewportTier, type ViewportTier } from "@/pages/dev/mogzy-entry-v2/useViewportTier";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 
-import AcademyModeCard from "./AcademyModeCard";
+import AcademyModeExhibit from "./AcademyModeExhibit";
+import AcademyModeSelector from "./AcademyModeSelector";
 import { ACADEMY_MODES } from "./academyModes";
 
 /**
@@ -36,6 +38,43 @@ import { ACADEMY_MODES } from "./academyModes";
  */
 
 const STAGE_COUNT = 3;
+
+/**
+ * Per-stage environment. Same background plate, different camera and lighting —
+ * see the note at the render site. Indexed by stage.
+ */
+const ENV = [
+  {
+    // Arrival: close in on the pedestal, light pooled low and warm.
+    objectPosition: "center 66%",
+    imageOpacity: 0.2,
+    imageScale: 1.06,
+    glow:
+      "radial-gradient(62% 48% at 50% 42%, rgba(201,168,76,0.16) 0%, rgba(127,214,239,0.05) 45%, transparent 74%)",
+    vignette:
+      "radial-gradient(circle at 50% 50%, transparent 32%, rgba(2,4,10,0.52) 68%, rgba(2,4,10,0.9) 100%)",
+  },
+  {
+    // Discovery: the room opens out — wider frame, light spread across the shelves.
+    objectPosition: "center 50%",
+    imageOpacity: 0.26,
+    imageScale: 1,
+    glow:
+      "radial-gradient(92% 62% at 50% 34%, rgba(201,168,76,0.13) 0%, rgba(127,214,239,0.06) 50%, transparent 80%)",
+    vignette:
+      "radial-gradient(circle at 50% 50%, transparent 46%, rgba(2,4,10,0.36) 76%, rgba(2,4,10,0.82) 100%)",
+  },
+  {
+    // Choice: recentre on the visitor, light gathers back to the middle.
+    objectPosition: "center 56%",
+    imageOpacity: 0.16,
+    imageScale: 1.04,
+    glow:
+      "radial-gradient(58% 52% at 50% 46%, rgba(201,168,76,0.19) 0%, rgba(127,214,239,0.05) 44%, transparent 72%)",
+    vignette:
+      "radial-gradient(circle at 50% 50%, transparent 34%, rgba(2,4,10,0.5) 70%, rgba(2,4,10,0.9) 100%)",
+  },
+] as const;
 
 export default function AcademyWelcomePage() {
   const navigate = useNavigate();
@@ -122,27 +161,42 @@ export default function AcademyWelcomePage() {
           warm in cache by the time /lol renders. Phones get a painted ground
           instead: the mobile plate is ~1.9 MB, which is not a reasonable cost
           on a first visit for something sitting at 18% opacity behind text. */}
-      <img
+      {/* The same room throughout, but the camera and the lighting move with the
+          stage, so the three screens read as a walk through one place rather
+          than three layouts over one wallpaper:
+            arrival   — close on the pedestal, tight vignette, warm pool low
+            discovery — the room opens out, vignette relaxes, light spreads wide
+            choice    — recentred on the visitor, light gathers back to middle
+          Transitioned rather than switched, so moving between stages feels like
+          the room responding. */}
+      <motion.img
         src={academyLibraryDesktop}
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover opacity-[0.18] md:block"
-        style={{ objectPosition: "center 62%" }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0"
-        aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(78% 55% at 50% 34%, rgba(201,168,76,0.13) 0%, rgba(127,214,239,0.05) 42%, transparent 74%)",
+        className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover md:block"
+        initial={false}
+        animate={{
+          opacity: ENV[stage].imageOpacity,
+          scale: ENV[stage].imageScale,
         }}
+        transition={
+          prefersReducedMotion ? { duration: 0 } : { duration: 1.1, ease: "easeOut" }
+        }
+        style={{ objectPosition: ENV[stage].objectPosition }}
+      />
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden="true"
+        initial={false}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0 }}
+        style={{ background: ENV[stage].glow }}
       />
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden="true"
         style={{
-          background:
-            "radial-gradient(circle at 50% 50%, transparent 38%, rgba(2,4,10,0.45) 72%, rgba(2,4,10,0.85) 100%)",
+          background: ENV[stage].vignette,
         }}
       />
 
@@ -164,12 +218,15 @@ export default function AcademyWelcomePage() {
           className="flex flex-1 flex-col items-center justify-center"
         >
           {stage === 0 && <WelcomeStage headingRef={headingRef} tier={tier} />}
-          {stage === 1 && <ModesStage headingRef={headingRef} />}
+          {stage === 1 && (
+            <ModesStage headingRef={headingRef} isLandscapePhone={isLandscapePhone} />
+          )}
           {stage === 2 && (
             <ChoiceStage
               headingRef={headingRef}
               onExplore={startExploring}
               onTutorial={startTutorial}
+              isLandscapePhone={isLandscapePhone}
             />
           )}
         </motion.div>
@@ -214,17 +271,32 @@ export default function AcademyWelcomePage() {
           <StageProgress stage={stage} />
 
           <div className="flex flex-1 justify-end">
-            {/* Only while there is still an introduction to skip. On the final
-                stage the two real choices ARE the exit, and a third control
-                beside them would just muddy the decision. */}
+            {/* Kept, but made honest.
+                HI1-1 shipped a near-invisible grey "Skip", which is the worst of
+                both worlds: too weak to find when you want it, and unexplained
+                when you do. It is retained rather than removed — the final stage
+                is two screens away, and someone who already knows Mogzy should
+                not have to page through an introduction to leave — but it now
+                names its destination instead of the act of leaving, so it reads
+                as a real choice rather than an escape hatch. It performs exactly
+                what Start Exploring performs, and still only appears while there
+                is an introduction left to skip: on the final stage the two paths
+                ARE the exit, and a third control there would muddy the decision. */}
             {stage < STAGE_COUNT - 1 && (
               <button
                 type="button"
                 onClick={startExploring}
                 data-testid="academy-welcome-skip"
-                className="rounded-md px-2 py-2 text-xs font-medium text-[#cfc4a5]/60 transition-colors hover:text-[#f0d78c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70"
+                className="group inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-2 text-[11px] font-medium text-[#cfc4a5]/75 transition-colors hover:text-[#f0d78c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70 sm:text-xs"
               >
-                Skip
+                {/* Short form on phones: the full phrase wraps to two lines in a
+                    375px footer rail and collides with the arrow. */}
+                <span className="sm:hidden">Skip intro</span>
+                <span className="hidden sm:inline">Skip to the Academy</span>
+                <ArrowRight
+                  className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
               </button>
             )}
           </div>
@@ -333,22 +405,79 @@ function WelcomeStage({
   );
 }
 
-function ModesStage({ headingRef }: { headingRef: HeadingRef }) {
+function ModesStage({
+  headingRef,
+  isLandscapePhone,
+}: {
+  headingRef: HeadingRef;
+  isLandscapePhone: boolean;
+}) {
+  const [selectedId, setSelectedId] = useState(ACADEMY_MODES[0].id);
+  const mode = ACADEMY_MODES.find((m) => m.id === selectedId) ?? ACADEMY_MODES[0];
+
   return (
-    <div className="flex w-full max-w-5xl flex-col items-center">
-      <StageHeading headingRef={headingRef} className="text-[clamp(1.4rem,4vw,2.4rem)]">
+    <div className="flex w-full max-w-4xl flex-col items-center">
+      <StageHeading
+        headingRef={headingRef}
+        className={
+          isLandscapePhone
+            ? "text-[clamp(1.1rem,3vw,1.5rem)]"
+            : "text-[clamp(1.3rem,3.6vw,2.1rem)]"
+        }
+      >
         What&rsquo;s inside
       </StageHeading>
 
-      {/* Two columns on a portrait phone rather than one: four single-file cards
-          turn the stage into a scroll, and the plates stay legible at half width.
-          Four columns from `sm` up — NOT `lg`. A landscape phone is 740×360, so
-          an lg breakpoint would leave it on two columns and each 7:8 plate would
-          be taller than the whole viewport. */}
-      <div className="mt-6 grid w-full grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4 sm:gap-x-6">
-        {ACADEMY_MODES.map((mode) => (
-          <AcademyModeCard key={mode.id} mode={mode} />
-        ))}
+      <div className={isLandscapePhone ? "mt-2.5 w-full" : "mt-4 w-full"}>
+        <AcademyModeExhibit mode={mode} compact={isLandscapePhone} />
+      </div>
+
+      {/* The caption is a live region: on a mode change the exhibit above swaps
+          silently for anyone not watching it, so the name and description are
+          announced instead. */}
+      <div
+        id="academy-mode-panel"
+        role="tabpanel"
+        aria-labelledby={`academy-mode-tab-${mode.id}`}
+        aria-live="polite"
+        className={isLandscapePhone ? "mt-2 w-full" : "mt-3.5 w-full"}
+      >
+        <h2
+          className={[
+            "ranked-title text-center leading-tight text-[#f0d78c]",
+            isLandscapePhone ? "text-base" : "text-lg sm:text-xl",
+          ].join(" ")}
+        >
+          {mode.title}
+        </h2>
+        <p
+          className={[
+            "mx-auto max-w-xl text-balance text-center leading-snug text-[#cfc4a5]/80",
+            isLandscapePhone ? "mt-1 text-[12px]" : "mt-1.5 text-[13px] sm:text-sm",
+          ].join(" ")}
+        >
+          {mode.description}
+        </p>
+        {/* Highlights answer "why is this interesting?" without another paragraph. */}
+        <ul className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
+          {mode.highlights.map((h) => (
+            <li
+              key={h}
+              className="rounded-full border border-[#c9a84c]/25 bg-[#c9a84c]/[0.07] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.13em] text-[#f0d78c]/80 sm:text-[11px]"
+            >
+              {h}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className={isLandscapePhone ? "mt-2.5 w-full" : "mt-4 w-full"}>
+        <AcademyModeSelector
+          modes={ACADEMY_MODES}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          compact={isLandscapePhone}
+        />
       </div>
     </div>
   );
@@ -358,39 +487,132 @@ function ChoiceStage({
   headingRef,
   onExplore,
   onTutorial,
+  isLandscapePhone,
 }: {
   headingRef: HeadingRef;
   onExplore: () => void;
   onTutorial: () => void;
+  isLandscapePhone: boolean;
 }) {
   return (
-    <div className="flex w-full max-w-xl flex-col items-center">
-      <StageHeading headingRef={headingRef} className="text-[clamp(1.5rem,4.4vw,2.6rem)]">
+    <div className="flex w-full max-w-2xl flex-col items-center">
+      {/* Mogzy bookends the introduction: he showed the visitor in on Stage 1
+          and sees them off here. Smaller than the arrival, so the two choices
+          stay the focus rather than competing with him. */}
+      {!isLandscapePhone && (
+        <MogzyMascot
+          pose="base"
+          decorative
+          className="h-20 w-auto sm:h-24"
+          style={{ filter: "drop-shadow(0 0 26px rgba(201,168,76,0.32))" }}
+        />
+      )}
+
+      <StageHeading
+        headingRef={headingRef}
+        className={
+          isLandscapePhone
+            ? "text-[clamp(1.1rem,3vw,1.5rem)]"
+            : "mt-3 text-[clamp(1.4rem,4vw,2.3rem)]"
+        }
+      >
         How do you want to start?
       </StageHeading>
 
-      <div className="mt-8 flex w-full flex-col items-stretch gap-3 sm:max-w-sm">
-        <PrimaryButton onClick={onExplore} testId="academy-welcome-explore" full>
-          Start Exploring
-        </PrimaryButton>
-
-        {/* Genuinely secondary, not a trap door: both routes into the product
-            are legitimate, and the tutorial must never read as the price of
-            entry. Outline weight says "also fine", not "lesser". */}
-        <button
-          type="button"
+      {/* Two paths, side by side from `sm` up so the choice reads as a fork
+          rather than a ranked list — but still clearly weighted, since one of
+          them is the default way into the product. Not marketing cards: each is
+          a single control carrying an icon, a label and one line of what it
+          means. */}
+      <div
+        className={[
+          "grid w-full gap-3",
+          isLandscapePhone ? "mt-3 grid-cols-2" : "mt-6 grid-cols-1 sm:grid-cols-2",
+        ].join(" ")}
+      >
+        <PathButton
+          onClick={onExplore}
+          testId="academy-welcome-explore"
+          Icon={Compass}
+          label="Start Exploring"
+          detail="Head into the Academy and look around."
+          primary
+        />
+        {/* Genuinely a peer, not a trap door: both routes into the product are
+            legitimate, and the tutorial must never read as the price of entry. */}
+        <PathButton
           onClick={onTutorial}
-          data-testid="academy-welcome-tutorial"
-          className="w-full rounded-xl border border-[#c9a84c]/45 bg-white/[0.03] px-6 py-3 text-sm font-semibold text-[#f0d78c] transition-colors hover:bg-[#c9a84c]/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#04070f]"
-        >
-          Take the guided tutorial
-        </button>
-
-        <p className="text-balance text-center text-xs text-[#cfc4a5]/60">
-          Tutorial takes about five minutes. No account needed.
-        </p>
+          testId="academy-welcome-tutorial"
+          Icon={GraduationCap}
+          label="Take the tutorial"
+          detail="A guided run through a Ranked duel."
+        />
       </div>
+
+      <p
+        className={[
+          "text-balance text-center text-[#cfc4a5]/55",
+          isLandscapePhone ? "mt-2 text-[11px]" : "mt-4 text-xs",
+        ].join(" ")}
+      >
+        The tutorial takes about five minutes. No account needed either way.
+      </p>
     </div>
+  );
+}
+
+/** One of the two exits on the final stage. */
+function PathButton({
+  onClick,
+  testId,
+  Icon,
+  label,
+  detail,
+  primary = false,
+}: {
+  onClick: () => void;
+  testId: string;
+  Icon: React.ElementType;
+  label: string;
+  detail: string;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      className={[
+        "group flex flex-col items-center gap-1.5 rounded-2xl px-5 py-4 text-center",
+        "border transition-colors duration-200",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/80",
+        "focus-visible:ring-offset-2 focus-visible:ring-offset-[#04070f]",
+        primary
+          ? "border-[#c9a84c] bg-gradient-to-b from-[#c9a84c] to-[#a8862f] shadow-[0_8px_26px_rgba(201,168,76,0.26)] hover:from-[#d4b35c] hover:to-[#b8923f]"
+          : "border-[#c9a84c]/40 bg-white/[0.03] hover:border-[#c9a84c]/65 hover:bg-[#c9a84c]/10",
+      ].join(" ")}
+    >
+      <Icon
+        className={["h-5 w-5", primary ? "text-[#1a1530]" : "text-[#f0d78c]"].join(" ")}
+        aria-hidden="true"
+      />
+      <span
+        className={[
+          "text-sm font-bold leading-tight",
+          primary ? "text-[#1a1530]" : "text-[#f0d78c]",
+        ].join(" ")}
+      >
+        {label}
+      </span>
+      <span
+        className={[
+          "text-[11px] leading-snug",
+          primary ? "text-[#1a1530]/75" : "text-[#cfc4a5]/65",
+        ].join(" ")}
+      >
+        {detail}
+      </span>
+    </button>
   );
 }
 

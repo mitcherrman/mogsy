@@ -190,33 +190,106 @@ describe("replay", () => {
 });
 
 describe("mode previews", () => {
-  it("shows exactly four curated modes", () => {
+  /** Open the modes stage. */
+  function goToModesStage() {
     render(<AcademyWelcomePage />);
     fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-    expect(screen.getAllByRole("figure")).toHaveLength(4);
+  }
+
+  it("offers all four curated modes as real tabs", () => {
+    goToModesStage();
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(4);
+    expect(tabs.map((t) => t.textContent?.trim())).toEqual(
+      ACADEMY_MODES.map((m) => m.title),
+    );
   });
 
-  it("names every mode for assistive tech, including the ones drawn as artwork", () => {
-    render(<AcademyWelcomePage />);
-    fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-    for (const mode of ACADEMY_MODES) {
-      expect(screen.getByRole("heading", { level: 2, name: mode.title })).toBeTruthy();
+  it("features the first mode on arrival, with exactly one tab selected", () => {
+    goToModesStage();
+    const selected = screen.getAllByRole("tab").filter((t) => t.getAttribute("aria-selected") === "true");
+    expect(selected).toHaveLength(1);
+    expect(selected[0].textContent).toContain(ACADEMY_MODES[0].title);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(ACADEMY_MODES[0].title);
+  });
+
+  it("swaps the featured exhibit, name and description when another mode is picked", () => {
+    goToModesStage();
+    fireEvent.click(screen.getByTestId("academy-mode-tab-combat-lab"));
+
+    const combat = ACADEMY_MODES.find((m) => m.id === "combat-lab")!;
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(combat.title);
+    expect(screen.getByText(combat.description)).toBeTruthy();
+    for (const h of combat.highlights) expect(screen.getByText(h)).toBeTruthy();
+  });
+
+  it("moves selection with arrow keys, per the tabs pattern", () => {
+    goToModesStage();
+    const tablist = screen.getByRole("tablist");
+    fireEvent.keyDown(tablist, { key: "ArrowRight" });
+    expect(screen.getByTestId("academy-mode-tab-combat-lab")).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(tablist, { key: "ArrowLeft" });
+    expect(screen.getByTestId("academy-mode-tab-leaguecraft")).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(tablist, { key: "End" });
+    expect(screen.getByTestId("academy-mode-tab-archives")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("keeps exactly one tab in the tab order (roving tabindex)", () => {
+    goToModesStage();
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.filter((t) => t.tabIndex === 0)).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("academy-mode-tab-stat-check"));
+    const after = screen.getAllByRole("tab");
+    expect(after.filter((t) => t.tabIndex === 0)).toHaveLength(1);
+    expect(screen.getByTestId("academy-mode-tab-stat-check").tabIndex).toBe(0);
+  });
+
+  it("wires the panel to whichever tab is current", () => {
+    goToModesStage();
+    fireEvent.click(screen.getByTestId("academy-mode-tab-archives"));
+    const panel = screen.getByRole("tabpanel");
+    expect(panel.getAttribute("aria-labelledby")).toBe("academy-mode-tab-archives");
+    // The exhibit swaps silently for anyone not watching it.
+    expect(panel.getAttribute("aria-live")).toBe("polite");
+  });
+
+  it("survives rapid mode switching without losing the featured content", () => {
+    goToModesStage();
+    for (const id of ["combat-lab", "stat-check", "archives", "leaguecraft", "stat-check"]) {
+      fireEvent.click(screen.getByTestId(`academy-mode-tab-${id}`));
     }
+    const statCheck = ACADEMY_MODES.find((m) => m.id === "stat-check")!;
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(statCheck.title);
+    expect(screen.getByText(statCheck.description)).toBeTruthy();
+  });
+
+  it("uses the approved product name, not the artwork's engraved wording", () => {
+    // The Leaguecraft plate has "Leaguecraft Studies" baked into its pixels.
+    // The UI must say "Leaguecraft" — and must not have been "fixed" by
+    // renaming the product to match the art.
+    goToModesStage();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Leaguecraft");
+    expect(screen.queryByText(/Leaguecraft Studies/)).toBeNull();
   });
 
   it("does not present Ranked as a peer of Leaguecraft", () => {
-    render(<AcademyWelcomePage />);
-    fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-    expect(screen.getByRole("heading", { level: 2, name: "Leaguecraft" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { level: 2, name: /^Ranked$/ })).toBeNull();
+    goToModesStage();
+    expect(screen.queryByRole("tab", { name: /^Ranked$/ })).toBeNull();
+    // It belongs to Leaguecraft, and appears as one of its highlights.
+    expect(
+      ACADEMY_MODES.find((m) => m.id === "leaguecraft")!.highlights,
+    ).toContain("Ranked");
   });
 
-  it("keeps decorative artwork out of the accessibility tree", () => {
-    render(<AcademyWelcomePage />);
-    fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-    for (const img of Array.from(document.querySelectorAll("figure img"))) {
-      expect(img.getAttribute("aria-hidden")).toBe("true");
-      expect(img.getAttribute("alt")).toBe("");
+  it("keeps every exhibit image decorative", () => {
+    goToModesStage();
+    for (const id of ACADEMY_MODES.map((m) => m.id)) {
+      fireEvent.click(screen.getByTestId(`academy-mode-tab-${id}`));
+      const imgs = Array.from(screen.getByRole("tabpanel").parentElement!.querySelectorAll("img"));
+      for (const img of imgs) {
+        expect(img.getAttribute("aria-hidden")).toBe("true");
+        expect(img.getAttribute("alt")).toBe("");
+      }
     }
   });
 });
