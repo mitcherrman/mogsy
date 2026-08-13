@@ -17,6 +17,7 @@ import {
   hasDismissedTutorialPopup,
 } from "@/lib/quiz/onboarding-gate";
 import LolWelcomeIntro from "@/components/lol/LolWelcomeIntro";
+import { hasHandledAcademyWelcome } from "@/lib/welcome/academy-welcome";
 import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
@@ -157,6 +158,10 @@ export default function LolHub() {
     useRankedTutorialStatus();
   const { settings, loading: settingsLoading } = useAppSettings();
   const [popupDismissed, setPopupDismissed] = useState(hasDismissedTutorialPopup);
+  // Read once per mount, like popupDismissed above: the value cannot change
+  // while the hub is on screen, and a lazy initializer keeps storage access out
+  // of render.
+  const [academyWelcomeHandled] = useState(hasHandledAcademyWelcome);
 
   const { showAutoPopup, popupDismissible } = evaluateTutorialPresentation({
     autoPopupEnabled: settings.policy.tutorial.autoPopupEnabled,
@@ -164,8 +169,22 @@ export default function LolHub() {
     completed: tutorialCompleted,
     eligibleForFirstVisit: isAnonymous,
   });
+  // HI1: a visitor who has already been through the Academy introduction has
+  // been onboarded, and must never then be handed the legacy popup on arrival —
+  // that would be two first-run experiences back to back.
+  //
+  // Deliberately the smallest possible change: the popup component, its policy
+  // rows, and this whole evaluation stay exactly as they were, so HI1 can be
+  // reverted by removing one condition. The popup is separately switched off in
+  // production via `tutorial_auto_popup_enabled`; this does not depend on that
+  // and does not alter it.
   const showWelcome =
-    !tutorialLoading && !settingsLoading && !tutorialError && showAutoPopup && !popupDismissed;
+    !tutorialLoading &&
+    !settingsLoading &&
+    !tutorialError &&
+    showAutoPopup &&
+    !popupDismissed &&
+    !academyWelcomeHandled;
 
   const dismissWelcome = () => {
     markTutorialPopupDismissed();

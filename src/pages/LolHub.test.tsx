@@ -8,6 +8,13 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LolHub from "./LolHub";
+import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
+import { installLocalStorageStub } from "@/test/localStorageStub";
+
+// The pinned jsdom does not provide a working Storage — see localStorageStub.
+// Only localStorage is stubbed: the legacy popup's dismissal flag lives in
+// sessionStorage and is left exactly as the existing expectations found it.
+const resetLocalStorage = installLocalStorageStub();
 
 const mocks = vi.hoisted(() => ({
   trackFunnelEvent: vi.fn(),
@@ -319,6 +326,48 @@ describe("LolHub — first-visit tutorial popup visibility", () => {
     mocks.tutorial = { loading: false, error: true, completed: false };
     renderHub();
     expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+});
+
+describe("LolHub — the legacy popup never stacks on the HI1 introduction", () => {
+  afterEach(() => {
+    resetLocalStorage();
+  });
+
+  // A guest who has just been through /welcome arrives here already onboarded.
+  // Handing them the legacy popup would be two first-run experiences back to
+  // back — the one thing HI1 must not allow while both exist.
+  it("stays hidden for a guest who chose Start Exploring", () => {
+    markAcademyWelcomeHandled("explored");
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("stays hidden for a guest who chose the tutorial but has not finished it", () => {
+    markAcademyWelcomeHandled("tutorial");
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+    renderHub();
+    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+  });
+
+  it("still shows for a guest who has never seen the introduction", () => {
+    // The suppression must be driven by real HI1 state, not by HI1 merely
+    // existing — otherwise this would silently retire the popup everywhere.
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+    renderHub();
+    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
+  });
+
+  it("still shows when HI1 state is corrupt (treated as never seen)", () => {
+    localStorage.setItem("mogsy.academyWelcome.v1", "{{{");
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    mocks.tutorial = { loading: false, error: false, completed: false };
+    renderHub();
+    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
   });
 });
 

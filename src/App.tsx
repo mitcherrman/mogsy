@@ -167,6 +167,11 @@ const TeamSimPage = lazy(() => import("./pages/dev/team-sim/TeamSimPage"));
 // The faithful pre-Mogzy original stays viewable at /dev/legacy-entry.
 const MogzyEntryV2 = lazy(() => import("./pages/dev/mogzy-entry-v2/MogzyEntryV2"));
 
+// HI1 — the Academy introduction shown to a first-time visitor between the
+// entrance and the hub. Full-screen and layout-free like the entrance it
+// follows, so it is mounted OUTSIDE <Layout /> alongside it.
+const AcademyWelcomePage = lazy(() => import("./pages/welcome/AcademyWelcomePage"));
+
 // Production Ranked TUTORIAL onboarding — mandatory for new accounts, replayable
 // for completed ones. Reuses the canonical tutorial with durable completion.
 const RankedTutorialOnboardingPage = lazy(() => import("./pages/onboarding/RankedTutorialOnboardingPage"));
@@ -296,6 +301,13 @@ const App = () => (
                     )
                   }
                 />
+                {/* HI1 Academy introduction. A real route, not modal state: it
+                    survives refresh and direct navigation, and it stays reachable
+                    after completion so it can serve as Getting Started / replay.
+                    Deliberately NOT redirected away for returning visitors — the
+                    entrance decides who is sent here; opening it directly is
+                    always honoured. */}
+                <Route path="/welcome" element={<Suspense fallback={<StartupSurface pathname="/welcome" />}><AcademyWelcomePage /></Suspense>} />
                 {/* Isolated preview of the legacy pre-Mogzy entry screen (src/pages/Index.tsx).
                     Ungated on purpose — inspection only, not a production route. */}
                 <Route path="/dev/legacy-entry" element={<Suspense fallback={<RouteLoader />}><Index /></Suspense>} />
