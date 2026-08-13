@@ -1,9 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { Shield, FileText, Info, Mail, Lock } from "lucide-react";
+import { Shield, FileText, Info, Mail, Lock, MessageSquarePlus } from "lucide-react";
 import { SITE_NAME, LEAGUE_ONLY_MODE } from "@/lib/site-config";
 
 const links = [
   { to: "/about", label: "About", icon: Info },
+  // The Feedback Center's only discoverable entry point. /contact is a mailto:
+  // form for account and legal matters; product reports belong here, where they
+  // are recorded and get a status the reporter can follow.
+  { to: "/feedback", label: "Feedback", icon: MessageSquarePlus },
   { to: "/privacy", label: "Privacy Policy", icon: Lock },
   { to: "/terms", label: "Terms of Service", icon: FileText },
   { to: "/security", label: "Security", icon: Shield },
