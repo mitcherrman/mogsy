@@ -160,17 +160,21 @@ export const FEEDBACK_STATUS_PUBLIC_LABELS: Record<FeedbackStatus, string> = {
 };
 
 /**
- * Admin-only columns on public.feedback. Never selected by a user-facing query:
- * the submitter read path is the list_my_feedback() RPC, whose RETURNS TABLE
- * contract omits all of these and cannot be widened by a caller.
+ * Admin-only columns on public.feedback, reachable only through
+ * admin_list_feedback().
  *
- * NOTE (pre-existing, not introduced by FB1): the column-level REVOKE that is
- * supposed to hide `admin_notes` is a no-op on this project, because
- * ALTER DEFAULT PRIVILEGES grants SELECT at table level and a column REVOKE
- * cannot subtract from that. See the header of
- * 20260812120000_fb1_feedback_foundation.sql. Until Feedback.tsx moves off
- * .select("*") in FB1-3, treat every column on this table as readable by its
- * submitter.
+ * Two independent boundaries keep them that way:
+ *   1. list_my_feedback() is a RETURNS TABLE contract that omits all of them
+ *      and cannot be widened by a caller (no select() to append to).
+ *   2. 20260812140000_fb1_feedback_privilege_hardening.sql revokes table-level
+ *      SELECT from anon and authenticated, granting back only `id`. So a client
+ *      cannot route around (1) by querying the table directly.
+ *
+ * (2) exists because the column-level REVOKE this project used before it — the
+ * one in 20260522053651 covering admin_notes — is a no-op: ALTER DEFAULT
+ * PRIVILEGES grants SELECT at table level, and a column REVOKE cannot subtract
+ * from a table-level grant. Until that hardening migration is applied to
+ * Lovable Cloud, treat every column on this table as readable by its submitter.
  */
 export const FEEDBACK_ADMIN_ONLY_FIELDS = [
   "admin_notes",

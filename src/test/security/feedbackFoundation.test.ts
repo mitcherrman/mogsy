@@ -46,12 +46,15 @@ describe("FB1 migration — ordering and shape", () => {
   it("exists and sorts after every migration currently on main", () => {
     const files = migrationFiles();
     expect(files).toContain(FB1_MIGRATION);
-    // The FB1 pair are the last two, and the foundation must precede the
-    // storage migration — the latter's RPC reads feedback.screenshot_path.
-    expect(files.slice(-2)).toEqual([
-      FB1_MIGRATION,
-      "20260812130000_fb1_feedback_evidence_storage.sql",
-    ]);
+    // Nothing that is not FB1's sorts after it.
+    for (const later of files.slice(files.indexOf(FB1_MIGRATION) + 1)) {
+      expect(later).toMatch(/^20260812\d{6}_fb1_/);
+    }
+    // And it is the first of the FB1 set: the storage migration's RPC reads
+    // feedback.screenshot_path, and the hardening migration refuses to run
+    // without list_my_feedback(). Full ordering is pinned in
+    // feedbackPrivileges.test.ts.
+    expect(files.filter(f => /_fb1_/.test(f))[0]).toBe(FB1_MIGRATION);
   });
 
   it("sorts after the two unpushed 20260803120000 migrations (NOT1 P2, ADM2)", () => {
