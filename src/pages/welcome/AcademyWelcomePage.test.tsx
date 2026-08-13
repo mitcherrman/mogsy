@@ -146,6 +146,16 @@ describe("exits", () => {
     expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 
+  it("labels the two paths as approved, and gives neither the air of a penalty", () => {
+    render(<AcademyWelcomePage />);
+    goToChoiceStage();
+    expect(screen.getByTestId("academy-welcome-explore").textContent).toContain("Start Exploring");
+    // "Start the tutorial", not "Take the tutorial" — both exits are framed as
+    // something you START, so neither reads as the price of entry.
+    expect(screen.getByTestId("academy-welcome-tutorial").textContent).toContain("Start the tutorial");
+    expect(screen.queryByText(/Take the tutorial/)).toBeNull();
+  });
+
   it("Start Tutorial records the outcome and hands off to the real tutorial route", () => {
     render(<AcademyWelcomePage />);
     goToChoiceStage();

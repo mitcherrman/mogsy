@@ -544,7 +544,7 @@ function ChoiceStage({
           onClick={onTutorial}
           testId="academy-welcome-tutorial"
           Icon={GraduationCap}
-          label="Take the tutorial"
+          label="Start the tutorial"
           detail="A guided run through a Ranked duel."
         />
       </div>
