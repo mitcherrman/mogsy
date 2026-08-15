@@ -20,13 +20,24 @@
 // two separate products to choose between, which is wrong. It appears instead
 // as one of Leaguecraft's own highlights.
 //
-// NOT PREVIEWED — "Meta Reflex": the name still survives only in two comments in
-// LolHub.tsx and one test assertion. The hub subsection is switched off
-// (SHOW_SWIPE_GAMES = false) and nothing user-facing is labelled "Meta Reflex" —
-// the /league-swipe games present themselves as "Favorite Champion", "Stat Duel"
-// and so on. Previewing a mode a new visitor then cannot find would work against
-// the point of the introduction. `meta-reflex.png` is ready; adding it back is
-// one entry in this list plus one `visual` case.
+// NOT PREVIEWED — "Meta Reflex": an OPEN DECISION, no longer a settled one.
+//
+// This entry used to justify itself as "there is nothing to preview": the hub
+// subsection was switched off (SHOW_SWIPE_GAMES = false), nothing user-facing
+// carried the name, and previewing a mode a visitor could not then find would
+// have worked against the introduction.
+//
+// Every one of those premises stopped being true when MR1 landed. The hub
+// subsection is on, the surface is branded Meta Reflex throughout (hub, game,
+// stats, profile) and it now has two front doors — the standalone hub and a
+// Leaguecraft entry point in Quiz.tsx — rather than none. The original
+// reasoning no longer supports the omission.
+//
+// It stays out anyway, for a different reason: whether a first-time visitor
+// meets four modes or five is a product call about the shape of the
+// introduction, and HI1 chose four. That call is now the ONLY thing keeping it
+// out. `meta-reflex.png` is in src/academy/ and ready; adding it is one entry
+// in this list plus one `visual` case.
 // ---------------------------------------------------------------------------
 
 import { BrainCircuit, FileText, Layers, Swords } from "lucide-react";
