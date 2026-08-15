@@ -38,6 +38,11 @@ export function buildStaticEntries(): SitemapEntry[] {
     { path: "/lol/docs/pro/players", changefreq: "weekly", priority: "0.6" },
     { path: "/lol/docs/pro/teams", changefreq: "weekly", priority: "0.6" },
     { path: "/combat-lab", changefreq: "weekly", priority: "0.8" },
+    // Meta Reflex (internally League Swipe). Indexable: a public,
+    // anonymous-accessible League surface. The per-game routes are deliberately
+    // NOT enumerated — they are thin shells over the same hub content, so the
+    // hub is the single crawl entry point.
+    { path: "/league-swipe", changefreq: "weekly", priority: "0.7" },
     { path: "/blog", changefreq: "daily", priority: "0.9" },
     { path: "/about", changefreq: "monthly", priority: "0.6" },
     { path: "/privacy", changefreq: "monthly", priority: "0.4" },

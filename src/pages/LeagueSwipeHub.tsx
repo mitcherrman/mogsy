@@ -3,6 +3,7 @@ import { ArrowRight, BarChart3, Brain, Flame, Heart, Coins } from "lucide-react"
 import SEOHead from "@/components/SEOHead";
 import { useChampionAssets, getChampionLoading } from "@/hooks/useChampionAssets";
 import { LEAGUE_SWIPE_GAMES, type SwipeGameConfig } from "@/lib/league-swipe/api";
+import { META_REFLEX_NAME, META_REFLEX_TAGLINE } from "@/lib/league-swipe/branding";
 
 const GAME_ICONS: Record<string, React.ElementType> = {
   "favorite-champion": Heart,
@@ -11,23 +12,23 @@ const GAME_ICONS: Record<string, React.ElementType> = {
   "item-cost-duel": Coins,
 };
 
-/** Hub listing the League Swipe games — opinion votes and knowledge duels. */
+/** Hub listing the Meta Reflex games — opinion votes and knowledge duels. */
 export default function LeagueSwipeHub() {
   const { data: championAssets } = useChampionAssets();
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       <SEOHead
-        title="League Swipe | Quick LoL Opinion & Knowledge Duels | Mogzy"
+        title={`${META_REFLEX_NAME} | Quick LoL Opinion & Knowledge Duels | Mogzy`}
         description="Fast head-to-head League of Legends games: vote your favorite champions, call out the most annoying ones, and duel over stats and item costs."
         path="/league-swipe"
       />
 
       <div className="mb-6">
         <div className="text-[10px] uppercase tracking-[0.25em] text-[#c9a84c] font-bold">Mogzy League</div>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">League Swipe</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground">{META_REFLEX_NAME}</h1>
         <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-          Two options. One tap. Vote your opinions or test your knowledge, then see how the
+          {META_REFLEX_TAGLINE} Vote your opinions or test your knowledge, then see how the
           community split on every matchup.
         </p>
       </div>

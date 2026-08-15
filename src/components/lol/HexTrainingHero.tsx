@@ -6,6 +6,7 @@ import {
   getChampionSplash,
 } from "@/hooks/useChampionAssets";
 import { playUiSfx } from "@/lib/ui-sfx";
+import { META_REFLEX_NAME, META_REFLEX_ROUTE } from "@/lib/league-swipe/branding";
 
 export type TrainingModeKey = "quiz" | "lab" | "swipe";
 
@@ -36,9 +37,12 @@ const TRAINING_MODES: TrainingMode[] = [
     Icon: Swords,
   },
   {
+    // NOTE: this component has no importer — it was unmounted by the 2026-07-29
+    // hub redesign and left behind. Branded from the shared constant anyway, so
+    // that if it is ever remounted it cannot reintroduce the retired name.
     key: "swipe",
-    label: "League Swipe",
-    to: "/league-swipe",
+    label: META_REFLEX_NAME,
+    to: META_REFLEX_ROUTE,
     championName: "Jinx",
     description: "Vote, compare, and see what the League community thinks.",
     Icon: Zap,

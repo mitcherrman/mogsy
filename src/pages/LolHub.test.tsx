@@ -171,12 +171,30 @@ describe("LolHub — navigation structure", () => {
     for (const href of links) expect(href).toBe("/quiz/stat-check");
   });
 
-  it("hides the League Swipe subsection while Meta Reflex lives inside Leaguecraft", () => {
+  // This test previously asserted the OPPOSITE — that the subsection stayed
+  // hidden "while Meta Reflex lives inside Leaguecraft". That premise was
+  // false: the Leaguecraft entry point it referred to was never built, so the
+  // feature had no front door anywhere. Both surfaces now exist and are
+  // complementary; see Quiz.tsx §2d for the Leaguecraft half.
+  it("shows the Meta Reflex subsection with all four game cards", () => {
     renderHub();
-    // No top-level League Swipe destination and no swipe game cards.
-    expect(screen.queryByRole("link", { name: /League Swipe/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Favorite Champion/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Item Cost Duel/ })).toBeNull();
+    expect(screen.getByTestId("lol-hub-meta-reflex-section")).toBeTruthy();
+    for (const game of ["Favorite Champion", "Most Annoying Champion", "Stat Duel", "Item Cost Duel"]) {
+      expect(screen.getByRole("link", { name: new RegExp(game) })).toBeTruthy();
+    }
+    // "All games" and "Stats" both point into the preserved public URLs.
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((l) => l.getAttribute("href"))
+      .filter((h): h is string => !!h?.startsWith("/league-swipe"));
+    expect(hrefs).toContain("/league-swipe");
+    expect(hrefs).toContain("/league-swipe/stats");
+  });
+
+  it("brands the subsection Meta Reflex and never the retired name", () => {
+    const { container } = renderHub();
+    expect(screen.getByText("Meta Reflex")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/League Swipe/);
   });
 
   it("does not render the old hero mode selector", () => {

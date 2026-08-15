@@ -101,6 +101,27 @@ describe("route → base background", () => {
     expect(isLolSectionPath("/quizzes")).toBe(false);
     expect(isEntryPath("/lol")).toBe(false);
   });
+
+  // Meta Reflex (internally League Swipe) is League content on a public URL
+  // that predates the /lol and /quiz prefixes. Its absence from this predicate
+  // meant the page rendered with neither `theme-lol` nor `dark`, inheriting the
+  // visitor's sitewide Mogsy theme — which put the cards' hardcoded near-black
+  // text on a near-black ground for anyone on a light OS.
+  it("treats Meta Reflex as a League surface", () => {
+    expect(isLolSectionPath("/league-swipe")).toBe(true);
+    expect(isLolSectionPath("/league-swipe/stats")).toBe(true);
+    expect(isLolSectionPath("/league-swipe/item-cost-duel")).toBe(true);
+    expect(baseBackgroundForPath("/league-swipe")).toBe(LOL_BASE_BG);
+  });
+
+  it("still rejects Meta Reflex lookalike paths", () => {
+    expect(isLolSectionPath("/league-swipes")).toBe(false);
+    expect(isLolSectionPath("/league")).toBe(false);
+    // The legacy general-Mogsy swipe product is a DIFFERENT, non-League product
+    // and must not pick up the League theme.
+    expect(isLolSectionPath("/swipe")).toBe(false);
+    expect(isLolSectionPath("/swipe-leagues")).toBe(false);
+  });
 });
 
 describe("index.html bootstrap agrees with startup-shell.ts", () => {

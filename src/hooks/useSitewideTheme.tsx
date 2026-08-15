@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getThemeById, profileThemes, ProfileTheme } from "@/lib/profile-themes";
+import { isLolSectionPath } from "@/lib/startup-shell";
 
 const DEFAULT_CYCLE_INTERVAL = 8000;
 const DEFAULT_FADE_DURATION = 600;
@@ -166,14 +167,10 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     // Skip sitewide theme class mutations while the user is in that section so
     // we don't fight the LoL theme on cycle ticks or post-refresh hydration.
     const path = typeof window !== "undefined" ? window.location.pathname : "";
-    const isLolSection =
-      path === "/lol" ||
-      path.startsWith("/lol/") ||
-      path === "/combat-lab" ||
-      path.startsWith("/combat-lab/") ||
-      path === "/quiz" ||
-      path.startsWith("/quiz/");
-    if (isLolSection) return;
+    // Shared predicate rather than a local copy: this list was duplicated here
+    // and drifted from startup-shell's, which is how /league-swipe ended up
+    // rendering with a general Mogsy theme instead of the League one.
+    if (isLolSectionPath(path)) return;
     root.className = root.className.replace(/theme-\S+/g, "").trim();
 
     if (visualThemeId === "default") {

@@ -22,6 +22,13 @@ import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { LEAGUE_SWIPE_GAMES } from "@/lib/league-swipe/api";
+import {
+  META_REFLEX_NAME,
+  META_REFLEX_ROUTE,
+  META_REFLEX_STATS_ROUTE,
+  META_REFLEX_TAGLINE,
+} from "@/lib/league-swipe/branding";
 import { playUiSfx } from "@/lib/ui-sfx";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
@@ -119,16 +126,30 @@ const ACADEMY_LINES: ((name: string) => string)[] = [
 /** Fallback address for anonymous users and profiles with no display name. */
 const ACADEMY_FALLBACK_NAME = "Summoner";
 
-// League Swipe MVP games (see /league-swipe). The hub subsection is currently
-// hidden — Meta Reflex now lives inside Leaguecraft — but the code is kept so
-// it can be re-enabled without reconstruction.
-const SHOW_SWIPE_GAMES = false;
-const SWIPE_GAME_CARDS = [
-  { slug: "favorite-champion", title: "Favorite Champion", description: "Choose your favorites and shape the community ranking.", Icon: Heart },
-  { slug: "most-annoying-champion", title: "Most Annoying Champion", description: "Vote on League's most tilting champions.", Icon: Flame },
-  { slug: "higher-base-stat", title: "Stat Duel", description: "Guess which champion has the higher stat.", Icon: Brain },
-  { slug: "item-cost-duel", title: "Item Cost Duel", description: "Learn item costs through quick comparisons.", Icon: Coins },
-];
+// Meta Reflex games (internally League Swipe; see /league-swipe).
+//
+// This subsection was hidden on 2026-07-29 on the stated basis that Meta Reflex
+// "now lives inside Leaguecraft" — but that Leaguecraft entry point was never
+// actually built, so the feature ended up with no front door at all. The entry
+// now exists (Quiz.tsx §2d), and the owner has confirmed the two surfaces are
+// complementary, not exclusive: Meta Reflex is a full standalone experience AND
+// is reachable from Leaguecraft.
+const SHOW_SWIPE_GAMES = true;
+
+/** Icon per game slug. The only hub-specific fact — titles and descriptions
+ *  come from the shared catalog so the hub cannot drift from the game pages. */
+const SWIPE_GAME_ICONS: Record<string, typeof Heart> = {
+  "favorite-champion": Heart,
+  "most-annoying-champion": Flame,
+  "higher-base-stat": Brain,
+  "item-cost-duel": Coins,
+};
+const SWIPE_GAME_CARDS = LEAGUE_SWIPE_GAMES.map((g) => ({
+  slug: g.slug,
+  title: g.title,
+  description: g.description,
+  Icon: SWIPE_GAME_ICONS[g.slug] ?? Zap,
+}));
 
 export default function LolHub() {
   const { user } = useAuth();
@@ -507,26 +528,31 @@ export default function LolHub() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         <AdSlot placement="lol_hub_mid" className="mt-2" />
 
-        {/* League Swipe Games — hidden while Meta Reflex lives inside Leaguecraft */}
+        {/* Meta Reflex games — the standalone surface, alongside the
+            Leaguecraft entry in Quiz.tsx §2d rather than instead of it. */}
         {SHOW_SWIPE_GAMES && (
-          <div className="mt-8">
+          <div className="mt-8" data-testid="lol-hub-meta-reflex-section">
             <div className="flex items-end justify-between mb-3">
               <div>
                 <div className="flex items-center gap-2 text-[#c9a84c]">
                   <Zap className="h-4 w-4" />
-                  <span className="text-[10px] uppercase tracking-widest font-bold">League Swipe Games</span>
+                  <span className="text-[10px] uppercase tracking-widest font-bold">
+                    {META_REFLEX_NAME}
+                  </span>
                 </div>
-                <h2 className="text-lg md:text-xl font-bold text-foreground">Two options. One tap.</h2>
+                <h2 className="text-lg md:text-xl font-bold text-foreground">
+                  {META_REFLEX_TAGLINE}
+                </h2>
               </div>
               <div className="flex items-center gap-4">
                 <Link
-                  to="/league-swipe/stats"
+                  to={META_REFLEX_STATS_ROUTE}
                   className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
                 >
                   Stats <ArrowRight className="h-3 w-3" />
                 </Link>
                 <Link
-                  to="/league-swipe"
+                  to={META_REFLEX_ROUTE}
                   className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
                 >
                   All games <ArrowRight className="h-3 w-3" />

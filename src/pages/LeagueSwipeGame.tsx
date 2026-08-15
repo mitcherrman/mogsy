@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Coins, Flame, X } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -15,16 +15,39 @@ import {
   makeOpinionMatchup,
   makeStatMatchup,
   recordSwipeResult,
+  verifyFactualChoice,
   type SwipeMatchup,
   type SwipeRevealAggregates,
 } from "@/lib/league-swipe/api";
+import { META_REFLEX_NAME } from "@/lib/league-swipe/branding";
+import { narrowPoolToForcedPair, parseForcedPair } from "@/lib/league-swipe/devForcedPair";
+import { resolveFactualCategory } from "@/lib/league-swipe/factualCategories";
 
 /**
- * League Swipe game loop: show two cards → tap one → reveal community split
+ * One revealed round.
+ *
+ * `aggregates` is null when the vote write did not land (offline, RPC error, or
+ * a game the server does not recognise). That case is deliberately NOT filled
+ * in with a synthesised one-vote split: a fabricated community bar is
+ * indistinguishable from a real one, which both misleads the player and makes
+ * the `league_swipe_games.is_active` kill switch fail OPEN — the game keeps
+ * looking healthy while every write is rejected. Correctness still reveals,
+ * because it is derived locally from the matchup and does not depend on the
+ * write succeeding.
+ */
+type RevealState = {
+  aggregates: SwipeRevealAggregates | null;
+  isCorrect: boolean | null;
+};
+
+/**
+ * Meta Reflex game loop: show two cards → tap one → reveal community split
  * (and correctness for knowledge games) → next. Mobile-first, no clutter.
  */
 export default function LeagueSwipeGame() {
   const { gameSlug } = useParams<{ gameSlug: string }>();
+  const [searchParams] = useSearchParams();
+  const search = searchParams.toString();
   const game = getSwipeGame(gameSlug);
   const { user } = useAuth();
   const { data: championAssets } = useChampionAssets();
@@ -55,7 +78,7 @@ export default function LeagueSwipeGame() {
 
   const [matchup, setMatchup] = useState<SwipeMatchup | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [reveal, setReveal] = useState<SwipeRevealAggregates | null>(null);
+  const [reveal, setReveal] = useState<RevealState | null>(null);
   const [pending, setPending] = useState(false);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -69,36 +92,57 @@ export default function LeagueSwipeGame() {
 
   const nextMatchup = useCallback(() => {
     if (!game) return;
+
+    // Dev-only deterministic override (see lib/league-swipe/devForcedPair).
+    // Compiled out of production builds entirely. When active it only narrows
+    // the POOL — the matchup is still built by the same builders below, and the
+    // vote still goes through the ordinary session and RPC.
+    const forced = parseForcedPair(search);
+
     const generate = (): SwipeMatchup | null => {
       if (game.mode === "opinion" && championNames.length >= 2) {
-        return makeOpinionMatchup(game, championNames);
+        const pool = narrowPoolToForcedPair(championNames, forced, (n) => n) ?? championNames;
+        return makeOpinionMatchup(game, pool);
       }
       if (game.slug === "higher-base-stat" && championStats.length >= 2) {
-        return makeStatMatchup(game, championStats);
+        const pool =
+          narrowPoolToForcedPair(championStats, forced, (s) => s.champion_name) ?? championStats;
+        return makeStatMatchup(game, pool);
       }
       if (game.slug === "item-cost-duel" && items.length >= 2) {
-        return makeItemCostMatchup(game, items);
+        const pool = narrowPoolToForcedPair(items, forced, (i) => i.item_name) ?? items;
+        return makeItemCostMatchup(game, pool);
       }
       return null;
     };
     const pairKey = (m: SwipeMatchup) =>
       [m.left.id, m.right.id].sort().join("|") + "|" + String(m.context?.stat ?? "");
 
-    // Prefer a matchup that is both unseen and entity-fresh; degrade to just
-    // unseen, then to anything, so small pools can never stall the loop.
     let m: SwipeMatchup | null = null;
-    let fallback: SwipeMatchup | null = null;
-    for (let attempt = 0; attempt < 30 && !m; attempt++) {
-      const candidate = generate();
-      if (!candidate) break;
-      fallback = candidate;
-      if (seenPairs.current.has(pairKey(candidate))) continue;
-      const entityFresh =
-        !recentEntities.current.includes(candidate.left.id) &&
-        !recentEntities.current.includes(candidate.right.id);
-      if (entityFresh || attempt >= 20) m = candidate;
+
+    if (forced) {
+      // Forcing means forcing: skip the anti-repeat entirely. Verifying revote
+      // semantics requires dealing the SAME pair on consecutive rounds, which
+      // is exactly what `seenPairs` is designed to prevent. Leaving the loop in
+      // place would make it degrade through 30 attempts to the same answer, so
+      // short-circuiting is both clearer and honest about the intent.
+      m = generate();
+    } else {
+      // Prefer a matchup that is both unseen and entity-fresh; degrade to just
+      // unseen, then to anything, so small pools can never stall the loop.
+      let fallback: SwipeMatchup | null = null;
+      for (let attempt = 0; attempt < 30 && !m; attempt++) {
+        const candidate = generate();
+        if (!candidate) break;
+        fallback = candidate;
+        if (seenPairs.current.has(pairKey(candidate))) continue;
+        const entityFresh =
+          !recentEntities.current.includes(candidate.left.id) &&
+          !recentEntities.current.includes(candidate.right.id);
+        if (entityFresh || attempt >= 20) m = candidate;
+      }
+      m = m ?? fallback;
     }
-    m = m ?? fallback;
     if (m) {
       seenPairs.current.add(pairKey(m));
       recentEntities.current = [m.left.id, m.right.id, ...recentEntities.current].slice(
@@ -110,7 +154,7 @@ export default function LeagueSwipeGame() {
       setReveal(null);
       shownAt.current = Date.now();
     }
-  }, [game, championNames, championStats, items]);
+  }, [game, championNames, championStats, items, search]);
 
   // Deal the first matchup once data is ready.
   useEffect(() => {
@@ -163,21 +207,38 @@ export default function LeagueSwipeGame() {
         responseTimeMs: Date.now() - shownAt.current,
         context: matchup.context,
       });
-      setReveal(
-        agg ?? {
-          // Offline/RPC-failure fallback: still reveal, counting only this vote.
-          matchupId: "",
-          entityA: [chosen.id, other.id].sort()[0],
-          entityB: [chosen.id, other.id].sort()[1],
-          votesA: [chosen.id, other.id].sort()[0] === chosen.id ? 1 : 0,
-          votesB: [chosen.id, other.id].sort()[1] === chosen.id ? 1 : 0,
-          totalVotes: 1,
-          isCorrect,
-          ratingChange: null,
-          selectedRating: null,
-          otherRating: null,
-        },
-      );
+      // Factual categories get their verdict from the backend, which re-derives
+      // it from canonical Mogzy data. The local comparison above is only a
+      // fallback for the reveal — it is never what gets persisted, and it is
+      // computed from the same pool the server served, so the two agree.
+      //
+      // A null `verified_correct` means the server declined to judge (entity
+      // retired from the pool, or values converged after a patch). That is NOT
+      // "wrong" — fall back to the local reading rather than telling a player
+      // they were incorrect because the data moved.
+      let verdict: boolean | null = agg?.isCorrect ?? isCorrect;
+      if (game.mode === "knowledge") {
+        // The evaluator depends on the FACT, not the game: Stat Duel is one game
+        // over several facts and its slug is not a category at all. Passing the
+        // slug 404s and silently falls back to the browser's own comparison,
+        // which is the failure this feature exists to remove. See
+        // lib/league-swipe/factualCategories.
+        //
+        // A null category means no canonical evaluator exists for this variant
+        // (base MR). Keep the local reading rather than claiming a verdict.
+        const categoryId = resolveFactualCategory(
+          game.slug,
+          typeof matchup.context?.stat === "string" ? matchup.context.stat : null,
+        );
+        if (categoryId) {
+          const server = await verifyFactualChoice(categoryId, chosen.id, other.id);
+          if (server?.verified_correct != null) verdict = server.verified_correct;
+        }
+      }
+
+      // A failed write reveals with NO community data rather than a synthesised
+      // split — see RevealState.
+      setReveal({ aggregates: agg, isCorrect: verdict });
       setPending(false);
     },
     [game, matchup, selectedId, pending],
@@ -188,7 +249,7 @@ export default function LeagueSwipeGame() {
       <div className="max-w-lg mx-auto px-4 py-16 text-center text-muted-foreground">
         Game not found.{" "}
         <Link to="/league-swipe" className="text-[#c9a84c] hover:underline">
-          Back to League Swipe
+          Back to {META_REFLEX_NAME}
         </Link>
       </div>
     );
@@ -196,19 +257,24 @@ export default function LeagueSwipeGame() {
 
   const revealed = reveal !== null;
   const isCorrect = matchup?.correctId && selectedId ? selectedId === matchup.correctId : null;
+  const aggregates = reveal?.aggregates ?? null;
+  /** True once revealed but the vote write did not land, so there is nothing to show. */
+  const communityUnavailable = revealed && aggregates === null;
 
-  // Map canonical A/B aggregate counts back onto left/right cards.
-  const pctFor = (id: string): number => {
-    if (!reveal || reveal.totalVotes === 0) return 0;
-    const votes = id === reveal.entityA ? reveal.votesA : reveal.votesB;
-    return Math.round((votes / reveal.totalVotes) * 100);
+  // Map canonical A/B aggregate counts back onto left/right cards. Returns null
+  // when there is genuinely nothing to report, so callers render an honest gap
+  // instead of a confident 0%.
+  const pctFor = (id: string): number | null => {
+    if (!aggregates || aggregates.totalVotes === 0) return null;
+    const votes = id === aggregates.entityA ? aggregates.votesA : aggregates.votesB;
+    return Math.round((votes / aggregates.totalVotes) * 100);
   };
-  const selectedPct = selectedId ? pctFor(selectedId) : 0;
+  const selectedPct = selectedId ? pctFor(selectedId) : null;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       <SEOHead
-        title={`${game.title} | League Swipe | Mogzy LoL`}
+        title={`${game.title} | ${META_REFLEX_NAME} | Mogzy LoL`}
         description={game.description}
         path={`/league-swipe/${game.slug}`}
       />
@@ -219,7 +285,7 @@ export default function LeagueSwipeGame() {
           to="/league-swipe"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
         >
-          <ArrowLeft className="h-4 w-4" /> League Swipe
+          <ArrowLeft className="h-4 w-4" /> {META_REFLEX_NAME}
         </Link>
         {game.mode === "knowledge" && (
           <div className="flex items-center gap-3 text-sm">
@@ -319,7 +385,9 @@ export default function LeagueSwipeGame() {
                 <div className="px-3 py-2.5 min-h-[3rem]">
                   {revealed ? (
                     <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="font-bold text-[#f0d78c]">{pctFor(entity.id)}%</span>
+                      <span className="font-bold text-[#f0d78c]">
+                        {pctFor(entity.id) === null ? "—" : `${pctFor(entity.id)}%`}
+                      </span>
                       {entity.value !== undefined && (
                         <span className="font-semibold text-foreground tabular-nums">
                           {entity.value.toLocaleString()}
@@ -342,7 +410,8 @@ export default function LeagueSwipeGame() {
         <div className="mt-5 rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-4 md:p-5">
           {game.mode === "knowledge" ? (
             <div className="flex items-center gap-2 mb-2">
-              {isCorrect ? (
+              {/* Server verdict when the write landed, local derivation otherwise. */}
+              {reveal.isCorrect ? (
                 <span className="inline-flex items-center gap-1.5 text-emerald-400 font-bold">
                   <Check className="h-5 w-5" /> Correct!
                 </span>
@@ -355,9 +424,9 @@ export default function LeagueSwipeGame() {
           ) : (
             <div className="mb-2 font-bold text-foreground">
               You chose <span className="text-[#f0d78c]">{selectedId}</span>
-              {reveal.ratingChange != null && (
+              {aggregates?.ratingChange != null && (
                 <span className="ml-2 text-xs font-semibold text-emerald-400">
-                  +{reveal.ratingChange} rating
+                  +{aggregates.ratingChange} rating
                 </span>
               )}
             </div>
@@ -367,29 +436,45 @@ export default function LeagueSwipeGame() {
             <p className="text-sm text-muted-foreground mb-3">{matchup.explanation}</p>
           )}
 
-          {/* Community split bar (left card share vs right card share) */}
-          <div className="mb-1.5 flex justify-between text-xs font-semibold text-muted-foreground">
-            <span>
-              {matchup.left.label} · {pctFor(matchup.left.id)}%
-            </span>
-            <span>
-              {matchup.right.label} · {pctFor(matchup.right.id)}%
-            </span>
-          </div>
-          <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10 flex">
+          {/* Community split bar (left card share vs right card share). Shown
+              only when the vote actually landed — never synthesised. */}
+          {communityUnavailable ? (
             <div
-              className="h-full bg-gradient-to-r from-[#c9a84c] to-[#f0d78c] transition-all duration-700"
-              style={{ width: `${pctFor(matchup.left.id)}%` }}
-            />
-            <div
-              className="h-full bg-[#3a7bd5] transition-all duration-700"
-              style={{ width: `${pctFor(matchup.right.id)}%` }}
-            />
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            {reveal.totalVotes.toLocaleString()} vote{reveal.totalVotes === 1 ? "" : "s"} on this matchup
-            {reveal.totalVotes > 1 && <> — you sided with {selectedPct}% of players.</>}
-          </div>
+              data-testid="swipe-community-unavailable"
+              className="rounded-lg border border-border/70 bg-white/[0.03] px-3 py-2.5 text-xs text-muted-foreground"
+            >
+              Community results aren’t available right now — your vote wasn’t counted. The
+              answer above is still correct.
+            </div>
+          ) : (
+            <>
+              <div className="mb-1.5 flex justify-between text-xs font-semibold text-muted-foreground">
+                <span>
+                  {matchup.left.label} · {pctFor(matchup.left.id)}%
+                </span>
+                <span>
+                  {matchup.right.label} · {pctFor(matchup.right.id)}%
+                </span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10 flex">
+                <div
+                  className="h-full bg-gradient-to-r from-[#c9a84c] to-[#f0d78c] transition-all duration-700"
+                  style={{ width: `${pctFor(matchup.left.id) ?? 0}%` }}
+                />
+                <div
+                  className="h-full bg-[#3a7bd5] transition-all duration-700"
+                  style={{ width: `${pctFor(matchup.right.id) ?? 0}%` }}
+                />
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                {(aggregates?.totalVotes ?? 0).toLocaleString()} vote
+                {aggregates?.totalVotes === 1 ? "" : "s"} on this matchup
+                {(aggregates?.totalVotes ?? 0) > 1 && selectedPct !== null && (
+                  <> — you sided with {selectedPct}% of players.</>
+                )}
+              </div>
+            </>
+          )}
 
           <button
             onClick={nextMatchup}

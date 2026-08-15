@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveFactualCategory } from "@/lib/league-swipe/factualCategories";
 
 // Same convention as useChampionAssets: public meta endpoints on the Combat API.
 const API_BASE_URL = (
@@ -102,9 +103,123 @@ export async function fetchChampionStats(): Promise<ChampionStats[]> {
   return data.champion_stats ?? [];
 }
 
+/**
+ * Item Cost Duel entities, from the SHARED factual-duel provider.
+ *
+ * NOT `/api/meta/items`. That endpoint is Combat Lab's restricted
+ * simulatable-item vocabulary (125 rows), never a cost feed — and it reads the
+ * unmaintained `items.cost` column, which disagrees with the canonical
+ * `item_sheet_metadata` sheet on 24 items. For Axiom Arc vs Chempunk
+ * Chainsword the two stores pick OPPOSITE winners, so standalone and Ranked
+ * were teaching contradictory answers for the same pair.
+ *
+ * `/api/meta-reflex/factual/pool/item-cost-duel` serves the same canonical pool
+ * Ranked's module is handed (`ranked_item_catalog.load_duel_item_pool`), so the
+ * two modes cannot diverge again.
+ */
 export async function fetchItems(): Promise<ItemMeta[]> {
-  const data = await getJson<{ items?: ItemMeta[] }>("/api/meta/items");
-  return (data.items ?? []).filter((i) => typeof i.cost === "number" && i.cost > 0);
+  const data = await getJson<{ entities?: FactualEntity[] }>(
+    "/api/meta-reflex/factual/pool/item-cost-duel",
+  );
+  return (data.entities ?? [])
+    .filter((e) => typeof e.value === "number" && e.value > 0)
+    .map((e) => ({ item_name: e.id, item_type: null, cost: e.value }));
+}
+
+/** One entity from the shared factual-duel pool. */
+export type FactualEntity = {
+  id: string;
+  label: string;
+  value: number;
+  asset_path: string | null;
+};
+
+/** Server-side verdict for one factual answer. Never accepts a client claim. */
+export type FactualVerdict = {
+  category_id: string;
+  correct_id: string | null;
+  verified_correct: boolean | null;
+  verdict_source: string;
+  reason: string | null;
+};
+
+/**
+ * Ask the backend to judge a factual answer from canonical data.
+ *
+ * Deliberately sends only WHICH entity was picked — there is no parameter
+ * through which the browser could assert whether it was right. Returns null on
+ * transport failure; callers must treat that as "unjudged", never as wrong.
+ */
+export async function verifyFactualChoice(
+  categoryId: string,
+  selected: string,
+  other: string,
+): Promise<FactualVerdict | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/meta-reflex/factual/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category_id: categoryId, selected, other }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as FactualVerdict;
+  } catch {
+    return null;
+  }
+}
+
+/** One answer to be judged. Carries no correctness claim, by construction. */
+export type FactualVerifyItem = { category_id: string; selected: string; other: string };
+
+/** Matches the backend's MAX_BATCH; callers chunk rather than get a 422. */
+export const FACTUAL_VERIFY_BATCH_LIMIT = 200;
+
+/**
+ * Judge many stored answers in one round trip — the read half of derive-on-read.
+ *
+ * WHY READERS DERIVE INSTEAD OF READING A STORED VERDICT
+ * `league_swipe_results.verified_correct` is NULL for every row and stays that
+ * way. Writing it would need a privileged Supabase writer (service-role key or
+ * a definer function that accepts `verified_correct` from its caller), and the
+ * trust audit established that neither would actually create a server verdict:
+ * the backend authenticates AS THE CALLER, so a function trusting its caller is
+ * a function trusting the browser. Rather than build a boundary that only looks
+ * like one, correctness is derived at read time from canonical data.
+ *
+ * Returns verdicts positionally aligned with `items`. On transport failure every
+ * entry comes back unjudged — never wrong.
+ */
+export async function verifyFactualBatch(
+  items: FactualVerifyItem[],
+): Promise<Array<FactualVerdict | null>> {
+  if (items.length === 0) return [];
+  const out: Array<FactualVerdict | null> = [];
+  for (let i = 0; i < items.length; i += FACTUAL_VERIFY_BATCH_LIMIT) {
+    const chunk = items.slice(i, i + FACTUAL_VERIFY_BATCH_LIMIT);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/meta-reflex/factual/verify-batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: chunk }),
+      });
+      if (!res.ok) {
+        out.push(...chunk.map(() => null));
+        continue;
+      }
+      const body = (await res.json()) as { verdicts?: FactualVerdict[] };
+      const verdicts = body.verdicts ?? [];
+      // Length mismatch would silently misalign verdicts with rows — a player
+      // would see someone else's answer marked against their question.
+      if (verdicts.length !== chunk.length) {
+        out.push(...chunk.map(() => null));
+        continue;
+      }
+      out.push(...verdicts);
+    } catch {
+      out.push(...chunk.map(() => null));
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -229,18 +344,40 @@ export type SwipeMatchupStat = {
   total: number;
 };
 
+/**
+ * Shape returned by `get_league_swipe_stats`.
+ *
+ * DEAD FIELDS — do not read: `totals.correct`, `totals.incorrect`,
+ * `totals.accuracy`, `perGame[].accuracy`, and `mostMissed`. All five are
+ * computed in SQL from `league_swipe_results.is_correct`, which the v2 vote RPC
+ * writes NULL unconditionally (it was a browser claim the database trusted).
+ * They are not "empty until there is data" — they are structurally empty
+ * forever. Use `fetchFactualCommunityAccuracy()` instead, which derives the same
+ * numbers from public vote aggregates judged by the canonical backend verifier.
+ *
+ * They are kept in the type because the RPC still returns them; retiring them
+ * needs a Supabase migration, which is a separate, manually-applied change.
+ */
 export type SwipeGlobalStats = {
   totals: {
     swipes: number;
     opinionVotes: number;
     knowledgeAnswers: number;
+    /** @deprecated always 0 — see the note on SwipeGlobalStats. */
     correct: number;
+    /** @deprecated always 0 — see the note on SwipeGlobalStats. */
     incorrect: number;
+    /** @deprecated always null — see the note on SwipeGlobalStats. */
     accuracy: number | null;
     avgResponseMs: number | null;
     uniqueMatchups: number;
   };
-  perGame: Array<{ slug: string; title: string; mode: SwipeGameMode; swipes: number; accuracy: number | null }>;
+  perGame: Array<{
+    slug: string; title: string; mode: SwipeGameMode; swipes: number;
+    /** @deprecated always null — see the note on SwipeGlobalStats. */
+    accuracy: number | null;
+  }>;
+  /** @deprecated always empty — see the note on SwipeGlobalStats. */
   mostMissed: Array<{ game: string; entityA: string; entityB: string; correct: string | null; missCount: number }>;
   mostVoted: SwipeMatchupStat[];
   closest: SwipeMatchupStat[];
@@ -278,26 +415,262 @@ export async function fetchTopRatings(gameSlug: string, limit = 10): Promise<Swi
   return (data ?? []) as SwipeEntityRating[];
 }
 
+/**
+ * One of the current user's past factual answers, judged at READ time.
+ *
+ * Note what this type does NOT expose: `is_correct` (the v1 column, which the
+ * v2 RPC now always writes NULL because it was a browser claim the database
+ * trusted verbatim) and `correct_entity` as stored (also a browser claim). They
+ * are absent so no renderer can reach for them by accident; `correctEntity`
+ * here is the canonical answer from the server verifier, not the stored one.
+ */
 export type SwipeOwnResult = {
-  selected_entity: string;
-  other_entity: string;
-  correct_entity: string | null;
-  is_correct: boolean | null;
-  response_time_ms: number | null;
-  created_at: string;
-  game_id: string;
+  selectedEntity: string;
+  otherEntity: string;
+  variant: string | null;
+  responseTimeMs: number | null;
+  createdAt: string;
+  gameSlug: string;
+  gameTitle: string;
+  /**
+   * Server-derived correctness. `null` means UNJUDGED — the entity left the
+   * canonical pool, the values converged, the variant has no evaluator, or the
+   * backend was unreachable. It must never be rendered as "wrong".
+   */
+  verifiedCorrect: boolean | null;
+  /** The canonical answer, when one could be established. */
+  correctEntity: string | null;
 };
 
-/** Current user's recent knowledge answers (RLS limits results to own rows). */
+type SwipeGameRow = { id: string; slug: string; title: string; mode: SwipeGameMode };
+
+/** Game id → slug/title/mode. Public table; one read serves every derivation. */
+async function fetchGameRows(): Promise<SwipeGameRow[]> {
+  const { data, error } = await sb
+    .from("league_swipe_games")
+    .select("id, slug, title, mode");
+  if (error) return [];
+  return (data ?? []) as SwipeGameRow[];
+}
+
+/**
+ * The current user's recent factual answers, with correctness DERIVED.
+ *
+ * The previous implementation filtered `.not("is_correct", "is", null)`. Since
+ * the v2 RPC writes that column NULL unconditionally, the filter matched zero
+ * rows forever: the panel showed "play a knowledge duel to see your history"
+ * even to a player who had just finished ten of them. Correctness now comes
+ * from the canonical verifier instead of from a column that no longer fills.
+ *
+ * RLS restricts the read to the caller's own rows, so this needs no privileged
+ * access — which is the point: derive-on-read works with the trust boundary
+ * exactly as it stands.
+ */
 export async function fetchMyRecentResults(limit = 10): Promise<SwipeOwnResult[]> {
+  const games = await fetchGameRows();
+  const byId = new Map(games.map((g) => [g.id, g]));
+  const knowledgeIds = games.filter((g) => g.mode === "knowledge").map((g) => g.id);
+  if (knowledgeIds.length === 0) return [];
+
   const { data, error } = await sb
     .from("league_swipe_results")
-    .select("selected_entity, other_entity, correct_entity, is_correct, response_time_ms, created_at, game_id")
-    .not("is_correct", "is", null)
+    .select("selected_entity, other_entity, variant, response_time_ms, created_at, game_id")
+    .in("game_id", knowledgeIds)
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) return [];
-  return (data ?? []) as SwipeOwnResult[];
+
+  const rows = (data ?? []) as Array<{
+    selected_entity: string;
+    other_entity: string;
+    variant: string | null;
+    response_time_ms: number | null;
+    created_at: string;
+    game_id: string;
+  }>;
+  if (rows.length === 0) return [];
+
+  // Resolve each row to an evaluator. Rows with none stay unjudged rather than
+  // being dropped — the play happened and belongs in the history.
+  const categories = rows.map((r) =>
+    resolveFactualCategory(byId.get(r.game_id)?.slug ?? "", r.variant),
+  );
+  const verifiable = rows
+    .map((r, i) => ({ r, i, category: categories[i] }))
+    .filter((x): x is { r: typeof rows[number]; i: number; category: string } => x.category !== null);
+
+  const verdicts = await verifyFactualBatch(
+    verifiable.map(({ r, category }) => ({
+      category_id: category,
+      selected: r.selected_entity,
+      other: r.other_entity,
+    })),
+  );
+  const byRow = new Map<number, FactualVerdict | null>();
+  verifiable.forEach(({ i }, k) => byRow.set(i, verdicts[k] ?? null));
+
+  return rows.map((r, i) => {
+    const v = byRow.get(i) ?? null;
+    const game = byId.get(r.game_id);
+    return {
+      selectedEntity: r.selected_entity,
+      otherEntity: r.other_entity,
+      variant: r.variant,
+      responseTimeMs: r.response_time_ms,
+      createdAt: r.created_at,
+      gameSlug: game?.slug ?? "",
+      gameTitle: game?.title ?? "",
+      verifiedCorrect: v?.verified_correct ?? null,
+      correctEntity: v?.correct_id ?? null,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Community factual accuracy (derived, not stored)
+// ---------------------------------------------------------------------------
+
+/**
+ * How many distinct factual matchups one accuracy pass will JUDGE, chosen by
+ * total votes so the cap drops only the long tail almost nobody has played.
+ */
+export const COMMUNITY_ACCURACY_PAIR_LIMIT = 400;
+
+/**
+ * How many matchup rows are READ before that choice is made.
+ *
+ * Two stages because PostgREST cannot order by `votes_a + votes_b` (there is no
+ * such column), so the ranking that matters has to happen client-side. The rows
+ * are tiny; reading a wide slice and sorting locally is cheaper than adding a
+ * generated column to a production table for a stats page.
+ *
+ * Above this many distinct factual pairs the read itself is a partial view and
+ * `truncated` is set. Callers must surface that rather than presenting the
+ * number as a total.
+ */
+export const COMMUNITY_ACCURACY_READ_LIMIT = 2000;
+
+export type SwipeFactualAccuracy = {
+  /** Attempts on judged pairs. Not the same as total knowledge answers. */
+  attempts: number;
+  correct: number;
+  /** Percentage, or null when nothing could be judged. */
+  accuracy: number | null;
+  judgedPairs: number;
+  /** Pairs read but not judgeable (no evaluator, retired entity, tie). */
+  unjudgedPairs: number;
+  truncated: boolean;
+  perGame: Record<string, number>;
+  mostMissed: Array<{
+    game: string;
+    entityA: string;
+    entityB: string;
+    correct: string;
+    missCount: number;
+  }>;
+};
+
+/**
+ * Community accuracy on factual duels, derived from public aggregates.
+ *
+ * WHY THIS DOES NOT READ `league_swipe_results`
+ * It does not need to. For a factual game the RPC adds exactly one vote per
+ * attempt to the chosen side of `league_swipe_matchups`, so votes on the
+ * canonically-correct side ARE the correct-answer count. Combining that public,
+ * already-aggregated table with the canonical verifier reproduces the accuracy
+ * the old `get_league_swipe_stats` SQL used to compute from `r.is_correct` —
+ * which the v2 RPC leaves NULL forever, making every one of those fields dead.
+ *
+ * Nothing here needs elevated privilege: `league_swipe_games` and
+ * `league_swipe_matchups` are both SELECT-granted to anon.
+ */
+export async function fetchFactualCommunityAccuracy(): Promise<SwipeFactualAccuracy> {
+  const empty: SwipeFactualAccuracy = {
+    attempts: 0, correct: 0, accuracy: null, judgedPairs: 0,
+    unjudgedPairs: 0, truncated: false, perGame: {}, mostMissed: [],
+  };
+
+  const games = await fetchGameRows();
+  const knowledge = games.filter((g) => g.mode === "knowledge");
+  if (knowledge.length === 0) return empty;
+  const byId = new Map(knowledge.map((g) => [g.id, g]));
+
+  const { data, error } = await sb
+    .from("league_swipe_matchups")
+    .select("game_id, entity_a, entity_b, variant, votes_a, votes_b")
+    .in("game_id", knowledge.map((g) => g.id))
+    .limit(COMMUNITY_ACCURACY_READ_LIMIT);
+  if (error) return empty;
+
+  const all = (data ?? []) as Array<{
+    game_id: string; entity_a: string; entity_b: string;
+    variant: string | null; votes_a: number; votes_b: number;
+  }>;
+  // Rank by total votes here, not in the query — see COMMUNITY_ACCURACY_READ_LIMIT.
+  const ranked = [...all].sort(
+    (a, b) => (b.votes_a + b.votes_b) - (a.votes_a + a.votes_b),
+  );
+  const truncated =
+    all.length >= COMMUNITY_ACCURACY_READ_LIMIT || ranked.length > COMMUNITY_ACCURACY_PAIR_LIMIT;
+  const pairs = ranked.slice(0, COMMUNITY_ACCURACY_PAIR_LIMIT);
+  if (pairs.length === 0) return empty;
+
+  const resolved = pairs
+    .map((p) => ({ p, category: resolveFactualCategory(byId.get(p.game_id)?.slug ?? "", p.variant) }))
+    .filter((x): x is { p: typeof pairs[number]; category: string } => x.category !== null);
+
+  const verdicts = await verifyFactualBatch(
+    resolved.map(({ p, category }) => ({
+      category_id: category, selected: p.entity_a, other: p.entity_b,
+    })),
+  );
+
+  let attempts = 0;
+  let correct = 0;
+  let judgedPairs = 0;
+  const perGameTotals = new Map<string, { attempts: number; correct: number }>();
+  const missed: SwipeFactualAccuracy["mostMissed"] = [];
+
+  resolved.forEach(({ p }, i) => {
+    const v = verdicts[i];
+    if (!v || v.correct_id == null) return;      // unjudged — excluded, not scored 0
+    const total = (p.votes_a ?? 0) + (p.votes_b ?? 0);
+    if (total <= 0) return;
+    const correctVotes = v.correct_id === p.entity_a ? (p.votes_a ?? 0) : (p.votes_b ?? 0);
+    judgedPairs += 1;
+    attempts += total;
+    correct += correctVotes;
+
+    const slug = byId.get(p.game_id)?.slug ?? "";
+    const acc = perGameTotals.get(slug) ?? { attempts: 0, correct: 0 };
+    acc.attempts += total;
+    acc.correct += correctVotes;
+    perGameTotals.set(slug, acc);
+
+    const misses = total - correctVotes;
+    if (misses > 0) {
+      missed.push({
+        game: slug, entityA: p.entity_a, entityB: p.entity_b,
+        correct: v.correct_id, missCount: misses,
+      });
+    }
+  });
+
+  const perGame: Record<string, number> = {};
+  for (const [slug, t] of perGameTotals) {
+    if (t.attempts > 0) perGame[slug] = Math.round((t.correct / t.attempts) * 1000) / 10;
+  }
+
+  return {
+    attempts,
+    correct,
+    accuracy: attempts > 0 ? Math.round((correct / attempts) * 1000) / 10 : null,
+    judgedPairs,
+    unjudgedPairs: pairs.length - judgedPairs,
+    truncated,
+    perGame,
+    mostMissed: missed.sort((a, b) => b.missCount - a.missCount).slice(0, 5),
+  };
 }
 
 export async function recordSwipeResult(params: {

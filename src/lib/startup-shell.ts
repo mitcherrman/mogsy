@@ -24,9 +24,11 @@ export const ENTRY_BASE_BG = "#04070f";
 export const DEFAULT_BASE_BG = "#0a0a1a";
 
 /**
- * Routes that own the LoLdle-inspired League theme. Kept in step with the same
- * test in Layout and SitewideThemeProvider — those three must agree or the
- * theme class flickers on navigation.
+ * Routes that own the LoLdle-inspired League theme.
+ *
+ * This is now the SINGLE definition. `useSitewideTheme` previously carried a
+ * hand-copied duplicate of this list, which is exactly the drift the old
+ * comment here warned about — it now imports this function instead.
  */
 export function isLolSectionPath(pathname: string): boolean {
   return (
@@ -35,7 +37,15 @@ export function isLolSectionPath(pathname: string): boolean {
     pathname === "/combat-lab" ||
     pathname.startsWith("/combat-lab/") ||
     pathname === "/quiz" ||
-    pathname.startsWith("/quiz/")
+    pathname.startsWith("/quiz/") ||
+    // Meta Reflex (internally League Swipe). Its absence here was the root
+    // cause of the surface rendering with neither `theme-lol` nor `dark`, so it
+    // inherited whatever sitewide Mogsy theme the visitor happened to have —
+    // putting the cards' hardcoded near-black text on a near-black ground for
+    // light-OS users. It is League content and belongs in the League theme,
+    // even though its historical public URL sits outside /lol and /quiz.
+    pathname === "/league-swipe" ||
+    pathname.startsWith("/league-swipe/")
   );
 }
 

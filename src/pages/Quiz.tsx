@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame } from "lucide-react";
+import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,11 @@ import { SITE_URL } from "@/lib/site-config";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import LeaguecraftTutorialLink from "@/components/quiz/LeaguecraftTutorialLink";
+import {
+  META_REFLEX_NAME,
+  META_REFLEX_ROUTE,
+  META_REFLEX_TAGLINE,
+} from "@/lib/league-swipe/branding";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
@@ -872,6 +877,35 @@ export default function Quiz() {
                     <CardDescription className="text-xs">
                       Build a hand and compare champion stats across three lanes.
                       Play the bot, or invite a friend to a private match.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            </div>
+
+            {/* 2d. Meta Reflex — the two-card duel entrance. Leaguecraft owns
+                /quiz, /quiz/ranked, /quiz/stat-check and /quiz/mastery, but
+                Meta Reflex deliberately keeps its own public URLs at
+                /league-swipe*: they are live links and a route migration for
+                tidiness alone would break them. This card is the Leaguecraft
+                entry point that was never built when the /lol hub tile was
+                retired — see src/lib/league-swipe/branding.ts. */}
+            <div className="mb-3" data-testid="hub-meta-reflex-section">
+              <Link
+                to={META_REFLEX_ROUTE}
+                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                data-testid="hub-meta-reflex-link"
+              >
+                <Card className="transition-colors hover:border-primary/50">
+                  <CardHeader className="pb-1">
+                    <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
+                      <Zap className="h-4 w-4" aria-hidden="true" />
+                      {META_REFLEX_NAME}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {META_REFLEX_TAGLINE} Rapid-fire champion and item duels —
+                      vote on the ones with no right answer, and test yourself on
+                      the ones that do.
                     </CardDescription>
                   </CardHeader>
                 </Card>

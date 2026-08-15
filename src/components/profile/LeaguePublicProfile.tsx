@@ -18,6 +18,7 @@ import {
 } from "@/lib/quiz/api";
 import { pickBestCategory } from "@/lib/profile/view-model";
 import { fetchMyRecentResults, type SwipeOwnResult } from "@/lib/league-swipe/api";
+import { META_REFLEX_NAME } from "@/lib/league-swipe/branding";
 import type { ProfileTheme } from "@/lib/profile-themes";
 
 type ThemeStyles = ProfileTheme["styles"];
@@ -286,7 +287,7 @@ export default function LeaguePublicProfile({
           <div className="space-y-2">
             {(recentTakes as SwipeOwnResult[]).map((r, i) => (
               <div
-                key={`${r.created_at}-${i}`}
+                key={`${r.createdAt}-${i}`}
                 className={cn(
                   "flex items-center justify-between gap-2 rounded-lg border px-3 py-2",
                   themeStyles.innerBorder || "border-border/50",
@@ -294,11 +295,13 @@ export default function LeaguePublicProfile({
                 )}
               >
                 <span className={cn("text-xs min-w-0 truncate", themeStyles.textColor || "text-foreground")}>
-                  Picked <span className="font-semibold">{prettyEntity(r.selected_entity)}</span> over{" "}
-                  <span className="font-semibold">{prettyEntity(r.other_entity)}</span>
+                  Picked <span className="font-semibold">{prettyEntity(r.selectedEntity)}</span> over{" "}
+                  <span className="font-semibold">{prettyEntity(r.otherEntity)}</span>
                 </span>
-                {r.is_correct !== null &&
-                  (r.is_correct ? (
+                {/* Server-derived. An unjudged answer (null) shows no marker at
+                    all — it is not a miss, and a red X would say it was. */}
+                {r.verifiedCorrect !== null &&
+                  (r.verifiedCorrect ? (
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
                   ) : (
                     <XCircle className="h-4 w-4 shrink-0 text-red-400" />
@@ -312,7 +315,7 @@ export default function LeaguePublicProfile({
         ) : (
           <p className={cn("text-sm", themeStyles.mutedColor || "text-muted-foreground")}>
             {isOwnProfile
-              ? "No takes yet — play League Swipe to put your opinions on record."
+              ? `No takes yet — play ${META_REFLEX_NAME} to put your opinions on record.`
               : `${displayName}'s League takes aren't public yet. Public takes are coming soon.`}
           </p>
         )}
@@ -336,7 +339,7 @@ export default function LeaguePublicProfile({
             {isOwnProfile ? "Play League Quiz" : "Challenge with a Quiz"}
           </Button>
           <Button size="sm" variant="secondary" onClick={() => navigate("/league-swipe")}>
-            <Swords className="h-3.5 w-3.5 mr-1" /> League Swipe
+            <Swords className="h-3.5 w-3.5 mr-1" /> {META_REFLEX_NAME}
           </Button>
           <Button size="sm" variant="secondary" onClick={() => navigate("/lol")}>
             <Trophy className="h-3.5 w-3.5 mr-1" /> League Hub
