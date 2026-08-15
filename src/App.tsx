@@ -162,6 +162,9 @@ const MechanicsXpPage = lazy(() => import("./pages/dev/mechanics-xp/MechanicsXpP
 // drifted would be the one taking money.
 const TeamSimPage = lazy(() => import("./pages/dev/team-sim/TeamSimPage"));
 
+// LIVE1 production viewer — the user-facing live esports scoreboard.
+const EsportsLivePage = lazy(() => import("./pages/esports/live/EsportsLivePage"));
+
 // Dev-only entrance concept — visual iteration on the Mogzy entry screen.
 // Purely presentational, no app state, not linked from any navigation.
 // The faithful pre-Mogzy original stays viewable at /dev/legacy-entry.
@@ -462,6 +465,7 @@ const App = () => (
                       how the feature stays reachable for internal work while
                       the public flag is off. */}
                   <Route path={TEAM_SIM_DEV_ROUTE} element={teamSimElement} />
+                  <Route path="/esports/live" element={<Suspense fallback={<RouteFallback />}><EsportsLivePage /></Suspense>} />
                   <Route path="/quiz/mastery" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneysPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/mastery/:masterySetId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneyPlayerPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />
