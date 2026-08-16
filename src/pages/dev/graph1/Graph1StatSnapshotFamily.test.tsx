@@ -10,7 +10,14 @@
  * not a comment.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -113,7 +120,9 @@ const ARMOR_UNITS: Record<string, Record<string, number>> = {
 };
 
 function makeSnapshot(stat: string) {
-  const isRange = stat === "attack-range";
+  // Both level-independent stats declare a single "base" point, exactly as the
+  // backend does — move speed must not grow a phantom level selector.
+  const isRange = stat === "attack-range" || stat === "move-speed";
   const names = isRange ? Object.keys(RANGE_UNITS) : Object.keys(ARMOR_UNITS);
   const entities: Record<string, unknown> = {
     [`stat:${stat}`]: {
@@ -413,5 +422,303 @@ describe("stat-snapshot family on /dev/graph1", () => {
     expect(
       screen.getByRole("button", { name: "Champion stat ranking" }),
     ).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rows = All
+
+describe("Rows = All", () => {
+  it("renders every eligible champion, sized from the payload not a constant", async () => {
+    const board = await openSnapshotFamily();
+    // baseline: the default board is capped
+    expect(within(board).getAllByRole("listitem")).toHaveLength(4);
+
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("graph1-stat-board")).getAllByRole(
+          "listitem",
+        ),
+      ).toHaveLength(Object.keys(RANGE_UNITS).length),
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: `All ${Object.keys(RANGE_UNITS).length} Champions — Highest Attack Range`,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("serializes as rows=all, never as a numeric sentinel", async () => {
+    await openSnapshotFamily();
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    await waitFor(() => expect(locationSearch).toContain("rows=all"));
+    expect(locationSearch).not.toMatch(/rows=\d/);
+  });
+
+  it("hydrates All from the URL", async () => {
+    renderPage(
+      "/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=all",
+    );
+    const board = await screen.findByTestId("graph1-stat-board");
+    expect(within(board).getAllByRole("listitem")).toHaveLength(
+      Object.keys(RANGE_UNITS).length,
+    );
+  });
+
+  it("keeps All ordering correct in both directions", async () => {
+    renderPage("/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=all");
+    let board = await screen.findByTestId("graph1-stat-board");
+    expect(
+      within(board)
+        .getAllByRole("listitem")
+        .map((r) => r.getAttribute("data-entity-id")),
+    ).toEqual([
+      "champion:Caitlyn",
+      "champion:Annie",
+      "champion:Ashe",
+      "champion:Aatrox",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Lowest" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", {
+          name: /^All 4 Champions — Lowest Attack Range$/,
+        }),
+      ).toBeInTheDocument(),
+    );
+    board = screen.getByTestId("graph1-stat-board");
+    expect(
+      within(board)
+        .getAllByRole("listitem")
+        .map((r) => r.getAttribute("data-entity-id")),
+    ).toEqual([
+      "champion:Aatrox",
+      "champion:Ashe",
+      "champion:Annie",
+      "champion:Caitlyn",
+    ]);
+  });
+
+  it("preserves All and the alphabetical tie rule across a stat switch", async () => {
+    renderPage("/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=all");
+    await screen.findByTestId("graph1-stat-board");
+    fireEvent.change(screen.getByLabelText("Stat"), {
+      target: { value: "armor" },
+    });
+    await screen.findByRole("heading", {
+      name: "All 3 Champions — Highest Armor at Level 20",
+    });
+    expect(locationSearch).toContain("rows=all");
+
+    // level 1 ties Sejuani and Aatrox at 3800 -> alphabetical
+    fireEvent.change(screen.getByLabelText("Level"), { target: { value: "1" } });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", {
+          name: "All 3 Champions — Highest Armor at Level 1",
+        }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      within(screen.getByTestId("graph1-stat-board"))
+        .getAllByRole("listitem")
+        .map((r) => r.getAttribute("data-entity-id")),
+    ).toEqual(["champion:Aatrox", "champion:Sejuani", "champion:Yuumi"]);
+  });
+
+  it("works for a static stat with no level selector", async () => {
+    renderPage("/dev/graph1?d=champion-stat-snapshot%3Amove-speed&rows=all");
+    await screen.findByRole("heading", { name: /^All \d+ Champions — Highest/ });
+    expect(screen.queryByLabelText("Level")).toBeNull();
+  });
+
+  it("leaves the existing numeric options untouched", async () => {
+    for (const n of [5, 15, 20]) {
+      const view = renderPage(
+        `/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=${n}`,
+      );
+      expect(
+        await screen.findByRole("heading", {
+          name: `Top ${n} Highest Attack Range`,
+        }),
+      ).toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
+  it("keeps 10 the default and out of the URL", async () => {
+    await openSnapshotFamily();
+    expect(locationSearch).not.toContain("rows=");
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    await waitFor(() => expect(locationSearch).toContain("rows=all"));
+    fireEvent.click(screen.getByRole("button", { name: "10" }));
+    await waitFor(() => expect(locationSearch).not.toContain("rows="));
+  });
+
+  it("degrades a hand-typed numeric sentinel to the default", async () => {
+    renderPage("/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=9999");
+    expect(
+      await screen.findByRole("heading", { name: "Top 10 Highest Attack Range" }),
+    ).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// champion finder
+
+describe("champion finder", () => {
+  async function openAllRows() {
+    renderPage("/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=all");
+    return screen.findByTestId("graph1-stat-board");
+  }
+
+  const highlighted = () =>
+    [
+      ...screen
+        .getByTestId("graph1-stat-board")
+        .querySelectorAll("[data-highlighted]"),
+    ].map((el) => el.getAttribute("data-entity-id"));
+
+  it("highlights a match without removing any other row", async () => {
+    const board = await openAllRows();
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "ashe" },
+    });
+    await waitFor(() => expect(highlighted()).toEqual(["champion:Ashe"]));
+    // every champion is still on the board
+    expect(within(board).getAllByRole("listitem")).toHaveLength(
+      Object.keys(RANGE_UNITS).length,
+    );
+  });
+
+  it("matches case-insensitively", async () => {
+    await openAllRows();
+    for (const q of ["ASHE", "Ashe", "aShE"]) {
+      fireEvent.change(screen.getByLabelText("Find champion"), {
+        target: { value: q },
+      });
+      await waitFor(() => expect(highlighted()).toEqual(["champion:Ashe"]));
+    }
+  });
+
+  it("does not change the ranking", async () => {
+    await openAllRows();
+    const before = within(screen.getByTestId("graph1-stat-board"))
+      .getAllByRole("listitem")
+      .map((r) => r.getAttribute("data-entity-id"));
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "aatrox" },
+    });
+    await waitFor(() => expect(highlighted()).toEqual(["champion:Aatrox"]));
+    expect(
+      within(screen.getByTestId("graph1-stat-board"))
+        .getAllByRole("listitem")
+        .map((r) => r.getAttribute("data-entity-id")),
+    ).toEqual(before);
+  });
+
+  it("reports a miss and highlights nothing", async () => {
+    await openAllRows();
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "zzzz" },
+    });
+    await screen.findByText(/No champion on this board matches/);
+    expect(highlighted()).toEqual([]);
+  });
+
+  it("clearing the query removes the highlight", async () => {
+    await openAllRows();
+    const input = screen.getByLabelText("Find champion");
+    fireEvent.change(input, { target: { value: "ashe" } });
+    await waitFor(() => expect(highlighted()).toEqual(["champion:Ashe"]));
+    fireEvent.change(input, { target: { value: "" } });
+    await waitFor(() => expect(highlighted()).toEqual([]));
+    expect(locationSearch).not.toContain("find=");
+  });
+
+  it("states the champion's absolute rank", async () => {
+    await openAllRows();
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "aatrox" },
+    });
+    // Aatrox is last of four by attack range
+    await screen.findByText("Aatrox is rank 4 of 4.");
+  });
+
+  it("serializes and hydrates the query", async () => {
+    await openAllRows();
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "annie" },
+    });
+    await waitFor(() => expect(locationSearch).toContain("find=annie"));
+
+    cleanup();
+    renderPage(
+      "/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=all&find=annie",
+    );
+    await screen.findByTestId("graph1-stat-board");
+    await waitFor(() => expect(highlighted()).toEqual(["champion:Annie"]));
+  });
+
+  it("scrolls the best match into view", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    await openAllRows();
+    scrollIntoView.mockClear();
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "aatrox" },
+    });
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+  });
+
+  it("ignores a one-character query", async () => {
+    await openAllRows();
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "a" },
+    });
+    await waitFor(() => expect(highlighted()).toEqual([]));
+    expect(screen.queryByText(/No champion on this board matches/)).toBeNull();
+  });
+
+  it("does not leak the query onto a race family", async () => {
+    await openAllRows();
+    fireEvent.change(screen.getByLabelText("Find champion"), {
+      target: { value: "ashe" },
+    });
+    await waitFor(() => expect(locationSearch).toContain("find=ashe"));
+    fireEvent.click(screen.getByRole("button", { name: "Champion → players" }));
+    await waitFor(() =>
+      expect(screen.queryByTestId("graph1-stat-board")).toBeNull(),
+    );
+    expect(screen.queryByLabelText("Find champion")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the race family's Top N is a separate, still-numeric control
+
+describe("race Top N is unaffected by All", () => {
+  it("offers no All option and keeps rows=all out of the race URL", async () => {
+    renderPage("/dev/graph1?d=champion-stat-snapshot%3Aattack-range&rows=all");
+    await screen.findByTestId("graph1-stat-board");
+
+    fireEvent.click(screen.getByRole("button", { name: "Champion → players" }));
+    await waitFor(() =>
+      expect(screen.queryByTestId("graph1-stat-board")).toBeNull(),
+    );
+
+    // The race surface reads controlState.ts's `top` parameter, which is
+    // numeric-only. `rows` belongs to the board and must never reach it.
+    const raceRows = screen.queryByLabelText("Rows shown");
+    if (raceRows) {
+      const values = [...raceRows.querySelectorAll("option")].map(
+        (o) => (o as HTMLOptionElement).value,
+      );
+      expect(values.every((v) => Number.isFinite(Number(v)))).toBe(true);
+      expect(values).not.toContain("all");
+    }
+    expect(locationSearch).not.toContain("top=all");
   });
 });
