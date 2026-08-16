@@ -322,6 +322,16 @@ export type SwipeRevealAggregates = {
   ratingChange: number | null;
   selectedRating: number | null;
   otherRating: number | null;
+  /**
+   * True when the RPC recognised this `clientSubmissionId` and returned the
+   * FIRST submission's outcome instead of writing a second row. Reading a field
+   * the v2 RPC already returns — nothing new is asked of the server.
+   *
+   * The counts alongside it are still the real ones for the pair, so the reveal
+   * needs no special case; this is here so a retry path can tell "the write
+   * landed just now" from "the write had already landed".
+   */
+  duplicate?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -682,6 +692,16 @@ export async function recordSwipeResult(params: {
   otherValue?: number;
   responseTimeMs?: number;
   context?: Record<string, unknown>;
+  /**
+   * Identity of the LOGICAL submission — see lib/league-swipe/submissionId.
+   *
+   * Callers must mint this once per attempt and pass the SAME value on every
+   * retry of that attempt. It is an explicit parameter rather than something
+   * minted in here precisely so a retry cannot accidentally get a fresh one:
+   * a function that mints its own id makes every call a new attempt by
+   * construction, which is the bug this parameter exists to prevent.
+   */
+  clientSubmissionId?: string;
 }): Promise<SwipeRevealAggregates | null> {
   // Tables/RPC are newer than the generated Database types — cast around them.
   const { data, error } = await (supabase.rpc as CallableFunction)("record_league_swipe_result", {
@@ -693,6 +713,9 @@ export async function recordSwipeResult(params: {
     p_other_value: params.otherValue ?? null,
     p_response_time_ms: params.responseTimeMs ?? null,
     p_context: params.context ?? null,
+    // Omitting this let PostgREST apply the SQL default NULL, which made the
+    // RPC's idempotency short-circuit and its partial unique index both inert.
+    p_client_submission_id: params.clientSubmissionId ?? null,
   });
   if (error) {
     console.error("record_league_swipe_result failed:", error);

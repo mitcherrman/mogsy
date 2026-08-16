@@ -22,6 +22,7 @@ import {
 import { META_REFLEX_NAME } from "@/lib/league-swipe/branding";
 import { narrowPoolToForcedPair, parseForcedPair } from "@/lib/league-swipe/devForcedPair";
 import { resolveFactualCategory } from "@/lib/league-swipe/factualCategories";
+import { newSubmissionId } from "@/lib/league-swipe/submissionId";
 
 /**
  * One revealed round.
@@ -84,6 +85,28 @@ export default function LeagueSwipeGame() {
   const [streak, setStreak] = useState(0);
   const [rounds, setRounds] = useState(0);
   const shownAt = useRef(Date.now());
+  /**
+   * Identity of the attempt currently on screen — one DEALT matchup maps to one
+   * logical submission, and the RPC dedupes on it.
+   *
+   * Minted when a matchup is dealt, NOT when a card is tapped. That boundary is
+   * what makes each of these behave correctly:
+   *
+   *   * Double tap / multi-touch — two `handleChoose` calls can slip past the
+   *     `selectedId`/`pending` guard, because both read state from a closure
+   *     that has not re-rendered yet. Minting per tap would give them two ids
+   *     and two rows; minting per deal gives them one id, and the RPC's
+   *     short-circuit collapses the second into the first's outcome.
+   *   * Retry of a failed write — the ref is untouched by a failure, so the
+   *     retry re-submits under the same identity instead of counting twice.
+   *   * Next matchup / auto-advance — `nextMatchup` is the only place a new id
+   *     is minted, so a new question is always a new attempt.
+   *   * The same pair dealt again later (including dev `forcePair`, which deals
+   *     one pair over and over on purpose) — that is a fresh deal, so it is a
+   *     fresh attempt with a fresh id. The identity is the ATTEMPT, never the
+   *     entity pair.
+   */
+  const submissionId = useRef<string | null>(null);
   // Session-scoped anti-repeat: exact matchups already shown, plus a short
   // cooldown window so the same entity doesn't headline back-to-back rounds.
   const seenPairs = useRef<Set<string>>(new Set());
@@ -153,6 +176,10 @@ export default function LeagueSwipeGame() {
       setSelectedId(null);
       setReveal(null);
       shownAt.current = Date.now();
+      // A dealt matchup is a new question, so it is a new attempt. Minted only
+      // here, and only once the matchup is actually committed — a generate()
+      // that came back null must not burn the current attempt's identity.
+      submissionId.current = newSubmissionId();
     }
   }, [game, championNames, championStats, items, search]);
 
@@ -197,6 +224,14 @@ export default function LeagueSwipeGame() {
         }
       }
 
+      // CAPTURED, never re-read from the ref inside a retry. Auto-advance
+      // rotates `submissionId` a couple of seconds after the reveal, so a retry
+      // that re-read it would submit this answer under the NEXT question's
+      // identity — inventing an attempt rather than repeating one. Any future
+      // retry/offline-queue path must carry this local value through.
+      if (!submissionId.current) submissionId.current = newSubmissionId();
+      const attemptId = submissionId.current;
+
       const agg = await recordSwipeResult({
         gameSlug: game.slug,
         selected: chosen.id,
@@ -206,6 +241,7 @@ export default function LeagueSwipeGame() {
         otherValue: other.value,
         responseTimeMs: Date.now() - shownAt.current,
         context: matchup.context,
+        clientSubmissionId: attemptId,
       });
       // Factual categories get their verdict from the backend, which re-derives
       // it from canonical Mogzy data. The local comparison above is only a
