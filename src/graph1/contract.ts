@@ -300,9 +300,21 @@ export interface Graph1Family {
   mediaStrategy?: "champion-icon" | "role-initials";
   keyTemplate?: string;
   entitySource?: string;
+  /**
+   * What this family's payloads render as (Phase 5). Absent means the
+   * pre-Phase-5 default, a race — resolve by VALUE, never by presence, so a
+   * backend that predates the snapshot family still reads as races.
+   */
+  visualizationType?: "ranked-race" | "ranked-snapshot";
   /** Stat families ship their closed token set inline instead of an
-   * entitySource endpoint (Phase 4A). */
-  stats?: { id: string; label: string; unit: string }[];
+   * entitySource endpoint (Phase 4A). `snapshotKind` (Phase 5) says whether
+   * the stat has levels to choose between or a single base value. */
+  stats?: {
+    id: string;
+    label: string;
+    unit: string;
+    snapshotKind?: "level" | "static";
+  }[];
   defaultEntity?: string;
   display?: Graph1DisplayHints;
   controls?: Graph1ControlSchema;
