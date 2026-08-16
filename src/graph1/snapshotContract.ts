@@ -162,10 +162,29 @@ export interface StatBoardRow {
   barFraction: number;
 }
 
+/**
+ * "Show every eligible champion", as a VALUE rather than a very large Top-N.
+ *
+ * A sentinel like 999 or 10000 would silently become wrong the moment the
+ * roster outgrew it, and it would make the URL claim something the reader
+ * never asked for ("top 9999"). This is a distinct member of the row-count
+ * union instead, so "all" is unrepresentable as a number, cannot be
+ * accidentally compared with `>`, and needs no ceiling to maintain: the board
+ * simply does not slice.
+ */
+export const ALL_ROWS = "all" as const;
+
+/** A Top-N cap, or the whole ranked roster. */
+export type Graph1RowCount = number | typeof ALL_ROWS;
+
+export function isAllRows(value: Graph1RowCount): value is typeof ALL_ROWS {
+  return value === ALL_ROWS;
+}
+
 export interface StatBoardOptions {
   pointId: string;
   order: Graph1SnapshotOrder;
-  topN: number;
+  rowCount: Graph1RowCount;
 }
 
 /**
@@ -185,21 +204,49 @@ export interface StatBoardOptions {
  * like. A zero-valued leader degrades to empty bars rather than dividing by
  * zero.
  */
+/**
+ * One `Intl.NumberFormat` per decimal precision, reused across rows.
+ *
+ * `Number.toLocaleString(locale, options)` builds a formatter on EVERY call,
+ * which is invisible at Top 10 and measurable at All: constructing 173 of
+ * them was ~2.6 ms of the ~2.7 ms a full-roster rebuild cost. Caching the
+ * handful of formatters the board can ever need takes that to ~0.1 ms, which
+ * is why this board needs no virtualization.
+ */
+const NUMBER_FORMATS = new Map<number, Intl.NumberFormat>();
+
+function formatValue(value: number, decimals: number): string {
+  let format = NUMBER_FORMATS.get(decimals);
+  if (!format) {
+    format = new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    NUMBER_FORMATS.set(decimals, format);
+  }
+  return format.format(value);
+}
+
 export function buildStatBoard(
   dataset: Graph1SnapshotDataset,
-  { pointId, order, topN }: StatBoardOptions,
+  { pointId, order, rowCount }: StatBoardOptions,
 ): StatBoardRow[] {
   const scale = dataset.definition.metric.valueDisplay?.scale ?? 1;
   const decimals = dataset.definition.metric.valueDisplay?.decimals ?? 0;
 
-  const ranked = dataset.rows
+  const sorted = dataset.rows
     .filter((row) => typeof row.values?.[pointId] === "number")
     .map((row) => ({ entityId: row.rankedEntityId, units: row.values[pointId] }))
     .sort((a, b) => {
       const delta = order === "highest" ? b.units - a.units : a.units - b.units;
       return delta !== 0 ? delta : a.entityId.localeCompare(b.entityId);
-    })
-    .slice(0, Math.max(1, topN));
+    });
+
+  // ALL_ROWS does not slice at all — the roster size is whatever the payload
+  // carries, so a bigger roster needs no code change and no ceiling to raise.
+  const ranked = isAllRows(rowCount)
+    ? sorted
+    : sorted.slice(0, Math.max(1, rowCount));
 
   const widest = ranked.reduce((max, row) => Math.max(max, row.units), 0);
 
@@ -208,10 +255,7 @@ export function buildStatBoard(
     entityId: row.entityId,
     units: row.units,
     value: row.units / scale,
-    label: (row.units / scale).toLocaleString("en-US", {
-      minimumFractionDigits: decimals,
-      maximumFractionDigits: decimals,
-    }),
+    label: formatValue(row.units / scale, decimals),
     barFraction: widest > 0 ? row.units / widest : 0,
   }));
 }
@@ -221,10 +265,15 @@ export function buildStatBoard(
  * "Top 10 Highest Attack Range", "Top 20 Highest Health at Level 20",
  * "Top 10 Lowest Armor at Level 1". A level-independent stat gets no "at …"
  * clause, because there is no level to name.
+ *
+ * The all-rows headline states the roster size, and `renderedCount` is where
+ * that number comes from — the rows actually on the board, never a constant.
+ * A roster that grows to 174 reports 174 with no edit here.
  */
 export function statBoardTitle(
   dataset: Graph1SnapshotDataset,
-  { pointId, order, topN }: StatBoardOptions,
+  { pointId, order, rowCount }: StatBoardOptions,
+  renderedCount?: number,
 ): string {
   const direction = order === "highest" ? "Highest" : "Lowest";
   const stat = dataset.definition.metric.label;
@@ -232,5 +281,92 @@ export function statBoardTitle(
     dataset.definition.snapshots.kind === "level"
       ? ` at ${snapshotPointLabel(dataset, pointId)}`
       : "";
-  return `Top ${topN} ${direction} ${stat}${at}`;
+  if (isAllRows(rowCount)) {
+    const count = renderedCount ?? dataset.rows.length;
+    return `All ${count} Champions — ${direction} ${stat}${at}`;
+  }
+  return `Top ${rowCount} ${direction} ${stat}${at}`;
+}
+
+/** ------------------------------------------------------------------------
+ * Champion finder (highlight, never filter).
+ *
+ * The question this answers is "where does this champion rank among
+ * EVERYONE", so a match must never remove the rows around it — the context is
+ * the answer. Matching is therefore a pure lookup over the already-ranked
+ * board; it does not touch `buildStatBoard`, cannot reorder anything, and
+ * cannot change a printed value.
+ */
+
+/** Minimum query length before anything highlights. One character matches a
+ * third of the roster, which is noise rather than a finder. */
+export const MIN_FIND_QUERY = 2;
+
+/**
+ * Case- and punctuation-insensitive key for a champion name.
+ *
+ * Champion names carry apostrophes (Kha'Zix, K'Sante, Cho'Gath, Bel'Veth),
+ * periods (Dr. Mundo), ampersands (Nunu & Willump) and spaces (Aurelion Sol,
+ * Renata Glasc, Master Yi). A reader typing "khazix", "dr mundo" or "nunu"
+ * must find them, so every non-alphanumeric character is dropped on both
+ * sides of the comparison.
+ */
+export function normalizeChampionName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export interface ChampionFindResult {
+  /** entity ids to emphasize — every row whose name matches */
+  matches: ReadonlySet<string>;
+  /** the best-ranked match, for scroll-into-view; null when nothing matched */
+  best: string | null;
+  /** true when the reader typed enough to search but nothing matched */
+  missed: boolean;
+}
+
+const NO_MATCHES: ChampionFindResult = {
+  matches: new Set(),
+  best: null,
+  missed: false,
+};
+
+/**
+ * Which rows a find query emphasizes.
+ *
+ * Substring match on the normalized name, so "kha" finds Kha'Zix and "yi"
+ * finds Master Yi. Every match is highlighted (a query can legitimately name
+ * several champions); `best` prefers an EXACT normalized name so typing a
+ * full name lands on that champion even when it is a prefix of another —
+ * "Kai'Sa" over nothing, and a hypothetical "Nunu" over "Nunu & Willump".
+ * Among equally exact (or equally inexact) matches, the better-ranked row
+ * wins, because `rows` is already in board order.
+ */
+export function findChampions(
+  rows: readonly StatBoardRow[],
+  entities: Record<string, Graph1EntityPresentation>,
+  query: string,
+): ChampionFindResult {
+  const needle = normalizeChampionName(query);
+  if (needle.length < MIN_FIND_QUERY) return NO_MATCHES;
+
+  const matches = new Set<string>();
+  let best: string | null = null;
+  let bestIsExact = false;
+
+  for (const row of rows) {
+    const name = entities[row.entityId]?.displayName;
+    if (!name) continue;
+    const key = normalizeChampionName(name);
+    if (!key.includes(needle)) continue;
+    matches.add(row.entityId);
+    const exact = key === needle;
+    // rows are in board order, so the first match at a given exactness is
+    // also the best-ranked one
+    if (best === null || (exact && !bestIsExact)) {
+      best = row.entityId;
+      bestIsExact = exact;
+    }
+  }
+
+  return { matches, best, missed: matches.size === 0 };
 }

@@ -27,7 +27,9 @@ import StatBoardExplorer, {
 } from "@/components/graph1/StatBoardExplorer";
 import { Button } from "@/components/ui/button";
 import {
+  ALL_ROWS,
   isSnapshotOrder,
+  type Graph1RowCount,
   type Graph1SnapshotOrder,
 } from "@/graph1/snapshotContract";
 import { useGraph1Snapshot } from "@/graph1/useGraph1Snapshot";
@@ -85,22 +87,47 @@ const BOARD_PARAM = {
   order: "order",
   point: "lvl",
   rows: "rows",
+  find: "find",
 } as const;
 
-const BOARD_TOP_N_OPTIONS = [5, 10, 15, 20];
-const DEFAULT_BOARD_TOP_N = 10;
+/**
+ * Row-count choices. `ALL_ROWS` is a value in this list, not a number, so the
+ * URL says `rows=all` and there is no ceiling that could go stale when the
+ * roster grows.
+ *
+ * 15 predates the All control and stays: dropping it would silently break any
+ * `rows=15` link already shared.
+ */
+const BOARD_ROW_COUNTS: Graph1RowCount[] = [5, 10, 15, 20, ALL_ROWS];
+const DEFAULT_BOARD_ROW_COUNT: Graph1RowCount = 10;
 const DEFAULT_BOARD_ORDER: Graph1SnapshotOrder = "highest";
+
+/** How many characters of `?find=` we are willing to carry. Long enough for
+ * every champion name, short enough that a hand-edited URL cannot push a wall
+ * of text through the control. */
+const MAX_FIND_LENGTH = 40;
+
+/** `?rows=` -> a row count. Accepts the literal `all` and the numeric options;
+ * anything else (a sentinel someone hand-typed, `rows=9999`, junk) falls back
+ * to the default rather than inventing a cap. */
+function parseRowCount(raw: string | null): Graph1RowCount {
+  if (raw === ALL_ROWS) return ALL_ROWS;
+  const numeric = Number(raw);
+  return BOARD_ROW_COUNTS.includes(numeric)
+    ? numeric
+    : DEFAULT_BOARD_ROW_COUNT;
+}
 
 /** Total parse: anything malformed falls back to a default, never throws.
  * `pointId` is left as-is and validated against the payload's declared points
  * by `resolveSnapshotPoint`, which is the only place that knows them. */
 function parseBoardState(params: URLSearchParams): StatBoardState {
   const order = params.get(BOARD_PARAM.order);
-  const rows = Number(params.get(BOARD_PARAM.rows));
   return {
     order: isSnapshotOrder(order) ? order : DEFAULT_BOARD_ORDER,
-    topN: BOARD_TOP_N_OPTIONS.includes(rows) ? rows : DEFAULT_BOARD_TOP_N,
+    rowCount: parseRowCount(params.get(BOARD_PARAM.rows)),
     pointId: params.get(BOARD_PARAM.point) ?? undefined,
+    find: params.get(BOARD_PARAM.find)?.slice(0, MAX_FIND_LENGTH) ?? undefined,
   };
 }
 
@@ -179,10 +206,18 @@ export default function Graph1RacePage() {
       // sharer actually changed — the same convention races use.
       if (next.order === DEFAULT_BOARD_ORDER) params.delete(BOARD_PARAM.order);
       else params.set(BOARD_PARAM.order, next.order);
-      if (next.topN === DEFAULT_BOARD_TOP_N) params.delete(BOARD_PARAM.rows);
-      else params.set(BOARD_PARAM.rows, String(next.topN));
+      // ALL_ROWS is the string "all", so this writes `rows=all` — a semantic
+      // value, never a numeric stand-in for "everything".
+      if (next.rowCount === DEFAULT_BOARD_ROW_COUNT) {
+        params.delete(BOARD_PARAM.rows);
+      } else {
+        params.set(BOARD_PARAM.rows, String(next.rowCount));
+      }
       if (next.pointId) params.set(BOARD_PARAM.point, next.pointId);
       else params.delete(BOARD_PARAM.point);
+      const find = next.find?.trim();
+      if (find) params.set(BOARD_PARAM.find, find.slice(0, MAX_FIND_LENGTH));
+      else params.delete(BOARD_PARAM.find);
       // Tweaks REPLACE so Back does not walk every control nudge.
       setSearchParams(params, { replace: true });
     },
@@ -451,7 +486,7 @@ export default function Graph1RacePage() {
           dataset={snapshot.data}
           state={boardState}
           onStateChange={commitBoardState}
-          topNOptions={BOARD_TOP_N_OPTIONS}
+          rowCountOptions={BOARD_ROW_COUNTS}
         />
       )}
       {!isSnapshot && data && state && (

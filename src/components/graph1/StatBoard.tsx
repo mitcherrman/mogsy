@@ -15,9 +15,12 @@
  * Entity media goes through the shared EntityAvatar ladder, so a champion's
  * icon, initials fallback and color are identical here and in the race.
  */
+import { useEffect, useRef } from "react";
+
 import type { Graph1EntityPresentation } from "@/graph1/contract";
 import { entityColor } from "@/graph1/colors";
 import type { StatBoardRow } from "@/graph1/snapshotContract";
+import { useReducedMotion } from "@/graph1/useReducedMotion";
 import EntityAvatar, {
   NativeLazyImg,
   type Graph1ImageComponent,
@@ -38,22 +41,54 @@ function BoardRow({
   entity,
   unit,
   imageComponent,
+  highlighted = false,
+  scrollTarget = false,
 }: {
   row: StatBoardRow;
   entity: Graph1EntityPresentation;
   unit: string;
   imageComponent: Graph1ImageComponent;
+  /** emphasized by the champion finder — presentation only */
+  highlighted?: boolean;
+  /** the one match to bring into view */
+  scrollTarget?: boolean;
 }) {
   const color = entityColor(entity.id);
+  const ref = useRef<HTMLLIElement>(null);
+  const reducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (!scrollTarget) return;
+    // jsdom and older browsers have no scrollIntoView — highlighting is the
+    // feature, scrolling is the courtesy, so its absence must never throw
+    ref.current?.scrollIntoView?.({
+      block: "center",
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+  }, [scrollTarget, reducedMotion, row.entityId]);
+
   return (
     <li
+      ref={ref}
       data-entity-id={entity.id}
       data-rank={row.rank}
+      data-highlighted={highlighted || undefined}
+      aria-current={highlighted ? "true" : undefined}
       aria-label={`Rank ${row.rank}: ${entity.displayName}, ${row.label} ${unit}`}
-      className="flex items-center gap-2 sm:gap-3"
+      className={
+        "flex items-center gap-2 sm:gap-3 rounded-lg transition-shadow" +
+        // Emphasis only — no hue that would read as good/bad performance, and
+        // nothing that changes the rank, the bar or the printed value.
+        (highlighted
+          ? " bg-primary/10 ring-2 ring-primary/70 shadow-[0_0_18px_-4px_hsl(var(--primary))] px-1 py-0.5"
+          : "")
+      }
     >
       <span
-        className={`w-7 shrink-0 text-right text-base font-bold tabular-nums ${rankAccent(row.rank)}`}
+        className={
+          "w-7 shrink-0 text-right text-base font-bold tabular-nums " +
+          (highlighted ? "text-primary" : rankAccent(row.rank))
+        }
       >
         {row.rank}
       </span>
@@ -98,6 +133,11 @@ export interface StatBoardProps {
   footnote?: string;
   /** defaults to a lazy native <img>; Remotion would pass its <Img> */
   imageComponent?: Graph1ImageComponent;
+  /** champion-finder matches to emphasize. Presentation only: the board still
+   * renders every row it was given, in the order it was given them. */
+  highlightedIds?: ReadonlySet<string>;
+  /** the single match to scroll into view */
+  scrollToId?: string | null;
 }
 
 export default function StatBoard({
@@ -108,6 +148,8 @@ export default function StatBoard({
   unit,
   footnote,
   imageComponent = NativeLazyImg,
+  highlightedIds,
+  scrollToId,
 }: StatBoardProps) {
   return (
     <section
@@ -147,6 +189,8 @@ export default function StatBoard({
               entity={entity}
               unit={unit}
               imageComponent={imageComponent}
+              highlighted={highlightedIds?.has(row.entityId)}
+              scrollTarget={scrollToId === row.entityId}
             />
           );
         })}

@@ -19,11 +19,16 @@ import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
+  ALL_ROWS,
   buildStatBoard,
+  findChampions,
+  isAllRows,
   resolveSnapshotPoint,
   snapshotPointLabel,
   statBoardTitle,
+  MIN_FIND_QUERY,
   SNAPSHOT_ORDERS,
+  type Graph1RowCount,
   type Graph1SnapshotDataset,
   type Graph1SnapshotOrder,
 } from "@/graph1/snapshotContract";
@@ -32,13 +37,20 @@ import StatBoard from "./StatBoard";
 export interface StatBoardState {
   pointId?: string;
   order: Graph1SnapshotOrder;
-  topN: number;
+  /** a Top-N cap or ALL_ROWS — never a large sentinel number */
+  rowCount: Graph1RowCount;
+  /** champion-finder query; emphasizes rows, never filters them */
+  find?: string;
 }
 
 const ORDER_LABEL: Record<Graph1SnapshotOrder, string> = {
   highest: "Highest",
   lowest: "Lowest",
 };
+
+function rowCountLabel(value: Graph1RowCount): string {
+  return isAllRows(value) ? "All" : String(value);
+}
 
 function ControlGroup({
   label,
@@ -61,12 +73,12 @@ export default function StatBoardExplorer({
   dataset,
   state,
   onStateChange,
-  topNOptions = [5, 10, 15, 20],
+  rowCountOptions = [5, 10, 15, 20, ALL_ROWS],
 }: {
   dataset: Graph1SnapshotDataset;
   state: StatBoardState;
   onStateChange: (next: StatBoardState) => void;
-  topNOptions?: number[];
+  rowCountOptions?: Graph1RowCount[];
 }) {
   // Total resolution: a stale point id from a shared link (Level 20 carried
   // onto attack range, say) falls back to the payload's declared default
@@ -75,11 +87,19 @@ export default function StatBoardExplorer({
   const snapshots = dataset.definition.snapshots;
   const hasLevels = snapshots.kind === "level";
 
-  const options = { pointId, order: state.order, topN: state.topN };
+  const options = { pointId, order: state.order, rowCount: state.rowCount };
   const rows = useMemo(
     () => buildStatBoard(dataset, options),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dataset, pointId, state.order, state.topN],
+    [dataset, pointId, state.order, state.rowCount],
+  );
+
+  // The finder runs over the ALREADY-RANKED rows and returns ids to
+  // emphasize. It cannot reorder, cannot remove and cannot change a value.
+  const query = state.find ?? "";
+  const found = useMemo(
+    () => findChampions(rows, dataset.entities, query),
+    [rows, dataset.entities, query],
   );
 
   const coverage = dataset.coverage;
@@ -117,16 +137,16 @@ export default function StatBoardExplorer({
         </ControlGroup>
 
         <ControlGroup label="Rows">
-          {topNOptions.map((n) => (
+          {rowCountOptions.map((option) => (
             <Button
-              key={n}
+              key={String(option)}
               type="button"
               size="sm"
-              variant={n === state.topN ? "default" : "outline"}
-              aria-pressed={n === state.topN}
-              onClick={() => onStateChange({ ...state, topN: n })}
+              variant={option === state.rowCount ? "default" : "outline"}
+              aria-pressed={option === state.rowCount}
+              onClick={() => onStateChange({ ...state, rowCount: option })}
             >
-              {n}
+              {rowCountLabel(option)}
             </Button>
           ))}
         </ControlGroup>
@@ -150,15 +170,46 @@ export default function StatBoardExplorer({
             </select>
           </label>
         )}
+
+        {/* Smallest input that answers "where does this champion rank". The
+            esports EntityPicker was considered and rejected: it needs a second
+            request to /api/graph1/entities/champions and carries family
+            semantics this board does not have, while the snapshot payload
+            already ships every champion it can match. */}
+        <label className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+          Find champion
+          <input
+            type="search"
+            aria-label="Find champion"
+            placeholder="Search champion…"
+            value={query}
+            onChange={(e) => onStateChange({ ...state, find: e.target.value })}
+            className="w-40 rounded border border-border bg-background px-2 py-1 text-xs normal-case tracking-normal text-foreground"
+          />
+        </label>
       </div>
 
+      {query.trim().length >= MIN_FIND_QUERY && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {found.missed
+            ? `No champion on this board matches “${query.trim()}”.`
+            : found.matches.size === 1
+              ? `${dataset.entities[found.best!]?.displayName} is rank ${
+                  rows.find((r) => r.entityId === found.best)?.rank
+                } of ${rows.length}.`
+              : `${found.matches.size} champions match “${query.trim()}”.`}
+        </p>
+      )}
+
       <StatBoard
-        title={statBoardTitle(dataset, options)}
+        title={statBoardTitle(dataset, options, rows.length)}
         subtitle={subtitle}
         rows={rows}
         entities={dataset.entities}
         unit={dataset.definition.metric.unit}
         footnote={footnote}
+        highlightedIds={found.matches}
+        scrollToId={found.best}
       />
     </div>
   );
