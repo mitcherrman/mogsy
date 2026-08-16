@@ -18,6 +18,13 @@ import {
 } from "@/lib/quiz/onboarding-gate";
 import LolWelcomeIntro from "@/components/lol/LolWelcomeIntro";
 import { hasHandledAcademyWelcome } from "@/lib/welcome/academy-welcome";
+import MogzyHubGuide from "@/components/lol/MogzyHubGuide";
+import {
+  HUB_GUIDE_MODES,
+  hubGuideDescriptionId,
+  useHubGuideState,
+  type HubGuideModeId,
+} from "@/components/lol/hub-guide";
 import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
@@ -47,6 +54,8 @@ type HubDestination = {
   subtitle: string;
   Icon: React.ElementType;
   championName: string;
+  /** Stable id into HUB_GUIDE_MODES — drives Mogzy's contextual reaction. */
+  guideId: HubGuideModeId;
   /**
    * object-position for the splash crop inside the left book cover. The panel
    * crops horizontally only (see BookModeCard), so the X value frames the
@@ -61,6 +70,7 @@ const LEFT_DESTINATIONS: HubDestination[] = [
   {
     to: "/quiz",
     title: "Leaguecraft",
+    guideId: "leaguecraft",
     subtitle: "Study. Practice. Ascend.",
     Icon: BrainCircuit,
     championName: "Ryze",
@@ -69,6 +79,7 @@ const LEFT_DESTINATIONS: HubDestination[] = [
   {
     to: "/quiz/stat-check",
     title: "Stat Check",
+    guideId: "stat-check",
     subtitle: "Build. Compare. Outplay.",
     Icon: Layers,
     championName: "Twisted Fate",
@@ -77,6 +88,7 @@ const LEFT_DESTINATIONS: HubDestination[] = [
   {
     to: "/lol/history",
     title: "Quiz History",
+    guideId: "quiz-history",
     subtitle: "Review your past results.",
     Icon: HistoryIcon,
     championName: "Zilean",
@@ -87,6 +99,7 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
   {
     to: "/combat-lab",
     title: "Combat Lab",
+    guideId: "combat-lab",
     subtitle: "Practice. Analyze. Dominate.",
     Icon: Swords,
     championName: "Akali",
@@ -95,6 +108,7 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
   {
     to: "/lol/docs",
     title: "Mogzy Archives",
+    guideId: "archives",
     subtitle: "Explore League knowledge.",
     Icon: FileText,
     championName: "Viktor",
@@ -103,6 +117,7 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
   {
     to: "/lol/patch-reports",
     title: "Patch Reports",
+    guideId: "patch-reports",
     subtitle: "Track every gameplay change.",
     Icon: Newspaper,
     championName: "Jayce",
@@ -252,6 +267,13 @@ export default function LolHub() {
 
   const academyLine = ACADEMY_LINES[academyLineIndex](displayName || ACADEMY_FALLBACK_NAME);
 
+  // Mogzy's contextual guide: hover/focus on a desktop book card reports its
+  // mode upward; MogzyHubGuide renders the reaction. Deactivation is delayed
+  // slightly inside the hook so moving between adjacent cards never flashes
+  // the idle state.
+  const { activeModeId, activate: activateGuide, deactivate: deactivateGuide } =
+    useHubGuideState();
+
   const onDestinationClick = (to: string) => {
     playUiSfx("sectionOpen");
     if (to === "/quiz") {
@@ -283,8 +305,16 @@ export default function LolHub() {
     //
     // Each column is pushed OUTWARD (mr-auto / ml-auto) instead of centred, so
     // the books sit near the viewport edges and the central Mogzy lane opens up.
+    // Hover/focus (focus bubbles up from the Link inside BookModeCard) drive
+    // Mogzy's contextual guide. Purely additive: click/navigation semantics
+    // stay on the Link itself.
     <div
       key={d.to}
+      data-guide-mode={d.guideId}
+      onMouseEnter={() => activateGuide(d.guideId)}
+      onMouseLeave={deactivateGuide}
+      onFocus={() => activateGuide(d.guideId)}
+      onBlur={deactivateGuide}
       className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
       style={{ maxWidth: "min(100%, calc(100dvh * 0.308 + 176px))" }}
     >
@@ -294,6 +324,7 @@ export default function LolHub() {
         subtitle={d.subtitle}
         splashUrl={getChampionSplash(championAssets, d.championName)}
         splashPosition={d.splashPosition}
+        describedBy={hubGuideDescriptionId(d.guideId)}
         onClick={() => onDestinationClick(d.to)}
       />
     </div>
@@ -430,6 +461,20 @@ export default function LolHub() {
             </p>
           </header>
 
+          {/* Screen-reader-only guide descriptions. Each desktop book card
+              points here via aria-describedby, so AT announces the mode's
+              contextual description on keyboard focus. Kept OUTSIDE the
+              aria-hidden mascot lane (whose speech bubble stays purely
+              visual) and static in the DOM — no aria-live, so pointer hover
+              announces nothing. */}
+          <div className="sr-only">
+            {Object.values(HUB_GUIDE_MODES).map((mode) => (
+              <span key={mode.id} id={hubGuideDescriptionId(mode.id)}>
+                {mode.description}
+              </span>
+            ))}
+          </div>
+
           {/* Desktop: six open books flanking Mogzy's central lane */}
           <div className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3">
             <div
@@ -467,26 +512,16 @@ export default function LolHub() {
                   className="pointer-events-auto w-[clamp(200px,calc(100vw-1030px),380px)] shrink-0"
                 />
               </div>
-              <div
-                aria-hidden
-                className="academy-mogzy-float absolute inset-x-0 bottom-[16%] flex justify-center"
-              >
-                <div className="relative">
-                  <div
-                    className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2"
-                    style={{
-                      background:
-                        "radial-gradient(ellipse at center, rgba(255,214,140,0.28) 0%, rgba(120,160,255,0.12) 45%, transparent 70%)",
-                      filter: "blur(14px)",
-                    }}
-                  />
-                  <img
-                    src="/mascot/mogzy-mascot-base-v1.png"
-                    alt=""
-                    draggable={false}
-                    className="relative w-[clamp(110px,11vw,190px)] drop-shadow-[0_12px_24px_rgba(0,0,0,0.55)]"
-                  />
-                </div>
+              {/* Mogzy contextual guide — replaces the static mascot float
+                  with identical geometry (the guide's root IS the same
+                  academy-mogzy-float / bottom-[16%] wrapper). aria-hidden
+                  stays scoped to the mascot subtree exactly as before — the
+                  interactive Broadcast centerpiece above must stay visible to
+                  AT — and z-10 keeps the speech bubble above the transformed
+                  book columns. Pointer events stay off: the guide never
+                  blocks a card or the radio dock. */}
+              <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
+                <MogzyHubGuide activeModeId={activeModeId} />
               </div>
             </div>
 

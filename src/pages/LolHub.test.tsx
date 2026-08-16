@@ -4,11 +4,12 @@
  * subsection stays hidden, and landing analytics stay wired.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LolHub from "./LolHub";
 import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
+import { HUB_GUIDE_MODES, type HubGuideModeId } from "@/components/lol/hub-guide";
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
 // The pinned jsdom does not provide a working Storage — see localStorageStub.
@@ -276,6 +277,138 @@ describe("LolHub — Academy Broadcast centerpiece", () => {
 
     expect(created.filter((t) => t === "audio")).toHaveLength(0);
     spy.mockRestore();
+  });
+});
+
+describe("LolHub — Mogzy contextual guide", () => {
+  const GUIDE_MODES: { guideId: HubGuideModeId; to: string }[] = [
+    { guideId: "leaguecraft", to: "/quiz" },
+    { guideId: "stat-check", to: "/quiz/stat-check" },
+    { guideId: "quiz-history", to: "/lol/history" },
+    { guideId: "combat-lab", to: "/combat-lab" },
+    { guideId: "archives", to: "/lol/docs" },
+    { guideId: "patch-reports", to: "/lol/patch-reports" },
+  ];
+
+  const card = (container: HTMLElement, id: HubGuideModeId) => {
+    const el = container.querySelector<HTMLElement>(`[data-guide-mode="${id}"]`);
+    expect(el, `desktop card wrapper for ${id}`).toBeTruthy();
+    return el!;
+  };
+  const bubble = () => screen.getByTestId("mogzy-guide-bubble");
+
+  it("starts idle: bubble hidden, Mogzy not leaning", () => {
+    const { container } = renderHub();
+    expect(bubble().getAttribute("data-visible")).toBe("false");
+    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-lean"]')!;
+    expect(lean.style.getPropertyValue("--guide-lean-x")).toBe("0px");
+    expect(lean.style.getPropertyValue("--guide-lean-y")).toBe("0px");
+  });
+
+  it("hovering each desktop card shows that mode's name and description", () => {
+    const { container } = renderHub();
+    for (const { guideId } of GUIDE_MODES) {
+      fireEvent.mouseOver(card(container, guideId));
+      const b = bubble();
+      expect(b.getAttribute("data-visible")).toBe("true");
+      expect(b.getAttribute("data-active-mode")).toBe(guideId);
+      const mode = HUB_GUIDE_MODES[guideId];
+      expect(b.textContent).toContain(mode.title);
+      expect(b.textContent).toContain(mode.description);
+      fireEvent.mouseOut(card(container, guideId));
+    }
+  });
+
+  it("every hub destination participates with a bounded, subtle lean", () => {
+    // Config coverage: six cards, six guide entries, movement stays small.
+    const { container } = renderHub();
+    expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(GUIDE_MODES.length);
+    for (const { guideId } of GUIDE_MODES) {
+      const mode = HUB_GUIDE_MODES[guideId];
+      expect(mode.title.length).toBeGreaterThan(0);
+      expect(mode.description.length).toBeGreaterThan(0);
+      expect(Math.abs(mode.lean.x)).toBeLessThanOrEqual(20);
+      expect(Math.abs(mode.lean.y)).toBeLessThanOrEqual(20);
+    }
+  });
+
+  it("moving directly between two cards swaps the bubble without an idle flash", () => {
+    const { container } = renderHub();
+    fireEvent.mouseOver(card(container, "leaguecraft"));
+    expect(bubble().getAttribute("data-active-mode")).toBe("leaguecraft");
+    // Leave A then enter B, as a real pointer move fires them — the grace
+    // delay must keep the bubble visible across the gap.
+    fireEvent.mouseOut(card(container, "leaguecraft"));
+    fireEvent.mouseOver(card(container, "combat-lab"));
+    const b = bubble();
+    expect(b.getAttribute("data-visible")).toBe("true");
+    expect(b.getAttribute("data-active-mode")).toBe("combat-lab");
+    expect(b.textContent).toContain("Combat Lab");
+  });
+
+  it("leaving the cards returns Mogzy to idle after the grace delay", async () => {
+    const { container } = renderHub();
+    fireEvent.mouseOver(card(container, "archives"));
+    expect(bubble().getAttribute("data-visible")).toBe("true");
+    fireEvent.mouseOut(card(container, "archives"));
+    await waitFor(() => expect(bubble().getAttribute("data-visible")).toBe("false"));
+    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-lean"]')!;
+    expect(lean.style.getPropertyValue("--guide-lean-x")).toBe("0px");
+  });
+
+  it("keyboard focus on a card link activates the guide; blur clears it", async () => {
+    const { container } = renderHub();
+    const link = within(card(container, "stat-check")).getByRole("link");
+    fireEvent.focusIn(link);
+    const b = bubble();
+    expect(b.getAttribute("data-visible")).toBe("true");
+    expect(b.getAttribute("data-active-mode")).toBe("stat-check");
+    fireEvent.focusOut(link);
+    await waitFor(() => expect(bubble().getAttribute("data-visible")).toBe("false"));
+  });
+
+  it("tabbing from one card to the next keeps the bubble up (no collapse between steps)", () => {
+    const { container } = renderHub();
+    const first = within(card(container, "leaguecraft")).getByRole("link");
+    const second = within(card(container, "stat-check")).getByRole("link");
+    fireEvent.focusIn(first);
+    fireEvent.focusOut(first);
+    fireEvent.focusIn(second);
+    const b = bubble();
+    expect(b.getAttribute("data-visible")).toBe("true");
+    expect(b.getAttribute("data-active-mode")).toBe("stat-check");
+  });
+
+  it("each desktop card link is described (aria-describedby) by its mode's guide text", () => {
+    const { container } = renderHub();
+    for (const { guideId } of GUIDE_MODES) {
+      const link = within(card(container, guideId)).getByRole("link");
+      const descId = link.getAttribute("aria-describedby");
+      expect(descId, `${guideId} aria-describedby`).toBeTruthy();
+      const desc = container.querySelector(`#${descId}`);
+      expect(desc, `${guideId} description element`).toBeTruthy();
+      expect(desc!.textContent).toBe(HUB_GUIDE_MODES[guideId].description);
+      // The description must live OUTSIDE the aria-hidden mascot lane.
+      expect(desc!.closest('[aria-hidden="true"]'), `${guideId} desc not aria-hidden`).toBeNull();
+      // Accessible name stays the card title — description does not replace it.
+      expect(link.getAttribute("aria-label")).toBe(HUB_GUIDE_MODES[guideId].title);
+    }
+  });
+
+  it("keeps the visual speech bubble decorative (inside the aria-hidden lane), with no live region", () => {
+    const { container } = renderHub();
+    const b = bubble();
+    expect(b.closest('[aria-hidden="true"]')).toBeTruthy();
+    expect(container.querySelector("[aria-live]")).toBeNull();
+  });
+
+  it("guide wiring leaves card navigation untouched", () => {
+    const { container } = renderHub();
+    for (const { guideId, to } of GUIDE_MODES) {
+      fireEvent.mouseOver(card(container, guideId));
+      const link = within(card(container, guideId)).getByRole("link");
+      expect(link.getAttribute("href")).toBe(to);
+    }
   });
 });
 

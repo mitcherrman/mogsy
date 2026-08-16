@@ -31,6 +31,11 @@ type Props = {
    * frames the champion's face; the Y value is inert. Lower X = further left.
    */
   splashPosition?: string;
+  /**
+   * Optional id of an element describing this destination, wired to the
+   * link's aria-describedby so assistive technology reads it on focus.
+   */
+  describedBy?: string;
   onClick?: () => void;
 };
 
@@ -40,6 +45,7 @@ export default function BookModeCard({
   subtitle,
   splashUrl,
   splashPosition = "60% center",
+  describedBy,
   onClick,
 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
@@ -49,6 +55,7 @@ export default function BookModeCard({
     <Link
       to={to}
       aria-label={title}
+      aria-describedby={describedBy}
       onClick={onClick}
       className="book-mode-card group relative block w-full select-none focus-visible:outline-none [container-type:inline-size]"
     >
