@@ -22,7 +22,15 @@ import { useSearchParams } from "react-router-dom";
 
 import EntityPicker from "@/components/graph1/EntityPicker";
 import RacePlayer from "@/components/graph1/RacePlayer";
+import StatBoardExplorer, {
+  type StatBoardState,
+} from "@/components/graph1/StatBoardExplorer";
 import { Button } from "@/components/ui/button";
+import {
+  isSnapshotOrder,
+  type Graph1SnapshotOrder,
+} from "@/graph1/snapshotContract";
+import { useGraph1Snapshot } from "@/graph1/useGraph1Snapshot";
 import {
   familyDatasetKey,
   parseFamilyDatasetKey,
@@ -58,9 +66,43 @@ const FAMILY_DEFAULT_FOCUS: Record<string, string> = {
   // one this phase, so selecting the family lands straight on the race and
   // no picker is rendered (focusEntityType "stat" matches neither picker).
   "champion-stat-growth": "attack-damage",
+  // Phase 5: attack range needs no level choice, so the board is meaningful
+  // on the very first render.
+  "champion-stat-snapshot": "attack-range",
 };
 
 const MAX_CHAMPION_ROWS = 40;
+
+/**
+ * Board control parameters.
+ *
+ * Deliberately NOT names `controlState.ts` owns: it drops every parameter it
+ * owns when it re-serializes, so keeping these outside that set is what lets
+ * a reader's Highest / Top 10 / Level 20 choice survive switching from one
+ * stat to the next.
+ */
+const BOARD_PARAM = {
+  order: "order",
+  point: "lvl",
+  rows: "rows",
+} as const;
+
+const BOARD_TOP_N_OPTIONS = [5, 10, 15, 20];
+const DEFAULT_BOARD_TOP_N = 10;
+const DEFAULT_BOARD_ORDER: Graph1SnapshotOrder = "highest";
+
+/** Total parse: anything malformed falls back to a default, never throws.
+ * `pointId` is left as-is and validated against the payload's declared points
+ * by `resolveSnapshotPoint`, which is the only place that knows them. */
+function parseBoardState(params: URLSearchParams): StatBoardState {
+  const order = params.get(BOARD_PARAM.order);
+  const rows = Number(params.get(BOARD_PARAM.rows));
+  return {
+    order: isSnapshotOrder(order) ? order : DEFAULT_BOARD_ORDER,
+    topN: BOARD_TOP_N_OPTIONS.includes(rows) ? rows : DEFAULT_BOARD_TOP_N,
+    pointId: params.get(BOARD_PARAM.point) ?? undefined,
+  };
+}
 
 function Notice({
   tone = "muted",
@@ -99,10 +141,52 @@ export default function Graph1RacePage() {
     : undefined;
   const focusType = activeFamily?.focusEntityType;
 
+  // Phase 5: a family declares what its payloads render as. Resolve by VALUE —
+  // a backend that predates the snapshot family omits the field entirely and
+  // must keep reading as races.
+  const isSnapshot = activeFamily?.visualizationType === "ranked-snapshot";
+
+  // Which KIND a family key is cannot be known until the catalog has settled,
+  // and firing the race fetch on a guess costs a wasted request for every
+  // shared board link (the payload arrives, fails the race gate, and is thrown
+  // away). A legacy key has no family and is always a race, so it never waits.
+  // Once the catalog has settled — success OR error — `activeFamily` is
+  // authoritative: undefined means "not a snapshot", which is exactly the
+  // pre-Phase-5 behaviour for a backend with no families block.
+  const catalogSettled = catalog.isSuccess || catalog.isError;
+  const kindKnown = !instance || catalogSettled;
+
+  // Exactly one of these is ever enabled: a board must not try to parse a race
+  // payload, and the structural gates in each hook enforce that.
   const { data, isLoading, error } = useGraph1Dataset(
     datasetKey ?? "",
     apiOverride,
-    { enabled: Boolean(datasetKey) },
+    { enabled: Boolean(datasetKey) && kindKnown && !isSnapshot },
+  );
+  const snapshot = useGraph1Snapshot(datasetKey ?? "", apiOverride, {
+    enabled: Boolean(datasetKey) && isSnapshot,
+  });
+
+  const boardState = useMemo(
+    () => parseBoardState(searchParams),
+    [searchParams],
+  );
+
+  const commitBoardState = useCallback(
+    (next: StatBoardState) => {
+      const params = new URLSearchParams(searchParams);
+      // Defaults stay OUT of the URL, so a shared link carries only what the
+      // sharer actually changed — the same convention races use.
+      if (next.order === DEFAULT_BOARD_ORDER) params.delete(BOARD_PARAM.order);
+      else params.set(BOARD_PARAM.order, next.order);
+      if (next.topN === DEFAULT_BOARD_TOP_N) params.delete(BOARD_PARAM.rows);
+      else params.set(BOARD_PARAM.rows, String(next.topN));
+      if (next.pointId) params.set(BOARD_PARAM.point, next.pointId);
+      else params.delete(BOARD_PARAM.point);
+      // Tweaks REPLACE so Back does not walk every control nudge.
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
   );
 
   // Toggle defaults come from the loaded payload when we have it, and from
@@ -220,14 +304,17 @@ export default function Graph1RacePage() {
   }, [championsQuery.data, entityQuery]);
 
   const playerRows = playersQuery.data?.entities ?? [];
-  const focusLabel = data
-    ? data.entities[data.definition.focusEntity.id]?.displayName
+  const loaded = isSnapshot ? snapshot.data : data;
+  const focusLabel = loaded
+    ? loaded.entities[loaded.definition.focusEntity.id]?.displayName
     : undefined;
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold">GRAPH1 · ranked race</h1>
+        <h1 className="text-2xl font-bold">
+          GRAPH1 · {isSnapshot ? "stat ranking" : "ranked race"}
+        </h1>
 
         {catalog.isLoading && <Notice>Loading datasets…</Notice>}
         {catalog.error instanceof Error && (
@@ -343,18 +430,31 @@ export default function Graph1RacePage() {
         )}
       </header>
 
-      {isLoading && datasetKey && <Notice>Loading dataset…</Notice>}
-      {error instanceof Error && (
+      {(isSnapshot ? snapshot.isLoading : isLoading) && datasetKey && (
+        <Notice>Loading dataset…</Notice>
+      )}
+      {(isSnapshot ? snapshot.error : error) instanceof Error && (
         <Notice tone="error">
           {/* User-facing copy: a shared link may name a focus entity that is not
               selectable, which is a 404 from the API, not a local-setup problem. */}
-          This race could not be loaded. The selected{" "}
+          This {isSnapshot ? "board" : "race"} could not be loaded. The selected{" "}
           {focusType ?? "dataset"} may no longer be available — try another from
           the picker above.{" "}
-          <span className="opacity-70">({error.message})</span>
+          <span className="opacity-70">
+            ({((isSnapshot ? snapshot.error : error) as Error).message})
+          </span>
         </Notice>
       )}
-      {data && state && (
+      {isSnapshot && snapshot.data && (
+        <StatBoardExplorer
+          key={snapshot.data.id}
+          dataset={snapshot.data}
+          state={boardState}
+          onStateChange={commitBoardState}
+          topNOptions={BOARD_TOP_N_OPTIONS}
+        />
+      )}
+      {!isSnapshot && data && state && (
         <RacePlayer
           key={data.id}
           dataset={data}

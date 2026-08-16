@@ -15,8 +15,6 @@
  * data, not absence); the brighter same-hue segment inset from the left is
  * cumulative wins. A legend states the encoding.
  */
-import type { ComponentType } from "react";
-
 import type {
   Graph1EntityPresentation,
   Graph1ValueDisplay,
@@ -24,6 +22,12 @@ import type {
 import { entityColor } from "@/graph1/colors";
 import type { RaceFrameState, RaceRow } from "@/graph1/engine";
 import { cn } from "@/lib/utils";
+// Phase 5: the media ladder moved out so the stat board resolves entity
+// avatars through the SAME code path. Behaviour here is unchanged.
+import EntityAvatar, {
+  NativeLazyImg,
+  type Graph1ImageComponent,
+} from "./EntityAvatar";
 import RoleGlyph from "./RoleGlyph";
 
 const ROW_HEIGHT = 52;
@@ -68,59 +72,9 @@ export interface RaceRendererDisplay {
   exactValues?: boolean;
 }
 
-/** Injectable <img> substitute. The Remotion composition passes remotion's
- * <Img> (which delays frame capture until the asset is decoded, keeping
- * renders deterministic); the live app keeps the lazy native element. */
-export type RaceRendererImageComponent = ComponentType<{
-  src: string;
-  alt: string;
-  className?: string;
-}>;
-
-const NativeLazyImg: RaceRendererImageComponent = ({ src, alt, className }) => (
-  <img src={src} alt={alt} loading="lazy" className={className} />
-);
-
-/**
- * Media ladder: validated image -> role-enhanced initials -> plain initials.
- * `media.role` is only ever present on initials media and only for a lane
- * position, so an unresolved or non-playing role simply lands on the last
- * rung — there is no broken-image state to fall back from.
- */
-function Avatar({
-  entity,
-  imageComponent: ImageComponent,
-}: {
-  entity: Graph1EntityPresentation;
-  imageComponent: RaceRendererImageComponent;
-}) {
-  if (entity.media.kind === "image") {
-    return (
-      <ImageComponent
-        src={entity.media.src}
-        alt={entity.displayName}
-        className="h-9 w-9 shrink-0 rounded-md object-cover bg-muted"
-      />
-    );
-  }
-  const role = entity.media.kind === "initials" ? entity.media.role : undefined;
-  return (
-    <div
-      aria-hidden
-      data-avatar={role ? "role-initials" : "initials"}
-      className="relative h-9 w-9 shrink-0 rounded-md flex items-center justify-center text-xs font-bold text-white"
-      style={{ backgroundColor: entityColor(entity.id).base }}
-    >
-      {entity.media.value}
-      {role && (
-        <RoleGlyph
-          role={role}
-          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-sm bg-background/80 p-px text-foreground"
-        />
-      )}
-    </div>
-  );
-}
+/** Kept as an alias so every existing caller and test keeps compiling; the
+ * type itself now lives with the shared avatar. */
+export type RaceRendererImageComponent = Graph1ImageComponent;
 
 function rowAriaLabel(
   row: RaceRow,
@@ -180,7 +134,7 @@ function Row({
         </span>
       )}
       {display.showEntityMedia !== false && (
-        <Avatar entity={entity} imageComponent={imageComponent} />
+        <EntityAvatar entity={entity} imageComponent={imageComponent} />
       )}
       <div className="relative h-9 min-w-0 flex-1">
         {/* total-games bar: dim base color; remainder past the win segment
