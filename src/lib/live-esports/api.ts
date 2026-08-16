@@ -28,11 +28,54 @@ export type LiveTeamSummary = {
   series_wins: number | null;
 };
 
+/**
+ * What KIND of match this is (LIVE1 Phase 4B1). Every field is nullable and
+ * every one is an upstream FIELD rather than an inference:
+ *
+ * - `league.scope` derives from getLeagues' `region` (`INTERNATIONAL` vs a
+ *   geography), so domestic/international is read, never guessed from a
+ *   league code.
+ * - `stage.name` / `round_name` come from getStandingsV3 and exist only for
+ *   BRACKET matches, because upstream publishes match ids for brackets and
+ *   not for groups. A regular-season game legitimately has no stage and
+ *   falls back to `block_name` — the schedule's own label ("Week 12").
+ */
+export type LiveCompetition = {
+  league: {
+    slug: string | null;
+    name: string | null;
+    /** Upstream verbatim: "INTERNATIONAL" | "KOREA" | "EMEA" | … */
+    region: string | null;
+    scope: "domestic" | "international" | null;
+  };
+  tournament: {
+    id: string | null;
+    /** "Split 3 2026" */
+    name: string | null;
+    slug: string | null;
+    season_name: string | null;
+    split_name: string | null;
+  };
+  stage: {
+    /** "Playoffs" | "Play-Ins" | "Swiss" — bracket matches only. */
+    name: string | null;
+    slug: string | null;
+    section_name: string | null;
+    section_type: string | null;
+    /** "Finals" | "Upper Bracket - Semifinals" | "Round 1" */
+    round_name: string | null;
+    /** Always present from the schedule: "Week 12" | "Play-Ins". */
+    block_name: string | null;
+  };
+};
+
 export type LiveGameSummary = {
   game_id: string;
   match_id: string;
   league: { slug: string | null; name: string | null };
   block_name: string | null;
+  /** Optional: a backend older than Phase 4B1 does not send it. */
+  competition?: LiveCompetition | null;
   best_of: number | null;
   game_number: number | null;
   teams: { blue: LiveTeamSummary; red: LiveTeamSummary };

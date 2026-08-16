@@ -33,31 +33,38 @@ import type {
 import {
   DRAGON_LABEL,
   EVENT_LABEL,
+  SCOPE_TITLE,
+  SERIES_SCORE_TITLE,
   agoLabel,
   clock,
+  competitionLine,
   dragonCounts,
-  freshnessLabel,
-  freshnessTone,
   gameClock,
   kgold,
+  matchDateShort,
+  matchDateTitle,
+  matchLine,
   matchTitle,
   num,
   pct,
+  scopeLabel,
   seriesContext,
+  statusLabel,
+  statusTone,
   teamLabel,
 } from "./lib";
 
 /* ── status pill ─────────────────────────────────────────────────────────── */
 
-export function FreshnessPill({
+export function StatusPill({
   freshness,
   className,
 }: {
   freshness: LiveGameSummary["freshness"] | null | undefined;
   className?: string;
 }) {
-  const tone = freshnessTone(freshness);
-  const label = freshnessLabel(freshness);
+  const tone = statusTone(freshness);
+  const label = statusLabel(freshness);
   const ago = agoLabel(freshness?.seconds_since_success);
   return (
     <span className={cn("inline-flex items-center gap-1.5", className)}>
@@ -67,7 +74,7 @@ export function FreshnessPill({
           tone === "live" && "bg-emerald-500/15 text-emerald-400",
           tone === "delayed" && "bg-amber-500/15 text-amber-400",
           tone === "stale" && "bg-orange-500/15 text-orange-400",
-          tone === "final" && "bg-muted text-muted-foreground",
+          tone === "done" && "bg-muted text-muted-foreground",
           tone === "none" && "bg-muted text-muted-foreground",
         )}
       >
@@ -81,7 +88,7 @@ export function FreshnessPill({
       </span>
       {/* Age is shown whenever the data is NOT fresh, so nothing stale can
           quietly read as current. */}
-      {ago && tone !== "live" && tone !== "final" && (
+      {ago && tone !== "live" && tone !== "done" && (
         <span className="text-[11px] text-muted-foreground">{ago}</span>
       )}
     </span>
@@ -99,8 +106,13 @@ export function MatchCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const ctx = seriesContext(game);
+  const ctx = seriesContext(game, true);
   const cl = gameClock(game);
+  const date = matchDateShort(game);
+  // The stage sits on the card because it is what distinguishes two
+  // otherwise identical-looking fixtures; the tournament name and
+  // domestic/international scope are left to the header, which has room.
+  const stage = game.competition?.stage?.round_name || game.block_name;
   return (
     <button
       type="button"
@@ -113,17 +125,81 @@ export function MatchCard({
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {game.league?.name || game.league?.slug || "—"}
+          {stage ? <span className="normal-case"> · {stage}</span> : null}
         </span>
-        <FreshnessPill freshness={game.freshness} />
+        <StatusPill freshness={game.freshness} />
       </div>
       <div className="mt-1 truncate text-sm font-semibold">{matchTitle(game)}</div>
       <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-        {ctx && <span className="truncate">{ctx}</span>}
+        {date && (
+          <span className="shrink-0" title={matchDateTitle(game)}>
+            {date}
+          </span>
+        )}
+        {ctx && (
+          <span className="truncate" title={SERIES_SCORE_TITLE}>
+            {ctx}
+          </span>
+        )}
         {cl && <span className="tabular-nums">{cl}</span>}
       </div>
     </button>
+  );
+}
+
+/* ── selected-match context ──────────────────────────────────────────────── */
+
+/**
+ * Two lines that answer, at a glance: what competition is this, and which
+ * game of it am I looking at.
+ *
+ *   LCP · Split 3 2026 · Play-Ins · Round 2      [Domestic]
+ *   Aug 16, 2026 · Bo5 · Game 5 · Series 2–2 · 41:07 · Patch 16.15
+ *
+ * Nothing here is manufactured. Missing metadata drops its segment: a game
+ * with no synced league region shows no scope chip, and a group-phase game
+ * shows the schedule's "Week 12" rather than an invented "Regular Season".
+ */
+export function MatchContext({ game }: { game: LiveGameSummary }) {
+  const competition = competitionLine(game);
+  const match = matchLine(game);
+  const scope = scopeLabel(game.competition);
+  if (!competition.length && !match.length) return null;
+  return (
+    <div className="mt-1 space-y-0.5">
+      {competition.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+          <span className="font-medium text-foreground/90">
+            {competition.join(" · ")}
+          </span>
+          {scope && (
+            <span
+              title={SCOPE_TITLE[scope]}
+              className={cn(
+                "rounded px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide",
+                scope === "International"
+                  ? "bg-violet-500/15 text-violet-400"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {scope}
+            </span>
+          )}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+        {match.map((part, i) => (
+          <span key={part.kind} title={part.title}>
+            {i > 0 && <span className="mr-1.5">·</span>}
+            <span className={part.kind === "clock" ? "tabular-nums" : undefined}>
+              {part.text}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

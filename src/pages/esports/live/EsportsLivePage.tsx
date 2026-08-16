@@ -26,15 +26,16 @@ import {
 import {
   EmptyNote,
   EventTimeline,
-  FreshnessPill,
   GoldChart,
   LoadingBoard,
   MatchCard,
+  MatchContext,
   PlayerRow,
   SectionCard,
+  StatusPill,
   TeamPanel,
 } from "./components";
-import { TIMELINE_EVENT_TYPES, gameClock, matchTitle, seriesContext } from "./lib";
+import { TIMELINE_EVENT_TYPES, matchTitle } from "./lib";
 
 const FEED_POLL_MS = 10_000;
 const LIVE_DETAIL_POLL_MS = 10_000;
@@ -207,14 +208,9 @@ export default function EsportsLivePage() {
           <header className="mb-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <h1 className="text-lg font-bold sm:text-xl">{matchTitle(selected)}</h1>
-              <FreshnessPill freshness={selected.freshness} />
+              <StatusPill freshness={selected.freshness} />
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-              <span>{selected.league?.name || selected.league?.slug}</span>
-              {seriesContext(selected) && <span>· {seriesContext(selected)}</span>}
-              {gameClock(selected) && <span>· {gameClock(selected)}</span>}
-              {selected.patch_version && <span>· Patch {selected.patch_version}</span>}
-            </div>
+            <MatchContext game={selected} />
           </header>
 
           {staleSelected && (

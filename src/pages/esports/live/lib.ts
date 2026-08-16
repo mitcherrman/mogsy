@@ -5,18 +5,22 @@
  * LIVE1 returns `null` for telemetry the feed did not supply, and a dash is
  * an honest answer where "0" would be a lie.
  */
-import type { LiveFreshness, LiveGameSummary } from "@/lib/live-esports/api";
+import type {
+  LiveCompetition,
+  LiveFreshness,
+  LiveGameSummary,
+} from "@/lib/live-esports/api";
 
-export type FreshnessTone = "live" | "delayed" | "stale" | "final" | "none";
+export type StatusTone = "live" | "delayed" | "stale" | "done" | "none";
 
-export function freshnessTone(f: LiveFreshness | null | undefined): FreshnessTone {
+export function statusTone(f: LiveFreshness | null | undefined): StatusTone {
   switch (f?.label) {
     case "live_fresh":
       return "live";
     case "delayed":
       return "delayed";
     case "final":
-      return "final";
+      return "done";
     case "stale":
     case "stale_source_failing":
       return "stale";
@@ -25,14 +29,23 @@ export function freshnessTone(f: LiveFreshness | null | undefined): FreshnessTon
   }
 }
 
-export function freshnessLabel(f: LiveFreshness | null | undefined): string {
+/**
+ * The two words that matter are LIVE and DONE.
+ *
+ * A completed game used to read "FINAL", which people reasonably heard as
+ * "the finals" — a claim about the STAGE of a tournament rather than the
+ * state of a game. "DONE" cannot be misread that way. The remaining labels
+ * are the honest in-between states and stay: a game whose feed stopped
+ * mid-match is neither live nor done, and saying so is the point.
+ */
+export function statusLabel(f: LiveFreshness | null | undefined): string {
   switch (f?.label) {
     case "live_fresh":
       return "LIVE";
     case "delayed":
       return "DELAYED";
     case "final":
-      return "FINAL";
+      return "DONE";
     case "stale":
       return "STALE";
     case "stale_source_failing":
@@ -92,15 +105,178 @@ export function matchTitle(g: LiveGameSummary): string {
   return `${teamLabel(g.teams.blue)} vs ${teamLabel(g.teams.red)}`;
 }
 
-/** "Bo3 · Game 2 · 1-0" — only the parts we actually know. */
-export function seriesContext(g: LiveGameSummary): string | null {
+/**
+ * "Bo3 · Game 2 · Series 1–0" — only the parts we actually know.
+ *
+ * The score is the one entering this game: LIVE1 freezes a game's series
+ * wins when it stops being the current game of the match, so game 3 of a
+ * 1-1 series reads "Series 1–1" and not the eventual result. `compact`
+ * drops the words for the selector cards, which have ~220px to work with.
+ */
+export function seriesContext(g: LiveGameSummary, compact = false): string | null {
   const parts: string[] = [];
   if (g.best_of) parts.push(`Bo${g.best_of}`);
-  if (g.game_number) parts.push(`Game ${g.game_number}`);
+  if (g.game_number) parts.push(compact ? `G${g.game_number}` : `Game ${g.game_number}`);
   const bw = g.teams.blue?.series_wins;
   const rw = g.teams.red?.series_wins;
-  if (bw != null && rw != null) parts.push(`${bw}-${rw}`);
+  const score = `${bw}–${rw}`;
+  if (bw != null && rw != null) parts.push(compact ? score : `Series ${score}`);
   return parts.length ? parts.join(" · ") : null;
+}
+
+export const SERIES_SCORE_TITLE = "Series score entering this game";
+
+/* ── when was this match? ────────────────────────────────────────────────── */
+
+/**
+ * The instant this match belongs to, and which field said so.
+ *
+ * `scheduled_start` is the broadcast slot and is the answer to "when was
+ * this match" — it is shared by every game of a series, exactly as a
+ * schedule shows it. Games ingested by the batch/daily path can predate the
+ * schedule passthrough and have none, so the first telemetry frame is the
+ * fallback: less tidy, but a real observed instant rather than nothing.
+ *
+ * Both fields are UTC (`…Z`). `Date.parse` therefore yields the correct
+ * instant, and every renderer below formats it in the VIEWER's timezone —
+ * a UTC date is never relabelled as a local one.
+ */
+export function matchInstant(
+  g: LiveGameSummary | null | undefined,
+): { date: Date; source: "scheduled" | "first_frame" } | null {
+  for (const [value, source] of [
+    [g?.scheduled_start, "scheduled"],
+    [g?.first_frame_ts, "first_frame"],
+  ] as const) {
+    if (!value) continue;
+    const ms = Date.parse(value);
+    if (Number.isFinite(ms)) return { date: new Date(ms), source };
+  }
+  return null;
+}
+
+/** "Aug 16, 2026" in the viewer's own timezone. */
+export function matchDate(g: LiveGameSummary | null | undefined): string | null {
+  const instant = matchInstant(g);
+  if (!instant) return null;
+  return instant.date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * "Aug 16" for the ~220px selector cards. The year is dropped rather than
+ * decided by a same-year test, which would compare a local year against a
+ * UTC one and flip around New Year; the card's tooltip and the header both
+ * carry the full date, so nothing is actually lost.
+ */
+export function matchDateShort(g: LiveGameSummary | null | undefined): string | null {
+  const instant = matchInstant(g);
+  if (!instant) return null;
+  return instant.date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
+ * Tooltip text that makes the conversion auditable: the full local date and
+ * time, named as local, plus which upstream field it came from.
+ */
+export function matchDateTitle(g: LiveGameSummary | null | undefined): string | undefined {
+  const instant = matchInstant(g);
+  if (!instant) return undefined;
+  const local = instant.date.toLocaleString(undefined, {
+    dateStyle: "full",
+    timeStyle: "short",
+  });
+  const origin =
+    instant.source === "scheduled" ? "scheduled start" : "first telemetry frame";
+  return `${local} (your local time) — ${origin}`;
+}
+
+/* ── what kind of match is this? ─────────────────────────────────────────── */
+
+export function scopeLabel(c: LiveCompetition | null | undefined): string | null {
+  switch (c?.league?.scope) {
+    case "international":
+      return "International";
+    case "domestic":
+      return "Domestic";
+    default:
+      // No league region synced yet: say nothing rather than assume domestic.
+      return null;
+  }
+}
+
+export const SCOPE_TITLE: Record<string, string> = {
+  International: "Cross-region competition",
+  Domestic: "Regional league competition",
+};
+
+/**
+ * "Playoffs · Finals" / "Week 12" — the stage, in upstream's own words.
+ *
+ * Two labels describe a game's place in a competition and neither is
+ * redundant: the bracket stage/round from the standings ("Playoffs",
+ * "Finals") and the schedule's block ("Week 12", "Play-Ins"). Group-phase
+ * games have no bracket entry at all, so the block is all there is — and
+ * "Week 12" is deliberately left as "Week 12" rather than promoted to
+ * "Regular Season", which upstream never says.
+ */
+export function stageLabel(c: LiveCompetition | null | undefined): string | null {
+  const stage = c?.stage;
+  if (!stage) return null;
+  const parts: string[] = [];
+  if (stage.name) parts.push(stage.name);
+  // Whichever of the two is more specific than the stage itself; never the
+  // same word twice ("Play-Ins · Play-Ins").
+  const detail = stage.round_name || stage.block_name;
+  if (detail && !parts.includes(detail)) parts.push(detail);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+/**
+ * The competition line — league, tournament, stage — each omitted rather
+ * than filled in when we do not have it. Scope is deliberately NOT in here:
+ * "is this domestic or international" is a question of its own and gets its
+ * own chip rather than a word buried at the end of a muted line.
+ */
+export function competitionLine(g: LiveGameSummary | null | undefined): string[] {
+  const c = g?.competition;
+  const parts: string[] = [];
+  const league = c?.league?.name || g?.league?.name || g?.league?.slug;
+  if (league) parts.push(league);
+  if (c?.tournament?.name) parts.push(c.tournament.name);
+  const stage = stageLabel(c) ?? g?.block_name ?? null;
+  if (stage) parts.push(stage);
+  return parts;
+}
+
+export type MatchLinePart = {
+  kind: "date" | "series" | "clock" | "patch";
+  text: string;
+  title?: string;
+};
+
+/**
+ * "Aug 16, 2026 · Bo3 · Game 3 · Series 1–1 · 38:28 · Patch 16.15" — the
+ * match line, as tagged parts so the renderer never has to guess which
+ * segment is the date (a locale-dependent string) to attach its tooltip.
+ */
+export function matchLine(g: LiveGameSummary | null | undefined): MatchLinePart[] {
+  if (!g) return [];
+  const parts: MatchLinePart[] = [];
+  const date = matchDate(g);
+  if (date) parts.push({ kind: "date", text: date, title: matchDateTitle(g) });
+  const series = seriesContext(g);
+  if (series) parts.push({ kind: "series", text: series, title: SERIES_SCORE_TITLE });
+  const cl = gameClock(g);
+  if (cl) parts.push({ kind: "clock", text: cl, title: "Elapsed game time" });
+  if (g.patch_version) parts.push({ kind: "patch", text: `Patch ${g.patch_version}` });
+  return parts;
 }
 
 /** Dragon souls arrive as a list of type strings; count them by type. */
