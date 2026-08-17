@@ -16,6 +16,8 @@ import {
   makeStatMatchup,
   recordSwipeResult,
   verifyFactualChoice,
+  type ChampionStats,
+  type ItemMeta,
   type SwipeMatchup,
   type SwipeRevealAggregates,
 } from "@/lib/league-swipe/api";
@@ -38,8 +40,42 @@ import { newSubmissionId } from "@/lib/league-swipe/submissionId";
  */
 type RevealState = {
   aggregates: SwipeRevealAggregates | null;
+  /**
+   * What the reveal SHOWS. Canonical verdict when there is one, otherwise the
+   * older fallback chain (RPC echo, then the local comparison) so a player is
+   * never told they were wrong because the verifier was unreachable.
+   */
   isCorrect: boolean | null;
+  /**
+   * Whether a CANONICAL verdict was obtained — i.e. whether this round counted.
+   *
+   * Distinct from `isCorrect` on purpose. `isCorrect` may still be filled in by
+   * the fallback chain so the reveal stays informative, but only a canonical
+   * verdict is allowed to move score/streak, so the two can legitimately
+   * disagree about whether anything was scored. Rendering that difference is
+   * what keeps a frozen streak from looking like a bug.
+   */
+  judged: boolean;
 };
+
+/**
+ * Stable empty defaults for the three pool queries. NOT cosmetic.
+ *
+ * Written inline as `= []`, each of these allocated a fresh array on every
+ * render for any query that was disabled or still loading — and every game
+ * disables at least two of the three (Stat Duel needs no items, Item Cost Duel
+ * needs no champions). That new identity propagated into `nextMatchup`'s
+ * `useCallback` deps, which are in turn the auto-advance effect's deps, so the
+ * effect tore down and re-armed its `setTimeout` on every render. The countdown
+ * bar's own `requestAnimationFrame` caused a render, which re-ran the effect,
+ * which cancelled the timer and reset the bar — a ~16ms cycle in which the
+ * timeout could never reach its deadline. Auto-advance therefore never fired at
+ * all, and the countdown bar never visibly filled. Hoisting the defaults to
+ * module scope makes the identities constant and the effect quiet.
+ */
+const NO_CHAMPION_NAMES: string[] = [];
+const NO_CHAMPION_STATS: ChampionStats[] = [];
+const NO_ITEMS: ItemMeta[] = [];
 
 /**
  * Meta Reflex game loop: show two cards → tap one → reveal community split
@@ -58,19 +94,19 @@ export default function LeagueSwipeGame() {
     if (!user) supabase.auth.signInAnonymously();
   }, [user]);
 
-  const { data: championNames = [] } = useQuery({
+  const { data: championNames = NO_CHAMPION_NAMES } = useQuery({
     queryKey: ["league-swipe", "champion-names"],
     queryFn: fetchChampionNames,
     staleTime: 60 * 60 * 1000,
     enabled: game?.mode === "opinion",
   });
-  const { data: championStats = [] } = useQuery({
+  const { data: championStats = NO_CHAMPION_STATS } = useQuery({
     queryKey: ["league-swipe", "champion-stats"],
     queryFn: fetchChampionStats,
     staleTime: 60 * 60 * 1000,
     enabled: game?.slug === "higher-base-stat",
   });
-  const { data: items = [] } = useQuery({
+  const { data: items = NO_ITEMS } = useQuery({
     queryKey: ["league-swipe", "items"],
     queryFn: fetchItems,
     staleTime: 60 * 60 * 1000,
@@ -107,6 +143,17 @@ export default function LeagueSwipeGame() {
    *     entity pair.
    */
   const submissionId = useRef<string | null>(null);
+  /**
+   * The attempt whose canonical verdict has already been applied to score/streak.
+   *
+   * Same identity as the submission id, and for the same reason: the tap guard
+   * (`selectedId`/`pending`) is a state read from a closure, so a sub-frame
+   * double-fire can slip two `handleChoose` calls past it. The RPC's
+   * `client_submission_id` short-circuit collapses those into one stored vote;
+   * this ref is the local equivalent for the scoreboard, so one dealt matchup can
+   * never move the streak twice.
+   */
+  const scoredAttempt = useRef<string | null>(null);
   // Session-scoped anti-repeat: exact matchups already shown, plus a short
   // cooldown window so the same entity doesn't headline back-to-back rounds.
   const seenPairs = useRef<Set<string>>(new Set());
@@ -188,11 +235,18 @@ export default function LeagueSwipeGame() {
     if (!matchup) nextMatchup();
   }, [matchup, nextMatchup]);
 
-  // Auto-advance after the reveal so the loop keeps flowing. Knowledge games
-  // get a little longer to read the values/explanation. The countdown bar is
-  // a width transition kicked off one frame after the reveal mounts; manual
+  // Auto-advance after the reveal so the loop keeps flowing. The countdown bar
+  // is a width transition kicked off one frame after the reveal mounts; manual
   // "Next" or unmount clears everything via the effect cleanup.
-  const autoAdvanceMs = game?.mode === "knowledge" ? 3500 : 2500;
+  //
+  // The knowledge beat used to be 3500ms, sized for a reveal that appeared the
+  // instant a card was tapped. It no longer does: the reveal now waits for the
+  // canonical verdict, so the round trip is already spent before this timer
+  // starts and the old hold read as a stall on top of a stall. 1500ms is the
+  // top of the requested 1.0–1.5s band — the longest beat that still feels
+  // rapid-fire, because a factual reveal has the most to read (both values, the
+  // explanation, and the community split).
+  const autoAdvanceMs = game?.mode === "knowledge" ? 1500 : 2500;
   const [countdownOn, setCountdownOn] = useState(false);
   useEffect(() => {
     if (!reveal) return;
@@ -213,17 +267,6 @@ export default function LeagueSwipeGame() {
       setSelectedId(chosen.id);
       setPending(true);
 
-      const isCorrect = matchup.correctId ? chosen.id === matchup.correctId : null;
-      if (game.mode === "knowledge") {
-        setRounds((r) => r + 1);
-        if (isCorrect) {
-          setScore((s) => s + 1);
-          setStreak((s) => s + 1);
-        } else {
-          setStreak(0);
-        }
-      }
-
       // CAPTURED, never re-read from the ref inside a retry. Auto-advance
       // rotates `submissionId` a couple of seconds after the reveal, so a retry
       // that re-read it would submit this answer under the NEXT question's
@@ -243,38 +286,72 @@ export default function LeagueSwipeGame() {
         context: matchup.context,
         clientSubmissionId: attemptId,
       });
-      // Factual categories get their verdict from the backend, which re-derives
-      // it from canonical Mogzy data. The local comparison above is only a
-      // fallback for the reveal — it is never what gets persisted, and it is
-      // computed from the same pool the server served, so the two agree.
+      // THE CANONICAL VERDICT — the only thing allowed to move score/streak.
       //
-      // A null `verified_correct` means the server declined to judge (entity
-      // retired from the pool, or values converged after a patch). That is NOT
-      // "wrong" — fall back to the local reading rather than telling a player
-      // they were incorrect because the data moved.
-      let verdict: boolean | null = agg?.isCorrect ?? isCorrect;
+      // Deliberately seeded to null rather than to the local comparison. Score
+      // and streak used to be written synchronously from that comparison the
+      // instant a card was tapped, before this request was even sent, so a round
+      // the backend went on to call `Incorrect` had already banked a point and
+      // extended the streak. Keeping the local reading out of this variable
+      // entirely is what makes that unrepresentable: there is no path by which
+      // the browser's own opinion reaches the scoreboard.
+      //
+      // Stays null when the answer is UNJUDGED, which is three distinct cases —
+      // no evaluator exists for the variant (base MR), the verifier was
+      // unreachable, or the server declined (entity retired, values converged
+      // after a patch). None of them is evidence of a wrong answer, so none of
+      // them scores.
+      let canonicalVerdict: boolean | null = null;
       if (game.mode === "knowledge") {
         // The evaluator depends on the FACT, not the game: Stat Duel is one game
         // over several facts and its slug is not a category at all. Passing the
         // slug 404s and silently falls back to the browser's own comparison,
         // which is the failure this feature exists to remove. See
         // lib/league-swipe/factualCategories.
-        //
-        // A null category means no canonical evaluator exists for this variant
-        // (base MR). Keep the local reading rather than claiming a verdict.
         const categoryId = resolveFactualCategory(
           game.slug,
           typeof matchup.context?.stat === "string" ? matchup.context.stat : null,
         );
         if (categoryId) {
           const server = await verifyFactualChoice(categoryId, chosen.id, other.id);
-          if (server?.verified_correct != null) verdict = server.verified_correct;
+          canonicalVerdict = server?.verified_correct ?? null;
+        }
+
+        // Scored here, AFTER the verdict lands and BEFORE the reveal renders, so
+        // the scoreboard and the badge are two readings of one decision rather
+        // than a race between an optimistic guess and the truth. Opinion games
+        // never reach this block: they have no factual truth, so they can neither
+        // extend nor break the factual streak.
+        if (canonicalVerdict !== null && scoredAttempt.current !== attemptId) {
+          scoredAttempt.current = attemptId;
+          // `rounds` counts SCORED rounds, so `score/rounds` stays a true
+          // accuracy. Counting an unjudged round in the denominator would be
+          // scoring it wrong by arithmetic while claiming not to judge it.
+          setRounds((r) => r + 1);
+          if (canonicalVerdict) {
+            setScore((s) => s + 1);
+            setStreak((s) => s + 1);
+          } else {
+            setStreak(0);
+          }
         }
       }
 
+      // What the reveal SHOWS, which is a weaker claim than what it SCORES.
+      // Unchanged fallback chain: canonical verdict, then the RPC's echo, then
+      // the local comparison — so an unreachable verifier still reveals the
+      // answer instead of accusing the player. `judged` carries the difference
+      // through to the panel.
+      const localReading = matchup.correctId ? chosen.id === matchup.correctId : null;
+      const shownVerdict = canonicalVerdict ?? agg?.isCorrect ?? localReading;
+
       // A failed write reveals with NO community data rather than a synthesised
       // split — see RevealState.
-      setReveal({ aggregates: agg, isCorrect: verdict });
+      setReveal({
+        aggregates: agg,
+        isCorrect: shownVerdict,
+        judged: canonicalVerdict !== null,
+      });
       setPending(false);
     },
     [game, matchup, selectedId, pending],
@@ -325,10 +402,15 @@ export default function LeagueSwipeGame() {
         </Link>
         {game.mode === "knowledge" && (
           <div className="flex items-center gap-3 text-sm">
-            <span className="font-semibold text-[#f0d78c]">
+            {/* Both counters read the canonical verdict only — see handleChoose.
+                `rounds` is SCORED rounds, not rounds played. */}
+            <span data-testid="swipe-score" className="font-semibold text-[#f0d78c]">
               {score}/{rounds}
             </span>
-            <span className="inline-flex items-center gap-1 font-semibold text-[#ff9147]">
+            <span
+              data-testid="swipe-streak"
+              className="inline-flex items-center gap-1 font-semibold text-[#ff9147]"
+            >
               <Flame className="h-4 w-4" /> {streak}
             </span>
           </div>
@@ -445,8 +527,8 @@ export default function LeagueSwipeGame() {
       {revealed && matchup && reveal && (
         <div className="mt-5 rounded-2xl border border-border bg-gradient-to-br from-[#0a1428]/90 to-[#0a0a1a]/90 backdrop-blur-sm p-4 md:p-5">
           {game.mode === "knowledge" ? (
-            <div className="flex items-center gap-2 mb-2">
-              {/* Server verdict when the write landed, local derivation otherwise. */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+              {/* Canonical verdict when there is one, local derivation otherwise. */}
               {reveal.isCorrect ? (
                 <span className="inline-flex items-center gap-1.5 text-emerald-400 font-bold">
                   <Check className="h-5 w-5" /> Correct!
@@ -454,6 +536,17 @@ export default function LeagueSwipeGame() {
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-[#ff4655] font-bold">
                   <X className="h-5 w-5" /> Incorrect
+                </span>
+              )}
+              {/* Says out loud that the streak did not move, and why. Without
+                  this the answer above reads as a scored round and a stalled
+                  counter reads as a broken one. */}
+              {!reveal.judged && (
+                <span
+                  data-testid="swipe-round-unscored"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Not scored — no canonical verdict for this matchup
                 </span>
               )}
             </div>

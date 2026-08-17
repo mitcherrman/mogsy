@@ -9,7 +9,7 @@
  * tests exist to stop that regressing quietly.
  */
 import { describe, expect, it } from "vitest";
-import { STAT_KEYS, LEAGUE_SWIPE_GAMES } from "./api";
+import { STAT_KEYS, LEAGUE_SWIPE_GAMES, makeStatMatchup } from "./api";
 import {
   resolveFactualCategory,
   UNVERIFIABLE_STAT_VARIANTS,
@@ -58,20 +58,40 @@ describe("resolveFactualCategory", () => {
 });
 
 describe("coverage of every stat Stat Duel can actually deal", () => {
-  it("leaves no stat silently unverifiable", () => {
-    // The real hazard is additive: someone appends a stat to STAT_KEYS, the game
-    // starts asking about it, and every answer quietly stops being verified
-    // because nothing failed loudly. Each stat must be either mapped or listed
-    // as a known, explained gap.
+  it("maps EVERY dealt stat to an evaluator — a documented gap is no longer enough", () => {
+    // Strengthened when base MR left the pool. The old rule ("mapped OR listed as
+    // a known gap") was satisfied by a stat that could be dealt and never judged,
+    // which is exactly the ~1-in-6 unscored Stat Duel round that got MR removed.
+    // Now that score and streak are canonical-only, an unjudgeable stat in the
+    // deal is a scoring hole, so the dealt pool must be fully mapped.
     for (const { key } of STAT_KEYS) {
-      const mapped = resolveFactualCategory("higher-base-stat", key) !== null;
-      const knownGap = key in UNVERIFIABLE_STAT_VARIANTS;
       expect(
-        mapped || knownGap,
-        `stat "${key}" is neither mapped to a factual category nor listed in ` +
-          `UNVERIFIABLE_STAT_VARIANTS — Stat Duel would ask it and never verify it`,
-      ).toBe(true);
+        resolveFactualCategory("higher-base-stat", key),
+        `stat "${key}" is dealt by Stat Duel but has no canonical evaluator, so ` +
+          `every round asking it would be unscored — map it, or drop it from STAT_KEYS`,
+      ).not.toBeNull();
     }
+  });
+
+  it("deals no stat that is on the unverifiable register", () => {
+    // The same rule from the other direction, stated against the register itself,
+    // so re-adding a known-unjudgeable stat to the deal fails here too.
+    for (const variant of Object.keys(UNVERIFIABLE_STAT_VARIANTS)) {
+      expect(
+        STAT_KEYS.some((s) => s.key === variant),
+        `"${variant}" is registered as having no canonical evaluator but is still ` +
+          `in STAT_KEYS — Stat Duel would deal a round it cannot score`,
+      ).toBe(false);
+    }
+  });
+
+  it("base magic resist specifically is out of the playable pool", () => {
+    expect(STAT_KEYS.map((s) => s.key)).not.toContain("magic_resist");
+    // Data support is NOT withdrawn. The stat is still fetched and typed, and a
+    // STORED MR answer still resolves to unjudged rather than to wrong, so old
+    // history keeps reading correctly.
+    expect(resolveFactualCategory("higher-base-stat", "magic_resist")).toBeNull();
+    expect(UNVERIFIABLE_STAT_VARIANTS).toHaveProperty("magic_resist");
   });
 
   it("documents a reason for every declared gap", () => {
@@ -79,5 +99,42 @@ describe("coverage of every stat Stat Duel can actually deal", () => {
       expect(reason.length, `${variant} needs a reason`).toBeGreaterThan(10);
       expect(resolveFactualCategory("higher-base-stat", variant)).toBeNull();
     }
+  });
+});
+
+describe("what the Stat Duel generator can actually put on screen", () => {
+  // Asserting against STAT_KEYS proves the CONFIG is right; this drives the real
+  // generator instead, because the config only matters through what it deals.
+  // Stats are pairwise-distinct on every key so the tie-rejection loop always
+  // finds a matchup on its first attempt and the sample stays uniform.
+  const GAME = LEAGUE_SWIPE_GAMES.find((g) => g.slug === "higher-base-stat")!;
+  const ROSTER = [
+    { champion_name: "Garen", hp: 690, hp_per_level: 98, ad: 69, ad_per_level: 4.5, armor: 38, armor_per_level: 4.7, magic_resist: 32, magic_resist_per_level: 2.05, move_speed: 340, attack_range: 175, attack_speed: 0.625 },
+    { champion_name: "Ahri", hp: 590, hp_per_level: 96, ad: 53, ad_per_level: 3, armor: 21, armor_per_level: 4.7, magic_resist: 30, magic_resist_per_level: 1.3, move_speed: 330, attack_range: 550, attack_speed: 0.668 },
+    { champion_name: "Caitlyn", hp: 580, hp_per_level: 107, ad: 60, ad_per_level: 3.8, armor: 27, armor_per_level: 4.7, magic_resist: 28, magic_resist_per_level: 1.3, move_speed: 325, attack_range: 650, attack_speed: 0.681 },
+  ];
+
+  const deal = (n: number) =>
+    Array.from({ length: n }, () => makeStatMatchup(GAME, ROSTER).context?.stat as string);
+
+  it("never deals a base magic resist round", () => {
+    // 400 deals over a 5-stat pool: the chance of missing a live variant by luck
+    // is ~(4/5)^400, i.e. nil. If MR were still dealable this would catch it.
+    expect(deal(400)).not.toContain("magic_resist");
+  });
+
+  it("every matchup it deals resolves to a canonical evaluator", () => {
+    // The property that actually matters, end to end: nothing reaches a card
+    // that the backend cannot judge, so no dealt round can be unscored.
+    for (const stat of deal(400)) {
+      expect(
+        resolveFactualCategory("higher-base-stat", stat),
+        `generator dealt "${stat}", which has no canonical evaluator`,
+      ).not.toBeNull();
+    }
+  });
+
+  it("still deals the whole remaining pool, so the removal cost only MR", () => {
+    expect(new Set(deal(400))).toEqual(new Set(STAT_KEYS.map((s) => s.key)));
   });
 });

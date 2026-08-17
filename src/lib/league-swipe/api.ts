@@ -226,12 +226,27 @@ export async function verifyFactualBatch(
 // Matchup generation
 // ---------------------------------------------------------------------------
 
-/** Stats interesting enough to quiz on, with human labels. */
+/**
+ * Stats Stat Duel is allowed to DEAL, with human labels.
+ *
+ * Every entry here must have a canonical factual evaluator, because a dealt
+ * stat with no evaluator produces a round that cannot be scored — see
+ * factualCategories.ts, and the coverage test that enforces the rule.
+ *
+ * `magic_resist` is deliberately absent. The backend declines to offer a base-MR
+ * duel category at all (base MR ties on ~39% of champion pairs), so every MR
+ * round came back UNJUDGED and, once score/streak became canonical-only, simply
+ * did not count — roughly one Stat Duel round in six silently scoring nothing.
+ * Removing it from the deal is the narrow fix: nothing about MR *data* is gone.
+ * `ChampionStats.magic_resist` is still fetched and still typed, the resolver
+ * still returns null for stored `magic_resist` rows so old answers keep their
+ * unjudged reading, and re-adding the entry here is all it takes to bring the
+ * variant back the day a canonical MR evaluator exists.
+ */
 export const STAT_KEYS: Array<{ key: keyof ChampionStats; label: string; unit?: string }> = [
   { key: "hp", label: "Base HP" },
   { key: "ad", label: "Base Attack Damage" },
   { key: "armor", label: "Base Armor" },
-  { key: "magic_resist", label: "Base Magic Resist" },
   { key: "move_speed", label: "Move Speed" },
   { key: "attack_range", label: "Attack Range" },
 ];

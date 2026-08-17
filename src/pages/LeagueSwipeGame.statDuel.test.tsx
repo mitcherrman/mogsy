@@ -115,9 +115,15 @@ describe("Stat Duel factual verification", () => {
     }
   });
 
-  it("does not call the verifier at all for base magic resist", async () => {
+  it("does not call the verifier at all for an unmapped variant", async () => {
     // No canonical MR category exists (base MR ties on ~39% of pairs). Asking
     // anyway would 404 on every answer, which is noise, not verification.
+    //
+    // MR is no longer in `STAT_KEYS`, so the generator cannot produce this round
+    // any more — it is injected. The routing rule is what is under test, and it
+    // still governs replayed history and any future stat added before its
+    // evaluator; `factualCategories.test.ts` separately pins that the live pool
+    // contains nothing unmapped.
     mocks.makeStatMatchup.mockReturnValue(statMatchup("magic_resist"));
     renderStatDuel();
     await pickGaren();

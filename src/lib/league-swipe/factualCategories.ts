@@ -34,18 +34,25 @@ const STAT_VARIANT_TO_CATEGORY: Record<string, string> = {
 };
 
 /**
- * Stat Duel variants with no canonical evaluator, and why.
+ * Stat variants with no canonical evaluator, and why.
  *
  * `magic_resist` is not an oversight. Base MR ties on ~39% of champion pairs
  * (measured against `champion_stats`, 172 champions), so the backend provider
- * deliberately declines to offer it as a duel category. Stat Duel may still ask
- * the question — its own generator rejects ties before dealing a card, so the
- * matchups it produces are answerable — but a STORED answer cannot be re-judged
- * from canonical data through the shared verifier.
+ * deliberately declines to offer it as a duel category.
  *
- * Listing it explicitly (rather than letting the lookup miss) is what makes the
- * gap auditable: the test suite asserts that every variant Stat Duel can deal is
- * either mapped or named here, so a new stat cannot become silently unverifiable.
+ * Stat Duel NO LONGER DEALS IT. It used to, on the reasoning that its generator
+ * rejects ties so the matchups were at least answerable — but once score and
+ * streak became canonical-only, "answerable" stopped being enough: an unjudged
+ * round cannot be scored, so about one Stat Duel round in six quietly counted
+ * for nothing. The variant is out of `STAT_KEYS`, and this registry is now a
+ * record of a HISTORICAL variant rather than a live gap.
+ *
+ * It stays here, and stays unmapped, for two reasons that outlive the removal:
+ * stored `league_swipe_results` rows with `variant = 'magic_resist'` must keep
+ * resolving to null so derive-on-read renders them unjudged instead of wrong,
+ * and the coverage test still uses this registry to prove every stat the game
+ * CAN deal has an evaluator — so appending a new unverifiable stat to
+ * `STAT_KEYS` fails loudly instead of silently scoring nothing.
  */
 export const UNVERIFIABLE_STAT_VARIANTS: Record<string, string> = {
   magic_resist:
