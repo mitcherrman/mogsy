@@ -24,13 +24,40 @@
  * assert correctness.
  */
 
-/** The stat keys Stat Duel can ask about, mapped to their factual category. */
+/** The stat keys a champion stat duel can ask about, mapped to their category. */
 const STAT_VARIANT_TO_CATEGORY: Record<string, string> = {
   hp: "champion-hp-duel",
   ad: "champion-ad-duel",
   armor: "champion-armor-duel",
   move_speed: "champion-move-speed-duel",
   attack_range: "champion-attack-range-duel",
+};
+
+/**
+ * Game slugs that ask about exactly ONE base stat, and which stat that is.
+ *
+ * WHY THESE SLUGS ARE NOT SUPABASE GAMES
+ * ──────────────────────────────────────
+ * They are route/hub identities only. All three WRITE under the existing
+ * `higher-base-stat` game row, discriminated by the `variant` column that
+ * migration 20260813120100 added for exactly this purpose — one stat per
+ * matchup aggregate. Introducing three real `league_swipe_games` rows would
+ * need a manually-applied Supabase migration that the frontend deploy has to
+ * land behind (the vote RPC raises `unknown league swipe game` for an unseeded
+ * slug), and it would strand every hp/ad/armor aggregate already accumulated
+ * under `higher-base-stat`. The variant discriminator already models "one stat
+ * is one question family", so the storage model needs nothing new — only the
+ * presentation does.
+ *
+ * Consequence for this resolver: it is asked about BOTH names. Live play passes
+ * the mode slug (`base-hp-duel`); derive-on-read passes the stored Supabase slug
+ * (`higher-base-stat`) with the row's variant. Both must resolve, and they must
+ * resolve to the SAME category, which the coverage test pins.
+ */
+export const FOCUSED_STAT_GAMES: Record<string, string> = {
+  "base-hp-duel": "hp",
+  "base-ad-duel": "ad",
+  "base-armor-duel": "armor",
 };
 
 /**
@@ -71,6 +98,20 @@ export function resolveFactualCategory(
   variant?: string | null,
 ): string | null {
   if (gameSlug === "item-cost-duel") return "item-cost-duel";
+
+  // Focused single-stat modes. The mode's own stat is the authority, and a
+  // dealt variant that disagrees with it is NOT judged: a `base-hp-duel` round
+  // carrying `variant: 'magic_resist'` is a bug somewhere upstream, and judging
+  // it against the HP pool would score the player on a question they were never
+  // asked. Unjudged is the honest outcome, and it is what keeps a stat with no
+  // canonical evaluator — base MR above all — from leaking in through a mode
+  // that is nominally about something else.
+  const focused = FOCUSED_STAT_GAMES[gameSlug];
+  if (focused) {
+    if (variant && variant !== focused) return null;
+    return STAT_VARIANT_TO_CATEGORY[focused] ?? null;
+  }
+
   if (gameSlug === "higher-base-stat") {
     if (!variant) return null;
     return STAT_VARIANT_TO_CATEGORY[variant] ?? null;

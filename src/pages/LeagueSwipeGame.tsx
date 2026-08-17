@@ -9,14 +9,19 @@ import { useChampionAssets, getChampionLoading } from "@/hooks/useChampionAssets
 import {
   fetchChampionNames,
   fetchChampionStats,
+  fetchFactualPool,
   fetchItems,
   getSwipeGame,
+  makeFactualMatchup,
   makeItemCostMatchup,
   makeOpinionMatchup,
   makeStatMatchup,
+  recordSlugFor,
   recordSwipeResult,
   verifyFactualChoice,
   type ChampionStats,
+  type FactualEntity,
+  type FactualPool,
   type ItemMeta,
   type SwipeMatchup,
   type SwipeRevealAggregates,
@@ -76,6 +81,8 @@ type RevealState = {
 const NO_CHAMPION_NAMES: string[] = [];
 const NO_CHAMPION_STATS: ChampionStats[] = [];
 const NO_ITEMS: ItemMeta[] = [];
+/** Same reason as the three above — a focused mode disables the other pools. */
+const NO_FACTUAL_ENTITIES: FactualEntity[] = [];
 
 /**
  * Meta Reflex game loop: show two cards → tap one → reveal community split
@@ -112,6 +119,22 @@ export default function LeagueSwipeGame() {
     staleTime: 60 * 60 * 1000,
     enabled: game?.entityType === "item",
   });
+  /**
+   * The pool for a focused single-stat mode, read from the canonical category.
+   *
+   * NOT `fetchChampionStats()`. That endpoint serves every `champion_stats` row
+   * including ones the roster table does not have, so a card can be dealt that
+   * the verifier cannot judge — see fetchFactualPool. This query is keyed by
+   * category id so the three focused modes cache independently.
+   */
+  const factualCategory = game?.factualCategory;
+  const { data: factualPool } = useQuery<FactualPool>({
+    queryKey: ["league-swipe", "factual-pool", factualCategory],
+    queryFn: () => fetchFactualPool(factualCategory as string),
+    staleTime: 60 * 60 * 1000,
+    enabled: Boolean(factualCategory),
+  });
+  const factualEntities = factualPool?.entities ?? NO_FACTUAL_ENTITIES;
 
   const [matchup, setMatchup] = useState<SwipeMatchup | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -174,6 +197,21 @@ export default function LeagueSwipeGame() {
         const pool = narrowPoolToForcedPair(championNames, forced, (n) => n) ?? championNames;
         return makeOpinionMatchup(game, pool);
       }
+      // Focused single-stat modes, ahead of the mixed builder: one shared
+      // builder over one canonical pool, so the three of them are one code path
+      // that differs only in which category it was pointed at. The prompt and
+      // unit come from that category rather than from the config, so the
+      // question on screen is the backend's own wording for the fact.
+      if (game.factualCategory && game.statVariant && factualPool && factualEntities.length >= 2) {
+        const pool =
+          narrowPoolToForcedPair(factualEntities, forced, (e) => e.id) ?? factualEntities;
+        return makeFactualMatchup(pool, {
+          prompt: factualPool.prompt || game.prompt,
+          unit: factualPool.unit,
+          variant: game.statVariant,
+          statLabel: game.statLabel ?? game.statVariant,
+        });
+      }
       if (game.slug === "higher-base-stat" && championStats.length >= 2) {
         const pool =
           narrowPoolToForcedPair(championStats, forced, (s) => s.champion_name) ?? championStats;
@@ -228,7 +266,7 @@ export default function LeagueSwipeGame() {
       // that came back null must not burn the current attempt's identity.
       submissionId.current = newSubmissionId();
     }
-  }, [game, championNames, championStats, items, search]);
+  }, [game, championNames, championStats, items, factualPool, factualEntities, search]);
 
   // Deal the first matchup once data is ready.
   useEffect(() => {
@@ -276,7 +314,12 @@ export default function LeagueSwipeGame() {
       const attemptId = submissionId.current;
 
       const agg = await recordSwipeResult({
-        gameSlug: game.slug,
+        // The SUPABASE game, which is not always this mode's route slug: the
+        // three focused base-stat modes record under `higher-base-stat` and are
+        // separated by the matchup `variant` the RPC reads out of `context.stat`.
+        // Sending the route slug would raise `unknown league swipe game` and
+        // lose every vote.
+        gameSlug: recordSlugFor(game),
         selected: chosen.id,
         other: other.id,
         correct: matchup.correctId,

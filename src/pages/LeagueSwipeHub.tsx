@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, BarChart3, Brain, Flame, Heart, Coins } from "lucide-react";
+import { ArrowRight, BarChart3, Brain, Flame, Heart, Coins, HeartPulse, Shield, Swords } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { useChampionAssets, getChampionLoading } from "@/hooks/useChampionAssets";
-import { LEAGUE_SWIPE_GAMES, type SwipeGameConfig } from "@/lib/league-swipe/api";
+import { VISIBLE_LEAGUE_SWIPE_GAMES, type SwipeGameConfig } from "@/lib/league-swipe/api";
 import { META_REFLEX_NAME, META_REFLEX_TAGLINE } from "@/lib/league-swipe/branding";
 
 const GAME_ICONS: Record<string, React.ElementType> = {
   "favorite-champion": Heart,
   "most-annoying-champion": Flame,
+  "base-hp-duel": HeartPulse,
+  "base-ad-duel": Swords,
+  "base-armor-duel": Shield,
   "higher-base-stat": Brain,
   "item-cost-duel": Coins,
 };
@@ -34,7 +37,7 @@ export default function LeagueSwipeHub() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {LEAGUE_SWIPE_GAMES.map((game) => (
+        {VISIBLE_LEAGUE_SWIPE_GAMES.map((game) => (
           <GameCard
             key={game.slug}
             game={game}

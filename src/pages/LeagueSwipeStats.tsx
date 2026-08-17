@@ -9,11 +9,11 @@ import {
   fetchSwipeStats,
   fetchTopRatings,
   getSwipeGame,
-  LEAGUE_SWIPE_GAMES,
+  VISIBLE_LEAGUE_SWIPE_GAMES,
   type SwipeMatchupStat,
 } from "@/lib/league-swipe/api";
 
-const OPINION_GAMES = LEAGUE_SWIPE_GAMES.filter((g) => g.mode === "opinion");
+const OPINION_GAMES = VISIBLE_LEAGUE_SWIPE_GAMES.filter((g) => g.mode === "opinion");
 
 /**
  * Read-only Meta Reflex analytics: global totals, per-game activity,
@@ -91,7 +91,7 @@ export default function LeagueSwipeStats() {
 
       {/* Quick links to jump straight into a game */}
       <div className="mb-8 flex flex-wrap gap-2">
-        {LEAGUE_SWIPE_GAMES.map((g) => (
+        {VISIBLE_LEAGUE_SWIPE_GAMES.map((g) => (
           <Link
             key={g.slug}
             to={`/league-swipe/${g.slug}`}

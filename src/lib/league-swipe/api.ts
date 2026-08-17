@@ -17,6 +17,41 @@ export type SwipeGameConfig = {
   description: string;
   /** Champion used for card art on hub tiles. */
   artChampion: string;
+  /**
+   * The `league_swipe_games.slug` this mode WRITES under, when it differs from
+   * its own route slug.
+   *
+   * The three focused base-stat modes are route/hub identities that all record
+   * under `higher-base-stat`, separated by the `variant` column. See
+   * FOCUSED_STAT_GAMES in factualCategories.ts for why the storage model is
+   * deliberately left alone. Absent means "writes under its own slug".
+   */
+  recordSlug?: string;
+  /**
+   * The single stat this mode deals, for a focused mode. Becomes the matchup
+   * `variant`, which is both the aggregate discriminator and what the resolver
+   * cross-checks the mode against.
+   */
+  statVariant?: string;
+  /**
+   * The canonical backend category this mode deals FROM. Its presence is what
+   * makes a mode generic: the pool, the prompt, the unit and the values all
+   * come from `/api/meta-reflex/factual/pool/{id}` rather than from anything
+   * restated here, so the cards a player sees are drawn from the exact rows the
+   * verifier will judge them against.
+   */
+  factualCategory?: string;
+  /** Human label for the stat, used in the reveal explanation. */
+  statLabel?: string;
+  /**
+   * Reachable by URL but not advertised on the hub.
+   *
+   * `higher-base-stat` is hidden rather than deleted: the route keeps working
+   * for bookmarks, and — more importantly — the config is still what
+   * `getSwipeGame()` resolves when the stats page renders the title of a stored
+   * row that was recorded under that slug.
+   */
+  hiddenFromHub?: boolean;
 };
 
 export const LEAGUE_SWIPE_GAMES: SwipeGameConfig[] = [
@@ -39,6 +74,55 @@ export const LEAGUE_SWIPE_GAMES: SwipeGameConfig[] = [
     artChampion: "Teemo",
   },
   {
+    slug: "base-hp-duel",
+    title: "Base HP Duel",
+    prompt: "Which champion has more base health?",
+    mode: "knowledge",
+    entityType: "champion",
+    description: "Two champions, level 1. Which one starts with more health?",
+    artChampion: "Sion",
+    recordSlug: "higher-base-stat",
+    statVariant: "hp",
+    factualCategory: "champion-hp-duel",
+    statLabel: "base health",
+  },
+  {
+    slug: "base-ad-duel",
+    title: "Base AD Duel",
+    prompt: "Which champion has more base attack damage?",
+    mode: "knowledge",
+    entityType: "champion",
+    description: "Two champions, level 1. Which one hits harder before items?",
+    artChampion: "Draven",
+    recordSlug: "higher-base-stat",
+    statVariant: "ad",
+    factualCategory: "champion-ad-duel",
+    statLabel: "base attack damage",
+  },
+  {
+    slug: "base-armor-duel",
+    title: "Base Armor Duel",
+    prompt: "Which champion has more base armor?",
+    mode: "knowledge",
+    entityType: "champion",
+    description: "Two champions, level 1. Which one is tougher to chip down?",
+    artChampion: "Rammus",
+    recordSlug: "higher-base-stat",
+    statVariant: "armor",
+    factualCategory: "champion-armor-duel",
+    statLabel: "base armor",
+  },
+  {
+    /**
+     * The original mixed-stat mode. HIDDEN from the hub, not retired.
+     *
+     * It dealt one of five stats at random, so on three of those five it is now
+     * a strictly worse version of a focused mode above, and it splits the same
+     * community aggregates across two entry points. The route stays alive
+     * because it is still the SUPABASE game every focused mode records under —
+     * `getSwipeGame("higher-base-stat")` is what resolves a stored row's title —
+     * and because live links to it should not start 404ing.
+     */
     slug: "higher-base-stat",
     title: "Stat Duel",
     prompt: "Which champion has the higher base stat?",
@@ -46,6 +130,7 @@ export const LEAGUE_SWIPE_GAMES: SwipeGameConfig[] = [
     entityType: "champion",
     description: "Guess which champion has the higher stat.",
     artChampion: "Darius",
+    hiddenFromHub: true,
   },
   {
     slug: "item-cost-duel",
@@ -60,6 +145,37 @@ export const LEAGUE_SWIPE_GAMES: SwipeGameConfig[] = [
 
 export function getSwipeGame(slug?: string): SwipeGameConfig | undefined {
   return LEAGUE_SWIPE_GAMES.find((g) => g.slug === slug);
+}
+
+/** The games the hub and the stats page advertise. */
+export const VISIBLE_LEAGUE_SWIPE_GAMES = LEAGUE_SWIPE_GAMES.filter((g) => !g.hiddenFromHub);
+
+/** The `league_swipe_games.slug` a mode's votes are recorded under. */
+export function recordSlugFor(game: SwipeGameConfig): string {
+  return game.recordSlug ?? game.slug;
+}
+
+/**
+ * Which visible mode a stored row belongs to, from its Supabase slug + variant.
+ *
+ * Reader-side inverse of `recordSlugFor`. Three modes share the
+ * `higher-base-stat` row, so the slug alone no longer identifies what was
+ * played; without this a Base HP Duel answer would show up in history and in
+ * per-mode accuracy as "Stat Duel". Falls back to the recording game itself,
+ * which is the right answer for Item Cost Duel and for rows written by the
+ * mixed mode before the focused ones existed.
+ */
+export function modeForStoredRow(
+  recordedSlug: string,
+  variant?: string | null,
+): SwipeGameConfig | undefined {
+  if (variant) {
+    const focused = LEAGUE_SWIPE_GAMES.find(
+      (g) => recordSlugFor(g) === recordedSlug && g.statVariant === variant && !g.hiddenFromHub,
+    );
+    if (focused) return focused;
+  }
+  return getSwipeGame(recordedSlug);
 }
 
 // ---------------------------------------------------------------------------
@@ -118,10 +234,8 @@ export async function fetchChampionStats(): Promise<ChampionStats[]> {
  * two modes cannot diverge again.
  */
 export async function fetchItems(): Promise<ItemMeta[]> {
-  const data = await getJson<{ entities?: FactualEntity[] }>(
-    "/api/meta-reflex/factual/pool/item-cost-duel",
-  );
-  return (data.entities ?? [])
+  const pool = await fetchFactualPool("item-cost-duel");
+  return pool.entities
     .filter((e) => typeof e.value === "number" && e.value > 0)
     .map((e) => ({ item_name: e.id, item_type: null, cost: e.value }));
 }
@@ -133,6 +247,45 @@ export type FactualEntity = {
   value: number;
   asset_path: string | null;
 };
+
+/** A whole factual category: the question, the unit, and every eligible entity. */
+export type FactualPool = {
+  categoryId: string;
+  prompt: string;
+  unit: string;
+  higherWins: boolean;
+  entities: FactualEntity[];
+};
+
+/**
+ * Every entity a factual category can deal, with its canonical value.
+ *
+ * THE POINT OF DEALING FROM HERE: this is the same pool
+ * `factual_duel.load_verification_pool` builds, so the cards a player is shown
+ * and the rows the verifier judges them against are one list. The champion stat
+ * pools are `champion_stats JOIN champions`, which is narrower than
+ * `/api/meta/champion-stats` — the latter serves all 173 stat rows including
+ * `Locke`, a custom champion the roster table does not have. A mode dealing
+ * from the wide endpoint can therefore put a card on screen that the verifier
+ * answers `not in the current canonical pool` for, and that round silently
+ * scores nothing. Dealing from the category makes that unrepresentable.
+ *
+ * `prompt` and `unit` come from the backend category too, so the question text
+ * on screen is the same string the canonical provider says the category asks.
+ */
+export async function fetchFactualPool(categoryId: string): Promise<FactualPool> {
+  const data = await getJson<{
+    category_id?: string; prompt?: string; unit?: string;
+    higher_wins?: boolean; entities?: FactualEntity[];
+  }>(`/api/meta-reflex/factual/pool/${encodeURIComponent(categoryId)}`);
+  return {
+    categoryId: data.category_id ?? categoryId,
+    prompt: data.prompt ?? "",
+    unit: data.unit ?? "",
+    higherWins: data.higher_wins ?? true,
+    entities: data.entities ?? [],
+  };
+}
 
 /** Server-side verdict for one factual answer. Never accepts a client claim. */
 export type FactualVerdict = {
@@ -320,6 +473,64 @@ export function makeItemCostMatchup(game: SwipeGameConfig, items: ItemMeta[]): S
   }
   const [a, b] = pickTwo(items);
   return makeItemCostMatchup(game, a.cost === b.cost ? items : [a, b]);
+}
+
+/**
+ * ONE matchup for any focused factual mode — the shared builder the three
+ * base-stat modes use instead of three near-identical copies.
+ *
+ * TIE POLICY, and why filtering here is not the same as judging here.
+ * Equal values are RE-DEALT, never dealt: an equal pair has no correct answer,
+ * so serving one would put a question on screen that the canonical verifier is
+ * bound to come back `unjudged` for, costing the player a round that cannot
+ * score. This is the same rule the two authorities already apply — Ranked's
+ * `build_pairs` refuses an equal-magnitude partner when generating, and
+ * `factual_duel.verdict_from_pool` returns `verified_correct: null` for a tie
+ * rather than guessing. Nothing here decides that a tie is right or wrong; it
+ * only declines to ASK a question with no answer.
+ *
+ * What that costs in variety, measured against the live pool (172 champions,
+ * 14,706 unordered pairs): base HP excludes 597 pairs (4.1%), base armor 683
+ * (4.6%), base AD 749 (5.1%). The floor matters more than the total — the
+ * worst-served champion still has 152 of 171 possible opponents on HP, 154 on
+ * AD, and 159 on armor, so no champion becomes rare and no pairing region is
+ * cut out. Base MR, by contrast, ties on 39.2% of pairs, which is exactly why
+ * the backend declines to offer it as a category at all.
+ *
+ * The bounded retry mirrors `makeItemCostMatchup` rather than looping forever:
+ * a pool that somehow could not produce an unequal pair must degrade to a
+ * dealt round, not to a hung game loop.
+ */
+export function makeFactualMatchup(
+  pool: FactualEntity[],
+  opts: { prompt: string; unit: string; variant: string; statLabel: string },
+): SwipeMatchup | null {
+  if (pool.length < 2) return null;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const [a, b] = pickTwo(pool);
+    const va = Number(a.value);
+    const vb = Number(b.value);
+    if (!Number.isFinite(va) || !Number.isFinite(vb) || va === vb) continue;
+    const winner = va > vb ? a : b;
+    const loser = winner === a ? b : a;
+    return {
+      prompt: opts.prompt,
+      left: { id: a.id, label: a.label, value: va },
+      right: { id: b.id, label: b.label, value: vb },
+      correctId: winner.id,
+      // `stat` is what the vote RPC reads as the matchup `variant` when no
+      // explicit one is passed, and what resolveFactualCategory cross-checks
+      // the mode against. It must be the backend stat key, not a display label.
+      context: { stat: opts.variant, statLabel: opts.statLabel },
+      // The prompt already names the stat, so the explanation only has to
+      // settle the comparison.
+      explanation:
+        `${winner.label} has ${Number(winner.value).toLocaleString()}${opts.unit} ` +
+        `to ${loser.label}'s ${Number(loser.value).toLocaleString()}${opts.unit}.`,
+      valueUnit: opts.unit,
+    };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -537,14 +748,18 @@ export async function fetchMyRecentResults(limit = 10): Promise<SwipeOwnResult[]
   return rows.map((r, i) => {
     const v = byRow.get(i) ?? null;
     const game = byId.get(r.game_id);
+    // Report the MODE that was played, not the row it was recorded under —
+    // three focused modes share `higher-base-stat`, so the stored slug alone
+    // would label every Base HP Duel answer "Stat Duel".
+    const mode = modeForStoredRow(game?.slug ?? "", r.variant);
     return {
       selectedEntity: r.selected_entity,
       otherEntity: r.other_entity,
       variant: r.variant,
       responseTimeMs: r.response_time_ms,
       createdAt: r.created_at,
-      gameSlug: game?.slug ?? "",
-      gameTitle: game?.title ?? "",
+      gameSlug: mode?.slug ?? game?.slug ?? "",
+      gameTitle: mode?.title ?? game?.title ?? "",
       verifiedCorrect: v?.verified_correct ?? null,
       correctEntity: v?.correct_id ?? null,
     };
@@ -585,6 +800,14 @@ export type SwipeFactualAccuracy = {
   /** Pairs read but not judgeable (no evaluator, retired entity, tie). */
   unjudgedPairs: number;
   truncated: boolean;
+  /**
+   * Accuracy percentage keyed by BOTH mode slug and recorded Supabase slug.
+   *
+   * `base-hp-duel` is that mode alone; `higher-base-stat` is every stat variant
+   * blended, which is what the per-game activity list — grouped by the Supabase
+   * game — is actually reporting swipes for. The two are different questions and
+   * both callers exist, so both keys are served.
+   */
   perGame: Record<string, number>;
   mostMissed: Array<{
     game: string;
@@ -666,11 +889,23 @@ export async function fetchFactualCommunityAccuracy(): Promise<SwipeFactualAccur
     attempts += total;
     correct += correctVotes;
 
-    const slug = byId.get(p.game_id)?.slug ?? "";
-    const acc = perGameTotals.get(slug) ?? { attempts: 0, correct: 0 };
-    acc.attempts += total;
-    acc.correct += correctVotes;
-    perGameTotals.set(slug, acc);
+    // Bucket by MODE, not by recorded slug: the three focused base-stat modes
+    // all record under `higher-base-stat`, so bucketing by slug would report one
+    // blended number for three separate games and leave each new mode's own
+    // accuracy tile empty.
+    const recorded = byId.get(p.game_id)?.slug ?? "";
+    const slug = modeForStoredRow(recorded, p.variant)?.slug ?? recorded;
+    // Credited under BOTH keys when they differ. The mode key is what the hub
+    // and the new tiles read; the recorded key is what the stats page's
+    // per-game activity list reads, because that list comes from
+    // `get_league_swipe_stats`, which groups by the Supabase game. Emitting only
+    // the mode key would blank the accuracy on a row that still shows swipes.
+    for (const key of slug === recorded ? [slug] : [slug, recorded]) {
+      const acc = perGameTotals.get(key) ?? { attempts: 0, correct: 0 };
+      acc.attempts += total;
+      acc.correct += correctVotes;
+      perGameTotals.set(key, acc);
+    }
 
     const misses = total - correctVotes;
     if (misses > 0) {
