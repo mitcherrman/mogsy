@@ -106,7 +106,7 @@ describe("Item Cost Duel — challenge phase", () => {
   it("submits the chosen item id at the server's index", () => {
     const { acts } = renderModule(parse(icdChallengeState(1)).segmentState);
     fireEvent.click(screen.getByTestId("icd-item-Item 3"));
-    expect(acts.submitChallenge).toHaveBeenCalledWith(1, "Item 3");
+    expect(acts.submitChallenge).toHaveBeenCalledWith(1, { itemId: "Item 3" });
   });
 
   it("disables both cards immediately after a submission", () => {

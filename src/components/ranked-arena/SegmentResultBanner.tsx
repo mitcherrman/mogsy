@@ -17,6 +17,7 @@ import type { SegmentResult } from "@/lib/ranked-public/contracts";
 import {
   SegmentTranscript,
   SegmentTranscriptProps,
+  segmentTitle,
 } from "./SegmentTranscript";
 
 const RESULT_LABEL: Record<SegmentResult, string> = {
@@ -48,17 +49,18 @@ export function SegmentResultBanner(props: SegmentTranscriptProps) {
   const them = opponentUserId ? reveal.players[opponentUserId] : undefined;
   if (!you) return null;
   const total = reveal.challengeCount;
+  const title = segmentTitle(reveal);
 
   return (
     <section
-      aria-label="Item Cost Duel result"
+      aria-label={`${title} result`}
       data-testid="icd-result-banner"
       className="ranked-panel px-3 py-2 sm:px-4"
     >
       <div className="flex min-h-[2.25rem] flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <span role="status" className="inline-flex items-center gap-1.5 text-sm font-semibold" data-testid="icd-banner-result">
           {you.segmentResult && RESULT_ICON[you.segmentResult]}
-          <span>Item Cost Duel — {you.segmentResult ? RESULT_LABEL[you.segmentResult] : "resolved"}</span>
+          <span>{title} — {you.segmentResult ? RESULT_LABEL[you.segmentResult] : "resolved"}</span>
         </span>
         <span data-testid="icd-banner-you" className="text-muted-foreground sm:border-l sm:border-white/10 sm:pl-3">
           <span className="font-semibold text-foreground">You</span>{" "}

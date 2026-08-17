@@ -100,7 +100,19 @@ export interface MatchController {
   segmentState: SegmentStateView | null;
   /** Transcript of the last resolved multi-challenge segment, or null. */
   lastSegmentSettlement: SegmentSettlementView | null;
-  submitSegmentChallenge: (challengeIndex: number, itemId: string) => void;
+  submitSegmentChallenge: (challengeIndex: number, choice: api.SegmentChoice) => void;
+  /**
+   * A payload this client could not READ, as a human-readable reason.
+   *
+   * Distinct from `error` (a fatal backend/auth outcome) because the cause is
+   * different and so is the remedy: the match is intact server-side and the
+   * client is the thing that is out of date. The loop STOPS when this is set —
+   * a contract mismatch is deterministic, so retrying it forever is exactly the
+   * silent stall this replaces.
+   */
+  contractError: string | null;
+  /** Restart the polling loop after a contract error (an explicit retry). */
+  retry: () => void;
   /** True while the round is open for an ability change. */
   roundLive: boolean;
   /**
@@ -131,6 +143,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [contractError, setContractError] = useState<string | null>(null);
   const [revealHold, setRevealHold] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -189,6 +202,24 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     if (timerRef.current !== undefined) window.clearTimeout(timerRef.current);
     timerRef.current = undefined;
   };
+
+  /**
+   * Stop on a payload this client cannot read, loudly.
+   *
+   * The previous behaviour folded this into the transient-failure path: the
+   * error was cleared, the poll backed off, and the next poll failed the same
+   * way forever — which is exactly how the first Meta Reflex block presented as
+   * a frozen screen with nothing in the console. The message is the reader's
+   * own field-path complaint (`cards[0].left.entity_id must be a string`); it
+   * names the CONTRACT, never a value, so nothing private reaches the UI. The
+   * full error is logged for diagnosis and stays out of the rendered text.
+   */
+  const failContract = useCallback((where: string, e: unknown) => {
+    console.error(`[ranked] ${where}: payload failed the frontend contract`, e);
+    stoppedRef.current = true;
+    clearTimer();
+    setContractError(e instanceof Error ? e.message : "payload failed validation");
+  }, []);
   /**
    * Start the presentation hold for a settlement that just landed. Pure
    * presentation: it reads `leveledUp` off the authoritative settlement only to
@@ -246,7 +277,17 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     if (settlement) setLastResolved(settlement);
     // A quiz round yields null here, which correctly clears a previous
     // segment transcript so it cannot linger over the next round.
-    const segment = readSegmentSettlement(env.payload);
+    //
+    // Handled exactly like the settlement adapter above: this is TERMINAL
+    // display data, so a transcript this client cannot read must cost the
+    // player a transcript, never the live match. Unwrapped, it threw inside the
+    // poll and was swallowed as a transient failure.
+    let segment: SegmentSettlementView | null = null;
+    try {
+      segment = readSegmentSettlement(env.payload);
+    } catch (e) {
+      console.error(`[ranked] round ${round} segment transcript failed to parse`, e);
+    }
     setLastSegmentSettlement(segment);
 
     if (opts.hold !== false && (settlement || segment)) {
@@ -309,11 +350,13 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
         try {
           setPrivatePlayer(await api.getPrivatePlayer(matchId, controller.signal));
         } catch (e) {
+          if (api.isContractError(e)) { failContract("private player", e); return; }
           if (api.isFatal(e)) { setError((e as RankedApiError).message); stoppedRef.current = true; return; }
         }
       }
     } catch (e) {
       if (api.isAborted(e)) return;
+      if (api.isContractError(e)) { failContract("public round", e); return; }
       if (api.isFatal(e)) { setError((e as RankedApiError).message); stoppedRef.current = true; return; }
       failuresRef.current += 1;
       setError(null);
@@ -343,6 +386,19 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       clearTimer();
       timerRef.current = window.setTimeout(() => void pollRef.current?.(), 0);
     }
+  }, []);
+
+  /**
+   * Restart the loop after a contract error. Explicit and player-initiated:
+   * the error is only cleared because someone asked for another attempt, which
+   * is the difference between a retry and the swallow-and-retry this replaces.
+   */
+  const retry = useCallback(() => {
+    setContractError(null);
+    failuresRef.current = 0;
+    stoppedRef.current = false;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => void pollRef.current?.(), 0);
   }, []);
 
   // Resume + poll on mount; heartbeat on a separate cadence.
@@ -384,6 +440,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
           // must not hold interactivity hostage on reconnect.
         }
       } catch (e) {
+        if (api.isContractError(e)) { failContract("resume", e); return; }
         if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
       }
       void pollRef.current?.();
@@ -526,10 +583,13 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
 
   // R3: no segment ability actions. Item Cost Duel has no ability interaction,
   // so the only segment command a module can issue is a challenge submission.
-  const submitSegmentChallenge = useCallback((challengeIndex: number, itemId: string) => {
-    runSegmentAction((segment) =>
-      api.submitSegmentChallenge(matchId!, segment, challengeIndex, itemId));
-  }, [runSegmentAction, matchId]);
+  // The CHOICE is opaque here: which token a card contract answers with is the
+  // module's business, and this controller only relays it.
+  const submitSegmentChallenge = useCallback(
+    (challengeIndex: number, choice: api.SegmentChoice) => {
+      runSegmentAction((segment) =>
+        api.submitSegmentChallenge(matchId!, segment, challengeIndex, choice));
+    }, [runSegmentAction, matchId]);
 
   const chooseLevelTwo = useCallback((abilityId: string) => {
     if (!matchId || submitting) return;
@@ -551,7 +611,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     phase, publicRound, roundNumber, privatePlayer, lastResolved, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, selectedAbilityId, submitting, abilityBusy, actionError,
-    error, roundLive, answer, selectAbility, chooseLevelTwo,
+    error, contractError, retry, roundLive, answer, selectAbility, chooseLevelTwo,
     segmentState, lastSegmentSettlement, submitSegmentChallenge, revealHold,
   };
 }

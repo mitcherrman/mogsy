@@ -30,6 +30,11 @@ import type { ModuleRenderer, ModuleViewportProps } from "./types";
 
 export const ITEM_COST_DUEL_MODULE_ID = "item_cost_duel";
 export const ITEM_COST_DUEL_MODULE_VERSION = 1;
+/**
+ * The last version whose block is five ITEM-COST pairs answered by `item_id`.
+ * v4 onwards is the mixed Meta Reflex block and is served by its own renderer.
+ */
+export const ITEM_COST_DUEL_MAX_VERSION = 3;
 
 const NO_ABILITY = "__none__";
 
@@ -188,7 +193,12 @@ function ChallengePhase({ state, actions, skewMs }: {
   skewMs: number;
 }) {
   const index = state.ownNextChallengeIndex;
-  const current: SegmentChallengeView | undefined = state.challenges[index];
+  // v1–v3 only. A v4 block never reaches this renderer (the registry resolves
+  // it to the Meta Reflex viewport), so a non-item block here means the segment
+  // and the renderer disagree — which reads as "no card", not as a guess.
+  const challenges: SegmentChallengeView[] =
+    state.block?.contract === "item_cost" ? state.block.challenges : [];
+  const current: SegmentChallengeView | undefined = challenges[index];
   // "I clicked this" marker, cleared as soon as the server moves the index.
   const [pending, setPending] = useState<{ index: number; itemId: string } | null>(null);
   useEffect(() => { setPending((p) => (p && p.index !== index ? null : p)); }, [index]);
@@ -211,7 +221,7 @@ function ChallengePhase({ state, actions, skewMs }: {
   const submitting = actions.busy || pending !== null;
   const pick = (itemId: string) => {
     setPending({ index, itemId });
-    actions.submitChallenge(index, itemId);
+    actions.submitChallenge(index, { itemId });
   };
 
   return (
@@ -281,6 +291,7 @@ function ItemCostDuelViewport(
 export const itemCostDuelModule: ModuleRenderer = {
   moduleId: ITEM_COST_DUEL_MODULE_ID,
   moduleVersion: ITEM_COST_DUEL_MODULE_VERSION,
+  servesVersion: (version) => version <= ITEM_COST_DUEL_MAX_VERSION,
   // The module runs its own ability window and submits its own challenges, so
   // the shell must not also render the quiz confirm strip or ability tray.
   ownsSubmission: true,

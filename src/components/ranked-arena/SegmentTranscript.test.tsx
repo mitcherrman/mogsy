@@ -89,7 +89,7 @@ describe("Item Cost Duel transcript", () => {
   it("uses a real table with a caption and column headers", () => {
     renderTranscript();
     expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "More expensive" }))
+    expect(screen.getByRole("columnheader", { name: "Answer" }))
       .toBeInTheDocument();
   });
 });

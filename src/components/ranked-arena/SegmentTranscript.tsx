@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Post-settlement Item Cost Duel transcript (Phase B slice 4).
+// Post-settlement block transcript (Phase B slice 4; QUIZ1 Phase 7).
 //
 // Utilitarian by design — the owner playtest needs to READ the segment result,
 // not admire it. Production presentation is Phase C.
@@ -8,13 +8,22 @@
 // uses Ranked vocabulary (win / loss / draw / timeout) and is never labelled
 // CORRECT or INCORRECT: those words describe a single challenge here, not the
 // head-to-head result of the segment.
+//
+// ONE table for both card contracts. The reader has already normalised the
+// v1–v3 item-cost pair and the v4 mixed card into the same settled-card shape,
+// including the units, so nothing here branches on a version except the title.
 // ---------------------------------------------------------------------------
 
 import { abilityName } from "@/lib/ranked-core/abilityDisplay";
+import { META_REFLEX_LABEL } from "@/lib/ranked-core/modules/metaReflexModule";
 import type {
-  SegmentItemView,
   SegmentResult,
+  SegmentRevealChallenge,
   SegmentRevealView,
+} from "@/lib/ranked-public/contracts";
+import {
+  META_REFLEX_MIXED_VERSION,
+  revealChoiceEntityId,
 } from "@/lib/ranked-public/contracts";
 
 const RESULT_LABEL: Record<SegmentResult, string> = {
@@ -24,8 +33,40 @@ const RESULT_LABEL: Record<SegmentResult, string> = {
   timeout: "Timeout",
 };
 
-function itemLabel(items: Record<string, SegmentItemView>, id: string): string {
-  return items[id]?.name ?? id;
+/**
+ * The block's public name. v4 IS Meta Reflex; v1–v3 were the Item Cost Duel,
+ * and a historical transcript must keep saying what it actually was.
+ */
+export function segmentTitle(reveal: SegmentRevealView): string {
+  return reveal.moduleVersion >= META_REFLEX_MIXED_VERSION
+    ? META_REFLEX_LABEL : "Item Cost Duel";
+}
+
+/**
+ * A settled entity's display name. A v4 card froze its own label; a v1–v3 card
+ * did not, so its name is looked up in the reveal's item metadata, falling back
+ * to the id.
+ */
+function entityLabel(reveal: SegmentRevealView, id: string,
+                     frozen: string | null): string {
+  return frozen ?? reveal.items[id]?.name ?? id;
+}
+
+/** `Name (value)` where the card compared a value, `Name` where it did not —
+ *  a recognition card compares nothing. */
+function sideText(reveal: SegmentRevealView, id: string,
+                  frozen: string | null, value: string | null): string {
+  const name = entityLabel(reveal, id, frozen);
+  return value === null ? name : `${name} (${value})`;
+}
+
+/** The entity a recorded choice picked, or null for no answer. */
+function pickedLabel(reveal: SegmentRevealView, c: SegmentRevealChallenge,
+                     choice: string | null): string | null {
+  const id = revealChoiceEntityId(reveal, c, choice);
+  if (id === null) return null;
+  const frozen = id === c.leftId ? c.leftLabel : id === c.rightId ? c.rightLabel : null;
+  return entityLabel(reveal, id, frozen);
 }
 
 function formatMs(ms: number | null): string {
@@ -57,7 +98,7 @@ export function SegmentTranscript({
              data-testid="icd-transcript" aria-labelledby="icd-transcript-heading">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <h4 id="icd-transcript-heading" className="font-semibold">
-          Item Cost Duel — segment result
+          {segmentTitle(reveal)} — segment result
         </h4>
         <p className="text-sm font-semibold" data-testid="icd-transcript-result">
           {result ? RESULT_LABEL[result] : "—"}
@@ -115,14 +156,14 @@ export function SegmentTranscript({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">
-            Every challenge in this segment, with both players&apos; choices and the
-            canonical item costs.
+            Every card in this segment, with both players&apos; choices and the
+            canonical answers.
           </caption>
           <thead>
             <tr className="text-xs uppercase tracking-wide text-muted-foreground">
               <th scope="col" className="py-1 pr-3">#</th>
-              <th scope="col" className="py-1 pr-3">Pair (cost)</th>
-              <th scope="col" className="py-1 pr-3">More expensive</th>
+              <th scope="col" className="py-1 pr-3">Pair</th>
+              <th scope="col" className="py-1 pr-3">Answer</th>
               <th scope="col" className="py-1 pr-3">You</th>
               <th scope="col" className="py-1 pr-3">Time</th>
               {them && <th scope="col" className="py-1 pr-3">Opponent</th>}
@@ -130,25 +171,33 @@ export function SegmentTranscript({
           </thead>
           <tbody>
             {reveal.challenges.map((c, i) => {
-              const yourPick = you.choices[i] ?? null;
-              const theirPick = them?.choices[i] ?? null;
-              const yourRight = yourPick !== null && yourPick === c.correctItemId;
+              // The choice is compared through the ENTITY it names, never as a
+              // raw string: a v4 answer is a positional card token, so
+              // `"c2:left" === correctId` would be false for every card.
+              const yourPickId = revealChoiceEntityId(reveal, c, you.choices[i] ?? null);
+              const yourLabel = pickedLabel(reveal, c, you.choices[i] ?? null);
+              const theirLabel = them ? pickedLabel(reveal, c, them.choices[i] ?? null) : null;
+              const yourRight = yourPickId !== null && yourPickId === c.correctId;
               return (
                 <tr key={c.challengeIndex} className="border-t border-border"
                     data-testid={`icd-transcript-row-${c.challengeIndex}`}>
                   <td className="py-1 pr-3">{c.challengeIndex + 1}</td>
                   <td className="py-1 pr-3">
-                    {itemLabel(reveal.items, c.leftItemId)} ({c.leftCost}g)
+                    {sideText(reveal, c.leftId, c.leftLabel, c.leftValue)}
                     {" vs "}
-                    {itemLabel(reveal.items, c.rightItemId)} ({c.rightCost}g)
+                    {sideText(reveal, c.rightId, c.rightLabel, c.rightValue)}
                   </td>
-                  <td className="py-1 pr-3">{itemLabel(reveal.items, c.correctItemId)}</td>
                   <td className="py-1 pr-3">
-                    {yourPick === null ? (
+                    {entityLabel(reveal, c.correctId,
+                      c.correctId === c.leftId ? c.leftLabel
+                        : c.correctId === c.rightId ? c.rightLabel : null)}
+                  </td>
+                  <td className="py-1 pr-3">
+                    {yourLabel === null ? (
                       <span className="text-muted-foreground">No answer</span>
                     ) : (
                       <>
-                        {itemLabel(reveal.items, yourPick)}{" "}
+                        {yourLabel}{" "}
                         <span className={yourRight ? "text-emerald-600" : "text-destructive"}>
                           {yourRight ? "✓" : "✗"}
                         </span>
@@ -163,9 +212,9 @@ export function SegmentTranscript({
                   </td>
                   {them && (
                     <td className="py-1 pr-3">
-                      {theirPick === null
+                      {theirLabel === null
                         ? <span className="text-muted-foreground">No answer</span>
-                        : itemLabel(reveal.items, theirPick)}
+                        : theirLabel}
                     </td>
                   )}
                 </tr>

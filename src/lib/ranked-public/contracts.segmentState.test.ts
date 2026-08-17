@@ -42,8 +42,8 @@ describe("owner segment state parsing", () => {
     expect(state.ownAbility.confirmed).toBe(false);
     expect(state.ownAbility.availableAbilityIds).toEqual(["tank.fortify"]);
     expect(state.opponentAbilityConfirmed).toBe(false);
-    // No item pairs exist before the challenge phase.
-    expect(state.challenges).toEqual([]);
+    // No card block exists before the challenge phase.
+    expect(state.block).toBeNull();
   });
 
   it("reads an unavailable ability with its reason", () => {
@@ -64,12 +64,16 @@ describe("owner segment state parsing", () => {
   it("reads the challenge phase with five public pairs", () => {
     const state = readPublicRound(withSegment(icdChallengeState(2))).segmentState!;
     expect(state.phase).toBe("challenges");
-    expect(state.challenges).toHaveLength(5);
-    expect(state.challenges[0].left.itemId).toBe("Item 0");
+    // v1 pins the ITEM card contract, so the block reads as item_cost — never
+    // as Meta Reflex cards, whatever fields happen to be present.
+    expect(state.block?.contract).toBe("item_cost");
+    const challenges = state.block?.contract === "item_cost" ? state.block.challenges : [];
+    expect(challenges).toHaveLength(5);
+    expect(challenges[0].left.itemId).toBe("Item 0");
     // The transport layer carries asset_path VERBATIM (still repo-relative).
     // It is NOT renderable as-is: the renderer must resolve it against the
     // combat API origin via resolveQuizAssetUrl (see itemCostDuelModule).
-    expect(state.challenges[0].right.assetPath).toBe("assets/items/1.png");
+    expect(challenges[0].right.assetPath).toBe("assets/items/1.png");
     expect(state.ownNextChallengeIndex).toBe(2);
     expect(state.ownSubmittedChoices).toEqual(["Item 0", "Item 2", null, null, null]);
     expect(state.prompt).toBe("Which item costs more?");
@@ -155,8 +159,10 @@ describe("resolved segment reveal parsing", () => {
     const reveal = readSegmentReveal(icdResolvedPayload())!;
     expect(reveal.moduleId).toBe("item_cost_duel");
     expect(reveal.challenges).toHaveLength(5);
-    expect(reveal.challenges[0].leftCost).toBe(1000);
-    expect(reveal.challenges[0].correctItemId).toBe("Item 1");
+    expect(reveal.moduleVersion).toBe(1);
+    expect(reveal.challenges[0].leftValue).toBe("1000g");
+    expect(reveal.challenges[0].kind).toBeNull();
+    expect(reveal.challenges[0].correctId).toBe("Item 1");
     expect(reveal.players.userA.segmentResult).toBe("win");
     expect(reveal.players.userA.correct).toBe(5);
     expect(reveal.players.userB.unanswered).toBe(1);

@@ -195,6 +195,98 @@ export interface SegmentChallengeView {
   right: SegmentItemView;
 }
 
+// ------------------------------------------------- Meta Reflex cards (v4)
+
+/**
+ * The module VERSION at which `item_cost_duel` stops being five item-cost
+ * pairs and becomes the mixed Meta Reflex block (QUIZ1 Phase 4).
+ *
+ * The module ID is unchanged on purpose — it is what every historical row,
+ * reveal and analytics record already stores — so the version is the only
+ * thing that says which card contract a segment speaks. Version dispatch is
+ * therefore EXPLICIT here and in the renderer registry, never inferred from
+ * which fields happen to be present: guessing would let a v1 payload be read
+ * as a v4 one the moment the backend added a field.
+ */
+export const META_REFLEX_MIXED_VERSION = 4;
+
+export type MetaReflexCardKind = "magnitude" | "recognition" | "classification";
+
+const _META_REFLEX_KINDS: ReadonlySet<string> = new Set<MetaReflexCardKind>([
+  "magnitude", "recognition", "classification",
+]);
+
+/**
+ * A NAMED side: the entity is identified because the prompt asks about two
+ * named things ("which item costs more?", "which champion is ranged?").
+ *
+ * `media` is a repo-relative asset path on the combat API origin, or null when
+ * the entity has no art. It is never parsed for identity — `label` is the only
+ * thing rendered as a name.
+ */
+export interface MetaReflexNamedSide {
+  entityId: string;
+  label: string;
+  media: string | null;
+}
+
+/**
+ * An ANONYMOUS side: a recognition card's prompt names its target, so the
+ * entity id, the label and the ordinary asset path would each BE the answer.
+ * The backend therefore publishes one positional URL and nothing else, and the
+ * client answers with the positional card id.
+ */
+export interface MetaReflexArtSide {
+  mediaUrl: string;
+}
+
+interface MetaReflexCardBase {
+  challengeIndex: number;
+  prompt: string;
+  /** "item" | "champion" | "ability" — display grouping only. */
+  entityKind: string;
+  /** Server-issued positional tokens. The ONLY thing a v4 answer may name. */
+  leftCardId: string;
+  rightCardId: string;
+}
+
+export interface MetaReflexMagnitudeCard extends MetaReflexCardBase {
+  kind: "magnitude";
+  left: MetaReflexNamedSide;
+  right: MetaReflexNamedSide;
+}
+
+/**
+ * "Which champion uses Energy?" — projected exactly like a magnitude card
+ * because the two champions are the QUESTION. What is absent from the payload,
+ * and must therefore be absent from the UI, is the property being asked about.
+ */
+export interface MetaReflexClassificationCard extends MetaReflexCardBase {
+  kind: "classification";
+  left: MetaReflexNamedSide;
+  right: MetaReflexNamedSide;
+}
+
+export interface MetaReflexRecognitionCard extends MetaReflexCardBase {
+  kind: "recognition";
+  left: MetaReflexArtSide;
+  right: MetaReflexArtSide;
+}
+
+export type MetaReflexCard =
+  | MetaReflexMagnitudeCard
+  | MetaReflexClassificationCard
+  | MetaReflexRecognitionCard;
+
+/**
+ * The block's cards, discriminated by the card contract the segment's module
+ * version pins. Exactly one shape is ever present: the two are never merged
+ * and never fall back to one another.
+ */
+export type SegmentBlockView =
+  | { contract: "item_cost"; challenges: SegmentChallengeView[] }
+  | { contract: "meta_reflex"; cards: MetaReflexCard[] };
+
 /** The viewer's OWN ability state inside a multi-challenge segment. */
 export interface SegmentAbilityView {
   selectedAbilityId: string | null;
@@ -232,9 +324,21 @@ export interface SegmentStateView {
   opponentChallengesCompleted: number;
   opponentFinished: boolean;
   ownFinished: boolean;
+  /**
+   * Per-card timing (QUIZ1 Phase 3), all null for a block-clocked segment.
+   * These are SERVER timestamps: a client renders a countdown from them and
+   * decides nothing, so a drifting or tampered local clock changes no outcome.
+   */
+  cardTimerMs: number | null;
+  ownCardIndex: number | null;
+  ownCardStartedAt: string | null;
+  ownCardDeadline: string | null;
+  /** Per-card expiry flags for the viewer, or null on a block-clocked segment. */
+  ownTimedOutChallenges: boolean[] | null;
   /** Present only in the challenge phase. */
   prompt: string | null;
-  challenges: SegmentChallengeView[];
+  /** Present only in the challenge phase; discriminated by card contract. */
+  block: SegmentBlockView | null;
 }
 
 /** Public round: neutral, pre-reveal. Players satisfy PublicCombatantSource. */
@@ -541,6 +645,118 @@ function readSegmentItem(v: unknown, label: string): SegmentItemView {
   };
 }
 
+/** A magnitude / classification side: named entity + optional art. */
+function readNamedSide(v: unknown, label: string): MetaReflexNamedSide {
+  const o = rec(v, label);
+  return {
+    entityId: str(o.entity_id, `${label}.entity_id`),
+    label: str(o.label, `${label}.label`),
+    media: nstr(o.media, `${label}.media`),
+  };
+}
+
+/**
+ * A recognition side: positional art and NOTHING else.
+ *
+ * `entity_id` / `label` are rejected rather than ignored. The backend's own
+ * projection cannot emit them for this kind, so their presence means the
+ * payload is not what it claims to be — and quietly dropping them would let a
+ * future mistake ship the answer into the DOM unnoticed.
+ */
+function readArtSide(v: unknown, label: string): MetaReflexArtSide {
+  const o = rec(v, label);
+  for (const forbidden of ["entity_id", "label", "media"]) {
+    if (forbidden in o) {
+      throw new RankedPublicParseError(
+        `${label} is a recognition card side and must not carry ${forbidden}`);
+    }
+  }
+  return { mediaUrl: str(o.media_url, `${label}.media_url`) };
+}
+
+/**
+ * One Meta Reflex card, parsed into a discriminated union on `kind`.
+ *
+ * Strict and fail-closed in both directions: an unknown kind is rejected
+ * (rendering it would mean guessing which fields are safe to show), and each
+ * kind's sides are read through the reader for THAT kind only, so a magnitude
+ * card cannot be rendered as art-only and a recognition card cannot acquire a
+ * label. Hidden fields are not read as optional "just in case" — the compared
+ * value, the correct side and the classification simply do not exist here.
+ */
+function readMetaReflexCard(v: unknown, label: string): MetaReflexCard {
+  const o = rec(v, label);
+  const kind = str(o.kind, `${label}.kind`);
+  if (!_META_REFLEX_KINDS.has(kind)) {
+    throw new RankedPublicParseError(`${label}.kind "${kind}" is not a Meta Reflex card kind`);
+  }
+  const base = {
+    challengeIndex: num(o.challenge_index, `${label}.challenge_index`),
+    prompt: str(o.prompt, `${label}.prompt`),
+    entityKind: str(o.entity_kind, `${label}.entity_kind`),
+    leftCardId: str(o.left_card_id, `${label}.left_card_id`),
+    rightCardId: str(o.right_card_id, `${label}.right_card_id`),
+  };
+  if (kind === "recognition") {
+    return { ...base, kind, left: readArtSide(o.left, `${label}.left`),
+      right: readArtSide(o.right, `${label}.right`) };
+  }
+  return {
+    ...base,
+    kind: kind as "magnitude" | "classification",
+    left: readNamedSide(o.left, `${label}.left`),
+    right: readNamedSide(o.right, `${label}.right`),
+  };
+}
+
+/**
+ * The challenge block, read under the card contract the module VERSION pins.
+ *
+ * Version dispatch is the whole point: a v1–v3 payload is never offered to the
+ * v4 reader and vice versa, so an old payload cannot be coerced into the new
+ * shape by a lucky field name, and a v4 payload cannot be silently rendered by
+ * the item renderer that would then submit an `item_id` the server refuses.
+ */
+function readSegmentBlock(raw: unknown, moduleVersion: number): SegmentBlockView | null {
+  if (raw === null || raw === undefined) return null;
+  const block = rec(raw, "segment_state.challenges");
+  const list = Array.isArray(block.challenges) ? block.challenges : [];
+  if (moduleVersion >= META_REFLEX_MIXED_VERSION) {
+    return {
+      contract: "meta_reflex",
+      cards: list.map((c, i) => readMetaReflexCard(c, `cards[${i}]`)),
+    };
+  }
+  return {
+    contract: "item_cost",
+    challenges: list.map((c, i) => {
+      const challenge = rec(c, `challenges[${i}]`);
+      return {
+        challengeIndex: num(challenge.challenge_index, `challenges[${i}].challenge_index`),
+        left: readSegmentItem(challenge.left, `challenges[${i}].left`),
+        right: readSegmentItem(challenge.right, `challenges[${i}].right`),
+      };
+    }),
+  };
+}
+
+/**
+ * The viewer's own already-submitted choices, flattened to the one token the
+ * client needs. Which key carries it is the version's business: v4 records the
+ * CARD that was picked (`card_id`), v1–v3 recorded the item (`item_id`). Each
+ * is read strictly under its own contract, so a v4 segment can never surface a
+ * v3-shaped choice and vice versa.
+ */
+function readSubmittedChoices(raw: unknown, moduleVersion: number): (string | null)[] {
+  const choices = Array.isArray(raw) ? raw : [];
+  const key = moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
+  return choices.map((c) => {
+    if (c === null || c === undefined) return null;
+    const choice = rec(c, "own_submitted_choices[]");
+    return str(choice[key], `own_submitted_choices[].${key}`);
+  });
+}
+
 /**
  * Strict reader for the owner segment state.
  *
@@ -561,15 +777,13 @@ function readSegmentState(v: unknown): SegmentStateView | null {
   )) {
     unavailable[k] = str(val, `unavailable_ability_ids.${k}`);
   }
+  const moduleVersion = num(o.module_version, "segment_state.module_version");
   const challengeBlock = o.challenges === null || o.challenges === undefined
     ? null : rec(o.challenges, "segment_state.challenges");
-  const rawChallenges = challengeBlock && Array.isArray(challengeBlock.challenges)
-    ? challengeBlock.challenges : [];
-  const choices = Array.isArray(o.own_submitted_choices) ? o.own_submitted_choices : [];
   return {
     segmentNumber: num(o.segment_number, "segment_state.segment_number"),
     moduleId: str(o.module_id, "segment_state.module_id"),
-    moduleVersion: num(o.module_version, "segment_state.module_version"),
+    moduleVersion,
     phase: o.phase === "ability" || o.phase === "challenges" ? o.phase : null,
     challengeCount: num(o.challenge_count, "segment_state.challenge_count"),
     abilityDeadline: nstr(o.ability_deadline, "ability_deadline"),
@@ -584,27 +798,22 @@ function readSegmentState(v: unknown): SegmentStateView | null {
     },
     opponentAbilityConfirmed: o.opponent_ability_confirmed === true,
     ownNextChallengeIndex: num(o.own_next_challenge_index, "own_next_challenge_index"),
-    // The backend stores a raw `{item_id}` choice; the client only ever needs
-    // which item was picked, so it is flattened here and nothing else is kept.
-    ownSubmittedChoices: choices.map((c) => {
-      if (c === null || c === undefined) return null;
-      const choice = rec(c, "own_submitted_choices[]");
-      return str(choice.item_id, "own_submitted_choices[].item_id");
-    }),
+    ownSubmittedChoices: readSubmittedChoices(o.own_submitted_choices, moduleVersion),
     ownChallengesCompleted: num(o.own_challenges_completed, "own_challenges_completed"),
     opponentChallengesCompleted: num(
       o.opponent_challenges_completed, "opponent_challenges_completed"),
     opponentFinished: o.opponent_finished === true,
     ownFinished: o.own_finished === true,
+    cardTimerMs: nnum(o.card_timer_ms, "card_timer_ms"),
+    ownCardIndex: nnum(o.own_card_index, "own_card_index"),
+    ownCardStartedAt: nstr(o.own_card_started_at, "own_card_started_at"),
+    ownCardDeadline: nstr(o.own_card_deadline, "own_card_deadline"),
+    ownTimedOutChallenges: Array.isArray(o.own_timed_out_challenges)
+      ? o.own_timed_out_challenges.map((f, i) =>
+        bool(f, `own_timed_out_challenges[${i}]`))
+      : null,
     prompt: challengeBlock ? nstr(challengeBlock.prompt, "challenges.prompt") : null,
-    challenges: rawChallenges.map((c, i) => {
-      const challenge = rec(c, `challenges[${i}]`);
-      return {
-        challengeIndex: num(challenge.challenge_index, `challenges[${i}].challenge_index`),
-        left: readSegmentItem(challenge.left, `challenges[${i}].left`),
-        right: readSegmentItem(challenge.right, `challenges[${i}].right`),
-      };
-    }),
+    block: readSegmentBlock(o.challenges, moduleVersion),
   };
 }
 
@@ -668,13 +877,29 @@ export function readResolvedEnvelope(body: unknown): {
 
 export type SegmentResult = "win" | "loss" | "draw" | "timeout";
 
+/**
+ * One settled card, normalised across both reveal contracts.
+ *
+ * v1–v3 describe an item-cost pair (`left_item_id` / `left_cost`); v4 describes
+ * a mixed card (`left_entity_id` / `left_label` / `left_value`, where "value"
+ * is a number for a magnitude card, the canonical property for a classification
+ * card, and nothing at all for a recognition card). Both are read into this one
+ * shape so the transcript has a single rendering path, and the reader — not the
+ * component — decides what each contract's fields MEAN.
+ */
 export interface SegmentRevealChallenge {
   challengeIndex: number;
-  leftItemId: string;
-  rightItemId: string;
-  leftCost: number;
-  rightCost: number;
-  correctItemId: string;
+  /** Card kind; null for a v1–v3 segment, which had only one. */
+  kind: MetaReflexCardKind | null;
+  leftId: string;
+  rightId: string;
+  correctId: string;
+  /** Label frozen with the card (v4). Null for v1–v3 → look up in `items`. */
+  leftLabel: string | null;
+  rightLabel: string | null;
+  /** Formatted compared value, or null where the card has none. */
+  leftValue: string | null;
+  rightValue: string | null;
 }
 
 export interface SegmentRevealPlayer {
@@ -689,10 +914,13 @@ export interface SegmentRevealPlayer {
 
 export interface SegmentRevealView {
   moduleId: string;
+  /** Which card contract this transcript was settled under. */
+  moduleVersion: number;
   challengeCount: number;
   challenges: SegmentRevealChallenge[];
   players: Record<string, SegmentRevealPlayer>;
-  /** Already-public display metadata, keyed by item id. */
+  /** Already-public display metadata, keyed by item id. Empty for v4, whose
+   * cards carry their own labels. */
   items: Record<string, SegmentItemView>;
 }
 
@@ -736,23 +964,81 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
       items[id] = readSegmentItem(value, `items.${id}`);
     }
   }
+  // Pre-v4 rows predate the field; they are all v1 by construction.
+  const moduleVersion = typeof o.module_version === "number" ? o.module_version : 1;
   return {
     moduleId: str(o.module_id, "segment_reveal.module_id"),
+    moduleVersion,
     challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
-    challenges: challenges.map((c, i) => {
-      const ch = rec(c, `segment_reveal.challenges[${i}]`);
-      return {
-        challengeIndex: num(ch.challenge_index, `challenges[${i}].challenge_index`),
-        leftItemId: str(ch.left_item_id, `challenges[${i}].left_item_id`),
-        rightItemId: str(ch.right_item_id, `challenges[${i}].right_item_id`),
-        leftCost: num(ch.left_cost, `challenges[${i}].left_cost`),
-        rightCost: num(ch.right_cost, `challenges[${i}].right_cost`),
-        correctItemId: str(ch.correct_item_id, `challenges[${i}].correct_item_id`),
-      };
-    }),
+    challenges: challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
     players,
     items,
   };
+}
+
+/** A settled card, read under the contract its module version pins. */
+function readRevealChallenge(raw: unknown, i: number,
+                             moduleVersion: number): SegmentRevealChallenge {
+  const ch = rec(raw, `segment_reveal.challenges[${i}]`);
+  const challengeIndex = num(ch.challenge_index, `challenges[${i}].challenge_index`);
+  if (moduleVersion < META_REFLEX_MIXED_VERSION) {
+    return {
+      challengeIndex,
+      kind: null,
+      leftId: str(ch.left_item_id, `challenges[${i}].left_item_id`),
+      rightId: str(ch.right_item_id, `challenges[${i}].right_item_id`),
+      correctId: str(ch.correct_item_id, `challenges[${i}].correct_item_id`),
+      leftLabel: null,
+      rightLabel: null,
+      // Every v1–v3 magnitude was gold, so the unit is safe to state here and
+      // only here. v4's magnitudes are gold, HP, armour, range or move speed,
+      // and the backend sends no unit — so v4 renders the bare number.
+      leftValue: `${num(ch.left_cost, `challenges[${i}].left_cost`)}g`,
+      rightValue: `${num(ch.right_cost, `challenges[${i}].right_cost`)}g`,
+    };
+  }
+  const kind = str(ch.kind, `challenges[${i}].kind`);
+  if (!_META_REFLEX_KINDS.has(kind)) {
+    throw new RankedPublicParseError(
+      `challenges[${i}].kind "${kind}" is not a Meta Reflex card kind`);
+  }
+  const value = (v: unknown, label: string): string | null => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "number" || typeof v === "string") return String(v);
+    throw new RankedPublicParseError(`${label} must be a number, a string or null`);
+  };
+  return {
+    challengeIndex,
+    kind: kind as MetaReflexCardKind,
+    leftId: str(ch.left_entity_id, `challenges[${i}].left_entity_id`),
+    rightId: str(ch.right_entity_id, `challenges[${i}].right_entity_id`),
+    correctId: str(ch.correct_entity_id, `challenges[${i}].correct_entity_id`),
+    leftLabel: nstr(ch.left_label, `challenges[${i}].left_label`),
+    rightLabel: nstr(ch.right_label, `challenges[${i}].right_label`),
+    leftValue: value(ch.left_value, `challenges[${i}].left_value`),
+    rightValue: value(ch.right_value, `challenges[${i}].right_value`),
+  };
+}
+
+/**
+ * The ENTITY a recorded choice names, for one settled card.
+ *
+ * v1–v3 recorded the item itself, so the choice already is the entity. v4
+ * records the CARD (`c2:left`), which is exactly why the transcript cannot
+ * compare a choice against `correctId` directly — it has to ask the card which
+ * entity was on that side. Returns null for no answer, and for a token that
+ * does not belong to this card.
+ */
+export function revealChoiceEntityId(
+  reveal: SegmentRevealView,
+  challenge: SegmentRevealChallenge,
+  choice: string | null,
+): string | null {
+  if (choice === null) return null;
+  if (reveal.moduleVersion < META_REFLEX_MIXED_VERSION) return choice;
+  if (choice === `c${challenge.challengeIndex}:left`) return challenge.leftId;
+  if (choice === `c${challenge.challengeIndex}:right`) return challenge.rightId;
+  return null;
 }
 
 export interface SegmentSettlementView {

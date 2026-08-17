@@ -104,6 +104,16 @@ export class RankedApiError extends Error {
 export const isAborted = (e: unknown): boolean =>
   e instanceof RankedApiError ? e.kind === "aborted" : (e as { name?: string })?.name === "AbortError";
 
+/**
+ * The server answered, but this client could not READ what it said.
+ *
+ * Deterministic by nature — the same payload will fail the same way on every
+ * poll — which is why callers must surface it instead of folding it into the
+ * ordinary transient-failure backoff.
+ */
+export const isContractError = (e: unknown): boolean =>
+  e instanceof RankedApiError && e.kind === "invalid_response";
+
 export const isFatal = (e: unknown): boolean =>
   e instanceof RankedApiError &&
   (e.code === "RANKED_NOT_A_PARTICIPANT" || e.code === "AUTH_REQUIRED" ||
@@ -307,17 +317,36 @@ export const confirmSegmentAbility = (
     { method: "POST", body: { ability_id: abilityId }, signal });
 
 /**
- * Submit one challenge. The body carries the chosen item id and nothing else —
- * no timing, no correctness, no index (the index is in the path and must equal
- * the server's expected index).
+ * What a segment answer may name, per card contract.
+ *
+ * A union rather than two optional fields, because the backend accepts EXACTLY
+ * one of `item_id` / `card_id` and rejects a body carrying both. Modelling it
+ * this way is what makes "never send `item_id` for a v4 card" a compile-time
+ * property instead of a convention: a caller holding a card id cannot produce
+ * the other branch.
+ */
+export type SegmentChoice = { itemId: string } | { cardId: string };
+
+/**
+ * Submit one challenge. The body carries the chosen card/item token and nothing
+ * else — no timing, no correctness, no index (the index is in the path and must
+ * equal the server's expected index).
+ *
+ * `card_id` is `item_cost_duel.v4`'s positional token (`c2:left`); `item_id` is
+ * the v1–v3 item name. The server refuses a body with both, and refuses an
+ * `item_id` on a v4 segment outright rather than guessing what it meant.
  */
 export const submitSegmentChallenge = (
-  matchId: string, segmentNumber: number, challengeIndex: number, itemId: string,
-  signal?: AbortSignal,
+  matchId: string, segmentNumber: number, challengeIndex: number,
+  choice: SegmentChoice, signal?: AbortSignal,
 ): Promise<SegmentChallengeAck> =>
   request(
     `${segmentBase(matchId, segmentNumber)}/challenges/${challengeIndex}`,
-    readChallengeAck, { method: "POST", body: { item_id: itemId }, signal });
+    readChallengeAck, {
+      method: "POST",
+      body: "cardId" in choice ? { card_id: choice.cardId } : { item_id: choice.itemId },
+      signal,
+    });
 
 export const chooseLevelTwo = (matchId: string, abilityId: string, signal?: AbortSignal) =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/progression/level-two-choice`,

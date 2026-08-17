@@ -117,6 +117,37 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       </section>
     );
   }
+  if (m.contractError) {
+    // The failure mode this replaces: a payload this client could not read was
+    // swallowed as a transient error and retried forever, so the first Meta
+    // Reflex block simply froze with nothing on screen and nothing in the log.
+    // The match itself is intact server-side — only this client is out of date
+    // — so the state says so, offers a retry, and shows the reader's own field
+    // complaint. The message names a contract path, never a payload value.
+    return (
+      <section data-testid="ranked-contract-error"
+        className="ranked-panel space-y-2 border border-destructive/60 p-4">
+        <h3 className="font-semibold text-destructive">This match needs a newer client</h3>
+        <p className="text-sm text-muted-foreground">
+          Your browser could not read the latest match data. Your match is safe —
+          reload the page to pick it up where it left off.
+        </p>
+        <p className="font-mono text-xs text-muted-foreground" data-testid="ranked-contract-detail">
+          {m.contractError}
+        </p>
+        <div className="flex gap-2">
+          <button type="button" onClick={m.retry} data-testid="ranked-contract-retry"
+            className="rounded border border-border px-3 py-1.5 text-sm font-semibold">
+            Try again
+          </button>
+          <button type="button" onClick={() => window.location.reload()}
+            className="rounded border border-border px-3 py-1.5 text-sm font-semibold">
+            Reload
+          </button>
+        </div>
+      </section>
+    );
+  }
   if (!m.publicRound || !combatants) {
     return (
       <section data-testid="ranked-recovering" className="ranked-shell">
@@ -361,7 +392,18 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
                   const option = question?.options.find((o) => o.id === sel);
                   if (option) m.answer(option.id, option.index);
                 }}
-                segmentState={m.segmentState}
+                // The state from the SAME snapshot the renderer was resolved
+                // from. Reading the live state here instead coupled a frozen
+                // renderer to a moving state: across a segment boundary the
+                // surface still shows module A while the live state already
+                // describes module B, so a Meta Reflex viewport was handed a
+                // null state and rendered "Loading the block…" for the whole
+                // reveal beat — and, worse, a v1 renderer could be handed a v4
+                // block whose cards it cannot read. During play the two are the
+                // same object; they differ only while the surface is
+                // deliberately lagging, which is exactly when they must not be
+                // mixed.
+                segmentState={surfaceRound!.segmentState}
                 actions={segmentActions}
                 skewMs={m.skewMs}
               />

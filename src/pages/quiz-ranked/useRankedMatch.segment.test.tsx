@@ -163,12 +163,12 @@ describe("useRankedMatch — multi-challenge segments", () => {
     expect(typeof result.current.submitSegmentChallenge).toBe("function");
   });
 
-  it("submits a challenge with only the item id", async () => {
+  it("submits a v1 challenge with only the item id", async () => {
     backend.segmentState = icdChallengeState(1);
     backend.segmentMeta = icdSegmentMeta({ phase: "challenges", challenge_index: 1 });
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, "Item 3"));
+    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 3" }));
     await settle();
     expect(backend.challengeSubmits).toEqual([
       { index: 1, body: { item_id: "Item 3" } },
@@ -180,7 +180,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.nextChallengeIndex = 2;
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, "Item 3"));
+    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 3" }));
     await settle();
     // The ack said "next is 2", but the controller still reports 1 because the
     // SNAPSHOT still says 1. Only the authoritative state moves the segment.
@@ -208,7 +208,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.segmentState = icdChallengeState(1);
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, "Item 3"));
+    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 3" }));
     await settle();
     expect(result.current.actionError).toBeNull();
   });
@@ -231,7 +231,7 @@ describe("useRankedMatch — multi-challenge segments", () => {
     backend.segmentState = icdChallengeState(1);
     const { result } = renderHook(() => useRankedMatch("m1", "userA"));
     await settle();
-    act(() => result.current.submitSegmentChallenge(1, "Item 99"));
+    act(() => result.current.submitSegmentChallenge(1, { itemId: "Item 99" }));
     await settle();
     expect(result.current.actionError).toMatch(/not in this pair/);
   });

@@ -5,6 +5,7 @@ import { publicRoundV2 } from "@/lib/ranked-public/fixtures";
 import {
   getModuleRenderer,
   itemCostDuelModule,
+  metaReflexModule,
   registeredModuleIds,
   rendererForSegment,
   quizModule,
@@ -71,5 +72,35 @@ describe("ranked module renderer registry", () => {
     // The shell reads this instead of branching on the module id.
     expect(quizModule.ownsSubmission).toBe(false);
     expect(itemCostDuelModule.ownsSubmission).toBe(true);
+    expect(metaReflexModule.ownsSubmission).toBe(true);
+  });
+
+  // ------------------------------------------------ version dispatch (P7)
+
+  it("splits item_cost_duel by VERSION, because the id spans two contracts", () => {
+    // v1–v3: five item pairs answered with an item_id.
+    expect(getModuleRenderer("item_cost_duel", 1)).toBe(itemCostDuelModule);
+    expect(getModuleRenderer("item_cost_duel", 3)).toBe(itemCostDuelModule);
+    // v4+: five mixed Meta Reflex cards answered with a positional card_id.
+    expect(getModuleRenderer("item_cost_duel", 4)).toBe(metaReflexModule);
+    expect(getModuleRenderer("item_cost_duel", 5)).toBe(metaReflexModule);
+  });
+
+  it("resolves a v4 segment from a parsed payload to the Meta Reflex renderer", () => {
+    const body = publicRoundV2();
+    (body.payload as Record<string, unknown>).segment = {
+      module_id: "item_cost_duel", module_version: 4,
+      challenge_count: 5, challenge_index: 0, phase: "challenges",
+    };
+    const parsed = readPublicRound(body);
+    expect(rendererForSegment(parsed.segment)).toBe(metaReflexModule);
+    // The regression this guards: resolving v4 to the item renderer would put
+    // clickable cards on screen whose answer the server refuses outright.
+    expect(rendererForSegment(parsed.segment)).not.toBe(itemCostDuelModule);
+  });
+
+  it("keeps serving every version of a module whose contract never forked", () => {
+    expect(getModuleRenderer("quiz", 1)).toBe(quizModule);
+    expect(getModuleRenderer("quiz", 9)).toBe(quizModule);
   });
 });
