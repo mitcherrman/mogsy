@@ -29,7 +29,9 @@ import type {
   LiveGameSummary,
   LivePlayer,
   LiveTeamState,
+  MatchInsightsResponse,
 } from "@/lib/live-esports/api";
+import { buildStory, emptyInsightReason, insightRows } from "./insights";
 import {
   DRAGON_LABEL,
   EVENT_LABEL,
@@ -200,6 +202,94 @@ export function MatchContext({ game }: { game: LiveGameSummary }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/* ── match insights (Phase 4B2) ──────────────────────────────────────────── */
+
+/**
+ * A compact grid of derived facts, sitting between the match context and the
+ * scoreboard so the state of a game is readable in a couple of seconds.
+ *
+ * Deliberately small: four to six one-line cards, no charts and no per-row
+ * iconography. The surfaces below already carry the detail, and an insight
+ * panel that needs scrolling has stopped being a summary.
+ */
+export function MatchInsights({
+  insights,
+  game,
+  loading,
+}: {
+  insights: MatchInsightsResponse | null | undefined;
+  game: LiveGameSummary;
+  loading?: boolean;
+}) {
+  const rows = insightRows(insights, game);
+  const story = buildStory(insights, game);
+  const reason = emptyInsightReason(insights);
+
+  if (loading && !insights) {
+    return (
+      <SectionCard title="Match insights">
+        <Skeleton className="h-24" />
+      </SectionCard>
+    );
+  }
+  // Nothing derivable and nothing to explain: the game simply is not there
+  // yet, and an empty card would be worse than no card.
+  if (!rows.length && !reason) return null;
+
+  return (
+    <SectionCard title="Match insights">
+      {rows.length > 0 ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((row) => (
+            <div
+              key={row.key}
+              title={row.title}
+              className="rounded-md border bg-muted/20 px-3 py-2"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {row.label}
+              </p>
+              {/* Wraps rather than truncates: a five-objective window reads
+                  "Baron · Dragon · 3 Inhibitors · 8 towers · 5 kills", and
+                  an ellipsis there would hide the half that answers the
+                  question. The grid equalises the row height anyway. */}
+              <p
+                className={cn(
+                  "mt-0.5 text-sm font-semibold tabular-nums",
+                  row.side === "blue" && "text-sky-400",
+                  row.side === "red" && "text-rose-400",
+                )}
+              >
+                {row.value}
+              </p>
+              {row.detail && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  {row.detail}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyNote>{reason}</EmptyNote>
+      )}
+
+      {/* The same facts, joined into sentences — assembled from the numbers
+          above, never written by a model. */}
+      {story.length > 0 && (
+        <div className="mt-3 border-t pt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Game story
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-foreground/90">
+            {story.join(" ")}
+          </p>
+        </div>
+      )}
+    </SectionCard>
   );
 }
 

@@ -230,3 +230,151 @@ export function fetchLiveFeed(): Promise<LiveFeedResponse> {
 export function fetchGoldSeries(gameId: string): Promise<GoldSeriesResponse> {
   return getJson(`/api/live-esports/games/${encodeURIComponent(gameId)}/gold`);
 }
+
+/* ── Phase 4B2 match insights ────────────────────────────────────────────────
+ * Deterministic facts derived on read from the frames, derived events and
+ * player rows LIVE1 already stores. No model, no estimate, no prediction —
+ * every number traces to telemetry, and the backend ships its own thresholds
+ * in `definitions` so this client never hardcodes one.
+ *
+ * These are a backend read model rather than viewer arithmetic because the
+ * public endpoints cannot support them honestly: `/games/{id}` caps events at
+ * 25 while a real game carries 28-58 in its last five minutes, and the gold
+ * series is downsampled for the chart, which moves both a peak lead's
+ * timestamp and the interval a swing spans.
+ */
+
+export type InsightSide = "blue" | "red" | null;
+
+/** `t` is seconds since the first stored frame — the gold series' own clock. */
+export type GoldLead = {
+  diff: number;
+  side: InsightSide;
+  gold: number;
+  /** Under the backend's `min_lead_gold`: say "even", not a precise-looking number. */
+  even: boolean;
+  t: number;
+  frame_ts: string;
+};
+
+export type PeakLead = {
+  gold: number;
+  t: number;
+  frame_ts: string;
+  meaningful: boolean;
+};
+
+export type GoldSwing = {
+  side: "blue" | "red";
+  gold: number;
+  from_t: number;
+  to_t: number;
+  from_frame_ts: string;
+  to_frame_ts: string;
+  duration_seconds: number;
+  from_diff: number;
+  to_diff: number;
+};
+
+export type GoldMomentum = {
+  window_seconds: number;
+  /** The stored telemetry is shorter than the window — a short game. */
+  partial: boolean;
+  covered_seconds: number;
+  diff: number;
+  side: InsightSide;
+  gold: number;
+  even: boolean;
+  from_t: number;
+  to_t: number;
+};
+
+export type LeadChange = {
+  t: number;
+  frame_ts: string;
+  to_side: "blue" | "red";
+};
+
+export type ObjectiveTally = {
+  kills: number;
+  towers: number;
+  inhibitors: number;
+  dragons: number;
+  barons: number;
+};
+
+export type ObjectiveWindow = {
+  window_seconds: number;
+  events: number;
+  /** False when the game has no stored frame to anchor the window on. */
+  usable: boolean;
+  blue: ObjectiveTally;
+  red: ObjectiveTally;
+};
+
+export type InsightPlayer = {
+  participant_id: number | null;
+  side: InsightSide;
+  role: string | null;
+  name: string | null;
+  summoner_name: string | null;
+  champion: string | null;
+  total_gold: number | null;
+  creep_score: number | null;
+};
+
+export type RoleGap = {
+  role: string;
+  gold_diff: number;
+  side: InsightSide;
+  gold: number;
+  cs_diff: number | null;
+  blue: InsightPlayer;
+  red: InsightPlayer;
+};
+
+export type MatchInsightsResponse = {
+  enabled: boolean;
+  generated_at: string;
+  game_id: string;
+  availability: string;
+  freshness: LiveFreshness;
+  retention: string | null;
+  final: boolean;
+  definitions: {
+    min_lead_gold: number;
+    swing_window_seconds: number;
+    min_swing_gold: number;
+    recent_windows_seconds: number[];
+    objective_event_types: string[];
+    time_basis: string;
+    window_anchor: string;
+  };
+  coverage: {
+    gold_samples: number;
+    first_frame_ts: string | null;
+    last_frame_ts: string | null;
+    elapsed_seconds: number | null;
+    events: number;
+  };
+  gold: {
+    current_lead: GoldLead | null;
+    largest_lead: { blue: PeakLead | null; red: PeakLead | null };
+    biggest_swing: GoldSwing | null;
+    momentum: GoldMomentum[];
+    lead_changes: LeadChange[];
+  };
+  objectives: ObjectiveWindow[];
+  players: {
+    top_gold: InsightPlayer | null;
+    role_gaps: RoleGap[];
+    biggest_role_gap: RoleGap | null;
+    /** False when upstream did not publish one player per role per side. */
+    role_mapping_complete: boolean;
+    roles_compared: number;
+  };
+};
+
+export function fetchGameInsights(gameId: string): Promise<MatchInsightsResponse> {
+  return getJson(`/api/live-esports/games/${encodeURIComponent(gameId)}/insights`);
+}

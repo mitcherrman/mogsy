@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useChampionAssets } from "@/hooks/useChampionAssets";
 import {
+  fetchGameInsights,
   fetchGoldSeries,
   fetchLiveFeed,
   fetchLiveGame,
@@ -30,6 +31,7 @@ import {
   LoadingBoard,
   MatchCard,
   MatchContext,
+  MatchInsights,
   PlayerRow,
   SectionCard,
   StatusPill,
@@ -43,6 +45,8 @@ const LIVE_DETAIL_POLL_MS = 10_000;
 const FINAL_POLL_MS = false as const;
 /** Gold history changes slowly and is the largest payload; poll it lazily. */
 const GOLD_POLL_MS = 30_000;
+/** Insights re-scan the same frames as the gold chart; share its cadence. */
+const INSIGHTS_POLL_MS = 30_000;
 
 export default function EsportsLivePage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -95,6 +99,17 @@ export default function EsportsLivePage() {
     queryFn: () => fetchGoldSeries(selectedId as string),
     enabled: !!selectedId,
     refetchInterval: selected && !isFinal ? GOLD_POLL_MS : (false as const),
+  });
+
+  // Insights scan the same frames the gold chart does, so they poll on the
+  // chart's slower cadence rather than the scoreboard's: doubling the rate
+  // of that scan would buy a few seconds of freshness on numbers measured in
+  // thousands of gold.
+  const insights = useQuery({
+    queryKey: ["live-esports", "insights", selectedId],
+    queryFn: () => fetchGameInsights(selectedId as string),
+    enabled: !!selectedId,
+    refetchInterval: selected && !isFinal ? INSIGHTS_POLL_MS : (false as const),
   });
 
   const { data: manifest } = useChampionAssets();
@@ -234,6 +249,18 @@ export default function EsportsLivePage() {
             </Alert>
           ) : (
             <div className="space-y-3">
+              {/* insights — the state of the match before the raw numbers.
+                  A failed insights read is not worth an alert of its own:
+                  every fact it carries is derived from data still shown
+                  below, so the section simply does not render. */}
+              {!insights.isError && (
+                <MatchInsights
+                  insights={insights.data}
+                  game={selected}
+                  loading={insights.isLoading}
+                />
+              )}
+
               {/* scoreboard */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <TeamPanel
