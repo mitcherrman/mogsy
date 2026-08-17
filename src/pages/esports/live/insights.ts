@@ -372,10 +372,18 @@ export function roleGapText(gap: RoleGap | null | undefined): string | null {
  *
  * The rules, in the order the sentences appear:
  *
- *  1. PEAK — the largest lead either side held, and when. Suppressed when
- *     that peak IS the ending (within a minute of the last frame, or the same
- *     frame the swing closed on), because the closing sentence already says
- *     it and saying it twice invents a second event.
+ *  1. PEAKS — the biggest lead each side held, and when, in CHRONOLOGICAL
+ *     order. Ordering by time rather than by size is not cosmetic: joining two
+ *     peaks with a word like "after" while sorting them by gold asserts an
+ *     order the data may contradict, which is exactly the kind of claim this
+ *     phase must never make. (Observed in production on LCS LYON vs SEN G3,
+ *     where the smaller peak came 580s LATER than the larger one.) "then" is
+ *     a pure temporal connective and is true by construction here.
+ *     A peak is dropped when it IS the ending — within a minute of the last
+ *     frame, or the same frame the swing closed on — because the closing
+ *     sentence already says it and saying it twice invents a second event.
+ *     Dropping is per-peak, so a game whose winner peaked at the buzzer can
+ *     still report the lead its opponent held earlier.
  *  2. LEAD CHANGES — how many times the lead genuinely changed hands, using
  *     the backend's hysteresis rule. "Changed hands" is the strongest word
  *     used; "comeback" is deliberately absent (Phase 4B2 has no threshold
@@ -396,25 +404,25 @@ export function buildStory(
   const elapsed = data.coverage?.elapsed_seconds ?? null;
   const swing = data.gold.biggest_swing;
 
-  /* 1 — peak */
+  /* 1 — peaks, chronologically */
   const peaks = data.gold.largest_lead;
-  const candidates = (["blue", "red"] as const)
+  const isEnding = (t: number) =>
+    (elapsed != null && elapsed - t <= STORY_TAIL_SECONDS) ||
+    (!!swing && swing.to_t === t);
+  const told = (["blue", "red"] as const)
     .map((side) => ({ side, peak: peaks?.[side] }))
-    .filter((c) => c.peak?.meaningful)
+    .filter((c) => c.peak?.meaningful && !isEnding(c.peak.t))
     .map((c) => ({ side: c.side, peak: c.peak! }))
-    .sort((a, b) => b.peak.gold - a.peak.gold);
-  const lead = candidates[0];
-  const isEnding =
-    !!lead &&
-    ((elapsed != null && elapsed - lead.peak.t <= STORY_TAIL_SECONDS) ||
-      (!!swing && swing.to_t === lead.peak.t));
-  if (lead && !isEnding) {
-    const second = candidates[1];
-    const head = `${sideTeam(game, lead.side)} led by ${kgold(lead.peak.gold)} at ${clock(lead.peak.t)}`;
+    // Chronological, so the connective below never asserts a false order.
+    .sort((a, b) => a.peak.t - b.peak.t);
+  if (told.length) {
+    const [first, second] = told;
+    const phrase = (c: typeof first) =>
+      `${sideTeam(game, c.side)} by ${kgold(c.peak.gold)} at ${clock(c.peak.t)}`;
     sentences.push(
       second
-        ? `${head}, after ${sideTeam(game, second.side)} had been ${kgold(second.peak.gold)} up at ${clock(second.peak.t)}.`
-        : `${head}.`,
+        ? `${sideTeam(game, first.side)} led by ${kgold(first.peak.gold)} at ${clock(first.peak.t)}, then ${phrase(second)}.`
+        : `${sideTeam(game, first.side)} led by ${kgold(first.peak.gold)} at ${clock(first.peak.t)}.`,
     );
   }
 

@@ -408,17 +408,61 @@ describe("roleGapText", () => {
 /* ── game story ────────────────────────────────────────────────────────────── */
 
 describe("buildStory", () => {
-  it("assembles peak, lead changes, swing and close, in that order", () => {
+  it("assembles peaks, lead changes, swing and close, in that order", () => {
     expect(buildStory(payload(), GAME)).toEqual([
-      "KT led by 6.8k at 18:42, after HLE had been 2.1k up at 6:40.",
+      "HLE led by 2.1k at 6:40, then KT by 6.8k at 18:42.",
       "The lead changed hands once.",
       "HLE swung 5.1k their way between 18:42 and 25:02.",
       "KT finished 3.2k ahead.",
     ]);
   });
 
-  it("suppresses the peak sentence when the peak IS the ending", () => {
-    // Peak at 1990s in a 2000s game: the closing sentence already says it.
+  /**
+   * The regression this rule exists for, taken from production. LCS LYON vs
+   * SEN G3: SEN peaked at 5.1k (30:12), LYON at 3.2k (39:52). Sorting the two
+   * by GOLD and joining them with "after" rendered "SEN led by 5.1k at 30:12,
+   * after LYON had been 3.2k up at 39:52" — asserting LYON came first, which
+   * the telemetry contradicts by 580 seconds.
+   */
+  it("orders the two peaks by TIME, never by size", () => {
+    const data = payload({
+      coverage: { ...payload().coverage, elapsed_seconds: 2454 },
+      gold: {
+        ...payload().gold,
+        current_lead: { diff: -492, side: "red", gold: 492, even: false, t: 2454, frame_ts: "x" },
+        largest_lead: {
+          blue: { gold: 3221, t: 2392, frame_ts: "x", meaningful: true },  // smaller, LATER
+          red: { gold: 5057, t: 1812, frame_ts: "x", meaningful: true },   // larger, EARLIER
+        },
+        biggest_swing: null,
+        lead_changes: [],
+      },
+    });
+    const story = buildStory(data, GAME);
+    expect(story[0]).toBe("HLE led by 5.1k at 30:12, then KT by 3.2k at 39:52.");
+    expect(story.join(" ")).not.toContain("after");
+  });
+
+  it("drops a peak that IS the ending, keeping the other one", () => {
+    // Blue peaks at the buzzer (1990s of a 2000s game); red's earlier lead survives.
+    const data = payload({
+      gold: {
+        ...payload().gold,
+        largest_lead: {
+          blue: { gold: 13200, t: 1990, frame_ts: "x", meaningful: true },
+          red: { gold: 2745, t: 880, frame_ts: "x", meaningful: true },
+        },
+        lead_changes: [],
+        biggest_swing: null,
+      },
+    });
+    expect(buildStory(data, GAME)).toEqual([
+      "HLE led by 2.7k at 14:40.",
+      "KT finished 3.2k ahead.",
+    ]);
+  });
+
+  it("drops both peaks when both are the ending", () => {
     const data = payload({
       gold: {
         ...payload().gold,
@@ -433,7 +477,7 @@ describe("buildStory", () => {
     expect(buildStory(data, GAME)).toEqual([]);   // one sentence is not a story
   });
 
-  it("suppresses the peak sentence when the swing already closes on it", () => {
+  it("drops a peak the swing already closes on", () => {
     const data = payload({
       gold: {
         ...payload().gold,
