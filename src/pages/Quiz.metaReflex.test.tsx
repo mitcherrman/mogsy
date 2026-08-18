@@ -1,21 +1,28 @@
 /**
- * Meta Reflex — the Leaguecraft entry point.
+ * Meta Reflex — its Leaguecraft entry point, under the Ranked-first redesign.
  *
  * Leaguecraft owns /quiz, /quiz/ranked, /quiz/stat-check and /quiz/mastery
  * (src/lib/ranked-tutorial/onboarding.ts). Meta Reflex (internally League
  * Swipe) was removed from the /lol hub on 2026-07-29 on the stated basis that
- * it "now lives inside Leaguecraft" — but that Leaguecraft entry was never
- * written, so the feature was left with no discoverable entry point at all.
- * These tests lock in the entry point and its branding.
+ * it "now lives inside Leaguecraft"; the Leaguecraft entry was then written as
+ * a hub card.
  *
- * WHY THIS IS A SEPARATE FILE FROM Quiz.hub.test.tsx:
- * that suite's `beforeEach` calls `localStorage.clear()`, and in this repo's
- * vitest/jsdom environment `localStorage` is a plain `{}` with no Storage
- * methods at all — so all 15 of its tests error out before running, on a clean
- * checkout as well as this branch. Rather than entangle new coverage with an
- * unrelated pre-existing environment defect (or "fix" a shared setup file and
- * unmask a different workstream's stale expectations), this file carries the
- * same mocks minus that one call, so these assertions genuinely execute.
+ * The LC1 redesign makes /quiz a Ranked-first one-page hub, and WITHHOLDS that
+ * card along with the other standalone modes (Time Trial, Stat Check,
+ * Knowledge Breakdown, Achievements) — see HUB_MODULES in Quiz.tsx. Withheld is
+ * not retired: the card, its route and its branding are all intact, and
+ * flipping HUB_MODULES.metaReflex restores it in place.
+ *
+ * These tests therefore lock in two things at once: that the hub does not
+ * surface the entry today, and that the module behind it is still whole — so a
+ * future "no entry point at all" regression is still caught.
+ *
+ * WHY THIS IS A SEPARATE FILE FROM Quiz.hub.test.tsx: it was originally split
+ * off because that suite's `beforeEach` called `localStorage.clear()`, which
+ * throws in this repo's vitest/jsdom environment and errored out every test in
+ * it. That call is now optional-guarded there, but this file stays separate: it
+ * covers a cross-namespace concern (/league-swipe) rather than the hub's own
+ * composition.
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -65,6 +72,11 @@ vi.mock("@/lib/quiz/api", () => ({
 }));
 
 import QuizPage from "./Quiz";
+import {
+  META_REFLEX_NAME,
+  META_REFLEX_ROUTE,
+  META_REFLEX_TAGLINE,
+} from "@/lib/league-swipe/branding";
 
 async function renderHub() {
   const utils = render(
@@ -72,43 +84,37 @@ async function renderHub() {
       <QuizPage />
     </MemoryRouter>,
   );
-  await waitFor(() => expect(screen.getByText("Item Build Paths")).toBeTruthy());
+  await waitFor(() =>
+    expect(utils.container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(
+      SETS.length,
+    ),
+  );
   return utils;
 }
 
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
-describe("Leaguecraft → Meta Reflex discovery", () => {
-  it("offers a Meta Reflex entry on the Leaguecraft hub", async () => {
+describe("Leaguecraft → Meta Reflex, withheld from the Ranked-first hub", () => {
+  it("does not surface the Meta Reflex card on the hub", async () => {
     await renderHub();
-    expect(screen.getByTestId("hub-meta-reflex-section")).toBeTruthy();
-    expect(screen.getByTestId("hub-meta-reflex-link")).toBeTruthy();
+    // Withheld by HUB_MODULES.metaReflex, alongside the other standalone modes.
+    expect(screen.queryByTestId("hub-meta-reflex-section")).toBeNull();
+    expect(screen.queryByTestId("hub-meta-reflex-link")).toBeNull();
   });
 
-  it("links to the PRESERVED public URL, not a migrated /quiz route", async () => {
-    await renderHub();
-    // /league-swipe is a live public URL. A route migration for organisational
-    // tidiness alone would break existing links, so the entry point reaches
-    // across namespaces on purpose.
-    expect(screen.getByTestId("hub-meta-reflex-link").getAttribute("href")).toBe("/league-swipe");
+  it("keeps the module whole: the preserved public URL and its branding", () => {
+    // The card is hidden, not deleted, so the constants it renders must still
+    // resolve. /league-swipe is a live public URL — a route migration for
+    // organisational tidiness alone would break existing links, so the entry
+    // point reaches across namespaces on purpose.
+    expect(META_REFLEX_ROUTE).toBe("/league-swipe");
+    expect(META_REFLEX_NAME).toBe("Meta Reflex");
+    expect(META_REFLEX_NAME).not.toMatch(/League Swipe/);
+    expect(META_REFLEX_TAGLINE).toBeTruthy();
   });
 
-  it("calls it Meta Reflex, never the retired public name", async () => {
-    const { container } = await renderHub();
-    const section = container.querySelector('[data-testid="hub-meta-reflex-section"]')!;
-    expect(section.textContent).toMatch(/Meta Reflex/);
-    expect(section.textContent).not.toMatch(/League Swipe/);
-  });
-
-  it("places the entry in the hub body, above the practice grid", async () => {
-    const { container } = await renderHub();
-    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
-    const reflex = container.querySelector('[data-testid="hub-meta-reflex-section"]')!;
-    expect(reflex.compareDocumentPosition(practice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("exposes no dev-only or unrelated swipe route", async () => {
+  it("exposes no dev-only or unrelated swipe route in its place", async () => {
     const { container } = await renderHub();
     const hrefs = Array.from(container.querySelectorAll("a[href]")).map((a) =>
       a.getAttribute("href"),
@@ -119,12 +125,16 @@ describe("Leaguecraft → Meta Reflex discovery", () => {
       expect(hrefs).not.toContain(forbidden);
     }
     expect(hrefs.filter((h) => h?.startsWith("/dev/"))).toHaveLength(0);
+    // Withholding Meta Reflex must not have quietly withheld /league-swipe's
+    // siblings into the hub either.
+    expect(hrefs).not.toContain("/league-swipe/stats");
   });
 
-  it("leaves the established Leaguecraft mode entries intact", async () => {
+  it("leaves the Leaguecraft mode entry that the redesign keeps intact", async () => {
     await renderHub();
-    // Adding Meta Reflex must not displace its siblings.
-    expect(screen.getByTestId("hub-stat-check-link").getAttribute("href")).toBe("/quiz/stat-check");
+    // Mastery Journey is the one standalone mode the Ranked-first hub still
+    // hosts; Stat Check is withheld with Meta Reflex, at /quiz/stat-check.
     expect(screen.getByTestId("hub-mastery-link").getAttribute("href")).toBe("/quiz/mastery");
+    expect(screen.queryByTestId("hub-stat-check-link")).toBeNull();
   });
 });

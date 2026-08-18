@@ -58,8 +58,10 @@ export default function Layout() {
 
   // Full-bleed routes escape the centered max-w-7xl reading column so a game
   // table can use the whole viewport. The page supplies its own background
-  // and gutters. Stat Check tabletop (dev + live routes) plus the /lol academy
-  // library hub, whose painted background and book grid span the viewport.
+  // and gutters. Stat Check tabletop (dev + live routes), the /lol academy
+  // library hub, and the Leaguecraft hub at /quiz — each paints an environment
+  // that has to reach the viewport edges rather than stop at the reading
+  // column.
   const isStatCheckSurface =
     pathname === "/dev/stat-check" || pathname.startsWith("/quiz/stat-check");
   // Ranked Duel qualifies too (RA11): its Frame carries its own centred
@@ -67,7 +69,7 @@ export default function Layout() {
   // layer — the reading-column cap was the only thing keeping the arena
   // confined at large desktop widths. The dev arena inspector escapes with
   // it, or its "Full" viewport could never reach the arena's wide-stage tier.
-  const isFullBleed = isStatCheckSurface || pathname === "/lol"
+  const isFullBleed = isStatCheckSurface || pathname === "/lol" || pathname === "/quiz"
     || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector";
 
   // The friends drawer is a floating overlay. On the full-bleed Stat Check

@@ -1,7 +1,14 @@
 /**
- * Quiz hub Daily entry transition: the Daily Score Attack card replaces the
- * legacy Daily Challenge card ONLY when the backend reports the new mode
- * enabled; any failure or disabled flag falls back to the legacy card.
+ * Daily-mode entries on the Leaguecraft hub.
+ *
+ * The Ranked-first redesign withholds BOTH daily surfaces from /quiz — the
+ * Daily Score Attack ("Time Trial") card and the legacy Daily Challenge card
+ * it replaces — because neither serves the play → review → practice → play
+ * loop the page is built around. Nothing was deleted: the availability probe
+ * still runs (so the funnel keeps reporting which mode the backend serves),
+ * Time Trial is still playable at /quiz/daily, and both cards still exist and
+ * are covered by their own component tests. Flip HUB_MODULES.timeTrial /
+ * .dailyChallenge in Quiz.tsx to bring either card back to the hub.
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -75,47 +82,53 @@ async function renderHub() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  localStorage.clear();
+  // Optional-call: in this repo's vitest/jsdom environment `localStorage`
+  // is a bare object with no Storage methods, and an unguarded call throws
+  // in `beforeEach` — which silently errored out every test in this file
+  // before the redesign. Guarding here keeps the reset when the environment
+  // provides one, without touching the shared setup other suites rely on.
+  localStorage.clear?.();
 });
 afterEach(cleanup);
 
-describe("Quiz hub Daily entry transition", () => {
-  it("shows the legacy Daily card when the feature is unavailable", async () => {
+describe("Leaguecraft hub — daily modes withheld", () => {
+  it("still probes daily-mode availability and reports an unavailable backend", async () => {
     todayMock.mockRejectedValue(new Error("FEATURE_DISABLED"));
     await renderHub();
-    expect(screen.getByText("Daily Challenge")).toBeInTheDocument();
-    expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
+    expect(todayMock).toHaveBeenCalled();
     await waitFor(() =>
       expect(trackMock).toHaveBeenCalledWith("dsa_legacy_fallback", { reason: "unavailable" }),
     );
+    expect(screen.queryByText("Daily Challenge")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
   });
 
-  it("shows the legacy Daily card when metadata reports disabled", async () => {
+  it("still reports a disabled backend flag", async () => {
     todayMock.mockResolvedValue({ ...todayFixture, enabled: false });
     await renderHub();
-    expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
     await waitFor(() =>
       expect(trackMock).toHaveBeenCalledWith("dsa_legacy_fallback", { reason: "disabled" }),
     );
+    expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
   });
 
-  it("promotes the Daily Score Attack card when enabled, hiding the legacy card", async () => {
+  it("keeps the Time Trial card off the hub even when the backend enables it", async () => {
     todayMock.mockResolvedValue({ ...todayFixture, daily_streak: 2 });
     await renderHub();
-    const card = await screen.findByTestId("hub-score-attack-card");
-    expect(card).toHaveTextContent("Time Trial");
+    expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("score-attack-cta")).not.toBeInTheDocument();
     expect(screen.queryByText("Daily Challenge")).not.toBeInTheDocument();
-    const link = screen.getByTestId("score-attack-cta");
-    expect(link.getAttribute("href")).toBe("/quiz/daily");
-    expect(link.getAttribute("href")).not.toContain("/dev/");
+    // The Ranked-first loop occupies the space the daily pair used to hold.
+    expect(screen.getByTestId("hub-ranked-section")).toBeInTheDocument();
+    expect(screen.getByTestId("hub-practice-section")).toBeInTheDocument();
   });
 
-  it("reflects a terminal official run on the enabled card", async () => {
+  it("does not surface a terminal official run on the hub either", async () => {
     todayMock.mockResolvedValue({
       ...todayFixture,
       official_run: { run_id: "r", status: "completed", score: 5150, completed_at: "x" },
     });
     await renderHub();
-    expect(await screen.findByTestId("score-attack-status")).toHaveTextContent("5,150");
+    expect(screen.queryByTestId("score-attack-status")).not.toBeInTheDocument();
   });
 });

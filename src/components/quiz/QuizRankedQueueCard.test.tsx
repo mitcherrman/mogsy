@@ -90,13 +90,16 @@ describe("QuizRankedQueueCard — placement state", () => {
     expect(screen.getByTestId("rank-progress").textContent).toContain("42% to Silver");
   });
 
-  it("hero copy: communicates competitive 1v1 matches and mechanics", () => {
+  it("hero copy: communicates competitive 1v1 matches in a single line", () => {
     render(<QuizRankedQueueCard progress={null} ranked={PLACEMENT} onPlay={() => {}} />);
     expect(screen.getByText("Ranked Quiz")).toBeTruthy();
     expect(
       screen.getByText("Face other players in synchronized 1v1 League knowledge matches."),
     ).toBeTruthy();
-    expect(screen.getByText(/Shared questions · HP combat · XP and ranks/)).toBeTruthy();
+    // The "Shared questions · HP combat · XP and ranks" micro-line was dropped
+    // when the hero was condensed: it restated the sentence above it and cost a
+    // row of height in the Ranked-first hub.
+    expect(screen.queryByText(/Shared questions · HP combat · XP and ranks/)).toBeNull();
   });
 
   it("unplaced: shows Unranked + placement explanation, never a provisional rank", () => {

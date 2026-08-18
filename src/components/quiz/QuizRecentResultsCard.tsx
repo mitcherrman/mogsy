@@ -23,12 +23,18 @@ export default function QuizRecentResultsCard({
   loading,
   error,
   onPlayRanked,
+  hideHeader,
+  className = "",
 }: {
   history: QuizHistoryResponse | null;
   loading?: boolean;
   /** Auth-shaped errors (401/guest) render the sign-in state. */
   error?: string | null;
   onPlayRanked?: () => void;
+  /** Suppress the built-in eyebrow when the host supplies a section heading. */
+  hideHeader?: boolean;
+  /** Frame overrides so the card can sit as a supporting module. */
+  className?: string;
 }) {
   if (loading) {
     return <Skeleton className="h-full min-h-40 w-full rounded-xl" data-testid="history-skeleton" />;
@@ -53,15 +59,17 @@ export default function QuizRecentResultsCard({
     >
       <Card
         data-testid="recent-results-card"
-        className="h-full border-cyan-400/25 bg-gradient-to-br from-[#04101c]/90 to-card/60 backdrop-blur-sm"
+        className={`h-full border-cyan-400/25 bg-gradient-to-br from-[#04101c]/90 to-card/60 backdrop-blur-sm ${className}`}
       >
-        <CardContent className="flex h-full flex-col p-4">
-          <div className="flex items-center gap-2">
-            <History className="h-3.5 w-3.5 text-cyan-300/80" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
-              Recent Quiz Results
-            </span>
-          </div>
+        <CardContent className="flex h-full flex-col p-3.5">
+          {!hideHeader && (
+            <div className="flex items-center gap-2">
+              <History className="h-3.5 w-3.5 text-cyan-300/80" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
+                Recent Quiz Results
+              </span>
+            </div>
+          )}
 
           {needsAuth ? (
             <div className="flex flex-1 flex-col items-start justify-center gap-2 py-4">

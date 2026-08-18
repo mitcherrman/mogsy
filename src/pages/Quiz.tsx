@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
+import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
 import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackClient";
 import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
+import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import AdSlot from "@/components/ads/AdSlot";
 import {
   getDailyChallenge,
@@ -59,6 +60,63 @@ import QuizSignUpGate from "@/components/quiz/QuizSignUpGate";
 import QuizSignUpNudge from "@/components/quiz/QuizSignUpNudge";
 
 type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
+
+/**
+ * Leaguecraft hub module visibility.
+ *
+ * The hub is Ranked-first: everything on the main page has to serve the
+ * play → review → practice → play loop. The modules below still exist in
+ * full — their routes, components, data loaders and handlers are untouched.
+ * Most also have another host today (Time Trial at /quiz/daily, Stat Check
+ * at /quiz/stat-check, Achievements on /profile and /quiz/diagnostics); the
+ * Knowledge Breakdown card has no other host, so its flag is its only route
+ * back. They are only withheld from THIS page's presentation, and flipping
+ * a flag to `true` restores the original module in place.
+ *
+ * This is a navigation/visibility decision, never a deletion.
+ */
+type HubModuleFlags = {
+  /** Daily Score Attack ("Time Trial") card — lives at /quiz/daily. */
+  timeTrial: boolean;
+  /** Legacy Daily Challenge card, the fallback for the same slot. */
+  dailyChallenge: boolean;
+  /** Standalone Stat Check entry — lives at /quiz/stat-check. */
+  statCheck: boolean;
+  /** Standalone Meta Reflex entry — lives at its own public /league-swipe URL. */
+  metaReflex: boolean;
+  /** Full per-category mastery breakdown. The hub is its only host, so this
+   *  flag is the only way back to it. */
+  knowledgeBreakdown: boolean;
+  /** Achievements grid — also rendered on /profile and /quiz/diagnostics. */
+  achievements: boolean;
+  /** Pre-redesign five-card practice grid, replaced by the compact tiles. */
+  legacyPracticeGrid: boolean;
+  /** Compact Mastery Journey strip (kept: it is one quiet line). */
+  masteryJourney: boolean;
+};
+
+const HUB_MODULES: HubModuleFlags = {
+  timeTrial: false,
+  dailyChallenge: false,
+  statCheck: false,
+  metaReflex: false,
+  knowledgeBreakdown: false,
+  achievements: false,
+  legacyPracticeGrid: false,
+  masteryJourney: true,
+};
+
+/**
+ * Mogzy Academy classroom backdrop for the whole /quiz surface. The art is
+ * warm and bright with a naturally quieter centre, so the overlays only add
+ * a soft central veil for UI legibility plus top/bottom falloff behind the
+ * fixed navbar and the footer — never enough to flatten the classroom back
+ * into the old dark page.
+ */
+const LEAGUECRAFT_BG_URL = "/images/lol-hub/leaguecraft-classroom-bg.png";
+const LEAGUECRAFT_BG_VEIL =
+  "radial-gradient(60% 52% at 50% 44%, rgba(5,11,24,0.66) 0%, rgba(5,11,24,0.38) 58%, rgba(5,11,24,0.04) 100%)," +
+  "linear-gradient(180deg, rgba(4,9,20,0.58) 0%, rgba(4,9,20,0.08) 18%, rgba(4,9,20,0.12) 68%, rgba(4,9,20,0.66) 100%)";
 
 // Choice types + answer grid extracted to QuizAnswerOptions for reuse by the
 // screenshot render harness (/dev/quiz-render). Behavior unchanged.
@@ -771,270 +829,242 @@ export default function Quiz() {
         ]}
       />
 
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-primary/10 border border-primary/20 p-2.5">
-              <BrainCircuit className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-foreground">League Quiz</h1>
-              <p className="text-xs text-muted-foreground">
-                Compete, practice, and prove your League knowledge
-              </p>
-            </div>
-          </div>
-          <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex [@media(max-height:480px)]:!hidden gap-1 text-xs">
-            <Link to="/quiz/diagnostics">
-              <Stethoscope className="h-3.5 w-3.5" />
-              Diagnostics
-            </Link>
-          </Button>
-        </div>
+      {/* Academy classroom environment. Absolute (not fixed) so it covers the
+          page without painting over the shell footer, and at least a viewport
+          tall so a short hub still fills the screen. */}
+      <div className="relative min-h-[calc(100dvh-var(--app-header-h))]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `url(${LEAGUECRAFT_BG_URL})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center 42%",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{ background: LEAGUECRAFT_BG_VEIL }}
+        />
 
-        {/* Compete-first home: Ranked hero → Daily Challenge + Current
-            Progress → practice categories → expandable details. */}
+      <div
+        className={`relative mx-auto px-4 py-4 ${phase === "sets" ? "max-w-6xl" : "max-w-3xl"}`}
+      >
+        {/* Compact Leaguecraft header. The shell's floating League Hub pill is
+            suppressed for /quiz (see Layout) so this inline control is the
+            single back affordance, exactly as Combat Lab does it. */}
+        <header className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <Link
+            to="/lol"
+            aria-label="Back to League hub"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-2.5 py-1 text-[11px] font-semibold text-[#c9a84c] backdrop-blur-md transition-colors hover:border-[#c9a84c] hover:bg-[#0a1428]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            League Hub
+          </Link>
+          <BookOpen className="h-4 w-4 shrink-0 text-[#c9a84c]/80" aria-hidden="true" />
+          <h1 className="text-lg font-bold tracking-[0.18em] sm:text-xl">LEAGUECRAFT</h1>
+          <p className="text-[11px] uppercase tracking-[0.26em] text-[#c9a84c]/60">
+            Study. Practice. Ascend.
+          </p>
+          <div className="ml-auto flex items-center gap-3">
+            {/* Permanent tutorial entry: available regardless of the automatic
+                popup and forced-tutorial policies. */}
+            <LeaguecraftTutorialLink />
+            <Button asChild variant="ghost" size="sm" className="hidden h-7 gap-1 text-xs md:inline-flex [@media(max-height:480px)]:!hidden">
+              <Link to="/quiz/diagnostics">
+                <Stethoscope className="h-3.5 w-3.5" />
+                Diagnostics
+              </Link>
+            </Button>
+          </div>
+        </header>
+
+        {/* Ranked-first hub: Ranked hero → Practice for Ranked + Recent
+            Studies → a quiet Mastery strip. Everything else on this page is
+            withheld behind HUB_MODULES (hidden, never deleted). */}
         {phase === "sets" && (
           <>
-            {/* 1. Ranked Quiz hero — the primary experience. */}
-            <div className="mb-3" data-testid="hub-ranked-section">
-              <QuizRankedQueueCard
-                progress={userProgress}
-                ranked={getRankedState(userProgress?.attempts ?? 0)}
-                disabled={false}
-                onPlay={() => navigate("/quiz/ranked")}
-              />
-            </div>
+            <LeaguecraftHub
+              progress={userProgress}
+              ranked={getRankedState(userProgress?.attempts ?? 0)}
+              onPlayRanked={() => navigate("/quiz/ranked")}
+              sets={sets}
+              setsLoading={setsLoading}
+              onSelectSet={handleSelectSet}
+              onRefreshSets={handleRetry}
+              history={recentHistory}
+              historyLoading={historyLoading}
+              historyError={historyError}
+              showMastery={HUB_MODULES.masteryJourney}
+            />
 
-            {/* 2. Daily Challenge + Recent Quiz Results — equal-priority pair:
-                what to do today, and how recent sessions went. (Ranked status
-                itself lives in the hero above — not repeated here.) */}
-            <div
-              className="mb-3 grid grid-cols-1 items-stretch gap-3 md:grid-cols-2"
-              data-testid="hub-daily-history-row"
-            >
-              {scoreAttackToday ? (
-                <QuizScoreAttackCard
-                  today={scoreAttackToday}
-                  hasAccount={!isAnonymous}
-                  onPlay={() => trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
-                />
-              ) : (
-                <QuizDailyChallengeCard
-                  state={dailyChallenge}
-                  disabled={setsLoading}
-                  onPlay={handlePlayDailyChallenge}
-                />
-              )}
-              <QuizRecentResultsCard
-                history={recentHistory}
-                loading={historyLoading}
-                error={historyError}
-                onPlayRanked={() => navigate("/quiz/ranked")}
-              />
-            </div>
+            {/* ─────────────────────────────────────────────────────────────
+                Hidden hub modules. Each block below is intact and restorable
+                by flipping its HUB_MODULES flag; the underlying routes,
+                components and data all remain live today.
+                ───────────────────────────────────────────────────────────── */}
 
-            {/* 2b. Mastery Journeys — step-by-step champion progressions
-                (public catalog served by the backend registry; the card is a
-                pure link and holds no set data). */}
-            <div className="mb-3" data-testid="hub-mastery-section">
-              <Link
-                to="/quiz/mastery"
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                data-testid="hub-mastery-link"
+            {/* Time Trial / Daily Challenge — playable at /quiz/daily. */}
+            {(HUB_MODULES.timeTrial || HUB_MODULES.dailyChallenge) && (
+              <div
+                className="mt-3 grid grid-cols-1 items-stretch gap-3 md:grid-cols-2"
+                data-testid="hub-daily-history-row"
               >
-                <Card className="transition-colors hover:border-primary/50">
-                  <CardHeader className="pb-1">
-                    <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
-                      <BookOpen className="h-4 w-4" aria-hidden="true" />
-                      Mastery Journeys
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Guided champion progressions — cooldowns, mana, items —
-                      where every answer is on screen. New: Olaf, level 1 to 11.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </div>
+                {scoreAttackToday && HUB_MODULES.timeTrial ? (
+                  <QuizScoreAttackCard
+                    today={scoreAttackToday}
+                    hasAccount={!isAnonymous}
+                    onPlay={() => trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
+                  />
+                ) : (
+                  <QuizDailyChallengeCard
+                    state={dailyChallenge}
+                    disabled={setsLoading}
+                    onPlay={handlePlayDailyChallenge}
+                  />
+                )}
+              </div>
+            )}
 
-            {/* 2c. Stat Check — the card game entrance. A pure link to the
-                mode-selection screen, which owns the bot/private choice; the
-                quiz's own start flow is untouched. */}
-            <div className="mb-3" data-testid="hub-stat-check-section">
-              <Link
-                to="/quiz/stat-check"
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                data-testid="hub-stat-check-link"
-              >
-                <Card className="transition-colors hover:border-primary/50">
-                  <CardHeader className="pb-1">
-                    <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
-                      <Layers className="h-4 w-4" aria-hidden="true" />
-                      Stat Check
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      Build a hand and compare champion stats across three lanes.
-                      Play the bot, or invite a friend to a private match.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </div>
+            {/* Stat Check — the card game entrance, live at /quiz/stat-check. */}
+            {HUB_MODULES.statCheck && (
+              <div className="mt-3" data-testid="hub-stat-check-section">
+                <Link
+                  to="/quiz/stat-check"
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid="hub-stat-check-link"
+                >
+                  <Card className="transition-colors hover:border-primary/50">
+                    <CardHeader className="pb-1">
+                      <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
+                        <Layers className="h-4 w-4" aria-hidden="true" />
+                        Stat Check
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        Build a hand and compare champion stats across three lanes.
+                        Play the bot, or invite a friend to a private match.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              </div>
+            )}
 
-            {/* 2d. Meta Reflex — the two-card duel entrance. Leaguecraft owns
+            {/* Meta Reflex — the two-card duel entrance. Leaguecraft owns
                 /quiz, /quiz/ranked, /quiz/stat-check and /quiz/mastery, but
                 Meta Reflex deliberately keeps its own public URLs at
                 /league-swipe*: they are live links and a route migration for
-                tidiness alone would break them. This card is the Leaguecraft
-                entry point that was never built when the /lol hub tile was
-                retired — see src/lib/league-swipe/branding.ts. */}
-            <div className="mb-3" data-testid="hub-meta-reflex-section">
-              <Link
-                to={META_REFLEX_ROUTE}
-                className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                data-testid="hub-meta-reflex-link"
-              >
-                <Card className="transition-colors hover:border-primary/50">
-                  <CardHeader className="pb-1">
-                    <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
-                      <Zap className="h-4 w-4" aria-hidden="true" />
-                      {META_REFLEX_NAME}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {META_REFLEX_TAGLINE} Rapid-fire champion and item duels —
-                      vote on the ones with no right answer, and test yourself on
-                      the ones that do.
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            </div>
-
-            {/* 3. Practice categories — train topics before the next match. */}
-            <div className="mb-3" data-testid="hub-practice-section">
-              <div className="mb-2 mt-1 flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
-                    Practice Your Knowledge
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    Train specific topics before your next ranked match.
-                  </p>
-                </div>
-                {/* Permanent Leaguecraft tutorial entry. Available regardless of the
-                    automatic-popup and forced-tutorial policies; a replay by an
-                    already-completed user never rewrites saved completion. */}
-                <LeaguecraftTutorialLink />
+                tidiness alone would break them. Withheld from the Ranked-first
+                hub, never retired — see src/lib/league-swipe/branding.ts. */}
+            {HUB_MODULES.metaReflex && (
+              <div className="mt-3" data-testid="hub-meta-reflex-section">
+                <Link
+                  to={META_REFLEX_ROUTE}
+                  className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  data-testid="hub-meta-reflex-link"
+                >
+                  <Card className="transition-colors hover:border-primary/50">
+                    <CardHeader className="pb-1">
+                      <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-[0.14em] text-primary/80">
+                        <Zap className="h-4 w-4" aria-hidden="true" />
+                        {META_REFLEX_NAME}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {META_REFLEX_TAGLINE} Rapid-fire champion and item duels —
+                        vote on the ones with no right answer, and test yourself on
+                        the ones that do.
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
               </div>
-              {/* Plain conditional swap (no AnimatePresence mode="wait"):
-                  under prefers-reduced-motion the skeleton's exit animation
-                  never completed, so reduced-motion users never saw the
-                  category grid at all. The entrance fade is kept; there is no
-                  exit-gated handoff left to get stuck. */}
-              {setsLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-28 w-full rounded-lg" />
-                  ))}
-                </div>
-              ) : sets.length === 0 ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-xl border border-dashed border-border bg-card/50 p-8 text-center"
-                >
-                  <HelpCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">No quiz sets available right now.</p>
-                  <Button onClick={handleRetry} variant="ghost" className="mt-3">
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Refresh
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="sets"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-                >
-                  {sets.map((set) => (
-                    <QuizModeCard
-                      key={set.id}
-                      set={set}
-                      categoryStats={categoryStats}
-                      onSelect={() => handleSelectSet(set)}
-                    />
-                  ))}
-                </motion.div>
-              )}
-            </div>
+            )}
 
-            {/* 4. Collapsible Knowledge Breakdown. */}
-            <Collapsible className="mb-3">
-              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-primary/80" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
-                    Knowledge Breakdown
-                  </span>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-2">
-                <QuizKnowledgeCard
-                  categories={categoryStats}
-                  loading={categoriesLoading}
-                  error={categoriesError}
-                  hideHeader
-                  totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
-                  totalQuestionsAvailable={sets.reduce(
-                    (sum, s) => sum + (s.question_count || 0),
-                    0,
-                  )}
-                  newCategories={[
-                    "Item Exact Stats",
-                    "Item Components",
-                    "Item Builds Into",
-                    "Champion Cooldowns",
-                    "Summoner Cooldowns",
-                  ]}
-                  recommendedCategory={
-                    sets[0]?.name || "Champion Ability Cooldowns"
-                  }
-                />
-              </CollapsibleContent>
-            </Collapsible>
+            {/* Pre-redesign five-card practice grid, superseded by the compact
+                tiles inside LeaguecraftHub (same sets, same start action). */}
+            {HUB_MODULES.legacyPracticeGrid && !setsLoading && sets.length > 0 && (
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="hub-legacy-practice-grid">
+                {sets.map((set) => (
+                  <QuizModeCard
+                    key={set.id}
+                    set={set}
+                    categoryStats={categoryStats}
+                    onSelect={() => handleSelectSet(set)}
+                  />
+                ))}
+              </div>
+            )}
 
-            {/* 5. Collapsible Achievements grid. */}
-            <Collapsible
-              open={achievementsOpen}
-              onOpenChange={setAchievementsOpen}
-              className="mb-6"
-            >
-              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4 text-primary/80" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
-                    Achievements
-                  </span>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {achievements.filter((a) => a.unlocked).length}/{achievements.length}
-                  </Badge>
-                </div>
-                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-2">
-                <QuizAchievementsCard
-                  achievements={achievements}
-                  loading={achievementsLoading}
-                  error={achievementsError}
-                  hideHeader
-                />
-              </CollapsibleContent>
-            </Collapsible>
+            {/* Knowledge Breakdown — per-category mastery. No other host. */}
+            {HUB_MODULES.knowledgeBreakdown && (
+              <Collapsible className="mt-3">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-primary/80" />
+                    <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+                      Knowledge Breakdown
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <QuizKnowledgeCard
+                    categories={categoryStats}
+                    loading={categoriesLoading}
+                    error={categoriesError}
+                    hideHeader
+                    totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
+                    totalQuestionsAvailable={sets.reduce(
+                      (sum, s) => sum + (s.question_count || 0),
+                      0,
+                    )}
+                    newCategories={[
+                      "Item Exact Stats",
+                      "Item Components",
+                      "Item Builds Into",
+                      "Champion Cooldowns",
+                      "Summoner Cooldowns",
+                    ]}
+                    recommendedCategory={
+                      sets[0]?.name || "Champion Ability Cooldowns"
+                    }
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Achievements grid — also on /profile and /quiz/diagnostics. */}
+            {HUB_MODULES.achievements && (
+              <Collapsible
+                open={achievementsOpen}
+                onOpenChange={setAchievementsOpen}
+                className="mt-3 mb-6"
+              >
+                <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 rounded-lg border border-primary/20 bg-card/60 px-4 py-2.5 text-left hover:bg-card/80 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-primary/80" />
+                    <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
+                      Achievements
+                    </span>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {achievements.filter((a) => a.unlocked).length}/{achievements.length}
+                    </Badge>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <QuizAchievementsCard
+                    achievements={achievements}
+                    loading={achievementsLoading}
+                    error={achievementsError}
+                    hideHeader
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </>
         )}
 
@@ -1611,6 +1641,7 @@ export default function Quiz() {
             <AdSlot placement="quiz_results" isActiveQuizQuestion={phase !== "result"} />
           </motion.div>
         )}
+      </div>
       </div>
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
