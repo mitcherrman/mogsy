@@ -158,10 +158,19 @@
     overflow-x: hidden;
   }
 
-  html {
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+  /* html deliberately keeps the UA-default `overflow: visible`, so the
+     viewport's scroll behavior is PROPAGATED from body (the standard CSS
+     overflow-propagation rule). This is what lets overlay scroll-locking
+     work without shifting the page: Radix's modal surfaces (the HUD account
+     menu, dialogs, sheets) lock scrolling by setting `overflow: hidden` on
+     BODY and compensating for the vanished scrollbar with a body
+     margin-right. When html carried its own `overflow-y: auto`, the
+     document scrollbar belonged to html and never vanished — the body
+     "compensation" then just squeezed the page content by one scrollbar
+     width (~15px on classic-scrollbar platforms), visibly nudging every
+     centered layout sideways whenever a menu opened. Horizontal-overflow
+     protection is preserved: body's `overflow-x: hidden` above propagates
+     to the viewport. Do not re-add overflow rules here. */
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;

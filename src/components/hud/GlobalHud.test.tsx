@@ -87,6 +87,19 @@ describe("GlobalHud chrome", () => {
     expect(screen.getByTestId("hud-account-trigger")).toBeTruthy();
   });
 
+  it("orders the right cluster music → profile → notifications, in DOM (= tab) order", () => {
+    adminCtx = baseCtx("signed_out");
+    renderHud();
+    const music = screen.getByTestId("radio-controls-hud");
+    const account = screen.getByTestId("hud-account-trigger");
+    const bell = screen.getByTestId("notification-bell");
+    const follows = (a: Element, b: Element) =>
+      // b follows a in document order
+      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(music, account)).toBe(true);
+    expect(follows(account, bell)).toBe(true);
+  });
+
   it("exposes Profile and Settings in the account menu", async () => {
     adminCtx = baseCtx("signed_out");
     renderHud();

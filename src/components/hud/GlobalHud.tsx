@@ -226,7 +226,16 @@ export default function GlobalHud() {
       aria-label="Mogzy controls"
       className="pointer-events-none fixed inset-x-0 top-0 z-50"
     >
-      <div className="flex h-[var(--app-header-h)] items-center justify-between px-2 sm:px-3">
+      {/* The right padding folds in react-remove-scroll's published
+          `--removed-body-scroll-bar-size` (set on body while any Radix modal
+          surface — the account menu, dialogs — locks scrolling, inherited
+          here). The HUD is fixed to the viewport, so when the scrollbar
+          yields during a lock the viewport widens by its width; without this
+          the right cluster would hop sideways by exactly that amount while
+          the page content (compensated by the same mechanism on body) holds
+          still. This is the hook that library exposes for fixed chrome — not
+          an ad-hoc pixel guess; it is 0px whenever no lock is active. */}
+      <div className="flex h-[var(--app-header-h)] items-center justify-between pl-2 pr-[calc(0.5rem+var(--removed-body-scroll-bar-size,0px))] sm:pl-3 sm:pr-[calc(0.75rem+var(--removed-body-scroll-bar-size,0px))]">
         {/* Home — the persistent product identity. The mascot IS the button:
             small, no wordmark, no bar. */}
         <Link
@@ -278,9 +287,11 @@ export default function GlobalHud() {
               Sign up
             </Link>
           )}
+          {/* Fixed order: music → profile → notifications, bell on the far
+              right. DOM order IS the tab order — keep them matched. */}
           <AcademyRadioControls variant="hud" />
-          <UserNotificationBell />
           <AccountMenu isAnonymous={isAnonymous} signupHref={signupHref} />
+          <UserNotificationBell />
         </div>
       </div>
     </nav>
