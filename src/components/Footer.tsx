@@ -65,7 +65,6 @@ export default function Footer() {
           trademarks or registered trademarks of Riot Games, Inc.
         </p>
       </div>
-      <div className="h-16 sm:h-0" aria-hidden="true" />
     </footer>
   );
 }

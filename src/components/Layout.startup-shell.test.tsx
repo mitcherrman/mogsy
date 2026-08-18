@@ -13,7 +13,7 @@ import { LOL_BASE_BG } from "@/lib/startup-shell";
 const state = vi.hoisted(() => ({ authLoading: false, settingsLoading: false }));
 const prefetched = vi.hoisted(() => ({ calls: [] as string[][] }));
 
-vi.mock("./Navbar", () => ({ default: () => <nav data-testid="navbar" /> }));
+vi.mock("./hud/GlobalHud", () => ({ default: () => <nav data-testid="navbar" /> }));
 vi.mock("./Footer", () => ({ default: () => null }));
 vi.mock("./ThemeOverlay", () => ({ default: () => null }));
 vi.mock("./FloatingThemeSwitcher", () => ({ default: () => null }));

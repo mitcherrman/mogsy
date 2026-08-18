@@ -14,7 +14,7 @@ vi.mock("./FloatingFriendsButton", () => ({
 }));
 
 // Chrome that is irrelevant to this behaviour and does its own data fetching.
-vi.mock("./Navbar", () => ({ default: () => null }));
+vi.mock("./hud/GlobalHud", () => ({ default: () => null }));
 vi.mock("./Footer", () => ({ default: () => null }));
 vi.mock("./ThemeOverlay", () => ({ default: () => null }));
 vi.mock("./FloatingThemeSwitcher", () => ({ default: () => null }));

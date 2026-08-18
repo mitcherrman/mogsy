@@ -24,7 +24,13 @@ import {
  * only once play() has actually resolved.
  */
 
-type Variant = "desktop" | "mobile";
+/**
+ * `desktop` / `mobile` are the legacy navbar pair (each self-gates on the
+ * sm breakpoint). `hud` is the global-HUD control: one compact trigger with
+ * the full-transport panel behind it, present at every width — the HUD shows
+ * exactly one music control, so no breakpoint gating and no sibling variant.
+ */
+type Variant = "desktop" | "mobile" | "hud";
 
 const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
   idle: "Ready",
@@ -227,9 +233,12 @@ export default function AcademyRadioControls({
 
   /* ---------------------------------------------------------------------- */
 
-  if (variant === "mobile") {
+  if (variant === "mobile" || variant === "hud") {
     return (
-      <div ref={containerRef} className={cn("relative sm:hidden", className)}>
+      <div
+        ref={containerRef}
+        className={cn("relative", variant === "mobile" && "sm:hidden", className)}
+      >
         <button
           type="button"
           onClick={() => setPanelOpen((open) => !open)}
@@ -237,8 +246,8 @@ export default function AcademyRadioControls({
           aria-controls={panelId}
           aria-label={`Academy Radio — ${statusLabel}`}
           title="Academy Radio"
-          className={cn(iconButton, "h-10 w-10")}
-          data-testid="academy-radio-mobile-trigger"
+          className={cn(iconButton, variant === "hud" ? "h-9 w-9" : "h-10 w-10")}
+          data-testid={`academy-radio-${variant}-trigger`}
         >
           {radio.muted ? (
             <VolumeX className="h-5 w-5" aria-hidden="true" />

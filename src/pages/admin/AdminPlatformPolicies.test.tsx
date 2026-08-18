@@ -364,7 +364,7 @@ describe("Phase 1 boundary: the navbar policy is stored, not consumed", () => {
     readFileSync(resolve(__dirname, "../../", relative), "utf8");
 
   it.each([
-    "components/Navbar.tsx",
+    "components/hud/GlobalHud.tsx",
     "components/Layout.tsx",
     "App.tsx",
   ])("%s does not read the navbar policy", (file) => {

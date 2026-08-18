@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, X, Zap, Heart, Brain, Coins, History as HistoryIcon, Layers } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, History as HistoryIcon, Layers } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -168,12 +168,10 @@ const SWIPE_GAME_CARDS = LEAGUE_SWIPE_GAMES.map((g) => ({
 
 export default function LolHub() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
   const { data: championAssets } = useChampionAssets();
   // One Patch Brief feed serves the desktop and mobile centerpieces alike.
   const broadcastFeed = usePatchBriefFeed();
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
   // Pick the academy line ONCE per mount — lazy initializer, so no Math.random()
   // during render and the line never changes while the user stays on the hub.
   const [academyLineIndex] = useState(() => Math.floor(Math.random() * ACADEMY_LINES.length));
@@ -356,7 +354,16 @@ export default function LolHub() {
       />
 
       {/* ================= Academy Library — above-the-fold hub ================= */}
-      <section className="relative w-full md:min-h-[calc(100dvh-var(--app-header-h))] md:flex md:flex-col overflow-hidden">
+      {/* Desktop pulls itself up under the floating HUD (the shell still pads
+          by --app-header-h for every ordinary page): the painted library runs
+          to the very top of the viewport and the section owns a full 100dvh.
+          The negative margin cancels the shell's padding exactly, so the
+          document does not overflow. The heading stack starts inside the HUD
+          band — its centered column never reaches the corner controls (the
+          one full-width exception, the sign-up strip, handles its own
+          clearance) — and the reclaimed room surfaces as the gap between the
+          radio dock and Mogzy; see the inner container's pt/pb comment. */}
+      <section className="relative w-full md:-mt-[var(--app-header-h)] md:min-h-[100dvh] md:flex md:flex-col overflow-hidden">
         {/* Full-bleed library background. One <picture> rather than two <img>
             elements hidden by CSS: the browser resolves the media query itself
             and fetches exactly one file, so phones never pull the desktop
@@ -393,37 +400,21 @@ export default function LolHub() {
           aria-hidden
         />
 
-        <div className="relative z-10 flex w-full flex-1 flex-col px-4 md:px-3 lg:px-4 xl:px-6 pt-3 md:pt-2 pb-6 md:pb-1">
-          {/* Anonymous sign-up nudge banner */}
-          {isAnonymous && !nudgeDismissed && (
-            // Desktop keeps this strip compact (md:*) so the book grid gets the
-            // vertical room; mobile spacing is unchanged.
-            <div className="relative mx-auto mb-3 md:mb-1.5 flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-[#c9a84c]/30 bg-[#0a1020]/70 backdrop-blur-sm py-2 pl-3 pr-10 sm:px-4 sm:py-2.5 md:py-1 text-sm">
-              <span className="flex-1 min-w-[9rem] text-xs sm:text-sm text-[#f5e9c8]/90">
-                {/* Concise on mobile; full pitch from sm up. */}
-                <span className="sm:hidden">Save XP and streaks across devices.</span>
-                <span className="hidden sm:inline">
-                  Sign up to save your XP, streaks, and progress across Mogzy League.
-                </span>
-              </span>
-              <button
-                onClick={() => {
-                  playUiSfx("primaryAction");
-                  navigate("/auth?mode=signup&returnTo=/lol");
-                }}
-                className="shrink-0 inline-flex min-h-[32px] sm:min-h-[40px] md:min-h-[28px] items-center rounded-md bg-[#c9a84c]/20 px-2.5 py-1 sm:px-3 sm:py-2 md:py-0.5 text-xs sm:text-sm md:text-xs font-semibold text-[#f0d78c] hover:bg-[#c9a84c]/30 transition-colors"
-              >
-                Sign up free
-              </button>
-              <button
-                onClick={() => setNudgeDismissed(true)}
-                className="absolute right-0 top-0 p-2.5 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Dismiss"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+        {/* Desktop spacing: the upper stack (heading → Broadcast book → radio)
+            sits INSIDE the HUD band — the centered content never meets the
+            corner controls, so reserving the whole --app-header-h strip just
+            left a ghost navbar. The 3.25rem the top padding gives up moves to
+            the bottom padding ON PURPOSE: total flow height is unchanged, so
+            the section (and with it the painted library's crop — Mogzy's
+            pedestal) keeps its exact geometry in both regimes (content-driven
+            below ~1000px viewports, min-h-driven above), and the whole
+            reclaimed band becomes clean air between the radio dock and Mogzy
+            (see the guide wrapper's matching 3.25rem offset in the lane). */}
+        <div className="relative z-10 flex w-full flex-1 flex-col px-4 md:px-3 lg:px-4 xl:px-6 pt-3 md:pt-2 pb-6 md:pb-14">
+          {/* Guest signup lives in the global HUD now (GlobalHud's chip and
+              account-menu entry) — the old full-width banner that sat here
+              competed with the Academy title and its dismissal never
+              persisted. */}
 
           {/* Compact centered academy heading */}
           <header className="text-center">
@@ -519,8 +510,22 @@ export default function LolHub() {
                   interactive Broadcast centerpiece above must stay visible to
                   AT — and z-10 keeps the speech bubble above the transformed
                   book columns. Pointer events stay off: the guide never
-                  blocks a card or the radio dock. */}
-              <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
+                  blocks a card or the radio dock.
+
+                  The 3.25rem offsets undo the spacing pass for Mogzy alone:
+                  the container moved that much padding from top to bottom, so
+                  the lane (and the centerpiece pinned to its top) rose 3.25rem
+                  while the section held its height. Shifting the guide's
+                  coordinate box back down by the same amount keeps the
+                  bottom-[16%] anchor resolving to the exact pixels it had
+                  before the pass — the heading/book/radio stack rises, Mogzy
+                  and his painted pedestal do not. The box hangs 3.25rem into
+                  the container's bottom padding, which the section still owns,
+                  so nothing clips. */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-[3.25rem] -bottom-[3.25rem] z-10"
+              >
                 <MogzyHubGuide activeModeId={activeModeId} />
               </div>
             </div>

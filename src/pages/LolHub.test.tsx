@@ -217,13 +217,16 @@ describe("LolHub — navigation structure", () => {
     expect(screen.getByText("Chart your path. Sharpen your edge.")).toBeTruthy();
   });
 
-  it("shows the guest signup banner with concise mobile copy and a dismiss control", () => {
+  it("renders no page-level signup banner for guests — the HUD owns guest conversion now", () => {
     mocks.authUser = { id: "anon1", is_anonymous: true };
     renderHub();
-    // Both responsive variants render in jsdom; assert the concise one exists.
-    expect(screen.getByText("Save XP and streaks across devices.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign up free" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Dismiss" })).toBeTruthy();
+    // The retired full-width banner (mount-scoped dismissal, unmeasured CTA)
+    // must not resurface on the hub; GlobalHud's chip and account-menu entry
+    // replaced it. Its copy, CTA, and dismiss control are all gone.
+    expect(screen.queryByText("Save XP and streaks across devices.")).toBeNull();
+    expect(screen.queryByText(/Sign up to save your XP/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sign up free" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
   });
 
   it("fires the landing funnel event and keeps the ad slot mounted", () => {
@@ -319,16 +322,42 @@ describe("LolHub — Mogzy contextual guide", () => {
     }
   });
 
-  it("every hub destination participates with a bounded, subtle lean", () => {
-    // Config coverage: six cards, six guide entries, movement stays small.
+  it("every hub destination participates with a bounded, directional glide", () => {
+    // Config coverage: six cards, six guide entries. Horizontal is the
+    // dominant signal but stays bounded — Mogzy glides toward the hovered
+    // side without leaving his central stage (see hub-guide.ts for the
+    // measured lane clearances behind the 110/40 caps).
     const { container } = renderHub();
     expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(GUIDE_MODES.length);
+    const LEFT_MODES: HubGuideModeId[] = ["leaguecraft", "stat-check", "quiz-history"];
     for (const { guideId } of GUIDE_MODES) {
       const mode = HUB_GUIDE_MODES[guideId];
       expect(mode.title.length).toBeGreaterThan(0);
       expect(mode.description.length).toBeGreaterThan(0);
-      expect(Math.abs(mode.lean.x)).toBeLessThanOrEqual(20);
-      expect(Math.abs(mode.lean.y)).toBeLessThanOrEqual(20);
+      expect(Math.abs(mode.lean.x)).toBeLessThanOrEqual(110);
+      expect(Math.abs(mode.lean.y)).toBeLessThanOrEqual(40);
+      // Direction must match the card's side of the hub.
+      expect(Math.sign(mode.lean.x)).toBe(LEFT_MODES.includes(guideId) ? -1 : 1);
+      // The bubble sits BESIDE Mogzy on the hovered side: a real lateral
+      // offset (past his ~70px half-width so it reads as "next to him",
+      // bounded so it stays attached rather than making a second journey),
+      // pointing the same way as the lean, plus a bounded vertical trim —
+      // usually a drop from hat-height to head-height, but quiz-history
+      // rises instead (its title sits at head height at narrow desktop; the
+      // hovered title outranks lateral purity). Past ±~60 the bubble either
+      // detaches upward or runs into the bottom row's own card titles.
+      const bubble = mode.bubble ?? { x: 0, y: 0 };
+      expect(Math.abs(bubble.x)).toBeGreaterThanOrEqual(50);
+      expect(Math.abs(bubble.x)).toBeLessThanOrEqual(100);
+      expect(Math.sign(bubble.x)).toBe(Math.sign(mode.lean.x));
+      expect(Math.abs(bubble.y ?? 0)).toBeLessThanOrEqual(60);
+      // Wide desktops must always show the attached, head-height placement:
+      // a responsive narrow-desktop lift may only raise the bubble (more
+      // negative), never push it further down than the wide value.
+      if (bubble.yNarrow !== undefined) {
+        expect(Math.abs(bubble.yNarrow)).toBeLessThanOrEqual(60);
+        expect(bubble.yNarrow).toBeLessThanOrEqual(bubble.y ?? 0);
+      }
     }
   });
 

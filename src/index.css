@@ -5,11 +5,16 @@
 
 @layer base {
   :root {
-    /* Shared layout tokens: fixed header height (mobile → sm+) and the
-       clearance the fixed mobile bottom nav needs (bar + safe area + buffer).
-       Every sticky/offset consumer reads these instead of magic numbers. */
+    /* Shared layout tokens: the height of the band the global HUD floats in
+       (mobile → sm+; previously the fixed navbar's height), and the clearance
+       once needed by the fixed mobile bottom nav. The bottom bar was retired
+       with the navbar→HUD move, so its clearance is 0 at every width — the
+       token itself stays because --app-viewport-h and .pb-bottom-nav are
+       contracts read all over the app, and a future fixed bottom surface only
+       has to change this one value. Every sticky/offset consumer reads these
+       instead of magic numbers. */
     --app-header-h: 3rem;
-    --bottom-nav-clearance: calc(3.5rem + env(safe-area-inset-bottom, 0px) + 0.5rem);
+    --bottom-nav-clearance: 0px;
     /* THE authoritative "how much height does a page actually get" token.
        Dynamic viewport height minus the fixed header and the mobile bottom-nav
        clearance the app shell already reserves. Anything that wants to fill the
@@ -1381,8 +1386,6 @@ html.high-contrast * { text-shadow: none !important; }
 @media (min-width: 640px) {
   :root {
     --app-header-h: 3.5rem;
-    /* Bottom nav is sm:hidden — no clearance needed from sm up. */
-    --bottom-nav-clearance: 0px;
   }
 }
 

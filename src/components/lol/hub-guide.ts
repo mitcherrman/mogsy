@@ -24,11 +24,47 @@ export type HubGuideMode = {
   /** One compact sentence; must fit the small bubble without truncation. */
   description: string;
   /**
-   * Subtle acknowledgement shift in px, applied on a dedicated layer above
-   * the idle float. Keep within roughly ±8–20px — Mogzy leans, he does not
-   * travel.
+   * Contextual glide in px, applied on a dedicated layer above the idle
+   * float. Horizontal is the dominant signal (roughly ±85–100 — clearly
+   * toward the hovered side, never all the way to the card); vertical is a
+   * smaller row acknowledgement (about ∓30). Bottom-row X values are pulled
+   * in slightly because those cards share Mogzy's vertical band (the top
+   * rows sit entirely above him, so they tolerate more travel). Mogzy stays
+   * anchored to the central lane: at the 200px lane minimum these values
+   * overlap a book's inner edge by at most a few dozen px of mostly
+   * transparent PNG margin.
    */
   lean: { x: number; y: number };
+  /**
+   * Optional speech-bubble placement in px, relative to the bubble's default
+   * spot centered above Mogzy's hat (the bubble always rides the lean layer,
+   * so it inherits `lean` for free).
+   *
+   * `x` pushes the bubble laterally toward the hovered side — sized so the
+   * bubble sits predominantly BESIDE Mogzy's head rather than overhead
+   * (roughly ±85–90: with the ~216px bubble that puts its far edge well past
+   * his silhouette while its near edge still brushes his shoulder, keeping
+   * it visually attached). `y` drops it from hat-height down to head/shoulder
+   * height. Together they move the bubble out of the Academy Radio dock's
+   * vertical territory entirely — beside the head it sits below the dock, so
+   * the old transient dock-corner overlap cannot happen at all.
+   *
+   * The bottom row uses a smaller `y` (and quiz-history its shorter lean):
+   * those rows sit close to their own card titles, and the hovered title
+   * staying readable outranks lateral purity (see the collision priorities
+   * in MogzyHubGuide). The tail counter-shifts by `-x`, so it keeps pointing
+   * at the head from the bubble's inner corner. Both offsets are cancelled
+   * under reduced motion along with the lean — a side bubble next to a
+   * mascot that never moves would read as detached.
+   *
+   * `yNarrow` (optional) is the y calibrated for a 1024px-wide viewport.
+   * When present, MogzyHubGuide interpolates linearly in vw between
+   * (1024px → yNarrow) and (1440px → y), so a mode whose card title drifts
+   * relative to Mogzy across the desktop range can stay attached at wide
+   * widths and lift away only as the title actually closes in — instead of
+   * paying the worst case everywhere with one fixed number.
+   */
+  bubble?: { x: number; y?: number; yNarrow?: number };
 };
 
 export const HUB_GUIDE_MODES: Record<HubGuideModeId, HubGuideMode> = {
@@ -36,37 +72,56 @@ export const HUB_GUIDE_MODES: Record<HubGuideModeId, HubGuideMode> = {
     id: "leaguecraft",
     title: "Leaguecraft",
     description: "Quizzes and training to sharpen your League knowledge.",
-    lean: { x: -14, y: -8 },
+    lean: { x: -95, y: -30 },
+    bubble: { x: -88, y: 44 },
   },
   "stat-check": {
     id: "stat-check",
     title: "Stat Check",
     description: "Commit champions to stat lanes and win the board.",
-    lean: { x: -14, y: 0 },
+    lean: { x: -100, y: 0 },
+    bubble: { x: -90, y: 50 },
   },
   "quiz-history": {
     id: "quiz-history",
     title: "Quiz History",
     description: "Look back through your past quiz results.",
-    lean: { x: -12, y: 6 },
+    // Shorter than its right-side twin ON PURPOSE: left cards print their
+    // title beside the inner edge (ends ~x569 at 1440), so anything past
+    // ~-62 floats Mogzy over the hovered card's own title. Right cards
+    // print titles on the outer page, so patch-reports keeps the longer run.
+    lean: { x: -62, y: 26 },
+    // The only mode with a responsive y: this card's title climbs from 46px
+    // BELOW the lean layer's top at 1440 to 14px ABOVE it at 1024, so no
+    // fixed drop can both hug Mogzy at wide widths and clear the title at
+    // narrow ones (a fixed -34 was title-safe everywhere but left the
+    // bubble floating ~28px above his hat at 1440 — visibly detached next
+    // to the other five). y=26 sits the bubble at his head like its
+    // neighbours with ~14px title clearance at 1440; yNarrow=-36 lifts it
+    // clear of the title (plus the few-px grid wobble the sign-up chrome
+    // introduces) at 1024; between and below, the vw ramp tracks the title.
+    bubble: { x: -85, y: 26, yNarrow: -36 },
   },
   "combat-lab": {
     id: "combat-lab",
     title: "Combat Lab",
     description: "Simulate fights with real champion and item math.",
-    lean: { x: 14, y: -8 },
+    lean: { x: 95, y: -30 },
+    bubble: { x: 88, y: 44 },
   },
   archives: {
     id: "archives",
     title: "Mogzy Archives",
     description: "Browse the Academy's library of League knowledge.",
-    lean: { x: 14, y: 0 },
+    lean: { x: 100, y: 0 },
+    bubble: { x: 90, y: 50 },
   },
   "patch-reports": {
     id: "patch-reports",
     title: "Patch Reports",
     description: "Track every gameplay change, patch by patch.",
-    lean: { x: 12, y: 6 },
+    lean: { x: 85, y: 26 },
+    bubble: { x: 85, y: 44 },
   },
 };
 

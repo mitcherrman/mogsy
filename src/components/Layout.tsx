@@ -1,7 +1,6 @@
-import { Outlet, useLocation, Link } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Suspense, useEffect, useLayoutEffect } from "react";
-import { ArrowLeft } from "lucide-react";
-import Navbar from "./Navbar";
+import GlobalHud from "./hud/GlobalHud";
 import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
 import FloatingScrollButton from "./FloatingScrollButton";
@@ -77,12 +76,6 @@ export default function Layout() {
   // is full-bleed but not a gameplay surface, so the drawer stays.
   const showFriendsDrawer = !isStatCheckSurface;
 
-  // Combat Lab renders the League Hub control inline in its own compact page
-  // header, so the shell's copy is suppressed there to avoid a duplicate. Its
-  // sub-routes (e.g. /combat-lab/diagnostics) still get the shell control.
-  const pageOwnsHubControl = pathname === "/combat-lab";
-  const showShellHubControl = isLolSection && pathname !== "/lol" && !pageOwnsHubControl;
-
   // After first paint, warm the chunks the user is most likely to visit next.
   // In League-only mode /home, /play, /swipe and /shop are <Navigate> stubs that
   // redirect to /lol, so warming their chunks downloads code nothing can render.
@@ -136,7 +129,12 @@ export default function Layout() {
         className="fixed inset-0 bg-black pointer-events-none z-[15] transition-opacity duration-700 ease-in-out"
         style={{ opacity: themingActive && isCycleFading ? 1 : 0 }}
       />
-      <Navbar themeId={themingActive ? visualThemeId : (isLolSection ? "lol" : undefined)} />
+      {/* Global HUD — replaces the traditional navbar (top bar + mobile bottom
+          bar). It floats in the band `pt-[var(--app-header-h)]` above already
+          reserves, so no page geometry changes. It also supersedes the shell's
+          old floating "League Hub" back pill: the HUD's Mogzy home control is
+          the same destination on every page. */}
+      <GlobalHud />
       {themingActive && <ThemeOverlay themeId={visualThemeId} />}
       {isLolSection && <HextechAmbience />}
       {/* Bottom-nav clearance lives once on the shell (.pb-bottom-nav above) so
@@ -154,21 +152,7 @@ export default function Layout() {
             : "relative z-20 w-full max-w-7xl mx-auto px-0 md:px-4 lg:px-8"
         }
       >
-        {showShellHubControl && (
-          /* Mobile: back control in normal flow so it reserves space and never
-             overlays cards. Desktop keeps the floating pill (see below). */
-          <div className="md:hidden px-4 pt-2">
-            <Link
-              to="/lol"
-              aria-label="Back to League hub"
-              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-3 py-1.5 text-xs font-semibold text-[#c9a84c] hover:bg-[#0a1428] hover:border-[#c9a84c] transition"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              League Hub
-            </Link>
-          </div>
-        )}
-        {/* The shell — navbar, background, theme — is already mounted here, so a
+        {/* The shell — HUD, background, theme — is already mounted here, so a
             resolving route chunk only needs its content area held open. A
             full-screen loader would blank a page the visitor can already see,
             and `min-h-dvh` under the fixed header would overflow the document
@@ -180,16 +164,6 @@ export default function Layout() {
       {/* Footer renders sitewide (incl. /lol) so trust/legal links and the
           Riot disclaimer stay visible; it self-hides on gameplay routes. */}
       <Footer />
-      {showShellHubControl && (
-        <Link
-          to="/lol"
-          aria-label="Back to League hub"
-          className="hidden md:inline-flex fixed top-[calc(var(--app-header-h)+0.5rem)] left-4 z-[55] items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-3 py-1.5 text-xs font-semibold text-[#c9a84c] backdrop-blur-md shadow-lg hover:bg-[#0a1428] hover:border-[#c9a84c] transition"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          League Hub
-        </Link>
-      )}
       {showFriendsDrawer && <FloatingFriendsButton />}
       {!isLolSection && <FloatingThemeSwitcher />}
       <FloatingScrollButton />

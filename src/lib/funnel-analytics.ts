@@ -12,6 +12,12 @@ export type FunnelEventName =
   | "quiz_guest_continue_clicked"
   | "auth_signup_viewed_from_quiz"
   | "auth_signup_completed_from_quiz"
+  // Global HUD guest conversion (src/components/hud/GlobalHud.tsx): the chip
+  // beside the account control and the account-menu signup entry. Route and
+  // guest-ness are captured automatically below; the payload carries the
+  // returnTo the CTA encoded, matching quiz_signup_clicked.
+  | "hud_signup_chip_clicked"
+  | "hud_signup_menu_clicked"
   // Provider-neutral ad lifecycle (src/lib/ads/) — payload is placement/provider/reason only.
   | "ad_slot_eligible"
   | "ad_slot_rendered"

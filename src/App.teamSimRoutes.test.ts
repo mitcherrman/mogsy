@@ -99,7 +99,7 @@ describe("team-sim route map", () => {
     // sitemap in particular must not advertise a route that only exists when a
     // build-time flag is on.
     for (const file of [
-      "src/components/Navbar.tsx",
+      "src/components/hud/GlobalHud.tsx",
       "src/pages/LolHub.tsx",
       "scripts/generate-sitemap.ts",
     ]) {

@@ -157,7 +157,11 @@ describe("the hub holds its geometry before the painting decodes", () => {
   it("reserves the full viewport for the above-the-fold section", () => {
     renderHub();
     const section = backgroundImg().closest("section")!;
-    expect(section.className).toContain("md:min-h-[calc(100dvh-var(--app-header-h))]");
+    // Full-bleed under the floating HUD: the section owns a true 100dvh and
+    // cancels the shell's header padding with an equal negative margin, so
+    // the painting reaches the viewport top without overflowing the document.
+    expect(section.className).toContain("md:min-h-[100dvh]");
+    expect(section.className).toContain("md:-mt-[var(--app-header-h)]");
     expect(section.className).toContain("relative");
   });
 
