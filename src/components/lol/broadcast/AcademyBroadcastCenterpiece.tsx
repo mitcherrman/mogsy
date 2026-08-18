@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import { cn } from "@/lib/utils";
 import { useAcademyRadio } from "@/lib/audio/academy-radio";
 import AcademyRadioDock from "@/components/audio/AcademyRadioDock";
@@ -27,11 +29,14 @@ export default function AcademyBroadcastCenterpiece({
   variant = "desktop",
   feed = INITIAL_BROADCAST_FEED,
   className,
+  style,
 }: {
   variant?: Variant;
   /** Injectable so a future provider (or a test) can swap the content. */
   feed?: BroadcastFeed;
   className?: string;
+  /** Pass-through for the hub's computed width (academy-layout.ts). */
+  style?: CSSProperties;
 }) {
   const radio = useAcademyRadio();
   const suffix = variant === "desktop" ? "" : "-mobile";
@@ -40,6 +45,7 @@ export default function AcademyBroadcastCenterpiece({
     <div
       data-testid={`academy-broadcast-centerpiece${suffix}`}
       className={cn("relative", className)}
+      style={style}
     >
       <AcademyBroadcastSurface
         feed={feed}

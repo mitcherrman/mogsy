@@ -41,6 +41,12 @@ import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroad
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
+import {
+  BOOK_MAX_WIDTH_CSS,
+  BOOK_STACK_LIFT_CSS,
+  CENTERPIECE_WIDTH_CSS,
+  TITLE_FONT_SIZE_CSS,
+} from "@/components/lol/academy-layout";
 
 const LOL_TAG = "League of Legends";
 
@@ -279,7 +285,10 @@ export default function LolHub() {
     }
   };
 
-  const DESKTOP_BOOK_STACK_Y_PX = -50;
+  // Vertical bias of both book columns. Was a fixed −50px tuned at 1080; now
+  // eases to 0 on short viewports (see academy-layout.ts) so the columns can
+  // never rise into the title band when the fold leaves them no slack above.
+  const DESKTOP_BOOK_STACK_Y = BOOK_STACK_LIFT_CSS;
 
   // How far each book column is pulled back toward the center from its outer
   // edge. At wide viewports this is the original 120px composition; below
@@ -293,13 +302,13 @@ export default function LolHub() {
     // padding, so the card box IS the drawn book: height = width × 0.542, and
     // width = the drawn book's width.
     //
-    // The size tracks viewport height on a deliberately SHALLOWER slope than a
-    // strict three-rows-above-the-fold fit (which would be ≈ 0.615 × usable
-    // height). At 1080 the two coincide, so 1920×1080 still shows all six books
-    // without scrolling; below that the books stay large and the third row is
-    // allowed to run slightly past the fold, which is the intended trade.
-    //   0.308 × 100dvh + 176px  →  1080: 509px · 900: 453px · 768: 413px
-    // The min() keeps the book inside its grid column so it can never clip.
+    // The size is height-aware with two regimes (academy-layout.ts): at
+    // heights ≥ ~1000px the original shallow slope binds (0.308 × 100dvh +
+    // 176px — 1080 keeps its approved 509px books), below that a steeper
+    // fit slope takes over so heading + three rows + padding always fit the
+    // fold — the old "third row runs past the fold" trade predated the MALT
+    // title/HUD and is retired. The min() with 100% keeps the book inside
+    // its grid column so it can never clip.
     //
     // Each column is pushed OUTWARD (mr-auto / ml-auto) instead of centred, so
     // the books sit near the viewport edges and the central Mogzy lane opens up.
@@ -314,7 +323,7 @@ export default function LolHub() {
       onFocus={() => activateGuide(d.guideId)}
       onBlur={deactivateGuide}
       className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
-      style={{ maxWidth: "min(100%, calc(100dvh * 0.308 + 176px))" }}
+      style={{ maxWidth: BOOK_MAX_WIDTH_CSS }}
     >
       <BookModeCard
         to={d.to}
@@ -421,7 +430,9 @@ export default function LolHub() {
             <h1
               className="academy-hub-title mx-auto font-medium leading-[1.12] text-transparent bg-clip-text"
               style={{
-                fontSize: "clamp(1.35rem, 2.2vw + 0.6rem, 2.4rem)",
+                // Smallest of: width-fluid (original), height-fit (short
+                // laptops), HUD-clearance (narrow desktops) — academy-layout.ts.
+                fontSize: TITLE_FONT_SIZE_CSS,
                 fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
                 backgroundImage:
                   "linear-gradient(180deg, #e3d7b2 0%, #b9a46b 55%, #78652f 100%)",
@@ -471,7 +482,7 @@ export default function LolHub() {
             <div
               className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
               style={{
-                transform: `translate(calc(${DESKTOP_BOOK_STACK_INSET}), ${DESKTOP_BOOK_STACK_Y_PX}px)`,
+                transform: `translate(calc(${DESKTOP_BOOK_STACK_INSET}), ${DESKTOP_BOOK_STACK_Y})`,
               }}
             >
               {LEFT_DESTINATIONS.map((d) => renderBook(d, "left"))}
@@ -493,14 +504,15 @@ export default function LolHub() {
               <div className="absolute inset-x-0 top-3 z-10 flex justify-center">
                 {/* Fixed width + shrink-0: the tome centres over the narrow grid
                     lane and may spill evenly into the cleared gaps beside the
-                    book columns. The width expression tracks the free zone the
-                    grid actually leaves: ~216px until the book inset starts
-                    easing at 1200px (see DESKTOP_BOOK_STACK_INSET), then one
-                    extra px per viewport px, capped before it can crowd the
-                    books at wide-and-short viewports. */}
+                    book columns. The width term tracks the free zone the grid
+                    leaves (~216px until the book inset eases at 1200px, then
+                    one extra px per viewport px); the height term compresses
+                    the tome on short viewports so the dock stops crowding
+                    Mogzy — see academy-layout.ts. */}
                 <AcademyBroadcastCenterpiece
                   feed={broadcastFeed}
-                  className="pointer-events-auto w-[clamp(200px,calc(100vw-1030px),380px)] shrink-0"
+                  className="pointer-events-auto shrink-0"
+                  style={{ width: CENTERPIECE_WIDTH_CSS }}
                 />
               </div>
               {/* Mogzy contextual guide — replaces the static mascot float
@@ -533,7 +545,7 @@ export default function LolHub() {
             <div
               className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
               style={{
-                transform: `translate(calc(-1 * (${DESKTOP_BOOK_STACK_INSET})), ${DESKTOP_BOOK_STACK_Y_PX}px)`,
+                transform: `translate(calc(-1 * (${DESKTOP_BOOK_STACK_INSET})), ${DESKTOP_BOOK_STACK_Y})`,
               }}
             >
               {RIGHT_DESTINATIONS.map((d) => renderBook(d, "right"))}
