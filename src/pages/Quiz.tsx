@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl, type DailyChallengeQuestion } from "@/lib/quiz/api";
+import RankCrown from "@/components/ranked/RankCrown";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
@@ -1504,11 +1505,12 @@ export default function Quiz() {
                               resolveQuizAssetUrl(rankObj?.small_icon_path) ||
                               resolveQuizAssetUrl(rankObj?.icon_path);
                             return rankIcon ? (
-                              <img
-                                src={rankIcon}
+                              <RankCrown
+                                rankName={rankName}
+                                fallbackSrc={rankIcon}
                                 alt={rankName}
-                                className="h-10 w-10 object-contain shrink-0 drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
-                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                                size="row"
+                                className="shrink-0 drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
                               />
                             ) : null;
                           })()}

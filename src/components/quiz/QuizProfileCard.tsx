@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress, type QuizAchievement } from "@/lib/quiz/api";
+import RankCrown from "@/components/ranked/RankCrown";
 
 function fmtPct(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
@@ -129,13 +130,12 @@ export default function QuizProfileCard({
               className="relative shrink-0"
             >
               {iconUrl ? (
-                <img
-                  src={iconUrl}
+                <RankCrown
+                  rankName={rankName}
+                  fallbackSrc={iconUrl}
                   alt={`${rankName} rank`}
-                  className="h-20 w-20 md:h-28 md:w-28 object-contain drop-shadow-[0_0_22px_hsl(var(--primary)/0.55)]"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  size="profile"
+                  className="drop-shadow-[0_0_22px_hsl(var(--primary)/0.55)]"
                 />
               ) : (
                 <div className="h-24 w-24 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -184,13 +184,12 @@ export default function QuizProfileCard({
             {nextIconUrl && (
               <div className="hidden shrink-0 flex-col items-center sm:flex">
                 <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
-                <img
-                  src={nextIconUrl}
+                <RankCrown
+                  rankName={nextRank}
+                  fallbackSrc={nextIconUrl}
                   alt={`${nextRank ?? "Next"} rank`}
-                  className="h-14 w-14 object-contain opacity-70 grayscale"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  size="row"
+                  className="opacity-70 grayscale"
                 />
                 {nextRank && (
                   <span className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">

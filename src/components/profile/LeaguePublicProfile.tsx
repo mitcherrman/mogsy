@@ -20,6 +20,7 @@ import { pickBestCategory } from "@/lib/profile/view-model";
 import { fetchMyRecentResults, type SwipeOwnResult } from "@/lib/league-swipe/api";
 import { META_REFLEX_NAME } from "@/lib/league-swipe/branding";
 import type { ProfileTheme } from "@/lib/profile-themes";
+import RankCrown from "@/components/ranked/RankCrown";
 
 type ThemeStyles = ProfileTheme["styles"];
 
@@ -183,13 +184,12 @@ export default function LeaguePublicProfile({
           <>
             <div className="flex items-center gap-3 mb-3">
               {rankIcon && (
-                <img
-                  src={rankIcon}
+                <RankCrown
+                  rankName={rankName}
+                  fallbackSrc={rankIcon}
                   alt={`${rankName} rank`}
-                  className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-[0_0_14px_rgba(201,168,76,0.4)]"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  size="profile"
+                  className="drop-shadow-[0_0_14px_rgba(201,168,76,0.4)]"
                 />
               )}
               <div className="min-w-0">
