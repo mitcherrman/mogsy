@@ -71,8 +71,8 @@ describe("R1 — progression_enabled", () => {
 describe("R1 — role on the public projection", () => {
   it("reads a frozen role per player", () => {
     const body = clone(publicRoundV2());
-    body.payload.players[0].role = "jungle";
-    body.payload.players[1].role = "support";
+    Object.assign(body.payload.players[0], { role: "jungle" });
+    Object.assign(body.payload.players[1], { role: "support" });
     const view = readPublicRound(body);
     expect(view.players.map((p) => p.role)).toEqual(["jungle", "support"]);
   });
@@ -86,7 +86,7 @@ describe("R1 — role on the public projection", () => {
 
   it("drops an unrecognised role to null rather than guessing", () => {
     const body = clone(publicRoundV2());
-    body.payload.players[0].role = "bot";
+    Object.assign(body.payload.players[0], { role: "bot" });
     expect(readPublicRound(body).players[0].role).toBeNull();
   });
 });
@@ -94,7 +94,7 @@ describe("R1 — role on the public projection", () => {
 describe("R1 — role on queue status", () => {
   it("carries the role the entry queued as, beside the legacy class", () => {
     const body = clone(queueStatusV1("waiting"));
-    body.payload.role = "mid";
+    Object.assign(body.payload, { role: "mid" });
     const view = readQueueStatus(body);
     expect(view.role).toBe("mid");
     expect(view.classId).toBe("tank");
