@@ -70,6 +70,15 @@ export type QuizProgress = {
   total_xp?: number;
   total_attempts?: number;
   correct_attempts?: number;
+  /**
+   * RE1 Phase 2, additive: the five-tier Academy standing the backend derives
+   * from `total_xp` ("bronze" | "silver" | "gold" | "diamond" | "challenger").
+   * Typed loosely on purpose — it is `unknown` on the wire and is validated
+   * through `parseRankTier`, so an older backend that omits it, or a value
+   * outside the vocabulary, falls back to the legacy `rank` rendering rather
+   * than throwing. It never replaces `rank` / `rank_name`.
+   */
+  academy_tier?: unknown;
 };
 
 /** Answered-question total, tolerant of both `attempts` and the backend's `total_attempts`. */

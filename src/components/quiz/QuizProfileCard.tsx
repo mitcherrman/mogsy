@@ -6,6 +6,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress, type QuizAchievement } from "@/lib/quiz/api";
+import RankCrown from "@/components/ranked/RankCrown";
+import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
+
+/**
+ * RE1 Phase 2 — Academy identity naming. Academy standing is deliberately
+ * labelled "Academy <Tier>": it is quiz-XP progression, not competitive
+ * Ranked skill, and the two must never read as the same achievement.
+ */
+const ACADEMY_TIER_LABEL: Record<RankTier, string> = {
+  bronze: "Academy Bronze",
+  silver: "Academy Silver",
+  gold: "Academy Gold",
+  diamond: "Academy Diamond",
+  challenger: "Academy Challenger",
+};
 
 function fmtPct(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
@@ -56,11 +71,18 @@ export default function QuizProfileCard({
   // Backend may return `rank` / `next_rank` as nested objects instead of strings.
   const rankObj = (progress?.rank && typeof progress.rank === "object" ? progress.rank : null) as any;
   const nextRankObj = (progress?.next_rank && typeof progress.next_rank === "object" ? progress.next_rank : null) as any;
-  const rankName =
+  // RE1 Phase 2: the backend's derived five-tier Academy standing, when it is
+  // present AND canonical. `parseRankTier` returns null for a missing field,
+  // an older backend, or any token outside the five-tier vocabulary, and every
+  // legacy value below is computed regardless — so a null here leaves this
+  // card rendering exactly what it rendered before this phase.
+  const academyTier = parseRankTier(progress?.academy_tier);
+  const legacyRankName =
     progress?.rank_name ||
     rankObj?.rank_name ||
     (typeof progress?.rank === "string" ? progress.rank : null) ||
     "Unranked";
+  const rankName = academyTier ? ACADEMY_TIER_LABEL[academyTier] : legacyRankName;
   const nextRank =
     progress?.next_rank_name ||
     rankObj?.next_rank_name ||
@@ -128,7 +150,17 @@ export default function QuizProfileCard({
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               className="relative shrink-0"
             >
-              {iconUrl ? (
+              {academyTier ? (
+                /* Mogzy crown for the five-tier Academy track. RankCrown falls
+                   back to the legacy crest by itself if the crown art fails. */
+                <RankCrown
+                  rankName={academyTier}
+                  fallbackSrc={iconUrl}
+                  alt={`${rankName} crown`}
+                  size="hero"
+                  className="drop-shadow-[0_0_22px_hsl(var(--primary)/0.55)]"
+                />
+              ) : iconUrl ? (
                 <img
                   src={iconUrl}
                   alt={`${rankName} rank`}
