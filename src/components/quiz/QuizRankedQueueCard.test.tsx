@@ -41,11 +41,11 @@ describe("QuizRankedQueueCard — placement state", () => {
     expect(screen.getByText(/5 placement\s+matches remaining/)).toBeTruthy();
     expect(screen.getByText("+25")).toBeTruthy();
     expect(screen.getByText("−15")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Play Placement/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Play$/ }));
     expect(onPlay).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the rank name and Queue Ranked once placed", () => {
+  it("shows the rank name, and the same one-word PLAY action, once placed", () => {
     render(
       <QuizRankedQueueCard
         progress={{ rank_name: "Bronze" }}
@@ -54,7 +54,10 @@ describe("QuizRankedQueueCard — placement state", () => {
       />,
     );
     expect(screen.getByRole("heading", { name: "Bronze" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Queue Ranked/ })).toBeTruthy();
+    // LC1: the action is always "PLAY" — placed or not. The placement /
+    // ranked distinction is carried by the identity and status blocks around
+    // it, not by the button label.
+    expect(screen.getByRole("button", { name: /^Play$/ })).toBeTruthy();
     // No placement/unranked messaging once placed.
     expect(screen.queryByText("Unranked")).toBeNull();
     expect(screen.queryByText(/establish your starting rank/)).toBeNull();

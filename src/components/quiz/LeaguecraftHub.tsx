@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { BookOpen, ChevronRight, HelpCircle, RotateCcw, ScrollText, RotateCw } from "lucide-react";
+import { BookOpen, ChevronRight, HelpCircle, RotateCcw, RotateCw, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
@@ -13,17 +13,27 @@ import type { RankedRole } from "@/lib/ranked-public/roles";
  * Leaguecraft hub — the Ranked-first one-page composition served at /quiz.
  *
  * The loop the page is built around is: play Ranked → see how it went →
- * practice the knowledge Ranked asks for → play Ranked again. Everything on
- * screen serves one of those three beats, in that order of visual weight:
+ * study the knowledge Ranked asks for → play Ranked again. The LC1
+ * simplification pass makes the first beat unmistakably dominant and demotes
+ * the rest to a single quiet row beneath it:
  *
- *   1. Ranked hero          — dominant, gold-framed, the page's only major CTA
- *   2. Practice for Ranked  — the real quiz sets, compact
- *   3. Recent Studies       — the real session history, compact
- *   4. Mastery Journey      — a thin entry strip; must never rival Ranked
+ *   1. Ranked hero    — the centred emblem/identity block and the page's one
+ *                       major action. Nothing else competes with it.
+ *   2. Recent Studies — the real session history, compact, and the entry to
+ *                       the full history route.
+ *   3. Study panel    — Practice sets and the Mastery journeys, reduced to
+ *                       low-priority links inside one small panel. Both are
+ *                       still fully reachable; neither is a headline any more.
+ *
+ * The row-2 pair is deliberately short so the classroom art stays visible
+ * around the composition instead of being covered by a dashboard grid.
  *
  * This component is presentation only. Every value it renders is real data
  * owned by the /quiz page (ranked progress, quiz sets and their question
- * counts, session history); it fabricates nothing and fetches nothing.
+ * counts, session history); it fabricates nothing and fetches nothing. It
+ * makes no progression decisions either — rank identity, emblem art and
+ * placement state arrive already resolved and are passed straight through to
+ * the hero, so RE1 can change what a rank means without touching this file.
  */
 
 /** The set the "Practice Questions" primary action opens, when the backend
@@ -60,15 +70,15 @@ export default function LeaguecraftHub({
   showMastery?: boolean;
 }) {
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
+  const secondarySets = sets.filter((s) => s.id !== primarySet?.id);
 
   return (
-    // One composition, not a stack: on desktop the middle row absorbs the
-    // leftover height so the hub settles into the viewport instead of
-    // clustering at the top. The height is capped so tall monitors get a
-    // balanced block rather than three stretched bands.
-    <div className="flex flex-col gap-3 lg:min-h-[min(calc(100dvh-var(--app-header-h)-6rem),34rem)]">
-      {/* 1 ── Ranked / Placement hero. Strongest frame on the page. */}
-      <section data-testid="hub-ranked-section">
+    <div className="flex flex-col gap-3">
+      {/* 1 ── Ranked hero. The page's centre of gravity and only major CTA. */}
+      {/* Narrower than the secondary row on purpose: the classroom stays
+          visible down both flanks of the hero, so the Ranked block reads as a
+          centrepiece in the room rather than a full-bleed dashboard panel. */}
+      <section className="mx-auto w-full max-w-3xl" data-testid="hub-ranked-section">
         <QuizRankedQueueCard
           progress={progress}
           ranked={ranked}
@@ -78,98 +88,93 @@ export default function LeaguecraftHub({
         />
       </section>
 
-      <div className="grid grid-cols-1 gap-3 lg:flex-1 lg:grid-cols-12">
-      {/* 2 ── Practice for Ranked. */}
-      <section className="flex flex-col lg:col-span-7" data-testid="hub-practice-section">
-        <SectionHeading
-          icon={ScrollText}
-          title="Practice for Ranked"
-          hint="Sharpen the knowledge used in Ranked."
-        />
-        <Panel className="mt-1.5 flex flex-1 flex-col">
-          {setsLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-9 w-full rounded-md" />
-              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-[38px] w-full rounded-md" />
-                ))}
-              </div>
-            </div>
-          ) : sets.length === 0 ? (
-            <div className="flex flex-col items-start gap-2 py-3" data-testid="practice-empty">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <HelpCircle className="h-4 w-4" />
-                No quiz sets available right now.
-              </div>
-              <Button onClick={onRefreshSets} variant="ghost" size="sm" className="text-xs">
-                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                Refresh
-              </Button>
-            </div>
-          ) : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-1 flex-col gap-2">
-              {primarySet && (
-                <Button
-                  onClick={() => onSelectSet(primarySet)}
-                  data-testid="practice-primary-cta"
-                  className="h-9 w-full justify-between border border-[#c9a84c]/45 bg-[#c9a84c]/10 text-[13px] font-bold uppercase tracking-[0.14em] text-[#f0d78c] hover:bg-[#c9a84c]/20"
-                >
-                  Practice Questions
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              )}
-              {/* Compact topic tiles — the same sets, the same start action,
-                  without five full-height cards. */}
-              <div
-                className="grid flex-1 auto-rows-fr grid-cols-1 gap-1.5 sm:grid-cols-2"
-                data-testid="practice-tiles"
-              >
-                {sets.map((set) => (
-                  <PracticeTile key={set.id} set={set} onSelect={() => onSelectSet(set)} />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </Panel>
-      </section>
-
-      {/* 3 ── Recent Studies / progress. */}
-      <section className="flex flex-col lg:col-span-5" data-testid="hub-recent-section">
-        <SectionHeading icon={RotateCw} title="Recent Studies" hint="How am I doing?" />
-        <QuizRecentResultsCard
-          history={history}
-          loading={historyLoading}
-          error={historyError}
-          onPlayRanked={onPlayRanked}
-          hideHeader
-          className="mt-1.5 flex-1"
-        />
-      </section>
-      </div>
-
-      {/* 4 ── Mastery Journey — deliberately the quietest module on the page. */}
-      {showMastery && (
-        <section data-testid="hub-mastery-section">
-          <Link
-            to="/quiz/mastery"
-            data-testid="hub-mastery-link"
-            className="group flex items-center gap-3 rounded-lg border border-[#c9a84c]/18 bg-[#060d1a]/70 px-3.5 py-2 backdrop-blur-md transition-colors hover:border-[#c9a84c]/40 hover:bg-[#0a1428]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <BookOpen className="h-4 w-4 shrink-0 text-[#c9a84c]/80" aria-hidden="true" />
-            <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.22em] text-[#c9a84c]/85">
-              Mastery Journey
-            </span>
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              Guided champion progressions — cooldowns, mana, items. New: Olaf, level 1 to 11.
-            </span>
-            <span className="shrink-0 text-[11px] font-semibold text-cyan-200/80 group-hover:text-cyan-200">
-              View journeys
-            </span>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          </Link>
+      {/* 2 ── Secondary row: where I've been, and where else I can study.
+              Both panels are short by construction — no auto-rows-fr, no
+              stretched tile grid — so the classroom reads around them. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+        <section className="flex flex-col lg:col-span-7" data-testid="hub-recent-section">
+          <SectionHeading icon={RotateCw} title="Recent Studies" hint="How am I doing?" />
+          <QuizRecentResultsCard
+            history={history}
+            loading={historyLoading}
+            error={historyError}
+            onPlayRanked={onPlayRanked}
+            hideHeader
+            className="mt-1.5 flex-1"
+          />
         </section>
-      )}
+
+        {/* 3 ── Study: Practice + Mastery, demoted to one compact panel. The
+                routes and sets are untouched — only their visual weight. */}
+        <section className="flex flex-col lg:col-span-5" data-testid="hub-practice-section">
+          <SectionHeading
+            icon={ScrollText}
+            title="Practice for Ranked"
+            hint="Sharpen the knowledge used in Ranked."
+          />
+          <Panel className="mt-1.5 flex flex-1 flex-col gap-2">
+            {setsLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-full rounded-md" />
+                <Skeleton className="h-16 w-full rounded-md" />
+              </div>
+            ) : sets.length === 0 ? (
+              <div className="flex flex-col items-start gap-2 py-2" data-testid="practice-empty">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <HelpCircle className="h-4 w-4" />
+                  No quiz sets available right now.
+                </div>
+                <Button onClick={onRefreshSets} variant="ghost" size="sm" className="text-xs">
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                  Refresh
+                </Button>
+              </div>
+            ) : (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-2">
+                {primarySet && (
+                  <Button
+                    onClick={() => onSelectSet(primarySet)}
+                    data-testid="practice-primary-cta"
+                    variant="ghost"
+                    className="h-8 w-full justify-between border border-[#c9a84c]/30 px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2c877] hover:bg-[#c9a84c]/12 hover:text-[#f0d78c]"
+                  >
+                    Practice Questions
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {/* The remaining sets as one-line chips: still every set, still
+                    the same start action, at a fraction of the old grid's
+                    visual weight. */}
+                <div className="flex flex-col gap-1" data-testid="practice-tiles">
+                  {primarySet && <PracticeTile set={primarySet} onSelect={() => onSelectSet(primarySet)} />}
+                  {secondarySets.map((set) => (
+                    <PracticeTile key={set.id} set={set} onSelect={() => onSelectSet(set)} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Mastery — the quietest line on the page, inside the study panel
+                rather than as its own full-width band. */}
+            {showMastery && (
+              <Link
+                to="/quiz/mastery"
+                data-testid="hub-mastery-link"
+                className="group mt-auto flex items-center gap-2 rounded-md border border-[#c9a84c]/15 px-2.5 py-1.5 transition-colors hover:border-[#c9a84c]/35 hover:bg-[#c9a84c]/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0 text-[#c9a84c]/75" aria-hidden="true" />
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a84c]/80">
+                  Mastery Journey
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                  Guided champion progressions
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+              </Link>
+            )}
+          </Panel>
+        </section>
+      </div>
     </div>
   );
 }
@@ -197,11 +202,11 @@ function SectionHeading({
 }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-      <h2 className="flex items-center gap-1.5 text-[13px] font-bold uppercase tracking-[0.2em] text-[#e2c877]">
-        <Icon className="h-3.5 w-3.5 text-[#c9a84c]/80" aria-hidden="true" />
+      <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#e2c877]/85">
+        <Icon className="h-3 w-3 text-[#c9a84c]/70" aria-hidden="true" />
         {title}
       </h2>
-      <p className="text-[11px] text-muted-foreground">{hint}</p>
+      <p className="text-[10px] text-muted-foreground">{hint}</p>
     </div>
   );
 }
@@ -215,15 +220,15 @@ function PracticeTile({ set, onSelect }: { set: QuizSet; onSelect: () => void })
       type="button"
       onClick={onSelect}
       data-testid="practice-tile"
-      className="flex min-h-[38px] w-full items-center gap-2 rounded-md border border-cyan-400/15 bg-[#04101c]/60 px-2.5 py-1.5 text-left transition-colors hover:border-cyan-300/45 hover:bg-[#06182a]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex min-h-[30px] w-full items-center gap-2 rounded-md border border-cyan-400/12 bg-[#04101c]/50 px-2.5 py-1 text-left transition-colors hover:border-cyan-300/40 hover:bg-[#06182a]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground/90">
+      <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground/85">
         {set.name}
       </span>
-      <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">
+      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
         {count.toLocaleString()} Q
       </span>
-      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+      <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/60" />
     </button>
   );
 }

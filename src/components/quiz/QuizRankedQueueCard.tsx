@@ -17,12 +17,17 @@ import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
  * placed — XP progress toward the next rank), so no second large progress
  * panel repeats this information below.
  *
- * Layout: three zones on a single desktop row — identity (emblem, rank,
- * state badge) · status (placement or rank progress + the stat strip) ·
- * stakes and action (win/loss XP, Play, profile). The zones stack on narrow
- * viewports. Every data point the taller stacked version carried is still
- * here; only redundant prose was dropped, so the hero reads immediately
- * without consuming half the screen.
+ * Layout (LC1 Ranked-first pass): one centred column, read top to bottom —
+ * identity (emblem, rank, role, state badge) → the single dominant PLAY
+ * action → compact status (placement or rank progress, win/loss stakes) →
+ * the stat strip → the profile link. The centre axis is what makes this read
+ * as "the Ranked room" rather than one card in a mode launcher; the same
+ * composition works unchanged at every width, so nothing reflows into a
+ * different hierarchy on tablet.
+ *
+ * PLAY is deliberately one word. Placement vs. ranked status is stated in the
+ * identity block and the status block above and below it, so the button does
+ * not have to carry that distinction — it always does the same thing.
  *
  * Placement honesty: until placements are complete the player is UNRANKED —
  * we deliberately show the unranked emblem and placement progress, never a
@@ -122,40 +127,40 @@ export default function QuizRankedQueueCard({
               "radial-gradient(90% 70% at 0% 100%, rgba(80,170,220,0.12) 0%, transparent 60%), radial-gradient(70% 50% at 100% 0%, rgba(201,168,76,0.12) 0%, transparent 55%)",
           }}
         />
-        <CardContent className="relative p-3.5 sm:p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-5">
-            {/* ── Zone 1 · identity ─────────────────────────────────────── */}
-            <div className="flex items-center gap-3 lg:w-[236px] lg:shrink-0">
+        <CardContent className="relative px-4 py-5 sm:px-6 sm:py-7">
+          <div className="mx-auto flex max-w-2xl flex-col items-center gap-3.5 text-center">
+            {/* ── Identity ──────────────────────────────────────────────── */}
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
               <div
                 className="relative shrink-0 rounded-full"
                 style={{
                   background:
-                    "radial-gradient(circle, rgba(201,168,76,0.28) 0%, rgba(80,170,220,0.18) 45%, transparent 70%)",
+                    "radial-gradient(circle, rgba(201,168,76,0.30) 0%, rgba(80,170,220,0.18) 45%, transparent 70%)",
                 }}
               >
                 {iconUrl ? (
                   <img
                     src={iconUrl}
                     alt={ranked.isPlaced ? `${rankName} rank` : "Unranked"}
-                    className="h-14 w-14 sm:h-16 sm:w-16 object-contain drop-shadow-[0_0_20px_rgba(201,168,76,0.55)]"
+                    className="h-16 w-16 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_22px_rgba(201,168,76,0.55)]"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.display = "none";
                     }}
                   />
                 ) : (
-                  <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10">
-                    <Shield className="h-8 w-8 text-[#f0d78c]" />
+                  <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10">
+                    <Shield className="h-9 w-9 text-[#f0d78c]" />
                   </div>
                 )}
               </div>
-              {/* flex-wrap: on narrow widths the badge drops to its own row
+              {/* flex-wrap: the badge drops to its own row on narrow widths
                   instead of ellipsizing the primary title. */}
-              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <div className="flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1">
                 <div className="min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-[#f0d78c]">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#f0d78c]">
                     Ranked Quiz
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {ranked.isPlaced ? rankName : "Placement Series"}
                   </h3>
                   {/* Role sits UNDER the rank as its own line — a separate
@@ -186,14 +191,41 @@ export default function QuizRankedQueueCard({
               </div>
             </div>
 
-            {/* ── Zone 2 · status + player stats ────────────────────────── */}
-            <div className="min-w-0 flex-1 space-y-2">
-              <p className="text-xs leading-snug text-foreground/85">
-                Face other players in synchronized 1v1 League knowledge matches.
-              </p>
+            <p className="max-w-md text-xs leading-snug text-foreground/85">
+              Face other players in synchronized 1v1 League knowledge matches.
+            </p>
 
+            {/* ── The one dominant action ───────────────────────────────── */}
+            <Button
+              onClick={onPlay}
+              disabled={disabled}
+              className="h-14 w-full max-w-sm bg-gradient-to-r from-[#c9a84c] to-[#a8862f] text-base font-extrabold uppercase tracking-[0.34em] text-[#1a1530] shadow-[0_0_28px_-4px_rgba(201,168,76,0.75)] hover:from-[#d4b35c] hover:to-[#b8923f]"
+            >
+              Play
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+
+            {/* Stakes, directly under the action they belong to. */}
+            <div className="flex items-center gap-4 text-[11px] font-semibold uppercase tracking-wider">
+              <span className="flex items-center gap-1 text-emerald-300">
+                <TrendingUp className="h-3 w-3" />
+                Win
+                <span className="tabular-nums text-emerald-200">+{ranked.estimatedGain}</span>
+                <span className="text-[9px] font-medium opacity-70">XP</span>
+              </span>
+              <span aria-hidden className="h-3 w-px bg-border/60" />
+              <span className="flex items-center gap-1 text-rose-300">
+                <TrendingDown className="h-3 w-3" />
+                Loss
+                <span className="tabular-nums text-rose-200">−{ranked.estimatedLoss}</span>
+                <span className="text-[9px] font-medium opacity-70">XP</span>
+              </span>
+            </div>
+
+            {/* ── Status: placement series, or progress toward the next rank ── */}
+            <div className="w-full max-w-md">
               {!ranked.isPlaced ? (
-                <div className="rounded-md border border-amber-400/25 bg-amber-400/5 px-2.5 py-1.5">
+                <div className="rounded-md border border-amber-400/25 bg-amber-400/5 px-2.5 py-1.5 text-left">
                   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] uppercase tracking-wider">
                     <span className="font-bold text-amber-200">
                       Placement {placementDone}/{placementTotal}
@@ -212,73 +244,38 @@ export default function QuizRankedQueueCard({
                   </p>
                 </div>
               ) : (
-                <div>
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Queue a ranked set — winning answers raise your rank, missed answers cost XP.
-                  </p>
-                  {nextRank && (
-                    <div className="mt-1.5" data-testid="rank-progress">
-                      <Progress value={rankPct} className="h-1.5" />
-                      <div className="mt-0.5 text-[10px] text-muted-foreground">
-                        {rankPct}% to {nextRank}
-                      </div>
+                nextRank && (
+                  <div data-testid="rank-progress" className="text-left">
+                    <Progress value={rankPct} className="h-1.5" />
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">
+                      {rankPct}% to {nextRank}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )
               )}
-
-              {/* Compact progress summary — absorbed from the old standalone
-                  Current Progress card so the hero is the single source of
-                  ranked status on the page. */}
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4" data-testid="hero-stat-strip">
-                <HeroStat icon={Flame} label="Current streak" value={progress?.current_streak ?? 0} />
-                <HeroStat icon={Trophy} label="Best streak" value={progress?.best_streak ?? 0} />
-                <HeroStat icon={Target} label="Accuracy" value={accuracy === null ? "—" : `${accuracy}%`} />
-                <HeroStat icon={Shield} label="Answered" value={answered} />
-              </div>
             </div>
 
-            {/* ── Zone 3 · stakes + action ──────────────────────────────── */}
-            <div className="flex flex-col justify-center gap-2 lg:w-[196px] lg:shrink-0">
-              <div className="grid grid-cols-2 gap-1.5">
-                <div className="rounded-md border border-emerald-400/40 bg-emerald-500/10 px-2 py-1">
-                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-300/90">
-                    <TrendingUp className="h-2.5 w-2.5" />
-                    Win
-                  </div>
-                  <div className="text-sm font-extrabold tabular-nums text-emerald-200">
-                    +{ranked.estimatedGain}
-                    <span className="ml-0.5 text-[10px] font-medium opacity-70">XP</span>
-                  </div>
-                </div>
-                <div className="rounded-md border border-rose-400/40 bg-rose-500/10 px-2 py-1">
-                  <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-rose-300/90">
-                    <TrendingDown className="h-2.5 w-2.5" />
-                    Loss
-                  </div>
-                  <div className="text-sm font-extrabold tabular-nums text-rose-200">
-                    −{ranked.estimatedLoss}
-                    <span className="ml-0.5 text-[10px] font-medium opacity-70">XP</span>
-                  </div>
-                </div>
-              </div>
-              <Button
-                onClick={onPlay}
-                disabled={disabled}
-                className="min-h-11 w-full bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-5 font-bold text-[#1a1530] shadow-[0_0_22px_-4px_rgba(201,168,76,0.7)] hover:from-[#d4b35c] hover:to-[#b8923f]"
-              >
-                {ranked.isPlaced ? "Queue Ranked" : "Play Placement"}
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="h-7 text-[11px] text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/profile">View full profile</Link>
-              </Button>
+            {/* Compact progress summary — absorbed from the old standalone
+                Current Progress card so the hero is the single source of
+                ranked status on the page. */}
+            <div
+              className="grid w-full max-w-lg grid-cols-2 gap-1.5 sm:grid-cols-4"
+              data-testid="hero-stat-strip"
+            >
+              <HeroStat icon={Flame} label="Current streak" value={progress?.current_streak ?? 0} />
+              <HeroStat icon={Trophy} label="Best streak" value={progress?.best_streak ?? 0} />
+              <HeroStat icon={Target} label="Accuracy" value={accuracy === null ? "—" : `${accuracy}%`} />
+              <HeroStat icon={Shield} label="Answered" value={answered} />
             </div>
+
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-7 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              <Link to="/profile">View full profile</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -296,7 +293,7 @@ function HeroStat({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-1.5 rounded-md border border-border/40 bg-background/40 px-2 py-1">
+    <div className="flex items-center gap-1.5 rounded-md border border-border/40 bg-background/40 px-2 py-1 text-left">
       <Icon className="h-3 w-3 shrink-0 text-cyan-300/80" />
       <div className="min-w-0 leading-tight">
         <div className="text-[8px] uppercase tracking-wider text-muted-foreground">{label}</div>

@@ -894,9 +894,10 @@ export default function Quiz() {
           </div>
         </header>
 
-        {/* Ranked-first hub: Ranked hero → Practice for Ranked + Recent
-            Studies → a quiet Mastery strip. Everything else on this page is
-            withheld behind HUB_MODULES (hidden, never deleted). */}
+        {/* Ranked-first hub: a dominant Ranked hero, then one short secondary
+            row (Recent Studies · Practice, with Mastery as a link inside it).
+            Everything else on this page is withheld behind HUB_MODULES
+            (hidden, never deleted). */}
         {phase === "sets" && (
           <>
             <LeaguecraftHub
