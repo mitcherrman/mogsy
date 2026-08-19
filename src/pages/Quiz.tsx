@@ -839,9 +839,15 @@ export default function Quiz() {
           page without painting over the shell footer, and at least a viewport
           tall so a short hub still fills the screen. */}
       <div className="relative min-h-[calc(100dvh-var(--app-header-h))]">
+        {/* The two paint layers reach up by --app-header-h so the classroom
+            begins right under the fixed HUD instead of leaving the shell's
+            header-clearance padding as a bare strip above it (the HUD floats
+            and paints nothing of its own there — see GlobalHud). Header
+            content below is untouched: only these absolutely-positioned
+            decorative layers extend past the wrapper's own top edge. */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-x-0 bottom-0 -top-[var(--app-header-h)]"
           style={{
             backgroundImage: `url(${LEAGUECRAFT_BG_URL})`,
             backgroundSize: "cover",
@@ -851,7 +857,7 @@ export default function Quiz() {
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-x-0 bottom-0 -top-[var(--app-header-h)]"
           style={{ background: LEAGUECRAFT_BG_VEIL }}
         />
 
