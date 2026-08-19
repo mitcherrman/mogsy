@@ -1,30 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import type { AdminAuthContextValue, AdminAuthStatus } from "@/lib/admin-auth/types";
-
-// Migrated from Navbar.test.tsx: the HUD's account menu inherits the navbar's
-// admin entry-point contract unchanged. Reuse the established admin-auth mock
-// recipe (AdminAuthGate.test.tsx): the HUD reads the real useAdminAuth
-// contract against a controlled context — no parallel authorization model.
-let adminCtx: AdminAuthContextValue;
-vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({
-  useAdminAuth: () => adminCtx,
-}));
 
 // Auth state drives ONLY the guest-signup affordances; default to a real
-// account so the pre-existing chrome/admin tests exercise the quiet HUD.
+// account so the chrome tests exercise the quiet HUD.
 let authUser: { id: string; is_anonymous?: boolean } | null = { id: "u1" };
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: authUser }) }));
 
 const funnel = vi.hoisted(() => ({ trackFunnelEvent: vi.fn() }));
 vi.mock("@/lib/funnel-analytics", () => funnel);
 
-vi.mock("@/hooks/useAppSettings", () => ({
-  useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
-}));
-vi.mock("@/components/UserNotificationBell", () => ({
-  default: () => <div data-testid="notification-bell" />,
+// The identity compound (portrait + badge + chevron + panel) has its own suite
+// in MogzyIdentityMenu.identity.test.tsx. Here it is a placeholder, so these
+// tests speak only about the HUD's own composition and ordering.
+vi.mock("@/components/hud/MogzyIdentityMenu", () => ({
+  default: () => <div data-testid="hud-identity-menu" />,
 }));
 vi.mock("@/components/audio/AcademyRadioControls", () => ({
   default: ({ variant }: { variant?: string }) => (
@@ -35,21 +25,6 @@ vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
 vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
 
 import GlobalHud from "./GlobalHud";
-import { ADMIN_DIRECTORY_PATH } from "@/lib/admin/admin-directory";
-
-const baseCtx = (status: AdminAuthStatus): AdminAuthContextValue => ({
-  status,
-  principal:
-    status === "authorized"
-      ? { authMethod: "supabase_user", userId: "u1", email: "admin@mogzy.lol" }
-      : null,
-  isAuthorized: status === "authorized" || status === "authorized_via_fallback",
-  fallbackActive: status === "authorized_via_fallback",
-  recheck: vi.fn(),
-  applyFallbackKey: vi.fn(),
-  clearFallback: vi.fn(),
-  invalidate: vi.fn(),
-});
 
 const renderHud = (initialPath = "/lol") =>
   render(
@@ -58,16 +33,9 @@ const renderHud = (initialPath = "/lol") =>
     </MemoryRouter>,
   );
 
-// Radix opens on pointerdown/keydown, not click, and jsdom has no real
-// pointer — keyDown Enter is the reliable way to open the menu.
-const openAccountMenu = () =>
-  fireEvent.keyDown(screen.getByTestId("hud-account-trigger"), { key: "Enter" });
-
-const adminLink = () => screen.queryByRole("menuitem", { name: /admin/i });
-
-/** Accessible names of every item in the opened account menu. */
-const menuItemNames = () =>
-  screen.getAllByRole("menuitem").map((el) => el.textContent?.trim());
+/** b follows a in document order. */
+const follows = (a: Element, b: Element) =>
+  !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
 afterEach(() => {
   cleanup();
@@ -76,45 +44,49 @@ afterEach(() => {
 });
 
 describe("GlobalHud chrome", () => {
-  it("renders the Mogzy home control targeting the League hub, plus music, bell and account controls", () => {
-    adminCtx = baseCtx("signed_out");
+  it("renders the home control targeting the League hub, plus music and the identity compound", () => {
     renderHud();
     const home = screen.getByTestId("hud-home");
     expect(home.getAttribute("href")).toBe("/lol");
-    expect(home.getAttribute("aria-label")).toContain("Mogzy");
     expect(screen.getByTestId("radio-controls-hud")).toBeTruthy();
-    expect(screen.getByTestId("notification-bell")).toBeTruthy();
-    expect(screen.getByTestId("hud-account-trigger")).toBeTruthy();
+    expect(screen.getByTestId("hud-identity-menu")).toBeTruthy();
   });
 
-  it("orders the right cluster music → profile → notifications, in DOM (= tab) order", () => {
-    adminCtx = baseCtx("signed_out");
+  it("uses Mogzy's hat — not the mascot portrait — as the home icon", () => {
+    // The hat means Home/Academy; the mascot portrait means "you" and belongs
+    // to the profile control on the other side of the HUD. Two symbols, two
+    // meanings — asserting the src is what keeps them from converging again.
     renderHud();
-    const music = screen.getByTestId("radio-controls-hud");
-    const account = screen.getByTestId("hud-account-trigger");
-    const bell = screen.getByTestId("notification-bell");
-    const follows = (a: Element, b: Element) =>
-      // b follows a in document order
-      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(follows(music, account)).toBe(true);
-    expect(follows(account, bell)).toBe(true);
+    const img = screen.getByTestId("hud-home").querySelector("img");
+    expect(img?.getAttribute("src")).toBe("/mascot/mogzy-hat.png");
+    // Decorative: the accessible name lives on the link, not the image.
+    expect(img?.getAttribute("alt")).toBe("");
   });
 
-  it("exposes Profile and Settings in the account menu", async () => {
-    adminCtx = baseCtx("signed_out");
+  it("gives the home control an explicit Home accessible name", () => {
     renderHud();
-    openAccountMenu();
-    const profile = await screen.findByRole("menuitem", { name: /profile/i });
-    expect(profile.getAttribute("href")).toBe("/profile");
+    const home = screen.getByTestId("hud-home");
+    expect(home.getAttribute("aria-label")).toMatch(/home/i);
+    expect(home.getAttribute("title")).toBe("Home");
+  });
+
+  it("keeps the home route pointing at the same destination as before", () => {
+    // LEAGUE_ONLY_MODE routes home to the League hub. The icon changed; the
+    // destination deliberately did not.
+    renderHud("/quiz");
+    expect(screen.getByTestId("hud-home").getAttribute("href")).toBe("/lol");
+  });
+
+  it("orders the right cluster music → identity compound, in DOM (= tab) order", () => {
+    renderHud();
     expect(
-      screen.getByRole("menuitem", { name: /settings/i }).getAttribute("href"),
-    ).toBe("/settings");
+      follows(screen.getByTestId("radio-controls-hud"), screen.getByTestId("hud-identity-menu")),
+    ).toBe(true);
   });
 
   it("keeps every HUD control outside width-gated blocks, so the chrome works at mobile widths", () => {
-    adminCtx = baseCtx("authorized");
     renderHud();
-    for (const id of ["hud-home", "hud-account-trigger"]) {
+    for (const id of ["hud-home", "hud-identity-menu"]) {
       const el = screen.getByTestId(id);
       expect(el.closest("div.hidden")).toBeNull();
       expect(el.closest("[class*='sm:hidden']")).toBeNull();
@@ -122,103 +94,53 @@ describe("GlobalHud chrome", () => {
   });
 });
 
-describe("GlobalHud admin entry point (migrated navbar contract)", () => {
-  it("shows an Admin item targeting the directory for an authorized admin", async () => {
-    adminCtx = baseCtx("authorized");
+describe("GlobalHud home control — target and pop", () => {
+  it("gives the home control a 44px hit target around a smaller mark", () => {
     renderHud();
-    openAccountMenu();
-    const link = await screen.findByTestId("hud-admin-link");
-    // Consistency: the HUD must use the exported registry constant.
-    expect(link.getAttribute("href")).toBe(ADMIN_DIRECTORY_PATH);
-    expect(ADMIN_DIRECTORY_PATH).toBe("/admin/directory");
+    const home = screen.getByTestId("hud-home");
+    expect(home.className).toMatch(/\bh-11\b/);
+    expect(home.className).toMatch(/\bw-11\b/);
+    // The visible chip stays 36px: the target grew, the chrome did not.
+    expect(home.firstElementChild!.className).toMatch(/\bh-9\b/);
   });
 
-  it("does not render the item for a guest", async () => {
-    adminCtx = baseCtx("signed_out");
+  it("puts the transform on the chip, never on the box the layout measures", () => {
+    // Same contract as the Mogzy portrait: a transformed child paints outside
+    // its parent without reserving space, so the hat can grow 35% while the
+    // HUD row, the page title and the document's scroll width all hold still.
     renderHud();
-    openAccountMenu();
-    await screen.findByRole("menu");
-    expect(adminLink()).toBeNull();
-    expect(screen.queryByTestId("hud-admin-link")).toBeNull();
+    const home = screen.getByTestId("hud-home");
+    const transformish = (el: Element) =>
+      el.className.split(/\s+/).filter((c) => /scale-\[|translate-y/.test(c));
+    expect(transformish(home)).toEqual([]);
+    expect(transformish(home.firstElementChild!).length).toBeGreaterThan(0);
   });
 
-  it("does not render the item for an authenticated non-admin", async () => {
-    adminCtx = baseCtx("signed_in_non_admin");
+  it("answers keyboard focus exactly as it answers hover", () => {
     renderHud();
-    openAccountMenu();
-    await screen.findByRole("menu");
-    expect(adminLink()).toBeNull();
-  });
-
-  it("does not render the item (or any placeholder) during unresolved auth", async () => {
-    for (const status of ["loading", "checking"] as const) {
-      adminCtx = baseCtx(status);
-      renderHud();
-      openAccountMenu();
-      await screen.findByRole("menu");
-      expect(adminLink()).toBeNull();
-      expect(screen.queryByTestId("hud-admin-link")).toBeNull();
-      cleanup();
+    const classes = screen.getByTestId("hud-home").firstElementChild!.className;
+    const hovers = classes.match(/group-hover:[a-z-]*(scale|translate)[^\s]*/g) ?? [];
+    expect(hovers.length).toBeGreaterThan(0);
+    for (const h of hovers) {
+      expect(classes).toContain(h.replace("group-hover:", "group-focus-visible:"));
     }
+    expect(classes).toContain("group-focus-visible:ring-2");
   });
+});
 
-  it("does not render the item for expired, unavailable, malformed, or rejected states", async () => {
-    for (const status of [
-      "expired_session",
-      "backend_unavailable",
-      "malformed_response",
-      "fallback_rejected",
-    ] as const) {
-      adminCtx = baseCtx(status);
-      renderHud();
-      openAccountMenu();
-      await screen.findByRole("menu");
-      expect(adminLink()).toBeNull();
-      cleanup();
-    }
-  });
-
-  it("serves identical account menus to guests and non-admins (no placeholder, no layout change)", async () => {
-    // Radix generates per-render ids, so raw innerHTML equality is noise; the
-    // contract is that the menu's contents are indistinguishable.
-    adminCtx = baseCtx("signed_out");
+describe("GlobalHud — retired controls", () => {
+  it("no longer renders a standalone account/profile trigger", () => {
+    // Profile is now one click on the Mogzy portrait inside the identity
+    // compound. A second, generic account icon would be a duplicate trigger.
     renderHud();
-    openAccountMenu();
-    await screen.findByRole("menu");
-    const guestItems = menuItemNames();
+    expect(screen.queryByTestId("hud-account-trigger")).toBeNull();
+    expect(screen.queryByRole("button", { name: /profile and settings/i })).toBeNull();
+  });
+
+  it("leaves no dead account-menu markup behind", () => {
+    renderHud();
+    expect(document.body.innerHTML).not.toContain("hud-account-trigger");
     expect(document.body.innerHTML).not.toContain("hud-admin-link");
-    cleanup();
-
-    adminCtx = baseCtx("signed_in_non_admin");
-    renderHud();
-    openAccountMenu();
-    await screen.findByRole("menu");
-    expect(menuItemNames()).toEqual(guestItems);
-    expect(document.body.innerHTML).not.toContain("hud-admin-link");
-  });
-
-  it("has an accessible name containing Admin and exposes no identity or counts", async () => {
-    adminCtx = baseCtx("authorized");
-    renderHud();
-    openAccountMenu();
-    const link = await screen.findByTestId("hud-admin-link");
-    expect(link.textContent).toBe("Admin");
-    expect(document.body.textContent).not.toContain("admin@mogzy.lol");
-    expect(document.body.textContent).not.toContain("u1");
-  });
-
-  it("sits in the always-visible account menu, so it is usable at mobile widths", async () => {
-    adminCtx = baseCtx("authorized");
-    renderHud();
-    openAccountMenu();
-    const link = await screen.findByTestId("hud-admin-link");
-    // Neither the item (portal content) nor the trigger that reveals it lives
-    // inside a width-gated block — the entry point exists at every width.
-    expect(link.closest("div.hidden")).toBeNull();
-    expect(link.closest("[class*='sm:hidden']")).toBeNull();
-    const trigger = screen.getByTestId("hud-account-trigger");
-    expect(trigger.closest("div.hidden")).toBeNull();
-    expect(trigger.closest("[class*='sm:hidden']")).toBeNull();
   });
 });
 
@@ -226,7 +148,6 @@ describe("GlobalHud guest signup affordances (replaced the /lol banner)", () => 
   const anon = { id: "anon1", is_anonymous: true };
 
   it("shows the signup chip to anonymous visitors, returning them to the page they left", () => {
-    adminCtx = baseCtx("signed_out");
     authUser = anon;
     renderHud("/lol/docs");
     const chip = screen.getByTestId("hud-signup-chip");
@@ -243,59 +164,31 @@ describe("GlobalHud guest signup affordances (replaced the /lol banner)", () => 
   });
 
   it("treats a missing session as a guest too", () => {
-    adminCtx = baseCtx("signed_out");
     authUser = null;
     renderHud();
     expect(screen.getByTestId("hud-signup-chip")).toBeTruthy();
   });
 
-  it("hides the chip and the menu entry from authenticated accounts", async () => {
-    adminCtx = baseCtx("signed_in_non_admin");
+  it("keeps the signup chip ahead of the music and identity controls", () => {
+    authUser = anon;
+    renderHud();
+    const chip = screen.getByTestId("hud-signup-chip");
+    expect(follows(chip, screen.getByTestId("radio-controls-hud"))).toBe(true);
+    expect(follows(chip, screen.getByTestId("hud-identity-menu"))).toBe(true);
+  });
+
+  it("hides the chip from authenticated accounts", () => {
     authUser = { id: "u2" };
     renderHud();
     expect(screen.queryByTestId("hud-signup-chip")).toBeNull();
-    openAccountMenu();
-    await screen.findByRole("menu");
-    expect(screen.queryByTestId("hud-signup-menu-item")).toBeNull();
-    // The quiet account chrome is unchanged for real accounts.
-    expect(screen.getByRole("menuitem", { name: /profile/i })).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: /settings/i })).toBeTruthy();
   });
 
-  it("gives anonymous visitors a signup menu entry without disturbing the admin contract", async () => {
-    adminCtx = baseCtx("signed_out");
-    authUser = anon;
-    renderHud("/quiz");
-    openAccountMenu();
-    const item = await screen.findByTestId("hud-signup-menu-item");
-    expect(item.getAttribute("href")).toBe(
-      "/auth?mode=signup&returnTo=%2Fquiz",
-    );
-    expect(item.textContent).toContain("Sign up free");
-    expect(item.textContent).toContain("Save your XP, streaks, and progress.");
-    // Being a guest never conjures the Admin item.
-    expect(screen.queryByTestId("hud-admin-link")).toBeNull();
-  });
-
-  it("tracks both signup CTAs through the existing funnel with the encoded returnTo", async () => {
-    adminCtx = baseCtx("signed_out");
+  it("tracks the chip through the existing funnel with the encoded returnTo", () => {
     authUser = anon;
     renderHud("/lol");
     fireEvent.click(screen.getByTestId("hud-signup-chip"));
     expect(funnel.trackFunnelEvent).toHaveBeenCalledWith(
       "hud_signup_chip_clicked",
-      { returnTo: "/lol" },
-    );
-
-    // Fresh render for the menu CTA: the chip click above already navigated
-    // the MemoryRouter away from /lol, and returnTo must reflect the page
-    // the click actually happened on.
-    cleanup();
-    renderHud("/lol");
-    openAccountMenu();
-    fireEvent.click(await screen.findByTestId("hud-signup-menu-item"));
-    expect(funnel.trackFunnelEvent).toHaveBeenCalledWith(
-      "hud_signup_menu_clicked",
       { returnTo: "/lol" },
     );
   });

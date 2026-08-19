@@ -265,7 +265,7 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
     body: (
       <UL>
         <li><strong>Friends</strong> — request/accept/decline/cancel. <Tag>FloatingFriendsButton</Tag> on every page. <Tag>HomeFriendsSection</Tag> on Home.</li>
-        <li><strong>Notifications</strong> — <Tag>UserNotificationBell</Tag> in navbar. Types: friend request/accepted, comment reply, league invite. Admins broadcast via <Tag>AdminNotifications</Tag> / <Tag>AdminPushNotifications</Tag>.</li>
+        <li><strong>Notifications</strong> — <Tag>MogzyIdentityMenu</Tag>, the HUD identity compound (Mogzy portrait carries the unread badge; the chevron beside it opens the panel). Types: friend request/accepted, comment reply, league invite. Admins broadcast via <Tag>AdminNotifications</Tag> / <Tag>AdminPushNotifications</Tag>.</li>
         <li><strong>Comments</strong> — per-matchup threads with likes; moderated in <Tag>AdminComments</Tag>; security definer hides flagged content.</li>
         <li><strong>Reports</strong> — any user can report profiles/comments. Queue in <Tag>AdminUserReports</Tag>.</li>
         <li><strong>Moderation hygiene</strong> — automated report thresholds auto-hide comments and images.</li>

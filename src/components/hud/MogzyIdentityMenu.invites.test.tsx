@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import UserNotificationBell from "./UserNotificationBell";
+import MogzyIdentityMenu from "./MogzyIdentityMenu";
 
 /**
  * Proves the invite section is ADDITIVE: it renders its own actionable row,
@@ -31,7 +31,45 @@ vi.mock("@/hooks/useStatCheckInvites", () => ({
 }));
 
 const navigate = vi.hoisted(() => vi.fn());
-vi.mock("react-router-dom", () => ({ useNavigate: () => navigate }));
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigate,
+  useLocation: () => ({ pathname: "/lol" }),
+  // jsdom has no navigation, and the real <Link> preventDefaults anyway — so
+  // does this, or every asserted click logs a "navigation not implemented".
+  Link: ({
+    to,
+    children,
+    onClick,
+    ...rest
+  }: Record<string, unknown> & {
+    to: string;
+    children?: unknown;
+    onClick?: (e: { preventDefault: () => void }) => void;
+  }) => (
+    <a
+      href={to}
+      {...rest}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick?.(e);
+      }}
+    >
+      {children as never}
+    </a>
+  ),
+}));
+
+// The identity menu's footer carries the admin entry point under the real
+// `useAdminAuth` contract. Default: not an admin — the admin case has its own
+// suite in MogzyIdentityMenu.identity.test.tsx.
+const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean }));
+vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => adminCtx }));
+vi.mock("@/hooks/useAppSettings", () => ({
+  useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
+}));
+vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
+vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 
 // Stable identity: a fresh object per render would re-fire the bell's
 // `[user]` effect on every state update and spin forever.
@@ -104,12 +142,12 @@ afterEach(() => {
 });
 
 async function openBell() {
-  render(<UserNotificationBell />);
+  render(<MogzyIdentityMenu />);
   const bell = await screen.findByRole("button");
   fireEvent.click(bell);
 }
 
-describe("UserNotificationBell — Stat Check invites", () => {
+describe("MogzyIdentityMenu — Stat Check invites", () => {
   it("renders nothing extra when there are no invites", async () => {
     await openBell();
     expect(screen.queryByTestId("sc-invite-notification")).toBeNull();
@@ -288,7 +326,7 @@ describe("UserNotificationBell — Stat Check invites", () => {
   });
 
   it("opening the bell triggers an immediate refresh", async () => {
-    render(<UserNotificationBell />);
+    render(<MogzyIdentityMenu />);
     const bell = await screen.findByRole("button");
     invitesHook.refresh.mockClear();
     fireEvent.click(bell);
@@ -314,7 +352,7 @@ describe("UserNotificationBell — Stat Check invites", () => {
 
   it("counts invites in the unread badge", async () => {
     invitesHook.invites = [invite("tok_a"), invite("tok_b")];
-    render(<UserNotificationBell />);
+    render(<MogzyIdentityMenu />);
     expect(await screen.findByText("2")).toBeTruthy();
   });
 

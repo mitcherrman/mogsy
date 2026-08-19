@@ -246,7 +246,17 @@ export default function AcademyRadioControls({
           aria-controls={panelId}
           aria-label={`Academy Radio — ${statusLabel}`}
           title="Academy Radio"
-          className={cn(iconButton, variant === "hud" ? "h-9 w-9" : "h-10 w-10")}
+          className={cn(
+            iconButton,
+            // The HUD trigger takes the same 44px target as its neighbours in
+            // the global cluster; the glyph inside stays 20px, so the control
+            // is easier to hit without getting visually heavier. It is a
+            // utility control, so a ground tint is all the hover it gets — the
+            // pop belongs to the branded marks (see @/lib/hud/chrome).
+            variant === "hud"
+              ? "h-11 w-11 rounded-full hover:bg-white/[0.07]"
+              : "h-10 w-10",
+          )}
           data-testid={`academy-radio-${variant}-trigger`}
         >
           {radio.muted ? (

@@ -1,9 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bell, Megaphone, Zap, AlertTriangle, Info, Star, Trophy, UserPlus, UserCheck, ShieldAlert, MessageSquare, Flag, Swords, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  ChevronDown,
+  Flag,
+  Info,
+  Megaphone,
+  MessageSquare,
+  Palette,
+  Settings as SettingsIcon,
+  Shield,
+  ShieldAlert,
+  Star,
+  Swords,
+  Trophy,
+  UserCheck,
+  UserPlus,
+  Users,
+  X,
+  Zap,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useStatCheckInvites, type StatCheckInvite } from "@/hooks/useStatCheckInvites";
 import {
   Dialog,
@@ -13,6 +33,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
+import { ADMIN_DIRECTORY_PATH } from "@/lib/admin/admin-directory";
+import { useAppSettings } from "@/hooks/useAppSettings";
+import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
+import { isLolSectionPath } from "@/lib/startup-shell";
+import { prefetchRoute } from "@/lib/route-prefetch";
+import { playUiSfx } from "@/lib/ui-sfx";
+import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { signupHrefFor } from "@/lib/hud/identity";
+import { hudHitTarget, hudPopVisual } from "@/lib/hud/chrome";
 
 /**
  * Types the bell is allowed to render, stated explicitly.
@@ -117,6 +147,11 @@ const adminTypeIcons: Record<string, typeof Bell> = {
   mod_delete_request: ShieldAlert,
 };
 
+/** One row of the panel's utility footer — same target size and focus
+ *  treatment whether it is a link or a button. */
+const footerItemClass =
+  "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:bg-secondary";
+
 /** Live invites only. The backend drops expired rows from the inbox, but the
  *  poll is 30s wide — filtering here means a dead invite is never actionable. */
 const isLiveInvite = (invite: StatCheckInvite, nowMs: number) => {
@@ -124,14 +159,57 @@ const isLiveInvite = (invite: StatCheckInvite, nowMs: number) => {
   return Number.isNaN(expiry) || expiry > nowMs;
 };
 
-export default function UserNotificationBell() {
+/**
+ * The HUD's compound Mogzy identity control — the top-right half of the global
+ * chrome, and the surface that replaced BOTH the standalone bell and the
+ * standalone account menu:
+ *
+ *     [ music ]  [ (Mogzy⁷) │ ▾ ]
+ *
+ * Two distinct targets under one piece of chrome, never one ambiguous capsule:
+ *
+ *  - the Mogzy portrait is a plain link to /profile. It carries the unread
+ *    badge, because the badge counts things that belong to *you*, and the
+ *    portrait is the only "you" in the HUD. The badge is decorative
+ *    (aria-hidden, pointer-events-none, absolutely positioned) — the count's
+ *    accessible home is the chevron's label, where it already lived;
+ *  - the chevron opens this panel. It is a separate button with its own
+ *    accessible name and its own tab stop.
+ *
+ * The panel keeps every notification behaviour the bell had, and gains the
+ * utility footer that the retired account menu used to own: Settings (which is
+ * where sign-out, password/email and account deletion live), the Admin entry
+ * point under the same backend-verified `useAdminAuth` gate, and the theme
+ * picker where a picker is actually mounted. Nothing that menu owned was
+ * dropped — see the guest branch below for the signup CTA it also carried.
+ *
+ * Guests never had a notification inbox (`isAccount` gates the queries, and
+ * always did), so their chevron opens the same panel shape carrying the guest
+ * items only. Their portrait still links to /profile — exactly where the old
+ * account menu's Profile item sent them.
+ */
+export default function MogzyIdentityMenu() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const { settings } = useAppSettings();
+  // Backend-verified admin authorization only; never inferred from the user
+  // object, roles, or storage. The item exists in the DOM only after
+  // authorization resolves positively — no placeholder, no reserved slot.
+  // Note this can be authorized via the explicit admin key with no real
+  // account at all, which is exactly why the footer has to render on the
+  // guest branch too: otherwise a fallback-key operator loses the entry point.
+  const { isAuthorized: isAdminAuthorized } = useAdminAuth();
 
   // Anonymous sessions are authenticated as far as Supabase is concerned, so
   // `user` alone is not enough of a gate — an anonymous visitor was being shown
   // a bell they can never receive anything in.
   const isAccount = Boolean(user && !user.is_anonymous);
+
+  // The theme picker (FloatingThemeSwitcher) is only mounted outside the LoL
+  // section; inside it the footer item would dispatch an event nobody hears.
+  const canOpenThemePicker = !isLolSectionPath(pathname);
+  const signupHref = signupHrefFor(pathname);
 
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [adminNotifs, setAdminNotifs] = useState<AdminNotif[]>([]);
@@ -469,44 +547,280 @@ export default function UserNotificationBell() {
       : null,
   ].filter(Boolean).join(", ");
 
-  if (!isAccount) return null;
+  /**
+   * Footer navigation closes the panel, so the dropdown is never left hanging
+   * over the page the visitor just navigated to. `closePanel` also returns
+   * focus to the chevron, which is where a keyboard user opened it from.
+   */
+  const footerLinkProps = (path: string) => ({
+    onMouseEnter: () => prefetchRoute(path),
+    onFocus: () => prefetchRoute(path),
+    onTouchStart: () => prefetchRoute(path),
+    onClick: () => {
+      closePanel();
+      playUiSfx("navClick");
+    },
+  });
 
-  return (
-    <div className="relative" ref={dropdownRef}>
+  /**
+   * The utility footer — everything the retired account menu owned that is not
+   * Profile (which is the portrait) and not a notification.
+   *
+   * It is pinned OUTSIDE the scrolling body, so Settings can never be pushed
+   * below a long inbox. Rendered on both the account and the guest branch:
+   * Settings is guest-usable (it is where a guest signs in), and admin
+   * authorization via the explicit fallback key does not require an account.
+   */
+  const utilityFooter = (
+    <div className="shrink-0 border-t border-border bg-card p-1">
+      <Link
+        to="/settings"
+        data-testid="hud-settings-link"
+        {...footerLinkProps("/settings")}
+        className={footerItemClass}
+      >
+        <SettingsIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        Settings
+      </Link>
+
+      {isAdminAuthorized === true && (
+        <Link
+          to={ADMIN_DIRECTORY_PATH}
+          data-testid="hud-admin-link"
+          {...footerLinkProps(ADMIN_DIRECTORY_PATH)}
+          className={footerItemClass}
+        >
+          <Shield className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Admin
+        </Link>
+      )}
+
+      {canOpenThemePicker && (
+        <button
+          type="button"
+          data-testid="hud-theme-item"
+          onClick={() => {
+            closePanel();
+            window.dispatchEvent(new CustomEvent("open-theme-picker"));
+          }}
+          className={footerItemClass}
+        >
+          <Palette className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Theme
+        </button>
+      )}
+
+      {/* Legacy full-Mogsy surfaces, carried over from the account menu under
+          the same guard. LEAGUE_ONLY_MODE is true today, so none of this
+          renders; it exists so flipping the flag back restores the same set of
+          entry points the navbar and then the account menu exposed, rather
+          than silently losing them in this refactor. */}
+      {!LEAGUE_ONLY_MODE && (
+        <>
+          {settings.nav_tab_mode === "play" ? (
+            <Link to="/play" {...footerLinkProps("/play")} className={footerItemClass}>
+              Play
+            </Link>
+          ) : (
+            <Link to="/swipe" {...footerLinkProps("/swipe")} className={footerItemClass}>
+              Swipe
+            </Link>
+          )}
+          <Link to="/lol" {...footerLinkProps("/lol")} className={footerItemClass}>
+            League Hub
+          </Link>
+          <Link to="/shop" {...footerLinkProps("/shop")} className={footerItemClass}>
+            Shop
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              closePanel();
+              window.dispatchEvent(new CustomEvent("open-friends-panel"));
+            }}
+            className={footerItemClass}
+          >
+            <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+            Friends
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  /**
+   * Portrait + badge + chevron: one piece of chrome, two tab stops.
+   *
+   * Sizing follows the HUD rule that a hit target and the mark it carries are
+   * two different boxes. Both controls take a 44px-tall target (44×44 for the
+   * portrait, 40×44 for the chevron) while the marks inside stay small — 36px
+   * of portrait, a 14px chevron — so the compound is easy to hit without the
+   * pill growing heavy.
+   */
+  const identityCluster = (
+    <div className="flex items-center rounded-full bg-white/[0.05] ring-1 ring-inset ring-[#c9a84c]/15">
+      {/* Branded control: the wrapper is the fixed 44px hit target and never
+          transforms; only `hudPopVisual` inside it scales. `z-10` puts the
+          grown portrait over the divider and chevron rather than under them. */}
+      <Link
+        to="/profile"
+        aria-label="Profile"
+        title="Profile"
+        data-testid="hud-profile"
+        onMouseEnter={() => prefetchRoute("/profile")}
+        onFocus={() => prefetchRoute("/profile")}
+        onTouchStart={() => prefetchRoute("/profile")}
+        onClick={() => playUiSfx("navClick")}
+        className={`${hudHitTarget} z-10`}
+      >
+        {/* One transformed visual group: crop + badge scale together, so the
+            badge stays welded to Mogzy's shoulder through the hover instead of
+            drifting off it. Nothing here is in the layout — the parent's 44px
+            box is what the flex row measures. */}
+        <span aria-hidden="true" className={`relative block h-9 w-9 ${hudPopVisual}`}>
+          {/* Face-forward crop of the full-body mascot (1024×1536). The window
+              is 48% of the source width by 32% of its height, anchored at 22%
+              down and centred on x=53% — that lands the eyes in the middle of
+              the chip with the hat brim as a ribbon across the top. The
+              previous top-anchored crop showed the hat and almost no face,
+              which made the portrait read as a second copy of the home icon.
+              Absolute offsets rather than object-position because the window is
+              stated exactly here and can be checked against those numbers. */}
+          {/* `relative` is load-bearing, not decoration: the <img> below is
+              absolutely positioned, and an absolutely positioned box is only
+              clipped by ancestors that sit BETWEEN it and its containing
+              block. Without a containing block here the nearest positioned
+              ancestor is the pop wrapper — one level too high — and this
+              element's `overflow-hidden` would not clip the image at all,
+              spilling the whole full-body mascot across the HUD. */}
+          <span className="relative block h-9 w-9 overflow-hidden rounded-full ring-1 ring-inset ring-[#c9a84c]/25">
+            <img
+              src="/mascot/mogzy-mascot-base-v1.png"
+              alt=""
+              draggable={false}
+              className="absolute -left-[60.4%] -top-[68.8%] h-auto w-[208.3%] max-w-none"
+            />
+          </span>
+          {/* Decorative only, and deliberately so: absolutely positioned (no
+              layout effect), pointer-events-none (never steals the portrait's
+              click or the chevron's), aria-hidden (not a second focus stop and
+              not a second reading of the count — the chevron's accessible name
+              is where the count is spoken). It sits outside the crop's
+              `overflow-hidden` but inside the scaled group, so it grows and
+              lifts welded to Mogzy's shoulder instead of drifting off it.
+
+              `top-0` rather than the usual negative overhang is a measured
+              constraint, not a taste call: the header band leaves the mark
+              10px of headroom, a 1.35× pop spends 6.3 of it, and a -4px badge
+              overhang scaled by 1.35 would spend 5.4 more — putting the badge
+              3.7px above the top of the viewport, where it is simply cut off.
+              Flush to the crop's top edge it clears by 1.7px at every width.
+              The horizontal overhang stays: there is room to the right, and
+              the badge is pointer-events-none, so overlapping the divider
+              costs the chevron nothing. */}
+          {badgeCount > 0 && (
+            <span
+              aria-hidden="true"
+              data-testid="hud-unread-badge"
+              className="pointer-events-none absolute -right-1 top-0 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold bg-destructive text-destructive-foreground ring-2 ring-[#0a1020]"
+            >
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          )}
+        </span>
+      </Link>
+
+      <span aria-hidden="true" className="h-6 w-px shrink-0 bg-[#c9a84c]/25" />
+
+      {/* Utility control: same generous target, deliberately duller feedback —
+          a ground tint and a 1.06 nudge on the glyph, never the mascot pop.
+          The hierarchy is the point: branded marks play, utilities hold still. */}
       <button
         ref={triggerRef}
         type="button"
-        aria-label={badgeLabel ? `Notifications: ${badgeLabel}` : "Notifications: none"}
+        data-testid="hud-notifications-trigger"
+        aria-label={
+          isAccount
+            ? badgeLabel
+              ? `Open notifications: ${badgeLabel}`
+              : "Open notifications"
+            : "Open account menu"
+        }
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => {
           const next = !open;
           setOpen(next);
-          // Opening the bell refetches now rather than showing whatever the
+          // Opening the panel refetches now rather than showing whatever the
           // 30s poll last saw.
-          if (next) void refreshInvites();
+          if (next && isAccount) void refreshInvites();
         }}
-        className="relative flex items-center justify-center h-8 w-8 rounded-lg border border-border bg-card text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+        className="group/chev relative z-0 flex h-11 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors duration-200 ease-out hover:bg-white/[0.07] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/70 motion-reduce:transition-none"
       >
-        <Bell className="h-4 w-4" aria-hidden="true" />
-        {badgeCount > 0 && (
-          <span
-            aria-hidden="true"
-            className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-4 px-0.5 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold"
-          >
-            {badgeCount > 99 ? "99+" : badgeCount}
-          </span>
-        )}
+        <ChevronDown
+          className={`h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover/chev:scale-[1.06] group-focus-visible/chev:scale-[1.06] motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+          aria-hidden="true"
+        />
       </button>
+    </div>
+  );
+
+  /**
+   * Guests have no inbox — the queries above are gated on `isAccount` and
+   * always were. Their panel carries exactly the two guest items the account
+   * menu owned: the signup CTA (same route, same funnel event, same copy) and
+   * the utility footer.
+   */
+  if (!isAccount) {
+    return (
+      <div className="relative" ref={dropdownRef}>
+        {identityCluster}
+        {open && (
+          <div
+            role="dialog"
+            aria-label="Account"
+            data-testid="hud-guest-panel"
+            className="absolute right-0 top-full z-50 mt-1 flex w-[calc(100vw-1.5rem)] max-w-72 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+          >
+            <Link
+              to={signupHref}
+              data-testid="hud-signup-menu-item"
+              onMouseEnter={() => prefetchRoute("/auth")}
+              onFocus={() => prefetchRoute("/auth")}
+              onClick={() => {
+                closePanel();
+                playUiSfx("navClick");
+                trackFunnelEvent("hud_signup_menu_clicked", { returnTo: pathname });
+              }}
+              className="flex items-start gap-2 px-3 py-2.5 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:bg-secondary"
+            >
+              <UserPlus className="mt-0.5 h-4 w-4 shrink-0 text-[#c9a84c]" aria-hidden="true" />
+              <span className="flex flex-col">
+                <span className="text-xs font-semibold text-foreground">Sign up free</span>
+                <span className="text-[11px] leading-tight text-muted-foreground">
+                  Save your XP, streaks, and progress.
+                </span>
+              </span>
+            </Link>
+            {utilityFooter}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      {identityCluster}
 
       {open && (
         <div
           role="dialog"
           aria-label="Notifications"
           data-testid="notification-panel"
-          className="absolute right-0 top-10 w-[calc(100vw-1.5rem)] max-w-80 max-h-96 overflow-y-auto rounded-xl border border-border bg-card shadow-xl z-50"
+          className="absolute right-0 top-full z-50 mt-1 flex max-h-96 w-[calc(100vw-1.5rem)] max-w-80 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl"
         >
-          <div className="sticky top-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
+          <div className="shrink-0 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
             <p className="text-xs font-bold text-foreground">Notifications</p>
             {unreadCount > 0 && (
               <button type="button" onClick={markAllRead} className="text-[10px] text-primary hover:underline">
@@ -515,6 +829,9 @@ export default function UserNotificationBell() {
             )}
           </div>
 
+          {/* Only the inbox scrolls. The footer below is a sibling, so Settings
+              stays reachable no matter how long the list gets. */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
           {status === "loading" && (
             <p data-testid="notification-loading" className="text-center text-muted-foreground text-xs py-6">
               Loading notifications…
@@ -696,6 +1013,9 @@ export default function UserNotificationBell() {
               })}
             </>
           )}
+          </div>
+
+          {utilityFooter}
         </div>
       )}
 

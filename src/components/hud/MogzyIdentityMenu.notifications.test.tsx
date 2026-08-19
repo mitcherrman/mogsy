@@ -1,13 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import UserNotificationBell from "./UserNotificationBell";
+import MogzyIdentityMenu from "./MogzyIdentityMenu";
 
 /**
  * Covers the persistent user-notification path: who sees the bell, which types
  * it renders, and how it behaves when a query or a write fails.
  *
  * The Stat Check invite section has its own suite
- * (UserNotificationBell.invites.test.tsx) and is stubbed empty here.
+ * (MogzyIdentityMenu.invites.test.tsx) and is stubbed empty here.
  */
 
 const invitesHook = vi.hoisted(() => ({
@@ -24,7 +24,45 @@ vi.mock("@/hooks/useStatCheckInvites", () => ({
 }));
 
 const navigate = vi.hoisted(() => vi.fn());
-vi.mock("react-router-dom", () => ({ useNavigate: () => navigate }));
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => navigate,
+  useLocation: () => ({ pathname: "/lol" }),
+  // jsdom has no navigation, and the real <Link> preventDefaults anyway — so
+  // does this, or every asserted click logs a "navigation not implemented".
+  Link: ({
+    to,
+    children,
+    onClick,
+    ...rest
+  }: Record<string, unknown> & {
+    to: string;
+    children?: unknown;
+    onClick?: (e: { preventDefault: () => void }) => void;
+  }) => (
+    <a
+      href={to}
+      {...rest}
+      onClick={(e) => {
+        e.preventDefault();
+        onClick?.(e);
+      }}
+    >
+      {children as never}
+    </a>
+  ),
+}));
+
+// The identity menu's footer carries the admin entry point under the real
+// `useAdminAuth` contract. Default: not an admin — the admin case has its own
+// suite in MogzyIdentityMenu.identity.test.tsx.
+const adminCtx = vi.hoisted(() => ({ isAuthorized: false as boolean }));
+vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({ useAdminAuth: () => adminCtx }));
+vi.mock("@/hooks/useAppSettings", () => ({
+  useAppSettings: () => ({ settings: { nav_tab_mode: "play" } }),
+}));
+vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
+vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
+vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 
 // Stable object identity: a fresh one per render would re-fire the bell's
 // effect on every state update and spin forever.
@@ -120,34 +158,40 @@ afterEach(() => {
 const trigger = () => screen.queryByRole("button", { name: /notifications/i });
 
 async function openBell() {
-  render(<UserNotificationBell />);
+  render(<MogzyIdentityMenu />);
   const bell = await screen.findByRole("button", { name: /notifications/i });
   fireEvent.click(bell);
   return bell;
 }
 
-describe("UserNotificationBell — visibility", () => {
-  it("renders nothing for a signed-out visitor", async () => {
+describe("MogzyIdentityMenu — visibility", () => {
+  it("gives a signed-out visitor no notifications inbox", async () => {
+    // The cluster itself still renders — the portrait and the guest panel are
+    // how a visitor reaches Profile and Settings. What a guest must never get
+    // is a notifications surface: they cannot receive anything in one.
     authState.user = null;
-    render(<UserNotificationBell />);
+    render(<MogzyIdentityMenu />);
     await waitFor(() => expect(trigger()).toBeNull());
+    expect(screen.queryByTestId("notification-panel")).toBeNull();
+    expect(screen.getByTestId("hud-profile")).toBeTruthy();
   });
 
-  it("renders nothing for an anonymous session", async () => {
-    // Anonymous users are `authenticated` to Supabase, so the old `!user` check
-    // let them through and showed a bell they can never receive anything in.
+  it("gives an anonymous session no notifications inbox either", async () => {
+    // Anonymous users are `authenticated` to Supabase, so a bare `!user` check
+    // would let them through to an inbox they can never receive anything in.
     authState.user = { id: "anon-uid", is_anonymous: true };
-    render(<UserNotificationBell />);
+    render(<MogzyIdentityMenu />);
     await waitFor(() => expect(trigger()).toBeNull());
+    expect(screen.queryByTestId("notification-panel")).toBeNull();
   });
 
   it("renders for a normal authenticated account", async () => {
-    render(<UserNotificationBell />);
+    render(<MogzyIdentityMenu />);
     expect(await screen.findByRole("button", { name: /notifications/i })).toBeTruthy();
   });
 });
 
-describe("UserNotificationBell — type eligibility", () => {
+describe("MogzyIdentityMenu — type eligibility", () => {
   it("shows a friend_request", async () => {
     db.notifications = [notif({ id: "fr", type: "friend_request", title: "Ash sent you a friend request", target_type: "user", profile_id: "profile-1" })];
     await openBell();
@@ -199,7 +243,7 @@ describe("UserNotificationBell — type eligibility", () => {
   });
 });
 
-describe("UserNotificationBell — single source of truth for friendships", () => {
+describe("MogzyIdentityMenu — single source of truth for friendships", () => {
   it("never queries the friendships table, and renders one row per event", async () => {
     db.notifications = [notif({ id: "fr", type: "friend_request", title: "Ash sent you a friend request", target_type: "user", profile_id: "profile-1" })];
     await openBell();
@@ -211,7 +255,7 @@ describe("UserNotificationBell — single source of truth for friendships", () =
   });
 });
 
-describe("UserNotificationBell — failure handling", () => {
+describe("MogzyIdentityMenu — failure handling", () => {
   it("leaves the loading state and offers a retry when the load fails", async () => {
     db.notifError = { message: "network down" };
     await openBell();
@@ -237,7 +281,7 @@ describe("UserNotificationBell — failure handling", () => {
     db.notifications = [notif({ id: "g", type: "general", title: "Read me" })];
     const bell = await openBell();
     fireEvent.click(await screen.findByText("Read me"));
-    await waitFor(() => expect(bell.getAttribute("aria-label")).toBe("Notifications: none"));
+    await waitFor(() => expect(bell.getAttribute("aria-label")).toBe("Open notifications"));
   });
 
   it("uses a conflict-tolerant upsert so mark-one and mark-all cannot collide", async () => {
@@ -252,10 +296,10 @@ describe("UserNotificationBell — failure handling", () => {
   });
 });
 
-describe("UserNotificationBell — accessibility", () => {
+describe("MogzyIdentityMenu — accessibility", () => {
   it("exposes a labelled, expandable popup trigger", async () => {
     db.notifications = [notif({ id: "g", type: "general", title: "Hello" })];
-    render(<UserNotificationBell />);
+    render(<MogzyIdentityMenu />);
     const bell = await screen.findByRole("button", { name: /notifications/i });
 
     expect(bell.getAttribute("aria-haspopup")).toBe("dialog");
@@ -288,15 +332,15 @@ describe("UserNotificationBell — accessibility", () => {
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
     }];
-    render(<UserNotificationBell />);
+    render(<MogzyIdentityMenu />);
     const bell = await screen.findByRole("button", { name: /notifications/i });
     await waitFor(() =>
-      expect(bell.getAttribute("aria-label")).toBe("Notifications: 1 unread, 1 pending invitation"),
+      expect(bell.getAttribute("aria-label")).toBe("Open notifications: 1 unread, 1 pending invitation"),
     );
   });
 });
 
-describe("UserNotificationBell — Mark all read vs actionable invites", () => {
+describe("MogzyIdentityMenu — Mark all read vs actionable invites", () => {
   it("clears unread items but leaves a pending invitation actionable", async () => {
     db.notifications = [notif({ id: "g", type: "general", title: "Hello" })];
     invitesHook.invites = [{
@@ -314,7 +358,7 @@ describe("UserNotificationBell — Mark all read vs actionable invites", () => {
     // The informational item is cleared; the invite is not, and the label says so
     // rather than leaving a badge that "Mark all read" appears unable to clear.
     await waitFor(() =>
-      expect(bell.getAttribute("aria-label")).toBe("Notifications: 1 pending invitation"),
+      expect(bell.getAttribute("aria-label")).toBe("Open notifications: 1 pending invitation"),
     );
     expect(screen.getByTestId("sc-invite-notification")).toBeTruthy();
     expect(screen.queryByText("Mark all read")).toBeNull();
