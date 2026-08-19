@@ -27,16 +27,26 @@ import {
   SubmissionPhase,
   TimerView,
 } from "@/lib/ranked-core/viewTypes";
+import { rankedRoleLabel } from "@/lib/ranked-public/roles";
 import type { PresenceView, PrivatePlayerView, PublicRoundView } from "@/lib/ranked-public/contracts";
 
-/** Combatant views (viewer perspective) with authoritative frozen max HP. */
+/**
+ * Combatant views (viewer perspective) with authoritative frozen max HP.
+ *
+ * R1: the identity TAG names the player's League role when the match froze
+ * one, and falls back to the legacy class for every pre-R1 match. The tag is
+ * read straight off the projection — never derived from the class, and never
+ * the other way round. The decorative class crest beside it is unchanged and
+ * stays a legacy asset until the LC1 art follow-up replaces it; it is
+ * `aria-hidden` and the tag text is what carries identity.
+ */
 export function projectCombatants(pub: PublicRoundView, viewerUserId: string): CombatantViews {
   const identities: Record<string, { name: string; tag?: string }> = {};
   const maxHpByPlayerId: Record<string, number> = {};
   for (const p of pub.players) {
     identities[p.playerId] = {
       name: p.playerId === viewerUserId ? "You" : "Opponent",
-      tag: p.classId,
+      tag: rankedRoleLabel(p.role) ?? p.classId,
     };
     if (p.maxHp !== null) maxHpByPlayerId[p.playerId] = p.maxHp;
   }

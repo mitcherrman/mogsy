@@ -37,6 +37,7 @@ import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-att
 import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
+import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
 import AdSlot from "@/components/ads/AdSlot";
 import {
   getDailyChallenge,
@@ -242,6 +243,11 @@ type SessionAnswer = {
 
 export default function Quiz() {
   const { user } = useAuth();
+  // R1: the player's League role, shown beside — never merged into —
+  // competitive rank on the Ranked hero. Best-effort and self-silencing: a
+  // guest, an older backend, or an account that has never chosen all report
+  // `role: null`, and the hero renders exactly as it did before.
+  const rankedRole = useRankedRole();
   const navigate = useNavigate();
   const userId = user?.id || "anonymous";
 
@@ -899,6 +905,7 @@ export default function Quiz() {
               historyLoading={historyLoading}
               historyError={historyError}
               showMastery={HUB_MODULES.masteryJourney}
+              rankedRole={rankedRole.role}
             />
 
             {/* ─────────────────────────────────────────────────────────────

@@ -39,6 +39,18 @@ const UNAVAILABLE_MESSAGES: Record<string, string> = {
   ACCOUNT_REQUIRED: "Ranked needs a full (non-guest) account. Sign in to play.",
 };
 
+/**
+ * Player-facing copy for JOIN failures the player can act on themselves.
+ * `RANKED_ROLE_REQUIRED` (R1) is reachable whenever the account's stored role
+ * disappears between the page load and the join — the backend fails closed
+ * there, and the player simply has to pick a role. Unknown codes keep falling
+ * through to the backend's own message.
+ */
+const ACTION_MESSAGES: Record<string, string> = {
+  RANKED_ROLE_REQUIRED: "Choose your role before joining the Ranked queue.",
+  RANKED_ALREADY_QUEUED: "You're already in the queue.",
+};
+
 export interface QueueController {
   state: QueueState;
   status: QueueStatusView | null;
@@ -50,6 +62,15 @@ export interface QueueController {
   join: () => void;
   /** R3 one-click join: pick a class and queue as it in a single action. */
   joinAs: (c: RankedClass) => void;
+  /**
+   * R1 role-path join: enter the queue sending NO class at all.
+   *
+   * The backend applies its own compatibility default for the legacy class
+   * and reads the player's League role from the account's stored preference
+   * inside the join transaction. The client therefore never picks a class on
+   * the player's behalf and — critically — never derives one from the role.
+   */
+  joinWithoutClass: () => void;
   cancel: () => void;
 }
 
@@ -104,6 +125,11 @@ export function useRankedQueue(): QueueController {
     if (e instanceof RankedApiError && (e.kind === "network" || e.kind === "invalid_response")) {
       setError(e.message);
       if (phase === "poll") setState((prev) => (prev === "waiting" ? "waiting" : "recovering"));
+      return;
+    }
+    if (e instanceof RankedApiError && e.code && ACTION_MESSAGES[e.code]) {
+      setError(ACTION_MESSAGES[e.code]);
+      if (phase === "action") setState("selecting_class");
       return;
     }
     setError(e instanceof Error ? e.message : "queue error");
@@ -173,6 +199,26 @@ export function useRankedQueue(): QueueController {
 
   const join = useCallback(() => joinAs(selectedClass), [joinAs, selectedClass]);
 
+  const joinWithoutClass = useCallback(() => {
+    setState("joining");
+    setError(null);
+    (async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+      try {
+        const s = await api.joinQueue(null, controller.signal);
+        applyStatus(s);
+        if (s.status === "waiting") {
+          failuresRef.current = 0;
+          clearTimer();
+          timerRef.current = window.setTimeout(() => void poll(), POLL_MS);
+        }
+      } catch (e) {
+        handleError(e, "action");
+      }
+    })();
+  }, [applyStatus, handleError, poll]);
+
   const cancel = useCallback(() => {
     setState("cancelling");
     (async () => {
@@ -191,6 +237,6 @@ export function useRankedQueue(): QueueController {
 
   return {
     state, status, matchId, selectedClass, unavailableReason, error,
-    setSelectedClass, join, joinAs, cancel,
+    setSelectedClass, join, joinAs, joinWithoutClass, cancel,
   };
 }

@@ -22,6 +22,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { RANKED_TUTORIAL_RETURN_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import RankedTutorialPage from "@/pages/dev/ranked-tutorial/RankedTutorialPage";
+import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
 import {
   TutorialOnboardingProvider,
   type TutorialMode,
@@ -32,6 +33,8 @@ export default function RankedTutorialOnboardingPage() {
   const { loading, required, completed, completeTutorial } = useRankedTutorialStatus();
   const { settings, loading: settingsLoading } = useAppSettings();
   const [started, setStarted] = useState(false);
+  const rankedRole = useRankedRole();
+  const tutorialTrack = rankedRole.loadState === "ready" ? "r1" : "legacy";
 
   // Three separate concepts, deliberately not collapsed into one:
   //   `completed` — durable ACCOUNT state: has this user ever finished?
@@ -124,7 +127,14 @@ export default function RankedTutorialOnboardingPage() {
 
   return (
     <TutorialOnboardingProvider value={contextValue}>
-      <RankedTutorialPage />
+      {/* R1: the ONE place the player-facing tutorial track is chosen.
+          Role identity being available is the closest signal this client has
+          to "your next Ranked match is a no-progression R1 match" — there is
+          no per-match answer before a match exists. Getting it wrong changes
+          only which lessons are taught, never a match contract: the tutorial
+          is scripted and touches no live match state. A backend without role
+          identity keeps the complete legacy tutorial. */}
+      <RankedTutorialPage track={tutorialTrack} />
     </TutorialOnboardingProvider>
   );
 }

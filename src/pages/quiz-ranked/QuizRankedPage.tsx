@@ -1,9 +1,14 @@
 /**
- * Public Ranked route (/quiz/ranked, F1.5). Entry -> class selection -> queue
- * -> matched -> live match. Requires a verified non-anonymous account; fails
- * closed on backend disabled/ineligible/pool-unavailable via typed error
- * codes (never hidden-route security). No staff token or admin control is
- * ever exposed.
+ * Public Ranked route (/quiz/ranked, F1.5). Entry -> role -> queue -> matched
+ * -> live match. Requires a verified non-anonymous account; fails closed on
+ * backend disabled/ineligible/pool-unavailable via typed error codes (never
+ * hidden-route security). No staff token or admin control is ever exposed.
+ *
+ * R1: the normal player picks a LEAGUE ROLE (Top/Jungle/Mid/ADC/Support), not
+ * a combat class. The legacy class cards below are NOT deleted — they are the
+ * fallback for a backend with no role identity (an older deployment answers
+ * 404 on `/api/ranked/role`), which is the only path that still lets those
+ * players queue. Nothing here maps a role to a class in either direction.
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -14,9 +19,12 @@ import { isMogzyClassCharacter } from "@/components/mascot/mascot-assets";
 import {
   BotDifficulty, createBotMatch, getActiveMatch, isAborted, RankedApiError,
 } from "@/lib/ranked-public/client";
+import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { RankedMatchHistory } from "./RankedMatchHistory";
+import { RankedRolePicker } from "./RankedRolePicker";
 import { RankedClass, useRankedQueue } from "./useRankedQueue";
+import { useRankedRole } from "./useRankedRole";
 
 const BOT_DIFFICULTIES: { id: BotDifficulty; label: string }[] = [
   { id: "easy", label: "Easy" },
@@ -98,6 +106,7 @@ export default function QuizRankedPage() {
 
 function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   const q = useRankedQueue();
+  const roleCtl = useRankedRole();
   const [botMatchId, setBotMatchId] = useState<string | null>(null);
   const [recoveredMatchId, setRecoveredMatchId] = useState<string | null>(null);
   const [recoveryChecked, setRecoveryChecked] = useState(false);
@@ -109,11 +118,31 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   // guard: while it is set every card is disabled, so a second click (mouse or
   // keyboard) cannot start a second join.
   const [joiningClass, setJoiningClass] = useState<RankedClass | null>(null);
+  // The role whose WRITE is in flight, for the picker's per-option busy state.
+  const [savingRole, setSavingRole] = useState<RankedRole | null>(null);
+  // Opened explicitly from the idle lobby. A role is durable identity, so the
+  // picker is not re-presented every match once one is chosen.
+  const [changingRole, setChangingRole] = useState(false);
 
   function joinAs(classId: RankedClass) {
     if (joiningClass !== null) return;
     setJoiningClass(classId);
     q.joinAs(classId);
+  }
+
+  // R1: role identity is available only when the backend exposes it. Anything
+  // else (an older deployment, a read failure) falls back to the legacy class
+  // cards, which is the only path that still lets those players queue.
+  const roleIdentityAvailable = roleCtl.loadState === "ready";
+
+  async function chooseRole(role: RankedRole) {
+    if (roleCtl.saving) return;
+    setSavingRole(role);
+    const accepted = await roleCtl.selectRole(role);
+    setSavingRole(null);
+    // Only the SERVER's acceptance closes the picker; a rejected change (an
+    // active match, a live queue entry) leaves it open with the reason shown.
+    if (accepted) setChangingRole(false);
   }
 
   // Release the guard whenever the queue leaves the joining state — on success
@@ -137,8 +166,13 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   }, []);
 
   // The class shown while queued: server-confirmed class first, local pick as
-  // fallback (mirrors the "Queued as" copy below).
+  // fallback (mirrors the "Queued as" copy below). LEGACY path only.
   const queuedClass = q.status?.classId ?? q.selectedClass;
+  // R1: the identity the player queued WITH. Server-confirmed entry role
+  // first, the account's stored role as the fallback for the frame before the
+  // first status poll lands. Null on the legacy path, where the copy below
+  // keeps naming the class exactly as it always has.
+  const queuedRole = q.status?.role ?? (roleIdentityAvailable ? roleCtl.role : null);
 
   // A freshly created bot match wins; otherwise re-enter a rediscovered active
   // match (bot or human), then a live queue match.
@@ -175,8 +209,10 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
     );
   }
 
-  // Don't flash the menu before the account-bound active-match check resolves.
-  if (!recoveryChecked) {
+  // Don't flash the menu before the account-bound active-match check resolves,
+  // or before the role read settles — otherwise the legacy class cards appear
+  // for a frame and are then replaced by the role picker.
+  if (!recoveryChecked || roleCtl.loadState === "loading") {
     return (
       <Frame>
         <p data-testid="ranked-loading" className="text-sm text-muted-foreground">Loading Ranked…</p>
@@ -205,7 +241,68 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
       )}
 
       {(q.state === "selecting_class" || q.state === "joining") && (
-        <section data-testid="ranked-class-select" className="ranked-panel p-4 space-y-4">
+        <section
+          data-testid={roleIdentityAvailable ? "ranked-role-select" : "ranked-class-select"}
+          className="ranked-panel p-4 space-y-4">
+          {/* R1 role path. The player's League role is durable account
+              identity: once chosen it is reused for every match and is only
+              re-presented when the player asks to change it. */}
+          {roleIdentityAvailable && (
+            <div className="space-y-4">
+              {roleCtl.role === null || changingRole ? (
+                <RankedRolePicker
+                  value={roleCtl.role}
+                  onSelect={(r) => { void chooseRole(r); }}
+                  busy={roleCtl.saving}
+                  busyRole={savingRole}
+                  legend={roleCtl.role === null ? "Choose your role" : "Change your role"}
+                  hint="Your League role is your Ranked identity. You can change it between matches."
+                />
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="ranked-eyebrow">Your role</div>
+                    {/* Text, always — never an icon or colour alone. */}
+                    <p data-testid="ranked-current-role" className="text-lg font-semibold">
+                      {RANKED_ROLE_LABELS[roleCtl.role]}
+                    </p>
+                  </div>
+                  <Button variant="outline" data-testid="ranked-change-role"
+                    onClick={() => setChangingRole(true)} className="min-h-[44px]">
+                    Change role
+                  </Button>
+                </div>
+              )}
+              {roleCtl.error && (
+                <p data-testid="ranked-role-error" className="text-xs text-destructive">
+                  {roleCtl.error}
+                </p>
+              )}
+              <Button data-testid="ranked-find-match" className="w-full min-h-[44px]"
+                // Fails CLOSED: no role, no queue. The backend enforces the
+                // same rule (RANKED_ROLE_REQUIRED); this only avoids sending a
+                // request that is already known to be rejected.
+                disabled={roleCtl.role === null || q.state === "joining" || roleCtl.saving}
+                // Called with NO arguments — there is nothing about the
+                // player's identity for the client to send. The backend reads
+                // the role off the account itself.
+                onClick={() => q.joinWithoutClass()}>
+                {q.state === "joining" ? "Joining queue…" : "Find a match"}
+              </Button>
+              <p className="text-center text-[11px] text-muted-foreground">
+                {roleCtl.role === null
+                  ? "Choose a role to join the Ranked queue against another player."
+                  : "You'll be matched with another player."}
+              </p>
+              {q.error && <p className="text-xs text-destructive">{q.error}</p>}
+            </div>
+          )}
+
+          {/* LEGACY class path — retained, never deleted. Rendered only when
+              the backend has no role identity (an older deployment), because
+              those players have no other way into the queue. */}
+          {!roleIdentityAvailable && (
+          <>
           <div className="space-y-1">
             <div className="ranked-eyebrow">Choose your class</div>
             <p className="text-xs text-muted-foreground">
@@ -245,8 +342,13 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
             Choose a class to join the Ranked queue against another player.
           </p>
           {q.error && <p className="text-xs text-destructive">{q.error}</p>}
+          </>
+          )}
 
-          {/* Distinct, clearly-labeled owner playtest path (bot). */}
+          {/* Distinct, clearly-labeled owner playtest path (bot). Owner/staff
+              PLAYTEST surface, allowlist-gated by the backend: it keeps its
+              legacy class picker because bot creation still requires a class,
+              and R1 removes nothing from diagnostic paths. */}
           <div className="relative flex items-center gap-3 pt-1" aria-hidden>
             <span className="h-px flex-1 bg-white/10" />
             <span className="ranked-eyebrow ranked-eyebrow--cyan">or practice</span>
@@ -309,15 +411,20 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
       {(q.state === "waiting" || q.state === "cancelling") && (
         <section data-testid="ranked-waiting" className="ranked-panel p-5 space-y-3">
           <div role="status" className="space-y-1">
-            {queuedClass && isMogzyClassCharacter(queuedClass) && (
+            {/* Legacy class art only on the legacy path — a role has no
+                mascot yet, and inventing one from the class would be exactly
+                the class→role mapping R1 forbids. */}
+            {queuedRole === null && queuedClass && isMogzyClassCharacter(queuedClass) && (
               <MogzyClass character={queuedClass} decorative className="h-16 w-16" />
             )}
             <div className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
               Matchmaking
             </div>
             <h2 className="font-semibold">Searching for an opponent…</h2>
-            <p className="text-sm text-muted-foreground">
-              Queued as {q.status?.classId ?? q.selectedClass}. You'll be matched with another player.
+            <p className="text-sm text-muted-foreground" data-testid="ranked-queued-as">
+              Queued as {queuedRole !== null
+                ? RANKED_ROLE_LABELS[queuedRole]
+                : (q.status?.classId ?? q.selectedClass)}. You'll be matched with another player.
             </p>
           </div>
           <Button variant="outline" data-testid="ranked-cancel" disabled={q.state === "cancelling"}

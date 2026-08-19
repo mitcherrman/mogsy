@@ -18,6 +18,9 @@ const entry = (over: Partial<MatchHistoryEntryView> = {}): MatchHistoryEntryView
   isBotMatch: false,
   viewerClass: "tank",
   opponentClass: "mage",
+  // Default fixture is a HISTORICAL (pre-R1) row: no roles.
+  viewerRole: null,
+  opponentRole: null,
   opponentDisplayName: "Rival",
   opponentIsBot: false,
   ratingDelta: null,
@@ -72,5 +75,42 @@ describe("RankedMatchHistory", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(mockHistory).toHaveBeenCalled();
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("R1 — role identity in history", () => {
+  it("shows the ROLE on both sides of a row that froze one", async () => {
+    mockHistory.mockResolvedValue(view([entry({
+      viewerRole: "jungle", opponentRole: "adc",
+    })]));
+    render(<RankedMatchHistory />);
+    const row = await screen.findByTestId("ranked-history-entry");
+    expect(row.textContent).toContain("Jungle");
+    expect(row.textContent).toContain("ADC");
+  });
+
+  it("a NULL-role legacy row keeps its class and fabricates no role", async () => {
+    mockHistory.mockResolvedValue(view([entry({
+      viewerRole: null, opponentRole: null,
+      viewerClass: "tank", opponentClass: "marksman",
+    })]));
+    render(<RankedMatchHistory />);
+    const row = await screen.findByTestId("ranked-history-entry");
+    // The recorded classes, exactly as they were always shown …
+    expect(row.textContent).toContain("Tank");
+    expect(row.textContent).toContain("Marksman");
+    // … and never Tank→Support or Marksman→ADC.
+    expect(row.textContent).not.toMatch(/Support|ADC|Jungle|\bMid\b|\bTop\b/);
+  });
+
+  it("mixes freely: a role on one side, a legacy class on the other", async () => {
+    mockHistory.mockResolvedValue(view([entry({
+      viewerRole: "support", opponentRole: null, opponentClass: "mage",
+    })]));
+    render(<RankedMatchHistory />);
+    const row = await screen.findByTestId("ranked-history-entry");
+    expect(row.textContent).toContain("Support");
+    expect(row.textContent).toContain("Mage");
+    expect(row.textContent).not.toContain("Mid");
   });
 });

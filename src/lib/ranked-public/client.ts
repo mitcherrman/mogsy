@@ -17,6 +17,7 @@ import {
   readPrivatePlayer,
   readPublicRound,
   readQueueStatus,
+  readRankedRole,
   readResolvedEnvelope,
   readResume,
   HeartbeatView,
@@ -25,8 +26,10 @@ import {
   PrivatePlayerView,
   PublicRoundView,
   QueueStatusView,
+  RankedRoleView,
   ResumeView,
 } from "./contracts";
+import type { RankedRole } from "./roles";
 
 export const RANKED_API_BASE =
   (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) ?? "http://127.0.0.1:8000";
@@ -46,8 +49,11 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "RANKED_INVALID_PROGRESSION_CHOICE", "RANKED_ROUND_NOT_RESOLVED", "RANKED_MATCH_NOT_COMPLETE",
   "RANKED_INTEGRITY_ERROR",
   "RANKED_QUEUE_DISABLED", "RANKED_QUEUE_NOT_ELIGIBLE", "RANKED_ACTIVE_MATCH_EXISTS",
+  "RANKED_ALREADY_QUEUED",
   "RANKED_QUESTION_POOL_UNAVAILABLE", "RANKED_CANNOT_CANCEL", "RANKED_INVALID_CLASS",
   "RANKED_RATE_LIMITED",
+  // R1 League-role identity.
+  "RANKED_ROLE_REQUIRED", "RANKED_INVALID_ROLE",
   "RANKED_BOT_DISABLED", "RANKED_BOT_NOT_ELIGIBLE",
   // multi-challenge segments (Phase B)
   "RANKED_NO_ACTIVE_SEGMENT", "RANKED_WRONG_SEGMENT_PHASE",
@@ -176,8 +182,41 @@ async function request<T>(path: string, parse: (json: unknown) => T,
 
 const raw = (json: unknown) => json as Record<string, unknown>;
 
+// ------------------------------------------------ League role identity (R1)
+
+/**
+ * The caller's own Ranked League role, or the unselected state (`role: null`).
+ *
+ * Identity is the bearer JWT; no user id is ever sent. A backend that predates
+ * R1 answers 404/405 — callers treat that as "role identity not available"
+ * and fall back to the legacy path rather than blocking the player.
+ */
+export const getRankedRole = (signal?: AbortSignal): Promise<RankedRoleView> =>
+  request("/api/ranked/role", readRankedRole, { signal });
+
+/**
+ * Set/change the caller's Ranked League role. The backend is the authority on
+ * when this is legal — it rejects with `RANKED_ACTIVE_MATCH_EXISTS` or
+ * `RANKED_ALREADY_QUEUED` while the account is mid-flight, and this client
+ * deliberately does not re-derive "busy" itself.
+ */
+export const setRankedRole = (role: RankedRole, signal?: AbortSignal): Promise<RankedRoleView> =>
+  request("/api/ranked/role", readRankedRole, {
+    method: "PUT", body: { role }, signal,
+  });
+
 // ------------------------------------------------------------- queue
 
+/**
+ * Join the matchmaking queue.
+ *
+ * `classId` is the LEGACY combat class and is optional: passing `null` uses
+ * the backend's own compatibility default. R1 sends null from the normal
+ * player path — the client never picks a class on the player's behalf and,
+ * above all, never derives one from the player's role. The role the entry
+ * carries is read server-side from the account's stored preference, so it
+ * cannot be spoofed or accidentally set by a queue request.
+ */
 export const joinQueue = (classId: string | null, signal?: AbortSignal): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, {
     method: "POST", body: classId ? { class_id: classId } : {}, signal,

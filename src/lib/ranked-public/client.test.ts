@@ -111,3 +111,40 @@ describe("public Ranked client", () => {
     expect(api.isFatal(new RankedApiError("network", 0, "x"))).toBe(false);
   });
 });
+
+describe("R1 — the role endpoints and the class-free join", () => {
+  it("GET /role reads the caller's own role, with no body and no user id", async () => {
+    stub(() => json({ role: "jungle", selected_at: null, updated_at: null }));
+    await expect(api.getRankedRole()).resolves.toEqual({
+      role: "jungle", selectedAt: null, updatedAt: null,
+    });
+    expect(calls[0].url).toContain("/api/ranked/role");
+    expect(calls[0].init.method ?? "GET").toBe("GET");
+    expect(calls[0].init.body).toBeUndefined();
+  });
+
+  it("PUT /role sends ONLY the role", async () => {
+    stub(() => json({ role: "support", selected_at: null, updated_at: null }));
+    await api.setRankedRole("support");
+    expect(calls[0].url).toContain("/api/ranked/role");
+    expect(calls[0].init.method).toBe("PUT");
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({ role: "support" });
+  });
+
+  it("joining with a null class sends NO class field at all", async () => {
+    stub(() => json(queueStatusV1("waiting")));
+    await api.joinQueue(null);
+    // Nothing about the player's identity travels — and nothing derived from
+    // a role. The backend reads the role off the account itself.
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({});
+  });
+
+  it("surfaces RANKED_ROLE_REQUIRED as a typed, recognised code", async () => {
+    stub(() => json({ detail: {
+      code: "RANKED_ROLE_REQUIRED", message: "choose a Ranked role before queueing",
+    } }, 409));
+    await expect(api.joinQueue(null)).rejects.toMatchObject({
+      code: "RANKED_ROLE_REQUIRED", status: 409,
+    });
+  });
+});

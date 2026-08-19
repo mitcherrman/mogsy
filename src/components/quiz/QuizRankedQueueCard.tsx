@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
+import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 
 /**
  * Ranked Quiz hero — the dominant card of the Leaguecraft hub. Ranked 1v1
@@ -27,17 +28,27 @@ import type { RankedState } from "@/lib/quiz/featured-mock";
  * we deliberately show the unranked emblem and placement progress, never a
  * provisional Bronze bar (the progress endpoint may already carry a default
  * rank object, which would read as a finalized rank).
+ *
+ * R1 role/rank separation: competitive RANK (the emblem, the name, the
+ * progress bar) and League ROLE are two different models and are shown as two
+ * different things — "Gold" and "Jungle", never merged into one label and
+ * never one derived from the other. `role` is null for a guest, for an
+ * account that has never chosen, and on a backend with no role identity; the
+ * rank display is identical in every one of those cases.
  */
 export default function QuizRankedQueueCard({
   progress,
   ranked,
   onPlay,
   disabled,
+  role = null,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
   onPlay: () => void;
   disabled?: boolean;
+  /** R1: the player's League role, or null when there isn't one to show. */
+  role?: RankedRole | null;
 }) {
   // Backend may return `rank` / `next_rank` as nested objects instead of strings.
   type RankLike = {
@@ -147,6 +158,14 @@ export default function QuizRankedQueueCard({
                   <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
                     {ranked.isPlaced ? rankName : "Placement Series"}
                   </h3>
+                  {/* Role sits UNDER the rank as its own line — a separate
+                      model, shown as separate text, readable without colour. */}
+                  {role !== null && (
+                    <p data-testid="hub-ranked-role"
+                      className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+                      {RANKED_ROLE_LABELS[role]}
+                    </p>
+                  )}
                   {ranked.isPlaced ? (
                     <Badge
                       variant="outline"

@@ -6,8 +6,13 @@
 // mode, and announcements from it. All copy is tutorial-authored.
 // ---------------------------------------------------------------------------
 
-import { TutorialStepDefinition, TutorialStepId } from "./types";
+import { TutorialStepDefinition, TutorialStepId, TutorialTrack } from "./types";
 
+/**
+ * LEGACY order — the complete tutorial, unchanged. Retained verbatim for
+ * rollback, for diagnostics, and because it is still the truthful lesson for
+ * a match that has progression.
+ */
 export const STEP_ORDER: readonly TutorialStepId[] = [
   "timer_intro",
   "answer_selection",
@@ -28,6 +33,70 @@ export const STEP_ORDER: readonly TutorialStepId[] = [
   "ads_pro_explanation",
   "complete",
 ];
+
+/**
+ * Steps that exist ONLY to teach the legacy ability/progression layer. They
+ * are skipped — never deleted — on the R1 track, where a match is frozen with
+ * a single level and has no abilities, no Level 2 choice and no Level 3
+ * unlock to teach.
+ */
+export const ABILITY_STEP_IDS: readonly TutorialStepId[] = [
+  "starter_ability_intro",
+  "ability_resolution",
+  "level_two_choice",
+  "level_three_unlock",
+];
+
+/** R1 order: the same authored table, minus the ability lessons. */
+export const R1_STEP_ORDER: readonly TutorialStepId[] = STEP_ORDER.filter(
+  (id) => !ABILITY_STEP_IDS.includes(id));
+
+export const STEP_ORDER_BY_TRACK: Record<TutorialTrack, readonly TutorialStepId[]> = {
+  legacy: STEP_ORDER,
+  r1: R1_STEP_ORDER,
+};
+
+/**
+ * Per-track copy overrides. The legacy body/announcement above stay exactly
+ * as authored; an entry here replaces them only on the R1 track, and only
+ * where the legacy wording promises something an R1 match does not have
+ * (XP unlocking abilities, "you both reached Level 3", "that lesson comes
+ * later"). Nothing about the quiz QUESTIONS is touched.
+ */
+export const R1_STEP_COPY: Partial<Record<TutorialStepId,
+  { title?: string; body: string; announcement: string }>> = {
+  answer_selection: {
+    body:
+      "Choose an answer. When you're ready, Lock it in and confirm. Until you confirm, you can change your mind. Take your time: training never fails you for reading.",
+    announcement:
+      "Answer selection. Choose an answer, lock it in, then confirm.",
+  },
+  xp_intro: {
+    title: "XP builds every round",
+    body:
+      "Every round earns XP: 12 for a correct answer, 9 for a wrong one, 8 even on a timeout. XP fills the quiet bar under your HP and tracks how much of the match you've played — it does NOT decide who's winning. HP does.",
+    announcement:
+      "XP explained. XP tracks the match; HP decides who wins.",
+  },
+  match_over: {
+    body:
+      "The Training Golem is at 0 HP, so you win — HP is what decides a duel. Correct answers deal damage; both players can deal damage in the same round; zero HP ends the match. This training match did not affect your Ranked rating, match history, or permanent progression.",
+    announcement:
+      "Victory. The Training Golem is at zero HP. HP decides the duel. This training match did not affect your Ranked rating, match history, or permanent progression.",
+  },
+};
+
+/**
+ * The step definition as a given TRACK teaches it: the authored entry, with
+ * this track's copy override applied when one exists. Identity, timer mode,
+ * and permitted events are never overridden — only words.
+ */
+export function stepForTrack(id: TutorialStepId,
+                             track: TutorialTrack): TutorialStepDefinition {
+  const base = STEPS[id];
+  const override = track === "r1" ? R1_STEP_COPY[id] : undefined;
+  return override ? { ...base, ...override } : base;
+}
 
 const NAV = ["CONTINUE", "RESTART"] as const;
 
@@ -304,6 +373,10 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
   },
 };
 
-export const stepIndex = (id: TutorialStepId): number => STEP_ORDER.indexOf(id);
-export const nextStepId = (id: TutorialStepId): TutorialStepId | null =>
-  STEP_ORDER[stepIndex(id) + 1] ?? null;
+/** Both default to the LEGACY order, so every existing caller is unchanged. */
+export const stepIndex = (id: TutorialStepId,
+                          order: readonly TutorialStepId[] = STEP_ORDER): number =>
+  order.indexOf(id);
+export const nextStepId = (id: TutorialStepId,
+                           order: readonly TutorialStepId[] = STEP_ORDER):
+TutorialStepId | null => order[stepIndex(id, order) + 1] ?? null;

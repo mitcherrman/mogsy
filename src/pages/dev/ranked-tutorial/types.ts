@@ -9,6 +9,20 @@
 import type { TutorialRoundId } from "./fixtures";
 
 /** Every step of the tutorial, in teaching order (see STEP_ORDER). */
+/**
+ * Which lesson this training match teaches (R1).
+ *
+ *  - `legacy` — the complete authored tutorial, including the ability layer,
+ *    Level 2 choice and Level 3 unlock. Unchanged, and still correct for any
+ *    match that has progression.
+ *  - `r1` — the same tutorial with the ability lessons SKIPPED (never
+ *    deleted) and the XP/victory copy corrected, for the no-progression
+ *    Ranked match a new player will actually get.
+ *
+ * Both tracks are always present in the build, so the switch is one value.
+ */
+export type TutorialTrack = "legacy" | "r1";
+
 export type TutorialStepId =
   | "timer_intro"
   | "answer_selection"
@@ -142,6 +156,9 @@ export interface TimerState {
  * unrevealed opponent choice.
  */
 export interface TutorialState {
+  /** Which lesson this run teaches. Frozen at construction; a RESTART keeps
+   * it, so the track can never change mid-tutorial. */
+  track: TutorialTrack;
   stepId: TutorialStepId;
   player: TutorialCombatant;
   opponent: TutorialCombatant;

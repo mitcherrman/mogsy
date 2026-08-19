@@ -16,6 +16,7 @@ import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import { initialTutorialState, tutorialReducer, visibleState } from "./tutorialMachine";
+import type { TutorialTrack } from "./types";
 import {
   abilityViewsFromTutorial,
   combatantViewsFromTutorial,
@@ -37,8 +38,13 @@ const COACH_NOTES: Record<string, string> = {
   ability: "Training tip: this lesson needs a different ability setup — Edit before locking.",
 };
 
-export default function RankedTutorialPage() {
-  const [state, dispatch] = useReducer(tutorialReducer, undefined, initialTutorialState);
+export default function RankedTutorialPage({ track = "legacy" }: { track?: TutorialTrack } = {}) {
+  // The track is fixed for the life of the run: `useReducer`'s initializer
+  // runs once, and RESTART carries the track forward. Defaults to the
+  // complete legacy tutorial, so the dev route and every existing caller are
+  // unchanged.
+  const [state, dispatch] = useReducer(
+    tutorialReducer, track, initialTutorialState);
   const view = visibleState(state);
   const instructionRef = useRef<HTMLDivElement>(null);
 
@@ -83,12 +89,19 @@ export default function RankedTutorialPage() {
     stepId === "level_three_unlock" ||
     stepId === "victory_round";
 
+  // R1: a no-progression training match has no ability layer to show. The
+  // ability STEPS are already absent from the R1 order; this covers the one
+  // step that survives it (`victory_round`), so the tray never appears on a
+  // track that never taught it. The legacy track is untouched.
+  const abilityLayerTaught = state.track !== "r1";
+
   // From the Fortify lesson onward, the full ability tray is in play.
   const abilityTrayActive =
-    stepId === "starter_ability_intro" ||
-    stepId === "ability_resolution" ||
-    stepId === "level_three_unlock" ||
-    stepId === "victory_round";
+    abilityLayerTaught && (
+      stepId === "starter_ability_intro" ||
+      stepId === "ability_resolution" ||
+      stepId === "level_three_unlock" ||
+      stepId === "victory_round");
 
   const combatants = combatantViewsFromTutorial(state);
   const timer = timerViewFromTutorial(state);
@@ -213,8 +226,14 @@ export default function RankedTutorialPage() {
                   <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-0.5">
                     <li>Correct answers deal damage.</li>
                     <li>Both players may deal damage in the same round.</li>
-                    <li>XP unlocks abilities — HP decides the winner.</li>
-                    <li>Ability charges are limited; armed means committed.</li>
+                    {abilityLayerTaught ? (
+                      <>
+                        <li>XP unlocks abilities — HP decides the winner.</li>
+                        <li>Ability charges are limited; armed means committed.</li>
+                      </>
+                    ) : (
+                      <li>XP tracks the match — HP decides the winner.</li>
+                    )}
                     <li>Zero HP ends the match.</li>
                   </ul>
                   <p className="text-sm font-medium" data-testid="no-mutation-note">

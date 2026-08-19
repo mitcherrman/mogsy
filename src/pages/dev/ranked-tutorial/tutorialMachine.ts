@@ -17,8 +17,11 @@ import {
   TutorialState,
   TutorialStepDefinition,
   TutorialStepId,
+  TutorialTrack,
 } from "./types";
-import { STEPS, STEP_ORDER, nextStepId, stepIndex } from "./tutorialSteps";
+import {
+  STEPS, STEP_ORDER_BY_TRACK, nextStepId, stepForTrack, stepIndex,
+} from "./tutorialSteps";
 import {
   FIRST_ANSWER_CUT_SECONDS,
   LEVEL_THRESHOLDS,
@@ -34,6 +37,16 @@ import {
   tankLevelThreeUnlock,
 } from "./fixtures";
 
+/**
+ * Rounds hosted by each step on the R1 track, where they differ. Only the
+ * victory round does: the R1 order skips the four ability lessons and their
+ * drill rounds, so the finish is re-anchored to the HP the player last saw.
+ * Every other step falls through to the legacy table below, unchanged.
+ */
+const R1_STEP_ROUNDS: Partial<Record<TutorialStepId, TutorialRoundId[]>> = {
+  victory_round: ["H_R1"],
+};
+
 /** Instructional rounds hosted by each step, in play order. */
 const STEP_ROUNDS: Partial<Record<TutorialStepId, TutorialRoundId[]>> = {
   answer_selection: ["A"],
@@ -48,6 +61,11 @@ const STEP_ROUNDS: Partial<Record<TutorialStepId, TutorialRoundId[]>> = {
   victory_round: ["H"],
 };
 
+/** The rounds a step hosts on a given track. */
+const roundsForStep = (stepId: TutorialStepId, track: TutorialTrack):
+TutorialRoundId[] | undefined =>
+  (track === "r1" ? R1_STEP_ROUNDS[stepId] : undefined) ?? STEP_ROUNDS[stepId];
+
 /** Timer warning threshold (seconds remaining) for the aria-live warning. */
 export const TIMER_WARNING_SECONDS = 5;
 
@@ -57,8 +75,15 @@ const initialCharges = (): Record<string, number> => ({
   [TANK_LEVEL_TWO_OPTIONS[1].id]: TANK_LEVEL_TWO_OPTIONS[1].charges,
 });
 
-/** Fresh training-match state. Both combatants are full-HP Level 1 Tanks. */
-export const initialTutorialState = (): TutorialState => ({
+/**
+ * Fresh training-match state. Both combatants are full-HP Level 1 Tanks.
+ *
+ * The TRACK is frozen into the state at construction, so the reducer stays
+ * pure and a restart cannot silently change which lesson is being taught.
+ * Defaults to `legacy`, keeping every existing caller and test unchanged.
+ */
+export const initialTutorialState = (track: TutorialTrack = "legacy"): TutorialState => ({
+  track,
   stepId: "timer_intro",
   player: { hp: TANK_STARTING_HP, maxHp: TANK_STARTING_HP, xp: 0, level: 1 },
   opponent: { hp: TANK_STARTING_HP, maxHp: TANK_STARTING_HP, xp: 0, level: 1 },
@@ -127,7 +152,10 @@ const revealFromFixture = (
   f: ResolvedRoundFixture,
   armedAbilityId: string | null,
 ): RevealedRoundResult => {
-  const levelAfter = levelForXp(f.playerXpAfter);
+  // R1: a no-progression match has exactly one level, so it can never report
+  // a level-up — not in the reveal, not in the aria-live announcement, and not
+  // in the Level 3 auto-unlock line below. The legacy track is unchanged.
+  const levelAfter = state.track === "r1" ? 1 : levelForXp(f.playerXpAfter);
   const leveledUpTo = levelAfter > f.playerLevelBefore ? levelAfter : null;
   const chargesBefore = armedAbilityId ? state.charges[armedAbilityId] ?? null : null;
   return {
@@ -201,13 +229,14 @@ const applyFixture = (state: TutorialState, f: ResolvedRoundFixture): TutorialSt
       ...state.player,
       hp: result.playerHpAfter,
       xp: f.playerXpAfter,
-      level: levelForXp(f.playerXpAfter),
+      // R1: frozen at Level 1 — the same shape a real R1 match projects.
+      level: state.track === "r1" ? 1 : levelForXp(f.playerXpAfter),
     },
     opponent: {
       ...state.opponent,
       hp: result.opponentHpAfter,
       xp: f.opponentXpAfter,
-      level: levelForXp(f.opponentXpAfter),
+      level: state.track === "r1" ? 1 : levelForXp(f.opponentXpAfter),
     },
     charges,
     round: { ...state.round, phase: "revealed", result },
@@ -220,7 +249,7 @@ const applyFixture = (state: TutorialState, f: ResolvedRoundFixture): TutorialSt
 /** Entry effects when a step becomes active. */
 const enterStep = (state: TutorialState, stepId: TutorialStepId): TutorialState => {
   const step = STEPS[stepId];
-  const rounds = STEP_ROUNDS[stepId];
+  const rounds = roundsForStep(stepId, state.track);
   let next: TutorialState = { ...state, stepId };
 
   if (rounds && (!state.round || !rounds.includes(state.round.roundId))) {
@@ -248,13 +277,16 @@ const enterStep = (state: TutorialState, stepId: TutorialStepId): TutorialState 
 };
 
 const advance = (state: TutorialState): TutorialState => {
-  const next = nextStepId(state.stepId);
+  // Walk THIS state's own track. On the R1 track the ability steps are simply
+  // not in the order, so `continueFrom` steps straight past them — their
+  // authored definitions, rounds and fixtures are all still in the build.
+  const next = nextStepId(state.stepId, STEP_ORDER_BY_TRACK[state.track]);
   return next ? enterStep(state, next) : state;
 };
 
 const continueFrom = (state: TutorialState): TutorialState => {
   const round = state.round;
-  const rounds = STEP_ROUNDS[state.stepId];
+  const rounds = roundsForStep(state.stepId, state.track);
 
   // Round A reveal happens on the answer_locked → simultaneous_reveal edge.
   if (state.stepId === "answer_locked") {
@@ -300,7 +332,7 @@ export const tutorialReducer = (
 
   switch (event.type) {
     case "RESTART":
-      return initialTutorialState();
+      return initialTutorialState(state.track);
 
     case "CONTINUE":
       return continueFrom(state);
@@ -539,11 +571,15 @@ export interface TutorialVisibleState {
 }
 
 export const visibleState = (state: TutorialState): TutorialVisibleState => {
-  const step = STEPS[state.stepId];
+  // The step as THIS TRACK teaches it: authored definition plus any R1 copy
+  // override. The page reads `step.body`/`step.announcement` directly, so
+  // resolving here keeps every consumer unchanged.
+  const order = STEP_ORDER_BY_TRACK[state.track];
+  const step = stepForTrack(state.stepId, state.track);
   return {
     step,
-    stepNumber: stepIndex(state.stepId) + 1,
-    totalSteps: STEP_ORDER.length,
+    stepNumber: stepIndex(state.stepId, order) + 1,
+    totalSteps: order.length,
     player: state.player,
     opponent: state.opponent,
     round: state.round,

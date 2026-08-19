@@ -167,7 +167,10 @@ export const TUTORIAL_VICTORY_DAMAGE = 30;
 // The machine APPLIES these — it never computes combat results. XP awards use
 // the verified authoritative values; damage is tutorial-scaled.
 
-export type TutorialRoundId = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H";
+export type TutorialRoundId =
+  | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H"
+  // R1: the victory round re-anchored for the track that skips D–G.
+  | "H_R1";
 
 export interface ResolvedRoundFixture {
   roundId: TutorialRoundId;
@@ -506,6 +509,53 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     playerHpBefore: 150,
     playerHpAfter: 150,
     opponentHpBefore: 30,
+    opponentHpAfter: 0,
+    playerXpBefore: 77,
+    playerXpAwarded: XP.correct, // 12 → 89
+    playerXpAfter: 89,
+    opponentXpBefore: 65,
+    opponentXpAwarded: XP.incorrect, // 9 → 74
+    opponentXpAfter: 74,
+    playerLevelBefore: 3,
+    playerLevelAfter: 3,
+    timerStart: ROUND_SECONDS,
+    opponentAnsweredAt: null,
+    pressureCutApplied: false,
+    abilityId: null,
+    allowAnyAbility: true,
+    chargeConsumed: false,
+    chargesBefore: null,
+    chargesAfter: null,
+    effectTriggered: false,
+    effectSummary: null,
+    nextRoundDurationAfterAbility: ROUND_SECONDS,
+    resultCopy:
+      "Correct! Your final hit reduces the Training Golem to 0 HP. Zero HP ends the match — victory!",
+  },
+
+  /**
+   * R1 victory round — the SAME lesson as `H`, re-anchored.
+   *
+   * The R1 track skips the four ability lessons, so the Golem is still
+   * at the HP round C left it on (110) rather than the 30 the legacy
+   * drill rounds whittle it to. Re-authoring only the HP anchor keeps
+   * the final hit continuous with what the player has been watching;
+   * `H` itself is untouched and still the legacy track's finish.
+   */
+  H_R1: {
+    roundId: "H_R1",
+    questionIndex: 7,
+    playerAnswer: 0, // "Reducing your opponent's HP to zero"
+    opponentAnswer: 3,
+    playerCorrect: true,
+    opponentCorrect: false,
+    playerTimedOut: false,
+    opponentTimedOut: false,
+    playerDamage: 110,
+    opponentDamage: 0,
+    playerHpBefore: 150,
+    playerHpAfter: 150,
+    opponentHpBefore: 110,
     opponentHpAfter: 0,
     playerXpBefore: 77,
     playerXpAwarded: XP.correct, // 12 → 89

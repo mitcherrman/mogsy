@@ -188,3 +188,23 @@ describe("RevealPanel — real backend-shaped settlements", () => {
     expect(screen.getByTestId("reveal-panel").textContent).not.toMatch(/human|player 1|player 2/i);
   });
 });
+
+describe("R1 — the reveal has no ability row when the match had no abilities", () => {
+  it("omits BOTH sides' ability rows when showAbilities is false", () => {
+    const s = settlement("solo-correct");
+    renderReveal(s, { showAbilities: false });
+    expect(screen.queryByTestId(`ability-${s.players.p1.playerId}`)).toBeNull();
+    expect(screen.queryByTestId(`ability-${s.players.p2.playerId}`)).toBeNull();
+    // Nothing else about the reveal is withheld: the opponent's outcome and
+    // the damage audit are the whole point of the panel.
+    expect(screen.getByTestId(`outcome-${s.players.p2.playerId}`)).toBeTruthy();
+    expect(screen.getByTestId(`damage-${s.players.p1.playerId}`)).toBeTruthy();
+  });
+
+  it("defaults to SHOWING abilities, so every legacy caller is unchanged", () => {
+    const s = settlement("solo-correct");
+    renderReveal(s);
+    expect(screen.getByTestId(`ability-${s.players.p1.playerId}`)).toBeTruthy();
+    expect(screen.getByTestId(`ability-${s.players.p2.playerId}`)).toBeTruthy();
+  });
+});

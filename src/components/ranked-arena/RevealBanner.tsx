@@ -38,6 +38,10 @@ export interface RevealBannerProps {
   settlement: ResolvedRoundView;
   viewerSlot: "p1" | "p2";
   namesByPlayerId?: Record<string, string>;
+  /** R1: does this match have an ability layer? Defaults to true; forwarded
+   * to the embedded RevealPanel so the Details expansion agrees with the
+   * live HUD about whether abilities exist at all. */
+  showAbilities?: boolean;
 }
 
 function SideSummary({
@@ -69,6 +73,9 @@ export function RevealBanner({
   settlement,
   viewerSlot,
   namesByPlayerId,
+  // R1: forwarded verbatim to the Details expansion. Defaults to true, so the
+  // banner is unchanged for every legacy caller.
+  showAbilities = true,
 }: RevealBannerProps) {
   const [open, setOpen] = useState(false);
   // A NEW settlement always starts collapsed (render-time reset, no effect
@@ -132,6 +139,7 @@ export function RevealBanner({
             viewerSlot={viewerSlot}
             namesByPlayerId={namesByPlayerId}
             testId="reveal-panel-details"
+            showAbilities={showAbilities}
           />
         </div>
       )}

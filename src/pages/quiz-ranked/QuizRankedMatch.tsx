@@ -159,6 +159,21 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     );
   }
 
+  /**
+   * R1 — the ONE signal that decides whether legacy ability/progression UI may
+   * render, read off THIS match's own frozen projection.
+   *
+   * Deliberately not derived from role, class, XP, the feature flag, or
+   * whether a Level 2 choice happens to be pending: all five are wrong for an
+   * in-flight or historical match. A pre-R1 match reports `true` forever and
+   * keeps every control it has always had — including for a player who
+   * reconnects into one that is waiting on a Level 2 choice. A backend that
+   * does not send the field at all also reads `true` (see the contract's
+   * compatibility-safe parse), so shipping this client ahead of the backend
+   * hides nothing.
+   */
+  const progressionEnabled = m.publicRound.progressionEnabled;
+
   if (m.phase === "match_over") {
     const reason = m.result?.terminalReason ?? "combat";
     const won = m.result?.winnerUserId === viewerUserId;
@@ -178,7 +193,8 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           primaryAction={{ label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } }} />
         {m.lastResolved && (
           <RevealPanel settlement={m.lastResolved} viewerSlot="p1"
-            namesByPlayerId={revealNames(m.lastResolved)} />
+            namesByPlayerId={revealNames(m.lastResolved)}
+            showAbilities={progressionEnabled} />
         )}
       </div>
     );
@@ -207,7 +223,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // the middle of the HUD and slid the status panel up under the cursor. The
   // tray now stays mounted and renders its own disabled state (AbilityTray
   // already surfaces `disabledReasons.ability` for exactly this).
-  const showAbilityTray = !moduleOwnsSubmission && m.privatePlayer !== null
+  // R1: a no-progression match has no ability layer for the normal player, so
+  // the tray, its hotkeys, its charge indicators and its "Clear ability"
+  // control are all absent. The tray was ALREADY conditional (see
+  // `abilityTrayIsUseful`), so its absence reclaims the row rather than
+  // reserving an empty one — no blank track is left behind.
+  const showAbilityTray = progressionEnabled && !moduleOwnsSubmission
+    && m.privatePlayer !== null
     && abilityTrayIsUseful(abilities, m.selectedAbilityId);
 
   // Stable round header. `activeRound` briefly reports null between rounds; the
@@ -219,7 +241,12 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // and therefore no shared timer — that is the phase, not a transition gap.
   const inTransition = !timer && m.phase !== "progression" && !m.segmentState;
 
-  const isProgression = m.phase === "progression";
+  // The Level 2 overlay is gated on the SAME signal. `phase === "progression"`
+  // is already structurally unreachable on an R1 match (a match frozen with a
+  // single level threshold can never put a player in
+  // `progression_pending_players`), so this is defence in depth — but it is
+  // the check that keeps the two answers from ever disagreeing.
+  const isProgression = m.phase === "progression" && progressionEnabled;
   // The question surface stays MOUNTED and IN FLOW at all times — including
   // during the reveal beat and a level-2 choice. It used to be `display:none`
   // for those, which collapsed its box to zero and let everything below it jump
@@ -245,11 +272,15 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       viewerUserId={viewerUserId}
       opponentUserId={m.opponentUserId}
       damageDealt={m.lastSegmentSettlement.damageByPlayerId[viewerUserId] ?? null}
-      abilitiesByPlayerId={m.lastSegmentSettlement.abilitiesByPlayerId}
+      // R1: no ability layer means no ability reveal. An empty map renders no
+      // ability row at all, rather than a meaningless "—" placeholder.
+      abilitiesByPlayerId={progressionEnabled
+        ? m.lastSegmentSettlement.abilitiesByPlayerId : {}}
     />
   ) : m.lastResolved ? (
     <RevealBanner settlement={m.lastResolved} viewerSlot="p1"
-      namesByPlayerId={revealNames(m.lastResolved)} />
+      namesByPlayerId={revealNames(m.lastResolved)}
+      showAbilities={progressionEnabled} />
   ) : null;
 
   return (

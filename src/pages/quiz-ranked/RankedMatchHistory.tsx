@@ -6,10 +6,17 @@
  * the lobby never blocks on it. Displays only reveal-safe terminal data the
  * backend projects (outcome from the viewer's perspective, opponent display
  * name/class/bot flag) — no account ids exist in the contract.
+ *
+ * R1: a row shows the player's LEAGUE ROLE when the match froze one. A row
+ * with `role == null` predates roles, and it keeps rendering its recorded
+ * legacy class exactly as it always has. No class is ever translated into a
+ * role — Tank is not Support, Mage is not Mid, Marksman is not ADC — so a
+ * historical row shows what actually happened and nothing more.
  */
 import { useEffect, useState } from "react";
 import { getMatchHistory } from "@/lib/ranked-public/client";
 import type { MatchHistoryEntryView } from "@/lib/ranked-public/contracts";
+import { rankedRoleLabel } from "@/lib/ranked-public/roles";
 
 const OUTCOME_STYLE: Record<MatchHistoryEntryView["viewerOutcome"], { label: string; className: string }> = {
   win: { label: "Victory", className: "text-[#e8c97a]" },
@@ -19,6 +26,15 @@ const OUTCOME_STYLE: Record<MatchHistoryEntryView["viewerOutcome"], { label: str
 
 function classLabel(classId: string): string {
   return classId ? classId.charAt(0).toUpperCase() + classId.slice(1) : classId;
+}
+
+/**
+ * The identity label for one side of a historical row: the frozen role, or
+ * the recorded legacy class when there is none. The fallback is the SAME
+ * label this widget has always shown, so a pre-R1 row is untouched.
+ */
+function identityLabel(role: string | null, classId: string): string {
+  return rankedRoleLabel(role) ?? classLabel(classId);
 }
 
 function opponentLabel(entry: MatchHistoryEntryView): string {
@@ -59,7 +75,7 @@ export function RankedMatchHistory({ limit = 5 }: { limit?: number }) {
               className="flex items-center justify-between gap-2 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs">
               <span className={`font-semibold ${outcome.className}`}>{outcome.label}</span>
               <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                {classLabel(entry.viewerClass)} vs {opponentLabel(entry)} ({classLabel(entry.opponentClass)})
+                {identityLabel(entry.viewerRole, entry.viewerClass)} vs {opponentLabel(entry)} ({identityLabel(entry.opponentRole, entry.opponentClass)})
               </span>
               <span className="shrink-0 text-muted-foreground">
                 {entry.terminalReason === "forfeit"

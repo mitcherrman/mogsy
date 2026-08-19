@@ -221,3 +221,30 @@ describe("the live arena's status slots", () => {
     expect(source).not.toContain("!moduleOwnsSubmission && !isProgression");
   });
 });
+
+describe("R1 geometry: a no-progression match reclaims the ability row", () => {
+  const source = () => readFileSync(
+    resolve(process.cwd(), "src/pages/quiz-ranked/QuizRankedMatch.tsx"), "utf8");
+
+  it("removes the tray by not mounting it — no reserved empty track", () => {
+    // The tray was ALREADY conditional, so `progressionEnabled` joins the
+    // existing condition rather than swapping the tray for a spacer. A spacer
+    // is what would leave a blank ~140px band on every R1 match.
+    expect(source()).toContain("const showAbilityTray = progressionEnabled");
+    expect(source()).not.toMatch(/ability-tray-placeholder|ability-tray-spacer/);
+  });
+
+  it("keeps the HUD row and its reserved status line on BOTH match kinds", () => {
+    // The row is gated on the module, not on progression: the status line is
+    // the one thing nothing else on screen shows, and its reserved height is
+    // what stops the HUD resizing between "Submitting…" and an error.
+    expect(source()).toContain("{!moduleOwnsSubmission && (");
+    expect(source()).not.toContain("!moduleOwnsSubmission && progressionEnabled && (");
+  });
+
+  it("hides the level-2 overlay without touching the flow it overlays", () => {
+    // The overlay is absolutely positioned over the question, so hiding it
+    // moves nothing — the question surface keeps its box either way.
+    expect(source()).toContain('className={renderer && (question || moduleOwnsSubmission)\n                ? "absolute inset-x-0 top-0 z-20" : ""}');
+  });
+});

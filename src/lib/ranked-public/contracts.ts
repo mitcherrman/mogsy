@@ -21,6 +21,7 @@ import type {
   PublicQuestionSource,
 } from "@/lib/ranked-core/adapters/adaptToViews";
 import type { OptionMediaView } from "@/lib/ranked-core/viewTypes";
+import { isRankedRole, type RankedRole } from "./roles";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -351,7 +352,10 @@ export interface PublicRoundView {
   winnerId: string | null;
   completionReason: string | null;
   completedRounds: number;
-  players: (PublicCombatantSource & { maxHp: number | null })[];
+  /** R1: `role` is the FROZEN League role of each participant. Always
+   * present as a key; `null` for every pre-R1 match and for any player the
+   * backend has no role for. Never derived from `classId`. */
+  players: (PublicCombatantSource & { maxHp: number | null; role: RankedRole | null })[];
   activeRound: PublicActiveRound | null;
   nextRoundDurationSeconds: number;
   question: PublicQuestionSource | null;
@@ -360,6 +364,20 @@ export interface PublicRoundView {
   /** Owner state of the active multi-challenge segment; null for quiz. */
   segmentState: SegmentStateView | null;
   progressionPendingPlayers: string[];
+  /**
+   * R1: can a level-up EVER be due in this match? Derived by the backend from
+   * the match's own FROZEN config, so it answers for the match as created and
+   * never for how the server is configured now.
+   *
+   * This — and ONLY this — decides whether legacy ability/progression UI may
+   * render. Role, class, XP, the feature flag, and whether a choice happens to
+   * be pending right now are all wrong signals for that question.
+   *
+   * Compatibility-safe: an older backend that does not send the field at all
+   * reads as `true`, so a client that ships ahead of the backend keeps showing
+   * the progression UI that legacy matches require rather than hiding it.
+   */
+  progressionEnabled: boolean;
   presence: PresenceView | null;
   playtest?: PlaytestMeta | null;
 }
@@ -382,7 +400,13 @@ export interface QueueStatusView {
   status: "not_queued" | "waiting" | "matched" | "cancelled" | "expired";
   matchId: string | null;
   queueVersion: number | null;
+  /** Legacy combat class the entry carries. Retained because the contract
+   * still carries it; never shown to the normal player and never mapped to
+   * or from `role`. */
   classId: string | null;
+  /** R1: the League role this entry queued as. Null with the backend flag
+   * off or on a pre-R1 entry. */
+  role: RankedRole | null;
   enqueuedAt: string | null;
 }
 
@@ -424,7 +448,31 @@ function readPresence(value: unknown): PresenceView | null {
   };
 }
 
-function readPlayer(value: unknown, i: number): PublicCombatantSource & { maxHp: number | null } {
+/**
+ * R1 role off the wire. Null/absent/unrecognised all read as `null` — "no
+ * role" is a normal, permanently-supported value, and an unknown role is
+ * never coerced into one of the five or synthesized from a class.
+ */
+function readRole(value: unknown): RankedRole | null {
+  return isRankedRole(value) ? value : null;
+}
+
+/**
+ * R1 `progression_enabled`, parsed COMPATIBILITY-SAFE.
+ *
+ * Only an explicit `false` hides the legacy progression UI. Absent, null, or
+ * any non-boolean reads as `true`, because the field is absent exactly when
+ * this client is talking to a backend that predates R1 — and on such a
+ * backend every match is a legacy match whose ability tray and Level 2 choice
+ * are mandatory. Defaulting to `false` here would wedge a reconnecting player
+ * on an old match waiting for a choice control the client had hidden.
+ */
+function readProgressionEnabled(value: unknown): boolean {
+  return value !== false;
+}
+
+function readPlayer(value: unknown, i: number):
+PublicCombatantSource & { maxHp: number | null; role: RankedRole | null } {
   const p = rec(value, `players[${i}]`);
   return {
     playerId: str(p.player_id, "player_id"),
@@ -436,6 +484,7 @@ function readPlayer(value: unknown, i: number): PublicCombatantSource & { maxHp:
     abilitySelectionPhase: nstr(p.ability_selection_phase, "ability_selection_phase"),
     hasAbilitySelected: nbool(p.has_ability_selected, "has_ability_selected"),
     maxHp: nnum(p.max_hp, "max_hp"),
+    role: readRole(p.role),
   };
 }
 
@@ -568,6 +617,7 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     segmentState: readSegmentState(payload.segment_state),
     progressionPendingPlayers: Array.isArray(payload.progression_pending_players)
       ? strList(payload.progression_pending_players, "progression_pending_players") : [],
+    progressionEnabled: readProgressionEnabled(payload.progression_enabled),
     presence: readPresence(payload.presence),
     playtest: readPlaytest(payload.playtest),
   };
@@ -1089,6 +1139,7 @@ export function readQueueStatus(body: unknown): QueueStatusView {
     matchId: nstr(p.match_id, "match_id"),
     queueVersion: nnum(p.queue_version, "queue_version"),
     classId: nstr(p.class_id, "class_id"),
+    role: readRole(p.role),
     enqueuedAt: nstr(p.enqueued_at, "enqueued_at"),
   };
 }
@@ -1118,6 +1169,11 @@ export interface MatchHistoryEntryView {
   isBotMatch: boolean;
   viewerClass: string;
   opponentClass: string;
+  /** R1: carried ALONGSIDE the class, never instead of it. `null` on every
+   * historical row — such a row renders from the class fields as a clearly
+   * legacy label, and NEVER as a role mapped from that class. */
+  viewerRole: RankedRole | null;
+  opponentRole: RankedRole | null;
   opponentDisplayName: string | null;
   opponentIsBot: boolean;
   /** Viewer's own applied rating movement (F2.2); null when the result was
@@ -1159,6 +1215,8 @@ export function readMatchHistory(body: unknown): MatchHistoryView {
       isBotMatch: bool(e.is_bot_match, `entries[${i}].is_bot_match`),
       viewerClass: str(e.viewer_class, `entries[${i}].viewer_class`),
       opponentClass: str(e.opponent_class, `entries[${i}].opponent_class`),
+      viewerRole: readRole(e.viewer_role),
+      opponentRole: readRole(e.opponent_role),
       opponentDisplayName: nstr(e.opponent_display_name, `entries[${i}].opponent_display_name`),
       opponentIsBot: bool(e.opponent_is_bot, `entries[${i}].opponent_is_bot`),
       // Absent on pre-F2.2 backends — tolerate missing as null.
@@ -1181,6 +1239,28 @@ export function readHeartbeat(body: unknown): HeartbeatView {
   };
 }
 
+/**
+ * The caller's own Ranked role preference (`GET/PUT /api/ranked/role`).
+ *
+ * `role: null` is a normal, permanent answer — an account that has never
+ * chosen has no row. It is NOT an error state and is NOT filled in from the
+ * account's legacy class or match history.
+ */
+export interface RankedRoleView {
+  role: RankedRole | null;
+  selectedAt: string | null;
+  updatedAt: string | null;
+}
+
+export function readRankedRole(body: unknown): RankedRoleView {
+  const b = rec(body, "ranked_role");
+  return {
+    role: readRole(b.role),
+    selectedAt: nstr(b.selected_at, "selected_at"),
+    updatedAt: nstr(b.updated_at, "updated_at"),
+  };
+}
+
 export interface ResumeView {
   schemaVersion: string;
   serverTime: string;
@@ -1189,6 +1269,11 @@ export interface ResumeView {
   public: PublicRoundView;
   private: PrivatePlayerView;
   progressionPendingPlayers: string[];
+  /** R1, mirrored at the resume top level exactly as
+   * `progressionPendingPlayers` already is, so a reconnecting client can
+   * settle "does this match have progression at all" without reaching into
+   * the embedded public projection. Same compatibility-safe parse. */
+  progressionEnabled: boolean;
   latestResolved: Record<string, unknown> | null;  // resolved v2 envelope
   result: MatchResultView | null;
 }
@@ -1204,6 +1289,7 @@ export function readResume(body: unknown): ResumeView {
     private: readPrivatePlayer(p.private),
     progressionPendingPlayers: Array.isArray(p.progression_pending_players)
       ? strList(p.progression_pending_players, "progression_pending_players") : [],
+    progressionEnabled: readProgressionEnabled(p.progression_enabled),
     latestResolved: p.latest_resolved_round === null || p.latest_resolved_round === undefined
       ? null : rec(p.latest_resolved_round, "latest_resolved_round"),
     result: p.result === null || p.result === undefined ? null : readMatchResult(p.result),

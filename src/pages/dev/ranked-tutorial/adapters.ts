@@ -38,7 +38,7 @@ import {
   TutorialAbility,
 } from "./fixtures";
 import { unlockedAbilityIds } from "./tutorialMachine";
-import { RevealedRoundResult, RoundState, TutorialState } from "./types";
+import { RevealedRoundResult, RoundState, TutorialState, TutorialTrack } from "./types";
 
 /** Stable tutorial-only ids — clearly never a real backend match/player id. */
 export const TUTORIAL_PLAYER_ID = "tutorial-player";
@@ -55,8 +55,13 @@ export const abilityName = (id: string | null): string =>
 const thresholdFloor = (level: number): number | null =>
   LEVEL_THRESHOLDS[level - 1] ?? null;
 
-const thresholdNext = (level: number): number | null =>
-  level >= MAX_LEVEL ? null : LEVEL_THRESHOLDS[level];
+/**
+ * R1: a no-progression match has a single level, so there is no NEXT
+ * threshold to fill toward — exactly what a real R1 match projects. The
+ * legacy track keeps the authored (0, 30, 66) ladder.
+ */
+const thresholdNext = (level: number, track: TutorialTrack): number | null =>
+  track === "r1" || level >= MAX_LEVEL ? null : LEVEL_THRESHOLDS[level];
 
 /** Steps whose round hosts the ability window (Fortify lesson onward). */
 const abilityWindowActive = (state: TutorialState): boolean => {
@@ -77,7 +82,8 @@ export function combatantViewsFromTutorial(state: TutorialState): {
     side,
     classId: "tank",
     maxHp: state[side === "player" ? "player" : "opponent"].maxHp,
-    nextLevelThreshold: thresholdNext(state[side === "player" ? "player" : "opponent"].level),
+    nextLevelThreshold: thresholdNext(
+      state[side === "player" ? "player" : "opponent"].level, state.track),
     currentLevelThreshold: thresholdFloor(state[side === "player" ? "player" : "opponent"].level),
     abilityWindow: windowOpen ? (playerLocked ? "locked" : "open") : null,
   });

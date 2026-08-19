@@ -36,6 +36,14 @@ export interface RevealPanelProps {
   /** Override when embedded (e.g. inside RevealBanner's Details expansion),
    * so the compact banner keeps the canonical "reveal-panel" id. */
   testId?: string;
+  /**
+   * Whether the round had an ability layer at all (R1). Defaults to TRUE, so
+   * every existing caller — legacy Ranked matches, the staff duel, the
+   * tutorial, the arena inspector — is unchanged. A caller passes false only
+   * for a match frozen without progression, where an "Ability: —" row would
+   * describe a mechanic the player never had.
+   */
+  showAbilities?: boolean;
 }
 
 const OUTCOME_COPY: Record<ResolvedCombatantView["outcome"], string> = {
@@ -48,10 +56,12 @@ function ResolvedCombatantCard({
   player,
   title,
   answerLabel,
+  showAbilities,
 }: {
   player: ResolvedCombatantView;
   title: string;
   answerLabel: string | null | undefined;
+  showAbilities: boolean;
 }) {
   const leveled = player.leveledUp;
   return (
@@ -80,18 +90,20 @@ function ResolvedCombatantCard({
             </dd>
           </div>
         )}
-        <div className="flex justify-between gap-3">
-          <dt className="text-muted-foreground">Ability</dt>
-          <dd className="font-medium text-right" data-testid={`ability-${player.playerId}`}>
-            {player.abilityName}
-            {player.abilityId !== null && !player.chargeConsumed && (
-              <span className="text-muted-foreground"> · no charge consumed</span>
-            )}
-            {player.chargeConsumed && (
-              <span className="text-muted-foreground"> · charge consumed</span>
-            )}
-          </dd>
-        </div>
+        {showAbilities && (
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Ability</dt>
+            <dd className="font-medium text-right" data-testid={`ability-${player.playerId}`}>
+              {player.abilityName}
+              {player.abilityId !== null && !player.chargeConsumed && (
+                <span className="text-muted-foreground"> · no charge consumed</span>
+              )}
+              {player.chargeConsumed && (
+                <span className="text-muted-foreground"> · charge consumed</span>
+              )}
+            </dd>
+          </div>
+        )}
         {player.answeredFirst && (
           <div className="text-muted-foreground" data-testid={`first-${player.playerId}`}>
             Answered first
@@ -159,6 +171,7 @@ export function RevealPanel({
   notices,
   children,
   testId = "reveal-panel",
+  showAbilities = true,
 }: RevealPanelProps) {
   const opponentSlot: Slot = viewerSlot === "p1" ? "p2" : "p1";
   const viewer = settlement.players[viewerSlot];
@@ -182,11 +195,13 @@ export function RevealPanel({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <ResolvedCombatantCard player={viewer} title={nameOf(viewer)} answerLabel={answerOf(viewer)} />
+        <ResolvedCombatantCard player={viewer} title={nameOf(viewer)}
+          answerLabel={answerOf(viewer)} showAbilities={showAbilities} />
         <ResolvedCombatantCard
           player={opponent}
           title={nameOf(opponent)}
           answerLabel={answerOf(opponent)}
+          showAbilities={showAbilities}
         />
       </div>
 
