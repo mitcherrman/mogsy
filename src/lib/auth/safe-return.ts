@@ -13,8 +13,16 @@ export const DEFAULT_RETURN_PATH = "/quiz";
 
 // Control characters and whitespace (<= 0x20). A legitimate path URL-encodes
 // these; their presence signals an attempt to smuggle a second target.
-// Built from an ASCII-only source string (no literal control chars in file).
-const UNSAFE_CHARS = new RegExp("[\\u0000-\\u0020]");
+// Checked by UTF-16 code unit rather than a character-class regex, so the
+// pattern carries no control characters at all.
+const MAX_UNSAFE_CHAR_CODE = 0x20;
+
+function hasUnsafeChars(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    if (value.charCodeAt(i) <= MAX_UNSAFE_CHAR_CODE) return true;
+  }
+  return false;
+}
 
 /**
  * Returns `raw` only when it is a safe same-origin relative path; otherwise the
@@ -29,6 +37,6 @@ export function safeReturnPath(
   if (raw[0] !== "/") return fallback;
   // Reject protocol-relative ("//host") and backslash variants ("/\\host").
   if (raw[1] === "/" || raw[1] === "\\") return fallback;
-  if (UNSAFE_CHARS.test(raw)) return fallback;
+  if (hasUnsafeChars(raw)) return fallback;
   return raw;
 }

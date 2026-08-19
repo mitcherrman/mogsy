@@ -29,7 +29,7 @@ export type QuizAnswerResult = {
   correct_answer: string;
   explanation: string;
   xp_earned?: number;
-  rank?: string | Record<string, any>;
+  rank?: string | Record<string, unknown>;
   rank_icon?: string;
   current_xp?: number;
   current_streak?: number;
@@ -52,10 +52,10 @@ export type QuizStats = {
 
 export type QuizProgress = {
   user_id?: string;
-  rank?: string | Record<string, any>;
+  rank?: string | Record<string, unknown>;
   rank_name?: string;
   rank_icon?: string;
-  next_rank?: string | Record<string, any>;
+  next_rank?: string | Record<string, unknown>;
   next_rank_name?: string;
   next_rank_icon?: string;
   xp?: number;

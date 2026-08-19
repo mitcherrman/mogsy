@@ -53,6 +53,12 @@ const defaults: AppSettings = {
   policy: DEFAULT_PLATFORM_POLICY,
 };
 
+// `app_settings.value` is a Json column and each key stores its own object
+// shape. These describe the two single-field rows this hook reads, so a typo in
+// a property name is a compile error instead of a silent `undefined`.
+type RequireAuthValue = { enabled?: boolean };
+type NavTabModeValue = { mode?: AppSettings["nav_tab_mode"] };
+
 export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(defaults);
   const [loading, setLoading] = useState(true);
@@ -65,11 +71,11 @@ export function useAppSettings() {
         if (data) {
           const s = { ...defaults };
           for (const row of data) {
-            if (row.key === "require_auth") s.require_auth = (row.value as any)?.enabled ?? true;
+            if (row.key === "require_auth") s.require_auth = (row.value as RequireAuthValue | null)?.enabled ?? true;
             if (row.key === "card_stats_config") {
-              s.card_stats_config = { ...DEFAULT_CARD_STATS_CONFIG, ...(row.value as any) };
+              s.card_stats_config = { ...DEFAULT_CARD_STATS_CONFIG, ...(row.value as Partial<CardStatsConfig> | null) };
             }
-            if (row.key === "nav_tab_mode") s.nav_tab_mode = (row.value as any)?.mode ?? "play";
+            if (row.key === "nav_tab_mode") s.nav_tab_mode = (row.value as NavTabModeValue | null)?.mode ?? "play";
           }
           // Policy rows are parsed by the shared pure contract, not inline, so
           // the guard, the hub, the admin panel, and the tests agree by

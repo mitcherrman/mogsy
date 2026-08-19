@@ -18,7 +18,7 @@ export async function logAdEvent(params: {
       ad_mode: params.adMode,
       ad_source: params.adSource,
       profile_id: params.profileId || null,
-    } as any);
+    });
   } catch {
     // silently fail — analytics should not block UX
   }

@@ -14,6 +14,18 @@ export interface ConversionResult {
 }
 
 /**
+ * `canvas.captureStream()` is typed as returning plain `MediaStreamTrack`s, but
+ * a canvas track is a `CanvasCaptureMediaStreamTrack` and carries
+ * `requestFrame()`. Browsers without manual frame capture omit it, which is why
+ * this stays a runtime check rather than a plain assertion.
+ */
+function supportsRequestFrame(
+  track: MediaStreamTrack | undefined,
+): track is CanvasCaptureMediaStreamTrack {
+  return typeof (track as CanvasCaptureMediaStreamTrack | undefined)?.requestFrame === "function";
+}
+
+/**
  * Convert a GIF File to a WebM video blob + JPEG thumbnail.
  * Returns null if the browser doesn't support WebM recording.
  */
@@ -83,7 +95,7 @@ export async function gifToWebm(file: File): Promise<ConversionResult | null> {
 
   // Draw each frame with its delay
   let totalDuration = 0;
-  const track = stream.getVideoTracks()[0] as any;
+  const track = stream.getVideoTracks()[0];
 
   for (const frame of frames) {
     const imageData = new ImageData(
@@ -94,7 +106,7 @@ export async function gifToWebm(file: File): Promise<ConversionResult | null> {
     ctx.putImageData(imageData, 0, 0);
 
     // Request a frame capture on the stream track
-    if (track && typeof track.requestFrame === "function") {
+    if (supportsRequestFrame(track)) {
       track.requestFrame();
     }
 

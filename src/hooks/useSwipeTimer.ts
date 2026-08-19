@@ -21,7 +21,10 @@ export function useSwipeTimer(onTimeout: () => void, paused: boolean) {
       .single()
       .then(({ data }) => {
         if (data) {
-          const val = data.value as any;
+          // `app_settings.value` is a Json column; this row stores the
+          // SwipeTimerSettings shape. Assert to that shape rather than `any`
+          // so both field reads below are checked. Fallbacks are unchanged.
+          const val = data.value as Partial<SwipeTimerSettings> | null;
           setSettings({ enabled: val?.enabled ?? false, duration_seconds: val?.duration_seconds ?? 10 });
         }
       });

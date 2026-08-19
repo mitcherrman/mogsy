@@ -53,13 +53,14 @@ export function trackFunnelEvent(
     try {
       const { data } = await supabase.auth.getSession();
       const sessionUser = data?.session?.user;
-      // Table is newer than the generated Supabase types — cast like ad-analytics.
+      // Table is newer than the generated Supabase types, so the client is cast
+      // to reach it. `ad_events` no longer needs this — `funnel_events` still does.
       await (supabase as any).from("funnel_events").insert({
         event_name: eventName,
         route: window.location.pathname,
         viewport_w: window.innerWidth,
         viewport_h: window.innerHeight,
-        is_guest: sessionUser ? !!(sessionUser as any).is_anonymous : true,
+        is_guest: sessionUser ? !!sessionUser.is_anonymous : true,
         source: "lol_funnel",
         user_id: sessionUser?.id ?? null,
         payload: payload ?? null,
