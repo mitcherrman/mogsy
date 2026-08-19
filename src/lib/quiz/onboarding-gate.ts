@@ -20,7 +20,9 @@ function readInt(storage: Storage, key: string): number {
 function writeInt(storage: Storage, key: string, value: number): void {
   try {
     storage.setItem(key, String(value));
-  } catch {}
+  } catch {
+    // Storage unavailable (private mode / disabled): count simply doesn't persist.
+  }
 }
 
 /** Increment the quiz action count and return the new total. */
@@ -39,7 +41,9 @@ export function resetGateState(): void {
   try {
     localStorage.removeItem(ACTION_COUNT_KEY);
     sessionStorage.removeItem(NUDGE_SEEN_KEY);
-  } catch {}
+  } catch {
+    // Storage unavailable (private mode / disabled): gate state simply won't clear.
+  }
 }
 
 /** Whether the soft nudge toast has already been shown this session. */
@@ -54,14 +58,18 @@ export function hasSoftNudgeBeenSeen(): boolean {
 export function markSoftNudgeSeen(): void {
   try {
     sessionStorage.setItem(NUDGE_SEEN_KEY, "1");
-  } catch {}
+  } catch {
+    // Storage unavailable (private mode / disabled): the nudge may reappear.
+  }
 }
 
 /** Mark that the user arrived via /lol hub (suppresses hub redirect on /quiz). */
 export function markHubVisited(): void {
   try {
     sessionStorage.setItem(HUB_VISITED_KEY, "1");
-  } catch {}
+  } catch {
+    // Storage unavailable (private mode / disabled): hub-visited flag simply won't persist.
+  }
 }
 
 export function hasVisitedHub(): boolean {

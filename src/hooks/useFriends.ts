@@ -78,7 +78,7 @@ export function useFriends() {
       r.requester_id === myProfileId ? r.addressee_id : r.requester_id
     );
 
-    let profileMap = new Map<string, FriendProfile>();
+    const profileMap = new Map<string, FriendProfile>();
     if (otherIds.length > 0) {
       // get_league_profiles, not public_profiles: the view is security_invoker,
       // so every other user's row resolved to zero rows and each friend fell

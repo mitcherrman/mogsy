@@ -81,7 +81,9 @@ function applyMute(s: SoundSettings): SoundSettings {
       (Object.keys(muted) as (keyof SoundSettings)[]).forEach((k) => { muted[k] = false; });
       return muted;
     }
-  } catch {}
+  } catch {
+    // localStorage may be unavailable (privacy mode, SSR); fall back to unmuted settings.
+  }
   return s;
 }
 

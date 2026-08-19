@@ -386,7 +386,7 @@ export default function Home() {
 
     // Get images for these leagues
     const playLeagueIds = [...topCollections, ...topCompetes].map((l) => l.id);
-    let playLeagueImages = new Map<string, string>();
+    const playLeagueImages = new Map<string, string>();
     if (playLeagueIds.length > 0) {
       const { data: playItems } = await supabase
         .from("preset_items")

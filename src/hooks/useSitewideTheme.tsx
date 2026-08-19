@@ -50,7 +50,9 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
     const auth = useAuth();
     authUser = auth.user;
     authLoading = auth.loading;
-  } catch {}
+  } catch {
+    // No AuthProvider in the tree; fall back to unauthenticated defaults.
+  }
   const user = authUser;
   const [themeId, setThemeId] = useState(() => localStorage.getItem("mogsy-active-theme") || "default");
   const [isEnabled, setIsEnabled] = useState(true);

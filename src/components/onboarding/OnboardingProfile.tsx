@@ -131,7 +131,7 @@ export default function OnboardingProfile({ onNext }: Props) {
       let avatarUrl: string | null = null;
       if (photoFile) {
         const ext = photoFile.name.split(".").pop() || "jpg";
-        const sanitizedName = `${profile.id}/${Date.now()}.${ext}`.replace(/[^a-zA-Z0-9\/\.\-_]/g, "");
+        const sanitizedName = `${profile.id}/${Date.now()}.${ext}`.replace(/[^a-zA-Z0-9/.\-_]/g, "");
         const { error: uploadError } = await supabase.storage
           .from("profile-photos")
           .upload(sanitizedName, photoFile, { upsert: true });

@@ -36,7 +36,9 @@ export function useSwipeSound() {
       g2.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
       osc2.connect(g2); g2.connect(ctx.destination);
       osc2.start(t); osc2.stop(t + 0.05);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const playCorrectSound = useCallback(() => {
@@ -55,7 +57,9 @@ export function useSwipeSound() {
       o2.type = "sine"; o2.frequency.setValueAtTime(1174.66, t + 0.08);
       g2.gain.setValueAtTime(0.07, t + 0.08); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
       o2.connect(g2); g2.connect(ctx.destination); o2.start(t + 0.08); o2.stop(t + 0.23);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const playWrongSound = useCallback(() => {
@@ -72,7 +76,9 @@ export function useSwipeSound() {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
       osc.connect(gain); gain.connect(ctx.destination);
       osc.start(t); osc.stop(t + 0.2);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   return { playSwipeSound, playCorrectSound, playWrongSound };

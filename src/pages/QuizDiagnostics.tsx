@@ -346,7 +346,6 @@ export default function QuizDiagnostics() {
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Derive sets and questions from results

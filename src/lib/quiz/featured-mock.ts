@@ -86,8 +86,8 @@ function writeJSON(key: string, value: unknown): void {
 export function getDailyChallenge(): DailyChallengeState {
   const today = todayUtcKey();
   const stored = readJSON<Partial<DailyChallengeState>>(DAILY_KEY) || {};
-  let answered = stored.date === today ? Number(stored.answered ?? 0) : 0;
-  let correct = stored.date === today ? Number(stored.correct ?? 0) : 0;
+  const answered = stored.date === today ? Number(stored.answered ?? 0) : 0;
+  const correct = stored.date === today ? Number(stored.correct ?? 0) : 0;
   let dailyStreak = Number(stored.dailyStreak ?? 0);
   const lastCompletedDate = (stored.lastCompletedDate as string | null) ?? null;
 

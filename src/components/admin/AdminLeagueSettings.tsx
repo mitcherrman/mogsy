@@ -38,7 +38,11 @@ export default function AdminLeagueSettings() {
   const toggleCat = (c: string) => {
     setOpenCats(prev => {
       const n = new Set(prev);
-      n.has(c) ? n.delete(c) : n.add(c);
+      if (n.has(c)) {
+        n.delete(c);
+      } else {
+        n.add(c);
+      }
       return n;
     });
   };

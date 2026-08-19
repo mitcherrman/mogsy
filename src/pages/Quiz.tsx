@@ -183,7 +183,7 @@ const CATEGORY_STYLE_MAP: Record<string, CategoryStyle> = {
 };
 
 function normalizeCategoryKey(category: string | undefined | null): string {
-  return (category || "").toString().trim().toLowerCase().replace(/[\s\-]+/g, "_");
+  return (category || "").toString().trim().toLowerCase().replace(/[\s-]+/g, "_");
 }
 
 function getCategoryStyle(category: string | undefined | null): CategoryStyle {

@@ -26,7 +26,9 @@ function persist(snapshot: EngineSnapshot) {
       LATEST_SNAPSHOT_KEY,
       JSON.stringify({ ts: Date.now(), snapshot }),
     );
-  } catch {}
+  } catch {
+    // localStorage may be unavailable (quota, private mode); snapshot persistence is best-effort.
+  }
 }
 
 export function readPersistedSnapshot(): { ts: number; snapshot: EngineSnapshot } | null {
@@ -171,7 +173,9 @@ export function createSubscriber(cb: SubscribeCallbacks | ((s: EngineSnapshot) =
       ch.postMessage({ kind: "request_snapshot" } satisfies Message);
       diag.reconnectCount += 1;
       emitDiag();
-    } catch {}
+    } catch {
+      // Channel may already be closed; request is best-effort.
+    }
   };
   requestNow();
 

@@ -33,7 +33,6 @@ async function upsert(snapshot: EngineSnapshot) {
     .from("broadcast_live_state")
     .upsert({ id: ROW_ID, snapshot: toPublicSnapshot(snapshot) as unknown as never, updated_at: new Date().toISOString() });
   if (error) {
-    // eslint-disable-next-line no-console
     console.warn("[broadcast-live] publish failed:", error.message);
   }
 }
@@ -79,7 +78,6 @@ export function subscribeLiveSnapshot(onSnapshot: (s: EngineSnapshot | null) => 
       .maybeSingle();
     if (disposed) return;
     if (error) {
-      // eslint-disable-next-line no-console
       console.warn("[broadcast-live] fetch failed:", error.message);
       return;
     }

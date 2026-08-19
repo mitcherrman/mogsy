@@ -31,7 +31,9 @@ export function useAnimationSound() {
       const res = await fetch("/sounds/card-rip.mp3");
       const buf = await res.arrayBuffer();
       ripBufferRef.current = await ctx.decodeAudioData(buf);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
     loadingRef.current = false;
   }, []);
 
@@ -43,7 +45,9 @@ export function useAnimationSound() {
       const res = await fetch("/sounds/youre-chopped.mp3");
       const buf = await res.arrayBuffer();
       chopBufferRef.current = await ctx.decodeAudioData(buf);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
     chopLoadingRef.current = false;
   }, []);
 
@@ -59,7 +63,9 @@ export function useAnimationSound() {
       source.buffer = ripBufferRef.current;
       source.connect(gain); gain.connect(ctx.destination);
       source.start();
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, [loadRipSound]);
 
   const playShatterSound = useCallback(() => {
@@ -81,7 +87,9 @@ export function useAnimationSound() {
       osc.type = "sine"; osc.frequency.setValueAtTime(150, t); osc.frequency.exponentialRampToValueAtTime(60, t + 0.08);
       g2.gain.setValueAtTime(0.1, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
       osc.connect(g2); g2.connect(ctx.destination); osc.start(t); osc.stop(t + 0.12);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const playBurnSound = useCallback(() => {
@@ -100,7 +108,9 @@ export function useAnimationSound() {
       filter.frequency.setValueAtTime(400, t); filter.frequency.exponentialRampToValueAtTime(2000, t + 0.3); filter.Q.value = 1;
       noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
       noise.start(t); noise.stop(t + 0.4);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const playVaporizeSound = useCallback(() => {
@@ -119,7 +129,9 @@ export function useAnimationSound() {
         osc.connect(g); g.connect(ctx.destination);
         osc.start(t + delay); osc.stop(t + delay + 0.16);
       }
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const playCrushSound = useCallback(() => {
@@ -139,7 +151,9 @@ export function useAnimationSound() {
       const g2 = ctx.createGain();
       g2.gain.setValueAtTime(0.08, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
       noise.connect(g2); g2.connect(ctx.destination); noise.start(t); noise.stop(t + 0.1);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const loadMoggedSound = useCallback(async () => {
@@ -150,7 +164,9 @@ export function useAnimationSound() {
       const res = await fetch("/sounds/mogged.mp3");
       const buf = await res.arrayBuffer();
       moggedBufferRef.current = await ctx.decodeAudioData(buf);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
     moggedLoadingRef.current = false;
   }, []);
 
@@ -165,7 +181,9 @@ export function useAnimationSound() {
       source.buffer = moggedBufferRef.current;
       source.connect(gain); gain.connect(ctx.destination);
       source.start();
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, [loadMoggedSound]);
 
   const loadDoakesSound = useCallback(async () => {
@@ -176,7 +194,9 @@ export function useAnimationSound() {
       const res = await fetch("/sounds/surprise-motherfucker.mp3");
       const buf = await res.arrayBuffer();
       doakesBufferRef.current = await ctx.decodeAudioData(buf);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
     doakesLoadingRef.current = false;
   }, []);
 
@@ -209,7 +229,9 @@ export function useAnimationSound() {
         s2.connect(g2); g2.connect(ctx.destination);
         s2.start(ctx.currentTime + 0.15, 0, trimmed);
       }
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, [loadMoggedSound, loadDoakesSound]);
 
   const playChopSound = useCallback(async () => {
@@ -223,7 +245,9 @@ export function useAnimationSound() {
       source.buffer = chopBufferRef.current;
       source.connect(gain); gain.connect(ctx.destination);
       source.start();
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, [loadChopSound]);
 
   const loadAmongusSound = useCallback(async () => {
@@ -234,7 +258,9 @@ export function useAnimationSound() {
       const res = await fetch("/sounds/amongus-death.mp3");
       const buf = await res.arrayBuffer();
       amongusBufferRef.current = await ctx.decodeAudioData(buf);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
     amongusLoadingRef.current = false;
   }, []);
 
@@ -249,7 +275,9 @@ export function useAnimationSound() {
       source.buffer = amongusBufferRef.current;
       source.connect(gain); gain.connect(ctx.destination);
       source.start();
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, [loadAmongusSound]);
 
   const playAnimationSound = useCallback((animationId: string) => {

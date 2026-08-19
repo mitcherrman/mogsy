@@ -74,7 +74,6 @@ export function narrowPoolToForcedPair<T>(
   // Both sides must resolve, or the override is ignored entirely.
   if (found.length !== 2) {
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
       console.warn(
         `[Meta Reflex] ${FORCE_PAIR_PARAM}="${a},${b}" ignored: ` +
           `${found.length} of 2 entities found in the current pool.`,

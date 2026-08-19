@@ -55,7 +55,6 @@ export function useBroadcastSubscriber() {
       onSnapshot: setSnapshot,
       onDiagnostics: setDiagnostics,
       onLog: (level, msg) => {
-        // eslint-disable-next-line no-console
         console[level === "warn" ? "warn" : "log"](`[broadcast-window] ${msg}`);
       },
     });

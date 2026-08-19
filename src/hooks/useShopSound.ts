@@ -28,7 +28,9 @@ export function useShopSound() {
         osc.connect(gain); gain.connect(ctx.destination);
         osc.start(t + i * 0.08); osc.stop(t + i * 0.08 + 0.25);
       });
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const playDiamondTap = useCallback(() => {
@@ -45,7 +47,9 @@ export function useShopSound() {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
       osc.connect(gain); gain.connect(ctx.destination);
       osc.start(t); osc.stop(t + 0.1);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   const playPowerUpSound = useCallback(() => {
@@ -62,7 +66,9 @@ export function useShopSound() {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
       osc.connect(gain); gain.connect(ctx.destination);
       osc.start(t); osc.stop(t + 0.22);
-    } catch {}
+    } catch {
+      // Best-effort sound playback; failure (autoplay block, decode error) is intentionally ignored.
+    }
   }, []);
 
   return { playPurchaseSound, playDiamondTap, playPowerUpSound };

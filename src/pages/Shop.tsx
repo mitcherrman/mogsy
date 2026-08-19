@@ -145,7 +145,9 @@ export default function Shop() {
             setGiftSuccess({ code: data.redeem_code, recipient: data.recipient_email, gift_type: data.gift_type });
             playPurchaseSound();
           }
-        } catch {}
+        } catch {
+          // Best-effort gift verification; the success banner simply won't show.
+        }
       })();
     }
   }, [searchParams]);
@@ -174,7 +176,9 @@ export default function Shop() {
         setIsTrial(false);
       }
       setWasCustomer(!!data?.was_customer);
-    } catch {}
+    } catch {
+      // Best-effort subscription check; UI simply keeps prior state on failure.
+    }
   };
 
   const checkAdmin = async () => {
@@ -224,7 +228,7 @@ export default function Shop() {
       return;
     }
     let priceId = "";
-    let gift: any = { recipient_email: email, message: giftMessage, gift_type: giftType };
+    const gift: any = { recipient_email: email, message: giftMessage, gift_type: giftType };
     if (giftType === "pro_monthly") priceId = STRIPE_GIFT_PRO_MONTHLY_PRICE_ID;
     else if (giftType === "pro_annual") priceId = STRIPE_GIFT_PRO_ANNUAL_PRICE_ID;
     else {

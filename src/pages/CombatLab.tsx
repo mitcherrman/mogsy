@@ -645,7 +645,9 @@ export default function CombatLab() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return { ...defaultConfig, ...JSON.parse(raw) };
-    } catch {}
+    } catch {
+      // Stored config unreadable/corrupt; fall back to defaults.
+    }
     return defaultConfig;
   });
 
@@ -663,7 +665,9 @@ export default function CombatLab() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); config simply won't persist.
+    }
   }, [config]);
 
   /* health */
@@ -2028,7 +2032,9 @@ function InteractiveSandbox({
   useEffect(() => {
     try {
       localStorage.setItem("combat-lab:rank-mode", rankMode);
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); rank mode simply won't persist.
+    }
   }, [rankMode]);
 
   // Load the daily credit status once so the indicator is populated before the
@@ -2102,13 +2108,17 @@ function InteractiveSandbox({
     try {
       const raw = localStorage.getItem(TARGET_SETUP_STORAGE_KEY);
       if (raw) return { ...DEFAULT_TARGET_SETUP, ...JSON.parse(raw) };
-    } catch {}
+    } catch {
+      // Stored target setup unreadable/corrupt; fall back to defaults.
+    }
     return DEFAULT_TARGET_SETUP;
   });
   useEffect(() => {
     try {
       localStorage.setItem(TARGET_SETUP_STORAGE_KEY, JSON.stringify(targetSetup));
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); target setup simply won't persist.
+    }
   }, [targetSetup]);
   const updateTargetSetup = <K extends keyof TargetSetupState>(
     key: K,
@@ -2158,7 +2168,9 @@ function InteractiveSandbox({
   useEffect(() => {
     try {
       localStorage.setItem("combat-lab:summoners", JSON.stringify(summonerPicks));
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); summoner picks simply won't persist.
+    }
   }, [summonerPicks]);
 
   // Visual-only skin selections for attacker / defender profile cards.
@@ -2182,12 +2194,16 @@ function InteractiveSandbox({
   useEffect(() => {
     try {
       localStorage.setItem("combat-lab:attacker-skin", attackerSkin);
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); skin choice simply won't persist.
+    }
   }, [attackerSkin]);
   useEffect(() => {
     try {
       localStorage.setItem("combat-lab:defender-skin", defenderSkin);
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); skin choice simply won't persist.
+    }
   }, [defenderSkin]);
   const { data: championManifest } = useChampionAssets();
   // Reset skin when the selected champion has no matching skin entry.
@@ -2364,7 +2380,9 @@ function InteractiveSandbox({
       if (Array.isArray(parsed?.events)) setEvents(parsed.events);
       if (parsed?.scopes) setScopes(parsed.scopes);
       if (parsed?.attackerStats) setAttackerStats(parsed.attackerStats);
-    } catch {}
+    } catch {
+      // Stored sandbox snapshot unreadable/corrupt; start from a clean state.
+    }
   }, []);
 
   // persist snapshot
@@ -2374,7 +2392,9 @@ function InteractiveSandbox({
         SANDBOX_STORAGE_KEY,
         JSON.stringify({ state, events, scopes, attackerStats })
       );
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); sandbox snapshot simply won't persist.
+    }
   }, [state, events, scopes, attackerStats]);
 
   const visibleActions = useMemo(() => {
@@ -3012,7 +3032,9 @@ function InteractiveSandbox({
   useEffect(() => {
     try {
       localStorage.setItem("combat-lab:auto-reset", String(autoResetEnabled));
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled / quota); auto-reset preference simply won't persist.
+    }
   }, [autoResetEnabled]);
   const [lastResetReason, setLastResetReason] = useState<string>("initial");
   const [resetCounter, setResetCounter] = useState<number>(0);
@@ -3053,7 +3075,9 @@ function InteractiveSandbox({
     setResetCounter((n) => n + 1);
     try {
       localStorage.removeItem(SANDBOX_STORAGE_KEY);
-    } catch {}
+    } catch {
+      // Storage unavailable (private mode / disabled); removal is best-effort.
+    }
   };
 
   const resetCombat = () => {
@@ -3162,7 +3186,6 @@ function InteractiveSandbox({
         reason = "target profile changed";
     }
     hardReset(reason);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot, autoResetEnabled]);
 
   const offline = apiStatus === "offline";
@@ -6691,7 +6714,9 @@ function DeveloperPanel({
           onCopy={() => {
             try {
               navigator.clipboard.writeText(JSON.stringify(selected ?? {}, null, 2));
-            } catch {}
+            } catch {
+              // Clipboard write may fail (permissions/unsupported); copy is best-effort.
+            }
           }}
         />
         <div>

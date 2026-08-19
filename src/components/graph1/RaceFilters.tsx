@@ -149,8 +149,6 @@ function SearchableFacet({
     const pinned = options.filter((o) => chosen.has(o.value));
     const rest = matches.filter((o) => !chosen.has(o.value));
     return [...pinned, ...rest.slice(0, MAX_COMBOBOX_ROWS)];
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedKey
-    // is the stable identity of `selected` for memo purposes
   }, [options, query, selectedKey]);
 
   if (options.length === 0) return null;

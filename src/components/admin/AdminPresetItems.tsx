@@ -115,7 +115,11 @@ export default function AdminPresetItems() {
   const toggleCategory = (cat: string) => {
     setOpenCategories((prev) => {
       const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
+      if (next.has(cat)) {
+        next.delete(cat);
+      } else {
+        next.add(cat);
+      }
       return next;
     });
   };

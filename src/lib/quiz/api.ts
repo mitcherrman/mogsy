@@ -251,7 +251,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let detail = "";
     try {
       detail = await res.text();
-    } catch {}
+    } catch {
+      // Response body unreadable; fall back to statusText below.
+    }
     throw new Error(`Quiz API ${res.status}: ${detail || res.statusText}`);
   }
   return (await res.json()) as T;

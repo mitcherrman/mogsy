@@ -133,5 +133,7 @@ export function clearActiveSession(): void {
   try {
     if (typeof localStorage === "undefined") return;
     localStorage.removeItem(ACTIVE_SESSION_KEY);
-  } catch {}
+  } catch {
+    // Storage unavailable (private mode / disabled): active session simply won't clear.
+  }
 }

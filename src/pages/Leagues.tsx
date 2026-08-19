@@ -89,7 +89,7 @@ export default function Leagues() {
           .order("elo", { ascending: false })
           .limit(50);
 
-        let eloMap = new Map<string, number>();
+        const eloMap = new Map<string, number>();
         if (snapshots) {
           for (const s of snapshots) {
             if (s.item_id && !eloMap.has(s.item_id)) {

@@ -24,7 +24,6 @@ export default function QuizBroadcastView() {
         message: `Visibility change @ ${new Date(diagnostics.lastVisibilityChangeAt).toLocaleTimeString()}`,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diagnostics.lastVisibilityChangeAt]);
   useEffect(() => {
     if (diagnostics.reconnectCount > 0) {
@@ -33,7 +32,6 @@ export default function QuizBroadcastView() {
         message: `BroadcastChannel reconnect (#${diagnostics.reconnectCount})`,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diagnostics.reconnectCount]);
   useEffect(() => {
     if (diagnostics.lastRestoreAt) {
@@ -42,7 +40,6 @@ export default function QuizBroadcastView() {
         message: `Snapshot restored from cache @ ${new Date(diagnostics.lastRestoreAt).toLocaleTimeString()}`,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diagnostics.lastRestoreAt]);
 
   useEffect(() => {
