@@ -31,7 +31,7 @@ const baseUpdate = (over: Partial<UpdateRow> = {}): UpdateRow => ({
   created_at: "2026-07-24T00:00:00Z",
   delta: null,
   delta_pct: null,
-  severity: "info",
+  severity: "unknown",
   flags: [],
   group_key: "Zenara|Q|structural:ability_create",
   ...over,

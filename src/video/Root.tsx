@@ -11,7 +11,6 @@ import {
   GRAPH1_HEIGHT,
   GRAPH1_WIDTH,
   raceVideoTimingForDataset,
-  type Graph1RaceVideoProps,
 } from "./graph1/timing";
 
 /**
@@ -51,9 +50,7 @@ export const RemotionRoot: React.FC = () => {
         }
         defaultProps={{ dataset: SAMPLE_RACE_DATASET }}
         calculateMetadata={({ props }) => ({
-          durationInFrames: raceVideoTimingForDataset(
-            props as Graph1RaceVideoProps,
-          ).totalFrames,
+          durationInFrames: raceVideoTimingForDataset(props).totalFrames,
         })}
       />
     </>

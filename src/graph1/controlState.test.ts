@@ -35,6 +35,7 @@ const DEFAULTS: Graph1DisplayToggles = {
   valueLabel: true,
   dateLabel: true,
   secondaryLabel: true,
+  exactValues: true,
 };
 
 const CONTROLS: Graph1ControlSchema = {

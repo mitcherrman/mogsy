@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { validateStudioJob } from "./studio-request";
+import { isFailure } from "@/lib/result-narrowing";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => String(100 + i));
 
 function expectErrors(body: unknown, pattern: RegExp) {
   const v = validateStudioJob(body);
   expect(v.ok).toBe(false);
-  if (!v.ok) expect(v.errors.join(" | ")).toMatch(pattern);
+  if (isFailure(v)) expect(v.errors.join(" | ")).toMatch(pattern);
 }
 
 describe("validateStudioJob", () => {

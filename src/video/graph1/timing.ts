@@ -26,8 +26,15 @@ export const GRAPH1_WIDTH = 1920;
 export const GRAPH1_HEIGHT = 1080;
 
 /** Composition input props. `dataset` is the raw backend payload
- * (VisualizationDataset), untouched — canonical bytes stay canonical. */
-export interface Graph1RaceVideoProps {
+ * (VisualizationDataset), untouched — canonical bytes stay canonical.
+ *
+ * Declared as a type alias, not an interface, deliberately: Remotion's
+ * `<Composition>` constrains its props to `Record<string, unknown>`, and only
+ * a type alias gets the implicit index signature that satisfies it. As an
+ * interface it silently failed the constraint, so `Props` fell back to
+ * `Record<string, unknown>` and the required `dataset` stopped being
+ * enforced at the composition boundary. */
+export type Graph1RaceVideoProps = {
   dataset: VisualizationDataset;
   /** cadence playback multiplier (1 = 220ms/event); Azir-scale datasets
    * need 8–10x to fit a watchable runtime */
@@ -39,7 +46,7 @@ export interface Graph1RaceVideoProps {
    * (the pre-polish look). Default false — the video shows only canonical
    * checkpoint values, consistent with the browser default. */
   smoothValues?: boolean;
-}
+};
 
 export interface Graph1RaceVideoOptions {
   speed: number;

@@ -29,7 +29,7 @@ vi.mock("@/integrations/supabase/client", () => {
     Object.assign(b, {
       select: chain, eq: chain, in: chain, ilike: chain, order: chain, delete: chain,
       limit: () => Promise.resolve({ data: [], error: null }),
-      insert: (payload: unknown) => {
+      insert: (payload: Record<string, unknown>) => {
         db.insertPayloads.push(payload);
         return Promise.resolve({ data: null, error: db.insertError });
       },

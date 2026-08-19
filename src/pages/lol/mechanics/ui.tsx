@@ -13,6 +13,7 @@ import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatClock, formatDisplayNumber } from "@/lib/mechanics-explorer/api";
+import { isFailure } from "@/lib/result-narrowing";
 import type {
   GameTimeParse,
   MechanicProvenance,
@@ -42,7 +43,8 @@ const STATUS_TEXT: Record<string, string> = {
 /** Spelled-out status pill (never color-only), patch-reports tone map. */
 export function MechanicStatusBadge({ status }: { status: MechanicStatus }) {
   const style = STATUS_STYLES[status] ?? "bg-zinc-500/15 text-zinc-400 border-zinc-500/40";
-  const text = STATUS_TEXT[status] ?? status.replaceAll("_", " ");
+  // split/join, not replaceAll: the app's TS lib target is ES2020.
+  const text = STATUS_TEXT[status] ?? status.split("_").join(" ");
   return (
     <span
       className={cn(
@@ -350,7 +352,7 @@ export function GameTimeField({
         inputMode="numeric"
         className={cn("mt-2 tabular-nums", inputClassName ?? "w-32")}
       />
-      {parsed.ok ? (
+      {!isFailure(parsed) ? (
         <p className="mt-1.5 text-[11px] text-muted-foreground">
           Reading as {formatClock(parsed.seconds)} game time.
         </p>

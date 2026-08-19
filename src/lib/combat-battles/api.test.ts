@@ -9,7 +9,6 @@ vi.mock("@/lib/admin-auth/adminCredentials", () => ({
 import { battlesApi, battlesAdminApi, BattlesApiError } from "./api";
 
 const fetchMock = vi.fn();
-// @ts-expect-error test global
 global.fetch = fetchMock;
 
 function ok(body: unknown) {

@@ -405,7 +405,7 @@ describe("3v3 layout", () => {
 
 describe("3v3 cost preview", () => {
   it("shows the 5-credit cost against the remaining balance", async () => {
-    await loadedPage({ credits: [ok(DEFAULT_CREDITS)] });
+    await loadedPage({ credits: ok(DEFAULT_CREDITS) });
     selectTeamShape(3, 3);
     await waitFor(() =>
       expect(screen.getByTestId("cost-preview")).toHaveTextContent("5 credits")

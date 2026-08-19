@@ -32,6 +32,7 @@ import {
   validateStudioJob,
   type StudioModeKey,
 } from "@/lib/quiz-screenshot/studio-request";
+import { isFailure } from "@/lib/result-narrowing";
 import { DIFFICULTY_TIERS, type DifficultyTier } from "@/lib/quiz-screenshot/difficulty";
 import { MID_CTA_VARIANTS, REPEAT_COPY_VARIANTS } from "@/lib/quiz-screenshot/challenge";
 import { RENDER_FORMATS } from "@/lib/quiz-screenshot/formats";
@@ -343,7 +344,7 @@ export default function ContentStudioPage() {
     ? "Studio server unreachable — start it with: npm run content-studio"
     : jobRunning
       ? "A generation job is already running"
-      : !validation.ok
+      : isFailure(validation)
         ? validation.errors[0]
         : null;
 

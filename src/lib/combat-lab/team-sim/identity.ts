@@ -115,8 +115,19 @@ export function __setAccountIdentitySource(
   cachedAccountId = null;
 }
 
+/**
+ * A fixed-identity source for tests, plus the seam tests use to switch
+ * accounts mid-session. `__set` is part of the declared shape rather than
+ * something asserted onto it, so callers get it without an assertion of
+ * their own.
+ */
+export type FixedIdentitySource = AccountIdentitySource & {
+  /** Move this source to a new account and notify every subscriber. */
+  __set(next: string | null): void;
+};
+
 /** A fixed-identity source for tests. */
-export function fixedIdentitySource(accountId: string | null): AccountIdentitySource {
+export function fixedIdentitySource(accountId: string | null): FixedIdentitySource {
   const listeners = new Set<(id: string | null) => void>();
   let id = accountId;
   return {
@@ -126,12 +137,9 @@ export function fixedIdentitySource(accountId: string | null): AccountIdentitySo
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    // Exposed for tests that switch accounts mid-session.
-    ...({
-      __set(next: string | null) {
-        id = next;
-        for (const listener of listeners) listener(next);
-      },
-    } as Record<string, unknown>),
-  } as AccountIdentitySource & { __set(next: string | null): void };
+    __set(next: string | null) {
+      id = next;
+      for (const listener of listeners) listener(next);
+    },
+  };
 }

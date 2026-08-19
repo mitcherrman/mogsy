@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { COMBAT_API_BASE_URL } from "@/lib/combat-lab/api";
+import { isFailure, isInapplicable } from "@/lib/result-narrowing";
 import {
   MechanicsApiError,
   fetchExplorerContext,
@@ -168,7 +169,7 @@ describe("structure inspector client (5B2)", () => {
     });
     const result = await postStructureInspect({ structure: "nexus", game_time_s: 1800 });
     expect(result.plates.applicable).toBe(false);
-    if (!result.plates.applicable) expect(result.plates.reason).toBe("not a turret");
+    if (isInapplicable(result.plates)) expect(result.plates.reason).toBe("not a turret");
     expect(result.dependencies.targetability?.targetable).toBe(false);
   });
 
@@ -202,7 +203,7 @@ describe("game-time input parsing (presentation only)", () => {
     for (const bad of ["", "banana", "21:75", "1:5", "-3", "12:345"]) {
       const parsed = parseGameTimeInput(bad);
       expect(parsed.ok).toBe(false);
-      if (!parsed.ok) expect(parsed.error.length).toBeGreaterThan(0);
+      if (isFailure(parsed)) expect(parsed.error.length).toBeGreaterThan(0);
     }
   });
 

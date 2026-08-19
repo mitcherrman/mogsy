@@ -58,6 +58,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { combatApi, type CombatLabCreditStatus } from "@/lib/combat-lab/api";
 import { deepEqual } from "@/lib/combat-lab/inputHistory";
+import { isFailure } from "@/lib/result-narrowing";
 
 import {
   fetchRecoverableRequests,
@@ -638,7 +639,7 @@ export function useTeamSimulation(
         retentionSeconds,
       });
       const written = writeRecord(record);
-      if (!written.ok) {
+      if (isFailure(written)) {
         setBlock({ kind: "storage", reason: written.reason });
         return false;
       }

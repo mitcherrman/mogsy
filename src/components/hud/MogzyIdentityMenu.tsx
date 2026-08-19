@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useStatCheckInvites, type StatCheckInvite } from "@/hooks/useStatCheckInvites";
+import { isFailure } from "@/lib/result-narrowing";
 import {
   Dialog,
   DialogContent,
@@ -487,7 +488,7 @@ export default function MogzyIdentityMenu() {
     invite: StatCheckInvite,
     outcome: Awaited<ReturnType<typeof acceptInvite>>,
   ) => {
-    if (outcome.ok) {
+    if (!isFailure(outcome)) {
       setRoomConflict(null);
       setOpen(false);
       navigate(outcome.joinPath);

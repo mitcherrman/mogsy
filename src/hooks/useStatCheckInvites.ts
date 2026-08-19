@@ -33,6 +33,9 @@ export type AcceptOutcome =
   | { ok: true; joinPath: string }
   | { ok: false; code: string | null; message: string; details: StatCheckErrorDetails | null };
 
+/** The failure branch of {@link AcceptOutcome} — the only one carrying a code. */
+export type AcceptFailure = Extract<AcceptOutcome, { ok: false }>;
+
 /** Codes meaning the invite is still good and must stay on screen. */
 const RECOVERABLE = new Set([
   "SC_ACTIVE_ROOM_EXISTS",
@@ -45,7 +48,7 @@ const RECOVERABLE = new Set([
 export const isRecoverableInviteError = (code: string | null): boolean =>
   code !== null && RECOVERABLE.has(code);
 
-function toOutcome(error: unknown): AcceptOutcome {
+function toOutcome(error: unknown): AcceptFailure {
   if (error instanceof StatCheckApiError) {
     return { ok: false, code: error.code, message: error.message, details: error.details };
   }

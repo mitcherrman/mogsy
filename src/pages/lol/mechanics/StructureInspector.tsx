@@ -16,6 +16,7 @@ import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { isInapplicable } from "@/lib/result-narrowing";
 import {
   STRUCTURE_TOKENS,
   type LaneToken,
@@ -280,7 +281,10 @@ export default function StructureInspector({
                   This structure's lane
                 </div>
                 <div className="mt-1.5">
-                  <ChoiceChips
+                  {/* Explicit type argument: a React setter's parameter is
+                      SetStateAction<LaneToken>, which is not a `string` and so
+                      drags the inferred chip type out to the constraint. */}
+                  <ChoiceChips<LaneToken>
                     options={LANES.map((l) => ({ value: l, label: l }))}
                     value={lane}
                     onChange={setLane}
@@ -449,7 +453,7 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
 
   // Sections the backend marked inapplicable, as one compact educational note.
   const notApplicable: Array<{ name: string; reason: string }> = [];
-  if (!result.plates.applicable) {
+  if (isInapplicable(result.plates)) {
     notApplicable.push({
       name: "Turret plates",
       reason: isTurret
@@ -457,13 +461,13 @@ function StructureResultView({ result }: { result: StructureInspectResult }) {
         : `Turret plates do not apply to the ${identity.display_name}.`,
     });
   }
-  if (!result.warming_up.applicable) {
+  if (isInapplicable(result.warming_up)) {
     notApplicable.push({ name: "Warming Up", reason: result.warming_up.reason });
   }
-  if (result.bulwark && !result.bulwark.applicable) {
+  if (result.bulwark && isInapplicable(result.bulwark)) {
     notApplicable.push({ name: "Bulwark", reason: result.bulwark.reason });
   }
-  if (result.overgrowth && !result.overgrowth.applicable) {
+  if (result.overgrowth && isInapplicable(result.overgrowth)) {
     notApplicable.push({ name: "Crystalline Overgrowth", reason: result.overgrowth.reason });
   }
 

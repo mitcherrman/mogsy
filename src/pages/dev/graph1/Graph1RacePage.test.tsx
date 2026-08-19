@@ -245,7 +245,7 @@ describe("dataset selection", () => {
     expect(resolveDatasetKey(catalog, "azir-players")).toBe("azir-players");
     expect(resolveDatasetKey(catalog, "gone")).toBe("faker-champions");
     expect(resolveDatasetKey(catalog, undefined)).toBe("faker-champions");
-    expect(resolveDatasetKey({ schemaVersion: 2, datasets: [] }, "x")).toBeNull();
+    expect(resolveDatasetKey({ schemaVersion: 2, datasets: [], families: [] }, "x")).toBeNull();
     expect(resolveDatasetKey(undefined, "x")).toBeNull();
   });
 });

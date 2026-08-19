@@ -196,7 +196,8 @@ describe.each(["desktop", "mobile"] as const)(
       let text = visibleText(surface());
       for (const allowed of ["Patch Brief", "Patch 26.14", "Buffs", "Nerfs", "Adjustments", "Read full report"]) {
         expect(text).toContain(allowed);
-        text = text.replaceAll(allowed, "");
+        // split/join, not replaceAll: the app's TS lib target is ES2020.
+        text = text.split(allowed).join("");
       }
       // Nothing else is visible: no summaries, numbers, arrows, or captions.
       expect(text.replace(/\s+/g, "")).toBe("");

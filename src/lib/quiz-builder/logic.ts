@@ -24,6 +24,7 @@ import {
   PRO_CHAMPION_SECTIONS,
   type ProChampionSection,
 } from "@/lib/league-docs/pro-data-links";
+import { isFailure } from "@/lib/result-narrowing";
 
 /**
  * Raw form inputs for the optional League Docs Pro Data source. Kept as
@@ -194,7 +195,7 @@ export function validateEditableQuestion(q: EditableQuestion): AnswerValidation 
   }
 
   const proSource = validateProSource(q.proSource);
-  if (!proSource.ok) errors.push(...proSource.errors);
+  if (isFailure(proSource)) errors.push(...proSource.errors);
 
   return { ok: errors.length === 0, errors };
 }

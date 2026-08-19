@@ -172,6 +172,22 @@ function resolveEditorialClaims(claims: EditorialClaim[]): PatchBriefDirection |
     : "adjustment";
 }
 
+/**
+ * The brief's entity type for one report card, or null when the card is not
+ * part of the brief at all.
+ *
+ * `PatchEntityType` also carries "rune" and "system", which the brief has
+ * never covered — and a champion/item card only qualifies from its own main
+ * Summoner's Rift section. Returning the narrowed literal (rather than
+ * testing the same condition inline) is what lets the aggregate below keep
+ * its honest `"champion" | "item"` type instead of the wider card type.
+ */
+function briefEntityType(card: PatchReportCard): "champion" | "item" | null {
+  if (card.entity_type === "champion" && card.section_title === "Champions") return "champion";
+  if (card.entity_type === "item" && card.section_title === "Items") return "item";
+  return null;
+}
+
 const SECTION_TITLES: Record<PatchBriefDirection, PatchBriefSection["title"]> = {
   buff: "Buffs",
   nerf: "Nerfs",
@@ -217,10 +233,8 @@ export function projectPatchBrief(
   const aggregates = new Map<string, Aggregate>();
 
   for (const card of detail.cards) {
-    const qualifying =
-      (card.entity_type === "champion" && card.section_title === "Champions") ||
-      (card.entity_type === "item" && card.section_title === "Items");
-    if (!qualifying || card.changes.length === 0) continue;
+    const entityType = briefEntityType(card);
+    if (entityType === null || card.changes.length === 0) continue;
 
     const claims: EditorialClaim[] = isKnownDirection(card.editorial_direction)
       ? [{ direction: card.editorial_direction, source: card.editorial_direction_source ?? null }]
@@ -237,7 +251,7 @@ export function projectPatchBrief(
       existing.officialImageUrl ??= card.official_image_url;
     } else {
       aggregates.set(key, {
-        entityType: card.entity_type,
+        entityType,
         entityName: card.entity_name,
         entitySlug: card.entity_slug,
         mogzyEntityRef: card.mogzy_entity_ref,

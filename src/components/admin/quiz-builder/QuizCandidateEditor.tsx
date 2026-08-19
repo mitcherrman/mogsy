@@ -20,6 +20,7 @@ import {
   type EditableQuestion,
   type EditableProSource,
 } from "@/lib/quiz-builder/logic";
+import { isFailure } from "@/lib/result-narrowing";
 
 // Radix Select rejects empty-string item values; use a sentinel for "none".
 const NONE = "__none__";
@@ -242,7 +243,7 @@ export function QuizCandidateEditor({ value, onChange, idPrefix }: Props) {
                 </a>
               </div>
             ) : (
-              !proValidation.ok && (
+              isFailure(proValidation) && (
                 <ul className="space-y-0.5 text-[10px] text-red-300" role="alert">
                   {proValidation.errors.map((err, i) => (
                     <li key={i} className="flex items-center gap-1.5">

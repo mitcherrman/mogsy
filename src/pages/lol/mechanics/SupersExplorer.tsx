@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { isFailure } from "@/lib/result-narrowing";
 import {
   type LaneToken,
   type MechanicProvenance,
@@ -111,7 +112,7 @@ export default function SupersExplorer({
       const input = laneInputs[lane];
       if (!input.destroyed) continue;
       const parsed = parseGameTimeInput(input.destroyedText);
-      if (!parsed.ok) {
+      if (isFailure(parsed)) {
         return {
           ok: false as const,
           error: `${LANE_LABELS[lane]} inhibitor destruction time: ${parsed.error}`,

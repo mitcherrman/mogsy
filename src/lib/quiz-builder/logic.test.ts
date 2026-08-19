@@ -20,6 +20,7 @@ import {
 } from "@/lib/quiz-builder/logic";
 import { buildProChampionUrl } from "@/lib/league-docs/pro-data-links";
 import type { QuizBuilderCandidate, QuizBuilderMeta } from "@/lib/quiz/api";
+import { isFailure } from "@/lib/result-narrowing";
 
 const candidate: QuizBuilderCandidate = {
   template_id: "most_picked",
@@ -160,7 +161,7 @@ describe("validateProSource", () => {
   it("blocks a missing slug", () => {
     const r = validateProSource(proSource({ championSlug: "  " }));
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.errors.some((e) => /required/i.test(e))).toBe(true);
+    if (isFailure(r)) expect(r.errors.some((e) => /required/i.test(e))).toBe(true);
   });
 
   it("blocks a malformed slug", () => {
