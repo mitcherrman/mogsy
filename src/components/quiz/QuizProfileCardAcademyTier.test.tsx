@@ -56,12 +56,23 @@ describe("QuizProfileCard — Academy five-tier crown", () => {
     expect(screen.queryByAltText("Platinum rank")).toBeNull();
   });
 
-  it("keeps every legacy stat rendering untouched beside the new crown", () => {
+  it("keeps the track-neutral stats rendering beside the new crown", () => {
     render(<QuizProfileCard progress={{ ...BASE, academy_tier: "gold" }} achievements={[]} />);
     expect(screen.getByText("2,500 XP")).toBeTruthy();
-    expect(screen.getByText("50% to Diamond")).toBeTruthy();
-    // "left" disambiguates the xp-to-next line from the "2,500 XP" total badge.
-    expect(screen.getByText("left").parentElement?.textContent).toContain("500 XP");
+    expect(screen.getByText("62.50%")).toBeTruthy();
+  });
+
+  it("suppresses the legacy next-rank copy when only the tier is present", () => {
+    // Phase 2B supersedes Phase 2 here. With a tier but no interval block,
+    // the card is on the Academy path and must NOT borrow legacy next-rank
+    // wording — "Academy Gold" above "50% to Diamond" (a LEGACY Diamond,
+    // three tiers off the Academy ladder) is exactly the contradiction this
+    // phase removes. It shows the tier alone until the interval arrives.
+    render(<QuizProfileCard progress={{ ...BASE, academy_tier: "gold" }} achievements={[]} />);
+    expect(screen.queryByText(/to Diamond/)).toBeNull();
+    expect(screen.queryByText("left")).toBeNull();
+    // The title is not echoed back as the summary line either.
+    expect(screen.getAllByText("Academy Gold")).toHaveLength(1);
   });
 });
 

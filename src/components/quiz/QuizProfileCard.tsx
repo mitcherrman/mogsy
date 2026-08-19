@@ -7,20 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress, type QuizAchievement } from "@/lib/quiz/api";
 import RankCrown from "@/components/ranked/RankCrown";
-import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
-
-/**
- * RE1 Phase 2 — Academy identity naming. Academy standing is deliberately
- * labelled "Academy <Tier>": it is quiz-XP progression, not competitive
- * Ranked skill, and the two must never read as the same achievement.
- */
-const ACADEMY_TIER_LABEL: Record<RankTier, string> = {
-  bronze: "Academy Bronze",
-  silver: "Academy Silver",
-  gold: "Academy Gold",
-  diamond: "Academy Diamond",
-  challenger: "Academy Challenger",
-};
+import { parseRankTier } from "@/lib/progression/tiers";
+import { academyTierLabel, parseAcademyProgression } from "@/lib/progression/academy";
 
 function fmtPct(n?: number) {
   if (n === undefined || n === null || Number.isNaN(n)) return "—";
@@ -71,24 +59,36 @@ export default function QuizProfileCard({
   // Backend may return `rank` / `next_rank` as nested objects instead of strings.
   const rankObj = (progress?.rank && typeof progress.rank === "object" ? progress.rank : null) as any;
   const nextRankObj = (progress?.next_rank && typeof progress.next_rank === "object" ? progress.next_rank : null) as any;
-  // RE1 Phase 2: the backend's derived five-tier Academy standing, when it is
-  // present AND canonical. `parseRankTier` returns null for a missing field,
-  // an older backend, or any token outside the five-tier vocabulary, and every
-  // legacy value below is computed regardless — so a null here leaves this
-  // card rendering exactly what it rendered before this phase.
+  // RE1 Phase 2/2B: the backend's derived five-tier Academy standing.
+  //
+  // `academyTier` drives the crown and title; `academyProgression` drives the
+  // bar and the next-tier label and additionally requires a coherent interval.
+  // Both return null for a missing field, an older backend, or any token
+  // outside the five-tier vocabulary, and every legacy value below is computed
+  // regardless — so a null in both leaves this card rendering exactly what it
+  // rendered before RE1.
   const academyTier = parseRankTier(progress?.academy_tier);
+  const academyProgression = parseAcademyProgression(progress);
   const legacyRankName =
     progress?.rank_name ||
     rankObj?.rank_name ||
     (typeof progress?.rank === "string" ? progress.rank : null) ||
     "Unranked";
-  const rankName = academyTier ? ACADEMY_TIER_LABEL[academyTier] : legacyRankName;
-  const nextRank =
+  const rankName = academyTier ? academyTierLabel(academyTier) : legacyRankName;
+  const legacyNextRank =
     progress?.next_rank_name ||
     rankObj?.next_rank_name ||
     nextRankObj?.rank_name ||
     nextRankObj?.next_rank_name ||
     (typeof progress?.next_rank === "string" ? progress.next_rank : null);
+  // Once the Academy path is active, NOTHING legacy may reach the supporting
+  // copy: an "Academy Gold" title above "50% to Platinum" was the exact
+  // contradiction Phase 2B exists to remove. At Challenger there is no next
+  // tier at all, which the max-tier copy below handles.
+  const nextRank = academyTier
+    ? (academyProgression?.nextTier ? academyTierLabel(academyProgression.nextTier) : null)
+    : legacyNextRank;
+  const isAcademyMaxTier = !!academyProgression?.isMaxTier;
   const iconUrl =
     resolveQuizAssetUrl(progress?.rank_icon) ||
     resolveQuizAssetUrl(rankObj?.large_icon_path) ||
@@ -96,23 +96,45 @@ export default function QuizProfileCard({
     resolveQuizAssetUrl(rankObj?.small_icon_path) ||
     resolveQuizAssetUrl("assets/ranks/unranked.png");
   const xp = progress?.xp ?? progress?.total_xp ?? rankObj?.progress_xp ?? 0;
-  const pct = Math.max(
+  const legacyPct = Math.max(
     0,
     Math.min(100, Number(progress?.progress_percent ?? rankObj?.progress_percent ?? 0)),
   );
-  const xpToNext =
+  const legacyXpToNext =
     Number(
       progress?.xp_to_next ??
         rankObj?.xp_to_next ??
         nextRankObj?.xp_required ??
         0,
     ) || 0;
-  const nextIconUrl =
+  // Academy percentages are computed server-side from the approved
+  // thresholds; they are read, never recomputed here.
+  const pct = academyProgression ? academyProgression.progressPercent : legacyPct;
+  const xpToNext = academyProgression ? academyProgression.xpToNext : legacyXpToNext;
+  const legacyNextIconUrl =
     resolveQuizAssetUrl(progress?.next_rank_icon) ||
     resolveQuizAssetUrl(nextRankObj?.large_icon_path) ||
     resolveQuizAssetUrl(nextRankObj?.icon_path) ||
     resolveQuizAssetUrl(nextRankObj?.small_icon_path) ||
     null;
+  const nextIconUrl = academyTier ? null : legacyNextIconUrl;
+
+  /**
+   * The one progress summary line. The Academy branches never fall through to
+   * the legacy wording: on the Academy path with no usable interval there is
+   * simply nothing truthful to say about the next tier, so the line is left
+   * empty rather than repeating the title or borrowing the legacy ladder.
+   * The final branch is the pre-RE1 behaviour, unchanged.
+   */
+  const summaryText = !hasProgress
+    ? "Play your first question to rank up"
+    : isAcademyMaxTier
+      ? `${rankName} — max tier reached`
+      : nextRank
+        ? `${Math.round(pct)}% to ${nextRank}`
+        : academyTier
+          ? null
+          : rankName;
 
   // Achievement summary derived from the (optionally provided) achievements list.
   const totalAch = achievements?.length ?? 0;
@@ -198,14 +220,8 @@ export default function QuizProfileCard({
                 <Progress value={pct} className="h-2 transition-all" />
                 {/* One concise progress summary — no duplicated rank/percent wording. */}
                 <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                  <span className="truncate">
-                    {!hasProgress
-                      ? "Play your first question to rank up"
-                      : nextRank
-                        ? `${Math.round(pct)}% to ${nextRank}`
-                        : rankName}
-                  </span>
-                  {hasProgress && nextRank && xpToNext > 0 && (
+                  <span className="truncate">{summaryText}</span>
+                  {hasProgress && !isAcademyMaxTier && nextRank && xpToNext > 0 && (
                     <span className="shrink-0">
                       <span className="font-semibold text-primary/90">{xpToNext.toLocaleString()} XP</span> left
                     </span>
@@ -213,7 +229,22 @@ export default function QuizProfileCard({
                 </div>
               </div>
             </div>
-            {nextIconUrl && (
+            {/* Next-tier preview. On the Academy path this is the next Mogzy
+                crown — never a legacy crest — and Challenger has none. */}
+            {academyProgression?.nextTier ? (
+              <div className="hidden shrink-0 flex-col items-center sm:flex">
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+                <RankCrown
+                  rankName={academyProgression.nextTier}
+                  alt={`${nextRank} crown`}
+                  size="row"
+                  className="opacity-70 grayscale"
+                />
+                <span className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">
+                  {nextRank}
+                </span>
+              </div>
+            ) : nextIconUrl ? (
               <div className="hidden shrink-0 flex-col items-center sm:flex">
                 <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
                 <img
@@ -230,7 +261,7 @@ export default function QuizProfileCard({
                   </span>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">

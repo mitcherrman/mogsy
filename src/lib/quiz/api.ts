@@ -71,14 +71,30 @@ export type QuizProgress = {
   total_attempts?: number;
   correct_attempts?: number;
   /**
-   * RE1 Phase 2, additive: the five-tier Academy standing the backend derives
-   * from `total_xp` ("bronze" | "silver" | "gold" | "diamond" | "challenger").
-   * Typed loosely on purpose — it is `unknown` on the wire and is validated
-   * through `parseRankTier`, so an older backend that omits it, or a value
-   * outside the vocabulary, falls back to the legacy `rank` rendering rather
-   * than throwing. It never replaces `rank` / `rank_name`.
+   * RE1 Phase 2/2B, additive: the five-tier Academy standing and its interval
+   * progress, all derived by the backend from `total_xp`. These never replace
+   * `rank` / `rank_name`, which stay the legacy 11-tier values.
+   *
+   * Every field is typed `unknown` on purpose — this is the wire, and an
+   * older backend omits the whole block. `parseAcademyProgression` validates
+   * them together and returns null unless the set is coherent, so the card
+   * falls back to legacy rendering rather than rendering half a migration.
+   *
+   * The percentage and interval bounds are computed server-side beside
+   * ACADEMY_THRESHOLDS and are NOT recomputed here: one authority, so a
+   * later threshold change cannot leave this client disagreeing.
    */
   academy_tier?: unknown;
+  /** The tier above, or null at Challenger (the max tier). */
+  academy_next_tier?: unknown;
+  /** Inclusive XP that entered the current tier — the bar's floor. */
+  academy_current_tier_xp?: unknown;
+  /** XP that enters the next tier — the bar's ceiling; null at Challenger. */
+  academy_next_tier_xp?: unknown;
+  /** Remaining XP to the next tier; 0 at Challenger. */
+  academy_xp_to_next?: unknown;
+  /** Position within the current tier's interval, 0-100. */
+  academy_progress_percent?: unknown;
 };
 
 /** Answered-question total, tolerant of both `attempts` and the backend's `total_attempts`. */
