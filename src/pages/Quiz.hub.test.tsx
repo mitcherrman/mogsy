@@ -1,9 +1,9 @@
 /**
  * Leaguecraft hub (/quiz) — the Ranked-first one-page composition.
  *
- * Hierarchy under test: compact Leaguecraft header → Ranked hero (with the
- * absorbed progress strip) → Practice for Ranked → Recent Studies → the quiet
- * Mastery strip. The modes withheld from this page (Time Trial / Daily, Stat
+ * Hierarchy under test: compact Leaguecraft header → the dominant Ranked hero
+ * (with the absorbed progress strip) → one short secondary row of Recent
+ * Studies and a demoted Practice panel, with Mastery as a link inside it. The modes withheld from this page (Time Trial / Daily, Stat
  * Check, Knowledge Breakdown, Achievements) must be absent from the hub while
  * their routes stay live elsewhere — see HUB_MODULES in Quiz.tsx.
  */
@@ -134,19 +134,21 @@ describe("Leaguecraft hub — header", () => {
 });
 
 describe("Leaguecraft hub — hierarchy", () => {
-  it("orders Ranked hero → Practice → Recent Studies → Mastery", async () => {
+  it("orders Ranked hero → Recent Studies → the demoted Practice panel", async () => {
     const { container } = await renderHub();
     const ranked = container.querySelector('[data-testid="hub-ranked-section"]')!;
-    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
     const recent = container.querySelector('[data-testid="hub-recent-section"]')!;
-    const mastery = container.querySelector('[data-testid="hub-mastery-section"]')!;
-    for (const el of [ranked, practice, recent, mastery]) expect(el).not.toBeNull();
+    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
+    for (const el of [ranked, recent, practice]) expect(el).not.toBeNull();
     const follows = (a: Element, b: Element) =>
       a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(follows(ranked, practice)).toBeTruthy();
-    expect(follows(practice, recent)).toBeTruthy();
-    expect(follows(recent, mastery)).toBeTruthy();
+    expect(follows(ranked, recent)).toBeTruthy();
+    expect(follows(recent, practice)).toBeTruthy();
     expect(ranked.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
+    // Mastery no longer gets a band of its own: it lives inside the study
+    // panel, below Practice, as the quietest link on the page.
+    expect(container.querySelector('[data-testid="hub-mastery-section"]')).toBeNull();
+    expect(practice.querySelector('[data-testid="hub-mastery-link"]')).not.toBeNull();
   });
 
   it("the Ranked hero keeps the compact progress stats + profile link", async () => {
@@ -168,12 +170,12 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(
       screen.getByText("Complete your placement matches to establish your starting rank."),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Play Placement/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Play$/ })).toBeTruthy();
   });
 
   it("the Ranked CTA still reaches the Ranked flow", async () => {
     await renderHub();
-    fireEvent.click(screen.getByRole("button", { name: /Play Placement/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Play$/ }));
     await waitFor(() =>
       expect(screen.getByTestId("location").textContent).toBe("/quiz/ranked"),
     );
