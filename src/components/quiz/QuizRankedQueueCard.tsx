@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
+import { rankedTierLabel, resolveRankedEmblemUrl } from "@/lib/progression/rankedArt";
+import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
 
 /**
  * Ranked Quiz hero — the dominant card of the Leaguecraft hub. Ranked 1v1
@@ -40,6 +42,27 @@ import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
  * never one derived from the other. `role` is null for a guest, for an
  * account that has never chosen, and on a backend with no role identity; the
  * rank display is identical in every one of those cases.
+ *
+ * RE1 Phase 4B — the competitive identity shown here is the account's MOGZY
+ * RANKED standing, read from `GET /api/ranked/progression` and handed down as
+ * `rankedProgression`. It is NOT the Academy track. The legacy quiz
+ * progression fields (`rank`, `rank_name`, `next_rank`, `rank_icon`,
+ * `progress_percent`) score cumulative quiz XP on an 11-tier ladder and are
+ * deliberately unreachable from the identity block now: showing "Platinum"
+ * here because the player answered a lot of practice questions misstated their
+ * competitive standing. Academy keeps that ladder, on the profile card.
+ *
+ * Separation is enforced by absence, not by convention: nothing in this file
+ * reads a legacy rank field, so the two tracks cannot silently re-merge.
+ *
+ * When there is no Ranked standing to show — older backend, guest, failed or
+ * invalid response — `rankedProgression` is null and the hero falls back to
+ * the neutral unranked presentation LC1 already ships. It never substitutes an
+ * Academy rank name, because a wrong competitive rank is worse than none.
+ *
+ * Presentation only: the tier, rating, percentage and remaining-points figures
+ * are all computed by the backend beside its thresholds and rendered as given.
+ * No cutoff and no progression arithmetic lives in this file.
  */
 export default function QuizRankedQueueCard({
   progress,
@@ -47,6 +70,7 @@ export default function QuizRankedQueueCard({
   onPlay,
   disabled,
   role = null,
+  rankedProgression = null,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -54,48 +78,29 @@ export default function QuizRankedQueueCard({
   disabled?: boolean;
   /** R1: the player's League role, or null when there isn't one to show. */
   role?: RankedRole | null;
+  /** RE1: the account's Ranked five-tier standing, or null when unavailable. */
+  rankedProgression?: RankedProgressionView | null;
 }) {
-  // Backend may return `rank` / `next_rank` as nested objects instead of strings.
-  type RankLike = {
-    rank_name?: string;
-    next_rank_name?: string;
-    large_icon_path?: string;
-    icon_path?: string;
-    progress_percent?: number;
-  };
-  const rankObj =
-    progress?.rank && typeof progress.rank === "object" ? (progress.rank as RankLike) : null;
-  const nextRankObj =
-    progress?.next_rank && typeof progress.next_rank === "object"
-      ? (progress.next_rank as RankLike)
-      : null;
-  const rankName =
-    progress?.rank_name ||
-    rankObj?.rank_name ||
-    (typeof progress?.rank === "string" ? progress.rank : null) ||
-    "Unranked";
-  const nextRank =
-    progress?.next_rank_name ||
-    rankObj?.next_rank_name ||
-    nextRankObj?.rank_name ||
-    (typeof progress?.next_rank === "string" ? progress.next_rank : null);
-  // Unplaced players always see the unranked emblem — never a provisional
-  // rank icon that suggests a finalized rank.
-  const iconUrl = ranked.isPlaced
-    ? resolveQuizAssetUrl(progress?.rank_icon) ||
-      resolveQuizAssetUrl(rankObj?.large_icon_path) ||
-      resolveQuizAssetUrl(rankObj?.icon_path) ||
-      resolveQuizAssetUrl("assets/ranks/unranked.png")
-    : resolveQuizAssetUrl("assets/ranks/unranked.png");
+  // RE1: competitive identity, and nothing but. `progress` is still read for
+  // the stat strip below, but never for the rank shown here.
+  const tier = rankedProgression?.tier ?? null;
+  const tierLabel = tier === null ? null : rankedTierLabel(tier);
+  // Placement honesty (LC1) is unchanged: an unplaced player shows the
+  // unranked emblem and the placement series, even if a rating already exists.
+  const showCompetitive = ranked.isPlaced && rankedProgression !== null && tier !== null;
+  const rankName = showCompetitive ? `Ranked ${tierLabel}` : "Unranked";
+
+  const unrankedEmblem = resolveQuizAssetUrl("assets/ranks/unranked.png");
+  const iconUrl = showCompetitive
+    ? resolveRankedEmblemUrl(tier, "large") ?? unrankedEmblem
+    : unrankedEmblem;
+
+  const atMaxTier = rankedProgression !== null && rankedProgression.nextTier === null;
 
   const placementTotal = 5;
   const placementDone = Math.max(0, placementTotal - ranked.placementMatchesRemaining);
 
   const answered = progressAttempts(progress);
-  const rankPct = Math.max(
-    0,
-    Math.min(100, Math.round(Number(progress?.progress_percent ?? rankObj?.progress_percent ?? 0))),
-  );
   const accuracy =
     progress?.accuracy === undefined || progress?.accuracy === null || Number.isNaN(Number(progress.accuracy))
       ? null
@@ -141,7 +146,8 @@ export default function QuizRankedQueueCard({
                 {iconUrl ? (
                   <img
                     src={iconUrl}
-                    alt={ranked.isPlaced ? `${rankName} rank` : "Unranked"}
+                    alt={showCompetitive ? `${tierLabel} ranked emblem` : "Unranked"}
+                    data-tier={tier ?? undefined}
                     className="h-16 w-16 sm:h-20 sm:w-20 object-contain drop-shadow-[0_0_22px_rgba(201,168,76,0.55)]"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -163,6 +169,16 @@ export default function QuizRankedQueueCard({
                   <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {ranked.isPlaced ? rankName : "Placement Series"}
                   </h3>
+                  {/* The numeric Ranked rating, in the compact slot directly
+                      under the tier it belongs to — no second panel. */}
+                  {showCompetitive && (
+                    <p
+                      data-testid="hub-ranked-rating"
+                      className="text-[11px] font-semibold tabular-nums text-muted-foreground"
+                    >
+                      {rankedProgression!.rating} Ranked rating
+                    </p>
+                  )}
                   {/* Role sits UNDER the rank as its own line — a separate
                       model, shown as separate text, readable without colour. */}
                   {role !== null && (
@@ -244,11 +260,15 @@ export default function QuizRankedQueueCard({
                   </p>
                 </div>
               ) : (
-                nextRank && (
+                showCompetitive && (
                   <div data-testid="rank-progress" className="text-left">
-                    <Progress value={rankPct} className="h-1.5" />
-                    <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {rankPct}% to {nextRank}
+                    <Progress value={rankedProgression!.progressPercent} className="h-1.5" />
+                    <div className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                      {atMaxTier
+                        ? "Challenger — the highest Ranked tier."
+                        : `${rankedProgression!.ratingToNext} rating to ${rankedTierLabel(
+                            rankedProgression!.nextTier!,
+                          )}`}
                     </div>
                   </div>
                 )

@@ -38,6 +38,7 @@ import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTy
 import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
+import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
 import AdSlot from "@/components/ads/AdSlot";
 import {
   getDailyChallenge,
@@ -248,6 +249,9 @@ export default function Quiz() {
   // guest, an older backend, or an account that has never chosen all report
   // `role: null`, and the hero renders exactly as it did before.
   const rankedRole = useRankedRole();
+  // RE1: the hub's competitive identity. Unavailable (older backend, guest,
+  // failed request) stays null and the hero renders its neutral unranked state.
+  const rankedProgression = useRankedProgression();
   const navigate = useNavigate();
   const userId = user?.id || "anonymous";
 
@@ -913,6 +917,7 @@ export default function Quiz() {
               historyError={historyError}
               showMastery={HUB_MODULES.masteryJourney}
               rankedRole={rankedRole.role}
+              rankedProgression={rankedProgression.progression}
             />
 
             {/* ─────────────────────────────────────────────────────────────

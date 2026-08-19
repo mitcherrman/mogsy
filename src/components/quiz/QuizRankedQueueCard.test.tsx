@@ -8,6 +8,8 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import QuizRankedQueueCard from "./QuizRankedQueueCard";
 import type { RankedState } from "@/lib/quiz/featured-mock";
+import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
+import type { RankTier } from "@/lib/progression/tiers";
 
 const PLACEMENT: RankedState = {
   placementMatchesRemaining: 5,
@@ -15,6 +17,24 @@ const PLACEMENT: RankedState = {
   estimatedGain: 25,
   estimatedLoss: 15,
 };
+
+const PLACED: RankedState = { ...PLACEMENT, isPlaced: true, placementMatchesRemaining: 0 };
+
+/** A Ranked progression view as the backend hands it over. Every figure here
+ *  is server-computed; the card re-derives none of it. */
+function progression(over: Partial<RankedProgressionView> = {}): RankedProgressionView {
+  return {
+    rating: 1120,
+    tier: "silver",
+    nextTier: "gold",
+    nextTierRating: 1175,
+    ratingToNext: 55,
+    progressPercent: 45,
+    rated: true,
+    matchesRated: 8,
+    ...over,
+  };
+}
 
 afterEach(cleanup);
 
@@ -45,15 +65,16 @@ describe("QuizRankedQueueCard — placement state", () => {
     expect(onPlay).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the rank name, and the same one-word PLAY action, once placed", () => {
+  it("shows the competitive tier, and the same one-word PLAY action, once placed", () => {
     render(
       <QuizRankedQueueCard
         progress={{ rank_name: "Bronze" }}
-        ranked={{ ...PLACEMENT, isPlaced: true, placementMatchesRemaining: 0 }}
+        ranked={PLACED}
         onPlay={() => {}}
+        rankedProgression={progression({ tier: "gold" })}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Bronze" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Ranked Gold" })).toBeTruthy();
     // LC1: the action is always "PLAY" — placed or not. The placement /
     // ranked distinction is carried by the identity and status blocks around
     // it, not by the button label.
@@ -82,15 +103,20 @@ describe("QuizRankedQueueCard — placement state", () => {
     );
   });
 
-  it("placed: shows rounded XP progress toward the next rank", () => {
+  it("placed: progress is rating toward the next TIER, not XP toward the next quiz rank", () => {
     render(
       <QuizRankedQueueCard
-        progress={{ rank_name: "Bronze", next_rank_name: "Silver", progress_percent: 41.9 }}
-        ranked={{ ...PLACEMENT, isPlaced: true, placementMatchesRemaining: 0 }}
+        // Legacy fields present and deliberately contradictory — none may show.
+        progress={{ rank_name: "Bronze", next_rank_name: "Emerald", progress_percent: 41.9 }}
+        ranked={PLACED}
         onPlay={() => {}}
+        rankedProgression={progression()}
       />,
     );
-    expect(screen.getByTestId("rank-progress").textContent).toContain("42% to Silver");
+    const bar = screen.getByTestId("rank-progress");
+    expect(bar.textContent).toContain("55 rating to Gold");
+    expect(bar.textContent).not.toContain("Emerald");
+    expect(bar.textContent).not.toContain("42%");
   });
 
   it("hero copy: communicates competitive 1v1 matches in a single line", () => {
@@ -125,5 +151,159 @@ describe("QuizRankedQueueCard — placement state", () => {
     const img = screen.getByRole("img", { name: "Unranked" }) as HTMLImageElement;
     expect(img.src).toContain("unranked");
     expect(img.src).not.toContain("bronze");
+  });
+});
+
+/**
+ * RE1 Phase 4B — the hub's competitive identity is the Ranked five-tier
+ * standing, never the Academy/quiz XP ladder that used to feed this block.
+ */
+describe("QuizRankedQueueCard — RE1 Ranked identity", () => {
+  it("names the tier from ranked_tier, ignoring the legacy quiz rank entirely", () => {
+    render(
+      <QuizRankedQueueCard
+        progress={{ rank_name: "Platinum", next_rank_name: "Emerald", rank_icon: "assets/ranks/platinum.png" }}
+        ranked={PLACED}
+        onPlay={() => {}}
+        rankedProgression={progression({ tier: "bronze", nextTier: "silver" })}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Ranked Bronze" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /Platinum/ })).toBeNull();
+  });
+
+  it.each([
+    ["bronze", "Ranked Bronze"],
+    ["silver", "Ranked Silver"],
+    ["gold", "Ranked Gold"],
+    ["diamond", "Ranked Diamond"],
+    ["challenger", "Ranked Challenger"],
+  ] as [RankTier, string][])(
+    "renders the Riot ranked emblem for %s",
+    (tier, heading) => {
+      render(
+        <QuizRankedQueueCard
+          progress={null}
+          ranked={PLACED}
+          onPlay={() => {}}
+          rankedProgression={progression({
+            tier,
+            nextTier: tier === "challenger" ? null : "gold",
+            nextTierRating: tier === "challenger" ? null : 1175,
+          })}
+        />,
+      );
+      expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
+      const img = screen.getByRole("img", { name: `${heading.replace("Ranked ", "")} ranked emblem` }) as HTMLImageElement;
+      // Riot ranked emblem family, addressed by the canonical tier — not a crown.
+      expect(img.getAttribute("data-tier")).toBe(tier);
+      expect(img.src).toContain(tier);
+      expect(img.src).not.toContain("crown");
+      cleanup();
+    },
+  );
+
+  it("renders the numeric Ranked rating in the compact identity slot", () => {
+    render(
+      <QuizRankedQueueCard
+        progress={null}
+        ranked={PLACED}
+        onPlay={() => {}}
+        rankedProgression={progression({ rating: 1287 })}
+      />,
+    );
+    expect(screen.getByTestId("hub-ranked-rating").textContent).toContain("1287 Ranked rating");
+  });
+
+  it("states the Challenger max instead of a next tier", () => {
+    render(
+      <QuizRankedQueueCard
+        progress={null}
+        ranked={PLACED}
+        onPlay={() => {}}
+        rankedProgression={progression({
+          tier: "challenger",
+          nextTier: null,
+          nextTierRating: null,
+          ratingToNext: 0,
+          progressPercent: 100,
+          rating: 1502,
+        })}
+      />,
+    );
+    expect(screen.getByTestId("rank-progress").textContent).toContain(
+      "Challenger — the highest Ranked tier.",
+    );
+  });
+
+  it.each(["Iron", "Platinum", "Emerald", "Master", "Grandmaster"])(
+    "never surfaces the legacy tier %s as the competitive rank",
+    (legacy) => {
+      const { container } = render(
+        <QuizRankedQueueCard
+          progress={{ rank_name: legacy, next_rank_name: legacy, rank: { rank_name: legacy } }}
+          ranked={PLACED}
+          onPlay={() => {}}
+          rankedProgression={progression()}
+        />,
+      );
+      expect(container.textContent).not.toContain(legacy);
+      cleanup();
+    },
+  );
+
+  it("falls back to a NEUTRAL unranked identity when progression is unavailable", () => {
+    // Older backend / signed out / failed request / invalid payload all arrive
+    // here as null. The Academy rank must not stand in for a Ranked tier.
+    const { container } = render(
+      <QuizRankedQueueCard
+        progress={{ rank_name: "Platinum", next_rank_name: "Emerald", rank_icon: "assets/ranks/platinum.png", progress_percent: 88 }}
+        ranked={PLACED}
+        onPlay={() => {}}
+        rankedProgression={null}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Unranked" })).toBeTruthy();
+    expect(container.textContent).not.toContain("Platinum");
+    expect(container.textContent).not.toContain("Emerald");
+    expect(screen.queryByTestId("hub-ranked-rating")).toBeNull();
+    expect(screen.queryByTestId("rank-progress")).toBeNull();
+    // Still fully usable: the one action is present.
+    expect(screen.getByRole("button", { name: /^Play$/ })).toBeTruthy();
+    const img = screen.getByRole("img", { name: "Unranked" }) as HTMLImageElement;
+    expect(img.src).toContain("unranked");
+  });
+
+  it("keeps the LC1 hero structure intact around the corrected identity", () => {
+    render(
+      <QuizRankedQueueCard
+        progress={{ current_streak: 3, best_streak: 7, accuracy: 61, attempts: 20 }}
+        ranked={PLACED}
+        onPlay={() => {}}
+        rankedProgression={progression()}
+      />,
+    );
+    expect(screen.getByTestId("ranked-hero")).toBeTruthy();
+    expect(screen.getByTestId("hero-stat-strip")).toBeTruthy();
+    expect(screen.getByText("Ranked Quiz")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Play$/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /View full profile/ })).toBeTruthy();
+    expect(screen.getByText("+25")).toBeTruthy();
+  });
+
+  it("unplaced players keep LC1 placement honesty even with a live rating", () => {
+    render(
+      <QuizRankedQueueCard
+        progress={null}
+        ranked={{ ...PLACEMENT, placementMatchesRemaining: 3 }}
+        onPlay={() => {}}
+        rankedProgression={progression({ tier: "diamond" })}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Placement Series" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /Ranked Diamond/ })).toBeNull();
+    expect(screen.queryByTestId("hub-ranked-rating")).toBeNull();
+    const img = screen.getByRole("img", { name: "Unranked" }) as HTMLImageElement;
+    expect(img.src).toContain("unranked");
   });
 });

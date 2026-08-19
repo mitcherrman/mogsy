@@ -8,6 +8,7 @@ import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { RankedRole } from "@/lib/ranked-public/roles";
+import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
 
 /**
  * Leaguecraft hub — the Ranked-first one-page composition served at /quiz.
@@ -53,12 +54,16 @@ export default function LeaguecraftHub({
   historyError,
   showMastery = true,
   rankedRole = null,
+  rankedProgression = null,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
   /** R1: the player's League role, forwarded to the hero. Presentation only —
    * this component still fetches nothing. */
   rankedRole?: RankedRole | null;
+  /** RE1: the account's Ranked five-tier standing, forwarded to the hero.
+   * Still presentation only — this component fetches nothing. */
+  rankedProgression?: RankedProgressionView | null;
   onPlayRanked: () => void;
   sets: QuizSet[];
   setsLoading: boolean;
@@ -85,6 +90,7 @@ export default function LeaguecraftHub({
           disabled={false}
           onPlay={onPlayRanked}
           role={rankedRole}
+          rankedProgression={rankedProgression}
         />
       </section>
 
