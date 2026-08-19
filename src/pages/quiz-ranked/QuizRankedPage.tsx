@@ -23,7 +23,9 @@ import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import { RankedMatchHistory } from "./RankedMatchHistory";
 import { RankedRolePicker } from "./RankedRolePicker";
+import { RankedTierPanel } from "./RankedTierPanel";
 import { RankedClass, useRankedQueue } from "./useRankedQueue";
+import { useRankedProgression } from "./useRankedProgression";
 import { useRankedRole } from "./useRankedRole";
 
 const BOT_DIFFICULTIES: { id: BotDifficulty; label: string }[] = [
@@ -107,6 +109,8 @@ export default function QuizRankedPage() {
 function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
   const q = useRankedQueue();
   const roleCtl = useRankedRole();
+  // RE1 3B: read-only Ranked standing. Its absence never blocks the queue.
+  const progressionCtl = useRankedProgression();
   const [botMatchId, setBotMatchId] = useState<string | null>(null);
   const [recoveredMatchId, setRecoveredMatchId] = useState<string | null>(null);
   const [recoveryChecked, setRecoveryChecked] = useState(false);
@@ -238,6 +242,14 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
         <section data-testid="ranked-fatal-queue" className="rounded-lg border border-destructive bg-card p-4">
           <p className="text-sm text-destructive">{q.error}</p>
         </section>
+      )}
+
+      {/* RE1 3B — Mogzy competitive standing, shown on the idle/queue
+          surface only. Renders nothing at all when the backend has no
+          progression to give (older deployment, guest, read failure). */}
+      {(q.state === "selecting_class" || q.state === "joining")
+        && progressionCtl.progression !== null && (
+        <RankedTierPanel progression={progressionCtl.progression} />
       )}
 
       {(q.state === "selecting_class" || q.state === "joining") && (

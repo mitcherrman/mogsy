@@ -17,6 +17,7 @@ import {
   readPrivatePlayer,
   readPublicRound,
   readQueueStatus,
+  readRankedProgression,
   readRankedRole,
   readResolvedEnvelope,
   readResume,
@@ -26,6 +27,7 @@ import {
   PrivatePlayerView,
   PublicRoundView,
   QueueStatusView,
+  RankedProgressionView,
   RankedRoleView,
   ResumeView,
 } from "./contracts";
@@ -204,6 +206,19 @@ export const setRankedRole = (role: RankedRole, signal?: AbortSignal): Promise<R
   request("/api/ranked/role", readRankedRole, {
     method: "PUT", body: { role }, signal,
   });
+
+// --------------------------------------- Ranked tier progression (RE1 3B)
+
+/**
+ * The caller's own Ranked rating and its derived five-tier standing.
+ *
+ * Self-scoped: identity is the bearer JWT and no opponent's rating is ever
+ * returned. A backend that predates RE1 Phase 3B answers 404/405 — callers
+ * treat that as "no Ranked progression to show" and render nothing, rather
+ * than blocking the queue.
+ */
+export const getRankedProgression = (signal?: AbortSignal): Promise<RankedProgressionView> =>
+  request("/api/ranked/progression", readRankedProgression, { signal });
 
 // ------------------------------------------------------------- queue
 

@@ -22,6 +22,7 @@ import type {
 } from "@/lib/ranked-core/adapters/adaptToViews";
 import type { OptionMediaView } from "@/lib/ranked-core/viewTypes";
 import { isRankedRole, type RankedRole } from "./roles";
+import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 
 export class RankedPublicParseError extends Error {
   constructor(message: string) {
@@ -1258,6 +1259,58 @@ export function readRankedRole(body: unknown): RankedRoleView {
     role: readRole(b.role),
     selectedAt: nstr(b.selected_at, "selected_at"),
     updatedAt: nstr(b.updated_at, "updated_at"),
+  };
+}
+
+/**
+ * The caller's own Ranked five-tier progression (`GET /api/ranked/progression`).
+ *
+ * RE1 Phase 3B. Every number here is DERIVED SERVER-SIDE from the competitive
+ * rating; this client renders them and re-derives no threshold of its own, so
+ * a later cutoff change cannot leave the two disagreeing. Nothing is stored.
+ *
+ * This is Mogzy competitive standing, NOT the player's Riot Solo Queue rank.
+ */
+export interface RankedProgressionView {
+  rating: number;
+  tier: RankTier;
+  nextTier: RankTier | null;
+  nextTierRating: number | null;
+  ratingToNext: number;
+  progressPercent: number;
+  /** False for an account that has never had a rated match. */
+  rated: boolean;
+  matchesRated: number;
+}
+
+/**
+ * Parse the progression payload. The tier must be one of the canonical five —
+ * a legacy League tier (iron/platinum/emerald/master/grandmaster) or an
+ * unknown token is a contract violation here, not a value to render.
+ */
+export function readRankedProgression(body: unknown): RankedProgressionView {
+  const b = rec(body, "ranked_progression");
+  const tier = parseRankTier(b.ranked_tier);
+  if (tier === null) {
+    throw new RankedPublicParseError("ranked_tier must be a canonical five-tier value");
+  }
+  const rawNext = b.ranked_next_tier;
+  let nextTier: RankTier | null = null;
+  if (rawNext !== null && rawNext !== undefined) {
+    nextTier = parseRankTier(rawNext);
+    if (nextTier === null) {
+      throw new RankedPublicParseError("ranked_next_tier must be canonical or null");
+    }
+  }
+  return {
+    rating: num(b.rating, "rating"),
+    tier,
+    nextTier,
+    nextTierRating: nnum(b.ranked_next_tier_rating, "ranked_next_tier_rating"),
+    ratingToNext: num(b.ranked_rating_to_next, "ranked_rating_to_next"),
+    progressPercent: num(b.ranked_progress_percent, "ranked_progress_percent"),
+    rated: b.rated === undefined ? true : bool(b.rated, "rated"),
+    matchesRated: b.matches_rated === undefined ? 0 : num(b.matches_rated, "matches_rated"),
   };
 }
 
