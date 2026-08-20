@@ -12,6 +12,7 @@ import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
+import { RoundResultChip } from "@/components/ranked-arena/RoundResultChip";
 import { SegmentResultBanner } from "@/components/ranked-arena/SegmentResultBanner";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
@@ -20,9 +21,9 @@ import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import {
   abilityTrayIsUseful, opponentPresenceLabel, projectAbilities,
-  projectAbilityPermissions, projectCombatants, projectDamageHistory,
-  projectMascotReactions, projectPermissions, projectRevealDamage, projectRevealOutcomes,
-  projectSurfaceReveal, projectTimer,
+  projectAbilityPermissions, projectCombatants, projectMascotReactions,
+  projectPermissions, projectRevealDamage, projectRevealOutcomes,
+  projectRoundHistory, projectSurfaceReveal, projectTimer,
 } from "./rankedViews";
 import { useRankedMatch } from "./useRankedMatch";
 
@@ -50,6 +51,16 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const m = useRankedMatch(matchId, viewerUserId);
   const [tick, setTick] = useState(0);
   const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
+  /**
+   * The settlement banner's Details expansion, owned HERE rather than by the
+   * banner, because the arena now decides when the banner exists at all.
+   *
+   * The banner is transient (see `showSettlement` below). If it simply
+   * unmounted at the end of the reveal beat it would take an open breakdown
+   * with it, which is losing the detail rather than deferring it — so an open
+   * Details keeps the banner mounted for as long as the player wants it.
+   */
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   /**
    * The snapshot the QUESTION SURFACE renders from — deliberately laggier than
@@ -97,12 +108,23 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
    * decides anything — outcome, damage dealt and HP after are all read off the
    * authoritative settlement.
    */
-  const damageHistory = useMemo(() => ({
+  const roundHistory = useMemo(() => ({
     player: combatants
-      ? projectDamageHistory(m.damageLog, combatants.player.playerId) : [],
+      ? projectRoundHistory(m.damageLog, combatants.player.playerId) : [],
     opponent: combatants
-      ? projectDamageHistory(m.damageLog, combatants.opponent.playerId) : [],
+      ? projectRoundHistory(m.damageLog, combatants.opponent.playerId) : [],
   }), [m.damageLog, combatants]);
+  // A NEW settlement always starts collapsed. Render-time reset, no effect
+  // tick — the same shape the banner used to run internally, moved out with
+  // the state it belongs to. Keyed on WHICHEVER settlement the banner is
+  // showing (a segment transcript wins, exactly as in `revealNode`), so a
+  // settled Meta Reflex block collapses the expansion too.
+  const shownSettlement: unknown = m.lastSegmentSettlement ?? m.lastResolved;
+  const [seenSettlement, setSeenSettlement] = useState(shownSettlement);
+  if (seenSettlement !== shownSettlement) {
+    setSeenSettlement(shownSettlement);
+    setDetailsOpen(false);
+  }
   const revealOutcomes = useMemo(
     () => projectRevealOutcomes(m.lastResolved, m.revealHold),
     [m.lastResolved, m.revealHold]);
@@ -305,7 +327,33 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // budget never includes settlement detail. Each banner collapses itself
   // whenever a NEW settlement arrives, so the full transcript can never mount
   // beneath an active question on its own.
-  const revealNode = m.lastSegmentSettlement ? (
+  /**
+   * WHEN THE SETTLEMENT BANNER EXISTS — the reveal-lifecycle repair.
+   *
+   * This used to be "whenever a settlement exists", and `lastResolved` is only
+   * ever replaced, never cleared, so from the first settled round onward the
+   * banner was permanently on screen. The result: the header said ROUND 6 and
+   * both columns said "Thinking…" while a full-width bar below still shouted
+   * CORRECT · 14 damage dealt · Round 5 resolved. It was the only reveal
+   * surface in the arena NOT gated on the beat — the column verdicts, the
+   * damage numbers and the mascot reactions all resolve and then stand down.
+   *
+   * Three reasons to be on screen, and nothing else:
+   *
+   *  1. `revealHold` — the settlement beat itself. Same gate, same ~1.5s, as
+   *     every other reveal surface.
+   *  2. `isProgression` — a level-2 choice is owed. The reveal is what
+   *     EXPLAINS the level-up being chosen, and the choice can outlast the
+   *     beat, so it stays for as long as the prompt does.
+   *  3. `detailsOpen` — the player expanded the breakdown. Pulling it out from
+   *     under them would be losing the detail, not deferring it.
+   *
+   * The compact, permanent form of this information now lives in the TOP strip
+   * (`RoundResultChip`). Nothing takes the bottom's place: that region is
+   * deliberately left empty for the round timeline.
+   */
+  const showSettlement = m.revealHold || isProgression || detailsOpen;
+  const revealNode = !showSettlement ? null : m.lastSegmentSettlement ? (
     <SegmentResultBanner
       reveal={m.lastSegmentSettlement.reveal}
       viewerUserId={viewerUserId}
@@ -315,11 +363,14 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
       // ability row at all, rather than a meaningless "—" placeholder.
       abilitiesByPlayerId={progressionEnabled
         ? m.lastSegmentSettlement.abilitiesByPlayerId : {}}
+      open={detailsOpen}
+      onOpenChange={setDetailsOpen}
     />
   ) : m.lastResolved ? (
     <RevealBanner settlement={m.lastResolved} viewerSlot="p1"
       namesByPlayerId={revealNames(m.lastResolved)}
-      showAbilities={progressionEnabled} />
+      showAbilities={progressionEnabled}
+      open={detailsOpen} onOpenChange={setDetailsOpen} />
   ) : null;
 
   return (
@@ -344,6 +395,18 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             </span>
           )}
         </div>
+        {/* The PREVIOUS round's result, compact and permanent — the top strip
+            is where match state lives. Third child of a `justify-between`
+            row, so it settles into the gap the strip already had between the
+            round title and the clock; it is `hidden md:flex` because below
+            that width the strip has no gap to settle into (the duelist
+            ledgers carry the same history at every width). It is one line
+            inside the strip's existing reserved min-height, so a round
+            resolving cannot grow the header. */}
+        {m.lastResolved && (
+          <RoundResultChip settlement={m.lastResolved} viewerSlot="p1"
+            className="hidden md:flex" />
+        )}
         {/* RA10: the timer block sits behind a brass hairline, scoreboard-style,
             so the clock reads as its own instrument. Border only — the strip's
             reserved min-height is untouched. */}
@@ -413,7 +476,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
         <div className="lg:col-start-1 lg:row-start-1 lg:h-full">
           <CombatantPanel combatant={combatants.player}
             progressionEnabled={progressionEnabled}
-            damage={damageHistory.player}
+            damage={roundHistory.player}
             outcome={revealOutcomes[combatants.player.playerId] ?? null}
             damageDealt={revealDamage[combatants.player.playerId] ?? null}
             reaction={mascotReactions[combatants.player.playerId] ?? null} />
@@ -421,7 +484,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
         <div className="lg:col-start-3 lg:row-start-1 lg:h-full">
           <CombatantPanel combatant={combatants.opponent}
             progressionEnabled={progressionEnabled}
-            damage={damageHistory.opponent}
+            damage={roundHistory.opponent}
             outcome={revealOutcomes[combatants.opponent.playerId] ?? null}
             damageDealt={revealDamage[combatants.opponent.playerId] ?? null}
             reaction={mascotReactions[combatants.opponent.playerId] ?? null} />
@@ -562,10 +625,12 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           </div>
       )}
 
-      {/* The reveal lands at the very END of the page, below everything it
-          could otherwise displace. It used to sit inside the centre column,
-          where its arrival pushed the question, the ability tray and the
-          status panel down the screen mid-round. */}
+      {/* The settlement banner lands at the very END of the page, below
+          everything it could otherwise displace, and only for the beat it
+          describes (see `showSettlement`). Between rounds this region is
+          EMPTY, and deliberately so: the bottom of the arena is reserved for
+          the round timeline, and nothing here may take that space with
+          another permanent result panel. */}
       {revealNode}
     </div>
   );

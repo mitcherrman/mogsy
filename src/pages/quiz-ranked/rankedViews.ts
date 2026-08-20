@@ -33,32 +33,72 @@ import { rankedRoleLabel } from "@/lib/ranked-public/roles";
 import type { PresenceView, PrivatePlayerView, PublicRoundView } from "@/lib/ranked-public/contracts";
 
 /**
+ * Does this MATCH speak roles?
+ *
+ * A match-level question, answered once and applied to both combatants — see
+ * `CombatantView.identityMode` for why the per-participant answer is the wrong
+ * one. Two independent signals, either of which settles it:
+ *
+ *  * any participant carries a League role — a match cannot have frozen a role
+ *    for one seat and be a pre-R1 match; and
+ *  * the match's own frozen config reports no progression layer, which is the
+ *    R1 signal (`level_thresholds=(0,)` → `max_level == 1`). This catches the
+ *    R1 match where NEITHER seat has a role, which a role sniff alone would
+ *    misread as pre-R1 and dress in combat classes.
+ *
+ * `progressionEnabled` is parsed compatibility-safe (absent/null ⇒ `true`), so
+ * a backend that predates R1 answers "legacy" here, and a flag-off match —
+ * which the backend gives pre-R1 semantics exactly, legacy thresholds and both
+ * roles NULL — also answers "legacy". Neither changes shape.
+ *
+ * Nothing here maps a class to a role or a role to a class in either
+ * direction; it only chooses which vocabulary the match is allowed to use.
+ */
+function matchIdentityMode(pub: PublicRoundView): "role" | "legacy_class" {
+  if (pub.players.some((p) => p.role !== null)) return "role";
+  return pub.progressionEnabled ? "legacy_class" : "role";
+}
+
+/**
  * Combatant views (viewer perspective) with authoritative frozen max HP.
  *
- * R1: the identity TAG names the player's League role when the match froze
- * one, and falls back to the legacy class for every pre-R1 match. The tag is
+ * R1: the identity TAG names the player's League role, and nothing else. It is
  * read straight off the projection — never derived from the class, and never
- * the other way round. The decorative class crest beside it is unchanged and
- * stays a legacy asset until the LC1 art follow-up replaces it; it is
- * `aria-hidden` and the tag text is what carries identity.
+ * the other way round.
+ *
+ * THE `TANK` DEFECT, and why the fallback is gone. This used to read
+ * `rankedRoleLabel(p.role) ?? p.classId`, which is correct for a pre-R1 match
+ * (whose only identity IS the class) and wrong for every current one. A bot
+ * legitimately carries `role: null` — the backend refuses to invent one, and
+ * refuses to derive one from a class — so the fallback fired on the bot and
+ * printed its combat class in the role slot, uppercased, as `TANK`. Tank is
+ * not a League role.
+ *
+ * The class now reaches presentation only through `identityMode`, i.e. only on
+ * a match that has no roles at all. On a role match a role-less participant
+ * gets no tag from here and the panel supplies the NEUTRAL role label instead.
  */
 export function projectCombatants(pub: PublicRoundView, viewerUserId: string): CombatantViews {
   const identities: Record<string, { name: string; tag?: string; roleId?: string | null }> = {};
   const maxHpByPlayerId: Record<string, number> = {};
+  const identityMode = matchIdentityMode(pub);
   for (const p of pub.players) {
     // Phase 11: the ROLE ID travels alongside the label so the arena can pick
-    // the role crest without re-parsing the label back into an id. Null for a
-    // pre-R1 match — the panel then falls back to the legacy class identity,
-    // which is the only case where `classId` reaches presentation at all.
+    // the role crest without re-parsing the label back into an id.
     identities[p.playerId] = {
       name: p.playerId === viewerUserId ? "You" : "Opponent",
-      tag: rankedRoleLabel(p.role) ?? p.classId,
+      // Undefined, never a class, when this participant has no role. On a
+      // role match the panel fills the slot with the neutral role label; on a
+      // legacy match the class is the identity and is used verbatim.
+      tag: identityMode === "role"
+        ? (rankedRoleLabel(p.role) ?? undefined)
+        : p.classId,
       roleId: p.role,
     };
     if (p.maxHp !== null) maxHpByPlayerId[p.playerId] = p.maxHp;
   }
   return combatantViewsFromPlayers(pub.players, {
-    viewerPlayerId: viewerUserId, identities, maxHpByPlayerId,
+    viewerPlayerId: viewerUserId, identities, maxHpByPlayerId, identityMode,
   });
 }
 
@@ -184,59 +224,72 @@ export function opponentPresenceLabel(presence: PresenceView | null): string | n
 }
 
 // ---------------------------------------------------------------------------
-// QUIZ1 Phase 11 — recent-damage history for the duelist columns.
+// Recent-round combat history for the duelist columns.
 // ---------------------------------------------------------------------------
 
 /**
- * One glance-able line under a duelist's HP bar: what happened to THAT
- * player's health in one settled round.
+ * One row of a duelist's recent-round ledger: what happened to THAT player in
+ * one settled round.
  *
  * Every field is read straight off the authoritative settlement. Nothing is
- * derived arithmetically — in particular `amount` is the backend's
+ * derived arithmetically — in particular `taken` is the backend's
  * `finalDamageReceived`, never `hpBefore - hpAfter`, because the two can
  * legitimately differ (a floor, a heal, a clamp) and the settlement is the
  * authority on which one is the damage.
  */
-export interface DamageHistoryEntry {
+export interface RoundHistoryEntry {
   /** Stable key: a round is settled once, so the round number identifies it. */
   roundNumber: number;
-  /** `hit` = HP was lost. `blocked` = a shield ate the whole instance. */
-  kind: "hit" | "blocked";
-  /** HP lost (`hit`) or absorbed (`blocked`). Always > 0. */
-  amount: number;
-  /** Authoritative HP after this round, for the accessible description. */
+  /** This player's verdict in that round. */
+  outcome: ResolvedCombatantView["outcome"];
+  /** Damage this player DEALT. 0 = none. */
+  dealt: number;
+  /** Damage this player TOOK. 0 = none. */
+  taken: number;
+  /** Damage a shield absorbed for this player. 0 = none. */
+  absorbed: number;
+  /** Authoritative HP either side of the round, for the accessible description. */
+  hpBefore: number;
   hpAfter: number;
+  /** The round ended on the clock rather than on both answers. */
+  timeExpired: boolean;
 }
 
 /**
- * The last few HP changes for one player, oldest first.
+ * The last few settled rounds for one player, oldest first.
  *
- * DELIBERATELY OMITS rounds where nothing happened. A round in which both
- * players answered correctly costs nobody health, and a row saying so would be
- * three-quarters of a typical trail — the strip is meant to explain the HP bar
- * at a glance, and a wall of "0" explains nothing. A fully shielded instance is
- * the one zero-damage event that IS kept, because "you were hit and it was
- * absorbed" is a different fact from "you were not hit".
+ * ONE ROW PER SETTLED ROUND, including rounds in which nobody lost health.
+ * The predecessor of this projection deliberately dropped those, because it
+ * fed a strip of damage chips under the HP bar and a wall of "0" explains
+ * nothing about an HP bar. This is a ledger of ROUNDS, and two things changed
+ * with it:
+ *
+ *  * the news in a no-damage round is the OUTCOME ("both correct"), which the
+ *    chip strip could not show and this can; and
+ *  * the two columns are read across as a pair. If one side omitted round 4
+ *    and the other did not, the two ledgers would describe different rows at
+ *    the same height — which is precisely the mirroring the arena is for.
+ *
+ * A player absent from a settlement is skipped, not defaulted.
  */
-export function projectDamageHistory(
+export function projectRoundHistory(
   log: ResolvedRoundView[], playerId: string,
-): DamageHistoryEntry[] {
-  const out: DamageHistoryEntry[] = [];
+): RoundHistoryEntry[] {
+  const out: RoundHistoryEntry[] = [];
   for (const settlement of log) {
     const player = Object.values(settlement.players)
       .find((p) => p.playerId === playerId);
     if (!player) continue;
-    if (player.finalDamageReceived > 0) {
-      out.push({
-        roundNumber: settlement.roundNumber, kind: "hit",
-        amount: player.finalDamageReceived, hpAfter: player.hpAfter,
-      });
-    } else if (player.shieldAbsorbed > 0) {
-      out.push({
-        roundNumber: settlement.roundNumber, kind: "blocked",
-        amount: player.shieldAbsorbed, hpAfter: player.hpAfter,
-      });
-    }
+    out.push({
+      roundNumber: settlement.roundNumber,
+      outcome: player.outcome,
+      dealt: player.finalDamageDealt,
+      taken: player.finalDamageReceived,
+      absorbed: player.shieldAbsorbed,
+      hpBefore: player.hpBefore,
+      hpAfter: player.hpAfter,
+      timeExpired: settlement.endReason === "deadline_expired",
+    });
   }
   return out;
 }

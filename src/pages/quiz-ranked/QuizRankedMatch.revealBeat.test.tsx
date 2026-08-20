@@ -248,15 +248,26 @@ describe("RA1 1.3 — settlement capture", () => {
     expect(screen.getByTestId("reveal-userB")).toHaveTextContent("Opponent");
   });
 
-  it("restores the reveal on resume after a refresh", async () => {
+  it("restores the last result on resume after a refresh — in the HUD, not as a beat", async () => {
     // A settlement already exists when the component mounts — the refresh case.
     backend.latestResolved = { payload: resolvedPayload(1) };
     backend.activeRound = 2;
     await mount();
 
-    const reveal = await screen.findByTestId("reveal-panel", undefined, { timeout: 4000 });
-    expect(reveal).toBeInTheDocument();
-    expect(screen.getByTestId("reveal-side-userB")).toHaveTextContent("Opponent");
+    // The resumed settlement IS recovered, and now surfaces where match state
+    // lives: the top strip. Both damage directions are reported, because this
+    // fixture has each side dealing and taking 10.
+    const chip = await screen.findByTestId("ranked-last-result", undefined, { timeout: 4000 });
+    expect(chip).toHaveAttribute("data-round", "1");
+    expect(chip).toHaveAttribute("data-outcome", "correct");
+    expect(chip).toHaveTextContent(/10 dmg/);
+    expect(chip).toHaveTextContent(/took 10/);
+    // ...and it does NOT replay the settlement beat. Resume deliberately
+    // starts no hold (a reconnecting player must not have interactivity
+    // withheld), so re-shouting a round they already watched resolve — under a
+    // question that is already live — is exactly the dominance this removed.
+    expect(holdActive()).toBe(false);
+    expect(screen.queryByTestId("reveal-panel")).toBeNull();
   });
 
   it("does not re-fetch a round whose settlement failed to adapt", async () => {
@@ -342,5 +353,103 @@ describe("RA1 1.4 — the reveal beat", () => {
     fireEvent.click(choice);
     // One click submits — no confirm step was introduced by the beat.
     await waitFor(() => expect(backend.submissions).toHaveLength(1));
+  });
+});
+
+/**
+ * THE RESULT LIFECYCLE, and where the result lives between rounds.
+ *
+ * The defect these pin: `lastResolved` is only ever replaced, never cleared,
+ * and the bottom banner rendered on "a settlement exists" rather than "a
+ * settlement is being revealed". From the first settled round onward the arena
+ * showed ROUND 6 with both duelists "Thinking…" above a full-width bar still
+ * shouting CORRECT · 14 damage dealt · Round 5 resolved. It was the only
+ * reveal surface not gated on the beat.
+ */
+describe("the settlement banner stands down; the top HUD carries the result", () => {
+  it("clears the banner when the beat ends, leaving the bottom of the arena empty", async () => {
+    await mount();
+    await screen.findByTestId("answer-grid");
+    advanceRound();
+
+    await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
+    expect(screen.getByTestId("reveal-panel")).toBeInTheDocument();
+
+    await waitFor(() => expect(holdActive()).toBe(false),
+      { timeout: REVEAL_HOLD_MS + 2000 });
+    // The next round is live and the previous round's bar is gone with the
+    // beat — nothing permanent replaces it, because the bottom is reserved.
+    expect(screen.queryByTestId("reveal-panel")).toBeNull();
+    expect(questionSection().getAttribute("data-input-open")).toBe("true");
+  });
+
+  it("keeps the compact result in the TOP strip after the beat", async () => {
+    await mount();
+    await screen.findByTestId("answer-grid");
+    expect(screen.queryByTestId("ranked-last-result")).toBeNull();  // nothing settled yet
+    advanceRound();
+
+    // Wait for the beat to START before waiting for it to end — `holdActive()`
+    // is false before the settlement lands as well as after it.
+    await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
+    await waitFor(() => expect(holdActive()).toBe(false),
+      { timeout: REVEAL_HOLD_MS + 2000 });
+    const chip = screen.getByTestId("ranked-last-result");
+    // The round the chip names is the round that RESOLVED, not the live one.
+    expect(chip).toHaveAttribute("data-round", "1");
+    expect(chip).toHaveAttribute("data-outcome", "correct");
+    expect(chip).toHaveTextContent("R1");
+    expect(chip).toHaveTextContent(/CORRECT/i);
+    // It is inside the top strip, not floating at the bottom of the page.
+    const strip = screen.getByTestId("ranked-match").firstElementChild!;
+    expect(strip.contains(chip)).toBe(true);
+    // ...and it is secondary: no control, and the live round still leads.
+    expect(chip.querySelector("button")).toBeNull();
+    expect(strip).toHaveTextContent("Round 2");
+  });
+
+  it("keeps the banner while the player has Details open, past the beat", async () => {
+    await mount();
+    await screen.findByTestId("answer-grid");
+    advanceRound();
+    await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
+
+    fireEvent.click(screen.getByTestId("reveal-details-toggle"));
+    expect(screen.getByTestId("reveal-panel-details")).toBeInTheDocument();
+
+    await waitFor(() => expect(holdActive()).toBe(false),
+      { timeout: REVEAL_HOLD_MS + 2000 });
+    // Pulling the breakdown out from under the player who just asked for it
+    // would be LOSING the detail, not deferring it.
+    expect(screen.getByTestId("reveal-panel-details")).toBeInTheDocument();
+  });
+
+  it("collapses Details and re-points the chip when the NEXT round settles", async () => {
+    await mount();
+    await screen.findByTestId("answer-grid");
+    advanceRound();
+    await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
+    fireEvent.click(screen.getByTestId("reveal-details-toggle"));
+    expect(screen.getByTestId("reveal-panel-details")).toBeInTheDocument();
+
+    advanceRound();
+    await waitFor(
+      () => expect(screen.getByTestId("ranked-last-result"))
+        .toHaveAttribute("data-round", "2"), { timeout: 6000 });
+    expect(screen.queryByTestId("reveal-panel-details")).toBeNull();
+  });
+
+  it("shows no XP, level or ability-hotbar furniture anywhere in the arena", async () => {
+    // R1 removed the progression layer; none of this phase's surfaces may
+    // bring any of it back — including the new ledger and the new HUD chip.
+    await mount();
+    await screen.findByTestId("answer-grid");
+    advanceRound();
+    await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
+    await waitFor(() => expect(holdActive()).toBe(false),
+      { timeout: REVEAL_HOLD_MS + 2000 });
+    for (const id of ["combat-ledger-userA", "combat-ledger-userB", "ranked-last-result"]) {
+      expect(screen.getByTestId(id).textContent).not.toMatch(/xp|level|lv |abilit/i);
+    }
   });
 });

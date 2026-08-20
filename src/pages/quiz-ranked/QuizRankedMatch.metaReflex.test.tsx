@@ -196,15 +196,23 @@ describe("Meta Reflex in the Ranked shell", () => {
       quizSegment();
       backend.roundNumber = 5;
 
+      // The settled block is summarised under the product name — during the
+      // settlement BEAT. This has to be asserted before the surface advances,
+      // not after: the surface is itself held until the beat ends (that is
+      // what `revealHold` gates), so by the time `mr-block` has unmounted the
+      // banner has already stood down and the bottom of the arena is free.
+      await waitFor(() => expect(screen.getByTestId("ranked-match"))
+        .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
+      const banner = screen.getByTestId("icd-result-banner");
+      expect(banner).toHaveTextContent("Meta Reflex");
+      expect(banner).not.toHaveTextContent("Item Cost Duel");
+
       await waitFor(() => expect(screen.queryByTestId("mr-block")).toBeNull(),
         { timeout: 6000 });
       expect(screen.getByTestId("ranked-question")).toBeInTheDocument();
       expect(screen.getByTestId("ranked-abilities")).toBeInTheDocument();
       expect(screen.getByTestId("ranked-match")).toBe(shell);
-      // The settled block is summarised under the product name.
-      const banner = await screen.findByTestId("icd-result-banner");
-      expect(banner).toHaveTextContent("Meta Reflex");
-      expect(banner).not.toHaveTextContent("Item Cost Duel");
+      expect(screen.queryByTestId("icd-result-banner")).toBeNull();
     }, 15000);
 
   it("renders the SECOND block at segment 9 exactly like the first", async () => {

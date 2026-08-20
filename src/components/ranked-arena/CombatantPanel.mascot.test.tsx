@@ -143,12 +143,14 @@ describe("CombatantPanel — mascot wiring", () => {
 
   it("keeps the column's own furniture out of the mascot's way", () => {
     // Nothing below the mascot may be positioned relative to it: the name, the
-    // HP meter and the trail are siblings of the slot, not children of it, so
+    // HP meter and the ledger are siblings of the slot, not children of it, so
     // no action can move them and no layout depends on the mascot's internals.
-    render(<CombatantPanel combatant={combatant()}
-      damage={[{ roundNumber: 1, amount: 9, hpAfter: 71, kind: "hit" }]} />);
+    render(<CombatantPanel combatant={combatant()} damage={[{
+      roundNumber: 1, outcome: "incorrect", dealt: 0, taken: 9,
+      absorbed: 0, hpBefore: 80, hpAfter: 71, timeExpired: false,
+    }]} />);
     const slot = screen.getByTestId("role-crest");
-    for (const id of ["hp-userA", "damage-trail-userA"]) {
+    for (const id of ["hp-userA", "combat-ledger-userA"]) {
       expect(slot.contains(screen.getByTestId(id))).toBe(false);
     }
     expect(screen.getByTestId("identity-tag-userA")).toHaveTextContent("Top");

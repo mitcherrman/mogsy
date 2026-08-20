@@ -49,11 +49,39 @@ describe("role identity", () => {
     expect(screen.queryByTestId("class-portrait")).toBeNull();
   });
 
-  it("falls back to the class portrait when the match froze no role", () => {
-    render(<CombatantPanel combatant={combatant({ roleId: null, tag: "TANK" })} />);
+  it("falls back to the class portrait only on a match with NO roles at all", () => {
+    // A genuine pre-R1 match: no `identityMode`, no role, and the combat class
+    // is the only identity the match has. Unchanged, deliberately.
+    render(<CombatantPanel combatant={combatant({ roleId: null, tag: "Tank" })} />);
     expect(screen.queryByTestId("role-crest")).toBeNull();
     expect(screen.getByTestId("class-portrait")).toBeInTheDocument();
   });
+
+  it("gives a role-less participant on a ROLE match the neutral crest, never a class", () => {
+    // THE `TANK` DEFECT. A bot carries a legitimate `role: null` beside a human
+    // who has a role; this column used to fall through to the legacy branch and
+    // print its combat class, uppercased, in the role slot.
+    render(<CombatantPanel progressionEnabled={false} combatant={combatant({
+      playerId: "userB", name: "Opponent", side: "opponent",
+      roleId: null, tag: undefined, classId: "tank", identityMode: "role",
+    })} />);
+    expect(screen.getByTestId("role-crest")).toHaveAttribute("data-role", "none");
+    expect(screen.getByTestId("role-crest-neutral")).toBeInTheDocument();
+    expect(screen.queryByTestId("class-portrait")).toBeNull();
+    expect(screen.queryByTestId("role-crest-mascot")).toBeNull();
+    // The neutral role LABEL, and no combat class anywhere on the column.
+    expect(screen.getByTestId("identity-tag-userB")).toHaveTextContent("Duelist");
+    expect(screen.queryByText(/tank/i)).toBeNull();
+  });
+
+  it.each(["tank", "mage", "marksman"])(
+    "never presents the %s class as a role on a role match", (classId) => {
+      render(<CombatantPanel progressionEnabled={false} combatant={combatant({
+        roleId: null, tag: undefined, classId, identityMode: "role",
+      })} />);
+      expect(screen.getByTestId("identity-tag-userA")).toHaveTextContent("Duelist");
+      expect(screen.queryByText(new RegExp(classId, "i"))).toBeNull();
+    });
 
   it("mirrors the opponent column", () => {
     render(<CombatantPanel combatant={combatant({
@@ -69,24 +97,58 @@ describe("role identity", () => {
   });
 });
 
-describe("recent damage history", () => {
-  it("renders a compact trail with the newest event emphasised", () => {
-    render(<CombatantPanel combatant={combatant()} damage={[
-      { roundNumber: 1, kind: "hit", amount: 20, hpAfter: 150 },
-      { roundNumber: 2, kind: "blocked", amount: 8, hpAfter: 150 },
-      { roundNumber: 3, kind: "hit", amount: 14, hpAfter: 136 },
-    ]} />);
-    expect(screen.getByTestId("damage-chip-userA-1")).toHaveTextContent("-20");
-    expect(screen.getByTestId("damage-chip-userA-2")).toHaveAttribute("data-kind", "blocked");
-    expect(screen.getByTestId("damage-chip-userA-3")).toHaveAttribute("data-newest", "true");
-    expect(screen.getByTestId("damage-chip-userA-1")).toHaveAttribute("data-newest", "false");
+describe("recent-round ledger", () => {
+  const ledger = [
+    { roundNumber: 1, outcome: "incorrect" as const, dealt: 0, taken: 20,
+      absorbed: 0, hpBefore: 170, hpAfter: 150, timeExpired: false },
+    { roundNumber: 2, outcome: "correct" as const, dealt: 0, taken: 0,
+      absorbed: 8, hpBefore: 150, hpAfter: 150, timeExpired: false },
+    { roundNumber: 3, outcome: "correct" as const, dealt: 14, taken: 0,
+      absorbed: 0, hpBefore: 150, hpAfter: 150, timeExpired: false },
+  ];
+
+  it("renders one row per settled round, newest first", () => {
+    render(<CombatantPanel combatant={combatant()} damage={ledger} />);
+    const rows = screen.getAllByTestId(/^ledger-row-userA-/);
+    expect(rows.map((r) => r.getAttribute("data-testid"))).toEqual([
+      "ledger-row-userA-3", "ledger-row-userA-2", "ledger-row-userA-1",
+    ]);
+    expect(rows[0]).toHaveAttribute("data-newest", "true");
+    expect(rows[2]).toHaveAttribute("data-newest", "false");
   });
 
-  it("reserves the row before anything has happened, so the two columns match", () => {
+  it("names the outcome of every round, including one that cost nobody health", () => {
+    render(<CombatantPanel combatant={combatant()} damage={ledger} />);
+    expect(screen.getByTestId("ledger-row-userA-1")).toHaveAttribute("data-outcome", "incorrect");
+    expect(screen.getByTestId("ledger-row-userA-1")).toHaveTextContent("Incorrect");
+    expect(screen.getByTestId("ledger-row-userA-3")).toHaveTextContent("Correct");
+  });
+
+  it("distinguishes damage dealt, damage taken and damage absorbed", () => {
+    render(<CombatantPanel combatant={combatant()} damage={ledger} />);
+    expect(screen.getByTestId("ledger-row-userA-1")).toHaveTextContent("-20");
+    expect(screen.getByTestId("ledger-row-userA-2")).toHaveTextContent("8");
+    expect(screen.getByTestId("ledger-row-userA-3")).toHaveTextContent("14");
+  });
+
+  it("describes each round to a screen reader without relying on colour", () => {
+    render(<CombatantPanel combatant={combatant()} damage={ledger} />);
+    expect(screen.getByTestId("ledger-row-userA-1"))
+      .toHaveTextContent(/Round 1: Incorrect, took 20\. HP 150\./);
+  });
+
+  it("surfaces no XP, level or ability information", () => {
+    render(<CombatantPanel combatant={combatant()} progressionEnabled={false}
+      damage={ledger} />);
+    const region = screen.getByTestId("combat-ledger-userA");
+    expect(region.textContent).not.toMatch(/xp|level|lv |abilit/i);
+  });
+
+  it("reserves the region before anything has happened, so the two columns match", () => {
     render(<CombatantPanel combatant={combatant()} damage={[]} />);
-    const trail = screen.getByTestId("damage-trail-userA");
-    expect(trail.className).toContain("min-h-");
-    expect(trail).toHaveTextContent(/No damage yet/i);
+    const region = screen.getByTestId("combat-ledger-userA");
+    expect(region.className).toContain("min-h-");
+    expect(region).toHaveTextContent(/No rounds yet/i);
   });
 });
 

@@ -1,13 +1,12 @@
 /**
- * QUIZ1 Phase 11 — the damage trail and the reveal projections.
+ * The recent-round ledger and the reveal projections.
  *
  * Every value is a pass-through of the authoritative settlement; these tests
- * pin WHICH rounds appear (and which deliberately do not) and that nothing is
- * recomputed from HP.
+ * pin WHICH rounds appear and that nothing is recomputed from HP.
  */
 import { describe, expect, it } from "vitest";
 import {
-  projectDamageHistory, projectRevealDamage, projectRevealOutcomes,
+  projectRevealDamage, projectRevealOutcomes, projectRoundHistory,
 } from "./rankedViews";
 import type { ResolvedCombatantView, ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 
@@ -37,36 +36,59 @@ function round(n: number, p1: Partial<ResolvedCombatantView>,
   };
 }
 
-describe("projectDamageHistory", () => {
-  it("keeps only rounds where this player's health actually moved", () => {
+describe("projectRoundHistory", () => {
+  it("keeps EVERY settled round, including one in which nobody lost health", () => {
+    // The predecessor of this projection dropped the quiet rounds, because it
+    // fed a strip of damage chips and a chip saying "0" explains nothing about
+    // an HP bar. A ledger of ROUNDS reports the outcome, which is the news in
+    // a both-correct round — and the two columns are read across as a pair, so
+    // a round missing from one and present in the other would misalign them.
     const log = [
       round(1, { finalDamageReceived: 20, hpAfter: 150 }),
       round(2, {}),                                     // nobody took anything
       round(3, { finalDamageReceived: 14, hpAfter: 136 }),
     ];
-    expect(projectDamageHistory(log, "userA").map((e) => e.roundNumber)).toEqual([1, 3]);
+    expect(projectRoundHistory(log, "userA").map((e) => e.roundNumber)).toEqual([1, 2, 3]);
   });
 
-  it("keeps a fully absorbed instance, which is NOT the same as no hit", () => {
-    const log = [round(1, { finalDamageReceived: 0, shieldAbsorbed: 12 })];
-    const [entry] = projectDamageHistory(log, "userA");
-    expect(entry).toMatchObject({ kind: "blocked", amount: 12 });
+  it("carries dealt, taken and absorbed as three separate facts", () => {
+    const log = [round(1, {
+      finalDamageDealt: 9, finalDamageReceived: 0, shieldAbsorbed: 12,
+    })];
+    expect(projectRoundHistory(log, "userA")[0]).toMatchObject({
+      dealt: 9, taken: 0, absorbed: 12,
+    });
+  });
+
+  it("carries the round's own outcome", () => {
+    const log = [round(1, { outcome: "timed_out" }, { outcome: "correct" })];
+    expect(projectRoundHistory(log, "userA")[0].outcome).toBe("timed_out");
+    expect(projectRoundHistory(log, "userB")[0].outcome).toBe("correct");
   });
 
   it("reads the settlement's damage field, never hpBefore minus hpAfter", () => {
     // A round where HP moved by more than the damage instance (a floor, a
-    // heal, a clamp). The trail must report the authoritative damage.
+    // heal, a clamp). The ledger must report the authoritative damage.
     const log = [round(1, { finalDamageReceived: 14, hpBefore: 20, hpAfter: 1 })];
-    expect(projectDamageHistory(log, "userA")[0].amount).toBe(14);
+    const [entry] = projectRoundHistory(log, "userA");
+    expect(entry.taken).toBe(14);
+    expect(entry.hpBefore).toBe(20);
+    expect(entry.hpAfter).toBe(1);
   });
 
-  it("is per-player: the opponent's trail is the opponent's HP", () => {
+  it("is per-player: the opponent's ledger is the opponent's damage", () => {
     const log = [round(1, { finalDamageReceived: 20 }, { finalDamageReceived: 5 })];
-    expect(projectDamageHistory(log, "userB")[0].amount).toBe(5);
+    expect(projectRoundHistory(log, "userB")[0].taken).toBe(5);
+  });
+
+  it("reports a round that ended on the clock", () => {
+    const log = [{ ...round(1, {}), endReason: "deadline_expired" as const }];
+    expect(projectRoundHistory(log, "userA")[0].timeExpired).toBe(true);
+    expect(projectRoundHistory([round(2, {})], "userA")[0].timeExpired).toBe(false);
   });
 
   it("returns nothing for a player who is not in the log", () => {
-    expect(projectDamageHistory([round(1, {})], "nobody")).toEqual([]);
+    expect(projectRoundHistory([round(1, {})], "nobody")).toEqual([]);
   });
 });
 

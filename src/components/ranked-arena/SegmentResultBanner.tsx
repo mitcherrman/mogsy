@@ -8,8 +8,11 @@
  * stays available behind an explicit Details expansion (the unchanged
  * SegmentTranscript — canonical data is deferred, never dropped).
  *
- * Parents key this component on the segment so a new settlement always starts
- * collapsed — the full table can never mount under a live question on its own.
+ * A new settlement always starts collapsed — the full table can never mount
+ * under a live question on its own. The expansion may also be CONTROLLED
+ * (`open` + `onOpenChange`), which is how the live arena keeps the banner
+ * mounted past the reveal beat while the player has Details open; a controlled
+ * parent owns the collapse-on-new-segment reset.
  */
 import { useState } from "react";
 import { CheckCircle2, ChevronDown, Hourglass, MinusCircle, XCircle } from "lucide-react";
@@ -35,15 +38,29 @@ const RESULT_ICON: Record<SegmentResult, React.JSX.Element> = {
   timeout: <Hourglass aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />,
 };
 
-export function SegmentResultBanner(props: SegmentTranscriptProps) {
+export function SegmentResultBanner(
+  props: SegmentTranscriptProps & {
+    /** Controlled expansion. Omit for the original self-managed behaviour. */
+    open?: boolean;
+    /** Fired on every toggle, controlled or not. */
+    onOpenChange?: (open: boolean) => void;
+  },
+) {
   const { reveal, viewerUserId, opponentUserId, damageDealt = null } = props;
-  const [open, setOpen] = useState(false);
+  const [selfOpen, setSelfOpen] = useState(false);
+  const controlled = props.open !== undefined;
+  const open = controlled ? props.open! : selfOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setSelfOpen(next);
+    props.onOpenChange?.(next);
+  };
   // A NEW settlement always starts collapsed (render-time reset, no effect
-  // tick): the full transcript never carries over beneath a later round.
+  // tick): the full transcript never carries over beneath a later round. Only
+  // for the UNCONTROLLED shape — a controlled parent owns its own reset.
   const [seen, setSeen] = useState(reveal);
   if (seen !== reveal) {
     setSeen(reveal);
-    setOpen(false);
+    if (!controlled) setSelfOpen(false);
   }
   const you = reveal.players[viewerUserId];
   const them = opponentUserId ? reveal.players[opponentUserId] : undefined;
@@ -77,7 +94,7 @@ export function SegmentResultBanner(props: SegmentTranscriptProps) {
         )}
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => setOpen(!open)}
           aria-expanded={open}
           data-testid="icd-details-toggle"
           className="ml-auto inline-flex min-h-[1.75rem] items-center gap-1 rounded px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"

@@ -5,7 +5,7 @@ vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({ Authorization: "Bearer jwt" }),
 }));
 
-import { useRankedMatch } from "./useRankedMatch";
+import { DAMAGE_LOG_LIMIT, useRankedMatch } from "./useRankedMatch";
 import { privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
 
 interface Backend {
@@ -16,11 +16,55 @@ interface Backend {
   abilityFailure: string | null;
   resumeCalls: number;
   publicOverride: unknown | null;
+  /** How many rounds this match has already settled (drives the backfill). */
+  completedRounds: number;
+  /** Round numbers the client asked `/rounds/{n}/resolved` for. */
+  resolvedRequests: number[];
 }
 let backend: Backend;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+/** The resume snapshot's public projection, with a settled-round count. */
+function resumePublic() {
+  const body = publicRoundV2();
+  (body.payload as Record<string, unknown>).completed_rounds = backend.completedRounds;
+  return body;
+}
+
+/** A minimal, adaptable settlement for round `n`. */
+function resolvedBody(n: number) {
+  const player = (id: string) => ({
+    player_id: id, class_id: id === "userA" ? "tank" : "mage",
+    outcome: "correct", submitted_at: "2026-07-18T12:00:00+00:00",
+    answered_first: id === "userA", timed_out: false, selected_ability_id: null,
+    damage: {
+      base_damage_dealt: 10, outgoing_bonus: 0, final_damage_dealt: 10,
+      shield_absorbed: 0, incoming_reduction: 0, final_damage_received: 10,
+    },
+    hp_before: 170, hp_after: 160, reached_zero_hp: false,
+    xp_gained: 0, total_xp_after: 0, level_before: 1, level_after: 1,
+    level_up_events: [], charge_consumed: false, consumed_ability_id: null,
+    remaining_charges: {},
+    carryover: { effects_gained: [], effects_consumed: [], consecutive_correct: 1 },
+    combat_lab_unlock_delta_seconds: 0,
+  });
+  return {
+    schema_version: "ranked_duel.resolved_round.v2",
+    projection_type: "resolved_round", match_id: "m1", round_number: n,
+    server_time: "2026-07-18T12:00:00+00:00",
+    payload: {
+      match_id: "m1", round_number: n, question_id: "q1",
+      end_reason: "both_answered", started_at: "2026-07-18T12:00:00+00:00",
+      original_deadline: "2026-07-18T12:00:00+00:00",
+      final_deadline: "2026-07-18T12:00:00+00:00", pressure_applied: false,
+      players: [player("userA"), player("userB")],
+      next_round_duration_seconds: 30, next_round_duration_delta: 0,
+      match_over: false, winner_id: null, completion_reason: null,
+    },
+  };
+}
 
 function resumeEnvelope() {
   return {
@@ -28,7 +72,7 @@ function resumeEnvelope() {
     match_id: "m1", round_number: 1, server_time: "2026-07-18T12:00:00+00:00",
     payload: {
       match_status: "active", match_over: false,
-      public: publicRoundV2(), private: privatePlayerV2("userA"),
+      public: resumePublic(), private: privatePlayerV2("userA"),
       progression_pending_players: [], latest_resolved_round: null, result: null,
     },
   };
@@ -39,7 +83,8 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-07-18T12:00:05Z"));
   backend = {
     submissions: [], abilityDrafts: [], abilityFailure: null,
-    resumeCalls: 0, publicOverride: null,
+    resumeCalls: 0, publicOverride: null, completedRounds: 0,
+    resolvedRequests: [],
   };
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
     const u = String(url);
@@ -56,8 +101,15 @@ beforeEach(() => {
       backend.abilityDrafts.push(JSON.parse(init.body as string));
       return json({ status: "accepted" });
     }
+    const resolved = /\/rounds\/(\d+)\/resolved$/.exec(u);
+    if (resolved) {
+      const n = Number(resolved[1]);
+      backend.resolvedRequests.push(n);
+      if (n < 1 || n > backend.completedRounds) return json({}, 404);
+      return json(resolvedBody(n));
+    }
     if (u.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
-    if (/\/matches\/m1$/.test(u) && method === "GET")
+    if (/\/matches\/[^/]+$/.test(u) && method === "GET")
       return json(backend.publicOverride ?? publicRoundV2());
     return json({}, 200);
   }) as unknown as typeof fetch);
@@ -183,5 +235,84 @@ describe("useRankedMatch", () => {
     const after = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls
       .filter((c) => String(c[0]).includes("/presence")).length;
     expect(after).toBeGreaterThan(before);
+  });
+});
+
+/**
+ * THE LEDGER BUFFER's lifecycle.
+ *
+ * `damageLog` feeds the duelist columns' recent-round ledger. It only ever
+ * filled from rounds this client watched resolve, so a mid-match refresh left
+ * the ledger empty — a history surface with no history — and it was never
+ * cleared, so switching match inside a mounted controller carried the previous
+ * match's rounds into the new arena.
+ */
+describe("useRankedMatch — recent-round ledger buffer", () => {
+  it("is empty on a match that has settled nothing, and asks for no rounds", async () => {
+    backend.completedRounds = 0;
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    expect(result.current.damageLog).toEqual([]);
+    expect(backend.resolvedRequests).toEqual([]);
+  });
+
+  it("backfills the already-settled rounds on resume, oldest first", async () => {
+    backend.completedRounds = 3;
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    expect(result.current.damageLog.map((s) => s.roundNumber)).toEqual([1, 2, 3]);
+    // The settlements are real pass-through, not placeholders.
+    expect(result.current.damageLog[0].players.p1.finalDamageDealt).toBe(10);
+  });
+
+  it("never backfills more than the buffer holds", async () => {
+    backend.completedRounds = DAMAGE_LOG_LIMIT + 5;
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    expect(result.current.damageLog).toHaveLength(DAMAGE_LOG_LIMIT);
+    // The most RECENT rounds, and nothing older is even requested.
+    expect(result.current.damageLog[DAMAGE_LOG_LIMIT - 1].roundNumber)
+      .toBe(DAMAGE_LOG_LIMIT + 5);
+    expect(Math.min(...backend.resolvedRequests)).toBe(6);
+  });
+
+  it("does not disturb the reveal: a backfill starts no beat and sets no lastResolved", async () => {
+    // History the player has already lived through. Replaying it as a reveal
+    // on every reconnect would withhold interactivity for no reason.
+    backend.completedRounds = 3;
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    expect(result.current.revealHold).toBe(false);
+    expect(result.current.lastResolved).toBeNull();
+  });
+
+  it("drops the previous match's rounds when the match id changes", async () => {
+    backend.completedRounds = 2;
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => useRankedMatch(id, "userA"),
+      { initialProps: { id: "m1" } });
+    await settle();
+    expect(result.current.damageLog).toHaveLength(2);
+
+    backend.completedRounds = 0;
+    rerender({ id: "m2" });
+    await settle();
+    expect(result.current.damageLog).toEqual([]);
+  });
+
+  it("survives a backfill that cannot be read, without failing the match", async () => {
+    backend.completedRounds = 2;
+    // The whole resolved endpoint is broken; the match itself is fine.
+    const original = globalThis.fetch as unknown as (u: string, i?: RequestInit) => Promise<Response>;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
+      if (/\/rounds\/\d+\/resolved$/.test(String(url))) throw new Error("network");
+      return original(String(url), init);
+    }) as unknown as typeof fetch);
+
+    const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+    await settle();
+    expect(result.current.damageLog).toEqual([]);
+    expect(result.current.phase).toBe("active");
+    expect(result.current.contractError).toBeNull();
   });
 });

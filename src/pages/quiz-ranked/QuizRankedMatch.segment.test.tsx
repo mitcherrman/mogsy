@@ -6,7 +6,7 @@
  * capability, so registering a third module later changes nothing here.
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/backend-auth", () => ({
@@ -23,6 +23,8 @@ interface Backend {
   segmentMeta: unknown;
   segmentState: unknown;
   resolvedPayload: unknown | null;
+  /** Bump to make the poll see a round boundary and capture a settlement. */
+  activeRound: number;
 }
 let backend: Backend;
 
@@ -38,6 +40,9 @@ function publicBody() {
   payload.segment_state = backend.segmentState;
   const meta = backend.segmentMeta as Record<string, unknown> | null;
   if (meta?.phase === "ability") payload.active_round = null;
+  else if (payload.active_round) {
+    (payload.active_round as Record<string, unknown>).round_number = backend.activeRound;
+  }
   return body;
 }
 
@@ -52,7 +57,7 @@ function privateBody() {
 beforeEach(() => {
   backend = {
     segmentMeta: icdSegmentMeta(), segmentState: icdSegmentState(),
-    resolvedPayload: null,
+    resolvedPayload: null, activeRound: 3,
   };
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
     const u = String(url);
@@ -72,6 +77,14 @@ beforeEach(() => {
           result: null,
         },
       });
+    }
+    if (/\/rounds\/\d+\/resolved$/.test(u)) {
+      if (backend.resolvedPayload === null) return json({}, 404);
+      return json({
+        schema_version: "ranked_duel.resolved_round.v2",
+        projection_type: "resolved_round", match_id: "m1", round_number: 3,
+        server_time: "2026-07-18T12:00:00+00:00",
+        payload: backend.resolvedPayload });
     }
     if (u.endsWith("/private")) return json(privateBody());
     if (u.includes("/presence")) {
@@ -135,14 +148,24 @@ describe("QuizRankedMatch — multi-challenge segment", () => {
     expect(screen.getByTestId("icd-item-Item 3")).toBeInTheDocument();
   });
 
-  it("renders a compact segment result after settlement — full transcript only on demand", async () => {
+  /** Settle the open segment and open the next round, the way the poll sees it. */
+  function settleSegment() {
     backend.resolvedPayload = icdResolvedPayload();
+    backend.activeRound = 4;
+  }
+
+  it("renders a compact segment result for the settlement BEAT — full transcript only on demand", async () => {
+    openInChallenges();   // an OPEN engine round, so the poll can see it close
     await mount();
-    // Phase 2 compact layout: the live flow shows a fixed-height banner, and
-    // the verbose per-challenge transcript NEVER mounts beneath an active
-    // round on its own.
-    const banner = await screen.findByTestId("icd-result-banner");
-    expect(banner).toBeInTheDocument();
+    settleSegment();
+    // The banner belongs to the settlement beat and nothing else, so this
+    // waits for the beat rather than for the banner: catching it by polling
+    // for the node would pass or fail on timing.
+    await waitFor(() => expect(screen.getByTestId("ranked-match"))
+      .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
+    // The live flow shows a fixed-height banner, and the verbose
+    // per-challenge transcript NEVER mounts beneath an active round on its own.
+    expect(screen.getByTestId("icd-result-banner")).toBeInTheDocument();
     expect(screen.getByTestId("icd-banner-result")).toHaveTextContent("Win");
     expect(screen.queryByTestId("icd-transcript")).toBeNull();
     // The canonical detail is deferred, not dropped: Details expands the
@@ -150,6 +173,24 @@ describe("QuizRankedMatch — multi-challenge segment", () => {
     fireEvent.click(screen.getByTestId("icd-details-toggle"));
     expect(screen.getByTestId("icd-transcript")).toBeInTheDocument();
     expect(screen.getByTestId("icd-transcript-result")).toHaveTextContent("Win");
+    // ...and an OPEN expansion survives the end of the beat. A banner that
+    // vanished out from under the breakdown the player just asked for would
+    // be losing the detail, not deferring it.
+    await waitFor(() => expect(screen.getByTestId("ranked-match"))
+      .toHaveAttribute("data-reveal-hold", "false"), { timeout: 6000 });
+    expect(screen.getByTestId("icd-transcript")).toBeInTheDocument();
+  });
+
+  it("clears the segment banner once the beat ends, leaving the bottom free", async () => {
+    openInChallenges();
+    await mount();
+    settleSegment();
+    await waitFor(() => expect(screen.getByTestId("ranked-match"))
+      .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
+    expect(screen.getByTestId("icd-result-banner")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("ranked-match"))
+      .toHaveAttribute("data-reveal-hold", "false"), { timeout: 6000 });
+    expect(screen.queryByTestId("icd-result-banner")).toBeNull();
   });
 
   it("still renders the ordinary quiz surface for a quiz segment", async () => {

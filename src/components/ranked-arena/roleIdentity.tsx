@@ -137,8 +137,8 @@ function Sigil({ role }: { role: RankedRole | null }) {
  * Two shapes, one component:
  *
  *  * `sm` / `md` — the original framed 56px crest. An `overflow-hidden` box
- *    with the mascot INSET inside it, unchanged, and still the only shape a
- *    role-less duelist can have (the sigil branch).
+ *    with the mascot INSET inside it, unchanged, and still the shape a pre-R1
+ *    match's role-less duelist gets (the sigil branch).
  *  * `stage` (AI1 Phase 2B) — the frame is GONE. The owner's verdict on the
  *    crest was that it made a character read as a role icon, so at this size
  *    there is no box to be inside and no border to clip against: the panel
@@ -152,12 +152,17 @@ function Sigil({ role }: { role: RankedRole | null }) {
  * and transforms do not lay out. So no round, no reveal and no click can shift
  * the column (the §14 common-vertical-rhythm constraint).
  *
- * The two SHAPES do differ in height, and that is deliberate: a pre-R1 match
- * with no roles has no mascot to stand up and keeps the original inline crest
- * header. Which shape a column gets is frozen when the match is created, so it
- * is a constant for the whole match, and both columns of one match always
- * agree — the §14 constraint is about a column moving, not about two different
- * matches looking alike.
+ * `stage` NO LONGER REQUIRES A ROLE. It used to fall through to the framed
+ * 56px shape whenever `identity.role` was null, and the claim that justified
+ * it — "both columns of one match always agree" — was simply false: a bot
+ * carries a legitimate `role: null` beside a human who has a role, so one
+ * column stood up a mascot and the other wore a 56px badge. The stage shape
+ * now draws a NEUTRAL emblem in exactly the mascot's box instead, so which
+ * shape a column gets depends only on the MATCH (see
+ * `CombatantView.identityMode`) and never on the participant. The two shapes
+ * still differ in height between matches, which remains fine — the §14
+ * constraint is about a column moving, not about two different matches looking
+ * alike.
  *
  * `RoleCrest` names an intent (`action`) and a direction (`mirrored`); it owns
  * none of the motion. Distances, durations, easing, keyframes and the whole of
@@ -192,12 +197,12 @@ export function RoleCrest({
   interactive?: boolean;
 }) {
   const stage = size === "stage";
-  if (stage && identity.role !== null) {
+  if (stage) {
     return (
       <span
         aria-hidden
         data-testid="role-crest"
-        data-role={identity.role}
+        data-role={identity.role ?? "none"}
         // `overflow-visible` is the whole point of this shape: RESERVED SPACE,
         // not a clip, is what keeps the motion tidy. The top padding is that
         // reserve — it is what the click reaction hops into, so the hop stays
@@ -222,39 +227,70 @@ export function RoleCrest({
               `radial-gradient(58% 52% at 50% 62%, ${identity.accentSoft}, transparent 72%)`,
           }}
         />
-        <RoleMascot
-          role={identity.role}
-          // Both duelists face the arena centre: the left column's mascot
-          // looks right, the mirrored right column's looks left. This is the
-          // only direction the arena states — `attack` and `hit` derive
-          // forward and backward from it.
-          facing={mirrored ? "left" : "right"}
-          action={action}
-          actionId={actionId}
-          interactive={interactive}
-          // The plate is 2:3 with roughly a fifth of its height empty above
-          // the head and a fifth below the feet; `contain` in a box this tall
-          // spends that emptiness and draws a small figure in a big frame.
-          // `cover` in a 6:7 box crops the empty bands (11% top and bottom —
-          // measured against the most generous of the five silhouettes, which
-          // starts at 16%) and nothing else, so the CHARACTER is what fills
-          // the slot. No horizontal crop is possible: the source is taller
-          // than the box in every case.
-          fit="cover"
-          // Sized as a FRACTION of the column, not in fixed steps, because the
-          // clearance the motion needs is a fraction of the mascot: at 52% of
-          // the slot the art keeps 24% of the slot free on each side, and the
-          // widest thing it ever does — a lunge of 30% of its own width, plus
-          // the impact bulge — reaches about 17% of the slot. That margin holds
-          // at every width, which fixed per-breakpoint sizes did not: a column
-          // narrows faster than a stepped size does, and a 110px mascot in the
-          // 162px column a 1024px stage can produce overran the card by 28px.
-          className="relative aspect-[6/7] w-[52%] min-w-[3.5rem] max-w-[9rem]"
-          // The column art is the first thing on screen in a match; it should
-          // not arrive a beat late.
-          loading="eager"
-          data-testid="role-crest-mascot"
-        />
+        {identity.role !== null ? (
+          <RoleMascot
+            role={identity.role}
+            // Both duelists face the arena centre: the left column's mascot
+            // looks right, the mirrored right column's looks left. This is the
+            // only direction the arena states — `attack` and `hit` derive
+            // forward and backward from it.
+            facing={mirrored ? "left" : "right"}
+            action={action}
+            actionId={actionId}
+            interactive={interactive}
+            // The plate is 2:3 with roughly a fifth of its height empty above
+            // the head and a fifth below the feet; `contain` in a box this tall
+            // spends that emptiness and draws a small figure in a big frame.
+            // `cover` in a 6:7 box crops the empty bands (11% top and bottom —
+            // measured against the most generous of the five silhouettes, which
+            // starts at 16%) and nothing else, so the CHARACTER is what fills
+            // the slot. No horizontal crop is possible: the source is taller
+            // than the box in every case.
+            fit="cover"
+            // Sized as a FRACTION of the column, not in fixed steps, because the
+            // clearance the motion needs is a fraction of the mascot: at 52% of
+            // the slot the art keeps 24% of the slot free on each side, and the
+            // widest thing it ever does — a lunge of 30% of its own width, plus
+            // the impact bulge — reaches about 17% of the slot. That margin holds
+            // at every width, which fixed per-breakpoint sizes did not: a column
+            // narrows faster than a stepped size does, and a 110px mascot in the
+            // 162px column a 1024px stage can produce overran the card by 28px.
+            className="relative aspect-[6/7] w-[52%] min-w-[3.5rem] max-w-[9rem]"
+            // The column art is the first thing on screen in a match; it should
+            // not arrive a beat late.
+            loading="eager"
+            data-testid="role-crest-mascot"
+          />
+        ) : (
+          // NO ROLE, on a match that speaks roles (a bot, a staff-created
+          // seat). The slot keeps EXACTLY the mascot's box — same fraction of
+          // the column, same 6:7 aspect, same min/max — so the column's
+          // geometry does not depend on whether the participant chose a role;
+          // only what stands in the box changes. That is the whole repair for
+          // the "giant mascot vs 48px badge" asymmetry.
+          //
+          // A neutral emblem, never a guessed role and never a combat class.
+          // The role LABEL beside it ("Duelist") is what carries the meaning;
+          // this is decorative, exactly like the mascot it stands in for.
+          <span
+            data-testid="role-crest-neutral"
+            className="relative flex aspect-[6/7] w-[52%] min-w-[3.5rem] max-w-[9rem] items-center justify-center"
+          >
+            <span
+              className="flex h-[62%] w-[86%] items-center justify-center rounded-2xl border border-dashed"
+              style={{
+                color: identity.accent,
+                borderColor: `${identity.accent}55`,
+                backgroundImage:
+                  `radial-gradient(75% 65% at 50% 40%, ${identity.accentSoft}, transparent 78%)`,
+              }}
+            >
+              <span className="h-1/2 w-1/2 opacity-80">
+                <Sigil role={null} />
+              </span>
+            </span>
+          </span>
+        )}
       </span>
     );
   }

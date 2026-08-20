@@ -41,7 +41,10 @@ const opponent = (over: Partial<CombatantView> = {}) =>
   combatant({ playerId: "userB", name: "Opponent", side: "opponent", roleId: "mid",
     tag: "Mid", ...over });
 
-const DAMAGE = [{ roundNumber: 1, amount: 9, hpAfter: 71, kind: "hit" as const }];
+const DAMAGE = [{
+  roundNumber: 1, outcome: "incorrect" as const, dealt: 0, taken: 9,
+  absorbed: 0, hpBefore: 80, hpAfter: 71, timeExpired: false,
+}];
 
 /** Render both columns and hand back a lookup for each side's DOM. */
 function bothColumns(props: Record<string, unknown> = {}) {
@@ -97,13 +100,19 @@ describe("every row reflects, and reflects the right way", () => {
 
   it("re-aligns the rows that are a SEQUENCE, without reversing them", () => {
     const { L, R } = bothColumns();
-    // A reflection moves the damage trail to the other end of the card. It
-    // must not turn the history round: these chips are oldest-first, and the
-    // newest one is the one that just happened.
-    const trail = (s: HTMLElement) => s.querySelector('[data-testid^="damage-trail-"]');
-    expect(endAligned(trail(L))).toBe(false);
-    expect(endAligned(trail(R))).toBe(true);
-    expect(reversed(trail(R))).toBe(false);
+    // A reflection moves the ledger's heading to the other end of the card. It
+    // must not turn the history round: the rows are newest-first and stay that
+    // way on both columns.
+    const heading = (s: HTMLElement) =>
+      s.querySelector('[data-testid^="combat-ledger-"]')!.firstElementChild;
+    expect(endAligned(heading(L))).toBe(false);
+    expect(endAligned(heading(R))).toBe(true);
+    expect(reversed(heading(R))).toBe(false);
+    // Each ledger ROW is two groups (round + verdict, then damage) and does
+    // reverse — the round marker sits at the column's outer edge on both sides.
+    const row = (s: HTMLElement) => s.querySelector('[data-testid^="ledger-row-"]');
+    expect(reversed(row(L))).toBe(false);
+    expect(reversed(row(R))).toBe(true);
 
     // Same for the status chips: answer-then-ability is a reading order.
     const chips = (s: HTMLElement) => s.querySelector('[data-testid^="status-"]');
@@ -150,6 +159,44 @@ describe("every row reflects, and reflects the right way", () => {
     for (const s of [L, R]) {
       expect(s.firstElementChild).toBe(slot(s));
     }
+  });
+
+  it("keeps both columns structurally identical when only ONE side has a role", () => {
+    // THE MIXED MATCH, which is every bot match: the human has a role and the
+    // bot legitimately has none. This used to be the asymmetry itself — the
+    // human stood up a full-height mascot slot and the bot fell through to a
+    // 48px class bust in the header, so the two columns were not the same
+    // object at all. `identityMode` is a MATCH fact, so both columns take the
+    // role branch and the slot's geometry is identical; only what stands in it
+    // differs.
+    const left = render(<CombatantPanel damage={DAMAGE} progressionEnabled={false}
+      combatant={combatant({ identityMode: "role" })} />);
+    const right = render(<CombatantPanel damage={DAMAGE} progressionEnabled={false}
+      combatant={opponent({ identityMode: "role", roleId: null, tag: undefined })} />);
+    const L = left.container.querySelector("section")! as HTMLElement;
+    const R = right.container.querySelector("section")! as HTMLElement;
+
+    const slot = (s: HTMLElement) => s.querySelector('[data-testid="role-crest"]')!;
+    // Same slot, same classes, same position: first child of the column.
+    expect(slot(L).className).toBe(slot(R).className);
+    expect(L.firstElementChild).toBe(slot(L));
+    expect(R.firstElementChild).toBe(slot(R));
+    // The role-less side draws the neutral emblem in the mascot's own box, at
+    // the same fraction of the column — not a 48px badge in the header.
+    const art = (s: HTMLElement) => s.querySelector(
+      '[data-testid="role-crest-mascot"], [data-testid="role-crest-neutral"]',
+    )! as HTMLElement;
+    for (const cls of ["aspect-[6/7]", "w-[52%]", "min-w-[3.5rem]", "max-w-[9rem]"]) {
+      expect(art(L).className).toContain(cls);
+      expect(art(R).className).toContain(cls);
+    }
+    // No legacy class art, and no class NAME, anywhere on the role-less column.
+    expect(R.querySelector('[data-testid="class-portrait"]')).toBeNull();
+    expect(R.textContent).not.toMatch(/tank/i);
+    // Both columns still carry the same ROWS, in the same order.
+    const rows = (s: HTMLElement) => Array.from(s.children)
+      .map((c) => c.getAttribute("data-testid")?.replace(/user[AB]/, "…") ?? c.tagName);
+    expect(rows(L)).toEqual(rows(R));
   });
 
   it("turns both mascots inward, and states nothing else about direction", () => {

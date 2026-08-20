@@ -36,6 +36,13 @@ export interface CombatantViewOptions {
   /** Display identities keyed by backend player id; id shown when absent. */
   identities?: Record<string, CombatantIdentity>;
   /**
+   * MATCH-LEVEL identity vocabulary — see `CombatantView.identityMode`. Set
+   * once per match by the controller and applied to BOTH combatants, so a
+   * participant with no role can never end up in a different layout from the
+   * one across the arena from them. Absent = `"legacy_class"`.
+   */
+  identityMode?: CombatantView["identityMode"];
+  /**
    * Known max HP keyed by backend player id (e.g. starting_hp from match
    * creation). Missing/undefined => maxHp null: EXPLICITLY unknown. This
    * adapter never infers, observes, or invents a maximum.
@@ -106,6 +113,8 @@ export function combatantViewsFromPlayers(
       name: identity?.name ?? p.playerId,
       tag: identity?.tag,
       roleId: identity?.roleId ?? null,
+      // Match-level, deliberately NOT read per-identity: both views must agree.
+      identityMode: options.identityMode ?? "legacy_class",
       side,
       classId: p.classId,
       hp: p.hp,

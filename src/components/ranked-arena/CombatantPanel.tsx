@@ -18,18 +18,20 @@
  *    permanently-full bar and the words "0 xp · Level 1 (max)" about a system
  *    the match does not have.
  *  * the identity block leads with the ROLE crest (see `roleIdentity.tsx`),
- *    which supersedes the legacy class portrait whenever the match froze a
- *    role. Class art is still the fallback for a pre-R1 match and is still
- *    the only thing `classId` reaches.
- *  * `damage` draws a compact recent-damage trail directly under the HP bar.
+ *    which supersedes the legacy class portrait on any match that froze roles.
+ *    Class art is still the fallback for a pre-R1 match and is still the only
+ *    thing `classId` reaches. WHICH of the two a column gets is a fact about
+ *    the MATCH (`CombatantView.identityMode`), never about the participant —
+ *    see `roleLayout` below for the asymmetry that cost.
+ *  * `damage` draws the recent-round ledger under the HP bar.
  *  * `outcome` lets the reveal beat resolve the column — CORRECT / INCORRECT /
  *    TIMED OUT with an icon AND a word, never colour alone — in the same
  *    reserved row the neutral status chips occupy, so nothing moves.
  */
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Hourglass, Lock, ShieldCheck, XCircle } from "lucide-react";
+import { CheckCircle2, Hourglass, Lock, ShieldCheck, Swords, XCircle } from "lucide-react";
 import { CombatantView, ResolvedCombatantView } from "@/lib/ranked-core/viewTypes";
-import type { DamageHistoryEntry, MascotReaction } from "@/pages/quiz-ranked/rankedViews";
+import type { MascotReaction, RoundHistoryEntry } from "@/pages/quiz-ranked/rankedViews";
 import { ClassIdentity, classIdentityFor } from "./classIdentity";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
 
@@ -259,95 +261,146 @@ function ClassPortrait({
 }
 
 /**
- * The recent-damage trail: what happened to THIS player's HP, newest last.
- *
- * A history, not a log. It is capped, it renders no round in which nothing
- * happened (see `projectDamageHistory`), and it never scrolls — three to five
- * chips is the whole surface. The newest chip is emphasised for one beat and
- * then reads like the rest; under reduced motion it simply arrives.
- *
- * The row is ALWAYS present (`min-h`), so the first hit of a match cannot add
- * a row to one column and not the other.
+ * ONE outcome vocabulary for this panel: the reveal verdict and the ledger
+ * must never disagree about what a round was called or what colour it is.
+ * `label` is the reveal's shouted form; `word` is the ledger's quiet one.
  */
-export function DamageTrail({
-  entries,
-  playerId,
-  mirrored,
-}: {
-  entries: DamageHistoryEntry[];
-  playerId: string;
-  mirrored: boolean;
-}) {
-  const newest = entries.length > 0 ? entries[entries.length - 1] : null;
-  return (
-    <div
-      data-testid={`damage-trail-${playerId}`}
-      aria-label="Recent damage"
-      className={`flex min-h-[1.5rem] flex-wrap items-center gap-1 ${mirrorAlign(mirrored)}`}
-    >
-      {entries.length === 0 ? (
-        <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/60">
-          No damage yet
-        </span>
-      ) : (
-        entries.map((e) => (
-          <span
-            key={e.roundNumber}
-            data-testid={`damage-chip-${playerId}-${e.roundNumber}`}
-            data-kind={e.kind}
-            data-newest={e === newest ? "true" : "false"}
-            title={`Round ${e.roundNumber}`}
-            className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[11px] font-semibold tabular-nums ${
-              e.kind === "blocked"
-                ? "bg-sky-400/10 text-sky-300"
-                : "bg-destructive/15 text-[#e2757b]"
-            } ${e === newest
-              ? "ring-1 ring-inset ring-current/50 animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none"
-              : "opacity-70"}`}
-          >
-            {e.kind === "blocked" ? (
-              <>
-                <ShieldCheck aria-hidden className="h-3 w-3 shrink-0" />
-                <span className="sr-only">
-                  Round {e.roundNumber}: {e.amount} absorbed, HP {e.hpAfter}
-                </span>
-                <span aria-hidden>{e.amount}</span>
-              </>
-            ) : (
-              <>
-                <span className="sr-only">
-                  Round {e.roundNumber}: {e.amount} damage taken, HP {e.hpAfter}
-                </span>
-                <span aria-hidden>-{e.amount}</span>
-              </>
-            )}
-          </span>
-        ))
-      )}
-    </div>
-  );
-}
-
 const OUTCOME_STATE: Record<
   ResolvedCombatantView["outcome"],
-  { label: string; className: string; Icon: typeof CheckCircle2 }
+  { label: string; word: string; tone: string; className: string; Icon: typeof CheckCircle2 }
 > = {
   correct: {
     label: "CORRECT",
+    word: "Correct",
+    tone: "text-emerald-300",
     className: "border-emerald-400/60 bg-emerald-400/10 text-emerald-300",
     Icon: CheckCircle2,
   },
   incorrect: {
     label: "INCORRECT",
+    word: "Incorrect",
+    tone: "text-[#e2757b]",
     className: "border-destructive/60 bg-destructive/10 text-[#e2757b]",
     Icon: XCircle,
   },
   timed_out: {
     label: "TIMED OUT",
+    word: "Timed out",
+    tone: "text-muted-foreground",
     className: "border-white/20 bg-white/5 text-muted-foreground",
     Icon: Hourglass,
   },
 };
+
+/**
+ * THE RECENT-ROUND LEDGER — the duelist column's combat history.
+ *
+ * This replaces the row of tiny damage chips that used to sit under the HP
+ * bar. Two problems with that strip, and this fixes both:
+ *
+ *  * it was one line in a column that the Phase 11 three-track grid stretches
+ *    to the height of the question board, so the panel handed several hundred
+ *    pixels of `flex-1` to a 24px row of chips; and
+ *  * a chip carried a number and nothing else. It could say "-14" but not what
+ *    happened, and it silently omitted every round in which nobody lost
+ *    health — which on this ladder is most of them.
+ *
+ * One row per settled round, NEWEST FIRST so the most recent round sits
+ * closest to the HP bar it explains. Every value is authoritative settlement
+ * pass-through (see `projectRoundHistory`); nothing is computed, summed or
+ * inferred here, and no XP, level or ability information appears — those
+ * layers do not exist on an R1 match and the ledger must not resurrect them.
+ *
+ * It never scrolls. The list is bounded upstream by `DAMAGE_LOG_LIMIT`, so
+ * "recent" stays recent and the column keeps its own height.
+ */
+export function RoundLedger({
+  entries,
+  playerId,
+  mirrored,
+}: {
+  entries: RoundHistoryEntry[];
+  playerId: string;
+  mirrored: boolean;
+}) {
+  // Newest first. `slice()` because the projection's array is shared with the
+  // other column's render and `reverse()` mutates in place.
+  const rows = entries.slice().reverse();
+  const newest = rows.length > 0 ? rows[0] : null;
+  return (
+    <div
+      data-testid={`combat-ledger-${playerId}`}
+      aria-label="Recent rounds"
+      className="flex min-h-[1.5rem] flex-col gap-1"
+    >
+      <div className={`flex ${mirrorAlign(mirrored)}`}>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/60">
+          {rows.length === 0 ? "No rounds yet" : "Recent rounds"}
+        </span>
+      </div>
+      {rows.map((e) => {
+        const state = OUTCOME_STATE[e.outcome];
+        const { Icon } = state;
+        return (
+          <div
+            key={e.roundNumber}
+            data-testid={`ledger-row-${playerId}-${e.roundNumber}`}
+            data-outcome={e.outcome}
+            data-newest={e === newest ? "true" : "false"}
+            // A row of GROUPS, so it reflects with `mirrorRow` like every other
+            // two-group row in this panel — the round marker sits at the outer
+            // edge of the column and the damage at the inner edge on both
+            // sides. Order within a group never reverses.
+            className={`flex items-center gap-1.5 rounded px-1 py-0.5 text-[11px] leading-tight ${
+              mirrorRow(mirrored)} ${
+              e === newest ? "bg-white/[0.06]" : "bg-white/[0.02]"}`}
+          >
+            <span className="sr-only">
+              Round {e.roundNumber}: {state.word}
+              {e.dealt > 0 && `, dealt ${e.dealt}`}
+              {e.taken > 0 && `, took ${e.taken}`}
+              {e.absorbed > 0 && `, absorbed ${e.absorbed}`}
+              {e.timeExpired && ", time expired"}. HP {e.hpAfter}.
+            </span>
+            <span aria-hidden
+              className="shrink-0 tabular-nums font-semibold text-muted-foreground/70">
+              R{e.roundNumber}
+            </span>
+            <Icon aria-hidden className={`h-3 w-3 shrink-0 ${state.tone}`} />
+            <span aria-hidden className={`truncate font-semibold ${state.tone}`}>
+              {state.word}
+            </span>
+            {/* The damage cell. `auto` margin has to change SIDE with the row:
+                in a reversed row `ml-auto` still pushes toward the physical
+                right, which would park the number back against the verdict
+                instead of across from it. */}
+            <span aria-hidden
+              className={`${mirrored ? "mr-auto flex-row-reverse" : "ml-auto"} flex shrink-0 items-center gap-1.5 tabular-nums`}>
+              {e.dealt > 0 && (
+                <span className="inline-flex items-center gap-0.5 font-black text-[#e8c97a]">
+                  <Swords aria-hidden className="h-3 w-3 shrink-0" />
+                  {e.dealt}
+                </span>
+              )}
+              {e.taken > 0 && (
+                <span className="font-black text-[#e2757b]">-{e.taken}</span>
+              )}
+              {e.absorbed > 0 && (
+                <span className="inline-flex items-center gap-0.5 font-black text-sky-300">
+                  <ShieldCheck aria-hidden className="h-3 w-3 shrink-0" />
+                  {e.absorbed}
+                </span>
+              )}
+              {e.dealt === 0 && e.taken === 0 && e.absorbed === 0 && (
+                <span className="text-muted-foreground/50">—</span>
+              )}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 /**
  * The reveal state for one column. Occupies the SAME reserved row the neutral
@@ -418,8 +471,8 @@ export function CombatantPanel({
    * the XP meter entirely — the row is reclaimed, not reserved.
    */
   progressionEnabled?: boolean;
-  /** Recent HP changes for this player, oldest first. Absent = no trail row. */
-  damage?: DamageHistoryEntry[];
+  /** Recent settled rounds for this player, oldest first. Absent = no ledger. */
+  damage?: RoundHistoryEntry[];
   /** Reveal-beat verdict; null = the neutral Thinking/Locked state. */
   outcome?: ResolvedCombatantView["outcome"] | null;
   /** Damage this player DEALT in the revealed round; shown beside the verdict. */
@@ -436,10 +489,38 @@ export function CombatantPanel({
 }) {
   const { side, name, tag } = combatant;
   const role = roleIdentityFor(combatant.roleId);
-  // Class art is the FALLBACK, reached only when the match froze no role. R1
-  // forbids deriving one from the other, so this is a branch, never a mapping.
+  /**
+   * WHICH IDENTITY LAYOUT THIS COLUMN GETS — decided by the MATCH, not by this
+   * participant.
+   *
+   * This used to be `role.role !== null`, i.e. per-participant, and that is
+   * the whole of the asymmetry the arena showed: a bot carries a legitimate
+   * `role: null`, so the human's column stood up a full role mascot while the
+   * bot's fell through to a 48px class bust labelled with its combat class.
+   * Both columns of one match now take the same branch, whatever either
+   * participant's role happens to be.
+   *
+   * `role.role !== null` is retained only as the compatibility answer for a
+   * caller that predates `identityMode` (the staff duel, the inspector, the
+   * tutorial shell): a view that carries a role still gets the role layout,
+   * exactly as before.
+   */
+  const roleLayout = combatant.identityMode === "role" || role.role !== null;
+  // Class art is the FALLBACK, reached only on a match that froze no roles AT
+  // ALL. R1 forbids deriving one from the other, so this is a branch, never a
+  // mapping — and a role-less participant on a ROLE match never reaches it.
   const classIdentity = classIdentityFor(combatant.classId);
-  const accent = role.role ? role.accent : classIdentity.accent;
+  const accent = roleLayout ? role.accent : classIdentity.accent;
+  /**
+   * The role slot's text. `role.label` is the role's name, or the neutral
+   * "Duelist" when there is no role — never a class, never a guess. It is a
+   * FALLBACK rather than the value so a controller with its own descriptor
+   * ("Training Golem") keeps it.
+   *
+   * On a role match this is always a non-empty string, which is what keeps the
+   * two columns' identity rows the same shape when only one side has a role.
+   */
+  const identityLabel = roleLayout ? (tag ?? role.label) : tag;
   // The opponent column is the horizontal REFLECTION of the player's, not a
   // second layout that resembles it: one structure, one rule, and every row
   // below takes its alignment from this. `side` survives only where the two
@@ -470,7 +551,11 @@ export function CombatantPanel({
           faces, WHEN something happened, and that it is touchable. Every
           distance, duration, easing curve and keyframe — including the whole
           of the click reaction — stays in `RoleMascot`. */}
-      {role.role && (
+      {roleLayout && (
+        // Rendered for BOTH columns of a role match. `RoleCrest` draws the
+        // mascot when there is a role and a neutral emblem in exactly the same
+        // box when there is not, so the slot's geometry is a constant of the
+        // match rather than of the participant.
         <RoleCrest identity={role} mirrored={mirrored} size="stage" interactive
           action={reaction?.action ?? null} actionId={reaction?.actionId ?? null} />
       )}
@@ -479,15 +564,15 @@ export function CombatantPanel({
           columns read as a facing pair. The pre-role class fallback keeps its
           original stacked header and its framed bust, untouched. */}
       <header className={`flex items-center gap-2.5 min-w-0 ${mirrored ? "flex-row-reverse" : ""}`}>
-        {!role.role && (
+        {!roleLayout && (
           <ClassPortrait identity={classIdentity} fallbackLabel={tag ?? combatant.classId}
             mirrored={mirrored} />
         )}
         <div className={`min-w-0 ${
-          role.role ? "flex flex-1 items-baseline justify-between gap-2" : ""} ${
-          role.role && mirrored ? "flex-row-reverse" : ""} ${mirrored ? "text-right" : ""}`}>
+          roleLayout ? "flex flex-1 items-baseline justify-between gap-2" : ""} ${
+          roleLayout && mirrored ? "flex-row-reverse" : ""} ${mirrored ? "text-right" : ""}`}>
           <div className="min-w-0 font-bold leading-tight truncate">{name}</div>
-          {tag && (
+          {identityLabel && (
             <div
               data-testid={`identity-tag-${combatant.playerId}`}
               // `justify-between` on the row (not a margin) is what puts the
@@ -496,10 +581,10 @@ export function CombatantPanel({
               // pushed the role over to sit beside the name instead of across
               // from it — the two columns stopped being each other's mirror.
               className={`flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] ${
-                role.role ? "shrink-0" : ""} ${mirrored ? "justify-end" : ""}`}
+                roleLayout ? "shrink-0" : ""} ${mirrored ? "justify-end" : ""}`}
               style={{ color: accent }}
             >
-              {!role.role && classIdentity.portrait && (
+              {!roleLayout && classIdentity.portrait && (
                 // Mobile stand-in for the framed class bust (hidden <sm). Role
                 // crests are SVG and need no small-screen substitute.
                 <img
@@ -512,7 +597,7 @@ export function CombatantPanel({
                   className="h-4 w-4 shrink-0 select-none rounded-[3px] object-cover [object-position:50%_22%] sm:hidden"
                 />
               )}
-              <span className="truncate">{tag}</span>
+              <span className="truncate">{identityLabel}</span>
             </div>
           )}
         </div>
@@ -529,8 +614,11 @@ export function CombatantPanel({
       </header>
       <HealthMeter combatant={combatant} />
       {damage && (
+        // `flex-1` is what routes the column's surplus height — the Phase 11
+        // grid stretches both rails to the question board's height — into the
+        // ledger rather than leaving it dead under the HP bar.
         <div className="flex-1">
-          <DamageTrail entries={damage} playerId={combatant.playerId} mirrored={mirrored} />
+          <RoundLedger entries={damage} playerId={combatant.playerId} mirrored={mirrored} />
         </div>
       )}
       {progressionEnabled && <ExperienceMeter combatant={combatant} />}

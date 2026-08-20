@@ -42,9 +42,35 @@ export interface CombatantView {
    * R1 League role id (`top` | `jungle` | `mid` | `adc` | `support`) when the
    * match froze one; absent/null otherwise. Presentation only — it selects the
    * role crest and the role label, and is NEVER derived from `classId` (nor
-   * `classId` from it). A view with no role renders the legacy class identity.
+   * `classId` from it). A view with no role renders the neutral role identity
+   * on a role match, and the legacy class identity on a pre-R1 match — see
+   * `identityMode`, which is what decides between those two.
    */
   roleId?: string | null;
+  /**
+   * WHICH IDENTITY VOCABULARY THIS MATCH USES — a match-level fact, and
+   * therefore identical on both combatants of one match.
+   *
+   * `"role"` — the match froze League roles. The role slot is authoritative: a
+   * participant WITH a role shows their role, and a participant WITHOUT one (a
+   * bot, a staff-created seat) shows the NEUTRAL role treatment in the same
+   * slot at the same size. `classId` never reaches presentation.
+   *
+   * `"legacy_class"` (or absent) — a genuine pre-R1 match, which has no roles
+   * at all and whose only identity is the legacy combat class. The original
+   * class portrait and class tag are unchanged there.
+   *
+   * This field exists because "this PARTICIPANT has no role" and "this MATCH
+   * has no roles" are different facts, and the panel used to conflate them: a
+   * bot with a legitimate `role: null` fell into the legacy branch and
+   * advertised its combat class ("TANK") as though it were a League role,
+   * while its human opponent showed a full role mascot. Deciding the
+   * vocabulary once per MATCH is what keeps the two columns the same shape.
+   *
+   * Absent defaults to `"legacy_class"`, so every caller that predates this
+   * field renders byte-identically.
+   */
+  identityMode?: "role" | "legacy_class";
   side: CombatantSide;
   classId: string;
   hp: number;

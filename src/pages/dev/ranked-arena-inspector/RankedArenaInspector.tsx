@@ -487,8 +487,13 @@ function ArenaComposition({
  * choose WHICH settled round to look at, they do not settle one.
  */
 function MascotBench() {
-  const [playerRole, setPlayerRole] = useState<RankedRole>("top");
-  const [opponentRole, setOpponentRole] = useState<RankedRole>("mid");
+  // `null` is a real, permanently-supported value here, not a placeholder: a
+  // bot has no role and never gets one invented for it. It is on the bench
+  // because the MIXED match — one side with a role, one without — is the state
+  // that used to break the two columns' symmetry, and the only way the owner
+  // can judge the repair is by looking at it.
+  const [playerRole, setPlayerRole] = useState<RankedRole | null>("top");
+  const [opponentRole, setOpponentRole] = useState<RankedRole | null>("mid");
   // A settled round: the scenario, plus the round number it settled as. The
   // number is bumped on every press so consecutive presses of the SAME button
   // are two different events — exactly what a live match produces, and what
@@ -503,14 +508,21 @@ function MascotBench() {
 
   const fire = (key: string) => setRound((r) => ({ key, n: (r?.n ?? 0) + 1 }));
   const combatantFor = (side: "player" | "opponent") => {
-    const base = side === "player"
-      ? player({ playerId: FIXTURE_P1_ID, roleId: playerRole,
-                 tag: RANKED_ROLE_LABELS[playerRole] })
-      : opponent({ playerId: FIXTURE_P2_ID, roleId: opponentRole,
-                   tag: RANKED_ROLE_LABELS[opponentRole] });
-    return base;
+    const role = side === "player" ? playerRole : opponentRole;
+    const identity = {
+      // A role match, decided once for BOTH columns — exactly as
+      // `projectCombatants` decides it from the snapshot.
+      identityMode: "role" as const,
+      roleId: role,
+      tag: role === null ? undefined : RANKED_ROLE_LABELS[role],
+    };
+    return side === "player"
+      ? player({ playerId: FIXTURE_P1_ID, ...identity })
+      : opponent({ playerId: FIXTURE_P2_ID, ...identity });
   };
-  const roleButtons = (value: RankedRole, set: (r: RankedRole) => void, label: string) => (
+  const roleButtons = (
+    value: RankedRole | null, set: (r: RankedRole | null) => void, label: string,
+  ) => (
     <div className="flex flex-wrap items-center gap-1">
       <span className="w-20 text-[11px] uppercase tracking-widest text-muted-foreground">{label}</span>
       {RANKED_ROLES.map((r) => (
@@ -520,6 +532,11 @@ function MascotBench() {
           {RANKED_ROLE_LABELS[r]}
         </button>
       ))}
+      <button type="button" onClick={() => set(null)}
+        className={`rounded border px-2 py-0.5 text-[11px] ${
+          value === null ? "border-primary bg-primary/15" : "border-white/15"}`}>
+        No role (bot)
+      </button>
     </div>
   );
   return (
@@ -555,12 +572,22 @@ function MascotBench() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
           <div className="lg:col-start-1 lg:row-start-1 lg:h-full">
             <CombatantPanel combatant={combatantFor("player")} progressionEnabled={false}
-              damage={[{ roundNumber: 1, amount: 12, hpAfter: 158, kind: "hit" }]}
+              damage={[
+                { roundNumber: 1, outcome: "correct", dealt: 30, taken: 0,
+                  absorbed: 0, hpBefore: 170, hpAfter: 170, timeExpired: false },
+                { roundNumber: 2, outcome: "incorrect", dealt: 0, taken: 12,
+                  absorbed: 0, hpBefore: 170, hpAfter: 158, timeExpired: false },
+              ]}
               reaction={reactions[FIXTURE_P1_ID] ?? null} />
           </div>
           <div className="lg:col-start-3 lg:row-start-1 lg:h-full">
             <CombatantPanel combatant={combatantFor("opponent")} progressionEnabled={false}
-              damage={[{ roundNumber: 1, amount: 30, hpAfter: 120, kind: "hit" }]}
+              damage={[
+                { roundNumber: 1, outcome: "incorrect", dealt: 0, taken: 30,
+                  absorbed: 0, hpBefore: 150, hpAfter: 120, timeExpired: false },
+                { roundNumber: 2, outcome: "correct", dealt: 12, taken: 0,
+                  absorbed: 0, hpBefore: 120, hpAfter: 120, timeExpired: false },
+              ]}
               reaction={reactions[FIXTURE_P2_ID] ?? null} />
           </div>
           <section data-testid="ranked-question"

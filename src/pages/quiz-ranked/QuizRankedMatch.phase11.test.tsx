@@ -143,16 +143,57 @@ describe("Phase 11 — mirrored role columns", () => {
     expect(document.body.textContent).not.toMatch(/\bTANK\b|\bMAGE\b|\bMARKSMAN\b/);
   });
 
-  it("mirrors the two columns: identical structure, both with a damage trail", async () => {
+  it("mirrors the two columns: identical structure, both with a round ledger", async () => {
     await mount();
-    expect(screen.getByTestId("damage-trail-userA")).toBeInTheDocument();
-    expect(screen.getByTestId("damage-trail-userB")).toBeInTheDocument();
+    expect(screen.getByTestId("combat-ledger-userA")).toBeInTheDocument();
+    expect(screen.getByTestId("combat-ledger-userB")).toBeInTheDocument();
     expect(screen.getByTestId("hp-userA")).toBeInTheDocument();
     expect(screen.getByTestId("hp-userB")).toBeInTheDocument();
   });
 
-  it("falls back to the class identity when the match froze no role", async () => {
+  it("gives a BOT opponent the neutral role identity, never its combat class", async () => {
+    // THE DEFECT THE OWNER SAW. A bot match: the human queued as a role, the
+    // backend refuses to invent one for the bot (`role: null`, and never
+    // derived from a class), and the arena printed the bot's `class_id` in the
+    // role slot — "TANK", which is not a League role.
+    backend.roles = { userA: "jungle", userB: null };
+    await mount();
+    const player = screen.getByTestId("combatant-userA");
+    const bot = screen.getByTestId("combatant-userB");
+    expect(player.querySelector('[data-testid="role-crest"]'))
+      .toHaveAttribute("data-role", "jungle");
+    // The bot keeps a role SLOT of the same kind — it is simply neutral.
+    expect(bot.querySelector('[data-testid="role-crest"]'))
+      .toHaveAttribute("data-role", "none");
+    expect(bot.querySelector('[data-testid="role-crest-neutral"]')).toBeTruthy();
+    expect(bot.querySelector('[data-testid="class-portrait"]')).toBeNull();
+    expect(screen.getByTestId("identity-tag-userA")).toHaveTextContent("Jungle");
+    expect(screen.getByTestId("identity-tag-userB")).toHaveTextContent("Duelist");
+    // No combat class reaches the screen, in any casing.
+    expect(document.body.textContent).not.toMatch(/tank|mage|marksman/i);
+  });
+
+  it("keeps the neutral identity when NEITHER seat has a role on an R1 match", async () => {
+    // A role match is a role match whether or not anyone chose. Reading this
+    // as pre-R1 and dressing both columns in combat classes would reintroduce
+    // the same wrong vocabulary from the other direction.
     backend.roles = { userA: null, userB: null };
+    await mount();
+    for (const id of ["combatant-userA", "combatant-userB"]) {
+      const panel = screen.getByTestId(id);
+      expect(panel.querySelector('[data-testid="role-crest"]'))
+        .toHaveAttribute("data-role", "none");
+      expect(panel.querySelector('[data-testid="class-portrait"]')).toBeNull();
+    }
+    expect(document.body.textContent).not.toMatch(/tank|mage|marksman/i);
+  });
+
+  it("falls back to the class identity ONLY on a genuine pre-R1 match", async () => {
+    // No roles on the wire AND no `progression_enabled` — i.e. a backend that
+    // predates R1, whose matches have no role layer at all and whose only
+    // identity IS the combat class. Deliberately unchanged.
+    backend.progressionEnabled = null;
+    backend.roles = {};
     await mount();
     expect(screen.queryByTestId("role-crest")).toBeNull();
     expect(screen.getByTestId("combatant-userA")

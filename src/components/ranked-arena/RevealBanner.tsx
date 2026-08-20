@@ -10,8 +10,14 @@
  *
  * The one-row summary has a reserved min-height and the toggle sits in the
  * same slot in both states, so collapsing/expanding never reflows content
- * above it. Parents key this component on the round so a NEW settlement always
- * starts collapsed.
+ * above it. A NEW settlement always starts collapsed.
+ *
+ * The expansion may be CONTROLLED (`open` + `onOpenChange`). The live arena
+ * needs that because it only mounts this banner for the settlement reveal beat
+ * — a banner that vanished out from under an open Details would be losing the
+ * breakdown, not deferring it — so the arena keeps it mounted for as long as
+ * the player has it open. A controlled parent owns the collapse-on-new-round
+ * reset; uncontrolled callers keep doing it here.
  */
 import { useState } from "react";
 import { CheckCircle2, ChevronDown, Hourglass, Swords, XCircle } from "lucide-react";
@@ -70,6 +76,30 @@ export function resultHeadline(
   return { verdict, detail: parts.length ? parts.join(" · ") : null, tone: viewer.outcome };
 }
 
+/**
+ * The same result, compressed for the TOP match HUD.
+ *
+ * Built ON `resultHeadline` rather than beside it, so there is still exactly
+ * one place that decides what a round was called: the header chip and the
+ * banner can disagree about how much room they have, never about the verdict.
+ *
+ * The only thing added is a SHORTER damage clause. `resultHeadline`'s
+ * "14 damage dealt · 12 damage taken" is the right sentence for a banner and
+ * far too long for a strip that also carries the live round and the clock.
+ */
+export function compactResultHeadline(
+  viewer: ResolvedCombatantView, opponent: ResolvedCombatantView,
+): { verdict: string; detail: string | null; tone: ResolvedCombatantView["outcome"] } {
+  const { verdict, tone } = resultHeadline(viewer, opponent);
+  const parts: string[] = [];
+  if (viewer.finalDamageDealt > 0) parts.push(`${viewer.finalDamageDealt} dmg`);
+  if (viewer.finalDamageReceived > 0) parts.push(`took ${viewer.finalDamageReceived}`);
+  if (parts.length === 0 && viewer.shieldAbsorbed > 0) {
+    parts.push(`${viewer.shieldAbsorbed} absorbed`);
+  }
+  return { verdict, detail: parts.length ? parts.join(" · ") : null, tone };
+}
+
 const VERDICT_TONE: Record<ResolvedCombatantView["outcome"], string> = {
   correct: "text-emerald-300",
   incorrect: "text-[#e2757b]",
@@ -90,6 +120,10 @@ export interface RevealBannerProps {
    * to the embedded RevealPanel so the Details expansion agrees with the
    * live HUD about whether abilities exist at all. */
   showAbilities?: boolean;
+  /** Controlled expansion. Omit for the original self-managed behaviour. */
+  open?: boolean;
+  /** Fired on every toggle, controlled or not. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 function SideSummary({
@@ -124,14 +158,24 @@ export function RevealBanner({
   // R1: forwarded verbatim to the Details expansion. Defaults to true, so the
   // banner is unchanged for every legacy caller.
   showAbilities = true,
+  open: controlledOpen,
+  onOpenChange,
 }: RevealBannerProps) {
-  const [open, setOpen] = useState(false);
+  const [selfOpen, setSelfOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : selfOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setSelfOpen(next);
+    onOpenChange?.(next);
+  };
   // A NEW settlement always starts collapsed (render-time reset, no effect
-  // tick): the expanded breakdown never carries over to a later round.
+  // tick): the expanded breakdown never carries over to a later round. Only
+  // for the UNCONTROLLED shape — calling a parent's setter during render is
+  // not allowed, so a controlled parent owns its own reset.
   const [seen, setSeen] = useState(settlement);
   if (seen !== settlement) {
     setSeen(settlement);
-    setOpen(false);
+    if (!controlled) setSelfOpen(false);
   }
   const opponentSlot: PlayerSlot = viewerSlot === "p1" ? "p2" : "p1";
   const viewer = settlement.players[viewerSlot];
@@ -168,7 +212,7 @@ export function RevealBanner({
         </div>
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => setOpen(!open)}
           aria-expanded={open}
           data-testid="reveal-details-toggle"
           className="ml-auto inline-flex min-h-[1.75rem] shrink-0 items-center gap-1 rounded px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"

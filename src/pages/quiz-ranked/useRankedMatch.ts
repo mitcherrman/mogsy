@@ -40,12 +40,36 @@ export const HEARTBEAT_MS = 10000;
  * is told or when.
  */
 /**
- * How many settlements the duelist columns' recent-damage trail keeps.
- * Five is the top of the range the Phase 11 brief allows ("the last ~3–5
- * meaningful events rather than a full combat log"); the strip itself shows
- * fewer at narrow widths.
+ * How many settlements the duelist columns' recent-round ledger keeps.
+ *
+ * Raised from five when the columns stopped showing a one-line chip strip and
+ * started showing a ledger ROW per settled round: five rows left most of the
+ * stretched column empty, which is the dead space the ledger exists to fill.
+ * Eight is still "recent" — bounded so the column keeps its own height and the
+ * ledger never needs to scroll — not a combat log.
  */
-export const DAMAGE_LOG_LIMIT = 5;
+export const DAMAGE_LOG_LIMIT = 8;
+
+/**
+ * Merge settlements into the bounded ledger buffer: deduplicated on round
+ * number, sorted ascending, trimmed to the most recent `DAMAGE_LOG_LIMIT`.
+ *
+ * `existing` wins a collision. The two sources are the live capture and the
+ * resume backfill, which describe the same settled rows, so this only decides
+ * which copy is kept — but keeping the live one means a backfill that lands
+ * late can never overwrite a round the player just watched resolve.
+ */
+function mergeSettlements(
+  existing: ResolvedRoundView[], incoming: ResolvedRoundView[],
+): ResolvedRoundView[] {
+  const byRound = new Map<number, ResolvedRoundView>();
+  for (const s of [...existing, ...incoming]) {
+    if (!byRound.has(s.roundNumber)) byRound.set(s.roundNumber, s);
+  }
+  return [...byRound.values()]
+    .sort((a, b) => a.roundNumber - b.roundNumber)
+    .slice(-DAMAGE_LOG_LIMIT);
+}
 
 export const REVEAL_HOLD_MS = 1500;
 /** Longer when the settlement contains a level-up: there is strictly more to read. */
@@ -83,14 +107,19 @@ export interface MatchController {
   privatePlayer: PrivatePlayerView | null;
   lastResolved: ResolvedRoundView | null;
   /**
-   * QUIZ1 Phase 11 — the last few settlements, oldest first, for the duelist
-   * columns' recent-damage history. A BOUNDED buffer (see `DAMAGE_LOG_LIMIT`):
-   * the arena shows a glance-able trail, not a combat log, and an unbounded
-   * list would grow for the whole match to feed a five-row strip.
+   * The last few settlements, oldest first, for the duelist columns'
+   * recent-round ledger. A BOUNDED buffer (see `DAMAGE_LOG_LIMIT`): the arena
+   * shows recent history, not a combat log, and an unbounded list would grow
+   * for the whole match to feed a fixed number of rows.
    *
    * Deduplicated on `roundNumber`, so a re-poll of the same resolved round can
    * never double-count a hit. Every value inside is the same authoritative
    * settlement `lastResolved` carries — nothing is recomputed.
+   *
+   * SURVIVES A REFRESH. Resume seeds this from the rounds the match has
+   * already settled (see the backfill in the mount effect); before that it
+   * only ever filled from rounds the client watched resolve, so a reload left
+   * a mid-match player looking at an empty ledger.
    */
   damageLog: ResolvedRoundView[];
   result: MatchResultView | null;
@@ -296,13 +325,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     resolvedRef.current = round;
     if (settlement) {
       setLastResolved(settlement);
-      // Append-and-trim, keyed on the round number. `resolvedRef` already
+      // Merge-and-trim, keyed on the round number. `resolvedRef` already
       // guards the common re-entry, but a remount re-reads a round it has
-      // seen; keying on the round makes the buffer idempotent regardless.
-      setDamageLog((log) => (
-        log.some((s) => s.roundNumber === settlement!.roundNumber)
-          ? log
-          : [...log, settlement!].slice(-DAMAGE_LOG_LIMIT)));
+      // seen, and the resume backfill writes the same buffer from the other
+      // end; merging on the round number makes it idempotent regardless of
+      // which source lands first.
+      setDamageLog((log) => mergeSettlements(log, [settlement!]));
     }
     // A quiz round yields null here, which correctly clears a previous
     // segment transcript so it cannot linger over the next round.
@@ -325,6 +353,45 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       beginRevealHold(leveledUp);
     }
   }, [matchId, beginRevealHold]);
+
+  /**
+   * Seed the recent-round ledger from rounds this client never watched
+   * resolve — a refresh, or a reconnect into a match already in progress.
+   *
+   * Read-only and best effort. It fetches at most `DAMAGE_LOG_LIMIT` already
+   * SETTLED rounds (the backend refuses to build a resolved projection for a
+   * round that has not settled, so nothing here can see a live answer), never
+   * touches `lastResolved` or `resolvedRef`, and never starts a reveal hold —
+   * this is history the player has already lived through, not a reveal.
+   *
+   * A round that fails to fetch or adapt is skipped: an incomplete ledger is a
+   * fair outcome for a best-effort read, and a hard failure here must not cost
+   * anyone the match they are reconnecting to.
+   */
+  const backfillDamageLog = useCallback(async (
+    pub: PublicRoundView, signal: AbortSignal,
+  ) => {
+    const ids = idMappingFromRound(pub, viewerUserId);
+    if (!ids || !matchId) return;
+    const last = pub.completedRounds;
+    if (last <= 0) return;
+    const first = Math.max(1, last - DAMAGE_LOG_LIMIT + 1);
+    const rounds: number[] = [];
+    for (let r = first; r <= last; r += 1) rounds.push(r);
+    const fetched = await Promise.all(rounds.map(async (r) => {
+      try {
+        const env = await api.getResolvedRound(matchId, r, signal);
+        return adaptBackendSettlement(
+          env.payload as unknown as ResolvedProjection, ids);
+      } catch {
+        return null;  // not settled, unreadable, or aborted — simply no row
+      }
+    }));
+    if (signal.aborted) return;
+    const recovered = fetched.filter((v): v is ResolvedRoundView => v !== null);
+    if (recovered.length === 0) return;
+    setDamageLog((log) => mergeSettlements(log, recovered));
+  }, [matchId, viewerUserId]);
 
   const poll = useCallback(async () => {
     if (!matchId || stoppedRef.current) return;
@@ -437,6 +504,13 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     activeRoundRef.current = null;
     resolvedRef.current = null;
     setRoundNumber(null);
+    // Everything below describes ONE match. The refs above were already reset
+    // here; the settlement state was not, so switching `matchId` inside a
+    // mounted controller carried the previous match's ledger, reveal and
+    // transcript into the new arena until its first round settled.
+    setDamageLog([]);
+    setLastResolved(null);
+    setLastSegmentSettlement(null);
     (async () => {
       const controller = new AbortController();
       abortRef.current = controller;
@@ -468,6 +542,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
           // Resume replays a reveal the player has usually already seen, and it
           // must not hold interactivity hostage on reconnect.
         }
+        // Background, and deliberately NOT awaited: the poll loop below must
+        // start on time whether or not the ledger can be recovered.
+        void backfillDamageLog(resume.public, controller.signal);
       } catch (e) {
         if (api.isContractError(e)) { failContract("resume", e); return; }
         if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
