@@ -1,28 +1,65 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, Check, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
+/**
+ * Read state on this page is per admin.
+ *
+ * It used to be admin_notifications.is_read, a single global boolean: one admin
+ * pressing "Read" cleared the row for every other admin, who then never saw the
+ * report at all. Read state now lives in admin_notification_reads, keyed by the
+ * reader's auth uid, so `is_read` is not selected or written here any more — it
+ * survives only as the moderator-request disposition flag owned by
+ * AdminModeratorConfig.
+ */
 interface Notification {
   id: string;
   type: string;
   title: string;
   message: string | null;
-  is_read: boolean;
   metadata: any;
   created_at: string;
 }
 
 export default function AdminNotifications({ onReadChange }: { onReadChange?: (unread: number) => void }) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
+  // The parent's badge must be told the count, but `onReadChange` is an inline
+  // arrow in Admin.tsx and so is a new function on every render. Holding it in
+  // a ref keeps it out of the effect dependencies and stops the reload loop.
+  const onReadChangeRef = useRef(onReadChange);
+  onReadChangeRef.current = onReadChange;
 
-  // Realtime: refresh & toast when new admin notifications arrive
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+    const [notifRes, readRes] = await Promise.all([
+      supabase
+        .from("admin_notifications")
+        .select("id, type, title, message, metadata, created_at")
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase
+        .from("admin_notification_reads")
+        .select("notification_id")
+        .eq("admin_user_id", user.id),
+    ]);
+    setNotifications((notifRes.data as Notification[]) || []);
+    setReadIds(new Set((readRes.data || []).map(r => r.notification_id)));
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => {
+    void loadNotifications();
+  }, [loadNotifications]);
+
+  // Realtime: a new admin notification carries no receipt for anybody, so it
+  // arrives unread for this admin and for every other admin independently.
   useEffect(() => {
     const channel = supabase
       .channel("admin-notifications-stream")
@@ -31,52 +68,94 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
         { event: "INSERT", schema: "public", table: "admin_notifications" },
         (payload) => {
           const n = payload.new as Notification;
-          setNotifications(prev => {
-            const next = [n, ...prev].slice(0, 50);
-            updateUnreadCount(next);
-            return next;
-          });
+          setNotifications(prev =>
+            prev.some(x => x.id === n.id) ? prev : [n, ...prev].slice(0, 50)
+          );
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const updateUnreadCount = (notifs: Notification[]) => {
-    const count = notifs.filter(n => !n.is_read).length;
-    onReadChange?.(count);
-  };
+  // Own receipts, streamed, so this page and the bell agree without a reload.
+  // RLS on admin_notification_reads means only this admin's own rows arrive.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("admin-notification-reads-stream")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "admin_notification_reads",
+          filter: `admin_user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const receipt = payload.new as { notification_id: string };
+          setReadIds(prev =>
+            prev.has(receipt.notification_id)
+              ? prev
+              : new Set(prev).add(receipt.notification_id)
+          );
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
-  const loadNotifications = async () => {
-    const { data } = await supabase
-      .from("admin_notifications")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    const notifs = (data as Notification[]) || [];
-    setNotifications(notifs);
-    updateUnreadCount(notifs);
-    setLoading(false);
+  /** One receipt per notification for the CURRENT admin. `admin_user_id` is
+   *  supplied because PostgREST needs the value; the INSERT policy separately
+   *  enforces `auth.uid() = admin_user_id`, so it cannot be forged. */
+  const persistReads = async (ids: string[]): Promise<boolean> => {
+    if (!user || ids.length === 0) return true;
+    const { error } = await supabase
+      .from("admin_notification_reads")
+      .upsert(
+        ids.map(id => ({ notification_id: id, admin_user_id: user.id })),
+        { onConflict: "notification_id,admin_user_id", ignoreDuplicates: true },
+      );
+    return !error;
   };
 
   const markRead = async (id: string) => {
-    await supabase.from("admin_notifications").update({ is_read: true }).eq("id", id);
-    const updated = notifications.map(n => n.id === id ? { ...n, is_read: true } : n);
-    setNotifications(updated);
-    updateUnreadCount(updated);
+    if (!user || readIds.has(id)) return;
+    setReadIds(prev => new Set(prev).add(id));
+    const ok = await persistReads([id]);
+    if (!ok) {
+      setReadIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast.error("Could not mark that as read");
+    }
   };
 
   const markAllRead = async () => {
-    const unread = notifications.filter(n => !n.is_read).map(n => n.id);
+    const unread = notifications.filter(n => !readIds.has(n.id)).map(n => n.id);
     if (unread.length === 0) return;
-    await supabase.from("admin_notifications").update({ is_read: true }).in("id", unread);
-    const updated = notifications.map(n => ({ ...n, is_read: true }));
-    setNotifications(updated);
-    updateUnreadCount(updated);
-    toast.success("All marked as read");
+    const previous = readIds;
+    setReadIds(prev => {
+      const next = new Set(prev);
+      unread.forEach(id => next.add(id));
+      return next;
+    });
+    const ok = await persistReads(unread);
+    if (!ok) {
+      setReadIds(previous);
+      toast.error("Could not mark those as read");
+      return;
+    }
+    // Only this admin. Every other admin's unread count is untouched.
+    toast.success("All marked as read for you");
   };
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
+
+  useEffect(() => {
+    onReadChangeRef.current?.(unreadCount);
+  }, [unreadCount]);
 
   if (loading) return <div className="text-center text-muted-foreground py-4">Loading...</div>;
 
@@ -103,11 +182,15 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
       )}
 
       <div className="space-y-2">
-        {notifications.map(n => (
+        {notifications.map(n => {
+          const isRead = readIds.has(n.id);
+          return (
           <div
             key={n.id}
+            data-testid={`admin-notification-${n.id}`}
+            data-read={isRead ? "true" : "false"}
             className={`rounded-xl border p-3 transition-colors ${
-              n.is_read ? "border-border bg-card" : "border-primary/30 bg-primary/5"
+              isRead ? "border-border bg-card" : "border-primary/30 bg-primary/5"
             } ${n.type === "image_report_critical" ? "border-destructive/40" : ""}`}
           >
             <div className="flex items-start gap-2">
@@ -123,14 +206,15 @@ export default function AdminNotifications({ onReadChange }: { onReadChange?: (u
                   {new Date(n.created_at).toLocaleString()}
                 </p>
               </div>
-              {!n.is_read && (
+              {!isRead && (
                 <Button size="sm" variant="ghost" onClick={() => markRead(n.id)} className="h-7 text-xs">
                   Read
                 </Button>
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

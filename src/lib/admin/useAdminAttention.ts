@@ -34,16 +34,22 @@ const SOURCES: Array<{
 }> = [
   {
     id: "admin-notifications",
-    label: "Unread admin notifications",
+    // Per admin, not site-wide: this is what THIS operator has not yet seen.
+    label: "My unread admin notifications",
     to: "/admin/people?section=notifications",
-    hint: "Feedback arrivals, user reports and moderator delete requests.",
+    hint: "Feedback arrivals, user reports and moderator delete requests you have not read.",
     load: async () => {
-      const { count, error } = await supabase
-        .from("admin_notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("is_read", false);
+      // `.eq("is_read", false)` used to count a single global boolean, so the
+      // number here was whatever the last admin to open something had left
+      // behind. admin_unread_notification_count() counts notifications with no
+      // receipt for auth.uid(); it takes no arguments, so it can only ever
+      // report on the calling admin and cannot be pointed at anyone else.
+      //
+      // A failure still throws, which this hook renders as "unavailable"
+      // against this row alone — never as a reassuring zero.
+      const { data, error } = await supabase.rpc("admin_unread_notification_count");
       if (error) throw error;
-      return count ?? 0;
+      return data ?? 0;
     },
   },
   {
