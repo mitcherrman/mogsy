@@ -35,10 +35,12 @@ import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
 import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
 import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackClient";
 import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
-import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
+import type { RankedRole } from "@/lib/ranked-public/roles";
 import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
+import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory";
+import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import AdSlot from "@/components/ads/AdSlot";
 import {
   getDailyChallenge,
@@ -252,6 +254,29 @@ export default function Quiz() {
   // RE1: the hub's competitive identity. Unavailable (older backend, guest,
   // failed request) stays null and the hero renders its neutral unranked state.
   const rankedProgression = useRankedProgression();
+  // LC1: the account's real recent Ranked rows. ONE fetch, shared by the
+  // lobby's personal history list and the per-role tally under the carousel
+  // — the hub components themselves still fetch nothing.
+  const rankedHistory = useRankedMatchHistory(20);
+  // LC1: the account's own display identity for the lobby's personal column.
+  const profileIdentity = useProfileIdentity(user?.id ?? null);
+  // Which role's write is in flight, mirroring the Ranked page's picker: the
+  // controller's `role` is still the OLD value until the SERVER answers, so
+  // the in-flight option has to be tracked here rather than inferred from it.
+  const [savingRankedRole, setSavingRankedRole] = useState<RankedRole | null>(null);
+
+  const chooseRankedRole = useCallback(
+    async (role: RankedRole) => {
+      if (rankedRole.saving) return;
+      setSavingRankedRole(role);
+      const accepted = await rankedRole.selectRole(role);
+      setSavingRankedRole(null);
+      // The backend stays the authority on when a change is legal; a refusal
+      // (an active match, a live queue entry) is surfaced, never swallowed.
+      if (!accepted && rankedRole.error) toast.error(rankedRole.error);
+    },
+    [rankedRole],
+  );
   const navigate = useNavigate();
   const userId = user?.id || "anonymous";
 
@@ -866,7 +891,7 @@ export default function Quiz() {
         />
 
       <div
-        className={`relative mx-auto px-4 py-4 ${phase === "sets" ? "max-w-6xl" : "max-w-3xl"}`}
+        className={`relative mx-auto px-4 py-4 ${phase === "sets" ? "max-w-[1500px]" : "max-w-3xl"}`}
       >
         {/* Compact Leaguecraft header. The shell's floating League Hub pill is
             suppressed for /quiz (see Layout) so this inline control is the
@@ -881,7 +906,13 @@ export default function Quiz() {
             League Hub
           </Link>
           <BookOpen className="h-4 w-4 shrink-0 text-[#c9a84c]/80" aria-hidden="true" />
-          <h1 className="text-lg font-bold tracking-[0.18em] sm:text-xl">LEAGUECRAFT</h1>
+          {/* LC1: the LEAGUECRAFT wordmark is the lobby's centre column on the
+              hub, so this strip carries only the tagline there and keeps its
+              own compact wordmark on every other phase — the page always has
+              exactly one h1, never two. */}
+          {phase !== "sets" && (
+            <h1 className="text-lg font-bold tracking-[0.18em] sm:text-xl">LEAGUECRAFT</h1>
+          )}
           <p className="text-[11px] uppercase tracking-[0.26em] text-[#c9a84c]/60">
             Study. Practice. Ascend.
           </p>
@@ -917,7 +948,15 @@ export default function Quiz() {
               historyError={historyError}
               showMastery={HUB_MODULES.masteryJourney}
               rankedRole={rankedRole.role}
+              onSelectRankedRole={(role) => void chooseRankedRole(role)}
+              roleSelectDisabled={rankedRole.loadState !== "ready" || rankedRole.saving}
+              roleSaving={savingRankedRole}
               rankedProgression={rankedProgression.progression}
+              matchHistory={rankedHistory.entries}
+              matchHistoryLoading={rankedHistory.loadState === "loading"}
+              displayName={profileIdentity.displayName}
+              avatarUrl={profileIdentity.avatarUrl}
+              signedIn={!!user}
             />
 
             {/* ─────────────────────────────────────────────────────────────
