@@ -13,8 +13,9 @@ import {
   SOUND_LABELS,
   invalidateSoundSettingsCache,
 } from "@/hooks/useSoundSettings";
+import { tomeAudioEngine } from "@/pages/welcome/tomeAudio";
 
-const GROUPS = ["General", "Swiping", "Card Animations", "Shop"] as const;
+const GROUPS = ["General", "Swiping", "Card Animations", "Shop", "Academy Welcome"] as const;
 
 function groupedEntries() {
   const keys = Object.keys(SOUND_LABELS) as (keyof SoundSettings)[];
@@ -25,6 +26,10 @@ function groupedEntries() {
 }
 
 function synthesizeSound(ctx: AudioContext, key: keyof SoundSettings) {
+  // The welcome tome's sounds live with the tome — preview the real thing.
+  if (key === "welcome_scribble") { tomeAudioEngine.scribble(700); return; }
+  if (key === "welcome_page_turn") { tomeAudioEngine.pageTurn(); return; }
+
   const t = ctx.currentTime;
   const g = ctx.createGain();
   g.connect(ctx.destination);

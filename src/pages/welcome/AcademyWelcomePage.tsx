@@ -1,103 +1,104 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Compass, GraduationCap } from "lucide-react";
+import { ArrowRight, ChevronLeft, Compass, GraduationCap } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
-import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
-import { useViewportTier, type ViewportTier } from "@/pages/dev/mogzy-entry-v2/useViewportTier";
+import { useViewportTier } from "@/pages/dev/mogzy-entry-v2/useViewportTier";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 
-import AcademyModeExhibit from "./AcademyModeExhibit";
-import AcademyModeSelector from "./AcademyModeSelector";
-import { ACADEMY_MODES } from "./academyModes";
+import AcademyTome from "./AcademyTome";
+import ChapterPlate from "./ChapterPlate";
+import InkText, { InkPhrase, RevealSlot } from "./InkText";
+import { ACADEMY_CHAPTERS, type AcademyChapter } from "./academyChapters";
+import { phrasesOf } from "./phrases";
+import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
+import { slotCount, slotWriteMs, useRevealSequence } from "./useRevealSequence";
+import { useTomeAudio } from "./tomeAudio";
 
 /**
  * The Academy introduction (HI1) — the room immediately behind the Mogzy door.
  *
- * A real route rather than an overlay on /lol. The introduction is substantial
- * enough to be its own product state: it owns the whole viewport, it is
- * directly navigable and replayable, and it never obstructs the hub.
+ * ROUTING AND STATE ARE HI1's, UNCHANGED. A real route rather than an overlay:
+ * "/" hands first-time visitors here and returning ones straight to the hub,
+ * both exits record an outcome before navigating, `/welcome` stays directly
+ * navigable and replayable forever, and the legacy popup is untouched. None of
+ * that is this file's business beyond calling `markAcademyWelcomeHandled`.
  *
- * Three stages, forward-only by explicit control:
- *   0 — who Mogzy is for
- *   1 — what is inside
- *   2 — how to begin
+ * WHAT HI1-C CHANGED IS THE PRESENTATION, COMPLETELY. HI1 shipped three stages
+ * with a Continue button under each — correct, and unmistakably a wizard. This
+ * is one continuous scene instead: a tome opens in front of the visitor and
+ * writes itself, phrase by phrase, illustration by illustration. HI1-C2 then
+ * made each spread a PERFORMANCE with a curtain call: the writing and the
+ * painting run as two concurrent, deliberately desynchronised channels; the
+ * finished page then waits — indefinitely — and pressing Next physically turns
+ * the sheet, old words still on it, with a page-turn sound as it lifts.
  *
- * Browser Back deliberately leaves the route rather than stepping back through
- * the stages. The stages are component state, not history entries; pushing three
- * entries per visit would make Back feel broken from the hub, and intercepting
- * Back to fake it is exactly the surprising navigation this should avoid. The
- * explicit Back control moves within the experience.
+ * ONE CONTROL WITH TWO MEANINGS. Every input — the button, a click anywhere on
+ * the scene, Space, the arrow keys — means the same thing: "I'm ready". While a
+ * page is still being written that FINISHES it; once it is finished it TURNS
+ * it. An impatient tap can never cost the visitor words they have not read,
+ * which is the whole reason the control is dual-purpose rather than a Next.
+ * While the sheet itself is mid-turn, every input is ignored: a burst of
+ * clicks turns exactly one page, never two, and can never stack sheets or
+ * flip sounds.
  *
- * Reachable at any time, including after completion — that is what makes it
- * usable later as Getting Started / Help / QA / demo material.
+ * NOT TRAPPED, EVER — BUT NEVER SWEPT ALONG EITHER. Each chapter writes itself
+ * out on its own; the page turn is always the visitor's. Back re-reads a
+ * chapter; Skip to the Academy leaves for the hub from any chapter, recording
+ * the same outcome Start Exploring records. Browser Back leaves the route
+ * rather than stepping through chapters — the chapters are component state,
+ * not history entries, and pushing six entries per visit would make Back feel
+ * broken from wherever the visitor lands next.
+ *
+ * REDUCED MOTION IS A DIFFERENT EXPERIENCE, NOT A DEGRADED ONE. The clock stops
+ * and every chapter opens complete and still: the same words, the same artwork,
+ * the same chapters, turned by the visitor at their own pace — no turning
+ * sheet, no materialisation, no waiting. No content exists only inside an
+ * animation — the writing is in the document from the moment its slot opens,
+ * which is what makes this true for a screen reader as well as for a
+ * motion-sensitive reader.
  */
 
-const STAGE_COUNT = 3;
-
-/**
- * Per-stage environment. Same background plate, different camera and lighting —
- * see the note at the render site. Indexed by stage.
- */
-const ENV = [
-  {
-    // Arrival: close in on the pedestal, light pooled low and warm.
-    objectPosition: "center 66%",
-    imageOpacity: 0.2,
-    imageScale: 1.06,
-    glow:
-      "radial-gradient(62% 48% at 50% 42%, rgba(201,168,76,0.16) 0%, rgba(127,214,239,0.05) 45%, transparent 74%)",
-    vignette:
-      "radial-gradient(circle at 50% 50%, transparent 32%, rgba(2,4,10,0.52) 68%, rgba(2,4,10,0.9) 100%)",
-  },
-  {
-    // Discovery: the room opens out — wider frame, light spread across the shelves.
-    objectPosition: "center 50%",
-    imageOpacity: 0.26,
-    imageScale: 1,
-    glow:
-      "radial-gradient(92% 62% at 50% 34%, rgba(201,168,76,0.13) 0%, rgba(127,214,239,0.06) 50%, transparent 80%)",
-    vignette:
-      "radial-gradient(circle at 50% 50%, transparent 46%, rgba(2,4,10,0.36) 76%, rgba(2,4,10,0.82) 100%)",
-  },
-  {
-    // Choice: recentre on the visitor, light gathers back to the middle.
-    objectPosition: "center 56%",
-    imageOpacity: 0.16,
-    imageScale: 1.04,
-    glow:
-      "radial-gradient(58% 52% at 50% 46%, rgba(201,168,76,0.19) 0%, rgba(127,214,239,0.05) 44%, transparent 72%)",
-    vignette:
-      "radial-gradient(circle at 50% 50%, transparent 34%, rgba(2,4,10,0.5) 70%, rgba(2,4,10,0.9) 100%)",
-  },
-] as const;
+/** How long the physical page turn holds the stage. Matches the CSS. */
+const TURN_MS = 820;
 
 export default function AcademyWelcomePage() {
   const navigate = useNavigate();
-  const prefersReducedMotion = useReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
   const tier = useViewportTier();
-  const [stage, setStage] = useState(0);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  // Skip the focus move on first paint: stealing focus on arrival is its own
-  // small hostility, and the heading is already the first thing in the document.
-  const mounted = useRef(false);
+  const exitsRef = useRef<HTMLButtonElement>(null);
+  const audio = useTomeAudio();
 
+  // The outgoing chapter, while its sheet is physically turning. All input is
+  // ignored until the sheet lands; the sequence clock holds with it.
+  const [turning, setTurning] = useState<{ chapter: AcademyChapter } | null>(null);
+  const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (turnTimerRef.current) clearTimeout(turnTimerRef.current);
+    },
+    [],
+  );
+
+  const seq = useRevealSequence({
+    chapters: ACADEMY_CHAPTERS,
+    reducedMotion: prefersReducedMotion,
+    paused: turning !== null,
+  });
+  const { chapter, chapterIndex, step, complete, released, artRevealed, instant, isFinale } = seq;
+
+  // Portrait phones read a single page; everything else reads the spread. A
+  // landscape phone is wide and ~360px tall, which is the spread's own shape.
+  const isPhonePortrait = tier === "phone";
   const isLandscapePhone = tier === "phone-landscape";
-
-  // The whole content region swaps between stages, so move focus to the new
-  // heading — otherwise a keyboard or screen-reader user is left pointing at a
-  // button that no longer exists and hears nothing about the change.
-  useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    headingRef.current?.focus({ preventScroll: true });
-  }, [stage]);
+  const variant = isPhonePortrait ? "page" : isLandscapePhone ? "panel" : "spread";
+  // Vertical room the controls need, so the tome sizes itself around them
+  // rather than pushing them under the fold — the exact failure of the popup
+  // this replaces.
+  const chrome = isLandscapePhone ? 132 : 208;
 
   const finish = useCallback(
     (outcome: "explored" | "tutorial") => {
@@ -110,36 +111,172 @@ export default function AcademyWelcomePage() {
     },
     [navigate],
   );
-
   const startExploring = useCallback(() => finish("explored"), [finish]);
   const startTutorial = useCallback(() => finish("tutorial"), [finish]);
 
-  // Enter-only, and deliberately NOT wrapped in AnimatePresence.
-  //
-  // The obvious construction here is <AnimatePresence mode="wait"> so the old
-  // stage fades out before the new one fades in. It deadlocks: mode="wait"
-  // holds the incoming child until the outgoing child's exit transition
-  // reports completion, and if the key changes again while that exit is still
-  // running — a visitor double-tapping Continue, or a resize landing mid
-  // transition — the exit never completes and the new stage never mounts. The
-  // result is a live page with correct state and an empty content area, which
-  // is exactly the kind of dead end an introduction must never produce.
-  //
-  // Keying the element by stage is enough: React remounts it, so initial →
-  // animate replays on every change and the transition can never strand.
-  const motionProps = prefersReducedMotion
-    ? {}
-    : {
-        initial: { opacity: 0, y: 14 },
-        animate: { opacity: 1, y: 0 },
-        transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const },
-      };
+  /**
+   * The one advance action, wrapped around the sequence's own so the page can
+   * stage the physical turn and the sounds. Mid-reveal: finish the page and
+   * silence the pen at once. Complete: lift the sheet, sound the paper, hold
+   * the incoming chapter's clock until the sheet lands. Mid-turn: nothing —
+   * this single early return is the whole burst-click story.
+   */
+  const handleAdvance = useCallback(() => {
+    if (turning) return;
+    if (!seq.complete) {
+      audio.stopScribble();
+      seq.advance();
+      return;
+    }
+    if (seq.isFinale) return;
+    audio.stopScribble();
+    // As the page BEGINS lifting, not after it lands.
+    audio.pageTurn();
+    if (!prefersReducedMotion) {
+      setTurning({ chapter: seq.chapter });
+      turnTimerRef.current = setTimeout(() => setTurning(null), TURN_MS);
+    }
+    seq.advance();
+  }, [turning, seq, audio, prefersReducedMotion]);
+
+  const handleBack = useCallback(() => {
+    if (turning) return;
+    audio.stopScribble();
+    seq.back();
+  }, [turning, seq, audio]);
+
+  // The pen's sound, synchronised to the writing itself: each slot arriving on
+  // its own beat scratches for as long as its ink visibly takes, and nothing
+  // scratches during the breaths between phrases (each scribble is scheduled
+  // for exactly its write window and ends there). Skips, page turns and Back
+  // land content instantly, so they stop the pen instead (handleAdvance /
+  // handleBack); this effect only ever starts sound for a slot arriving on
+  // the clock.
+  const prevStepRef = useRef(step);
+  const prevChapterRef = useRef(chapterIndex);
+  useEffect(() => {
+    const prevStep = prevStepRef.current;
+    const prevChapter = prevChapterRef.current;
+    prevStepRef.current = step;
+    prevChapterRef.current = chapterIndex;
+    if (prefersReducedMotion || instant) return;
+    if (chapterIndex !== prevChapter) return;
+    if (step === prevStep + 1 && step > 0) {
+      const ms = slotWriteMs(chapter, step - 1);
+      if (ms > 0) audio.scribble(ms);
+    }
+  }, [step, chapterIndex, instant, chapter, audio, prefersReducedMotion]);
+  // Leaving the route mid-write must not leave a pen scratching.
+  useEffect(() => () => audio.stopScribble(), [audio]);
+
+  // The scene itself is the control. Clicking a button or a link means that
+  // control, not "I'm ready"; and a click that ends a text selection is someone
+  // reading, not someone hurrying.
+  const onSceneClick = useCallback(
+    (e: React.MouseEvent) => {
+      if ((e.target as HTMLElement).closest("button, a, [role='button']")) return;
+      if (typeof window !== "undefined" && window.getSelection?.()?.toString()) return;
+      handleAdvance();
+    },
+    [handleAdvance],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      // A focused control owns its own keys — Space and Enter on the advance
+      // button must activate it once, not once here and once there.
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("button, a, input, textarea, select, [contenteditable]")) return;
+
+      if (e.key === " " || e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown") {
+        e.preventDefault();
+        handleAdvance();
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
+        e.preventDefault();
+        handleBack();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleAdvance, handleBack]);
+
+  // The one place focus is moved. Everywhere else the advance control keeps it,
+  // which is what a keyboard visitor wants while pressing it repeatedly — but
+  // that control unmounts at the finale, and focus falling to <body> at the
+  // moment of the actual decision would be the worst possible time to lose it.
+  // Keyed off `released`, not `complete`: the exits are the finale's last slot,
+  // so they appear the moment it opens. Waiting for the ink to settle would
+  // leave the advance control on screen underneath two live choices.
+  const exitsVisible = isFinale && released;
+  useEffect(() => {
+    if (exitsVisible) exitsRef.current?.focus?.({ preventScroll: true });
+  }, [exitsVisible]);
+
+  const isSpread = variant === "spread";
+
+  // The live illustration channel. During a spread's page turn the LEFT page
+  // keeps the OUTGOING chapter's art — physically, the left page is not the
+  // sheet that is turning, and wiping it early is exactly the "content swap"
+  // this pass removes. The landing sheet then covers it, and the new chapter's
+  // art washes in on its own beat after the turn.
+  const art =
+    turning && isSpread ? (
+      <RevealSlot revealed className="tome-ghost flex h-full w-full items-center justify-center">
+        <ChapterPlate art={turning.chapter.art} />
+      </RevealSlot>
+    ) : (
+      <RevealSlot revealed={artRevealed} className="flex h-full w-full items-center justify-center">
+        <ChapterPlate art={chapter.art} />
+      </RevealSlot>
+    );
+
+  const body = (
+    <ChapterWriting
+      chapter={chapter}
+      step={step}
+      headingId={`tome-chapter-${chapter.id}`}
+      exits={
+        chapter.finale ? (
+          <div className="tome-exits">
+            <ExitButton
+              buttonRef={exitsRef}
+              onClick={startExploring}
+              testId="academy-welcome-explore"
+              Icon={Compass}
+              label="Start Exploring"
+              detail="Head into the Academy and look around."
+              primary
+            />
+            {/* Genuinely a peer, not a trap door: both routes into the product are
+                legitimate, and the tutorial must never read as the price of entry. */}
+            <ExitButton
+              onClick={startTutorial}
+              testId="academy-welcome-tutorial"
+              Icon={GraduationCap}
+              label="Start the tutorial"
+              detail="A guided run through a Ranked duel."
+            />
+            <p className="tome-footnote">
+              The tutorial takes about five minutes. No account needed either way.
+            </p>
+          </div>
+        ) : null
+      }
+    />
+  );
 
   return (
     <main
       data-testid="academy-welcome"
-      data-stage={stage}
-      className="relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#04070f]"
+      data-chapter={chapter.id}
+      data-chapter-index={chapterIndex}
+      data-step={step}
+      data-complete={complete ? "true" : "false"}
+      data-art={artRevealed ? "true" : "false"}
+      data-turning={turning ? "true" : "false"}
+      data-instant={instant ? "true" : "false"}
+      className="academy-welcome relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#04070f]"
       style={{
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
@@ -154,149 +291,143 @@ export default function AcademyWelcomePage() {
       />
 
       {/* ---------------------------------------------------------------- */}
-      {/* Ground — the library the visitor is about to walk into.           */}
+      {/* The room. Dimmer than HI1's, because the tome is now the subject  */}
+      {/* rather than a caption over a wallpaper — but the same plate the   */}
+      {/* hub uses, so this is literally the room they are about to enter,  */}
+      {/* and it is warm in cache by the time /lol renders. Phones skip it: */}
+      {/* the mobile plate is ~1.9 MB, which is not a reasonable first-visit*/}
+      {/* cost for something sitting at 14% opacity.                        */}
       {/* ---------------------------------------------------------------- */}
-      {/* Desktop reuses the hub's own background, so the introduction and the
-          room behind it are literally the same place — and the image is already
-          warm in cache by the time /lol renders. Phones get a painted ground
-          instead: the mobile plate is ~1.9 MB, which is not a reasonable cost
-          on a first visit for something sitting at 18% opacity behind text. */}
-      {/* The same room throughout, but the camera and the lighting move with the
-          stage, so the three screens read as a walk through one place rather
-          than three layouts over one wallpaper:
-            arrival   — close on the pedestal, tight vignette, warm pool low
-            discovery — the room opens out, vignette relaxes, light spreads wide
-            choice    — recentred on the visitor, light gathers back to middle
-          Transitioned rather than switched, so moving between stages feels like
-          the room responding. */}
-      <motion.img
+      <img
         src={academyLibraryDesktop}
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover md:block"
-        initial={false}
-        animate={{
-          opacity: ENV[stage].imageOpacity,
-          scale: ENV[stage].imageScale,
-        }}
-        transition={
-          prefersReducedMotion ? { duration: 0 } : { duration: 1.1, ease: "easeOut" }
-        }
-        style={{ objectPosition: ENV[stage].objectPosition }}
+        className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover opacity-[0.14] md:block"
+        style={{ objectPosition: "center 52%" }}
       />
-      <motion.div
-        className="pointer-events-none absolute inset-0"
+      {/* The doors giving way. One gesture, on arrival, never repeated. */}
+      <div
+        className="tome-doors pointer-events-none absolute inset-0"
         aria-hidden="true"
-        initial={false}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0 }}
-        style={{ background: ENV[stage].glow }}
+        style={{
+          background:
+            "radial-gradient(70% 56% at 50% 46%, rgba(201,168,76,0.20) 0%, rgba(127,214,239,0.06) 46%, transparent 78%)",
+        }}
       />
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden="true"
         style={{
-          background: ENV[stage].vignette,
+          background:
+            "radial-gradient(circle at 50% 50%, transparent 34%, rgba(2,4,10,0.5) 72%, rgba(2,4,10,0.92) 100%)",
         }}
       />
 
       {/* ---------------------------------------------------------------- */}
-      {/* Content                                                           */}
+      {/* The scene                                                          */}
       {/* ---------------------------------------------------------------- */}
-      {/* Normal document flow with min-h rather than a fixed h-screen box:
-          this is what keeps a 360px-tall landscape phone scrollable instead of
-          clipping its controls, which is exactly how the old popup failed. */}
+      {/* Normal document flow with min-h rather than a fixed h-screen box, so
+          a 360px-tall landscape phone scrolls instead of clipping its
+          controls. */}
       <div
+        onClick={onSceneClick}
         className={[
-          "relative z-10 flex flex-1 flex-col px-5 sm:px-6 md:px-8",
-          isLandscapePhone ? "py-3" : "py-6",
+          "relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6",
+          isLandscapePhone ? "py-3" : "py-5 sm:py-7",
         ].join(" ")}
       >
-        <motion.div
-          key={stage}
-          {...motionProps}
-          className="flex flex-1 flex-col items-center justify-center"
-        >
-          {stage === 0 && <WelcomeStage headingRef={headingRef} tier={tier} />}
-          {stage === 1 && (
-            <ModesStage headingRef={headingRef} isLandscapePhone={isLandscapePhone} />
-          )}
-          {stage === 2 && (
-            <ChoiceStage
-              headingRef={headingRef}
-              onExplore={startExploring}
-              onTutorial={startTutorial}
-              isLandscapePhone={isLandscapePhone}
-            />
-          )}
-        </motion.div>
+        <div className="tome-opening w-full">
+          {/* NOT keyed by chapter: the tome is the stage and must persist
+              across page turns — the turning leaf lives inside it, and a
+              remount would tear the sheet out mid-air. Chapter changes swap
+              the pages' content; the reveal slots' data-revealed transitions
+              restart every ink animation without any remounting. */}
+          <AcademyTome
+            art={art}
+            body={body}
+            turning={
+              turning
+                ? {
+                    art: (
+                      <RevealSlot revealed className="tome-ghost flex h-full w-full items-center justify-center">
+                        <ChapterPlate art={turning.chapter.art} />
+                      </RevealSlot>
+                    ),
+                    body: (
+                      <ChapterWriting
+                        chapter={turning.chapter}
+                        step={slotCount(turning.chapter)}
+                        ghost
+                      />
+                    ),
+                  }
+                : null
+            }
+            variant={variant}
+            chrome={chrome}
+          />
+        </div>
 
-        {/* Primary continuation sits directly under the content it belongs to,
-            above the quieter navigation rail — so the eye lands on the one
-            thing to do next, not on the progress dots. */}
-        {stage < STAGE_COUNT - 1 && (
-          <div
-            className={[
-              "mx-auto flex w-full max-w-5xl shrink-0 justify-center",
-              isLandscapePhone ? "mt-3" : "mt-7",
-            ].join(" ")}
+        {/* The advance control. Present until the finale is fully open, at
+            which point the two exits ARE the controls and a third one here
+            would only muddy the decision. */}
+        {!exitsVisible && (
+          <button
+            type="button"
+            onClick={handleAdvance}
+            data-testid="academy-welcome-advance"
+            data-mode={complete ? "next" : "reveal"}
+            className={["tome-advance group", isLandscapePhone ? "mt-3" : "mt-5 sm:mt-6"].join(" ")}
           >
-            <PrimaryButton onClick={() => setStage((s) => s + 1)} testId="academy-welcome-continue">
-              Continue
-            </PrimaryButton>
-          </div>
+            <span>{complete ? "Next" : "Skip reveal"}</span>
+            <ArrowRight
+              className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </button>
         )}
 
         {/* -------------------------------------------------------------- */}
-        {/* Footer rail — progress, back, and the low-key exit             */}
+        {/* The rail — back, the ribbon, and the low-key exit               */}
         {/* -------------------------------------------------------------- */}
         <div
           className={[
-            "mx-auto flex w-full max-w-5xl shrink-0 items-center justify-between gap-4",
-            isLandscapePhone ? "mt-2" : "mt-6",
+            "flex w-full max-w-3xl shrink-0 items-center justify-between gap-4",
+            isLandscapePhone ? "mt-2" : "mt-4",
           ].join(" ")}
         >
           <div className="flex-1">
-            {stage > 0 && (
+            {seq.canGoBack && (
               <button
                 type="button"
-                onClick={() => setStage((s) => s - 1)}
-                className="rounded-md px-2 py-2 text-xs font-medium text-[#cfc4a5]/60 transition-colors hover:text-[#f0d78c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70"
+                onClick={handleBack}
+                data-testid="academy-welcome-back"
+                className="tome-quiet"
               >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 Back
               </button>
             )}
           </div>
 
-          <StageProgress stage={stage} />
+          <ChapterRibbon index={chapterIndex} count={ACADEMY_CHAPTERS.length} />
 
           <div className="flex flex-1 justify-end">
-            {/* Kept, but made honest.
-                HI1-1 shipped a near-invisible grey "Skip", which is the worst of
-                both worlds: too weak to find when you want it, and unexplained
-                when you do. It is retained rather than removed — the final stage
-                is two screens away, and someone who already knows Mogzy should
-                not have to page through an introduction to leave — but it now
-                names its destination instead of the act of leaving, so it reads
-                as a real choice rather than an escape hatch. It performs exactly
-                what Start Exploring performs, and still only appears while there
-                is an introduction left to skip: on the final stage the two paths
-                ARE the exit, and a third control there would muddy the decision. */}
-            {stage < STAGE_COUNT - 1 && (
+            {/* Named by its destination, not by the act of leaving — someone
+                who already knows Mogzy should not have to sit through an
+                introduction, and should not have to interpret a bare "Skip".
+                It performs exactly what Start Exploring performs. It disappears
+                at the finale, where the two paths ARE the exit. */}
+            {!exitsVisible && (
               <button
                 type="button"
                 onClick={startExploring}
                 data-testid="academy-welcome-skip"
-                className="group inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-2 text-[11px] font-medium text-[#cfc4a5]/75 transition-colors hover:text-[#f0d78c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/70 sm:text-xs"
+                className="tome-quiet"
               >
-                {/* Short form on phones: the full phrase wraps to two lines in a
-                    375px footer rail and collides with the arrow. */}
                 <span className="sm:hidden">Skip intro</span>
                 <span className="hidden sm:inline">Skip to the Academy</span>
-                <ArrowRight
-                  className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
-                  aria-hidden="true"
-                />
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -307,262 +438,124 @@ export default function AcademyWelcomePage() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Stages                                                                     */
+
+/**
+ * A chapter's right-hand page: eyebrow, heading, the body copy phrase by
+ * phrase, marginalia, and (on the finale) the exits.
+ *
+ * Rendered twice per page turn: live on the incoming spread, and as a GHOST on
+ * the front face of the turning sheet — the outgoing words must visibly ride
+ * the paper as it lifts. The ghost is presentation only: no ids (the live
+ * heading keeps its), no live region, no controls (the finale never turns), and
+ * a `tome-ghost` wrapper class the CSS uses to hold every ink animation at its
+ * finished frame. Slot numbering must match slotCount() in useRevealSequence:
+ * the heading is slot 0, each PHRASE (see phrases.ts) takes the next slot,
+ * then marginalia, then the finale's exits.
+ */
+function ChapterWriting({
+  chapter,
+  step,
+  ghost = false,
+  headingId,
+  exits = null,
+}: {
+  chapter: AcademyChapter;
+  step: number;
+  ghost?: boolean;
+  headingId?: string;
+  exits?: React.ReactNode;
+}) {
+  const lines = chapter.lines.map((line) => phrasesOf(line));
+  const phraseTotal = lines.reduce((n, ph) => n + ph.length, 0);
+  const marginaliaSlot = 1 + phraseTotal;
+  const exitsSlot = marginaliaSlot + (chapter.marginalia?.length ? 1 : 0);
+
+  let phraseIndex = 0;
+  return (
+    <div
+      className={["tome-writing", ghost ? "tome-ghost" : ""].join(" ")}
+      // The chapter as a whole is announced, so a screen reader hears a
+      // complete page rather than a trickle of fragments. The visual reveal is
+      // decoration over text that is already in the document.
+      aria-live={ghost ? undefined : "polite"}
+      aria-atomic={ghost ? undefined : "true"}
+    >
+      <RevealSlot revealed={step > 0} className="w-full">
+        <p className="tome-eyebrow">
+          <InkText as="span" text={chapter.eyebrow} pace={26} />
+        </p>
+        <h1 id={ghost ? undefined : headingId} className="tome-heading">
+          <InkText as="span" text={chapter.heading} pace={64} offset={200} />
+        </h1>
+      </RevealSlot>
+
+      {lines.map((phrases, lineIdx) => {
+        const start = phraseIndex;
+        phraseIndex += phrases.length;
+        return (
+          <p key={chapter.lines[lineIdx]} className="tome-body">
+            {phrases.map((phrase, j) => (
+              <InkPhrase
+                key={`${j}-${phrase.text}`}
+                text={phrase.text}
+                revealed={step > 1 + start + j}
+                trailingSpace={j < phrases.length - 1}
+              />
+            ))}
+          </p>
+        );
+      })}
+
+      {chapter.marginalia?.length ? (
+        <RevealSlot revealed={step > marginaliaSlot} className="w-full">
+          <ul className="tome-marginalia">
+            {chapter.marginalia.map((m) => (
+              <li key={m}>{m}</li>
+            ))}
+          </ul>
+        </RevealSlot>
+      ) : null}
+
+      {/* The two real exits. Conditionally mounted, unlike everything above:
+          a focusable control sitting invisibly in the tab order is a trap, and
+          this is the one slot that contains controls. Never on a ghost — the
+          finale is the last page and its sheet never turns. */}
+      {!ghost && chapter.finale && step > exitsSlot && exits}
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 
-type HeadingRef = React.RefObject<HTMLHeadingElement>;
-
-function StageHeading({
-  headingRef,
-  children,
-  className = "",
-}: {
-  headingRef: HeadingRef;
-  children: React.ReactNode;
-  className?: string;
-}) {
+/**
+ * Chapter position, as the gilt edges of the pages already turned.
+ *
+ * Deliberately not carousel dots. Dots announce "this is a slideshow with N
+ * slides", which is the single strongest signal of the format this redesign
+ * exists to escape — but position still has to be legible, and a screen reader
+ * still has to be told where it is, hence the real list semantics underneath.
+ */
+function ChapterRibbon({ index, count }: { index: number; count: number }) {
   return (
-    <h1
-      ref={headingRef}
-      // Focus target for the stage change. Not in the tab order — tabIndex -1
-      // makes it programmatically focusable only.
-      tabIndex={-1}
-      className={[
-        "ranked-title text-balance text-center leading-[1.15] text-transparent",
-        "focus:outline-none",
-        className,
-      ].join(" ")}
-      style={{
-        backgroundImage:
-          "linear-gradient(180deg, #fff3cf 0%, #f0d78c 38%, #c9a84c 72%, #8f7738 100%)",
-        WebkitBackgroundClip: "text",
-        backgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        textShadow: "0 2px 5px rgba(0,0,0,0.6)",
-      }}
-    >
-      {children}
-    </h1>
-  );
-}
-
-function WelcomeStage({
-  headingRef,
-  tier,
-}: {
-  headingRef: HeadingRef;
-  tier: ViewportTier;
-}) {
-  // A landscape phone is ~360px tall: the portrait composition would push the
-  // Continue button under the fold. That tier gets a much smaller mascot and
-  // tighter rhythm so the whole stage still fits without scrolling — the exact
-  // failure mode the old popup had, where its only escape control ended up
-  // off-screen.
-  const isLandscapePhone = tier === "phone-landscape";
-  const isPhone = tier === "phone" || isLandscapePhone;
-
-  return (
-    <div className="flex max-w-2xl flex-col items-center">
-      {/* Mogzy carried the visitor through the door; he introduces the room —
-          the same pose they just saw on the threshold, which is the point.
-          Decorative: the heading and body already say everything he does.
-
-          `base` is not a stylistic preference. It is the ONLY mascot asset with
-          a real alpha channel — every reaction pose (holdingBook, explaining,
-          cheering, …) is stored as RGB on solid black, so on this lit ground
-          they render as a black rectangle. See the same note in MogzyEntryV2. */}
-      <MogzyMascot
-        pose="base"
-        decorative
-        loading="eager"
-        className={
-          isLandscapePhone ? "h-16 w-auto" : isPhone ? "h-28 w-auto" : "h-44 w-auto sm:h-52"
-        }
-        style={{ filter: "drop-shadow(0 0 34px rgba(201,168,76,0.4))" }}
-      />
-
-      <StageHeading
-        headingRef={headingRef}
-        className={
-          isLandscapePhone
-            ? "mt-3 text-[clamp(1.2rem,3.4vw,1.7rem)]"
-            : "mt-5 text-[clamp(1.6rem,5vw,3rem)]"
-        }
-      >
-        Welcome to the Academy
-      </StageHeading>
-
-      <p
-        className={[
-          "text-balance text-center leading-relaxed text-[#cfc4a5]/85",
-          isLandscapePhone ? "mt-2.5 text-[13px]" : "mt-5 text-[15px] sm:text-lg",
-        ].join(" ")}
-      >
-        Learn the systems behind League. Test what you already know. Dig into the
-        numbers behind every fight.
-      </p>
-    </div>
-  );
-}
-
-function ModesStage({
-  headingRef,
-  isLandscapePhone,
-}: {
-  headingRef: HeadingRef;
-  isLandscapePhone: boolean;
-}) {
-  const [selectedId, setSelectedId] = useState(ACADEMY_MODES[0].id);
-  const mode = ACADEMY_MODES.find((m) => m.id === selectedId) ?? ACADEMY_MODES[0];
-
-  return (
-    <div className="flex w-full max-w-4xl flex-col items-center">
-      <StageHeading
-        headingRef={headingRef}
-        className={
-          isLandscapePhone
-            ? "text-[clamp(1.1rem,3vw,1.5rem)]"
-            : "text-[clamp(1.3rem,3.6vw,2.1rem)]"
-        }
-      >
-        What&rsquo;s inside
-      </StageHeading>
-
-      <div className={isLandscapePhone ? "mt-2.5 w-full" : "mt-4 w-full"}>
-        <AcademyModeExhibit mode={mode} compact={isLandscapePhone} />
-      </div>
-
-      {/* The caption is a live region: on a mode change the exhibit above swaps
-          silently for anyone not watching it, so the name and description are
-          announced instead. */}
-      <div
-        id="academy-mode-panel"
-        role="tabpanel"
-        aria-labelledby={`academy-mode-tab-${mode.id}`}
-        aria-live="polite"
-        className={isLandscapePhone ? "mt-2 w-full" : "mt-3.5 w-full"}
-      >
-        <h2
-          className={[
-            "ranked-title text-center leading-tight text-[#f0d78c]",
-            isLandscapePhone ? "text-base" : "text-lg sm:text-xl",
-          ].join(" ")}
+    <ol className="tome-ribbon" aria-label="Chapter progress">
+      {Array.from({ length: count }, (_, i) => (
+        <li
+          key={i}
+          aria-current={i === index ? "step" : undefined}
+          data-past={i <= index ? "true" : "false"}
         >
-          {mode.title}
-        </h2>
-        <p
-          className={[
-            "mx-auto max-w-xl text-balance text-center leading-snug text-[#cfc4a5]/80",
-            isLandscapePhone ? "mt-1 text-[12px]" : "mt-1.5 text-[13px] sm:text-sm",
-          ].join(" ")}
-        >
-          {mode.description}
-        </p>
-        {/* Highlights answer "why is this interesting?" without another paragraph. */}
-        <ul className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5">
-          {mode.highlights.map((h) => (
-            <li
-              key={h}
-              className="rounded-full border border-[#c9a84c]/25 bg-[#c9a84c]/[0.07] px-2.5 py-0.5 text-[10px] uppercase tracking-[0.13em] text-[#f0d78c]/80 sm:text-[11px]"
-            >
-              {h}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className={isLandscapePhone ? "mt-2.5 w-full" : "mt-4 w-full"}>
-        <AcademyModeSelector
-          modes={ACADEMY_MODES}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          compact={isLandscapePhone}
-        />
-      </div>
-    </div>
+          <span className="sr-only">
+            {`Chapter ${i + 1} of ${count}${i === index ? " (current)" : ""}`}
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }
 
-function ChoiceStage({
-  headingRef,
-  onExplore,
-  onTutorial,
-  isLandscapePhone,
-}: {
-  headingRef: HeadingRef;
-  onExplore: () => void;
-  onTutorial: () => void;
-  isLandscapePhone: boolean;
-}) {
-  return (
-    <div className="flex w-full max-w-2xl flex-col items-center">
-      {/* Mogzy bookends the introduction: he showed the visitor in on Stage 1
-          and sees them off here. Smaller than the arrival, so the two choices
-          stay the focus rather than competing with him. */}
-      {!isLandscapePhone && (
-        <MogzyMascot
-          pose="base"
-          decorative
-          className="h-20 w-auto sm:h-24"
-          style={{ filter: "drop-shadow(0 0 26px rgba(201,168,76,0.32))" }}
-        />
-      )}
-
-      <StageHeading
-        headingRef={headingRef}
-        className={
-          isLandscapePhone
-            ? "text-[clamp(1.1rem,3vw,1.5rem)]"
-            : "mt-3 text-[clamp(1.4rem,4vw,2.3rem)]"
-        }
-      >
-        How do you want to start?
-      </StageHeading>
-
-      {/* Two paths, side by side from `sm` up so the choice reads as a fork
-          rather than a ranked list — but still clearly weighted, since one of
-          them is the default way into the product. Not marketing cards: each is
-          a single control carrying an icon, a label and one line of what it
-          means. */}
-      <div
-        className={[
-          "grid w-full gap-3",
-          isLandscapePhone ? "mt-3 grid-cols-2" : "mt-6 grid-cols-1 sm:grid-cols-2",
-        ].join(" ")}
-      >
-        <PathButton
-          onClick={onExplore}
-          testId="academy-welcome-explore"
-          Icon={Compass}
-          label="Start Exploring"
-          detail="Head into the Academy and look around."
-          primary
-        />
-        {/* Genuinely a peer, not a trap door: both routes into the product are
-            legitimate, and the tutorial must never read as the price of entry. */}
-        <PathButton
-          onClick={onTutorial}
-          testId="academy-welcome-tutorial"
-          Icon={GraduationCap}
-          label="Start the tutorial"
-          detail="A guided run through a Ranked duel."
-        />
-      </div>
-
-      <p
-        className={[
-          "text-balance text-center text-[#cfc4a5]/55",
-          isLandscapePhone ? "mt-2 text-[11px]" : "mt-4 text-xs",
-        ].join(" ")}
-      >
-        The tutorial takes about five minutes. No account needed either way.
-      </p>
-    </div>
-  );
-}
-
-/** One of the two exits on the final stage. */
-function PathButton({
+/** One of the two exits on the last page. */
+function ExitButton({
+  buttonRef,
   onClick,
   testId,
   Icon,
@@ -570,6 +563,7 @@ function PathButton({
   detail,
   primary = false,
 }: {
+  buttonRef?: React.Ref<HTMLButtonElement>;
   onClick: () => void;
   testId: string;
   Icon: React.ElementType;
@@ -579,97 +573,16 @@ function PathButton({
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={onClick}
       data-testid={testId}
-      className={[
-        "group flex flex-col items-center gap-1.5 rounded-2xl px-5 py-4 text-center",
-        "border transition-colors duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/80",
-        "focus-visible:ring-offset-2 focus-visible:ring-offset-[#04070f]",
-        primary
-          ? "border-[#c9a84c] bg-gradient-to-b from-[#c9a84c] to-[#a8862f] shadow-[0_8px_26px_rgba(201,168,76,0.26)] hover:from-[#d4b35c] hover:to-[#b8923f]"
-          : "border-[#c9a84c]/40 bg-white/[0.03] hover:border-[#c9a84c]/65 hover:bg-[#c9a84c]/10",
-      ].join(" ")}
+      data-primary={primary ? "true" : "false"}
+      className="tome-exit"
     >
-      <Icon
-        className={["h-5 w-5", primary ? "text-[#1a1530]" : "text-[#f0d78c]"].join(" ")}
-        aria-hidden="true"
-      />
-      <span
-        className={[
-          "text-sm font-bold leading-tight",
-          primary ? "text-[#1a1530]" : "text-[#f0d78c]",
-        ].join(" ")}
-      >
-        {label}
-      </span>
-      <span
-        className={[
-          "text-[11px] leading-snug",
-          primary ? "text-[#1a1530]/75" : "text-[#cfc4a5]/65",
-        ].join(" ")}
-      >
-        {detail}
-      </span>
+      <Icon className="tome-exit-icon" aria-hidden="true" />
+      <span className="tome-exit-label">{label}</span>
+      <span className="tome-exit-detail">{detail}</span>
     </button>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Shared controls                                                            */
-/* -------------------------------------------------------------------------- */
-
-function PrimaryButton({
-  onClick,
-  children,
-  testId,
-  full = false,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-  testId?: string;
-  full?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-testid={testId}
-      className={[
-        full ? "w-full" : "min-w-[12rem]",
-        "rounded-xl bg-gradient-to-r from-[#c9a84c] to-[#a8862f] px-8 py-3",
-        "text-sm font-bold text-[#1a1530] shadow-[0_6px_20px_rgba(201,168,76,0.22)]",
-        "transition-colors hover:from-[#d4b35c] hover:to-[#b8923f]",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c]/80",
-        "focus-visible:ring-offset-2 focus-visible:ring-offset-[#04070f]",
-      ].join(" ")}
-    >
-      {children}
-    </button>
-  );
-}
-
-/** Three diamonds, echoing the divider under the title on the entrance screen. */
-function StageProgress({ stage }: { stage: number }) {
-  return (
-    <ol className="flex shrink-0 items-center gap-2.5" aria-label="Introduction progress">
-      {Array.from({ length: STAGE_COUNT }, (_, i) => (
-        <li key={i} aria-current={i === stage ? "step" : undefined}>
-          <span className="sr-only">
-            {`Step ${i + 1} of ${STAGE_COUNT}${i === stage ? " (current)" : ""}`}
-          </span>
-          <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" aria-hidden="true">
-            <path
-              d="M6 0.5 L11.5 6 L6 11.5 L0.5 6 Z"
-              fill={i === stage ? "#f0d78c" : "transparent"}
-              stroke="#c9a84c"
-              strokeWidth="1"
-              opacity={i === stage ? 1 : 0.45}
-            />
-          </svg>
-        </li>
-      ))}
-    </ol>
   );
 }
