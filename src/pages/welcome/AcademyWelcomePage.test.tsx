@@ -27,6 +27,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AcademyWelcomePage from "./AcademyWelcomePage";
 import { ACADEMY_CHAPTERS } from "./academyChapters";
+import { OPENING_PAUSE_MS } from "./phrases";
+import { SCENE_READY_CAP_MS } from "./useSceneReady";
 import { slotCount, slotWriteMs } from "./useRevealSequence";
 import {
   hasHandledAcademyWelcome,
@@ -531,6 +533,99 @@ describe("replay", () => {
     localStorage.setItem("mogsy.academyWelcome.v1", "{{{not json");
     expect(() => render(<AcademyWelcomePage />)).not.toThrow();
     expect(screen.getByTestId("academy-welcome")).toBeTruthy();
+  });
+});
+
+/**
+ * Give jsdom a `decode()` so the readiness gate believes it is in a browser,
+ * and take control of what that decode does. Without one the gate correctly
+ * recognises an environment that cannot report and opens immediately — which
+ * is what every other test in this file relies on.
+ */
+function stubDecode(impl: () => Promise<void>) {
+  Object.defineProperty(HTMLImageElement.prototype, "decode", {
+    configurable: true,
+    writable: true,
+    value: impl,
+  });
+}
+
+function restoreDecode() {
+  delete (HTMLImageElement.prototype as { decode?: unknown }).decode;
+}
+
+describe("the opening frame (HI1-C4)", () => {
+  it("reserves the book's geometry before a pixel of it has arrived", () => {
+    // THE regression this pass fixed. `.tome-book` is `height: auto`, so with
+    // no intrinsic ratio stated the img measures 0 until the file decodes, the
+    // flex column above it measures 0 with it, and both page boxes — absolutely
+    // positioned against that column — collapse into a zero-height strip with
+    // the chapter's writing spilling out. The book landing then snapped the
+    // whole spread into place in front of the visitor.
+    render(<AcademyWelcomePage />);
+    const book = screen.getByTestId("academy-tome-book");
+    expect(book).toHaveAttribute("width", "1000");
+    expect(book).toHaveAttribute("height", "666");
+  });
+
+  it("opens the curtain in an environment that cannot report on decoding", async () => {
+    // jsdom loads no subresources and has no `decode()`. The gate must
+    // recognise that and open on the first render — otherwise this suite, and
+    // server rendering, would sit for ever in front of a held frame.
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-ready", "true");
+    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
+  });
+
+  it("holds the clock, and the pen, until the stage is actually there", async () => {
+    // With a decode that never settles, nothing may start: no slot released,
+    // no scribble. The visitor is looking at a room, not at a book writing
+    // itself onto a stage that has not arrived.
+    setReducedMotion(false);
+    stubDecode(() => new Promise<void>(() => {}));
+    try {
+      vi.useFakeTimers();
+      render(<AcademyWelcomePage />);
+      expect(page()).toHaveAttribute("data-ready", "false");
+      await run(SCENE_READY_CAP_MS - 250);
+      expect(page()).toHaveAttribute("data-ready", "false");
+      expect(stepOf()).toBe(0);
+      expect(audio.scribble).not.toHaveBeenCalled();
+
+      // …but the hold has a ceiling, and past it the introduction runs anyway.
+      // A wedged asset host may cost the visitor the polish, never the page.
+      await run(500);
+      expect(page()).toHaveAttribute("data-ready", "true");
+    } finally {
+      restoreDecode();
+    }
+  });
+
+  it("starts the moment the stage lands, on the cadence HI1-C3 set", async () => {
+    setReducedMotion(false);
+    let land: (() => void) | undefined;
+    const decoded = new Promise<void>((resolve) => {
+      land = resolve;
+    });
+    stubDecode(() => decoded);
+    try {
+      vi.useFakeTimers();
+      render(<AcademyWelcomePage />);
+      expect(stepOf()).toBe(0);
+
+      await act(async () => {
+        land?.();
+        await decoded;
+      });
+      expect(page()).toHaveAttribute("data-ready", "true");
+
+      // And from there the sequence is exactly the one HI1-C3 tuned: the
+      // opening pause, then the heading. Nothing about the cadence moved.
+      await run(OPENING_PAUSE_MS + 60);
+      expect(stepOf()).toBe(1);
+    } finally {
+      restoreDecode();
+    }
   });
 });
 

@@ -1871,10 +1871,53 @@ html.high-contrast * { text-shadow: none !important; }
   --tome-gilt: #6b5418;
 }
 
+/* The room behind the tome. Arrives last of everything on the screen, so it
+   arrives softly — see the note on the element in AcademyWelcomePage. */
+.tome-room {
+  opacity: 0;
+  transition: opacity 900ms ease-out;
+}
+
+.tome-room[data-loaded="true"] {
+  opacity: 0.14;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tome-room {
+    transition: none;
+  }
+}
+
 /* ---- The tome itself ---------------------------------------------------- */
 
 .academy-tome {
   container-type: inline-size;
+
+  /* HOW FAR THE PAGE COMPOSITIONS SIT IN FROM THE COVERS (HI1-C4).
+     ONE KNOB, in container-query units — i.e. a percentage of the tome's own
+     drawn width, which is also what every other number in this section is a
+     percentage of. Raise it and both pages move toward the spine together;
+     zero it and the tome is exactly the HI1-C3 composition.
+
+     WHY IT EXISTS. The page boxes were centred on the PAINTED PAPER, and the
+     painted paper curves: measured off the spread's own pixels, each page is
+     at full brightness only across roughly its middle third, and the boxes
+     therefore reached out into the shaded curl by the covers while leaving the
+     flat centre of the sheet unused. Moving the whole composition inward puts
+     the writing and the illustration back on the part of the page a reader
+     would actually use.
+
+     WHY IT IS NOT LARGER. The finale's two exits and the widest chapter
+     heading are both within ~1% of the page box's full width, so beyond this
+     the right page starts writing into the gutter. See the max-width on
+     .tome-exits below, which is what buys the last of it back. */
+  --tome-page-inward: 0px;
+}
+
+/* Only the painted spread has an outer cover and a gutter to sit in from; the
+   single phone sheet is one flat page with its own padding. */
+.tome-spread {
+  --tome-page-inward: 2.2cqw;
 }
 
 /* Sized by whichever axis runs out first. 1.381 is the drawn book's aspect
@@ -1915,6 +1958,22 @@ html.high-contrast * { text-shadow: none !important; }
   align-items: center;
   justify-content: center;
   text-align: center;
+  top: 15%;
+  bottom: 13%;
+  width: 38%;
+}
+
+/* The two page regions of the painted spread. `8%` and `54%` are the HI1-C
+   geometry, measured off the painting; `--tome-page-inward` is the one tunable
+   above, and it is subtracted on the recto exactly as it is added on the verso
+   so the spread stays symmetrical about the spine. Percentages and `cqw` both
+   resolve against the tome's width here, so the two are directly comparable. */
+.tome-page-verso {
+  left: calc(8% + var(--tome-page-inward));
+}
+
+.tome-page-recto {
+  left: calc(54% - var(--tome-page-inward));
 }
 
 /* The single-page phone sheet. Same recipe as the Ranked question folio: the
@@ -2043,6 +2102,12 @@ html.high-contrast * { text-shadow: none !important; }
 .academy-welcome .tome-exits {
   display: flex;
   width: 100%;
+  /* The one element on the spread that is the page box's FULL width, and so
+     the one that would have crossed the gutter when HI1-C4 moved the pages
+     inward. Giving back exactly the inward offset leaves the buttons' spine-
+     side edge where HI1-C3 had it while their outer edge travels in with the
+     rest of the composition. A no-op on the phone sheet, whose offset is 0. */
+  max-width: calc(100% - var(--tome-page-inward));
   flex-direction: column;
   align-items: stretch;
   gap: 0.5rem;
@@ -2541,11 +2606,35 @@ html.high-contrast * { text-shadow: none !important; }
   }
 }
 
-/* The tome rising open in front of the visitor. Runs once, on arrival. */
+/* The tome rising open in front of the visitor. Runs once, on arrival — and
+   only once the stage it is made of has actually arrived (HI1-C4).
+
+   THE HOLD IS THE POINT. `[data-ready="false"]` is the moments between the
+   route changing and the painted book being decoded and the display face being
+   loaded. Painting the tome during them means showing an empty frame that then
+   fills in, which is the thing the visitor reads as "this is still loading".
+   Holding it instead costs nothing on a warm arrival (the flag is true on the
+   first render) and turns a cold one into a single, deliberate opening.
+
+   IT CANNOT STICK. `ready` is raised by every terminating path in
+   useSceneReady, including a hard ceiling — see the note there. Nothing on this
+   page is reachable only through an animation, so the hold delays the reveal,
+   it never withholds content. */
 .tome-opening {
-  animation: tome-open 1150ms cubic-bezier(0.16, 1, 0.3, 1) both;
   transform-origin: 50% 90%;
   perspective: 1200px;
+}
+
+.academy-welcome[data-ready="false"] .tome-opening {
+  opacity: 0;
+}
+
+.academy-welcome[data-ready="true"] .tome-opening {
+  /* The explicit `opacity: 1` is the floor under the animation, not a
+     duplicate of it: if the keyframes are ever removed, renamed or unsupported,
+     the tome is visible rather than held at a `from` frame nobody is playing. */
+  opacity: 1;
+  animation: tome-open 1150ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes tome-open {
@@ -2670,6 +2759,12 @@ html.high-contrast * { text-shadow: none !important; }
   width: 82%;
   top: 11.5%;
   bottom: 8.9%;
+  /* The same inward offset as the live recto (HI1-C4). Expressed as a
+     transform rather than folded into `left`, because this box is a percentage
+     of the LEAF and the offset is a fraction of the TOME — `cqw` is the only
+     unit that means the same thing in both. Without it the outgoing words jump
+     sideways at the instant the sheet begins to lift. */
+  transform: translateX(calc(-1 * var(--tome-page-inward)));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2856,6 +2951,15 @@ html.high-contrast * { text-shadow: none !important; }
     animation: none !important;
     stroke-dasharray: none;
     stroke-dashoffset: 0;
+  }
+
+  /* The readiness hold applies here too — a motion-sensitive visitor is served
+     by a book that appears complete rather than one that appears in pieces —
+     but it must lose to nothing else, so it is spelled out at this specificity
+     rather than left to the general rule above. */
+  .academy-welcome[data-ready="true"] .tome-opening {
+    animation: none !important;
+    opacity: 1;
   }
 
   .academy-welcome .tome-slot,
