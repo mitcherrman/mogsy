@@ -95,11 +95,11 @@ describe("R3 class selection is one click", () => {
     expect(screen.getByTestId("ranked-class-tank")).toBeDisabled();
     // ...and reports a failure by leaving it, which releases the guard.
     h.queue.state = "selecting_class";
-    h.queue.error = "Ranked is currently invite-only.";
+    h.queue.error = "Ranked needs a full (non-guest) account.";
     view.rerender(<MemoryRouter><QuizRankedPage /></MemoryRouter>);
     await waitFor(() =>
       expect(screen.getByTestId("ranked-class-tank")).toBeEnabled());
-    expect(screen.getByText(/invite-only/i)).toBeInTheDocument();
+    expect(screen.getByText(/full \(non-guest\) account/i)).toBeInTheDocument();
   });
 
   it("keeps every class card keyboard reachable", async () => {

@@ -1,4 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/backend-auth", () => ({
+  getBackendAuthHeaders: async () => ({ Authorization: "Bearer test-jwt" }),
+}));
+
 import { createBotMatch, RankedApiError } from "./client";
 import { readPublicRound } from "./contracts";
 
@@ -39,12 +44,12 @@ describe("createBotMatch", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ class_id: "tank" });
   });
 
-  it("surfaces the typed not-eligible error for ordinary users", async () => {
+  it("surfaces the account-required error for a guest", async () => {
     vi.stubGlobal("fetch", mockFetch(403, {
-      detail: { code: "RANKED_BOT_NOT_ELIGIBLE", message: "not in the allowlist" },
+      detail: { code: "ACCOUNT_REQUIRED", message: "a full account is required" },
     }));
     await expect(createBotMatch("tank", null)).rejects.toMatchObject({
-      code: "RANKED_BOT_NOT_ELIGIBLE",
+      code: "ACCOUNT_REQUIRED",
     });
   });
 

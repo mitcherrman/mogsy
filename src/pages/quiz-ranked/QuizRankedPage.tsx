@@ -192,11 +192,9 @@ function RankedQueueGate({ viewerUserId }: { viewerUserId: string }) {
     } catch (e) {
       if (isAborted(e)) return;
       const msg = e instanceof RankedApiError
-        ? (e.code === "RANKED_BOT_NOT_ELIGIBLE"
-            ? "Bot playtest is limited to the ranked allowlist."
-            : e.code === "RANKED_BOT_DISABLED"
-              ? "Bot playtest is not currently enabled."
-              : e.message)
+        ? (e.code === "RANKED_BOT_DISABLED"
+            ? "Ranked Bot is not currently enabled."
+            : e.message)
         : "Could not start a bot match.";
       setBotError(msg);
     } finally {

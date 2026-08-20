@@ -86,7 +86,7 @@ describe("useRankedQueue", () => {
     await flush();
     expect(result.current.state).toBe("unavailable");
     // Friendly copy, not the raw backend/code text.
-    expect(result.current.unavailableReason).toContain("invite-only");
+    expect(result.current.unavailableReason).toContain("full (non-guest) account");
     expect(result.current.unavailableReason).not.toContain("RANKED_QUEUE_NOT_ELIGIBLE");
   });
 

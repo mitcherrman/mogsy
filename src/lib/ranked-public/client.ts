@@ -56,7 +56,7 @@ const KNOWN_CODES: ReadonlySet<string> = new Set([
   "RANKED_RATE_LIMITED",
   // R1 League-role identity.
   "RANKED_ROLE_REQUIRED", "RANKED_INVALID_ROLE",
-  "RANKED_BOT_DISABLED", "RANKED_BOT_NOT_ELIGIBLE",
+  "RANKED_BOT_DISABLED",
   // multi-challenge segments (Phase B)
   "RANKED_NO_ACTIVE_SEGMENT", "RANKED_WRONG_SEGMENT_PHASE",
   "RANKED_WRONG_CHALLENGE_INDEX", "RANKED_SEGMENT_COMPLETE",
@@ -258,8 +258,8 @@ export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | 
   }, { signal });
 
 /**
- * Owner/staff-only "Play vs Bot" playtest match. Backend gates on the feature
- * flag + ranked allowlist and returns typed 503/403 for anyone else; the
+ * Normal authenticated "Play vs Bot" match. The backend remains authoritative
+ * for account identity, the operational bot switch, and match validity; the
  * client never asserts eligibility itself.
  */
 export const createBotMatch = (
