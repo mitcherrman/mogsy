@@ -3,12 +3,15 @@ import { Link } from "react-router-dom";
 import { BookOpen, ChevronRight, HelpCircle, RotateCcw, RotateCw, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import QuizRankedQueueCard from "@/components/quiz/QuizRankedQueueCard";
+import RankedLobbyHero from "@/components/quiz/RankedLobbyHero";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { RankedRole } from "@/lib/ranked-public/roles";
-import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
+import type {
+  RankedProgressionView,
+  MatchHistoryEntryView,
+} from "@/lib/ranked-public/contracts";
 
 /**
  * Leaguecraft hub — the Ranked-first one-page composition served at /quiz.
@@ -18,8 +21,11 @@ import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
  * simplification pass makes the first beat unmistakably dominant and demotes
  * the rest to a single quiet row beneath it:
  *
- *   1. Ranked hero    — the centred emblem/identity block and the page's one
- *                       major action. Nothing else competes with it.
+ *   1. Ranked lobby   — the three-column hero: the role character-select on
+ *                       the left, the LEAGUECRAFT/RANKED identity and the one
+ *                       PLAY gem in the centre, the player's own portrait,
+ *                       standing and recent Ranked results on the right.
+ *                       Nothing else on the page competes with it.
  *   2. Recent Studies — the real session history, compact, and the entry to
  *                       the full history route.
  *   3. Study panel    — Practice sets and the Mastery journeys, reduced to
@@ -54,16 +60,36 @@ export default function LeaguecraftHub({
   historyError,
   showMastery = true,
   rankedRole = null,
+  onSelectRankedRole,
+  roleSelectDisabled = false,
+  roleSaving = null,
   rankedProgression = null,
+  matchHistory = [],
+  matchHistoryLoading = false,
+  displayName = null,
+  avatarUrl = null,
+  signedIn = false,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
   /** R1: the player's League role, forwarded to the hero. Presentation only —
    * this component still fetches nothing. */
   rankedRole?: RankedRole | null;
+  /** LC1: persist a role from the hero's carousel. Omit to make the
+   * carousel read-only (an older backend, or a guest). */
+  onSelectRankedRole?: (role: RankedRole) => void;
+  roleSelectDisabled?: boolean;
+  roleSaving?: RankedRole | null;
   /** RE1: the account's Ranked five-tier standing, forwarded to the hero.
    * Still presentation only — this component fetches nothing. */
   rankedProgression?: RankedProgressionView | null;
+  /** LC1: the account's real recent Ranked rows, fetched by the host. */
+  matchHistory?: readonly MatchHistoryEntryView[];
+  matchHistoryLoading?: boolean;
+  /** LC1: the account's own display identity, or null when there is none. */
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  signedIn?: boolean;
   onPlayRanked: () => void;
   sets: QuizSet[];
   setsLoading: boolean;
@@ -79,25 +105,35 @@ export default function LeaguecraftHub({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 1 ── Ranked hero. The page's centre of gravity and only major CTA. */}
-      {/* Narrower than the secondary row on purpose: the classroom stays
-          visible down both flanks of the hero, so the Ranked block reads as a
-          centrepiece in the room rather than a full-bleed dashboard panel. */}
-      <section className="mx-auto w-full max-w-3xl" data-testid="hub-ranked-section">
-        <QuizRankedQueueCard
+      {/* 1 ── Ranked lobby. The page's centre of gravity and only major CTA.
+              Unframed on purpose: the columns sit directly in the classroom
+              rather than inside one opaque panel, so the room reads through
+              the composition instead of being covered by a dashboard. */}
+      <section className="w-full" data-testid="hub-ranked-section">
+        <RankedLobbyHero
           progress={progress}
           ranked={ranked}
-          disabled={false}
-          onPlay={onPlayRanked}
-          role={rankedRole}
+          onPlayRanked={onPlayRanked}
+          rankedRole={rankedRole}
+          onSelectRole={onSelectRankedRole}
+          roleSelectDisabled={roleSelectDisabled}
+          roleSaving={roleSaving}
           rankedProgression={rankedProgression}
+          matchHistory={matchHistory}
+          matchHistoryLoading={matchHistoryLoading}
+          displayName={displayName}
+          avatarUrl={avatarUrl}
+          signedIn={signedIn}
         />
       </section>
 
       {/* 2 ── Secondary row: where I've been, and where else I can study.
               Both panels are short by construction — no auto-rows-fr, no
-              stretched tile grid — so the classroom reads around them. */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+              stretched tile grid — so the classroom reads around them. The
+              rule and the extra top margin push the row below the lobby's
+              fold: the three-column hero owns the upper screen, and these
+              stay fully reachable one scroll down. */}
+      <div className="mt-5 grid grid-cols-1 gap-3 border-t border-[#c9a84c]/12 pt-4 lg:grid-cols-12">
         <section className="flex flex-col lg:col-span-7" data-testid="hub-recent-section">
           <SectionHeading icon={RotateCw} title="Recent Studies" hint="How am I doing?" />
           <QuizRecentResultsCard
