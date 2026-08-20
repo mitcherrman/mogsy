@@ -10,13 +10,11 @@
  *
  * ART HONESTY
  * ───────────
- * There is no per-role character art in the Mogzy registry, and roles.ts
- * forbids deriving one from the legacy Tank/Mage/Marksman class art (a role
- * is not a class in either direction). So every slide renders the canonical
- * base Mogzy portrait and is distinguished by its NAME, its blurb and a
- * restrained per-role accent — never by a borrowed or invented character.
- * When per-role art lands, only `ROLE_ACCENTS` and the portrait source below
- * need to change.
+ * Each slide renders the role's own mascot from the ONE role -> art map in
+ * the Mogzy registry (`MOGZY_ROLE_ASSETS`); this file lists no paths and
+ * makes no per-role choices of its own. The art is presentation only: it
+ * carries no class semantics, and the role NAME is still rendered on every
+ * slide, so identity never depends on the picture.
  *
  * DATA HONESTY
  * ────────────
@@ -51,7 +49,7 @@ import {
   RANKED_ROLE_LABELS,
   type RankedRole,
 } from "@/lib/ranked-public/roles";
-import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
+import { getRankedRoleMascotPath } from "@/components/mascot/mascot-assets";
 
 /** A real, already-tallied record for one role. Never defaulted to zeros —
  *  a role the host has no rows for is simply absent from the map. */
@@ -70,10 +68,6 @@ const ROLE_ACCENTS: Record<RankedRole, string> = {
   adc: "#e2a17a",
   support: "#c2a4e0",
 };
-
-/** The one portrait the registry actually has for a player-in-a-role. Shared
- *  by all five slides on purpose — see ART HONESTY above. */
-const ROLE_PORTRAIT = MOGZY_MASCOT_ASSETS.base;
 
 /** Signed ring distance from the selected slide, in -2..2. */
 function ringOffset(index: number, selected: number, length: number): number {
@@ -228,7 +222,7 @@ export default function RankedClassCarousel({
                 }}
               />
               <img
-                src={ROLE_PORTRAIT}
+                src={getRankedRoleMascotPath(roleId)}
                 alt=""
                 aria-hidden="true"
                 draggable={false}

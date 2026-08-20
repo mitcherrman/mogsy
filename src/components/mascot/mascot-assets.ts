@@ -11,6 +11,8 @@
  * Do not treat family members, Ranked classes, or companions as Mogzy poses.
  */
 
+import type { RankedRole } from "@/lib/ranked-public/roles";
+
 /* -------------------------------------------------------------------------- */
 /* Mogzy mascot poses                                                         */
 /* -------------------------------------------------------------------------- */
@@ -224,6 +226,38 @@ export const MOGZY_COMPANION_METADATA = {
     description: string;
   }
 >;
+
+/* -------------------------------------------------------------------------- */
+/* Ranked ROLE mascots (visual presentation only)                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The ONE role -> mascot art mapping in the client.
+ *
+ * This is VISUAL PRESENTATION ONLY. A League role (Top/Jungle/Mid/ADC/Support)
+ * is account identity; it is not a combat class, and this map does not make it
+ * one. Every entry is its own dedicated role artwork, disjoint from the Ranked
+ * class characters in `MOGZY_CLASS_ASSETS`: no role/class semantics may be
+ * read out of this map in either direction, and nothing here feeds rating,
+ * progression, XP, Elo, thresholds, crowns or RE1.
+ *
+ * Because a role is never communicated by mascot alone, every surface that
+ * renders one of these MUST still render the role's label from
+ * `RANKED_ROLE_LABELS`.
+ */
+export const MOGZY_ROLE_ASSETS: Record<RankedRole, string> = {
+  top: "/mascot/family/top.png",
+  jungle: "/mascot/family/jg.png",
+  mid: "/mascot/family/mid.png",
+  adc: "/mascot/family/bot.png",
+  support: "/mascot/family/sup.png",
+};
+
+/** Path to the mascot art for a role. Total over the five canonical roles, so
+ *  no surface ever has to fall back to the generic base portrait. */
+export function getRankedRoleMascotPath(role: RankedRole): string {
+  return MOGZY_ROLE_ASSETS[role];
+}
 
 /* -------------------------------------------------------------------------- */
 /* Generic typed product-art API                                              */
