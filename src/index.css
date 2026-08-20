@@ -1449,9 +1449,16 @@ html.high-contrast * { text-shadow: none !important; }
 /*                                                                            */
 /*   .role-mascot          host layout/size — no transform at all              */
 /*   └── .role-mascot-idle     looping float                                   */
-/*       └── .role-mascot-facing   scaleX mirror                               */
-/*           └── .role-mascot-action  transient attack/hit keyframes           */
-/*               └── <img>                                                     */
+/*       └── .role-mascot-facing   scaleX mirror — SEMANTIC facing only        */
+/*           └── .role-mascot-action  transient attack/hit/react keyframes     */
+/*               └── .role-mascot-plate  scaleX — the ARTWORK's own direction  */
+/*                   └── <img>                                                 */
+/*                                                                            */
+/* The bottom two are separate on purpose. The facing layer decides which way  */
+/* FORWARD points on screen, so the actions hang below it; the plate layer     */
+/* only decides which way the character is drawn, so it hangs below THEM and   */
+/* cannot touch the lunge. Collapsing the two sent a Mid duelist — the one     */
+/* plate drawn facing left — charging away from the arena.                     */
 /*                                                                            */
 /* Because the mirror lives on an ANCESTOR of the action layer, the action     */
 /* keyframes are written in unmirrored terms — forward is +X, always — and a   */
@@ -1464,31 +1471,60 @@ html.high-contrast * { text-shadow: none !important; }
 /* the feel can be changed here without touching a component.                  */
 /* ------------------------------------------------------------------------- */
 .role-mascot {
-  /* Idle */
-  --role-mascot-idle-rise: 4px;
+  /* Idle — the ONE behaviour the owner approved as-is, so it is deliberately
+     the one number that barely moves. `max()` keeps Phase 2's exact 4px at
+     crest scale and lets it grow only in proportion once the mascot is large
+     enough for 4px to read as a twitch (3% of a 140px mascot is 4.2px). */
+  --role-mascot-idle-rise: max(4px, 3%);
   --role-mascot-idle-duration: 3.6s;
-  /* Attack */
-  --role-mascot-attack-reach: 16%;
-  --role-mascot-attack-windup: 5%;
-  --role-mascot-attack-duration: 420ms;
-  /* Hit */
-  --role-mascot-hit-recoil: 11%;
-  --role-mascot-hit-duration: 360ms;
-  /* Shared squash/stretch depth. 0 = pure translation. */
-  --role-mascot-squash: 0.07;
+  /* Attack — anticipate back, drive forward, recover. */
+  --role-mascot-attack-reach: 30%;
+  --role-mascot-attack-windup: 11%;
+  --role-mascot-attack-duration: 520ms;
+  --role-mascot-attack-lean: 8deg;
+  /* Hit — thrown backward, then shaken out. */
+  --role-mascot-hit-recoil: 24%;
+  --role-mascot-hit-duration: 500ms;
+  --role-mascot-hit-jolt: 12deg;
+  /* Click reaction — squash, hop, stretch, settle. The hop and the stretch
+     both lift the mascot, so the two together are what a host has to reserve
+     room above the mascot for: about 20% of its height. */
+  --role-mascot-react-hop: 9%;
+  --role-mascot-react-squash: 0.14;
+  --role-mascot-react-duration: 560ms;
+  /* Shared squash/stretch depth for the two combat actions. 0 = pure
+     translation. */
+  --role-mascot-squash: 0.14;
 
   display: block;
   position: relative;
+}
+
+/* An interactive mascot is a toy, not a control: it gets a pointer and a
+   clean tap, and nothing else. No focus ring, no tab stop, no role — see the
+   component's note on why it stays a plain span. */
+.role-mascot-interactive {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Every inner layer fills the host box exactly, so the host's width/height is
    the mascot's width/height and no layer introduces its own geometry. */
 .role-mascot-idle,
 .role-mascot-facing,
-.role-mascot-action {
+.role-mascot-action,
+.role-mascot-plate {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Plate layer — the artwork's own direction, and nothing else. Static by
+   design: no transition and no animation, so a facing change still reads as a
+   turn on the layer above rather than as the art snapping round. */
+.role-mascot-plate {
+  transform: scaleX(var(--role-mascot-plate, 1));
 }
 
 /* Idle — a slow vertical float and nothing else. Translation only: it must
@@ -1509,40 +1545,118 @@ html.high-contrast * { text-shadow: none !important; }
   transform: scaleX(var(--role-mascot-facing, 1));
 }
 
-/* Attack — settle back, then drive forward and recover.
+/* Attack — CROUCH, COIL, STRIKE, RECOVER, in four beats a viewer can name.
    Percentage translation so the lunge scales with the mascot rather than being
-   a fixed pixel distance that reads huge in a 56px crest and tiny on a hero.
+   a fixed pixel distance that reads huge on a hero and tiny in a crest.
    Squash is anchored at the feet so the deformation reads as a body pushing
-   off the ground. 0% and 100% are both the identity transform. */
+   off the ground. 0% and 100% are both the identity transform.
+
+   The per-keyframe timing functions are what make it read as an ATTACK rather
+   than a drift: the windup eases out and then very nearly HOLDS, so the strike
+   has something to be a release from, and the strike itself runs on a curve
+   that spends almost all of its travel in its first third. One easing across
+   the whole animation cannot do that, which is most of why the Phase 2 lunge
+   was hard to see even before its distance is taken into account. */
 @keyframes role-mascot-attack {
-  0%   { transform: translateX(0) scale(1, 1); }
-  18%  { transform: translateX(calc(var(--role-mascot-attack-windup) * -1))
-                    scale(calc(1 + var(--role-mascot-squash)), calc(1 - var(--role-mascot-squash))); }
-  46%  { transform: translateX(var(--role-mascot-attack-reach))
-                    scale(calc(1 - var(--role-mascot-squash) * 0.6), calc(1 + var(--role-mascot-squash) * 0.6)); }
-  70%  { transform: translateX(calc(var(--role-mascot-attack-reach) * 0.35)) scale(1, 1); }
-  100% { transform: translateX(0) scale(1, 1); }
+  0%   { transform: translateX(0) rotate(0deg) scale(1, 1);
+         animation-timing-function: cubic-bezier(0.22, 0.7, 0.3, 1); }
+  /* Crouch back and widen — the anticipation. */
+  16%  { transform: translateX(calc(var(--role-mascot-attack-windup) * -1))
+                    rotate(calc(var(--role-mascot-attack-lean) * -0.35))
+                    scale(calc(1 + var(--role-mascot-squash)), calc(1 - var(--role-mascot-squash)));
+         animation-timing-function: cubic-bezier(0.9, 0, 1, 1); }
+  /* Still back, now stretched: the body has committed but not left yet. */
+  30%  { transform: translateX(calc(var(--role-mascot-attack-windup) * -0.55))
+                    rotate(calc(var(--role-mascot-attack-lean) * -0.15))
+                    scale(calc(1 - var(--role-mascot-squash) * 0.8), calc(1 + var(--role-mascot-squash) * 0.8));
+         animation-timing-function: cubic-bezier(0.16, 0.85, 0.3, 1); }
+  /* Impact: full reach, leaning into it, squashed against the opponent. */
+  48%  { transform: translateX(var(--role-mascot-attack-reach))
+                    rotate(var(--role-mascot-attack-lean))
+                    scale(calc(1 + var(--role-mascot-squash) * 0.5), calc(1 - var(--role-mascot-squash) * 0.5));
+         animation-timing-function: cubic-bezier(0.3, 0, 0.4, 1); }
+  /* Recovery: a clean, unhurried walk back to rest — never a second lunge. */
+  66%  { transform: translateX(calc(var(--role-mascot-attack-reach) * 0.62))
+                    rotate(calc(var(--role-mascot-attack-lean) * 0.4)) scale(1, 1);
+         animation-timing-function: cubic-bezier(0.33, 0, 0.2, 1); }
+  84%  { transform: translateX(calc(var(--role-mascot-attack-reach) * 0.18))
+                    rotate(calc(var(--role-mascot-attack-lean) * 0.12)) scale(1, 1); }
+  100% { transform: translateX(0) rotate(0deg) scale(1, 1); }
 }
 .role-mascot-action.role-mascot-attack {
-  animation: role-mascot-attack var(--role-mascot-attack-duration) cubic-bezier(0.34, 0.9, 0.36, 1);
+  animation: role-mascot-attack var(--role-mascot-attack-duration) linear;
   transform-origin: 50% 100%;
   will-change: transform;
 }
 
-/* Hit — thrown BACKWARD (away from forward) with a short shake on the way
-   home, so it can never be mistaken for the attack lunge: opposite direction,
-   opposite squash axis, and a stutter the attack does not have. */
+/* Hit — thrown BACKWARD (away from forward) and shaken out on the way home.
+   Four things separate it from the attack at a glance, by design:
+
+     * it travels the other way;
+     * its peak is INSTANT (9%) where the attack's is halfway (48%) — a hit is
+       something done TO you, so there is no anticipation to read;
+     * it drops as it goes, so the body sags rather than driving;
+     * it oscillates home through four decaying overshoots the attack does not
+       have.
+
+   That is enough that the two never have to be told apart by direction alone,
+   which matters: the two columns face opposite ways, so "moved left" means
+   different things on either side of the arena. */
 @keyframes role-mascot-hit {
-  0%   { transform: translateX(0) rotate(0deg) scale(1, 1); }
-  16%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -1)) rotate(-4deg)
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1, 1);
+         animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1); }
+  9%   { transform: translate(calc(var(--role-mascot-hit-recoil) * -1), 4%)
+                    rotate(calc(var(--role-mascot-hit-jolt) * -1))
+                    scale(calc(1 + var(--role-mascot-squash) * 0.7), calc(1 - var(--role-mascot-squash) * 0.7));
+         animation-timing-function: cubic-bezier(0.4, 0, 0.3, 1); }
+  26%  { transform: translate(calc(var(--role-mascot-hit-recoil) * -0.58), 1.5%)
+                    rotate(calc(var(--role-mascot-hit-jolt) * 0.45))
                     scale(calc(1 - var(--role-mascot-squash) * 0.5), calc(1 + var(--role-mascot-squash) * 0.5)); }
-  44%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -0.45)) rotate(3deg) scale(1, 1); }
-  64%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -0.22)) rotate(-2deg) scale(1, 1); }
-  82%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -0.08)) rotate(1deg) scale(1, 1); }
-  100% { transform: translateX(0) rotate(0deg) scale(1, 1); }
+  44%  { transform: translate(calc(var(--role-mascot-hit-recoil) * -0.36), 0)
+                    rotate(calc(var(--role-mascot-hit-jolt) * -0.3)) scale(1, 1); }
+  62%  { transform: translate(calc(var(--role-mascot-hit-recoil) * -0.19), 0)
+                    rotate(calc(var(--role-mascot-hit-jolt) * 0.18)) scale(1, 1); }
+  80%  { transform: translate(calc(var(--role-mascot-hit-recoil) * -0.08), 0)
+                    rotate(calc(var(--role-mascot-hit-jolt) * -0.08)) scale(1, 1); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1, 1); }
 }
 .role-mascot-action.role-mascot-hit {
-  animation: role-mascot-hit var(--role-mascot-hit-duration) cubic-bezier(0.22, 1, 0.36, 1);
+  animation: role-mascot-hit var(--role-mascot-hit-duration) linear;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+/* Click reaction (AI1 Phase 2B) — squash, hop with a stretch, land, settle.
+   The same four beats as AI1 Phase 1's approved Mogzy hop, in this body's
+   proportions. Purely VERTICAL and purely symmetric: it carries no direction,
+   so it cannot be mistaken for either combat action from across the arena, and
+   the facing mirror above it has nothing to flip. Anchored at the feet, like
+   everything else here. */
+@keyframes role-mascot-react {
+  0%   { transform: translateY(0) scale(1, 1);
+         animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1); }
+  /* Squash: the crouch before the hop. */
+  15%  { transform: translateY(0)
+                    scale(calc(1 + var(--role-mascot-react-squash)), calc(1 - var(--role-mascot-react-squash)));
+         animation-timing-function: cubic-bezier(0.15, 0.85, 0.4, 1); }
+  /* Stretch off the ground. */
+  34%  { transform: translateY(calc(var(--role-mascot-react-hop) * -1))
+                    scale(calc(1 - var(--role-mascot-react-squash) * 0.75), calc(1 + var(--role-mascot-react-squash) * 0.75));
+         animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+  /* Top of the arc, back to true proportions for an instant. */
+  50%  { transform: translateY(calc(var(--role-mascot-react-hop) * -1.05)) scale(1, 1);
+         animation-timing-function: cubic-bezier(0.5, 0, 0.75, 0); }
+  /* Land, and squash again on impact. */
+  68%  { transform: translateY(0)
+                    scale(calc(1 + var(--role-mascot-react-squash) * 0.8), calc(1 - var(--role-mascot-react-squash) * 0.8));
+         animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1); }
+  /* One small overshoot, then settle. */
+  84%  { transform: translateY(calc(var(--role-mascot-react-hop) * -0.14))
+                    scale(calc(1 - var(--role-mascot-react-squash) * 0.28), calc(1 + var(--role-mascot-react-squash) * 0.28)); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+.role-mascot-action.role-mascot-react {
+  animation: role-mascot-react var(--role-mascot-react-duration) linear;
   transform-origin: 50% 100%;
   will-change: transform;
 }
@@ -1575,18 +1689,41 @@ html.high-contrast * { text-shadow: none !important; }
      lean is pinned: a mascot that never moves should not turn either. */
   .mogzy-facing-turn { transition: none !important; transform: none !important; }
   /* AI1 Phase 2 role mascots. The idle loop and the facing turn stop
-     outright — a mascot that never moves should not turn either. The two
-     actions are NOT removed: an attack and a hit are state changes the player
-     needs to read, so they degrade to a still, movement-free acknowledgement
-     (a brief opacity dip) rather than disappearing. No translation, no
-     rotation, no scale — nothing that travels. */
+     outright — a mascot that never moves should not turn either.
+
+     The action rules below are a SAFETY NET, not the mechanism: `RoleMascot`
+     already refuses to add any action class at all under reduced motion (it
+     checks the preference at the source, which its tests pin), so in practice
+     nothing here is reached and no mascot moves for these users at all. The
+     state change is never lost — the HP bar, the damage trail and the round
+     verdict all still report it in text. These rules exist so that anything
+     which applies a class WITHOUT going through the component still cannot
+     make a mascot travel: attack and hit collapse to a still opacity blip, and
+     the click reaction — which carries no information at all — is cancelled
+     outright, exactly as `.mogzy-click-react` is above. */
   .role-mascot-idle { animation: none !important; }
-  .role-mascot-facing { transition: none !important; transform: none !important; }
+  /* The TURN stops; the facing itself does not. Killing the transform here as
+     well (as this rule used to) did not remove motion — a static mirror is not
+     motion — it removed information: both opponents ended up drawn facing out
+     of the arena, so a reduced-motion player could not see who was pointed at
+     whom. Only the 280ms interpolation is dropped, so a facing change is
+     instant instead of a spin. The plate layer is deliberately untouched: the
+     artwork's own direction is not a preference. */
+  .role-mascot-facing { transition: none !important; }
   .role-mascot-action.role-mascot-attack,
   .role-mascot-action.role-mascot-hit {
     animation: role-mascot-reduced 260ms ease-out !important;
     transform: none !important;
   }
+  /* The click reaction is the one motion here that carries no information, so
+     it is the one that is cancelled OUTRIGHT rather than degraded — exactly
+     how `.mogzy-click-react` is treated above. The component also refuses to
+     start it; this is the belt to that braces. */
+  .role-mascot-action.role-mascot-react {
+    animation: none !important;
+    transform: none !important;
+  }
+  .role-mascot-interactive { cursor: default; }
   /* No fade: the line is simply present at full opacity. */
   .academy-personal-line { animation: none !important; }
 }

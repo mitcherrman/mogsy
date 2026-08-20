@@ -33,13 +33,46 @@ import type { DamageHistoryEntry, MascotReaction } from "@/pages/quiz-ranked/ran
 import { ClassIdentity, classIdentityFor } from "./classIdentity";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
 
+/**
+ * THE ONE SIDE RULE (AI1 Phase 2B follow-up).
+ *
+ * A duelist column is either the player's or the opponent's, and the opponent's
+ * is the horizontal REFLECTION of the player's — not a second layout that
+ * happens to look similar. Every row in the panel derives its alignment from
+ * this one function, so a row cannot be mirrored in one place and forgotten in
+ * another, which is exactly how the HP row, the status chips and the verdict
+ * ended up left-aligned on both columns while everything around them flipped.
+ *
+ * `side` is read off the combatant rather than passed in, so no caller can put
+ * a column on the wrong side of the arena, and standalone users of the meters
+ * below get the correct alignment for free.
+ */
+export function isMirroredSide(combatant: CombatantView): boolean {
+  return combatant.side === "opponent";
+}
+
+/**
+ * Reflect a row of two groups. `flex-row-reverse` swaps which END each group
+ * sits at without reversing anything a reader reads left-to-right: "150 / 170"
+ * is still "150 / 170", it has just moved to the other side of the row.
+ */
+const mirrorRow = (mirrored: boolean) => (mirrored ? "flex-row-reverse" : "");
+
+/**
+ * Reflect a row whose contents are a SEQUENCE. Position mirrors; order does
+ * not. The damage trail is oldest-first and the status chips are answer-then-
+ * ability, and a reflection must not turn either of those round.
+ */
+const mirrorAlign = (mirrored: boolean) => (mirrored ? "justify-end" : "");
+
 /** HP meter. maxHp null = unknown: absolute number only, no proportion. */
 export function HealthMeter({ combatant }: { combatant: CombatantView }) {
   const { hp, maxHp, name } = combatant;
+  const mirrored = isMirroredSide(combatant);
   const pct = maxHp !== null && maxHp > 0 ? Math.min(100, Math.round((hp / maxHp) * 100)) : null;
   return (
     <div data-testid={`hp-${combatant.playerId}`}>
-      <div className="flex items-baseline justify-between mb-1">
+      <div className={`flex items-baseline justify-between mb-1 ${mirrorRow(mirrored)}`}>
         <span className="text-xs font-semibold">HP</span>
         <span className="tabular-nums text-base font-bold leading-none">
           {hp}
@@ -80,6 +113,7 @@ export function HealthMeter({ combatant }: { combatant: CombatantView }) {
 /** Quiet XP progression bar; thresholds are supplied, never computed here. */
 export function ExperienceMeter({ combatant }: { combatant: CombatantView }) {
   const { xp, level, currentLevelThreshold, nextLevelThreshold, playerId } = combatant;
+  const mirrored = isMirroredSide(combatant);
   const atMax = nextLevelThreshold === null;
   let pct: number | null = null;
   if (!atMax && currentLevelThreshold !== null && nextLevelThreshold > currentLevelThreshold) {
@@ -93,7 +127,8 @@ export function ExperienceMeter({ combatant }: { combatant: CombatantView }) {
   }
   return (
     <div data-testid={`xp-${playerId}`}>
-      <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+      <div className={`flex justify-between text-[11px] text-muted-foreground mb-1 ${
+        mirrorRow(mirrored)}`}>
         <span id={`xp-label-${playerId}`}>XP</span>
         <span className="tabular-nums" aria-labelledby={`xp-label-${playerId}`}>
           {atMax
@@ -120,6 +155,7 @@ export function ExperienceMeter({ combatant }: { combatant: CombatantView }) {
 function RoundStatus({ combatant, showAbility = true }:
 { combatant: CombatantView; showAbility?: boolean }) {
   const { hasSubmitted, abilityWindow, hasAbilitySelected, name } = combatant;
+  const mirrored = isMirroredSide(combatant);
   // ONE reserved row, and each badge holds a fixed icon slot.
   //
   // Phase 2 compact layout: the ability chip's labels are short enough
@@ -137,7 +173,7 @@ function RoundStatus({ combatant, showAbility = true }:
   // one row in a 14rem rail.
   return (
     <div
-      className="flex min-h-7 flex-wrap content-start gap-1.5"
+      className={`flex min-h-7 flex-wrap content-start gap-1.5 ${mirrorAlign(mirrored)}`}
       role="status"
       aria-label={`${name} round status`}
       data-testid={`status-${combatant.playerId}`}
@@ -247,8 +283,7 @@ export function DamageTrail({
     <div
       data-testid={`damage-trail-${playerId}`}
       aria-label="Recent damage"
-      className={`flex min-h-[1.5rem] flex-wrap items-center gap-1 ${
-        mirrored ? "justify-end" : ""}`}
+      className={`flex min-h-[1.5rem] flex-wrap items-center gap-1 ${mirrorAlign(mirrored)}`}
     >
       {entries.length === 0 ? (
         <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/60">
@@ -325,11 +360,14 @@ function OutcomeState({
   damageDealt,
   playerId,
   name,
+  mirrored,
 }: {
   outcome: ResolvedCombatantView["outcome"];
   damageDealt: number | null;
   playerId: string;
   name: string;
+  /** From `isMirroredSide` — the verdict reflects with everything else. */
+  mirrored: boolean;
 }) {
   const state = OUTCOME_STATE[outcome];
   const { Icon } = state;
@@ -339,7 +377,8 @@ function OutcomeState({
       aria-label={`${name} ${state.label.toLowerCase()}`}
       data-testid={`outcome-${playerId}`}
       data-outcome={outcome}
-      className={`flex min-h-7 items-center gap-1.5 rounded-md border px-1.5 py-0.5 ${state.className}`}
+      className={`flex min-h-7 items-center gap-1.5 rounded-md border px-1.5 py-0.5 ${
+        mirrorRow(mirrored)} ${state.className}`}
     >
       <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
       <span className="text-[11px] font-black uppercase tracking-[0.12em]">
@@ -348,7 +387,11 @@ function OutcomeState({
       {damageDealt !== null && damageDealt > 0 && (
         <span
           data-testid={`outcome-damage-${playerId}`}
-          className="ml-auto whitespace-nowrap text-[11px] font-black tabular-nums text-[#e8c97a]"
+          // The auto margin has to change SIDE with the row: in a reversed row
+          // `ml-auto` still pushes toward the physical right, which would park
+          // the damage number back against the verdict instead of across from
+          // it.
+          className={`${mirrored ? "mr-auto" : "ml-auto"} whitespace-nowrap text-[11px] font-black tabular-nums text-[#e8c97a]`}
         >
           {damageDealt} DMG
         </span>
@@ -397,10 +440,13 @@ export function CombatantPanel({
   // forbids deriving one from the other, so this is a branch, never a mapping.
   const classIdentity = classIdentityFor(combatant.classId);
   const accent = role.role ? role.accent : classIdentity.accent;
-  // Opponent panels mirror the header (portrait outboard, text toward the
-  // centre) so the two cards read as facing duelists. Structure is identical —
-  // only flex direction and text alignment flip.
-  const mirrored = side === "opponent";
+  // The opponent column is the horizontal REFLECTION of the player's, not a
+  // second layout that resembles it: one structure, one rule, and every row
+  // below takes its alignment from this. `side` survives only where the two
+  // columns genuinely differ in KIND rather than in direction — the card's
+  // border and the level badge are blue for you and red for them on both
+  // columns, and a mirror must not swap those.
+  const mirrored = isMirroredSide(combatant);
   return (
     <section
       aria-label={`${name} panel`}
@@ -413,24 +459,44 @@ export function CombatantPanel({
       } ${outcome === "correct" ? "ring-2 ring-emerald-400/40"
         : outcome === "incorrect" ? "ring-2 ring-destructive/40" : ""}`}
     >
-      {/* Identity block. The crest sits at the TOP of the column, above HP,
-          and is the same box at every state so the column's height never
-          depends on whether a role (or any art) arrived. */}
+      {/* AI1 Phase 2B — the role mascot gets the top of the column to itself.
+          It used to ride inside the 56px crest at the head of the identity
+          row, which is exactly what made a character read as an icon. The
+          slot takes its height from the mascot's aspect at this column width,
+          and nothing below it moves while the mascot animates: every keyframe
+          in there is a transform, and transforms do not lay out.
+
+          The arena states only WHERE this goes, WHICH role, WHICH way it
+          faces, WHEN something happened, and that it is touchable. Every
+          distance, duration, easing curve and keyframe — including the whole
+          of the click reaction — stays in `RoleMascot`. */}
+      {role.role && (
+        <RoleCrest identity={role} mirrored={mirrored} size="stage" interactive
+          action={reaction?.action ?? null} actionId={reaction?.actionId ?? null} />
+      )}
+      {/* Identity row. With the mascot on its own stage above, the name and
+          the role sit on ONE line, outer edge to inner edge, so the two
+          columns read as a facing pair. The pre-role class fallback keeps its
+          original stacked header and its framed bust, untouched. */}
       <header className={`flex items-center gap-2.5 min-w-0 ${mirrored ? "flex-row-reverse" : ""}`}>
-        {role.role ? (
-          <RoleCrest identity={role} mirrored={mirrored}
-            action={reaction?.action ?? null} actionId={reaction?.actionId ?? null} />
-        ) : (
+        {!role.role && (
           <ClassPortrait identity={classIdentity} fallbackLabel={tag ?? combatant.classId}
             mirrored={mirrored} />
         )}
-        <div className={`min-w-0 ${mirrored ? "text-right" : ""}`}>
-          <div className="font-bold leading-tight truncate">{name}</div>
+        <div className={`min-w-0 ${
+          role.role ? "flex flex-1 items-baseline justify-between gap-2" : ""} ${
+          role.role && mirrored ? "flex-row-reverse" : ""} ${mirrored ? "text-right" : ""}`}>
+          <div className="min-w-0 font-bold leading-tight truncate">{name}</div>
           {tag && (
             <div
               data-testid={`identity-tag-${combatant.playerId}`}
+              // `justify-between` on the row (not a margin) is what puts the
+              // name and the role at OPPOSITE ends. A margin-left:auto reads
+              // as "push right" in both rows, which on the mirrored column
+              // pushed the role over to sit beside the name instead of across
+              // from it — the two columns stopped being each other's mirror.
               className={`flex items-center gap-1 text-[11px] uppercase tracking-[0.14em] ${
-                mirrored ? "justify-end" : ""}`}
+                role.role ? "shrink-0" : ""} ${mirrored ? "justify-end" : ""}`}
               style={{ color: accent }}
             >
               {!role.role && classIdentity.portrait && (
@@ -472,7 +538,7 @@ export function CombatantPanel({
           place, so resolving a round shifts nothing. */}
       {outcome !== null ? (
         <OutcomeState outcome={outcome} damageDealt={damageDealt}
-          playerId={combatant.playerId} name={name} />
+          playerId={combatant.playerId} name={name} mirrored={mirrored} />
       ) : (
         showRoundStatus && (
           // R1: the ability chip is part of the ability layer, so it goes with

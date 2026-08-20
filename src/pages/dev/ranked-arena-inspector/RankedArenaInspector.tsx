@@ -42,6 +42,10 @@ import {
   AbilityView, CombatantView, InteractionPermissions, NO_INTERACTIONS,
   QuestionView, TimerView,
 } from "@/lib/ranked-core/viewTypes";
+// AI1 Phase 2B — the mascot bench drives the SAME projection the live match
+// does, so nothing on it is a bench-only animation trigger.
+import { projectMascotReactions } from "@/pages/quiz-ranked/rankedViews";
+import { RANKED_ROLE_LABELS, RANKED_ROLES, type RankedRole } from "@/lib/ranked-public/roles";
 
 // --------------------------------------------------------------- fixtures
 
@@ -465,6 +469,111 @@ function ArenaComposition({
   );
 }
 
+// -------------------------------------------------- AI1 mascot bench (2B)
+
+/**
+ * AI1 Phase 2B mascot bench.
+ *
+ * The one surface where the mascot presentation can be judged the way the
+ * owner judges it — by looking at it. It renders the REAL `CombatantPanel` in
+ * the REAL arena proportions, and every reaction on screen is produced by the
+ * REAL projection (`projectMascotReactions`) reading a REAL backend-shaped
+ * settlement out of `backendSettlementFixtures`. There is no bench-only
+ * animation trigger and no hand-written reaction object anywhere below: if the
+ * projection would not move a mascot in a live match, nothing here moves it
+ * either.
+ *
+ * Still fixtures, still no engine, no controller, no fetch — the buttons
+ * choose WHICH settled round to look at, they do not settle one.
+ */
+function MascotBench() {
+  const [playerRole, setPlayerRole] = useState<RankedRole>("top");
+  const [opponentRole, setOpponentRole] = useState<RankedRole>("mid");
+  // A settled round: the scenario, plus the round number it settled as. The
+  // number is bumped on every press so consecutive presses of the SAME button
+  // are two different events — exactly what a live match produces, and what
+  // the mascot's edge-triggered playback needs to retrigger.
+  const [round, setRound] = useState<{ key: string; n: number } | null>(null);
+
+  const resolved = round === null ? null : {
+    ...settlement(round.key), roundNumber: round.n,
+  };
+  // Gated on `true` — the bench IS the reveal beat.
+  const reactions = projectMascotReactions(resolved, true);
+
+  const fire = (key: string) => setRound((r) => ({ key, n: (r?.n ?? 0) + 1 }));
+  const combatantFor = (side: "player" | "opponent") => {
+    const base = side === "player"
+      ? player({ playerId: FIXTURE_P1_ID, roleId: playerRole,
+                 tag: RANKED_ROLE_LABELS[playerRole] })
+      : opponent({ playerId: FIXTURE_P2_ID, roleId: opponentRole,
+                   tag: RANKED_ROLE_LABELS[opponentRole] });
+    return base;
+  };
+  const roleButtons = (value: RankedRole, set: (r: RankedRole) => void, label: string) => (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="w-20 text-[11px] uppercase tracking-widest text-muted-foreground">{label}</span>
+      {RANKED_ROLES.map((r) => (
+        <button key={r} type="button" onClick={() => set(r)}
+          className={`rounded border px-2 py-0.5 text-[11px] ${
+            r === value ? "border-primary bg-primary/15" : "border-white/15"}`}>
+          {RANKED_ROLE_LABELS[r]}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5 rounded-lg border border-white/10 p-2.5">
+        {roleButtons(playerRole, setPlayerRole, "You")}
+        {roleButtons(opponentRole, setOpponentRole, "Opponent")}
+        <div className="flex flex-wrap items-center gap-1 pt-1">
+          <span className="w-20 text-[11px] uppercase tracking-widest text-muted-foreground">Settle</span>
+          {[
+            ["solo-correct", "You deal 30 (they recoil)"],
+            ["timed-out", "They time out"],
+            ["shield-absorb", "Shielded hit"],
+            ["both-incorrect-wash", "Wash — nobody moves"],
+          ].map(([key, label]) => (
+            <button key={key} type="button" onClick={() => fire(key)}
+              className="rounded border border-white/15 px-2 py-0.5 text-[11px] hover:border-primary">
+              {label}
+            </button>
+          ))}
+          <button type="button" onClick={() => setRound(null)}
+            className="rounded border border-white/15 px-2 py-0.5 text-[11px]">Reset</button>
+        </div>
+        <p className="pt-1 text-[11px] text-muted-foreground">
+          Round {round?.n ?? 0} ·{" "}
+          {Object.entries(reactions).map(([id, r]) => `${id}: ${r.action}`).join("  ·  ")
+            || "no reaction"}{" "}
+          · click a mascot for its own reaction
+        </p>
+      </div>
+      {/* QuizRankedMatch's own arena grid proportions (23 / 54 / 23). */}
+      <div className="ranked-shell ranked-academy">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
+          <div className="lg:col-start-1 lg:row-start-1 lg:h-full">
+            <CombatantPanel combatant={combatantFor("player")} progressionEnabled={false}
+              damage={[{ roundNumber: 1, amount: 12, hpAfter: 158, kind: "hit" }]}
+              reaction={reactions[FIXTURE_P1_ID] ?? null} />
+          </div>
+          <div className="lg:col-start-3 lg:row-start-1 lg:h-full">
+            <CombatantPanel combatant={combatantFor("opponent")} progressionEnabled={false}
+              damage={[{ roundNumber: 1, amount: 30, hpAfter: 120, kind: "hit" }]}
+              reaction={reactions[FIXTURE_P2_ID] ?? null} />
+          </div>
+          <section data-testid="ranked-question"
+            className="ranked-panel ranked-folio col-span-2 p-3 sm:p-5 lg:col-span-1 lg:col-start-2 lg:row-start-1">
+            <InteractiveScenarioSurface question={ITEM_Q} selectedOptionId={null} permissions={OPEN}
+              onSelectOption={() => {}} variant="competitive" scenarioSource={ITEM_SCENARIO} />
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -664,6 +773,8 @@ const STATES: InspectorState[] = [
     render: () => <Surface variant="tutorial" scenarioSource={ITEM_SCENARIO} /> },
   { key: "surface-speed", label: "Surface — speed (no media)",
     render: () => <Surface variant="speed" /> },
+  { key: "ai1-mascots", label: "AI1 — role mascots",
+    render: () => <MascotBench /> },
 ];
 
 const VIEWPORTS: { key: string; label: string; width: number | null }[] = [

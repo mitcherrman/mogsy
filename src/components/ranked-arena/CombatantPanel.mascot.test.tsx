@@ -112,6 +112,48 @@ describe("CombatantPanel — mascot wiring", () => {
       .toBeTruthy();
   });
 
+  it("gives the mascot the top of the column, not a 56px icon frame", () => {
+    render(<CombatantPanel combatant={combatant()} />);
+    const slot = screen.getByTestId("role-crest");
+    const mascot = screen.getByTestId("role-crest-mascot");
+    // The owner's verdict on the crest was that it made a character read as an
+    // icon. There is no frame at this size: no fixed 56px box, no border, and
+    // nothing that clips the motion at its edge.
+    expect(slot.className).not.toMatch(/\bh-14\b|\bw-14\b|\bh-10\b|\bw-10\b/);
+    expect(slot.className).not.toContain("overflow-hidden");
+    expect(slot.className).toContain("overflow-visible");
+    expect(slot.className).not.toContain("rounded-xl");
+    // Sized as a FRACTION of the column, so the clearance the motion needs is
+    // preserved at every width rather than only at the ones we sampled.
+    expect(mascot.className).toContain("w-[52%]");
+    // ...and crops the plate's empty bands so the CHARACTER fills the slot.
+    expect(mascot.querySelector("img")!.className).toContain("object-cover");
+  });
+
+  it("lets a duelist's mascot be poked, and asks for nothing else", () => {
+    render(<CombatantPanel combatant={combatant()} />);
+    const mascot = screen.getByTestId("role-crest-mascot");
+    expect(mascot).toHaveAttribute("data-interactive", "true");
+    // Ranked says only THAT it is touchable. What a touch looks like, how long
+    // it lasts and what beats what are all the component's.
+    const src = fs.readFileSync(
+      path.join(process.cwd(), "src/components/ranked-arena/CombatantPanel.tsx"), "utf8");
+    expect(src).not.toMatch(/onClick[^}]*mascot/i);
+  });
+
+  it("keeps the column's own furniture out of the mascot's way", () => {
+    // Nothing below the mascot may be positioned relative to it: the name, the
+    // HP meter and the trail are siblings of the slot, not children of it, so
+    // no action can move them and no layout depends on the mascot's internals.
+    render(<CombatantPanel combatant={combatant()}
+      damage={[{ roundNumber: 1, amount: 9, hpAfter: 71, kind: "hit" }]} />);
+    const slot = screen.getByTestId("role-crest");
+    for (const id of ["hp-userA", "damage-trail-userA"]) {
+      expect(slot.contains(screen.getByTestId(id))).toBe(false);
+    }
+    expect(screen.getByTestId("identity-tag-userA")).toHaveTextContent("Top");
+  });
+
   it("passes the reaction through as an intent, never as a distance", () => {
     render(<CombatantPanel combatant={combatant()}
       reaction={{ action: "hit", actionId: 3 }} />);

@@ -132,11 +132,37 @@ function Sigil({ role }: { role: RankedRole | null }) {
 }
 
 /**
- * The framed role crest that sits at the TOP of a duelist column, above HP.
+ * The role presentation at the TOP of a duelist column, above HP.
  *
- * Fixed geometry at every state: the frame is the same box whether a role
- * arrived or not, so a match with no role cannot change the column's height
- * (the §14 common-vertical-rhythm constraint).
+ * Two shapes, one component:
+ *
+ *  * `sm` / `md` — the original framed 56px crest. An `overflow-hidden` box
+ *    with the mascot INSET inside it, unchanged, and still the only shape a
+ *    role-less duelist can have (the sigil branch).
+ *  * `stage` (AI1 Phase 2B) — the frame is GONE. The owner's verdict on the
+ *    crest was that it made a character read as a role icon, so at this size
+ *    there is no box to be inside and no border to clip against: the panel
+ *    itself is the frame, the mascot is simply large, and the only thing left
+ *    behind it is a soft accent glow that seats it on the card. That is what
+ *    buys the attack and the hit room to be big enough to see, instead of
+ *    tuning them down to fit a 56px box.
+ *
+ * Fixed geometry WITHIN a match, in both shapes: the slot is the same height
+ * whatever the mascot is doing, because every keyframe it plays is a transform
+ * and transforms do not lay out. So no round, no reveal and no click can shift
+ * the column (the §14 common-vertical-rhythm constraint).
+ *
+ * The two SHAPES do differ in height, and that is deliberate: a pre-R1 match
+ * with no roles has no mascot to stand up and keeps the original inline crest
+ * header. Which shape a column gets is frozen when the match is created, so it
+ * is a constant for the whole match, and both columns of one match always
+ * agree — the §14 constraint is about a column moving, not about two different
+ * matches looking alike.
+ *
+ * `RoleCrest` names an intent (`action`) and a direction (`mirrored`); it owns
+ * none of the motion. Distances, durations, easing, keyframes and the whole of
+ * the click reaction live in `RoleMascot`, so the same mascot behaves
+ * identically anywhere else in Mogzy.
  */
 export function RoleCrest({
   identity,
@@ -144,11 +170,12 @@ export function RoleCrest({
   size = "md",
   action = null,
   actionId = null,
+  interactive = false,
 }: {
   identity: RoleIdentity;
   /** Opponent crests mirror so both duelists face the arena centre. */
   mirrored: boolean;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "stage";
   /**
    * AI1 Phase 2 — a transient mascot reaction to play. The crest passes the
    * INTENT straight through and knows nothing about what it looks like.
@@ -157,7 +184,80 @@ export function RoleCrest({
   action?: RoleMascotAction | null;
   /** Changes once per event; see `RoleMascot`'s `actionId`. */
   actionId?: string | number | null;
+  /**
+   * AI1 Phase 2B — let the mascot answer a click. The crest only says WHETHER
+   * the mascot is touchable; what a touch looks like is the component's, and
+   * there is no callback here for a surface to hang anything on.
+   */
+  interactive?: boolean;
 }) {
+  const stage = size === "stage";
+  if (stage && identity.role !== null) {
+    return (
+      <span
+        aria-hidden
+        data-testid="role-crest"
+        data-role={identity.role}
+        // `overflow-visible` is the whole point of this shape: RESERVED SPACE,
+        // not a clip, is what keeps the motion tidy. The top padding is that
+        // reserve — it is what the click reaction hops into, so the hop stays
+        // inside the card instead of poking out over its border. It is a
+        // PERCENTAGE for the same reason the mascot is: padding percentages
+        // resolve against this box's width, which is also what sizes the mascot,
+        // so the reserve tracks the mascot instead of being right at one width
+        // and wrong at the next. 12% here is ~20% of the mascot's height, which
+        // is what the hop plus its stretch reach, plus a margin.
+        // The slot takes whatever height the mascot's aspect gives it, and
+        // nothing inside can change it: every keyframe here is a transform, and
+        // transforms do not lay out.
+        className="relative flex shrink-0 items-end justify-center overflow-visible pt-[12%]"
+      >
+        {/* Seating glow. A background only — it never moves, never clips, and
+            is drawn well wider than the mascot so a lunge stays over it. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 top-2 rounded-2xl"
+          style={{
+            backgroundImage:
+              `radial-gradient(58% 52% at 50% 62%, ${identity.accentSoft}, transparent 72%)`,
+          }}
+        />
+        <RoleMascot
+          role={identity.role}
+          // Both duelists face the arena centre: the left column's mascot
+          // looks right, the mirrored right column's looks left. This is the
+          // only direction the arena states — `attack` and `hit` derive
+          // forward and backward from it.
+          facing={mirrored ? "left" : "right"}
+          action={action}
+          actionId={actionId}
+          interactive={interactive}
+          // The plate is 2:3 with roughly a fifth of its height empty above
+          // the head and a fifth below the feet; `contain` in a box this tall
+          // spends that emptiness and draws a small figure in a big frame.
+          // `cover` in a 6:7 box crops the empty bands (11% top and bottom —
+          // measured against the most generous of the five silhouettes, which
+          // starts at 16%) and nothing else, so the CHARACTER is what fills
+          // the slot. No horizontal crop is possible: the source is taller
+          // than the box in every case.
+          fit="cover"
+          // Sized as a FRACTION of the column, not in fixed steps, because the
+          // clearance the motion needs is a fraction of the mascot: at 52% of
+          // the slot the art keeps 24% of the slot free on each side, and the
+          // widest thing it ever does — a lunge of 30% of its own width, plus
+          // the impact bulge — reaches about 17% of the slot. That margin holds
+          // at every width, which fixed per-breakpoint sizes did not: a column
+          // narrows faster than a stepped size does, and a 110px mascot in the
+          // 162px column a 1024px stage can produce overran the card by 28px.
+          className="relative aspect-[6/7] w-[52%] min-w-[3.5rem] max-w-[9rem]"
+          // The column art is the first thing on screen in a match; it should
+          // not arrive a beat late.
+          loading="eager"
+          data-testid="role-crest-mascot"
+        />
+      </span>
+    );
+  }
   const box = size === "sm" ? "h-10 w-10" : "h-14 w-14 min-[1500px]:h-16 min-[1500px]:w-16";
   return (
     <span
@@ -188,20 +288,16 @@ export function RoleCrest({
         // inside the box; the box never changes size.
         <RoleMascot
           role={identity.role}
-          // Both duelists face the arena centre: the left column's mascot
-          // looks right, the mirrored right column's looks left. This is the
-          // only direction the arena states — `attack` and `hit` derive
-          // forward and backward from it.
           facing={mirrored ? "left" : "right"}
           action={action}
           actionId={actionId}
-          // Sized for CLEARANCE, not just for fit. At the peak of a lunge the
-          // art is translated `--role-mascot-attack-reach` (16%) of its own
-          // width and the hit recoil also rotates it, so the worst-case corner
-          // is ~(0.5·cos4° + 0.5·sin4°)·w + 0.16·w ≈ 0.64·w from centre. Keeping
-          // w at 40px inside a 56px frame leaves that corner ~2.8px clear of
-          // the border; at 44px it grazed it. Measured, not guessed.
-          className={size === "sm" ? "h-7 w-7" : "h-10 w-10 min-[1500px]:h-11 min-[1500px]:w-11"}
+          interactive={interactive}
+          // Sized for CLEARANCE, not just for fit, and re-measured for the
+          // Phase 2B distances: at the peak of a lunge the art is translated
+          // 30% of its own width and the recoil also rotates it, so the
+          // worst-case corner now sits ~0.80·w from centre. At 28px inside a
+          // 56px frame that corner clears the border by ~5.6px.
+          className={size === "sm" ? "h-5 w-5" : "h-7 w-7 min-[1500px]:h-8 min-[1500px]:w-8"}
           data-testid="role-crest-mascot"
         />
       ) : (

@@ -259,6 +259,43 @@ export function getRankedRoleMascotPath(role: RankedRole): string {
   return MOGZY_ROLE_ASSETS[role];
 }
 
+/**
+ * Which way each PLATE is drawn, before anything mirrors it.
+ *
+ * The five were not drawn to one convention, and the difference is not
+ * cosmetic — it decides which way a mascot turns and therefore which way it
+ * lunges. Read off the artwork, by the directional prop each character leads
+ * with:
+ *
+ *   top      sword extended to the viewer's right, orb hand trailing left  -> right
+ *   jungle   lead dagger low and forward on the right, rear dagger behind  -> right
+ *   mid      staff held forward on the viewer's LEFT, hood sweeping right  -> LEFT
+ *   adc      bow drawn with the arrow pointing right                       -> right
+ *   support  shield forward on the viewer's right, body leaning off it     -> right
+ *
+ * `mid` is the odd one out, and treating all five as right-facing is what made
+ * a Mid duelist turn its back on the arena: `facing="right"` left the plate
+ * untouched, so the mage kept facing out of the column, and the mirrored
+ * opponent column pointed it the other way out. Both columns were "wrong in
+ * the same way", which is why it read as the opponent panel not mirroring.
+ *
+ * A surface still says only which way it wants the mascot to FACE.
+ * `RoleMascot` reconciles that with the plate; nothing outside this module
+ * needs to know a plate ever had a native direction.
+ */
+export const MOGZY_ROLE_ART_FACING: Record<RankedRole, "left" | "right"> = {
+  top: "right",
+  jungle: "right",
+  mid: "left",
+  adc: "right",
+  support: "right",
+};
+
+/** Which way this role's untouched artwork looks. */
+export function getRankedRoleArtFacing(role: RankedRole): "left" | "right" {
+  return MOGZY_ROLE_ART_FACING[role];
+}
+
 /* -------------------------------------------------------------------------- */
 /* Generic typed product-art API                                              */
 /* -------------------------------------------------------------------------- */
