@@ -7,6 +7,8 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RankedLobbyHero from "./RankedLobbyHero";
 import { LOBBY_PANEL_WASH } from "./LobbyPanel";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { MatchHistoryEntryView, RankedProgressionView } from "@/lib/ranked-public/contracts";
 
@@ -121,14 +123,74 @@ describe("RankedLobbyHero — three-column composition", () => {
     expect(screen.getByTestId("hero-play-column").contains(emphasised[0])).toBe(true);
   });
 
-  it("keeps every panel wash translucent, so the classroom art is never covered", () => {
-    // An opaque fill would flatten the lobby into dashboard cards. Every stop
-    // of both washes must stay under full alpha.
+  it("keeps every plate wash translucent, so the classroom art is never covered", () => {
+    // The `plate` variant still backs the study panel below the hero. An
+    // opaque fill would flatten it into a dashboard card, so every stop of
+    // both washes must stay under full alpha.
     for (const wash of Object.values(LOBBY_PANEL_WASH)) {
       const alphas = [...wash.matchAll(/rgba\([^)]*?,\s*([\d.]+)\)/g)].map((m) => Number(m[1]));
       expect(alphas.length).toBeGreaterThan(0);
       expect(Math.max(...alphas)).toBeLessThan(1);
     }
+  });
+
+  it("stands all three columns on the parchment scroll, never on the glass plate", () => {
+    // The whole point of the shell: one material for the rack. A column that
+    // fell back to `plate` would be a dark card sitting in a row of scrolls.
+    renderHero();
+    const panels = screen.getAllByTestId("hero-panel");
+    expect(panels).toHaveLength(3);
+    for (const panel of panels) {
+      expect(panel.dataset.variant).toBe("scroll");
+    }
+  });
+
+  it("builds each scroll from three slices, so the rolls are never stretched", () => {
+    // The asset's ornamental head and foot are fixed-ratio boxes and only the
+    // plain middle takes up a column's extra length. Collapsing this to a
+    // single stretched background is exactly the distortion to avoid.
+    renderHero();
+    for (const panel of screen.getAllByTestId("hero-panel")) {
+      const shell = panel.querySelector(".lc-scroll__sheet")!;
+      expect(shell, "the scroll has no shell").not.toBeNull();
+      // Inert and unnarrated: it is the material, not part of the meaning.
+      expect(shell.getAttribute("aria-hidden")).toBe("true");
+      expect(shell.querySelector(".lc-scroll__cap--top")).not.toBeNull();
+      expect(shell.querySelector(".lc-scroll__body")).not.toBeNull();
+      expect(shell.querySelector(".lc-scroll__cap--foot")).not.toBeNull();
+      // The foot roll rides the unfurl edge, so it must sit OUTSIDE the
+      // clipped region or the reveal would cut it in half.
+      expect(shell.querySelector(".lc-scroll__reveal .lc-scroll__cap--foot")).toBeNull();
+    }
+  });
+
+  it("gives the three scrolls distinct entrance positions, with the CTA first", () => {
+    renderHero();
+    const order = (column: string) =>
+      screen.getByTestId(column).querySelector('[data-testid="hero-panel"]')!.getAttribute("data-order");
+    expect(order("hero-play-column")).toBe("centre");
+    expect(order("hero-role-column")).toBe("left");
+    expect(order("hero-profile-column")).toBe("right");
+  });
+
+  it("tells the role stage it is standing on parchment", () => {
+    // Its five role hues and its neighbour opacity are surface-dependent; the
+    // dark-surface values wash out to near-invisible on beige.
+    renderHero();
+    expect(screen.getByTestId("ranked-class-carousel").dataset.surface).toBe("parchment");
+  });
+
+  it("lets the wordmark's gradient reach the glyphs", () => {
+    // `.theme-lol h1` sets a flat gold colour and outranks Tailwind's
+    // single-class `.text-transparent`, which painted over the clip-to-text
+    // gradient. On parchment that flat gold lands near 1.25:1 — invisible.
+    renderHero();
+    // Asserted on the INLINE declaration, which is what outranks the theme.
+    // (`-webkit-text-fill-color` rides along in the same style object; jsdom
+    // does not model the prefixed property, so `color` is the checkable half.)
+    const wordmark = screen.getByRole("heading", { name: "LEAGUECRAFT", level: 1 });
+    expect(wordmark.style.color).toBe("transparent");
+    expect(wordmark.className).toContain("bg-clip-text");
   });
 
   it("the PLAY gem still drives the host's Ranked action", () => {
@@ -178,6 +240,74 @@ describe("RankedLobbyHero — Ranked identity (RE1-owned values, rendered as giv
   it("renders no crown at all when there is no Academy standing", () => {
     renderHero({ progress: { attempts: 4 } });
     expect(screen.queryByTestId("hero-academy-crown")).toBeNull();
+  });
+});
+
+describe("RankedLobbyHero — the Bronze baseline (presentation only)", () => {
+  it("shows the ladder's Bronze floor, not the off-ladder unranked emblem", () => {
+    const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
+    const emblems = Array.from(container.querySelectorAll("img"))
+      .map((img) => img.getAttribute("src") ?? "")
+      .filter((src) => src.includes("assets/ranks/"));
+    expect(emblems.length).toBeGreaterThan(0);
+    expect(emblems.every((src) => src.includes("bronze"))).toBe(true);
+    expect(emblems.some((src) => src.includes("unranked"))).toBe(false);
+  });
+
+  it("marks the baseline emblem as a baseline, never as an awarded tier", () => {
+    const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
+    const emblem = container.querySelector('img[data-baseline="bronze"]') as HTMLImageElement;
+    expect(emblem).toBeTruthy();
+    // Never carries `data-tier`: that attribute means "this is the account's
+    // tier", and the baseline is explicitly not one.
+    expect(emblem.hasAttribute("data-tier")).toBe(false);
+    expect(emblem.getAttribute("alt")).toMatch(/baseline/i);
+  });
+
+  it("holds the baseline back with LIGHT only — never by draining its colour", () => {
+    // The centre emblem and the right column's chip are the same tier and
+    // have to read as the same metal. Desaturating one of them made the
+    // sheet show one rank in two colours, which is why chroma is off-limits
+    // here and the difference is spent on luminance instead.
+    const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
+    const filters = Array.from(container.querySelectorAll<HTMLImageElement>("img[data-baseline]"))
+      .map((img) => img.style.filter);
+    expect(filters.length).toBe(2);
+    expect(new Set(filters).size).toBe(1); // both emblems, one treatment
+    expect(filters[0]).not.toContain("grayscale");
+    expect(filters[0]).toContain("opacity");
+  });
+
+  it("names the state as the ladder's floor rather than as exclusion from it", () => {
+    const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
+    expect(screen.getByTestId("hub-ranked-baseline").textContent?.trim()).toBe("Bronze");
+    expect(container.textContent).not.toContain("Unranked");
+    // "baseline" is our internal word for this state. The page says
+    // "Placement Series" and "Rating set after placements"; it must not also
+    // hand the reader a system label.
+    expect(container.textContent).not.toMatch(/baseline/i);
+  });
+
+  it("keeps the right column in the SAME standing state as the centre", () => {
+    renderHero({ ranked: UNPLACED, rankedProgression: null });
+    expect(screen.getByTestId("hero-ranked-standing").textContent?.trim()).toBe("Bronze");
+  });
+
+  it("hands the columns back to the real tier the moment one exists", () => {
+    const { container } = renderHero();
+    expect(screen.getByTestId("hero-ranked-standing").textContent).toContain("Ranked Diamond");
+    expect(container.querySelector('img[data-tier="diamond"]')).toBeTruthy();
+    expect(container.querySelector("img[data-baseline]")).toBeNull();
+    expect(container.textContent).not.toContain("Bronze");
+  });
+
+  it("still awards no tier and no rating through placements", () => {
+    // The baseline is ART. It must not put a tier name or a number anywhere
+    // near the identity while the account is still placing.
+    renderHero({ ranked: UNPLACED, rankedProgression: PROGRESSION });
+    expect(screen.getByRole("heading", { name: "Placement Series", level: 2 })).toBeTruthy();
+    expect(screen.queryByTestId("hub-ranked-rating")).toBeNull();
+    expect(screen.queryByText("Ranked Bronze")).toBeNull();
   });
 });
 
@@ -273,5 +403,57 @@ describe("RankedLobbyHero — role selection", () => {
   it("shows the account's role beside its identity, by NAME", () => {
     renderHero({ rankedRole: "support" });
     expect(screen.getByTestId("hub-ranked-role").textContent).toBe("Support");
+  });
+});
+
+/**
+ * The scroll shell is CSS, and the two defects it has actually shipped were
+ * both invisible to a DOM test: a filter list that silently voided itself, and
+ * a group selector that silently un-positioned the foot roll. Neither threw,
+ * neither failed a render, and jsdom applies no stylesheet — so these read the
+ * source and assert the two shapes directly.
+ */
+describe("the parchment shell's CSS invariants", () => {
+  // Vitest runs from the project root; `import.meta.url` is not a file: URL
+  // once the test has been through the transform pipeline.
+  const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+
+  it("never sets the scroll tint to a bare `none`", () => {
+    // `--lc-scroll-tint` is substituted into a filter LIST alongside the
+    // drop-shadows. `filter: drop-shadow(…) none` is invalid — the keyword is
+    // only legal on its own — so a `none` here silently voids the whole
+    // filter, and both flanking scrolls lose their shadow AND their tone.
+    // The identity value is `brightness(1)`.
+    const tints = [...css.matchAll(/--lc-scroll-tint:\s*([^;]+);/g)].map((m) => m[1].trim());
+    expect(tints.length).toBeGreaterThan(0);
+    for (const tint of tints) {
+      expect(tint, "the identity filter is brightness(1), never `none`").not.toBe("none");
+    }
+  });
+
+  it("never sets `position` on the whole cap group", () => {
+    // `.lc-scroll__cap--foot` is absolute — it rides the unfurl edge. A rule
+    // matching `.lc-scroll__cap` sits at the SAME specificity, so declaring
+    // `position` there and losing the ordering coin-toss drops the foot roll
+    // back into the flex column, which shortens the reveal and strands the
+    // roll below the sheet.
+    const groupRules = [...css.matchAll(/(^|\n)\.lc-scroll__cap\s*[,{][^}]*}/g)].map((m) => m[0]);
+    expect(groupRules.length).toBeGreaterThan(0);
+    for (const rule of groupRules) {
+      expect(rule, "scope position to --top, never the cap group").not.toMatch(/[^-]position:/);
+    }
+  });
+
+  it("masks every ageing overlay with the parchment's own alpha", () => {
+    // Unmasked, a multiply overlay is a rectangle: it darkens the scroll's
+    // transparent corners too, which puts a dark box behind every scroll —
+    // the exact pasted-on look the ageing exists to remove.
+    const overlay = css.slice(
+      css.indexOf(".lc-scroll__cap::after,"),
+      css.indexOf(".lc-scroll__cap::after,") + 600,
+    );
+    expect(overlay).toContain("mix-blend-mode: multiply");
+    expect(overlay).toContain("mask-image: var(--lc-parchment)");
+    expect(overlay).toContain("-webkit-mask-image: var(--lc-parchment)");
   });
 });

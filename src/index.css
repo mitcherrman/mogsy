@@ -2973,3 +2973,501 @@ html.high-contrast * { text-shadow: none !important; }
 
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LC1 — the Leaguecraft lobby parchment scroll
+   ═══════════════════════════════════════════════════════════════════════════
+
+   The three top columns of /quiz stand on ONE shell: `/assets/ranked/parchment.png`,
+   a 1086×1448 RGBA scroll with a transparent outer background, an ornamental
+   roll at the top and another at the foot.
+
+   ASSET GEOMETRY — measured from the file's alpha channel, not guessed:
+
+     canvas          1086 × 1448
+     sheet body      x 142…942   (800 wide  = 73.67% of the canvas)
+     top roll        y  36…133   → the top 145 rows are ornament
+     bottom roll     y 1292…1394 → the bottom 165 rows are ornament
+     roll flare      x  42…1044  (1002 wide = 25% wider than the sheet)
+
+   NO STRETCHING. The scroll is rendered as three horizontal slices, all sized
+   `100% auto` so the image's own aspect ratio drives every height:
+
+     · the top roll gets a box of exactly 1086:145, showing the image's top edge;
+     · the foot roll gets a box of exactly 1086:165, showing its bottom edge;
+     · between them, the body — a uniform beige sheet with no ornament in it,
+       the only region where vertical scale is invisible — takes up the slack.
+
+   So a taller column grows only through the plain middle of the sheet. The two
+   ornamental rolls keep their proportions at every panel height, and the whole
+   shell keeps its horizontal proportions at every panel width.
+
+   The layer sits `--lc-scroll-bleed` outside the column box on each side, so
+   the roll flare hangs into the gutter instead of eating the content width.
+   The lift is a `drop-shadow` filter rather than a `box-shadow`: it follows
+   the scroll's own alpha silhouette, so the transparent corners stay empty
+   instead of casting a rectangle.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* The unfurl coordinate: how much of the scroll is still rolled up, as a
+   percentage of the panel's height. Registered so it INTERPOLATES — an
+   unregistered custom property would jump discretely at the halfway mark. It
+   inherits, which is what lets the clip edge and the travelling foot roll read
+   the same number and stay welded together for the whole animation. */
+@property --lc-unfurl {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+
+.lc-scroll {
+  --lc-parchment: url("/assets/ranked/parchment.png");
+  /* The layer overhangs the column box by this much on each side, giving the
+     roll flare somewhere to go instead of eating the content width. The px arm
+     of the `min()` is the real constraint: the lobby's page gutter is 16px, and
+     a percentage bleed on the outer two columns pushed the (transparent) layer
+     past it and put 7px of horizontal scroll on the document at 1280. Capped
+     below the gutter, the outer edges stay inside the page at every width.
+     The painted flare stops 3.87% short of the layer's own edge, so at this
+     bleed it lands flush with the column box and never reaches a neighbour. */
+  --lc-scroll-bleed: min(6%, 14px);
+  /* TWO shadows, not one: a tight contact shadow that seats the scroll on the
+     wall behind it, and a wide ambient one that gives it depth in the room. A
+     single mid-range shadow is what makes a layer read as "pasted on". Both
+     are cool and library-toned, not black — a black shadow against the navy
+     classroom reads as a cut-out. Held as whole filter functions so a variant
+     can change their count, not just their numbers. */
+  --lc-scroll-lift: drop-shadow(0 6px 8px rgba(3, 7, 14, 0.42))
+    drop-shadow(0 26px 40px rgba(3, 7, 14, 0.52));
+  /* The scroll's overall tone. The raw asset is bright cream — several stops
+     lighter than anything else in the classroom — so it is brought down and
+     very slightly desaturated. Brightness alone preserves the hue, which is
+     what keeps this an aged beige instead of drifting brown or orange; the
+     saturate is a hair under 1 only to stop the warm cast strengthening as it
+     darkens. Never `none`: this is substituted into a filter LIST, and
+     `filter: … none` is invalid, which silently killed the whole filter. */
+  --lc-scroll-tint: brightness(0.91) saturate(0.97);
+  /* How strongly the edge ageing reads, as the overlay's own opacity. */
+  --lc-age: 1;
+  --lc-unfurl: 0%;
+
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  /* Percentage padding resolves against WIDTH on every side, which is exactly
+     the rule this shell needs: the ornament's height is a function of the
+     scroll's width, so the safe inset has to be too. Top clears the 145-row
+     roll (145/1086 = 13.3% of the layer, ≈14.9% of the narrower column box);
+     the foot clears the 165-row roll; the sides clear the sheet edge at 8.6%
+     with room to spare. */
+  /* THE MANUSCRIPT MARGIN.
+     These are safe-inset numbers plus a deliberate margin on top of them, and
+     the two jobs are worth separating:
+
+       SAFE   The head roll's ornament ends at image row 133 and the foot
+              roll's begins at 1292, which — once the layer's own bleed is
+              counted — puts the vertical safe band at 13.7%…16.1% of the
+              COLUMN's width. Horizontally, with the bleed capped in px, the
+              sheet's own edge lands at about 11%. Anything past those numbers
+              is merely not-overlapping-the-ornament.
+       MARGIN Not-overlapping is not the same as composed. At the old
+              15.4%/14%/17.8% the copy cleared the ornament by a couple of
+              pixels and then ran straight at it — the sheet read as a texture
+              behind a dashboard column rather than as a page with a written
+              area on it. A manuscript reserves its border as border: the rule
+              here is that the decorative frame is NOT usable text area, so
+              every side carries several points past safe.
+
+     The sides are the ones that matter and the ones that cost width, so they
+     step by viewport rather than taking the widest value everywhere: at
+     1024–1279 the three columns are already narrow, and a 17.5% side inset
+     there would squeeze the role stage before it flattered it. See the
+     min-width:1280 and max-width:1023 blocks below for the other two steps. */
+  padding: 16.6% 15.5% 19%;
+}
+
+/* ── The shell ───────────────────────────────────────────────────────────── */
+
+.lc-scroll__sheet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--lc-scroll-bleed));
+  right: calc(-1 * var(--lc-scroll-bleed));
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  /* Tone BEFORE the shadows. Filters apply in sequence, so tinting last would
+     drag the drop-shadows down with it; this way the sheet is toned and the
+     shadows are then cast from it at full strength. */
+  filter: var(--lc-scroll-tint) var(--lc-scroll-lift);
+}
+
+/* Everything above the unfurl edge. Clipped, so the sheet is revealed
+   downward rather than scaled into place. */
+.lc-scroll__reveal {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  clip-path: inset(0 0 var(--lc-unfurl) 0);
+}
+
+.lc-scroll__cap {
+  flex: none;
+  width: 100%;
+  background-image: var(--lc-parchment);
+  background-repeat: no-repeat;
+  /* `100% auto`: the image is scaled to the layer's width and its height
+     follows. The box then shows only the slice its aspect ratio admits. */
+  background-size: 100% auto;
+}
+
+.lc-scroll__cap--top {
+  aspect-ratio: 1086 / 145;
+  background-position: top center;
+}
+
+/* The foot roll is taken OUT of the reveal so the clip cannot cut it, and
+   rides the unfurl edge instead: its bottom sits exactly where the clip ends,
+   which is what makes the roll look like it is being unwound rather than
+   wiped in. */
+.lc-scroll__cap--foot {
+  aspect-ratio: 1086 / 165;
+  background-position: bottom center;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--lc-unfurl);
+}
+
+/* Its space is still reserved inside the reveal, so the body stops where the
+   foot roll will land instead of running underneath it. */
+.lc-scroll__foot-space {
+  flex: none;
+  width: 100%;
+  aspect-ratio: 1086 / 165;
+}
+
+/* The plain middle of the sheet. Magnified 3× vertically and centred, so the
+   visible window is always image rows 483…965 — deep inside the ornament-free
+   body — however tall the column grows. There is nothing in that band but
+   beige grain, which is why stretching it is the one scale the eye cannot
+   catch. */
+.lc-scroll__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  background-image: var(--lc-parchment);
+  background-repeat: no-repeat;
+  background-size: 100% 300%;
+  background-position: center center;
+}
+
+/* ── Edge ageing ─────────────────────────────────────────────────────────
+   The sheet is toned as a whole by `--lc-scroll-tint`; this is the part that
+   varies ACROSS it — the warm shading that gathers at the sheet's edges and
+   in the rolls, so the parchment reads as an object lit in a room rather than
+   an evenly-lit rectangle.
+
+   MASKED BY THE PARCHMENT'S OWN ALPHA. This is the whole trick. A multiply
+   overlay drawn as a plain rectangle would darken the transparent corners too
+   — a dark box behind a scroll, which is the exact "pasted on" look this pass
+   exists to remove. Masking each overlay with the same image, at the same
+   size and position as the slice it sits on, confines the shading to the
+   parchment itself, down to the antialiased edge.
+
+   It also rides inside the clipped reveal, so the ageing unfurls with the
+   sheet instead of appearing over a still-rolled scroll. */
+/* Only the two slices that are still in normal flow. `.lc-scroll__cap--foot`
+   is ALREADY absolute — it rides the unfurl edge — and matching it here at
+   equal specificity but later in the sheet would silently override that and
+   drop it back into the flex column, which shortens the reveal and strands the
+   roll below the sheet. Absolute positioning already gives it the containing
+   block its own overlay needs. */
+.lc-scroll__cap--top,
+.lc-scroll__body {
+  position: relative;
+}
+
+.lc-scroll__cap::after,
+.lc-scroll__body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--lc-age);
+  mix-blend-mode: multiply;
+  -webkit-mask-image: var(--lc-parchment);
+  mask-image: var(--lc-parchment);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* The left/right inner shadow, shared by all three slices so it runs
+   unbroken down the whole scroll — declared ONCE, because four hand-copied
+   gradients is four places to retune and three places to forget.
+
+   The stops are in LAYER coordinates, where the sheet's own edges sit at
+   13.1% and 86.9%: the shading is a narrow band hugging those edges and is
+   clear again by 17.4%, safely inside the ~16% where content begins. Held
+   past both ends at full strength so the roll flare — which reaches out to
+   3.9% — darkens with it. Warm brown at low alpha, so it deepens the beige
+   rather than greying it.
+
+   Kept narrow and gentle ON PURPOSE. A wider, stronger vignette reads well
+   until you measure it, at which point the column headings — the text nearest
+   the edge — have quietly lost a full point of contrast to it. */
+.lc-scroll {
+  --lc-edge-shade: linear-gradient(
+    90deg,
+    rgba(92, 68, 36, 0.34) 0%,
+    rgba(92, 68, 36, 0.34) 12.6%,
+    rgba(124, 96, 56, 0.11) 14.6%,
+    rgba(255, 255, 255, 0) 17.4%,
+    rgba(255, 255, 255, 0) 82.6%,
+    rgba(124, 96, 56, 0.11) 85.4%,
+    rgba(92, 68, 36, 0.34) 87.4%,
+    rgba(92, 68, 36, 0.34) 100%
+  );
+  /* The rolls, being the thickest part of the sheet, sit in their own shade.
+     Each fades to nothing at the cap's INNER edge — the boundary it shares
+     with the body — so the two meet without a seam, and the sheet ends up
+     lightest across its middle and gathering tone toward both ends. That is
+     the centre-to-edge variation, on the vertical axis. */
+  --lc-roll-shade-top: linear-gradient(
+    180deg,
+    rgba(104, 78, 42, 0.3) 0%,
+    rgba(116, 88, 50, 0.2) 62%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --lc-roll-shade-foot: linear-gradient(
+    0deg,
+    rgba(104, 78, 42, 0.3) 0%,
+    rgba(116, 88, 50, 0.2) 62%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  /* THE EMPTY-AREA TREATMENT — deliberately not a watermark.
+     The brief allowed a faint academy crest or Leaguecraft sigil, but this
+     repo has no such mark: `mogsy-logo*` is the mascot, and the only other
+     candidates are the per-TIER rank emblems, which are served by the combat
+     backend and would read as a rank claim sitting behind the role and
+     profile columns. So the blank upper areas get paper instead of
+     iconography — a laid-paper ribbing at ~2% alpha with soft ramps rather
+     than hard stops, so it cannot alias or moiré as the sheet scales. Tuned
+     against a 2× render, where the first attempt was faintly legible as
+     stripes: on paper this has to be felt and not seen. */
+  --lc-laid-paper: repeating-linear-gradient(
+    90deg,
+    rgba(112, 86, 48, 0.022) 0px,
+    rgba(255, 255, 255, 0) 6px,
+    rgba(255, 255, 255, 0) 10px,
+    rgba(112, 86, 48, 0.022) 16px
+  );
+}
+
+.lc-scroll__cap::after {
+  -webkit-mask-size: 100% auto;
+  mask-size: 100% auto;
+}
+
+.lc-scroll__cap--top::after {
+  -webkit-mask-position: top center;
+  mask-position: top center;
+  background-image: var(--lc-roll-shade-top), var(--lc-edge-shade);
+}
+
+.lc-scroll__cap--foot::after {
+  -webkit-mask-position: bottom center;
+  mask-position: bottom center;
+  background-image: var(--lc-roll-shade-foot), var(--lc-edge-shade);
+}
+
+.lc-scroll__body::after {
+  -webkit-mask-size: 100% 300%;
+  mask-size: 100% 300%;
+  -webkit-mask-position: center center;
+  mask-position: center center;
+  background-image: var(--lc-laid-paper), var(--lc-edge-shade);
+}
+
+/* Content rides above the shell, and is the size reference for anything that
+   has to fit the sheet — see `.lc-scroll-wordmark`. */
+.lc-scroll__content {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  container-type: inline-size;
+  container-name: lc-scroll;
+}
+
+/* The LEAGUECRAFT wordmark.
+   It used to step through fixed sizes at the Tailwind breakpoints, tuned to a
+   panel whose content ran the full column width. The parchment narrows that by
+   about a quarter, and at 1280 the old `xl` step overhung the sheet and ran out
+   onto the roll caps. Fixed steps cannot be made safe here — the column is a
+   grid fraction of the viewport AND the sheet is a fraction of the column, so
+   the breakpoint the type is chosen at is two steps removed from the width it
+   actually has to fit in.
+   So it is measured against the sheet itself instead. The glyph run of
+   "LEAGUECRAFT" at this weight and tracking is 8.08× the font size, so 11cqw
+   lands the wordmark at ~89% of the usable width at every viewport, with the
+   clamp holding the ends. It cannot overhang its own scroll at any width. */
+.lc-scroll-wordmark {
+  font-size: clamp(22px, 11cqw, 52px);
+}
+
+/* ── Centre emphasis ─────────────────────────────────────────────────────
+   Same shell, same family — only warmer, brighter and a notch further off
+   the classroom wall. Deliberately NOT a different plate. */
+.lc-scroll[data-emphasis="true"] {
+  /* Deeper and further off the wall than the flanks, so the CTA column reads
+     as the nearest object in the composition. */
+  --lc-scroll-lift: drop-shadow(0 8px 10px rgba(3, 7, 14, 0.46))
+    drop-shadow(0 34px 52px rgba(3, 7, 14, 0.6));
+  /* Cleaner, not different. About 8% brighter than the flanks and held at
+     full saturation — the same sheet, kept in better light. */
+  --lc-scroll-tint: brightness(0.955) saturate(1.01);
+  /* And less aged: the edge shading is dialled back so the centre is the
+     most legible of the three. */
+  --lc-age: 0.62;
+}
+
+/* The wide-desktop margin step. From 1280 up, each column has the width to
+   give the parchment frame its full border, so the sides open out to 17.5%
+   and the foot to 20%. Below this the same numbers would eat the role stage,
+   which is why the base rule holds the narrower pair. */
+@media (min-width: 1280px) {
+  .lc-scroll {
+    padding: 17.4% 17.5% 20%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lc-scroll[data-emphasis="true"] {
+    /* A tiny positional lift, not a scale: scaling the panel would resample
+       the wordmark and the rating figures. */
+    margin-top: -6px;
+  }
+}
+
+/* ── The unfurl ──────────────────────────────────────────────────────────
+   The scroll opens downward in ~560ms: it starts wound near the top with the
+   two rolls almost touching, the sheet runs out from under the head roll, the
+   foot roll travels with the edge, overshoots by a hair and settles. The
+   content fades in behind it, early enough that nothing is ever waiting on
+   the animation to become usable. */
+@keyframes lc-scroll-unfurl {
+  0% {
+    --lc-unfurl: 74%;
+  }
+  62% {
+    --lc-unfurl: -2%;
+  }
+  82% {
+    --lc-unfurl: 1.2%;
+  }
+  100% {
+    --lc-unfurl: 0%;
+  }
+}
+
+@keyframes lc-scroll-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lc-scroll__sheet {
+  animation: lc-scroll-unfurl 560ms cubic-bezier(0.33, 0.9, 0.3, 1) var(--lc-scroll-delay, 0ms) both;
+}
+
+.lc-scroll__content {
+  animation: lc-scroll-content-in 300ms ease-out
+    calc(var(--lc-scroll-delay, 0ms) + 170ms) both;
+}
+
+/* The stagger: the CTA opens first and the flanks follow it, so the eye lands
+   on the centre column. The whole entrance is done inside 600ms. */
+.lc-scroll[data-order="centre"] {
+  --lc-scroll-delay: 0ms;
+}
+.lc-scroll[data-order="left"] {
+  --lc-scroll-delay: 70ms;
+}
+.lc-scroll[data-order="right"] {
+  --lc-scroll-delay: 115ms;
+}
+
+/* ── Narrow screens ──────────────────────────────────────────────────────
+   Stacked, each column is the whole page, and a full-bleed scroll would be a
+   metre of parchment per section. The shell keeps its proportions; the COLUMN
+   is what gets capped, so the scroll simply stops growing. The bleed also
+   goes to zero — there is no gutter to hang into when there is one column. */
+@media (max-width: 1023px) {
+  .lc-scroll {
+    --lc-scroll-bleed: 0%;
+    width: 100%;
+    max-width: 30rem;
+    margin-inline: auto;
+    /* With the bleed at zero the sheet no longer overhangs the column, so the
+       safe inset has to be measured against the COLUMN instead of the layer:
+       the sheet's own edge sits at 13.1% of it. An earlier version of this
+       pass RELAXED the inset here, on the theory that a phone should not read
+       a 74%-wide column — which put the content outside the sheet and ran the
+       wordmark and the placement panel straight over the roll caps. On narrow
+       screens the inset can only grow.
+       Stacked, the column is capped at 30rem and is the WIDEST any single
+       scroll ever gets, so it can also afford the deepest margin of the three
+       steps without crowding anything. */
+    padding: 17% 19% 18.5%;
+    /* Stacked, the three scrolls are never seen side by side, so a centre
+       that is brighter than its neighbours has nothing to be brighter THAN —
+       it just reads as three inconsistently-lit sheets as you scroll. The
+       tonal hierarchy is a comparison, so it only exists where the comparison
+       does; on narrow screens every scroll gets the centre's lighter tone and
+       the CTA leads on position and size alone. */
+    --lc-scroll-tint: brightness(0.94) saturate(1);
+    --lc-age: 0.7;
+  }
+
+  .lc-scroll[data-emphasis="true"] {
+    --lc-scroll-tint: brightness(0.94) saturate(1);
+    --lc-age: 0.7;
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────
+   The scrolls are simply already open. No unwinding, no travel, no clip —
+   only a brief fade so the lobby does not hard-cut into place. */
+@media (prefers-reduced-motion: reduce) {
+  .lc-scroll__sheet {
+    animation: none;
+    --lc-unfurl: 0%;
+  }
+
+  .lc-scroll__content {
+    animation: lc-scroll-settled-in 140ms ease-out both;
+  }
+}
+
+/* The reduced-motion entrance: opacity only, no travel. Its own name rather
+   than a redefinition of the full keyframes, so which one is in force is a
+   matter of the selector and never of declaration order. */
+@keyframes lc-scroll-settled-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

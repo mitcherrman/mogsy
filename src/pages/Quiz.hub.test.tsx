@@ -163,10 +163,16 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(hero.querySelector('a[href="/profile"]')?.textContent).toMatch(/View full profile/);
   });
 
-  it("shows unranked placement wording (2 attempts → Placement 2/5)", async () => {
+  it("shows baseline placement wording (2 attempts → Placement 2/5)", async () => {
     await renderHub();
     expect(screen.getByRole("heading", { name: "Placement Series" })).toBeTruthy();
-    expect(screen.getAllByText("Unranked").length).toBeGreaterThan(0);
+    // The pre-placement state now names the ladder's FLOOR rather than
+    // exclusion from the ladder: Bronze is the lowest of the five tiers, so
+    // BRONZE is what an account without a standing is shown. It is still not
+    // a tier claim — the heading is the placement series, and the rating
+    // stays absent until placements finish (asserted just below).
+    expect(screen.getAllByText("Bronze").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Unranked")).toBeNull();
     expect(
       screen.getByText("Complete your placement matches to establish your starting rank."),
     ).toBeTruthy();

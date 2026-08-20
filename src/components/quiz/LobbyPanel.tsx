@@ -1,29 +1,43 @@
 /**
- * LC1 — the Leaguecraft lobby's backing plate.
+ * LC1 — the Leaguecraft lobby's backing shell.
  *
- * The ONE panel surface the /quiz lobby is allowed to use — the three hero
- * columns and the study panel beneath them all render it, so they cannot drift
- * into three different kinds of box.
+ * The ONE panel surface the /quiz lobby is allowed to use, in two variants, so
+ * the lobby's sections cannot drift into three different kinds of box:
  *
- * The three hero columns used to sit straight on the classroom art, which read
- * as content floating on wallpaper rather than as sections of a game client.
- * This gives each column one plate to stand on and nothing more: a translucent
- * navy wash, a single brass hairline that fades at both ends, and a soft drop
- * shadow to lift it off the room. It is deliberately NOT an opaque card — the
- * classroom still reads through every panel, so the art behind the composition
- * is never covered, only quieted.
+ *   `scroll`  The three hero columns. A parchment scroll that has unfurled into
+ *             place — the academy library's own material, not a dashboard card.
+ *   `plate`   The study panel beneath them. The original translucent navy wash.
+ *             The lower half of the lobby is scheduled for its own redesign, so
+ *             it deliberately keeps the treatment it shipped with rather than
+ *             being half-converted here.
  *
- * `emphasis` is reserved for the centre column, the page's one CTA: a slightly
- * firmer wash, a brighter brass trim and a faint hextech line along the bottom,
- * so the two flanks stay quieter than the middle.
+ * THE SCROLL
+ * ──────────
+ * `/assets/ranked/parchment.png` is a 1086×1448 RGBA scroll with a transparent
+ * outer background, an ornamental roll at the head and another at the foot. It
+ * is NOT stretched to the panel: the shell renders it as three horizontal
+ * slices — head roll, plain body, foot roll — each sized `100% auto`, so the
+ * image's own aspect ratio drives every height and only the ornament-free
+ * middle absorbs a column's extra length. The geometry, and why each number is
+ * what it is, is documented over the `.lc-scroll` rules in `index.css`.
+ *
+ * There is no card on top of the parchment. The old navy wash, brass hairline,
+ * backdrop blur and rectangular shadow are gone from this variant on purpose:
+ * two frames would read as a card sitting inside a scroll. The parchment is
+ * the panel. Its lift is a `drop-shadow` that follows the scroll's own alpha
+ * silhouette, so the transparent corners never cast a rectangle.
+ *
+ * `emphasis` is reserved for the centre column, the page's one CTA, and stays
+ * inside the same family: a brighter, warmer parchment, a deeper lift and a
+ * few pixels of positional rise. Never a different shell.
  *
  * Presentation only — no data, no state, no layout decisions of its own.
  */
 /**
- * The panel washes, named so the translucency rule is checkable rather than
+ * The `plate` washes, named so the translucency rule is checkable rather than
  * promised: EVERY colour stop stays under full alpha, which is what keeps the
- * classroom art readable through the composition. A stop at alpha 1 would turn
- * the lobby into opaque dashboard cards — the exact thing this pass exists to
+ * classroom art readable through the study panel. A stop at alpha 1 would turn
+ * it into an opaque dashboard card — the exact thing this surface exists to
  * avoid — so the values live here and are asserted in the hero's tests.
  */
 export const LOBBY_PANEL_WASH = {
@@ -32,18 +46,54 @@ export const LOBBY_PANEL_WASH = {
     "linear-gradient(180deg, rgba(8,16,32,0.60) 0%, rgba(4,10,20,0.44) 56%, rgba(4,10,20,0.58) 100%)",
 } as const;
 
+/** Where a scroll sits in the three-column rack. Drives only the entrance
+ *  stagger — the CTA opens first and the flanks follow it. */
+export type LobbyScrollOrder = "left" | "centre" | "right";
+
 export default function LobbyPanel({
+  variant = "plate",
+  order,
   emphasis = false,
   className = "",
   children,
 }: {
+  variant?: "scroll" | "plate";
+  order?: LobbyScrollOrder;
   emphasis?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
+  if (variant === "scroll") {
+    return (
+      <div
+        data-testid="hero-panel"
+        data-variant="scroll"
+        data-order={order}
+        data-emphasis={emphasis ? "true" : undefined}
+        className="lc-scroll"
+      >
+        {/* The shell. Inert and hidden from assistive tech: it is the material
+            the column is printed on, not part of the column's meaning. */}
+        <div className="lc-scroll__sheet" aria-hidden="true">
+          <div className="lc-scroll__reveal">
+            <div className="lc-scroll__cap lc-scroll__cap--top" />
+            <div className="lc-scroll__body" />
+            <div className="lc-scroll__foot-space" />
+          </div>
+          <div className="lc-scroll__cap lc-scroll__cap--foot" />
+        </div>
+        {/* The caller's classes land HERE, on the content column, not on the
+            shell. `items-center text-center` has to align the centre column's
+            children; on the outer box it would only align the parchment. */}
+        <div className={`lc-scroll__content ${className}`}>{children}</div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="hero-panel"
+      data-variant="plate"
       data-emphasis={emphasis ? "true" : undefined}
       className={`relative flex flex-1 flex-col rounded-xl border px-3 py-3 backdrop-blur-[5px] sm:px-4 ${
         emphasis
