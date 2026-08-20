@@ -13,12 +13,19 @@ import { markAcademyWelcomeHandled, ACADEMY_WELCOME_ROUTE } from "@/lib/welcome/
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
-const mocks = vi.hoisted(() => ({ navigate: vi.fn(), startEntryMusic: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  startEntryMusic: vi.fn(),
+  warmAcademyWelcomeScene: vi.fn(),
+}));
 
 vi.mock("react-router-dom", () => ({ useNavigate: () => mocks.navigate }));
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("@/components/audio/EntryMusicController", () => ({
   startEntryMusic: mocks.startEntryMusic,
+}));
+vi.mock("@/pages/welcome/sceneAssets", () => ({
+  warmAcademyWelcomeScene: mocks.warmAcademyWelcomeScene,
 }));
 
 // The pinned jsdom does not provide a working Storage — see localStorageStub.
@@ -85,5 +92,27 @@ describe("entry destination", () => {
     render(<MogzyEntryV2 />);
     enterMogzy();
     expect(mocks.startEntryMusic).toHaveBeenCalled();
+  });
+});
+
+describe("warming the introduction's first screen (HI1-C4)", () => {
+  it("pulls the scene into cache during the veil, for a first-time visitor", () => {
+    // The veil runs for 780ms whatever happens. Spending it fetching the
+    // painting, the display face and the mascot is what leaves the
+    // introduction's own readiness gate with nothing left to wait for.
+    render(<MogzyEntryV2 />);
+    fireEvent.click(screen.getByRole("button", { name: /enter mogzy/i }));
+    // Warmed on the click, not after the navigation — the whole point is the
+    // window between the two.
+    expect(mocks.warmAcademyWelcomeScene).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("does not warm it for a returning visitor, who is not going there", () => {
+    markAcademyWelcomeHandled("explored");
+    render(<MogzyEntryV2 />);
+    enterMogzy();
+    expect(mocks.warmAcademyWelcomeScene).not.toHaveBeenCalled();
+    expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 });

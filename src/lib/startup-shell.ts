@@ -17,7 +17,10 @@
 /** Base colour of the League/library surface (matches `.theme-lol` body). */
 export const LOL_BASE_BG = "#060c14";
 
-/** Base colour of the Academy entrance at `/` (matches MogzyEntryV2's root). */
+/**
+ * Base colour of the Academy entrance surfaces (matches MogzyEntryV2's root,
+ * and the Academy introduction at `/welcome`, which is the same room).
+ */
 export const ENTRY_BASE_BG = "#04070f";
 
 /** Base colour of every other app surface (matches the Layout shell). */
@@ -49,9 +52,17 @@ export function isLolSectionPath(pathname: string): boolean {
   );
 }
 
-/** The Academy entrance screen, which is its own full-bleed surface. */
+/**
+ * The Academy entrance surfaces, each its own full-bleed room.
+ *
+ * `/welcome` is here for the same reason `/` is: the introduction paints
+ * `#04070f`, so without it the browser painted the general app base first, the
+ * lazy route's Suspense shell painted it again, and the scene then changed
+ * colour underneath the visitor at the exact moment the tome was supposed to
+ * open (HI1-C4).
+ */
 export function isEntryPath(pathname: string): boolean {
-  return pathname === "/" || pathname === "/dev/mogzy-entry-v2";
+  return pathname === "/" || pathname === "/dev/mogzy-entry-v2" || pathname === "/welcome";
 }
 
 /** Base background the browser should paint for `pathname` before React runs. */

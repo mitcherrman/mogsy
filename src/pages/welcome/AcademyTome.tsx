@@ -140,18 +140,29 @@ export default function AcademyTome({
         aria-hidden="true"
         draggable={false}
         decoding="async"
+        fetchPriority="high"
+        /* The painting's own pixel dimensions, and the reason the opening frame
+           is now stable (HI1-C4). This element has `height: auto`, so until the
+           file decoded the browser had nothing to derive a height from: the img
+           measured 0, the flex column above it measured 0, and both page boxes
+           — positioned against that column's inset-0 overlay — collapsed into a
+           zero-height strip with the chapter's writing spilling out of it. The
+           book landing then snapped the whole spread to its real size, which is
+           most of what read as the page assembling itself. Stating the
+           intrinsic ratio reserves the final geometry from the first frame;
+           nothing moves when the pixels arrive. */
+        width={1000}
+        height={666}
         data-testid="academy-tome-book"
         className="tome-book pointer-events-none relative block w-[130.2%] max-w-none select-none ml-[-15.1%] mt-[-5.3%] mb-[-9.11%]"
       />
       <div className="absolute inset-0">
         {/* Both regions stop short of the x 48–52% spine band and of the ornate
-            frame, so nothing is ever written into the gutter or over the gold. */}
-        <div className="tome-page" style={{ left: "8%", width: "38%", top: "15%", bottom: "13%" }}>
-          {art}
-        </div>
-        <div className="tome-page" style={{ left: "54%", width: "38%", top: "15%", bottom: "13%" }}>
-          {body}
-        </div>
+            frame, so nothing is ever written into the gutter or over the gold.
+            Their insets — including the inward offset HI1-C4 added — live in
+            index.css beside the rest of the tome's geometry, as one tunable. */}
+        <div className="tome-page tome-page-verso">{art}</div>
+        <div className="tome-page tome-page-recto">{body}</div>
       </div>
       {turning && (
         <div className="tome-leaf-stage" aria-hidden="true">

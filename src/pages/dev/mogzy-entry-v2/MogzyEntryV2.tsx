@@ -12,7 +12,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import SEOHead from "@/components/SEOHead";
 import { startEntryMusic } from "@/components/audio/EntryMusicController";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
-import { resolveEntryDestination } from "@/lib/welcome/academy-welcome";
+import { ACADEMY_WELCOME_ROUTE, resolveEntryDestination } from "@/lib/welcome/academy-welcome";
+import { warmAcademyWelcomeScene } from "@/pages/welcome/sceneAssets";
 
 import AcademyFacade from "./AcademyFacade";
 import {
@@ -200,8 +201,19 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
     // 5. hand off — the Academy introduction on a first visit (HI1), otherwise
     //    straight to the live League entry point exactly as before. Resolved
     //    here rather than at render time so it reflects storage as of the click.
+    const destination = resolveEntryDestination();
+    // 5b. the veil below runs for 780ms whatever happens, and a first-time
+    //     visitor is about to land on a scene made of a ~530KB painting, a
+    //     display face and a mascot (HI1-C4). Spending that window fetching
+    //     them is free: the introduction's own readiness gate then usually has
+    //     nothing left to wait for, and its route chunk is already parsed.
+    //     Purely a warm — nothing here is awaited and nothing branches on it.
+    if (destination === ACADEMY_WELCOME_ROUTE) {
+      warmAcademyWelcomeScene();
+      void import("@/pages/welcome/AcademyWelcomePage").catch(() => undefined);
+    }
     window.setTimeout(
-      () => navigate(resolveEntryDestination(), { replace: true }),
+      () => navigate(destination, { replace: true }),
       prefersReducedMotion ? ENTRY_DURATION_REDUCED_MS : ENTRY_DURATION_MS,
     );
   }, [navigate, playLaunchChime, prefersReducedMotion]);

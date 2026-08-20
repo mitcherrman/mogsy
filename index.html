@@ -142,7 +142,9 @@
             p === '/lol' || p.indexOf('/lol/') === 0 ||
             p === '/combat-lab' || p.indexOf('/combat-lab/') === 0 ||
             p === '/quiz' || p.indexOf('/quiz/') === 0;
-          var isEntry = p === '/' || p === '/dev/mogzy-entry-v2';
+          // Mirrors isEntryPath() in src/lib/startup-shell.ts — /welcome is the
+          // Academy introduction, painted on the same room colour as the entrance.
+          var isEntry = p === '/' || p === '/dev/mogzy-entry-v2' || p === '/welcome';
 
           var variant = isLol ? 'lol' : (isEntry ? 'entry' : 'default');
           var bg = isLol ? '#060c14' : (isEntry ? '#04070f' : '#0a0a1a');

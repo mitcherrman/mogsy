@@ -84,6 +84,20 @@ describe("route → base background", () => {
     expect(baseBackgroundForPath("/")).toBe(ENTRY_BASE_BG);
   });
 
+  it("gives the Academy introduction the same surface as the entrance", () => {
+    // /welcome paints #04070f. Without this the browser painted the general
+    // app base, the lazy route's Suspense shell painted it again, and the
+    // scene changed colour under the visitor at the exact moment the tome was
+    // supposed to open (HI1-C4).
+    expect(baseBackgroundForPath("/welcome")).toBe(ENTRY_BASE_BG);
+    expect(isEntryPath("/welcome")).toBe(true);
+  });
+
+  it("does not treat lookalikes of the introduction as entrance surfaces", () => {
+    expect(isEntryPath("/welcome/back")).toBe(false);
+    expect(isEntryPath("/welcomes")).toBe(false);
+  });
+
   it("gives every League surface the library base", () => {
     expect(baseBackgroundForPath("/lol")).toBe(LOL_BASE_BG);
     expect(baseBackgroundForPath("/lol/docs")).toBe(LOL_BASE_BG);
@@ -147,6 +161,12 @@ describe("index.html bootstrap agrees with startup-shell.ts", () => {
 
   it("paints / with the entrance surface and no League theme", () => {
     runBootstrapAt("/");
+    expect(document.documentElement.getAttribute("data-startup-shell")).toBe("entry");
+    expect(document.documentElement.classList.contains("theme-lol")).toBe(false);
+  });
+
+  it("paints /welcome with the entrance surface too", () => {
+    runBootstrapAt("/welcome");
     expect(document.documentElement.getAttribute("data-startup-shell")).toBe("entry");
     expect(document.documentElement.classList.contains("theme-lol")).toBe(false);
   });

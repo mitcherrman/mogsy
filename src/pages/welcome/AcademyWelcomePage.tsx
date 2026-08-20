@@ -19,7 +19,9 @@ import {
   HEADING_WORD_PACE,
   sentencesOf,
 } from "./phrases";
+import { CRITICAL_SCENE_IMAGES, TOME_DISPLAY_FONT } from "./sceneAssets";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
+import { useSceneReady } from "./useSceneReady";
 import { slotCount, slotWriteMs, useRevealSequence } from "./useRevealSequence";
 import { useTomeAudio } from "./tomeAudio";
 
@@ -58,6 +60,14 @@ import { useTomeAudio } from "./tomeAudio";
  * not history entries, and pushing six entries per visit would make Back feel
  * broken from wherever the visitor lands next.
  *
+ * THE CURTAIN GOES UP ON A FINISHED STAGE (HI1-C4). Everything below used to
+ * begin 260ms after mount, whatever state the page was in — which on a cold
+ * arrival meant the tome, the heading's face and Mogzy himself resolving under
+ * a sequence that had already started. The scene now waits on a real readiness
+ * state (see useSceneReady): the painted book decoded, the display face loaded,
+ * chapter one's illustration decoded. Only then does the tome rise and the
+ * clock start. Nothing about the cadence past that first frame changed.
+ *
  * REDUCED MOTION IS A DIFFERENT EXPERIENCE, NOT A DEGRADED ONE. The clock stops
  * and every chapter opens complete and still: the same words, the same artwork,
  * the same chapters, turned by the visitor at their own pace — no turning
@@ -76,6 +86,17 @@ export default function AcademyWelcomePage() {
   const tier = useViewportTier();
   const exitsRef = useRef<HTMLButtonElement>(null);
   const audio = useTomeAudio();
+  // The stage, and only the stage: the painted book, the face the headings are
+  // set in, and chapter one's illustration. Everything else on this page is
+  // allowed to arrive whenever it arrives.
+  const sceneReady = useSceneReady(CRITICAL_SCENE_IMAGES, TOME_DISPLAY_FONT);
+  const [roomLoaded, setRoomLoaded] = useState(false);
+  // Ref callback rather than `onLoad` alone: on a warm arrival the plate is
+  // already decoded before React attaches a listener, `load` never fires, and
+  // the fade-in below would leave it at zero for ever.
+  const roomRef = useCallback((img: HTMLImageElement | null) => {
+    if (img?.complete) setRoomLoaded(true);
+  }, []);
 
   // The outgoing chapter, while its sheet is physically turning. All input is
   // ignored until the sheet lands; the sequence clock holds with it.
@@ -91,7 +112,9 @@ export default function AcademyWelcomePage() {
   const seq = useRevealSequence({
     chapters: ACADEMY_CHAPTERS,
     reducedMotion: prefersReducedMotion,
-    paused: turning !== null,
+    // Two reasons the clock holds, and they compose: a sheet is physically in
+    // the air, or the stage is not up yet. Both are "do not write onto this".
+    paused: turning !== null || !sceneReady,
   });
   const { chapter, chapterIndex, step, complete, released, artRevealed, instant, isFinale } = seq;
 
@@ -283,6 +306,7 @@ export default function AcademyWelcomePage() {
       data-art={artRevealed ? "true" : "false"}
       data-turning={turning ? "true" : "false"}
       data-instant={instant ? "true" : "false"}
+      data-ready={sceneReady ? "true" : "false"}
       className="academy-welcome relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#04070f]"
       style={{
         paddingTop: "env(safe-area-inset-top)",
@@ -305,11 +329,24 @@ export default function AcademyWelcomePage() {
       {/* the mobile plate is ~1.9 MB, which is not a reasonable first-visit*/}
       {/* cost for something sitting at 14% opacity.                        */}
       {/* ---------------------------------------------------------------- */}
+      {/* Faded in on load rather than painted the instant it decodes (HI1-C4).
+          At ~1.8 MB it is by some way the last thing on the screen to arrive,
+          and a plate that snaps in behind a scene already in progress is a
+          stage change — which is exactly what it looked like. It is
+          deliberately NOT part of the readiness gate: nothing about the tome
+          depends on it, and holding the introduction for a decoration at 14%
+          opacity would be the arbitrary wait this pass exists to remove. */}
       <img
         src={academyLibraryDesktop}
         alt=""
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover opacity-[0.14] md:block"
+        ref={roomRef}
+        loading="eager"
+        decoding="async"
+        onLoad={() => setRoomLoaded(true)}
+        onError={() => setRoomLoaded(true)}
+        data-loaded={roomLoaded ? "true" : "false"}
+        className="tome-room pointer-events-none absolute inset-0 hidden h-full w-full object-cover md:block"
         style={{ objectPosition: "center 52%" }}
       />
       {/* The doors giving way. One gesture, on arrival, never repeated. */}
