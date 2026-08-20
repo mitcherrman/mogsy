@@ -1,12 +1,33 @@
 /**
- * Academy introduction (HI1) behaviour: the three stages advance, both exits
- * record an outcome BEFORE handing off, and the page stays viewable on replay.
+ * Academy introduction (HI1-C) behaviour.
+ *
+ * Two things are being protected here, and they pull in different directions.
+ *
+ * The FIRST is HI1's contract, which the cinematic redesign was not allowed to
+ * touch: both exits record an outcome before handing off, the tutorial keeps its
+ * own completion state, and the route still renders in full on replay. Those
+ * assertions are carried over from HI1-1 deliberately unchanged.
+ *
+ * The SECOND is the interaction model, in its HI1-C2 form: one dual-purpose
+ * control; a chapter that writes ITSELF but never turns itself — the finished
+ * page waits for Next, indefinitely; a physical page turn during which every
+ * input is ignored; writing and illustration running as two overlapping
+ * channels; and sound calls that track the writing exactly. Text is in the
+ * document before it is on the page, which is what makes the rest testable at
+ * all: because a chapter's words are only transparent and never absent, a test
+ * (like a screen reader) reads a finished chapter the moment its slot opens,
+ * and nothing here has to drive animation frames jsdom does not run.
+ *
+ * The audio module is mocked wholesale — these tests assert WHEN the page asks
+ * for sound, not what Web Audio does with it. (The settings gate has its own
+ * suite in tomeAudio.test.ts.)
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AcademyWelcomePage from "./AcademyWelcomePage";
-import { ACADEMY_MODES } from "./academyModes";
+import { ACADEMY_CHAPTERS } from "./academyChapters";
+import { slotCount } from "./useRevealSequence";
 import {
   hasHandledAcademyWelcome,
   markAcademyWelcomeHandled,
@@ -18,30 +39,35 @@ import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
 const mocks = vi.hoisted(() => ({ navigate: vi.fn() }));
+const audio = vi.hoisted(() => ({
+  scribble: vi.fn(),
+  stopScribble: vi.fn(),
+  pageTurn: vi.fn(),
+}));
 
 vi.mock("react-router-dom", () => ({ useNavigate: () => mocks.navigate }));
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
+vi.mock("./tomeAudio", () => ({ useTomeAudio: () => audio }));
 
 // The pinned jsdom does not provide a working Storage — see localStorageStub.
 const resetStorage = installLocalStorageStub();
 
 /**
- * Run the suite under `prefers-reduced-motion: reduce`.
+ * Install a matchMedia that either reports reduced motion or does not.
  *
- * Two reasons, both deliberate. Under animation, AnimatePresence `mode="wait"`
- * holds the outgoing stage until its exit transition reports completion, and
- * jsdom never drives those frames — the container would sit empty forever and
- * every cross-stage assertion would fail on a rendering artifact rather than on
- * behaviour. Reduced motion removes the transition entirely, so the swap is
- * synchronous. It also means these assertions cover the accessibility path a
- * motion-sensitive visitor actually gets.
+ * The default across this suite is REDUCED, which turns the sequence clock off
+ * entirely: every chapter opens complete, the physical page turn is skipped,
+ * and pages turn only when the test says so. That keeps the interaction
+ * assertions about the interaction rather than about a timer, and it means the
+ * bulk of this file covers the accessibility path a motion-sensitive visitor
+ * actually gets. The choreography tests opt back in.
  */
-beforeEach(() => {
+function setReducedMotion(reduce: boolean) {
   Object.defineProperty(window, "matchMedia", {
     writable: true,
     configurable: true,
     value: (query: string) => ({
-      matches: query.includes("prefers-reduced-motion"),
+      matches: reduce && query.includes("prefers-reduced-motion"),
       media: query,
       onchange: null,
       addListener: () => {},
@@ -51,122 +77,422 @@ beforeEach(() => {
       dispatchEvent: () => {},
     }),
   });
+}
+
+beforeEach(() => {
+  setReducedMotion(true);
   resetStorage();
 });
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
   resetStorage();
 });
 
-/** Advance from stage 0 to the final choice stage. */
-function goToChoiceStage() {
-  fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-  fireEvent.click(screen.getByTestId("academy-welcome-continue"));
+const page = () => screen.getByTestId("academy-welcome");
+const advance = () => fireEvent.click(screen.getByTestId("academy-welcome-advance"));
+const stepOf = () => Number(page().getAttribute("data-step"));
+
+/** Turn pages until the finale's exits are on screen. */
+function goToFinale() {
+  for (let i = 0; i < ACADEMY_CHAPTERS.length * 3; i += 1) {
+    if (screen.queryByTestId("academy-welcome-explore")) return;
+    advance();
+  }
+  throw new Error("never reached the finale");
 }
 
-describe("stage flow", () => {
-  it("opens on the welcome stage", () => {
+/**
+ * Let the sequence run for `ms` of its own time (fake timers required).
+ *
+ * Advanced in slices, each inside its own `act`, because every beat arms the
+ * NEXT one from an effect — and React does not flush passive effects while a
+ * single `advanceTimersByTime` call is still draining, nor between the timers
+ * of `advanceTimersByTimeAsync` (its scheduler uses a MessageChannel that
+ * fake timers do not drive). One large jump therefore advances exactly one
+ * beat and looks like a stalled sequence. The `act` boundary per slice is
+ * what makes the clock actually tick.
+ */
+const run = async (ms: number, slice = 250) => {
+  for (let t = 0; t < ms; t += slice) {
+    await act(async () => {
+      vi.advanceTimersByTime(slice);
+    });
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+
+describe("the sequence", () => {
+  it("opens on the first chapter", () => {
     render(<AcademyWelcomePage />);
-    expect(screen.getByTestId("academy-welcome")).toHaveAttribute("data-stage", "0");
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/Welcome to the Academy/i);
+    expect(page()).toHaveAttribute("data-chapter", ACADEMY_CHAPTERS[0].id);
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
   });
 
-  it("advances through all three stages and back again", () => {
+  it("turns through every chapter in order and ends on the finale", () => {
     render(<AcademyWelcomePage />);
-    const page = screen.getByTestId("academy-welcome");
-
-    fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-    expect(page).toHaveAttribute("data-stage", "1");
-
-    fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-    expect(page).toHaveAttribute("data-stage", "2");
-
-    fireEvent.click(screen.getByRole("button", { name: /back/i }));
-    expect(page).toHaveAttribute("data-stage", "1");
+    for (const chapter of ACADEMY_CHAPTERS) {
+      expect(page()).toHaveAttribute("data-chapter", chapter.id);
+      expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(chapter.heading);
+      if (!chapter.finale) advance();
+    }
+    expect(ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1].finale).toBe(true);
   });
 
-  it("offers no Back control on the first stage", () => {
+  it("writes every chapter's words into the document, not only onto the page", () => {
+    // The reveal is decoration over text that already exists. If a chapter's
+    // copy were mounted late, this would be the failure — and so would every
+    // screen reader.
     render(<AcademyWelcomePage />);
-    expect(screen.queryByRole("button", { name: /^back$/i })).toBeNull();
-  });
-
-  it("drops Continue and Skip on the final stage so the two choices stand alone", () => {
-    render(<AcademyWelcomePage />);
-    goToChoiceStage();
-    expect(screen.queryByTestId("academy-welcome-continue")).toBeNull();
-    expect(screen.queryByTestId("academy-welcome-skip")).toBeNull();
-    expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
-    expect(screen.getByTestId("academy-welcome-tutorial")).toBeTruthy();
-  });
-
-  it("survives two Continue clicks with no delay between them", () => {
-    // Regression: with <AnimatePresence mode="wait"> this stranded the page.
-    // The second key change arrived while the first stage was still exiting,
-    // the exit never completed, and the incoming stage never mounted — leaving
-    // correct state (data-stage="2") above a completely empty content area.
-    // Verified by hand in the browser before the fix, and reproduced here.
-    render(<AcademyWelcomePage />);
-    const continueBtn = screen.getByTestId("academy-welcome-continue");
-    fireEvent.click(continueBtn);
-    fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-
-    expect(screen.getByTestId("academy-welcome")).toHaveAttribute("data-stage", "2");
-    // The point of the test: content, not just state.
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/how do you want to start/i);
-    expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
-  });
-
-  it("never leaves the content area empty on any stage", () => {
-    render(<AcademyWelcomePage />);
-    for (const stage of [0, 1, 2]) {
-      expect(screen.getByTestId("academy-welcome")).toHaveAttribute("data-stage", String(stage));
-      // Every stage must render a heading — an empty stage is the failure mode.
-      expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
-      if (stage < 2) fireEvent.click(screen.getByTestId("academy-welcome-continue"));
+    for (const chapter of ACADEMY_CHAPTERS) {
+      const text = (page().textContent ?? "").replace(/\s+/g, " ");
+      for (const line of chapter.lines) expect(text).toContain(line);
+      if (!chapter.finale) advance();
     }
   });
 
-  it("exposes step position to assistive tech", () => {
+  it("never leaves the tome empty on any chapter", () => {
     render(<AcademyWelcomePage />);
-    const steps = screen.getByRole("list", { name: /introduction progress/i });
-    expect(steps.querySelectorAll("li")).toHaveLength(3);
-    expect(steps.querySelector('[aria-current="step"]')).toBeTruthy();
+    for (let i = 0; i < ACADEMY_CHAPTERS.length; i += 1) {
+      expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
+      if (i < ACADEMY_CHAPTERS.length - 1) advance();
+    }
+  });
+
+  it("survives a burst of clicks with no delay between them", () => {
+    // The HI1-1 regression, kept: <AnimatePresence mode="wait"> stranded the
+    // page on correct state above an empty content area when a second click
+    // arrived during an exit transition. The sequence is a plain counter now,
+    // so this can only fail if someone reintroduces an awaited transition.
+    render(<AcademyWelcomePage />);
+    for (let i = 0; i < 40; i += 1) {
+      const control = screen.queryByTestId("academy-welcome-advance");
+      if (!control) break;
+      fireEvent.click(control);
+    }
+    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
+    expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
+    // And it stops there rather than running off the end of the chapter list.
+    expect(page()).toHaveAttribute("data-chapter", "beginning");
+  });
+
+  it("goes back to re-read a chapter, and offers no Back on the first", () => {
+    render(<AcademyWelcomePage />);
+    expect(screen.queryByTestId("academy-welcome-back")).toBeNull();
+    advance();
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+    fireEvent.click(screen.getByTestId("academy-welcome-back"));
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
+  });
+
+  it("reports position to assistive tech without carousel dots", () => {
+    render(<AcademyWelcomePage />);
+    const ribbon = screen.getByRole("list", { name: /chapter progress/i });
+    expect(ribbon.querySelectorAll("li")).toHaveLength(ACADEMY_CHAPTERS.length);
+    expect(ribbon.querySelector('[aria-current="step"]')).toBeTruthy();
+  });
+});
+
+describe("the dual-purpose control", () => {
+  beforeEach(() => setReducedMotion(false));
+
+  it("finishes the current chapter first, and only then turns the page", () => {
+    // The guarantee an impatient visitor depends on: the first press may never
+    // cost them words they have not read.
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-complete", "false");
+
+    advance();
+    expect(page()).toHaveAttribute("data-complete", "true");
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
+
+    advance();
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+    // The new chapter starts writing itself again rather than arriving whole.
+    expect(page()).toHaveAttribute("data-complete", "false");
+  });
+
+  it("names what it will do", () => {
+    render(<AcademyWelcomePage />);
+    const control = screen.getByTestId("academy-welcome-advance");
+    expect(control).toHaveAttribute("data-mode", "reveal");
+    expect(control.textContent).toContain("Skip reveal");
+    fireEvent.click(control);
+    expect(screen.getByTestId("academy-welcome-advance")).toHaveAttribute("data-mode", "next");
+    expect(screen.getByTestId("academy-welcome-advance").textContent).toContain("Next");
+  });
+
+  it("treats a click anywhere on the scene as the same intent", () => {
+    render(<AcademyWelcomePage />);
+    fireEvent.click(screen.getByTestId("academy-tome-book"));
+    expect(page()).toHaveAttribute("data-complete", "true");
+  });
+
+  it("responds to the keyboard, forwards and back", async () => {
+    vi.useFakeTimers();
+    render(<AcademyWelcomePage />);
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+    // The sheet is mid-turn; Back (like every input) waits for it to land.
+    await run(900);
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
+  });
+
+  it("leaves a focused control to handle its own keys", () => {
+    // Space on the focused advance button must fire it once, via the button —
+    // not once there and once again through the window listener.
+    render(<AcademyWelcomePage />);
+    const control = screen.getByTestId("academy-welcome-advance");
+    control.focus();
+    fireEvent.keyDown(control, { key: " ", bubbles: true });
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
+    expect(page()).toHaveAttribute("data-complete", "false");
+  });
+});
+
+describe("the internal reveal", () => {
+  beforeEach(() => {
+    setReducedMotion(false);
+    vi.useFakeTimers();
+  });
+
+  it("writes the page by itself, then STOPS and waits for Next", async () => {
+    // HI1-C2's core interaction change: a chapter reveals itself, but the page
+    // NEVER turns itself. However long the finished spread sits there, the
+    // visitor is exactly where they left themselves.
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-complete", "false");
+
+    await run(20_000);
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
+    expect(page()).toHaveAttribute("data-complete", "true");
+
+    await run(60_000, 1000);
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
+    expect(mocks.navigate).not.toHaveBeenCalled();
+
+    // Next — and only Next — turns the page.
+    advance();
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+  });
+
+  it("does not offer Next while the last phrase is still being written", async () => {
+    // `step` reaching the end means every slot has been RELEASED; the ink of
+    // the final phrase is still landing. Offering "Next" there would invite the
+    // visitor to turn away from words they never saw.
+    render(<AcademyWelcomePage />);
+    const total = slotCount(ACADEMY_CHAPTERS[0]);
+
+    for (let i = 0; i < 60 && stepOf() < total; i += 1) await run(250, 250);
+    expect(stepOf()).toBe(total);
+    // Everything is on the page, and the control still says so honestly.
+    expect(page()).toHaveAttribute("data-complete", "false");
+    expect(screen.getByTestId("academy-welcome-advance")).toHaveAttribute("data-mode", "reveal");
+
+    await run(1_000, 250);
+    expect(page()).toHaveAttribute("data-complete", "true");
+  });
+
+  it("overlaps the writing and the illustration on one spread", async () => {
+    // The two-channel choreography: the painting starts while the writing is
+    // still arriving — never text, then image, then text.
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-art", "false");
+
+    const total = slotCount(ACADEMY_CHAPTERS[0]);
+    for (let i = 0; i < 60 && page().getAttribute("data-art") !== "true"; i += 1) {
+      await run(250, 250);
+    }
+    expect(page()).toHaveAttribute("data-art", "true");
+    // The illustration is developing while most of the page is still unwritten.
+    expect(stepOf()).toBeLessThan(total);
+    expect(page()).toHaveAttribute("data-complete", "false");
+  });
+
+  it("gives Pro Data & Esports the same overlapping choreography", async () => {
+    // The strongest chapter visually is not exempt from the shared timing
+    // model — its reveal follows the identical two-channel contract.
+    render(<AcademyWelcomePage />);
+    const proDataIndex = ACADEMY_CHAPTERS.findIndex((c) => c.id === "pro-data");
+    for (let i = 0; i < proDataIndex; i += 1) {
+      advance(); // finish the chapter
+      advance(); // turn the page
+      await run(1_000); // let the sheet land
+    }
+    expect(page()).toHaveAttribute("data-chapter", "pro-data");
+
+    const total = slotCount(ACADEMY_CHAPTERS[proDataIndex]);
+    for (let i = 0; i < 60 && page().getAttribute("data-art") !== "true"; i += 1) {
+      await run(250, 250);
+    }
+    expect(page()).toHaveAttribute("data-art", "true");
+    expect(stepOf()).toBeLessThan(total);
+    expect(page()).toHaveAttribute("data-complete", "false");
+  });
+});
+
+describe("the page turn", () => {
+  beforeEach(() => {
+    setReducedMotion(false);
+    vi.useFakeTimers();
+  });
+
+  it("holds the incoming chapter and ignores every input while the sheet is mid-turn", async () => {
+    render(<AcademyWelcomePage />);
+    advance(); // finish chapter 0
+    advance(); // turn the page — the sheet is now in the air
+    expect(page()).toHaveAttribute("data-turning", "true");
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+    // Nothing writes itself under a turning sheet.
+    expect(stepOf()).toBe(0);
+
+    // A burst of clicks while the sheet is in the air does nothing at all:
+    // no second turn, no skipped chapter, no finished reveal.
+    for (let i = 0; i < 10; i += 1) advance();
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+    expect(stepOf()).toBe(0);
+
+    // The sheet lands; the chapter begins writing itself.
+    await run(900);
+    expect(page()).toHaveAttribute("data-turning", "false");
+    await run(2_000);
+    expect(stepOf()).toBeGreaterThan(0);
+  });
+
+  it("cannot stack turns — one page per press, however fast the presses", async () => {
+    render(<AcademyWelcomePage />);
+    advance(); // finish
+    advance(); // turn
+    for (let i = 0; i < 10; i += 1) advance();
+    expect(audio.pageTurn).toHaveBeenCalledTimes(1);
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+    await run(900);
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+  });
+});
+
+describe("sound", () => {
+  it("asks for the page-turn sound exactly once per successful turn", () => {
+    // Reduced motion (suite default): no turning sheet, but the turn itself
+    // still sounds — it is the visitor's own action, not an animation.
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(audio.pageTurn).toHaveBeenCalledTimes(1);
+    advance();
+    expect(audio.pageTurn).toHaveBeenCalledTimes(2);
+  });
+
+  it("scratches while writing, and stops the moment the reveal is skipped", async () => {
+    setReducedMotion(false);
+    vi.useFakeTimers();
+    render(<AcademyWelcomePage />);
+
+    // Let a couple of slots arrive on their own beat — each asks for a
+    // scribble scoped to its own write window.
+    await run(2_500);
+    expect(audio.scribble).toHaveBeenCalled();
+    expect(stepOf()).toBeGreaterThan(0);
+    expect(page()).toHaveAttribute("data-complete", "false");
+
+    audio.stopScribble.mockClear();
+    advance(); // skip the active reveal
+    expect(audio.stopScribble).toHaveBeenCalled();
+  });
+
+  it("never scratches under reduced motion — there is no writing to scratch for", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    advance();
+    expect(audio.scribble).not.toHaveBeenCalled();
+  });
+});
+
+describe("reduced motion", () => {
+  it("opens every chapter complete and runs no clock", async () => {
+    vi.useFakeTimers();
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-complete", "true");
+    expect(page()).toHaveAttribute("data-instant", "true");
+
+    for (let i = 0; i < 200; i += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(600);
+      });
+    }
+    // Two minutes later, still exactly where the visitor left it.
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
+  });
+
+  it("turns pages instantly — no sheet ever takes to the air", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+    expect(page()).toHaveAttribute("data-turning", "false");
+    // And the new chapter is already complete, ready to read.
+    expect(page()).toHaveAttribute("data-complete", "true");
+  });
+
+  it("still reaches both exits, one press per chapter", () => {
+    render(<AcademyWelcomePage />);
+    for (let i = 0; i < ACADEMY_CHAPTERS.length - 1; i += 1) advance();
+    expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
+    expect(screen.getByTestId("academy-welcome-tutorial")).toBeTruthy();
   });
 });
 
 describe("exits", () => {
   it("Start Exploring records the outcome and goes to the hub", () => {
     render(<AcademyWelcomePage />);
-    goToChoiceStage();
+    goToFinale();
     fireEvent.click(screen.getByTestId("academy-welcome-explore"));
 
     expect(readAcademyWelcomeState()?.outcome).toBe("explored");
     expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 
-  it("labels the two paths as approved, and gives neither the air of a penalty", () => {
-    render(<AcademyWelcomePage />);
-    goToChoiceStage();
-    expect(screen.getByTestId("academy-welcome-explore").textContent).toContain("Start Exploring");
-    // "Start the tutorial", not "Take the tutorial" — both exits are framed as
-    // something you START, so neither reads as the price of entry.
-    expect(screen.getByTestId("academy-welcome-tutorial").textContent).toContain("Start the tutorial");
-    expect(screen.queryByText(/Take the tutorial/)).toBeNull();
-  });
-
   it("Start Tutorial records the outcome and hands off to the real tutorial route", () => {
     render(<AcademyWelcomePage />);
-    goToChoiceStage();
+    goToFinale();
     fireEvent.click(screen.getByTestId("academy-welcome-tutorial"));
 
     expect(readAcademyWelcomeState()?.outcome).toBe("tutorial");
     expect(mocks.navigate).toHaveBeenCalledWith(RANKED_TUTORIAL_ROUTE, { replace: true });
   });
 
-  it("Skip is a real exit — it marks the visitor handled, not just hidden", () => {
+  it("labels the two paths as approved, and gives neither the air of a penalty", () => {
     render(<AcademyWelcomePage />);
+    goToFinale();
+    expect(screen.getByTestId("academy-welcome-explore").textContent).toContain("Start Exploring");
+    // "Start the tutorial", not "Take the tutorial" — both exits are framed as
+    // something you START, so neither reads as the price of entry.
+    expect(screen.getByTestId("academy-welcome-tutorial").textContent).toContain(
+      "Start the tutorial",
+    );
+    expect(screen.queryByText(/Take the tutorial/)).toBeNull();
+  });
+
+  it("drops the advance and skip controls once the two choices stand alone", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    expect(screen.queryByTestId("academy-welcome-advance")).toBeNull();
+    expect(screen.queryByTestId("academy-welcome-skip")).toBeNull();
+  });
+
+  it("puts focus on the choice when the last page opens", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    expect(document.activeElement).toBe(screen.getByTestId("academy-welcome-explore"));
+  });
+
+  it("Skip is a real exit from any chapter — it marks the visitor handled", () => {
+    render(<AcademyWelcomePage />);
+    advance();
     fireEvent.click(screen.getByTestId("academy-welcome-skip"));
 
     expect(hasHandledAcademyWelcome()).toBe(true);
@@ -175,10 +501,8 @@ describe("exits", () => {
 
   it("never writes tutorial completion — that stays the tutorial's own business", () => {
     render(<AcademyWelcomePage />);
-    goToChoiceStage();
+    goToFinale();
     fireEvent.click(screen.getByTestId("academy-welcome-tutorial"));
-    // The introduction stores its own outcome only; nothing here may imply the
-    // account finished the Ranked tutorial.
     expect(JSON.stringify(readAcademyWelcomeState())).not.toMatch(/completed/i);
   });
 });
@@ -188,7 +512,7 @@ describe("replay", () => {
     markAcademyWelcomeHandled("explored");
     render(<AcademyWelcomePage />);
 
-    expect(screen.getByTestId("academy-welcome")).toHaveAttribute("data-stage", "0");
+    expect(page()).toHaveAttribute("data-chapter-index", "0");
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
@@ -199,107 +523,51 @@ describe("replay", () => {
   });
 });
 
-describe("mode previews", () => {
-  /** Open the modes stage. */
-  function goToModesStage() {
+describe("content contract", () => {
+  it("keeps every illustration decorative", () => {
     render(<AcademyWelcomePage />);
-    fireEvent.click(screen.getByTestId("academy-welcome-continue"));
-  }
-
-  it("offers all four curated modes as real tabs", () => {
-    goToModesStage();
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(4);
-    expect(tabs.map((t) => t.textContent?.trim())).toEqual(
-      ACADEMY_MODES.map((m) => m.title),
-    );
-  });
-
-  it("features the first mode on arrival, with exactly one tab selected", () => {
-    goToModesStage();
-    const selected = screen.getAllByRole("tab").filter((t) => t.getAttribute("aria-selected") === "true");
-    expect(selected).toHaveLength(1);
-    expect(selected[0].textContent).toContain(ACADEMY_MODES[0].title);
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(ACADEMY_MODES[0].title);
-  });
-
-  it("swaps the featured exhibit, name and description when another mode is picked", () => {
-    goToModesStage();
-    fireEvent.click(screen.getByTestId("academy-mode-tab-combat-lab"));
-
-    const combat = ACADEMY_MODES.find((m) => m.id === "combat-lab")!;
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(combat.title);
-    expect(screen.getByText(combat.description)).toBeTruthy();
-    for (const h of combat.highlights) expect(screen.getByText(h)).toBeTruthy();
-  });
-
-  it("moves selection with arrow keys, per the tabs pattern", () => {
-    goToModesStage();
-    const tablist = screen.getByRole("tablist");
-    fireEvent.keyDown(tablist, { key: "ArrowRight" });
-    expect(screen.getByTestId("academy-mode-tab-combat-lab")).toHaveAttribute("aria-selected", "true");
-    fireEvent.keyDown(tablist, { key: "ArrowLeft" });
-    expect(screen.getByTestId("academy-mode-tab-leaguecraft")).toHaveAttribute("aria-selected", "true");
-    fireEvent.keyDown(tablist, { key: "End" });
-    expect(screen.getByTestId("academy-mode-tab-archives")).toHaveAttribute("aria-selected", "true");
-  });
-
-  it("keeps exactly one tab in the tab order (roving tabindex)", () => {
-    goToModesStage();
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs.filter((t) => t.tabIndex === 0)).toHaveLength(1);
-    fireEvent.click(screen.getByTestId("academy-mode-tab-stat-check"));
-    const after = screen.getAllByRole("tab");
-    expect(after.filter((t) => t.tabIndex === 0)).toHaveLength(1);
-    expect(screen.getByTestId("academy-mode-tab-stat-check").tabIndex).toBe(0);
-  });
-
-  it("wires the panel to whichever tab is current", () => {
-    goToModesStage();
-    fireEvent.click(screen.getByTestId("academy-mode-tab-archives"));
-    const panel = screen.getByRole("tabpanel");
-    expect(panel.getAttribute("aria-labelledby")).toBe("academy-mode-tab-archives");
-    // The exhibit swaps silently for anyone not watching it.
-    expect(panel.getAttribute("aria-live")).toBe("polite");
-  });
-
-  it("survives rapid mode switching without losing the featured content", () => {
-    goToModesStage();
-    for (const id of ["combat-lab", "stat-check", "archives", "leaguecraft", "stat-check"]) {
-      fireEvent.click(screen.getByTestId(`academy-mode-tab-${id}`));
+    for (let i = 0; i < ACADEMY_CHAPTERS.length; i += 1) {
+      for (const img of Array.from(page().querySelectorAll("img"))) {
+        expect(img.getAttribute("aria-hidden")).toBe("true");
+        expect(img.getAttribute("alt")).toBe("");
+      }
+      if (i < ACADEMY_CHAPTERS.length - 1) advance();
     }
-    const statCheck = ACADEMY_MODES.find((m) => m.id === "stat-check")!;
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(statCheck.title);
-    expect(screen.getByText(statCheck.description)).toBeTruthy();
   });
 
   it("uses the approved product name, not the artwork's engraved wording", () => {
     // The Leaguecraft plate has "Leaguecraft Studies" baked into its pixels.
-    // The UI must say "Leaguecraft" — and must not have been "fixed" by
+    // The chapter must say "Leaguecraft" — and must not have been "fixed" by
     // renaming the product to match the art.
-    goToModesStage();
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Leaguecraft");
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Leaguecraft");
     expect(screen.queryByText(/Leaguecraft Studies/)).toBeNull();
   });
 
   it("does not present Ranked as a peer of Leaguecraft", () => {
-    goToModesStage();
-    expect(screen.queryByRole("tab", { name: /^Ranked$/ })).toBeNull();
-    // It belongs to Leaguecraft, and appears as one of its highlights.
-    expect(
-      ACADEMY_MODES.find((m) => m.id === "leaguecraft")!.highlights,
-    ).toContain("Ranked");
+    // Ranked lives INSIDE Leaguecraft. Promoting it to a chapter would tell a
+    // new visitor they are two products to choose between, which is wrong.
+    expect(ACADEMY_CHAPTERS.map((c) => c.heading)).not.toContain("Ranked");
+    expect(ACADEMY_CHAPTERS.find((c) => c.id === "leaguecraft")?.marginalia).toContain("Ranked");
   });
 
-  it("keeps every exhibit image decorative", () => {
-    goToModesStage();
-    for (const id of ACADEMY_MODES.map((m) => m.id)) {
-      fireEvent.click(screen.getByTestId(`academy-mode-tab-${id}`));
-      const imgs = Array.from(screen.getByRole("tabpanel").parentElement!.querySelectorAll("img"));
-      for (const img of imgs) {
-        expect(img.getAttribute("aria-hidden")).toBe("true");
-        expect(img.getAttribute("alt")).toBe("");
-      }
+  it("promises only surfaces that exist", () => {
+    // The data chapter is grounded in the shipped pro-match explorer and live
+    // esports viewer. It must never be renamed to a product a visitor cannot
+    // find — GRAPH1 is a dev route and is not a destination.
+    const headings = ACADEMY_CHAPTERS.map((c) => c.heading);
+    expect(headings).toContain("Pro Data & Esports");
+    expect(headings).not.toContain("League Graphs");
+  });
+
+  it("keeps the sequence short enough to sit through", () => {
+    // The redesign exists to stop this feeling like a wizard; a seventh chapter
+    // would put it back. Two lines per chapter is the ceiling for the same
+    // reason — this is a book being written, not a landing page.
+    expect(ACADEMY_CHAPTERS.length).toBeLessThanOrEqual(6);
+    for (const chapter of ACADEMY_CHAPTERS) {
+      expect(chapter.lines.length).toBeLessThanOrEqual(2);
     }
   });
 });

@@ -15,6 +15,8 @@ export interface SoundSettings {
   shop_purchase: boolean;
   shop_diamond_tap: boolean;
   shop_powerup: boolean;
+  welcome_scribble: boolean;
+  welcome_page_turn: boolean;
 }
 
 export const SOUND_DEFAULTS: SoundSettings = {
@@ -31,6 +33,8 @@ export const SOUND_DEFAULTS: SoundSettings = {
   shop_purchase: true,
   shop_diamond_tap: true,
   shop_powerup: true,
+  welcome_scribble: true,
+  welcome_page_turn: true,
 };
 
 export const SOUND_LABELS: Record<keyof SoundSettings, { label: string; group: string; description: string }> = {
@@ -47,6 +51,8 @@ export const SOUND_LABELS: Record<keyof SoundSettings, { label: string; group: s
   shop_purchase: { label: "Purchase Chime", group: "Shop", description: "Ascending arpeggio on purchases" },
   shop_diamond_tap: { label: "Diamond Tap", group: "Shop", description: "Quick clink when tapping diamond items" },
   shop_powerup: { label: "Power-Up Whoosh", group: "Shop", description: "Rising whoosh for power-up actions" },
+  welcome_scribble: { label: "Quill Scribble", group: "Academy Welcome", description: "Faint writing scratch while the welcome book writes itself" },
+  welcome_page_turn: { label: "Page Turn", group: "Academy Welcome", description: "Soft paper turn when a welcome chapter's page is turned" },
 };
 
 // Singleton cache so all hooks share one fetch
