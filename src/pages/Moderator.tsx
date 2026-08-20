@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import AdminUsers from "@/components/admin/AdminUsers";
 import AdminCollections from "@/components/admin/AdminCollections";
 import AdminBots from "@/components/admin/AdminBots";
 import AdminComments from "@/components/admin/AdminComments";
@@ -13,7 +12,6 @@ import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
 
 const modTabs = [
-  { value: "users", label: "Users" },
   { value: "collections", label: "Collections" },
   { value: "bots", label: "Bots" },
   { value: "comments", label: "Comments" },
@@ -28,7 +26,7 @@ export default function Moderator() {
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("users");
+  const [activeTab, setActiveTab] = useState("collections");
   const [tabPage, setTabPage] = useState(0);
 
   useEffect(() => {
@@ -116,7 +114,6 @@ export default function Moderator() {
             )}
           </div>
 
-          <TabsContent value="users"><AdminUsers isMasterAdmin={false} /></TabsContent>
           <TabsContent value="collections"><AdminCollections /></TabsContent>
           <TabsContent value="bots"><AdminBots /></TabsContent>
           <TabsContent value="comments"><AdminComments /></TabsContent>

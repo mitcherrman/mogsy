@@ -85,6 +85,14 @@ interface UserReferralData {
   redeemedWith: { code: string; label: string | null; referrer_name: string | null } | null;
 }
 
+interface UserFeedback {
+  id: string;
+  title: string;
+  category: string;
+  status: string;
+  created_at: string;
+}
+
 export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [search, setSearch] = useState("");
@@ -93,7 +101,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
-  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "account" | "leagues" | "matches" | "purchases" | "comments" | "referrals">("overview");
+  const [detailTab, setDetailTab] = useState<"overview" | "notes" | "account" | "leagues" | "matches" | "purchases" | "comments" | "referrals" | "feedback">("overview");
   const [userComments, setUserComments] = useState<{ id: string; content: string; league_name: string; created_at: string; is_hidden: boolean }[]>([]);
 
   const [memberships, setMemberships] = useState<LeagueMembership[]>([]);
@@ -133,6 +141,13 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   } | null>(null);
   const [accountActionLoading, setAccountActionLoading] = useState<string | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [profilesError, setProfilesError] = useState(false);
+  const [detailErrors, setDetailErrors] = useState<string[]>([]);
+  const [authError, setAuthError] = useState(false);
+  const [feedback, setFeedback] = useState<UserFeedback[]>([]);
+  const [feedbackError, setFeedbackError] = useState(false);
+  const [accountActionsOpen, setAccountActionsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Check if form has changes
   const hasChanges = useMemo(() => {
@@ -145,7 +160,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const fetchProfiles = useCallback(async () => {
     setLoading(true);
-    const [{ data }, { data: notesData }] = await Promise.all([
+    setProfilesError(false);
+    const [profilesResult, notesResult] = await Promise.all([
       supabase
         .rpc("admin_list_profiles")
         .then((r: any) => ({
@@ -156,6 +172,15 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         })),
       supabase.from("profile_admin_notes").select("profile_id, notes"),
     ]);
+    const { data, error: profilesQueryError } = profilesResult;
+    const { data: notesData, error: notesError } = notesResult;
+    if (profilesQueryError) {
+      setProfiles([]);
+      setProfilesError(true);
+      setLoading(false);
+      return;
+    }
+    if (notesError) setProfilesError(true);
     const notesMap = new Map((notesData || []).map((n: any) => [n.profile_id, n.notes]));
     const enriched = ((data as any[]) || []).map(p => ({ ...p, admin_notes: notesMap.get(p.id) || null }));
     setProfiles(enriched as Profile[]);
@@ -169,9 +194,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       const allEmails: Record<string, string> = {};
       for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
         const batch = userIds.slice(i, i + BATCH_SIZE);
-        const { data: emailData } = await supabase.functions.invoke("admin-get-emails", {
+        const { data: emailData, error: emailError } = await supabase.functions.invoke("admin-get-emails", {
           body: { user_ids: batch },
         });
+        if (emailError || emailData?.error) setProfilesError(true);
         if (emailData?.emails) {
           Object.assign(allEmails, emailData.emails);
         }
@@ -179,7 +205,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       setEmailMap(allEmails);
     }
 
-    const { data: rolesData } = await supabase.from("user_roles").select("user_id, role");
+    const { data: rolesData, error: rolesError } = await supabase.from("user_roles").select("user_id, role");
+    if (rolesError) setProfilesError(true);
     if (rolesData) {
       const map: Record<string, string[]> = {};
       for (const r of rolesData) {
@@ -273,13 +300,29 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setEditForm(formData);
     setOriginalForm(formData);
     setReferralData(null);
+    setAccountActionsOpen(false);
+    setDeleteDialogOpen(false);
+    setDetailErrors([]);
+    setFeedback([]);
+    setFeedbackError(false);
+    setAuthInfo(null);
+    setAuthError(false);
 
-    const [membRes, matchRes, purchRes, commRes] = await Promise.all([
+    const [membRes, matchRes, purchRes, commRes, feedbackRes] = await Promise.all([
       supabase.from("league_memberships").select("*").eq("profile_id", profile.id),
       supabase.from("matches").select("*").or(`winner_profile_id.eq.${profile.id},loser_profile_id.eq.${profile.id}`).order("created_at", { ascending: false }).limit(50),
       supabase.from("purchases").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false }),
       supabase.from("comments").select("id, content, league_id, created_at, is_hidden").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(100),
+      supabase.from("feedback").select("id, title, category, status, created_at").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(10),
     ]);
+
+    const failedSections = [
+      membRes.error && "League memberships",
+      matchRes.error && "League matches",
+      purchRes.error && "Purchases",
+      commRes.error && "Comments",
+    ].filter(Boolean) as string[];
+    setDetailErrors(failedSections);
 
     setMemberships(membRes.data || []);
     setMatches(matchRes.data || []);
@@ -301,6 +344,12 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       })));
     } else {
       setUserComments([]);
+    }
+
+    if (feedbackRes.error) {
+      setFeedbackError(true);
+    } else {
+      setFeedback((feedbackRes.data || []) as UserFeedback[]);
     }
 
     // Load referral data
@@ -358,11 +407,16 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
   const loadAuthInfo = async (userId: string) => {
     setAuthInfo(null);
+    setAuthError(false);
     setGeneratedLink(null);
     const { data, error } = await supabase.functions.invoke("admin-user-actions", {
       body: { action: "get_auth_info", target_user_id: userId },
     });
-    if (data?.auth_info) setAuthInfo(data.auth_info);
+    if (error || data?.error || !data?.auth_info) {
+      setAuthError(true);
+      return;
+    }
+    setAuthInfo(data.auth_info);
   };
 
   const executeAccountAction = async (action: string) => {
@@ -648,7 +702,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
         {/* Tab navigation */}
         <div className="flex gap-1 rounded-lg bg-secondary p-1 overflow-x-auto">
-          {(["overview", "account", "notes", "leagues", "matches", "purchases", "comments", "referrals"] as const).map((tab) => (
+          {(["overview", "account", "leagues", "feedback", "notes", "matches", "purchases", "comments", "referrals"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => {
@@ -666,144 +720,28 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
 
         {detailTab === "overview" && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Display Name</Label>
-                <Input value={editForm.display_name || ""} onChange={(e) => setEditForm((f) => ({ ...f, display_name: e.target.value }))} />
+            <div className="grid gap-3 sm:grid-cols-2 text-sm">
+              <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                <h4 className="font-bold">Identity</h4>
+                <p><span className="text-muted-foreground">Display name:</span> {selectedUser.display_name || "Unnamed"}</p>
+                <p className="break-all"><span className="text-muted-foreground">Profile UUID:</span> {selectedUser.id}</p>
+                <p className="break-all"><span className="text-muted-foreground">Auth UUID:</span> {selectedUser.user_id}</p>
+                <p><span className="text-muted-foreground">Email:</span> {emailMap[selectedUser.user_id] || (selectedUser.is_anonymous ? "Anonymous account" : "Unavailable")}</p>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Profile Frame</Label>
-                <Select value={editForm.profile_frame || "default"} onValueChange={(v) => setEditForm((f) => ({ ...f, profile_frame: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["default", "gold", "neon", "fire", "diamond"].map((fr) => (
-                      <SelectItem key={fr} value={fr}>{fr}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: "Diamonds", key: "diamonds", icon: Diamond },
-                { label: "Elo Shields", key: "elo_shields", icon: Shield },
-                { label: "Reveals", key: "reveals", icon: Eye },
-                { label: "Rewinds", key: "rewinds", icon: Undo2 },
-              ].map(({ label, key, icon: Icon }) => (
-                <div key={key} className="space-y-1">
-                  <Label className="text-xs flex items-center gap-1"><Icon className="h-3 w-3" />{label}</Label>
-                  <Input
-                    type="number"
-                    value={(editForm as any)[key] ?? 0}
-                    onChange={(e) => setEditForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }))}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Boost Credits</Label>
-                <Input
-                  type="number"
-                  value={editForm.boost_credits ?? 0}
-                  onChange={(e) => setEditForm((f) => ({ ...f, boost_credits: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="flex items-center gap-2 pt-5">
-                <Switch
-                  checked={editForm.is_pro ?? false}
-                  onCheckedChange={(c) => setEditForm((f) => ({ ...f, is_pro: c }))}
-                />
-                <Label className="text-xs">Pro Status</Label>
+              <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                <h4 className="font-bold">Account</h4>
+                <p><span className="text-muted-foreground">Created:</span> {formatDate(selectedUser.created_at)}</p>
+                <p><span className="text-muted-foreground">Last seen:</span> {formatDate(selectedUser.last_seen_at)}</p>
+                <p><span className="text-muted-foreground">Type:</span> {selectedUser.is_bot ? "Bot" : selectedUser.is_anonymous ? "Anonymous" : "Standard"}</p>
+                <p><span className="text-muted-foreground">Pro:</span> {selectedUser.is_pro ? "Yes" : "No"}</p>
+                <p><span className="text-muted-foreground">Roles:</span> {selectedRoles.length ? selectedRoles.join(", ") : "User"}</p>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-2 pt-2">
-                <Switch
-                  checked={editForm.ads_enabled ?? true}
-                  onCheckedChange={(c) => setEditForm((f) => ({ ...f, ads_enabled: c }))}
-                />
-                <Label className="text-xs">Ads Enabled</Label>
-              </div>
-            </div>
-
-            {/* Admin role management */}
-            {isMasterAdmin && !isSelectedMaster && (
-              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm font-medium">Admin Privileges</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {isSelectedAdmin ? "This user has admin access to the admin panel" : "Grant this user admin access"}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={isSelectedAdmin ? "destructive" : "outline"}
-                    onClick={() => toggleAdminRole(selectedUser.user_id)}
-                  >
-                    {isSelectedAdmin ? (
-                      <><ShieldOff className="h-3 w-3 mr-1" /> Remove Admin</>
-                    ) : (
-                      <><ShieldCheck className="h-3 w-3 mr-1" /> Grant Admin</>
-                    )}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between border-t border-border pt-3">
-                  <div>
-                    <Label className="text-sm font-medium">Moderator</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {isSelectedMod ? "This user has moderator access" : "Grant moderator access (Play Layout + Mod panel)"}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={isSelectedMod ? "destructive" : "outline"}
-                    onClick={() => toggleModeratorRole(selectedUser.user_id)}
-                  >
-                    {isSelectedMod ? (
-                      <><ShieldOff className="h-3 w-3 mr-1" /> Remove Mod</>
-                    ) : (
-                      <><ShieldCheck className="h-3 w-3 mr-1" /> Grant Mod</>
-                    )}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between border-t border-border pt-3">
-                  <div>
-                    <Label className="text-sm font-medium">Demo Studio Access</Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {isSelectedDemo ? "This user can access the Demo Studio page" : "Grant access to Demo Studio only (no admin panels)"}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={isSelectedDemo ? "destructive" : "outline"}
-                    onClick={() => toggleDemoAccess(selectedUser.user_id)}
-                  >
-                    {isSelectedDemo ? (
-                      <><ShieldOff className="h-3 w-3 mr-1" /> Remove Demo</>
-                    ) : (
-                      <><Film className="h-3 w-3 mr-1" /> Grant Demo</>
-                    )}
-                  </Button>
-                </div>
+            {detailErrors.length > 0 && (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                Some admin queries failed: {detailErrors.join(", ")}. Try refreshing this user.
               </div>
             )}
-
-            <div className="flex gap-2 flex-wrap">
-              <Button onClick={saveUser} disabled={saving || !hasChanges} size="sm" className={!hasChanges ? "opacity-50" : ""}>
-                {saving ? "Saving…" : "Save Changes"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setNotifOpen(true)}>
-                <Send className="h-3 w-3 mr-1" /> Send Notification
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => deleteUser(selectedUser)}>
-                <Trash2 className="h-3 w-3 mr-1" /> Delete User
-              </Button>
-            </div>
           </div>
         )}
 
@@ -828,21 +766,73 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   <div><span className="text-muted-foreground">Banned:</span> <span className={`font-medium ${authInfo.banned_until ? "text-destructive" : "text-foreground"}`}>{authInfo.banned_until ? `Until ${new Date(authInfo.banned_until).toLocaleString()}` : "No"}</span></div>
                 </div>
               </div>
+            ) : authError ? (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                Auth details could not be loaded. No account action was performed.
+              </div>
             ) : (
               <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
                 <Loader2 className="h-3 w-3 animate-spin" /> Loading auth info…
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="space-y-2">
-              <h5 className="text-xs font-bold text-foreground">Actions</h5>
+            {/* Account-changing controls remain on this page, but are closed by default. */}
+            <Collapsible open={accountActionsOpen} onOpenChange={setAccountActionsOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between" data-testid="account-actions-trigger">
+                  <span className="flex items-center gap-2"><Settings2 className="h-4 w-4" /> Account Actions</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${accountActionsOpen ? "rotate-180" : ""}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3 space-y-3 rounded-xl border border-border bg-card p-4" data-testid="account-actions-content">
+                <p className="text-xs text-muted-foreground">Changes here affect this profile or its Supabase Auth account. Review the selected user before continuing.</p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Display Name</Label>
+                    <Input value={editForm.display_name || ""} onChange={(e) => setEditForm((f) => ({ ...f, display_name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Profile Frame</Label>
+                    <Select value={editForm.profile_frame || "default"} onValueChange={(v) => setEditForm((f) => ({ ...f, profile_frame: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{["default", "gold", "neon", "fire", "diamond"].map((fr) => <SelectItem key={fr} value={fr}>{fr}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {["diamonds", "elo_shields", "reveals", "rewinds", "boost_credits"].map((key) => (
+                    <div key={key} className="space-y-1">
+                      <Label className="text-[10px] capitalize">{key.replace(/_/g, " ")}</Label>
+                      <Input type="number" value={(editForm as any)[key] ?? 0} onChange={(e) => setEditForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }))} />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-5">
+                  <label className="flex items-center gap-2 text-xs"><Switch checked={editForm.is_pro ?? false} onCheckedChange={(c) => setEditForm((f) => ({ ...f, is_pro: c }))} /> Pro Status</label>
+                  <label className="flex items-center gap-2 text-xs"><Switch checked={editForm.ads_enabled ?? true} onCheckedChange={(c) => setEditForm((f) => ({ ...f, ads_enabled: c }))} /> Ads Enabled</label>
+                  <Button onClick={saveUser} disabled={saving || !hasChanges} size="sm">{saving ? "Saving…" : "Save Profile Changes"}</Button>
+                </div>
+
+                {isMasterAdmin && !isSelectedMaster && (
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <h5 className="text-xs font-bold">Role and access changes</h5>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant={isSelectedAdmin ? "destructive" : "outline"} onClick={() => toggleAdminRole(selectedUser.user_id)}>{isSelectedAdmin ? "Remove Admin" : "Grant Admin"}</Button>
+                      <Button size="sm" variant={isSelectedMod ? "destructive" : "outline"} onClick={() => toggleModeratorRole(selectedUser.user_id)}>{isSelectedMod ? "Remove Moderator" : "Grant Moderator"}</Button>
+                      <Button size="sm" variant={isSelectedDemo ? "destructive" : "outline"} onClick={() => toggleDemoAccess(selectedUser.user_id)}>{isSelectedDemo ? "Remove Demo Access" : "Grant Demo Access"}</Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2 border-t border-border pt-3">
+                  <h5 className="text-xs font-bold text-foreground">Auth and communication actions</h5>
 
               {/* Password Reset */}
               <div className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Send Password Reset</p>
-                  <p className="text-xs text-muted-foreground">Generate a password reset link for this user</p>
+                  <p className="text-sm font-medium text-foreground">Generate Password Recovery Link</p>
+                  <p className="text-xs text-muted-foreground">Creates a sensitive recovery link. It is not emailed automatically.</p>
                 </div>
                 <Button
                   size="sm"
@@ -851,7 +841,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   onClick={() => executeAccountAction("send_password_reset")}
                 >
                   {accountActionLoading === "send_password_reset" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <KeyRound className="h-3 w-3 mr-1" />}
-                  Reset
+                  Generate Link
                 </Button>
               </div>
 
@@ -859,8 +849,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
               {authInfo && !authInfo.email_confirmed && !authInfo.is_anonymous && (
                 <div className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-foreground">Resend Verification Email</p>
-                    <p className="text-xs text-muted-foreground">Generate a new email verification link</p>
+                    <p className="text-sm font-medium text-foreground">Generate Email Verification Link</p>
+                    <p className="text-xs text-muted-foreground">Creates a sensitive verification link. It is not emailed automatically.</p>
                   </div>
                   <Button
                     size="sm"
@@ -869,7 +859,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                     onClick={() => executeAccountAction("resend_verification")}
                   >
                     {accountActionLoading === "resend_verification" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MailCheck className="h-3 w-3 mr-1" />}
-                    Resend
+                    Generate Link
                   </Button>
                 </div>
               )}
@@ -915,13 +905,20 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   {authInfo?.banned_until ? "Unban" : "Ban"}
                 </Button>
               </div>
-            </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 border-t border-destructive/30 pt-3">
+                  <Button variant="outline" size="sm" onClick={() => setNotifOpen(true)}><Send className="h-3 w-3 mr-1" /> Send Notification</Button>
+                  <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}><Trash2 className="h-3 w-3 mr-1" /> Delete User Profile…</Button>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Generated Link Display */}
             {generatedLink && (
               <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
-                <p className="text-xs font-bold text-foreground">Generated Link</p>
-                <p className="text-xs text-muted-foreground">Copy and send this link to the user:</p>
+                <p className="text-xs font-bold text-foreground">Sensitive generated link</p>
+                <p className="text-xs text-muted-foreground">This link grants an account recovery or verification flow. Share it only with the intended user.</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 text-[10px] bg-secondary rounded p-2 text-foreground break-all select-all">{generatedLink}</code>
                   <Button
@@ -1239,6 +1236,34 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
           </div>
         )}
 
+        {detailTab === "feedback" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-sm">Feedback</h4>
+              {!feedbackError && <Badge variant="outline">{feedback.length} recent</Badge>}
+            </div>
+            {feedbackError ? (
+              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                Feedback could not be loaded. This is an admin query failure, not an empty feedback history.
+              </div>
+            ) : feedback.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No feedback from this user.</p>
+            ) : (
+              <div className="space-y-2" data-testid="user-feedback-list">
+                {feedback.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium">{item.title}</p>
+                      <Badge variant="outline" className="capitalize">{item.status}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{item.category} · {formatDate(item.created_at)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <Dialog open={notifOpen} onOpenChange={setNotifOpen}>
           <DialogContent>
             <DialogHeader>
@@ -1251,6 +1276,26 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             </Button>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this user profile?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This deletes the public profile row for {selectedUser.display_name}. The existing code does not delete the Supabase Auth user. Related profile data may also be removed by database cascades, and the built-in restore only recreates a profile snapshot.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => deleteUser(selectedUser)}
+              >
+                Delete User Profile
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -1310,6 +1355,12 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
         )}
       </div>
 
+      {!loading && profilesError && profiles.length > 0 && (
+        <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300">
+          Users loaded, but some admin metadata could not be retrieved. Email, role, or notes information may be incomplete.
+        </div>
+      )}
+
       {deletedUsers.length > 0 && (
         <Collapsible>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm text-destructive font-medium">
@@ -1332,6 +1383,10 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       {loading ? (
         <div className="flex justify-center py-8">
           <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+        </div>
+      ) : profilesError && profiles.length === 0 ? (
+        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-center text-sm text-destructive">
+          The admin users query failed. No users are shown because data could not be loaded.
         </div>
       ) : filtered.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground py-8">No users found</p>
