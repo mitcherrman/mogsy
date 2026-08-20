@@ -1442,6 +1442,116 @@ html.high-contrast * { text-shadow: none !important; }
   will-change: transform;
 }
 
+/* ------------------------------------------------------------------------- */
+/* AI1 Phase 2 — reusable Ranked ROLE mascot motion.                          */
+/*                                                                            */
+/* Four nested layers, ONE transform declaration each, none shared:            */
+/*                                                                            */
+/*   .role-mascot          host layout/size — no transform at all              */
+/*   └── .role-mascot-idle     looping float                                   */
+/*       └── .role-mascot-facing   scaleX mirror                               */
+/*           └── .role-mascot-action  transient attack/hit keyframes           */
+/*               └── <img>                                                     */
+/*                                                                            */
+/* Because the mirror lives on an ANCESTOR of the action layer, the action     */
+/* keyframes are written in unmirrored terms — forward is +X, always — and a   */
+/* left-facing mascot lunges left for free. Nothing below is authored with     */
+/* Tailwind's arbitrary `duration-[…]`/`ease-[…]` utilities: this build emits  */
+/* no arbitrary duration utility at all (the AI1 Phase 1 note above), so a     */
+/* tuning number written there would not be the number that ships.            */
+/*                                                                            */
+/* TUNING — every number a designer would reach for is a custom property, so   */
+/* the feel can be changed here without touching a component.                  */
+/* ------------------------------------------------------------------------- */
+.role-mascot {
+  /* Idle */
+  --role-mascot-idle-rise: 4px;
+  --role-mascot-idle-duration: 3.6s;
+  /* Attack */
+  --role-mascot-attack-reach: 16%;
+  --role-mascot-attack-windup: 5%;
+  --role-mascot-attack-duration: 420ms;
+  /* Hit */
+  --role-mascot-hit-recoil: 11%;
+  --role-mascot-hit-duration: 360ms;
+  /* Shared squash/stretch depth. 0 = pure translation. */
+  --role-mascot-squash: 0.07;
+
+  display: block;
+  position: relative;
+}
+
+/* Every inner layer fills the host box exactly, so the host's width/height is
+   the mascot's width/height and no layer introduces its own geometry. */
+.role-mascot-idle,
+.role-mascot-facing,
+.role-mascot-action {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Idle — a slow vertical float and nothing else. Translation only: it must
+   never change the box's size, so it cannot shift a single pixel of the host's
+   layout. Deliberately smaller and slower than Mogzy's 7px/6s hub float; these
+   sit in dense combat furniture, not on an empty hero. */
+@keyframes role-mascot-idle-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(calc(var(--role-mascot-idle-rise) * -1)); }
+}
+.role-mascot-idle {
+  animation: role-mascot-idle-float var(--role-mascot-idle-duration) ease-in-out infinite;
+  will-change: transform;
+}
+
+.role-mascot-facing {
+  transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scaleX(var(--role-mascot-facing, 1));
+}
+
+/* Attack — settle back, then drive forward and recover.
+   Percentage translation so the lunge scales with the mascot rather than being
+   a fixed pixel distance that reads huge in a 56px crest and tiny on a hero.
+   Squash is anchored at the feet so the deformation reads as a body pushing
+   off the ground. 0% and 100% are both the identity transform. */
+@keyframes role-mascot-attack {
+  0%   { transform: translateX(0) scale(1, 1); }
+  18%  { transform: translateX(calc(var(--role-mascot-attack-windup) * -1))
+                    scale(calc(1 + var(--role-mascot-squash)), calc(1 - var(--role-mascot-squash))); }
+  46%  { transform: translateX(var(--role-mascot-attack-reach))
+                    scale(calc(1 - var(--role-mascot-squash) * 0.6), calc(1 + var(--role-mascot-squash) * 0.6)); }
+  70%  { transform: translateX(calc(var(--role-mascot-attack-reach) * 0.35)) scale(1, 1); }
+  100% { transform: translateX(0) scale(1, 1); }
+}
+.role-mascot-action.role-mascot-attack {
+  animation: role-mascot-attack var(--role-mascot-attack-duration) cubic-bezier(0.34, 0.9, 0.36, 1);
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+/* Hit — thrown BACKWARD (away from forward) with a short shake on the way
+   home, so it can never be mistaken for the attack lunge: opposite direction,
+   opposite squash axis, and a stutter the attack does not have. */
+@keyframes role-mascot-hit {
+  0%   { transform: translateX(0) rotate(0deg) scale(1, 1); }
+  16%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -1)) rotate(-4deg)
+                    scale(calc(1 - var(--role-mascot-squash) * 0.5), calc(1 + var(--role-mascot-squash) * 0.5)); }
+  44%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -0.45)) rotate(3deg) scale(1, 1); }
+  64%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -0.22)) rotate(-2deg) scale(1, 1); }
+  82%  { transform: translateX(calc(var(--role-mascot-hit-recoil) * -0.08)) rotate(1deg) scale(1, 1); }
+  100% { transform: translateX(0) rotate(0deg) scale(1, 1); }
+}
+.role-mascot-action.role-mascot-hit {
+  animation: role-mascot-hit var(--role-mascot-hit-duration) cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+@keyframes role-mascot-reduced {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
 /* Personalized academy line — one subtle entrance fade, no looping motion. */
 @keyframes academy-line-in {
   from { opacity: 0; transform: translateY(-3px); }
@@ -1464,6 +1574,19 @@ html.high-contrast * { text-shadow: none !important; }
   /* Facing is pinned to the unmirrored artwork, exactly as the contextual
      lean is pinned: a mascot that never moves should not turn either. */
   .mogzy-facing-turn { transition: none !important; transform: none !important; }
+  /* AI1 Phase 2 role mascots. The idle loop and the facing turn stop
+     outright — a mascot that never moves should not turn either. The two
+     actions are NOT removed: an attack and a hit are state changes the player
+     needs to read, so they degrade to a still, movement-free acknowledgement
+     (a brief opacity dip) rather than disappearing. No translation, no
+     rotation, no scale — nothing that travels. */
+  .role-mascot-idle { animation: none !important; }
+  .role-mascot-facing { transition: none !important; transform: none !important; }
+  .role-mascot-action.role-mascot-attack,
+  .role-mascot-action.role-mascot-hit {
+    animation: role-mascot-reduced 260ms ease-out !important;
+    transform: none !important;
+  }
   /* No fade: the line is simply present at full opacity. */
   .academy-personal-line { animation: none !important; }
 }

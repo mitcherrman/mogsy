@@ -303,3 +303,54 @@ export function projectSurfaceReveal(
   if (!correct) return null;
   return { revealed: true, correctOptionId: correct.id };
 }
+
+// ---------------------------------------------------------------------------
+// AI1 Phase 2 — mascot reactions for a settled round.
+// ---------------------------------------------------------------------------
+
+/** One mascot reaction: what to play, and the id that makes it retriggerable. */
+export interface MascotReaction {
+  action: "attack" | "hit";
+  /** The settled round this reaction belongs to. A round settles exactly once,
+   *  so the round number is a stable, monotonic event id — which is precisely
+   *  what `RoleMascot`'s edge-triggered playback needs. */
+  actionId: number;
+}
+
+/**
+ * The mascot reaction for each player in the settlement being revealed.
+ *
+ * Read straight off the authoritative settlement — the SAME row the HP bar,
+ * the damage trail and the verdict already read. Nothing is timed, sampled or
+ * invented here, and there is no simulated or test-only trigger anywhere: if
+ * the backend did not settle a round, no mascot moves.
+ *
+ * Gated on `revealing` (the reveal hold) so the two mascots react on the same
+ * beat the verdicts resolve, and go quiet again for the next question rather
+ * than carrying a stale reaction into it.
+ *
+ * ONE ACTION PER MASCOT, and `hit` wins. A round can leave a player both
+ * dealing and receiving damage; the mascot has one body and can only do one
+ * thing, so taking damage — the fact that actually moved this player's HP bar
+ * — is the one that reads. In the ordinary round only one side is damaged, so
+ * the attacker lunges and the defender recoils as two halves of one event.
+ *
+ * A player who neither dealt nor received damage gets no reaction at all; a
+ * round where nobody was hurt should not animate.
+ */
+export function projectMascotReactions(
+  settlement: ResolvedRoundView | null, revealing: boolean,
+): Record<string, MascotReaction> {
+  if (!settlement || !revealing) return {};
+  const out: Record<string, MascotReaction> = {};
+  for (const player of Object.values(settlement.players)) {
+    const took = player.finalDamageReceived > 0 || player.shieldAbsorbed > 0;
+    const dealt = player.finalDamageDealt > 0;
+    if (!took && !dealt) continue;
+    out[player.playerId] = {
+      action: took ? "hit" : "attack",
+      actionId: settlement.roundNumber,
+    };
+  }
+  return out;
+}

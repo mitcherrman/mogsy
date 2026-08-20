@@ -21,7 +21,7 @@ import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import {
   abilityTrayIsUseful, opponentPresenceLabel, projectAbilities,
   projectAbilityPermissions, projectCombatants, projectDamageHistory,
-  projectPermissions, projectRevealDamage, projectRevealOutcomes,
+  projectMascotReactions, projectPermissions, projectRevealDamage, projectRevealOutcomes,
   projectSurfaceReveal, projectTimer,
 } from "./rankedViews";
 import { useRankedMatch } from "./useRankedMatch";
@@ -108,6 +108,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     [m.lastResolved, m.revealHold]);
   const revealDamage = useMemo(
     () => projectRevealDamage(m.lastResolved, m.revealHold),
+    [m.lastResolved, m.revealHold]);
+  // AI1 Phase 2 — the two duelist mascots' reactions to the settled round.
+  // Same settlement, same reveal gate as the verdicts above: the attacker's
+  // mascot lunges and the damaged mascot recoils on the beat the round
+  // resolves. Nothing here is timed or simulated.
+  const mascotReactions = useMemo(
+    () => projectMascotReactions(m.lastResolved, m.revealHold),
     [m.lastResolved, m.revealHold]);
   // The active segment's module renderer. A v2 payload or a legacy round has
   // no discriminator and resolves to quiz.v1 — the module those rounds were
@@ -408,14 +415,16 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             progressionEnabled={progressionEnabled}
             damage={damageHistory.player}
             outcome={revealOutcomes[combatants.player.playerId] ?? null}
-            damageDealt={revealDamage[combatants.player.playerId] ?? null} />
+            damageDealt={revealDamage[combatants.player.playerId] ?? null}
+            reaction={mascotReactions[combatants.player.playerId] ?? null} />
         </div>
         <div className="lg:col-start-3 lg:row-start-1 lg:h-full">
           <CombatantPanel combatant={combatants.opponent}
             progressionEnabled={progressionEnabled}
             damage={damageHistory.opponent}
             outcome={revealOutcomes[combatants.opponent.playerId] ?? null}
-            damageDealt={revealDamage[combatants.opponent.playerId] ?? null} />
+            damageDealt={revealDamage[combatants.opponent.playerId] ?? null}
+            reaction={mascotReactions[combatants.opponent.playerId] ?? null} />
         </div>
 
         <div data-testid="ranked-focus-column"

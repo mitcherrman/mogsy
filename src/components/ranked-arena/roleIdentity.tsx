@@ -6,21 +6,30 @@
  * direction, so this file contains no reference to tank/mage/marksman and
  * cannot fall back to them.
  *
- * ART GAP, recorded here rather than papered over
- * ───────────────────────────────────────────────
- * There is no role mascot art in the repository. `MOGZY_CLASS_ASSETS` holds
- * exactly three CLASS characters (tank / mage / marksman); there is no
- * top/jungle/mid/adc/support character, and borrowing a class character for a
- * role would be the class→role mapping R1 banned. So the crest below is drawn,
- * not photographed: a lane sigil in the role's accent, in the same framed slot
- * a mascot portrait would occupy. When real role art lands, only
- * `RoleCrest` changes — nothing that consumes it does.
+ * ART GAP — CLOSED (AI1 Phase 2)
+ * ──────────────────────────────
+ * This file used to record that there was no role mascot art, and drew a lane
+ * sigil in the framed slot a portrait would occupy, noting that "when real
+ * role art lands, only `RoleCrest` changes — nothing that consumes it does."
+ * LC1 landed that art (five dedicated role characters in `MOGZY_ROLE_ASSETS`,
+ * disjoint from the three CLASS characters, so no class→role mapping is
+ * created), and this is that change: `RoleCrest` now renders the reusable
+ * `RoleMascot` in the same slot, and nothing that consumes `RoleCrest` moved.
+ *
+ * The sigils below are NOT dead. They remain the crest for a duelist with no
+ * role at all — a pre-R1 match, or an account that never chose — where there
+ * is no role and therefore no role art to draw. That branch never guesses.
+ *
+ * `RoleCrest` names an intent (`action`) and a direction (`mirrored`); it owns
+ * none of the motion. Distances, durations, easing and keyframes all live in
+ * `RoleMascot`, so the same mascot behaves identically anywhere else in Mogzy.
  *
  * Accessibility: the sigil is `aria-hidden` and the role LABEL is always
  * rendered beside it, so a role is never communicated by shape or colour
  * alone (the R1 contract in `roles.ts`).
  */
 import { isRankedRole, RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
+import { RoleMascot, type RoleMascotAction } from "@/components/mascot/RoleMascot";
 
 export interface RoleIdentity {
   role: RankedRole | null;
@@ -133,11 +142,21 @@ export function RoleCrest({
   identity,
   mirrored,
   size = "md",
+  action = null,
+  actionId = null,
 }: {
   identity: RoleIdentity;
   /** Opponent crests mirror so both duelists face the arena centre. */
   mirrored: boolean;
   size?: "sm" | "md";
+  /**
+   * AI1 Phase 2 — a transient mascot reaction to play. The crest passes the
+   * INTENT straight through and knows nothing about what it looks like.
+   * Ignored by the no-role sigil branch, which has no mascot to move.
+   */
+  action?: RoleMascotAction | null;
+  /** Changes once per event; see `RoleMascot`'s `actionId`. */
+  actionId?: string | number | null;
 }) {
   const box = size === "sm" ? "h-10 w-10" : "h-14 w-14 min-[1500px]:h-16 min-[1500px]:w-16";
   return (
@@ -145,8 +164,14 @@ export function RoleCrest({
       aria-hidden
       data-testid="role-crest"
       data-role={identity.role ?? "none"}
+      // The FRAME no longer mirrors when it holds a mascot: mirroring the box
+      // would also mirror its inset shadow and gradient, and — the reason it
+      // matters here — it would flip the mascot's own action transforms, so a
+      // lunge forward on the right column would travel the wrong way. The
+      // mascot carries its own facing instead. The sigil branch keeps the
+      // original box mirror, unchanged.
       className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[#0b1727] ${box} ${
-        mirrored ? "-scale-x-100" : ""
+        mirrored && identity.role === null ? "-scale-x-100" : ""
       }`}
       style={{
         color: identity.accent,
@@ -154,9 +179,36 @@ export function RoleCrest({
         backgroundImage: `radial-gradient(80% 70% at 50% 30%, ${identity.accentSoft}, transparent 75%)`,
       }}
     >
-      <span className={size === "sm" ? "h-5 w-5" : "h-7 w-7"}>
-        <Sigil role={identity.role} />
-      </span>
+      {identity.role !== null ? (
+        // The mascot is INSET inside the frame (h-4/5 of the box, centred)
+        // rather than filling it. The frame is `overflow-hidden` and must stay
+        // that way — it is the panel's framed-bust geometry — so the inset is
+        // what buys the lunge and the recoil room to travel without either
+        // clipping at the border or forcing the frame to grow. Motion stays
+        // inside the box; the box never changes size.
+        <RoleMascot
+          role={identity.role}
+          // Both duelists face the arena centre: the left column's mascot
+          // looks right, the mirrored right column's looks left. This is the
+          // only direction the arena states — `attack` and `hit` derive
+          // forward and backward from it.
+          facing={mirrored ? "left" : "right"}
+          action={action}
+          actionId={actionId}
+          // Sized for CLEARANCE, not just for fit. At the peak of a lunge the
+          // art is translated `--role-mascot-attack-reach` (16%) of its own
+          // width and the hit recoil also rotates it, so the worst-case corner
+          // is ~(0.5·cos4° + 0.5·sin4°)·w + 0.16·w ≈ 0.64·w from centre. Keeping
+          // w at 40px inside a 56px frame leaves that corner ~2.8px clear of
+          // the border; at 44px it grazed it. Measured, not guessed.
+          className={size === "sm" ? "h-7 w-7" : "h-10 w-10 min-[1500px]:h-11 min-[1500px]:w-11"}
+          data-testid="role-crest-mascot"
+        />
+      ) : (
+        <span className={size === "sm" ? "h-5 w-5" : "h-7 w-7"}>
+          <Sigil role={identity.role} />
+        </span>
+      )}
     </span>
   );
 }

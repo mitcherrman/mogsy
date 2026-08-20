@@ -29,7 +29,7 @@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Hourglass, Lock, ShieldCheck, XCircle } from "lucide-react";
 import { CombatantView, ResolvedCombatantView } from "@/lib/ranked-core/viewTypes";
-import type { DamageHistoryEntry } from "@/pages/quiz-ranked/rankedViews";
+import type { DamageHistoryEntry, MascotReaction } from "@/pages/quiz-ranked/rankedViews";
 import { ClassIdentity, classIdentityFor } from "./classIdentity";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
 
@@ -364,6 +364,7 @@ export function CombatantPanel({
   damage,
   outcome = null,
   damageDealt = null,
+  reaction = null,
 }: {
   combatant: CombatantView;
   /** Controllers may hide status chips (e.g. between rounds). */
@@ -380,6 +381,15 @@ export function CombatantPanel({
   outcome?: ResolvedCombatantView["outcome"] | null;
   /** Damage this player DEALT in the revealed round; shown beside the verdict. */
   damageDealt?: number | null;
+  /**
+   * AI1 Phase 2 — the mascot reaction for the round being revealed, or null.
+   *
+   * The panel names an INTENT and passes it to the crest; it owns no motion.
+   * Built by `projectMascotReactions` off the same authoritative settlement
+   * the HP bar, the trail and the verdict read, so a mascot moves only when
+   * the backend actually settled damage.
+   */
+  reaction?: MascotReaction | null;
 }) {
   const { side, name, tag } = combatant;
   const role = roleIdentityFor(combatant.roleId);
@@ -408,7 +418,8 @@ export function CombatantPanel({
           depends on whether a role (or any art) arrived. */}
       <header className={`flex items-center gap-2.5 min-w-0 ${mirrored ? "flex-row-reverse" : ""}`}>
         {role.role ? (
-          <RoleCrest identity={role} mirrored={mirrored} />
+          <RoleCrest identity={role} mirrored={mirrored}
+            action={reaction?.action ?? null} actionId={reaction?.actionId ?? null} />
         ) : (
           <ClassPortrait identity={classIdentity} fallbackLabel={tag ?? combatant.classId}
             mirrored={mirrored} />

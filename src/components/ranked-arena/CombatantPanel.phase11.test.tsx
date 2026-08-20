@@ -60,7 +60,12 @@ describe("role identity", () => {
       playerId: "userB", name: "Opponent", side: "opponent", roleId: "support",
       tag: "Support" })} />);
     expect(screen.getByTestId("role-crest")).toHaveAttribute("data-role", "support");
-    expect(screen.getByTestId("role-crest").className).toContain("-scale-x-100");
+    // AI1 Phase 2 — the opponent still faces the arena centre, but the mirror
+    // moved OFF the frame and onto the mascot. Mirroring the box would also
+    // mirror its inset shadow and gradient, and would flip the mascot's own
+    // action transforms so a forward lunge travelled backwards on this column.
+    expect(screen.getByTestId("role-crest").className).not.toContain("-scale-x-100");
+    expect(screen.getByTestId("role-crest-mascot")).toHaveAttribute("data-facing", "left");
   });
 });
 
