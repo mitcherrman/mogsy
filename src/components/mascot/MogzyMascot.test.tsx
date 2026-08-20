@@ -8,6 +8,7 @@ import {
   MOGZY_COMPANION_ASSETS,
   MOGZY_FAMILY_ASSETS,
   MOGZY_MASCOT_ASSETS,
+  MOGZY_ROLE_ASSETS,
   getMogzyArtAssetPath,
   isMogzyClassCharacter,
   isMogzyCompanion,
@@ -28,6 +29,7 @@ const ALL_PATHS = [
   ...Object.values(MOGZY_FAMILY_ASSETS),
   ...Object.values(MOGZY_CLASS_ASSETS),
   ...Object.values(MOGZY_COMPANION_ASSETS),
+  ...Object.values(MOGZY_ROLE_ASSETS),
 ];
 
 describe("mascot-assets registry", () => {
@@ -37,6 +39,17 @@ describe("mascot-assets registry", () => {
       expect(fs.existsSync(fullPath), assetPath).toBe(true);
       const dirEntries = fs.readdirSync(path.dirname(fullPath));
       expect(dirEntries, assetPath).toContain(path.basename(fullPath));
+    }
+  });
+
+  // Role art is dedicated art: no role mascot may share a file with a Ranked
+  // class character, so the five role paths join the shared existence and
+  // cross-category uniqueness checks above rather than getting a weaker one.
+  it("keeps Ranked role mascots disjoint from the Ranked class characters", () => {
+    const roleArt = new Set(Object.values(MOGZY_ROLE_ASSETS));
+    expect(roleArt.size).toBe(5);
+    for (const classArt of Object.values(MOGZY_CLASS_ASSETS)) {
+      expect(roleArt.has(classArt), classArt).toBe(false);
     }
   });
 

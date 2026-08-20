@@ -6,6 +6,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RankedClassCarousel from "./RankedClassCarousel";
 import { RANKED_ROLES, RANKED_ROLE_LABELS } from "@/lib/ranked-public/roles";
+import {
+  MOGZY_MASCOT_ASSETS,
+  MOGZY_ROLE_ASSETS,
+} from "@/components/mascot/mascot-assets";
 
 afterEach(cleanup);
 
@@ -34,6 +38,15 @@ describe("RankedClassCarousel — stage", () => {
       expect(screen.getByTestId(`ranked-class-slide-${role}`).textContent).toContain(
         RANKED_ROLE_LABELS[role],
       );
+    }
+  });
+
+  it("gives every role its own mascot from the canonical map, never the base portrait", () => {
+    renderCarousel();
+    for (const role of RANKED_ROLES) {
+      const img = screen.getByTestId(`ranked-class-slide-${role}`).querySelector("img")!;
+      expect(img.getAttribute("src"), role).toBe(MOGZY_ROLE_ASSETS[role]);
+      expect(img.getAttribute("src"), role).not.toBe(MOGZY_MASCOT_ASSETS.base);
     }
   });
 
