@@ -1497,6 +1497,8 @@ html.high-contrast * { text-shadow: none !important; }
   .mr-sting__mark {
     animation: mr-sting-fade 620ms linear both;
     transform: none;
+  }
+}
 
 /*  Academy Welcome — the cinematic tome (HI1-C) 
    A LOCAL theme layer, scoped to `.academy-tome` and `.academy-welcome`, which
