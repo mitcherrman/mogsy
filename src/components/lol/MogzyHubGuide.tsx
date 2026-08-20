@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import {
   HUB_GUIDE_MODES,
@@ -76,6 +76,59 @@ export default function MogzyHubGuide({
   if (activeMode) lastModeRef.current = activeMode;
   const displayMode = activeMode ?? lastModeRef.current;
 
+  // --- Facing (mascot animation prototype) -------------------------------
+  // The base artwork is drawn facing slightly LEFT: the tome is held out on
+  // the viewer's left, the hat brim dips left, and the hat tip, its star and
+  // the trailing ghost tail all stream off to the right. So scaleX(1) — the
+  // untouched artwork — already reads as "looking left", and only right-side
+  // cards need the mirror. Idle returns to the unmirrored original.
+  const facing = activeMode && activeMode.lean.x > 0 ? -1 : 1;
+
+  // --- Click reaction (mascot animation prototype) ------------------------
+  // Retriggered by hand rather than by a React flag: re-adding the same
+  // animation class in the same frame is a no-op, so a second click during
+  // the first hop would be swallowed. Dropping the class, forcing a reflow
+  // and re-adding it restarts the keyframes from 0% every time, which is
+  // exactly the "rapid repeated clicks never stick" behaviour we want — and
+  // since 0% and 100% are both the identity transform, restarting mid-flight
+  // is a continuous snap back to rest rather than a visible jump.
+  const reactRef = useRef<HTMLDivElement | null>(null);
+  const REACT_CLASS = "mogzy-click-react";
+
+  const handleReact = useCallback(() => {
+    const el = reactRef.current;
+    if (!el) return;
+    // Respect the user's motion setting at the source: the CSS override
+    // already cancels the keyframes, but not adding the class at all keeps
+    // the DOM honest for tests and for anything that reads the class later.
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches
+    ) {
+      return;
+    }
+    el.classList.remove(REACT_CLASS);
+    // Force a style recalculation so the removal is committed before the
+    // re-add — without this the browser coalesces both into "no change".
+    void el.offsetWidth;
+    el.classList.add(REACT_CLASS);
+  }, []);
+
+  // The class is self-clearing: the animation has no fill mode, so the
+  // element is already back at rest when it ends. Removing it on animationend
+  // just keeps the DOM tidy (and keeps `data-reacting` truthful).
+  useEffect(() => {
+    const el = reactRef.current;
+    if (!el) return;
+    const onEnd = () => el.classList.remove(REACT_CLASS);
+    el.addEventListener("animationend", onEnd);
+    el.addEventListener("animationcancel", onEnd);
+    return () => {
+      el.removeEventListener("animationend", onEnd);
+      el.removeEventListener("animationcancel", onEnd);
+    };
+  }, []);
+
   return (
     // Idle bob layer — unchanged from the pre-guide hub markup.
     <div className="academy-mogzy-float absolute inset-x-0 bottom-[16%] flex justify-center">
@@ -88,7 +141,12 @@ export default function MogzyHubGuide({
         // 340ms with a whisper of overshoot (control point y > 1): deliberate
         // glide out, gentle settle — tuned for the ~90px travel; 500ms read
         // as sluggish at this distance and plain ease-out read as mechanical.
-        className="relative transition-transform duration-[340ms] ease-[cubic-bezier(0.3,1.06,0.35,1)] [transform:translate(var(--guide-lean-x,0px),var(--guide-lean-y,0px))] motion-reduce:transition-none motion-reduce:[transform:none]"
+        // The transform, that curve and the reduced-motion pin all live in
+        // `.mogzy-lean-glide` (index.css). They used to be Tailwind
+        // `duration-[340ms]`/`ease-[…]` utilities, which this build does not
+        // emit for arbitrary values — so the glide silently ran at the 150ms
+        // ease-in-out default. Same intended motion, now actually applied.
+        className="mogzy-lean-glide relative"
         style={
           {
             "--guide-lean-x": leanXExpr,
@@ -137,7 +195,7 @@ export default function MogzyHubGuide({
                 "linear-gradient(178deg, rgba(247,239,217,0.97) 0%, rgba(232,218,186,0.95) 46%, rgba(208,190,152,0.97) 100%)",
             } as React.CSSProperties
           }
-          className={`absolute bottom-[calc(100%-6px)] left-1/2 z-10 w-[clamp(170px,15vw,230px)] rounded-lg border border-[#b9934c]/60 bg-[#c6b48f] px-3 py-2 text-center shadow-[inset_0_0_0_1px_rgba(255,248,226,0.45),0_10px_24px_rgba(0,0,0,0.5)] transition-[opacity,transform] duration-[340ms] ease-[cubic-bezier(0.3,1.06,0.35,1)] motion-reduce:transition-none motion-reduce:[transform:translate(-50%,0)] ${
+          className={`absolute bottom-[calc(100%-6px)] left-1/2 z-10 w-[clamp(170px,15vw,230px)] rounded-lg border border-[#b9934c]/60 bg-[#c6b48f] px-3 py-2 text-center shadow-[inset_0_0_0_1px_rgba(255,248,226,0.45),0_10px_24px_rgba(0,0,0,0.5)] mogzy-lean-bubble motion-reduce:[transform:translate(-50%,0)] ${
             activeMode
               ? "[transform:translate(calc(-50%+var(--guide-bubble-x,0px)),var(--guide-bubble-y,0px))] opacity-100"
               : "[transform:translate(calc(-50%+var(--guide-bubble-x,0px)),calc(var(--guide-bubble-y,0px)+6px))] opacity-0"
@@ -170,30 +228,65 @@ export default function MogzyHubGuide({
               gradient's bottom stop so the seam where the tail overlaps the
               bubble's border disappears into the parchment. */}
           <div
-            className="absolute left-[clamp(14px,calc(50%-var(--guide-bubble-x,0px)),calc(100%-14px))] top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[#b9934c]/60 bg-[#d0be98] transition-[left] duration-[340ms] ease-[cubic-bezier(0.3,1.06,0.35,1)] motion-reduce:transition-none motion-reduce:left-1/2"
+            className="absolute left-[clamp(14px,calc(50%-var(--guide-bubble-x,0px)),calc(100%-14px))] top-full h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-b border-r border-[#b9934c]/60 bg-[#d0be98] mogzy-lean-bubble-tail motion-reduce:left-1/2"
             aria-hidden
           />
         </div>
 
-        {/* Ambient glow + mascot — unchanged from the pre-guide hub markup. */}
+        {/* Facing layer (mascot animation prototype). Wraps ONLY the mascot
+            and its glow — never the speech bubble, which must stay readable
+            and must never mirror. A horizontal flip and nothing else, so it
+            composes cleanly with the layers above (idle bob, contextual
+            lean) and the reaction layer below it. scaleX interpolates
+            continuously through 0, which reads as Mogzy turning to face the
+            card rather than as a snap — hence no visual jump on change.
+            The transition itself lives in index.css (`.mogzy-facing-turn`),
+            which is also where reduced motion pins it at the unmirrored
+            artwork, matching the way the lean layer pins the glide. */}
         <div
-          className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(255,214,140,0.28) 0%, rgba(120,160,255,0.12) 45%, transparent 70%)",
-            filter: "blur(14px)",
-          }}
-        />
+          data-testid="mogzy-guide-facing"
+          data-facing={facing === -1 ? "right" : "left"}
+          className="mogzy-facing-turn"
+          style={{ "--mogzy-facing": facing } as React.CSSProperties}
+        >
+          {/* Reaction layer (mascot animation prototype). Idle by default —
+              it carries a transform only while the click keyframes run, so
+              it costs nothing in every other state and Mogzy resumes
+              whatever the layers above him are doing (idle bob, or the lean
+              of a still-active card) the instant the hop finishes. */}
+          <div ref={reactRef} data-testid="mogzy-guide-react">
+            {/* Ambient glow + mascot — unchanged from the pre-guide hub markup. */}
+            <div
+              className="absolute left-1/2 top-1/2 h-[130%] w-[130%] -translate-x-1/2 -translate-y-1/2"
+              style={{
+                background:
+                  "radial-gradient(ellipse at center, rgba(255,214,140,0.28) 0%, rgba(120,160,255,0.12) 45%, transparent 70%)",
+                filter: "blur(14px)",
+              }}
+            />
         {/* ~88% of the original clamp(110px,11vw,190px): the host stays the
             anchor of the Academy, but the slimmer silhouette clears the
             radio dock above him and gives the stronger glide (±60–100px)
             room to read without crowding the inner book edges. */}
-        <img
-          src="/mascot/mogzy-mascot-base-v1.png"
-          alt=""
-          draggable={false}
-          className="relative w-[clamp(97px,9.7vw,167px)] drop-shadow-[0_12px_24px_rgba(0,0,0,0.55)]"
-        />
+            {/* pointer-events-auto is scoped to the mascot image alone (the
+                lane and the glow stay transparent to the pointer), so the
+                click target is Mogzy's own box and nothing else — the book
+                cards and the radio dock keep every event they had. The
+                reaction is a decorative easter egg inside the guide's
+                aria-hidden subtree and it never navigates, so it stays a
+                plain div rather than a button: adding a focus stop here
+                would put an unlabelled, purely cosmetic control into the
+                hub's tab order ahead of the cards. Keyboard parity for the
+                guide itself is unchanged — it still rides card focus. */}
+            <img
+              src="/mascot/mogzy-mascot-base-v1.png"
+              alt=""
+              draggable={false}
+              onClick={handleReact}
+              className="pointer-events-auto relative w-[clamp(97px,9.7vw,167px)] cursor-pointer select-none drop-shadow-[0_12px_24px_rgba(0,0,0,0.55)]"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -620,3 +620,148 @@ describe("LolHub — automatic tutorial popup under the global policies", () => 
     expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
   });
 });
+
+/**
+ * Mascot animation prototype: directional facing + the click reaction.
+ * Both live on their own transform layers inside MogzyHubGuide, above the
+ * untouched idle-float root and contextual lean layer.
+ */
+describe("LolHub — Mogzy mascot animation prototype", () => {
+  const facing = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>('[data-testid="mogzy-guide-facing"]')!;
+  const react = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>('[data-testid="mogzy-guide-react"]')!;
+  const mascot = (container: HTMLElement) =>
+    container.querySelector<HTMLImageElement>('img[src*="mogzy-mascot-base"]')!;
+  const card = (container: HTMLElement, id: HubGuideModeId) =>
+    container.querySelector<HTMLElement>(`[data-guide-mode="${id}"]`)!;
+
+  it("idle sits at the unmirrored artwork, which already faces left", () => {
+    const { container } = renderHub();
+    expect(facing(container).style.getPropertyValue("--mogzy-facing")).toBe("1");
+    expect(facing(container).getAttribute("data-facing")).toBe("left");
+  });
+
+  it("mirrors toward the hovered card's side, for every card", () => {
+    const { container } = renderHub();
+    for (const id of Object.keys(HUB_GUIDE_MODES) as HubGuideModeId[]) {
+      fireEvent.mouseOver(card(container, id));
+      // The facing must agree with the direction Mogzy is already gliding.
+      const expected = HUB_GUIDE_MODES[id].lean.x > 0 ? "right" : "left";
+      expect(facing(container).getAttribute("data-facing"), id).toBe(expected);
+      expect(facing(container).style.getPropertyValue("--mogzy-facing")).toBe(
+        expected === "right" ? "-1" : "1",
+      );
+      fireEvent.mouseOut(card(container, id));
+    }
+  });
+
+  it("returns to the normal orientation once the cards go idle", async () => {
+    const { container } = renderHub();
+    fireEvent.mouseOver(card(container, "archives"));
+    expect(facing(container).getAttribute("data-facing")).toBe("right");
+    fireEvent.mouseOut(card(container, "archives"));
+    await waitFor(() =>
+      expect(facing(container).getAttribute("data-facing")).toBe("left"),
+    );
+  });
+
+  it("facing never touches the speech bubble (it must not read mirrored)", () => {
+    const { container } = renderHub();
+    fireEvent.mouseOver(card(container, "combat-lab"));
+    expect(facing(container).contains(screen.getByTestId("mogzy-guide-bubble"))).toBe(
+      false,
+    );
+    expect(facing(container).contains(mascot(container))).toBe(true);
+  });
+
+  it("clicking Mogzy plays the reaction without navigating", () => {
+    const { container } = renderHub();
+    expect(react(container).className).not.toContain("mogzy-click-react");
+    fireEvent.click(mascot(container));
+    expect(react(container).className).toContain("mogzy-click-react");
+    // Decorative easter egg only: the mascot is not a link or a button.
+    expect(mascot(container).closest("a")).toBeNull();
+    expect(mascot(container).closest("button")).toBeNull();
+  });
+
+  it("rapid repeated clicks restart the reaction instead of sticking", () => {
+    const { container } = renderHub();
+    fireEvent.click(mascot(container));
+    fireEvent.click(mascot(container));
+    fireEvent.click(mascot(container));
+    // Exactly one instance of the class — no accumulation, no stuck state.
+    expect(react(container).className.split(/\s+/).filter((c) => c === "mogzy-click-react"))
+      .toHaveLength(1);
+    // And the animation is self-clearing when it completes.
+    fireEvent.animationEnd(react(container));
+    expect(react(container).className).not.toContain("mogzy-click-react");
+  });
+
+  it("clicking while a card is active leaves that card's state intact", () => {
+    const { container } = renderHub();
+    fireEvent.mouseOver(card(container, "stat-check"));
+    fireEvent.click(mascot(container));
+    const bubble = screen.getByTestId("mogzy-guide-bubble");
+    expect(bubble.getAttribute("data-visible")).toBe("true");
+    expect(bubble.getAttribute("data-active-mode")).toBe("stat-check");
+    expect(facing(container).getAttribute("data-facing")).toBe("left");
+    // The lean layer is untouched by the reaction — the hop composes on top.
+    const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-lean"]')!;
+    expect(lean.style.getPropertyValue("--guide-lean-x")).toContain(
+      String(HUB_GUIDE_MODES["stat-check"].lean.x),
+    );
+  });
+
+  // Regression guard for the bug this phase fixed: these timings used to be
+  // Tailwind `duration-[…]`/`ease-[…]` utilities, which this build never
+  // emits for arbitrary values — so the lean silently ran at the 150ms
+  // default instead of its authored 340ms. jsdom does not load index.css, so
+  // computed style cannot see it; asserting against the stylesheet source is
+  // what keeps the shipped number equal to the intended number.
+  it("keeps the mascot timings in authored CSS, not arbitrary Tailwind utilities", async () => {
+    const { readFileSync } = await import("node:fs");
+    // Repo-root relative: vitest runs from the project root.
+    const css = readFileSync("src/index.css", "utf8");
+    const rule = (selector: string) =>
+      css.slice(css.indexOf(`${selector} {`), css.indexOf("}", css.indexOf(`${selector} {`)));
+
+    // One gesture, one beat: mascot glide, bubble and tail must share it.
+    expect(rule(".mogzy-lean-glide")).toContain("340ms");
+    expect(rule(".mogzy-lean-bubble")).toContain("340ms");
+    expect(rule(".mogzy-lean-bubble-tail")).toContain("340ms");
+    // Approved prototype timings — do not drift.
+    expect(rule(".mogzy-facing-turn")).toContain("280ms");
+    expect(rule(".mogzy-click-react")).toContain("540ms");
+
+    // The markup must carry the authored classes rather than re-introducing
+    // a duration utility whose value never reaches the page.
+    const { container } = renderHub();
+    const lean = container.querySelector('[data-testid="mogzy-guide-lean"]')!;
+    expect(lean.className).toContain("mogzy-lean-glide");
+    expect(lean.className).not.toMatch(/duration-\[/);
+    expect(facing(container).className).not.toMatch(/duration-\[/);
+  });
+
+  it("reduced motion suppresses the click reaction entirely", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) =>
+      ({
+        matches: q.includes("prefers-reduced-motion"),
+        media: q,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        onchange: null,
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    try {
+      const { container } = renderHub();
+      fireEvent.click(mascot(container));
+      expect(react(container).className).not.toContain("mogzy-click-react");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
