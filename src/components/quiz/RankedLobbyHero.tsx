@@ -55,6 +55,7 @@ import { Badge } from "@/components/ui/badge";
 import RankCrown from "@/components/ranked/RankCrown";
 import RankedClassCarousel from "@/components/quiz/RankedClassCarousel";
 import RankedPlayGem from "@/components/quiz/RankedPlayGem";
+import LobbyPanel from "@/components/quiz/LobbyPanel";
 import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
@@ -141,13 +142,17 @@ export default function RankedLobbyHero({
   return (
     <section
       data-testid="ranked-hero"
-      className="relative grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.05fr)_minmax(0,0.9fr)] lg:gap-5 xl:gap-8"
+      className="relative grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.05fr)_minmax(0,0.9fr)] lg:gap-4 xl:gap-6"
     >
       {/* ══ LEFT — role character select ═══════════════════════════════════ */}
-      <div className="order-2 flex flex-col lg:order-1" data-testid="hero-role-column">
+      <div className="order-2 flex min-w-0 flex-col lg:order-1" data-testid="hero-role-column">
+        <LobbyPanel>
         <ColumnHeading>Choose your role</ColumnHeading>
+        {/* The role stage is the shortest of the three columns, so on the
+            desktop rack (where all three plates share one height) it centres
+            in its plate rather than leaving a tall empty foot below it. */}
         <RankedClassCarousel
-          className="mt-2"
+          className="mt-1.5 lg:my-auto"
           value={rankedRole}
           onSelect={(role) => onSelectRole?.(role)}
           disabled={roleSelectDisabled || !onSelectRole}
@@ -155,6 +160,7 @@ export default function RankedLobbyHero({
           records={rowsWithRole > 0 ? roleRecords : null}
           recordScopeLabel={rowsWithRole > 0 ? roleRecordScopeLabel(rowsWithRole) : undefined}
         />
+        </LobbyPanel>
       </div>
 
       {/* ══ CENTRE — the focal column ══════════════════════════════════════ */}
@@ -162,10 +168,16 @@ export default function RankedLobbyHero({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="order-1 flex flex-col items-center text-center lg:order-2"
+        className="order-1 flex min-w-0 flex-col lg:order-2"
         data-testid="hero-play-column"
       >
-        <h1 className="bg-gradient-to-b from-[#fdf3d2] via-[#e8cd85] to-[#b7913c] bg-clip-text text-[30px] font-black leading-none tracking-[0.14em] text-transparent drop-shadow-[0_2px_12px_rgba(201,168,76,0.35)] sm:text-[40px] lg:text-[44px] xl:text-[52px]">
+        <LobbyPanel emphasis className="items-center text-center">
+        {/* The wordmark steps DOWN at `lg` on purpose: that is where the
+            single stacked column becomes the three-column rack and the centre
+            plate is at its narrowest, so the largest sizes are held back until
+            `xl`/`2xl` widen it again. Sized to fit the plate at every step —
+            it never overhangs its own panel. */}
+        <h1 className="bg-gradient-to-b from-[#fdf3d2] via-[#e8cd85] to-[#b7913c] bg-clip-text text-[30px] font-black leading-none tracking-[0.14em] text-transparent drop-shadow-[0_2px_12px_rgba(201,168,76,0.35)] sm:text-[40px] lg:text-[36px] xl:text-[46px] 2xl:text-[52px]">
           LEAGUECRAFT
         </h1>
         <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.52em] text-[#7fd6ef]/80 sm:text-xs">
@@ -174,7 +186,7 @@ export default function RankedLobbyHero({
 
         {/* Emblem slot — sized for whatever emblem family RE1 ships next. */}
         <div
-          className="relative mt-3 flex h-24 w-24 items-center justify-center rounded-full sm:h-28 sm:w-28"
+          className="relative mt-2 flex h-24 w-24 items-center justify-center rounded-full sm:h-28 sm:w-28"
           style={{
             background:
               "radial-gradient(circle, rgba(201,168,76,0.30) 0%, rgba(80,170,220,0.16) 46%, transparent 72%)",
@@ -195,7 +207,7 @@ export default function RankedLobbyHero({
           )}
         </div>
 
-        <h2 className="mt-1.5 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+        <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {ranked.isPlaced ? rankName : "Placement Series"}
         </h2>
 
@@ -225,10 +237,10 @@ export default function RankedLobbyHero({
           </Badge>
         )}
 
-        <RankedPlayGem className="mt-4" onClick={onPlayRanked} disabled={playDisabled} />
+        <RankedPlayGem className="mt-3" onClick={onPlayRanked} disabled={playDisabled} />
 
         {/* Stakes, directly under the action they belong to. */}
-        <div className="mt-5 flex items-center gap-4 text-[11px] font-semibold uppercase tracking-wider">
+        <div className="mt-3.5 flex items-center gap-4 text-[11px] font-semibold uppercase tracking-wider">
           <span className="flex items-center gap-1 text-emerald-300">
             <TrendingUp className="h-3 w-3" />
             Win
@@ -245,7 +257,7 @@ export default function RankedLobbyHero({
         </div>
 
         {/* Status: the placement series, or progress toward the next tier. */}
-        <div className="mt-2.5 w-full max-w-xs">
+        <div className="mt-2 w-full max-w-xs">
           {!ranked.isPlaced ? (
             <div className="rounded-md border border-amber-400/25 bg-amber-400/5 px-2.5 py-1.5 text-left">
               <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] uppercase tracking-wider">
@@ -277,14 +289,16 @@ export default function RankedLobbyHero({
             )
           )}
         </div>
+        </LobbyPanel>
       </motion.div>
 
       {/* ══ RIGHT — personal identity ══════════════════════════════════════ */}
-      <div className="order-3 flex flex-col" data-testid="hero-profile-column">
+      <div className="order-3 flex min-w-0 flex-col" data-testid="hero-profile-column">
+        <LobbyPanel>
         <ColumnHeading align="right">Your record</ColumnHeading>
 
         {/* Portrait mirrors the left stage: same height, facing inward. */}
-        <div className="relative mt-2 flex h-[244px] items-end justify-center sm:h-[288px] lg:h-[324px]">
+        <div className="relative mt-1.5 flex h-[244px] items-end justify-center sm:h-[288px] lg:h-[324px]">
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-6 bottom-10 top-4 rounded-[999px] blur-xl"
@@ -397,6 +411,7 @@ export default function RankedLobbyHero({
             <Link to="/lol/history">Full history</Link>
           </Button>
         </div>
+        </LobbyPanel>
       </div>
     </section>
   );
