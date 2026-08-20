@@ -264,18 +264,48 @@ describe("RankedLobbyHero — the Bronze baseline (presentation only)", () => {
     expect(emblem.getAttribute("alt")).toMatch(/baseline/i);
   });
 
-  it("holds the baseline back with LIGHT only — never by draining its colour", () => {
-    // The centre emblem and the right column's chip are the same tier and
-    // have to read as the same metal. Desaturating one of them made the
-    // sheet show one rank in two colours, which is why chroma is off-limits
-    // here and the difference is spent on luminance instead.
+  it("draws the baseline through the shared component, never with an inline filter", () => {
+    // Both baseline emblems are the same tier and have to read as the same
+    // metal. That is now enforced structurally — one component, one tint in
+    // `index.css` — rather than by two call sites agreeing on a filter
+    // string. An inline filter here would also be unbeatable by the sheet,
+    // which is what stopped the centre emblem from taking its glow.
     const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
-    const filters = Array.from(container.querySelectorAll<HTMLImageElement>("img[data-baseline]"))
-      .map((img) => img.style.filter);
-    expect(filters.length).toBe(2);
-    expect(new Set(filters).size).toBe(1); // both emblems, one treatment
-    expect(filters[0]).not.toContain("grayscale");
-    expect(filters[0]).toContain("opacity");
+    const emblems = Array.from(container.querySelectorAll<HTMLImageElement>("img[data-baseline]"));
+    expect(emblems.length).toBe(2);
+    for (const img of emblems) {
+      expect(img.style.filter).toBe("");
+      expect(img.closest(".lc-emblem")).toBeTruthy();
+    }
+  });
+
+  it("makes the centre emblem the ceremonial one and the right column's the quieter", () => {
+    // The hierarchy this pass exists for, asserted where a reader can see it:
+    // one ceremonial emblem per page, and the supporting one visibly
+    // subordinate — same art, same state, less light.
+    const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
+    const wrappers = Array.from(container.querySelectorAll<HTMLElement>(".lc-emblem"));
+    expect(wrappers.map((w) => w.dataset.emphasis)).toEqual(["ceremonial", "standard"]);
+    expect(wrappers.map((w) => w.dataset.variant)).toEqual(["hero", "standard"]);
+
+    const moving = (w: HTMLElement) =>
+      w.querySelectorAll(".lc-emblem__glint, .lc-emblem__spark").length;
+    // Both are lit and both move — the difference is degree, not a switch.
+    expect(moving(wrappers[1])).toBeGreaterThan(0);
+    expect(moving(wrappers[0])).toBeGreaterThan(moving(wrappers[1]));
+  });
+
+  it("keeps the placement emblem radiant — it is a ceremonial marker, not a placeholder", () => {
+    // The reversal. A dimmed emblem directly above the PLAY seal read as a
+    // broken image; what marks the state is `data-baseline` and the copy
+    // around it, not an absence of light.
+    const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
+    const hero = container.querySelector<HTMLElement>('.lc-emblem[data-variant="hero"]')!;
+    expect(hero.dataset.baseline).toBe("bronze");
+    expect(hero.dataset.tier).toBeUndefined();
+    expect(hero.querySelector(".lc-emblem__halo")).toBeTruthy();
+    expect(hero.querySelector(".lc-emblem__glint")).toBeTruthy();
+    expect(hero.querySelectorAll(".lc-emblem__spark").length).toBeGreaterThan(0);
   });
 
   it("names the state as the ladder's floor rather than as exclusion from it", () => {

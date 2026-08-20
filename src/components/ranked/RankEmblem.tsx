@@ -12,8 +12,10 @@
  * ────────────
  *  - tier → art resolution (through `resolveRankedEmblemUrl`, never a second
  *    art path of its own);
- *  - the size variants the lobby actually has: a `hero` emblem and a `chip`;
- *  - earned vs baseline state, and the ONE treatment that separates them;
+ *  - the size ladder — `hero`, `standard`, `compact`;
+ *  - the emphasis ladder — `ceremonial`, `standard`, `quiet` — which is the
+ *    axis that decides how much light an instance is allowed;
+ *  - earned vs baseline state, and the treatment that separates them;
  *  - the ambient halo, the rare glint and the sparks — as DOM slots only. The
  *    motion itself is entirely in `index.css` (`.lc-emblem*`), because a
  *    React timer loop for a highlight that fires once every eleven seconds is
@@ -22,12 +24,41 @@
  *  - the `data-tier` / `data-baseline` contract every existing test reads;
  *  - an error fallback, so a missing emblem never leaves a hole in the layout.
  *
+ * TWO AXES, NOT ONE
+ * ─────────────────
+ * `variant` is how BIG the emblem is; `emphasis` is how much light it gets.
+ * They were one axis until this pass, and collapsing them was the reason the
+ * centre emblem could not be made ceremonial: "hero" meant both "96px" and
+ * "allowed to glint", so there was no way to say "the lobby's Bronze is the
+ * most important emblem on the sheet" without also saying "every hero-size
+ * emblem everywhere is". Each `variant` still picks a sensible default
+ * `emphasis`, so the common call stays one prop; the split only matters when
+ * a site wants to disagree with the default.
+ *
  * WHAT IT DOES NOT OWN — the RE1 boundary
  * ───────────────────────────────────────
  * It computes no tier, no rating and no threshold, and it decides nothing
  * about whether a tier has been earned: the caller passes `earned`, because
  * only the caller knows whether placements are done. This component cannot
  * award a rank.
+ *
+ * EARNED IS SEMANTICS, EMPHASIS IS PRESENTATION
+ * ─────────────────────────────────────────────
+ * These used to be the same thing: an unearned emblem was structurally denied
+ * the glint and the sparks, on the reasoning that an unwon rank must not
+ * celebrate. The DOM contract that carried it — `data-tier` means "won",
+ * `data-baseline` means "the ladder's floor" — is untouched and is still the
+ * thing every other surface reads.
+ *
+ * The PRESENTATION rule changed. The lobby's placement Bronze is the sheet's
+ * single most important emblem: it is what a new account sees, it is what the
+ * PLAY seal sits under, and drawing it as a dimmed placeholder made the top
+ * of the page look broken rather than unearned. So light is governed by
+ * `emphasis` alone now, and a baseline emblem at `ceremonial` gets the full
+ * treatment. What still separates baseline from earned is its own tint and
+ * its own halo tone (`[data-baseline]` in `index.css`) — the same metal in a
+ * different light, at every emphasis. The state stays legible; it is no
+ * longer legible by being drab.
  *
  * THE MASK — a cross-origin limit, measured
  * ─────────────────────────────────────────
@@ -62,36 +93,35 @@ import { useState } from "react";
 import { resolveRankedEmblemUrl } from "@/lib/progression/rankedArt";
 import type { RankTier } from "@/lib/progression/tiers";
 
-export type RankEmblemSize = "hero" | "chip";
+/** How big. Art size only — see TWO AXES above. */
+export type RankEmblemVariant = "hero" | "standard" | "compact";
 
 /**
- * Baseline art, drawn as a slightly quieter emblem — the same metal, in lower
- * light, rather than a different piece of art.
- *
- * This has been retuned twice and both corrections went the same way. The
- * first pass drained it (`grayscale(0.42) brightness(0.9)`), which on an asset
- * that is ALREADY dark and low-chroma produced a muddy grey-violet crest —
- * broken art, not an unearned rank. The second softened that but still carried
- * enough grey that the hero emblem read visibly greyer than the identical
- * emblem in the chip beside it: one rank, two colours, on one sheet.
- *
- * So the desaturation is gone. What remains is a small light difference —
- * about 8% of transparency and a hair of extra warmth. Now that both sites
- * render through this component the two can no longer disagree, which is the
- * real fix; the constant just makes it structural.
- *
- * COHERENCE IS THE INVARIANT. Any future retune keeps chroma alone and spends
- * its budget on luminance.
+ * How much light. `ceremonial` is a page's focal emblem and there should be
+ * at most one on a screen; `standard` is a lit emblem that is not the
+ * subject; `quiet` is the halo and nothing that moves, for emblems small
+ * enough that a travelling highlight would be noise rather than light.
  */
-export const BASELINE_EMBLEM_FILTER =
-  "sepia(0.12) saturate(1.06) brightness(1.03) opacity(0.92)";
+export type RankEmblemEmphasis = "ceremonial" | "standard" | "quiet";
 
 /**
- * How many sparks a tier is allowed. The whole effect set is the same at
- * every tier — only its intensity moves — and the count is the one part of
- * that intensity which cannot be expressed as a CSS custom property, so it
- * lives here and everything else (halo opacity, glint strength, cadence)
- * lives on `.lc-emblem[data-tier]` in `index.css`.
+ * What a variant asks for when the caller does not say. Sensible, not
+ * binding: the lobby centre takes `hero` and its `ceremonial` default, while
+ * a future hero-size emblem in a gallery can drop to `standard` without
+ * resizing.
+ */
+export const DEFAULT_EMPHASIS: Record<RankEmblemVariant, RankEmblemEmphasis> = {
+  hero: "ceremonial",
+  standard: "standard",
+  compact: "quiet",
+};
+
+/**
+ * How many sparks a tier is allowed AT CEREMONIAL. The whole effect set is
+ * the same at every tier — only its intensity moves — and the count is the
+ * one part of that intensity which cannot be expressed as a CSS custom
+ * property, so it lives here and everything else (halo opacity, glint
+ * strength, cadence) lives on `.lc-emblem[data-tier]` in `index.css`.
  *
  * Three is the ceiling on purpose. Past that the emblem stops reading as
  * struck metal catching the light and starts reading as a loot drop.
@@ -118,10 +148,35 @@ const SPARK_SITES = [
   { top: "34%", left: "30%", delay: "7.1s" },
 ] as const;
 
+/**
+ * Sparks per emphasis, as a cap on the tier's own count. Sparks are the
+ * CEREMONIAL signature and nothing else has them, which is what gives the
+ * three emphases a hierarchy you can name:
+ *
+ *     quiet       halo
+ *     standard    halo + the rare glint
+ *     ceremonial  halo + the rare glint + the tier's sparks
+ *
+ * `standard` was briefly allowed one spark. It was wrong at both ends: a 6px
+ * spark on a 24px emblem is a quarter of the object, so it read as noise
+ * rather than as struck light — and at Bronze, whose tier count is also one,
+ * it left the ceremonial and the standard emblem carrying the identical
+ * layer set, so the hierarchy was numbers in a stylesheet and nothing
+ * structural. It is a cap and not a flag because the tier ladder still
+ * decides how many a ceremonial emblem actually gets.
+ */
+const SPARK_CAP: Record<RankEmblemEmphasis, number> = {
+  ceremonial: 3,
+  standard: 0,
+  quiet: 0,
+};
+
 export default function RankEmblem({
   tier,
   earned,
-  size = "hero",
+  variant = "standard",
+  emphasis,
+  animated = true,
   alt,
   decorative = false,
   fallbackSrc = null,
@@ -133,10 +188,21 @@ export default function RankEmblem({
   /**
    * Whether this tier has actually been won. The caller owns this: only it
    * knows whether placements are complete. `false` renders the same art in
-   * the visibly held-back baseline state and stamps `data-baseline`.
+   * the baseline tint and stamps `data-baseline`. It no longer decides how
+   * much light the emblem gets — see EARNED IS SEMANTICS above.
    */
   earned: boolean;
-  size?: RankEmblemSize;
+  /** How big. Defaults to `standard`: the reusable case, not the lobby's. */
+  variant?: RankEmblemVariant;
+  /** How much light. Defaults from `variant` — see `DEFAULT_EMPHASIS`. */
+  emphasis?: RankEmblemEmphasis;
+  /**
+   * An opt-out for surfaces that must hold still for a reason CSS cannot see
+   * — a screenshot harness, a print sheet, a dense list where a dozen emblems
+   * would glint at once. `prefers-reduced-motion` is handled in CSS and needs
+   * nothing from the caller.
+   */
+  animated?: boolean;
   /** Alt text. Ignored when `decorative`, which is the honest chip case. */
   alt?: string;
   /** Chip-style usage where an adjacent label already names the tier. */
@@ -147,22 +213,25 @@ export default function RankEmblem({
   fallback?: React.ReactNode;
   className?: string;
 }) {
-  // Resolution order: the size's own art, then the large art (the small set is
-  // the incomplete one), then whatever legacy path the caller still has.
+  // Resolution order: the variant's own art, then the large art (the small set
+  // is the incomplete one), then whatever legacy path the caller still has.
   const resolved =
-    resolveRankedEmblemUrl(tier, size === "hero" ? "large" : "small") ??
+    resolveRankedEmblemUrl(tier, variant === "hero" ? "large" : "small") ??
     resolveRankedEmblemUrl(tier, "large") ??
     fallbackSrc;
 
   const [src, setSrc] = useState<string | null>(resolved ?? null);
 
-  // Effects are a HERO-size affordance. A 16px chip cannot carry a travelling
-  // highlight or a spark — at that size they are single pixels of noise — and
-  // the baseline is not an earned rank, so it gets the ambient halo and
-  // nothing else. Both exclusions are structural: the layers are not in the
-  // DOM at all, so there is nothing to accidentally re-enable in CSS.
-  const animated = earned && size === "hero";
-  const sparks = animated ? SPARK_SITES.slice(0, SPARK_COUNT[tier]) : [];
+  const level = emphasis ?? DEFAULT_EMPHASIS[variant];
+
+  // Emphasis alone gates the moving layers, and `quiet` has none. Both
+  // exclusions are structural — the layers are not in the DOM at all, so
+  // there is nothing for a stray CSS rule to switch back on.
+  // `moving` and the spark count are independent on purpose: `standard`
+  // moves — it keeps the glint — but takes no sparks, and that gap is the
+  // hierarchy. See `SPARK_CAP`.
+  const moving = animated && level !== "quiet";
+  const sparks = moving ? SPARK_SITES.slice(0, Math.min(SPARK_COUNT[tier], SPARK_CAP[level])) : [];
 
   if (!src) {
     return <>{fallback}</>;
@@ -181,7 +250,8 @@ export default function RankEmblem({
   return (
     <span
       className={`lc-emblem ${className}`}
-      data-size={size}
+      data-variant={variant}
+      data-emphasis={level}
       data-tier={earned ? tier : undefined}
       data-baseline={earned ? undefined : tier}
       data-mask={sameOrigin ? "alpha" : "off"}
@@ -199,10 +269,12 @@ export default function RankEmblem({
         draggable={false}
         /* The state attributes stay on the IMAGE, not only on the wrapper:
            they are the assertion "this pixel of art is/is not an awarded
-           tier", and that assertion belongs to the art. */
+           tier", and that assertion belongs to the art. The baseline TINT
+           that used to ride here as an inline `filter` moved into
+           `index.css`, because an inline filter is unbeatable by a
+           stylesheet and it was overwriting the ceremonial emblem's glow. */
         data-tier={earned ? tier : undefined}
         data-baseline={earned ? undefined : tier}
-        style={earned ? undefined : { filter: BASELINE_EMBLEM_FILTER }}
         className="lc-emblem__art"
         onError={() => {
           // One step down the ladder, then out. Never a retry loop.
@@ -210,7 +282,7 @@ export default function RankEmblem({
           else setSrc(null);
         }}
       />
-      {animated && <span aria-hidden="true" className="lc-emblem__glint" />}
+      {moving && <span aria-hidden="true" className="lc-emblem__glint" />}
       {sparks.map((site, i) => (
         <span
           key={i}

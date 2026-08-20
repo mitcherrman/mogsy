@@ -88,11 +88,20 @@ const PLACEMENT_TOTAL = 5;
  * "you are at the bottom of it".
  *
  * THIS IS NOT A TIER CLAIM. Nothing here awards Bronze, computes it, or sends
- * it anywhere: the emblem is rendered in a visibly unearned state (see
- * `RankEmblem`'s baseline treatment), the copy says "baseline" and never "Ranked
- * Bronze", and the moment RE1 hands over a real tier the earned art and the
- * real tier name take over. The rating, the tier and the placement count are
- * still the backend's, unchanged and un-guessed.
+ * it anywhere: the emblem carries `data-baseline` and never `data-tier`, the
+ * copy says "Placement Series" and "Rating set after placements" and never
+ * "Ranked Bronze", and the moment RE1 hands over a real tier the earned art
+ * and the real tier name take over. The rating, the tier and the placement
+ * count are still the backend's, unchanged and un-guessed.
+ *
+ * IT IS ALSO NOT A DIM PLACEHOLDER, and that is a deliberate reversal. The
+ * baseline emblem used to be held back by draining its light, which put a
+ * grey smudge at the top of the sheet directly above the PLAY seal — it read
+ * as a broken image rather than as an unearned rank. The centre emblem is now
+ * the page's ceremonial instance whether or not placements are done; what
+ * marks the state is the baseline's own warm tint and halo tone plus the copy
+ * around it, not an absence of light. See EARNED IS SEMANTICS, EMPHASIS IS
+ * PRESENTATION in `RankEmblem.tsx`.
  *
  * It is `RankTier`-typed on purpose, so it can only ever be one of the five
  * canonical tiers, and it renders through the same `RankEmblem` every earned
@@ -308,7 +317,15 @@ export default function RankedLobbyHero({
             exists AND placements are done. */}
         <RankEmblem
           className="mt-2"
-          size="hero"
+          /* The sheet's focal emblem, and the ONE ceremonial instance on the
+             page — including through placements. `variant` is its size and
+             `emphasis` is its light, and they are separate props precisely so
+             this call can say "the biggest AND the brightest" without making
+             every hero-size emblem elsewhere ceremonial too. `ceremonial` is
+             already `hero`'s default; it is written out because it is a
+             deliberate choice here rather than an inherited one. */
+          variant="hero"
+          emphasis="ceremonial"
           tier={emblemTier}
           earned={showCompetitive}
           /* The alt deliberately says MORE than the badge does. The badge
@@ -550,11 +567,20 @@ export default function RankedLobbyHero({
             className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5"
             style={{ borderColor: INK.rule, background: INK.inset }}
           >
-            {/* Chip size: the halo only. At 16px a travelling highlight is
-                a pixel of noise, so `RankEmblem` withholds the glint and the
-                sparks here — and it is decorative, because the tier is
-                spelled out in the label beside it. */}
-            <RankEmblem size="chip" tier={emblemTier} earned={showCompetitive} decorative />
+            {/* The same emblem, deliberately subordinate. `standard` is 24px
+                and lit — it keeps the halo and the rare glint, and it is
+                capped at a single spark — so the column reads as alive
+                without competing with the ceremonial emblem in the centre.
+                The old 16px chip could not carry a highlight at all; at this
+                size it can, and the two columns now differ by EMPHASIS
+                rather than by one of them being switched off. Decorative,
+                because the tier is spelled out in the label beside it. */}
+            <RankEmblem
+              variant="standard"
+              tier={emblemTier}
+              earned={showCompetitive}
+              decorative
+            />
             <span
               className="text-[10px] font-extrabold uppercase tracking-[0.16em]"
               style={{ color: INK.brass }}

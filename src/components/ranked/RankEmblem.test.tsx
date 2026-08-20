@@ -1,20 +1,33 @@
 /**
  * LC1 — the Ranked emblem component.
  *
- * Two things are under test and they are different in kind. The DOM contract
- * is what every other Ranked surface reads: `data-tier` means "this account
- * HAS this rank", `data-baseline` means "this is the ladder's floor, not an
- * award", and an unearned emblem must not celebrate. The CSS contract is the
- * intensity ladder and the reduced-motion escape, both of which live in
- * `index.css` and cannot be observed from jsdom — so they are asserted
- * against the stylesheet source, the same way the parchment shell's
+ * Three things are under test and they are different in kind.
+ *
+ * The SEMANTIC contract is what every other Ranked surface reads: `data-tier`
+ * means "this account HAS this rank" and `data-baseline` means "this is the
+ * ladder's floor, not an award". It is unchanged by this pass and it is the
+ * part that must never bend.
+ *
+ * The PRESENTATION contract is new, and it deliberately no longer follows the
+ * semantic one: light is governed by `emphasis`, not by `earned`, so the
+ * lobby's placement Bronze is allowed to be the most radiant emblem on the
+ * page. What the tests below hold is the ORDER — ceremonial > standard >
+ * quiet, at every tier and in both states — rather than any single value.
+ *
+ * The CSS contract is the two ladders and the reduced-motion escape, which
+ * live in `index.css` and cannot be observed from jsdom — so they are
+ * asserted against the stylesheet source, the same way the parchment shell's
  * invariants already are.
  */
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import RankEmblem from "./RankEmblem";
+import RankEmblem, {
+  DEFAULT_EMPHASIS,
+  type RankEmblemEmphasis,
+  type RankEmblemVariant,
+} from "./RankEmblem";
 import { RANK_TIERS, type RankTier } from "@/lib/progression/tiers";
 
 afterEach(cleanup);
@@ -34,36 +47,119 @@ describe("RankEmblem — earned vs baseline", () => {
     expect(container.querySelector("[data-tier]")).toBeNull();
   });
 
-  it("holds the baseline back with LIGHT only — never by draining its colour", () => {
-    // The hero emblem and the chip are the same tier and must read as the
-    // same metal; desaturating one of them showed one rank in two colours.
+  it("never carries the tint as an inline filter, which a stylesheet cannot beat", () => {
+    // The baseline tint lives in `index.css` keyed on `[data-baseline]`. It
+    // was an inline `style.filter` for one pass, and that inline value
+    // silently overwrote the ceremonial emblem's glow — an inline filter
+    // beats every rule in the sheet, so the two could not compose.
     const { container } = render(<RankEmblem tier="bronze" earned={false} alt="baseline" />);
-    const filter = container.querySelector<HTMLImageElement>("img")!.style.filter;
-    expect(filter).toContain("opacity");
-    expect(filter).not.toContain("grayscale");
+    expect(container.querySelector<HTMLImageElement>("img")!.style.filter).toBe("");
   });
 
-  it("gives an earned hero emblem its effect layers", () => {
-    const { container } = render(<RankEmblem tier="diamond" earned alt="Diamond ranked emblem" />);
+  it("gives an earned emblem its effect layers", () => {
+    const { container } = render(
+      <RankEmblem tier="diamond" earned variant="hero" alt="Diamond ranked emblem" />,
+    );
     expect(container.querySelector(".lc-emblem__halo")).toBeTruthy();
     expect(container.querySelector(".lc-emblem__glint")).toBeTruthy();
     expect(container.querySelectorAll(".lc-emblem__spark").length).toBeGreaterThan(0);
   });
 
-  it("gives a baseline the ambient halo and NOTHING that celebrates", () => {
-    // Structural, not stylistic: the layers are absent from the DOM, so no
-    // future CSS rule can switch a spark back on for an unearned rank.
-    const { container } = render(<RankEmblem tier="bronze" earned={false} alt="baseline" />);
+  it("lights a ceremonial BASELINE exactly as fully as a ceremonial earned rank", () => {
+    // The direction reversal, as an assertion. The lobby's placement Bronze
+    // is the page's focal emblem and it must not be a dimmed placeholder;
+    // what marks it unearned is `data-baseline` and its own tint, never the
+    // absence of a highlight.
+    const { container } = render(
+      <RankEmblem tier="bronze" earned={false} variant="hero" alt="baseline" />,
+    );
     expect(container.querySelector(".lc-emblem__halo")).toBeTruthy();
-    expect(container.querySelector(".lc-emblem__glint")).toBeNull();
-    expect(container.querySelector(".lc-emblem__spark")).toBeNull();
+    expect(container.querySelector(".lc-emblem__glint")).toBeTruthy();
+    expect(container.querySelectorAll(".lc-emblem__spark").length).toBeGreaterThan(0);
+    // ...and it is STILL not an awarded tier. Both halves matter.
+    expect(container.querySelector("[data-tier]")).toBeNull();
   });
 
-  it("withholds travelling light at chip size, earned or not", () => {
-    // A 16px chip cannot carry a sweep or a spark; at that size they are
-    // single pixels of noise.
-    const { container } = render(<RankEmblem tier="challenger" earned size="chip" decorative />);
-    expect(container.querySelector('.lc-emblem[data-size="chip"]')).toBeTruthy();
+  it("withholds travelling light at compact size, earned or not", () => {
+    // A 16px token cannot carry a sweep or a spark; at that size they are
+    // single pixels of noise. Structural, not stylistic: the layers are
+    // absent from the DOM, so no CSS rule can switch them back on.
+    for (const earned of [true, false]) {
+      const { container } = render(
+        <RankEmblem tier="challenger" earned={earned} variant="compact" decorative />,
+      );
+      expect(container.querySelector('.lc-emblem[data-variant="compact"]')).toBeTruthy();
+      expect(container.querySelector('.lc-emblem[data-emphasis="quiet"]')).toBeTruthy();
+      expect(container.querySelector(".lc-emblem__halo")).toBeTruthy();
+      expect(container.querySelector(".lc-emblem__glint")).toBeNull();
+      expect(container.querySelector(".lc-emblem__spark")).toBeNull();
+      cleanup();
+    }
+  });
+});
+
+describe("RankEmblem — the emphasis axis", () => {
+  it("takes its emphasis from the variant when the caller does not say", () => {
+    for (const [variant, level] of Object.entries(DEFAULT_EMPHASIS)) {
+      const { container } = render(
+        <RankEmblem tier="gold" earned variant={variant as RankEmblemVariant} decorative />,
+      );
+      expect(container.querySelector<HTMLElement>(".lc-emblem")!.dataset.emphasis).toBe(level);
+      cleanup();
+    }
+  });
+
+  it("lets a site disagree with its variant's default — the whole point of two axes", () => {
+    // A hero-size emblem that is not the subject of its page. Before the
+    // split this was unsayable: "hero" meant both sizes and both intensities.
+    const { container } = render(
+      <RankEmblem tier="gold" earned variant="hero" emphasis="quiet" decorative />,
+    );
+    const wrapper = container.querySelector<HTMLElement>(".lc-emblem")!;
+    expect(wrapper.dataset.variant).toBe("hero");
+    expect(wrapper.dataset.emphasis).toBe("quiet");
+    expect(container.querySelector(".lc-emblem__glint")).toBeNull();
+  });
+
+  it("ranks the emphases: ceremonial > standard > quiet, in moving layers", () => {
+    const moving = (level: RankEmblemEmphasis) => {
+      const { container } = render(
+        <RankEmblem tier="challenger" earned variant="hero" emphasis={level} decorative />,
+      );
+      const n =
+        container.querySelectorAll(".lc-emblem__glint").length +
+        container.querySelectorAll(".lc-emblem__spark").length;
+      cleanup();
+      return n;
+    };
+    expect(moving("ceremonial")).toBeGreaterThan(moving("standard"));
+    expect(moving("standard")).toBeGreaterThan(moving("quiet"));
+    expect(moving("quiet")).toBe(0);
+  });
+
+  it("makes sparks the ceremonial signature — nothing else has them, at any tier", () => {
+    // The layer set IS the hierarchy: quiet = halo, standard = halo + glint,
+    // ceremonial = halo + glint + sparks. Structural, so it still holds at
+    // Bronze, whose tier spark count is one and which would otherwise have
+    // left the two top emphases carrying identical DOM.
+    for (const tier of RANK_TIERS) {
+      const { container } = render(<RankEmblem tier={tier} earned variant="standard" decorative />);
+      expect(container.querySelector(".lc-emblem__glint")).toBeTruthy();
+      expect(container.querySelectorAll(".lc-emblem__spark").length).toBe(0);
+      cleanup();
+
+      const hero = render(<RankEmblem tier={tier} earned variant="hero" decorative />).container;
+      expect(hero.querySelectorAll(".lc-emblem__spark").length).toBeGreaterThan(0);
+      cleanup();
+    }
+  });
+
+  it("holds still when the caller asks it to, without losing its light", () => {
+    // `animated={false}` is for surfaces CSS cannot see — a screenshot
+    // harness, a print sheet. The halo is light, not motion: it stays.
+    const { container } = render(
+      <RankEmblem tier="challenger" earned variant="hero" animated={false} decorative />,
+    );
     expect(container.querySelector(".lc-emblem__halo")).toBeTruthy();
     expect(container.querySelector(".lc-emblem__glint")).toBeNull();
     expect(container.querySelector(".lc-emblem__spark")).toBeNull();
@@ -80,14 +176,18 @@ describe("RankEmblem — the intensity ladder", () => {
   };
 
   it.each(RANK_TIERS)("gives %s its own spark count, and never more than three", (tier) => {
-    const { container } = render(<RankEmblem tier={tier} earned alt={`${tier} emblem`} />);
+    const { container } = render(
+      <RankEmblem tier={tier} earned variant="hero" alt={`${tier} emblem`} />,
+    );
     const sparks = container.querySelectorAll(".lc-emblem__spark");
     expect(sparks.length).toBe(SPARKS[tier]);
     expect(sparks.length).toBeLessThanOrEqual(3);
   });
 
   it("staggers the sparks so two never fire together", () => {
-    const { container } = render(<RankEmblem tier="challenger" earned alt="Challenger emblem" />);
+    const { container } = render(
+      <RankEmblem tier="challenger" earned variant="hero" alt="Challenger emblem" />,
+    );
     const delays = Array.from(container.querySelectorAll<HTMLElement>(".lc-emblem__spark")).map(
       (s) => s.style.animationDelay,
     );
@@ -97,7 +197,7 @@ describe("RankEmblem — the intensity ladder", () => {
 
   it("climbs the ladder, never dips", () => {
     const counts = RANK_TIERS.map((tier) => {
-      const { container } = render(<RankEmblem tier={tier} earned alt={tier} />);
+      const { container } = render(<RankEmblem tier={tier} earned variant="hero" alt={tier} />);
       const n = container.querySelectorAll(".lc-emblem__spark").length;
       cleanup();
       return n;
@@ -168,7 +268,7 @@ describe("RankEmblem — art resolution and failure", () => {
   });
 
   it("is decorative when an adjacent label already names the tier", () => {
-    const { container } = render(<RankEmblem tier="gold" earned size="chip" decorative />);
+    const { container } = render(<RankEmblem tier="gold" earned variant="compact" decorative />);
     const img = container.querySelector<HTMLImageElement>("img")!;
     expect(img.getAttribute("alt")).toBe("");
     expect(img.getAttribute("aria-hidden")).toBe("true");
@@ -243,6 +343,95 @@ describe("the emblem's CSS invariants", () => {
     );
     expect(masked).toContain("mask-image: var(--lc-emblem-art)");
     expect(masked).toContain("-webkit-mask-image: var(--lc-emblem-art)");
+  });
+
+  it("climbs the emphasis ladder — one multiplier, three steps, one direction", () => {
+    // Emphasis is a SCALAR over the tier's own numbers, not a second table.
+    // That is what keeps a Challenger chip quieter than a Bronze hero while
+    // every tier holds its relative position.
+    const lift = (level: string) => {
+      const rule = css.match(
+        new RegExp(`\\.lc-emblem\\[data-emphasis="${level}"\\]\\s*\\{([^}]*)\\}`),
+      );
+      expect(rule, `no emphasis block for ${level}`).toBeTruthy();
+      return Number(rule![1].match(/--lc-emblem-lift:\s*([\d.]+)/)![1]);
+    };
+    expect(lift("ceremonial")).toBeGreaterThan(lift("standard"));
+    expect(lift("standard")).toBeGreaterThan(lift("quiet"));
+    expect(lift("quiet")).toBeGreaterThan(0); // `quiet` is dim, never dark
+  });
+
+  it("composes the art filter from identity functions, never from `none`", () => {
+    // `filter: none drop-shadow(...)` is invalid AS A WHOLE — the browser
+    // drops the rest of the stack with it, silently. Every composable slot
+    // therefore defaults to a real no-op function instead.
+    const base = css.slice(css.indexOf(".lc-emblem {"), css.indexOf(".lc-emblem[data-variant="));
+    for (const slot of ["--lc-emblem-tint", "--lc-emblem-seat"]) {
+      expect(base).toContain(`${slot}: opacity(1)`);
+      expect(base).not.toMatch(new RegExp(`${slot}:\\s*none`));
+    }
+    // And the stack itself substitutes those slots rather than re-declaring
+    // itself per state, which is how the three axes stay independent.
+    const art = css.slice(css.indexOf(".lc-emblem__art {"), css.indexOf(".lc-emblem__halo {"));
+    expect(art).toContain("var(--lc-emblem-tint)");
+    expect(art).toContain("var(--lc-emblem-seat)");
+    expect(art).toContain("var(--lc-emblem-glow-blur)");
+  });
+
+  it("never lets the ceremonial glow clamp at the top of the tier ladder", () => {
+    // An alpha that saturates at 1 stops being a ladder: every tier above
+    // the clamp point renders identically.
+    const block = css.match(
+      /\.lc-emblem\[data-emphasis="ceremonial"\]\s*\{([\s\S]*?)\}/,
+    )![1];
+    const [, base, factor] = block.match(
+      /--lc-emblem-glow-alpha:\s*calc\(([\d.]+)\s*\+\s*var\(--lc-emblem-halo\)\s*\*\s*([\d.]+)\)/,
+    )!;
+    const halos = [...css.matchAll(/--lc-emblem-halo:\s*([\d.]+)/g)].map((m) => Number(m[1]));
+    const worst = Math.max(...halos);
+    expect(Number(base) + worst * Number(factor)).toBeLessThan(1);
+  });
+
+  it("holds the baseline back with WARMTH, never by draining its colour", () => {
+    // Both baseline tints. Desaturating art that is already dark and
+    // low-chroma produced a muddy grey-violet crest twice; chroma is
+    // off-limits here and the difference is spent on luminance.
+    const tints = [...css.matchAll(/--lc-emblem-tint:\s*(sepia[^;]*);/g)].map((m) => m[1]);
+    expect(tints.length).toBeGreaterThanOrEqual(2);
+    for (const tint of tints) {
+      expect(tint).not.toContain("grayscale");
+      // `saturate()` above 1 only. A value below 1 is desaturation by
+      // another name and it is the exact regression this test exists for.
+      const sat = Number(tint.match(/saturate\(([\d.]+)\)/)![1]);
+      expect(sat).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("makes the ceremonial baseline the RICHER of the two, not the dimmer", () => {
+    // The direction reversal, at the stylesheet level: the lobby's placement
+    // Bronze is the page's focal emblem, so its tint adds light rather than
+    // removing it, and the held-back `opacity()` is gone entirely.
+    const quiet = css.match(
+      /\.lc-emblem\[data-baseline\]\s*\{([\s\S]*?)\}/,
+    )![1];
+    const ceremonial = css.match(
+      /\.lc-emblem\[data-baseline\]\[data-emphasis="ceremonial"\]\s*\{([\s\S]*?)\}/,
+    )![1];
+    const brightness = (block: string) =>
+      Number(block.match(/brightness\(([\d.]+)\)/)![1]);
+    expect(brightness(ceremonial)).toBeGreaterThan(brightness(quiet));
+    expect(quiet).toContain("opacity(");
+    expect(ceremonial).not.toContain("opacity(");
+  });
+
+  it("gives the baseline the same three numbers every earned tier has", () => {
+    // It used to have a halo and nothing else, because an unearned rank was
+    // structurally denied the moving layers. Now it is a state of the SAME
+    // ladder, and emphasis alone decides how much of it is spent.
+    const block = css.match(/\.lc-emblem\[data-baseline\]\s*\{([\s\S]*?)\}/)![1];
+    expect(block).toContain("--lc-emblem-halo");
+    expect(block).toContain("--lc-emblem-glint");
+    expect(block).toContain("--lc-emblem-cadence");
   });
 
   it("stops every travelling highlight under prefers-reduced-motion", () => {

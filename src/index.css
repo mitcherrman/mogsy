@@ -3694,17 +3694,52 @@ html.high-contrast * { text-shadow: none !important; }
 }
 
 /* ── The Ranked emblem ────────────────────────────────────────────────────
-   One component, two sizes, two states. The intensity ladder is the ONLY
-   thing that changes between tiers: same halo, same glint, same spark — a
-   little more of each, a little sooner. The hue is left alone deliberately;
-   the emblem art already carries the tier's identity, and recolouring the
-   light on top of it would say the same thing twice, in two voices. */
+   One component, three sizes, three emphases, two states.
+
+   TWO LADDERS, MULTIPLIED
+     TIER      sets the base numbers — halo opacity, glint strength, cadence.
+               Bronze is the quietest thing on the sheet that is still lit;
+               Challenger is the loudest that is still restrained.
+     EMPHASIS  scales those numbers for the instance. It is a multiplier, not
+               a second table, so a Challenger chip is still quieter than a
+               Bronze hero and every tier keeps its own relative position.
+
+   The hue is left alone by BOTH ladders, deliberately: the emblem art already
+   carries the tier's identity, and recolouring the light on top of it would
+   say the same thing twice, in two voices. The only hue shift in this whole
+   block is the baseline's, and that is a state, not a tier.
+
+   WHAT EMPHASIS BUYS, precisely
+     halo strength ×, halo spread, art glow, spark count (in `RankEmblem.tsx`,
+     because a DOM count cannot be a custom property), and nothing else. Size
+     is a separate attribute and no emphasis changes it. */
 .lc-emblem {
   --lc-emblem-core: 201, 168, 76;
   --lc-emblem-edge: 120, 84, 32;
   --lc-emblem-halo: 0.26;
   --lc-emblem-glint: 0.28;
   --lc-emblem-cadence: 12.2s;
+  /* Emphasis, as one scalar. 1 is `standard`. */
+  --lc-emblem-lift: 1;
+  --lc-emblem-halo-inset: -6%;
+  /* EVERY composable slot below defaults to an IDENTITY, never to `none`:
+     `filter: none drop-shadow(...)` is invalid AS A WHOLE and the browser
+     drops the shadow with it — a silent failure this codebase has already
+     shipped once. `opacity(1)` composes and costs nothing.
+
+     The art's own colour treatment (a STATE — see the baseline blocks). */
+  --lc-emblem-tint: opacity(1);
+  /* The glow that follows the silhouette (an EMPHASIS). It is the effect
+     that actually sells "ceremonial": the halo is a disc behind the emblem
+     and the art has a lot of transparent padding, so past a point more halo
+     just reads as a beige circle on the parchment, while more of this reads
+     as the metal itself being lit. Off by default, and 0px/0 rather than
+     absent so the filter list never changes shape. */
+  --lc-emblem-glow-blur: 0px;
+  --lc-emblem-glow-alpha: 0;
+  /* The seating shadow that puts the emblem ON the sheet (a SIZE — only the
+     hero is big enough to cast one that reads). */
+  --lc-emblem-seat: opacity(1);
 
   position: relative;
   display: inline-flex;
@@ -3713,47 +3748,94 @@ html.high-contrast * { text-shadow: none !important; }
   justify-content: center;
 }
 
-.lc-emblem[data-size="hero"] {
-  width: 6rem;
-  height: 6rem;
+/* ── Size ───────────────────────────────────────────────────────────────
+   Three steps, and the gaps between them are large on purpose: an emblem is
+   either the subject of its region, a marker beside a label, or an inline
+   token. There is no useful size between those. */
+.lc-emblem[data-variant="hero"] {
+  width: 8rem;
+  height: 8rem;
+  --lc-emblem-seat: drop-shadow(0 6px 10px rgba(58, 32, 10, 0.45));
 }
 
 @media (min-width: 640px) {
-  .lc-emblem[data-size="hero"] {
-    width: 7rem;
-    height: 7rem;
+  .lc-emblem[data-variant="hero"] {
+    /* 160px of box for roughly 128×72 of crest: the emblem art is a square
+       PNG with a lot of transparent padding, so the box has to over-reach
+       the drawing for the drawing to read at hero scale. */
+    width: 10rem;
+    height: 10rem;
   }
 }
 
-.lc-emblem[data-size="chip"] {
+.lc-emblem[data-variant="standard"] {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.lc-emblem[data-variant="compact"] {
   width: 1rem;
   height: 1rem;
 }
 
+/* ── Emphasis ───────────────────────────────────────────────────────────
+   The multiplier, the halo's reach, and how much of the light spills off the
+   metal onto the sheet. `quiet` is not "off": it is a lit object that does
+   not move, which is the right treatment for an emblem too small to carry a
+   travelling highlight. */
+.lc-emblem[data-emphasis="ceremonial"] {
+  --lc-emblem-lift: 1.7;
+  --lc-emblem-halo-inset: -14%;
+  --lc-emblem-glow-blur: 34px;
+  /* Climbs with the tier and cannot reach opacity 1 at the top of it —
+     0.48 + 0.44 × 0.58 = 0.74 at Challenger, 0.62 at the Bronze baseline.
+     A glow that clamps stops being a ladder, and every tier above the clamp
+     point looks identical. */
+  --lc-emblem-glow-alpha: calc(0.48 + var(--lc-emblem-halo) * 0.58);
+}
+
+.lc-emblem[data-emphasis="standard"] {
+  --lc-emblem-lift: 1;
+  --lc-emblem-halo-inset: -10%;
+}
+
+.lc-emblem[data-emphasis="quiet"] {
+  --lc-emblem-lift: 0.85;
+  --lc-emblem-halo-inset: -6%;
+}
+
+/* The art. ONE filter stack for every emblem on the site, composed from
+   custom properties, so the tint (a state), the glow (an emphasis) and the
+   seating shadow (a size) never have to know about each other — and so none
+   of them is an inline style that a stylesheet cannot beat. That last point
+   is not theoretical: the baseline tint WAS an inline `filter`, and an
+   inline filter is unbeatable from a sheet, so it silently swallowed the
+   ceremonial emblem's glow. */
 .lc-emblem__art {
   position: relative;
   z-index: 1;
   height: 100%;
   width: 100%;
   object-fit: contain;
+  filter: var(--lc-emblem-tint)
+    drop-shadow(0 0 var(--lc-emblem-glow-blur) rgba(var(--lc-emblem-core), var(--lc-emblem-glow-alpha)))
+    var(--lc-emblem-seat);
 }
 
-.lc-emblem[data-size="hero"] .lc-emblem__art {
-  filter: drop-shadow(0 6px 10px rgba(58, 32, 10, 0.45));
-}
-
-/* The ambient halo — static, always, at every tier. It is the light the
-   emblem sits in, not something it does. */
+/* The ambient halo — static, always, at every tier and every emphasis. It is
+   the light the emblem sits in, not something it does. Emphasis moves both
+   how bright it is and how far it reaches, because a brighter halo at the
+   same radius reads as a hotter rim rather than as more presence. */
 .lc-emblem__halo {
   position: absolute;
-  inset: -6%;
+  inset: var(--lc-emblem-halo-inset);
   z-index: 0;
   pointer-events: none;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(var(--lc-emblem-core), var(--lc-emblem-halo)) 0%,
-    rgba(var(--lc-emblem-edge), calc(var(--lc-emblem-halo) * 0.55)) 46%,
+    rgba(var(--lc-emblem-core), calc(var(--lc-emblem-halo) * var(--lc-emblem-lift))) 0%,
+    rgba(var(--lc-emblem-edge), calc(var(--lc-emblem-halo) * var(--lc-emblem-lift) * 0.55)) 46%,
     transparent 72%
   );
 }
@@ -3763,7 +3845,7 @@ html.high-contrast * { text-shadow: none !important; }
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  --lc-glint-strength: var(--lc-emblem-glint);
+  --lc-glint-strength: calc(var(--lc-emblem-glint) * var(--lc-emblem-lift));
   /* The round clip is the floor, and it is always on: it is what keeps the
      highlight an object rather than a rectangle when there is no mask. */
   border-radius: 50%;
@@ -3820,7 +3902,11 @@ html.high-contrast * { text-shadow: none !important; }
 /* Sparks — one to three, never more, and never together: the cycle is 11s
    with the flash in its last 8%, and the sites are staggered by seconds in
    `RankEmblem.tsx`. They are a struck edge catching the light for a frame,
-   which is why they scale from nothing and vanish rather than drifting. */
+   which is why they scale from nothing and vanish rather than drifting.
+
+   Only a ceremonial emblem gets more than one; the count itself is capped in
+   the component, because a DOM node count is not something a custom property
+   can express. */
 .lc-emblem__spark {
   position: absolute;
   z-index: 3;
@@ -3839,6 +3925,15 @@ html.high-contrast * { text-shadow: none !important; }
   animation: lc-emblem-spark 11s ease-in-out infinite;
 }
 
+/* A ceremonial emblem is large enough that a 6px spark reads as a pinprick
+   rather than as struck light, so the spark scales with the object it sits
+   on. This is the one size-dependent effect value in the block. */
+.lc-emblem[data-emphasis="ceremonial"] .lc-emblem__spark {
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+}
+
 @keyframes lc-emblem-spark {
   0%,
   93% {
@@ -3846,7 +3941,7 @@ html.high-contrast * { text-shadow: none !important; }
     transform: scale(0.35);
   }
   96% {
-    opacity: calc(var(--lc-emblem-glint) * 0.9);
+    opacity: calc(var(--lc-emblem-glint) * var(--lc-emblem-lift) * 0.9);
     transform: scale(1);
   }
   100% {
@@ -3890,14 +3985,49 @@ html.high-contrast * { text-shadow: none !important; }
   --lc-emblem-cadence: 9.2s;
 }
 
-/* The baseline. It is NOT an earned rank, so it gets the ambient halo and
-   nothing else — the glint and spark layers are not even in the DOM (see
-   `RankEmblem.tsx`), and this is only the light. Warmer and dimmer than any
-   earned tier: the same metal, in lower light, waiting to be struck. */
+/* ── The baseline ───────────────────────────────────────────────────────
+   NOT an earned rank, and the DOM still says so: this selector is
+   `data-baseline`, and `data-tier` is absent. What changed is what that
+   costs it visually.
+
+   It used to be held back by draining the light — a greyed core, a halo at
+   0.2, and no moving layer at all. On the lobby that produced a dim smudge
+   at the top of the sheet directly above the PLAY seal, which read as a
+   broken image rather than as an unearned rank, and it was the single worst
+   thing on the page.
+
+   So the baseline now takes the same ladder as bronze, in its OWN light: a
+   warmer, deeper bronze core than the earned tiers use, and a tint that adds
+   warmth rather than removing colour. Emphasis then does the rest — the
+   lobby's ceremonial baseline is genuinely radiant, and a quiet baseline
+   chip is still visibly the ladder's floor.
+
+   COHERENCE IS THE INVARIANT, and it survived two earlier corrections that
+   both went the same way. The first pass desaturated (`grayscale(0.42)`),
+   which on art that is ALREADY dark and low-chroma produced a muddy
+   grey-violet crest. The second softened it but still carried enough grey
+   that the hero emblem read greyer than the identical emblem in the chip
+   beside it: one rank, two colours, on one sheet. Chroma is off-limits here.
+   Any future retune spends its budget on luminance. */
 .lc-emblem[data-baseline] {
-  --lc-emblem-core: 150, 98, 44;
-  --lc-emblem-edge: 110, 74, 32;
-  --lc-emblem-halo: 0.2;
+  --lc-emblem-core: 186, 132, 58;
+  --lc-emblem-edge: 116, 78, 34;
+  --lc-emblem-halo: 0.24;
+  --lc-emblem-glint: 0.24;
+  --lc-emblem-cadence: 12.6s;
+  /* Warmth added, never chroma removed. Slightly under the earned tiers in
+     luminance, which is the whole of the held-back reading. */
+  --lc-emblem-tint: sepia(0.12) saturate(1.06) brightness(1.02) opacity(0.94);
+}
+
+/* The lobby's placement Bronze, and the reason this pass exists. The same
+   metal under a stronger light: richer and a touch brighter, with the
+   held-back opacity gone entirely. It is still not an awarded tier — no
+   `data-tier`, its own warm core, and a copy block beside it that says
+   "Placement Series" — but it is now the most ceremonial object on the sheet
+   apart from the seal, which is what it should always have been. */
+.lc-emblem[data-baseline][data-emphasis="ceremonial"] {
+  --lc-emblem-tint: sepia(0.1) saturate(1.2) brightness(1.08) contrast(1.03);
 }
 
 /* ── Reduced motion ──────────────────────────────────────────────────────
