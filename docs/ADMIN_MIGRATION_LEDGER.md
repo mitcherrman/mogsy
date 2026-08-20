@@ -215,4 +215,3 @@ Lost:                          0
 | `/admin/play` | ARCHIVE | /admin/play |
 | `/admin/gaming` | ARCHIVE | /admin/gaming |
 | `/admin/demo` | ARCHIVE | /admin/demo |
-

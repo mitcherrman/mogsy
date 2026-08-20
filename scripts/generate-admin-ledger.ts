@@ -87,5 +87,9 @@ for (const row of legacyRouteMap()) {
 }
 lines.push("");
 
-writeFileSync(resolve(here, "../docs/ADMIN_MIGRATION_LEDGER.md"), `${lines.join("\n")}\n`);
+// Exactly one trailing newline: the section loops push a separator blank line
+// after each block, so joining and appending "\n" would end the file on a blank
+// line — which `git diff --check` correctly reports as a whitespace error.
+const body = `${lines.join("\n").replace(/\n+$/, "")}\n`;
+writeFileSync(resolve(here, "../docs/ADMIN_MIGRATION_LEDGER.md"), body);
 console.log(`Wrote docs/ADMIN_MIGRATION_LEDGER.md — ${total} capabilities.`);
