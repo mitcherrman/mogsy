@@ -1,5 +1,7 @@
 import type { CSSProperties, ElementType, ReactNode } from "react";
 
+import { BODY_WORD_PACE } from "./phrases";
+
 /**
  * Words written onto the page, one after another.
  *
@@ -53,28 +55,29 @@ export default function InkText({
 }
 
 /**
- * One phrase of body copy, written when its own beat arrives.
+ * One SENTENCE of body copy, written when its own beat arrives.
  *
- * The paragraph stays one `<p>` — phrases are inline spans inside it, so the
- * text wraps, selects and reads exactly as prose — but each phrase carries its
- * own `revealed` gate. That is what turns the paragraph-at-a-time reveal into
- * the conversational line-by-line cadence HI1-C2 asks for: the sequence
- * controller releases one phrase, breathes, releases the next. Same contract
- * as everywhere else on the page: the words are ALWAYS in the DOM, and only
- * their appearance is staged.
+ * The paragraph stays one `<p>` — sentences are inline spans inside it, so the
+ * text wraps, selects and reads exactly as prose — but each carries its own
+ * `revealed` gate. That is what gives HI1-C3 its cadence: the controller
+ * releases a whole sentence, which then writes itself straight through
+ * regardless of how many display lines it takes, breathes once, and releases
+ * the next. (HI1-C2 gated a clause at a time here, which is why the page
+ * stopped mid-thought.) Same contract as everywhere else: the words are ALWAYS
+ * in the DOM, and only their appearance is staged.
  *
- * `pace` here must stay in step with PHRASE_WORD_PACE in phrases.ts — the
- * controller times its breaths from that model of this animation.
+ * `pace` defaults to the one authority for it, so the controller's model of
+ * this animation and the animation itself cannot drift apart.
  */
 export function InkPhrase({
   text,
   revealed,
   trailingSpace = true,
-  pace = 34,
+  pace = BODY_WORD_PACE,
 }: {
   text: string;
   revealed: boolean;
-  /** A real space after the phrase so the paragraph still reads as prose. */
+  /** A real space after the sentence so the paragraph still reads as prose. */
   trailingSpace?: boolean;
   pace?: number;
 }) {

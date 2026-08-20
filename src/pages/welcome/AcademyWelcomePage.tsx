@@ -13,7 +13,12 @@ import AcademyTome from "./AcademyTome";
 import ChapterPlate from "./ChapterPlate";
 import InkText, { InkPhrase, RevealSlot } from "./InkText";
 import { ACADEMY_CHAPTERS, type AcademyChapter } from "./academyChapters";
-import { phrasesOf } from "./phrases";
+import {
+  EYEBROW_WORD_PACE,
+  HEADING_OFFSET,
+  HEADING_WORD_PACE,
+  sentencesOf,
+} from "./phrases";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 import { slotCount, slotWriteMs, useRevealSequence } from "./useRevealSequence";
 import { useTomeAudio } from "./tomeAudio";
@@ -30,7 +35,7 @@ import { useTomeAudio } from "./tomeAudio";
  * WHAT HI1-C CHANGED IS THE PRESENTATION, COMPLETELY. HI1 shipped three stages
  * with a Continue button under each — correct, and unmistakably a wizard. This
  * is one continuous scene instead: a tome opens in front of the visitor and
- * writes itself, phrase by phrase, illustration by illustration. HI1-C2 then
+ * writes itself, sentence by sentence, illustration by illustration. HI1-C2 then
  * made each spread a PERFORMANCE with a curtain call: the writing and the
  * painting run as two concurrent, deliberately desynchronised channels; the
  * finished page then waits — indefinitely — and pressing Next physically turns
@@ -147,8 +152,10 @@ export default function AcademyWelcomePage() {
 
   // The pen's sound, synchronised to the writing itself: each slot arriving on
   // its own beat scratches for as long as its ink visibly takes, and nothing
-  // scratches during the breaths between phrases (each scribble is scheduled
-  // for exactly its write window and ends there). Skips, page turns and Back
+  // scratches during the breaths between sentences (each scribble is scheduled
+  // for exactly its write window and ends there). HI1-C3's windows are two to
+  // three seconds rather than one, so there is much more continuous scratching
+  // and much less silence — which is the sound of the cadence it is fixing. Skips, page turns and Back
   // land content instantly, so they stop the pen instead (handleAdvance /
   // handleBack); this effect only ever starts sound for a slot arriving on
   // the clock.
@@ -440,8 +447,8 @@ export default function AcademyWelcomePage() {
 /* -------------------------------------------------------------------------- */
 
 /**
- * A chapter's right-hand page: eyebrow, heading, the body copy phrase by
- * phrase, marginalia, and (on the finale) the exits.
+ * A chapter's right-hand page: eyebrow, heading, the body copy sentence by
+ * sentence, marginalia, and (on the finale) the exits.
  *
  * Rendered twice per page turn: live on the incoming spread, and as a GHOST on
  * the front face of the turning sheet — the outgoing words must visibly ride
@@ -449,7 +456,7 @@ export default function AcademyWelcomePage() {
  * heading keeps its), no live region, no controls (the finale never turns), and
  * a `tome-ghost` wrapper class the CSS uses to hold every ink animation at its
  * finished frame. Slot numbering must match slotCount() in useRevealSequence:
- * the heading is slot 0, each PHRASE (see phrases.ts) takes the next slot,
+ * the heading is slot 0, each SENTENCE (see phrases.ts) takes the next slot,
  * then marginalia, then the finale's exits.
  */
 function ChapterWriting({
@@ -465,12 +472,12 @@ function ChapterWriting({
   headingId?: string;
   exits?: React.ReactNode;
 }) {
-  const lines = chapter.lines.map((line) => phrasesOf(line));
-  const phraseTotal = lines.reduce((n, ph) => n + ph.length, 0);
-  const marginaliaSlot = 1 + phraseTotal;
+  const lines = chapter.lines.map((line) => sentencesOf(line));
+  const sentenceTotal = lines.reduce((n, ss) => n + ss.length, 0);
+  const marginaliaSlot = 1 + sentenceTotal;
   const exitsSlot = marginaliaSlot + (chapter.marginalia?.length ? 1 : 0);
 
-  let phraseIndex = 0;
+  let sentenceIndex = 0;
   return (
     <div
       className={["tome-writing", ghost ? "tome-ghost" : ""].join(" ")}
@@ -482,24 +489,24 @@ function ChapterWriting({
     >
       <RevealSlot revealed={step > 0} className="w-full">
         <p className="tome-eyebrow">
-          <InkText as="span" text={chapter.eyebrow} pace={26} />
+          <InkText as="span" text={chapter.eyebrow} pace={EYEBROW_WORD_PACE} />
         </p>
         <h1 id={ghost ? undefined : headingId} className="tome-heading">
-          <InkText as="span" text={chapter.heading} pace={64} offset={200} />
+          <InkText as="span" text={chapter.heading} pace={HEADING_WORD_PACE} offset={HEADING_OFFSET} />
         </h1>
       </RevealSlot>
 
-      {lines.map((phrases, lineIdx) => {
-        const start = phraseIndex;
-        phraseIndex += phrases.length;
+      {lines.map((sentences, lineIdx) => {
+        const start = sentenceIndex;
+        sentenceIndex += sentences.length;
         return (
           <p key={chapter.lines[lineIdx]} className="tome-body">
-            {phrases.map((phrase, j) => (
+            {sentences.map((sentence, j) => (
               <InkPhrase
-                key={`${j}-${phrase.text}`}
-                text={phrase.text}
+                key={`${j}-${sentence.text}`}
+                text={sentence.text}
                 revealed={step > 1 + start + j}
-                trailingSpace={j < phrases.length - 1}
+                trailingSpace={j < sentences.length - 1}
               />
             ))}
           </p>

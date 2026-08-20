@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useSoundSettings, type SoundSettings } from "@/hooks/useSoundSettings";
 
 // ---------------------------------------------------------------------------
-// The tome's two sounds (HI1-C2): a quill scratching while a phrase is being
+// The tome's two sounds (HI1-C2): a quill scratching while a sentence is being
 // written, and a sheet of paper turning when the visitor presses Next.
 //
 // SYNTHESIZED, NOT SAMPLED. The repo's sound shelf was searched first —
@@ -25,6 +25,17 @@ import { useSoundSettings, type SoundSettings } from "@/hooks/useSoundSettings";
 // a decode quirk: all of it is silence, never an error. The page must behave
 // identically with sound and without it.
 // ---------------------------------------------------------------------------
+
+/**
+ * The longest a single scribble may run, in ms.
+ *
+ * A runaway guard, not a cadence number: it must sit clear of the longest slot
+ * the sequence can ask for, or the pen falls silent under words still being
+ * written. HI1-C2's 2.2s ceiling was already close to its longest phrase and
+ * would have been UNDER HI1-C3's longest sentence — tomeAudio.test.ts holds
+ * this against the real chapters so the two cannot drift apart again.
+ */
+export const MAX_SCRIBBLE_MS = 6000;
 
 let ctx: AudioContext | null = null;
 let noiseBuf: AudioBuffer | null = null;
@@ -76,9 +87,19 @@ function getNoise(c: AudioContext): AudioBuffer {
  */
 export const tomeAudioEngine = {
   /**
-   * A quill laying down one phrase: `ms` of faint scratching, shaped into a
+   * A quill laying down one sentence: `ms` of faint scratching, shaped into a
    * handful of irregular strokes. Starting a new scribble silences the previous
    * one — only one pen writes at a time.
+   *
+   * THE WINDOW IS THE WRITING (HI1-C3). `ms` is the slot's real write time, and
+   * since the cadence change a sentence can be written for two to three seconds
+   * rather than under one. Two things here were sized for the shorter windows
+   * and had to grow with them — the ceiling below, and the noise source, which
+   * plays a two-second buffer from a random offset and therefore ran DRY
+   * partway through a long window, leaving the pen writing in silence. Looping
+   * the source fixes that without touching the sound: the texture a listener
+   * hears is the stroke envelope and the filters, both unchanged, and white
+   * noise has no seam to hear at the wrap.
    */
   scribble(ms: number): void {
     this.stopScribble();
@@ -87,13 +108,16 @@ export const tomeAudioEngine = {
       const c = getCtx();
       if (!c) return;
       const t0 = c.currentTime;
-      const dur = Math.min(2.2, ms / 1000);
+      const dur = Math.min(MAX_SCRIBBLE_MS, ms) / 1000;
 
       const src = c.createBufferSource();
       src.buffer = getNoise(c);
-      // A different window at a different speed each time — no two phrases
-      // sound alike, and nothing reads as a loop.
+      // A different window at a different speed each time — no two sentences
+      // sound alike, and nothing reads as a repeat.
       src.playbackRate.value = 0.85 + Math.random() * 0.3;
+      // The buffer is two seconds; a window can be three. Wrap rather than
+      // fall silent under words that are still being written.
+      src.loop = true;
 
       const band = c.createBiquadFilter();
       band.type = "bandpass";
@@ -106,7 +130,8 @@ export const tomeAudioEngine = {
       const gain = c.createGain();
       gain.gain.setValueAtTime(0.0001, t0);
       // Irregular strokes: quick swells with tiny gaps, the way a hand writes —
-      // never a flat hiss.
+      // never a flat hiss. The loop is bounded by `dur`, so a longer window
+      // simply lays down more strokes at the same density.
       let t = t0;
       const end = t0 + dur;
       while (t < end - 0.05) {
@@ -199,7 +224,7 @@ export const tomeAudioEngine = {
 };
 
 export interface TomeAudio {
-  /** Scratch for roughly `ms` while a phrase writes. No-op if disabled. */
+  /** Scratch for roughly `ms` while a sentence writes. No-op if disabled. */
   scribble: (ms: number) => void;
   /** Stop the scratching immediately (skip pressed, chapter turned). */
   stopScribble: () => void;
