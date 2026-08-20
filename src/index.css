@@ -2169,9 +2169,12 @@ html.high-contrast * { text-shadow: none !important; }
 
 .tome-slot[data-revealed="true"] .tome-word,
 .tome-phrase[data-revealed="true"] .tome-word {
-  /* 420ms must stay in step with WORD_INK_MS in phrases.ts — the sequence
-     controller times its breaths from this animation. */
-  animation: tome-ink-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* 520ms must stay in step with WORD_INK_MS in phrases.ts — the sequence
+     controller times its breaths from this animation. Raised from 420ms in
+     HI1-C3: each word's ink now takes longer to darken, and with word starts
+     spaced further apart (BODY_WORD_PACE) roughly six words are in flight
+     instead of twelve — slower, and legibly one word at a time. */
+  animation: tome-ink-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--w, 0) * 1ms);
 }
 

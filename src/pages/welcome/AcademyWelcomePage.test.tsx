@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AcademyWelcomePage from "./AcademyWelcomePage";
 import { ACADEMY_CHAPTERS } from "./academyChapters";
-import { slotCount } from "./useRevealSequence";
+import { slotCount, slotWriteMs } from "./useRevealSequence";
 import {
   hasHandledAcademyWelcome,
   markAcademyWelcomeHandled,
@@ -281,12 +281,19 @@ describe("the internal reveal", () => {
     expect(page()).toHaveAttribute("data-chapter-index", "1");
   });
 
-  it("does not offer Next while the last phrase is still being written", async () => {
+  it("does not offer Next while the last sentence is still being written", async () => {
     // `step` reaching the end means every slot has been RELEASED; the ink of
-    // the final phrase is still landing. Offering "Next" there would invite the
-    // visitor to turn away from words they never saw.
+    // the final sentence is still landing. Offering "Next" there would invite
+    // the visitor to turn away from words they never saw.
+    //
+    // The wait below is DERIVED from the last slot's own write window rather
+    // than a fixed number of milliseconds. HI1-C3 writes a whole sentence per
+    // slot, so that window depends on the copy — a hard-coded budget here
+    // would pass or fail on how long someone made the last line, which is
+    // exactly the coupling this test exists to catch.
     render(<AcademyWelcomePage />);
-    const total = slotCount(ACADEMY_CHAPTERS[0]);
+    const chapter = ACADEMY_CHAPTERS[0];
+    const total = slotCount(chapter);
 
     for (let i = 0; i < 60 && stepOf() < total; i += 1) await run(250, 250);
     expect(stepOf()).toBe(total);
@@ -294,7 +301,11 @@ describe("the internal reveal", () => {
     expect(page()).toHaveAttribute("data-complete", "false");
     expect(screen.getByTestId("academy-welcome-advance")).toHaveAttribute("data-mode", "reveal");
 
-    await run(1_000, 250);
+    // Still writing halfway through the final sentence's ink.
+    await run(slotWriteMs(chapter, total - 1) / 2, 100);
+    expect(page()).toHaveAttribute("data-complete", "false");
+
+    await run(slotWriteMs(chapter, total - 1) + 1_000, 250);
     expect(page()).toHaveAttribute("data-complete", "true");
   });
 

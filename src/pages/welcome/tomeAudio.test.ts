@@ -40,7 +40,9 @@ vi.mock("@/hooks/useSoundSettings", async (importOriginal) => {
   };
 });
 
-import { tomeAudioEngine, useTomeAudio } from "./tomeAudio";
+import { ACADEMY_CHAPTERS } from "./academyChapters";
+import { tomeAudioEngine, useTomeAudio, MAX_SCRIBBLE_MS } from "./tomeAudio";
+import { slotCount, slotWriteMs } from "./useRevealSequence";
 
 beforeEach(() => {
   settings.current = {};
@@ -51,6 +53,23 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe("the scribble's window", () => {
+  it("covers the longest slot the sequence can ask it to scratch through", () => {
+    // The pen's window IS the slot's write time. HI1-C3 made a slot a whole
+    // sentence, roughly tripling the longest window, and a ceiling sized for
+    // the old short phrases would silently cut the pen off partway through a
+    // sentence still arriving. Held against the real chapters so re-tuning the
+    // cadence — or writing a longer line — cannot reintroduce that.
+    const longest = Math.max(
+      ...ACADEMY_CHAPTERS.flatMap((chapter) =>
+        Array.from({ length: slotCount(chapter) }, (_, slot) => slotWriteMs(chapter, slot)),
+      ),
+    );
+    expect(longest).toBeGreaterThan(0);
+    expect(longest).toBeLessThan(MAX_SCRIBBLE_MS);
+  });
 });
 
 describe("useTomeAudio", () => {
