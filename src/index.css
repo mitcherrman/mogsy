@@ -3471,3 +3471,463 @@ html.high-contrast * { text-shadow: none !important; }
     opacity: 1;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LC1 — the lobby's light language
+   ══════════════════════════════════════════════════════════════════════════
+   Two objects on the parchment catch the light: the Ranked emblem and the
+   PLAY seal. They share a tone and a cadence on purpose — one page, one
+   light source — and they are deliberately not equals:
+
+     EMBLEM  prestige. A decoration that catches the light. It never answers
+             a pointer, and its cadence is always the slower of the two.
+     SEAL    action. The thing you press. It answers hover, press and focus,
+             and it is the brighter and faster of the two at every state.
+
+   THE RULES BOTH OBEY
+     · glow is a PROPERTY of the object, not an animation. Nothing pulses,
+       nothing breathes, nothing scales on its own. The ambient light is
+       static; only the glint moves.
+     · a glint is rare. Long cycle, short active window, long dead air. If
+       two of them are visible at once the page has become a slot machine.
+     · every highlight is masked to the art's own alpha, so light travels
+       across metal and wax rather than across a rectangle.
+     · nothing here is load-bearing. With motion off, every state still
+       reads from colour, shadow and text alone.
+
+   No React drives any of this. A highlight that fires once every eleven
+   seconds does not deserve a render.
+   ────────────────────────────────────────────────────────────────────── */
+
+:where(.lc-seal, .lc-emblem) {
+  /* The one warm gold both objects glint in. */
+  --lc-glint-tone: rgba(255, 241, 209, 0.92);
+}
+
+/* The sweep itself, shared by both. The travel occupies the last 14% of the
+   cycle and the element is fully transparent for the other 86% — which is
+   what makes a 1.5s highlight inside an 11s cycle rather than a shimmer.
+   `translateX` and `opacity` only, so it stays on the compositor. */
+@keyframes lc-glint-sweep {
+  0%,
+  86% {
+    opacity: 0;
+    transform: translateX(0) rotate(16deg);
+  }
+  89% {
+    opacity: var(--lc-glint-strength, 0.5);
+  }
+  98% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    /* Travel is stated per object because it is a function of the band's own
+       width and its start offset — the band has to leave the box on the far
+       side, or the highlight stops half way across the metal. */
+    transform: translateX(var(--lc-glint-travel, 500%)) rotate(16deg);
+  }
+}
+
+/* ── The PLAY seal ────────────────────────────────────────────────────────
+   `play-seal.png` is the material; CSS seats it and makes it answer. The
+   control itself is a real `<button>` with NO background and no border: the
+   seal is a transparent-cornered silhouette, and any paint on the control
+   would put a rectangle behind a round object.
+
+   Everything a state changes is a custom property, so each state is one short
+   block instead of a re-declared filter stack. The properties resolve into
+   the `filter` on the material layer, and because `filter` is animatable the
+   transitions still interpolate normally.  */
+.lc-seal {
+  --lc-seal-art: url("/assets/ranked/play-seal.png");
+  --lc-seal-size: 8rem;
+  /* Ambient: a dormant warm glow, always on, never animated. */
+  --lc-seal-glow: 0.3;
+  --lc-seal-glow-blur: 11px;
+  /* Contact with the sheet. Warm brown, never black — a black shadow on
+     beige reads as a hole punched in the paper. */
+  --lc-seal-shadow-y: 10px;
+  --lc-seal-shadow-blur: 15px;
+  --lc-seal-shadow-a: 0.42;
+  --lc-seal-lift: 0px;
+  --lc-seal-scale: 1;
+  /* Idle: a rare glint, slightly rarer than the fastest emblem. */
+  --lc-seal-cadence: 10s;
+  --lc-glint-strength: 0.42;
+
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: var(--lc-seal-size);
+  height: var(--lc-seal-size);
+  padding: 0;
+  border: 0;
+  background: none;
+  /* Not 50%: the wax bead is wider than it is tall by a hair, and this is the
+     radius the focus ring is drawn at — a circle around a blob reads as a
+     mistake at the corners. */
+  border-radius: 46%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateY(var(--lc-seal-lift)) scale(var(--lc-seal-scale));
+  transition: transform 140ms ease-out;
+}
+
+@media (min-width: 640px) {
+  .lc-seal {
+    --lc-seal-size: 9rem;
+  }
+}
+
+.lc-seal__material {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--lc-seal-art) center / contain no-repeat;
+  /* The asset carries no baked shadow and no baked glow — verified, its alpha
+     is effectively binary — so both are ours, and both are drop-shadows
+     rather than box-shadows so they follow the poured edge instead of a box. */
+  filter: drop-shadow(0 0 var(--lc-seal-glow-blur) rgba(255, 202, 126, var(--lc-seal-glow)))
+    drop-shadow(0 var(--lc-seal-shadow-y) var(--lc-seal-shadow-blur) rgba(48, 26, 8, var(--lc-seal-shadow-a)));
+  transition: filter 180ms ease-out;
+}
+
+.lc-seal__glint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* FAIL-SAFE. If the mask cannot load, a failed `mask-image` computes to no
+     mask at all and the sweep becomes a rectangle crossing the parchment.
+     The rounded clip is the floor: worst case the highlight is confined to
+     the seal's own disc. */
+  border-radius: 46%;
+  overflow: hidden;
+  -webkit-mask-image: var(--lc-seal-art);
+  mask-image: var(--lc-seal-art);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.lc-seal__glint::after {
+  content: "";
+  position: absolute;
+  top: -25%;
+  bottom: -25%;
+  left: -50%;
+  width: 38%;
+  /* -50% start + 38% band + 100% box = 188% of the box to cross, which is
+     494% of the band's own width. Rounded up so it clears. */
+  --lc-glint-travel: 500%;
+  background: linear-gradient(100deg, transparent, var(--lc-glint-tone), transparent);
+  opacity: 0;
+  will-change: transform;
+  animation: lc-glint-sweep var(--lc-seal-cadence) linear infinite;
+}
+
+/* Hover — clearly clickable: a warmer, wider glow, a hair of lift, and the
+   glint drops to a conversational cadence. Not a new effect; the same one,
+   turned up. */
+.lc-seal:hover:not(:disabled) {
+  --lc-seal-glow: 0.55;
+  --lc-seal-glow-blur: 18px;
+  --lc-seal-shadow-y: 13px;
+  --lc-seal-shadow-blur: 20px;
+  --lc-seal-shadow-a: 0.46;
+  --lc-seal-scale: 1.028;
+  --lc-seal-lift: -1px;
+  --lc-seal-cadence: 3.2s;
+  --lc-glint-strength: 0.66;
+}
+
+/* Press — pushed INTO the sheet. The shadow compresses as the seal meets the
+   paper, the glow drops back because it is no longer catching a rim, and the
+   whole bead darkens a stop. This wins over hover by specificity AND by
+   source order, so a press always reads as a press. */
+.lc-seal[data-pressed="true"]:not(:disabled) {
+  --lc-seal-lift: 3px;
+  --lc-seal-scale: 0.976;
+  --lc-seal-glow: 0.16;
+  --lc-seal-glow-blur: 7px;
+  --lc-seal-shadow-y: 3px;
+  --lc-seal-shadow-blur: 6px;
+  --lc-seal-shadow-a: 0.5;
+}
+
+.lc-seal[data-pressed="true"]:not(:disabled) .lc-seal__material {
+  filter: brightness(0.93)
+    drop-shadow(0 0 var(--lc-seal-glow-blur) rgba(255, 202, 126, var(--lc-seal-glow)))
+    drop-shadow(0 var(--lc-seal-shadow-y) var(--lc-seal-shadow-blur) rgba(48, 26, 8, var(--lc-seal-shadow-a)));
+}
+
+/* Focus — the seal's own red on a parchment offset. The app's default focus
+   ring is tuned for dark surfaces; on beige it is close to invisible, which
+   is the whole reason this is stated rather than inherited. `outline` follows
+   `border-radius`, so the ring is the seal's shape and not a box. */
+.lc-seal:focus-visible {
+  outline: 2px solid #5e1220;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 5px rgba(220, 197, 162, 0.75);
+}
+
+/* Disabled — unavailable, and quiet with it. No glow, no glint, no motion:
+   an object that still sparkles is an object that still looks pressable. */
+.lc-seal:disabled {
+  cursor: not-allowed;
+  --lc-seal-scale: 1;
+  --lc-seal-lift: 0px;
+}
+
+.lc-seal:disabled .lc-seal__material {
+  filter: saturate(0.5) brightness(0.84)
+    drop-shadow(0 5px 9px rgba(48, 26, 8, 0.3));
+  opacity: 0.68;
+}
+
+.lc-seal:disabled .lc-seal__glint {
+  display: none;
+}
+
+/* ── The Ranked emblem ────────────────────────────────────────────────────
+   One component, two sizes, two states. The intensity ladder is the ONLY
+   thing that changes between tiers: same halo, same glint, same spark — a
+   little more of each, a little sooner. The hue is left alone deliberately;
+   the emblem art already carries the tier's identity, and recolouring the
+   light on top of it would say the same thing twice, in two voices. */
+.lc-emblem {
+  --lc-emblem-core: 201, 168, 76;
+  --lc-emblem-edge: 120, 84, 32;
+  --lc-emblem-halo: 0.26;
+  --lc-emblem-glint: 0.28;
+  --lc-emblem-cadence: 12.2s;
+
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.lc-emblem[data-size="hero"] {
+  width: 6rem;
+  height: 6rem;
+}
+
+@media (min-width: 640px) {
+  .lc-emblem[data-size="hero"] {
+    width: 7rem;
+    height: 7rem;
+  }
+}
+
+.lc-emblem[data-size="chip"] {
+  width: 1rem;
+  height: 1rem;
+}
+
+.lc-emblem__art {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+.lc-emblem[data-size="hero"] .lc-emblem__art {
+  filter: drop-shadow(0 6px 10px rgba(58, 32, 10, 0.45));
+}
+
+/* The ambient halo — static, always, at every tier. It is the light the
+   emblem sits in, not something it does. */
+.lc-emblem__halo {
+  position: absolute;
+  inset: -6%;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(var(--lc-emblem-core), var(--lc-emblem-halo)) 0%,
+    rgba(var(--lc-emblem-edge), calc(var(--lc-emblem-halo) * 0.55)) 46%,
+    transparent 72%
+  );
+}
+
+.lc-emblem__glint {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  --lc-glint-strength: var(--lc-emblem-glint);
+  /* The round clip is the floor, and it is always on: it is what keeps the
+     highlight an object rather than a rectangle when there is no mask. */
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+/* Alpha masking is CONDITIONAL, and the component decides — see THE MASK in
+   `RankEmblem.tsx`. `mask-image` is subject to CORS, the emblems are served
+   cross-origin without the header, and a mask that fails to load does not
+   degrade to "no mask": it renders the layer as NOTHING. Applying this
+   unconditionally would silently delete the glint from every earned rank in
+   production, which is exactly the failure a fail-safe is supposed to catch.
+
+   Where the art IS same-origin the sweep is clipped to the metal, which is
+   strictly better — so this is the upgrade path, waiting. */
+.lc-emblem[data-mask="alpha"] .lc-emblem__glint {
+  -webkit-mask-image: var(--lc-emblem-art);
+  mask-image: var(--lc-emblem-art);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* A soft specular bloom rather than the seal's hard-edged band. The seal can
+   afford an edge because its mask always loads; the emblem's usually cannot,
+   and an unmasked hard band is a rectangle of light crossing the parchment.
+   A soft ellipse needs no silhouette to read as light ON something — masked
+   it hugs the metal, unmasked it still reads as a highlight and nothing
+   else. Same tone, same cadence, same rarity; only the edge differs. */
+.lc-emblem__glint::after {
+  content: "";
+  position: absolute;
+  top: -8%;
+  bottom: -8%;
+  left: -45%;
+  width: 52%;
+  /* -45% start + 52% bloom + 100% box = 197% of the box, which is 379% of
+     the bloom's own width. Rounded up so it leaves the far side. */
+  --lc-glint-travel: 390%;
+  background: radial-gradient(
+    closest-side ellipse at 50% 50%,
+    var(--lc-glint-tone) 0%,
+    rgba(255, 236, 190, 0.42) 46%,
+    transparent 78%
+  );
+  opacity: 0;
+  will-change: transform;
+  animation: lc-glint-sweep var(--lc-emblem-cadence) linear infinite;
+}
+
+/* Sparks — one to three, never more, and never together: the cycle is 11s
+   with the flash in its last 8%, and the sites are staggered by seconds in
+   `RankEmblem.tsx`. They are a struck edge catching the light for a frame,
+   which is why they scale from nothing and vanish rather than drifting. */
+.lc-emblem__spark {
+  position: absolute;
+  z-index: 3;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    var(--lc-glint-tone) 0%,
+    rgba(255, 214, 150, 0.45) 42%,
+    transparent 70%
+  );
+  opacity: 0;
+  animation: lc-emblem-spark 11s ease-in-out infinite;
+}
+
+@keyframes lc-emblem-spark {
+  0%,
+  93% {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  96% {
+    opacity: calc(var(--lc-emblem-glint) * 0.9);
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* The intensity ladder. Halo opacity, glint strength and cadence — three
+   numbers, five steps, one direction. Bronze is the quietest thing on the
+   sheet that is still lit; Challenger is the loudest thing on it that is
+   still restrained. Cadence never goes below 9s: past that the glint stops
+   being an event. */
+.lc-emblem[data-tier="bronze"] {
+  --lc-emblem-halo: 0.22;
+  --lc-emblem-glint: 0.22;
+  --lc-emblem-cadence: 13s;
+}
+
+.lc-emblem[data-tier="silver"] {
+  --lc-emblem-halo: 0.26;
+  --lc-emblem-glint: 0.28;
+  --lc-emblem-cadence: 12.2s;
+}
+
+.lc-emblem[data-tier="gold"] {
+  --lc-emblem-halo: 0.31;
+  --lc-emblem-glint: 0.36;
+  --lc-emblem-cadence: 11.4s;
+}
+
+.lc-emblem[data-tier="diamond"] {
+  --lc-emblem-halo: 0.37;
+  --lc-emblem-glint: 0.46;
+  --lc-emblem-cadence: 10.4s;
+}
+
+.lc-emblem[data-tier="challenger"] {
+  --lc-emblem-halo: 0.44;
+  --lc-emblem-glint: 0.56;
+  --lc-emblem-cadence: 9.2s;
+}
+
+/* The baseline. It is NOT an earned rank, so it gets the ambient halo and
+   nothing else — the glint and spark layers are not even in the DOM (see
+   `RankEmblem.tsx`), and this is only the light. Warmer and dimmer than any
+   earned tier: the same metal, in lower light, waiting to be struck. */
+.lc-emblem[data-baseline] {
+  --lc-emblem-core: 150, 98, 44;
+  --lc-emblem-edge: 110, 74, 32;
+  --lc-emblem-halo: 0.2;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────
+   Nothing travels. The halo and the seal's ambient glow are static already,
+   so both objects keep their whole identity; what goes is every moving
+   highlight. Nobody waits for anything: the removed layers were invisible
+   for 86% of their cycle anyway, so the page is simply in its resting state
+   from the first frame.
+
+   The seal still ANSWERS — hover and press change light, colour and shadow —
+   it just does not travel or scale, which is the convention the parchment
+   lobby already set with `.lc-scroll`. */
+@media (prefers-reduced-motion: reduce) {
+  .lc-seal {
+    transition: none;
+  }
+
+  .lc-seal__material {
+    transition: none;
+  }
+
+  .lc-seal:hover:not(:disabled),
+  .lc-seal[data-pressed="true"]:not(:disabled) {
+    --lc-seal-scale: 1;
+    --lc-seal-lift: 0px;
+  }
+
+  .lc-seal__glint,
+  .lc-emblem__glint,
+  .lc-emblem__spark {
+    display: none;
+  }
+}

@@ -61,6 +61,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import RankCrown from "@/components/ranked/RankCrown";
+import RankEmblem from "@/components/ranked/RankEmblem";
 import RankedClassCarousel from "@/components/quiz/RankedClassCarousel";
 import RankedPlayGem from "@/components/quiz/RankedPlayGem";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
@@ -68,7 +69,7 @@ import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
-import { rankedTierLabel, resolveRankedEmblemUrl } from "@/lib/progression/rankedArt";
+import { rankedTierLabel } from "@/lib/progression/rankedArt";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 import { academyTierLabel } from "@/lib/progression/academy";
 import type { RankedProgressionView, MatchHistoryEntryView } from "@/lib/ranked-public/contracts";
@@ -88,40 +89,16 @@ const PLACEMENT_TOTAL = 5;
  *
  * THIS IS NOT A TIER CLAIM. Nothing here awards Bronze, computes it, or sends
  * it anywhere: the emblem is rendered in a visibly unearned state (see
- * `BASELINE_EMBLEM_FILTER`), the copy says "baseline" and never "Ranked
+ * `RankEmblem`'s baseline treatment), the copy says "baseline" and never "Ranked
  * Bronze", and the moment RE1 hands over a real tier the earned art and the
  * real tier name take over. The rating, the tier and the placement count are
  * still the backend's, unchanged and un-guessed.
  *
  * It is `RankTier`-typed on purpose, so it can only ever be one of the five
- * canonical tiers and resolves through the same `resolveRankedEmblemUrl` that
- * every earned emblem does — no second art path, no invented asset.
+ * canonical tiers, and it renders through the same `RankEmblem` every earned
+ * emblem does — no second art path, no invented asset.
  */
 const BASELINE_TIER: RankTier = "bronze";
-
-/**
- * Baseline Bronze, drawn as a slightly quieter emblem — the same metal, in
- * lower light, rather than a different piece of art.
- *
- * This has been retuned twice, and both corrections were in the same
- * direction. The first pass drained it (`grayscale(0.42) brightness(0.9)`),
- * which on an asset that is ALREADY dark and low-chroma produced a muddy
- * grey-violet crest — broken art, not an unearned rank. The second softened
- * that but still carried enough grey that the centre emblem read visibly
- * greyer than the identical Bronze emblem in the chip beside it, which is
- * worse than either extreme: one rank, two colours, on one sheet.
- *
- * So the desaturation is gone. What remains is a small light difference —
- * about 8% of transparency and a hair of extra warmth — which is enough to
- * hold "not yet struck" without arguing with the metal. The badge under it
- * says BRONZE and the heading says Placement Series; the emblem does not need
- * to carry that message on its own, and it was damaging itself trying to.
- *
- * COHERENCE IS THE INVARIANT: the centre emblem and the right column's chip
- * are the same tier and must read as the same metal. Any future retune has to
- * keep chroma alone, and spend its budget on luminance.
- */
-const BASELINE_EMBLEM_FILTER = "sepia(0.12) saturate(1.06) brightness(1.03) opacity(0.92)";
 
 /**
  * The ink this hero writes in.
@@ -221,15 +198,16 @@ export default function RankedLobbyHero({
   const tierLabel = tier === null ? null : rankedTierLabel(tier);
   const showCompetitive = ranked.isPlaced && rankedProgression !== null && tier !== null;
   const rankName = showCompetitive ? `Ranked ${tierLabel}` : "Unranked";
-  // Baseline art for anyone without a standing yet: the ladder's own floor,
-  // not a sixth off-ladder emblem. `resolveQuizAssetUrl` on the legacy file
-  // remains only as the last fallback if the Bronze emblem cannot resolve.
-  const baselineEmblem =
-    resolveRankedEmblemUrl(BASELINE_TIER, "large") ??
-    resolveQuizAssetUrl("assets/ranks/unranked.png");
-  const emblemUrl = showCompetitive
-    ? resolveRankedEmblemUrl(tier, "large") ?? baselineEmblem
-    : baselineEmblem;
+  // The emblem the columns render, as a tier and a state — the art path,
+  // the halo, the baseline treatment and the fallback all belong to
+  // `RankEmblem` now, and both columns get them from the one component
+  // rather than from two hand-rolled copies that had already drifted apart.
+  const emblemTier: RankTier = showCompetitive ? tier! : BASELINE_TIER;
+  // Last resort only, and only for the baseline: the legacy off-ladder file,
+  // reached solely if the Bronze emblem itself fails to load.
+  const legacyEmblemFallback = showCompetitive
+    ? null
+    : resolveQuizAssetUrl("assets/ranks/unranked.png");
   const atMaxTier = rankedProgression !== null && rankedProgression.nextTier === null;
   const placementDone = Math.max(0, PLACEMENT_TOTAL - ranked.placementMatchesRemaining);
 
@@ -252,13 +230,6 @@ export default function RankedLobbyHero({
   const recentMatches = matchHistory.slice(0, 3);
 
   const portrait = avatarUrl || MOGZY_MASCOT_ASSETS.base;
-
-  // The right column's standing chip renders the same identity as the centre,
-  // at chip size — one gate (`showCompetitive`), one baseline constant.
-  const standingEmblem = showCompetitive
-    ? resolveRankedEmblemUrl(tier, "small") ?? resolveRankedEmblemUrl(tier, "large")
-    : resolveRankedEmblemUrl(BASELINE_TIER, "small") ??
-      resolveRankedEmblemUrl(BASELINE_TIER, "large");
 
   return (
     <section
@@ -329,42 +300,29 @@ export default function RankedLobbyHero({
           Ranked
         </p>
 
-        {/* Emblem slot — sized for whatever emblem family RE1 ships next. */}
-        <div
-          className="relative mt-2 flex h-24 w-24 items-center justify-center rounded-full sm:h-28 sm:w-28"
-          style={{
-            /* Warm bronze rather than the old gold/cyan pair: on the baseline
-               state the halo has to belong to the emblem inside it, and a
-               cyan ring around a bronze emblem read as two rank systems. */
-            background: showCompetitive
-              ? "radial-gradient(circle, rgba(201,168,76,0.28) 0%, rgba(120,84,32,0.16) 46%, transparent 72%)"
-              : "radial-gradient(circle, rgba(150,98,44,0.26) 0%, rgba(110,74,32,0.13) 48%, transparent 74%)",
-          }}
-        >
-          {emblemUrl ? (
-            <img
-              src={emblemUrl}
-              /* The alt deliberately says MORE than the badge does. The badge
-                 reads only "Bronze" because "Placement Series" is directly
-                 above it in the layout; a screen-reader user reaching this
-                 image has no such adjacency, so the state is stated here. */
-              alt={
-                showCompetitive
-                  ? `${tierLabel} ranked emblem`
-                  : "Bronze — the baseline Ranked emblem, not yet earned"
-              }
-              data-tier={showCompetitive ? tier ?? undefined : undefined}
-              data-baseline={showCompetitive ? undefined : BASELINE_TIER}
-              style={showCompetitive ? undefined : { filter: BASELINE_EMBLEM_FILTER }}
-              className="h-full w-full object-contain drop-shadow-[0_6px_10px_rgba(58,32,10,0.45)]"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
-          ) : (
-            <Shield className="h-12 w-12 text-[#f0d78c]" />
-          )}
-        </div>
+        {/* The Ranked emblem. One component owns the art, the halo, the
+            baseline treatment, the glint and the fallback — see
+            `RankEmblem.tsx`. This column states only WHICH tier and WHETHER
+            it has been earned, which are the two things it is the authority
+            on. `showCompetitive` is that authority in one flag: a tier
+            exists AND placements are done. */}
+        <RankEmblem
+          className="mt-2"
+          size="hero"
+          tier={emblemTier}
+          earned={showCompetitive}
+          /* The alt deliberately says MORE than the badge does. The badge
+             reads only "Bronze" because "Placement Series" is directly above
+             it in the layout; a screen-reader user reaching this image has no
+             such adjacency, so the state is stated here. */
+          alt={
+            showCompetitive
+              ? `${tierLabel} ranked emblem`
+              : "Bronze — the baseline Ranked emblem, not yet earned"
+          }
+          fallbackSrc={legacyEmblemFallback}
+          fallback={<Shield className="h-12 w-12 text-[#f0d78c]" />}
+        />
 
         <h2
           className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl"
@@ -592,18 +550,11 @@ export default function RankedLobbyHero({
             className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5"
             style={{ borderColor: INK.rule, background: INK.inset }}
           >
-            {standingEmblem && (
-              <img
-                src={standingEmblem}
-                alt=""
-                aria-hidden="true"
-                draggable={false}
-                data-tier={showCompetitive ? tier ?? undefined : undefined}
-                data-baseline={showCompetitive ? undefined : BASELINE_TIER}
-                className="h-4 w-4 shrink-0 object-contain"
-                style={showCompetitive ? undefined : { filter: BASELINE_EMBLEM_FILTER }}
-              />
-            )}
+            {/* Chip size: the halo only. At 16px a travelling highlight is
+                a pixel of noise, so `RankEmblem` withholds the glint and the
+                sparks here — and it is decorative, because the tier is
+                spelled out in the label beside it. */}
+            <RankEmblem size="chip" tier={emblemTier} earned={showCompetitive} decorative />
             <span
               className="text-[10px] font-extrabold uppercase tracking-[0.16em]"
               style={{ color: INK.brass }}

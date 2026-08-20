@@ -1,9 +1,17 @@
 /**
- * LC1 — the PLAY gem: the same one action as the button it replaces, with
+ * LC1 — the PLAY seal: the same one action as the button it replaces, with
  * real button semantics and no information carried by animation alone.
+ *
+ * The material is now `play-seal.png`, which has the word PLAY baked into it.
+ * That makes the visible word un-editable from here, so the tests below pin
+ * the thing that still has to hold: the control is a real button, its
+ * accessible name is exactly "Play", and the art is decorative — never the
+ * only carrier of the name.
  */
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import RankedPlayGem from "./RankedPlayGem";
 
 afterEach(cleanup);
@@ -82,5 +90,86 @@ describe("RankedPlayGem", () => {
     // the disabled state must all still be present either way.
     render(<RankedPlayGem onClick={() => {}} label="Play" />);
     expect(screen.getByTestId("ranked-play-gem").textContent).toContain("Play");
+  });
+
+  it("renders the wax as a decorative material layer, not as the button's paint", () => {
+    // A background on the CONTROL would put a rectangle of shadow and focus
+    // ring around an object with transparent corners.
+    render(<RankedPlayGem onClick={() => {}} />);
+    const seal = screen.getByTestId("ranked-play-gem");
+    const material = seal.querySelector(".lc-seal__material");
+    expect(material).toBeTruthy();
+    expect(material!.getAttribute("aria-hidden")).toBe("true");
+    expect(seal.querySelector(".lc-seal__glint")!.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("names the button from live text, even though the word is baked into the art", () => {
+    // The art says PLAY; assistive technology must not have to read a
+    // picture to find that out. The label is live text, visually hidden.
+    render(<RankedPlayGem onClick={() => {}} />);
+    const seal = screen.getByRole("button", { name: /^Play$/ });
+    const label = seal.querySelector(".lc-seal__label")!;
+    expect(label.textContent).toBe("Play");
+    expect(label.className).toContain("sr-only");
+    // Nothing decorative may carry the name.
+    expect(seal.querySelector(".lc-seal__material")!.textContent).toBe("");
+  });
+});
+
+describe("the PLAY seal's CSS invariants", () => {
+  const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const block = (selector: string) => {
+    const rule = css.match(new RegExp(`${escape(selector)}\\s*\\{([^}]*)\\}`));
+    expect(rule, `no rule for ${selector}`).toBeTruthy();
+    return rule![1];
+  };
+
+  it("renders the seal from the shipped asset, not from a second copy of it", () => {
+    expect(block(".lc-seal")).toContain('url("/assets/ranked/play-seal.png")');
+    // One art path only: the material and the glint mask read the same var,
+    // so the browser fetches the seal once and reuses it for the mask.
+    expect(block(".lc-seal__material")).toContain("var(--lc-seal-art)");
+    expect(block(".lc-seal__glint")).toContain("mask-image: var(--lc-seal-art)");
+    expect(css.match(/url\("\/assets\/ranked\/play-seal\.png"\)/g)!.length).toBe(1);
+  });
+
+  it("leaves the control unpainted, so its focus ring is the seal's shape", () => {
+    const seal = block(".lc-seal");
+    expect(seal).toContain("background: none");
+    expect(seal).toContain("border: 0");
+    expect(block(".lc-seal:focus-visible")).toContain("outline");
+  });
+
+  it("answers hover, press and disabled — each as its own state", () => {
+    expect(block(".lc-seal:hover:not(:disabled)")).toContain("--lc-seal-glow");
+    // Pressed is a physical depression: down, smaller, with the shadow
+    // compressing under it rather than merely moving with it.
+    const pressed = block('.lc-seal[data-pressed="true"]:not(:disabled)');
+    expect(pressed).toContain("--lc-seal-lift: 3px");
+    expect(pressed).toContain("--lc-seal-scale: 0.976");
+    expect(pressed).toContain("--lc-seal-shadow-blur: 6px");
+    expect(block(".lc-seal:disabled .lc-seal__material")).toMatch(/saturate|brightness/);
+  });
+
+  it("lets a press win over a hover, by source order as well as specificity", () => {
+    expect(css.indexOf('.lc-seal[data-pressed="true"]:not(:disabled)')).toBeGreaterThan(
+      css.indexOf(".lc-seal:hover:not(:disabled)"),
+    );
+  });
+
+  it("goes quiet when disabled — nothing that still looks pressable", () => {
+    expect(block(".lc-seal:disabled .lc-seal__glint")).toMatch(/display:\s*none/);
+    expect(block(".lc-seal:disabled")).toContain("not-allowed");
+  });
+
+  it("under reduced motion, changes light but never travels", () => {
+    const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduced).toContain("--lc-seal-scale: 1");
+    expect(reduced).toContain("--lc-seal-lift: 0px");
+    expect(reduced).toContain(".lc-seal__glint");
+    // The ambient glow is a property of the object, not an animation, so it
+    // survives: the seal keeps its whole identity with motion off.
+    expect(reduced).not.toMatch(/--lc-seal-glow:/);
   });
 });
