@@ -39,6 +39,14 @@ export const HEARTBEAT_MS = 10000;
  * delays a request, never gates progression, and never changes what the server
  * is told or when.
  */
+/**
+ * How many settlements the duelist columns' recent-damage trail keeps.
+ * Five is the top of the range the Phase 11 brief allows ("the last ~3–5
+ * meaningful events rather than a full combat log"); the strip itself shows
+ * fewer at narrow widths.
+ */
+export const DAMAGE_LOG_LIMIT = 5;
+
 export const REVEAL_HOLD_MS = 1500;
 /** Longer when the settlement contains a level-up: there is strictly more to read. */
 export const REVEAL_HOLD_LEVEL_UP_MS = 2600;
@@ -74,6 +82,17 @@ export interface MatchController {
   roundNumber: number | null;
   privatePlayer: PrivatePlayerView | null;
   lastResolved: ResolvedRoundView | null;
+  /**
+   * QUIZ1 Phase 11 — the last few settlements, oldest first, for the duelist
+   * columns' recent-damage history. A BOUNDED buffer (see `DAMAGE_LOG_LIMIT`):
+   * the arena shows a glance-able trail, not a combat log, and an unbounded
+   * list would grow for the whole match to feed a five-row strip.
+   *
+   * Deduplicated on `roundNumber`, so a re-poll of the same resolved round can
+   * never double-count a hit. Every value inside is the same authoritative
+   * settlement `lastResolved` carries — nothing is recomputed.
+   */
+  damageLog: ResolvedRoundView[];
   result: MatchResultView | null;
   presence: PresenceView | null;
   skewMs: number;
@@ -129,6 +148,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   const [roundNumber, setRoundNumber] = useState<number | null>(null);
   const [privatePlayer, setPrivatePlayer] = useState<PrivatePlayerView | null>(null);
   const [lastResolved, setLastResolved] = useState<ResolvedRoundView | null>(null);
+  const [damageLog, setDamageLog] = useState<ResolvedRoundView[]>([]);
   const [lastSegmentSettlement, setLastSegmentSettlement] =
     useState<SegmentSettlementView | null>(null);
   const [result, setResult] = useState<MatchResultView | null>(null);
@@ -274,7 +294,16 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     }
 
     resolvedRef.current = round;
-    if (settlement) setLastResolved(settlement);
+    if (settlement) {
+      setLastResolved(settlement);
+      // Append-and-trim, keyed on the round number. `resolvedRef` already
+      // guards the common re-entry, but a remount re-reads a round it has
+      // seen; keying on the round makes the buffer idempotent regardless.
+      setDamageLog((log) => (
+        log.some((s) => s.roundNumber === settlement!.roundNumber)
+          ? log
+          : [...log, settlement!].slice(-DAMAGE_LOG_LIMIT)));
+    }
     // A quiz round yields null here, which correctly clears a previous
     // segment transcript so it cannot linger over the next round.
     //
@@ -608,7 +637,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   }, [matchId, submitting, poke]);
 
   return {
-    phase, publicRound, roundNumber, privatePlayer, lastResolved, result,
+    phase, publicRound, roundNumber, privatePlayer, lastResolved, damageLog, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, selectedAbilityId, submitting, abilityBusy, actionError,
     error, contractError, retry, roundLive, answer, selectAbility, chooseLevelTwo,

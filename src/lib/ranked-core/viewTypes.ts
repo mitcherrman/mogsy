@@ -38,6 +38,13 @@ export interface CombatantView {
   name: string;
   /** Optional short descriptor line (class title, "Training Golem", …). */
   tag?: string;
+  /**
+   * R1 League role id (`top` | `jungle` | `mid` | `adc` | `support`) when the
+   * match froze one; absent/null otherwise. Presentation only — it selects the
+   * role crest and the role label, and is NEVER derived from `classId` (nor
+   * `classId` from it). A view with no role renders the legacy class identity.
+   */
+  roleId?: string | null;
   side: CombatantSide;
   classId: string;
   hp: number;

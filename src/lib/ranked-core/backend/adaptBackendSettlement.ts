@@ -108,6 +108,16 @@ export interface AdaptedSettlement {
   /** Raw backend delta — display metadata only, never used to compute. */
   sharedTimerDeltaSeconds: number;
   matchOver: boolean;
+  /**
+   * QUIZ1 Phase 11 — the index of the option that was correct, or null.
+   *
+   * Post-settlement only by construction: it exists in this adapter because it
+   * exists in the RESOLVED projection, which the backend refuses to build for
+   * a round that has not settled. Null covers a segment round (whose stored
+   * index is a structural zero, not an answer), a pre-Phase-11 backend, and
+   * any value that does not index the frozen option list.
+   */
+  correctOptionIndex: number | null;
   /** Null on non-terminal rounds AND on simultaneous-knockout draws. */
   winner: PlayerId | null;
   completionReason: BackendCompletionReason | null;
@@ -324,6 +334,17 @@ export function adaptBackendSettlement(
     sharedNextRoundDurationSeconds: raw.next_round_duration_seconds,
     sharedTimerDeltaSeconds: raw.next_round_duration_delta,
     matchOver: raw.match_over,
+    // Validated against the projection's OWN option count rather than trusted:
+    // a client that highlighted an out-of-range tablet would highlight none
+    // and silently look broken, and one that highlighted a negative index
+    // would throw inside the reveal.
+    correctOptionIndex: (
+      typeof raw.correct_option_index === "number"
+      && Number.isInteger(raw.correct_option_index)
+      && raw.correct_option_index >= 0
+      && (typeof raw.option_count !== "number"
+          || raw.correct_option_index < raw.option_count)
+    ) ? raw.correct_option_index : null,
     winner,
     completionReason: raw.completion_reason,
     summary: buildSummary(players),

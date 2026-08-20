@@ -13,7 +13,7 @@ import {
 } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
 import { quizModule } from "@/lib/ranked-core/modules/quizModule";
-import type { ScenarioSource } from "@/lib/question-surface/contract";
+import type { ScenarioSource, SurfaceReveal } from "@/lib/question-surface/contract";
 import {
   permissionsForSubmissionPhase,
   restrictPermissions,
@@ -22,6 +22,8 @@ import { remainingSeconds } from "@/lib/ranked-core/timerMath";
 import {
   AbilityView,
   InteractionPermissions,
+  ResolvedCombatantView,
+  ResolvedRoundView,
   NO_INTERACTIONS,
   QuestionView,
   SubmissionPhase,
@@ -41,12 +43,17 @@ import type { PresenceView, PrivatePlayerView, PublicRoundView } from "@/lib/ran
  * `aria-hidden` and the tag text is what carries identity.
  */
 export function projectCombatants(pub: PublicRoundView, viewerUserId: string): CombatantViews {
-  const identities: Record<string, { name: string; tag?: string }> = {};
+  const identities: Record<string, { name: string; tag?: string; roleId?: string | null }> = {};
   const maxHpByPlayerId: Record<string, number> = {};
   for (const p of pub.players) {
+    // Phase 11: the ROLE ID travels alongside the label so the arena can pick
+    // the role crest without re-parsing the label back into an id. Null for a
+    // pre-R1 match — the panel then falls back to the legacy class identity,
+    // which is the only case where `classId` reaches presentation at all.
     identities[p.playerId] = {
       name: p.playerId === viewerUserId ? "You" : "Opponent",
       tag: rankedRoleLabel(p.role) ?? p.classId,
+      roleId: p.role,
     };
     if (p.maxHp !== null) maxHpByPlayerId[p.playerId] = p.maxHp;
   }
@@ -174,4 +181,125 @@ export function opponentPresenceLabel(presence: PresenceView | null): string | n
     case "abandoned": return "Opponent left";
     default: return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// QUIZ1 Phase 11 — recent-damage history for the duelist columns.
+// ---------------------------------------------------------------------------
+
+/**
+ * One glance-able line under a duelist's HP bar: what happened to THAT
+ * player's health in one settled round.
+ *
+ * Every field is read straight off the authoritative settlement. Nothing is
+ * derived arithmetically — in particular `amount` is the backend's
+ * `finalDamageReceived`, never `hpBefore - hpAfter`, because the two can
+ * legitimately differ (a floor, a heal, a clamp) and the settlement is the
+ * authority on which one is the damage.
+ */
+export interface DamageHistoryEntry {
+  /** Stable key: a round is settled once, so the round number identifies it. */
+  roundNumber: number;
+  /** `hit` = HP was lost. `blocked` = a shield ate the whole instance. */
+  kind: "hit" | "blocked";
+  /** HP lost (`hit`) or absorbed (`blocked`). Always > 0. */
+  amount: number;
+  /** Authoritative HP after this round, for the accessible description. */
+  hpAfter: number;
+}
+
+/**
+ * The last few HP changes for one player, oldest first.
+ *
+ * DELIBERATELY OMITS rounds where nothing happened. A round in which both
+ * players answered correctly costs nobody health, and a row saying so would be
+ * three-quarters of a typical trail — the strip is meant to explain the HP bar
+ * at a glance, and a wall of "0" explains nothing. A fully shielded instance is
+ * the one zero-damage event that IS kept, because "you were hit and it was
+ * absorbed" is a different fact from "you were not hit".
+ */
+export function projectDamageHistory(
+  log: ResolvedRoundView[], playerId: string,
+): DamageHistoryEntry[] {
+  const out: DamageHistoryEntry[] = [];
+  for (const settlement of log) {
+    const player = Object.values(settlement.players)
+      .find((p) => p.playerId === playerId);
+    if (!player) continue;
+    if (player.finalDamageReceived > 0) {
+      out.push({
+        roundNumber: settlement.roundNumber, kind: "hit",
+        amount: player.finalDamageReceived, hpAfter: player.hpAfter,
+      });
+    } else if (player.shieldAbsorbed > 0) {
+      out.push({
+        roundNumber: settlement.roundNumber, kind: "blocked",
+        amount: player.shieldAbsorbed, hpAfter: player.hpAfter,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * The outcome each player reached in the settlement currently being revealed,
+ * keyed by player id — or an empty map when no reveal is in progress.
+ *
+ * Gated on `revealHold` so the duelist columns resolve DURING the reveal beat
+ * and return to their neutral Thinking/Locked state for the next question,
+ * rather than carrying a stale verdict into it.
+ */
+export function projectRevealOutcomes(
+  settlement: ResolvedRoundView | null, revealing: boolean,
+): Record<string, ResolvedCombatantView["outcome"]> {
+  if (!settlement || !revealing) return {};
+  const out: Record<string, ResolvedCombatantView["outcome"]> = {};
+  for (const player of Object.values(settlement.players)) {
+    out[player.playerId] = player.outcome;
+  }
+  return out;
+}
+
+/** Damage each player DEALT in the settlement being revealed, by player id. */
+export function projectRevealDamage(
+  settlement: ResolvedRoundView | null, revealing: boolean,
+): Record<string, number> {
+  if (!settlement || !revealing) return {};
+  const out: Record<string, number> = {};
+  for (const player of Object.values(settlement.players)) {
+    out[player.playerId] = player.finalDamageDealt;
+  }
+  return out;
+}
+
+/**
+ * The reveal handed to a normal question's answer tablets, or null.
+ *
+ * THE DISCLOSURE GATE, and the reason it is a pure function rather than three
+ * conditions inline in a component: each of the three closes a different way a
+ * live question could be answered for the player, and they must be readable
+ * and testable together.
+ *
+ *  1. a settlement exists AND carries a `correctOptionIndex`. The backend
+ *     builds a resolved projection only from a settled row, and reports null
+ *     for a segment round and for a pre-Phase-11 backend.
+ *  2. the settlement's round is the round the SURFACE is showing. During the
+ *     reveal beat the surface deliberately lags the live round; without this,
+ *     the round that just settled would resolve the tablets of the round that
+ *     just opened — which is the actual leak this shape prevents.
+ *  3. the index resolves to an option of THAT question's projection, so the
+ *     index→id lookup cannot cross a round boundary either.
+ */
+export function projectSurfaceReveal(
+  settlement: ResolvedRoundView | null,
+  surfaceRoundNumber: number | null,
+  question: QuestionView | null,
+): SurfaceReveal | null {
+  if (!settlement || settlement.correctOptionIndex === null) return null;
+  if (surfaceRoundNumber === null) return null;
+  if (settlement.roundNumber !== surfaceRoundNumber) return null;
+  const correct = question?.options.find(
+    (o) => o.index === settlement.correctOptionIndex);
+  if (!correct) return null;
+  return { revealed: true, correctOptionId: correct.id };
 }

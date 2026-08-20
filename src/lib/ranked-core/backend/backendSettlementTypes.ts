@@ -112,4 +112,12 @@ export interface BackendResolvedRoundProjection {
    */
   winner_id: string | null;
   completion_reason: BackendCompletionReason | null;
+  /**
+   * QUIZ1 Phase 11 — which option was correct, positionally. Present only on
+   * a RESOLVED projection (the backend has no other place to put it), and
+   * absent for a segment round or a pre-Phase-11 backend. Optional here so
+   * this client can be deployed ahead of that backend.
+   */
+  correct_option_index?: number | null;
+  option_count?: number | null;
 }

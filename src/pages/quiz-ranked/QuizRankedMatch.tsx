@@ -20,7 +20,9 @@ import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import {
   abilityTrayIsUseful, opponentPresenceLabel, projectAbilities,
-  projectAbilityPermissions, projectCombatants, projectPermissions, projectTimer,
+  projectAbilityPermissions, projectCombatants, projectDamageHistory,
+  projectPermissions, projectRevealDamage, projectRevealOutcomes,
+  projectSurfaceReveal, projectTimer,
 } from "./rankedViews";
 import { useRankedMatch } from "./useRankedMatch";
 
@@ -85,6 +87,28 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const combatants = useMemo(
     () => (m.publicRound ? projectCombatants(m.publicRound, viewerUserId) : null),
     [m.publicRound, viewerUserId]);
+  /**
+   * Phase 11 — the two side columns' recent-damage trails, and their reveal
+   * verdicts.
+   *
+   * The verdicts are gated on `revealHold`, which is exactly the beat the
+   * arena already withholds interaction for: both columns resolve together,
+   * for the same ~1.5s, and then return to their neutral status. Nothing here
+   * decides anything — outcome, damage dealt and HP after are all read off the
+   * authoritative settlement.
+   */
+  const damageHistory = useMemo(() => ({
+    player: combatants
+      ? projectDamageHistory(m.damageLog, combatants.player.playerId) : [],
+    opponent: combatants
+      ? projectDamageHistory(m.damageLog, combatants.opponent.playerId) : [],
+  }), [m.damageLog, combatants]);
+  const revealOutcomes = useMemo(
+    () => projectRevealOutcomes(m.lastResolved, m.revealHold),
+    [m.lastResolved, m.revealHold]);
+  const revealDamage = useMemo(
+    () => projectRevealDamage(m.lastResolved, m.revealHold),
+    [m.lastResolved, m.revealHold]);
   // The active segment's module renderer. A v2 payload or a legacy round has
   // no discriminator and resolves to quiz.v1 — the module those rounds were
   // created under — so behaviour is unchanged. null = unknown module.
@@ -98,6 +122,14 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     () => (m.privatePlayer ? projectAbilities(m.privatePlayer, m.selectedAbilityId) : []),
     [m.privatePlayer, m.selectedAbilityId]);
   const timer = m.publicRound ? projectTimer(m.publicRound, m.skewMs, Date.now()) : null;
+  // QUIZ1 Phase 11 — the post-settlement answer-tablet reveal. The whole
+  // disclosure gate lives in `projectSurfaceReveal`; this only supplies the
+  // round the surface is actually showing, which is deliberately NOT the live
+  // round during the reveal beat.
+  const surfaceRoundNumber = surfaceRound?.activeRound?.roundNumber ?? null;
+  const reveal = useMemo(
+    () => projectSurfaceReveal(m.lastResolved, surfaceRoundNumber, question),
+    [m.lastResolved, surfaceRoundNumber, question]);
   // A module that owns its own ability window and submission renders those
   // itself; the shell must not also show the quiz confirm strip or ability
   // tray. This is a capability the module declares — not a mode branch here.
@@ -189,7 +221,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     return (
       <div className="ranked-shell flex flex-col gap-4" data-testid="ranked-match-over">
         <MatchOverFrame result={result} player={combatants.player} opponent={combatants.opponent}
-          subheading={subheading}
+          subheading={subheading} progressionEnabled={progressionEnabled}
           primaryAction={{ label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } }} />
         {m.lastResolved && (
           <RevealPanel settlement={m.lastResolved} viewerSlot="p1"
@@ -350,13 +382,40 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
 
           RA11: from 1500px the frame runs stage-wide (90rem), so the rails
           step OUT to 17rem and the gutters widen — the duelists move toward
-          the flanks while the centre track still absorbs most of the gain. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,14rem)] lg:items-start xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_minmax(0,15rem)] min-[1500px]:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,17rem)] min-[1500px]:gap-4">
-        <div className="lg:col-start-1 lg:row-start-1">
-          <CombatantPanel combatant={combatants.player} />
+          the flanks while the centre track still absorbs most of the gain.
+
+          Phase 11 — TRUE THREE COLUMNS. The rails stopped being fixed rem
+          tracks and became PROPORTIONS of the arena: 23% / 54% / 23%. Two
+          things follow, and both were the point:
+
+           * the side columns grow with the stage instead of pinning at 14rem,
+             which is what made them read as "two small cards flanking a giant
+             centre" rather than as two of three columns;
+           * `items-stretch` replaces `items-start`, so the three tracks share
+             one vertical extent instead of the rails floating at their own
+             natural height against a much taller centre (the §14 constraint).
+             The panels themselves still size their own CONTENT — stretching
+             the track is not stretching the content. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
+        {/* `h-full` on BOTH the track cell and the panel: `items-stretch`
+            stretches the grid cell, and without this the panel would still sit
+            at its own content height inside a taller cell — which is the
+            "tiny floating side cards beside a giant centre" reading §14 rules
+            out. The panel's own sections keep their sizes; only the shared
+            column extent changes. */}
+        <div className="lg:col-start-1 lg:row-start-1 lg:h-full">
+          <CombatantPanel combatant={combatants.player}
+            progressionEnabled={progressionEnabled}
+            damage={damageHistory.player}
+            outcome={revealOutcomes[combatants.player.playerId] ?? null}
+            damageDealt={revealDamage[combatants.player.playerId] ?? null} />
         </div>
-        <div className="lg:col-start-3 lg:row-start-1">
-          <CombatantPanel combatant={combatants.opponent} />
+        <div className="lg:col-start-3 lg:row-start-1 lg:h-full">
+          <CombatantPanel combatant={combatants.opponent}
+            progressionEnabled={progressionEnabled}
+            damage={damageHistory.opponent}
+            outcome={revealOutcomes[combatants.opponent.playerId] ?? null}
+            damageDealt={revealDamage[combatants.opponent.playerId] ?? null} />
         </div>
 
         <div data-testid="ranked-focus-column"
@@ -437,6 +496,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
                 segmentState={surfaceRound!.segmentState}
                 actions={segmentActions}
                 skewMs={m.skewMs}
+                reveal={reveal}
               />
             </section>
           )}

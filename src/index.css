@@ -1444,3 +1444,57 @@ html.high-contrast * { text-shadow: none !important; }
     background-position: 50% 50%;
   }
 }
+/* ---------------------------------------------------------------------------
+   QUIZ1 Phase 11 — the Meta Reflex entry sting.
+
+   NON-BLOCKING BY CONSTRUCTION, and that is the whole design constraint. The
+   server starts card 1's deadline the instant it creates the block
+   (`ranked_public/service.py` → `sf.start_card_deadline`), before the client
+   has polled at all, so a 700ms curtain over the cards would be 700ms of a
+   six-second answer window spent by the animation. The sting therefore lives
+   in a `pointer-events: none` band over the block HEADER — never over the two
+   choice buttons — and the card is visible, clickable and counting down for
+   the entire sting.
+
+   META enters from the left, REFLEX from the right; they reach the centre at
+   the same instant, hold, then leave along the reverse paths. ~720ms total.
+   --------------------------------------------------------------------------- */
+@keyframes mr-sting-left {
+  0%   { transform: translateX(-140%); opacity: 0; }
+  30%  { transform: translateX(0);     opacity: 1; }
+  62%  { transform: translateX(0);     opacity: 1; }
+  100% { transform: translateX(-140%); opacity: 0; }
+}
+@keyframes mr-sting-right {
+  0%   { transform: translateX(140%);  opacity: 0; }
+  30%  { transform: translateX(0);     opacity: 1; }
+  62%  { transform: translateX(0);     opacity: 1; }
+  100% { transform: translateX(140%);  opacity: 0; }
+}
+@keyframes mr-sting-mark {
+  0%   { transform: scale(0.4); opacity: 0; }
+  34%  { transform: scale(1);   opacity: 1; }
+  62%  { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0; }
+}
+
+.mr-sting__word--left  { animation: mr-sting-left  720ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mr-sting__word--right { animation: mr-sting-right 720ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.mr-sting__mark        { animation: mr-sting-mark  720ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* Reduced motion: no directional travel at all. The wordmark simply appears
+   centred and fades — the same information, none of the movement. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes mr-sting-fade {
+    0%   { opacity: 0; }
+    30%  { opacity: 1; }
+    62%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .mr-sting__word--left,
+  .mr-sting__word--right,
+  .mr-sting__mark {
+    animation: mr-sting-fade 620ms linear both;
+    transform: none;
+  }
+}

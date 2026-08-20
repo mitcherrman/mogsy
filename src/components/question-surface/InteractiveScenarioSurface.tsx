@@ -145,7 +145,18 @@ function HeroBand({
   // surfaces keep the tall presentation.
   const compactBand = settings.density === "compact";
   const bandMinHeight = compactBand ? "8rem" : "12.5rem";
-  const bandMaxHeight = compactBand ? "11rem" : "30rem";
+  // QUIZ1 Phase 11 — the compact cap was set when a Ranked round had to fit
+  // question + answers + ABILITY TRAY + status panel above the fold. R1
+  // removed the tray and Phase 11 removed the XP row, so ~200px of that budget
+  // came back and the band was left artificially short in the middle of a
+  // half-empty viewport.
+  //
+  // The replacement is still self-limiting, and deliberately so: the cap is
+  // whichever is SMALLER of a fixed ceiling and a fraction of the viewport, so
+  // a short laptop screen keeps roughly the old height and only a tall desktop
+  // spends the reclaimed room. The "must fit above the fold" rule the original
+  // cap encoded is therefore intact — it is the fold that moved.
+  const bandMaxHeight = compactBand ? "min(22rem, 34vh)" : "30rem";
 
   return (
     <MotionConfig reducedMotion={reducedMotion}>

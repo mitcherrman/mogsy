@@ -26,10 +26,16 @@ function projectQuestion(pub: PublicRoundView): QuestionView | null {
   return pub.question ? questionViewFromPublicQuestion(pub.question) : null;
 }
 
-function QuizViewport({ publicRound, selection, permissions, onSelect }: ModuleViewportProps) {
+function QuizViewport({ publicRound, selection, permissions, onSelect, reveal }: ModuleViewportProps) {
   const question = useMemo(() => projectQuestion(publicRound), [publicRound]);
-  // Optional rich-visual source; null → the polished text fallback. No reveal
-  // is passed, so the surface stays spoiler-safe exactly as before.
+  // Optional rich-visual source; null → the polished text fallback.
+  //
+  // QUIZ1 Phase 11: `reveal` is now forwarded, and it is the shell's job to
+  // supply null until the round has SETTLED (see `QuizRankedMatch`). Pre-reveal
+  // this is exactly the surface it always was — `revealed: false` and no
+  // correct option id — which is what keeps the spoiler contract intact while
+  // finally letting the tablets resolve afterwards, the way a Meta Reflex card
+  // already does.
   //
   // Memoised on the QUESTION rather than recomputed per render: the arena
   // rerenders once a second for the timer, and a fresh object here re-ran the
@@ -46,6 +52,7 @@ function QuizViewport({ publicRound, selection, permissions, onSelect }: ModuleV
       onSelectOption={(o) => onSelect(o.id)}
       variant="competitive"
       scenarioSource={scenarioSource}
+      reveal={reveal ?? null}
     />
   );
 }

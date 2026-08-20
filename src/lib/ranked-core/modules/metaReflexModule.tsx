@@ -25,6 +25,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
+import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
 import type { QuestionView } from "@/lib/ranked-core/viewTypes";
@@ -113,7 +114,9 @@ function CardArt({ src, alt, large }: { src?: string; alt: string; large: boolea
     <span
       data-testid="mr-card-art"
       className={`flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#b9934c]/25 bg-black/25 ${
-        large ? "h-24 w-24 sm:h-28 sm:w-28" : "h-14 w-14 sm:h-16 sm:w-16"}`}
+        large
+          ? "h-24 w-24 sm:h-28 sm:w-28 lg:h-36 lg:w-36 min-[1500px]:h-40 min-[1500px]:w-40"
+          : "h-14 w-14 sm:h-16 sm:w-16 lg:h-20 lg:w-20 min-[1500px]:h-24 min-[1500px]:w-24"}`}
     >
       {show ? (
         <img src={src} alt={alt} className="h-full w-full object-contain" loading="eager"
@@ -177,7 +180,7 @@ function ChoiceCard({ card, side, selected, disabled, onPick }: {
       aria-label={accessibleName}
       data-testid={`mr-choice-${side}`}
       data-card-id={side === "left" ? card.leftCardId : card.rightCardId}
-      className={`flex min-h-[7.5rem] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center
+      className={`flex min-h-[7.5rem] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center lg:min-h-[12rem] lg:gap-3 lg:p-5
         transition-[border-color,transform] duration-150 motion-reduce:transition-none
         disabled:cursor-not-allowed disabled:opacity-70
         enabled:hover:border-[#e8c97a]/70 enabled:active:scale-[0.99]
@@ -185,7 +188,7 @@ function ChoiceCard({ card, side, selected, disabled, onPick }: {
     >
       <CardArt src={src} alt={`${accessibleName} artwork`} large={recognition} />
       {label !== null && (
-        <span className="line-clamp-2 text-sm font-semibold leading-tight sm:text-base"
+        <span className="line-clamp-2 text-sm font-semibold leading-tight sm:text-base lg:text-lg"
               data-testid={`mr-choice-${side}-label`}>
           {label}
         </span>
@@ -247,7 +250,7 @@ function BlockPhase({ state, cards, actions, skewMs }: {
                           timerMs={state.cardTimerMs} />}
       />
 
-      <p className="text-center text-base font-semibold sm:text-lg" data-testid="mr-prompt">
+      <p className="text-center text-base font-semibold sm:text-lg lg:text-xl" data-testid="mr-prompt">
         {current.prompt}
       </p>
 
@@ -283,7 +286,23 @@ function MetaReflexHeader({ progress, clock }:
   );
 }
 
-function MetaReflexViewport({ segmentState, actions, skewMs }: ModuleViewportProps) {
+function MetaReflexViewport({ publicRound, segmentState, actions, skewMs }: ModuleViewportProps) {
+  /**
+   * Phase 11 — the entry sting's identity is the BLOCK, not the card.
+   *
+   * Keyed on the segment number (plus the module version, so a client that
+   * lives through a module upgrade treats the new block as new), and set only
+   * once the block is actually in its `challenges` phase. Card 1 to card 5 all
+   * share this key, so the sting plays exactly once per block and a second
+   * block later in the match plays its own.
+   *
+   * The hook is called unconditionally, above every early return, because a
+   * segment that arrives mid-load must not change the hook order.
+   */
+  const blockKey = segmentState && segmentState.phase === "challenges"
+    ? `${publicRound.segment.moduleVersion}#${publicRound.segment.segmentNumber ?? "-"}`
+    : null;
+  const stinging = useEntrySting(blockKey);
   if (!segmentState) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="mr-loading">
@@ -303,7 +322,11 @@ function MetaReflexViewport({ segmentState, actions, skewMs }: ModuleViewportPro
     );
   }
   return (
-    <div className="space-y-3">
+    <div className="relative space-y-3">
+      {/* Laid OVER a live, clickable card — never in front of it. See
+          MetaReflexSting for why a blocking curtain would spend the player's
+          own answer window. */}
+      {stinging && <MetaReflexSting />}
       {block?.contract === "meta_reflex" ? (
         <BlockPhase state={segmentState} cards={block.cards} actions={actions} skewMs={skewMs} />
       ) : (

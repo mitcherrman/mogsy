@@ -15,6 +15,7 @@
  */
 import { useState } from "react";
 import { CheckCircle2, ChevronDown, Hourglass, Swords, XCircle } from "lucide-react";
+import type { PlayerSlot } from "@/lib/ranked-core/viewTypes";
 import {
   ResolvedCombatantView,
   ResolvedRoundView,
@@ -32,6 +33,53 @@ const OUTCOME_ICON: Record<ResolvedCombatantView["outcome"], React.JSX.Element> 
   correct: <CheckCircle2 aria-hidden className="h-3.5 w-3.5 shrink-0 text-emerald-400" />,
   incorrect: <XCircle aria-hidden className="h-3.5 w-3.5 shrink-0 text-[#e2757b]" />,
   timed_out: <Hourglass aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />,
+};
+
+/**
+ * QUIZ1 Phase 11 — the RESULT HEADLINE.
+ *
+ * The banner used to say everything it knew in one 12px line
+ * ("You Correct · Opponent Timed out"), which is technically complete and
+ * practically unreadable in the 1.5s it is on screen. This promotes the two
+ * facts a player actually needs — did I get it right, and what did that cost
+ * — into one dominant sentence, and leaves every other value exactly where it
+ * was: the per-side chips below, and the full breakdown behind Details.
+ *
+ * Reads the settlement and nothing else. No correctness is recomputed, no
+ * damage is summed, and nothing here can disagree with the arena columns
+ * because both render the same two `ResolvedCombatantView`s.
+ */
+export function resultHeadline(
+  viewer: ResolvedCombatantView, opponent: ResolvedCombatantView,
+): { verdict: string; detail: string | null; tone: ResolvedCombatantView["outcome"] } {
+  const verdict = viewer.outcome === opponent.outcome
+    ? ({ correct: "Both correct", incorrect: "Both incorrect",
+         timed_out: "Both timed out" } as const)[viewer.outcome]
+    : ({ correct: "Correct", incorrect: "Incorrect",
+         timed_out: "Timed out" } as const)[viewer.outcome];
+  // Dealt and taken are kept SEPARATE and both shown when both happened: a
+  // round where each player answers differently produces exactly one of them,
+  // but a shared-damage round produces both and collapsing them to a net
+  // number would invent a value the settlement does not contain.
+  const parts: string[] = [];
+  if (viewer.finalDamageDealt > 0) parts.push(`${viewer.finalDamageDealt} damage dealt`);
+  if (viewer.finalDamageReceived > 0) parts.push(`${viewer.finalDamageReceived} damage taken`);
+  if (parts.length === 0 && viewer.shieldAbsorbed > 0) {
+    parts.push(`${viewer.shieldAbsorbed} absorbed`);
+  }
+  return { verdict, detail: parts.length ? parts.join(" · ") : null, tone: viewer.outcome };
+}
+
+const VERDICT_TONE: Record<ResolvedCombatantView["outcome"], string> = {
+  correct: "text-emerald-300",
+  incorrect: "text-[#e2757b]",
+  timed_out: "text-muted-foreground",
+};
+
+const VERDICT_ICON: Record<ResolvedCombatantView["outcome"], React.JSX.Element> = {
+  correct: <CheckCircle2 aria-hidden className="h-6 w-6 shrink-0 text-emerald-400" />,
+  incorrect: <XCircle aria-hidden className="h-6 w-6 shrink-0 text-[#e2757b]" />,
+  timed_out: <Hourglass aria-hidden className="h-6 w-6 shrink-0 text-muted-foreground" />,
 };
 
 export interface RevealBannerProps {
@@ -85,11 +133,12 @@ export function RevealBanner({
     setSeen(settlement);
     setOpen(false);
   }
-  const opponentSlot = viewerSlot === "p1" ? "p2" : "p1";
+  const opponentSlot: PlayerSlot = viewerSlot === "p1" ? "p2" : "p1";
   const viewer = settlement.players[viewerSlot];
   const opponent = settlement.players[opponentSlot];
   const nameOf = (p: ResolvedCombatantView) =>
     namesByPlayerId?.[p.playerId] ?? p.playerId;
+  const { verdict, detail, tone } = resultHeadline(viewer, opponent);
 
   return (
     <section
@@ -97,11 +146,50 @@ export function RevealBanner({
       data-testid="reveal-panel"
       className="ranked-panel px-3 py-2 sm:px-4"
     >
+      {/* The dominant line. Reserved height so the Details toggle and the
+          per-side row never move between a verdict with a damage clause and
+          one without. */}
+      <div
+        data-testid="reveal-verdict"
+        data-outcome={viewer.outcome}
+        className="flex min-h-[3rem] items-center gap-3"
+      >
+        {VERDICT_ICON[viewer.outcome]}
+        <div className="min-w-0">
+          <p className={`text-lg font-black uppercase leading-tight tracking-[0.04em] sm:text-xl ${VERDICT_TONE[tone]}`}>
+            {verdict}
+          </p>
+          <p
+            data-testid="reveal-verdict-detail"
+            className="min-h-[1rem] text-xs font-semibold tabular-nums text-[#e8c97a]"
+          >
+            {detail ?? ""}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          data-testid="reveal-details-toggle"
+          className="ml-auto inline-flex min-h-[1.75rem] shrink-0 items-center gap-1 rounded px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          Details
+          <ChevronDown
+            aria-hidden
+            className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+      </div>
+      {/* Both players' outcomes stay visible in the banner as well as in the
+          arena columns — §10: the opponent's result must not live only in one
+          of the two places. */}
       <div className="flex min-h-[2.25rem] flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <span
           role="status"
           data-testid="reveal-headline"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"
         >
           <Swords aria-hidden className="h-3.5 w-3.5 shrink-0 text-[#d5b66f]" />
           <span>
@@ -116,21 +204,6 @@ export function RevealBanner({
             Match over
           </span>
         )}
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          data-testid="reveal-details-toggle"
-          className="ml-auto inline-flex min-h-[1.75rem] items-center gap-1 rounded px-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
-        >
-          Details
-          <ChevronDown
-            aria-hidden
-            className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${
-              open ? "rotate-180" : ""
-            }`}
-          />
-        </button>
       </div>
       {open && (
         <div className="mt-2 border-t border-border pt-2">

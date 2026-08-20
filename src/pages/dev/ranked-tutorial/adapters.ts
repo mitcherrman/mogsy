@@ -327,6 +327,11 @@ export function resolvedRoundViewFromResult(
     sharedNextRoundDurationSeconds: fixture.nextRoundDurationAfterAbility,
     sharedTimerDeltaSeconds: fixture.nextRoundDurationAfterAbility - 30,
     matchOver,
+    // QUIZ1 Phase 11: the tutorial's authored fixtures carry outcomes, not a
+    // correct OPTION index, so there is nothing truthful to put here and the
+    // tutorial's answer tablets stay unresolved. Fabricating an index from
+    // `playerCorrect` would highlight whatever the learner happened to click.
+    correctOptionIndex: null,
     winner: matchOver ? "p1" : null,
     completionReason: matchOver ? "knockout" : null,
     summary: result.resultCopy,

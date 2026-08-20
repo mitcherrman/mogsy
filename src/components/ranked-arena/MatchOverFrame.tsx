@@ -31,6 +31,8 @@ export interface MatchOverFrameProps {
   summary?: ReactNode;
   primaryAction?: MatchOverAction;
   secondaryAction?: MatchOverAction;
+  /** R1: does this match have a level/XP layer? Defaults true. */
+  progressionEnabled?: boolean;
 }
 
 const DEFAULT_HEADING: Record<MatchResult, string> = {
@@ -63,6 +65,10 @@ export function MatchOverFrame({
   summary,
   primaryAction,
   secondaryAction,
+  // R1: forwarded to both panels so the terminal frame agrees with the live
+  // arena about whether this match ever had a level/XP layer. Defaults true,
+  // so every existing caller is unchanged.
+  progressionEnabled = true,
 }: MatchOverFrameProps) {
   return (
     <section
@@ -87,8 +93,10 @@ export function MatchOverFrame({
       </header>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <CombatantPanel combatant={player} showRoundStatus={false} />
-        <CombatantPanel combatant={opponent} showRoundStatus={false} />
+        <CombatantPanel combatant={player} showRoundStatus={false}
+          progressionEnabled={progressionEnabled} />
+        <CombatantPanel combatant={opponent} showRoundStatus={false}
+          progressionEnabled={progressionEnabled} />
       </div>
 
       {summary && <div data-testid="match-over-summary">{summary}</div>}

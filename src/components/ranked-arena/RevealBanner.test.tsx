@@ -30,7 +30,7 @@ function settlement(round: number): ResolvedRoundView {
     matchId: "m1", roundNumber: round, questionId: null,
     endReason: "both_answered", pressureApplied: false,
     sharedNextRoundDurationSeconds: 30, sharedTimerDeltaSeconds: 0,
-    winner: "p1", matchOver: false, completionReason: null, summary: "",
+    winner: "p1", matchOver: false, completionReason: null, summary: "", correctOptionIndex: null,
     players: {
       p1: player("userA"),
       p2: player("userB", { outcome: "timed_out", timedOut: true, finalDamageDealt: 0 }),

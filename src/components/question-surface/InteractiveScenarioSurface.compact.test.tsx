@@ -55,11 +55,27 @@ function mount(
 }
 
 describe("compact media budget", () => {
-  it("hard-caps the cinematic band under compact density", () => {
+  it("caps the cinematic band under compact density, viewport-relative", () => {
+    // QUIZ1 Phase 11 raised the compact ceiling from a flat 11rem to
+    // `min(22rem, 34vh)`. The contract this test protects is unchanged — a
+    // competitive round must not reserve oversized media — but the cap is now
+    // a fraction of the VIEWPORT rather than a fixed height, because R1 (no
+    // ability tray) and Phase 11 (no XP row) gave that space back and a fixed
+    // cap left the band short in the middle of a half-empty screen. `min()`
+    // keeps a short laptop screen near the old height.
     mount("competitive", SHORT_Q, ITEM_SCENARIO);
     const hero = screen.getByTestId("scenario-hero");
-    expect(hero.style.maxHeight).toBe("11rem");
+    expect(hero.style.maxHeight).toBe("min(22rem, 34vh)");
     expect(hero.style.minHeight).toBe("8rem");
+  });
+
+  it("still caps compact well below the comfortable surface", () => {
+    mount("competitive", SHORT_Q, ITEM_SCENARIO);
+    const compact = screen.getByTestId("scenario-hero").style.maxHeight;
+    mount("standard", SHORT_Q, ITEM_SCENARIO);
+    const comfortable = screen.getAllByTestId("scenario-hero")[1].style.maxHeight;
+    expect(compact).not.toBe(comfortable);
+    expect(comfortable).toBe("30rem");
   });
 
   it("keeps the tall presentation for comfortable surfaces", () => {

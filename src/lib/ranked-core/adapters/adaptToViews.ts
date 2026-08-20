@@ -26,6 +26,8 @@ export class RankedViewAdapterError extends Error {
 export interface CombatantIdentity {
   name: string;
   tag?: string;
+  /** R1 role id, when the controller has one. See `CombatantView.roleId`. */
+  roleId?: string | null;
 }
 
 export interface CombatantViewOptions {
@@ -103,6 +105,7 @@ export function combatantViewsFromPlayers(
       playerId: p.playerId,
       name: identity?.name ?? p.playerId,
       tag: identity?.tag,
+      roleId: identity?.roleId ?? null,
       side,
       classId: p.classId,
       hp: p.hp,

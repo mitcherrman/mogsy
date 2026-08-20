@@ -23,6 +23,7 @@ import type {
   QuestionView,
 } from "@/lib/ranked-core/viewTypes";
 import type { SegmentChoice } from "@/lib/ranked-public/client";
+import type { SurfaceReveal } from "@/lib/question-surface/contract";
 import type { PublicRoundView, SegmentStateView } from "@/lib/ranked-public/contracts";
 
 /**
@@ -67,6 +68,16 @@ export interface ModuleViewportProps {
   actions: ModuleSegmentActions;
   /** Deadline-anchored clock skew, so a countdown uses server time. */
   skewMs: number;
+  /**
+   * QUIZ1 Phase 11 — backend-authoritative reveal for the CURRENTLY RENDERED
+   * round, or null.
+   *
+   * Null pre-reveal, always. The shell derives it from the resolved projection
+   * and only for the round the surface is actually showing, so a settlement
+   * can never resolve the tablets of the question that came after it. A module
+   * that owns its own reveal (Meta Reflex) ignores this.
+   */
+  reveal?: SurfaceReveal | null;
 }
 
 /**
