@@ -890,13 +890,22 @@ export default function Quiz() {
           style={{ background: LEAGUECRAFT_BG_VEIL }}
         />
 
+      {/* LC1: the hub reclaims the strip the shell's header band used to be
+          padded away from. The band itself (--app-header-h) still stands — the
+          floating HUD lives in it — but this page added a further 16px of its
+          own on top, which read as leftover navbar clearance and pushed the
+          lobby down the screen. On the hub the column starts one notch under
+          the band instead; every other phase keeps its original breathing
+          room, because only the hub has three tall columns to fit. */}
       <div
-        className={`relative mx-auto px-4 py-4 ${phase === "sets" ? "max-w-[1500px]" : "max-w-3xl"}`}
+        className={`relative mx-auto px-4 pb-4 ${
+          phase === "sets" ? "max-w-[1500px] pt-1" : "max-w-3xl pt-4"
+        }`}
       >
         {/* Compact Leaguecraft header. The shell's floating League Hub pill is
             suppressed for /quiz (see Layout) so this inline control is the
             single back affordance, exactly as Combat Lab does it. */}
-        <header className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <header className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 ${phase === "sets" ? "mb-2" : "mb-3"}`}>
           <Link
             to="/lol"
             aria-label="Back to League hub"

@@ -4,6 +4,7 @@ import { BookOpen, ChevronRight, HelpCircle, RotateCcw, RotateCw, ScrollText } f
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import RankedLobbyHero from "@/components/quiz/RankedLobbyHero";
+import LobbyPanel from "@/components/quiz/LobbyPanel";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
@@ -132,8 +133,15 @@ export default function LeaguecraftHub({
               stretched tile grid — so the classroom reads around them. The
               rule and the extra top margin push the row below the lobby's
               fold: the three-column hero owns the upper screen, and these
-              stay fully reachable one scroll down. */}
-      <div className="mt-5 grid grid-cols-1 gap-3 border-t border-[#c9a84c]/12 pt-4 lg:grid-cols-12">
+              stay fully reachable one scroll down.
+
+              LC1 panel pass: now that the lobby columns sit on their own
+              plates, the row no longer needs a wide moat to read as separate —
+              the panels do that. The rule stays (it is what makes this a
+              second act rather than more hero), the gap shrinks, and the top
+              of Recent Studies reaches the first viewport on a normal desktop
+              instead of starting entirely below it. */}
+      <div className="mt-1 grid grid-cols-1 gap-3 border-t border-[#c9a84c]/12 pt-3 lg:grid-cols-12">
         <section className="flex flex-col lg:col-span-7" data-testid="hub-recent-section">
           <SectionHeading icon={RotateCw} title="Recent Studies" hint="How am I doing?" />
           <QuizRecentResultsCard
@@ -154,7 +162,7 @@ export default function LeaguecraftHub({
             title="Practice for Ranked"
             hint="Sharpen the knowledge used in Ranked."
           />
-          <Panel className="mt-1.5 flex flex-1 flex-col gap-2">
+          <LobbyPanel className="mt-1.5 gap-2">
             {setsLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-8 w-full rounded-md" />
@@ -214,21 +222,9 @@ export default function LeaguecraftHub({
                 <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
               </Link>
             )}
-          </Panel>
+          </LobbyPanel>
         </section>
       </div>
-    </div>
-  );
-}
-
-/** Warm navy glass panel. Deliberately avoids `bg-card`, which the LoL theme
- *  wraps in a cyan inset ring — the hub reserves that emphasis for Ranked. */
-function Panel({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <div
-      className={`rounded-lg border border-[#c9a84c]/18 bg-[#060d1a]/72 p-3 backdrop-blur-md ${className}`}
-    >
-      {children}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import RankedLobbyHero from "./RankedLobbyHero";
+import { LOBBY_PANEL_WASH } from "./LobbyPanel";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { MatchHistoryEntryView, RankedProgressionView } from "@/lib/ranked-public/contracts";
 
@@ -104,6 +105,30 @@ describe("RankedLobbyHero — three-column composition", () => {
     const portrait = screen.getByTestId("hero-personal-portrait");
     // Aspect ratio is preserved — the portrait is contained, never stretched.
     expect(portrait.className).toContain("object-contain");
+  });
+
+  it("stands each column on its own backing panel, with the centre emphasised", () => {
+    renderHero();
+    for (const column of ["hero-role-column", "hero-play-column", "hero-profile-column"]) {
+      const panel = screen.getByTestId(column).querySelector('[data-testid="hero-panel"]');
+      expect(panel, `${column} has no backing panel`).not.toBeNull();
+    }
+    // Exactly one plate carries the extra emphasis, and it is the CTA column.
+    const emphasised = screen.getAllByTestId("hero-panel").filter(
+      (p) => p.getAttribute("data-emphasis") === "true",
+    );
+    expect(emphasised).toHaveLength(1);
+    expect(screen.getByTestId("hero-play-column").contains(emphasised[0])).toBe(true);
+  });
+
+  it("keeps every panel wash translucent, so the classroom art is never covered", () => {
+    // An opaque fill would flatten the lobby into dashboard cards. Every stop
+    // of both washes must stay under full alpha.
+    for (const wash of Object.values(LOBBY_PANEL_WASH)) {
+      const alphas = [...wash.matchAll(/rgba\([^)]*?,\s*([\d.]+)\)/g)].map((m) => Number(m[1]));
+      expect(alphas.length).toBeGreaterThan(0);
+      expect(Math.max(...alphas)).toBeLessThan(1);
+    }
   });
 
   it("the PLAY gem still drives the host's Ranked action", () => {
