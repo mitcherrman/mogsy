@@ -97,6 +97,35 @@ export type Database = {
           },
         ]
       }
+      admin_notification_reads: {
+        Row: {
+          admin_user_id: string
+          id: string
+          notification_id: string
+          read_at: string
+        }
+        Insert: {
+          admin_user_id: string
+          id?: string
+          notification_id: string
+          read_at?: string
+        }
+        Update: {
+          admin_user_id?: string
+          id?: string
+          notification_id?: string
+          read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notification_reads_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "admin_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notifications: {
         Row: {
           created_at: string
@@ -2947,6 +2976,11 @@ export type Database = {
     }
     Functions: {
       activate_boost: { Args: never; Returns: string }
+      admin_resolve_mod_request: {
+        Args: { _approved: boolean; _notification_id: string }
+        Returns: string
+      }
+      admin_unread_notification_count: { Args: never; Returns: number }
       admin_list_feedback: {
         Args: { _show_archived?: boolean }
         Returns: {

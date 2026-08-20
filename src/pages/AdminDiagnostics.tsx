@@ -241,14 +241,18 @@ export default function AdminDiagnostics() {
       supabase.from("leagues").select("id", { count: "exact", head: true }),
       supabase.from("preset_items").select("id", { count: "exact", head: true }),
       supabase.from("matches").select("id", { count: "exact", head: true }),
-      supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
+      // Unread is per admin, so this is the count for the admin viewing the
+      // diagnostics page — not a site-wide figure. `.eq("is_read", false)` used
+      // to read the global flag and would now be counting the moderator-request
+      // disposition instead. The key is named for what it actually reports.
+      supabase.rpc("admin_unread_notification_count"),
     ]).then(([p, l, i, m, n]) => {
       setCounts({
         profiles: p.count ?? null,
         leagues: l.count ?? null,
         items: i.count ?? null,
         matches: m.count ?? null,
-        unreadNotifs: n.count ?? null,
+        myUnreadAdminNotifs: n.error ? null : n.data ?? null,
       });
     });
   }, []);

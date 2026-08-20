@@ -284,17 +284,35 @@ export default function MogzyIdentityMenu() {
     setReadIds(new Set((readRes.data || []).map((r: any) => r.notification_id)));
   }, [user]);
 
+  /**
+   * Admin read state is per admin, and comes from admin_notification_reads.
+   *
+   * It used to come from admin_notifications.is_read, which is a single global
+   * boolean: whichever admin opened a row first marked it read for every other
+   * admin. `is_read` survives, but it now means only "this moderator delete
+   * request has been approved or denied" and is deliberately not selected here.
+   */
   const loadAdminNotifs = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("admin_notifications")
-      .select("id, type, title, message, created_at, metadata, is_read")
-      .order("created_at", { ascending: false })
-      .limit(30);
-    if (error) throw error;
-    const items = (data || []) as any[];
-    setAdminNotifs(items.map(({ is_read, ...rest }) => rest));
-    setReadAdminIds(new Set(items.filter((n: any) => n.is_read).map((n: any) => n.id)));
-  }, []);
+    if (!user) return;
+    const [notifRes, readRes] = await Promise.all([
+      supabase
+        .from("admin_notifications")
+        .select("id, type, title, message, created_at, metadata")
+        .order("created_at", { ascending: false })
+        .limit(30),
+      supabase
+        .from("admin_notification_reads")
+        .select("notification_id")
+        .eq("admin_user_id", user.id),
+    ]);
+    // A failed read of either table means the read state is genuinely unknown,
+    // and the caller turns that into the panel's error state — the same
+    // contract loadNotifications already keeps for the user-side inbox.
+    if (notifRes.error) throw notifRes.error;
+    if (readRes.error) throw readRes.error;
+    setAdminNotifs((notifRes.data || []) as AdminNotif[]);
+    setReadAdminIds(new Set((readRes.data || []).map((r: any) => r.notification_id)));
+  }, [user]);
 
   useEffect(() => {
     if (!isAccount || !user) {
@@ -357,7 +375,11 @@ export default function MogzyIdentityMenu() {
     };
   }, [isAccount, user, loadNotifications, loadAdminNotifs]);
 
-  // Admin-only realtime stream of admin_notifications
+  // Admin-only realtime stream of admin_notifications.
+  //
+  // A newly arrived notification carries no receipt for anyone, so it starts
+  // unread for every admin independently — there is nothing to seed into
+  // readAdminIds here.
   useEffect(() => {
     if (!isAdmin) return;
     const channel = supabase
@@ -376,6 +398,40 @@ export default function MogzyIdentityMenu() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [isAdmin]);
+
+  /**
+   * Own receipts, streamed. Reading something in one tab has to settle in the
+   * others, and the admin notifications page writes the same receipts — without
+   * this the two surfaces disagree until a reload.
+   *
+   * The filter is belt and braces: the SELECT policy on admin_notification_reads
+   * is `auth.uid() = admin_user_id`, and realtime applies it, so another admin's
+   * receipt can never arrive here and can never clear this admin's badge.
+   */
+  useEffect(() => {
+    if (!isAdmin || !user) return;
+    const channel = supabase
+      .channel("hud-admin-notif-reads")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "admin_notification_reads",
+          filter: `admin_user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const receipt = payload.new as { notification_id: string };
+          setReadAdminIds(prev =>
+            prev.has(receipt.notification_id)
+              ? prev
+              : new Set(prev).add(receipt.notification_id)
+          );
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [isAdmin, user]);
 
   const closePanel = useCallback(() => {
     setOpen(false);
@@ -428,6 +484,44 @@ export default function MogzyIdentityMenu() {
     return !error;
   };
 
+  /**
+   * The admin equivalent of persistReads, against the per-admin receipt table.
+   *
+   * `admin_user_id` is always the current session's uid. It is sent because
+   * PostgREST needs the column value, not because the client chooses it — the
+   * INSERT policy independently requires `auth.uid() = admin_user_id`, so a
+   * forged id is rejected by the database rather than trusted.
+   *
+   * `ignoreDuplicates` covers the same race the user-side table has, plus one
+   * more: the admin notifications page and this panel can both record a read
+   * for the same row, and the moderator approve/deny RPC writes a receipt too.
+   */
+  const persistAdminReads = async (ids: string[]): Promise<boolean> => {
+    if (!user || ids.length === 0) return true;
+    const { error } = await supabase
+      .from("admin_notification_reads")
+      .upsert(
+        ids.map(id => ({ notification_id: id, admin_user_id: user.id })),
+        { onConflict: "notification_id,admin_user_id", ignoreDuplicates: true },
+      );
+    return !error;
+  };
+
+  const markAdminRead = async (id: string) => {
+    if (!user || readAdminIds.has(id)) return;
+    setReadAdminIds(prev => new Set(prev).add(id));
+    const ok = await persistAdminReads([id]);
+    if (!ok) {
+      // Roll back rather than leave a row looking read to this admin when
+      // nothing was written.
+      setReadAdminIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
   const markRead = async (id: string) => {
     if (!user || readIds.has(id)) return;
     setReadIds(prev => new Set(prev).add(id));
@@ -442,21 +536,48 @@ export default function MogzyIdentityMenu() {
     }
   };
 
+  /**
+   * Clears both sections the badge counts. It used to clear only the user
+   * notifications, so an admin with an unread admin row could press "Mark all
+   * read" and watch the badge refuse to reach zero.
+   *
+   * The two writes go to different tables and are rolled back independently:
+   * a failure on one must not resurrect rows the other successfully cleared.
+   * Both are scoped to this admin — the admin half writes receipts for
+   * auth.uid() only, so nothing here can touch another admin's read state.
+   */
   const markAllRead = async () => {
     if (!user) return;
     const unread = notifications.filter(n => !readIds.has(n.id)).map(n => n.id);
-    if (unread.length === 0) return;
+    const unreadAdmin = isAdmin
+      ? adminNotifs.filter(n => !readAdminIds.has(n.id)).map(n => n.id)
+      : [];
+    if (unread.length === 0 && unreadAdmin.length === 0) return;
+
     const previous = readIds;
-    setReadIds(prev => {
-      const next = new Set(prev);
-      unread.forEach(id => next.add(id));
-      return next;
-    });
-    const ok = await persistReads(unread);
-    if (!ok) {
-      setReadIds(previous);
-      toast.error("Could not mark those as read");
+    const previousAdmin = readAdminIds;
+    if (unread.length > 0) {
+      setReadIds(prev => {
+        const next = new Set(prev);
+        unread.forEach(id => next.add(id));
+        return next;
+      });
     }
+    if (unreadAdmin.length > 0) {
+      setReadAdminIds(prev => {
+        const next = new Set(prev);
+        unreadAdmin.forEach(id => next.add(id));
+        return next;
+      });
+    }
+
+    const [ok, adminOk] = await Promise.all([
+      persistReads(unread),
+      persistAdminReads(unreadAdmin),
+    ]);
+    if (!ok) setReadIds(previous);
+    if (!adminOk) setReadAdminIds(previousAdmin);
+    if (!ok || !adminOk) toast.error("Could not mark those as read");
   };
 
   /** Where a notification should take the user. Trigger-generated social rows
@@ -846,7 +967,10 @@ export default function MogzyIdentityMenu() {
                 type="button"
                 onClick={() => {
                   setStatus("loading");
-                  loadNotifications()
+                  // Admin rows and their receipts are part of what failed, so
+                  // the retry has to reload them too — otherwise a receipts
+                  // failure resolves to "ready" with every admin row unread.
+                  Promise.all([loadNotifications(), isAdmin ? loadAdminNotifs() : null])
                     .then(() => setStatus("ready"))
                     .catch(() => setStatus("error"));
                 }}
@@ -870,19 +994,13 @@ export default function MogzyIdentityMenu() {
                   <button
                     type="button"
                     key={`adm-${an.id}`}
+                    data-testid={`hud-admin-notification-${an.id}`}
+                    data-read={isRead ? "true" : "false"}
                     onClick={async () => {
-                      if (!isRead) {
-                        setReadAdminIds(prev => new Set(prev).add(an.id));
-                        const { error } = await supabase
-                          .from("admin_notifications").update({ is_read: true }).eq("id", an.id);
-                        if (error) {
-                          setReadAdminIds(prev => {
-                            const next = new Set(prev);
-                            next.delete(an.id);
-                            return next;
-                          });
-                        }
-                      }
+                      // Records a receipt for THIS admin only. The old version
+                      // flipped admin_notifications.is_read, which marked the
+                      // row read for every admin at once.
+                      await markAdminRead(an.id);
                       closePanel();
                       navigate("/admin");
                     }}

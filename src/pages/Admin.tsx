@@ -87,12 +87,17 @@ export default function Admin() {
         setLoading(false);
       });
 
+    // Per-admin unread count. The previous `.eq("is_read", false)` counted the
+    // single global flag, so this badge showed whatever the last admin to read
+    // something had left behind. The RPC counts notifications with no receipt
+    // for auth.uid(); it takes no arguments, so it can only ever report on the
+    // calling admin.
     supabase
-      .from("admin_notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("is_read", false)
-      .then(({ count }) => {
-        setUnreadCount(count || 0);
+      .rpc("admin_unread_notification_count")
+      .then(({ data, error }) => {
+        // Leave the badge at zero rather than invent a number.
+        if (error) return;
+        setUnreadCount(data ?? 0);
       });
   }, [user]);
 

@@ -12,13 +12,24 @@ interface Moderator {
   last_seen_at: string | null;
 }
 
+/**
+ * The one place where admin_notifications.is_read still means something.
+ *
+ * Everywhere else it used to mean "an admin has seen this", which is per admin
+ * and now lives in admin_notification_reads. Here it means the request has been
+ * APPROVED or DENIED — and that is genuinely global: the approve path already
+ * executed the delete, so a second admin must not be offered the buttons again
+ * for a target that no longer exists. It is aliased to `isDispositioned` on the
+ * way in so nothing in this file reads like read state.
+ */
 interface ModNotification {
   id: string;
   type: string;
   title: string;
   message: string | null;
   metadata: any;
-  is_read: boolean;
+  /** admin_notifications.is_read — moderator-request disposition, NOT read state. */
+  isDispositioned: boolean;
   created_at: string;
 }
 
@@ -51,11 +62,13 @@ export default function AdminModeratorConfig() {
     // Get mod-related notifications
     const { data: notifs } = await supabase
       .from("admin_notifications")
-      .select("*")
+      .select("id, type, title, message, metadata, created_at, is_read")
       .in("type", ["mod_delete_request", "mod_action"])
       .order("created_at", { ascending: false })
       .limit(50);
-    setNotifications((notifs as ModNotification[]) || []);
+    setNotifications(
+      (notifs || []).map(({ is_read, ...rest }) => ({ ...rest, isDispositioned: is_read })),
+    );
 
     setLoading(false);
   };
@@ -63,6 +76,35 @@ export default function AdminModeratorConfig() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  /**
+   * Disposition + the acting admin's read receipt, in one round trip.
+   *
+   * These are two writes to two tables, and doing them as two independent
+   * client calls leaves a real failure window: a request marked APPROVED but
+   * still unread, or read but still showing Approve/Deny. `admin_resolve_mod_request`
+   * does both in one transaction and derives the reader from auth.uid(), so
+   * there is no admin id for this component to pass or get wrong.
+   *
+   * Only the ACTING admin gets a receipt. Other admins keep their own unread
+   * state for this row, which is honest — they have not seen it — while the
+   * disposition itself is global and stops them re-approving the same request.
+   */
+  const resolveRequest = async (notif: ModNotification, approved: boolean) => {
+    const { data, error } = await supabase.rpc("admin_resolve_mod_request", {
+      _notification_id: notif.id,
+      _approved: approved,
+    });
+    if (error) return false;
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === notif.id
+          ? { ...n, isDispositioned: true, message: data ?? n.message }
+          : n,
+      ),
+    );
+    return true;
+  };
 
   const handleApprove = async (notif: ModNotification) => {
     setActionLoading(notif.id);
@@ -76,16 +118,13 @@ export default function AdminModeratorConfig() {
         await supabase.from("leagues").delete().eq("id", meta.target_id);
       }
 
-      // Mark notification as read
-      await supabase
-        .from("admin_notifications")
-        .update({ is_read: true, message: (notif.message || "") + " [APPROVED]" })
-        .eq("id", notif.id);
-
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, message: (n.message || "") + " [APPROVED]" } : n))
-      );
-      toast.success("Delete approved and executed");
+      if (!(await resolveRequest(notif, true))) {
+        // The delete already happened, so say what actually failed rather than
+        // leaving the row looking unhandled with no explanation.
+        toast.error("Deleted, but the request could not be marked approved");
+      } else {
+        toast.success("Delete approved and executed");
+      }
     } catch {
       toast.error("Failed to execute delete");
     }
@@ -94,14 +133,11 @@ export default function AdminModeratorConfig() {
 
   const handleDeny = async (notif: ModNotification) => {
     setActionLoading(notif.id);
-    await supabase
-      .from("admin_notifications")
-      .update({ is_read: true, message: (notif.message || "") + " [DENIED]" })
-      .eq("id", notif.id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, message: (n.message || "") + " [DENIED]" } : n))
-    );
-    toast.success("Request denied");
+    if (await resolveRequest(notif, false)) {
+      toast.success("Request denied");
+    } else {
+      toast.error("Could not deny that request");
+    }
     setActionLoading(null);
   };
 
@@ -176,7 +212,7 @@ export default function AdminModeratorConfig() {
       {/* Mod Action Notifications */}
       <div className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Moderator Requests ({notifications.filter((n) => !n.is_read).length} pending)
+          Moderator Requests ({notifications.filter((n) => !n.isDispositioned).length} pending)
         </h4>
         {notifications.length === 0 ? (
           <p className="text-sm text-muted-foreground">No moderator requests yet.</p>
@@ -184,7 +220,9 @@ export default function AdminModeratorConfig() {
           <div className="space-y-2">
             {notifications.map((notif) => {
               const meta = notif.metadata || {};
-              const isHandled = notif.is_read;
+              // Disposition, not read state: an approved request is handled
+              // for every admin, whether or not they have personally seen it.
+              const isHandled = notif.isDispositioned;
 
               return (
                 <div
