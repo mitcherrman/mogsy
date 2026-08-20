@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
-import { ADMIN_DIRECTORY_PATH } from "@/lib/admin/admin-directory";
+import { ADMIN_HOME_PATH } from "@/lib/admin/admin-registry";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { isLolSectionPath } from "@/lib/startup-shell";
@@ -586,9 +586,9 @@ export default function MogzyIdentityMenu() {
 
       {isAdminAuthorized === true && (
         <Link
-          to={ADMIN_DIRECTORY_PATH}
+          to={ADMIN_HOME_PATH}
           data-testid="hud-admin-link"
-          {...footerLinkProps(ADMIN_DIRECTORY_PATH)}
+          {...footerLinkProps(ADMIN_HOME_PATH)}
           className={footerItemClass}
         >
           <Shield className="h-4 w-4 shrink-0" aria-hidden="true" />

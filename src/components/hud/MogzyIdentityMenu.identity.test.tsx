@@ -109,7 +109,7 @@ vi.mock("@/integrations/supabase/client", () => {
 });
 
 import MogzyIdentityMenu from "./MogzyIdentityMenu";
-import { ADMIN_DIRECTORY_PATH } from "@/lib/admin/admin-directory";
+import { ADMIN_HOME_PATH } from "@/lib/admin/admin-registry";
 
 const notif = (over: Record<string, unknown> = {}) => ({
   id: "n1",
@@ -360,13 +360,15 @@ describe("notifications panel footer", () => {
 });
 
 describe("admin entry point (migrated from the account menu)", () => {
-  it("shows Admin in the footer for an authorized admin, targeting the directory", async () => {
+  it("shows Admin in the footer for an authorized admin, targeting the Admin home", async () => {
     adminCtx.isAuthorized = true;
     render(<MogzyIdentityMenu />);
     fireEvent.click(chevron());
     const link = await screen.findByTestId("hud-admin-link");
-    expect(link.getAttribute("href")).toBe(ADMIN_DIRECTORY_PATH);
-    expect(ADMIN_DIRECTORY_PATH).toBe("/admin/directory");
+    // The entry point is the Admin application itself, not the tool index.
+    // /admin/directory survives as a permanent redirect (see admin-registry).
+    expect(link.getAttribute("href")).toBe(ADMIN_HOME_PATH);
+    expect(ADMIN_HOME_PATH).toBe("/admin");
     expect(link.textContent).toBe("Admin");
   });
 
@@ -387,7 +389,7 @@ describe("admin entry point (migrated from the account menu)", () => {
     render(<MogzyIdentityMenu />);
     fireEvent.click(chevron());
     const link = await screen.findByTestId("hud-admin-link");
-    expect(link.getAttribute("href")).toBe(ADMIN_DIRECTORY_PATH);
+    expect(link.getAttribute("href")).toBe(ADMIN_HOME_PATH);
   });
 });
 

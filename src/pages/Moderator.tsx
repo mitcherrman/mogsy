@@ -1,6 +1,29 @@
+// ---------------------------------------------------------------------------
+// Moderator panel.
+//
+// PRESERVED, NOT DISSOLVED. The Admin Architecture reorganization deliberately
+// does not fold /moderator into the unified Admin shell:
+//
+//   * Narrowing the panel to the subset moderator RLS actually grants would be
+//     a visible behaviour change for every real moderator. Whether the UI was
+//     over-promising or RLS is too tight is a product decision, not a
+//     navigation one — so nothing here is narrowed.
+//   * Rendering the full Admin area rail for a moderator would advertise
+//     destinations their role cannot open.
+//
+// What DID change: it adopts the shell's navigation idiom — one flat tab strip
+// instead of four-of-five pagination. Same five tabs, same components, same
+// route, same gate, same capabilities. Users is absent exactly as Admin Users
+// Phase 1 left it, and is not restored.
+//
+// AUTHORIZATION: byte-for-byte the same check as before — AdminRoute
+// (moderator, admin, master_admin) at the route, plus this page's own
+// user_roles read. No RLS, role or permission change of any kind.
+// ---------------------------------------------------------------------------
+
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, ChevronRight, ChevronLeft } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +33,7 @@ import AdminBots from "@/components/admin/AdminBots";
 import AdminComments from "@/components/admin/AdminComments";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminEloCheck from "@/components/admin/AdminEloCheck";
+import { cn } from "@/lib/utils";
 
 const modTabs = [
   { value: "collections", label: "Collections" },
@@ -19,15 +43,12 @@ const modTabs = [
   { value: "elo-check", label: "Aura Check" },
 ];
 
-const TABS_PER_PAGE = 4;
-
 export default function Moderator() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("collections");
-  const [tabPage, setTabPage] = useState(0);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -57,62 +78,51 @@ export default function Moderator() {
     return <div className="min-h-dvh bg-background" />;
   }
 
-  const totalPages = Math.ceil(modTabs.length / TABS_PER_PAGE);
-  const paginatedTabs = modTabs.slice(tabPage * TABS_PER_PAGE, (tabPage + 1) * TABS_PER_PAGE);
-
   return (
-    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8">
-      <div className="container mx-auto max-w-4xl">
-        <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-6">
-          <ShieldCheck className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
-          <h1 className="text-xl sm:text-3xl font-extrabold text-foreground">Moderator</h1>
-          <span className="text-[10px] sm:text-xs font-bold text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full">Mod</span>
+    <div className="min-h-dvh px-3 sm:px-4 py-4 sm:py-8" data-testid="moderator-panel">
+      <div className="container mx-auto max-w-5xl">
+        <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-3">
+          <ShieldCheck className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+          <h1 className="text-xl font-extrabold text-foreground sm:text-2xl">Moderator</h1>
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary sm:px-2 sm:text-xs">
+            Mod
+          </span>
           <div className="ml-auto flex items-center gap-1.5">
             <button
               onClick={() => navigate("/admin/demo")}
-              className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/5 px-2.5 text-[10px] font-bold text-primary transition-colors hover:bg-primary/10 sm:text-xs"
             >
               Demo
             </button>
             <button
               onClick={() => navigate("/admin/play")}
-              className="shrink-0 flex items-center gap-1 h-8 px-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-[10px] sm:text-xs font-bold hover:bg-primary/10 transition-colors"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/5 px-2.5 text-[10px] font-bold text-primary transition-colors hover:bg-primary/10 sm:text-xs"
             >
               Play Layout
             </button>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-3 sm:mt-6 space-y-3 sm:space-y-6">
-          <div className="flex items-center gap-1">
-            {tabPage > 0 && (
-              <button
-                onClick={() => setTabPage(p => p - 1)}
-                className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-3 sm:space-y-6">
+          {/* One flat strip. The paginated four-of-five strip this replaces was
+              the same mechanism that buried tools on the legacy dashboard; no
+              tab was added or removed. */}
+          <TabsList className="flex h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+            {modTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                data-testid={`moderator-tab-${tab.value}`}
+                className={cn(
+                  "rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors",
+                  "hover:bg-secondary hover:text-foreground sm:text-sm",
+                  "data-[state=active]:border-primary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
+                )}
               >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            )}
-            <TabsList className="flex-1 flex gap-1 h-auto bg-transparent p-0">
-              {paginatedTabs.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="flex-1 min-w-0 text-[10px] sm:text-sm px-1 sm:px-3 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-border bg-card hover:bg-secondary data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary font-semibold transition-all truncate"
-                >
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            {tabPage < totalPages - 1 && (
-              <button
-                onClick={() => setTabPage(p => p + 1)}
-                className="shrink-0 flex items-center justify-center h-8 w-6 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
           <TabsContent value="collections"><AdminCollections /></TabsContent>
           <TabsContent value="bots"><AdminBots /></TabsContent>

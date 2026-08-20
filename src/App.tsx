@@ -112,8 +112,28 @@ const KnowledgeChampionDetail = lazy(() => import("./pages/admin/knowledge/Knowl
 const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRundown"));
 const KnowledgeHistory = lazy(() => import("./pages/admin/knowledge/KnowledgeHistory"));
 
-// Admin Directory — private grouped index of admin destinations (E3).
+// Admin Directory — the pre-reorganization tool index. Retained as a component
+// so nothing is deleted; /admin/directory now redirects to Overview › All Tools.
 const AdminDirectory = lazy(() => import("./pages/admin/AdminDirectory"));
+
+// -------------------------------------------------------------------------
+// The unified Admin application (Admin Architecture reorganization).
+// One shell, ten top-level areas, depth never beyond area → page → tab.
+// The shell is navigation only: every destination keeps the gate it already
+// had (AdminRoute / AdminAuthGate / RLS / require_admin), unchanged.
+// -------------------------------------------------------------------------
+const AdminShell = lazy(() => import("./components/admin/shell/AdminShell"));
+const AdminOverviewPage = lazy(() => import("./pages/admin/areas/AdminOverviewPage"));
+const AdminAllToolsPage = lazy(() => import("./pages/admin/areas/AdminAllToolsPage"));
+const AdminPeoplePage = lazy(() => import("./pages/admin/areas/AdminPeoplePage"));
+const AdminLeaguecraftPage = lazy(() => import("./pages/admin/areas/AdminLeaguecraftPage"));
+const AdminRankedPage = lazy(() => import("./pages/admin/areas/AdminRankedPage"));
+const AdminSimulationPage = lazy(() => import("./pages/admin/areas/AdminSimulationPage"));
+const AdminGameDataPage = lazy(() => import("./pages/admin/areas/AdminGameDataPage"));
+const AdminStudioPage = lazy(() => import("./pages/admin/areas/AdminStudioPage"));
+const AdminOperationsPage = lazy(() => import("./pages/admin/areas/AdminOperationsPage"));
+const AdminDeveloperPage = lazy(() => import("./pages/admin/areas/AdminDeveloperPage"));
+const AdminArenaPage = lazy(() => import("./pages/admin/areas/AdminArenaPage"));
 
 // Admin Platform Policies — global Combat Sim token + tutorial switches.
 const AdminPlatformPolicies = lazy(() => import("./pages/admin/AdminPlatformPolicies"));
@@ -338,11 +358,61 @@ const App = () => (
                       profile row under current RLS, so an unprotected route
                       could only ever render "Profile not found". */}
                   <Route path="/user/:profileId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-                  <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-                  <Route path="/admin/play" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminPlay /></Suspense></AdminRoute>} />
-                  <Route path="/admin/data" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminData /></Suspense></AdminRoute>} />
-                  <Route path="/admin/demo" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDemo /></Suspense></AdminRoute>} />
-                  <Route path="/admin/gaming" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminGaming /></Suspense></AdminRoute>} />
+                  {/* ---------------------------------------------------------------
+                      The unified Admin application.
+
+                      One layout route carries the shell for every /admin page, so
+                      navigation is identical everywhere. The shell is wrapped in the
+                      SAME <AdminRoute> the legacy dashboard used, so the set of people
+                      who can see an admin page is exactly what it was.
+
+                      Three destinations stay OUTSIDE this block on purpose:
+                        · /admin/quiz-content   — a full-height workspace whose layout
+                                                  assumes it owns the viewport
+                        · /admin/knowledge/*    — carries its own sidebar shell
+                        · /admin/quiz-broadcast/view — chrome-free window capture
+                      Each keeps its own route and gate untouched and links back here.
+                      --------------------------------------------------------------- */}
+                  <Route path="/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminShell /></Suspense></AdminRoute>}>
+                    <Route index element={<Suspense fallback={<RouteFallback />}><AdminOverviewPage /></Suspense>} />
+                    <Route path="all-tools" element={<Suspense fallback={<RouteFallback />}><AdminAllToolsPage /></Suspense>} />
+                    {/* /admin/directory kept as a permanent compatibility alias: it is
+                        the only admin link the HUD has ever had, so bookmarks exist. */}
+                    <Route path="directory" element={<Navigate to="/admin/all-tools" replace />} />
+                    {/* The pre-reorganization directory page itself, preserved rather
+                        than deleted. All Tools supersedes it; this stays reachable so
+                        the migration removes nothing. */}
+                    <Route path="legacy-directory" element={<Suspense fallback={<RouteFallback />}><AdminDirectory /></Suspense>} />
+                    {/* The original 17-tab dashboard, preserved unchanged. Its tabs all
+                        have canonical homes now; this stays so a mis-migration cannot
+                        cost a capability. Retire only with owner approval. */}
+                    <Route path="legacy-dashboard" element={<Admin />} />
+                    <Route path="people" element={<Suspense fallback={<RouteFallback />}><AdminPeoplePage /></Suspense>} />
+                    <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
+                    <Route path="ranked" element={<Suspense fallback={<RouteFallback />}><AdminRankedPage /></Suspense>} />
+                    <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
+                    <Route path="game-data" element={<Suspense fallback={<RouteFallback />}><AdminGameDataPage /></Suspense>} />
+                    <Route path="studio" element={<Suspense fallback={<RouteFallback />}><AdminStudioPage /></Suspense>} />
+                    <Route path="operations" element={<Suspense fallback={<RouteFallback />}><AdminOperationsPage /></Suspense>} />
+                    <Route path="developer" element={<Suspense fallback={<RouteFallback />}><AdminDeveloperPage /></Suspense>} />
+                    <Route path="arena" element={<Suspense fallback={<RouteFallback />}><AdminArenaPage /></Suspense>} />
+                    {/* Existing admin pages, unchanged except that they now render
+                        inside the shell. Their own guards are redundant under the
+                        layout gate and are therefore not repeated. */}
+                    <Route path="play" element={<Suspense fallback={<RouteFallback />}><AdminPlay /></Suspense>} />
+                    <Route path="data" element={<Suspense fallback={<RouteFallback />}><AdminData /></Suspense>} />
+                    <Route path="demo" element={<Suspense fallback={<RouteFallback />}><AdminDemo /></Suspense>} />
+                    <Route path="gaming" element={<Suspense fallback={<RouteFallback />}><AdminGaming /></Suspense>} />
+                    <Route path="blog" element={<Suspense fallback={<RouteFallback />}><AdminBlog /></Suspense>} />
+                    <Route path="blog/:id" element={<Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense>} />
+                    <Route path="about" element={<Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense>} />
+                    <Route path="diagnostics" element={<Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense>} />
+                    <Route path="platform-policies" element={<Suspense fallback={<RouteFallback />}><AdminPlatformPolicies /></Suspense>} />
+                    <Route path="quiz-broadcast" element={<Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense>} />
+                    <Route path="quiz-video-export" element={<Suspense fallback={<RouteFallback />}><AdminVideoExport /></Suspense>} />
+                    <Route path="combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesAdmin /></Suspense>} />
+                    <Route path="mastery/:artifactDigest" element={<Suspense fallback={<RouteFallback />}><MasteryReviewerPage /></Suspense>} />
+                  </Route>
                   <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteFallback />}><Moderator /></Suspense></AdminRoute>} />
                   {/* Retired legacy team lobby. Previously leagueGate'd (which
                       already redirected in League-only mode); now an explicit
@@ -353,13 +423,6 @@ const App = () => (
                   <Route path="/feedback" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><Feedback /></Suspense></ProtectedRoute>} />
                   <Route path="/blog" element={<Suspense fallback={<RouteFallback />}><BlogIndex /></Suspense>} />
                   <Route path="/blog/:slug" element={<Suspense fallback={<RouteFallback />}><BlogPost /></Suspense>} />
-                  <Route path="/admin/blog" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlog /></Suspense></AdminRoute>} />
-                  <Route path="/admin/blog/:id" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminBlogEditor /></Suspense></AdminRoute>} />
-                  <Route path="/admin/about" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense></AdminRoute>} />
-                  <Route path="/admin/diagnostics" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense></AdminRoute>} />
-                  <Route path="/admin/directory" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminDirectory /></Suspense></AdminRoute>} />
-                  <Route path="/admin/platform-policies" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminPlatformPolicies /></Suspense></AdminRoute>} />
-                  <Route path="/admin/quiz-broadcast" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense></AdminRoute>} />
                   <Route path="/admin/quiz-content" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminQuizWorkspace /></Suspense></AdminRoute>} />
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
@@ -367,7 +430,6 @@ const App = () => (
                   <Route path="/admin/quiz-builder" element={<QuizContentRedirect tab="builder" />} />
                   {/* Retain the earlier working name as a thin redirect so any bookmarks survive. */}
                   <Route path="/admin/workspace" element={<Navigate to="/admin/quiz-content" replace />} />
-                  <Route path="/admin/quiz-video-export" element={<AdminRoute><Suspense fallback={<RouteFallback />}><AdminVideoExport /></Suspense></AdminRoute>} />
                   <Route
                     path="/admin/knowledge"
                     element={
@@ -402,7 +464,6 @@ const App = () => (
                   ) : null}
                   <Route path="/lol/combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesIndex /></Suspense>} />
                   <Route path="/lol/combat-battles/:slug" element={<Suspense fallback={<RouteFallback />}><CombatBattleDetail /></Suspense>} />
-                  <Route path="/admin/combat-battles" element={<AdminRoute><Suspense fallback={<RouteFallback />}><CombatBattlesAdmin /></Suspense></AdminRoute>} />
                   <Route path="/onboarding/ranked-tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
                   {/* Permanent Leaguecraft tutorial entry: any authenticated user may start
                       or replay the tutorial here, regardless of the auto-popup and
@@ -478,7 +539,6 @@ const App = () => (
                   <Route path="/dev/mastery/lux-cooldown-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryLuxCooldownProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/jarvan-cooldown-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJarvanCooldownProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/olaf-cooldown-mana-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryOlafCooldownManaProgressionPage /></Suspense></ProtectedRoute>} />
-                  <Route path="/admin/mastery/:artifactDigest" element={<AdminRoute><Suspense fallback={<RouteFallback />}><MasteryReviewerPage /></Suspense></AdminRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />

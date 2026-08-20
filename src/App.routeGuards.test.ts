@@ -64,7 +64,29 @@ describe("permanent Leaguecraft tutorial route", () => {
 });
 
 describe("admin platform-policies route", () => {
+  // The Admin Architecture reorganization moved every /admin page under one
+  // shell layout route, so the gate now sits on the PARENT rather than being
+  // repeated per page. The intent of this guard is unchanged: reaching
+  // platform-policies must require AdminRoute, not merely fail to be linked.
   it("is admin-gated, not merely hidden", () => {
-    expect(firstElementFor("/admin/platform-policies")).toBe("<AdminRoute");
+    // The child route exists under /admin...
+    expect(appSource).toMatch(/<Route path="platform-policies" element=\{/);
+    // ...and the /admin layout that owns it is wrapped in AdminRoute.
+    expect(firstElementFor("/admin")).toBe("<AdminRoute");
+  });
+
+  it("inherits the gate rather than losing it — the shell is never ungated", () => {
+    expect(appSource).toMatch(
+      /<Route path="\/admin" element=\{<AdminRoute>[\s\S]{0,200}?<AdminShell \/>/,
+    );
+    // No admin page may be declared outside a gate. The three deliberate
+    // exceptions keep their own explicit AdminRoute wrapper.
+    for (const explicit of [
+      '<Route path="/admin/quiz-content" element={<AdminRoute>',
+      '<Route path="/admin/quiz-broadcast/view" element={<AdminRoute>',
+    ]) {
+      expect(appSource, explicit).toContain(explicit);
+    }
+    expect(appSource).toMatch(/path="\/admin\/knowledge"[\s\S]{0,200}?roles=\{\["master_admin"\]\}/);
   });
 });
