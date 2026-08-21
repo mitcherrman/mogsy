@@ -73,10 +73,13 @@ describe("RankedClassCarousel — stage", () => {
 
 describe("RankedClassCarousel — navigation", () => {
   it("the next/previous controls move the ring and select the new role", () => {
-    const { container, onSelect } = renderCarousel({ value: "top" });
+    const { container, onSelect, rerender } = renderCarousel({ value: "top" });
     fireEvent.click(screen.getByTestId("ranked-class-next"));
     expect(onSelect).toHaveBeenLastCalledWith("jungle");
     expect(centre(container)).toBe("jungle");
+    // The host adopts the server's answer, exactly as Quiz.tsx does; moving
+    // back to Top is then a real change again.
+    rerender(<RankedClassCarousel value="jungle" onSelect={onSelect} />);
     fireEvent.click(screen.getByTestId("ranked-class-previous"));
     expect(onSelect).toHaveBeenLastCalledWith("top");
   });
@@ -89,10 +92,11 @@ describe("RankedClassCarousel — navigation", () => {
   });
 
   it("ArrowRight / ArrowLeft move and select from the keyboard", () => {
-    const { onSelect } = renderCarousel({ value: "mid" });
+    const { onSelect, rerender } = renderCarousel({ value: "mid" });
     const slide = screen.getByTestId("ranked-class-slide-mid");
     fireEvent.keyDown(slide, { key: "ArrowRight" });
     expect(onSelect).toHaveBeenLastCalledWith("adc");
+    rerender(<RankedClassCarousel value="adc" onSelect={onSelect} />);
     fireEvent.keyDown(screen.getByTestId("ranked-class-slide-adc"), { key: "ArrowLeft" });
     expect(onSelect).toHaveBeenLastCalledWith("mid");
   });
@@ -134,6 +138,82 @@ describe("RankedClassCarousel — navigation", () => {
     expect(screen.getByRole("group", { name: "Ranked role" })).toBeTruthy();
     // No selection is advertised that the host could not honour.
     expect(screen.getByTestId("ranked-class-slide-top").hasAttribute("aria-checked")).toBe(false);
+  });
+});
+
+/**
+ * MALT — the stage must not spend a server write on a choice already made.
+ *
+ * `onSelect` is the host's R1 persistence (PUT /api/ranked/role), which the
+ * backend rate limits to ten writes a minute. Firing it for a move that
+ * changes nothing let a reader clicking the standing mascot burn that budget
+ * on the role they already had and then be told they were rate limited.
+ */
+describe("RankedClassCarousel — redundant selection", () => {
+  it("does not persist when the already-selected mascot is clicked, however often", () => {
+    const { container, onSelect } = renderCarousel({ value: "top" });
+    const top = screen.getByTestId("ranked-class-slide-top");
+    for (let i = 0; i < 25; i++) fireEvent.click(top);
+    expect(onSelect).not.toHaveBeenCalled();
+    // The stage did not move either — Top is still the one standing forward.
+    expect(centre(container)).toBe("top");
+  });
+
+  it("does not persist when a browse returns to the role already saved", () => {
+    const { onSelect } = renderCarousel({ value: "top" });
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenLastCalledWith("jungle");
+    // The host has not adopted a new value (a refused or in-flight write), so
+    // coming back to Top is not a change and must not be written again.
+    fireEvent.click(screen.getByTestId("ranked-class-previous"));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("still writes the FIRST choice for an account that has no role yet", () => {
+    const { onSelect } = renderCarousel({ value: null });
+    fireEvent.click(screen.getByTestId("ranked-class-slide-top"));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenLastCalledWith("top");
+  });
+
+  it("persists exactly once per real role change", () => {
+    const { onSelect, rerender } = renderCarousel({ value: "top" });
+    fireEvent.click(screen.getByTestId("ranked-class-slide-jungle"));
+    expect(onSelect).toHaveBeenNthCalledWith(1, "jungle");
+
+    rerender(<RankedClassCarousel value="jungle" onSelect={onSelect} />);
+    fireEvent.click(screen.getByTestId("ranked-class-slide-mid"));
+    expect(onSelect).toHaveBeenNthCalledWith(2, "mid");
+
+    rerender(<RankedClassCarousel value="mid" onSelect={onSelect} />);
+    fireEvent.click(screen.getByTestId("ranked-class-slide-adc"));
+    expect(onSelect).toHaveBeenNthCalledWith(3, "adc");
+
+    rerender(<RankedClassCarousel value="adc" onSelect={onSelect} />);
+    fireEvent.click(screen.getByTestId("ranked-class-slide-support"));
+    expect(onSelect).toHaveBeenNthCalledWith(4, "support");
+
+    rerender(<RankedClassCarousel value="support" onSelect={onSelect} />);
+    fireEvent.click(screen.getByTestId("ranked-class-slide-top"));
+    expect(onSelect).toHaveBeenNthCalledWith(5, "top");
+
+    expect(onSelect).toHaveBeenCalledTimes(5);
+  });
+
+  it("keeps reporting the browsed role on a move that is not persisted", () => {
+    const onViewChange = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <RankedClassCarousel value="top" onSelect={onSelect} onViewChange={onViewChange} />,
+    );
+    onViewChange.mockClear();
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    fireEvent.click(screen.getByTestId("ranked-class-previous"));
+    // Looking is not choosing: the ledger beside the stage still followed the
+    // reader's eye all the way back to Top, with no second write behind it.
+    expect(onViewChange).toHaveBeenLastCalledWith("top");
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 });
 

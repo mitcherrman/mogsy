@@ -272,9 +272,26 @@ export default function RankedClassCarousel({
 
   function moveTo(index: number, viaKeyboard: boolean) {
     const next = (index + length) % length;
+    const nextRole = RANKED_ROLES[next];
     if (viaKeyboard) shouldFocus.current = true;
     setViewIndex(next);
-    if (selectable) onSelect(RANKED_ROLES[next]);
+    // A move only SELECTS when it lands somewhere the account is not already
+    // stored as. `onSelect` is a SERVER WRITE (PUT /api/ranked/role), and this
+    // used to fire on every move including the one that changes nothing — so
+    // clicking the mascot that was already chosen spent one of the account's
+    // ten `role_set` writes per minute per click, and the eleventh click was
+    // answered 429 "too many requests" for a role it already had.
+    //
+    // The test is against the SAVED role, not against the ring position:
+    //  - an account with no role yet (`value === null`) still writes on its
+    //    first click, because null is never the role it lands on;
+    //  - a move BACK to the saved role after browsing away is not a change and
+    //    is not written either — the stage is free to be looked through;
+    //  - a write the backend REFUSED leaves `value` where it was, so clicking
+    //    the refused role again is still a change and still retries.
+    // Browsing itself is unaffected: `setViewIndex` above always runs, and
+    // `onViewChange` still reports every move.
+    if (selectable && nextRole !== value) onSelect(nextRole);
   }
 
   function onKeyDown(event: React.KeyboardEvent, index: number) {

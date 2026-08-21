@@ -260,6 +260,16 @@ type SessionAnswer = {
   explanation?: string;
 };
 
+/**
+ * The lobby's ONE role-write notice.
+ *
+ * Named and shared so every refusal of a role change lands on the same toast
+ * rather than minting another one. Scoped to this write only — it must never
+ * be reused for an unrelated error, which would let one message overwrite
+ * another the reader has not read yet.
+ */
+const RANKED_ROLE_TOAST_ID = "ranked-role-write";
+
 export default function Quiz() {
   const { user } = useAuth();
   // R1: the player's League role, shown beside — never merged into —
@@ -289,7 +299,17 @@ export default function Quiz() {
       setSavingRankedRole(null);
       // The backend stays the authority on when a change is legal; a refusal
       // (an active match, a live queue entry) is surfaced, never swallowed.
-      if (!accepted && rankedRole.error) toast.error(rankedRole.error);
+      //
+      // ONE toast, reused. A role write is rate limited (ten per minute), so a
+      // reader working the stage fast can be refused several times in a row —
+      // and an id-less `toast.error` mints a NEW toast every time, which is how
+      // a burst of identical "too many requests" notices piled up on the lobby.
+      // A stable id makes sonner UPDATE the standing notice instead of stacking
+      // another copy of it. This suppresses nothing: the message still changes
+      // with the refusal, and every other toast on this page is untouched.
+      if (!accepted && rankedRole.error) {
+        toast.error(rankedRole.error, { id: RANKED_ROLE_TOAST_ID });
+      }
     },
     [rankedRole],
   );
