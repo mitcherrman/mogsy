@@ -35,12 +35,13 @@ import {
   markAcademyWelcomeHandled,
   readAcademyWelcomeState,
 } from "@/lib/welcome/academy-welcome";
+import { readAcademyRegistration } from "@/lib/welcome/academy-registration";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
-const mocks = vi.hoisted(() => ({ navigate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ navigate: vi.fn(), toast: vi.fn(), seed: vi.fn() }));
 const audio = vi.hoisted(() => ({
   scribble: vi.fn(),
   stopScribble: vi.fn(),
@@ -50,6 +51,15 @@ const audio = vi.hoisted(() => ({
 vi.mock("react-router-dom", () => ({ useNavigate: () => mocks.navigate }));
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("./tomeAudio", () => ({ useTomeAudio: () => audio }));
+// The register's two outward effects, both stubbed for the same reason the
+// audio module is: these tests assert WHEN the page reaches for them, not what
+// Sonner or Supabase do next. The profile seed in particular must be mocked
+// rather than merely unused — importing the real module instantiates the
+// Supabase client against jsdom's storage stub and rejects on its own clock.
+vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("@/lib/welcome/provisional-identity", () => ({
+  seedProfileDisplayName: mocks.seed.mockResolvedValue({ seeded: false, reason: "no-session" }),
+}));
 
 // The pinned jsdom does not provide a working Storage — see localStorageStub.
 const resetStorage = installLocalStorageStub();
@@ -97,11 +107,46 @@ const page = () => screen.getByTestId("academy-welcome");
 const advance = () => fireEvent.click(screen.getByTestId("academy-welcome-advance"));
 const stepOf = () => Number(page().getAttribute("data-step"));
 
+/**
+ * Fill the register in and hand it over.
+ *
+ * The one page in the book that answers back, so the one page a traversal
+ * cannot get past with the advance control. Defaults are a valid, minimal
+ * registration — a name and a rank, no password, no linking — because that is
+ * the path most tests are only passing THROUGH.
+ */
+function register(
+  opts: { username?: string; rank?: string; password?: string; link?: boolean } = {},
+) {
+  fireEvent.change(screen.getByTestId("academy-registration-username"), {
+    target: { value: opts.username ?? "Summoner" },
+  });
+  fireEvent.change(screen.getByTestId("academy-registration-rank"), {
+    target: { value: opts.rank ?? "gold" },
+  });
+  if (opts.password !== undefined) {
+    fireEvent.change(screen.getByTestId("academy-registration-password"), {
+      target: { value: opts.password },
+    });
+  }
+  if (opts.link) fireEvent.click(screen.getByTestId("academy-registration-link"));
+  fireEvent.click(screen.getByTestId("academy-registration-submit"));
+}
+
+/** One page forward, however this page happens to turn. */
+function nextChapter() {
+  if (screen.queryByTestId("academy-registration-form")) {
+    register();
+    return;
+  }
+  advance();
+}
+
 /** Turn pages until the finale's exits are on screen. */
 function goToFinale() {
-  for (let i = 0; i < ACADEMY_CHAPTERS.length * 3; i += 1) {
+  for (let i = 0; i < ACADEMY_CHAPTERS.length * 4; i += 1) {
     if (screen.queryByTestId("academy-welcome-explore")) return;
-    advance();
+    nextChapter();
   }
   throw new Error("never reached the finale");
 }
@@ -139,7 +184,7 @@ describe("the sequence", () => {
     for (const chapter of ACADEMY_CHAPTERS) {
       expect(page()).toHaveAttribute("data-chapter", chapter.id);
       expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(chapter.heading);
-      if (!chapter.finale) advance();
+      if (!chapter.finale) nextChapter();
     }
     expect(ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1].finale).toBe(true);
   });
@@ -152,7 +197,7 @@ describe("the sequence", () => {
     for (const chapter of ACADEMY_CHAPTERS) {
       const text = (page().textContent ?? "").replace(/\s+/g, " ");
       for (const line of chapter.lines) expect(text).toContain(line);
-      if (!chapter.finale) advance();
+      if (!chapter.finale) nextChapter();
     }
   });
 
@@ -160,7 +205,7 @@ describe("the sequence", () => {
     render(<AcademyWelcomePage />);
     for (let i = 0; i < ACADEMY_CHAPTERS.length; i += 1) {
       expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
-      if (i < ACADEMY_CHAPTERS.length - 1) advance();
+      if (i < ACADEMY_CHAPTERS.length - 1) nextChapter();
     }
   });
 
@@ -169,16 +214,29 @@ describe("the sequence", () => {
     // page on correct state above an empty content area when a second click
     // arrived during an exit transition. The sequence is a plain counter now,
     // so this can only fail if someone reintroduces an awaited transition.
+    const burst = () => {
+      for (let i = 0; i < 40; i += 1) {
+        const control = screen.queryByTestId("academy-welcome-advance");
+        if (!control) break;
+        fireEvent.click(control);
+      }
+    };
     render(<AcademyWelcomePage />);
-    for (let i = 0; i < 40; i += 1) {
-      const control = screen.queryByTestId("academy-welcome-advance");
-      if (!control) break;
-      fireEvent.click(control);
-    }
+
+    // Forty clicks land on the register and STOP there — the gate is a real
+    // gate, and forty taps is exactly the input that would find a soft one.
+    burst();
+    expect(page()).toHaveAttribute("data-chapter", "registration");
+    expect(page()).toHaveAttribute("data-gate", "registration");
+    expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
+
+    // Answered, another forty clicks run to the last page and stop there
+    // rather than running off the end of the chapter list.
+    register();
+    burst();
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
     expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
-    // And it stops there rather than running off the end of the chapter list.
-    expect(page()).toHaveAttribute("data-chapter", "beginning");
+    expect(page()).toHaveAttribute("data-chapter", "the-record");
   });
 
   it("goes back to re-read a chapter, and offers no Back on the first", () => {
@@ -327,19 +385,21 @@ describe("the internal reveal", () => {
     expect(page()).toHaveAttribute("data-complete", "false");
   });
 
-  it("gives Pro Data & Esports the same overlapping choreography", async () => {
-    // The strongest chapter visually is not exempt from the shared timing
-    // model — its reveal follows the identical two-channel contract.
+  it("gives the last spread the same overlapping choreography", async () => {
+    // The strongest chapter visually — and now the busiest — is not exempt from
+    // the shared timing model. Its reveal follows the identical two-channel
+    // contract: the triangular composition develops while the copy beside it is
+    // still arriving.
     render(<AcademyWelcomePage />);
-    const proDataIndex = ACADEMY_CHAPTERS.findIndex((c) => c.id === "pro-data");
-    for (let i = 0; i < proDataIndex; i += 1) {
+    const lastIndex = ACADEMY_CHAPTERS.findIndex((c) => c.id === "the-record");
+    for (let i = 0; i < lastIndex; i += 1) {
       advance(); // finish the chapter
-      advance(); // turn the page
+      nextChapter(); // turn the page — or answer the register, which turns it
       await run(1_000); // let the sheet land
     }
-    expect(page()).toHaveAttribute("data-chapter", "pro-data");
+    expect(page()).toHaveAttribute("data-chapter", "the-record");
 
-    const total = slotCount(ACADEMY_CHAPTERS[proDataIndex]);
+    const total = slotCount(ACADEMY_CHAPTERS[lastIndex]);
     for (let i = 0; i < 60 && page().getAttribute("data-art") !== "true"; i += 1) {
       await run(250, 250);
     }
@@ -397,7 +457,9 @@ describe("sound", () => {
     render(<AcademyWelcomePage />);
     advance();
     expect(audio.pageTurn).toHaveBeenCalledTimes(1);
-    advance();
+    // The register turns its own page, and it sounds exactly like every other
+    // turn — a page that lifted for a different reason must not lift silently.
+    register();
     expect(audio.pageTurn).toHaveBeenCalledTimes(2);
   });
 
@@ -421,7 +483,7 @@ describe("sound", () => {
   it("never scratches under reduced motion — there is no writing to scratch for", () => {
     render(<AcademyWelcomePage />);
     advance();
-    advance();
+    register();
     expect(audio.scribble).not.toHaveBeenCalled();
   });
 });
@@ -453,7 +515,7 @@ describe("reduced motion", () => {
 
   it("still reaches both exits, one press per chapter", () => {
     render(<AcademyWelcomePage />);
-    for (let i = 0; i < ACADEMY_CHAPTERS.length - 1; i += 1) advance();
+    for (let i = 0; i < ACADEMY_CHAPTERS.length - 1; i += 1) nextChapter();
     expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
     expect(screen.getByTestId("academy-welcome-tutorial")).toBeTruthy();
   });
@@ -503,9 +565,13 @@ describe("exits", () => {
     expect(document.activeElement).toBe(screen.getByTestId("academy-welcome-explore"));
   });
 
-  it("Skip is a real exit from any chapter — it marks the visitor handled", () => {
+  it("Skip is a real exit from any chapter — the register included", () => {
+    // The one thing that keeps "required" from meaning "trapped": the rail's
+    // exit is on the register exactly as it is on every other page, and it
+    // still records the visitor as handled.
     render(<AcademyWelcomePage />);
     advance();
+    expect(page()).toHaveAttribute("data-chapter", "registration");
     fireEvent.click(screen.getByTestId("academy-welcome-skip"));
 
     expect(hasHandledAcademyWelcome()).toBe(true);
@@ -517,6 +583,247 @@ describe("exits", () => {
     goToFinale();
     fireEvent.click(screen.getByTestId("academy-welcome-tutorial"));
     expect(JSON.stringify(readAcademyWelcomeState())).not.toMatch(/completed/i);
+  });
+});
+
+describe("the register (HI1-C5)", () => {
+  it("is the second spread, before any of the tour", () => {
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-chapter", "arrival");
+    advance();
+    expect(page()).toHaveAttribute("data-chapter", "registration");
+    expect(screen.getByTestId("academy-registration-form")).toBeTruthy();
+  });
+
+  it("will not let the tome turn past itself, by any input the page offers", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+
+    // The advance control is not merely inert here — it is gone, because a
+    // "Next" that does nothing is worse than no Next at all.
+    expect(screen.queryByTestId("academy-welcome-advance")).toBeNull();
+    // A click on the scene, and the keys, mean nothing on this page either.
+    fireEvent.click(screen.getByTestId("academy-tome-book"));
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    fireEvent.keyDown(window, { key: " " });
+    expect(page()).toHaveAttribute("data-chapter", "registration");
+  });
+
+  it("refuses an empty name and an unchosen rank, and says why at the field", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    fireEvent.click(screen.getByTestId("academy-registration-submit"));
+
+    expect(page()).toHaveAttribute("data-chapter", "registration");
+    expect(screen.getByTestId("academy-registration-username-error").textContent).toMatch(
+      /needs a name/i,
+    );
+    expect(screen.getByTestId("academy-registration-rank-error")).toBeTruthy();
+    expect(screen.getByTestId("academy-registration-username")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(readAcademyRegistration()).toBeNull();
+  });
+
+  it("clears an error the moment it stops being true", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    fireEvent.click(screen.getByTestId("academy-registration-submit"));
+    expect(screen.getByTestId("academy-registration-username-error")).toBeTruthy();
+
+    fireEvent.change(screen.getByTestId("academy-registration-username"), {
+      target: { value: "Ashe" },
+    });
+    expect(screen.queryByTestId("academy-registration-username-error")).toBeNull();
+    // …and the rank's error is still there, because that one is still true.
+    expect(screen.getByTestId("academy-registration-rank-error")).toBeTruthy();
+  });
+
+  it("offers the whole ladder, with Unranked and Not sure as real answers", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    const options = Array.from(
+      screen.getByTestId("academy-registration-rank").querySelectorAll("option"),
+    ).map((o) => o.textContent);
+    for (const tier of [
+      "Unranked",
+      "Iron",
+      "Bronze",
+      "Silver",
+      "Gold",
+      "Platinum",
+      "Emerald",
+      "Diamond",
+      "Master",
+      "Grandmaster",
+      "Challenger",
+      "Not sure / Prefer not to say",
+    ]) {
+      expect(options).toContain(tier);
+    }
+  });
+
+  it("accepts Unranked — required does not mean ranked", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Fiddle", rank: "unranked" });
+    expect(readAcademyRegistration()).toMatchObject({ username: "Fiddle", rank: "unranked" });
+    expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
+  });
+
+  it("records the registration, turns the page, and never stores the password", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "  Summoner   Yi ", rank: "diamond", password: "correcthorse" });
+
+    const stored = readAcademyRegistration();
+    expect(stored).toMatchObject({
+      // Normalised on the way in: this is the name that gets printed back.
+      username: "Summoner Yi",
+      rank: "diamond",
+      hasPassword: true,
+      wantsLinking: false,
+    });
+    // THE security assertion of this phase. Nothing anywhere in storage may
+    // contain the password — not under our key, not under anyone's.
+    const dump = Object.keys(localStorage).map((k) => localStorage.getItem(k) ?? "").join("|");
+    expect(dump).not.toContain("correcthorse");
+    expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
+  });
+
+  it("tells a visitor with no password where their account lives — as a toast", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Sona", rank: "silver" });
+
+    expect(mocks.toast).toHaveBeenCalledWith("Account stays on this device until verified");
+    // A NOTIFICATION after continuing, never inline copy under the field: the
+    // page itself must not carry it, or it reads as a warning about leaving a
+    // box empty.
+    expect(page().textContent).not.toContain("stays on this device");
+  });
+
+  it("says nothing extra when a password was set", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Sona", rank: "silver", password: "hunter2!" });
+    expect(mocks.toast).not.toHaveBeenCalled();
+  });
+
+  it("rejects a password too short for the one the real sign-up screen accepts", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Sona", rank: "silver", password: "abc" });
+    expect(screen.getByTestId("academy-registration-password-error")).toBeTruthy();
+    expect(page()).toHaveAttribute("data-chapter", "registration");
+    expect(readAcademyRegistration()).toBeNull();
+  });
+
+  it("keeps the linking intent when the box is ticked, and not when it is not", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Ekko", rank: "master", link: true });
+    expect(readAcademyRegistration()?.wantsLinking).toBe(true);
+  });
+
+  it("does not claim a linking intent nobody expressed", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Ekko", rank: "master" });
+    expect(readAcademyRegistration()?.wantsLinking).toBe(false);
+  });
+
+  it("still exits to the hub, because the Verify page does not exist yet", () => {
+    // The whole of the forward-compatibility contract. The intent is RECORDED;
+    // it may not invent a destination. When resolveLinkDestination() starts
+    // returning a route, this is the test that has to change with it.
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Ekko", rank: "master", link: true });
+    goToFinale();
+    fireEvent.click(screen.getByTestId("academy-welcome-explore"));
+    expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
+  });
+
+  it("offers the chosen name to a real profile, without waiting for the answer", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register({ username: "Orianna", rank: "challenger" });
+    expect(mocks.seed).toHaveBeenCalledWith("Orianna");
+    // The page turned on the same tick; nothing waited on the network.
+    expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
+  });
+
+  it("mirrors the answers onto the facing register card as they are given", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    const card = () => screen.getAllByTestId("academy-register-card")[0];
+    expect(card()).toHaveAttribute("data-sealed", "false");
+
+    fireEvent.change(screen.getByTestId("academy-registration-username"), {
+      target: { value: "Lulu" },
+    });
+    expect(card().textContent).toContain("Lulu");
+    expect(card()).toHaveAttribute("data-sealed", "false");
+
+    fireEvent.change(screen.getByTestId("academy-registration-rank"), {
+      target: { value: "emerald" },
+    });
+    expect(card().textContent).toContain("Emerald");
+    // Both halves given: the seal presses.
+    expect(card()).toHaveAttribute("data-sealed", "true");
+  });
+
+  it("keeps the card out of the accessibility tree — the form is already there", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(screen.getAllByTestId("academy-register-card")[0]).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
+
+  it("keeps what was typed when the visitor steps back to re-read the arrival", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    fireEvent.change(screen.getByTestId("academy-registration-username"), {
+      target: { value: "Zilean" },
+    });
+    fireEvent.click(screen.getByTestId("academy-welcome-back"));
+    expect(page()).toHaveAttribute("data-chapter", "arrival");
+    advance();
+    expect(screen.getByTestId("academy-registration-username")).toHaveValue("Zilean");
+  });
+
+  it("does not move focus into a text field when the page turns", () => {
+    // The finale moves focus because its control unmounts under the visitor.
+    // Doing the same here would open the keyboard on every phone the instant
+    // the page turned — over a landscape layout with ~360px of height.
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(document.activeElement).not.toBe(screen.getByTestId("academy-registration-username"));
+  });
+
+  it("carries no control on the sheet while it is turning", async () => {
+    // The same rule the exits follow: a focusable control that has become
+    // invisible scenery is a tab trap. The register's sheet, unlike the
+    // finale's, genuinely does turn.
+    setReducedMotion(false);
+    vi.useFakeTimers();
+    render(<AcademyWelcomePage />);
+    advance(); // finish the arrival
+    advance(); // turn to the register
+    await run(900);
+    for (let i = 0; i < 60 && !screen.queryByTestId("academy-registration-form"); i += 1) {
+      await run(250, 250);
+    }
+    register({ username: "Karma", rank: "gold" });
+    expect(page()).toHaveAttribute("data-turning", "true");
+    // One form on the live spread would be fine; the ghost must not add a
+    // second one riding the paper.
+    expect(screen.queryAllByTestId("academy-registration-form")).toHaveLength(0);
+    await run(900);
   });
 });
 
@@ -637,7 +944,7 @@ describe("content contract", () => {
         expect(img.getAttribute("aria-hidden")).toBe("true");
         expect(img.getAttribute("alt")).toBe("");
       }
-      if (i < ACADEMY_CHAPTERS.length - 1) advance();
+      if (i < ACADEMY_CHAPTERS.length - 1) nextChapter();
     }
   });
 
@@ -647,6 +954,7 @@ describe("content contract", () => {
     // renaming the product to match the art.
     render(<AcademyWelcomePage />);
     advance();
+    register();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Leaguecraft");
     expect(screen.queryByText(/Leaguecraft Studies/)).toBeNull();
   });
@@ -663,17 +971,47 @@ describe("content contract", () => {
     // esports viewer. It must never be renamed to a product a visitor cannot
     // find — GRAPH1 is a dev route and is not a destination.
     const headings = ACADEMY_CHAPTERS.map((c) => c.heading);
-    expect(headings).toContain("Pro Data & Esports");
+    expect(headings).toContain("Pro Data & the Archives");
     expect(headings).not.toContain("League Graphs");
+    // The merged spread still names both halves of what it merged: every
+    // docket entry is a real hub destination, spelled the way the hub spells it.
+    const docket = ACADEMY_CHAPTERS.find((c) => c.id === "the-record")?.docket ?? [];
+    expect(docket.map((d) => d.label)).toContain("Mogzy Archives");
+    expect(docket.map((d) => d.label)).toContain("Patch reports");
   });
 
   it("keeps the sequence short enough to sit through", () => {
-    // The redesign exists to stop this feeling like a wizard; a seventh chapter
-    // would put it back. Two lines per chapter is the ceiling for the same
-    // reason — this is a book being written, not a landing page.
-    expect(ACADEMY_CHAPTERS.length).toBeLessThanOrEqual(6);
+    // The redesign exists to stop this feeling like a wizard, and HI1-C5 added
+    // a page that ASKS for something — so the informational chapters had to pay
+    // for it. Five spreads, exactly one of which is a form. Two lines per
+    // chapter remains the ceiling: this is a book being written, not a landing
+    // page.
+    expect(ACADEMY_CHAPTERS).toHaveLength(5);
+    expect(ACADEMY_CHAPTERS.filter((c) => c.registration)).toHaveLength(1);
     for (const chapter of ACADEMY_CHAPTERS) {
       expect(chapter.lines.length).toBeLessThanOrEqual(2);
     }
+  });
+
+  it("ends on the merged spread rather than on a page that only asks", () => {
+    // The finale used to be its own chapter of no copy. Folding the exits onto
+    // the last informational spread is what bought the register its page back,
+    // and a re-added "How would you like to begin?" page would silently undo it.
+    const last = ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1];
+    expect(last.finale).toBe(true);
+    expect(last.id).toBe("the-record");
+    expect(last.lines.length).toBeGreaterThan(0);
+    expect(ACADEMY_CHAPTERS.filter((c) => c.finale)).toHaveLength(1);
+  });
+
+  it("gives the last spread a triangle on the left and a docket on the right", () => {
+    // The composition IS the contract here: the left page is the statistical
+    // side as a deliberate triangular figure, the right is the reference side
+    // as a document. Swapping either for a row of cards is the regression.
+    const last = ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1];
+    expect(last.art.kind).toBe("triptych");
+    expect(last.docket).toHaveLength(3);
+    // One annotation, never two — the docket IS this page's marginalia.
+    expect(last.marginalia).toBeUndefined();
   });
 });

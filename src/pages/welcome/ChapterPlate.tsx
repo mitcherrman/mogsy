@@ -5,6 +5,22 @@ import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import type { ChapterArt } from "./academyChapters";
 
 /**
+ * What the register card is currently showing.
+ *
+ * The one illustration in the book that is fed by live state rather than by the
+ * script. Passed down rather than read from a store so that ChapterPlate stays
+ * a pure renderer and the page keeps owning the form's state — including when
+ * the same plate is rendered a second time onto a turning sheet, where it must
+ * show exactly what it showed a moment ago.
+ */
+export interface RegisterMirror {
+  /** The name as typed, already trimmed for display. Empty until they type. */
+  username: string;
+  /** The chosen rank's display label, or null while none is chosen. */
+  rankLabel: string | null;
+}
+
+/**
  * The illustration on a chapter's page.
  *
  * Every chapter's artwork is composed into the SAME square box and revealed by
@@ -29,7 +45,14 @@ import type { ChapterArt } from "./academyChapters";
  * in it waits on the champion-assets API — a first impression that renders empty
  * because a backend is cold is worse than no artwork at all.
  */
-export default function ChapterPlate({ art }: { art: ChapterArt }) {
+export default function ChapterPlate({
+  art,
+  register,
+}: {
+  art: ChapterArt;
+  /** Only meaningful for `{ kind: "register" }`; ignored by every other art. */
+  register?: RegisterMirror;
+}) {
   if (art.kind === "mascot") {
     return (
       <div
@@ -71,7 +94,10 @@ export default function ChapterPlate({ art }: { art: ChapterArt }) {
       <div className="tome-plate relative flex aspect-square h-full max-h-[min(36vh,260px)] items-center justify-center">
         {art.kind === "plate" && <MedallionArt src={art.src} focus={art.emblemFocus} />}
         {art.kind === "duel" && <DuelArt />}
-        {art.kind === "chart" && <ChartArt />}
+        {art.kind === "register" && (
+          <RegisterArt username={register?.username ?? ""} rankLabel={register?.rankLabel ?? null} />
+        )}
+        {art.kind === "triptych" && <TriptychArt />}
       </div>
     </div>
   );
@@ -188,21 +214,82 @@ function Combatant({ src }: { src: string }) {
 }
 
 /**
- * Pro Data & Esports — a chart ruled onto the page.
+ * The Academy register — the second spread's illustration, and a mirror.
  *
- * Drawn rather than photographed, and drawn in ink on the parchment rather than
- * mounted on a dark plate: this chapter has no source artwork, and inventing a
- * fake screenshot of a real product is worse than having none. The strokes are
- * plain SVG paths animated by dash offset, so the chart genuinely draws itself
- * in the same gesture as the writing beside it.
+ * Every other plate in the book is a picture of the product. This one is a
+ * picture of the VISITOR: a registration card inked onto the page whose two
+ * ruled lines fill in with the name and the rank as they are entered beside it,
+ * and whose wax seal presses in once both are there. That is the whole reason
+ * the registration reads as part of the tome rather than as a web form dropped
+ * into one — the form is the pen, and this is the page it is writing on.
  *
- * The shape is illustrative, not a data claim — no axis is labelled and no
- * number is printed, precisely so it cannot be read as a real statistic.
+ * ENTIRELY `aria-hidden`. It duplicates, character for character, fields that
+ * are already live labelled controls a few inches away; a screen reader hearing
+ * the name announced a second time from a decoration would be reading the same
+ * thing twice. The card is presentation for the eye only, exactly like every
+ * other illustration in this file.
  */
-function ChartArt() {
+function RegisterArt({ username, rankLabel }: { username: string; rankLabel: string | null }) {
+  const sealed = Boolean(username && rankLabel);
+  return (
+    <div
+      className="tome-register"
+      data-sealed={sealed ? "true" : "false"}
+      data-testid="academy-register-card"
+      aria-hidden="true"
+    >
+      <p className="tome-register-title">Academy Register</p>
+      <RegisterLine label="Name" value={username} />
+      <RegisterLine label="Rank" value={rankLabel ?? ""} />
+      {/* The seal. Faint and unpressed until the card is complete, so the page
+          shows the visitor how close they are without printing a validation
+          message onto the artwork. */}
+      <div className="tome-register-seal">
+        <span className="tome-register-seal-mark">M</span>
+      </div>
+    </div>
+  );
+}
+
+/** One ruled line of the register: a label, and whatever has been written. */
+function RegisterLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="tome-register-field" data-filled={value ? "true" : "false"}>
+      <span className="tome-register-label">{label}</span>
+      <span className="tome-register-value">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * The last spread's left page — Pro Data, Esports and the statistics, composed
+ * as a TRIANGLE (HI1-C5).
+ *
+ * WHY A TRIANGLE AND NOT THREE CARDS. Three modules of equal weight in a row
+ * read as a feature grid, which is the layout language this whole redesign
+ * exists to escape, and it also asserts that the three things are peers. They
+ * are not: the season chart is the subject, and the two studies beneath it are
+ * what the subject is made of. An apex over two supports says that in the
+ * composition itself, and the faint rule drawn between the three centres says
+ * it deliberately — the reader sees a figure, not an accident of spacing.
+ *
+ * DRAWN, NOT PHOTOGRAPHED, for the reason the old chart art gave and this
+ * inherits: this side of the product has no source artwork, and a fabricated
+ * screenshot of a real surface is worse than an honest diagram. No axis is
+ * labelled and no number is printed anywhere below, precisely so nothing here
+ * can be read as a real statistic.
+ *
+ * The strokes carry the same `tome-stroke` / `tome-fade` classes as everything
+ * else on a page, so the whole figure rules itself in inside the illustration
+ * channel's own beat — and stops dead under `[data-instant]`, on a ghosted
+ * sheet, and under reduced motion, with no special cases.
+ */
+function TriptychArt() {
   const INK = "#2b3a57";
   const FAINT = "rgba(43,58,87,0.22)";
+  const GUIDE = "rgba(43,58,87,0.16)";
   const ACCENT = "#8a6d2a";
+  const PANEL = "rgba(43,58,87,0.05)";
   return (
     <svg
       viewBox="0 0 200 200"
@@ -211,65 +298,202 @@ function ChartArt() {
       aria-hidden="true"
       fill="none"
     >
-      {/* Ruled grid — laid down first, like guide lines. */}
-      {[52, 84, 116, 148].map((y, i) => (
+      {/* The figure itself, ruled in first — apex to each support, and the base
+          closing between them. Faint enough to read as a construction line. */}
+      <path
+        className="tome-stroke"
+        d="M100 62 L54 148 L146 148 Z"
+        stroke={GUIDE}
+        strokeWidth="1"
+        style={{ ["--len" as string]: "300", ["--d" as string]: "0" }}
+      />
+
+      {/* ---- Apex: seasons, charted. The subject of the page. -------------- */}
+      <rect
+        className="tome-fade"
+        x="42"
+        y="29"
+        width="116"
+        height="66"
+        rx="5"
+        fill={PANEL}
+        style={{ ["--d" as string]: "260" }}
+      />
+      <rect
+        className="tome-stroke"
+        x="42"
+        y="29"
+        width="116"
+        height="66"
+        rx="5"
+        stroke={INK}
+        strokeWidth="1.4"
+        style={{ ["--len" as string]: "380", ["--d" as string]: "300" }}
+      />
+      {[46, 62, 78].map((y, i) => (
         <line
           key={y}
           className="tome-stroke"
-          x1="26"
+          x1="50"
           y1={y}
-          x2="182"
+          x2="150"
           y2={y}
           stroke={FAINT}
-          strokeWidth="1"
-          style={{ ["--len" as string]: "160", ["--d" as string]: `${i * 150}` }}
+          strokeWidth="0.8"
+          style={{ ["--len" as string]: "104", ["--d" as string]: `${560 + i * 90}` }}
         />
       ))}
-      {/* Axes. */}
+      {/* The comparison series — quieter, drawn first. */}
       <path
         className="tome-stroke"
-        d="M26 24 L26 172 L182 172"
-        stroke={INK}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        style={{ ["--len" as string]: "310", ["--d" as string]: "540" }}
-      />
-      {/* The comparison series — quieter, drawn second. */}
-      <path
-        className="tome-stroke"
-        d="M34 138 C 66 132, 92 142, 118 118 S 160 108, 176 96"
+        d="M52 80 C 74 76, 88 82, 106 70 S 136 64, 148 58"
         stroke={ACCENT}
-        strokeWidth="2"
+        strokeWidth="1.7"
         strokeLinecap="round"
-        style={{ ["--len" as string]: "175", ["--d" as string]: "1150" }}
+        style={{ ["--len" as string]: "110", ["--d" as string]: "880" }}
       />
       {/* The lead series. */}
       <path
         className="tome-stroke"
-        d="M34 152 C 62 150, 84 112, 112 96 S 152 62, 176 44"
+        d="M52 86 C 72 84, 84 66, 104 58 S 134 44, 148 38"
         stroke={INK}
-        strokeWidth="2.6"
+        strokeWidth="2.2"
         strokeLinecap="round"
-        style={{ ["--len" as string]: "195", ["--d" as string]: "1650" }}
+        style={{ ["--len" as string]: "120", ["--d" as string]: "1080" }}
       />
-      {/* Plot points, pressed in after the line. */}
       {[
-        [34, 152],
-        [72, 128],
-        [112, 96],
-        [148, 66],
-        [176, 44],
+        [52, 86],
+        [78, 72],
+        [104, 58],
+        [128, 46],
+        [148, 38],
       ].map(([cx, cy], i) => (
         <circle
-          key={`${cx}-${cy}`}
+          key={`a-${cx}`}
           className="tome-dot"
           cx={cx}
           cy={cy}
-          r="3.4"
+          r="2.6"
           fill={INK}
-          style={{ ["--d" as string]: `${2350 + i * 140}` }}
+          style={{ ["--d" as string]: `${1320 + i * 110}` }}
         />
       ))}
+
+      {/* ---- Lower left: champions, ranked. ------------------------------- */}
+      <rect
+        className="tome-fade"
+        x="17"
+        y="117"
+        width="74"
+        height="62"
+        rx="5"
+        fill={PANEL}
+        style={{ ["--d" as string]: "1500" }}
+      />
+      <rect
+        className="tome-stroke"
+        x="17"
+        y="117"
+        width="74"
+        height="62"
+        rx="5"
+        stroke={INK}
+        strokeWidth="1.2"
+        style={{ ["--len" as string]: "280", ["--d" as string]: "1540" }}
+      />
+      {[
+        [58, 128],
+        [46, 139],
+        [36, 150],
+        [26, 161],
+      ].map(([w, y], i) => (
+        <line
+          key={`b-${y}`}
+          className="tome-stroke"
+          x1="26"
+          y1={y}
+          x2={26 + w}
+          y2={y}
+          stroke={i === 0 ? INK : FAINT}
+          strokeWidth={i === 0 ? "4" : "3.4"}
+          strokeLinecap="round"
+          style={{ ["--len" as string]: String(w), ["--d" as string]: `${1720 + i * 130}` }}
+        />
+      ))}
+      <line
+        className="tome-stroke"
+        x1="26"
+        y1="170"
+        x2="82"
+        y2="170"
+        stroke={FAINT}
+        strokeWidth="0.8"
+        style={{ ["--len" as string]: "56", ["--d" as string]: "2260" }}
+      />
+
+      {/* ---- Lower right: the live bracket. ------------------------------- */}
+      <rect
+        className="tome-fade"
+        x="109"
+        y="117"
+        width="74"
+        height="62"
+        rx="5"
+        fill={PANEL}
+        style={{ ["--d" as string]: "1620" }}
+      />
+      <rect
+        className="tome-stroke"
+        x="109"
+        y="117"
+        width="74"
+        height="62"
+        rx="5"
+        stroke={INK}
+        strokeWidth="1.2"
+        style={{ ["--len" as string]: "280", ["--d" as string]: "1660" }}
+      />
+      {/* Two ties feeding one — a bracket, with nobody's name on it. */}
+      {[130, 144, 158].map((y, i) => (
+        <line
+          key={`c-${y}`}
+          className="tome-stroke"
+          x1="118"
+          y1={y}
+          x2="146"
+          y2={y}
+          stroke={FAINT}
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          style={{ ["--len" as string]: "28", ["--d" as string]: `${1840 + i * 120}` }}
+        />
+      ))}
+      <path
+        className="tome-stroke"
+        d="M148 130 L158 130 L158 144 L168 144 M148 158 L158 158 L158 144"
+        stroke={INK}
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        style={{ ["--len" as string]: "80", ["--d" as string]: "2220" }}
+      />
+      <circle
+        className="tome-dot"
+        cx="172"
+        cy="144"
+        r="3.2"
+        fill={ACCENT}
+        style={{ ["--d" as string]: "2460" }}
+      />
+      <line
+        className="tome-stroke"
+        x1="118"
+        y1="170"
+        x2="174"
+        y2="170"
+        stroke={FAINT}
+        strokeWidth="0.8"
+        style={{ ["--len" as string]: "56", ["--d" as string]: "2540" }}
+      />
     </svg>
   );
 }

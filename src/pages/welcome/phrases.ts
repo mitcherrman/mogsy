@@ -102,6 +102,16 @@ export const OPENING_PAUSE_MS = 260;
 /** The marginalia's write window, and the beat after it. */
 export const MARGINALIA_WRITE_MS = 520;
 export const MARGINALIA_PAUSE_MS = 360;
+/**
+ * The reference docket's write window, and the beat after it (HI1-C5).
+ *
+ * Longer than the marginalia's because it is longer: three ruled entries, each
+ * a label and a note, ruled in one after another rather than four pills landing
+ * together. Still a single slot — a docket that stopped between its own lines
+ * would be the stammer this module exists to have removed.
+ */
+export const DOCKET_WRITE_MS = 900;
+export const DOCKET_PAUSE_MS = 420;
 /** Tail after the last slot's ink lands, before the page is offered as done. */
 export const INK_SETTLE_TAIL_MS = 240;
 
