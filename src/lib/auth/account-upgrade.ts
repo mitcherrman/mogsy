@@ -4,14 +4,28 @@
 // Single source of truth for the confirmation-aware upgrade. Every anonymous
 // "Create account" / "Save progress" surface routes through these helpers.
 //
-// Chosen Supabase flow (email-first, verified by installed auth-js 2.97.0):
-//   1. updateUser({ email }, { emailRedirectTo }) — attaches an email to the
-//      CURRENT anonymous auth user and sends a confirmation email. The auth
-//      user keeps the SAME id and stays anonymous until the link is clicked
-//      (auto-confirm OFF + secure email change ON in production).
-//   2. After the verified session is restored, updateUser({ password }) sets a
-//      password so the user can sign in later.
-//   3. Only THEN is profiles.is_anonymous synced to false.
+// AUTH1 flow (password-first, then email; verified against auth-js 2.97.0):
+//   1. updateUser({ password }) — sets the password on the CURRENT anonymous
+//      auth user, while it is still trivially the user in front of us. Doing
+//      this first means the credential exists no matter which branch step 2
+//      takes, so the user never has to come back to a form to finish.
+//   2. updateUser({ email }, { emailRedirectTo }) — attaches the email to the
+//      SAME auth user (same id, all progress intact).
+//   3. Re-read the authoritative user:
+//        - already permanent  -> conversion is DONE. Sync the profile and let
+//          the caller route onward immediately. This is the path taken when
+//          the project does not require email confirmation, and it is what
+//          makes an unverified account a normal, usable account (AUTH1 §3).
+//        - still anonymous    -> a confirmation link is required. Persist the
+//          pending record and show the (retained) verification screen. The
+//          password is already set, so /auth/callback has nothing left to ask.
+//   4. profiles.is_anonymous is synced only once auth is authoritatively
+//      non-anonymous — in step 3 or in the callback, never optimistically.
+//
+// Verification INFRASTRUCTURE is deliberately intact: the pending record, the
+// resend, the callback and the confirmation screens all still exist, so
+// verification can be reintroduced later as an optional incentive without
+// rebuilding any of it. What changed is that it no longer BLOCKS.
 //
 // linkIdentity() is NOT used: in auth-js 2.97.0 it only accepts OAuth/OIDC
 // credentials, not email/password.
@@ -32,6 +46,17 @@ export interface PendingUpgrade {
   email: string;
   /** Where to send the user after conversion completes (already validated). */
   returnTo: string;
+  /**
+   * A password was ALREADY set on this auth user before the email was sent
+   * (AUTH1 password-first order). The confirmation callback uses this to skip
+   * its password step — there is nothing left to collect. Absent on records
+   * written by the pre-AUTH1 email-first flow, which is why the callback
+   * treats it as "false unless explicitly true" rather than defaulting to
+   * true: an old pending record must still get its password screen.
+   *
+   * NEVER the password itself — no secret is persisted here, ever.
+   */
+  passwordSet?: boolean;
 }
 
 export function readPendingUpgrade(): PendingUpgrade | null {
@@ -45,7 +70,12 @@ export function readPendingUpgrade(): PendingUpgrade | null {
       typeof parsed.email === "string" &&
       typeof parsed.returnTo === "string"
     ) {
-      return parsed as PendingUpgrade;
+      return {
+        userId: parsed.userId,
+        email: parsed.email,
+        returnTo: parsed.returnTo,
+        passwordSet: parsed.passwordSet === true,
+      };
     }
     return null;
   } catch {
@@ -75,6 +105,12 @@ export interface UpgradeResult {
   error?: string;
   /** True when Supabase reports the email is already attached to an account. */
   emailInUse?: boolean;
+  /**
+   * The account became permanent DURING this call — no confirmation link is
+   * needed and the caller should route the user onward right now. False (or
+   * absent) means a confirmation email is outstanding.
+   */
+  converted?: boolean;
 }
 
 /** Normalize Supabase auth errors into safe, user-facing messages. */
@@ -102,24 +138,78 @@ function toUpgradeError(message: string | undefined): UpgradeResult {
 }
 
 /**
- * Initiate the email-first anonymous upgrade. NEVER signs out, NEVER calls
- * signUp(), NEVER writes the profile. Requires the caller to have confirmed a
- * current anonymous user (id passed in). Persists a pending record (no secrets)
- * so the verification screen survives a reload / "continue using Mogzy".
+ * Upgrade the CURRENT anonymous guest to a permanent account in place.
+ *
+ * NEVER signs out and NEVER calls signUp() — those orphaned the guest profile
+ * and its progress. Requires the caller to have confirmed a current anonymous
+ * user (id passed in) and to have validated the password against
+ * `validateNewPassword`.
+ *
+ * Resolves with `converted: true` when the account is permanent already (no
+ * email round-trip needed), or `converted: false` with a pending record
+ * persisted (no secrets) so the verification screen survives a reload.
  */
 export async function initiateAnonymousEmailUpgrade(params: {
   userId: string;
   email: string;
+  /** The password to set on the account, already validated by the caller. */
+  password: string;
   redirectTo: string;
 }): Promise<UpgradeResult> {
   const email = params.email.trim();
+
+  // Step 1 — password on the current anonymous user. Done first so that
+  // whichever branch step 2 takes, the credential already exists.
+  const pwRes = await supabase.auth.updateUser({ password: params.password });
+  if (pwRes.error) return toUpgradeError(pwRes.error.message);
+
+  // Step 2 — attach the email to the SAME auth user.
   const { error } = await supabase.auth.updateUser(
     { email },
     { emailRedirectTo: params.redirectTo },
   );
   if (error) return toUpgradeError(error.message);
-  writePendingUpgrade({ userId: params.userId, email, returnTo: params.redirectTo });
-  return { ok: true };
+
+  // Step 3 — ask auth what actually happened rather than assuming. When the
+  // project does not require confirmation the user is already permanent here.
+  const { data } = await supabase.auth.getUser();
+  const user = data?.user ?? null;
+  if (isConvertedPermanentUser(user)) {
+    const sync = await syncProfilePermanent(params.userId);
+    if (!sync.ok) return sync;
+    clearPendingUpgrade();
+    return { ok: true, converted: true };
+  }
+
+  // Confirmation outstanding: keep the (retained) pending flow, now knowing
+  // the password is already set so the callback has nothing to collect.
+  writePendingUpgrade({
+    userId: params.userId,
+    email,
+    returnTo: params.redirectTo,
+    passwordSet: true,
+  });
+  return { ok: true, converted: false };
+}
+
+/**
+ * Re-send the confirmation email for an upgrade already in flight.
+ *
+ * Re-issues the SAME email update, which is what makes Supabase send another
+ * confirmation link. Deliberately does not touch the password: it was already
+ * set when the upgrade was initiated, and asking for it again would be a
+ * second credential prompt for one account.
+ */
+export async function resendUpgradeConfirmation(params: {
+  email: string;
+  redirectTo: string;
+}): Promise<UpgradeResult> {
+  const { error } = await supabase.auth.updateUser(
+    { email: params.email.trim() },
+    { emailRedirectTo: params.redirectTo },
+  );
+  if (error) return toUpgradeError(error.message);
+  return { ok: true, converted: false };
 }
 
 /**

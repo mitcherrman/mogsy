@@ -8,6 +8,8 @@ import {
   Megaphone,
   MessageSquare,
   Palette,
+  LogIn,
+  LogOut,
   Settings as SettingsIcon,
   Shield,
   ShieldAlert,
@@ -43,6 +45,8 @@ import { prefetchRoute } from "@/lib/route-prefetch";
 import { playUiSfx } from "@/lib/ui-sfx";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { signupHrefFor } from "@/lib/hud/identity";
+import { authHref } from "@/lib/auth/auth-destination";
+import { queryClient } from "@/lib/query-client";
 import { hudHitTarget, hudPopVisual } from "@/lib/hud/chrome";
 
 /**
@@ -169,9 +173,11 @@ const isLiveInvite = (invite: StatCheckInvite, nowMs: number) => {
  *
  * Two distinct targets under one piece of chrome, never one ambiguous capsule:
  *
- *  - the Mogzy portrait is a plain link to /profile. It carries the unread
- *    badge, because the badge counts things that belong to *you*, and the
- *    portrait is the only "you" in the HUD. The badge is decorative
+ *  - the Mogzy portrait is a plain link to /profile. It carries identity and
+ *    nothing else. AUTH1 moved the unread badge OFF it and onto the
+ *    notifications control, because a count on a link to /profile reads as a
+ *    fact about your account rather than about your inbox. The badge is
+ *    decorative
  *    (aria-hidden, pointer-events-none, absolutely positioned) — the count's
  *    accessible home is the chevron's label, where it already lived;
  *  - the chevron opens this panel. It is a separate button with its own
@@ -190,9 +196,10 @@ const isLiveInvite = (invite: StatCheckInvite, nowMs: number) => {
  * account menu's Profile item sent them.
  */
 export default function MogzyIdentityMenu() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const [signingOut, setSigningOut] = useState(false);
   const { settings } = useAppSettings();
   // Backend-verified admin authorization only; never inferred from the user
   // object, roles, or storage. The item exists in the DOM only after
@@ -693,6 +700,68 @@ export default function MogzyIdentityMenu() {
    * Settings is guest-usable (it is where a guest signs in), and admin
    * authorization via the explicit fallback key does not require an account.
    */
+  /**
+   * Sign out from the menu (AUTH1 §8).
+   *
+   * Mirrors the Settings page's sign-out exactly rather than reimplementing
+   * it: clear the query cache FIRST so no signed-in data can be re-read or
+   * re-rendered from cache after the session goes, then end the session, then
+   * land on "/". `replace` keeps the authenticated page out of the back stack,
+   * so Back cannot return to a view that assumes a user.
+   *
+   * The panel closes before the await, so the menu is never left hanging over
+   * a page that is mid-transition.
+   */
+  const handleSignOut = useCallback(async () => {
+    if (signingOut) return; // duplicate-activation guard
+    setSigningOut(true);
+    closePanel();
+    playUiSfx("navClick");
+    queryClient.clear();
+    await signOut();
+    navigate("/", { replace: true });
+    setSigningOut(false);
+  }, [signingOut, closePanel, signOut, navigate]);
+
+  /**
+   * The account action that closes the footer — Sign Out for an account, Sign
+   * In for a guest, never both and never the wrong one.
+   *
+   * Deliberately its OWN bordered section rather than another footer row: the
+   * menu now carries notifications AND account utility, and ending the session
+   * is the one item in it that is destructive. A rule plus its own padding is
+   * the cheapest way to say "this is not another notification" without
+   * renaming the menu or restructuring what it is for (AUTH1 §9).
+   */
+  const authAction = (
+    <div className="shrink-0 border-t border-border bg-card p-1">
+      {isAccount ? (
+        <button
+          type="button"
+          data-testid="hud-sign-out"
+          onClick={() => void handleSignOut()}
+          disabled={signingOut}
+          className={`${footerItemClass} text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10 disabled:opacity-60`}
+        >
+          <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+          {signingOut ? "Signing out…" : "Sign Out"}
+        </button>
+      ) : (
+        <Link
+          // Signing in from the account menu should not relocate the visitor:
+          // the page they are on right now is the destination.
+          to={authHref(`${pathname}${search}`)}
+          data-testid="hud-sign-in"
+          {...footerLinkProps("/auth")}
+          className={footerItemClass}
+        >
+          <LogIn className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Sign In
+        </Link>
+      )}
+    </div>
+  );
+
   const utilityFooter = (
     <div className="shrink-0 border-t border-border bg-card p-1">
       <Link
@@ -795,10 +864,10 @@ export default function MogzyIdentityMenu() {
         onClick={() => playUiSfx("navClick")}
         className={`${hudHitTarget} z-10`}
       >
-        {/* One transformed visual group: crop + badge scale together, so the
-            badge stays welded to Mogzy's shoulder through the hover instead of
-            drifting off it. Nothing here is in the layout — the parent's 44px
-            box is what the flex row measures. */}
+        {/* The portrait's transformed visual group. Nothing here is in the
+            layout — the parent's 44px box is what the flex row measures.
+            AUTH1 removed the unread badge from this group: it now lives on the
+            notifications control below, so this mark carries identity only. */}
         <span aria-hidden="true" className={`relative block h-9 w-9 ${hudPopVisual}`}>
           {/* Face-forward crop of the full-body mascot (1024×1536). The window
               is 48% of the source width by 32% of its height, anchored at 22%
@@ -823,32 +892,6 @@ export default function MogzyIdentityMenu() {
               className="absolute -left-[60.4%] -top-[68.8%] h-auto w-[208.3%] max-w-none"
             />
           </span>
-          {/* Decorative only, and deliberately so: absolutely positioned (no
-              layout effect), pointer-events-none (never steals the portrait's
-              click or the chevron's), aria-hidden (not a second focus stop and
-              not a second reading of the count — the chevron's accessible name
-              is where the count is spoken). It sits outside the crop's
-              `overflow-hidden` but inside the scaled group, so it grows and
-              lifts welded to Mogzy's shoulder instead of drifting off it.
-
-              `top-0` rather than the usual negative overhang is a measured
-              constraint, not a taste call: the header band leaves the mark
-              10px of headroom, a 1.35× pop spends 6.3 of it, and a -4px badge
-              overhang scaled by 1.35 would spend 5.4 more — putting the badge
-              3.7px above the top of the viewport, where it is simply cut off.
-              Flush to the crop's top edge it clears by 1.7px at every width.
-              The horizontal overhang stays: there is room to the right, and
-              the badge is pointer-events-none, so overlapping the divider
-              costs the chevron nothing. */}
-          {badgeCount > 0 && (
-            <span
-              aria-hidden="true"
-              data-testid="hud-unread-badge"
-              className="pointer-events-none absolute -right-1 top-0 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold bg-destructive text-destructive-foreground ring-2 ring-[#0a1020]"
-            >
-              {badgeCount > 99 ? "99+" : badgeCount}
-            </span>
-          )}
         </span>
       </Link>
 
@@ -883,6 +926,30 @@ export default function MogzyIdentityMenu() {
           className={`h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover/chev:scale-[1.06] group-focus-visible/chev:scale-[1.06] motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
           aria-hidden="true"
         />
+        {/* AUTH1: the unread badge belongs to NOTIFICATIONS, not to identity.
+            It used to sit on the Mogzy portrait, which made the count read as
+            "something about your account" and put a notification number on a
+            link to /profile. The two symbols now mean exactly one thing each:
+            the portrait is you, this control is your inbox.
+
+            Still decorative — absolutely positioned (no layout effect),
+            pointer-events-none, aria-hidden — because the count is already
+            spoken in this button's own accessible name. Moving it here is
+            therefore a pure relocation of a visual mark: it adds no second
+            focus stop and no second reading of the number.
+
+            `-top-0.5`/`-right-0.5` keeps it inside the 44px-tall target rather
+            than overhanging into the header's 10px of headroom, so it cannot
+            be clipped at the top of the viewport at any width. */}
+        {badgeCount > 0 && (
+          <span
+            aria-hidden="true"
+            data-testid="hud-unread-badge"
+            className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold bg-destructive text-destructive-foreground ring-2 ring-[#0a1020]"
+          >
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </span>
+        )}
       </button>
     </div>
   );
@@ -925,6 +992,7 @@ export default function MogzyIdentityMenu() {
               </span>
             </Link>
             {utilityFooter}
+            {authAction}
           </div>
         )}
       </div>
@@ -1135,6 +1203,7 @@ export default function MogzyIdentityMenu() {
           </div>
 
           {utilityFooter}
+          {authAction}
         </div>
       )}
 

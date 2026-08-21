@@ -2,10 +2,14 @@
 // AccountUpgradePanel — the single shared "Save your progress" upgrade UI for
 // anonymous guests. Rendered by /auth (signup intent) and reusable elsewhere.
 //
-// Email-first: collects EMAIL ONLY, initiates the confirmation-aware upgrade,
-// then shows a pending-verification state. The password is set later, after the
-// verified session is restored (see /auth/callback). No password is collected
-// or stored here.
+// AUTH1: collects email AND password together and converts the guest in place,
+// in one submit. The guest is signed in and back where they started without
+// ever leaving the site — email verification is not a blocker (AUTH1 §3).
+//
+// The pending-verification state is RETAINED and still rendered when the
+// project requires a confirmation link; it is simply no longer the normal
+// path, and by then the password is already set so there is nothing left to
+// collect on return.
 // ---------------------------------------------------------------------------
 
 import { useState } from "react";
@@ -15,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAccountUpgrade } from "@/lib/auth/useAccountUpgrade";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "@/lib/auth/password-policy";
 
 interface Props {
   /** Already-validated safe relative path for after conversion completes. */
@@ -25,10 +30,36 @@ interface Props {
 
 export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props) {
   const navigate = useNavigate();
-  const upgrade = useAccountUpgrade(returnTo);
+  // Immediate conversion resumes the user's original intent right away. The
+  // replace keeps /auth out of the back stack, so Back from the destination
+  // goes where the user actually came from rather than to a signup form they
+  // have already completed.
+  const upgrade = useAccountUpgrade(returnTo, (destination) =>
+    navigate(destination, { replace: true }),
+  );
   const [emailInput, setEmailInput] = useState(upgrade.email);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [confirmInput, setConfirmInput] = useState("");
 
-  const busy = upgrade.phase === "submitting";
+  const busy = upgrade.phase === "submitting" || upgrade.phase === "converted";
+
+  // Converted in place: the account is already usable and the hook has handed
+  // the destination to the navigate callback above. This is a hand-off frame,
+  // not a screen the user has to act on — there is nothing to click.
+  if (upgrade.phase === "converted") {
+    return (
+      <div
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-8 text-center space-y-3"
+        data-testid="upgrade-converted"
+      >
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
+        <h2 className="text-xl font-bold text-foreground">Account created</h2>
+        <p className="text-sm text-muted-foreground">
+          Your progress is saved. Taking you back…
+        </p>
+      </div>
+    );
+  }
 
   if (upgrade.phase === "verification_pending") {
     return (
@@ -42,8 +73,9 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
           {upgrade.email}
         </p>
         <p className="text-xs text-muted-foreground">
-          Your progress is safe. You can keep using Mogzy while you wait — click the link when it
-          arrives to finish setting up your account. Check your spam folder if you don&apos;t see it.
+          Your progress is safe and your password is already set. You can keep using Mogzy while
+          you wait — click the link when it arrives to finish confirming your email. Check your
+          spam folder if you don&apos;t see it.
         </p>
 
         <div className="space-y-2 pt-2">
@@ -91,14 +123,14 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
         <h2 className="text-xl font-bold text-foreground">Save your progress</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Create a free account to keep your XP, streaks, tutorial progress, and history — on the
-          same profile you&apos;re using now.
+          same profile you&apos;re using now. You&apos;ll stay right where you are.
         </p>
       </div>
 
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void upgrade.submit(emailInput);
+          void upgrade.submit(emailInput, passwordInput, confirmInput);
         }}
         className="space-y-4"
       >
@@ -114,9 +146,37 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
             autoComplete="email"
             data-testid="upgrade-email-input"
           />
-          <p className="text-[11px] text-muted-foreground">
-            We&apos;ll email you a link to confirm. You&apos;ll set a password after confirming.
-          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="upgrade-password">Password</Label>
+          <Input
+            id="upgrade-password"
+            type="password"
+            placeholder="••••••••"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            required
+            minLength={PASSWORD_MIN_LENGTH}
+            autoComplete="new-password"
+            data-testid="upgrade-password-input"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="upgrade-confirm">Confirm password</Label>
+          <Input
+            id="upgrade-confirm"
+            type="password"
+            placeholder="••••••••"
+            value={confirmInput}
+            onChange={(e) => setConfirmInput(e.target.value)}
+            required
+            minLength={PASSWORD_MIN_LENGTH}
+            autoComplete="new-password"
+            data-testid="upgrade-confirm-input"
+          />
+          <p className="text-[11px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
         </div>
 
         {upgrade.error && (

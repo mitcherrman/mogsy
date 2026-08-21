@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
+import { authHref } from "@/lib/auth/auth-destination";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, X, BarChart3, PieChart, LineChart, AreaChart, RefreshCw, Clock } from "lucide-react";
@@ -112,6 +113,7 @@ function ChartRenderer({ data, chartType }: { data: DataSourceResult; chartType:
 export default function AdminData() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [graphs, setGraphs] = useState<GraphCard[]>([]);
@@ -124,7 +126,7 @@ export default function AdminData() {
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) { navigate(authHref(location.pathname + location.search)); return; }
     supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
       if (!data?.some(r => (r.role as string) === "master_admin")) {
         navigate("/admin");

@@ -37,7 +37,7 @@ vi.mock("@/hooks/useStatCheckInvites", () => ({
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", () => ({
   useNavigate: () => navigate,
-  useLocation: () => ({ pathname: "/lol" }),
+  useLocation: () => ({ pathname: "/lol", search: "" }),
   Link: ({
     to,
     children,

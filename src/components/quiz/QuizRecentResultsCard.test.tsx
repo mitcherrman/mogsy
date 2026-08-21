@@ -90,7 +90,13 @@ describe("QuizRecentResultsCard", () => {
   it("shows the sign-in state for auth-shaped errors", () => {
     renderCard({ history: null, error: "Quiz API 401: unauthorized" });
     expect(screen.getByText("Sign in to save and review your quiz history.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Sign in/ }).getAttribute("href")).toBe("/auth");
+    // AUTH1 §4: the card used to link to a bare "/auth", which sent the user to
+    // the League hub afterwards instead of back to the history they were
+    // trying to read. The current route travels with them. (The test router
+    // renders this card at "/".)
+    expect(screen.getByRole("link", { name: /Sign in/ }).getAttribute("href")).toBe(
+      "/auth?returnTo=%2F",
+    );
   });
 
   it("renders a skeleton while loading", () => {

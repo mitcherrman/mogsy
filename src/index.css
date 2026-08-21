@@ -4311,3 +4311,60 @@ html.high-contrast * { text-shadow: none !important; }
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   AUTH1 — the HUD guest signup chip.
+   
+   Small and quiet by design: two words, a brass tint, and a glow that breathes
+   rather than blinks. Everything that moves is `box-shadow` and `color`, never
+   a geometry property, so the chip animates without ever reserving, releasing,
+   or shifting a single pixel of the header cluster around it.
+   --------------------------------------------------------------------------- */
+.hud-signup-chip {
+  color: #f3dc9a;
+  background-color: rgba(201, 168, 76, 0.16);
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  box-shadow: 0 0 0 0 rgba(201, 168, 76, 0);
+  transition:
+    background-color 200ms ease-out,
+    border-color 200ms ease-out,
+    color 200ms ease-out,
+    box-shadow 200ms ease-out;
+  animation: hud-signup-breathe 3.6s ease-in-out infinite;
+}
+
+.hud-signup-chip:hover,
+.hud-signup-chip:focus-visible {
+  color: #fdf3d4;
+  background-color: rgba(201, 168, 76, 0.3);
+  border-color: rgba(201, 168, 76, 0.8);
+  /* Hover takes over the glow entirely — the idle breath would otherwise fight
+     the hover state for the same property and win on every other frame. */
+  animation: none;
+  box-shadow: 0 0 12px 1px rgba(201, 168, 76, 0.4);
+}
+
+@keyframes hud-signup-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(201, 168, 76, 0);
+  }
+  50% {
+    box-shadow: 0 0 10px 0 rgba(201, 168, 76, 0.28);
+  }
+}
+
+/* Reduced motion keeps the affordance and drops the movement: the chip holds a
+   steady low glow instead of pulsing, and hover/focus still respond — the
+   contrast shift is a state change, not an animation. */
+@media (prefers-reduced-motion: reduce) {
+  .hud-signup-chip {
+    animation: none;
+    box-shadow: 0 0 8px 0 rgba(201, 168, 76, 0.22);
+    transition: none;
+  }
+  .hud-signup-chip:hover,
+  .hud-signup-chip:focus-visible {
+    box-shadow: 0 0 8px 0 rgba(201, 168, 76, 0.22);
+  }
+}

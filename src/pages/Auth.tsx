@@ -13,7 +13,8 @@ import { Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { resetGateState } from "@/lib/quiz/onboarding-gate";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
-import { safeReturnPath } from "@/lib/auth/safe-return";
+import { resolveReturnTo } from "@/lib/auth/auth-destination";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/lib/auth/password-policy";
 import AccountUpgradePanel from "@/components/auth/AccountUpgradePanel";
 
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
@@ -35,8 +36,12 @@ export default function Auth() {
   const inviteCode = searchParams.get("invite");
   const defaultReturnTo = LEAGUE_ONLY_MODE ? LEAGUE_HOME_ROUTE : "/home";
 
-  // Only allow safe same-origin relative paths (blocks //evil.com open redirects).
-  const safeReturnTo = safeReturnPath(searchParams.get("returnTo"), defaultReturnTo);
+  // Only allow safe same-origin relative paths (blocks //evil.com open
+  // redirects). `explicit` records whether the user really was heading
+  // somewhere, which is what gives this destination precedence over the hub
+  // default and over onboarding (see lib/auth/auth-destination.ts).
+  const resolvedReturn = resolveReturnTo(searchParams.get("returnTo"), defaultReturnTo);
+  const safeReturnTo = resolvedReturn.path;
 
   const isAnonymous = user?.is_anonymous === true;
   const [showLinkFlow, setShowLinkFlow] = useState(false);
@@ -114,8 +119,11 @@ export default function Auth() {
     e.preventDefault();
     if (!email) return;
     setLoading(true);
+    // Carry the destination through the email round-trip so a reset started
+    // from a specific page returns there instead of the generic home.
+    const resetRedirect = `${window.location.origin}/reset-password?returnTo=${encodeURIComponent(safeReturnTo)}`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: resetRedirect,
     });
     setLoading(false);
     if (error) {
@@ -156,16 +164,16 @@ export default function Auth() {
         }
       } else {
         resetGateState();
-        navigate(safeReturnTo);
+        // `replace` so the browser Back button from the destination returns to
+        // where the user was before the interruption, not to the auth form
+        // they just completed.
+        navigate(safeReturnTo, { replace: true });
       }
     } else if (mode === "signup") {
-      if (password !== confirmPassword) {
-        toast({ title: "Passwords don't match", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-      if (password.length < 6) {
-        toast({ title: "Password too short", description: "Minimum 6 characters.", variant: "destructive" });
+      // One shared policy — length only, no composition rules (AUTH1 §2).
+      const pw = validateNewPassword(password, confirmPassword);
+      if (!pw.ok) {
+        toast({ title: pw.error, variant: "destructive" });
         setLoading(false);
         return;
       }
@@ -177,7 +185,7 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const { error } = await signUp(email, password);
+      const { error, session } = await signUp(email, password);
       if (error) {
         if (error.message?.includes("already been registered")) {
           toast({
@@ -194,7 +202,17 @@ export default function Auth() {
           trackFunnelEvent("auth_signup_completed_from_quiz", { returnTo: safeReturnTo, flow: "email_signup" });
         }
         resetGateState();
-        setMode("confirm-sent");
+        if (session) {
+          // AUTH1 §3: the account is signed in and usable right now. Email
+          // verification must not stand between signing up and continuing, so
+          // resume the user's destination instead of parking them on a
+          // check-your-email screen. That screen is retained below for the
+          // branch where Supabase genuinely withholds the session.
+          toast({ title: "Welcome to Mogzy!", description: "Your account is ready." });
+          navigate(safeReturnTo, { replace: true });
+        } else {
+          setMode("confirm-sent");
+        }
       }
     }
 
@@ -245,6 +263,16 @@ export default function Auth() {
             </div>
           )}
 
+          {/* Verification is not a blocker (AUTH1 §3): whenever this screen
+              does appear, the way out of it is forward, not back. */}
+          <Button
+            variant="hero"
+            className="w-full mb-2"
+            data-testid="confirm-sent-continue"
+            onClick={() => navigate(safeReturnTo, { replace: true })}
+          >
+            Continue to Mogzy
+          </Button>
           <Button
             variant="ghost"
             className="gap-2"
@@ -432,7 +460,7 @@ export default function Auth() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={PASSWORD_MIN_LENGTH}
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
             />
           </div>
@@ -454,7 +482,7 @@ export default function Auth() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={PASSWORD_MIN_LENGTH}
                   autoComplete="new-password"
                 />
               </motion.div>
@@ -462,9 +490,7 @@ export default function Auth() {
           </AnimatePresence>
 
           {(mode === "signup" || showLinkFlow) && (
-            <p className="text-[10px] text-muted-foreground">
-              Password must be at least 6 characters
-            </p>
+            <p className="text-[10px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
           )}
 
           <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>

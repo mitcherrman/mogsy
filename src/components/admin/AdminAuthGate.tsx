@@ -8,7 +8,8 @@
 // ---------------------------------------------------------------------------
 
 import { useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { authHref } from "@/lib/auth/auth-destination";
+import { Link, useLocation } from "react-router-dom";
 import { KeyRound, Loader2, AlertTriangle, LogIn, ShieldAlert, ServerCrash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,10 @@ function FallbackButton({ onClick }: { onClick: () => void }) {
 export function AdminAuthGate({ children }: { children: ReactNode }) {
   const { status, fallbackActive, recheck, applyFallbackKey, clearFallback } = useAdminAuth();
   const { signOut } = useAuth();
+  const location = useLocation();
+  // AUTH1: every "sign in" out of this gate returns to the admin page that was
+  // blocked, rather than dropping the operator on the public hub.
+  const signInHref = authHref(`${location.pathname}${location.search}`);
   const [fallbackOpen, setFallbackOpen] = useState(false);
   const [keyValue, setKeyValue] = useState("");
 
@@ -156,7 +161,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
             authorizes admin pages automatically — no admin key needed.
           </p>
           <Button asChild size="sm" className="w-full">
-            <Link to="/auth">Sign in</Link>
+            <Link to={signInHref}>Sign in</Link>
           </Button>
           <FallbackButton onClick={() => setFallbackOpen(true)} />
         </Centered>
@@ -179,7 +184,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
           </p>
           <div className="flex gap-2">
             <Button asChild size="sm" variant="outline" className="flex-1">
-              <Link to="/auth">Switch account</Link>
+              <Link to={signInHref}>Switch account</Link>
             </Button>
             <Button size="sm" variant="outline" className="flex-1" onClick={() => void signOut()}>
               Sign out
@@ -203,7 +208,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
           Your session expired. Sign in again to continue.
         </p>
         <Button asChild size="sm" className="w-full">
-          <Link to="/auth">Sign in again</Link>
+          <Link to={signInHref}>Sign in again</Link>
         </Button>
         <Button size="sm" variant="ghost" className="w-full text-xs" onClick={recheck}>
           Retry

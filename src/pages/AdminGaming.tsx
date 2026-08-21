@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { authHref } from "@/lib/auth/auth-destination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gamepad2, ChevronLeft, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminSwipeGameConfig from "@/components/admin/AdminSwipeGameConfig";
@@ -31,6 +32,7 @@ const allTabs = [
 export default function AdminGaming() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ export default function AdminGaming() {
   const TABS_PER_PAGE = isMobile ? 3 : 5;
 
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) { navigate(authHref(location.pathname + location.search)); return; }
     supabase
       .from("user_roles")
       .select("role")

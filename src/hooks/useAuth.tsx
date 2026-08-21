@@ -11,17 +11,38 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  /**
+   * Create a brand-new permanent account.
+   *
+   * AUTH1: resolves with `session` so the caller can tell an IMMEDIATELY
+   * usable account (Supabase "Confirm email" off — a session comes back and
+   * the user is already signed in) from one awaiting a confirmation link
+   * (session null). Email verification must never be the difference between
+   * "can use Mogzy" and "cannot", so the caller routes the user onward the
+   * moment a session exists rather than parking them on a check-your-email
+   * screen. The confirmation branch is retained, not deleted.
+   */
+  signUp: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: any; session: Session | null }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   /**
-   * Confirmation-aware anonymous -> permanent upgrade (Concern B). Attaches an
-   * email to the CURRENT anonymous user via updateUser and returns a pending
-   * result — it NEVER signs out, NEVER calls signUp(), and NEVER writes the
-   * profile. The account only becomes permanent after the emailed link is
-   * confirmed (handled by the /auth/callback route).
+   * Anonymous -> permanent upgrade, in place. Sets the password and attaches
+   * the email to the CURRENT anonymous user via updateUser — it NEVER signs
+   * out and NEVER calls signUp().
+   *
+   * AUTH1: resolves with `converted: true` when the account is permanent
+   * immediately (no confirmation link required), so the caller can route the
+   * guest straight back to what they were doing. `converted: false` means a
+   * confirmation email is outstanding and the retained pending flow applies.
    */
-  upgradeAnonymousEmail: (email: string, redirectTo: string) => Promise<UpgradeResult>;
+  upgradeAnonymousEmail: (
+    email: string,
+    password: string,
+    redirectTo: string,
+  ) => Promise<UpgradeResult>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,12 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: window.location.origin },
     });
-    return { error };
+    // `data.session` is non-null only when the project does not require email
+    // confirmation. That is the signal — not a guess about configuration —
+    // that the account is usable right now.
+    return { error, session: data?.session ?? null };
   };
 
   const signIn = async (email: string, password: string) => {
@@ -121,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const upgradeAnonymousEmail = async (
     email: string,
+    password: string,
     redirectTo: string,
   ): Promise<UpgradeResult> => {
     // Guard: only an authenticated anonymous user may be upgraded. Never fall
@@ -131,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user.is_anonymous !== true) {
       return { ok: false, error: "This account is already registered." };
     }
-    return initiateAnonymousEmailUpgrade({ userId: user.id, email, redirectTo });
+    return initiateAnonymousEmailUpgrade({ userId: user.id, email, password, redirectTo });
   };
 
   return (

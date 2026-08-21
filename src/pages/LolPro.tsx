@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { authHref } from "@/lib/auth/auth-destination";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -96,6 +97,9 @@ const PRO_FEATURES: ProFeature[] = [
   },
 ];
 
+/** This page's route — where auth must return a user it interrupted here. */
+const LOL_PRO_ROUTE = "/lol/pro";
+
 export default function LolPro() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -138,7 +142,9 @@ export default function LolPro() {
     }
     if (isAnonymous) {
       toast.info("Create a free account first — your guest progress comes with you.");
-      navigate("/auth");
+      // Return to Pro after signup: this interruption exists only because the
+      // user pressed Checkout HERE.
+      navigate(authHref(LOL_PRO_ROUTE, { mode: "signup" }));
       return;
     }
     setCheckingOut(true);

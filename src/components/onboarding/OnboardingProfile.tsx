@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/lib/auth/password-policy";
 import { containsProfanity, getProfanityMessage } from "@/lib/profanity-filter";
 import { searchCities } from "@/lib/cities-data";
 import { toast } from "sonner";
@@ -161,16 +162,28 @@ export default function OnboardingProfile({ onNext }: Props) {
       }
 
       if (isAnonymous && email.trim()) {
-        // Email-first upgrade of the CURRENT guest identity. The password is set
-        // after email confirmation (via /auth/callback); it is not collected here.
+        // In-place upgrade of the CURRENT guest identity. This form has always
+        // collected a password; before AUTH1 the email-first flow discarded it
+        // and asked for it again after confirmation. Now it is used, so the
+        // account is normally permanent by the time this line returns.
+        const pw = validateNewPassword(password);
+        if (!pw.ok) {
+          setLinkError(pw.error!);
+          setSaving(false);
+          return;
+        }
         const redirectTo = `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent("/quiz")}`;
-        const res = await upgradeAnonymousEmail(email.trim(), redirectTo);
+        const res = await upgradeAnonymousEmail(email.trim(), password, redirectTo);
         if (!res.ok) {
           setLinkError(res.error || "Could not start account creation.");
           setSaving(false);
           return;
         }
-        toast.success("Check your email to finish creating your account.");
+        toast.success(
+          res.converted
+            ? "Account created — your progress is saved."
+            : "Account created. Check your email to confirm it when you get a chance.",
+        );
       }
     } catch (err) {
       console.error("Onboarding profile save error:", err);
@@ -313,7 +326,7 @@ export default function OnboardingProfile({ onNext }: Props) {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mb-2">
-              Sign up to save your progress and unlock full features.
+              Sign up to save your progress and unlock full features. {PASSWORD_RULE_TEXT}
             </p>
             <Input
               type="email"
@@ -324,10 +337,11 @@ export default function OnboardingProfile({ onNext }: Props) {
             />
             <Input
               type="password"
-              placeholder="Password (min 6 characters)"
+              placeholder={`Password (min ${PASSWORD_MIN_LENGTH} characters)`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              minLength={6}
+              autoComplete="new-password"
+              minLength={PASSWORD_MIN_LENGTH}
               maxLength={128}
             />
             {linkError && <p className="text-xs text-destructive">{linkError}</p>}

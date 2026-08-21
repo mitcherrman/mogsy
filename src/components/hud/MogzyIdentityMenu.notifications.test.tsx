@@ -26,7 +26,7 @@ vi.mock("@/hooks/useStatCheckInvites", () => ({
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", () => ({
   useNavigate: () => navigate,
-  useLocation: () => ({ pathname: "/lol" }),
+  useLocation: () => ({ pathname: "/lol", search: "" }),
   // jsdom has no navigation, and the real <Link> preventDefaults anyway — so
   // does this, or every asserted click logs a "navigation not implemented".
   Link: ({

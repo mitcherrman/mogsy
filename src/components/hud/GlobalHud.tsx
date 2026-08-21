@@ -134,29 +134,31 @@ export default function GlobalHud() {
         </Link>
 
         <div className={`${hudChip} flex items-center gap-1 px-1 py-0.5`}>
-          {/* Guest conversion chip — the one visible (but quiet) signup
-              affordance, replacing the retired full-width /lol banner. It
-              lives inside the cluster chip so the HUD stays two clusters,
-              not a bar; the longer value phrase collapses away below lg so
-              narrow widths keep a plain "Sign up". Hidden entirely once the
+          {/* Guest conversion chip — small, quiet, and the only signup
+              affordance in the chrome. AUTH1 cut it back to the two words that
+              are the action ("SIGN UP") and moved the polish into CSS: a
+              restrained brass glow that breathes, defined once in index.css so
+              the reduced-motion and hover states live beside it rather than as
+              a pile of utility classes here.
+
+              Fixed height (h-7) and no responsive text swap, so it reserves
+              exactly the same box at every width and in every state — the chip
+              cannot shift the cluster as it animates. Hidden entirely once the
               visitor has a real account. */}
           {isAnonymous && (
             <Link
               to={signupHref}
               data-testid="hud-signup-chip"
-              aria-label="Sign up free — save your progress"
-              title="Sign up free — save your progress"
+              aria-label="Sign up"
+              title="Sign up"
               onMouseEnter={() => prefetchRoute("/auth")}
               onFocus={() => prefetchRoute("/auth")}
               onClick={() => {
                 playUiSfx("primaryAction");
                 trackFunnelEvent("hud_signup_chip_clicked", { returnTo: pathname });
               }}
-              className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#c9a84c]/20 px-2.5 text-xs font-semibold text-[#f0d78c] transition-colors hover:bg-[#c9a84c]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+              className="hud-signup-chip flex h-7 shrink-0 items-center whitespace-nowrap rounded-full px-3 text-[11px] font-bold uppercase tracking-[0.08em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/80 focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             >
-              <span className="hidden font-normal text-[#cfc4a5] lg:inline">
-                Save progress ·
-              </span>
               Sign up
             </Link>
           )}

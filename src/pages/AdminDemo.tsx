@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { authHref } from "@/lib/auth/auth-destination";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Camera, Crown, CheckCircle2, XCircle, Search,
@@ -157,6 +158,7 @@ const defaultCard = (side: "left" | "right"): CardData => ({
 
 export default function AdminDemo() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const captureRef = useRef<HTMLDivElement>(null);
@@ -207,7 +209,7 @@ export default function AdminDemo() {
 
   // Auth guard: allow admin, master_admin, or demo_access roles
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) { navigate(authHref(location.pathname + location.search)); return; }
     supabase
       .from("user_roles")
       .select("role")

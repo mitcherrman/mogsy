@@ -11,6 +11,7 @@
  * players queue. Nothing here maps a role to a class in either direction.
  */
 import { useEffect, useState } from "react";
+import { authHref } from "@/lib/auth/auth-destination";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -87,6 +88,9 @@ function Frame({ children, size = "default" }:
   );
 }
 
+/** This page's own route — the destination auth must return the user to. */
+const RANKED_ROUTE = "/quiz/ranked";
+
 export default function QuizRankedPage() {
   const { user } = useAuth();
   const account = user && !(user as { is_anonymous?: boolean }).is_anonymous ? user : null;
@@ -98,7 +102,18 @@ export default function QuizRankedPage() {
           <div className="ranked-eyebrow ranked-eyebrow--cyan">Account required</div>
           <h2 className="mt-1 font-semibold">Sign in to play Ranked</h2>
           <p className="text-sm text-muted-foreground">Ranked Duel requires a signed-in account.</p>
-          <Button asChild className="mt-3"><Link to="/auth">Sign in</Link></Button>
+          {/* AUTH1: both actions carry this route as returnTo. Without it the
+              Auth page fell back to its default (the League hub), which is the
+              exact reported bug — start Ranked, get prompted, sign up, land in
+              the hub instead of back in Ranked. */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button asChild data-testid="ranked-signup-link">
+              <Link to={authHref(RANKED_ROUTE, { mode: "signup" })}>Create account</Link>
+            </Button>
+            <Button asChild variant="outline" data-testid="ranked-signin-link">
+              <Link to={authHref(RANKED_ROUTE)}>Sign in</Link>
+            </Button>
+          </div>
         </section>
       </Frame>
     );

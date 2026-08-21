@@ -1,7 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { installLocalStorageStub } from "@/test/localStorageStub";
+
+// This suite genuinely exercises persistence, so it opts into the shared
+// Storage stub (jsdom 20 + vitest 3 ships no working Storage — see the stub's
+// own header). Without it every case here fails on `localStorage.clear`.
+const resetStorage = installLocalStorageStub();
+const sessionStub = { clear: () => {} };
+Object.defineProperty(globalThis, "sessionStorage", {
+  value: globalThis.sessionStorage?.clear ? globalThis.sessionStorage : sessionStub,
+  configurable: true,
+  writable: true,
+});
 
 const mocks = vi.hoisted(() => ({
   updateUser: vi.fn(),
+  getUser: vi.fn(),
   signOut: vi.fn(),
   signUp: vi.fn(),
   signInAnonymously: vi.fn(),
@@ -13,6 +26,7 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
       updateUser: mocks.updateUser,
+      getUser: mocks.getUser,
       signOut: mocks.signOut,
       signUp: mocks.signUp,
       signInAnonymously: mocks.signInAnonymously,
@@ -38,72 +52,104 @@ import {
   clearPendingUpgrade,
 } from "./account-upgrade";
 
+/** The user auth reports AFTER the email update — still anonymous by default,
+ *  i.e. the project requires a confirmation link. */
+const stillAnonymous = { is_anonymous: true, email: null, identities: [] };
+/** …and the converted-immediately shape (confirmation disabled). */
+const permanent = {
+  is_anonymous: false,
+  email: "guest@example.com",
+  identities: [{ provider: "email" }],
+};
+
 beforeEach(() => {
-  localStorage.clear();
-  sessionStorage.clear();
+  resetStorage();
   vi.clearAllMocks();
   mocks.updateUser.mockResolvedValue({ data: {}, error: null });
+  mocks.getUser.mockResolvedValue({ data: { user: stillAnonymous }, error: null });
   mocks.profileRead.mockResolvedValue({ data: { is_anonymous: false }, error: null });
 });
 
+afterAll(() => resetStorage());
+
 describe("initiateAnonymousEmailUpgrade", () => {
-  it("attaches email via updateUser with emailRedirectTo — never signOut, never signUp", async () => {
-    const res = await initiateAnonymousEmailUpgrade({
-      userId: "anon-1",
-      email: "  Guest@Example.com  ",
-      redirectTo: "https://mogzy.lol/auth/callback?returnTo=%2Fquiz",
-    });
+  const args = {
+    userId: "anon-1",
+    email: "  Guest@Example.com  ",
+    password: "sixtee",
+    redirectTo: "https://mogzy.lol/auth/callback?returnTo=%2Fquiz",
+  };
+
+  it("sets the password FIRST, then attaches the email — never signOut, never signUp", async () => {
+    const res = await initiateAnonymousEmailUpgrade(args);
     expect(res.ok).toBe(true);
-    expect(mocks.updateUser).toHaveBeenCalledWith(
+    // AUTH1 order: the credential exists before the email branch is decided,
+    // so the user never has to come back to a form to finish.
+    expect(mocks.updateUser).toHaveBeenNthCalledWith(1, { password: "sixtee" });
+    expect(mocks.updateUser).toHaveBeenNthCalledWith(
+      2,
       { email: "Guest@Example.com" },
-      { emailRedirectTo: "https://mogzy.lol/auth/callback?returnTo=%2Fquiz" },
+      { emailRedirectTo: args.redirectTo },
     );
     expect(mocks.signOut).not.toHaveBeenCalled();
     expect(mocks.signUp).not.toHaveBeenCalled();
-    expect(mocks.updateUser).toHaveBeenCalledTimes(1);
-    // password never passed to updateUser during initiation
-    expect(mocks.updateUser.mock.calls[0][0]).not.toHaveProperty("password");
+  });
+
+  it("reports converted and syncs the profile when no confirmation is required", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: permanent }, error: null });
+    const res = await initiateAnonymousEmailUpgrade(args);
+    expect(res.ok).toBe(true);
+    expect(res.converted).toBe(true);
+    // The account is permanent now, so the derived profile flag follows.
+    expect(mocks.profileUpdate).toHaveBeenCalledWith({ is_anonymous: false });
+    // Nothing left pending — there is no link to come back from.
+    expect(readPendingUpgrade()).toBeNull();
+  });
+
+  it("falls back to the retained pending flow when a confirmation IS required", async () => {
+    const res = await initiateAnonymousEmailUpgrade({ ...args, email: "guest@example.com" });
+    expect(res.ok).toBe(true);
+    expect(res.converted).toBe(false);
+    expect(readPendingUpgrade()).toEqual({
+      userId: "anon-1",
+      email: "guest@example.com",
+      returnTo: args.redirectTo,
+      // The callback uses this to skip asking for a password it already has.
+      passwordSet: true,
+    });
   });
 
   it("persists a pending record with userId+email but NEVER a password", async () => {
-    await initiateAnonymousEmailUpgrade({
-      userId: "anon-1",
-      email: "guest@example.com",
-      redirectTo: "https://mogzy.lol/auth/callback",
-    });
-    const pending = readPendingUpgrade();
-    expect(pending).toEqual({
-      userId: "anon-1",
-      email: "guest@example.com",
-      returnTo: "https://mogzy.lol/auth/callback",
-    });
-    // No secret anywhere in web storage.
-    const dump = JSON.stringify(localStorage) + JSON.stringify(sessionStorage);
-    expect(dump.toLowerCase()).not.toContain("password");
+    await initiateAnonymousEmailUpgrade({ ...args, email: "guest@example.com" });
+    const dump = JSON.stringify(localStorage);
+    expect(dump.toLowerCase()).not.toContain("sixtee");
+    expect(readPendingUpgrade()?.email).toBe("guest@example.com");
   });
 
   it("does not write a pending record and surfaces emailInUse on 'already registered'", async () => {
-    mocks.updateUser.mockResolvedValue({
-      data: {},
-      error: { message: "Email address already been registered" },
-    });
-    const res = await initiateAnonymousEmailUpgrade({
-      userId: "anon-1",
-      email: "taken@example.com",
-      redirectTo: "https://mogzy.lol/auth/callback",
-    });
+    mocks.updateUser
+      .mockResolvedValueOnce({ data: {}, error: null })          // password step
+      .mockResolvedValueOnce({                                    // email step
+        data: {},
+        error: { message: "Email address already been registered" },
+      });
+    const res = await initiateAnonymousEmailUpgrade({ ...args, email: "taken@example.com" });
     expect(res.ok).toBe(false);
     expect(res.emailInUse).toBe(true);
     expect(readPendingUpgrade()).toBeNull();
   });
 
-  it("never writes the profile during initiation", async () => {
-    await initiateAnonymousEmailUpgrade({
-      userId: "anon-1",
-      email: "guest@example.com",
-      redirectTo: "https://mogzy.lol/auth/callback",
-    });
+  it("never writes the profile while a confirmation is still outstanding", async () => {
+    await initiateAnonymousEmailUpgrade({ ...args, email: "guest@example.com" });
     expect(mocks.profileUpdate).not.toHaveBeenCalled();
+  });
+
+  it("stops at the password step when it fails, without touching the email", async () => {
+    mocks.updateUser.mockResolvedValueOnce({ data: {}, error: { message: "weak" } });
+    const res = await initiateAnonymousEmailUpgrade(args);
+    expect(res.ok).toBe(false);
+    expect(mocks.updateUser).toHaveBeenCalledTimes(1);
+    expect(readPendingUpgrade()).toBeNull();
   });
 });
 
@@ -155,6 +201,7 @@ describe("clearPendingUpgrade", () => {
     await initiateAnonymousEmailUpgrade({
       userId: "anon-1",
       email: "g@e.com",
+      password: "sixtee",
       redirectTo: "https://mogzy.lol/auth/callback",
     });
     expect(readPendingUpgrade()).not.toBeNull();

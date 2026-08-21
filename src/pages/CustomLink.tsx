@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { authHref } from "@/lib/auth/auth-destination";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +30,9 @@ export function getCuratedConfig(): CuratedConfig | null {
 export function clearCuratedConfig() {
   localStorage.removeItem(CURATED_STORAGE_KEY);
 }
+
+/** Where a redeemed invite / curated link lands once auth clears. */
+const INVITE_RETURN_ROUTE = "/home";
 
 export default function CustomLink() {
   const { slug } = useParams<{ slug: string }>();
@@ -109,7 +113,12 @@ export default function CustomLink() {
       .maybeSingle();
 
     if (inviteData) {
-      navigate(`/auth?invite=${inviteData.code}`, { replace: true });
+      // The invite code is the whole point of this visit, so signup — not
+      // sign-in — is the mode, and /home is where a redeemed invite lands.
+      navigate(
+        `/auth?mode=signup&invite=${encodeURIComponent(inviteData.code)}&returnTo=${encodeURIComponent(INVITE_RETURN_ROUTE)}`,
+        { replace: true },
+      );
       return;
     }
 
@@ -140,9 +149,11 @@ export default function CustomLink() {
     localStorage.setItem(CURATED_STORAGE_KEY, JSON.stringify(config));
 
     if (user) {
-      navigate("/home", { replace: true });
+      navigate(INVITE_RETURN_ROUTE, { replace: true });
     } else {
-      navigate("/auth", { replace: true });
+      // The curated config is already stored; auth is only the gate in front
+      // of it, so hand the same destination back once auth clears.
+      navigate(authHref(INVITE_RETURN_ROUTE), { replace: true });
     }
   };
 

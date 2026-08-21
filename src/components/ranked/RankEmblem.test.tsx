@@ -32,6 +32,24 @@ import { RANK_TIERS, type RankTier } from "@/lib/progression/tiers";
 
 afterEach(cleanup);
 
+/**
+ * The reduced-motion block that actually governs THIS component.
+ *
+ * Anchored on a selector the block must contain, not on `lastIndexOf` — index.css
+ * carries a dozen `prefers-reduced-motion` blocks and "the last one" is whichever
+ * feature appended CSS most recently, which is not a fact about this component.
+ */
+const reducedMotionBlockContaining = (css: string, anchor: string): string => {
+  const starts = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\)/g)].map(
+    (m) => m.index as number,
+  );
+  for (let i = starts.length - 1; i >= 0; i -= 1) {
+    const block = css.slice(starts[i], starts[i + 1] ?? css.length);
+    if (block.includes(anchor)) return block;
+  }
+  throw new Error(`no reduced-motion block contains ${anchor}`);
+};
+
 describe("RankEmblem — earned vs baseline", () => {
   it("marks an earned tier with data-tier, on the wrapper AND the art", () => {
     const { container } = render(<RankEmblem tier="gold" earned alt="Gold ranked emblem" />);
@@ -435,7 +453,7 @@ describe("the emblem's CSS invariants", () => {
   });
 
   it("stops every travelling highlight under prefers-reduced-motion", () => {
-    const block = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    const block = reducedMotionBlockContaining(css, ".lc-emblem__glint");
     expect(block).toContain(".lc-emblem__glint");
     expect(block).toContain(".lc-emblem__spark");
     expect(block).toContain(".lc-seal__glint");

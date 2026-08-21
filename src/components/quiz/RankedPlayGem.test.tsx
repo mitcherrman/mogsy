@@ -16,6 +16,24 @@ import RankedPlayGem from "./RankedPlayGem";
 
 afterEach(cleanup);
 
+/**
+ * The reduced-motion block that actually governs THIS component.
+ *
+ * Anchored on a selector the block must contain, not on `lastIndexOf` — index.css
+ * carries a dozen `prefers-reduced-motion` blocks and "the last one" is whichever
+ * feature appended CSS most recently, which is not a fact about this component.
+ */
+const reducedMotionBlockContaining = (css: string, anchor: string): string => {
+  const starts = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\)/g)].map(
+    (m) => m.index as number,
+  );
+  for (let i = starts.length - 1; i >= 0; i -= 1) {
+    const block = css.slice(starts[i], starts[i + 1] ?? css.length);
+    if (block.includes(anchor)) return block;
+  }
+  throw new Error(`no reduced-motion block contains ${anchor}`);
+};
+
 describe("RankedPlayGem", () => {
   it("is a real button whose accessible name is exactly the visible word", () => {
     render(<RankedPlayGem onClick={() => {}} />);
@@ -164,7 +182,7 @@ describe("the PLAY seal's CSS invariants", () => {
   });
 
   it("under reduced motion, changes light but never travels", () => {
-    const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    const reduced = reducedMotionBlockContaining(css, "--lc-seal-scale: 1");
     expect(reduced).toContain("--lc-seal-scale: 1");
     expect(reduced).toContain("--lc-seal-lift: 0px");
     expect(reduced).toContain(".lc-seal__glint");

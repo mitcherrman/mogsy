@@ -2,7 +2,7 @@ import AcademyRadioController from "./components/audio/EntryMusicController";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { AuthProvider } from "./hooks/useAuth";
@@ -247,18 +247,9 @@ const PatchReports = lazy(() => import("./pages/lol/PatchReports"));
 // (MECH1 Phase 5B1: respawn calculator + wave timeline).
 const MechanicsExplorerPage = lazy(() => import("./pages/lol/mechanics/MechanicsExplorerPage"));
 
-// Keep cached data warm so navigating back to a screen doesn't refetch.
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,        // 1 min — most lists/configs don't change second-to-second
-      gcTime: 10 * 60_000,      // keep cache 10 min after unmount
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      retry: 1,
-    },
-  },
-});
+// The client itself lives in @/lib/query-client so non-component code (the
+// HUD's sign-out) can clear the same cache the provider serves.
+import { queryClient } from "@/lib/query-client";
 
 import { RouteLoader } from "@/components/Layout";
 import { StartupSurface } from "@/components/startup/StartupShells";

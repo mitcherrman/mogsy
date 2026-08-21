@@ -14,7 +14,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", () => ({
   useNavigate: () => navigate,
-  useLocation: () => ({ pathname: locationState.pathname }),
+  // `search` is part of the real router's location and the menu reads it
+  // (the sign-in item preserves the full current URL as returnTo).
+  useLocation: () => ({ pathname: locationState.pathname, search: "" }),
   // jsdom has no navigation, and the real <Link> preventDefaults anyway — so
   // does this, or every asserted click logs a "navigation not implemented".
   Link: ({
@@ -197,14 +199,24 @@ describe("identity compound — two targets, one piece of chrome", () => {
   });
 });
 
-describe("unread badge — on the portrait, and inert", () => {
-  it("appears over the portrait once there is something unread", async () => {
+describe("unread badge — on the NOTIFICATIONS control, and inert", () => {
+  it("appears over the notifications control once there is something unread", async () => {
     db.notifications = [notif({ id: "g", title: "Patch is live" })];
     render(<MogzyIdentityMenu />);
     const badge = await screen.findByTestId("hud-unread-badge");
     expect(badge.textContent).toBe("1");
-    // Anchored inside the portrait link, not beside it.
-    expect(portrait().contains(badge)).toBe(true);
+    // AUTH1 §7: the count belongs to the inbox, so it is anchored inside the
+    // notifications trigger.
+    expect(chevron().contains(badge)).toBe(true);
+  });
+
+  it("is no longer attached to the profile portrait", async () => {
+    db.notifications = [notif({ id: "g", title: "Patch is live" })];
+    render(<MogzyIdentityMenu />);
+    const badge = await screen.findByTestId("hud-unread-badge");
+    // The portrait means identity and nothing else. A notification count on a
+    // link to /profile reads as a fact about the account.
+    expect(portrait().contains(badge)).toBe(false);
   });
 
   it("stays out of the layout, out of the pointer path, and out of the a11y tree", async () => {
@@ -296,26 +308,30 @@ describe("hit targets and the branded pop", () => {
     }
   });
 
-  it("keeps the badge inside the transformed group so it travels with Mogzy", async () => {
+  it("keeps the badge out of the portrait's transformed group entirely", async () => {
     db.notifications = [notif({ id: "g", title: "Patch is live" })];
     render(<MogzyIdentityMenu />);
     const badge = await screen.findByTestId("hud-unread-badge");
     const visual = portrait().firstElementChild!;
-    // Inside the scaled group — not a sibling of it — so it grows and lifts
-    // with the portrait instead of drifting off its shoulder.
-    expect(visual.contains(badge)).toBe(true);
-    expect(popClasses(visual).length).toBeGreaterThan(0);
+    // AUTH1 §7 moved it to the notifications control, which is a utility and
+    // deliberately does NOT pop — so the badge no longer scales with anything.
+    expect(visual.contains(badge)).toBe(false);
+    expect(popClasses(chevron()).length).toBe(0);
   });
 
-  it("anchors the badge inside the mark's top edge, where the pop cannot clip it", async () => {
+  it("keeps the badge inside the notifications control's own 44px box", async () => {
     db.notifications = [notif({ id: "g", title: "Patch is live" })];
     render(<MogzyIdentityMenu />);
     const badge = await screen.findByTestId("hud-unread-badge");
-    // A negative TOP offset, scaled by the pop, would push the badge past the
-    // top of the viewport — the header band has only ~10px of headroom.
-    // Horizontal overhang is free; vertical is not.
-    expect(badge.className).toMatch(/\btop-0\b/);
-    expect(badge.className).not.toMatch(/-top-/);
+    // The header band leaves ~10px of headroom. A deep negative top offset
+    // would put the badge above the top of the viewport, where it is simply
+    // clipped. A half-step overhang stays inside the band at every width.
+    expect(badge.className).toMatch(/-top-0\.5\b/);
+    expect(badge.className).not.toMatch(/-top-[1-9]/);
+    // Still inert: no layout, no pointer, no second reading of the count.
+    expect(badge.className).toContain("absolute");
+    expect(badge.className).toContain("pointer-events-none");
+    expect(badge.getAttribute("aria-hidden")).toBe("true");
   });
 });
 

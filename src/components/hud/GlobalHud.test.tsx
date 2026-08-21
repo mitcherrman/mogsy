@@ -154,13 +154,45 @@ describe("GlobalHud guest signup affordances (replaced the /lol banner)", () => 
     expect(chip.getAttribute("href")).toBe(
       "/auth?mode=signup&returnTo=%2Flol%2Fdocs",
     );
-    // Accessible name carries the full pitch even when the value phrase is
-    // responsively hidden; the chip is never width-gated away entirely.
-    expect(chip.getAttribute("aria-label")).toBe(
-      "Sign up free — save your progress",
-    );
+    // AUTH1 §6: the chip is the two words that are the action, and the
+    // accessible name says the same thing the eye reads — no promotional
+    // sentence in either. The chip is never width-gated away entirely.
+    expect(chip.getAttribute("aria-label")).toBe("Sign up");
     expect(chip.closest("div.hidden")).toBeNull();
     expect(chip.closest("[class*='sm:hidden']")).toBeNull();
+  });
+
+  it("is a compact SIGN UP with no explanatory copy at any width", () => {
+    authUser = anon;
+    renderHud("/lol");
+    const chip = screen.getByTestId("hud-signup-chip");
+    // One label, not a responsive pair — the old chip swapped in a longer
+    // "Save progress ·" phrase above lg, which is exactly the promotional
+    // bulk AUTH1 removed.
+    expect(chip.textContent?.trim()).toBe("Sign up");
+    expect(chip.querySelector(".lg\\:inline")).toBeNull();
+    expect(chip.className).toMatch(/\buppercase\b/);
+  });
+
+  it("reserves a fixed box, so the glow can never shift the cluster", () => {
+    authUser = anon;
+    renderHud("/lol");
+    const chip = screen.getByTestId("hud-signup-chip");
+    // Height is pinned and the chip never shrinks: everything that animates
+    // lives in box-shadow/colour (see .hud-signup-chip in index.css), which
+    // paints outside the box without reserving any of it.
+    expect(chip.className).toMatch(/\bh-7\b/);
+    expect(chip.className).toMatch(/\bshrink-0\b/);
+    // No geometry utilities in the animated state.
+    expect(chip.className).not.toMatch(/\bscale-\[/);
+  });
+
+  it("keeps a visible keyboard focus ring on the chip", () => {
+    authUser = anon;
+    renderHud("/lol");
+    const chip = screen.getByTestId("hud-signup-chip");
+    expect(chip.className).toMatch(/focus-visible:ring-2/);
+    expect(chip.className).toMatch(/focus-visible:outline-none/);
   });
 
   it("treats a missing session as a guest too", () => {

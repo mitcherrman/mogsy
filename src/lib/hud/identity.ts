@@ -1,3 +1,5 @@
+import { authHref } from "@/lib/auth/auth-destination";
+
 /**
  * Shared guest predicate + signup destination for the global HUD identity
  * cluster.
@@ -22,10 +24,12 @@ export function isGuestUser(user: IdentityUser): boolean {
 }
 
 /**
- * The anonymous-upgrade flow, returning to wherever signup started. The Auth
- * page validates this with safeReturnPath, so encoding the current path is the
- * whole sender-side contract.
+ * The anonymous-upgrade flow, returning to wherever signup started.
+ *
+ * AUTH1: delegates to the shared `authHref` builder so the HUD cannot drift
+ * from the rest of the app's senders — one place decides how a returnTo is
+ * encoded and which targets are safe enough to attach at all.
  */
 export function signupHrefFor(pathname: string): string {
-  return `/auth?mode=signup&returnTo=${encodeURIComponent(pathname)}`;
+  return authHref(pathname, { mode: "signup" });
 }

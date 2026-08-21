@@ -22,11 +22,12 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
+import { authHref } from "@/lib/auth/auth-destination";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import AdminCollections from "@/components/admin/AdminCollections";
 import AdminBots from "@/components/admin/AdminBots";
@@ -46,12 +47,13 @@ const modTabs = [
 export default function Moderator() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("collections");
 
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) { navigate(authHref(location.pathname + location.search)); return; }
     supabase
       .from("user_roles")
       .select("role")

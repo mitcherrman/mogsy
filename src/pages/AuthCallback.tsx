@@ -6,15 +6,17 @@
 // state only:
 //   1. confirms a non-anonymous user with an email identity exists,
 //   2. verifies the id matches the pending upgrade (when known),
-//   3. collects a password (email-first flow) via updateUser({ password }),
+//   3. collects a password ONLY for a legacy pre-AUTH1 pending record; the
+//      current flow sets it before the email is ever sent, so this step is
+//      normally skipped entirely,
 //   4. syncs profiles.is_anonymous = false (same row, nothing else),
-//   5. routes by existing tutorial eligibility.
+//   5. routes by AUTH1 precedence — an explicit returnTo beats onboarding.
 //
 // Idempotent: a duplicate/re-opened callback with the pending record already
 // cleared just re-syncs (no-op) and routes.
 // ---------------------------------------------------------------------------
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Mail, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { safeReturnPath } from "@/lib/auth/safe-return";
+import { authHref, resolveReturnTo } from "@/lib/auth/auth-destination";
+import { DEFAULT_RETURN_PATH } from "@/lib/auth/safe-return";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/lib/auth/password-policy";
 import {
   clearPendingUpgrade,
   isConvertedPermanentUser,
@@ -44,7 +48,16 @@ export default function AuthCallback() {
   const { toast } = useToast();
   const { loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
-  const returnTo = safeReturnPath(searchParams.get("returnTo"));
+  // `explicit` is what stops onboarding overriding a destination the user
+  // actually chose (see computePostConversionDestination).
+  const rawReturnTo = searchParams.get("returnTo");
+  // Memoised because it is a useCallback dependency: a fresh object each
+  // render would rebuild finishAndRoute and re-fire the effect below.
+  const resolvedReturn = useMemo(
+    () => resolveReturnTo(rawReturnTo, DEFAULT_RETURN_PATH),
+    [rawReturnTo],
+  );
+  const returnTo = resolvedReturn.path;
 
   const [phase, setPhase] = useState<Phase>("checking");
   const [message, setMessage] = useState<string>("");
@@ -74,12 +87,12 @@ export default function AuthCallback() {
       clearPendingUpgrade();
       const dest = computePostConversionDestination(
         (data as RankedTutorialProfileFields | null) ?? null,
-        returnTo,
+        resolvedReturn,
       );
       toast({ title: "Account created!", description: "Your progress has been saved." });
       navigate(dest, { replace: true });
     },
-    [navigate, returnTo, toast],
+    [navigate, resolvedReturn, toast],
   );
 
   // Initial authoritative check once auth has settled.
@@ -125,7 +138,16 @@ export default function AuthCallback() {
       }
 
       if (pending) {
-        // Fresh email-first conversion: collect the password now.
+        if (pending.passwordSet) {
+          // AUTH1 password-first order: the password was set when the upgrade
+          // was initiated, so there is nothing left to ask for. Confirming the
+          // email is the whole job — finish and route.
+          setPhase("synchronizing");
+          await finishAndRoute(user.id);
+          return;
+        }
+        // Legacy email-first record (pre-AUTH1): the password was deferred to
+        // this screen, so it still has to be collected.
         setPhase("password_required");
         return;
       }
@@ -141,12 +163,9 @@ export default function AuthCallback() {
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (busy) return; // duplicate submit guard
-      if (password.length < 6) {
-        setMessage("Password must be at least 6 characters.");
-        return;
-      }
-      if (password !== confirmPassword) {
-        setMessage("Passwords don't match.");
+      const pw = validateNewPassword(password, confirmPassword);
+      if (!pw.ok) {
+        setMessage(pw.error!);
         return;
       }
       setBusy(true);
@@ -202,7 +221,7 @@ export default function AuthCallback() {
           This confirmation is for a different account than the guest session on this device. We
           didn&apos;t change anything. Sign in to that account instead.
         </p>
-        <Button className="w-full" onClick={() => navigate("/auth")}>
+        <Button className="w-full" onClick={() => navigate(authHref(returnTo))}>
           Go to sign in
         </Button>
       </Shell>
@@ -223,13 +242,13 @@ export default function AuthCallback() {
           start again as a guest on this device.
         </p>
         <div className="w-full space-y-2">
-          <Button className="w-full" onClick={() => navigate("/auth")} data-testid="callback-error-signin">
+          <Button className="w-full" onClick={() => navigate(authHref(returnTo))} data-testid="callback-error-signin">
             Sign in
           </Button>
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => navigate("/auth?mode=signup")}
+            onClick={() => navigate(authHref(returnTo, { mode: "signup" }))}
           >
             Start account creation again
           </Button>
@@ -257,7 +276,7 @@ export default function AuthCallback() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             data-testid="callback-password"
           />
@@ -270,10 +289,11 @@ export default function AuthCallback() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            minLength={6}
+            minLength={PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             data-testid="callback-confirm"
           />
+          <p className="text-[11px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
         </div>
         {message && (
           <p className="text-sm text-destructive" role="alert" data-testid="callback-password-error">

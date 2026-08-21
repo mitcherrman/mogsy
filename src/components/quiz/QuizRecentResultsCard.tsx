@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
+import { authHref } from "@/lib/auth/auth-destination";
 import { History, ChevronRight, GraduationCap } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,10 @@ export default function QuizRecentResultsCard({
   /** Frame overrides so the card can sit as a supporting module. */
   className?: string;
 }) {
+  // Unconditional and first: the early returns below are render branches, not
+  // a reason to skip a hook.
+  const { pathname, search } = useLocation();
+
   if (loading) {
     return <Skeleton className="h-full min-h-40 w-full rounded-xl" data-testid="history-skeleton" />;
   }
@@ -91,7 +96,7 @@ export default function QuizRecentResultsCard({
                 Sign in to save and review your quiz history.
               </p>
               <Button asChild size="sm" variant="outline" className="border-cyan-400/30 text-cyan-200">
-                <Link to="/auth">Sign in</Link>
+                <Link to={authHref(`${pathname}${search}`)}>Sign in</Link>
               </Button>
             </div>
           ) : recent.length === 0 ? (

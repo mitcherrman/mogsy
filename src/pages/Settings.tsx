@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { LogOut, LogIn, UserPlus, ArrowLeft, Lock, Mail, Volume2, Eye, Sparkles, Type, Contrast, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { validateNewPassword, PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "@/lib/auth/password-policy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,8 +65,11 @@ export default function Settings() {
 
   const handleChangePassword = async () => {
     if (!currentPwdForPwd) { toast.error("Enter your current password"); return; }
-    if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
-    if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return; }
+    // AUTH1: this surface used to demand 8 characters while signup, reset and
+    // guest conversion all demanded 6 — a password you could create was
+    // rejected when you tried to change it. One shared policy now.
+    const pw = validateNewPassword(newPassword, confirmPassword);
+    if (!pw.ok) { toast.error(pw.error!); return; }
     if (!user?.email) { toast.error("No email on account"); return; }
     setSavingPwd(true);
     // Reauthenticate by re-verifying the current password
@@ -140,8 +144,9 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label className="text-sm font-medium flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Change password</Label>
                 <Input type="password" autoComplete="current-password" placeholder="Current password" value={currentPwdForPwd} onChange={(e) => setCurrentPwdForPwd(e.target.value)} />
-                <Input type="password" placeholder="New password (min 8 chars)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                <Input type="password" placeholder="Confirm new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                <Input type="password" placeholder={`New password (min ${PASSWORD_MIN_LENGTH} chars)`} minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                <Input type="password" placeholder="Confirm new password" minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
                 <Button onClick={handleChangePassword} disabled={savingPwd || !newPassword || !currentPwdForPwd} className="w-full sm:w-auto">
                   {savingPwd ? "Updating..." : "Update password"}
                 </Button>

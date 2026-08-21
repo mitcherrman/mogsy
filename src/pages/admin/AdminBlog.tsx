@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { authHref } from "@/lib/auth/auth-destination";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Plus, FileText, Eye, Pencil, Search, Trash2, EyeOff, Send, FileX } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,7 @@ type StatusFilter = "all" | BlogPostStatus;
 export default function AdminBlog() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [allowed, setAllowed] = useState(false);
   const [checking, setChecking] = useState(true);
   const { data: posts = [], refetch } = useAdminBlogList();
@@ -31,7 +33,7 @@ export default function AdminBlog() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) { navigate(authHref(location.pathname + location.search)); return; }
     supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
       const roles = (data ?? []).map((r) => r.role as string);
       const ok = roles.includes("admin") || roles.includes("master_admin");

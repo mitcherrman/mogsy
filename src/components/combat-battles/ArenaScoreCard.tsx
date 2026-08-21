@@ -1,6 +1,7 @@
 // Compact Arena Score summary for signed-in accounts. No global rank, no
 // comparison to other users. Guests see a brief, non-aggressive benefit note.
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { authHref } from "@/lib/auth/auth-destination";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +9,7 @@ import { useMyArenaScore } from "@/hooks/useCombatBattles";
 
 export default function ArenaScoreCard({ className }: { className?: string }) {
   const { user } = useAuth();
+  const { pathname, search } = useLocation();
   const isAccount = Boolean(user && !user.is_anonymous);
   const { data, isLoading } = useMyArenaScore(isAccount);
 
@@ -17,7 +19,7 @@ export default function ArenaScoreCard({ className }: { className?: string }) {
         <CardContent className="flex items-center gap-3 py-4 text-sm">
           <Sparkles className="h-5 w-5 text-primary" aria-hidden />
           <span className="text-muted-foreground">
-            <Link to="/auth?mode=signup" className="font-medium text-primary underline">
+            <Link to={authHref(`${pathname}${search}`, { mode: "signup" })} className="font-medium text-primary underline">
               Sign in
             </Link>{" "}
             to predict battles and build your Arena Score.

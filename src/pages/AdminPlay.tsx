@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { authHref } from "@/lib/auth/auth-destination";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 import { ArrowLeft, Eye, EyeOff, Pencil, GripVertical, Save, RotateCcw, ChevronDown, ChevronRight, LayoutGrid, Users, Zap, Bookmark, FolderOpen, Trash2, Plus, Swords, MousePointerClick, ImageIcon, Layers, BarChart3 } from "lucide-react";
 import AdminCardStatsPreview from "@/components/admin/AdminCardStatsPreview";
@@ -44,6 +45,7 @@ const iconMap: Record<string, React.ReactNode> = {
 export default function AdminPlay() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [playStats, setPlayStats] = useState({ totalItems: 0, totalImages: 0, totalClicks: 0 });
   const [authorized, setAuthorized] = useState(false);
@@ -71,7 +73,7 @@ export default function AdminPlay() {
 
   // Auth gate
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
+    if (!user) { navigate(authHref(location.pathname + location.search)); return; }
     supabase
       .from("user_roles")
       .select("role")
