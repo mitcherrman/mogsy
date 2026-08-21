@@ -18,6 +18,9 @@ describe("defaults reproduce current production behaviour", () => {
       tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
       navigation: { globalNavbarVisible: true },
       community: { showBotLabels: false },
+      // PLAY1: all three match-entry options visible, which is the intended
+      // presentation of the Ranked lobby's PLAY scroll.
+      play: { modes: { ranked: true, dailyChallenge: true, invite: true } },
     });
   });
 

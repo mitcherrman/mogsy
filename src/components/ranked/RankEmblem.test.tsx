@@ -32,6 +32,29 @@ import { RANK_TIERS, type RankTier } from "@/lib/progression/tiers";
 
 afterEach(cleanup);
 
+/**
+ * The `prefers-reduced-motion` block that governs a given selector.
+ *
+ * This used to be `css.lastIndexOf("@media (prefers-reduced-motion: reduce)")`
+ * — "the last one in the file" — which silently meant "whichever surface was
+ * added to `index.css` most recently". Adding any new reduced-motion rule
+ * anywhere below broke it. The block is now found by what it CONTAINS, and
+ * bounded at the next media query so a `not.toContain` assertion is still a
+ * statement about this block rather than about the rest of the stylesheet.
+ */
+function reducedMotionBlockFor(css: string, needle: string): string {
+  const block = css
+    .split("@media (prefers-reduced-motion: reduce)")
+    .slice(1)
+    .map((chunk) => chunk.split("@media")[0])
+    .find((chunk) => chunk.includes(needle));
+  if (block === undefined) {
+    throw new Error(`no reduced-motion block mentions ${needle}`);
+  }
+  return block;
+}
+
+
 describe("RankEmblem — earned vs baseline", () => {
   it("marks an earned tier with data-tier, on the wrapper AND the art", () => {
     const { container } = render(<RankEmblem tier="gold" earned alt="Gold ranked emblem" />);
@@ -435,8 +458,7 @@ describe("the emblem's CSS invariants", () => {
   });
 
   it("stops every travelling highlight under prefers-reduced-motion", () => {
-    const block = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
-    expect(block).toContain(".lc-emblem__glint");
+    const block = reducedMotionBlockFor(css, ".lc-emblem__glint");
     expect(block).toContain(".lc-emblem__spark");
     expect(block).toContain(".lc-seal__glint");
     expect(block).toMatch(/display:\s*none/);

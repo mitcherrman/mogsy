@@ -41,7 +41,9 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
         // Legacy Academy ladder values, deliberately loud and contradictory.
         progress={{ rank_name: "Grandmaster", next_rank_name: "Iron", progress_percent: 99 }}
         ranked={PLACED}
-        onPlayRanked={() => {}}
+        onEnterMatch={() => {}}
+        onPlayDailyChallenge={() => {}}
+        playModes={{ ranked: true, daily: true, invite: true }}
         sets={[]}
         setsLoading={false}
         onSelectSet={() => {}}

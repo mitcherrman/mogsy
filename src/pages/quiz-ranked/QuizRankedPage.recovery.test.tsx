@@ -1,12 +1,19 @@
 /**
  * Reconnect regression: after a full page reload with NO in-memory match id, the
- * Ranked page must rediscover the caller's active bot match (which is never in
+ * Ranked route must rediscover the caller's active bot match (which is never in
  * the queue) via the account-bound active-match endpoint and re-enter the same
- * live match view — not drop the user back to the class-selection menu.
+ * live match view.
+ *
+ * PLAY1 changed what happens when there is NOTHING to recover. The route's
+ * pre-match menu is retired, so falling through no longer means "show the
+ * class-selection screen" — it means returning the player to the Leaguecraft
+ * lobby with the match-entry record opened, which is the only entry that still
+ * exists. The recovery half of this file is unchanged; only the fall-through
+ * expectation moved.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 const h = vi.hoisted(() => ({
   getActiveMatch: vi.fn(),
@@ -23,19 +30,8 @@ vi.mock("./QuizRankedMatch", () => ({
   ),
 }));
 
-// Queue sits idle at class-selection (no queued/matched match).
-vi.mock("./useRankedQueue", () => ({
-  useRankedQueue: () => ({
-    state: "selecting_class", status: null, matchId: null,
-    selectedClass: "tank", unavailableReason: null, error: null,
-    setSelectedClass: vi.fn(), join: vi.fn(), cancel: vi.fn(),
-  }),
-}));
-
 vi.mock("@/lib/ranked-public/client", () => ({
   getActiveMatch: h.getActiveMatch,
-  createBotMatch: vi.fn(),
-  getMatchHistory: vi.fn().mockResolvedValue({ entries: [], count: 0 }),
   isAborted: (e: unknown) => (e as { name?: string })?.name === "AbortError",
   RankedApiError: class extends Error {},
 }));
@@ -44,32 +40,51 @@ import QuizRankedPage from "./QuizRankedPage";
 
 afterEach(() => vi.clearAllMocks());
 
-function renderPage() {
-  return render(<MemoryRouter><QuizRankedPage /></MemoryRouter>);
+/** Reports where the route sent us, and what it asked the lobby to do. */
+function LobbyProbe() {
+  const location = useLocation();
+  const state = location.state as { openPlay?: boolean } | null;
+  return (
+    <div data-testid="lobby">
+      {location.pathname}
+      {state?.openPlay ? " openPlay" : ""}
+    </div>
+  );
 }
 
-describe("Ranked page reconnect after reload", () => {
+function renderPage() {
+  return render(
+    <MemoryRouter initialEntries={["/quiz/ranked"]}>
+      <Routes>
+        <Route path="/quiz/ranked" element={<QuizRankedPage />} />
+        <Route path="/quiz" element={<LobbyProbe />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe("Ranked route reconnect after reload", () => {
   it("recovers and re-enters an active bot match", async () => {
     h.getActiveMatch.mockResolvedValue({ matchId: "rkb_dce7", isBotMatch: true });
     renderPage();
     await waitFor(() =>
       expect(screen.getByTestId("match-view")).toHaveTextContent("rkb_dce7"));
-    expect(screen.queryByTestId("ranked-class-select")).toBeNull();
+    expect(screen.queryByTestId("lobby")).toBeNull();
   });
 
-  it("falls through to the menu when there is no active match", async () => {
+  it("returns to the lobby's match-entry record when there is no active match", async () => {
     h.getActiveMatch.mockResolvedValue(null);
     renderPage();
     await waitFor(() =>
-      expect(screen.getByTestId("ranked-class-select")).toBeInTheDocument());
+      expect(screen.getByTestId("lobby")).toHaveTextContent("/quiz openPlay"));
     expect(screen.queryByTestId("match-view")).toBeNull();
   });
 
-  it("falls through to the menu if discovery fails (backend disabled)", async () => {
+  it("returns to the lobby if discovery fails (backend disabled)", async () => {
     h.getActiveMatch.mockRejectedValue(new Error("disabled"));
     renderPage();
     await waitFor(() =>
-      expect(screen.getByTestId("ranked-class-select")).toBeInTheDocument());
+      expect(screen.getByTestId("lobby")).toHaveTextContent("/quiz openPlay"));
     expect(screen.queryByTestId("match-view")).toBeNull();
   });
 });

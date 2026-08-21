@@ -16,6 +16,29 @@ import RankedPlayGem from "./RankedPlayGem";
 
 afterEach(cleanup);
 
+
+/**
+ * The `prefers-reduced-motion` block that governs a given selector.
+ *
+ * This used to be `css.slice(css.lastIndexOf("@media (prefers-reduced-motion:
+ * reduce)"))` — "the last one in the file" — which silently meant "whichever
+ * surface was added to `index.css` most recently", and broke the moment any
+ * new reduced-motion rule was added below. The block is now found by what it
+ * CONTAINS, and bounded at the next media query so a `not.toMatch` assertion
+ * is still a statement about this block rather than about the whole sheet.
+ */
+function reducedMotionBlockFor(css: string, needle: string): string {
+  const block = css
+    .split("@media (prefers-reduced-motion: reduce)")
+    .slice(1)
+    .map((chunk) => chunk.split("@media")[0])
+    .find((chunk) => chunk.includes(needle));
+  if (block === undefined) {
+    throw new Error(`no reduced-motion block mentions ${needle}`);
+  }
+  return block;
+}
+
 describe("RankedPlayGem", () => {
   it("is a real button whose accessible name is exactly the visible word", () => {
     render(<RankedPlayGem onClick={() => {}} />);
@@ -164,10 +187,12 @@ describe("the PLAY seal's CSS invariants", () => {
   });
 
   it("under reduced motion, changes light but never travels", () => {
-    const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"));
+    // Keyed on the glint selector, not on `--lc-seal-scale: 1` — that value
+    // also appears in the seal's own base rule, which sits inside an earlier
+    // reduced-motion block's span.
+    const reduced = reducedMotionBlockFor(css, ".lc-seal__glint");
     expect(reduced).toContain("--lc-seal-scale: 1");
     expect(reduced).toContain("--lc-seal-lift: 0px");
-    expect(reduced).toContain(".lc-seal__glint");
     // The ambient glow is a property of the object, not an animation, so it
     // survives: the seal keeps its whole identity with motion off.
     expect(reduced).not.toMatch(/--lc-seal-glow:/);

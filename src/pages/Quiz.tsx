@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -39,6 +39,8 @@ import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
+import { playModeVisibility } from "@/lib/quiz/playModes";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import AdSlot from "@/components/ads/AdSlot";
@@ -314,6 +316,21 @@ export default function Quiz() {
     [rankedRole],
   );
   const navigate = useNavigate();
+  const location = useLocation();
+  // PLAY1: which entries the match-entry record offers. The same app_settings
+  // rows the admin panel writes and the rest of the platform reads — there is
+  // one policy store, and this adds no second one.
+  const { settings: appSettings } = useAppSettings();
+  /**
+   * PLAY1: `/quiz/ranked` sends a player with no active match here rather than
+   * resurrecting its retired pre-match menu, and asks for the proper entry
+   * experience to be opened. Read ONCE on mount: re-reading it would re-open
+   * the record every time the lobby re-renders, including right after the
+   * player closed it.
+   */
+  const [openPlayOnMount] = useState(
+    () => (location.state as { openPlay?: boolean } | null)?.openPlay === true,
+  );
   const userId = user?.id || "anonymous";
 
   useEffect(() => {
@@ -1020,7 +1037,18 @@ export default function Quiz() {
             <LeaguecraftHub
               progress={userProgress}
               ranked={getRankedState(userProgress?.attempts ?? 0)}
-              onPlayRanked={() => navigate("/quiz/ranked")}
+              /* PLAY1: PLAY opens the match-entry record in place. The only
+                 navigation left is the handoff, once the SERVER has a match —
+                 `/quiz/ranked` is the live-match host. The id travels in
+                 router state so the host enters the match immediately instead
+                 of re-discovering it, and the host still falls back to
+                 account-bound discovery when it arrives without one. */
+              onEnterMatch={(matchId) =>
+                navigate("/quiz/ranked", { state: { matchId } })}
+              onPlayDailyChallenge={() => void handlePlayDailyChallenge()}
+              playModes={playModeVisibility(appSettings.policy)}
+              dailyChallenge={dailyChallenge}
+              playScrollOpenOnMount={openPlayOnMount}
               sets={sets}
               setsLoading={setsLoading}
               onSelectSet={handleSelectSet}

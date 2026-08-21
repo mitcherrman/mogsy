@@ -398,7 +398,20 @@ export interface PrivatePlayerView extends PublicRoundView {
 export interface QueueStatusView {
   schemaVersion: string;
   serverTime: string;
-  status: "not_queued" | "waiting" | "matched" | "cancelled" | "expired";
+  /**
+   * The queue entry's own server-side status, passed through verbatim by
+   * `_status_snapshot` in `ranked_public/queue.py`.
+   *
+   * `claimed` is REAL and was missing here. It is the pairing window: the
+   * pairing pass has taken this entry for a match but has not yet written the
+   * match rows, so the account is neither waiting nor matched. The entry
+   * cannot be cancelled in that state (the DELETE answers
+   * `RANKED_CANNOT_CANCEL`), and a reader that folds `claimed` in with
+   * `cancelled`/`expired` concludes the player left the queue at the exact
+   * moment they were being given a match. Callers must treat it as
+   * still-in-flight — see THE PAIRING WINDOW in `useRankedQueue.ts`.
+   */
+  status: "not_queued" | "waiting" | "claimed" | "matched" | "cancelled" | "expired";
   matchId: string | null;
   queueVersion: number | null;
   /** Legacy combat class the entry carries. Retained because the contract
