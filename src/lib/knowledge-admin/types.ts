@@ -799,3 +799,127 @@ export interface GameplayImpactResponse {
   champion_impacts?: GameplayImpactChampion[] | null;
   [k: string]: unknown;
 }
+/* ────────────────────────────────────────────────────────────────────────
+   Patch Ops (backend Phase 3G).
+
+   A READ-ONLY projection over state Patch Ops already owns. Every field here
+   is decided by the backend and rendered verbatim — in particular
+   `admin_status` and `attention_required`, which encode the Phase 3E
+   operator-attention policy. The UI must never derive either of them, and
+   must never treat an UNSUPPORTED / REPORT_ONLY / ALREADY_RECONCILED /
+   IGNORED count as a problem: those are ordinary coverage facts, and the
+   backend says so by leaving `attention_required` false.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/** UPDATED = finished, nobody needed. NEEDS_ATTENTION = a person must look.
+ *  PROCESSING = still in flight; no progress figure exists and none is shown. */
+export type PatchOpsAdminStatus = "UPDATED" | "NEEDS_ATTENTION" | "PROCESSING";
+
+export interface PatchOpsCounts {
+  /** Safe canonical changes Mogzy applied by itself, counted from apply rows. */
+  auto_applied: number;
+  /** Riot's number already matched Mogzy's. Nothing to do. */
+  already_reconciled: number;
+  review_required: number;
+  failed: number;
+  apply_failed: number;
+  blocked: number;
+  /** Coverage debt: no canonical writer exists. NOT a failure. */
+  unsupported: number;
+  report_only: number;
+  /** Excluded because the change is not Summoner's Rift. */
+  ignored_non_sr: number;
+  /** Eligible work that has not been applied yet — a partial run. */
+  pending_apply: number;
+  total_changes: number;
+}
+
+export interface PatchOpsAttention {
+  required: boolean;
+  reasons: string[];
+  quiet: boolean;
+}
+
+export interface PatchOpsReconciliation {
+  /** false for operations published before the reconciliation lane existed.
+   *  "No record of a reconciliation" — never rendered as "zero applied". */
+  available: boolean;
+  unavailable_reason: string | null;
+  status: string | null;
+  stored_status: string | null;
+  operator_attention: PatchOpsAttention;
+  outstanding: Record<string, number> | null;
+}
+
+export interface PatchOpsOperation {
+  operation_id: string;
+  patch_version: string;
+  generation: number;
+  lifecycle_state: string;
+  outcome: "IN_PROGRESS" | "FAILED" | "COMPLETED";
+  opened_at: string | null;
+  updated_at: string | null;
+  completed_at: string | null;
+  actor: string | null;
+  admin_status: PatchOpsAdminStatus;
+  attention_required: boolean;
+  attention_reasons: string[];
+  reconciliation: PatchOpsReconciliation;
+  counts: PatchOpsCounts;
+  /** The applied writes are still undoable through the existing
+   *  /apply-history/{id}/undo endpoint. A statement of availability only —
+   *  this phase adds no admin-triggered undo. */
+  undo_available: boolean;
+}
+
+export interface PatchOpsChangeRow {
+  entity_type: string | null;
+  entity_name: string | null;
+  canonical_ref: string | null;
+  ability_slot: string | null;
+  riot_property: string | null;
+  mogzy_property: string | null;
+  mode_scope: string | null;
+  section_id: string | null;
+  before_raw: string | null;
+  after_raw: string | null;
+  mogzy_current_raw: string | null;
+  disposition: string | null;
+  disposition_reason: string | null;
+  apply_result: string | null;
+  resolver_status: string | null;
+  updated_at: string | null;
+}
+
+export interface PatchOpsReceipt {
+  lane_version: string | null;
+  format_version: number | null;
+  mode: string | null;
+  reconciliation_status: string | null;
+  normalized_change_count: number | null;
+  applied_count: number | null;
+  actor: string | null;
+  generated_at: string | null;
+  artifact_semantic_digest: string | null;
+  parser_revision: string | null;
+}
+
+export interface PatchOpsOperationDetail extends PatchOpsOperation {
+  receipt: PatchOpsReceipt | null;
+  applied_history_ids: number[];
+  rows: {
+    review_required: PatchOpsChangeRow[];
+    failed: PatchOpsChangeRow[];
+    applied: PatchOpsChangeRow[];
+  };
+  row_limit: number;
+}
+
+export interface PatchOpsLatestResponse {
+  /** null is the normal empty state: nothing has published on this database. */
+  operation: PatchOpsOperation | null;
+}
+
+export interface PatchOpsOperationsResponse {
+  operations: PatchOpsOperation[];
+}

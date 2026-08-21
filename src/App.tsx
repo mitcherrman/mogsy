@@ -111,6 +111,7 @@ const KnowledgeHealth = lazy(() => import("./pages/admin/knowledge/KnowledgeHeal
 const KnowledgeChampionDetail = lazy(() => import("./pages/admin/knowledge/KnowledgeChampionDetail"));
 const KnowledgeRundown = lazy(() => import("./pages/admin/knowledge/KnowledgeRundown"));
 const KnowledgeHistory = lazy(() => import("./pages/admin/knowledge/KnowledgeHistory"));
+const PatchOpsDetail = lazy(() => import("./pages/admin/knowledge/PatchOpsDetail"));
 
 // Admin Directory — the pre-reorganization tool index. Retained as a component
 // so nothing is deleted; /admin/directory now redirects to Overview › All Tools.
@@ -447,6 +448,10 @@ const App = () => (
                     <Route path="health/:champion" element={<Suspense fallback={<RouteFallback />}><KnowledgeChampionDetail /></Suspense>} />
                     <Route path="rundown" element={<Suspense fallback={<RouteFallback />}><KnowledgeRundown /></Suspense>} />
                     <Route path="history" element={<Suspense fallback={<RouteFallback />}><KnowledgeHistory /></Suspense>} />
+                    {/* Patch Ops operation detail. Reached from the dashboard card;
+                        deliberately not a nav entry, because it is about ONE operation
+                        rather than a section. Inherits the master_admin gate above. */}
+                    <Route path="patch-ops/:operationId" element={<Suspense fallback={<RouteFallback />}><PatchOpsDetail /></Suspense>} />
                   </Route>
                   <Route path="/combat-lab" element={<Suspense fallback={<RouteFallback />}><CombatLab /></Suspense>} />
                   <Route path="/combat-lab/diagnostics" element={<Suspense fallback={<RouteFallback />}><CombatLabDiagnostics /></Suspense>} />

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { knowledgeApi } from "@/lib/knowledge-admin/api";
 import { ErrorBanner, HealthCategoryBadge, SkeletonRow, relativeTime } from "./shared";
+import PatchOpsCard from "./PatchOpsCard";
 
 /**
  * Knowledge Dashboard — landing page. Renders four summary cards, the
@@ -80,6 +81,13 @@ export default function KnowledgeDashboard() {
       </div>
 
       {healthQ.error && <ErrorBanner error={healthQ.error} onRetry={() => healthQ.refetch()} />}
+
+      {/* Patch Ops — what Mogzy's automated patch pipeline last did. First
+          because it is the one card that can say "a published patch needs you";
+          the Patch Automation card below it is the Knowledge Engine's own
+          proposal automation, which is a different system with its own queue.
+          Fetches independently, so neither can break the other. */}
+      <PatchOpsCard />
 
       {/* Patch automation summary — the primary CTA is exceptions, not the full queue */}
       <div className="rounded-xl border border-border bg-card p-3 sm:p-4 space-y-2">

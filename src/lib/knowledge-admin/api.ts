@@ -24,6 +24,9 @@ import type {
   AutomationConfig,
   LedgerResponse,
   PatchReport,
+  PatchOpsLatestResponse,
+  PatchOpsOperationsResponse,
+  PatchOpsOperationDetail,
 } from "./types";
 
 const BASE = `${(import.meta.env.VITE_COMBAT_API_URL || "").replace(/\/$/, "")}/api/admin/knowledge`;
@@ -206,6 +209,31 @@ export const knowledgeApi = {
     request<UndoResponse>(`/structural-history/${historyId}/undo`, {
       method: "POST",
     }),
+
+  /**
+   * Patch Ops — what the automated patch pipeline last did. Read-only on both
+   * sides: the backend endpoints open the database read-only and there is no
+   * write verb on this surface at all.
+   *
+   * `operation` is null when nothing has ever published, which is a normal
+   * empty state rather than an error.
+   */
+  patchOpsLatest: () =>
+    request<PatchOpsLatestResponse>("/patch-ops/latest"),
+
+  /** Recent operations, newest first. Read-only projection over history — no
+   *  older operation is backfilled to make its card look complete. */
+  patchOpsOperations: (q: { limit?: number } = {}) =>
+    request<PatchOpsOperationsResponse>("/patch-ops/operations", { query: q as QueryLike }),
+
+  /**
+   * One operation in detail. `operationId` contains `#` (`26.17#2`), which is
+   * a fragment delimiter in a URL — it MUST be encoded, or the request arrives
+   * without the generation and addresses a different operation.
+   */
+  patchOpsOperation: (operationId: string) =>
+    request<PatchOpsOperationDetail>(
+      `/patch-ops/operations/${encodeURIComponent(operationId)}`),
 };
 
 export const knowledgeApiBase = BASE;
