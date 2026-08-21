@@ -158,15 +158,18 @@ describe("the live arena's scroll ownership", () => {
     expect(pinned).toHaveLength(0);
   });
 
-  it("orders the reveal after the HUD so its arrival displaces nothing", async () => {
+  it("orders the HUD after the question, with only the timeline below it", async () => {
     await mountArena();
     const root = screen.getByTestId("ranked-match");
     const kids = Array.from(root.children);
     const hudIndex = kids.findIndex((el) => el.querySelector('[data-testid="submission-status"]'));
     expect(hudIndex).toBeGreaterThanOrEqual(0);
-    // The reveal slot is the LAST child, after the HUD row — anything that
-    // appears there can only extend the page downwards.
-    expect(hudIndex).toBe(kids.length - 1);
+    // RG took the bottom: the round timeline is the arena's last child, and it
+    // is the ONLY thing after the HUD row. The original property survives —
+    // anything appearing this low can only extend the page downwards, and the
+    // timeline itself is a fixed-height strip that never changes size.
+    expect(kids[kids.length - 1]).toBe(screen.getByTestId("ranked-round-timeline"));
+    expect(hudIndex).toBe(kids.length - 2);
     const focus = screen.getByTestId("ranked-focus-column");
     for (const hud of ["ranked-abilities", "submission-status"]) {
       expect(focus.contains(screen.getByTestId(hud))).toBe(false);

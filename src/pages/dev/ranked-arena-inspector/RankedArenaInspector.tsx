@@ -19,6 +19,11 @@ import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
+import { RoundTimeline } from "@/components/ranked-arena/RoundTimeline";
+import {
+  projectRoundTimeline, TIMELINE_VISIBLE_NODES,
+  type TimelineSegmentKind,
+} from "@/pages/quiz-ranked/roundTimeline";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
@@ -415,6 +420,98 @@ function Combatants({ p, o }: { p: CombatantView; o: CombatantView }) {
  * `ranked-academy` theme class the live Frame applies, so the inspector shows
  * the pixels the route ships. Presentation only; no controller/engine import.
  */
+/**
+ * RG — the round timeline, driven by the REAL projection.
+ *
+ * A Ranked match ends on HP, so the timeline is a moving viewport over an
+ * indefinite sequence rather than a fixed cycle. The one thing that has to be
+ * judged by looking at it is that the CURRENT MARKER HOLDS STILL while the
+ * rounds travel beneath it — which a static fixture cannot show. So the bench
+ * below drives `projectRoundTimeline` from a round number the inspector can
+ * step, with a deterministic synthetic history behind it.
+ *
+ * Every value fed in is the shape the live arena feeds: real adapted
+ * settlements, and a segment-identity map with the same contents the live
+ * observation would have accumulated.
+ */
+const BENCH_SETTLEMENT_KEYS = [
+  "solo-correct", "both-correct-faster", "both-incorrect-wash", "timed-out",
+] as const;
+
+/** Rounds the "server" told this client were Meta Reflex blocks. */
+const BENCH_META_REFLEX_ROUNDS = new Set([4, 9, 16, 21, 28]);
+
+function benchObservedKinds(current: number): Map<number, TimelineSegmentKind> {
+  const kinds = new Map<number, TimelineSegmentKind>();
+  // Only rounds this client would actually have SEEN: the ones it played.
+  for (let r = 1; r <= current; r += 1) {
+    kinds.set(r, BENCH_META_REFLEX_ROUNDS.has(r) ? "meta-reflex" : "standard");
+  }
+  return kinds;
+}
+
+/** The last eight settlements, as the bounded live ledger would hold them. */
+function benchSettlements(current: number) {
+  const rows = [];
+  for (let r = Math.max(1, current - 8); r < current; r += 1) {
+    const key = BENCH_SETTLEMENT_KEYS[r % BENCH_SETTLEMENT_KEYS.length];
+    rows.push({ ...settlement(key), roundNumber: r });
+  }
+  return rows;
+}
+
+function benchTimeline(current: number, matchOver = false) {
+  return projectRoundTimeline({
+    roundNumber: current,
+    completedRounds: current - 1,
+    segmentRoundNumber: current,
+    matchOver,
+    observedKinds: benchObservedKinds(current),
+    settlements: benchSettlements(current),
+    viewerSlot: "p1",
+  });
+}
+
+/**
+ * Steppable bench. The buttons only change a round NUMBER — everything on
+ * screen is then re-derived by the real projection, so what is being judged is
+ * the shipped behaviour and not a mock of it.
+ */
+function RoundTimelineBench() {
+  const [round, setRound] = useState(7);
+  const step = (delta: number) => setRound((r) => Math.max(1, r + delta));
+  const timeline = benchTimeline(round);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <button type="button" onClick={() => step(-1)}
+          className="rounded border border-border px-2 py-1 font-semibold">◀ prev</button>
+        <button type="button" onClick={() => step(1)}
+          className="rounded border border-border px-2 py-1 font-semibold">next ▶</button>
+        <span className="tabular-nums text-muted-foreground">
+          round {round} · window {timeline.windowStart}–
+          {timeline.windowStart + TIMELINE_VISIBLE_NODES - 1} ·
+          slot {timeline.currentIndex} · {timeline.anchored ? "ANCHORED" : "warming up"}
+        </span>
+        {[1, 2, 5, 6, 12, 13, 20, 31, 100].map((r) => (
+          <button key={r} type="button" onClick={() => setRound(r)}
+            className="rounded border border-border px-2 py-0.5">R{r}</button>
+        ))}
+      </div>
+      <div className="ranked-shell ranked-academy">
+        <RoundTimeline timeline={timeline} />
+      </div>
+      <div className="ranked-shell ranked-academy">
+        <RoundTimeline timeline={benchTimeline(round, true)} />
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Second strip: the same round with the match OVER — no round in play, so
+        no marker, and no future rounds sketched past the last one.
+      </p>
+    </div>
+  );
+}
+
 function ArenaComposition({
   selected = "0",
   locked = false,
@@ -461,8 +558,17 @@ function ArenaComposition({
           {locked ? "Answer locked — waiting for opponent…" : "Choose an answer to lock it in."}
         </p>
       </div>
-      {/* The compact end-of-page result strip, from the same settlement
-          fixtures the reveal states use. */}
+      {/* RG — the arena's real BOTTOM region: the round timeline. Fed by the
+          same projection the live arena uses, so what is judged here is the
+          shipped strip rather than a mock of it. Round 7, still walking out
+          toward the anchor, with the settled rounds carrying their verdicts.
+          The steppable bench (a case of its own) is where the SLIDE is
+          judged. */}
+      <RoundTimeline timeline={benchTimeline(7)} />
+      {/* RETAINED COMPONENT FIXTURE — NOT part of the live arena.
+          `RevealBanner` was removed from the bottom of the arena (the region
+          above now belongs to the timeline, continuously). It survives here so
+          the component itself stays inspectable. */}
       <RevealBanner settlement={settlement("solo-correct")} viewerSlot="p1"
         namesByPlayerId={NAMES} />
     </div>
@@ -802,6 +908,8 @@ const STATES: InspectorState[] = [
     render: () => <Surface variant="speed" /> },
   { key: "ai1-mascots", label: "AI1 — role mascots",
     render: () => <MascotBench /> },
+  { key: "rg-timeline", label: "RG — round timeline (steppable)",
+    render: () => <RoundTimelineBench /> },
 ];
 
 const VIEWPORTS: { key: string; label: string; width: number | null }[] = [

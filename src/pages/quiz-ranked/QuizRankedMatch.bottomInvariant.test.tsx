@@ -165,20 +165,25 @@ const BOTTOM_RESULT_SURFACES = [
 ];
 
 /**
- * The two structural regions the arena is allowed to END with. A quiz round
- * ends at the lower HUD row (ability tray + status line); a module that owns
- * its own submission — Meta Reflex does — renders no HUD row at all, so the
- * arena ends at the three-column grid. Anything else after either of them is
+ * The structural regions the arena is allowed to END with.
+ *
+ * RG took the bottom: the round TIMELINE is now the arena's last child in
+ * every active state, and it is progression — never a result. The two older
+ * endings survive as the fallbacks they always were, for any state that
+ * legitimately has no timeline yet (a quiz round ends at the lower HUD row; a
+ * module that owns its own submission, as Meta Reflex does, renders no HUD row
+ * at all and ends at the three-column grid). Anything ELSE after them is
  * something taking the timeline's space.
  */
 const isKnownLastRegion = (el: Element) =>
-  el.querySelector('[data-testid="submission-status"]') !== null
+  el.getAttribute("data-testid") === "ranked-round-timeline"
+  || el.querySelector('[data-testid="submission-status"]') !== null
   || el.querySelector('[data-testid="ranked-focus-column"]') !== null;
 
 /**
- * The invariant itself: no result surface anywhere in the arena, and the arena
- * ends at one of its two known structural regions rather than at a result
- * panel appended after them.
+ * The invariant itself: no result surface anywhere in the arena, none inside
+ * the timeline either, and the arena ends at one of its known structural
+ * regions rather than at a result panel appended after them.
  */
 function expectBottomFreeOfResults(phase: string) {
   for (const id of BOTTOM_RESULT_SURFACES) {
@@ -187,8 +192,17 @@ function expectBottomFreeOfResults(phase: string) {
   const last = screen.getByTestId("ranked-match").lastElementChild!;
   expect(
     isKnownLastRegion(last),
-    `arena ends on something other than the HUD row or the grid during ${phase}`,
+    `arena ends on something other than the timeline, the HUD row or the grid during ${phase}`,
   ).toBe(true);
+  // The timeline itself must not become the new banner: it carries no damage
+  // vocabulary and no verdict headline, in any phase.
+  const timeline = screen.queryByTestId("ranked-round-timeline");
+  if (timeline) {
+    expect(
+      timeline.textContent ?? "",
+      `the timeline is reporting a result during ${phase}`,
+    ).not.toMatch(/DAMAGE|DEALT|TAKEN|ABSORBED|CORRECT!|VICTORY|DEFEAT/i);
+  }
 }
 
 describe("the bottom of the arena holds no result surface — ordinary rounds", () => {
@@ -269,8 +283,8 @@ describe("the bottom of the arena holds no result surface — Meta Reflex", () =
   });
 });
 
-describe("the bottom region is structurally available for the timeline", () => {
-  it("ends the arena at the HUD row, with nothing after it", async () => {
+describe("the bottom region belongs to the timeline", () => {
+  it("ends the arena at the timeline, with nothing after it", async () => {
     await mount();
     await screen.findByTestId("answer-grid");
     settle(quizResolvedPayload(4));
@@ -278,11 +292,11 @@ describe("the bottom region is structurally available for the timeline", () => {
 
     const shell = screen.getByTestId("ranked-match");
     const children = Array.from(shell.children);
-    // The arena ends at the lower HUD row, and NOTHING follows it. The next
-    // phase's timeline appends here; today that slot is simply empty, which is
-    // the whole point of the invariant.
+    // The arena ends at the round timeline, and NOTHING follows it. The HUD
+    // row is immediately above it, still mounted.
     const last = children[children.length - 1];
-    expect(last.querySelector('[data-testid="submission-status"]')).not.toBeNull();
+    expect(last).toBe(screen.getByTestId("ranked-round-timeline"));
+    expect(screen.getByTestId("submission-status")).toBeInTheDocument();
     for (const id of BOTTOM_RESULT_SURFACES) {
       expect(screen.queryByTestId(id)).toBeNull();
     }
@@ -295,5 +309,21 @@ describe("the bottom region is structurally available for the timeline", () => {
         || child.className.includes("sm:hidden");   // the mobile presence line
       expect(known, `unexpected arena child: ${child.className}`).toBe(true);
     }
+  });
+
+  it("keeps the timeline mounted through both settlement kinds", async () => {
+    // The region is CONTINUOUS. It is not a surface that appears when a round
+    // resolves and leaves when the next one opens — that shape is exactly what
+    // the two retired banners were.
+    await mount();
+    await screen.findByTestId("answer-grid");
+    const present = () => screen.getByTestId("ranked-round-timeline");
+    expect(present()).toBeInTheDocument();
+
+    settle(quizResolvedPayload(4));
+    await waitFor(() => expect(holdActive()).toBe(true), { timeout: 6000 });
+    expect(present()).toBeInTheDocument();
+    await waitFor(() => expect(holdActive()).toBe(false), { timeout: 6000 });
+    expect(present()).toBeInTheDocument();
   });
 });

@@ -855,6 +855,121 @@
   }
 }
 
+/* ===== RG — the round timeline (the arena's BOTTOM region) =================
+   An adaptive moving viewport over an indefinite sequence of rounds. A Ranked
+   match ends on HP, not on a round count, so there is no cycle here, nothing
+   re-bases, and nothing resets.
+
+   THREE LAYERS, and the separation is the design:
+
+     * the RAIL is fixed. It never moves, which is the only reason the nodes'
+       movement is perceptible at all.
+     * the TRACK is clipped and carries every round node. One shared transform
+       transition moves all of them exactly one slot when the window advances.
+     * the MARKER sits at the current slot, OUTSIDE the clip, so its ring and
+       glow paint freely. Past the opening rounds it never moves again.
+
+   Every rule below is a colour, a fill, an opacity, a shadow or a transform.
+   Nothing here lays out, so advancing a round cannot move a pixel of the arena
+   — the constraint the whole region is built around.
+
+   Deliberately NOT a `.ranked-panel`. The top strip and the question folio are
+   the two boxed objects in this composition, and a third box down here would
+   read as a competing surface rather than as the floor the arena stands on. */
+.ranked-timeline {
+  border-top: 1px solid rgba(201,168,76,0.22);
+  padding-top: 0.4rem;
+}
+
+/* The stationary ground. Centred on the node plates (which sit 10.4px from the
+   top of the 3.4rem viewport and are 32px tall), and faded at both ends so it
+   reads as a track running past the edges rather than a ruled line. */
+.ranked-timeline-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 26px;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(201,168,76,0.30) 10%,
+    rgba(201,168,76,0.30) 90%,
+    transparent 100%);
+}
+
+/* THE MOVEMENT. One property, one duration, shared by every node and by the
+   marker — so the track travels as a single object and the marker's own
+   opening-rounds walk uses the identical curve. Ease-out with no overshoot:
+   deliberate, not bouncy, and over before the next round needs attention. */
+.ranked-timeline-node,
+.ranked-timeline-marker {
+  transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* The node plate takes its ink from the round's IDENTITY (set inline) and its
+   state from here, so the two stay independent: a Meta Reflex node is cyan
+   whether it is settled or in play. */
+.ranked-timeline-node .ranked-timeline-plate {
+  border-color: currentColor;
+  background-color: transparent;
+  transition: opacity 260ms ease, background-color 260ms ease, box-shadow 260ms ease;
+}
+
+/* UPCOMING — outline only. The absence of a fill is the state cue that is not
+   a colour: a round that exists and nothing more. */
+.ranked-timeline-node[data-state="upcoming"] .ranked-timeline-plate {
+  opacity: 0.34;
+}
+/* RESOLVED — filled and recessed. It recedes, but it stays legible, and its
+   verdict mark keeps full contrast (it is a sibling, not a child). */
+.ranked-timeline-node[data-state="resolved"] .ranked-timeline-plate {
+  opacity: 0.66;
+  background-color: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
+}
+/* CURRENT — full ink and a warm fill. The ring and caret come from the marker
+   layer, so this is the part that travels away as the round becomes history. */
+.ranked-timeline-node[data-state="current"] .ranked-timeline-plate {
+  opacity: 1;
+  background-color: rgba(240,215,140,0.12);
+}
+
+.ranked-timeline-ordinal {
+  color: rgba(201,211,224,0.44);
+  transition: color 260ms ease;
+}
+.ranked-timeline-node[data-state="upcoming"] .ranked-timeline-ordinal {
+  color: rgba(201,211,224,0.26);
+}
+.ranked-timeline-node[data-state="current"] .ranked-timeline-ordinal {
+  color: #f0d78c;
+}
+
+/* The marker's ring. A spread shadow rather than a border, so it paints
+   OUTSIDE the box it rings and needs no geometry of its own — the plate
+   underneath keeps its exact size, and the ring can never nudge it. */
+.ranked-timeline-marker-ring {
+  box-shadow:
+    0 0 0 1.5px rgba(240,215,140,0.85),
+    0 0 16px -3px rgba(240,215,140,0.55);
+}
+
+/* Reduced motion: the strip still UPDATES — a round advancing is the news, and
+   it must be noticeable — it simply does not travel. The nodes and the marker
+   change slot instantly and the plates cross-fade their state. */
+@media (prefers-reduced-motion: reduce) {
+  .ranked-timeline-node,
+  .ranked-timeline-marker {
+    transition: none;
+  }
+  .ranked-timeline-node .ranked-timeline-plate,
+  .ranked-timeline-ordinal {
+    transition: opacity 160ms linear;
+  }
+}
+
 /* ---- Question folio -------------------------------------------------------
    The central question surface becomes a sheet of vellum in a brass frame. The
    supplied texture is tiled UNDER a parchment gradient that carries most of the

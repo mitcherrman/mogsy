@@ -421,17 +421,20 @@ describe("an ordinary round resolves in the top strip, never at the bottom", () 
     expect(questionSection().getAttribute("data-input-open")).toBe("true");
   });
 
-  it("leaves the region below the HUD row EMPTY, for the timeline", async () => {
+  it("gives the region below the HUD row to the TIMELINE, not to a result", async () => {
     await mount();
     await screen.findByTestId("answer-grid");
     advanceRound();
     await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
-    // The arena's last child is the lower HUD row (tray + status line), not a
-    // result panel. Nothing may occupy the bottom while the timeline is
-    // waiting for it.
+    // The arena's last child is the round timeline — progression, not a
+    // result panel. The HUD row is still there, immediately above it.
     const shell = screen.getByTestId("ranked-match");
     const last = shell.lastElementChild!;
-    expect(last.querySelector('[data-testid="submission-status"]')).not.toBeNull();
+    expect(last).toBe(screen.getByTestId("ranked-round-timeline"));
+    expect(screen.getByTestId("submission-status")).toBeInTheDocument();
+    // ...and the region it took carries no verdict text of its own: damage and
+    // the round's verdict belong to the top beat and the duelist ledgers.
+    expect(last.textContent).not.toMatch(/DAMAGE|DEALT|TAKEN/i);
   });
 
   it("delivers the result in the TOP strip, and keeps it until the next one", async () => {

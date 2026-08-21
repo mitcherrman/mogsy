@@ -12,6 +12,7 @@ import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { RoundResultBeat } from "@/components/ranked-arena/RoundResultBeat";
+import { RoundTimeline } from "@/components/ranked-arena/RoundTimeline";
 import { SegmentResultBeat } from "@/components/ranked-arena/SegmentResultBeat";
 import { SegmentTranscript } from "@/components/ranked-arena/SegmentTranscript";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
@@ -25,6 +26,10 @@ import {
   projectPermissions, projectRevealDamage, projectRevealOutcomes,
   projectRoundHistory, projectSurfaceReveal, projectTimer,
 } from "./rankedViews";
+import {
+  EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
+  type ObservedRoundKinds,
+} from "./roundTimeline";
 import { useRankedMatch } from "./useRankedMatch";
 
 /** Identity of the module/segment a snapshot belongs to. */
@@ -137,6 +142,65 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const mascotReactions = useMemo(
     () => projectMascotReactions(m.lastResolved, m.revealHold),
     [m.lastResolved, m.revealHold]);
+  /**
+   * RG — WHAT THE SERVER HAS SAID EACH ROUND'S SEGMENT IS.
+   *
+   * Accumulated across the match rather than read from one field, because both
+   * sources are momentary: the live snapshot speaks only for the round in
+   * play, and `lastSegmentSettlement` only for the most recent block. Neither
+   * survives the next round — so without this, a Meta Reflex block would lose
+   * its mark on the timeline the instant the match moved past it, which is
+   * exactly the opposite of preserving it as the node travels into history.
+   *
+   * Render-time reconciliation with an identity-preserving fold, the same
+   * shape the transcript's disclosure reset above uses: `observeRoundKinds`
+   * returns the SAME object when the snapshot said nothing new, so the common
+   * poll stores nothing and re-renders nothing.
+   *
+   * Every entry is something the server stated. Nothing is inferred from an
+   * ordinal, a category, or the product's pacing schedule.
+   */
+  const [observedKinds, setObservedKinds] =
+    useState<ObservedRoundKinds>(EMPTY_OBSERVED_ROUND_KINDS);
+  // The segment's OWN ordinal, not the live round's: a phased block legiti-
+  // mately describes a round the engine has not opened yet.
+  const segmentRoundNumber = m.publicRound
+    ? m.publicRound.segment.segmentNumber
+      ?? m.publicRound.activeRound?.roundNumber ?? null
+    : null;
+  const nextObservedKinds = observeRoundKinds(observedKinds, {
+    matchId,
+    segment: m.publicRound?.segment ?? null,
+    segmentRoundNumber,
+    // The transcript's own module version decides what the block WAS — an
+    // `item_cost_duel` segment below v4 is not a Meta Reflex block — so this
+    // is the same rule the renderer registry dispatches on, not a looser one.
+    settledReveal: m.lastSegmentSettlement?.reveal ?? null,
+    settledRoundNumber: m.lastSegmentRoundNumber,
+  });
+  if (nextObservedKinds !== observedKinds) setObservedKinds(nextObservedKinds);
+
+  /**
+   * RG — the BOTTOM region's progression strip.
+   *
+   * Derived entirely outside JSX (see `roundTimeline.ts`), from state the
+   * arena already holds: the sticky round number, the authoritative settled
+   * count, the observed segment record above, and the SAME bounded settlement
+   * ledger the two duelist columns read. Nothing new is fetched and nothing is
+   * recomputed.
+   */
+  const timeline = useMemo(() => (m.publicRound ? projectRoundTimeline({
+    roundNumber: m.roundNumber,
+    completedRounds: m.publicRound.completedRounds,
+    segmentRoundNumber,
+    matchOver: m.publicRound.matchOver,
+    observedKinds: nextObservedKinds.byRound,
+    settlements: m.damageLog,
+    // The arena maps the viewer to p1 everywhere (see `idMappingFromRound`),
+    // which is the same slot the top result beat reads.
+    viewerSlot: "p1",
+  }) : null),
+  [m.publicRound, m.roundNumber, m.damageLog, segmentRoundNumber, nextObservedKinds]);
   // The active segment's module renderer. A v2 payload or a legacy round has
   // no discriminator and resolves to quiz.v1 — the module those rounds were
   // created under — so behaviour is unchanged. null = unknown module.
@@ -649,10 +713,14 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           </div>
       )}
 
-      {/* RESERVED FOR THE ROUND TIMELINE. Nothing follows the HUD row in any
-          active state — not an ordinary round's result, not a settled Meta
-          Reflex block's, not during a transition. The region is structurally
-          free for the timeline phase to take. */}
+      {/* THE BOTTOM REGION — progression, and only progression.
+          Nothing else follows the HUD row in any active state: not an ordinary
+          round's result, not a settled Meta Reflex block's, not during a
+          transition. The strip is mounted continuously — through the reveal
+          beat, through a block settlement and through a level-2 choice — which
+          is what makes it the arena's floor rather than another thing that
+          appears and disappears down here. */}
+      {timeline && <RoundTimeline timeline={timeline} />}
     </div>
   );
 }
