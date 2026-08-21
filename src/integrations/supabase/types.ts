@@ -97,6 +97,68 @@ export type Database = {
           },
         ]
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_profile_id: string | null
+          actor_user_id: string
+          created_at: string
+          detail: Json
+          id: string
+          result: string
+          target_profile_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_profile_id?: string | null
+          actor_user_id: string
+          created_at?: string
+          detail?: Json
+          id?: string
+          result: string
+          target_profile_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_profile_id?: string | null
+          actor_user_id?: string
+          created_at?: string
+          detail?: Json
+          id?: string
+          result?: string
+          target_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_audit_log_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notification_reads: {
         Row: {
           admin_user_id: string
@@ -199,16 +261,19 @@ export type Database = {
         Row: {
           key: string
           updated_at: string
+          updated_by: string | null
           value: Json
         }
         Insert: {
           key: string
           updated_at?: string
+          updated_by?: string | null
           value?: Json
         }
         Update: {
           key?: string
           updated_at?: string
+          updated_by?: string | null
           value?: Json
         }
         Relationships: []
@@ -1498,6 +1563,7 @@ export type Database = {
           entity_b: string
           game_id: string
           id: string
+          variant: string
           votes_a: number
           votes_b: number
         }
@@ -1507,6 +1573,7 @@ export type Database = {
           entity_b: string
           game_id: string
           id?: string
+          variant?: string
           votes_a?: number
           votes_b?: number
         }
@@ -1516,6 +1583,7 @@ export type Database = {
           entity_b?: string
           game_id?: string
           id?: string
+          variant?: string
           votes_a?: number
           votes_b?: number
         }
@@ -1529,8 +1597,48 @@ export type Database = {
           },
         ]
       }
+      league_swipe_preferences: {
+        Row: {
+          created_at: string
+          entity_a: string
+          entity_b: string
+          game_id: string
+          preferred_entity: string
+          updated_at: string
+          voter_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_a: string
+          entity_b: string
+          game_id: string
+          preferred_entity: string
+          updated_at?: string
+          voter_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_a?: string
+          entity_b?: string
+          game_id?: string
+          preferred_entity?: string
+          updated_at?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_swipe_preferences_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "league_swipe_games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_swipe_results: {
         Row: {
+          client_claimed_correct: boolean | null
+          client_submission_id: string | null
           context: Json | null
           correct_entity: string | null
           created_at: string
@@ -1544,8 +1652,13 @@ export type Database = {
           selected_entity: string
           selected_value: number | null
           user_id: string | null
+          variant: string
+          verdict_source: string
+          verified_correct: boolean | null
         }
         Insert: {
+          client_claimed_correct?: boolean | null
+          client_submission_id?: string | null
           context?: Json | null
           correct_entity?: string | null
           created_at?: string
@@ -1559,8 +1672,13 @@ export type Database = {
           selected_entity: string
           selected_value?: number | null
           user_id?: string | null
+          variant?: string
+          verdict_source?: string
+          verified_correct?: boolean | null
         }
         Update: {
+          client_claimed_correct?: boolean | null
+          client_submission_id?: string | null
           context?: Json | null
           correct_entity?: string | null
           created_at?: string
@@ -1574,6 +1692,9 @@ export type Database = {
           selected_entity?: string
           selected_value?: number | null
           user_id?: string | null
+          variant?: string
+          verdict_source?: string
+          verified_correct?: boolean | null
         }
         Relationships: [
           {
@@ -2355,6 +2476,7 @@ export type Database = {
           id: string
           is_anonymous: boolean | null
           is_bot: boolean | null
+          is_disabled: boolean
           is_flagged_underage: boolean | null
           is_pro: boolean | null
           last_seen_at: string | null
@@ -2388,6 +2510,7 @@ export type Database = {
           id?: string
           is_anonymous?: boolean | null
           is_bot?: boolean | null
+          is_disabled?: boolean
           is_flagged_underage?: boolean | null
           is_pro?: boolean | null
           last_seen_at?: string | null
@@ -2421,6 +2544,7 @@ export type Database = {
           id?: string
           is_anonymous?: boolean | null
           is_bot?: boolean | null
+          is_disabled?: boolean
           is_flagged_underage?: boolean | null
           is_pro?: boolean | null
           last_seen_at?: string | null
@@ -2924,51 +3048,36 @@ export type Database = {
     Views: {
       public_profiles: {
         Row: {
-          age: number | null
           avatar_url: string | null
           created_at: string | null
-          custom_theme: string | null
           display_name: string | null
           id: string | null
           is_anonymous: boolean | null
+          is_bot: boolean | null
           is_pro: boolean | null
-          location: string | null
           profile_frame: string | null
-          socials: Json | null
-          status_message: string | null
-          updated_at: string | null
           user_id: string | null
         }
         Insert: {
-          age?: number | null
           avatar_url?: string | null
           created_at?: string | null
-          custom_theme?: string | null
           display_name?: string | null
           id?: string | null
           is_anonymous?: boolean | null
+          is_bot?: boolean | null
           is_pro?: boolean | null
-          location?: string | null
           profile_frame?: string | null
-          socials?: Json | null
-          status_message?: string | null
-          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
-          age?: number | null
           avatar_url?: string | null
           created_at?: string | null
-          custom_theme?: string | null
           display_name?: string | null
           id?: string | null
           is_anonymous?: boolean | null
+          is_bot?: boolean | null
           is_pro?: boolean | null
-          location?: string | null
           profile_frame?: string | null
-          socials?: Json | null
-          status_message?: string | null
-          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -2976,11 +3085,19 @@ export type Database = {
     }
     Functions: {
       activate_boost: { Args: never; Returns: string }
-      admin_resolve_mod_request: {
-        Args: { _approved: boolean; _notification_id: string }
-        Returns: string
+      admin_create_bot_profile: {
+        Args: {
+          _add_to_my_friends?: boolean
+          _avatar_url?: string
+          _display_name: string
+          _profile_frame?: string
+        }
+        Returns: Json
       }
-      admin_unread_notification_count: { Args: never; Returns: number }
+      admin_link_friendship: {
+        Args: { _target_profile_id: string }
+        Returns: Json
+      }
       admin_list_feedback: {
         Args: { _show_archived?: boolean }
         Returns: {
@@ -3023,6 +3140,7 @@ export type Database = {
           id: string
           is_anonymous: boolean | null
           is_bot: boolean | null
+          is_disabled: boolean
           is_flagged_underage: boolean | null
           is_pro: boolean | null
           last_seen_at: string | null
@@ -3047,6 +3165,21 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_resolve_mod_request: {
+        Args: { _approved: boolean; _notification_id: string }
+        Returns: string
+      }
+      admin_unread_notification_count: { Args: never; Returns: number }
+      admin_update_bot_profile: {
+        Args: {
+          _avatar_url?: string
+          _display_name?: string
+          _is_disabled?: boolean
+          _profile_frame?: string
+          _profile_id: string
+        }
+        Returns: Json
+      }
       create_multiplayer_game: {
         Args: {
           _config?: Json
@@ -3070,6 +3203,20 @@ export type Database = {
       finish_multiplayer_game: {
         Args: { _game_id: string; _result: Json }
         Returns: undefined
+      }
+      get_league_profiles: {
+        Args: { _profile_ids: string[] }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          id: string
+          is_anonymous: boolean
+          is_bot: boolean
+          is_disabled: boolean
+          is_pro: boolean
+          profile_frame: string
+        }[]
       }
       get_league_swipe_stats: { Args: never; Returns: Json }
       get_my_referral_code: {
@@ -3125,6 +3272,8 @@ export type Database = {
         Args: { _slug: string }
         Returns: undefined
       }
+      is_blocked_between: { Args: { _a: string; _b: string }; Returns: boolean }
+      is_bot_available: { Args: { _profile_id: string }; Returns: boolean }
       is_friendship_party: { Args: { _profile_id: string }; Returns: boolean }
       is_game_player: { Args: { _game_id: string }; Returns: boolean }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
@@ -3137,6 +3286,14 @@ export type Database = {
           _profile_id: string
         }
         Returns: Json
+      }
+      league_swipe_derived_rating: {
+        Args: { p_vote_count: number; p_win_count: number }
+        Returns: number
+      }
+      league_swipe_recompute_ratings: {
+        Args: { p_game_slug?: string }
+        Returns: number
       }
       move_to_dlq: {
         Args: {
@@ -3192,6 +3349,7 @@ export type Database = {
       }
       record_league_swipe_result: {
         Args: {
+          p_client_submission_id?: string
           p_context?: Json
           p_correct_entity?: string
           p_game_slug: string
@@ -3200,6 +3358,7 @@ export type Database = {
           p_response_time_ms?: number
           p_selected: string
           p_selected_value?: number
+          p_variant?: string
         }
         Returns: Json
       }
