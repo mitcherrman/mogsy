@@ -131,6 +131,35 @@ export default function LeaguecraftHub({
               Unframed on purpose: the columns sit directly in the classroom
               rather than inside one opaque panel, so the room reads through
               the composition instead of being covered by a dashboard. */}
+      {/* ── THE FIRST SCREEN ────────────────────────────────────────────────
+          The rack and the rail are ONE composed screen, and this wrapper is
+          what makes that true rather than merely intended.
+
+          Two jobs, both of them the reason it exists:
+
+          TIGHTER INSIDE. Its own `gap-2` closes the space between the scroll
+          bottoms and the rail, which the root's `gap-3` used to set. The rail
+          is the rack's closing edge, not the first item of the next section,
+          so it sits nearer to what it closes.
+
+          TALLER OUTSIDE. `min-h` holds the wrapper to the full viewport, so
+          whatever follows it starts BELOW the fold. Recent Studies and the
+          Practice panel used to crest into the first screen — a heading and
+          the top of a card, enough to read as "the page carries on here" and
+          to pull the eye off the composition before the reader had taken it
+          in. The extra height lands AFTER the rail (the wrapper packs from the
+          top), so nothing inside the composition is stretched or separated:
+          the rack and rail keep their exact geometry and the slack becomes
+          classroom between the rail and the workspace.
+
+          The two offsets are the wrapper's own distance from the top of the
+          viewport, which differs by breakpoint because the reclaim does: at
+          `xl` the shell's band is cancelled outright and the hub's `pt-4` is
+          the whole of it (1rem); at `lg` the reclaim keeps 1.5rem of the band
+          back, so it is that plus the same `pt-4` (2.5rem). Below `lg` there
+          is no min-height at all — the stacked rack is already several
+          viewports tall and the fold means nothing there. */}
+      <div className="flex flex-col gap-2 lg:min-h-[calc(100dvh_-_2.25rem)] xl:min-h-[calc(100dvh_-_0.75rem)]">
       <section className="w-full" data-testid="hub-ranked-section">
         <RankedLobbyHero
           progress={progress}
@@ -174,13 +203,12 @@ export default function LeaguecraftHub({
               workspace a viewport of depth; at that point this wrapper takes
               the two classes above and the section below takes a matching
               `scroll-mt`, and nothing else has to move. */}
-      {/* No top margin of its own: the hub's own `gap-3` is the whole seam.
-          The rail is what CLOSES the rack, so it wants to read as attached to
-          it rather than as the first item of a new list — and at 832px tall
-          the four pixels are the difference between the rail's bottom edge
-          landing inside the first viewport and just outside it. */}
+      {/* No top margin of its own — the first-screen wrapper's `gap-2` is the
+          whole seam, and it is deliberately tighter than the gap that
+          separates the composition from the workspace below it. */}
       <div className="relative z-30">
         <QuizCategoryRail />
+      </div>
       </div>
 
       {/* 3 ── Secondary row: where I've been, and where else I can study.

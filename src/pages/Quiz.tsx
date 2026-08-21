@@ -1030,15 +1030,27 @@ export default function Quiz() {
           point. Every other phase keeps its original pt-4: only the hub has
           three tall columns to fit, and only the hub drops the header row.
 
-          `pt-1` rather than `pt-2`: what sits against that edge is the scroll's
-          ornamental top ROLL, not a line of text, so 4px of air above it reads
-          the same as 8 and the other 4 go to the category rail's clearance at
-          the short end of the desktop range (1280x800 keeps 6px instead of
-          2). */}
+          `pt-3`, after passes at `pt-1` and `pt-4`. Cancelling the whole band and then
+          adding almost nothing back put the scroll caps 4px off the top edge,
+          which reclaimed the space but overshot the composition — the rack had
+          nothing above it at all. 1rem seats it: still nothing like the 64px
+          ghost-navbar the reclaim removed, and the pixels are affordable
+          because the first-screen wrapper in `LeaguecraftHub` tightened the
+          rack-to-rail seam to pay for it. 1rem was a step too far: the tightest
+          desktop in the range is 1280x800, where the rack alone is 708px and
+          the whole budget for (top padding + seam + rail) is 92px — at 16+8+70
+          it clipped the rail's bottom edge by two. 12px fits with room at both
+          ends of the range.
+
+          THREE NUMBERS, ONE SUM. This padding, the wrapper's `gap-2` seam and
+          the rail's own height have to clear the shortest supported viewport
+          together; change any one and re-measure 1280x800 as well as the wide
+          target. The wrapper's `min-h` offsets are this padding plus whatever
+          the breakpoint's reclaim leaves, so they move with it too. */}
       <div
         className={`relative mx-auto px-4 pb-4 ${
           phase === "sets"
-            ? "max-w-[1500px] pt-1 lg:-mt-[calc(var(--app-header-h)_-_1.5rem)] xl:-mt-[var(--app-header-h)]"
+            ? "max-w-[1500px] pt-3 lg:-mt-[calc(var(--app-header-h)_-_1.5rem)] xl:-mt-[var(--app-header-h)]"
             : "max-w-3xl pt-4"
         }`}
       >

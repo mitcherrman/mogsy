@@ -181,9 +181,22 @@ const OUTCOME_STYLE: Record<MatchHistoryEntryView["viewerOutcome"], { label: str
   draw: { label: "Draw", className: "text-[#4e3a24]" },
 };
 
-/** How many recent Ranked rows the centre ledger shows. Four fits the sheet
- *  at every width the lobby supports without pushing the seal off the fold. */
-const RECENT_LEDGER_ROWS = 4;
+/**
+ * How many recent Ranked rows the centre ledger shows.
+ *
+ * THREE, NOT FOUR, AND THE REASON IS THE FOLD. Once this ledger populates the
+ * centre column becomes the tallest of the three and sets the height of the
+ * whole rack: empty it is 699px and the Academy column's 731 leads, but at
+ * four rows it reaches 763. The first screen at 1825x832 can carry a rack of
+ * 742 before the category rail's bottom edge leaves the viewport (12px of hub
+ * padding, an 8px seam and a 70px rail), so a fourth row cost an established
+ * player the rail — the one reader most likely to have a populated ledger.
+ *
+ * Three rows is still a preview and still the same component; the full record
+ * was never here. Raising this again means re-measuring the populated rack at
+ * 1825x832, not just checking that the sheet looks roomy.
+ */
+const RECENT_LEDGER_ROWS = 3;
 
 /**
  * A Role Mastery score — WHICH THE PRODUCT DOES NOT HAVE.

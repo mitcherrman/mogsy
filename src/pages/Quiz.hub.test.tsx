@@ -285,6 +285,38 @@ describe("Leaguecraft hub — category rail", () => {
     const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
     expect(rail.querySelectorAll("button, a, [role='button']").length).toBe(0);
   });
+
+  // The rack and the rail are ONE first screen, and the workspace begins
+  // after it. Before this wrapper existed the workspace's own heading crested
+  // into the first viewport — enough to read as "the page carries on here"
+  // and pull the eye off the composition. These are the two properties that
+  // make the screen end where it is supposed to.
+  it("shares one first-screen wrapper with the rack, and closes it", async () => {
+    const { container } = await renderHub();
+    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
+    const lobby = container.querySelector('[data-testid="hub-ranked-section"]')!;
+    const workspace = container.querySelector('[data-testid="hub-workspace"]')!;
+    const firstScreen = lobby.parentElement!;
+    // Rack and rail together, workspace outside — the wrapper is what holds
+    // the fold, so the workspace must not be inside it.
+    expect(firstScreen.contains(rail)).toBe(true);
+    expect(firstScreen.contains(workspace)).toBe(false);
+    // The rail is the LAST thing in it: the screen closes on the rail.
+    expect(firstScreen.lastElementChild!.contains(rail)).toBe(true);
+  });
+
+  it("holds the first screen to the viewport so the workspace starts below it", async () => {
+    const { container } = await renderHub();
+    const firstScreen = container.querySelector('[data-testid="hub-ranked-section"]')!.parentElement!;
+    // Only from lg: below it the rack is stacked and several viewports tall,
+    // where a min-height would mean nothing and a fold does not exist.
+    expect(firstScreen.className).toContain("lg:min-h-[calc(100dvh_-_2.25rem)]");
+    expect(firstScreen.className).toContain("xl:min-h-[calc(100dvh_-_0.75rem)]");
+    expect(firstScreen.className).not.toMatch(/(^|\s)min-h-/);
+    // The seam inside it is TIGHTER than the gap to the workspace outside it
+    // (the root's gap-3), which is what makes rack+rail read as one thing.
+    expect(firstScreen.className).toContain("gap-2");
+  });
 });
 
 describe("Leaguecraft hub — Practice for Ranked", () => {

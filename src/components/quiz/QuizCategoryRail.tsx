@@ -40,8 +40,10 @@
  * full subject name carried for assistive tech when the visible label is the
  * short word. Ordered list semantics, so a screen reader hears "6 items".
  */
-import { resolveQuizAssetUrl } from "@/lib/quiz/api";
-import { QUIZ_CATEGORY_ICONS } from "@/components/quiz/QuizCategoryStrip";
+import {
+  QUIZ_CATEGORY_ICONS,
+  resolveCategoryIconUrl,
+} from "@/components/quiz/QuizCategoryStrip";
 
 /** The cell's inner furniture — identical in both the inert and the future
  *  interactive branch, so the two can never drift apart visually. */
@@ -54,7 +56,7 @@ function RailTileContent({
   full: string;
   iconPath: string;
 }) {
-  const src = resolveQuizAssetUrl(iconPath);
+  const src = resolveCategoryIconUrl(iconPath);
   return (
     <>
       {/* The icon is the signal. Framed as a square plate in the rail's own

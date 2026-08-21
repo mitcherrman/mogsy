@@ -56,25 +56,43 @@ interface QuizCategoryIcon {
  * fighting over, the lane in front of you, the spells on your bars, what you
  * buy with the gold, and what you can see.
  */
+/**
+ * Where a category icon actually lives — and there are two answers.
+ *
+ * Most of this art is the BACKEND's: `resolveQuizAssetUrl` prefixes the API
+ * base, because `assets/summoner_spells/Flash.png` and friends are served by
+ * the Ranked service's asset host and exist nowhere in this repo. But the
+ * objective and minion art are FRONTEND files, committed under `public/`, and
+ * putting them through that resolver pointed them at the backend host and
+ * answered 404 — the leading slash is stripped there, so a root-absolute path
+ * is no escape by itself.
+ *
+ * So the leading slash IS the signal: a path that starts with `/` is served
+ * from this app's own origin and is used verbatim; anything else is the
+ * backend's and is resolved against the API base as before. One rule, both
+ * surfaces — the strip and the rail share this so they cannot disagree about
+ * where an icon comes from.
+ */
+export function resolveCategoryIconUrl(iconPath: string): string | undefined {
+  return iconPath.startsWith("/") ? iconPath : resolveQuizAssetUrl(iconPath);
+}
+
 export const QUIZ_CATEGORY_ICONS: readonly QuizCategoryIcon[] = [
   {
     id: "objectives",
     label: "Objectives",
     full: "Objectives",
-    /* STAND-IN. There is no Baron or Dragon art anywhere in the asset
-       library. Eye of the Herald is the closest thing to it that genuinely
-       exists — a real neutral-objective icon — and it is a truthful picture
-       of an objective rather than an invented one. Swap this the day the
-       monster art lands; nothing else has to change. */
-    iconPath: "assets/items/3513.png",
+    /* The Elder Dragon itself, now that the monster art exists. This replaces
+       an Eye-of-the-Herald stand-in that was standing in for exactly this. */
+    iconPath: "/assets/ranked/elder-dragon.webp",
   },
   {
     id: "wave-management",
     label: "Waves",
     full: "Wave Management",
-    /* STAND-IN, same reason: no minion art exists. Minion Dematerializer is
-       real art that depicts a minion, which is the subject being named. */
-    iconPath: "assets/items/2403.png",
+    /* A caster minion — the subject itself, replacing the Minion
+       Dematerializer item icon that stood in for it. */
+    iconPath: "/assets/ranked/caster-minion.webp",
   },
   {
     id: "summoner-spells",
@@ -119,7 +137,7 @@ export default function QuizCategoryStrip({ className = "" }: { className?: stri
           horizontal overflow hides categories behind a gesture. */}
       <ul className="grid grid-cols-3 gap-x-1 gap-y-2 sm:grid-cols-6 lg:grid-cols-3">
         {QUIZ_CATEGORY_ICONS.map((category) => {
-          const src = resolveQuizAssetUrl(category.iconPath);
+          const src = resolveCategoryIconUrl(category.iconPath);
           return (
             <li
               key={category.id}

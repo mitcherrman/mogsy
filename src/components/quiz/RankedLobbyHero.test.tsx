@@ -622,9 +622,15 @@ describe("RankedLobbyHero — personal column data honesty", () => {
     expect(rows[1].textContent).toContain("Bot");
   });
 
-  it("caps the list at the latest four", () => {
+  it("caps the list at the latest three", () => {
+    // THREE, and the cap is a fold constraint rather than a taste. A populated
+    // ledger makes the centre the tallest of the three columns and so sets the
+    // height of the whole rack; the fourth row took it to 763px, past what the
+    // first screen at 1825x832 can carry, and pushed the category rail out of
+    // the viewport for exactly the reader most likely to have a full ledger.
+    // See RECENT_LEDGER_ROWS.
     renderHero({ matchHistory: [match({}), match({}), match({}), match({}), match({})] });
-    expect(screen.getAllByTestId("hero-recent-match")).toHaveLength(4);
+    expect(screen.getAllByTestId("hero-recent-match")).toHaveLength(3);
   });
 
   it("shows an applied rating delta, and shows nothing when there is none", () => {
