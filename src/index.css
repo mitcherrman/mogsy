@@ -2314,6 +2314,332 @@ html.high-contrast * { text-shadow: none !important; }
   background: rgba(107, 84, 24, 0.06);
 }
 
+/* ---- The register (HI1-C5) ----------------------------------------------- */
+
+/* The one interactive spread, and the whole reason it does not read as a form
+   dropped into a book: there is no card, no panel and no boxed input anywhere
+   below. A field is a LABEL in the same gilt small caps as a chapter eyebrow
+   with the visitor's own writing on a ruled line under it, in the tome's ink.
+   The only filled control is the submit, which is the finale's primary exit
+   with the same gold in it — because it does the same job, one page earlier.
+
+   Widths are `cqw` against the tome exactly like the type above, so the register
+   is sized by the page it is written on rather than by the viewport. */
+
+.academy-welcome .tome-form {
+  display: flex;
+  width: 100%;
+  max-width: calc(100% - var(--tome-page-inward));
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.62em;
+  margin-top: 0.95em;
+  text-align: left;
+}
+
+.academy-welcome .tome-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.14em;
+}
+
+.academy-welcome .tome-field-label {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-size: clamp(0.52rem, 1.02cqw, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--tome-gilt);
+}
+
+/* "optional" is a different KIND of word from the label it follows — the label
+   names the field, this qualifies it — so it is set in the body face and in ink
+   rather than shouted in gold small caps beside it. */
+.academy-welcome .tome-field-optional {
+  font-family: inherit;
+  font-size: 0.86em;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--tome-ink-faint);
+}
+
+/* The ruled line. `background`/`border` are both reset because the app's global
+   input styling and the browser's own default would otherwise put a box on the
+   parchment; the only rule left is the one under the text. */
+.academy-welcome .tome-field-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(107, 84, 24, 0.55);
+  border-radius: 0;
+  background: transparent;
+  padding: 0.16em 0.1em 0.24em;
+  font-family: inherit;
+  font-size: clamp(0.75rem, 1.62cqw, 1rem);
+  line-height: 1.5;
+  color: var(--tome-ink);
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.academy-welcome .tome-field-input::placeholder {
+  color: rgba(43, 58, 87, 0.42);
+}
+
+.academy-welcome .tome-field-input:focus {
+  outline: none;
+  border-bottom-color: #6b5418;
+  /* The rule brightens and the paper under it warms — a nib resting on the
+     line. A focus RING would be a box, which is the one thing this page is
+     built to avoid; the contrast change is carried by two properties so it is
+     not colour alone. */
+  background: rgba(255, 250, 233, 0.55);
+  box-shadow: 0 1px 0 0 #6b5418;
+}
+
+/* The rank picker. Native, for the reasons in RegistrationForm — the only work
+   here is stripping the platform chrome back to the same ruled line and drawing
+   our own caret in ink. */
+.academy-welcome .tome-field-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 1.4em;
+  background-image: linear-gradient(45deg, transparent 50%, rgba(43, 58, 87, 0.7) 50%),
+    linear-gradient(135deg, rgba(43, 58, 87, 0.7) 50%, transparent 50%);
+  background-position: right 0.5em top 58%, right 0.22em top 58%;
+  background-size: 0.3em 0.3em, 0.3em 0.3em;
+  background-repeat: no-repeat;
+}
+
+.academy-welcome .tome-field-select:focus {
+  background-image: linear-gradient(45deg, transparent 50%, rgba(43, 58, 87, 0.7) 50%),
+    linear-gradient(135deg, rgba(43, 58, 87, 0.7) 50%, transparent 50%),
+    linear-gradient(rgba(255, 250, 233, 0.55), rgba(255, 250, 233, 0.55));
+  background-position: right 0.5em top 58%, right 0.22em top 58%, 0 0;
+  background-size: 0.3em 0.3em, 0.3em 0.3em, 100% 100%;
+}
+
+/* The option list is drawn by the OS in its own colours; on a dark system theme
+   an unstyled list inherits the parchment ink and becomes ink-on-ink. Stating
+   both halves keeps it legible wherever it is drawn. */
+.academy-welcome .tome-field-select option {
+  color: #1d2b47;
+  background: #f3ead2;
+}
+
+.academy-welcome .tome-field[data-invalid="true"] .tome-field-input {
+  border-bottom-color: #8c2f1d;
+  box-shadow: 0 1px 0 0 rgba(140, 47, 29, 0.6);
+}
+
+/* 4.9:1 on the pages' mid-tone (#e8e0cb) — measured, like every other colour
+   in this section. A brighter, more conventional error red does not clear the
+   floor on parchment. */
+.academy-welcome .tome-field-error {
+  font-size: clamp(0.58rem, 1.16cqw, 0.76rem);
+  line-height: 1.35;
+  color: #8c2f1d;
+}
+
+.academy-welcome .tome-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45em;
+  margin-top: 0.1em;
+  cursor: pointer;
+}
+
+.academy-welcome .tome-check-box {
+  flex-shrink: 0;
+  width: clamp(0.72rem, 1.4cqw, 0.95rem);
+  height: clamp(0.72rem, 1.4cqw, 0.95rem);
+  margin-top: 0.18em;
+  /* `accent-color` rather than a hand-built box: the native control keeps its
+     own focus ring, its own keyboard behaviour and its own high-contrast
+     rendering, and only its fill needs to be the tome's gilt. */
+  accent-color: #6b5418;
+}
+
+.academy-welcome .tome-check-copy {
+  font-size: clamp(0.62rem, 1.24cqw, 0.82rem);
+  line-height: 1.4;
+  color: var(--tome-ink-soft);
+}
+
+.academy-welcome .tome-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.35em;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(107, 84, 24, 0.9);
+  background: linear-gradient(180deg, #d8b862 0%, #b6923c 100%);
+  box-shadow: 0 6px 16px rgba(92, 73, 38, 0.32);
+  padding: 0.5em 1em;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-size: clamp(0.75rem, 1.6cqw, 1rem);
+  font-weight: 700;
+  color: var(--tome-ink);
+  transition: background-color 180ms ease;
+}
+
+.academy-welcome .tome-submit:hover {
+  background: linear-gradient(180deg, #e3c674 0%, #c29e46 100%);
+}
+
+.academy-welcome .tome-submit:focus-visible {
+  outline: 2px solid #6b5418;
+  outline-offset: 2px;
+}
+
+/* ---- The register CARD on the facing page -------------------------------- */
+
+/* A mirror, not a picture: the two ruled lines fill in as the form beside them
+   is filled in, and the seal presses when both are there. Sized inside the same
+   square plate box every other illustration uses, so the spread's two pages
+   stay in balance whatever is typed. */
+.academy-welcome .tome-register {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.55em;
+  padding: 8% 9% 9%;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(107, 84, 24, 0.5);
+  background: linear-gradient(168deg, rgba(255, 250, 233, 0.6) 0%, rgba(214, 199, 163, 0.35) 100%);
+  box-shadow: inset 0 0 24px rgba(92, 73, 38, 0.14), 0 8px 20px rgba(60, 42, 12, 0.22);
+}
+
+.academy-welcome .tome-register-title {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-size: clamp(0.5rem, 1.05cqw, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--tome-gilt);
+}
+
+.academy-welcome .tome-register-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.06em;
+  border-bottom: 1px solid rgba(107, 84, 24, 0.45);
+  padding-bottom: 0.12em;
+  min-height: 2.05em;
+}
+
+.academy-welcome .tome-register-label {
+  font-size: clamp(0.42rem, 0.86cqw, 0.6rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(107, 84, 24, 0.8);
+}
+
+/* Hand-set, not typed: the card is the register, and a register is written in.
+   Ellipsised rather than wrapped so a long name cannot grow the card and shove
+   the seal off the plate mid-keystroke. */
+.academy-welcome .tome-register-value {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-size: clamp(0.62rem, 1.36cqw, 0.9rem);
+  line-height: 1.3;
+  color: var(--tome-ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.academy-welcome .tome-register-seal {
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: clamp(1.4rem, 3.4cqw, 2.2rem);
+  height: clamp(1.4rem, 3.4cqw, 2.2rem);
+  margin-top: 0.2em;
+  border-radius: 50%;
+  border: 1px dashed rgba(107, 84, 24, 0.5);
+  background: transparent;
+  color: rgba(107, 84, 24, 0.55);
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), background-color 260ms ease,
+    border-color 260ms ease, color 260ms ease, box-shadow 260ms ease;
+}
+
+/* Pressed. The one moment of feedback on the card, and it says the same thing
+   the form's own state says — you have given us both halves — without printing
+   a validation message onto the artwork. */
+.academy-welcome .tome-register[data-sealed="true"] .tome-register-seal {
+  border-style: solid;
+  border-color: rgba(122, 34, 24, 0.85);
+  background: radial-gradient(circle at 38% 32%, #a8402c 0%, #7a2218 72%);
+  color: #f6e2b8;
+  box-shadow: 0 4px 10px rgba(60, 20, 12, 0.4);
+  transform: scale(1.06);
+}
+
+.academy-welcome .tome-register-seal-mark {
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-size: clamp(0.6rem, 1.5cqw, 1rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .academy-welcome .tome-register-seal {
+    transition: none;
+  }
+}
+
+/* ---- The reference docket (HI1-C5) --------------------------------------- */
+
+/* The last spread's right page. Three ruled entries — a name, a leader rule,
+   and what is in it — which is what a reference shelf looks like written down.
+   The counterweight to the triangular data composition opposite it, and
+   deliberately the opposite kind of object: nothing here is drawn, and nothing
+   here is a control. */
+.academy-welcome .tome-docket {
+  display: flex;
+  width: 100%;
+  max-width: calc(100% - var(--tome-page-inward));
+  flex-direction: column;
+  gap: 0.34em;
+  margin-top: 0.95em;
+  text-align: left;
+}
+
+.academy-welcome .tome-docket-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4em;
+}
+
+.academy-welcome .tome-docket-label {
+  flex-shrink: 0;
+  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
+  font-size: clamp(0.6rem, 1.24cqw, 0.82rem);
+  font-weight: 700;
+  color: var(--tome-ink);
+}
+
+/* The leader. A rule rather than a row of dots: dots at this size render as
+   mush at half the pixel densities this page is read at. */
+.academy-welcome .tome-docket-rule {
+  flex: 1 1 auto;
+  height: 1px;
+  min-width: 0.8em;
+  transform: translateY(-0.16em);
+  background: linear-gradient(90deg, rgba(107, 84, 24, 0.42), rgba(107, 84, 24, 0.16));
+}
+
+.academy-welcome .tome-docket-note {
+  flex-shrink: 0;
+  font-size: clamp(0.56rem, 1.14cqw, 0.76rem);
+  line-height: 1.35;
+  color: var(--tome-ink-soft);
+}
+
 /* ---- The last page ------------------------------------------------------- */
 
 .academy-welcome .tome-exits {
@@ -2391,6 +2717,62 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: clamp(0.55rem, 1.08cqw, 0.72rem);
   line-height: 1.4;
   color: var(--tome-ink-faint);
+}
+
+/* ---- The crowded last spread --------------------------------------------- */
+
+/* HI1-C5 merged two informational chapters and moved the exits onto the result,
+   so one page now carries an eyebrow, a heading, two paragraphs, a three-line
+   docket, two exits and a footnote — and at the tome's own type sizes that
+   composition overflowed the page box by about a fifth of its height, printing
+   the chapter's name off the top of the paper.
+   
+   The copy was rewritten shorter first; this is the rest of it. Every value
+   below takes air OUT of the page and nothing takes content out — the reader
+   loses no word, no entry and no choice, and the spacing lands where the
+   painted paper actually is. It applies only to a finale that carries writing,
+   which is exactly the page that has the problem: a finale of no copy (what
+   this used to be) reads at the ordinary rhythm. */
+
+/* The heading and the copy give up a little leading, and nothing else. Both
+   stay well inside what is comfortable at this size — the body's measure and
+   leading together still read as the same page as every other chapter. */
+.academy-welcome .tome-writing[data-crowded="true"] .tome-heading {
+  margin-top: 0.2em;
+  line-height: 1.08;
+}
+
+.academy-welcome .tome-writing[data-crowded="true"] .tome-body {
+  margin-top: 0.6em;
+  line-height: 1.5;
+  /* Four extra characters a line. The measure is still comfortably inside the
+     45–75 character band for a centred column at this size, and it buys a whole
+     display line back from each paragraph — the single largest saving here. */
+  max-width: 34ch;
+}
+
+.academy-welcome .tome-writing[data-crowded="true"] .tome-docket {
+  margin-top: 0.7em;
+  gap: 0.24em;
+}
+
+.academy-welcome .tome-writing[data-crowded="true"] .tome-exits {
+  margin-top: 0.8em;
+  gap: 0.4rem;
+}
+
+.academy-welcome .tome-writing[data-crowded="true"] .tome-exit {
+  padding: 0.45em 0.8em;
+  gap: 0;
+}
+
+.academy-welcome .tome-writing[data-crowded="true"] .tome-exit-detail,
+.academy-welcome .tome-writing[data-crowded="true"] .tome-docket-note {
+  line-height: 1.25;
+}
+
+.academy-welcome .tome-writing[data-crowded="true"] .tome-footnote {
+  margin-top: 0.35em;
 }
 
 /* ---- Controls around the tome -------------------------------------------- */
@@ -2500,6 +2882,63 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: clamp(0.6rem, 2.6vw, 0.72rem);
 }
 
+/* The register and the docket at phone scale. Same reason as everything above:
+   on a single sheet the container IS roughly the viewport, so `cqw` would set
+   the register at 8% of a page rather than at a size a thumb can aim at. The
+   input font size in particular must not fall below 16px on iOS, or Safari
+   zooms the whole book on focus and the visitor loses the page. */
+.academy-welcome .tome-single .tome-field-label {
+  font-size: clamp(0.58rem, 2.5vw, 0.7rem);
+}
+
+.academy-welcome .tome-single .tome-field-input {
+  font-size: max(16px, 3.6vw);
+  padding-bottom: 0.3em;
+}
+
+.academy-welcome .tome-single .tome-field-error {
+  font-size: clamp(0.65rem, 2.8vw, 0.78rem);
+}
+
+.academy-welcome .tome-single .tome-check-copy {
+  font-size: clamp(0.68rem, 2.9vw, 0.8rem);
+}
+
+.academy-welcome .tome-single .tome-check-box {
+  width: 1rem;
+  height: 1rem;
+}
+
+.academy-welcome .tome-single .tome-submit {
+  font-size: clamp(0.85rem, 3.8vw, 1rem);
+  padding: 0.6em 1em;
+}
+
+.academy-welcome .tome-single .tome-register-title {
+  font-size: clamp(0.55rem, 2.4vw, 0.68rem);
+}
+
+.academy-welcome .tome-single .tome-register-label {
+  font-size: clamp(0.48rem, 2vw, 0.58rem);
+}
+
+.academy-welcome .tome-single .tome-register-value {
+  font-size: clamp(0.7rem, 3.1vw, 0.88rem);
+}
+
+.academy-welcome .tome-single .tome-register-seal {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.academy-welcome .tome-single .tome-docket-label {
+  font-size: clamp(0.7rem, 3vw, 0.82rem);
+}
+
+.academy-welcome .tome-single .tome-docket-note {
+  font-size: clamp(0.62rem, 2.7vw, 0.74rem);
+}
+
 /* Landscape phone: art beside the writing, everything a notch tighter. There
    is width to spare and ~360px of height, so nothing may stack. */
 .academy-welcome .tome-single-wide {
@@ -2547,6 +2986,113 @@ html.high-contrast * { text-shadow: none !important; }
 
 .academy-welcome .tome-single-wide .tome-exit {
   flex: 1 1 0;
+}
+
+/* Landscape phone: ~360px of height with a keyboard about to take half of it.
+   The register loses its air rather than its fields — every control stays, and
+   the gaps, the paddings and the label leading all come in a notch. */
+.academy-welcome .tome-single-wide .tome-form {
+  gap: 0.4em;
+  margin-top: 0.55em;
+}
+
+.academy-welcome .tome-single-wide .tome-field-input {
+  padding-top: 0.06em;
+  padding-bottom: 0.16em;
+}
+
+.academy-welcome .tome-single-wide .tome-submit {
+  margin-top: 0.2em;
+  padding: 0.45em 0.9em;
+}
+
+/* Two ruled lines and a seal do not fit beside a form in 150px of height, and a
+   squeezed card is worse than none — the FORM is the register on this layout,
+   and the form is already complete on its own. The plate box keeps its width so
+   the sheet's proportions do not jump between orientations. */
+/* THE TYPE HAS TO BE RESIZED, NOT JUST THE SPACING. The portrait rules above
+   size the register in `vw`, and on a landscape phone `vw` is the LONG axis —
+   3.6vw is ~29px at 812 wide, which is display type in a text field. Every
+   phone rule that used vw therefore needs a landscape counterpart, at the same
+   ~1.75vw scale the body copy already uses here. The 16px floor stays: below it
+   iOS Safari zooms the page on focus, which on this layout means losing the
+   book. */
+.academy-welcome .tome-single-wide .tome-field-label {
+  font-size: clamp(0.5rem, 1.2vw, 0.66rem);
+}
+
+.academy-welcome .tome-single-wide .tome-field-input {
+  font-size: max(16px, 1.75vw);
+  line-height: 1.3;
+}
+
+.academy-welcome .tome-single-wide .tome-field-error {
+  font-size: clamp(0.58rem, 1.35vw, 0.72rem);
+}
+
+.academy-welcome .tome-single-wide .tome-check-copy {
+  font-size: clamp(0.6rem, 1.4vw, 0.74rem);
+}
+
+.academy-welcome .tome-single-wide .tome-check-box {
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-top: 0.12em;
+}
+
+.academy-welcome .tome-single-wide .tome-submit {
+  font-size: clamp(0.75rem, 1.8vw, 0.92rem);
+}
+
+.academy-welcome .tome-single-wide .tome-register-title {
+  font-size: clamp(0.48rem, 1.1vw, 0.6rem);
+}
+
+.academy-welcome .tome-single-wide .tome-register-label {
+  font-size: clamp(0.4rem, 0.95vw, 0.52rem);
+}
+
+.academy-welcome .tome-single-wide .tome-register-value {
+  font-size: clamp(0.58rem, 1.4vw, 0.76rem);
+}
+
+.academy-welcome .tome-single-wide .tome-docket-label {
+  font-size: clamp(0.6rem, 1.5vw, 0.76rem);
+}
+
+.academy-welcome .tome-single-wide .tome-docket-note {
+  font-size: clamp(0.55rem, 1.35vw, 0.7rem);
+}
+
+.academy-welcome .tome-single-wide .tome-register {
+  gap: 0.3em;
+  padding: 6% 7%;
+}
+
+.academy-welcome .tome-single-wide .tome-register-field {
+  min-height: 1.7em;
+}
+
+.academy-welcome .tome-single-wide .tome-register-seal {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0;
+}
+
+.academy-welcome .tome-single-wide .tome-docket {
+  gap: 0.24em;
+  margin-top: 0.55em;
+}
+
+/* The crowded-spread measure is a fix for the painted book's fixed page box —
+   34ch instead of 30ch buys a display line back there. On a landscape sheet the
+   column is nearly twice as wide and its own measure is already 46ch, so
+   inheriting 34ch would NARROW the copy and add the very lines it exists to
+   remove. The sheet has no fixed box to overflow; the rest of the compaction
+   still applies and simply means less scrolling. */
+.academy-welcome .tome-single-wide .tome-writing[data-crowded="true"] .tome-body {
+  max-width: 46ch;
+  margin-top: 0.45em;
 }
 
 .academy-welcome .tome-rule-v {
@@ -2792,6 +3338,25 @@ html.high-contrast * { text-shadow: none !important; }
   animation-delay: calc(var(--d, 0) * 1ms);
   transform-box: fill-box;
   transform-origin: center;
+}
+
+/* A shape that soaks in rather than being drawn: the panel grounds behind the
+   last spread's triangular composition. `tome-stroke` rules an outline and
+   `tome-dot` presses a mark; neither is right for a wash of tone, and a fill
+   that simply appeared under a frame still being ruled would arrive before the
+   thing it is inside. Same indexed `--d` beat as the other two. */
+.tome-slot[data-revealed="true"] .tome-fade {
+  animation: tome-fade-in 620ms ease-out both;
+  animation-delay: calc(var(--d, 0) * 1ms);
+}
+
+@keyframes tome-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes tome-press-in {
@@ -3085,6 +3650,7 @@ html.high-contrast * { text-shadow: none !important; }
 .academy-welcome[data-instant="true"] .tome-word,
 .academy-welcome[data-instant="true"] .tome-art,
 .academy-welcome[data-instant="true"] .tome-dot,
+.academy-welcome[data-instant="true"] .tome-fade,
 .academy-welcome[data-instant="true"] .tome-mogzy-figure {
   animation: none;
   opacity: 1;
@@ -3115,6 +3681,7 @@ html.high-contrast * { text-shadow: none !important; }
 .academy-welcome .tome-ghost .tome-word,
 .academy-welcome .tome-ghost .tome-art,
 .academy-welcome .tome-ghost .tome-dot,
+.academy-welcome .tome-ghost .tome-fade,
 .academy-welcome .tome-ghost .tome-mogzy-figure {
   animation: none;
   opacity: 1;
@@ -3151,6 +3718,7 @@ html.high-contrast * { text-shadow: none !important; }
   .academy-welcome .tome-word,
   .academy-welcome .tome-art,
   .academy-welcome .tome-dot,
+  .academy-welcome .tome-fade,
   .academy-welcome .tome-mogzy-figure,
   .academy-welcome .tome-leaf,
   .academy-welcome .tome-leaf-shade,
