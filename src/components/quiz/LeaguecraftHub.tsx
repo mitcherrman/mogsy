@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
+import QuizCategoryStrip from "@/components/quiz/QuizCategoryStrip";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { RankedRole } from "@/lib/ranked-public/roles";
@@ -29,9 +30,13 @@ import type {
  *                       Nothing else on the page competes with it.
  *   2. Recent Studies — the real session history, compact, and the entry to
  *                       the full history route.
- *   3. Study panel    — Practice sets and the Mastery journeys, reduced to
- *                       low-priority links inside one small panel. Both are
- *                       still fully reachable; neither is a headline any more.
+ *   3. Study panel    — a compact icon strip naming the six subjects
+ *                       Leaguecraft studies, then Practice sets and the
+ *                       Mastery journeys, reduced to low-priority links inside
+ *                       one small panel. Both are still fully reachable;
+ *                       neither is a headline any more. The strip is an
+ *                       overview, not a menu — it is the only thing in the
+ *                       panel that is not a way in.
  *
  * The row-2 pair is deliberately short so the classroom art stays visible
  * around the composition instead of being covered by a dashboard grid.
@@ -173,6 +178,11 @@ export default function LeaguecraftHub({
             hint="Sharpen the knowledge used in Ranked."
           />
           <LobbyPanel className="mt-1.5 gap-2">
+            {/* What the studying is ABOUT, before the list of ways in. The
+                strip is an overview and never a control: the sets below are
+                the only entry point, so the two cannot compete for the same
+                click. See QuizCategoryStrip for why it carries no counts. */}
+            <QuizCategoryStrip className="border-b border-[#c9a84c]/12 pb-2.5" />
             {setsLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-8 w-full rounded-md" />

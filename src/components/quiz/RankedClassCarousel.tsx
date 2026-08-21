@@ -16,6 +16,12 @@
  * carries no class semantics, and the role NAME is still rendered on every
  * slide, so identity never depends on the picture.
  *
+ * Beside the SELECTED figure — and only beside that one — sits a single small
+ * champion medallion from `roleChampions.ts`: the League anchor for the role
+ * on stage. It is cosmetic, it is announced to nobody, and it stays a coin at
+ * the mascot's foot on purpose. The mascot is this stage's subject; five
+ * champion portraits at once would make it a champion gallery instead.
+ *
  * DATA HONESTY
  * ────────────
  * The record strip under the stage is optional and is only ever rendered
@@ -50,6 +56,8 @@ import {
   type RankedRole,
 } from "@/lib/ranked-public/roles";
 import { getRankedRoleMascotPath } from "@/components/mascot/mascot-assets";
+import { getRankedRoleChampion } from "@/lib/ranked-public/roleChampions";
+import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 
 /** A real, already-tallied record for one role. Never defaulted to zeros —
  *  a role the host has no rows for is simply absent from the map. */
@@ -117,6 +125,14 @@ const SURFACE = {
     recordValue: "text-[#e2c877]",
     recordScope: "text-muted-foreground",
     recordEmpty: "text-muted-foreground",
+    /** The champion medallion beside the selected figure — brass on navy. */
+    champion: {
+      ring: "rgba(201,168,76,0.55)",
+      halo: "rgba(6,13,26,0.72)",
+      shadow: "0 6px 16px -6px rgba(0,0,0,0.85)",
+      /** Barely touched: on a dark stage the portrait is already contained. */
+      ink: "saturate(0.95)",
+    },
   },
   parchment: {
     /** On a light sheet the same slot does the opposite job: a soft warm
@@ -157,6 +173,18 @@ const SURFACE = {
     recordValue: "text-[#3f2b06]",
     recordScope: "text-[#56412a]",
     recordEmpty: "text-[#3f2c14]",
+    /* The same medallion struck in the sheet's own metal. A game portrait is
+       a full-saturation digital image and the parchment is not, so it is
+       pulled a step toward the page's warmth — enough that the coin reads as
+       INLAID in the manuscript rather than pasted onto it, and not so much
+       that the champion stops being recognisable, which is the entire point
+       of having it there. */
+    champion: {
+      ring: "rgba(74,48,16,0.62)",
+      halo: "rgba(255,247,230,0.55)",
+      shadow: "0 5px 12px -5px rgba(56,36,10,0.6)",
+      ink: "sepia(0.22) saturate(0.88)",
+    },
   },
 } as const;
 
@@ -324,6 +352,11 @@ export default function RankedClassCarousel({
   const activeRole = RANKED_ROLES[viewIndex];
   const activeAccent = accents[activeRole];
   const activeRecord = records?.[activeRole] ?? null;
+  // The League anchor for the role ON STAGE — exactly one, resolved here and
+  // rendered once below, so "only the selected role's champion is shown" is a
+  // property of the structure rather than a rule someone has to remember.
+  const activeChampion = getRankedRoleChampion(activeRole);
+  const championIconUrl = resolveQuizAssetUrl(activeChampion.iconPath);
 
   return (
     <div
@@ -474,6 +507,53 @@ export default function RankedClassCarousel({
             </button>
           );
         })}
+
+        {/* ── League anchor ──────────────────────────────────────────────
+            ONE champion medallion, for the role standing on stage.
+
+            It is mounted on the STAGE, not inside a slide. That is what makes
+            "only the selected role's champion is visible" structural: there is
+            a single element and it is outside the five-slide map, so a second
+            one cannot appear and the stage can never become a champion
+            gallery. Being outside the buttons also keeps it out of every
+            radio's accessible name — a role option is named by its ROLE.
+
+            Decorative, and deliberately small. The Mogzy mascot is the subject
+            of this stage; the champion is the note in the margin saying which
+            game the stage belongs to, so it is sized as a coin at the selected
+            figure's foot rather than as a second portrait. */}
+        {championIconUrl && (
+          <span
+            aria-hidden="true"
+            data-testid="ranked-class-champion"
+            data-role={activeRole}
+            data-champion={activeChampion.name}
+            /* WHERE, and why it is not at the figure's foot.
+               The obvious place — down beside the selected mascot's feet — is
+               the one part of the stage that is already occupied: the two
+               neighbours are scaled from their FOOT line, so they stand in the
+               lower half and the coin landed squarely on top of the right-hand
+               one. It reads as a third, half-sized character rather than as an
+               emblem. Everything above ~54% of the stage height is free of
+               flanks by construction, so the medallion hangs at the selected
+               figure's shoulder instead: clear of the neighbours at every
+               width, and still beside the one mascot it belongs to. */
+            className="pointer-events-none absolute right-[2%] top-[22%] z-[3] flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border sm:h-11 sm:w-11 lg:h-12 lg:w-12"
+            style={{
+              borderColor: skin.champion.ring,
+              background: skin.champion.halo,
+              boxShadow: skin.champion.shadow,
+            }}
+          >
+            <img
+              src={championIconUrl}
+              alt=""
+              draggable={false}
+              className="h-full w-full rounded-full object-cover"
+              style={{ filter: skin.champion.ink }}
+            />
+          </span>
+        )}
       </div>
 
       {/* ── Stage controls ────────────────────────────────────────────────

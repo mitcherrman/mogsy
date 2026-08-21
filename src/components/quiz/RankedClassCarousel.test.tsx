@@ -10,6 +10,7 @@ import {
   MOGZY_MASCOT_ASSETS,
   MOGZY_ROLE_ASSETS,
 } from "@/components/mascot/mascot-assets";
+import { RANKED_ROLE_CHAMPIONS } from "@/lib/ranked-public/roleChampions";
 
 afterEach(cleanup);
 
@@ -257,5 +258,67 @@ describe("RankedClassCarousel — record honesty", () => {
     expect(screen.getByTestId("ranked-class-record").textContent).toContain("No ranked matches");
     fireEvent.click(screen.getByTestId("ranked-class-next"));
     expect(screen.getByTestId("ranked-class-record").textContent).toContain("1W · 0L");
+  });
+});
+
+/**
+ * MALT — the League anchor beside the selected mascot.
+ *
+ * The rules under test are the ones that keep this a role stage rather than a
+ * champion gallery: ONE medallion, for the role on stage, never five.
+ */
+describe("RankedClassCarousel — champion anchor", () => {
+  it("shows exactly one champion medallion, whichever role is on stage", () => {
+    const { container } = renderCarousel({ value: "top" });
+    expect(container.querySelectorAll("[data-testid='ranked-class-champion']").length).toBe(1);
+    // And it stays one after moving the ring, not one per role visited.
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    expect(container.querySelectorAll("[data-testid='ranked-class-champion']").length).toBe(1);
+  });
+
+  it("draws the canonical champion for every one of the five roles", () => {
+    for (const role of RANKED_ROLES) {
+      cleanup();
+      renderCarousel({ value: role });
+      const champion = RANKED_ROLE_CHAMPIONS[role];
+      const medallion = screen.getByTestId("ranked-class-champion");
+      expect(medallion.getAttribute("data-role"), role).toBe(role);
+      expect(medallion.getAttribute("data-champion"), role).toBe(champion.name);
+      expect(medallion.querySelector("img")!.getAttribute("src"), role).toContain(
+        champion.iconPath,
+      );
+    }
+  });
+
+  it("follows the SELECTION as the ring moves, one champion at a time", () => {
+    renderCarousel({ value: "top" });
+    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-champion")).toBe("Darius");
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-champion")).toBe("Qiyana");
+    fireEvent.click(screen.getByTestId("ranked-class-previous"));
+    expect(screen.getByTestId("ranked-class-champion").getAttribute("data-champion")).toBe("Darius");
+  });
+
+  it("is decorative — it never becomes part of a role option's accessible name", () => {
+    renderCarousel({ value: "mid" });
+    const medallion = screen.getByTestId("ranked-class-champion");
+    expect(medallion.getAttribute("aria-hidden")).toBe("true");
+    expect(medallion.querySelector("img")!.getAttribute("alt")).toBe("");
+    // Mounted on the stage, not inside a slide: that is what makes "only one"
+    // structural rather than a rule someone has to remember.
+    expect(medallion.closest("[data-testid^='ranked-class-slide-']")).toBeNull();
+    // The role is still named by TEXT on its own slide.
+    expect(screen.getByTestId("ranked-class-slide-mid").textContent).toContain("Mid");
+  });
+
+  it("keeps the mascot primary: the medallion is far smaller than the figure", () => {
+    renderCarousel({ value: "adc" });
+    const medallion = screen.getByTestId("ranked-class-champion");
+    // The figure takes the stage's whole height; the anchor is a fixed coin.
+    expect(medallion.className).toContain("h-10");
+    expect(screen.getByTestId("ranked-class-slide-adc").querySelector("img")!.className).toContain(
+      "h-full",
+    );
   });
 });
