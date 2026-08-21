@@ -2480,6 +2480,8 @@ export type Database = {
           is_flagged_underage: boolean | null
           is_pro: boolean | null
           last_seen_at: string | null
+          league_rank: string | null
+          league_rank_reported_at: string | null
           location: string | null
           onboarding_completed: boolean | null
           preferred_categories: string[] | null
@@ -2514,6 +2516,8 @@ export type Database = {
           is_flagged_underage?: boolean | null
           is_pro?: boolean | null
           last_seen_at?: string | null
+          league_rank?: string | null
+          league_rank_reported_at?: string | null
           location?: string | null
           onboarding_completed?: boolean | null
           preferred_categories?: string[] | null
@@ -2548,6 +2552,8 @@ export type Database = {
           is_flagged_underage?: boolean | null
           is_pro?: boolean | null
           last_seen_at?: string | null
+          league_rank?: string | null
+          league_rank_reported_at?: string | null
           location?: string | null
           onboarding_completed?: boolean | null
           preferred_categories?: string[] | null
@@ -3144,6 +3150,8 @@ export type Database = {
           is_flagged_underage: boolean | null
           is_pro: boolean | null
           last_seen_at: string | null
+          league_rank: string | null
+          league_rank_reported_at: string | null
           location: string | null
           onboarding_completed: boolean | null
           preferred_categories: string[] | null

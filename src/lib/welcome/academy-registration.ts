@@ -1,40 +1,41 @@
 // ---------------------------------------------------------------------------
-// Academy Registration (HI1-C5) — the provisional, named identity.
+// Academy Registration (HI1-C5) — the visitor's name and self-reported rank.
 //
 // WHAT THIS IS FOR. The introduction used to hand a visitor to the product as
-// an unnamed guest. Page two now asks for a name and a self-reported rank
-// before the tour continues, so that everything downstream has someone to
-// address. This module owns that record and nothing else: no components, no
-// network, no auth.
+// an unnamed guest. Page two now asks for two things, and only two, before the
+// tour continues: what to call them, and roughly where they play. This module
+// owns the local half of that record. It is not the account.
 //
-// WHY IT IS DEVICE-LOCAL, AND WHY THAT IS THE HONEST ANSWER TODAY.
-// At /welcome there is very often NO auth session at all. AuthProvider only
-// calls `signInAnonymously()` when the `require_auth` app_settings row is
-// explicitly disabled; with the default (enabled) a first-time visitor reaches
-// this page as a pure signed-out guest, and RLS would reject any write made on
-// their behalf. There is also nowhere to put a self-reported League rank:
-// `profiles` has display_name, is_anonymous and onboarding_completed, and no
-// rank column of any kind. So the registration is recorded here, beside
-// `mogsy.academyWelcome.v1`, in exactly the same shape and with exactly the
-// same failure posture — every unreadable state collapses to "not registered",
-// and a blocked write costs the visitor a re-ask and never an exception.
+// TWO ANSWERS, NOT FOUR (HI1-C5B). The first pass also collected an optional
+// password and a "link Riot / Discord / email later" checkbox. Both are gone,
+// and deliberately so rather than merely hidden. A password with no email or
+// linked identity behind it can authenticate nothing, so collecting one on this
+// page meant either storing a secret with no destination or recording a boolean
+// that promised an account the introduction had not made. A linking checkbox
+// with no Verify page to send anyone to was the same promise in a different
+// shape. Both belong to the Verify experience when it is built, where they can
+// be honest; nothing in this welcome flow may imply they exist.
 //
-// This is deliberately the FOUNDATION of the named-account transition rather
-// than the transition itself. The record is additive: it takes nothing away
-// from anonymous auth, it breaks no existing user, and when a real account
-// later exists the name it carries is what seeds that account's display name
-// (see provisional-identity.ts). Removing anonymous use is a later phase with
-// backend work in front of it — see the report accompanying this change.
+// THESE TWO ANSWERS ARE DURABLE USER DATA, NOT ONBOARDING STATE. That is the
+// whole difference between C5 and C5B. The name maps onto profiles.display_name
+// — the column the entire product already treats as an account's display
+// identity — and the rank has its own column and its own migration (see
+// supabase/migrations/20260821120000_academy_self_reported_rank.sql). What lives
+// here is the DEVICE-LOCAL half of a two-stage write, for the very common case
+// where the visitor has no session yet.
 //
-// THE PASSWORD IS NEVER STORED. Not here, not in localStorage, not in a URL.
-// The same rule lib/auth/account-upgrade.ts states for the email upgrade holds
-// here for the same reason, and it is why the record carries only the BOOLEAN
-// `hasPassword`. A password typed during registration lives in module memory
-// for the life of the page (see stashRegistrationPassword) and is gone on
-// reload, which is the correct behaviour for a secret with nowhere to go yet:
-// there is no email or identity attached to a brand-new provisional account,
-// so no password could authenticate anything until one is linked.
+// WHY THERE IS A LOCAL HALF AT ALL. At /welcome there is very often no auth
+// session: AuthProvider signs in anonymously only when the `require_auth`
+// app_settings row is explicitly disabled, so under the default a first-time
+// visitor is a pure signed-out guest and RLS would reject any write made on
+// their behalf. Rather than pretend that is persistence, the answers are
+// recorded here and ADOPTED into the profile the moment a session exists — at
+// registration time if there is one, and otherwise by the identity bridge as
+// soon as one appears. See provisional-identity.ts for the adoption rules; the
+// `adoptedBy` field below is the whole of the bookkeeping.
 // ---------------------------------------------------------------------------
+
+import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 
 /**
  * The self-reported League rank options, in ladder order.
@@ -46,6 +47,11 @@
  * rendering this answer with that art would tell the visitor their self-report
  * had been converted into a Mogzy rank it has nothing to do with. The two
  * vocabularies must not be joined by accident, so this list stands alone.
+ *
+ * THIS LIST AND THE MIGRATION'S CHECK CONSTRAINT ARE ONE VOCABULARY. The ids
+ * below are exactly the values profiles.league_rank accepts; a value added here
+ * and not there is a write that fails at the database. academy-registration
+ * .schema.test.ts pins the two together.
  *
  * `unranked` and `unsure` are both first-class answers, not fallbacks: the
  * field is required, and "I don't know" is a real thing to know about someone.
@@ -87,20 +93,19 @@ export interface AcademyRegistration {
   username: string;
   /** Self-reported League rank. Required — but "unranked"/"unsure" are valid. */
   rank: LeagueRankId;
-  /**
-   * The visitor chose to set a password. The password ITSELF is never stored;
-   * this only records that one was asked for, so a later verification step can
-   * say "you already picked a password" rather than silently forgetting.
-   */
-  hasPassword: boolean;
-  /**
-   * They ticked the linking box. This is the whole of the verification INTENT
-   * that HI1-C5 is allowed to record: no provider is chosen, no request is
-   * made, nothing is promised. See resolveLinkDestination().
-   */
-  wantsLinking: boolean;
-  /** ISO timestamp. Diagnostic only — nothing branches on it. */
+  /** ISO timestamp of the answer. Also what is written to the profile. */
   at: string;
+  /**
+   * The auth user this record has already been written through to, or null
+   * while it is still only local.
+   *
+   * ADOPTION HAPPENS AT MOST ONCE, and this is how that is enforced. Set it and
+   * the bridge stops trying; leave it null and the next session tries again.
+   * Once-only is the conservative reading on purpose: a device is not a person,
+   * and a provisional name typed by whoever opened the browser first must not
+   * follow every account that later signs in on it.
+   */
+  adoptedBy?: string | null;
 }
 
 /** Follows the `mogsy.<domain>.v<n>` convention of every other local record. */
@@ -110,12 +115,6 @@ export const ACADEMY_REGISTRATION_STORAGE_KEY = "mogsy.academyRegistration.v1";
 export const USERNAME_MAX = 24;
 /** Shortest name worth calling someone by. */
 export const USERNAME_MIN = 2;
-/**
- * Shortest password accepted, matching /auth (Auth.tsx) exactly. A second,
- * stricter rule here would mean a password that registration accepts and the
- * real sign-up screen rejects, or the reverse.
- */
-export const PASSWORD_MIN = 6;
 
 /** Letters, digits, spaces and a few name-ish punctuation marks. */
 const USERNAME_ALLOWED = /^[\p{L}\p{N} ._'-]+$/u;
@@ -132,12 +131,12 @@ export interface UsernameCheck {
  * Validate and normalise a typed name.
  *
  * Normalisation is part of validation on purpose: the stored name is the one
- * that will be printed back at the visitor, so runs of whitespace are collapsed
- * and the ends are trimmed before anything is measured. Nothing here rejects a
- * name for being unusual — no reserved-word list, no profanity filter, no
- * uniqueness check. Uniqueness in particular is NOT enforceable from this
- * screen: there is no account and no server to ask, and pretending otherwise
- * would be exactly the fake backend this phase is not allowed to build.
+ * that will be printed back at the visitor AND written to profiles.display_name,
+ * so runs of whitespace are collapsed and the ends are trimmed before anything
+ * is measured. Nothing here rejects a name for being unusual — no reserved-word
+ * list, no profanity filter, no uniqueness check. Uniqueness in particular is
+ * NOT enforceable from this screen: a signed-out visitor has no account and no
+ * server to ask, and display_name carries no unique index.
  */
 export function validateUsername(raw: string): UsernameCheck {
   const value = raw.replace(/\s+/g, " ").trim();
@@ -152,15 +151,6 @@ export function validateUsername(raw: string): UsernameCheck {
     return { ok: false, error: "Letters, numbers, spaces and . _ ' - only." };
   }
   return { ok: true, value };
-}
-
-/** Validate the OPTIONAL password. An empty string is valid — it means "none". */
-export function validatePassword(raw: string): { ok: boolean; error?: string } {
-  if (!raw) return { ok: true };
-  if (raw.length < PASSWORD_MIN) {
-    return { ok: false, error: `A password needs at least ${PASSWORD_MIN} characters.` };
-  }
-  return { ok: true };
 }
 
 function readRaw(): string | null {
@@ -179,7 +169,8 @@ function readRaw(): string | null {
  * Same posture as readAcademyWelcomeState: absent, unparseable, non-object,
  * array, missing name, unrecognised rank — every one of them is null, because
  * the worst case of "null" is asking a name again and the worst case of
- * trusting a malformed record is addressing someone by garbage. Never throws.
+ * trusting a malformed record is writing garbage into someone's profile.
+ * Never throws.
  */
 export function readAcademyRegistration(): AcademyRegistration | null {
   const raw = readRaw();
@@ -193,7 +184,7 @@ export function readAcademyRegistration(): AcademyRegistration | null {
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
 
-  const { username, rank, hasPassword, wantsLinking, at } = parsed as Record<string, unknown>;
+  const { username, rank, at, adoptedBy } = parsed as Record<string, unknown>;
   if (typeof username !== "string") return null;
   const checked = validateUsername(username);
   if (!checked.ok || !checked.value) return null;
@@ -202,9 +193,8 @@ export function readAcademyRegistration(): AcademyRegistration | null {
   return {
     username: checked.value,
     rank,
-    hasPassword: hasPassword === true,
-    wantsLinking: wantsLinking === true,
     at: typeof at === "string" ? at : "",
+    adoptedBy: typeof adoptedBy === "string" && adoptedBy ? adoptedBy : null,
   };
 }
 
@@ -214,17 +204,24 @@ export function hasAcademyRegistration(): boolean {
 }
 
 /**
- * Record the registration. Last-write-wins, like the welcome outcome: replaying
- * the introduction and giving a different name means the newer answer is the
- * accurate one.
+ * Record the registration. Last-write-wins, like every other replayable record
+ * here: replaying the introduction and giving a different answer means the
+ * newer answer is the accurate one.
  *
- * Silent on failure. This is called from a submit handler that navigates
+ * A re-registration CLEARS `adoptedBy`, because a new answer has not been
+ * written through to anything yet. What that cannot do is overwrite an
+ * established profile — the adoption rules downstream are first-write-wins per
+ * field, so a replay by someone who already has a display name changes their
+ * local record and leaves their account alone.
+ *
+ * Silent on failure. This is called from a submit handler that turns a page
  * immediately afterwards, and a quota error thrown out of it would strand the
  * visitor on page two of an introduction.
  */
-export function saveAcademyRegistration(
-  input: Omit<AcademyRegistration, "at">,
-): AcademyRegistration | null {
+export function saveAcademyRegistration(input: {
+  username: string;
+  rank: LeagueRankId;
+}): AcademyRegistration | null {
   const checked = validateUsername(input.username);
   if (!checked.ok || !checked.value) return null;
   if (!isLeagueRankId(input.rank)) return null;
@@ -232,16 +229,34 @@ export function saveAcademyRegistration(
   const record: AcademyRegistration = {
     username: checked.value,
     rank: input.rank,
-    hasPassword: input.hasPassword === true,
-    wantsLinking: input.wantsLinking === true,
     at: new Date().toISOString(),
+    adoptedBy: null,
   };
+  writeRecord(record);
+  return record;
+}
+
+function writeRecord(record: AcademyRegistration): void {
   try {
     localStorage.setItem(ACADEMY_REGISTRATION_STORAGE_KEY, JSON.stringify(record));
   } catch {
     /* private mode or quota — the identity is still live for this session */
   }
-  return record;
+}
+
+/**
+ * Mark the local record as written through to `userId`.
+ *
+ * Called by the adoption path once it has either written the profile or
+ * established that it must not (an account that already has a name). Both are
+ * "this record is settled"; only a state that could still succeed later — no
+ * session, no profile row yet, a failed write — leaves it unmarked so the
+ * bridge tries again.
+ */
+export function markAcademyRegistrationAdopted(userId: string): void {
+  const record = readAcademyRegistration();
+  if (!record || !userId) return;
+  writeRecord({ ...record, adoptedBy: userId });
 }
 
 /** Forget the registration. Exposed for QA and tests, not wired to any UI. */
@@ -254,90 +269,23 @@ export function clearAcademyRegistration(): void {
 }
 
 /* -------------------------------------------------------------------------- */
-/* What the register's form is holding, before it is a record                  */
+/* The returning visitor's way out                                             */
 /* -------------------------------------------------------------------------- */
 
 /**
- * The four answers as the form holds them, mid-edit.
+ * Where the register's "Sign In" sends someone who already has an account.
  *
- * Distinct from AcademyRegistration on purpose, and the difference is exactly
- * the difference between "being filled in" and "filled in": the rank may still
- * be unchosen (`""`, which is not a LeagueRankId), the name is un-normalised,
- * and the PASSWORD IS PRESENT — this shape is never stored, and nothing may
- * serialise it. It lives here rather than beside the form so that a component
- * file exports only components.
- */
-export interface RegistrationValue {
-  username: string;
-  rank: LeagueRankId | "";
-  password: string;
-  wantsLinking: boolean;
-}
-
-export const EMPTY_REGISTRATION: RegistrationValue = {
-  username: "",
-  rank: "",
-  password: "",
-  wantsLinking: false,
-};
-
-/* -------------------------------------------------------------------------- */
-/* The password, in memory only                                                */
-/* -------------------------------------------------------------------------- */
-
-let pendingPassword: string | null = null;
-
-/**
- * Hold a just-typed password for the rest of this page session.
+ * THE EXISTING AUTH SCREEN, NOT A SECOND ONE. /auth already owns sign-in,
+ * confirmation resends, the forgotten-password path and the guest-upgrade
+ * panel; a login built into the introduction would be a second implementation
+ * of all of it, drifting from the first.
  *
- * MODULE MEMORY, DELIBERATELY. A reload loses it, another tab never sees it,
- * and nothing serialises it — which is the entire point. It exists so that the
- * Verify / Link Accounts step, when it ships, can set the password the visitor
- * already chose in the same sitting instead of asking twice; if they reload
- * first they are simply asked again, which is a correct outcome rather than a
- * bug. Nothing may make this durable without a real destination for it.
+ * `returnTo` is read by /auth through safeReturnPath(), which accepts only
+ * same-origin absolute paths — so this constant is both the destination and a
+ * value that machinery will actually honour. It is the HUB, deliberately: this
+ * person already knows Mogzy, and dropping them back into chapter three of an
+ * introduction after they have proved who they are would be absurd.
  */
-export function stashRegistrationPassword(password: string): void {
-  pendingPassword = password || null;
-}
-
-/** Take the held password, if any, and forget it. Single-use by design. */
-export function consumeRegistrationPassword(): string | null {
-  const held = pendingPassword;
-  pendingPassword = null;
-  return held;
-}
-
-/** Drop the held password without reading it. */
-export function clearRegistrationPassword(): void {
-  pendingPassword = null;
-}
-
-/* -------------------------------------------------------------------------- */
-/* The verification seam                                                       */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Where a visitor who asked to link an account should be sent, once such a
- * page exists.
- *
- * NULL TODAY, AND THAT IS THE IMPLEMENTATION. There is no Verify / Link
- * Accounts route in this app — App.tsx has /auth, /auth/callback and
- * /reset-password, and none of them is a "link Riot or Discord" surface. The
- * intent is recorded on the registration record; this function is the single
- * place that turns that intent into a destination, so shipping the page is a
- * one-line change here rather than a hunt through the introduction. Until then
- * the final exits behave exactly as they did before, which is the only
- * behaviour that can be honest about a page that does not exist.
- */
-export const ACADEMY_VERIFY_ROUTE: string | null = null;
-
-/**
- * The route to send this visitor to after the introduction, or null to use the
- * introduction's normal exit. Reads current storage rather than a cached value,
- * for the same reason resolveEntryDestination does.
- */
-export function resolveLinkDestination(): string | null {
-  if (!ACADEMY_VERIFY_ROUTE) return null;
-  return readAcademyRegistration()?.wantsLinking ? ACADEMY_VERIFY_ROUTE : null;
-}
+export const ACADEMY_SIGN_IN_ROUTE = `/auth?mode=signin&returnTo=${encodeURIComponent(
+  LEAGUE_HOME_ROUTE,
+)}`;

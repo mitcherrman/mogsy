@@ -1,28 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ChevronLeft, Compass, GraduationCap } from "lucide-react";
-import { toast } from "sonner";
 
 import SEOHead from "@/components/SEOHead";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
 import {
-  EMPTY_REGISTRATION,
+  ACADEMY_SIGN_IN_ROUTE,
   leagueRankLabel,
-  resolveLinkDestination,
+  readAcademyRegistration,
   saveAcademyRegistration,
-  stashRegistrationPassword,
-  type RegistrationValue,
 } from "@/lib/welcome/academy-registration";
-import { seedProfileDisplayName } from "@/lib/welcome/provisional-identity";
+import { adoptAcademyIdentity } from "@/lib/welcome/provisional-identity";
 import { useViewportTier } from "@/pages/dev/mogzy-entry-v2/useViewportTier";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 
 import AcademyTome from "./AcademyTome";
 import ChapterPlate, { type RegisterMirror } from "./ChapterPlate";
 import InkText, { InkPhrase, RevealSlot } from "./InkText";
-import RegistrationForm from "./RegistrationForm";
+import RegistrationForm, { type RegistrationValue } from "./RegistrationForm";
 import { ACADEMY_CHAPTERS, type AcademyChapter, type DocketEntry } from "./academyChapters";
 import {
   EYEBROW_WORD_PACE,
@@ -85,10 +82,22 @@ import { useTomeAudio } from "./tomeAudio";
  * place the dual-purpose control above is deliberately HALF disabled — a tap
  * still finishes the writing, but the tome will not turn past an unanswered
  * register, and the page's forward action is the form's own button instead.
- * That is not a trap: "Skip to the Academy" is on the rail on this page as on
- * every other, and Back still re-reads the arrival. Everything the register
- * collects is device-local and additive (see lib/welcome/academy-registration),
- * and no password is stored by anything on this route.
+ *
+ * AND IT IS A REAL GATE (HI1-C5B). Until the register is answered the rail
+ * carries no exit at all: "Skip to the Academy" does not exist yet, because an
+ * exit beside a required question is an invitation to answer it with a shrug.
+ * It appears the moment a registration exists — on this page, and on every page
+ * after it — so the introduction stops being mandatory the instant the one
+ * thing it needs has been given. The visitor is still never STUCK: Back
+ * re-reads the arrival, and Sign In below the form is a real way out for
+ * someone who is not a new user at all.
+ *
+ * WHAT THE REGISTER COLLECTS IS DURABLE USER DATA, NOT ONBOARDING STATE. The
+ * name becomes profiles.display_name and the rank becomes profiles.league_rank;
+ * this page writes the local half and asks for adoption, and the identity
+ * bridge in App.tsx finishes the job whenever an account appears. See
+ * lib/welcome/provisional-identity.ts for the first-write-wins rules that stop
+ * a replay from ever overwriting an established account.
  *
  * FIVE SPREADS, NOT SIX. Adding the register cost a beat, so Pro Data and
  * Archives — two spreads for one idea — became one, and the finale's exits
@@ -121,7 +130,19 @@ export default function AcademyWelcomePage() {
   // The register's live answers. Owned here rather than inside the form because
   // the facing page's card mirrors them, and because a visitor who steps Back
   // to re-read the arrival and returns must find what they had already typed.
-  const [registration, setRegistration] = useState<RegistrationValue>(EMPTY_REGISTRATION);
+  //
+  // SEEDED FROM THE STORED RECORD. /welcome is replayable forever, and someone
+  // replaying it has already answered this — presenting them an empty register
+  // and requiring them to type their own name again to get past a page they
+  // have seen before would be the introduction forgetting them.
+  const [registration, setRegistration] = useState<RegistrationValue>(() => {
+    const stored = readAcademyRegistration();
+    return stored ? { username: stored.username, rank: stored.rank } : { username: "", rank: "" };
+  });
+  // Whether this device has a registration AT ALL — the one thing the rail's
+  // exit is gated on. Initialised from storage so a replaying visitor is not
+  // re-gated, and raised (never lowered) the moment the register is answered.
+  const [registered, setRegistered] = useState(() => readAcademyRegistration() !== null);
   // Ref callback rather than `onLoad` alone: on a warm arrival the plate is
   // already decoded before React attaches a listener, `load` never fires, and
   // the fade-in below would leave it at zero for ever.
@@ -172,20 +193,9 @@ export default function AcademyWelcomePage() {
   const finish = useCallback(
     (outcome: "explored" | "tutorial") => {
       markAcademyWelcomeHandled(outcome);
-      // The verification seam. `resolveLinkDestination()` returns null today —
-      // there is no Verify / Link Accounts route in this app, and HI1-C5 is not
-      // allowed to invent one — so this reads exactly as it did before. When
-      // that page ships it becomes the destination for a visitor who ticked the
-      // linking box, and it takes over the job of continuing to the hub.
-      //
-      // Only the EXPLORE path defers to it. Somebody who chose a guided
-      // tutorial asked for the tutorial; diverting them into an account screen
-      // instead would be answering a different question than the one they
-      // pressed.
-      const linkTo = outcome === "explored" ? resolveLinkDestination() : null;
       // replace: once a choice is made the introduction is behind them — it
       // should not sit one Back press away from wherever they just landed.
-      navigate(linkTo ?? (outcome === "tutorial" ? RANKED_TUTORIAL_ROUTE : LEAGUE_HOME_ROUTE), {
+      navigate(outcome === "tutorial" ? RANKED_TUTORIAL_ROUTE : LEAGUE_HOME_ROUTE, {
         replace: true,
       });
     },
@@ -246,41 +256,55 @@ export default function AcademyWelcomePage() {
    * The register has been answered. Everything that happens to it happens here.
    *
    * ORDER MATTERS, AND SO DOES WHAT IS AWAITED. The record is written
-   * synchronously and cannot throw (see saveAcademyRegistration), so the
-   * identity is real before anything else is attempted. The profile seed is
-   * fire-and-forget on purpose: at /welcome there is usually no session at all,
-   * and on the occasions there is, a cold backend must not hold a page turn.
-   * The page therefore turns on the next line regardless of what the network
-   * does, which is the only behaviour a first impression can afford.
+   * synchronously and cannot throw (see saveAcademyRegistration), so the local
+   * identity is real before anything else is attempted. The adoption is
+   * fire-and-forget: at /welcome there is usually no session at all, and on the
+   * occasions there is, a cold backend must not hold a page turn. Whatever it
+   * does or does not manage, the identity bridge in App.tsx will finish the job
+   * the next time an account is present — so the page turns on the next line
+   * regardless, which is the only behaviour a first impression can afford.
    *
-   * THE TOAST IS A NOTIFICATION, NOT COPY. It is deliberately not printed under
-   * the password field, where it would read as a warning attached to leaving a
-   * field blank; it arrives after the visitor has committed, says the one true
-   * thing about what they just made, and goes away. Only for the no-password
-   * case, which is the case it is about.
+   * `setRegistered` is what opens the rail's exit. It is raised here rather
+   * than derived from storage on every render because storage can be blocked
+   * (private mode), and a visitor who answered the register must not be gated
+   * by a write they could not see fail.
    */
   const handleRegistered = useCallback(
-    (value: RegistrationValue & { rank: Exclude<RegistrationValue["rank"], ""> }) => {
+    (value: { username: string; rank: Exclude<RegistrationValue["rank"], ""> }) => {
       if (turning) return;
-      const hasPassword = Boolean(value.password);
-      saveAcademyRegistration({
-        username: value.username,
-        rank: value.rank,
-        hasPassword,
-        wantsLinking: value.wantsLinking,
-      });
-      // Memory only, for the life of this page — never storage, never a URL.
-      if (hasPassword) stashRegistrationPassword(value.password);
-      // Opportunistic and guarded; a no-op without a session or on a profile
-      // that already has a name. See lib/welcome/provisional-identity.ts.
-      void seedProfileDisplayName(value.username);
-      if (!hasPassword) {
-        toast("Account stays on this device until verified");
-      }
+      saveAcademyRegistration({ username: value.username, rank: value.rank });
+      setRegistered(true);
+      // Writes profiles.display_name / profiles.league_rank if and only if a
+      // session exists and those fields are not already the account's own. The
+      // catch is a floor under a function that already catches everything: a
+      // rejection escaping here would surface as an unhandled error on the
+      // first screen a new visitor ever sees.
+      void adoptAcademyIdentity().catch(() => undefined);
       turnPage();
     },
     [turning, turnPage],
   );
+
+  /**
+   * "Already have an account?" — the register's escape hatch.
+   *
+   * Hands off to the EXISTING auth screen rather than growing a second login:
+   * /auth already owns sign-in, the confirmation resend, the forgotten-password
+   * path and the guest-upgrade panel. `ACADEMY_SIGN_IN_ROUTE` carries
+   * `returnTo=/lol`, which /auth validates through safeReturnPath() and then
+   * navigates to on success — so a returning account holder lands in the hub
+   * and is never dropped back into chapters three to five of an introduction
+   * they do not need.
+   *
+   * The introduction is marked handled on the way out, for the same reason: the
+   * strongest possible signal that someone is not a new user is that they said
+   * so. Not `replace`, unlike the finale's exits — those are decisions, this is
+   * a detour, and Back should return to the book rather than past it.
+   */
+  const startSignIn = useCallback(() => {
+    markAcademyWelcomeHandled("signed-in");
+    navigate(ACADEMY_SIGN_IN_ROUTE);
+  }, [navigate]);
 
   /** What the facing page's register card is showing right now. */
   const registerMirror = useMemo<RegisterMirror>(
@@ -412,6 +436,7 @@ export default function AcademyWelcomePage() {
       chapter={chapter}
       step={step}
       headingId={`tome-chapter-${chapter.id}`}
+      onSignIn={startSignIn}
       terminal={
         chapter.registration ? (
           <RegistrationForm
@@ -461,6 +486,7 @@ export default function AcademyWelcomePage() {
       data-art={artRevealed ? "true" : "false"}
       data-turning={turning ? "true" : "false"}
       data-gate={formVisible ? "registration" : "none"}
+      data-registered={registered ? "true" : "false"}
       data-instant={instant ? "true" : "false"}
       data-ready={sceneReady ? "true" : "false"}
       className="academy-welcome relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#04070f]"
@@ -617,8 +643,17 @@ export default function AcademyWelcomePage() {
                 who already knows Mogzy should not have to sit through an
                 introduction, and should not have to interpret a bare "Skip".
                 It performs exactly what Start Exploring performs. It disappears
-                at the finale, where the two paths ARE the exit. */}
-            {!exitsVisible && (
+                at the finale, where the two paths ARE the exit.
+
+                AND IT DOES NOT EXIST BEFORE THE REGISTER IS ANSWERED (HI1-C5B).
+                An exit offered beside a required question is an invitation to
+                answer it with a shrug — and the two answers behind it are the
+                only reason the introduction asks for anything at all. Gated on
+                a registration EXISTING rather than on the chapter index, so a
+                returning visitor replaying the introduction keeps their exit on
+                page one: they have already given what it is being withheld
+                for. */}
+            {!exitsVisible && registered && (
               <button
                 type="button"
                 onClick={startExploring}
@@ -670,6 +705,7 @@ function ChapterWriting({
   ghost = false,
   headingId,
   terminal = null,
+  onSignIn,
 }: {
   chapter: AcademyChapter;
   step: number;
@@ -677,12 +713,19 @@ function ChapterWriting({
   headingId?: string;
   /** The finale's exits, or the register's form. Never rendered on a ghost. */
   terminal?: React.ReactNode;
+  /**
+   * The register's quiet way out for a returning visitor. A handler rather than
+   * a node, because the markup and the slot arithmetic that decides when it is
+   * live belong together — see the render below.
+   */
+  onSignIn?: () => void;
 }) {
   const lines = chapter.lines.map((line) => sentencesOf(line));
   const sentenceTotal = lines.reduce((n, ss) => n + ss.length, 0);
   const annotation = chapter.docket?.length || chapter.marginalia?.length;
   const annotationSlot = 1 + sentenceTotal;
   const terminalSlot = annotationSlot + (annotation ? 1 : 0);
+  const signInSlot = terminalSlot + (chapter.registration ? 1 : 0);
 
   let sentenceIndex = 0;
   return (
@@ -744,6 +787,40 @@ function ChapterWriting({
       {/* Conditionally mounted, unlike everything above — see the note on
           ghosts and the tab order at the top of this component. */}
       {!ghost && step > terminalSlot && terminal}
+
+      {/* The last thing on the last slot of the register, and the reason it is
+          a slot at all: a new visitor has read the register, filled it in and
+          seen its button before this line exists to be read. A returning
+          visitor scanning for it finds it exactly where an escape hatch belongs
+          — at the bottom, after the page's own business.
+
+          MOUNTED FROM THE START, REVEALED LAST. Unlike the terminal slot above
+          it, this one holds its space in the layout the whole time: the
+          register is a form someone is typing into, and a line appearing under
+          it would shove the field they are looking at. So the row is always in
+          flow and only its INK waits — which is exactly the contract every
+          other slot on the page already keeps.
+
+          The button is `disabled` until its slot opens, which is what stops a
+          transparent control from being a tab trap or a stray click target; the
+          conditional mount the exits use would not reserve the space, and
+          `aria-hidden` alone would not stop a keyboard reaching it. */}
+      {!ghost && chapter.registration && onSignIn && (
+        <RevealSlot revealed={step > signInSlot} className="w-full">
+          <p className="tome-signin" aria-hidden={step > signInSlot ? undefined : "true"}>
+            <span className="tome-signin-lead">Already have an account?</span>
+            <button
+              type="button"
+              onClick={onSignIn}
+              disabled={step <= signInSlot}
+              data-testid="academy-welcome-signin"
+              className="tome-signin-action"
+            >
+              Sign In
+            </button>
+          </p>
+        </RevealSlot>
+      )}
     </div>
   );
 }

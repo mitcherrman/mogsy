@@ -45,10 +45,20 @@ export const ACADEMY_WELCOME_ROUTE = "/welcome";
  * because collapsing them to a bare boolean would throw that away irreversibly.
  *
  * There is deliberately no "skipped" outcome: leaving early via Start Exploring
- * IS the skip, and inventing a third state would imply a distinction the UI
- * does not offer.
+ * IS the skip, and inventing a state would imply a distinction the UI does not
+ * offer.
+ *
+ * "signed-in" (HI1-C5B) is a genuinely different answer and therefore does get
+ * one. It means the visitor took the register's escape hatch — "I already have
+ * an account" — which is the strongest possible signal that this person is not
+ * a new user, and it must mean HANDLED: a returning account holder who has
+ * proved who they are may never be dropped back into a first-run introduction.
+ * It is recorded at the moment they leave for /auth rather than on a successful
+ * sign-in, because by then this route is unmounted and cannot record anything;
+ * the cost is that abandoning /auth also counts, which is the correct trade for
+ * someone who has just told us they are not new.
  */
-export type AcademyWelcomeOutcome = "explored" | "tutorial";
+export type AcademyWelcomeOutcome = "explored" | "tutorial" | "signed-in";
 
 export interface AcademyWelcomeState {
   outcome: AcademyWelcomeOutcome;
@@ -56,7 +66,7 @@ export interface AcademyWelcomeState {
   at: string;
 }
 
-const VALID_OUTCOMES: readonly string[] = ["explored", "tutorial"];
+const VALID_OUTCOMES: readonly string[] = ["explored", "tutorial", "signed-in"];
 
 function readRaw(): string | null {
   try {
