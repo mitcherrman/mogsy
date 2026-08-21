@@ -111,6 +111,22 @@ const HUB_MODULES: HubModuleFlags = {
 };
 
 /**
+ * Whether this build offers the /quiz/diagnostics link in Leaguecraft chrome.
+ *
+ * `/quiz/diagnostics` is developer tooling: the ads policy classifies it a
+ * `developer_route` and the admin registry lists it as an Internal route under
+ * Leaguecraft › Diagnostics, which is how an operator finds it. It was still
+ * being advertised to every desktop visitor from the Leaguecraft header, which
+ * is the one place it does not belong.
+ *
+ * The ROUTE, its gate and its admin-directory entry are all untouched — this
+ * only decides whether ordinary page chrome points at it. `import.meta.env.DEV`
+ * is statically `false` in any production `vite build`, so the link and its
+ * icon are dead-code eliminated there rather than merely hidden.
+ */
+const LOBBY_SHOWS_DIAGNOSTICS = import.meta.env.DEV === true;
+
+/**
  * Mogzy Academy classroom backdrop for the whole /quiz surface. The art is
  * warm and bright with a naturally quieter centre, so the overlays only add
  * a soft central veil for UI legibility plus top/bottom falloff behind the
@@ -892,51 +908,88 @@ export default function Quiz() {
 
       {/* LC1: the hub reclaims the strip the shell's header band used to be
           padded away from. The band itself (--app-header-h) still stands — the
-          floating HUD lives in it — but this page added a further 16px of its
-          own on top, which read as leftover navbar clearance and pushed the
-          lobby down the screen. On the hub the column starts one notch under
-          the band instead; every other phase keeps its original breathing
-          room, because only the hub has three tall columns to fit. */}
+          floating HUD lives in it, and it is deliberately left whole: it is the
+          lobby's breathing room, and at narrow widths the outer two scrolls run
+          straight under the HUD's own home and identity controls, so reaching
+          into it would collide rather than merely crowd.
+
+          What the hub reclaims is everything BELOW the band. With its header
+          row gone (see the block under this one) the only page-local cost left
+          is this padding, and 8px is the whole gap between the band and the
+          scroll caps — measured 96px → 64px at 1825×832. Every other phase
+          keeps its original pt-4, because only the hub has three tall columns
+          to fit and only the hub drops the header. */}
       <div
         className={`relative mx-auto px-4 pb-4 ${
-          phase === "sets" ? "max-w-[1500px] pt-1" : "max-w-3xl pt-4"
+          phase === "sets" ? "max-w-[1500px] pt-2" : "max-w-3xl pt-4"
         }`}
       >
-        {/* Compact Leaguecraft header. The shell's floating League Hub pill is
-            suppressed for /quiz (see Layout) so this inline control is the
-            single back affordance, exactly as Combat Lab does it. */}
-        <header className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 ${phase === "sets" ? "mb-2" : "mb-3"}`}>
-          <Link
-            to="/lol"
-            aria-label="Back to League hub"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-2.5 py-1 text-[11px] font-semibold text-[#c9a84c] backdrop-blur-md transition-colors hover:border-[#c9a84c] hover:bg-[#0a1428]"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            League Hub
-          </Link>
-          <BookOpen className="h-4 w-4 shrink-0 text-[#c9a84c]/80" aria-hidden="true" />
-          {/* LC1: the LEAGUECRAFT wordmark is the lobby's centre column on the
-              hub, so this strip carries only the tagline there and keeps its
-              own compact wordmark on every other phase — the page always has
-              exactly one h1, never two. */}
-          {phase !== "sets" && (
+        {/* Compact Leaguecraft header — every phase EXCEPT the lobby.
+
+            LC1 top-chrome pass: the lobby used to carry this row too, and it
+            cost the composition 36px (a 28px row plus its 8px margin) of the
+            most valuable vertical space on the page — the strip immediately
+            under the shell's HUD band, where the three parchment scroll caps
+            want to sit. Every control on it was either decorative or already
+            reachable, so on the hub the row is not rendered at all rather than
+            being shrunk:
+
+              League Hub   Redundant. LEAGUE_ONLY_MODE is on, which makes
+                           LEAGUE_HOME_ROUTE `/lol` and points the HUD's
+                           always-present top-left home control at exactly this
+                           destination (asserted in GlobalHud.test.tsx). The
+                           shell's own floating back pill was already retired in
+                           favour of that control — the comment that used to sit
+                           here, claiming the pill was merely "suppressed for
+                           /quiz", outlived the pill itself.
+              Tagline      Decorative only. Removed from the lobby; /lol still
+                           carries it as the Leaguecraft card's subtitle.
+              Tutorial     Demoted, NOT removed: it is the only UI entry to
+                           /quiz/tutorial, so it moves to the quiet utility line
+                           under the lobby (below the fold, out of the top
+                           chrome). The route and the tutorial gate are
+                           untouched.
+              Diagnostics  Developer tooling (`developer_route` in the ads
+                           policy, "Internal" in the admin registry) that was
+                           being shown to every desktop visitor. Now dev-builds
+                           only — see LOBBY_SHOWS_DIAGNOSTICS.
+
+            Other phases keep the row exactly as it was: they are single-column
+            reading views with room for it, and they need the wordmark and the
+            back control that the lobby gets from its own centre scroll and the
+            HUD. */}
+        {phase !== "sets" && (
+          <header className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <Link
+              to="/lol"
+              aria-label="Back to League hub"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#c9a84c]/40 bg-[#0a1428]/85 px-2.5 py-1 text-[11px] font-semibold text-[#c9a84c] backdrop-blur-md transition-colors hover:border-[#c9a84c] hover:bg-[#0a1428]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              League Hub
+            </Link>
+            <BookOpen className="h-4 w-4 shrink-0 text-[#c9a84c]/80" aria-hidden="true" />
+            {/* The page always has exactly one h1: the lobby's is the centre
+                scroll's LEAGUECRAFT wordmark, every other phase's is here. */}
             <h1 className="text-lg font-bold tracking-[0.18em] sm:text-xl">LEAGUECRAFT</h1>
-          )}
-          <p className="text-[11px] uppercase tracking-[0.26em] text-[#c9a84c]/60">
-            Study. Practice. Ascend.
-          </p>
-          <div className="ml-auto flex items-center gap-3">
-            {/* Permanent tutorial entry: available regardless of the automatic
-                popup and forced-tutorial policies. */}
-            <LeaguecraftTutorialLink />
-            <Button asChild variant="ghost" size="sm" className="hidden h-7 gap-1 text-xs md:inline-flex [@media(max-height:480px)]:!hidden">
-              <Link to="/quiz/diagnostics">
-                <Stethoscope className="h-3.5 w-3.5" />
-                Diagnostics
-              </Link>
-            </Button>
-          </div>
-        </header>
+            <p className="text-[11px] uppercase tracking-[0.26em] text-[#c9a84c]/60">
+              Study. Practice. Ascend.
+            </p>
+            <div className="ml-auto flex items-center gap-3">
+              {/* Permanent tutorial entry: available regardless of the automatic
+                  popup and forced-tutorial policies. */}
+              <LeaguecraftTutorialLink />
+              {LOBBY_SHOWS_DIAGNOSTICS && (
+                <Button asChild variant="ghost" size="sm" className="hidden h-7 gap-1 text-xs md:inline-flex [@media(max-height:480px)]:!hidden">
+                  <Link to="/quiz/diagnostics">
+                    <Stethoscope className="h-3.5 w-3.5" />
+                    Diagnostics
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </header>
+        )}
 
         {/* Ranked-first hub: a dominant Ranked hero, then one short secondary
             row (Recent Studies · Practice, with Mastery as a link inside it).
@@ -1132,6 +1185,32 @@ export default function Quiz() {
                 </CollapsibleContent>
               </Collapsible>
             )}
+
+            {/* The lobby's utility line. Everything the old top row carried
+                that is genuinely still needed lives here instead: below the
+                composition, after the page's real content in both DOM and tab
+                order, and costing the scroll caps nothing.
+
+                The tutorial entry is DEMOTED here, not deleted — this link is
+                the only UI path to /quiz/tutorial, and the platform-policy copy
+                in the admin tools promises the tutorial "stays available at
+                /quiz/tutorial" even with the popup off. Nothing about the
+                forced-tutorial gate is touched by moving where the link sits. */}
+            <div
+              data-testid="hub-utility-line"
+              className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 border-t border-[#c9a84c]/12 pt-2"
+            >
+              <LeaguecraftTutorialLink />
+              {LOBBY_SHOWS_DIAGNOSTICS && (
+                <Link
+                  to="/quiz/diagnostics"
+                  className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  <Stethoscope className="h-3.5 w-3.5" aria-hidden="true" />
+                  Diagnostics
+                </Link>
+              )}
+            </div>
           </>
         )}
 

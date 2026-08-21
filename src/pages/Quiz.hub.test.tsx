@@ -120,16 +120,53 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("Leaguecraft hub — header", () => {
-  it("is compact: back control, wordmark, and tagline on one row", async () => {
+describe("Leaguecraft hub — top chrome", () => {
+  // The lobby has NO utility/header row of its own. It used to, and the row
+  // cost the three parchment columns the strip directly under the shell's HUD
+  // band — the space the scroll caps want. Every control on it was decorative
+  // or reachable elsewhere, so the whole row is gone from this phase rather
+  // than shrunk. These assertions are the guard against it creeping back.
+  it("renders no header row above the lobby", async () => {
+    const { container } = await renderHub();
+    expect(container.querySelector("header")).toBeNull();
+  });
+
+  it("drops the decorative tagline from the lobby", async () => {
     await renderHub();
-    expect(screen.getByRole("heading", { name: "LEAGUECRAFT", level: 1 })).toBeTruthy();
-    expect(screen.getByText("Study. Practice. Ascend.")).toBeTruthy();
-    const back = screen.getByLabelText("Back to League hub");
-    expect(back.getAttribute("href")).toBe("/lol");
-    // The tutorial entry survives the redesign as a header utility, not a
-    // full-width promotion.
-    expect(screen.getByTestId("replay-tutorial-link").getAttribute("href")).toBe("/quiz/tutorial");
+    expect(screen.queryByText("Study. Practice. Ascend.")).toBeNull();
+  });
+
+  it("leaves the /lol escape to the shell's own home control, not a second inline pill", async () => {
+    // LEAGUE_ONLY_MODE points GlobalHud's always-present top-left home control
+    // at /lol (see GlobalHud.test.tsx), so an inline "League Hub" link here was
+    // a duplicate of it that cost a whole row of document flow.
+    await renderHub();
+    expect(screen.queryByLabelText("Back to League hub")).toBeNull();
+  });
+
+  it("keeps exactly one h1 — the centre scroll's wordmark", async () => {
+    const { container } = await renderHub();
+    const h1s = [...container.querySelectorAll("h1")];
+    expect(h1s.length).toBe(1);
+    expect(h1s[0].textContent).toContain("LEAGUECRAFT");
+  });
+
+  it("demotes the tutorial entry below the lobby without removing it", async () => {
+    // /quiz/tutorial has no other UI entry point, and the platform-policy copy
+    // promises it stays available, so this link may be MOVED but never deleted.
+    const { container } = await renderHub();
+    const link = screen.getByTestId("replay-tutorial-link");
+    expect(link.getAttribute("href")).toBe("/quiz/tutorial");
+
+    const utility = container.querySelector('[data-testid="hub-utility-line"]')!;
+    expect(utility).not.toBeNull();
+    expect(utility.contains(link)).toBe(true);
+
+    // Below the composition, in DOM (= tab) order.
+    const ranked = container.querySelector('[data-testid="hub-ranked-section"]')!;
+    expect(
+      ranked.compareDocumentPosition(utility) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 
@@ -151,31 +188,34 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(practice.querySelector('[data-testid="hub-mastery-link"]')).not.toBeNull();
   });
 
-  it("the Ranked hero keeps the compact progress stats + profile link", async () => {
+  it("the Ranked hero keeps the personal records ledger + profile link", async () => {
     const { container } = await renderHub();
     const hero = container.querySelector('[data-testid="ranked-hero"]')!;
-    const strip = hero.querySelector('[data-testid="hero-stat-strip"]')!;
+    // MALT: the four rounded stat tiles are now ruled ledger lines on the
+    // Academy sheet. Same real figures, parchment-native treatment.
+    const strip = hero.querySelector('[data-testid="hero-personal-records"]')!;
     expect(strip.textContent).toContain("Current streak");
     expect(strip.textContent).toContain("Best streak");
     expect(strip.textContent).toContain("71%"); // rounded accuracy
     expect(strip.textContent).not.toContain("71.2");
-    expect(strip.textContent).toContain("Answered");
+    expect(strip.textContent).toContain("Questions answered");
     expect(hero.querySelector('a[href="/profile"]')?.textContent).toMatch(/View full profile/);
   });
 
-  it("shows baseline placement wording (2 attempts → Placement 2/5)", async () => {
-    await renderHub();
-    expect(screen.getByRole("heading", { name: "Placement Series" })).toBeTruthy();
-    // The pre-placement state now names the ladder's FLOOR rather than
-    // exclusion from the ladder: Bronze is the lowest of the five tiers, so
-    // BRONZE is what an account without a standing is shown. It is still not
-    // a tier claim — the heading is the placement series, and the rating
-    // stays absent until placements finish (asserted just below).
-    expect(screen.getAllByText("Bronze").length).toBeGreaterThan(0);
+  it("shows placement as a compact state inside the Ranked block, not a screen", async () => {
+    const { container } = await renderHub();
+    // The pre-placement state names the ladder's FLOOR rather than exclusion
+    // from it: Bronze is the lowest of the five tiers. It is still not a tier
+    // CLAIM — the emblem carries `data-baseline`, and no rating is shown.
+    expect(screen.getByRole("heading", { name: "Bronze" })).toBeTruthy();
     expect(screen.queryByText("Unranked")).toBeNull();
-    expect(
-      screen.getByText("Complete your placement matches to establish your starting rank."),
-    ).toBeTruthy();
+    expect(screen.getByTestId("hub-ranked-placement").textContent).toContain("Placement 2 / 5");
+    expect(screen.queryByTestId("hub-ranked-rating")).toBeNull();
+    // MALT removed the permanent placement furniture: no "Placement Series"
+    // headline, no Bronze pill, no explanatory paragraph, and no popup.
+    expect(container.textContent).not.toContain("Placement Series");
+    expect(container.textContent).not.toContain("Complete your placement matches");
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
     expect(screen.getByRole("button", { name: /^Play$/ })).toBeTruthy();
   });
 

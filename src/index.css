@@ -3423,6 +3423,21 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: clamp(22px, 11cqw, 52px);
 }
 
+/* The left sheet's "CHOOSE YOUR ROLE" title.
+   Same problem as the wordmark and therefore the same solution, not a second
+   set of hand-tuned breakpoints: the column is a grid fraction of the viewport
+   AND the sheet is a fraction of the column, so a size chosen at a Tailwind
+   breakpoint is two steps removed from the width it actually has to fit. The
+   fixed steps this replaced overhung the parchment and ran out onto the roll
+   caps at 1825.
+   The glyph run of "CHOOSE YOUR ROLE" at this weight and tracking measures
+   ~12.4x the font size, so 7.2cqw lands it at ~89% of the sheet's usable
+   width at every viewport, with the clamp holding both ends. It cannot
+   overhang its own scroll at any width. */
+.lc-scroll-title {
+  font-size: clamp(13px, 7.2cqw, 24px);
+}
+
 /* ── Centre emphasis ─────────────────────────────────────────────────────
    Same shell, same family — only warmer, brighter and a notch further off
    the classroom wall. Deliberately NOT a different plate. */

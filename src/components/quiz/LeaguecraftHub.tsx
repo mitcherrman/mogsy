@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { BookOpen, ChevronRight, HelpCircle, RotateCcw, RotateCw, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import RankedLobbyHero from "@/components/quiz/RankedLobbyHero";
+import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
@@ -70,6 +70,7 @@ export default function LeaguecraftHub({
   displayName = null,
   avatarUrl = null,
   signedIn = false,
+  demoRoleMastery = null,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -91,6 +92,14 @@ export default function LeaguecraftHub({
   displayName?: string | null;
   avatarUrl?: string | null;
   signedIn?: boolean;
+  /**
+   * DEMO ONLY, and forwarded untouched. The product has no Role Mastery
+   * score; `/dev/lobby-preview` is the sole caller that passes one, so the
+   * mature-state summary band can be reviewed before the product can fill
+   * it. `Quiz.tsx` passes nothing and a real account therefore never sees a
+   * score. See `DemoRoleMastery` in `RankedLobbyHero`.
+   */
+  demoRoleMastery?: Partial<Record<RankedRole, DemoRoleMastery>> | null;
   onPlayRanked: () => void;
   sets: QuizSet[];
   setsLoading: boolean;
@@ -125,6 +134,7 @@ export default function LeaguecraftHub({
           displayName={displayName}
           avatarUrl={avatarUrl}
           signedIn={signedIn}
+          demoRoleMastery={demoRoleMastery}
         />
       </section>
 

@@ -96,6 +96,14 @@ const SURFACE = {
     /** The plinth under a portrait: a lit halo on dark. */
     plinth: (accent: string) =>
       `radial-gradient(60% 50% at 50% 78%, ${accent}38 0%, transparent 72%)`,
+    /** The SELECTED figure's plinth: the same halo, brought up. */
+    plinthCentre: (accent: string) =>
+      `radial-gradient(64% 54% at 50% 78%, ${accent}62 0%, ${accent}1c 45%, transparent 74%)`,
+    /** How an unselected figure is inked. On dark the slide's own opacity
+     *  already recedes it, so nothing further is drained. */
+    flankInk: "saturate(0.75)",
+    /** The letterpress under the selected name. */
+    press: "0 1px 0 rgba(0,0,0,0.45)",
     ring: (accent: string) =>
       `radial-gradient(50% 100% at 50% 50%, ${accent}66 0%, transparent 70%)`,
     offStageLabel: "rgba(233,220,190,0.7)",
@@ -114,7 +122,18 @@ const SURFACE = {
     /** On a light sheet the same slot does the opposite job: a soft warm
      *  shade, so the figure is seated on the parchment rather than lit above
      *  it. Without this the portraits float. */
-    plinth: () => "radial-gradient(58% 50% at 50% 82%, rgba(84,56,20,0.30) 0%, transparent 70%)",
+    plinth: () => "radial-gradient(58% 50% at 50% 82%, rgba(84,56,20,0.24) 0%, transparent 70%)",
+    /* The selected figure sits in a deeper, tighter shadow. This is the
+       parchment's version of "lit": a sheet cannot glow, so the chosen role
+       is the one the paper is darkest under — it reads as standing forward,
+       and it costs no contrast anywhere, because it is behind the art. */
+    plinthCentre: () =>
+      "radial-gradient(56% 52% at 50% 84%, rgba(74,48,16,0.52) 0%, rgba(84,56,20,0.20) 46%, transparent 72%)",
+    /* Unselected figures are drawn back a step in ink as well as in scale.
+       Restrained on purpose — enough that the eye lands on the centre first,
+       not so much that a neighbour looks broken or greyed-out. */
+    flankInk: "saturate(0.62) brightness(0.96)",
+    press: "0 1px 0 rgba(255, 249, 233, 0.5)",
     ring: () => "radial-gradient(50% 100% at 50% 50%, rgba(64,42,14,0.46) 0%, transparent 70%)",
     /* A pale neighbour that worked on navy disappears on beige — the flanks
        were landing near 1.4:1 once the slide's own opacity was counted, which
@@ -141,6 +160,17 @@ const SURFACE = {
   },
 } as const;
 
+/**
+ * How far back a neighbouring role stands.
+ *
+ * Named rather than inlined because TWO things have to agree on it: the
+ * slide's own `scale()`, and the counter-scale on that slide's NAME. The
+ * name must not shrink with the figure — see the label below — and the only
+ * way to keep it at its stated size inside a scaled box is to divide it back
+ * out by exactly this number.
+ */
+const FLANK_SCALE = 0.46;
+
 /** Signed ring distance from the selected slide, in -2..2. */
 function ringOffset(index: number, selected: number, length: number): number {
   const half = Math.floor(length / 2);
@@ -150,16 +180,29 @@ function ringOffset(index: number, selected: number, length: number): number {
 export default function RankedClassCarousel({
   value,
   onSelect,
+  onViewChange,
   disabled = false,
   busyRole = null,
   records = null,
   recordScopeLabel,
+  showRecord = true,
   surface = "dark",
   className = "",
 }: {
   /** The account's role, or null when it has never chosen / is unavailable. */
   value: RankedRole | null;
   onSelect: (role: RankedRole) => void;
+  /**
+   * The role currently STANDING ON STAGE, whether or not it has been
+   * selected. `onSelect` fires only when the host can persist a choice;
+   * this fires on every move, including the first paint and including a
+   * read-only stage, so a host rendering the browsed role's record beside
+   * the ring stays in step with what the reader is actually looking at.
+   *
+   * Never a write signal. Reporting where the ring is pointing is not the
+   * same as choosing, and a host must not persist from it.
+   */
+  onViewChange?: (role: RankedRole) => void;
   /** A write is in flight, or this deployment/account has no role identity.
    *  The stage still BROWSES — a player can always look at the five roles —
    *  but nothing is selected and no write is attempted. */
@@ -170,6 +213,18 @@ export default function RankedClassCarousel({
   /** Truthful scope for `records`, e.g. "last 20 ranked matches". Required
    *  whenever records are supplied so the tally is never read as all-time. */
   recordScopeLabel?: string;
+  /**
+   * Whether the stage draws its own record strip beneath the ring.
+   *
+   * MALT: the Leaguecraft lobby now owns a full Role Mastery Record ledger
+   * under this stage — games, win rate, rating movement and last played —
+   * which is the same tally at more depth. Two record strips one above the
+   * other would state the W-L twice and disagree about which is the summary,
+   * so the host turns this one OFF and renders the ledger instead. Every
+   * other caller keeps the strip: `true` is the default, and this prop
+   * changes nothing about selection, records, or the stage itself.
+   */
+  showRecord?: boolean;
   /** Which lobby surface the stage is mounted on. Colour only — no role, no
    *  ordering and no behaviour changes with it. */
   surface?: CarouselSurface;
@@ -196,6 +251,16 @@ export default function RankedClassCarousel({
     const i = RANKED_ROLES.indexOf(value);
     if (i >= 0) setViewIndex(i);
   }, [value]);
+
+  // Report where the ring is pointing, including on the first paint, so a
+  // host ledger beside the stage is never a frame behind it.
+  useEffect(() => {
+    onViewChange?.(RANKED_ROLES[viewIndex]);
+    // `onViewChange` is deliberately out of the dependency list: an inline
+    // arrow from the host is a new function every render, and depending on
+    // it would re-fire this on every unrelated re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewIndex]);
 
   // Focus moves only in response to a KEY press — never on mount, and never
   // when the host re-renders for an unrelated reason.
@@ -259,7 +324,7 @@ export default function RankedClassCarousel({
       <div
         role={selectable ? "radiogroup" : "group"}
         aria-label="Ranked role"
-        className="relative h-[244px] w-full overflow-hidden select-none sm:h-[288px] lg:h-[324px]"
+        className="relative h-[252px] w-full overflow-hidden select-none sm:h-[300px] lg:h-[340px]"
       >
         {RANKED_ROLES.map((roleId, index) => {
           const offset = ringOffset(index, viewIndex, length);
@@ -286,38 +351,106 @@ export default function RankedClassCarousel({
               onKeyDown={(e) => onKeyDown(e, index)}
               onClick={() => moveTo(index, false)}
               style={{
-                transform: `translate(-50%, 0) translateX(${offset * 62}%) scale(${
-                  isCentre ? 1 : 0.56
+                /* The flanks are taken down a step harder than before, because
+                   the centre figure is now much larger and the neighbours have
+                   to recede further to stay neighbours rather than becoming a
+                   crowd. `0.46` is where a flank reads as "the next role along"
+                   instead of "a second option of equal weight".
+                   The ring offset came DOWN when the scale did, which is not
+                   the obvious direction: a flank's NAME is counter-scaled back
+                   to full size (see the label), so it is far wider than the
+                   shrunken figure it sits under, and at the old 66% the longer
+                   role names ran off the stage and were clipped by its own
+                   overflow. 54% keeps the widest of them — SUPPORT — inside
+                   the sheet at every width. The centre still reads as the one
+                   in front: it holds `zIndex: 2` and twice the height. */
+                transform: `translate(-50%, 0) translateX(${offset * 54}%) scale(${
+                  isCentre ? 1 : FLANK_SCALE
                 })`,
+                /* Scale from the FOOT of the slide, not its middle. With the
+                   default centre origin a recessed neighbour shrank inward
+                   from both ends and ended up floating halfway up the stage,
+                   which read as three figures at three different distances
+                   from the camera. From the foot they all stand on the same
+                   ground line, which is what makes this a character-select
+                   stage rather than three portraits of different sizes. */
+                transformOrigin: "50% 100%",
                 opacity: onStage ? (isCentre ? 1 : skin.flankOpacity) : 0,
                 zIndex: isCentre ? 2 : 1,
                 transitionProperty: reducedMotion ? "opacity" : "transform, opacity",
               }}
-              className="absolute left-1/2 top-0 flex h-full w-[58%] flex-col items-center justify-end rounded-2xl px-1 pb-1 duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c] disabled:cursor-default motion-reduce:!transition-none"
+              /* `pb-7` reserves the name's line at the foot of the slide so the
+                 figure above it can take the WHOLE remaining height instead of
+                 a percentage of the stage. That is where the size came from:
+                 the art used to be capped at 80% of the stage and then had a
+                 ring and a label stacked under it in flow, which spent a fifth
+                 of the parchment on spacing. Both of those are positioned
+                 absolutely now, so the only thing between the figure and the
+                 stage's full height is the label's own line. */
+              className="absolute left-1/2 top-0 flex h-full w-[70%] flex-col items-center justify-end rounded-2xl px-1 pb-7 duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c] disabled:cursor-default motion-reduce:!transition-none"
             >
-              {/* Plinth glow — decorative, tinted by the role accent. */}
+              {/* Plinth — decorative, tinted by the role accent. The centre
+                  gets its own deeper one: on parchment a selection cannot be
+                  announced with light, so it is announced with WEIGHT, and a
+                  figure seated in a darker shadow reads as the one standing
+                  forward on the sheet. */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-2 bottom-6 top-2 rounded-[999px] blur-xl"
-                style={{ background: skin.plinth(accent) }}
+                className="pointer-events-none absolute inset-x-1 bottom-6 top-1 rounded-[999px] blur-xl"
+                style={{ background: isCentre ? skin.plinthCentre(accent) : skin.plinth(accent) }}
               />
               <img
                 src={getRankedRoleMascotPath(roleId)}
                 alt=""
                 aria-hidden="true"
                 draggable={false}
-                className="relative h-[80%] w-auto max-w-full object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.6)]"
+                /* The flanks are additionally drained of a little colour, so
+                   the selected role is the only fully-inked figure on the
+                   stage. Scale says "further away"; ink says "not chosen". */
+                className="relative h-full w-auto max-w-full object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.6)] motion-reduce:!transition-none"
+                style={{
+                  filter: isCentre ? undefined : skin.flankInk,
+                  transition: reducedMotion ? "none" : "filter 300ms ease-out",
+                }}
               />
-              {/* Ground ring under the portrait — reads as a character plinth. */}
+              {/* Ground ring under the figure — reads as a character plinth.
+                  Positioned, not in flow, so it costs the art no height. */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none relative -mt-2 h-2 w-[64%] rounded-[999px]"
-                style={{ background: skin.ring(accent) }}
+                className="pointer-events-none absolute bottom-[22px] h-2 rounded-[999px]"
+                style={{
+                  background: skin.ring(accent),
+                  width: isCentre ? "72%" : "60%",
+                }}
               />
-              {/* The NAME is the identity. Nothing above it may replace it. */}
+              {/* The NAME is the identity. Nothing above it may replace it —
+                  which is why the selected one is marked by SIZE and by a
+                  ruled underline rather than by colour alone. */}
               <span
-                className="relative mt-1 text-[13px] font-extrabold uppercase tracking-[0.26em]"
-                style={{ color: isCentre ? accent : skin.offStageLabel }}
+                className={`absolute bottom-0 whitespace-nowrap font-extrabold uppercase ${
+                  isCentre ? "text-[15px] tracking-[0.3em]" : "text-[10px] tracking-[0.1em]"
+                }`}
+                style={{
+                  color: isCentre ? accent : skin.offStageLabel,
+                  textShadow: isCentre ? skin.press : undefined,
+                  /* The name is counter-scaled out of the slide's own
+                     transform. A role must be identifiable by TEXT and never
+                     by its picture alone, and a label that inherits a 0.46
+                     shrink renders at about five pixels — which is not a
+                     label, it is a smudge. The figure recedes; the name it is
+                     labelled with does not. */
+                  transform: isCentre ? undefined : `scale(${1 / FLANK_SCALE})`,
+                  transformOrigin: isCentre ? undefined : "50% 100%",
+                  /* The selected role's name is underscored the way a
+                     manuscript marks an entry — the rule is drawn in the
+                     role's own ink and fades at both ends, so it reads as
+                     penned under the word rather than as a UI underline. */
+                  paddingBottom: isCentre ? 4 : undefined,
+                  borderBottom: isCentre ? `1.5px solid ${accent}` : undefined,
+                  borderImage: isCentre
+                    ? `linear-gradient(90deg, transparent 0%, ${accent} 22%, ${accent} 78%, transparent 100%) 1`
+                    : undefined,
+                }}
               >
                 {RANKED_ROLE_LABELS[roleId]}
               </span>
@@ -344,23 +477,34 @@ export default function RankedClassCarousel({
       {/* ── Position indicators ───────────────────────────────────────────
           Decorative only — the radiogroup above already carries the real
           selection semantics, so these are hidden from assistive tech
-          rather than duplicated as a second control. */}
-      <div aria-hidden="true" className="mt-2 flex items-center gap-1.5">
-        {RANKED_ROLES.map((roleId, index) => (
-          <span
-            key={roleId}
-            className="h-1.5 rounded-full transition-all duration-200 motion-reduce:transition-none"
-            style={{
-              width: index === viewIndex ? 18 : 6,
-              background: index === viewIndex ? activeAccent : skin.dot,
-            }}
-          />
-        ))}
+          rather than duplicated as a second control.
+
+          Ruled ticks with a lozenge on the active one, rather than five
+          rounded pills: a pill row is the one piece of stock app furniture
+          left on this sheet, and a marker set against ruled marks is how a
+          manuscript points at a place in a list. */}
+      <div aria-hidden="true" className="mt-2 flex items-center gap-2">
+        {RANKED_ROLES.map((roleId, index) => {
+          const active = index === viewIndex;
+          return (
+            <span
+              key={roleId}
+              className="transition-all duration-200 motion-reduce:transition-none"
+              style={{
+                width: active ? 7 : 5,
+                height: active ? 7 : 1.5,
+                transform: active ? "rotate(45deg)" : undefined,
+                background: active ? activeAccent : skin.dot,
+              }}
+            />
+          );
+        })}
       </div>
 
       {/* ── Selected role record ──────────────────────────────────────────
           Real rows only, with their scope stated. No zeroed placeholder and
           no win rate is shown for a role with nothing on record. */}
+      {showRecord && (
       <div
         className={`mt-2.5 w-full rounded-lg border px-3 py-2 text-center ${skin.record}`}
         data-testid="ranked-class-record"
@@ -385,6 +529,7 @@ export default function RankedClassCarousel({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

@@ -208,6 +208,11 @@ const RankedTutorialOnboardingPage = lazy(() => import("./pages/onboarding/Ranke
 // social-format captures contain no site chrome.
 const QuizRenderPage = lazy(() => import("./pages/dev/quiz-render/QuizRenderPage"));
 
+// MALT — the Leaguecraft lobby rendered from frozen demo state, so the three
+// parchment scrolls can be reviewed as an ESTABLISHED account reads them
+// rather than as an empty one. Inert: it fetches nothing and writes nothing.
+const LobbyPreviewPage = lazy(() => import("./pages/dev/lobby-preview/LobbyPreviewPage"));
+
 // Content Post Studio — local dev/admin tool driving the loopback studio
 // server (npm run content-studio). Inert without it; not linked anywhere.
 const ContentStudioPage = lazy(() => import("./pages/dev/content-studio/ContentStudioPage"));
@@ -528,6 +533,7 @@ const App = () => (
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
+                  <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
                   <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />
                   {/* The internal alias. Same element as the promoted route,

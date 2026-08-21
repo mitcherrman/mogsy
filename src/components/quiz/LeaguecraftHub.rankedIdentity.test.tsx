@@ -59,7 +59,9 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
 describe("LeaguecraftHub — Ranked identity (RE1 Phase 4B)", () => {
   it("shows the Ranked tier and rating from ranked_tier, not the quiz rank", () => {
     const { container } = renderHub();
-    expect(screen.getByRole("heading", { name: "Ranked Diamond" })).toBeTruthy();
+    // MALT: the tier heading is the tier NAME; "Ranked" is said once, by the
+    // subtitle under the wordmark.
+    expect(screen.getByRole("heading", { name: "Diamond" })).toBeTruthy();
     expect(screen.getByTestId("hub-ranked-rating").textContent).toContain("1320 Ranked rating");
     expect(screen.getByTestId("rank-progress").textContent).toContain("130 rating to Challenger");
     // The Academy ladder never reaches the competitive identity.
@@ -69,7 +71,10 @@ describe("LeaguecraftHub — Ranked identity (RE1 Phase 4B)", () => {
 
   it("stays usable and neutral when Ranked progression is unavailable", () => {
     const { container } = renderHub({ rankedProgression: null });
-    expect(screen.getByRole("heading", { name: "Unranked" })).toBeTruthy();
+    // MALT retired "Unranked": Bronze is the ladder's floor and the lowest
+    // Ranked identity, which is what the emblem was already drawing.
+    expect(screen.getByRole("heading", { name: "Bronze" })).toBeTruthy();
+    expect(container.textContent).not.toContain("Unranked");
     expect(screen.queryByTestId("hub-ranked-rating")).toBeNull();
     expect(container.textContent).not.toContain("Grandmaster");
     expect(screen.getByRole("button", { name: /^Play$/ })).toBeTruthy();
@@ -85,6 +90,7 @@ describe("LeaguecraftHub — Ranked identity (RE1 Phase 4B)", () => {
     expect(ranked.compareDocumentPosition(recent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(recent.compareDocumentPosition(practice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(ranked.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
-    expect(screen.getByTestId("hero-stat-strip")).toBeTruthy();
+    // MALT: the four rounded stat tiles became the Academy sheet's ledger.
+    expect(screen.getByTestId("hero-personal-records")).toBeTruthy();
   });
 });

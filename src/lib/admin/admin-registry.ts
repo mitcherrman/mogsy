@@ -891,6 +891,24 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization: "Refuses outside DEV builds — unchanged.",
     notes: "Cross-linked from Ranked; a test asserts it imports no engine or service module.",
   },
+  {
+    id: "leaguecraft-lobby-preview",
+    title: "Leaguecraft Lobby Preview",
+    description:
+      "The /quiz lobby rendered from frozen demo state, for reviewing the three-parchment layout as an established account reads it.",
+    area: "developer",
+    section: "prototypes",
+    kind: "route",
+    path: "/dev/lobby-preview",
+    newTab: true,
+    oldLocation: "/dev/lobby-preview — new, unlisted everywhere",
+    disposition: "DEVELOPER-ONLY",
+    legacyRoutes: ["/dev/lobby-preview"],
+    dangerLevel: "none",
+    status: "Internal",
+    authorization: "UNCHANGED — no route gate; renders frozen constants and performs no fetch or write.",
+    notes: "Demo-only. Its fixtures are imported by this page alone, so no production surface can reach them.",
+  },
 
   // =========================================================================
   // SIMULATION

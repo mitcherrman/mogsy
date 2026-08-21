@@ -1,20 +1,43 @@
 /**
- * LC1 — the Ranked lobby hero at /quiz.
+ * LC1 / MALT — the Ranked lobby hero at /quiz.
  *
- * Replaces the single centred Ranked card with a three-column character-select
- * composition, read left → centre → right:
+ * Three parchment scrolls, and — since the MALT information-architecture pass
+ * — three SINGLE responsibilities, one per scroll. The whole point of the
+ * restructure is that a reader can name what each sheet is for at a glance:
  *
- *   LEFT   Role carousel. The five canonical League roles as an RPG selector,
- *          with the selected role's real record beneath it.
- *   CENTRE The page's focal point: the LEAGUECRAFT wordmark, the RANKED
- *          subtitle, the Ranked emblem, the rating, and the one PLAY gem.
- *   RIGHT  Personal identity: the player's own portrait mirroring the left
- *          one, their Academy crown, their name, compact stats, and their
- *          real recent Ranked results.
+ *   LEFT    ROLE.    "What am I playing, and how strong am I at it?"
+ *                    The five-role stage, and the selected role's own MASTERY
+ *                    RECORD — games, win rate, rating movement, last played —
+ *                    counted from the account's real match rows.
+ *   CENTRE  RANKED.  "Where do I stand, and what just happened?"
+ *                    The LEAGUECRAFT wordmark, the Ranked emblem, the tier and
+ *                    its progression, the one PLAY seal, and beneath it the
+ *                    RECENT RANKED ledger.
+ *   RIGHT   ACADEMY. "Who am I overall, and what are my long-term records?"
+ *                    The player's portrait and Academy standing, and their
+ *                    lifetime personal records.
  *
- * The two flanking portraits are deliberately the same height and face
- * inward, so the centre column keeps the strongest silhouette on the page and
- * the classroom art stays visible around all three.
+ * WHAT MOVED, AND WHY
+ * ───────────────────
+ * Recent Ranked history was on the RIGHT. It is Ranked, and the right sheet is
+ * the Academy sheet, so it moved under PLAY where the rest of the competitive
+ * identity already lives — a result ledger belongs beside the thing that
+ * produced it. The right sheet's Ranked standing chip went with it: two sheets
+ * naming the same ladder was the exact confusion this pass exists to end.
+ *
+ * PLACEMENTS ARE A STATE, NOT A SCREEN
+ * ────────────────────────────────────
+ * The centre used to be BUILT around placements: a "Placement Series"
+ * headline, a Bronze pill, a boxed counter and an explanatory paragraph, all
+ * permanent furniture for a condition that lasts five matches. The permanent
+ * design is now the POST-placement steady state — tier, rating, progression —
+ * and placements are one compact line inside that same block. Nothing about
+ * placement HONESTY changed: until placements are complete the account still
+ * has no tier and no rating is shown, and the emblem is still the ladder's
+ * Bronze floor rather than an award. See `BASELINE_TIER`.
+ *
+ * There is no placement modal, popup or dialog on this surface and there was
+ * never one to remove — placement status is, and stays, inline.
  *
  * PRESENTATION ONLY — the RE1 boundary
  * ────────────────────────────────────
@@ -23,43 +46,28 @@
  * own figures and the host's own callbacks. The competitive identity in the
  * centre is the account's MOGZY RANKED standing (`rankedProgression`), and
  * the legacy Academy/quiz ladder is deliberately unreachable from it — the
- * Academy crown on the right is labelled as Academy and never as Ranked, so
- * the two tracks cannot read as one.
- *
- * Placement honesty is unchanged from the card this replaces: until placements
- * are complete the player has NO TIER — the placement series, never a
- * provisional tier, even when a rating already exists. What that state now
- * SHOWS is the ladder's own floor: the Bronze emblem, held a little back,
- * labelled simply BRONZE, rather than the off-ladder `unranked` emblem it
- * used to render. See `BASELINE_TIER` — "baseline" is the INTERNAL name for
- * this state and never reaches the page, because the heading above the emblem
- * already reads "Placement Series" and the line under it already reads
- * "Rating set after placements". The emblem is art for "the bottom of the
- * ladder", never a tier the account has been awarded, and both flanking
- * columns read it from the same one gate.
+ * Academy standing on the right is labelled as Academy and never as Ranked,
+ * so the two tracks cannot read as one.
  *
  * DATA HONESTY
  * ────────────
- * Nothing on this surface is mocked. The role record and the recent-results
- * list are the account's real match rows; when there are none, each says so.
- * There is no per-role rating and no personalized mascot art in the product
- * today, so neither is invented here.
+ * Nothing on this surface is mocked. The role mastery ledger and the recent
+ * results are the account's real match rows; the personal records are the
+ * account's real progress figures; when a figure does not exist the row shows
+ * an em dash and never a zero standing in for one.
+ *
+ * What the product does NOT expose, and which is therefore ABSENT here rather
+ * than invented: per-role accuracy, per-role rating, per-role study-category
+ * strength or weakness, and lifetime Ranked wins/losses (the history endpoint
+ * serves a window, not a career).
  */
 
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  Flame,
-  History,
-  Shield,
-  Target,
-  TrendingDown,
-  TrendingUp,
-  Trophy,
-} from "lucide-react";
+import { useState } from "react";
+import { History, Shield, TrendingDown, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import RankCrown from "@/components/ranked/RankCrown";
 import RankEmblem from "@/components/ranked/RankEmblem";
 import RankedClassCarousel from "@/components/quiz/RankedClassCarousel";
@@ -71,9 +79,13 @@ import type { RankedState } from "@/lib/quiz/featured-mock";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 import { rankedTierLabel } from "@/lib/progression/rankedArt";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
-import { academyTierLabel } from "@/lib/progression/academy";
+import { academyTierLabel, parseAcademyProgression } from "@/lib/progression/academy";
 import type { RankedProgressionView, MatchHistoryEntryView } from "@/lib/ranked-public/contracts";
-import { tallyRoleRecords, roleRecordScopeLabel } from "@/lib/ranked-public/roleRecords";
+import {
+  matchAgeLabel,
+  tallyRoleMastery,
+  type RoleMastery,
+} from "@/lib/ranked-public/roleRecords";
 
 const PLACEMENT_TOTAL = 5;
 
@@ -169,6 +181,36 @@ const OUTCOME_STYLE: Record<MatchHistoryEntryView["viewerOutcome"], { label: str
   draw: { label: "Draw", className: "text-[#4e3a24]" },
 };
 
+/** How many recent Ranked rows the centre ledger shows. Four fits the sheet
+ *  at every width the lobby supports without pushing the seal off the fold. */
+const RECENT_LEDGER_ROWS = 4;
+
+/**
+ * A Role Mastery score — WHICH THE PRODUCT DOES NOT HAVE.
+ *
+ * There is no mastery score, mastery tier or per-role rating anywhere in
+ * Mogzy today. "Mastery" in this codebase means the champion Mastery
+ * Journeys at `/quiz/mastery`, which are a study feature and have nothing to
+ * do with roles. Nothing computes one, no endpoint returns one, and this file
+ * deliberately does not derive one.
+ *
+ * So this type exists for exactly one caller: the `/dev/lobby-preview` demo,
+ * which supplies representative values so the mature-state summary band can
+ * be judged before the product can fill it. `Quiz.tsx` — the real lobby —
+ * passes nothing, which is asserted in the tests, and a real account
+ * therefore never sees a score. It sees the neutral summary instead: its own
+ * real recent win rate, labelled as recent.
+ *
+ * If a genuine mastery score is ever built, it arrives HERE, from the
+ * backend, through the same prop — and the demo stops being the only source.
+ */
+export interface DemoRoleMastery {
+  /** The figure shown large in the summary band. */
+  score: number;
+  /** The word beneath it — a mastery tier name, not a rank. */
+  label: string;
+}
+
 export default function RankedLobbyHero({
   progress,
   ranked,
@@ -184,6 +226,7 @@ export default function RankedLobbyHero({
   displayName = null,
   avatarUrl = null,
   signedIn = false,
+  demoRoleMastery = null,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -201,16 +244,21 @@ export default function RankedLobbyHero({
   displayName?: string | null;
   avatarUrl?: string | null;
   signedIn?: boolean;
+  /**
+   * DEMO ONLY — see `DemoRoleMastery`. The product has no mastery score, and
+   * the real lobby passes nothing here; only `/dev/lobby-preview` does, so
+   * the mature-state band can be reviewed. Never fetched, never derived,
+   * never persisted.
+   */
+  demoRoleMastery?: Partial<Record<RankedRole, DemoRoleMastery>> | null;
 }) {
   // ── Competitive identity (RE1-owned values, rendered as given) ──────────
   const tier = rankedProgression?.tier ?? null;
   const tierLabel = tier === null ? null : rankedTierLabel(tier);
   const showCompetitive = ranked.isPlaced && rankedProgression !== null && tier !== null;
-  const rankName = showCompetitive ? `Ranked ${tierLabel}` : "Unranked";
   // The emblem the columns render, as a tier and a state — the art path,
   // the halo, the baseline treatment and the fallback all belong to
-  // `RankEmblem` now, and both columns get them from the one component
-  // rather than from two hand-rolled copies that had already drifted apart.
+  // `RankEmblem` now.
   const emblemTier: RankTier = showCompetitive ? tier! : BASELINE_TIER;
   // Last resort only, and only for the baseline: the legacy off-ladder file,
   // reached solely if the Bronze emblem itself fails to load.
@@ -228,15 +276,23 @@ export default function RankedLobbyHero({
     Number.isNaN(Number(progress.accuracy))
       ? null
       : Math.round(Number(progress.accuracy));
+  const totalXp = finiteOrNull(progress?.total_xp ?? progress?.xp);
 
-  // Academy standing — the personal study track, named as such. Null for a
-  // backend without it or a token outside the five-tier vocabulary.
+  // Academy standing — the personal study track, named as such. The crown
+  // still reads the bare tier token (so a backend that sends only that keeps
+  // its crown), while the ledger's XP interval needs the whole coherent
+  // block and renders nothing without it.
   const academyTier = parseRankTier(progress?.academy_tier);
+  const academy = parseAcademyProgression(progress);
 
-  // Per-role record, counted from the same real rows the list below renders.
-  const roleRecords = tallyRoleRecords(matchHistory);
-  const rowsWithRole = matchHistory.filter((e) => e.viewerRole !== null).length;
-  const recentMatches = matchHistory.slice(0, 3);
+  // ── Role mastery, derived from the same real rows the centre lists ─────
+  const roleMastery = tallyRoleMastery(matchHistory);
+  // The role the STAGE is pointing at, which is not necessarily the account's
+  // saved role: a reader spinning the ring expects the ledger under it to
+  // follow their eye. Seeded from the saved role, then owned by the stage.
+  const [browsedRole, setBrowsedRole] = useState<RankedRole>(rankedRole ?? "top");
+
+  const recentMatches = matchHistory.slice(0, RECENT_LEDGER_ROWS);
 
   const portrait = avatarUrl || MOGZY_MASCOT_ASSETS.base;
 
@@ -245,27 +301,40 @@ export default function RankedLobbyHero({
       data-testid="ranked-hero"
       className="relative grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.05fr)_minmax(0,0.9fr)] lg:gap-4 xl:gap-6"
     >
-      {/* ══ LEFT — role character select ═══════════════════════════════════ */}
+      {/* ══ LEFT — ROLE: the choice, and the record for it ═════════════════ */}
       <div className="order-2 flex min-w-0 flex-col lg:order-1" data-testid="hero-role-column">
         <LobbyPanel variant="scroll" order="left">
-        <ColumnHeading>Choose your role</ColumnHeading>
-        {/* The role stage is the shortest of the three columns, so on the
-            desktop rack (where all three plates share one height) it centres
-            in its plate rather than leaving a tall empty foot below it. */}
+        {/* The lobby's one genuine pre-match DECISION. `ceremonial` gives it
+            display size and — deliberately — no rule at all, so it reads as
+            the title OF the selection below it rather than as a caption with
+            a widget underneath. See `ColumnHeading`. */}
+        <ColumnHeading ceremonial>Choose your role</ColumnHeading>
         <RankedClassCarousel
-          className="mt-1.5 lg:my-auto"
+          /* Sits directly under the title with no divider between them: the
+             two are one composed thing, and any gap here re-creates exactly
+             the separation the title was enlarged to break. */
+          className="mt-0.5"
           value={rankedRole}
           onSelect={(role) => onSelectRole?.(role)}
+          onViewChange={setBrowsedRole}
           disabled={roleSelectDisabled || !onSelectRole}
           busyRole={roleSaving}
-          records={rowsWithRole > 0 ? roleRecords : null}
-          recordScopeLabel={rowsWithRole > 0 ? roleRecordScopeLabel(rowsWithRole) : undefined}
+          /* The stage's own strip is off: the ledger below is the same tally
+             at more depth, and two records stacked would state the W-L twice
+             and disagree about which one is the summary. */
+          showRecord={false}
           surface="parchment"
+        />
+        <RoleMasteryLedger
+          role={browsedRole}
+          mastery={roleMastery[browsedRole] ?? null}
+          demoScore={demoRoleMastery?.[browsedRole] ?? null}
+          loading={matchHistoryLoading}
         />
         </LobbyPanel>
       </div>
 
-      {/* ══ CENTRE — the focal column ══════════════════════════════════════ */}
+      {/* ══ CENTRE — RANKED: standing, the action, and what just happened ══ */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -274,20 +343,10 @@ export default function RankedLobbyHero({
         data-testid="hero-play-column"
       >
         <LobbyPanel variant="scroll" order="centre" emphasis className="items-center text-center">
-        {/* Its gradient stops were lifted again when the sheet darkened: the
-            lightest one had fallen to 2.30:1, under even the 3.0 floor that
-            large display type gets.
-
-            The wordmark is sized against the SCROLL, not against the viewport
-            — `.lc-scroll-wordmark` measures it in container units, so it can
-            never overhang its own sheet at any width. The breakpoint steps it
-            used to carry were tuned to a full-width panel and overhung the
-            parchment at 1280.
-
-            It was also a pale gold gradient built to glow on navy; on
-            parchment it read as a smudge. Same metal, taken down into the
-            pigment range — a struck-brass look on the sheet rather than a lit
-            one over it. The highlight is a light top edge, not a halo. */}
+        {/* The wordmark is sized against the SCROLL, not the viewport —
+            `.lc-scroll-wordmark` measures it in container units, so it can
+            never overhang its own sheet at any width. Struck brass on the
+            sheet rather than a gold glow over it. */}
         <h1
           className="lc-scroll-wordmark bg-gradient-to-b from-[#8a6414] via-[#63450c] to-[#3f2b05] bg-clip-text font-black leading-none tracking-[0.14em]"
           style={{
@@ -310,28 +369,17 @@ export default function RankedLobbyHero({
         </p>
 
         {/* The Ranked emblem. One component owns the art, the halo, the
-            baseline treatment, the glint and the fallback — see
-            `RankEmblem.tsx`. This column states only WHICH tier and WHETHER
-            it has been earned, which are the two things it is the authority
-            on. `showCompetitive` is that authority in one flag: a tier
-            exists AND placements are done. */}
+            baseline treatment, the glint and the fallback. This column states
+            only WHICH tier and WHETHER it has been earned. */}
         <RankEmblem
           className="mt-2"
-          /* The sheet's focal emblem, and the ONE ceremonial instance on the
-             page — including through placements. `variant` is its size and
-             `emphasis` is its light, and they are separate props precisely so
-             this call can say "the biggest AND the brightest" without making
-             every hero-size emblem elsewhere ceremonial too. `ceremonial` is
-             already `hero`'s default; it is written out because it is a
-             deliberate choice here rather than an inherited one. */
           variant="hero"
           emphasis="ceremonial"
           tier={emblemTier}
           earned={showCompetitive}
-          /* The alt deliberately says MORE than the badge does. The badge
-             reads only "Bronze" because "Placement Series" is directly above
-             it in the layout; a screen-reader user reaching this image has no
-             such adjacency, so the state is stated here. */
+          /* The alt deliberately says MORE than the heading does: a screen
+             reader arriving at this image has no layout adjacency to read the
+             placement line from, so the state is stated here. */
           alt={
             showCompetitive
               ? `${tierLabel} ranked emblem`
@@ -341,66 +389,96 @@ export default function RankedLobbyHero({
           fallback={<Shield className="h-12 w-12 text-[#f0d78c]" />}
         />
 
+        {/* ── Ranked status ────────────────────────────────────────────────
+            One block, in two states. The PERMANENT design is the placed one —
+            tier, rating, progression — and placements are a temporary line
+            inside it rather than a screen of their own. The heading is always
+            the tier NAME (the ladder's Bronze floor while unplaced), never a
+            system label like "Placement Series". */}
         <h2
-          className="mt-1 text-xl font-extrabold tracking-tight sm:text-2xl"
+          data-testid="hub-ranked-tier"
+          className="mt-1 text-xl font-extrabold uppercase tracking-[0.12em] sm:text-2xl"
           style={{ color: INK.strong, textShadow: INK.press }}
         >
-          {ranked.isPlaced ? rankName : "Placement Series"}
+          {showCompetitive ? tierLabel : rankedTierLabel(BASELINE_TIER)}
         </h2>
 
-        {/* The numeric Ranked rating, directly under the tier it belongs to. */}
-        {showCompetitive ? (
-          <p
-            data-testid="hub-ranked-rating"
-            className="text-[13px] font-bold tabular-nums"
-            style={{ color: INK.body }}
-          >
-            {rankedProgression!.rating} Ranked rating
-          </p>
-        ) : (
-          /* No competitive standing to show. The slot keeps its height so the
-             gem does not jump when a rating arrives — and stays empty of any
-             number, because a guessed rating is worse than none. */
-          <p
-            /* `min-h`, not `h`. The deeper manuscript inset narrows the
-               centre column enough that this line wraps to two at some
-               widths, and a hard 18px height let the badge below it sit on
-               top of the second line. The slot still RESERVES its height so
-               the seal does not jump when a rating arrives; it just no longer
-               caps it. */
-            className="min-h-[18px] text-[12px] font-medium leading-tight"
-            style={{ color: INK.body }}
-            data-testid="hub-ranked-rating-absent"
-          >
-            {ranked.isPlaced ? "" : "Rating set after placements"}
-          </p>
-        )}
-
-        {!ranked.isPlaced && (
-          /* Names the state as the ladder's FLOOR rather than as exclusion
-             from it. It says only BRONZE: "baseline" is our internal word for
-             this state, and the page has already said "Placement Series" and
-             "Rating set after placements" directly above, so the reader
-             already knows nothing has been earned yet. Spending a second word
-             on it made the badge read like a system label instead of a rank.
-             The internal semantics are unchanged and still checkable — see
-             `data-baseline` on the emblem and `BASELINE_TIER` above. */
-          <Badge
-            variant="outline"
-            data-testid="hub-ranked-baseline"
-            className="mt-1.5 border-[#533808]/60 bg-[#533808]/16 text-[10px] font-extrabold uppercase tracking-wider text-[#4a3207]"
-          >
-            {rankedTierLabel(BASELINE_TIER)}
-          </Badge>
-        )}
+        <div className="mt-0.5 w-full max-w-[17rem]">
+          {showCompetitive ? (
+            <>
+              <p
+                data-testid="hub-ranked-rating"
+                className="text-[13px] font-bold tabular-nums"
+                style={{ color: INK.body }}
+              >
+                {rankedProgression!.rating} Ranked rating
+              </p>
+              <div data-testid="rank-progress" className="mt-1">
+                <Progress
+                  value={rankedProgression!.progressPercent}
+                  className="h-1.5 bg-[#60441c38] [&>*]:bg-[#5e420a]"
+                />
+                <div
+                  className="mt-0.5 text-[11px] font-semibold tabular-nums"
+                  style={{ color: INK.body }}
+                >
+                  {atMaxTier
+                    ? "Challenger — the highest Ranked tier."
+                    : `${rankedProgression!.ratingToNext} rating to ${rankedTierLabel(
+                        rankedProgression!.nextTier!,
+                      )}`}
+                </div>
+              </div>
+            </>
+          ) : !ranked.isPlaced ? (
+            /* PLACEMENTS — deliberately the smaller state. Two short lines
+               and the same bar the placed state uses, and no rating: a
+               guessed one is worse than none. The old boxed panel, its Bronze
+               pill and its explanatory paragraph are gone; what they said is
+               said by "Placement 0 / 5" and by the emblem being the floor. */
+            <div data-testid="hub-ranked-placement">
+              <p
+                data-testid="hub-ranked-rating-absent"
+                className="text-[12px] font-bold tabular-nums"
+                style={{ color: INK.body }}
+              >
+                Placement {placementDone} / {PLACEMENT_TOTAL}
+              </p>
+              <Progress
+                value={(placementDone / PLACEMENT_TOTAL) * 100}
+                className="mt-1 h-1.5 bg-[#60441c38] [&>*]:bg-[#5e420a]"
+              />
+              <p
+                className="mt-0.5 text-[11px] font-semibold leading-tight"
+                style={{ color: INK.faint }}
+              >
+                {ranked.placementMatchesRemaining}{" "}
+                {ranked.placementMatchesRemaining === 1 ? "match" : "matches"} remaining · rating
+                set after placements
+              </p>
+            </div>
+          ) : (
+            /* PLACED, but the progression endpoint gave us nothing — a guest,
+               an older backend, a rate limit. NOT a placement state: showing
+               a placement counter here would claim the account is mid-series
+               when the truth is that we could not read its standing. The
+               emblem stays the unearned Bronze floor and no rating appears. */
+            <p
+              data-testid="hub-ranked-standing-absent"
+              className="text-[11.5px] font-semibold leading-tight"
+              style={{ color: INK.faint }}
+            >
+              No Ranked standing on record yet.
+            </p>
+          )}
+        </div>
 
         <RankedPlayGem className="mt-3" onClick={onPlayRanked} disabled={playDisabled} />
 
-        {/* Stakes, directly under the action they belong to. */}
-        {/* Wraps and carries a tighter gap: stacked at 768 the sheet's own
-            margin leaves ~206px of writing area, and the fixed `gap-4` row
-            was 1.3px wider than that at both ends. */}
-        <div className="mt-3.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-wider">
+        {/* Stakes, directly under the action they belong to. Wraps and carries
+            a tighter gap: stacked at 768 the sheet's own margin leaves ~206px
+            of writing area, and a fixed `gap-4` row overran it at both ends. */}
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-wider">
           <span className="flex items-center gap-1 text-[#0d3f28]">
             <TrendingUp className="h-3 w-3" />
             Win
@@ -419,70 +497,26 @@ export default function RankedLobbyHero({
           </span>
         </div>
 
-        {/* Status: the placement series, or progress toward the next tier. */}
-        <div className="mt-2 w-full max-w-xs">
-          {!ranked.isPlaced ? (
-            <div
-              className="rounded-md border px-2.5 py-1.5 text-left"
-              style={{ borderColor: INK.rule, background: INK.inset }}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10.5px] uppercase tracking-wider">
-                <span className="font-extrabold" style={{ color: INK.brass }}>
-                  Placement {placementDone}/{PLACEMENT_TOTAL}
-                </span>
-                <span className="font-semibold" style={{ color: INK.faint }}>
-                  {ranked.placementMatchesRemaining} placement
-                  {ranked.placementMatchesRemaining === 1 ? " match" : " matches"} remaining
-                </span>
-              </div>
-              {/* The default track is a dark theme colour and disappears into
-                  parchment; both ends are stated here instead. */}
-              <Progress
-                value={(placementDone / PLACEMENT_TOTAL) * 100}
-                className="mt-1 h-1.5 bg-[#60441c38] [&>*]:bg-[#5e420a]"
-              />
-              <p className="mt-1 text-[12px] font-medium leading-snug" style={{ color: INK.body }}>
-                Complete your placement matches to establish your starting rank.
-              </p>
-            </div>
-          ) : (
-            showCompetitive && (
-              <div data-testid="rank-progress" className="text-left">
-                <Progress
-                  value={rankedProgression!.progressPercent}
-                  className="h-1.5 bg-[#60441c38] [&>*]:bg-[#5e420a]"
-                />
-                <div className="mt-0.5 text-[11px] font-semibold tabular-nums" style={{ color: INK.body }}>
-                  {atMaxTier
-                    ? "Challenger — the highest Ranked tier."
-                    : `${rankedProgression!.ratingToNext} rating to ${rankedTierLabel(
-                        rankedProgression!.nextTier!,
-                      )}`}
-                </div>
-              </div>
-            )
-          )}
-        </div>
+        {/* ── Recent Ranked, moved here from the Academy sheet ───────────── */}
+        <RecentRankedLedger
+          entries={recentMatches}
+          loading={matchHistoryLoading}
+          className="mt-3"
+        />
         </LobbyPanel>
       </motion.div>
 
-      {/* ══ RIGHT — personal identity ══════════════════════════════════════
-          TEMPORARY, and still temporary after this pass. The portrait / crown /
-          stat-strip / recent-rows stack is a placeholder standing in for a
-          purpose-built Ranked identity module — one that should show the
-          account's Ranked standing, its role identity and its live series
-          state, not a generic profile card reused from the Academy track.
-          The polish pass only changed its SURFACE: parchment ink weights, the
-          deeper manuscript inset, and a standing chip that keeps it in the
-          same Bronze-baseline state as the centre. Not one row, figure or
-          module of the model itself moved, and the redesign is still owed.
-          The Academy crown staying beside a Ranked standing chip is exactly
-          the confusion the purpose-built panel should resolve. */}
+      {/* ══ RIGHT — ACADEMY: who I am, and my long-term records ════════════
+          No Ranked identity on this sheet. The standing chip and the recent
+          results that used to sit here belong to the centre column and now
+          live there, so the Academy crown is the only rank art in this
+          column and cannot be misread as the competitive tier. */}
       <div className="order-3 flex min-w-0 flex-col" data-testid="hero-profile-column">
         <LobbyPanel variant="scroll" order="right">
-        <ColumnHeading align="right">Your record</ColumnHeading>
+        <ColumnHeading align="right">Academy record</ColumnHeading>
 
-        {/* Portrait mirrors the left stage: same height, facing inward. */}
+        {/* Portrait mirrors the left stage: same height, facing inward. The
+            size is APPROVED and deliberately unchanged by this pass. */}
         <div className="relative mt-1.5 flex h-[244px] items-end justify-center sm:h-[288px] lg:h-[324px]">
           {/* On navy this was a glow behind the portrait. On parchment a glow
               is invisible, so the same slot does the opposite job: a soft warm
@@ -504,39 +538,9 @@ export default function RankedLobbyHero({
             data-testid="hero-personal-portrait"
             className="relative h-[86%] w-auto max-w-full -scale-x-100 object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.6)]"
           />
-          {/* Academy crown — the personal study track, named as Academy so it
-              can never read as the Ranked standing in the centre column. */}
-          {academyTier && (
-            <div
-              className="absolute right-0 top-2 flex flex-col items-center"
-              data-testid="hero-academy-crown"
-            >
-              {/* `academyTierLabel` already prefixes "Academy" — the track is
-                  named exactly once, by the one helper that owns the wording. */}
-              <RankCrown
-                rankName={academyTier}
-                alt={`${academyTierLabel(academyTier)} crown`}
-                size="profile"
-              />
-              {/* The crown sits over the portrait, so this label crosses two
-                  backgrounds — parchment on one side, the mascot's own dark
-                  art on the other. A parchment-coloured halo keeps it legible
-                  on both without putting a chip or a plate around it. */}
-              <span
-                className="mt-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.18em]"
-                style={{
-                  color: INK.brass,
-                  textShadow:
-                    "0 0 3px rgba(222,201,170,0.95), 0 0 6px rgba(222,201,170,0.85), 0 1px 0 rgba(222,201,170,0.9)",
-                }}
-              >
-                {academyTierLabel(academyTier)}
-              </span>
-            </div>
-          )}
         </div>
 
-        <div className="mt-1 text-center">
+        <div className="mt-1 w-full text-center">
           <div
             className="truncate text-lg font-extrabold tracking-tight"
             style={{ color: INK.strong, textShadow: INK.press }}
@@ -544,121 +548,108 @@ export default function RankedLobbyHero({
           >
             {displayName ?? (signedIn ? "Your profile" : "Guest")}
           </div>
-          {rankedRole !== null && (
-            <div
-              data-testid="hub-ranked-role"
-              className="text-[11px] font-bold uppercase tracking-[0.2em]"
-              style={{ color: INK.accent }}
-            >
-              {RANKED_ROLE_LABELS[rankedRole]}
+
+          {/* ── The Academy identity lockup ───────────────────────────────
+              The crown, the tier it stands for, and the progress toward the
+              next one, as ONE object under the name.
+
+              The crown used to float at the top-right corner of the portrait
+              while the words "Academy Gold" sat far below it, under the
+              mascot — two halves of a single statement separated by 300px of
+              art, so neither explained the other and the emblem read as
+              decoration. Same crown, same size, moved into the sentence it
+              belongs to: emblem, then rank, then the climb.
+
+              This is the ONE rank statement on the sheet. The competitive
+              tier is the centre column's, and the two must never be read as
+              the same ladder — which is why the wording here always comes
+              from `academyTierLabel`, the one helper that prefixes "Academy". */}
+          {academyTier && (
+            <div className="mt-2 w-full" data-testid="hero-academy-standing">
+              <div className="flex items-center justify-center gap-2">
+                <RankCrown
+                  rankName={academyTier}
+                  alt={`${academyTierLabel(academyTier)} crown`}
+                  size="profile"
+                />
+                <div className="min-w-0 text-left">
+                  <div
+                    className="text-[9px] font-bold uppercase tracking-[0.2em]"
+                    style={{ color: INK.faint }}
+                  >
+                    Academy rank
+                  </div>
+                  {/* The TIER alone. "Academy" is stated directly above by
+                      the caption, and printing it twice in a two-line lockup
+                      both read as a stutter and truncated the value in the
+                      column ("ACADEMY G…"). The track is still named beside
+                      the tier every time it appears — which is the actual RE1
+                      requirement — and the crown's alt carries the full
+                      `academyTierLabel` for a reader with no layout. */}
+                  <div
+                    data-testid="hero-academy-tier"
+                    className="truncate text-[16px] font-black uppercase tracking-[0.1em]"
+                    style={{ color: INK.brass, textShadow: INK.press }}
+                  >
+                    {rankedTierLabel(academyTier)}
+                  </div>
+                </div>
+              </div>
+
+              {/* The interval, only when the backend sends the whole coherent
+                  block — a partial payload keeps the crown and the rank and
+                  simply draws no bar, rather than rendering half a migration. */}
+              {academy && (
+                <div className="mt-1.5">
+                  <Progress
+                    value={academy.progressPercent}
+                    className="h-1.5 bg-[#60441c38] [&>*]:bg-[#5e420a]"
+                  />
+                  <div
+                    className="mt-0.5 text-[11px] font-semibold tabular-nums"
+                    style={{ color: INK.body }}
+                  >
+                    {academy.isMaxTier || academy.nextTier === null
+                      ? "The highest Academy tier."
+                      : `${academy.xpToNext.toLocaleString()} XP to ${academyTierLabel(
+                          academy.nextTier,
+                        )}`}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-
-          {/* Ranked standing, in the SAME state the centre column is in — the
-              earned tier once there is one, and otherwise the identical
-              Bronze, drawn with the identical held-back treatment.
-              Without this the two columns disagreed: the centre said Bronze
-              baseline while the right column's only rank art was the Academy
-              crown, so the sheet showed two different ladders and named
-              neither. It reads the same `showCompetitive` gate and invents
-              nothing of its own. */}
-          <div
-            data-testid="hero-ranked-standing"
-            className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5"
-            style={{ borderColor: INK.rule, background: INK.inset }}
-          >
-            {/* The same emblem, deliberately subordinate. `standard` is 24px
-                and lit — it keeps the halo and the rare glint, and it is
-                capped at a single spark — so the column reads as alive
-                without competing with the ceremonial emblem in the centre.
-                The old 16px chip could not carry a highlight at all; at this
-                size it can, and the two columns now differ by EMPHASIS
-                rather than by one of them being switched off. Decorative,
-                because the tier is spelled out in the label beside it. */}
-            <RankEmblem
-              variant="standard"
-              tier={emblemTier}
-              earned={showCompetitive}
-              decorative
-            />
-            <span
-              className="text-[10px] font-extrabold uppercase tracking-[0.16em]"
-              style={{ color: INK.brass }}
-            >
-              {showCompetitive ? `Ranked ${tierLabel}` : rankedTierLabel(BASELINE_TIER)}
-            </span>
-          </div>
         </div>
 
-        {/* Compact stats — real progress figures, or an em dash. */}
-        <div className="mt-2 grid grid-cols-2 gap-1.5" data-testid="hero-stat-strip">
-          <HeroStat icon={Flame} label="Current streak" value={progress?.current_streak ?? 0} />
-          <HeroStat icon={Trophy} label="Best streak" value={progress?.best_streak ?? 0} />
-          <HeroStat icon={Target} label="Accuracy" value={accuracy === null ? "—" : `${accuracy}%`} />
-          <HeroStat icon={Shield} label="Answered" value={answered} />
-        </div>
+        {/* ── Personal records — the long-term ledger ──────────────────────
+            The four rounded stat tiles are gone. These are the same real
+            figures written as ruled record lines: a label on the left, its
+            figure on the right, a hairline between each pair. That is how a
+            ledger states a record, and it is the treatment the sheet was
+            asking for — the tiles read as dashboard cards dropped onto
+            parchment. Every row is real or an em dash; none is invented. */}
+        <LedgerBlock title="Personal records" className="mt-2.5" testId="hero-personal-records">
+          <LedgerRow label="Questions answered" value={answered ? answered.toLocaleString() : "—"} />
+          <LedgerRow label="All-time accuracy" value={accuracy === null ? "—" : `${accuracy}%`} />
+          <LedgerRow label="Current streak" value={progress?.current_streak ?? "—"} />
+          <LedgerRow label="Best streak" value={progress?.best_streak ?? "—"} />
+          <LedgerRow
+            label="Academy XP"
+            value={totalXp === null ? "—" : totalXp.toLocaleString()}
+          />
+          {/* Ranked matches RATED is a career figure the progression endpoint
+              really does carry, unlike wins/losses — the history endpoint
+              serves a window, so a lifetime W-L would have to be guessed and
+              is therefore absent. */}
+          <LedgerRow
+            label="Ranked matches"
+            value={rankedProgression === null ? "—" : rankedProgression.matchesRated.toLocaleString()}
+          />
+        </LedgerBlock>
 
-        {/* Recent Ranked results — the account's own real rows, or nothing. */}
-        <div className="mt-2" data-testid="hero-recent-matches">
-          <div className="flex items-center gap-1.5 px-0.5">
-            <History className="h-3 w-3" style={{ color: INK.accent }} aria-hidden="true" />
-            <span
-              className="text-[11px] font-extrabold uppercase tracking-[0.2em]"
-              style={{ color: INK.accent, textShadow: INK.press }}
-            >
-              Recent Ranked
-            </span>
-          </div>
-          <div className="mt-1 flex flex-col gap-1">
-            {matchHistoryLoading ? (
-              <p className="px-0.5 text-[12px] font-medium" style={{ color: INK.body }}>
-                Loading…
-              </p>
-            ) : recentMatches.length === 0 ? (
-              <p
-                className="px-0.5 text-[12px] font-medium"
-                style={{ color: INK.body }}
-                data-testid="hero-recent-empty"
-              >
-                No ranked matches on record yet.
-              </p>
-            ) : (
-              recentMatches.map((entry) => {
-                const outcome = OUTCOME_STYLE[entry.viewerOutcome];
-                return (
-                  <div
-                    key={entry.matchId}
-                    data-testid="hero-recent-match"
-                    className="flex items-center gap-2 rounded-md border px-2 py-1"
-                    style={{ borderColor: INK.rule, background: INK.inset }}
-                  >
-                    <span className={`shrink-0 text-[10.5px] font-extrabold uppercase tracking-wider ${outcome.className}`}>
-                      {outcome.label}
-                    </span>
-                    <span
-                      className="min-w-0 flex-1 truncate text-[12px] font-medium"
-                      style={{ color: INK.body }}
-                    >
-                      vs {entry.opponentIsBot ? "Bot" : entry.opponentDisplayName ?? "Opponent"}
-                    </span>
-                    {entry.viewerRole !== null && (
-                      <span
-                        className="shrink-0 text-[10.5px] font-semibold uppercase tracking-wider"
-                        style={{ color: INK.accent }}
-                      >
-                        {RANKED_ROLE_LABELS[entry.viewerRole]}
-                      </span>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Same reason as the stakes row above: at the deepest inset the two
-            links are a hair wider than the writing area, so the row wraps
-            rather than reaching past the sheet's margin. */}
+        {/* Same reason as the stakes row: at the deepest inset the two links
+            are a hair wider than the writing area, so the row wraps rather
+            than reaching past the sheet's margin. */}
         <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
           <Button
             asChild
@@ -683,6 +674,292 @@ export default function RankedLobbyHero({
   );
 }
 
+/** A finite number off the wire, or null. Rejects NaN, Infinity and strings. */
+function finiteOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * The selected role's MASTERY RECORD: a summary band, then the detail.
+ *
+ * THE SUMMARY BAND, AND WHY IT IS NOT A SCORE
+ * ───────────────────────────────────────────
+ * The band exists to give the sheet a transition — from "this is the role I
+ * am choosing" to "this is how I perform in it" — which a straight run of
+ * ledger rows did not. It always has the same shape: one large figure, the
+ * word that qualifies it, and the record beneath. What fills it depends on
+ * what is actually known:
+ *
+ *   demo       the representative mastery score, supplied ONLY by
+ *              `/dev/lobby-preview` (see `DemoRoleMastery`);
+ *   real       the account's own recent win rate, labelled as RECENT;
+ *   no rows    an em dash and "Mastery not established" — never a 0%.
+ *
+ * The middle case is the important one. There is no mastery score in the
+ * product, so a real account is shown a NEUTRAL SUMMARY of figures it can
+ * verify in its own history rather than a number this file made up.
+ *
+ * SCOPE HONESTY, WITHOUT A FOOTNOTE
+ * ─────────────────────────────────
+ * These figures come from `/api/ranked/history`, which is capped server-side
+ * at 50 rows (`HISTORY_MAX_LIMIT`) and requested here at 20 — so they are
+ * RECENT FORM and cannot be lifetime totals, whatever the lobby would prefer.
+ *
+ * The old treatment stated that in a footnote ("Last 20 ranked matches").
+ * The footnote is gone, and the scope moved INTO the labels instead: the
+ * section is "recent form", the rows say "Recent matches", "Recent record",
+ * "Recent win rate". That removes the line the owner asked to remove without
+ * removing the truth it carried — a figure that says "recent" on its own face
+ * cannot be misread as a career total, and a footnote is the first thing a
+ * reader skips.
+ *
+ * Lifetime per-role totals need a backend aggregate that does not exist yet;
+ * see `tallyRoleMastery`. When it lands, these labels drop the word "recent"
+ * and nothing else about this component changes.
+ */
+function RoleMasteryLedger({
+  role,
+  mastery,
+  demoScore,
+  loading,
+}: {
+  role: RankedRole;
+  mastery: RoleMastery | null;
+  /** DEMO ONLY. Null for every real account — see `DemoRoleMastery`. */
+  demoScore: DemoRoleMastery | null;
+  loading: boolean;
+}) {
+  const age = matchAgeLabel(mastery?.lastPlayedAt ?? null);
+  const swing =
+    mastery?.netRating === null || mastery?.netRating === undefined
+      ? "—"
+      : `${mastery.netRating > 0 ? "+" : ""}${mastery.netRating}`;
+
+  const figure = demoScore
+    ? String(demoScore.score)
+    : mastery
+      ? `${mastery.winRatePercent}%`
+      : "—";
+  const qualifier = demoScore
+    ? demoScore.label
+    : mastery
+      ? "Recent win rate"
+      /* Short on purpose: "ROLE MASTERY" is ruled directly above this line,
+         so repeating the word here only made the qualifier wrap to three
+         cramped lines beside a single em dash. */
+      : "Not established";
+
+  return (
+    <div className="mt-2.5 w-full" data-testid="role-mastery-ledger" data-role={role}>
+      <LedgerTitle>Role mastery</LedgerTitle>
+
+      {/* ── The summary band ─────────────────────────────────────────────
+          Ruled top and bottom rather than boxed: two hairlines with the
+          figure written between them is how a ledger sets a total apart,
+          and it keeps the sheet free of one more rounded rectangle. */}
+      <div
+        data-testid="role-mastery-summary"
+        className="mt-1 flex items-baseline justify-between gap-2 border-b py-1.5"
+        style={{ borderColor: INK.rule }}
+      >
+        <div className="min-w-0">
+          <div
+            data-testid="role-mastery-figure"
+            className="text-[26px] font-black leading-none tabular-nums"
+            style={{ color: INK.strong, textShadow: INK.press }}
+          >
+            {loading ? "…" : figure}
+          </div>
+          <div
+            className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em]"
+            style={{ color: INK.faint }}
+          >
+            {qualifier}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          {mastery ? (
+            <>
+              <div
+                className="text-[14px] font-extrabold tabular-nums"
+                style={{ color: INK.strong, textShadow: INK.press }}
+              >
+                {mastery.wins}W · {mastery.losses}L
+                {mastery.draws > 0 ? ` · ${mastery.draws}D` : ""}
+              </div>
+              <div
+                className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.16em]"
+                style={{ color: INK.faint }}
+              >
+                Recent record
+              </div>
+            </>
+          ) : (
+            <div
+              className="max-w-[9.5rem] text-[11.5px] font-medium leading-snug"
+              style={{ color: INK.body }}
+              data-testid="role-mastery-empty"
+            >
+              No ranked games on this role yet.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── The detail. Three rows, because the band above already carries
+             the record and the win rate — repeating them here would make the
+             summary decorative rather than a summary. ─────────────────── */}
+      <LedgerRow
+        label="Recent matches"
+        value={loading ? "…" : mastery ? mastery.games : "—"}
+      />
+      <LedgerRow label="Rating swing" value={swing} />
+      <LedgerRow label="Last played" value={age ?? "—"} />
+    </div>
+  );
+}
+
+/**
+ * Recent Ranked results, as a duel record rather than as table rows.
+ *
+ * MOVED HERE from the Academy sheet by the MALT pass: a result ledger belongs
+ * under the action that produced it, and the right-hand sheet is the Academy's.
+ *
+ * Real rows only. `ratingDelta` is rendered when the backend applied one and
+ * omitted when it did not — a skipped or pre-F2.2 result shows no number
+ * rather than a zero standing in for "unknown".
+ *
+ * FOUR COLUMNS, FIXED, IN ONE GRID
+ * ────────────────────────────────
+ * The rows used to be a flex line of four differently-sized runs of text, so
+ * nothing lined up down the ledger: the opponent started at a different x on
+ * every row and the deltas drifted with the role names beside them. They are
+ * a `grid` with stated column widths now, which is what makes a ledger
+ * scannable — the eye reads DOWN the outcome column to count wins, and down
+ * the delta column to read the swing, without reading any row in full.
+ *
+ * The outcome is the loudest thing in the row and the role the quietest, in
+ * that order, because "did I win?" is the question this list answers. The
+ * delta column reserves its width whether or not a row has a number, so a
+ * row without one leaves a gap in the column rather than pulling the row's
+ * other three cells out of alignment.
+ *
+ * THE COLUMNS ARE TIGHT BECAUSE THE SHEET IS
+ * ──────────────────────────────────────────
+ * The scroll's writing area is about 224px at EVERY viewport — it is a
+ * fraction of a column which is itself a fraction of the grid, so it does not
+ * widen on a bigger screen. Five columns have to live in it, and the first
+ * draft spent so much of it on fixed cells that the opponent — the one cell
+ * a reader actually reads — was left about 47px and truncated real names to
+ * "Belvet…".
+ *
+ * So every fixed cell is cut to what it needs and the opponent takes the
+ * rest. The marker is what pays for it: a filled-or-hollow nib in the margin
+ * carries win/loss on its own, which lets the word beside it drop to 10px
+ * without costing any scannability — the column can still be counted at a
+ * glance, and it is now the NAMES that are legible.
+ */
+function RecentRankedLedger({
+  entries,
+  loading,
+  className = "",
+}: {
+  entries: readonly MatchHistoryEntryView[];
+  loading: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={`w-full ${className}`} data-testid="hero-recent-matches">
+      <LedgerTitle icon={History}>Recent ranked</LedgerTitle>
+      {loading ? (
+        <p className="mt-1 text-[12px] font-medium" style={{ color: INK.body }}>
+          Loading…
+        </p>
+      ) : entries.length === 0 ? (
+        <p
+          className="mt-1 text-[12px] font-medium"
+          style={{ color: INK.body }}
+          data-testid="hero-recent-empty"
+        >
+          No ranked matches on record yet.
+        </p>
+      ) : (
+        <ul className="mt-1 w-full">
+          {entries.map((entry) => {
+            const outcome = OUTCOME_STYLE[entry.viewerOutcome];
+            const won = entry.viewerOutcome === "win";
+            return (
+              <li
+                key={entry.matchId}
+                data-testid="hero-recent-match"
+                className="grid grid-cols-[7px_44px_minmax(0,1fr)_auto_34px] items-center gap-x-1.5 border-b py-[5px] text-left last:border-b-0"
+                style={{ borderColor: INK.rule }}
+              >
+                {/* The result mark. A ledger keeps its verdict in the margin,
+                    so the column can be counted without reading the entries —
+                    a filled nib for a win, a hollow one for anything else. */}
+                <span
+                  aria-hidden="true"
+                  className="h-[7px] w-[7px] rotate-45"
+                  style={
+                    won
+                      ? { background: "#0d3f28" }
+                      : { border: `1.5px solid ${entry.viewerOutcome === "loss" ? "#6c1a21" : INK.faint}` }
+                  }
+                />
+                <span
+                  className={`text-[10px] font-extrabold uppercase tracking-normal ${outcome.className}`}
+                >
+                  {outcome.label}
+                </span>
+                <span
+                  className="min-w-0 truncate text-left text-[12.5px] font-semibold"
+                  style={{ color: INK.strong }}
+                  title={entry.opponentIsBot ? "Bot" : entry.opponentDisplayName ?? "Opponent"}
+                >
+                  {entry.opponentIsBot ? "Bot" : entry.opponentDisplayName ?? "Opponent"}
+                </span>
+                <span
+                  className="text-[9px] font-bold uppercase tracking-[0.06em]"
+                  style={{ color: INK.faint }}
+                >
+                  {entry.viewerRole !== null ? RANKED_ROLE_LABELS[entry.viewerRole] : ""}
+                </span>
+                {/* The column keeps its width whether or not this row has a
+                    number, so one delta-less row cannot shift the three cells
+                    beside it out of the ledger's alignment. */}
+                <span
+                  data-testid={entry.ratingDelta === null ? undefined : "hero-recent-delta"}
+                  className={`text-right text-[12px] font-extrabold tabular-nums ${
+                    entry.ratingDelta === null
+                      ? ""
+                      : entry.ratingDelta > 0
+                        ? "text-[#0d3f28]"
+                        : entry.ratingDelta < 0
+                          ? "text-[#6c1a21]"
+                          : ""
+                  }`}
+                  style={
+                    entry.ratingDelta === null || entry.ratingDelta === 0
+                      ? { color: INK.faint }
+                      : undefined
+                  }
+                >
+                  {entry.ratingDelta === null
+                    ? "·"
+                    : entry.ratingDelta > 0
+                      ? `+${entry.ratingDelta}`
+                      : entry.ratingDelta}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /**
  * A column's header, written as a manuscript heading rather than as a UI
  * label: a full step darker and heavier than the copy under it, pressed into
@@ -690,14 +967,54 @@ export default function RankedLobbyHero({
  * of the column. The rule is what does most of the work — an underscored
  * heading is how a ledger separates a section, and it lets the heading state
  * hierarchy through structure instead of through yet more size.
+ *
+ * `ceremonial` is the left sheet's "Choose your role", and it deliberately
+ * breaks the pattern: it carries NO RULE AT ALL.
+ *
+ * That is the whole point of it. A ruled heading is a SECTION marker — it
+ * says "a labelled part of this sheet begins here", which is exactly how the
+ * role title used to read: a small caption, a divider, and then an unrelated
+ * carousel widget underneath. The role choice is not a section of the left
+ * parchment; it IS the left parchment. So the title takes display size and
+ * centres itself over the stage with nothing drawn between them, and the
+ * figures below become the thing it is naming rather than the next widget
+ * down. It stays ink and press — no second gold gradient, because the centre
+ * wordmark owns that and two would fight.
  */
 function ColumnHeading({
   children,
   align = "left",
+  ceremonial = false,
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
+  ceremonial?: boolean;
 }) {
+  const rule = (opacity: string) =>
+    align === "right"
+      ? `linear-gradient(270deg, rgba(83,56,8,${opacity}) 0%, rgba(83,56,8,0.12) 100%)`
+      : `linear-gradient(90deg, rgba(83,56,8,${opacity}) 0%, rgba(83,56,8,0.12) 100%)`;
+
+  if (ceremonial) {
+    return (
+      <div
+        className="w-full text-center"
+        data-testid="column-heading-ceremonial"
+      >
+        {/* One line at every supported width. A display title that breaks
+            mid-phrase reads as an overflow, not as a title — so the size
+            steps with the breakpoint and the letterspacing steps down as it
+            goes up, which is what keeps the measure inside the sheet. */}
+        <div
+          className="lc-scroll-title whitespace-nowrap font-black uppercase leading-none tracking-[0.13em]"
+          style={{ color: INK.strong, textShadow: INK.press }}
+        >
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <div
@@ -714,48 +1031,85 @@ function ColumnHeading({
       <span
         aria-hidden="true"
         className="mt-1 block h-px w-full"
-        style={{
-          background:
-            align === "right"
-              ? "linear-gradient(270deg, rgba(83,56,8,0.55) 0%, rgba(83,56,8,0.12) 100%)"
-              : "linear-gradient(90deg, rgba(83,56,8,0.55) 0%, rgba(83,56,8,0.12) 100%)",
-        }}
+        style={{ background: rule("0.55") }}
       />
     </div>
   );
 }
 
-function HeroStat({
-  icon: Icon,
-  label,
-  value,
+/** A ledger section: a small ruled title, then the record rows under it. */
+function LedgerBlock({
+  title,
+  children,
+  className = "",
+  testId,
+  ...rest
 }: {
-  /* `style` as well as `className`: the icon is tinted with an `INK` value,
-     which is a runtime constant and cannot be a Tailwind class. */
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
-  label: string;
-  value: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  testId?: string;
+} & Record<string, unknown>) {
+  return (
+    <div className={`w-full ${className}`} data-testid={testId} {...rest}>
+      <LedgerTitle>{title}</LedgerTitle>
+      <div className="mt-0.5">{children}</div>
+    </div>
+  );
+}
+
+/** The ledger's own heading: small caps in the accent ink, over a hairline. */
+function LedgerTitle({
+  children,
+  icon: Icon,
+}: {
+  children: React.ReactNode;
+  icon?: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
 }) {
   return (
-    <div
-      className="flex items-center gap-1.5 rounded-md border px-2 py-1 text-left"
-      style={{ borderColor: INK.rule, background: INK.inset }}
-    >
-      <Icon className="h-3 w-3 shrink-0" style={{ color: INK.accent }} />
-      <div className="min-w-0 leading-tight">
-        <div
-          className="text-[9px] font-semibold uppercase tracking-[0.12em]"
-          style={{ color: INK.faint }}
+    <div className="w-full">
+      <div className="flex items-center gap-1.5">
+        {Icon && <Icon className="h-3 w-3 shrink-0" style={{ color: INK.accent }} />}
+        <span
+          className="text-[10.5px] font-extrabold uppercase tracking-[0.2em]"
+          style={{ color: INK.accent, textShadow: INK.press }}
         >
-          {label}
-        </div>
-        <div
-          className="truncate text-[13px] font-bold tabular-nums"
-          style={{ color: INK.strong, textShadow: INK.press }}
-        >
-          {value}
-        </div>
+          {children}
+        </span>
       </div>
+      <span
+        aria-hidden="true"
+        className="mt-0.5 block h-px w-full"
+        style={{ background: "linear-gradient(90deg, rgba(83,56,8,0.42) 0%, rgba(83,56,8,0.10) 100%)" }}
+      />
+    </div>
+  );
+}
+
+/**
+ * One ruled record line: the label on the left, its figure on the right, and
+ * a hairline closing the pair. No box, no fill, no rounded corner — the row
+ * IS the record, exactly as a ruled ledger writes one.
+ */
+function LedgerRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div
+      data-testid="ledger-row"
+      className="flex items-baseline justify-between gap-2 border-b py-[3px] last:border-b-0"
+      style={{ borderColor: INK.rule }}
+    >
+      <span
+        className="min-w-0 truncate text-[11px] font-semibold"
+        style={{ color: INK.faint }}
+      >
+        {label}
+      </span>
+      <span
+        className="shrink-0 text-[12.5px] font-bold tabular-nums"
+        style={{ color: INK.strong, textShadow: INK.press }}
+      >
+        {value}
+      </span>
     </div>
   );
 }
