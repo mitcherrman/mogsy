@@ -1,7 +1,7 @@
 /**
- * Recent Quiz Results card: honest labeling (session history, not ranked
- * matches), real data rendering, empty + sign-in states, and the real
- * history route.
+ * Recent Studies card: PRACTICE-ONLY labeling (practice sessions and the
+ * Daily Challenge, never Ranked matches), real data rendering, empty +
+ * sign-in states, and the real history route.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -35,10 +35,10 @@ function renderCard(props: Parameters<typeof QuizRecentResultsCard>[0]) {
 afterEach(cleanup);
 
 describe("QuizRecentResultsCard", () => {
-  it("is labeled as quiz results (not ranked matches) and shows the last 3 rows", () => {
+  it("is labeled as studies (not ranked matches) and shows the last 3 rows", () => {
     const { container } = renderCard({ history: HISTORY });
-    expect(screen.getByText("Recent Quiz Results")).toBeTruthy();
-    expect(screen.queryByText(/Ranked matches/i)).toBeNull();
+    expect(screen.getByText("Recent Studies")).toBeTruthy();
+    expect(screen.queryByText(/Ranked/i)).toBeNull();
     const rows = container.querySelectorAll('[data-testid="history-row"]');
     expect(rows.length).toBe(3); // capped at 3, 4 provided
     expect(rows[0].textContent).toContain("Item Knowledge");
@@ -73,13 +73,18 @@ describe("QuizRecentResultsCard", () => {
     expect(link.getAttribute("href")).toBe("/lol/history");
   });
 
-  it("shows the honest empty state with a Play Ranked action", () => {
-    const onPlayRanked = vi.fn();
-    renderCard({ history: { ...HISTORY, results: [], total_count: 0 }, onPlayRanked });
-    expect(screen.getByText("No quiz results yet")).toBeTruthy();
-    expect(screen.getByText("Play your first quiz to begin your history.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Play Ranked/ }));
-    expect(onPlayRanked).toHaveBeenCalledTimes(1);
+  it("shows the honest empty state with a PRACTICE action, never a Ranked one", () => {
+    const onStartPractice = vi.fn();
+    renderCard({ history: { ...HISTORY, results: [], total_count: 0 }, onStartPractice });
+    expect(screen.getByText("No study sessions yet")).toBeTruthy();
+    expect(
+      screen.getByText("Finish a practice set or the Daily Challenge to start your record."),
+    ).toBeTruthy();
+    // The empty state must never offer a match: a Ranked result cannot appear
+    // in this card, so sending the reader there is a dead end by construction.
+    expect(screen.queryByRole("button", { name: /Ranked/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Start practising/ }));
+    expect(onStartPractice).toHaveBeenCalledTimes(1);
   });
 
   it("shows the sign-in state for auth-shaped errors", () => {

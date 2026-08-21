@@ -516,8 +516,17 @@ export default function RankedLobbyHero({
         <ColumnHeading align="right">Academy record</ColumnHeading>
 
         {/* Portrait mirrors the left stage: same height, facing inward. The
-            size is APPROVED and deliberately unchanged by this pass. */}
-        <div className="relative mt-1.5 flex h-[244px] items-end justify-center sm:h-[288px] lg:h-[324px]">
+            RENDERED MASCOT IS THE APPROVED SIZE AND IS UNCHANGED — 279px tall
+            at `lg`, exactly as before. What changed is the BOX around it.
+
+            The stage used to be `h-[324px]` holding an image sized `h-[86%]`,
+            which is 279px — so 45px of the box was empty air above the
+            mascot's head, bought and paid for in column height and doing
+            nothing. The box is now the mascot's own height and the image
+            fills it, so the picture is identical and the 45px is returned to
+            the sheet. Keep the two in step: the box IS the portrait height at
+            each step, and the image is `h-full`. */}
+        <div className="relative mt-0.5 flex h-[210px] items-end justify-center sm:h-[248px] lg:h-[280px]">
           {/* On navy this was a glow behind the portrait. On parchment a glow
               is invisible, so the same slot does the opposite job: a soft warm
               shade that seats the figure on the sheet instead of lifting it
@@ -536,10 +545,13 @@ export default function RankedLobbyHero({
             aria-hidden="true"
             draggable={false}
             data-testid="hero-personal-portrait"
-            className="relative h-[86%] w-auto max-w-full -scale-x-100 object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.6)]"
+            className="relative h-full w-auto max-w-full -scale-x-100 object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.6)]"
           />
         </div>
 
+        {/* mt-1, not mt-0.5. This is the ONE gap in the compacted column that
+            measured too tight — the name landed 2px under the portrait's box.
+            The pixels come back out of the rail's own padding instead. */}
         <div className="mt-1 w-full text-center">
           <div
             className="truncate text-lg font-extrabold tracking-tight"
@@ -565,14 +577,34 @@ export default function RankedLobbyHero({
               the same ladder — which is why the wording here always comes
               from `academyTierLabel`, the one helper that prefixes "Academy". */}
           {academyTier && (
-            <div className="mt-2 w-full" data-testid="hero-academy-standing">
-              <div className="flex items-center justify-center gap-2">
+            <div className="mt-1 w-full" data-testid="hero-academy-standing">
+              {/* ONE ROW, NOT A STACK.
+                  The crown is 72px tall and the two lines beside it are 38, so
+                  the row carried 34px of vertical air next to its own text
+                  while the XP interval sat BELOW the whole lockup and paid for
+                  itself all over again. The interval now runs in the same
+                  column as the rank it belongs to, inside air the crown was
+                  already reserving: same crown, same size, same four pieces of
+                  information, one block instead of two. Nothing is dropped and
+                  nothing is scaled — the climb simply sits beside the rank it
+                  is a climb from, which is also where it reads best. */}
+              <div className="mx-auto flex w-full max-w-[17rem] items-center justify-center gap-2.5">
                 <RankCrown
                   rankName={academyTier}
                   alt={`${academyTierLabel(academyTier)} crown`}
                   size="profile"
                 />
-                <div className="min-w-0 text-left">
+                {/* The row is BOUNDED and centred, and this column takes the
+                    slack inside it. Neither half alone works: left to size
+                    itself the column stopped 34px short of the sheet's measure
+                    and wrapped "500 XP to Academy Silver" onto two lines on a
+                    stacked layout, while an unbounded `flex-1` ran the pair
+                    the full width of the widest sheet and left the crown
+                    stranded at the far edge under a centred name. A max-width
+                    on the row gives the lockup a fixed measure to be centred
+                    at, and the interval bar a width that is the same fraction
+                    of it at every breakpoint. */}
+                <div className="min-w-0 flex-1 text-left">
                   <div
                     className="text-[9px] font-bold uppercase tracking-[0.2em]"
                     style={{ color: INK.faint }}
@@ -593,30 +625,31 @@ export default function RankedLobbyHero({
                   >
                     {rankedTierLabel(academyTier)}
                   </div>
+
+                  {/* The interval, only when the backend sends the whole
+                      coherent block — a partial payload keeps the crown and
+                      the rank and simply draws no bar, rather than rendering
+                      half a migration. */}
+                  {academy && (
+                    <div className="mt-1">
+                      <Progress
+                        value={academy.progressPercent}
+                        className="h-1.5 bg-[#60441c38] [&>*]:bg-[#5e420a]"
+                      />
+                      <div
+                        className="mt-0.5 text-[11px] font-semibold tabular-nums"
+                        style={{ color: INK.body }}
+                      >
+                        {academy.isMaxTier || academy.nextTier === null
+                          ? "The highest Academy tier."
+                          : `${academy.xpToNext.toLocaleString()} XP to ${academyTierLabel(
+                              academy.nextTier,
+                            )}`}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* The interval, only when the backend sends the whole coherent
-                  block — a partial payload keeps the crown and the rank and
-                  simply draws no bar, rather than rendering half a migration. */}
-              {academy && (
-                <div className="mt-1.5">
-                  <Progress
-                    value={academy.progressPercent}
-                    className="h-1.5 bg-[#60441c38] [&>*]:bg-[#5e420a]"
-                  />
-                  <div
-                    className="mt-0.5 text-[11px] font-semibold tabular-nums"
-                    style={{ color: INK.body }}
-                  >
-                    {academy.isMaxTier || academy.nextTier === null
-                      ? "The highest Academy tier."
-                      : `${academy.xpToNext.toLocaleString()} XP to ${academyTierLabel(
-                          academy.nextTier,
-                        )}`}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -628,7 +661,7 @@ export default function RankedLobbyHero({
             ledger states a record, and it is the treatment the sheet was
             asking for — the tiles read as dashboard cards dropped onto
             parchment. Every row is real or an em dash; none is invented. */}
-        <LedgerBlock title="Personal records" className="mt-2.5" testId="hero-personal-records">
+        <LedgerBlock title="Personal records" className="mt-2" testId="hero-personal-records">
           <LedgerRow label="Questions answered" value={answered ? answered.toLocaleString() : "—"} />
           <LedgerRow label="All-time accuracy" value={accuracy === null ? "—" : `${accuracy}%`} />
           <LedgerRow label="Current streak" value={progress?.current_streak ?? "—"} />
@@ -650,12 +683,12 @@ export default function RankedLobbyHero({
         {/* Same reason as the stakes row: at the deepest inset the two links
             are a hair wider than the writing area, so the row wraps rather
             than reaching past the sheet's margin. */}
-        <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
+        <div className="mt-0.5 flex flex-wrap items-center justify-center gap-x-1 gap-y-0.5">
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="h-7 text-[11.5px] font-semibold text-[#3f2c14] hover:bg-[#60442024] hover:text-[#241708]"
+            className="h-6 text-[11.5px] font-semibold text-[#3f2c14] hover:bg-[#60442024] hover:text-[#241708]"
           >
             <Link to="/profile">View full profile</Link>
           </Button>
@@ -663,7 +696,7 @@ export default function RankedLobbyHero({
             asChild
             variant="ghost"
             size="sm"
-            className="h-7 text-[11.5px] font-semibold text-[#3f2c14] hover:bg-[#60442024] hover:text-[#241708]"
+            className="h-6 text-[11.5px] font-semibold text-[#3f2c14] hover:bg-[#60442024] hover:text-[#241708]"
           >
             <Link to="/lol/history">Full history</Link>
           </Button>
@@ -1030,7 +1063,7 @@ function ColumnHeading({
           border on a box. */}
       <span
         aria-hidden="true"
-        className="mt-1 block h-px w-full"
+        className="mt-0.5 block h-px w-full"
         style={{ background: rule("0.55") }}
       />
     </div>
@@ -1095,7 +1128,13 @@ function LedgerRow({ label, value }: { label: string; value: React.ReactNode }) 
   return (
     <div
       data-testid="ledger-row"
-      className="flex items-baseline justify-between gap-2 border-b py-[3px] last:border-b-0"
+      /* 1px, not 3. A ruled ledger is set tight — the hairline between rows
+         is what separates them, and 3px of leading on top of it was spacing
+         the sheet out rather than the record. At 11px/12.5px type the row is
+         still 22px tall, which is above the 20px the taller of the two lines
+         actually needs. Shared with the role ledger in the LEFT column on
+         purpose: one ledger rhythm, both sheets. */
+      className="flex items-baseline justify-between gap-2 border-b py-[1px] last:border-b-0"
       style={{ borderColor: INK.rule }}
     >
       <span

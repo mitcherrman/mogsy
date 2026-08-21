@@ -3301,8 +3301,20 @@ html.high-contrast * { text-shadow: none !important; }
      step by viewport rather than taking the widest value everywhere: at
      1024–1279 the three columns are already narrow, and a 17.5% side inset
      there would squeeze the role stage before it flattered it. See the
-     min-width:1280 and max-width:1023 blocks below for the other two steps. */
-  padding: 16.6% 15.5% 19%;
+     min-width:1280 and max-width:1023 blocks below for the other two steps.
+
+     THE VERTICAL PAIR IS NOW THE SAFE BAND, THE SIDES KEEP THEIR MARGIN.
+     Percentage padding resolves against WIDTH, which is what makes these
+     insets correct — and also what makes them expensive on a wide, short
+     desktop, where the sheet is at its widest exactly when vertical space is
+     scarcest. At 1825x832 the top and foot together were taking 171px out of
+     a 456px-wide column before a word was set. The top and foot therefore
+     come back to the SAFE numbers above (13.7% / 16.1%, rounded out to 14% /
+     16%); the sides, which cost width and not height, keep the full
+     manuscript margin. The ornament is untouched and still never overlapped —
+     what is gone is the extra border ON TOP of clearing it, in the one
+     dimension that was pushing the composition off the screen. */
+  padding: 14% 15.5% 16%;
 }
 
 /* ── The shell ───────────────────────────────────────────────────────────── */
@@ -3570,12 +3582,18 @@ html.high-contrast * { text-shadow: none !important; }
 }
 
 /* The wide-desktop margin step. From 1280 up, each column has the width to
-   give the parchment frame its full border, so the sides open out to 17.5%
-   and the foot to 20%. Below this the same numbers would eat the role stage,
-   which is why the base rule holds the narrower pair. */
+   give the parchment frame its full border, so the SIDES open out to 17.5%.
+   Below this the same number would eat the role stage, which is why the base
+   rule holds the narrower pair.
+
+   The top and foot deliberately do NOT open out with them any more. They used
+   to (17.4% / 20%), which on a 456px column is 171px of vertical border — and
+   because these are percentages of WIDTH, the wider the desktop the more
+   height the frame took, which is precisely backwards on a 16:9 screen. Both
+   now hold the base rule's safe values at every width; see the note there. */
 @media (min-width: 1280px) {
   .lc-scroll {
-    padding: 17.4% 17.5% 20%;
+    padding: 14% 17.5% 16%;
   }
 }
 

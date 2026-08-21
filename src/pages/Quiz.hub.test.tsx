@@ -7,7 +7,7 @@
  * Check, Knowledge Breakdown, Achievements) must be absent from the hub while
  * their routes stay live elsewhere — see HUB_MODULES in Quiz.tsx.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -151,6 +151,24 @@ describe("Leaguecraft hub — top chrome", () => {
     expect(h1s[0].textContent).toContain("LEAGUECRAFT");
   });
 
+  // MALT top-band pass. The HUD reserves a full-width `--app-header-h` strip
+  // but paints only two corner clusters, so from `lg` the hub cancels the
+  // shell's padding and the rack rises into the empty middle. The two steps
+  // are not interchangeable: at `lg` the parchment's own top roll is too short
+  // to keep the column headings clear of the corner controls (5px measured at
+  // 1024), so that breakpoint keeps 1.5rem back and only `xl` reclaims it all.
+  it("reclaims the HUD band from lg, in two measured steps", async () => {
+    const { container } = await renderHub();
+    const wrapper = container.querySelector('[data-testid="hub-ranked-section"]')
+      ?.closest("div.max-w-\\[1500px\\]") as HTMLElement | null;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper!.className).toContain("lg:-mt-[calc(var(--app-header-h)_-_1.5rem)]");
+    expect(wrapper!.className).toContain("xl:-mt-[var(--app-header-h)]");
+    // Below lg the columns stack full-width and the first one WOULD run under
+    // both controls, so the band must stay whole there — no unprefixed -mt.
+    expect(wrapper!.className).not.toMatch(/(^|\s)-mt-/);
+  });
+
   it("demotes the tutorial entry below the lobby without removing it", async () => {
     // /quiz/tutorial has no other UI entry point, and the platform-policy copy
     // promises it stays available, so this link may be MOVED but never deleted.
@@ -228,6 +246,47 @@ describe("Leaguecraft hub — hierarchy", () => {
   });
 });
 
+describe("Leaguecraft hub — category rail", () => {
+  // The six subjects used to be a strip inside the Practice panel: five of
+  // twelve columns wide, folded to two rows of three, and below the fold on
+  // every desktop. They are now a rail of their own, spanning the whole
+  // composition between the rack and the workspace. These assertions guard
+  // the promotion — that the rail exists, that it is a sibling of the two
+  // sections rather than a child of either, and that the old strip did not
+  // survive alongside it as a second copy.
+  it("mounts the rail with all six subjects", async () => {
+    const { container } = await renderHub();
+    expect(container.querySelector('[data-testid="quiz-category-rail"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-testid="quiz-category-rail-tile"]').length).toBe(6);
+  });
+
+  it("no longer renders the strip inside the Practice panel", async () => {
+    const { container } = await renderHub();
+    expect(container.querySelector('[data-testid="quiz-category-strip"]')).toBeNull();
+    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
+    expect(practice.querySelector('[data-testid="quiz-category-rail"]')).toBeNull();
+  });
+
+  it("sits between the lobby and the workspace, at the composition's full width", async () => {
+    const { container } = await renderHub();
+    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
+    const lobby = container.querySelector('[data-testid="hub-ranked-section"]')!;
+    const workspace = container.querySelector('[data-testid="hub-workspace"]')!;
+    // DOM order IS reading order and tab order: lobby → rail → workspace.
+    expect(lobby.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(rail.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // A sibling of both, not nested inside either — nesting is what buried it.
+    expect(lobby.contains(rail)).toBe(false);
+    expect(workspace.contains(rail)).toBe(false);
+  });
+
+  it("is still an overview, not a menu", async () => {
+    const { container } = await renderHub();
+    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
+    expect(rail.querySelectorAll("button, a, [role='button']").length).toBe(0);
+  });
+});
+
 describe("Leaguecraft hub — Practice for Ranked", () => {
   it("states its purpose and offers one primary action", async () => {
     await renderHub();
@@ -272,17 +331,25 @@ describe("Leaguecraft hub — Recent Studies", () => {
     ).toBe("/lol/history");
   });
 
-  it("shows the honest empty state, whose CTA drives the Ranked flow", async () => {
+  it("shows the honest empty state, whose CTA opens PRACTICE and not Ranked", async () => {
+    // Recent Studies is practice-only: a Ranked match writes no row into this
+    // card, so its empty state must not send the reader to the one activity
+    // whose result could never fill it. The CTA opens the same primary set
+    // the Practice panel's own action does, in place — not a route change.
     historyMock.mockResolvedValue({ ...HISTORY, results: [], total_count: 0 });
     const { container } = await renderHub();
     await waitFor(() =>
       expect(container.querySelector('[data-testid="history-empty"]')).not.toBeNull(),
     );
-    expect(screen.getByText("No quiz results yet")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Play Ranked/ }));
+    expect(screen.getByText("No study sessions yet")).toBeTruthy();
+    const empty = container.querySelector('[data-testid="history-empty"]') as HTMLElement;
+    expect(within(empty).queryByRole("button", { name: /Ranked/i })).toBeNull();
+    fireEvent.click(within(empty).getByRole("button", { name: /Start practising/ }));
     await waitFor(() =>
-      expect(screen.getByTestId("location").textContent).toBe("/quiz/ranked"),
+      expect(container.querySelector('[data-testid="hub-ranked-section"]')).toBeNull(),
     );
+    // Still on /quiz — practice is a phase of this page, never a navigation.
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
   });
 });
 

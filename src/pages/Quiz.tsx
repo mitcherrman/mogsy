@@ -291,29 +291,84 @@ export default function Quiz() {
   // the in-flight option has to be tracked here rather than inferred from it.
   const [savingRankedRole, setSavingRankedRole] = useState<RankedRole | null>(null);
 
-  const chooseRankedRole = useCallback(
-    async (role: RankedRole) => {
-      if (rankedRole.saving) return;
-      setSavingRankedRole(role);
-      const accepted = await rankedRole.selectRole(role);
-      setSavingRankedRole(null);
-      // The backend stays the authority on when a change is legal; a refusal
-      // (an active match, a live queue entry) is surfaced, never swallowed.
-      //
-      // ONE toast, reused. A role write is rate limited (ten per minute), so a
-      // reader working the stage fast can be refused several times in a row —
-      // and an id-less `toast.error` mints a NEW toast every time, which is how
-      // a burst of identical "too many requests" notices piled up on the lobby.
-      // A stable id makes sonner UPDATE the standing notice instead of stacking
-      // another copy of it. This suppresses nothing: the message still changes
-      // with the refusal, and every other toast on this page is untouched.
-      if (!accepted && rankedRole.error) {
-        toast.error(rankedRole.error, { id: RANKED_ROLE_TOAST_ID });
-      }
-    },
-    [rankedRole],
-  );
+  /**
+   * BROWSING IS LOCAL. The role the reader has settled on but not yet
+   * committed, or null when they have not moved the stage this visit.
+   *
+   * Working the character-select ring used to be a WRITE per move: every
+   * Top → Jungle → Mid step sent `PUT /api/ranked/role`. That endpoint is rate
+   * limited to ten writes per account per minute (`role_set`), so two laps of
+   * an ordinary five-role carousel exhausted the budget and the eleventh move
+   * came back `429 RANKED_RATE_LIMITED`. Nothing about that was the reader's
+   * fault: looking through five mascots is browsing, not choosing, and it
+   * should cost nothing and be possible forever.
+   *
+   * So the stage now moves against local state and the account is written
+   * exactly once, when the reader commits by pressing PLAY. See
+   * `handlePlayRanked` for why that is the correct — and the only safe —
+   * commit point.
+   */
+  const [pendingRankedRole, setPendingRankedRole] = useState<RankedRole | null>(null);
+  /** What the lobby SHOWS as chosen: the unsaved local choice if there is one,
+   *  otherwise the account's stored role. This is what the carousel is given
+   *  as its `value`, which keeps `aria-checked` on the mascot the reader is
+   *  actually looking at, and keeps the stage's own
+   *  "don't re-select what is already selected" guard (e07da052) measuring
+   *  against the right role. */
+  const effectiveRankedRole = pendingRankedRole ?? rankedRole.role;
   const navigate = useNavigate();
+
+  /**
+   * PLAY — the commit point, and the reason it has to be this one.
+   *
+   * The Ranked route does NOT carry a role across the navigation: it mounts
+   * its own `useRankedRole()` and re-reads `GET /api/ranked/role`, and the
+   * queue join sends no role at all — `POST /api/ranked/queue` reads the
+   * player's stored preference off the account inside the join transaction.
+   * The persisted role IS the queued identity. So a local choice must reach
+   * the backend BEFORE the navigation, or the reader queues as whoever they
+   * used to be.
+   *
+   * The write is skipped entirely when the choice already matches the stored
+   * role, which is the ordinary case for a reader who browsed back to where
+   * they started, or never moved at all.
+   *
+   * A REFUSAL DOES NOT NAVIGATE. If the account cannot be moved to the chosen
+   * role — an active match, a live queue entry, a rate limit — sending the
+   * reader onward would land them in Ranked as the wrong role with no sign
+   * that anything failed. The notice is surfaced on the lobby and they stay
+   * put, which is the state they can actually act on.
+   */
+  const handlePlayRanked = useCallback(async () => {
+    if (rankedRole.saving) return;
+    const next = effectiveRankedRole;
+    // Nothing chosen (a guest, an older backend, an account that has never
+    // picked), or nothing changed: there is no write to make. The Ranked page
+    // still fails closed on a null role and offers its own picker.
+    if (next === null || next === rankedRole.role) {
+      navigate("/quiz/ranked");
+      return;
+    }
+    setSavingRankedRole(next);
+    const accepted = await rankedRole.selectRole(next);
+    setSavingRankedRole(null);
+    if (!accepted) {
+      // ONE toast, reused. An id-less `toast.error` mints a NEW toast every
+      // time, which is how identical "too many requests" notices used to pile
+      // up on the lobby. A stable id makes sonner UPDATE the standing notice
+      // instead of stacking another copy. This suppresses nothing: the message
+      // still changes with the refusal, and every other toast here is
+      // untouched. Kept even though browsing no longer writes — a burst is
+      // still reachable through repeated PLAY presses.
+      toast.error(
+        rankedRole.error ?? "Could not save your role. Try again.",
+        { id: RANKED_ROLE_TOAST_ID },
+      );
+      return;
+    }
+    setPendingRankedRole(null);
+    navigate("/quiz/ranked");
+  }, [effectiveRankedRole, rankedRole, navigate]);
   const userId = user?.id || "anonymous";
 
   useEffect(() => {
@@ -926,22 +981,65 @@ export default function Quiz() {
           style={{ background: LEAGUECRAFT_BG_VEIL }}
         />
 
-      {/* LC1: the hub reclaims the strip the shell's header band used to be
-          padded away from. The band itself (--app-header-h) still stands — the
-          floating HUD lives in it, and it is deliberately left whole: it is the
-          lobby's breathing room, and at narrow widths the outer two scrolls run
-          straight under the HUD's own home and identity controls, so reaching
-          into it would collide rather than merely crowd.
+      {/* MALT top-band pass: the hub now reclaims the HUD BAND ITSELF, not just
+          the gap below it.
 
-          What the hub reclaims is everything BELOW the band. With its header
-          row gone (see the block under this one) the only page-local cost left
-          is this padding, and 8px is the whole gap between the band and the
-          scroll caps — measured 96px → 64px at 1825×832. Every other phase
-          keeps its original pt-4, because only the hub has three tall columns
-          to fit and only the hub drops the header. */}
+          The previous pass left `--app-header-h` whole on the theory that the
+          outer scrolls "run straight under the HUD's own home and identity
+          controls". Measured, that is only true once the rack has stacked. The
+          HUD reserves a full-width 56px strip but PAINTS only two corner
+          clusters — at 1920×1080 the home control is x 12…56 and the identity
+          cluster is x 1590…1893, leaving 1534px of the 1810px band (85%) with
+          nothing in it at all. The composition was being pushed down by an
+          empty box.
+
+          So from `lg` up — the width at which the rack exists and the hero is
+          centred inside wide gutters — the negative margin cancels the shell's
+          padding exactly and the scrolls rise into the band:
+
+            · the LEFT scroll starts at x≈219 and the home control ends at
+              x=56, so there is no horizontal overlap with it at any width the
+              rack exists at;
+            · the RIGHT scroll does pass under the identity cluster, but only
+              its ornamental top ROLL does. The cluster's bottom is y=53 and
+              the right column's first content (the ACADEMY RECORD heading)
+              lands at y≈93, so nothing readable is ever covered. This is the
+              same trade `/lol` already makes — see LolHub's
+              `md:-mt-[var(--app-header-h)]` and the comment above it.
+
+          Below `lg` the columns stack full-width and the first one WOULD run
+          under both controls, so the band stays whole there — the original
+          reasoning, kept exactly where it still holds.
+
+          TWO STEPS, because the clearance is width-dependent and measured.
+          Each scroll's top ROLL is `aspect-ratio: 1086/145` of its own column
+          width, so the wider the rack, the lower its first line of text falls
+          and the more room the corner controls get for free. Measured gap
+          between the controls' bottom edge and the nearest column heading, at
+          a FULL reclaim:
+
+            1024 →  5px      1280 → 21px      1536 → 34px      1920 → 40px
+
+          5px is not clearance, it is a near miss, so `lg` reclaims the band
+          less 1.5rem and hands that back as the gap (29px at 1024). From `xl`
+          the roll is already tall enough to do the job on its own and the
+          reclaim is total.
+
+          The margin cancels padding that is already inside this box, so the
+          document does not overflow; it gets up to 56px SHORTER, which is the
+          point. Every other phase keeps its original pt-4: only the hub has
+          three tall columns to fit, and only the hub drops the header row.
+
+          `pt-1` rather than `pt-2`: what sits against that edge is the scroll's
+          ornamental top ROLL, not a line of text, so 4px of air above it reads
+          the same as 8 and the other 4 go to the category rail's clearance at
+          the short end of the desktop range (1280x800 keeps 6px instead of
+          2). */}
       <div
         className={`relative mx-auto px-4 pb-4 ${
-          phase === "sets" ? "max-w-[1500px] pt-2" : "max-w-3xl pt-4"
+          phase === "sets"
+            ? "max-w-[1500px] pt-1 lg:-mt-[calc(var(--app-header-h)_-_1.5rem)] xl:-mt-[var(--app-header-h)]"
+            : "max-w-3xl pt-4"
         }`}
       >
         {/* Compact Leaguecraft header — every phase EXCEPT the lobby.
@@ -1020,7 +1118,7 @@ export default function Quiz() {
             <LeaguecraftHub
               progress={userProgress}
               ranked={getRankedState(userProgress?.attempts ?? 0)}
-              onPlayRanked={() => navigate("/quiz/ranked")}
+              onPlayRanked={() => void handlePlayRanked()}
               sets={sets}
               setsLoading={setsLoading}
               onSelectSet={handleSelectSet}
@@ -1029,10 +1127,16 @@ export default function Quiz() {
               historyLoading={historyLoading}
               historyError={historyError}
               showMastery={HUB_MODULES.masteryJourney}
-              rankedRole={rankedRole.role}
-              onSelectRankedRole={(role) => void chooseRankedRole(role)}
+              /* The lobby shows the UNSAVED choice; the account is written at
+                 PLAY. See `pendingRankedRole`. */
+              rankedRole={effectiveRankedRole}
+              onSelectRankedRole={setPendingRankedRole}
               roleSelectDisabled={rankedRole.loadState !== "ready" || rankedRole.saving}
               roleSaving={savingRankedRole}
+              /* The seal is the commit, so it holds still while the one write
+                 it triggers is in flight — a second press must not start a
+                 second write or a second navigation. */
+              playDisabled={rankedRole.saving}
               rankedProgression={rankedProgression.progression}
               matchHistory={rankedHistory.entries}
               matchHistoryLoading={rankedHistory.loadState === "loading"}

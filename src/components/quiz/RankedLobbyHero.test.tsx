@@ -116,6 +116,50 @@ describe("RankedLobbyHero — three-column composition", () => {
     expect(portrait.className).toContain("object-contain");
   });
 
+  // MALT compaction pass. The Academy column was the tallest of the three and
+  // therefore set the height of the whole rack, which pushed the category rail
+  // off the first viewport at 1825x832. It was compacted by removing SPACING,
+  // and these are the guards that it stays spacing which is removed and not
+  // the picture.
+  it("gives the portrait the whole stage, so the box holds no dead column of air", () => {
+    renderHero();
+    const portrait = screen.getByTestId("hero-personal-portrait");
+    const stage = portrait.parentElement!;
+    // The stage used to be h-[324px] holding an h-[86%] image — 279px of
+    // mascot and 45px of nothing above its head. The RENDERED MASCOT IS
+    // UNCHANGED at every step; the box is now its own height and the image
+    // fills it. If the image ever goes back to a percentage, the two can
+    // drift apart again and the air comes back.
+    expect(portrait.className).toContain("h-full");
+    expect(portrait.className).not.toMatch(/h-\[\d+%\]/);
+    expect(stage.className).toContain("h-[210px]");
+    expect(stage.className).toContain("sm:h-[248px]");
+    expect(stage.className).toContain("lg:h-[280px]");
+  });
+
+  it("keeps the Academy interval inside the crown's own row, not stacked under it", () => {
+    // The crown is 72px tall next to two lines of 38px, so the row was already
+    // reserving the height the interval needs. Stacking the interval BELOW the
+    // lockup paid for that height a second time. Same crown, same size, same
+    // four pieces of information — one block.
+    renderHero({ progress: { academy_tier: "silver", academy_xp_to_next: 250 } });
+    const standing = screen.getByTestId("hero-academy-standing");
+    const crownRow = standing.firstElementChild!;
+    const tier = screen.getByTestId("hero-academy-tier");
+    // The tier and the interval are inside the SAME row as the crown.
+    expect(crownRow.contains(tier)).toBe(true);
+    if (/XP to/.test(standing.textContent ?? "")) {
+      const interval = [...standing.querySelectorAll("*")].find((el) =>
+        /XP to/.test(el.textContent ?? "") && el.children.length === 0,
+      )!;
+      expect(crownRow.contains(interval)).toBe(true);
+    }
+    // The row is a bounded, centred object rather than a full-width sprawl:
+    // unbounded it stranded the crown at the far edge under a centred name.
+    expect(crownRow.className).toContain("mx-auto");
+    expect(crownRow.className).toContain("max-w-[17rem]");
+  });
+
   it("stands each column on its own backing panel, with the centre emphasised", () => {
     renderHero();
     for (const column of ["hero-role-column", "hero-play-column", "hero-profile-column"]) {

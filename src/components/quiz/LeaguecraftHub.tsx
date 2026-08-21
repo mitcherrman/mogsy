@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
-import QuizCategoryStrip from "@/components/quiz/QuizCategoryStrip";
+import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { RankedRole } from "@/lib/ranked-public/roles";
@@ -28,17 +28,19 @@ import type {
  *                       PLAY gem in the centre, the player's own portrait,
  *                       standing and recent Ranked results on the right.
  *                       Nothing else on the page competes with it.
- *   2. Recent Studies — the real session history, compact, and the entry to
- *                       the full history route.
- *   3. Study panel    — a compact icon strip naming the six subjects
- *                       Leaguecraft studies, then Practice sets and the
- *                       Mastery journeys, reduced to low-priority links inside
- *                       one small panel. Both are still fully reachable;
- *                       neither is a headline any more. The strip is an
- *                       overview, not a menu — it is the only thing in the
- *                       panel that is not a way in.
+ *   2. Category rail  — the six subjects Leaguecraft studies, as one
+ *                       full-width horizontal band across the foot of the
+ *                       first viewport. It closes the lobby and opens the
+ *                       workspace. An overview, not a menu — see
+ *                       `QuizCategoryRail` for why it is not a door yet, and
+ *                       the note at its mount for why it is not sticky yet.
+ *   3. Workspace      — Recent Studies (PRACTICE sessions only; the centre
+ *                       scroll owns the Ranked ledger) and the Practice panel:
+ *                       the sets and the Mastery journeys, reduced to
+ *                       low-priority links. Both are still fully reachable;
+ *                       neither is a headline any more.
  *
- * The row-2 pair is deliberately short so the classroom art stays visible
+ * The row-3 pair is deliberately short so the classroom art stays visible
  * around the composition instead of being covered by a dashboard grid.
  *
  * This component is presentation only. Every value it renders is real data
@@ -57,6 +59,7 @@ export default function LeaguecraftHub({
   progress,
   ranked,
   onPlayRanked,
+  playDisabled = false,
   sets,
   setsLoading,
   onSelectSet,
@@ -106,6 +109,10 @@ export default function LeaguecraftHub({
    */
   demoRoleMastery?: Partial<Record<RankedRole, DemoRoleMastery>> | null;
   onPlayRanked: () => void;
+  /** Holds the PLAY seal still while the host commits the chosen role. The
+   *  seal is the lobby's one commit point, so a second press during that
+   *  write would start a second write and a second navigation. */
+  playDisabled?: boolean;
   sets: QuizSet[];
   setsLoading: boolean;
   onSelectSet: (set: QuizSet) => void;
@@ -129,6 +136,7 @@ export default function LeaguecraftHub({
           progress={progress}
           ranked={ranked}
           onPlayRanked={onPlayRanked}
+          playDisabled={playDisabled}
           rankedRole={rankedRole}
           onSelectRole={onSelectRankedRole}
           roleSelectDisabled={roleSelectDisabled}
@@ -143,7 +151,39 @@ export default function LeaguecraftHub({
         />
       </section>
 
-      {/* 2 ── Secondary row: where I've been, and where else I can study.
+      {/* 2 ── The category rail. The seam of the page: the six subjects at the
+              full width of the composition, closing the Ranked lobby and
+              opening the study workspace beneath it.
+
+              IN FLOW, NOT STICKY — and that is a measurement, not a taste.
+              The intended behaviour is that the rail pins under the HUD band
+              once the rack scrolls past and becomes the header of the lower
+              workspace. It was built and measured: nothing in the shell
+              blocks `position: sticky` (the only ancestor with an overflow is
+              `body`, whose `overflow-x` propagates to the viewport), and with
+              `lg:sticky lg:top-[var(--app-header-h)]` the rail pins at exactly
+              y=56 — below the corner controls rather than under them.
+
+              It can never REACH that state today. Pinning needs the page to
+              scroll by `railTop - 56`, which at 1440x900 is 842px; the whole
+              document only scrolls 490px, because the workspace below the rail
+              is ~300px tall — a Recent Studies empty state and five practice
+              chips. A behaviour that cannot fire is not a section transition,
+              so it does not ship on the strength of a passing probe. It
+              belongs with the history consolidation that actually gives the
+              workspace a viewport of depth; at that point this wrapper takes
+              the two classes above and the section below takes a matching
+              `scroll-mt`, and nothing else has to move. */}
+      {/* No top margin of its own: the hub's own `gap-3` is the whole seam.
+          The rail is what CLOSES the rack, so it wants to read as attached to
+          it rather than as the first item of a new list — and at 832px tall
+          the four pixels are the difference between the rail's bottom edge
+          landing inside the first viewport and just outside it. */}
+      <div className="relative z-30">
+        <QuizCategoryRail />
+      </div>
+
+      {/* 3 ── Secondary row: where I've been, and where else I can study.
               Both panels are short by construction — no auto-rows-fr, no
               stretched tile grid — so the classroom reads around them. The
               rule and the extra top margin push the row below the lobby's
@@ -156,20 +196,34 @@ export default function LeaguecraftHub({
               second act rather than more hero), the gap shrinks, and the top
               of Recent Studies reaches the first viewport on a normal desktop
               instead of starting entirely below it. */}
-      <div className="mt-1 grid grid-cols-1 gap-3 border-t border-[#c9a84c]/12 pt-3 lg:grid-cols-12">
+      <div
+        data-testid="hub-workspace"
+        /* The rule that used to open this row is gone: the RAIL above is the
+           rule now, and a hairline immediately under the rail's own bottom
+           edge read as a double line. The `pt-3` stays — it is also what keeps
+           the first content clear of the rail at the moment it pins. */
+        className="mt-3 grid grid-cols-1 gap-3 pt-1 lg:grid-cols-12"
+      >
         <section className="flex flex-col lg:col-span-7" data-testid="hub-recent-section">
           <SectionHeading icon={RotateCw} title="Recent Studies" hint="How am I doing?" />
+          {/* The empty state opens PRACTICE, not Ranked. A Ranked match never
+              produces a row in this card (see its header comment), so the old
+              "Play Ranked" button was pointing at the one activity whose
+              result would never show up in the thing it was empty. It opens
+              the same set the panel's own primary action does, and falls back
+              to nothing at all when the catalog has not loaded — never to a
+              dead button. */}
           <QuizRecentResultsCard
             history={history}
             loading={historyLoading}
             error={historyError}
-            onPlayRanked={onPlayRanked}
+            onStartPractice={primarySet ? () => onSelectSet(primarySet) : undefined}
             hideHeader
             className="mt-1.5 flex-1"
           />
         </section>
 
-        {/* 3 ── Study: Practice + Mastery, demoted to one compact panel. The
+        {/* 3b ─ Study: Practice + Mastery, demoted to one compact panel. The
                 routes and sets are untouched — only their visual weight. */}
         <section className="flex flex-col lg:col-span-5" data-testid="hub-practice-section">
           <SectionHeading
@@ -177,12 +231,11 @@ export default function LeaguecraftHub({
             title="Practice for Ranked"
             hint="Sharpen the knowledge used in Ranked."
           />
+          {/* The six subjects used to head this panel. They are the RAIL above
+              now — the same six icons at the width they actually apply to —
+              so the panel is only the ways IN, and the overview and the doors
+              no longer share a box. */}
           <LobbyPanel className="mt-1.5 gap-2">
-            {/* What the studying is ABOUT, before the list of ways in. The
-                strip is an overview and never a control: the sets below are
-                the only entry point, so the two cannot compete for the same
-                click. See QuizCategoryStrip for why it carries no counts. */}
-            <QuizCategoryStrip className="border-b border-[#c9a84c]/12 pb-2.5" />
             {setsLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-8 w-full rounded-md" />

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { History, ChevronRight, Swords } from "lucide-react";
+import { History, ChevronRight, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,21 +8,32 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { QuizHistoryResponse, QuizHistoryEntry } from "@/lib/quiz/api";
 
 /**
- * Compact recent-results card beside the Daily Challenge, under the Ranked
- * hero.
+ * RECENT STUDIES — the account's recent PRACTICE sessions, in the lobby's
+ * lower workspace.
  *
- * DATA HONESTY: the only history contract today is general quiz-session
- * history (/api/quiz/history — mode/score/accuracy per session). There is no
- * ranked-match record (no opponent, no W/L, no HP), so this card is labeled
- * "Recent Quiz Results" — never "Ranked matches" — and links to the real
- * history page at /lol/history ("View full history"). If a true ranked-match
- * contract lands later, this card is the slot for it.
+ * PRACTICE ONLY. THIS IS A BOUNDARY, NOT A GAP.
+ * ─────────────────────────────────────────────
+ * This card reads `/api/quiz/history`, which serves `quiz_sessions`, and
+ * `quiz_sessions` is written from exactly two places: a practice set
+ * (`mode: "standard"`, carrying the set name as its category) and the Daily
+ * Challenge (`mode: "daily"`). Older backfilled rows carry `mode: "legacy"`.
+ * The Ranked duel writes NONE of them — it has its own `/api/ranked/history`
+ * contract, which the CENTRE parchment renders as its Recent Ranked ledger.
+ *
+ * So the two ledgers on this page are disjoint by construction, and that is
+ * the design: the centre scroll answers "what happened in Ranked", this card
+ * answers "what have I been studying". Nothing here should ever be given a
+ * Ranked figure, a Ranked label, or a Ranked action — including in the empty
+ * state, which is why its call to action opens practice and not a match.
+ *
+ * If a Ranked-match row ever needs a home in the workspace, it gets its own
+ * section reading its own endpoint. It does not get merged into this one.
  */
 export default function QuizRecentResultsCard({
   history,
   loading,
   error,
-  onPlayRanked,
+  onStartPractice,
   hideHeader,
   className = "",
 }: {
@@ -30,7 +41,10 @@ export default function QuizRecentResultsCard({
   loading?: boolean;
   /** Auth-shaped errors (401/guest) render the sign-in state. */
   error?: string | null;
-  onPlayRanked?: () => void;
+  /** Opens practice from the empty state. Replaces the old `onPlayRanked`:
+   *  a Ranked match produces no row in this card, so offering one here sent
+   *  the reader to the one activity whose result would never appear. */
+  onStartPractice?: () => void;
   /** Suppress the built-in eyebrow when the host supplies a section heading. */
   hideHeader?: boolean;
   /** Frame overrides so the card can sit as a supporting module. */
@@ -66,7 +80,7 @@ export default function QuizRecentResultsCard({
             <div className="flex items-center gap-2">
               <History className="h-3.5 w-3.5 text-cyan-300/80" />
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
-                Recent Quiz Results
+                Recent Studies
               </span>
             </div>
           )}
@@ -85,18 +99,18 @@ export default function QuizRecentResultsCard({
               className="flex flex-1 flex-col items-start justify-center gap-2 py-4"
               data-testid="history-empty"
             >
-              <p className="text-sm font-semibold text-foreground">No quiz results yet</p>
+              <p className="text-sm font-semibold text-foreground">No study sessions yet</p>
               <p className="text-xs text-muted-foreground">
-                Play your first quiz to begin your history.
+                Finish a practice set or the Daily Challenge to start your record.
               </p>
-              {onPlayRanked && (
+              {onStartPractice && (
                 <Button
                   size="sm"
-                  onClick={onPlayRanked}
+                  onClick={onStartPractice}
                   className="mt-1 bg-gradient-to-r from-cyan-500 to-sky-700 text-xs font-semibold"
                 >
-                  <Swords className="mr-1 h-3.5 w-3.5" />
-                  Play Ranked
+                  <GraduationCap className="mr-1 h-3.5 w-3.5" />
+                  Start practising
                 </Button>
               )}
               {error && !needsAuth && (
@@ -157,9 +171,18 @@ function relativeTime(iso?: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+/** What a row is. A practice session carries its set name as `category`, so
+ *  that is the truest label available; "Practice" is the fallback for a row
+ *  that has none (a legacy backfill, or a session started without one) and
+ *  replaces the old "Quiz", which named the whole product rather than the
+ *  activity. Never "Ranked" — no Ranked row can reach this card. */
 function modeLabel(entry: QuizHistoryEntry): string {
+  // "Daily", not "Daily Challenge": the hub withholds the Daily Challenge
+  // MODULE, and a row label spelling out the module's full name would read as
+  // that entrance being back on the page (and is asserted against in
+  // Quiz.hub.test.tsx). The short form names the session and claims nothing.
   if (entry.mode === "daily") return "Daily";
-  return entry.category || "Quiz";
+  return entry.category || "Practice";
 }
 
 function HistoryRow({ entry }: { entry: QuizHistoryEntry }) {
