@@ -148,6 +148,16 @@ export interface MatchController {
   segmentState: SegmentStateView | null;
   /** Transcript of the last resolved multi-challenge segment, or null. */
   lastSegmentSettlement: SegmentSettlementView | null;
+  /**
+   * The round `lastSegmentSettlement` settled on, or null.
+   *
+   * The transcript itself carries no round number, and the arena needs one for
+   * two things: to label the block's result beat with the round it describes,
+   * and — the load-bearing use — as the EVENT ID that re-triggers the beat's
+   * entrance. Keying that on the live round number instead would replay the
+   * animation every time an ordinary round advanced underneath it.
+   */
+  lastSegmentRoundNumber: number | null;
   submitSegmentChallenge: (challengeIndex: number, choice: api.SegmentChoice) => void;
   /**
    * A payload this client could not READ, as a human-readable reason.
@@ -180,6 +190,8 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   const [damageLog, setDamageLog] = useState<ResolvedRoundView[]>([]);
   const [lastSegmentSettlement, setLastSegmentSettlement] =
     useState<SegmentSettlementView | null>(null);
+  const [lastSegmentRoundNumber, setLastSegmentRoundNumber] =
+    useState<number | null>(null);
   const [result, setResult] = useState<MatchResultView | null>(null);
   const [skewMs, setSkewMs] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
@@ -346,6 +358,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       console.error(`[ranked] round ${round} segment transcript failed to parse`, e);
     }
     setLastSegmentSettlement(segment);
+    setLastSegmentRoundNumber(segment ? round : null);
 
     if (opts.hold !== false && (settlement || segment)) {
       const leveledUp = settlement !== null
@@ -511,6 +524,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     setDamageLog([]);
     setLastResolved(null);
     setLastSegmentSettlement(null);
+    setLastSegmentRoundNumber(null);
     (async () => {
       const controller = new AbortController();
       abortRef.current = controller;
@@ -535,9 +549,15 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
             console.error("[ranked] resumed settlement failed to adapt", e);
           }
           // Recovered separately so a transcript survives a refresh even if
-          // the arena settlement adapter rejects an older payload shape.
+          // the arena settlement adapter rejects an older payload shape. The
+          // round it settled on comes from the SAME envelope, so the two can
+          // never describe different rounds.
           try {
-            setLastSegmentSettlement(readSegmentSettlement(raw));
+            const segment = readSegmentSettlement(raw);
+            setLastSegmentSettlement(segment);
+            setLastSegmentRoundNumber(
+              segment ? (resume.latestResolved as { round_number?: number })
+                .round_number ?? null : null);
           } catch { /* a malformed reveal simply shows no transcript */ }
           // Resume replays a reveal the player has usually already seen, and it
           // must not hold interactivity hostage on reconnect.
@@ -718,6 +738,7 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, selectedAbilityId, submitting, abilityBusy, actionError,
     error, contractError, retry, roundLive, answer, selectAbility, chooseLevelTwo,
-    segmentState, lastSegmentSettlement, submitSegmentChallenge, revealHold,
+    segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
+    submitSegmentChallenge, revealHold,
   };
 }

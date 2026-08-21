@@ -154,43 +154,84 @@ describe("QuizRankedMatch — multi-challenge segment", () => {
     backend.activeRound = 4;
   }
 
-  it("renders a compact segment result for the settlement BEAT — full transcript only on demand", async () => {
+  it("resolves a settled block in the TOP HUD, never at the bottom", async () => {
     openInChallenges();   // an OPEN engine round, so the poll can see it close
     await mount();
     settleSegment();
-    // The banner belongs to the settlement beat and nothing else, so this
-    // waits for the beat rather than for the banner: catching it by polling
-    // for the node would pass or fail on timing.
+    // Wait for the settlement BEAT rather than for a node, so this cannot pass
+    // or fail on polling timing.
     await waitFor(() => expect(screen.getByTestId("ranked-match"))
       .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
-    // The live flow shows a fixed-height banner, and the verbose
-    // per-challenge transcript NEVER mounts beneath an active round on its own.
-    expect(screen.getByTestId("icd-result-banner")).toBeInTheDocument();
-    expect(screen.getByTestId("icd-banner-result")).toHaveTextContent("Win");
-    expect(screen.queryByTestId("icd-transcript")).toBeNull();
-    // The canonical detail is deferred, not dropped: Details expands the
-    // unchanged transcript.
-    fireEvent.click(screen.getByTestId("icd-details-toggle"));
-    expect(screen.getByTestId("icd-transcript")).toBeInTheDocument();
-    expect(screen.getByTestId("icd-transcript-result")).toHaveTextContent("Win");
-    // ...and an OPEN expansion survives the end of the beat. A banner that
-    // vanished out from under the breakdown the player just asked for would
-    // be losing the detail, not deferring it.
-    await waitFor(() => expect(screen.getByTestId("ranked-match"))
-      .toHaveAttribute("data-reveal-hold", "false"), { timeout: 6000 });
-    expect(screen.getByTestId("icd-transcript")).toBeInTheDocument();
+
+    const beat = screen.getByTestId("ranked-last-result");
+    expect(beat).toHaveAttribute("data-mode", "segment");
+    // The one thing a round beat cannot say: each player's score out of five.
+    expect(beat).toHaveTextContent("YOU 5/5");
+    expect(beat).toHaveTextContent("OPP 1/5");
+    expect(beat).toHaveTextContent("15 DMG");
+    // The block's own result word, in the beat's rewarding tone — never colour
+    // alone, and never a tone this system does not already have.
+    expect(beat).toHaveAttribute("data-segment-result", "win");
+    expect(beat).toHaveAttribute("data-kind", "correct");
+    expect(screen.getByTestId("ranked-last-result-verdict")).toHaveTextContent("Win");
+    // It is in the top strip, and there is nothing at the bottom.
+    expect(screen.getByTestId("ranked-header").contains(beat)).toBe(true);
+    expect(screen.queryByTestId("icd-result-banner")).toBeNull();
+    expect(screen.queryByTestId("reveal-panel")).toBeNull();
   });
 
-  it("clears the segment banner once the beat ends, leaving the bottom free", async () => {
+  it("keeps the block's result after the beat, as the previous-result summary", async () => {
     openInChallenges();
     await mount();
     settleSegment();
     await waitFor(() => expect(screen.getByTestId("ranked-match"))
       .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
-    expect(screen.getByTestId("icd-result-banner")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("ranked-match"))
       .toHaveAttribute("data-reveal-hold", "false"), { timeout: 6000 });
+    // The block resolved and the next round is live: the result stays in the
+    // HUD, and the bottom stays empty.
+    expect(screen.getByTestId("ranked-last-result"))
+      .toHaveAttribute("data-mode", "segment");
     expect(screen.queryByTestId("icd-result-banner")).toBeNull();
+  });
+
+  it("discloses the card-by-card transcript from the beat, closed by default", async () => {
+    openInChallenges();
+    await mount();
+    settleSegment();
+    await waitFor(() => expect(screen.getByTestId("ranked-match"))
+      .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
+
+    // The canonical detail is DEFERRED, not dropped — and it never mounts on
+    // its own beneath a live round.
+    expect(screen.queryByTestId("icd-transcript")).toBeNull();
+    expect(screen.queryByTestId("segment-details-popover")).toBeNull();
+
+    const toggle = screen.getByTestId("segment-details-toggle");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(screen.getByTestId("segment-details-popover")).toBeInTheDocument();
+    expect(screen.getByTestId("icd-transcript")).toBeInTheDocument();
+    expect(screen.getByTestId("icd-transcript-result")).toHaveTextContent("Win");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    // It hangs off the HEADER, not off the bottom of the arena, and it owns no
+    // scroll container of its own.
+    const popover = screen.getByTestId("segment-details-popover");
+    expect(popover.className).toContain("absolute");
+    expect(popover.className).not.toMatch(/overflow-y-auto|overflow-auto/);
+    expect(screen.getByTestId("ranked-match").lastElementChild!.contains(popover))
+      .toBe(false);
+
+    // ...and it survives the end of the beat: pulling the breakdown out from
+    // under the player who just asked for it would be losing it, not
+    // deferring it.
+    await waitFor(() => expect(screen.getByTestId("ranked-match"))
+      .toHaveAttribute("data-reveal-hold", "false"), { timeout: 6000 });
+    expect(screen.getByTestId("icd-transcript")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("segment-details-toggle"));
+    expect(screen.queryByTestId("segment-details-popover")).toBeNull();
   });
 
   it("still renders the ordinary quiz surface for a quiz segment", async () => {

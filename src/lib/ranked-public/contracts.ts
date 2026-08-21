@@ -961,6 +961,30 @@ export interface SegmentRevealPlayer {
   totalResponseMs: number;
   perChallengeMs: (number | null)[];
   choices: (string | null)[];
+  // --- Meta Reflex additive scoring (module v2+). Absent on a v1 block. ---
+  /**
+   * The player cleared every card in the block. Worth `PERFECT_BONUS` damage
+   * server-side; the MAGNITUDE is a server constant and is deliberately not
+   * reconstructed here — this is the flag the settlement states, nothing more.
+   */
+  perfect: boolean;
+  /**
+   * Damage earned for finishing a PERFECT block strictly sooner than the
+   * opponent. 0 for everyone else, including the fastest player of an
+   * imperfect block: the premium is layered on accuracy and is worth nothing
+   * without it. Read straight off the settlement — never derived from
+   * `perChallengeMs`, which cannot see the server's own timing authority.
+   */
+  speedBonus: number;
+  /**
+   * The block damage the MODULE derived (correct + perfect + speed), before
+   * the engine's modifiers, shields and reductions. Null on a v1 block.
+   *
+   * NOT the number to show as "damage dealt": that is the engine's
+   * `final_damage_dealt`, which this can legitimately differ from. It is here
+   * so the bonus breakdown is auditable against the total.
+   */
+  damageDealt: number | null;
 }
 
 export interface SegmentRevealView {
@@ -1007,6 +1031,12 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
         .map((ms, i) => nnum(ms, `players.${pid}.per_challenge_ms[${i}]`)),
       choices: (Array.isArray(p.choices) ? p.choices : [])
         .map((c, i) => nstr(c, `players.${pid}.choices[${i}]`)),
+      // Additive-scoring fields, read COMPATIBILITY-SAFE. A v1 Item Cost Duel
+      // block carries none of them and must keep parsing byte-identically, so
+      // absent reads as "no bonus" rather than as a malformed payload.
+      perfect: nbool(p.perfect, `players.${pid}.perfect`) === true,
+      speedBonus: nnum(p.speed_bonus, `players.${pid}.speed_bonus`) ?? 0,
+      damageDealt: nnum(p.damage_dealt, `players.${pid}.damage_dealt`),
     };
   }
   const items: Record<string, SegmentItemView> = {};

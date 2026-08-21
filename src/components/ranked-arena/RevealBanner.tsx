@@ -76,30 +76,6 @@ export function resultHeadline(
   return { verdict, detail: parts.length ? parts.join(" · ") : null, tone: viewer.outcome };
 }
 
-/**
- * The same result, compressed for the TOP match HUD.
- *
- * Built ON `resultHeadline` rather than beside it, so there is still exactly
- * one place that decides what a round was called: the header chip and the
- * banner can disagree about how much room they have, never about the verdict.
- *
- * The only thing added is a SHORTER damage clause. `resultHeadline`'s
- * "14 damage dealt · 12 damage taken" is the right sentence for a banner and
- * far too long for a strip that also carries the live round and the clock.
- */
-export function compactResultHeadline(
-  viewer: ResolvedCombatantView, opponent: ResolvedCombatantView,
-): { verdict: string; detail: string | null; tone: ResolvedCombatantView["outcome"] } {
-  const { verdict, tone } = resultHeadline(viewer, opponent);
-  const parts: string[] = [];
-  if (viewer.finalDamageDealt > 0) parts.push(`${viewer.finalDamageDealt} dmg`);
-  if (viewer.finalDamageReceived > 0) parts.push(`took ${viewer.finalDamageReceived}`);
-  if (parts.length === 0 && viewer.shieldAbsorbed > 0) {
-    parts.push(`${viewer.shieldAbsorbed} absorbed`);
-  }
-  return { verdict, detail: parts.length ? parts.join(" · ") : null, tone };
-}
-
 const VERDICT_TONE: Record<ResolvedCombatantView["outcome"], string> = {
   correct: "text-emerald-300",
   incorrect: "text-[#e2757b]",

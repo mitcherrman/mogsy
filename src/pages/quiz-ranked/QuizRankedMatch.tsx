@@ -10,10 +10,10 @@ import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
-import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
-import { RoundResultChip } from "@/components/ranked-arena/RoundResultChip";
-import { SegmentResultBanner } from "@/components/ranked-arena/SegmentResultBanner";
+import { RoundResultBeat } from "@/components/ranked-arena/RoundResultBeat";
+import { SegmentResultBeat } from "@/components/ranked-arena/SegmentResultBeat";
+import { SegmentTranscript } from "@/components/ranked-arena/SegmentTranscript";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
 import { NO_INTERACTIONS, SubmissionPhase } from "@/lib/ranked-core/viewTypes";
@@ -52,13 +52,14 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const [tick, setTick] = useState(0);
   const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
   /**
-   * The settlement banner's Details expansion, owned HERE rather than by the
-   * banner, because the arena now decides when the banner exists at all.
+   * The Meta Reflex transcript's disclosure, owned HERE rather than by the
+   * beat that offers the control.
    *
-   * The banner is transient (see `showSettlement` below). If it simply
-   * unmounted at the end of the reveal beat it would take an open breakdown
-   * with it, which is losing the detail rather than deferring it — so an open
-   * Details keeps the banner mounted for as long as the player wants it.
+   * The transcript is a per-challenge table and cannot live inside the result
+   * plate: the header strip is a `.ranked-panel`, which is `overflow: hidden`,
+   * so anything hung off the plate is clipped by its own strip. It is rendered
+   * against the SHELL instead, absolutely positioned under the header, which
+   * is why the state lives at this level.
    */
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -114,15 +115,13 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     opponent: combatants
       ? projectRoundHistory(m.damageLog, combatants.opponent.playerId) : [],
   }), [m.damageLog, combatants]);
-  // A NEW settlement always starts collapsed. Render-time reset, no effect
-  // tick — the same shape the banner used to run internally, moved out with
-  // the state it belongs to. Keyed on WHICHEVER settlement the banner is
-  // showing (a segment transcript wins, exactly as in `revealNode`), so a
-  // settled Meta Reflex block collapses the expansion too.
-  const shownSettlement: unknown = m.lastSegmentSettlement ?? m.lastResolved;
-  const [seenSettlement, setSeenSettlement] = useState(shownSettlement);
-  if (seenSettlement !== shownSettlement) {
-    setSeenSettlement(shownSettlement);
+  // A NEW block always starts with its transcript collapsed. Render-time
+  // reset, no effect tick. Keyed on the SEGMENT settlement alone: an ordinary
+  // round has no transcript, and keying on it too would close the disclosure
+  // every time a quiz round settled underneath an open one.
+  const [seenSegment, setSeenSegment] = useState(m.lastSegmentSettlement);
+  if (seenSegment !== m.lastSegmentSettlement) {
+    setSeenSegment(m.lastSegmentSettlement);
     setDetailsOpen(false);
   }
   const revealOutcomes = useMemo(
@@ -316,71 +315,50 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // question from the layout. Keeping it mounted also preserves the RA1 1.2
   // guarantee that the scenario loop and answer entrance never restart.
 
-  // A multi-challenge segment has its own result shape: the arena reveal panel
-  // describes ONE challenge, which is the wrong shape for five. Neither is
-  // gated on the phase any more — a level-2 choice used to suppress the very
-  // reveal that explained it.
-  //
-  // Phase 2 compact layout: both settlements render as FIXED-HEIGHT banners
-  // with the full breakdown behind a Details expansion. The full panels used
-  // to stack 200–500px under the next live round; now the active-round height
-  // budget never includes settlement detail. Each banner collapses itself
-  // whenever a NEW settlement arrives, so the full transcript can never mount
-  // beneath an active question on its own.
   /**
-   * WHEN THE SETTLEMENT BANNER EXISTS — the reveal-lifecycle repair.
+   * THE BOTTOM OF THE ARENA IS NOT A RESULT SURFACE — for ANY active state.
    *
-   * This used to be "whenever a settlement exists", and `lastResolved` is only
-   * ever replaced, never cleared, so from the first settled round onward the
-   * banner was permanently on screen. The result: the header said ROUND 6 and
-   * both columns said "Thinking…" while a full-width bar below still shouted
-   * CORRECT · 14 damage dealt · Round 5 resolved. It was the only reveal
-   * surface in the arena NOT gated on the beat — the column verdicts, the
-   * damage numbers and the mascot reactions all resolve and then stand down.
+   * There is no result panel down there any more, and there is no longer an
+   * exception. `RevealBanner` went first (it flashed for the ~1.5s settlement
+   * beat of every ordinary round); `SegmentResultBanner` followed, for the
+   * same reason applied honestly: a Meta Reflex block settling once every five
+   * rounds still put a full-width bar in the region the round timeline needs
+   * to hold continuously. "Rarely" is not "never", and the invariant is never.
    *
-   * Three reasons to be on screen, and nothing else:
+   * Both results now resolve in the TOP strip, in one shared plate:
+   *   * an ordinary round → `RoundResultBeat`
+   *   * a settled block   → `SegmentResultBeat`, whose vocabulary is extended
+   *     exactly far enough to carry the one thing a round cannot say — each
+   *     player's N/5 — and no further.
    *
-   *  1. `revealHold` — the settlement beat itself. Same gate, same ~1.5s, as
-   *     every other reveal surface.
-   *  2. `isProgression` — a level-2 choice is owed. The reveal is what
-   *     EXPLAINS the level-up being chosen, and the choice can outlast the
-   *     beat, so it stays for as long as the prompt does.
-   *  3. `detailsOpen` — the player expanded the breakdown. Pulling it out from
-   *     under them would be losing the detail, not deferring it.
-   *
-   * The compact, permanent form of this information now lives in the TOP strip
-   * (`RoundResultChip`). Nothing takes the bottom's place: that region is
-   * deliberately left empty for the round timeline.
+   * Settlement feedback for an ordinary round is otherwise carried, in full, by
+   * the answer tablets' reveal (`projectSurfaceReveal`) and each duelist
+   * column's verdict row and recent-round ledger. `RevealBanner` survives as
+   * the arena inspector's fixture; the segment banner had no other caller and
+   * is deleted outright — its one irreplaceable part, the card-by-card
+   * transcript, is disclosed from the block's own beat instead.
    */
-  const showSettlement = m.revealHold || isProgression || detailsOpen;
-  const revealNode = !showSettlement ? null : m.lastSegmentSettlement ? (
-    <SegmentResultBanner
-      reveal={m.lastSegmentSettlement.reveal}
-      viewerUserId={viewerUserId}
-      opponentUserId={m.opponentUserId}
-      damageDealt={m.lastSegmentSettlement.damageByPlayerId[viewerUserId] ?? null}
-      // R1: no ability layer means no ability reveal. An empty map renders no
-      // ability row at all, rather than a meaningless "—" placeholder.
-      abilitiesByPlayerId={progressionEnabled
-        ? m.lastSegmentSettlement.abilitiesByPlayerId : {}}
-      open={detailsOpen}
-      onOpenChange={setDetailsOpen}
-    />
-  ) : m.lastResolved ? (
-    <RevealBanner settlement={m.lastResolved} viewerSlot="p1"
-      namesByPlayerId={revealNames(m.lastResolved)}
-      showAbilities={progressionEnabled}
-      open={detailsOpen} onOpenChange={setDetailsOpen} />
-  ) : null;
+  const segmentSettlement = m.lastSegmentSettlement;
 
   return (
     <div className="ranked-shell flex flex-col gap-3"
       data-testid="ranked-match" data-reveal-hold={m.revealHold ? "true" : "false"}>
+      {/* The strip, plus the one thing that hangs BENEATH it.
+          `.ranked-panel` is `overflow: hidden`, so the transcript cannot live
+          inside the strip — it would be clipped by it. This wrapper is the
+          anchor instead, and it is styleless apart from that, so the strip's
+          own geometry is untouched. The inline z-index is deliberate:
+          `.ranked-shell > *` pins every child to `z-index: 1`, and a class
+          cannot outrank it, so an open transcript would paint under the arena.
+          It is applied ONLY while open, so nothing about the resting page
+          changes. */}
+      <div className="relative" style={detailsOpen ? { zIndex: 30 } : undefined}>
       {/* Condensed top strip — mode · round · timer in one compact row.
           `min-h` reserves the tallest state this strip ever reaches, so the
           transition pill appearing or the timer gaining a notice line cannot
           push the arena below it. */}
-      <section className="ranked-panel ranked-header-plate flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
+      <section data-testid="ranked-header"
+        className="ranked-panel ranked-header-plate flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
         <div className="flex items-baseline gap-3">
           <div>
             <div className="ranked-eyebrow">
@@ -395,18 +373,36 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             </span>
           )}
         </div>
-        {/* The PREVIOUS round's result, compact and permanent — the top strip
-            is where match state lives. Third child of a `justify-between`
-            row, so it settles into the gap the strip already had between the
-            round title and the clock; it is `hidden md:flex` because below
-            that width the strip has no gap to settle into (the duelist
-            ledgers carry the same history at every width). It is one line
-            inside the strip's existing reserved min-height, so a round
-            resolving cannot grow the header. */}
-        {m.lastResolved && (
-          <RoundResultChip settlement={m.lastResolved} viewerSlot="p1"
+        {/* THE ROUND-RESOLUTION BEAT. Third child of a `justify-between` row,
+            so it takes the gap the strip already had between the round title
+            and the clock — the left group and the timer keep their ends, and
+            neither moves when it appears.
+
+            `key` on the ROUND is what makes this a beat rather than a static
+            summary: a new settlement remounts the plate and replays its
+            entrance. A round settles exactly once, so the round number is a
+            stable, monotonic event id.
+
+            `hidden md:flex` because below that width the strip has no gap to
+            take (the duelist ledgers carry the history at every width). The
+            plate is a fixed 2.5rem and never wraps, so it cannot grow the
+            strip past its reserved min-height or crowd the timer. */}
+        {segmentSettlement ? (
+          // A settled block wins the slot: it describes the same round the
+          // arena settlement does, and two plates would be two answers to one
+          // question. It also says strictly more — a round beat cannot report
+          // a 5-card scoreline.
+          <SegmentResultBeat key={`segment-${m.lastSegmentRoundNumber ?? "?"}`}
+            settlement={segmentSettlement} viewerUserId={viewerUserId}
+            opponentUserId={m.opponentUserId}
+            roundNumber={m.lastSegmentRoundNumber}
+            detailsOpen={detailsOpen} onToggleDetails={setDetailsOpen}
             className="hidden md:flex" />
-        )}
+        ) : m.lastResolved ? (
+          <RoundResultBeat key={m.lastResolved.roundNumber}
+            settlement={m.lastResolved} viewerSlot="p1"
+            className="hidden md:flex" />
+        ) : null}
         {/* RA10: the timer block sits behind a brass hairline, scoreboard-style,
             so the clock reads as its own instrument. Border only — the strip's
             reserved min-height is untouched. */}
@@ -427,6 +423,34 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           {timer && <TimerDisplay timer={timer} label="Shared round timer" />}
         </div>
       </section>
+      {/* THE CARD-BY-CARD TRANSCRIPT — the one thing the retired segment
+          banner owned that a 2.5rem plate cannot hold.
+          Closed by default, opened only from the beat's own control, and
+          ABSOLUTELY POSITIONED so it costs the header no height and moves
+          nothing in the arena, and gone the moment the player dismisses it or
+          the next block settles.
+          It sizes to its CONTENT and owns no scroll container: a block has a
+          fixed, small challenge count, so there is nothing here to scroll — and
+          the arena's standing rule is that no surface inside it scrolls
+          internally (see the source guard in `QuizRankedMatch.geometry`). */}
+      {detailsOpen && segmentSettlement && (
+        <div data-testid="segment-details-popover"
+          className="absolute right-0 top-full z-30 mt-1 w-[min(40rem,100%)]
+            whitespace-normal rounded-lg border border-[#b9934c]/40
+            bg-[#070f1c] p-3 text-left shadow-2xl">
+          <SegmentTranscript
+            reveal={segmentSettlement.reveal}
+            viewerUserId={viewerUserId}
+            opponentUserId={m.opponentUserId}
+            damageDealt={segmentSettlement.damageByPlayerId[viewerUserId] ?? null}
+            // R1: no ability layer means no ability reveal. An empty map
+            // renders no ability row at all, rather than a "—" placeholder.
+            abilitiesByPlayerId={progressionEnabled
+              ? segmentSettlement.abilitiesByPlayerId : {}}
+          />
+        </div>
+      )}
+      </div>
 
       {/* Mobile-only presence/playtest line (hidden in the strip on <sm). */}
       {(m.publicRound.playtest?.isPlaceholder || opponentLabel) && (
@@ -625,13 +649,10 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           </div>
       )}
 
-      {/* The settlement banner lands at the very END of the page, below
-          everything it could otherwise displace, and only for the beat it
-          describes (see `showSettlement`). Between rounds this region is
-          EMPTY, and deliberately so: the bottom of the arena is reserved for
-          the round timeline, and nothing here may take that space with
-          another permanent result panel. */}
-      {revealNode}
+      {/* RESERVED FOR THE ROUND TIMELINE. Nothing follows the HUD row in any
+          active state — not an ordinary round's result, not a settled Meta
+          Reflex block's, not during a transition. The region is structurally
+          free for the timeline phase to take. */}
     </div>
   );
 }

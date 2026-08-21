@@ -753,6 +753,108 @@
   color: var(--ranked-muted);
 }
 
+/* ---- Round-result beat (top HUD centre) -----------------------------------
+   THE round-resolution presentation. The arena's four regions each answer one
+   question — top is match state, centre is the question, the rails are the
+   duelists, the bottom is reserved for the round timeline — so the settled
+   round resolves HERE and nowhere else. There is no bottom result bar to
+   duplicate or contradict it.
+
+   GEOMETRY IS FIXED, and that is the load-bearing property. The plate is a
+   constant 2.5rem tall, `whitespace-nowrap`, and every state — verdict alone,
+   verdict plus one damage clause, verdict plus two — occupies the same box. It
+   sits inside the header's already-reserved `min-h-[3.5rem]`, so a round
+   resolving can neither grow the strip nor move the round title or the clock.
+   Every keyframe below is a transform, an opacity or a shadow: nothing here
+   lays out, so the beat cannot shift the page while it plays.
+
+   Four tones, from the settlement's own vocabulary — never invented outcomes.
+   `correct` is the rewarding one and the only one that glows; `both-correct`
+   is deliberately NOT the same treatment (a traded round is not a won one);
+   `incorrect` and `timed-out` take a short jolt instead of a glow. */
+.ranked-result-beat {
+  animation-name: ranked-result-in;
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.25, 1);
+  animation-fill-mode: both;
+}
+/* Tone-specific emphasis, layered on the shared entrance. Both are ONE-SHOT
+   and both end quiet: the plate settles into the persistent previous-round
+   summary it stays as until the next settlement replaces it.
+
+   LONGHANDS, not the shorthand, and the second animation NEVER fills
+   backwards. Two animations on one element that touch the same property fight,
+   and the later one in the list wins for as long as it applies — a jolt with
+   `fill-mode: both` would therefore own `transform` from t=0 and erase the
+   entrance entirely. The jolt starts only once the entrance has finished, and
+   fills neither end. The glow and the sheen touch `box-shadow`, which the
+   entrance does not, so they are free to overlap it. */
+.ranked-result-beat[data-kind="correct"] {
+  animation-name: ranked-result-in, ranked-result-glow;
+  animation-duration: 300ms, 900ms;
+  animation-delay: 0ms, 120ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.25, 1), ease-out;
+  animation-fill-mode: both, none;
+}
+.ranked-result-beat[data-kind="both-correct"] {
+  animation-name: ranked-result-in, ranked-result-sheen;
+  animation-duration: 300ms, 800ms;
+  animation-delay: 0ms, 120ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.25, 1), ease-out;
+  animation-fill-mode: both, none;
+}
+.ranked-result-beat[data-kind="incorrect"],
+.ranked-result-beat[data-kind="timed-out"] {
+  animation-name: ranked-result-in, ranked-result-jolt;
+  animation-duration: 300ms, 300ms;
+  animation-delay: 0ms, 300ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.25, 1), ease-in-out;
+  animation-fill-mode: both, none;
+}
+
+@keyframes ranked-result-in {
+  0%   { transform: translateY(-30%) scale(0.9); opacity: 0; }
+  60%  { transform: translateY(0) scale(1.03);   opacity: 1; }
+  100% { transform: translateY(0) scale(1);      opacity: 1; }
+}
+/* A single warm swell that decays to nothing — rewarding, then out of the way. */
+@keyframes ranked-result-glow {
+  0%   { box-shadow: 0 0 0 0 rgba(110,231,183,0); }
+  25%  { box-shadow: 0 0 18px 2px rgba(110,231,183,0.45); }
+  100% { box-shadow: 0 0 0 0 rgba(110,231,183,0); }
+}
+/* Brass rather than green: a traded round reads as a clash, not a reward. */
+@keyframes ranked-result-sheen {
+  0%   { box-shadow: 0 0 0 0 rgba(232,201,122,0); }
+  30%  { box-shadow: 0 0 14px 1px rgba(232,201,122,0.38); }
+  100% { box-shadow: 0 0 0 0 rgba(232,201,122,0); }
+}
+/* A hit, not a shake: two small displacements and done. */
+@keyframes ranked-result-jolt {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-3px); }
+  60%      { transform: translateX(2px); }
+}
+
+/* Reduced motion: the result still ARRIVES — it is the round's resolution and
+   must be noticeable — it simply does not travel, scale or pulse. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ranked-result-fade {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .ranked-result-beat,
+  .ranked-result-beat[data-kind="correct"],
+  .ranked-result-beat[data-kind="both-correct"],
+  .ranked-result-beat[data-kind="incorrect"],
+  .ranked-result-beat[data-kind="timed-out"] {
+    animation-name: ranked-result-fade;
+    animation-duration: 200ms;
+    transform: none;
+    box-shadow: none;
+  }
+}
+
 /* ---- Question folio -------------------------------------------------------
    The central question surface becomes a sheet of vellum in a brass frame. The
    supplied texture is tiled UNDER a parchment gradient that carries most of the

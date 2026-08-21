@@ -196,22 +196,30 @@ describe("Meta Reflex in the Ranked shell", () => {
       quizSegment();
       backend.roundNumber = 5;
 
-      // The settled block is summarised under the product name — during the
-      // settlement BEAT. This has to be asserted before the surface advances,
-      // not after: the surface is itself held until the beat ends (that is
-      // what `revealHold` gates), so by the time `mr-block` has unmounted the
-      // banner has already stood down and the bottom of the arena is free.
+      // The settled block is summarised in the TOP HUD, under the product
+      // name, and NOT at the bottom of the arena — the region the round
+      // timeline needs held open.
       await waitFor(() => expect(screen.getByTestId("ranked-match"))
         .toHaveAttribute("data-reveal-hold", "true"), { timeout: 6000 });
-      const banner = screen.getByTestId("icd-result-banner");
-      expect(banner).toHaveTextContent("Meta Reflex");
-      expect(banner).not.toHaveTextContent("Item Cost Duel");
+      const beat = screen.getByTestId("ranked-last-result");
+      expect(beat).toHaveAttribute("data-mode", "segment");
+      expect(beat).toHaveTextContent("Meta Reflex");
+      expect(beat).not.toHaveTextContent("Item Cost Duel");
+      // The scoreline no round beat could carry, straight off the reveal.
+      expect(beat).toHaveTextContent("YOU 4/5");
+      expect(beat).toHaveTextContent("OPP 2/5");
+      expect(beat).toHaveTextContent("6 DMG");
+      expect(screen.queryByTestId("icd-result-banner")).toBeNull();
 
       await waitFor(() => expect(screen.queryByTestId("mr-block")).toBeNull(),
         { timeout: 6000 });
       expect(screen.getByTestId("ranked-question")).toBeInTheDocument();
       expect(screen.getByTestId("ranked-abilities")).toBeInTheDocument();
       expect(screen.getByTestId("ranked-match")).toBe(shell);
+      // The next round is live and the block's result is still in the HUD —
+      // still with nothing at the bottom.
+      expect(screen.getByTestId("ranked-last-result"))
+        .toHaveAttribute("data-mode", "segment");
       expect(screen.queryByTestId("icd-result-banner")).toBeNull();
     }, 15000);
 
