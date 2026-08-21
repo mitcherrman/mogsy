@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AcademyChapter } from "./academyChapters";
 import {
   chapterSentences,
+  CONTROL_PAUSE_MS,
   DOCKET_PAUSE_MS,
   DOCKET_WRITE_MS,
   headingWriteMs,
@@ -82,7 +83,8 @@ export function slotCount(chapter: AcademyChapter): number {
     1 +
     chapterSentences(chapter.lines).length +
     (hasAnnotation(chapter) ? 1 : 0) +
-    (hasTerminal(chapter) ? 1 : 0)
+    (hasTerminal(chapter) ? 1 : 0) +
+    (hasSignIn(chapter) ? 1 : 0)
   );
 }
 
@@ -111,6 +113,21 @@ export function hasTerminal(chapter: AcademyChapter): boolean {
 }
 
 /**
+ * The register's last slot: the quiet "already have an account?" line.
+ *
+ * A SLOT OF ITS OWN, which is the entire mechanism behind the rule that it
+ * arrives last. It is not part of the form and it is not part of the writing;
+ * it is one more thing the page releases, after the register and its button
+ * have finished arriving, so a new visitor reads the register as the page's
+ * business and only then notices the way out. Nothing about it is optional at
+ * the sequence level — the register always has one — so the count is exact and
+ * the view's slot numbers cannot drift from it.
+ */
+export function hasSignIn(chapter: AcademyChapter): boolean {
+  return Boolean(chapter.registration);
+}
+
+/**
  * The writing already on the page when the illustration starts.
  *
  * `step >= 2` means the heading has been written and the first SENTENCE is
@@ -133,15 +150,31 @@ export const ART_START_STEP = 2;
  * lives in phrases.ts — this function is only the assignment of those numbers
  * to slots, so the cadence can be retuned in one file.
  */
+/**
+ * The breath after slot `slot` has finished arriving.
+ *
+ * Paired with slotWriteMs below, this is the whole cadence model: a slot takes
+ * as long to arrive as it takes, and is then followed by a beat chosen for what
+ * KIND of thing it was. Splitting it out this way is what let HI1-C5B add a
+ * fourth kind of slot — a control that arrives after another control — without
+ * the hold function growing a special case per page.
+ */
+function slotPauseMs(chapter: AcademyChapter, slot: number): number {
+  if (slot === 0) return HEADING_PAUSE_MS;
+  const sentences = chapterSentences(chapter.lines);
+  const sentence = sentences[slot - 1];
+  if (sentence) return sentencePauseMs(sentence);
+  if (slot === 1 + sentences.length) {
+    if (chapter.docket?.length) return DOCKET_PAUSE_MS;
+    if (chapter.marginalia?.length) return MARGINALIA_PAUSE_MS;
+  }
+  // A control arrived. The beat before whatever follows it.
+  return CONTROL_PAUSE_MS;
+}
+
 function slotHold(chapter: AcademyChapter, step: number): number {
   if (step === 0) return OPENING_PAUSE_MS;
-  if (step === 1) return headingWriteMs(chapter.eyebrow, chapter.heading) + HEADING_PAUSE_MS;
-  const sentences = chapterSentences(chapter.lines);
-  const sentence = sentences[step - 2];
-  if (sentence) return sentenceWriteMs(sentence) + sentencePauseMs(sentence);
-  // Past the prose there is at most one written slot left — the annotation.
-  if (chapter.docket?.length) return DOCKET_WRITE_MS + DOCKET_PAUSE_MS;
-  return MARGINALIA_WRITE_MS + MARGINALIA_PAUSE_MS;
+  return slotWriteMs(chapter, step - 1) + slotPauseMs(chapter, step - 1);
 }
 
 /** Visible writing time of the slot just released — the scribble's window. */
@@ -154,7 +187,7 @@ export function slotWriteMs(chapter: AcademyChapter, slot: number): number {
     if (chapter.docket?.length) return DOCKET_WRITE_MS;
     if (chapter.marginalia?.length) return MARGINALIA_WRITE_MS;
   }
-  return 0; // the exits and the register's form arrive; they are not written
+  return 0; // exits, the register's form and its sign-in line are not written
 }
 
 /**

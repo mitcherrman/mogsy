@@ -4,10 +4,8 @@ import { ArrowRight } from "lucide-react";
 import {
   LEAGUE_RANKS,
   USERNAME_MAX,
-  validatePassword,
   validateUsername,
   type LeagueRankId,
-  type RegistrationValue,
 } from "@/lib/welcome/academy-registration";
 
 /**
@@ -22,13 +20,19 @@ import {
  * card on the facing page (ChapterPlate) fills in as this is filled in, so the
  * two pages are one act.
  *
- * WHAT IS REQUIRED, AND WHAT REQUIRED MEANS HERE. The name and the rank are
- * required; the password is not. "Required" governs this FORM — it does not
- * trap anyone in the introduction, because the rail's "Skip to the Academy"
- * remains a real exit from this page exactly as from every other, and Back
- * still re-reads the previous chapter. What it does mean is that the tome's own
- * Next is suppressed while this page is up: an impatient tap can finish the
- * writing but cannot turn past the register unanswered. See AcademyWelcomePage.
+ * TWO FIELDS (HI1-C5B). The first pass also carried an optional password and a
+ * checkbox recording an intent to link Riot, Discord or email later. Both are
+ * removed rather than hidden: a password with nothing to authenticate against
+ * and a checkbox with no Verify page behind it were UI for an account this
+ * screen does not make. Both belong to the Verify experience, where they can be
+ * true. What is left is exactly what the product will actually use — a name and
+ * a self-reported rank, both of which become real profile columns.
+ *
+ * WHAT IS REQUIRED, AND WHAT REQUIRED MEANS HERE. Both fields are required, and
+ * this page genuinely gates the introduction: the tome's own Next is suppressed
+ * while it is up, and until it is answered the rail carries no exit either (see
+ * AcademyWelcomePage). The escape hatch that IS offered is Sign In, for someone
+ * who already has an account — it lives below this form and arrives after it.
  *
  * VALIDATION IS SHOWN, NEVER SHOUTED. Nothing is marked wrong until the visitor
  * has tried to submit; after that a field re-validates as it is edited, so an
@@ -36,10 +40,12 @@ import {
  * next to the rule that caused them, and they are wired with `aria-describedby`
  * and `aria-invalid` so a screen reader gets them at the field rather than as
  * an announcement about a page.
- *
- * NO PASSWORD IS PERSISTED BY ANYTHING THIS FORM CALLS — see the note at the
- * top of lib/welcome/academy-registration.ts.
  */
+
+export interface RegistrationValue {
+  username: string;
+  rank: LeagueRankId | "";
+}
 
 export default function RegistrationForm({
   value,
@@ -49,36 +55,31 @@ export default function RegistrationForm({
   value: RegistrationValue;
   onChange: (next: RegistrationValue) => void;
   /** Called only with a valid registration. The page owns what happens next. */
-  onSubmit: (value: RegistrationValue & { rank: LeagueRankId }) => void;
+  onSubmit: (value: { username: string; rank: LeagueRankId }) => void;
 }) {
   const ids = useId();
   const nameId = `${ids}-name`;
   const rankId = `${ids}-rank`;
-  const passwordId = `${ids}-password`;
-  const linkId = `${ids}-link`;
 
   // Nothing is wrong until they have said they are done. After that, every
   // keystroke re-checks, so a corrected field stops being red immediately.
   const [submitted, setSubmitted] = useState(false);
 
   const nameCheck = validateUsername(value.username);
-  const passwordCheck = validatePassword(value.password);
   const rankMissing = value.rank === "";
 
   const nameError = submitted && !nameCheck.ok ? nameCheck.error : undefined;
   const rankError = submitted && rankMissing ? "Pick a rank — Unranked counts." : undefined;
-  const passwordError = submitted && !passwordCheck.ok ? passwordCheck.error : undefined;
 
   const set = (patch: Partial<RegistrationValue>) => onChange({ ...value, ...patch });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    if (!nameCheck.ok || rankMissing || !passwordCheck.ok) return;
+    if (!nameCheck.ok || rankMissing) return;
     onSubmit({
-      ...value,
-      // Normalised on the way out: the stored name is the one that gets printed
-      // back at the visitor, so it is the trimmed one, not the typed one.
+      // Normalised on the way out: this name is printed back at the visitor AND
+      // written to profiles.display_name, so it is the trimmed one.
       username: nameCheck.value!,
       rank: value.rank as LeagueRankId,
     });
@@ -158,49 +159,6 @@ export default function RegistrationForm({
           </p>
         )}
       </div>
-
-      <div className="tome-field" data-invalid={passwordError ? "true" : "false"}>
-        <label className="tome-field-label" htmlFor={passwordId}>
-          Password <span className="tome-field-optional">optional</span>
-        </label>
-        <input
-          id={passwordId}
-          name="password"
-          type="password"
-          className="tome-field-input"
-          data-testid="academy-registration-password"
-          value={value.password}
-          onChange={(e) => set({ password: e.target.value })}
-          autoComplete="new-password"
-          aria-invalid={passwordError ? "true" : undefined}
-          aria-describedby={passwordError ? `${passwordId}-error` : undefined}
-          placeholder="Leave blank to decide later"
-        />
-        {passwordError && (
-          <p className="tome-field-error" id={`${passwordId}-error`} data-testid="academy-registration-password-error">
-            {passwordError}
-          </p>
-        )}
-      </div>
-
-      {/* The linking intent. A real checkbox with a real label, under the
-          password because that is the thing it is an alternative to. It
-          promises a page, not a provider — nothing here contacts Riot, Discord
-          or an email server, and nothing pretends to. */}
-      <label className="tome-check" htmlFor={linkId}>
-        <input
-          id={linkId}
-          name="wantsLinking"
-          type="checkbox"
-          className="tome-check-box"
-          data-testid="academy-registration-link"
-          checked={value.wantsLinking}
-          onChange={(e) => set({ wantsLinking: e.target.checked })}
-        />
-        <span className="tome-check-copy">
-          Optional — check to link Riot, Discord, or email for a bonus after.
-        </span>
-      </label>
 
       <button type="submit" className="tome-submit" data-testid="academy-registration-submit">
         <span>Enter the register</span>

@@ -2352,18 +2352,6 @@ html.high-contrast * { text-shadow: none !important; }
   color: var(--tome-gilt);
 }
 
-/* "optional" is a different KIND of word from the label it follows — the label
-   names the field, this qualifies it — so it is set in the body face and in ink
-   rather than shouted in gold small caps beside it. */
-.academy-welcome .tome-field-optional {
-  font-family: inherit;
-  font-size: 0.86em;
-  font-weight: 400;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  color: var(--tome-ink-faint);
-}
-
 /* The ruled line. `background`/`border` are both reset because the app's global
    input styling and the browser's own default would otherwise put a box on the
    parchment; the only rule left is the one under the text. */
@@ -2440,31 +2428,6 @@ html.high-contrast * { text-shadow: none !important; }
   color: #8c2f1d;
 }
 
-.academy-welcome .tome-check {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.45em;
-  margin-top: 0.1em;
-  cursor: pointer;
-}
-
-.academy-welcome .tome-check-box {
-  flex-shrink: 0;
-  width: clamp(0.72rem, 1.4cqw, 0.95rem);
-  height: clamp(0.72rem, 1.4cqw, 0.95rem);
-  margin-top: 0.18em;
-  /* `accent-color` rather than a hand-built box: the native control keeps its
-     own focus ring, its own keyboard behaviour and its own high-contrast
-     rendering, and only its fill needs to be the tome's gilt. */
-  accent-color: #6b5418;
-}
-
-.academy-welcome .tome-check-copy {
-  font-size: clamp(0.62rem, 1.24cqw, 0.82rem);
-  line-height: 1.4;
-  color: var(--tome-ink-soft);
-}
-
 .academy-welcome .tome-submit {
   display: inline-flex;
   align-items: center;
@@ -2490,6 +2453,62 @@ html.high-contrast * { text-shadow: none !important; }
 .academy-welcome .tome-submit:focus-visible {
   outline: 2px solid #6b5418;
   outline-offset: 2px;
+}
+
+/* ---- The returning visitor's way out (HI1-C5B) ---------------------------- */
+
+/* "Already have an account?  Sign In", under the register.
+   
+   EVERY CHOICE HERE IS ABOUT LOSING TO THE REGISTER. It is one line of body
+   type, not a block; it is set in the faint ink, not the gilt; its action is
+   underlined text rather than a button, so nothing on the page competes with
+   the one filled control above it; and it is separated by a hairline rather
+   than by a heading, which says "that was the page, this is an aside".
+   
+   It is also the LAST reveal slot on the spread (see ChapterWriting), so a new
+   visitor meets it only after the register and its button have finished
+   arriving. The rule below is the visual half of that: what arrives last must
+   also read as least. */
+
+.academy-welcome .tome-signin {
+  display: flex;
+  width: 100%;
+  max-width: calc(100% - var(--tome-page-inward));
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4em;
+  margin-top: 0.85em;
+  padding-top: 0.7em;
+  border-top: 1px solid rgba(107, 84, 24, 0.28);
+  font-size: clamp(0.6rem, 1.2cqw, 0.8rem);
+  line-height: 1.35;
+}
+
+.academy-welcome .tome-signin-lead {
+  color: var(--tome-ink-faint);
+}
+
+/* Underlined ink, not a second call to action. The underline is what makes it
+   unmistakably actionable at this weight — colour alone would not, and at 5.9:1
+   on the page's mid-tone the label still clears the contrast floor. */
+.academy-welcome .tome-signin-action {
+  font-weight: 600;
+  color: var(--tome-ink);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-color: rgba(107, 84, 24, 0.7);
+  transition: text-decoration-color 180ms ease;
+}
+
+.academy-welcome .tome-signin-action:hover {
+  text-decoration-color: #6b5418;
+}
+
+.academy-welcome .tome-signin-action:focus-visible {
+  outline: 2px solid #6b5418;
+  outline-offset: 3px;
+  border-radius: 0.2rem;
 }
 
 /* ---- The register CARD on the facing page -------------------------------- */
@@ -2900,18 +2919,13 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: clamp(0.65rem, 2.8vw, 0.78rem);
 }
 
-.academy-welcome .tome-single .tome-check-copy {
-  font-size: clamp(0.68rem, 2.9vw, 0.8rem);
-}
-
-.academy-welcome .tome-single .tome-check-box {
-  width: 1rem;
-  height: 1rem;
-}
-
 .academy-welcome .tome-single .tome-submit {
   font-size: clamp(0.85rem, 3.8vw, 1rem);
   padding: 0.6em 1em;
+}
+
+.academy-welcome .tome-single .tome-signin {
+  font-size: clamp(0.68rem, 2.9vw, 0.8rem);
 }
 
 .academy-welcome .tome-single .tome-register-title {
@@ -3030,18 +3044,14 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: clamp(0.58rem, 1.35vw, 0.72rem);
 }
 
-.academy-welcome .tome-single-wide .tome-check-copy {
-  font-size: clamp(0.6rem, 1.4vw, 0.74rem);
-}
-
-.academy-welcome .tome-single-wide .tome-check-box {
-  width: 0.85rem;
-  height: 0.85rem;
-  margin-top: 0.12em;
-}
-
 .academy-welcome .tome-single-wide .tome-submit {
   font-size: clamp(0.75rem, 1.8vw, 0.92rem);
+}
+
+.academy-welcome .tome-single-wide .tome-signin {
+  margin-top: 0.5em;
+  padding-top: 0.45em;
+  font-size: clamp(0.6rem, 1.4vw, 0.74rem);
 }
 
 .academy-welcome .tome-single-wide .tome-register-title {

@@ -9,6 +9,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import { AdminAuthProvider } from "./lib/admin-auth/AdminAuthProvider";
 import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
+import { useAcademyIdentitySync } from "./hooks/useAcademyIdentitySync";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RequireRankedTutorial from "./components/RequireRankedTutorial";
 import AdminRoute from "./components/AdminRoute";
@@ -296,10 +297,22 @@ function AuthQuerySyncBridge() {
   return null;
 }
 
+/**
+ * Carries an Academy registration taken while signed out into the profile the
+ * moment an account exists (HI1-C5B). Mounted beside the query-sync bridge and
+ * for the same reason: it has to be watching auth from wherever the visitor is,
+ * not from the one screen that collected the answers.
+ */
+function AcademyIdentityBridge() {
+  useAcademyIdentitySync();
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <AuthQuerySyncBridge />
+      <AcademyIdentityBridge />
       <AdminAuthProvider>
       <SitewideThemeProvider>
         <TooltipProvider>

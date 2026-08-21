@@ -35,13 +35,18 @@ import {
   markAcademyWelcomeHandled,
   readAcademyWelcomeState,
 } from "@/lib/welcome/academy-welcome";
-import { readAcademyRegistration } from "@/lib/welcome/academy-registration";
+import {
+  ACADEMY_SIGN_IN_ROUTE,
+  LEAGUE_RANKS,
+  readAcademyRegistration,
+  saveAcademyRegistration,
+} from "@/lib/welcome/academy-registration";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
-const mocks = vi.hoisted(() => ({ navigate: vi.fn(), toast: vi.fn(), seed: vi.fn() }));
+const mocks = vi.hoisted(() => ({ navigate: vi.fn(), adopt: vi.fn() }));
 const audio = vi.hoisted(() => ({
   scribble: vi.fn(),
   stopScribble: vi.fn(),
@@ -51,14 +56,14 @@ const audio = vi.hoisted(() => ({
 vi.mock("react-router-dom", () => ({ useNavigate: () => mocks.navigate }));
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
 vi.mock("./tomeAudio", () => ({ useTomeAudio: () => audio }));
-// The register's two outward effects, both stubbed for the same reason the
-// audio module is: these tests assert WHEN the page reaches for them, not what
-// Sonner or Supabase do next. The profile seed in particular must be mocked
-// rather than merely unused — importing the real module instantiates the
-// Supabase client against jsdom's storage stub and rejects on its own clock.
-vi.mock("sonner", () => ({ toast: mocks.toast }));
+// The register's one outward effect, stubbed for the same reason the audio
+// module is: these tests assert WHEN the page reaches for it, not what Supabase
+// does next. It must be mocked rather than merely unused — importing the real
+// module instantiates the Supabase client against jsdom's storage stub and
+// rejects on its own clock. Its rules have their own suite in
+// lib/welcome/provisional-identity.test.ts.
 vi.mock("@/lib/welcome/provisional-identity", () => ({
-  seedProfileDisplayName: mocks.seed.mockResolvedValue({ seeded: false, reason: "no-session" }),
+  adoptAcademyIdentity: mocks.adopt.mockResolvedValue({ written: [], settled: false }),
 }));
 
 // The pinned jsdom does not provide a working Storage — see localStorageStub.
@@ -115,21 +120,13 @@ const stepOf = () => Number(page().getAttribute("data-step"));
  * registration — a name and a rank, no password, no linking — because that is
  * the path most tests are only passing THROUGH.
  */
-function register(
-  opts: { username?: string; rank?: string; password?: string; link?: boolean } = {},
-) {
+function register(opts: { username?: string; rank?: string } = {}) {
   fireEvent.change(screen.getByTestId("academy-registration-username"), {
     target: { value: opts.username ?? "Summoner" },
   });
   fireEvent.change(screen.getByTestId("academy-registration-rank"), {
     target: { value: opts.rank ?? "gold" },
   });
-  if (opts.password !== undefined) {
-    fireEvent.change(screen.getByTestId("academy-registration-password"), {
-      target: { value: opts.password },
-    });
-  }
-  if (opts.link) fireEvent.click(screen.getByTestId("academy-registration-link"));
   fireEvent.click(screen.getByTestId("academy-registration-submit"));
 }
 
@@ -565,13 +562,11 @@ describe("exits", () => {
     expect(document.activeElement).toBe(screen.getByTestId("academy-welcome-explore"));
   });
 
-  it("Skip is a real exit from any chapter — the register included", () => {
-    // The one thing that keeps "required" from meaning "trapped": the rail's
-    // exit is on the register exactly as it is on every other page, and it
-    // still records the visitor as handled.
+  it("Skip is a real exit from any chapter, once the register has been answered", () => {
     render(<AcademyWelcomePage />);
     advance();
-    expect(page()).toHaveAttribute("data-chapter", "registration");
+    register();
+    expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
     fireEvent.click(screen.getByTestId("academy-welcome-skip"));
 
     expect(hasHandledAcademyWelcome()).toBe(true);
@@ -586,13 +581,28 @@ describe("exits", () => {
   });
 });
 
-describe("the register (HI1-C5)", () => {
+describe("the register (HI1-C5 / C5B)", () => {
   it("is the second spread, before any of the tour", () => {
     render(<AcademyWelcomePage />);
     expect(page()).toHaveAttribute("data-chapter", "arrival");
     advance();
     expect(page()).toHaveAttribute("data-chapter", "registration");
     expect(screen.getByTestId("academy-registration-form")).toBeTruthy();
+  });
+
+  it("asks for two things and only two", () => {
+    // HI1-C5B removed the optional password and the linking checkbox. Removed,
+    // not hidden: a password with nothing to authenticate against and a
+    // checkbox with no Verify page behind it were UI for an account this screen
+    // does not make.
+    render(<AcademyWelcomePage />);
+    advance();
+    const form = screen.getByTestId("academy-registration-form");
+    expect(form.querySelectorAll("input, select")).toHaveLength(2);
+    expect(form.querySelector('input[type="password"]')).toBeNull();
+    expect(form.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(form.textContent).not.toMatch(/password/i);
+    expect(page().textContent).not.toMatch(/riot|discord/i);
   });
 
   it("will not let the tome turn past itself, by any input the page offers", () => {
@@ -664,94 +674,50 @@ describe("the register (HI1-C5)", () => {
     }
   });
 
-  it("accepts Unranked — required does not mean ranked", () => {
-    render(<AcademyWelcomePage />);
-    advance();
-    register({ username: "Fiddle", rank: "unranked" });
-    expect(readAcademyRegistration()).toMatchObject({ username: "Fiddle", rank: "unranked" });
-    expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
+  it("accepts every one of the twelve ranks", () => {
+    // Each is a real answer a visitor can give. A rank the form offers but the
+    // page will not accept would strand someone on page two with no way past.
+    for (const rank of LEAGUE_RANKS) {
+      resetStorage();
+      cleanup();
+      render(<AcademyWelcomePage />);
+      advance();
+      register({ username: "Summoner", rank: rank.id });
+      expect(page(), rank.id).toHaveAttribute("data-chapter", "leaguecraft");
+      expect(readAcademyRegistration()?.rank, rank.id).toBe(rank.id);
+    }
   });
 
-  it("records the registration, turns the page, and never stores the password", () => {
+  it("records the registration and turns the page", () => {
     render(<AcademyWelcomePage />);
     advance();
-    register({ username: "  Summoner   Yi ", rank: "diamond", password: "correcthorse" });
+    register({ username: "  Summoner   Yi ", rank: "diamond" });
 
-    const stored = readAcademyRegistration();
-    expect(stored).toMatchObject({
-      // Normalised on the way in: this is the name that gets printed back.
+    expect(readAcademyRegistration()).toMatchObject({
+      // Normalised on the way in: this name becomes profiles.display_name.
       username: "Summoner Yi",
       rank: "diamond",
-      hasPassword: true,
-      wantsLinking: false,
+      adoptedBy: null,
     });
-    // THE security assertion of this phase. Nothing anywhere in storage may
-    // contain the password — not under our key, not under anyone's.
-    const dump = Object.keys(localStorage).map((k) => localStorage.getItem(k) ?? "").join("|");
-    expect(dump).not.toContain("correcthorse");
     expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
   });
 
-  it("tells a visitor with no password where their account lives — as a toast", () => {
-    render(<AcademyWelcomePage />);
-    advance();
-    register({ username: "Sona", rank: "silver" });
-
-    expect(mocks.toast).toHaveBeenCalledWith("Account stays on this device until verified");
-    // A NOTIFICATION after continuing, never inline copy under the field: the
-    // page itself must not carry it, or it reads as a warning about leaving a
-    // box empty.
-    expect(page().textContent).not.toContain("stays on this device");
-  });
-
-  it("says nothing extra when a password was set", () => {
-    render(<AcademyWelcomePage />);
-    advance();
-    register({ username: "Sona", rank: "silver", password: "hunter2!" });
-    expect(mocks.toast).not.toHaveBeenCalled();
-  });
-
-  it("rejects a password too short for the one the real sign-up screen accepts", () => {
-    render(<AcademyWelcomePage />);
-    advance();
-    register({ username: "Sona", rank: "silver", password: "abc" });
-    expect(screen.getByTestId("academy-registration-password-error")).toBeTruthy();
-    expect(page()).toHaveAttribute("data-chapter", "registration");
-    expect(readAcademyRegistration()).toBeNull();
-  });
-
-  it("keeps the linking intent when the box is ticked, and not when it is not", () => {
-    render(<AcademyWelcomePage />);
-    advance();
-    register({ username: "Ekko", rank: "master", link: true });
-    expect(readAcademyRegistration()?.wantsLinking).toBe(true);
-  });
-
-  it("does not claim a linking intent nobody expressed", () => {
-    render(<AcademyWelcomePage />);
-    advance();
-    register({ username: "Ekko", rank: "master" });
-    expect(readAcademyRegistration()?.wantsLinking).toBe(false);
-  });
-
-  it("still exits to the hub, because the Verify page does not exist yet", () => {
-    // The whole of the forward-compatibility contract. The intent is RECORDED;
-    // it may not invent a destination. When resolveLinkDestination() starts
-    // returning a route, this is the test that has to change with it.
-    render(<AcademyWelcomePage />);
-    advance();
-    register({ username: "Ekko", rank: "master", link: true });
-    goToFinale();
-    fireEvent.click(screen.getByTestId("academy-welcome-explore"));
-    expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
-  });
-
-  it("offers the chosen name to a real profile, without waiting for the answer", () => {
+  it("asks for the profile write, without waiting for the answer", () => {
     render(<AcademyWelcomePage />);
     advance();
     register({ username: "Orianna", rank: "challenger" });
-    expect(mocks.seed).toHaveBeenCalledWith("Orianna");
+    expect(mocks.adopt).toHaveBeenCalled();
     // The page turned on the same tick; nothing waited on the network.
+    expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
+  });
+
+  it("survives an adoption that rejects outright", () => {
+    // Fire-and-forget must mean it: a cold backend may cost the visitor the
+    // durability, never the page turn.
+    mocks.adopt.mockRejectedValueOnce(new Error("network"));
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(() => register()).not.toThrow();
     expect(page()).toHaveAttribute("data-chapter", "leaguecraft");
   });
 
@@ -796,6 +762,17 @@ describe("the register (HI1-C5)", () => {
     expect(screen.getByTestId("academy-registration-username")).toHaveValue("Zilean");
   });
 
+  it("comes back pre-filled for someone who has answered it before", () => {
+    // A reload, or a replay. Presenting a returning visitor an empty register
+    // and making them retype their own name to pass a page they have already
+    // passed would be the introduction forgetting them.
+    saveAcademyRegistration({ username: "Ekko", rank: "master" });
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(screen.getByTestId("academy-registration-username")).toHaveValue("Ekko");
+    expect(screen.getByTestId("academy-registration-rank")).toHaveValue("master");
+  });
+
   it("does not move focus into a text field when the page turns", () => {
     // The finale moves focus because its control unmounts under the visitor.
     // Doing the same here would open the keyboard on every phone the instant
@@ -823,7 +800,174 @@ describe("the register (HI1-C5)", () => {
     // One form on the live spread would be fine; the ghost must not add a
     // second one riding the paper.
     expect(screen.queryAllByTestId("academy-registration-form")).toHaveLength(0);
+    expect(screen.queryAllByTestId("academy-welcome-signin")).toHaveLength(0);
     await run(900);
+  });
+});
+
+describe("the register is a real gate (HI1-C5B)", () => {
+  it("offers a fresh visitor no way out of the book before they answer it", () => {
+    // An exit beside a required question is an invitation to answer it with a
+    // shrug — and the two answers behind it are the only reason the
+    // introduction asks for anything at all.
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-registered", "false");
+    expect(screen.queryByTestId("academy-welcome-skip")).toBeNull();
+    advance();
+    expect(page()).toHaveAttribute("data-chapter", "registration");
+    expect(screen.queryByTestId("academy-welcome-skip")).toBeNull();
+  });
+
+  it("opens the exit the moment the register is answered", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register();
+    expect(page()).toHaveAttribute("data-registered", "true");
+    expect(screen.getByTestId("academy-welcome-skip")).toBeTruthy();
+  });
+
+  it("keeps the exit on every chapter after that", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register();
+    advance(); // Combat Lab
+    expect(screen.getByTestId("academy-welcome-skip")).toBeTruthy();
+  });
+
+  it("gives a returning visitor their exit back on page one", () => {
+    // Gated on a registration EXISTING, not on the chapter index: someone
+    // replaying the introduction has already given what it is withheld for.
+    saveAcademyRegistration({ username: "Ekko", rank: "master" });
+    render(<AcademyWelcomePage />);
+    expect(page()).toHaveAttribute("data-registered", "true");
+    expect(screen.getByTestId("academy-welcome-skip")).toBeTruthy();
+  });
+
+  it("is not a trap even before it is answered — Back still works", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(screen.getByTestId("academy-welcome-back")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("academy-welcome-back"));
+    expect(page()).toHaveAttribute("data-chapter", "arrival");
+  });
+
+  it("is not a trap even before it is answered — Sign In is a real way out", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(screen.getByTestId("academy-welcome-signin")).toBeEnabled();
+  });
+});
+
+describe("Sign In — the returning visitor's escape hatch (HI1-C5B)", () => {
+  it("lives on the register, and nowhere else", () => {
+    render(<AcademyWelcomePage />);
+    expect(screen.queryByTestId("academy-welcome-signin")).toBeNull();
+    advance();
+    expect(screen.getByTestId("academy-welcome-signin")).toBeTruthy();
+    register();
+    expect(screen.queryByTestId("academy-welcome-signin")).toBeNull();
+  });
+
+  it("sits at the BOTTOM of the page, below the register and its button", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    const writing = page().querySelector(".tome-writing")!;
+    const nodes = Array.from(writing.querySelectorAll("*"));
+    const submitAt = nodes.indexOf(screen.getByTestId("academy-registration-submit"));
+    const signInAt = nodes.indexOf(screen.getByTestId("academy-welcome-signin"));
+    expect(submitAt).toBeGreaterThan(-1);
+    expect(signInAt).toBeGreaterThan(submitAt);
+    // And it is the last thing in the page's writing, full stop.
+    expect(writing.lastElementChild?.contains(screen.getByTestId("academy-welcome-signin"))).toBe(
+      true,
+    );
+  });
+
+  it("is the LAST thing the page reveals", async () => {
+    // The whole placement rule: a new visitor reads the register, fills it in
+    // and sees its button before this line is offered to them at all.
+    setReducedMotion(false);
+    vi.useFakeTimers();
+    render(<AcademyWelcomePage />);
+    advance(); // finish the arrival
+    advance(); // turn to the register
+    await run(900);
+
+    // The form arrives first, and the sign-in is still not live.
+    for (let i = 0; i < 60 && !screen.queryByTestId("academy-registration-form"); i += 1) {
+      await run(250, 250);
+    }
+    expect(screen.getByTestId("academy-registration-form")).toBeTruthy();
+    expect(screen.getByTestId("academy-welcome-signin")).toBeDisabled();
+
+    // …and only then does it become the visitor's to press.
+    for (let i = 0; i < 20 && screen.getByTestId("academy-welcome-signin").hasAttribute("disabled"); i += 1) {
+      await run(250, 250);
+    }
+    expect(screen.getByTestId("academy-welcome-signin")).toBeEnabled();
+  });
+
+  it("holds its space from the first frame, so it never shoves the form", () => {
+    // A line appearing under a field someone is typing into would move the
+    // field. The row is in the layout the whole time; only its ink waits.
+    setReducedMotion(false);
+    render(<AcademyWelcomePage />);
+    advance();
+    advance();
+    const row = page().querySelector(".tome-signin");
+    expect(row).toBeTruthy();
+    expect(row?.closest(".tome-slot")).toHaveAttribute("data-revealed", "false");
+    // Present, but reachable by nobody: not the keyboard, not a stray click,
+    // not a screen reader.
+    expect(screen.getByTestId("academy-welcome-signin")).toBeDisabled();
+    expect(row).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("is visually secondary — quiet text beside the register's one filled control", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    const signIn = screen.getByTestId("academy-welcome-signin");
+    const submit = screen.getByTestId("academy-registration-submit");
+    // The primary action is the gilt submit; this must not be a second one.
+    expect(submit).toHaveClass("tome-submit");
+    expect(signIn).toHaveClass("tome-signin-action");
+    expect(signIn.className).not.toMatch(/tome-submit|tome-exit/);
+    expect(signIn.closest(".tome-signin")?.textContent).toContain("Already have an account?");
+  });
+
+  it("hands off to the existing auth screen, returning to the hub", () => {
+    // Not a second login: /auth already owns sign-in, the confirmation resend,
+    // the forgotten-password path and the guest-upgrade panel.
+    render(<AcademyWelcomePage />);
+    advance();
+    fireEvent.click(screen.getByTestId("academy-welcome-signin"));
+    expect(mocks.navigate).toHaveBeenCalledWith(ACADEMY_SIGN_IN_ROUTE);
+    expect(ACADEMY_SIGN_IN_ROUTE).toContain("/auth?");
+    expect(ACADEMY_SIGN_IN_ROUTE).toContain(`returnTo=${encodeURIComponent(LEAGUE_HOME_ROUTE)}`);
+  });
+
+  it("marks the introduction handled, so a signed-in returner is never re-shown it", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    fireEvent.click(screen.getByTestId("academy-welcome-signin"));
+    expect(hasHandledAcademyWelcome()).toBe(true);
+    expect(readAcademyWelcomeState()?.outcome).toBe("signed-in");
+  });
+
+  it("does not replace history — Back returns to the book, not past it", () => {
+    // The finale's exits ARE decisions and replace. This is a detour.
+    render(<AcademyWelcomePage />);
+    advance();
+    fireEvent.click(screen.getByTestId("academy-welcome-signin"));
+    expect(mocks.navigate).not.toHaveBeenCalledWith(expect.anything(), { replace: true });
+  });
+
+  it("does not register anybody on the way out", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    fireEvent.click(screen.getByTestId("academy-welcome-signin"));
+    expect(readAcademyRegistration()).toBeNull();
+    expect(mocks.adopt).not.toHaveBeenCalled();
   });
 });
 

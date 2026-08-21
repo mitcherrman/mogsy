@@ -112,6 +112,18 @@ export const MARGINALIA_PAUSE_MS = 360;
  */
 export const DOCKET_WRITE_MS = 900;
 export const DOCKET_PAUSE_MS = 420;
+/**
+ * The beat after a slot that is a CONTROL rather than writing.
+ *
+ * The finale's exits, the register's form and the register's sign-in line
+ * arrive rather than being written, so there is no ink to wait on — but the
+ * pause after them is what makes the NEXT thing read as a separate offer. It
+ * is longer than a sentence's breath on purpose: the sign-in line has to feel
+ * like it was added after the register was finished, not like the register's
+ * last row. See ChapterWriting's slot order.
+ */
+export const CONTROL_PAUSE_MS = 620;
+
 /** Tail after the last slot's ink lands, before the page is offered as done. */
 export const INK_SETTLE_TAIL_MS = 240;
 
