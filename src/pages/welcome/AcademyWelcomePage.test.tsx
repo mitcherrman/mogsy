@@ -22,6 +22,9 @@
  * for sound, not what Web Audio does with it. (The settings gate has its own
  * suite in tomeAudio.test.ts.)
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -43,8 +46,6 @@ import {
 } from "@/lib/welcome/academy-registration";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
-
-import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
 
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
@@ -1440,17 +1441,28 @@ describe("the last spread", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
     const left = flat(verso());
+    const right = flat(recto());
+
+    // LEFT is the library, and only the library.
     expect(left).toContain("The Complete League Library");
     expect(left).toContain(
       "Mogzy brings together every champion, item, rune, system, and interaction in League of Legends.",
     );
-    expect(left).toContain(
+
+    // RIGHT is pro data, then discovery — in that order, which is the order the
+    // page is read in and the order the graph sits between.
+    expect(right).toContain(
       "Explore pro data. Learn the history of League esports and your favorite players.",
     );
-    // And the third block opens the FACING page, which is the structural
-    // change: this is the one chapter whose copy is not all on one leaf.
-    expect(flat(recto())).toContain("Discover insights. Share what you find.");
+    expect(right).toContain("Discover insights. Share what you find.");
+    expect(right.indexOf("Explore pro data")).toBeLessThan(right.indexOf("Discover insights"));
+
+    // The structural change: this is the one chapter whose copy is not all on
+    // one leaf, and neither half of it strays onto the other page.
+    expect(left).not.toContain("Explore pro data");
     expect(left).not.toContain("Discover insights");
+    expect(right).not.toContain("The Complete League Library");
+    expect(right).not.toContain("Mogzy brings together");
   });
 
   it("adds no copy of its own beyond the approved three blocks", () => {
@@ -1471,21 +1483,56 @@ describe("the last spread", () => {
     expect(left.replace(/[\s.,]/g, "")).toBe("");
   });
 
-  it("puts the restored Pro Data graph on the left, and only it", () => {
+  it("puts the restored Pro Data graph on the RIGHT page, between the two sentences", () => {
     // The exact approved animated graph from the Pro Data chapter, recovered
     // from 75d60da9 — ruled axes, two series and five plotted points, drawn in
     // ink with `tome-stroke` / `tome-dot`. Its parts are counted rather than
-    // merely looked for.
+    // merely looked for, because "do not redesign it" is the instruction.
     render(<AcademyWelcomePage />);
     goToFinale();
-    const chart = verso().querySelector(".tome-library-chart svg")!;
+    const chart = recto().querySelector(".tome-finale-chart svg")!;
     expect(chart).toBeTruthy();
     expect(chart.getAttribute("viewBox")).toBe("0 0 200 200");
     expect(chart.querySelectorAll(".tome-stroke").length).toBe(7);
     expect(chart.querySelectorAll(".tome-dot").length).toBe(5);
-    // ONE figure on that page. Not three modules, not a triangle, not cards.
-    expect(verso().querySelectorAll(".tome-library-chart svg")).toHaveLength(1);
+    // ONE figure, and it is not on the left page any more.
+    expect(recto().querySelectorAll(".tome-finale-chart svg")).toHaveLength(1);
+    expect(verso().querySelector("svg")).toBeNull();
     expect(LIBRARY.art.kind).toBe("chart");
+  });
+
+  it("orders the right page pro-data copy, graph, discovery copy, Teemo, then the doors", () => {
+    // The page's whole argument is its order: what the data is, the data, what
+    // to do with it, the way in.
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const children = Array.from(recto().querySelector(".tome-discovery")!.children);
+    const at = (predicate: (el: Element) => boolean) => children.findIndex(predicate);
+
+    const proData = at((el) => (el.textContent ?? "").includes("Explore pro data"));
+    const graph = at((el) => el.classList.contains("tome-finale-graph"));
+    const discovery = at((el) => (el.textContent ?? "").includes("Discover insights"));
+    const teemo = at((el) => el.contains(screen.getByTestId("academy-finale-teemo")));
+    const exits = at((el) => el.contains(screen.getByTestId("academy-welcome-explore")));
+
+    expect(proData).toBeGreaterThanOrEqual(0);
+    expect([graph, discovery, teemo, exits]).toEqual([
+      proData + 1,
+      proData + 2,
+      proData + 3,
+      proData + 4,
+    ]);
+    expect(exits).toBe(children.length - 1);
+  });
+
+  it("lets the graph take the page's slack, so nothing bunches and nothing gaps", () => {
+    // `flex: 1` on the graph is the difference between a composition and a
+    // stack with a hole in it — the drawing grows into the parchment the copy
+    // and the buttons leave rather than the page ending in a dead gap.
+    const css = readFileSync(resolve(__dirname, "../../index.css"), "utf8");
+    const rule = css.match(/^\.academy-welcome \.tome-finale-graph\s*\{([^}]*)\}/m)![1];
+    expect(rule).toContain("flex: 1 1 auto");
+    expect(rule).toMatch(/min-height:\s*clamp\(/);
   });
 
   it("draws the four things the library holds under the sentence that names them", () => {
@@ -1497,10 +1544,41 @@ describe("the last spread", () => {
     expect(
       Array.from(row.querySelectorAll("[data-symbol]")).map((s) => s.getAttribute("data-symbol")),
     ).toEqual(["champion", "item", "rune", "system"]);
-    // The system symbol is the Elder Dragon, by name.
-    expect(
-      row.querySelector("[data-symbol='system'] img")?.getAttribute("src"),
-    ).toBe("/assets/ranked/elder-dragon.webp");
+    // REAL LEAGUE ART, and all of it LOCAL. Nothing on the first screen a new
+    // visitor ever sees may resolve through the Ranked service's asset host —
+    // a page that renders empty because a backend is cold is worse than one
+    // with no artwork at all (the rule ChapterPlate states for the chapter
+    // illustrations, and the reason three of these are copied into public/).
+    const src = (id: string) =>
+      row.querySelector(`[data-symbol='${id}'] img`)?.getAttribute("src");
+    expect(src("champion")).toBe("/images/library/champion-ahri.png");
+    expect(src("item")).toBe("/images/library/item-infinity-edge.png");
+    expect(src("rune")).toBe("/images/library/rune-electrocute.png");
+    expect(src("system")).toBe("/assets/ranked/elder-dragon.webp");
+    for (const id of ["champion", "item", "rune", "system"]) {
+      expect(src(id)!.startsWith("/")).toBe(true);
+    }
+  });
+
+  it("draws the four icons at one scale and one treatment", () => {
+    // Three of the four sources are opaque squares with their own art behind
+    // them and one is a cut-out glyph on nothing; left alone that row is three
+    // photographs and a sticker. The shared plate is what makes it four seals.
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const row = screen.getByTestId("academy-library-symbols");
+    const plates = Array.from(row.querySelectorAll("[data-symbol]"));
+    expect(plates).toHaveLength(4);
+    for (const plate of plates) {
+      expect(plate.classList.contains("tome-symbol")).toBe(true);
+      expect(plate.querySelector("img")?.classList.contains("tome-symbol-art")).toBe(true);
+    }
+    // The one transparent source is fitted INSIDE its plate; the opaque squares
+    // fill theirs.
+    const fit = (id: string) =>
+      row.querySelector(`[data-symbol='${id}'] img`)?.getAttribute("data-fit");
+    expect([fit("champion"), fit("item"), fit("system")]).toEqual(["cover", "cover", "cover"]);
+    expect(fit("rune")).toBe("contain");
   });
 
   it("keeps the symbols supporting visuals — not controls, not labels, not chips", () => {
@@ -1515,26 +1593,57 @@ describe("the last spread", () => {
     expect(row.querySelectorAll("ul, ol, li, table, dl")).toHaveLength(0);
   });
 
-  it("gives the right page one composed Mogzy and Teemo visual", () => {
+  it("puts Teemo under the discovery line as an accent, not as a picture", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
-    const scene = screen.getByTestId("academy-finale-mogzy-teemo");
-    expect(recto().contains(scene)).toBe(true);
-    expect(scene.getAttribute("aria-hidden")).toBe("true");
+    const teemo = screen.getByTestId("academy-finale-teemo");
+    expect(recto().contains(teemo)).toBe(true);
     // The named asset, exactly.
-    expect(screen.getByTestId("academy-finale-teemo").getAttribute("src")).toBe(
-      "/images/teemo-emote.png",
-    );
-    // Mogzy is in it, and he is the ONE mascot pose with a real alpha channel —
-    // every other pose is RGB on solid black and would print a square onto the
-    // parchment.
-    const mogzy = scene.querySelector<HTMLImageElement>("img.tome-discovery-mogzy")!;
-    expect(mogzy.getAttribute("src")).toBe(MOGZY_MASCOT_ASSETS.base);
-    // ONE composed visual: two figures and a glow, and nothing scattered.
-    expect(scene.querySelectorAll("img")).toHaveLength(2);
+    expect(teemo.getAttribute("src")).toBe("/images/teemo-emote.png");
+    expect(teemo.getAttribute("aria-hidden")).toBe("true");
+    // He belongs to "Discover insights. Share what you find." — directly under
+    // it, and nowhere near the top of the page.
+    const children = Array.from(recto().querySelector(".tome-discovery")!.children);
+    const line = children.findIndex((el) => (el.textContent ?? "").includes("Discover insights"));
+    expect(children.findIndex((el) => el.contains(teemo))).toBe(line + 1);
   });
 
-  it("puts the two exits at the foot of the right page, under the picture", () => {
+  it("is sized to stay an accent — a fraction of the graph, never a rival to it", () => {
+    // "smaller than the graph, does not dominate the page". jsdom has no layout
+    // engine, so the sizes are read where they are actually declared.
+    const css = readFileSync(resolve(__dirname, "../../index.css"), "utf8");
+    const emote = css.match(/^\.academy-welcome \.tome-discovery-emote\s*\{([^}]*)\}/m)![1];
+    const graph = css.match(/^\.academy-welcome \.tome-finale-graph\s*\{([^}]*)\}/m)![1];
+    const emoteMax = Number(emote.match(/clamp\([^,]+,[^,]+,\s*([\d.]+)rem\)/)![1]);
+    const graphMin = Number(graph.match(/clamp\([^,]+,[^,]+,\s*([\d.]+)rem\)/)![1]);
+    // Smaller than the graph is at its SMALLEST, which is the strong form of
+    // the claim: the graph also grows into the page's slack and he does not.
+    expect(emoteMax).toBeLessThan(graphMin / 2);
+    // And no plate, no ring, no frame — he sits on the paper.
+    expect(emote).not.toContain("border");
+    expect(emote).not.toContain("background");
+  });
+
+  it("has no mascot on it at all", () => {
+    // Mogzy was on this page and is not any more: the four icons and the graph
+    // are what the eye is meant to land on, and a mascot competing with them is
+    // the dashboard this spread was rewritten to stop being.
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    expect(screen.queryByTestId("academy-finale-mogzy-teemo")).toBeNull();
+    expect(page().querySelector(".tome-discovery-mogzy")).toBeNull();
+    expect(page().querySelector("[data-mogzy-art-category]")).toBeNull();
+    // `toContain` compares array items by identity, so an asymmetric matcher
+    // inside it never matches and `.not.toContain` would pass vacuously. The
+    // predicate is the assertion.
+    const sources = Array.from(page().querySelectorAll("img")).map(
+      (img) => img.getAttribute("src") ?? "",
+    );
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.some((src) => src.includes("/mascot/"))).toBe(false);
+  });
+
+  it("puts the two exits at the foot of the right page, last of everything", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
     const exits = screen.getByTestId("academy-welcome-explore").parentElement!;

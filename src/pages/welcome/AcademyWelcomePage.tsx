@@ -125,14 +125,15 @@ import { useTomeAudio } from "./tomeAudio";
  *
  * FIVE SPREADS, AND THE LAST ONE IS COMPOSED RATHER THAN TEMPLATED. Chapters
  * one to four are the same object — plate left, words right. The finale is not:
- * its left page is the title, what the library holds (with champion, item, rune
- * and the Elder Dragon drawn under the sentence that names them) and the Pro
- * Data graph restored from the chapter it was drawn for (75d60da9); its right
- * page is one line, one picture of Mogzy with a Teemo emote, and the two exits.
- * The chapter's copy therefore crosses the gutter. It costs the sequence
- * nothing — the slot COUNT is unchanged, only where each slot lands — and it is
- * the only page allowed to break the template, because it is the only page that
- * is not a chapter. See FinaleSpread.tsx.
+ * its LEFT page is the library and only the library, one sentence under the
+ * title with champion, item, rune and the Elder Dragon drawn large beneath it;
+ * its RIGHT page runs pro data, then discovery, then the doors — the copy that
+ * introduces the graph, the graph itself (restored from the chapter it was
+ * drawn for, 75d60da9), the closing line with a Teemo emote as its accent, and
+ * the two exits. The chapter's copy therefore crosses the gutter. It costs the
+ * sequence nothing — the slot COUNT is unchanged, only where each slot lands —
+ * and it is the only page allowed to break the template, because it is the only
+ * page that is not a chapter. See FinaleSpread.tsx.
  *
  * REDUCED MOTION IS A DIFFERENT EXPERIENCE, NOT A DEGRADED ONE. The clock stops
  * and every chapter opens complete and still: the same words, the same artwork,
@@ -483,10 +484,11 @@ export default function AcademyWelcomePage() {
   // art washes in on its own beat after the turn.
   //
   // AND THE LAST SPREAD'S LEFT PAGE IS NOT AN ILLUSTRATION AT ALL. It is the
-  // title, the copy that names what the library holds, the four symbols and the
-  // graph — a composed page rather than a plate in a box (see FinaleSpread). It
-  // still arrives on this slot because this slot IS the left page; it simply
-  // brings its own reveal slots instead of riding one wash.
+  // title, the one sentence that names what the library holds, and the four
+  // icons that name it again — a composed page rather than a plate in a box
+  // (see FinaleSpread). It still arrives on this slot because this slot IS the
+  // left page; it simply brings its own reveal slots instead of riding one
+  // wash. The finale's actual drawing, the graph, is on the facing page.
   const art =
     turning && isSpread ? (
       <RevealSlot revealed className="tome-ghost flex h-full w-full items-center justify-center">
@@ -499,7 +501,6 @@ export default function AcademyWelcomePage() {
         chapter={chapter}
         step={step}
         headingId={`tome-chapter-${chapter.id}`}
-        artRevealed={artRevealed}
       />
     ) : (
       <RevealSlot revealed={artRevealed} className="flex h-full w-full items-center justify-center">
@@ -544,6 +545,7 @@ export default function AcademyWelcomePage() {
       chapter={chapter}
       step={step}
       terminalSlot={1 + chapterBlocks(chapter.lines).length}
+      artRevealed={artRevealed}
       terminal={exits}
     />
   ) : (

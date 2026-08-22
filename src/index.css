@@ -2874,74 +2874,107 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: clamp(0.68rem, 1.45cqw, 0.94rem);
 }
 
-/* ---- Left page: the four symbols ----------------------------------------- */
+/* ---- Left page: the library, and only the library ------------------------ */
 
-/* "…every champion, item, rune, system…" — and then the four of them, drawn,
-   directly under the sentence that names them.
+/* A title, one sentence and four pictures — three things on a page that has
+   room for six.
 
-   NOT CONTROLS, AND NOT A LEGEND. No labels, no hit areas, no hover, no fill
-   behind a word: there is nothing here for a visitor to do, and the row is
-   `aria-hidden` because the line above it already says all four. What it IS is
-   four small seals pressed into the paper — the same engraved-plate idiom the
-   chapter illustrations use (see ChapterPlate), at a fifth of the size.
+   THE TITLE STAYS AT THE TOP and the icons take the middle. Centring the whole
+   column was tried first and is wrong for a spread: the facing page starts its
+   copy at the paper's top edge, so a centred left page begins an inch lower
+   than the page beside it and the two tops read as a mistake rather than as a
+   composition. The heading therefore sits where every other chapter's heading
+   sits, and the auto margins below centre the icon group in whatever the
+   sentence left — which is what stops the page bunching into its upper half
+   without printing a word more on it. */
+.academy-welcome .tome-symbols-slot {
+  margin-top: auto;
+  margin-bottom: auto;
+}
 
-   THEY SIT ON A DARK GROUND FOR A REASON, not for contrast. The system symbol
-   is the Elder Dragon, and that file is 48px RGB with NO ALPHA — dropped onto
-   lit parchment it prints its own black backing square. Mounted inside a dark
-   plate, that backing reads as the inside of the plate. The other three are
-   then drawn to match, because three ink sketches beside one photograph is a
-   row with a mistake in it. The gilt they are drawn in measures 8.2:1 on this
-   ground; it would measure 3.7 on the paper, which is why gold never carries a
-   mark anywhere else in this book. */
+/* "…every champion, item, rune, system…" — and then the four of them, drawn
+   large, directly under the sentence that names them.
+
+   MATERIALLY LARGER THAN A ROW OF MARKS, which is what this replaced: four ink
+   glyphs at ~19px that were legible, consistent, and said nothing the sentence
+   above them had not already said. At ~68px these are the real icons the game
+   uses, and the row is the second thing on the page rather than a footnote to
+   the first.
+
+   NOT CONTROLS, and not a legend. No labels, no hit areas, no hover, nothing
+   focusable, no names to read: the row is `aria-hidden` because the line above
+   it already names all four.
+
+   ONE PLATE, FOUR SIZES OF SOURCE. Ahri's icon is 128px RGB, the item 64px RGB,
+   the keystone 256px RGBA and the dragon 48px RGB — three opaque squares with
+   their own art behind them and one glyph on nothing. Left alone that is three
+   photographs and a sticker. In the same dark roundel it is four seals: the
+   squares fill their disc, the keystone sits inside it as a rune sits in its
+   socket, and the gilt hairline is the only thing all four have in common
+   before the treatment and the only thing they need. */
 .academy-welcome .tome-symbols {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.34rem, 1.15cqw, 0.85rem);
-  margin-top: 0.7em;
+  gap: clamp(0.45rem, 1.7cqw, 1.15rem);
+  margin-top: 1.35em;
 }
 
 .academy-welcome .tome-symbol {
   display: grid;
   place-items: center;
-  width: clamp(1.4rem, 3.3cqw, 2.15rem);
+  width: clamp(2.5rem, 7cqw, 4.25rem);
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 999px;
-  border: 1px solid rgba(107, 84, 24, 0.6);
+  border: 1px solid rgba(107, 84, 24, 0.62);
   background: radial-gradient(circle at 50% 32%, #16203a 0%, #070c17 100%);
   box-shadow:
-    0 3px 9px rgba(60, 42, 12, 0.3),
-    inset 0 0 9px rgba(0, 0, 0, 0.55);
-}
-
-.academy-welcome .tome-symbol-glyph {
-  width: 62%;
-  height: 62%;
-  color: #d8b862;
+    0 5px 14px rgba(60, 42, 12, 0.34),
+    inset 0 0 12px rgba(0, 0, 0, 0.55);
 }
 
 .academy-welcome .tome-symbol-art {
   width: 100%;
   height: 100%;
+}
+
+/* An opaque square: its own art is the inside of the seal. */
+.academy-welcome .tome-symbol-art[data-fit="cover"] {
   object-fit: cover;
 }
 
-/* ---- Left page: the restored graph --------------------------------------- */
-
-/* The only major visual on the page, and the element that absorbs whatever the
-   copy above it did not use. `min-height: 0` is what lets it SHRINK inside the
-   flex column on a short spread rather than pushing the chart off the paper —
-   the default `min-height: auto` on a flex item is the usual cause of exactly
-   that. */
-.academy-welcome .tome-library-graph {
-  flex: 1 1 auto;
-  min-height: clamp(4.5rem, 11cqw, 9rem);
-  width: 100%;
-  margin-top: 0.7em;
+/* A cut-out glyph: it sits IN the seal, with the plate showing around it. */
+.academy-welcome .tome-symbol-art[data-fit="contain"] {
+  object-fit: contain;
+  padding: 15%;
 }
 
-.academy-welcome .tome-library-chart {
+/* ---- Right page: pro data, then discovery, then the doors ---------------- */
+
+/* THE ORDER IS THE ARGUMENT: what the data is, the data, what to do with it,
+   and the way in. Nothing is centred here — the page is read top to bottom, and
+   the graph takes whatever the copy and the buttons did not. */
+
+/* The restored Pro Data graph, and the page's anchor.
+
+   `flex: 1` is what stops the two failures this composition can have: everything
+   bunched into the top half with a dead gap above the buttons, or a chart
+   squeezed to a line between two paragraphs. The drawing GROWS into the room
+   the copy leaves, so the parchment between the second sentence and the exits
+   is filled by the thing the sentence is about.
+
+   `min-height: 0` is what lets it shrink again on a short spread rather than
+   pushing the closing line off the paper — the default `min-height: auto` on a
+   flex item is the usual cause of exactly that. */
+.academy-welcome .tome-finale-graph {
+  flex: 1 1 auto;
+  min-height: clamp(5rem, 13cqw, 11.5rem);
+  width: 100%;
+  margin-top: 0.75em;
+}
+
+.academy-welcome .tome-finale-chart {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2949,85 +2982,31 @@ html.high-contrast * { text-shadow: none !important; }
   height: 100%;
 }
 
-.academy-welcome .tome-library-chart svg {
+.academy-welcome .tome-finale-chart svg {
   width: auto;
   height: 100%;
   max-width: 100%;
   aspect-ratio: 1;
 }
 
-/* ---- Right page: discovery ----------------------------------------------- */
+/* Teemo, under the line he is reacting to.
 
-/* One line, one picture, two doors — and the picture takes the middle third of
-   the page rather than sitting under the line with a hand's width of bare paper
-   beneath it. */
-.academy-welcome .tome-discovery-stage {
+   AN ACCENT, and sized to say so: a third of the graph's height at most, with
+   no plate, no ring and no caption. He belongs to "Discover insights. Share
+   what you find." — he arrives on that sentence's slot and sits directly under
+   it, close enough to read as part of it rather than as a second picture on a
+   page that already has its picture. */
+.academy-welcome .tome-discovery-accent {
   display: flex;
-  flex: 1 1 auto;
-  min-height: clamp(5rem, 13cqw, 11rem);
-  width: 100%;
-  align-items: center;
   justify-content: center;
-  margin-top: 0.6em;
+  width: 100%;
+  margin-top: 0.45em;
 }
 
-/* Mogzy, and something he found. The emote is the focal object — raised, lit,
-   and the only round thing on the page — and he stands under it looking up,
-   which is what makes it read as a find rather than as a sticker beside him.
-   Two assets and one glow: no motes, no sparks, no scattering. */
-/* A GROUP, NOT A PAGE. The scene is a square that fits the room it is given —
-   its own box, not the whole stage. Filling the stage is what pulled the two
-   figures to opposite corners of the page the first time this was built: the
-   emote pinned to the top of a 450px column and Mogzy standing at the bottom of
-   it is two decorations, which is precisely what the brief says this must not
-   be. Sized off HEIGHT and squared, the two overlap and read as one picture at
-   every viewport the page has. */
-.academy-welcome .tome-discovery-scene {
-  position: relative;
-  height: 100%;
-  aspect-ratio: 1;
-  /* Short of the page box, so the emote's halo has parchment to fall on rather
-     than the painted frame. */
-  max-width: 92%;
-}
-
-.academy-welcome .tome-discovery-mogzy {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 84%;
-  width: auto;
-  filter: drop-shadow(0 10px 24px rgba(60, 42, 12, 0.34));
-}
-
-/* The focal object: raised, lit, the only round thing on the page, and
-   overlapping Mogzy's shoulder so the two are one shape rather than two. */
 .academy-welcome .tome-discovery-emote {
-  position: absolute;
-  right: 0;
-  top: 0;
-  height: 56%;
-  width: auto;
-  filter: drop-shadow(0 8px 18px rgba(60, 42, 12, 0.42));
-}
-
-/* The light the emote is casting onto the page. Sized off the emote and behind
-   it, and the only decoration in the composition. */
-.academy-welcome .tome-discovery-glow {
-  position: absolute;
-  right: -8%;
-  top: -8%;
-  width: 72%;
-  aspect-ratio: 1;
-  pointer-events: none;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    rgba(216, 184, 98, 0.3) 0%,
-    rgba(216, 184, 98, 0.09) 48%,
-    transparent 72%
-  );
-  filter: blur(6px);
+  width: clamp(2.3rem, 6.2cqw, 3.9rem);
+  height: auto;
+  filter: drop-shadow(0 5px 12px rgba(60, 42, 12, 0.4));
 }
 
 /* ---- Controls around the tome -------------------------------------------- */
@@ -3348,67 +3327,81 @@ html.high-contrast * { text-shadow: none !important; }
 }
 
 /* A LANDSCAPE SHEET SPLITS THE FINALE EVENLY. Everywhere else the illustration
-   column is 30% of the sheet — a square plate needs no more — but the finale's
-   left page is a title, two paragraphs, a row of symbols and a chart, and in a
-   202px column every one of those paragraphs wrapped to three lines. Half the
-   sheet each halves the wrapping, which is the cheapest height there is to buy
-   on a viewport that is 390px tall. */
+   column is 30% of the sheet — a square plate needs no more — but the finale
+   puts a composed PAGE in that slot, and in a 202px column its sentence wrapped
+   to four lines. Half the sheet each is the cheapest height there is to buy on
+   a viewport that is 390px tall. */
 .academy-welcome .tome-single-wide .tome-single-art:has(.tome-writing) {
   width: 48%;
   min-width: 0;
 }
 
-/* AND THE SHEET IS AS TALL AS ITS CONTENT, so neither composition may take a
-   share of a height that does not exist. On the painted spread the chart and
-   the picture ABSORB the page's slack (`flex: 1` inside a page box of a known
-   height); a sheet has no such box, and a `flex` share of an auto height
-   resolves to nothing — which is exactly what it did: the Mogzy/Teemo group
-   measured 0x0 and vanished. Both are given a real height here instead, capped
-   so that a phone does not have to scroll a screenful of picture to reach the
-   two exits under it. */
+/* AND THE SHEET IS AS TALL AS ITS CONTENT, so the graph may not take a share of
+   a height that does not exist. On the painted spread it ABSORBS the page's
+   slack (`flex: 1` inside a page box of a known height); a sheet has no such
+   box, and a `flex` share of an auto height resolves to nothing — a chart that
+   measures 0x0 and vanishes. It is given a real height here instead, capped so
+   a phone does not scroll a screenful of chart to reach the two exits under
+   it. */
 .academy-welcome .tome-single .tome-writing[data-finale] {
   height: auto;
 }
 
-
-.academy-welcome .tome-single .tome-library-graph {
+.academy-welcome .tome-single .tome-finale-graph {
   flex: none;
-  height: min(15vh, 110px);
+  height: min(17vh, 124px);
   min-height: 0;
 }
 
-.academy-welcome .tome-single .tome-discovery-stage {
-  flex: none;
-  height: min(17vh, 128px);
-  min-height: 0;
+/* AND THE ICONS ARE SIZED IN `vw` HERE, not `cqw`. Everything on the painted
+   spread is a percentage of the TOME, which is the right unit for a book that
+   is 950px wide — and the wrong one for a sheet that is 345px wide, where 7cqw
+   is 24px and the row the brief asked to make bigger comes out smaller than the
+   one it replaced. On a phone the sheet IS roughly the viewport, which is the
+   same reason the type in this section sizes in `vw` (see the note above it).
+   Four at ~54px with their gaps come to 260 of the 313px the sheet gives. */
+.academy-welcome .tome-single .tome-symbol {
+  width: clamp(2.6rem, 14.5vw, 3.6rem);
 }
 
-/* A landscape phone reads the two compositions SIDE BY SIDE, so the taller of
-   them sets the sheet's height on its own — and the library page is the taller.
-   A few pixels off its chart is what keeps the last spread the same height as
-   the four chapters before it at 390px of viewport. */
-.academy-welcome .tome-single-wide .tome-library-graph {
-  height: min(13vh, 80px);
+.academy-welcome .tome-single .tome-discovery-emote {
+  width: clamp(2.2rem, 11vw, 3rem);
 }
 
-/* AND THE SHORTER COLUMN SPENDS THE DIFFERENCE. Side by side, the library page
-   sets the sheet's height and the discovery page is ~85px shorter — which is
-   85px of bare parchment under two buttons, and a picture of Mogzy at 40px
-   because it was sized against nothing. Stretching both columns to the sheet
-   and letting the picture take the slack is the whole fix: the graph stays
-   fixed (it is the column that sets the height, so it may not grow), the
-   picture roughly triples, and the sheet is the same 258px it was. */
-.academy-welcome .tome-single-wide .tome-sheet:has(.tome-writing[data-finale]) {
-  align-items: stretch;
+/* A landscape phone reads the two pages SIDE BY SIDE, so the taller of them
+   sets the sheet's height on its own — and here that is the RIGHT page, which
+   carries two sentences, the chart, the emote and both buttons while the left
+   carries a title, one sentence and four icons. That column has 224px to spend
+   at 390px of viewport and no slack in it at all, so every pixel the chart gets
+   is a pixel taken off something else: the emote comes down to a thumbnail and
+   the three gaps around them are halved. The chart is the page's anchor and is
+   the one thing here allowed to be generous with what is left. */
+.academy-welcome .tome-single-wide .tome-finale-graph {
+  height: min(18vh, 72px);
+  margin-top: 0.45em;
 }
 
-.academy-welcome .tome-single-wide .tome-writing[data-finale="right"] {
-  height: 100%;
+.academy-welcome .tome-single-wide .tome-discovery-accent {
+  margin-top: 0.3em;
 }
 
-.academy-welcome .tome-single-wide .tome-discovery-stage {
-  flex: 1 1 auto;
-  height: auto;
+.academy-welcome .tome-single-wide .tome-writing[data-finale] .tome-exits {
+  margin-top: 0.5em;
+  margin-bottom: 0.15em;
+}
+
+/* And the four icons come down with it: at 68px they are two thirds of the
+   height a 390px-tall sheet has to give a whole page. */
+.academy-welcome .tome-single-wide .tome-symbol {
+  width: clamp(1.9rem, 5.4vw, 2.6rem);
+}
+
+.academy-welcome .tome-single-wide .tome-symbols {
+  margin-top: 0.8em;
+}
+
+.academy-welcome .tome-single-wide .tome-discovery-emote {
+  width: clamp(1.35rem, 3.4vw, 1.75rem);
 }
 
 /* THE REGISTER IS THE OTHER PAGE THAT WOULD NOT SIT STILL. Its two ruled lines
@@ -3435,10 +3428,6 @@ html.high-contrast * { text-shadow: none !important; }
 
 .academy-welcome .tome-single-wide .tome-signin {
   margin-top: 0.35em;
-}
-
-.academy-welcome .tome-single .tome-symbol {
-  width: clamp(1.3rem, 6.4vw, 1.8rem);
 }
 
 .academy-welcome .tome-rule-v {
