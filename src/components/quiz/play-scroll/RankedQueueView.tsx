@@ -35,6 +35,7 @@
 import { Loader2, Swords } from "lucide-react";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 import type { QueueController } from "@/pages/quiz-ranked/useRankedQueue";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import PlayModePlate from "./PlayModePlate";
 import { PLAY_INK as INK } from "./ink";
 
@@ -88,6 +89,30 @@ export default function RankedQueueView({
   onBack: () => void;
 }) {
   const state = queue.state;
+  /**
+   * PLAY1 SOUND — this view's controls are the flow's ORDINARY ones.
+   *
+   * None of them is a decision about how to play, so none of them takes the
+   * seal: Enter the Queue, Cancel Queue and Back all get the quiet fallback
+   * knock. What the queue itself does — opening, pairing, refusing — is the
+   * RECORD's to announce, from the controller's own state transitions, and is
+   * deliberately not duplicated here:
+   *
+   *   Enter the Queue   `buttonPress` on the press, then `queueStart` when the
+   *                     SERVER accepts. Two separate events, and the press cue
+   *                     is the quieter of the two on purpose — the news is the
+   *                     queue opening, not the button being pushed.
+   *   Cancel Queue      `buttonPress`. Leaving is not a refusal; the negative
+   *                     cue belongs to things the player did not choose.
+   *   Back              `buttonPress`.
+   */
+  const sfx = usePlaySfx();
+  /** Leaving, with its knock. Named once so the notices below and the in-flow
+   *  control cannot drift into one of them being silent. */
+  const goBack = () => {
+    sfx.play("buttonPress");
+    onBack();
+  };
 
   if (state === "unavailable") {
     return (
@@ -96,7 +121,7 @@ export default function RankedQueueView({
         eyebrow="Competitive"
         heading="Ranked is closed right now"
         body={queue.unavailableReason ?? "Ranked isn't available at the moment."}
-        onBack={onBack}
+        onBack={goBack}
       />
     );
   }
@@ -108,7 +133,7 @@ export default function RankedQueueView({
         eyebrow="Competitive"
         heading="Ranked couldn't be reached"
         body={queue.error ?? "Something went wrong reaching the Ranked service."}
-        onBack={onBack}
+        onBack={goBack}
       />
     );
   }
@@ -208,7 +233,10 @@ export default function RankedQueueView({
             type="button"
             data-testid="play-ranked-join"
             disabled={state === "recovering" || role === null}
-            onClick={onJoin}
+            onClick={() => {
+              sfx.play("buttonPress");
+              onJoin();
+            }}
             className="play-scroll-clause flex min-h-[46px] w-full items-center justify-center gap-2 px-4 text-[13px] font-black uppercase tracking-[0.2em] disabled:cursor-not-allowed disabled:opacity-60"
             data-emphasis="true"
             style={{ color: INK.strong }}
@@ -246,7 +274,10 @@ export default function RankedQueueView({
             type="button"
             data-testid="play-ranked-cancel"
             disabled={!queue.canCancel}
-            onClick={queue.cancel}
+            onClick={() => {
+              sfx.play("buttonPress");
+              queue.cancel();
+            }}
             className="play-scroll-control disabled:cursor-not-allowed disabled:opacity-60"
           >
             {state === "cancelling" ? "Cancelling…" : "Cancel Queue"}
@@ -259,7 +290,7 @@ export default function RankedQueueView({
           <button
             type="button"
             data-testid="play-ranked-back"
-            onClick={onBack}
+            onClick={goBack}
             className="play-scroll-back"
           >
             Back

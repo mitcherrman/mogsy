@@ -3,7 +3,24 @@
  * data-honesty rules for the record strip.
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+
+/**
+ * PLAY1's sound layer, stubbed to a spy.
+ *
+ * The real `usePlaySfx` reads the app's one sound-settings store, which
+ * constructs the Supabase client — and the pinned jsdom gives that client no
+ * working Storage, so importing it turns a clean suite into one carrying an
+ * unhandled rejection (see `src/test/localStorageStub.ts`). The gate itself is
+ * covered by `src/lib/audio/play-sfx.test.ts`; here it is a spy, which is also
+ * exactly what a test asserting "one action, one cue" wants.
+ */
+vi.mock("@/lib/audio/usePlaySfx", () => ({
+  usePlaySfx: () => ({ play: sfx.play }),
+}));
+
 import RankedClassCarousel from "./RankedClassCarousel";
 import { RANKED_ROLES, RANKED_ROLE_LABELS } from "@/lib/ranked-public/roles";
 import {
@@ -13,6 +30,7 @@ import {
 import { RANKED_ROLE_CHAMPIONS } from "@/lib/ranked-public/roleChampions";
 
 afterEach(cleanup);
+beforeEach(() => sfx.play.mockClear());
 
 function renderCarousel(over: Partial<React.ComponentProps<typeof RankedClassCarousel>> = {}) {
   const onSelect = vi.fn();
@@ -320,5 +338,111 @@ describe("RankedClassCarousel — champion anchor", () => {
     expect(screen.getByTestId("ranked-class-slide-adc").querySelector("img")!.className).toContain(
       "h-full",
     );
+  });
+});
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PLAY1 SOUND — the role tick on the LOBBY's stage.
+ *
+ * The lobby ring and the match-entry record's stepper move one shared
+ * selection, so they must sound the same. The cue is fired from `moveTo` and
+ * from nowhere else: that is the single funnel every INTENTIONAL move goes
+ * through, while the passive path — the effect that follows the `value` prop —
+ * calls `setViewIndex` directly and therefore cannot make a sound.
+ *
+ * That is what keeps "one press, two surfaces, one sound" true from either
+ * side, and what keeps a role restored from the URL after the signup gate's
+ * auth trip silent.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const cues = () => sfx.play.mock.calls.flat();
+
+describe("RankedClassCarousel — the role tick", () => {
+  it("ticks once for the Next arrow", () => {
+    renderCarousel();
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    expect(cues()).toEqual(["roleStep"]);
+  });
+
+  it("ticks once for the Previous arrow", () => {
+    renderCarousel();
+    fireEvent.click(screen.getByTestId("ranked-class-previous"));
+    expect(cues()).toEqual(["roleStep"]);
+  });
+
+  it("ticks once for a click on a neighbouring mascot", () => {
+    renderCarousel();
+    fireEvent.click(screen.getByTestId("ranked-class-slide-jungle"));
+    expect(cues()).toEqual(["roleStep"]);
+  });
+
+  it("ticks once per keyboard step", () => {
+    const { container } = renderCarousel();
+    const stage = container.querySelector('[data-testid="ranked-class-slide-top"]')!;
+    fireEvent.keyDown(stage, { key: "ArrowRight" });
+    expect(cues()).toEqual(["roleStep"]);
+  });
+
+  /**
+   * A press that does not move the ring is not a step. The stage already
+   * refuses to WRITE for it (e07da052 — clicking the standing mascot used to
+   * spend one of ten `role_set` writes a minute); it must not make a noise for
+   * it either.
+   */
+  it("says nothing when the figure already on stage is clicked, however often", () => {
+    renderCarousel();
+    const centreSlide = screen.getByTestId("ranked-class-slide-top");
+    fireEvent.click(centreSlide);
+    fireEvent.click(centreSlide);
+    fireEvent.click(centreSlide);
+    expect(cues()).toEqual([]);
+  });
+
+  it("gives a hammered ring one tick per notch — no more, and no fewer", () => {
+    const { container } = renderCarousel();
+    const next = screen.getByTestId("ranked-class-next");
+    for (let i = 0; i < 5; i += 1) fireEvent.click(next);
+    expect(cues()).toEqual(Array(5).fill("roleStep"));
+    // Five notches around a five-role ring: all the way back to where it began.
+    expect(centre(container)).toBe("top");
+  });
+
+  it("still ticks on a stage that cannot select — browsing is a real action", () => {
+    renderCarousel({ disabled: true });
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    expect(cues()).toEqual(["roleStep"]);
+  });
+
+  /* ── Passive synchronisation is silent ──────────────────────────────── */
+
+  it("makes NO sound when the host moves the role for it", () => {
+    // This is the record's arrow being pressed on the sheet above: the shared
+    // selection changes, the ring follows, and only the pressed surface speaks.
+    const { rerender, container } = renderCarousel({ value: "top" });
+    sfx.play.mockClear();
+    rerender(<RankedClassCarousel value="adc" onSelect={vi.fn()} />);
+    expect(centre(container)).toBe("adc");
+    expect(cues()).toEqual([]);
+  });
+
+  it("makes NO sound on first paint, however the stage is seeded", () => {
+    renderCarousel({ value: "support" });
+    expect(cues()).toEqual([]);
+  });
+
+  it("makes NO sound when the host re-renders for an unrelated reason", () => {
+    const { rerender } = renderCarousel({ value: "mid" });
+    sfx.play.mockClear();
+    rerender(<RankedClassCarousel value="mid" onSelect={vi.fn()} busyRole="mid" />);
+    rerender(<RankedClassCarousel value="mid" onSelect={vi.fn()} />);
+    expect(cues()).toEqual([]);
+  });
+
+  it("is the ONLY cue this stage makes — no generic press on top of the tick", () => {
+    renderCarousel();
+    fireEvent.click(screen.getByTestId("ranked-class-next"));
+    fireEvent.click(screen.getByTestId("ranked-class-slide-adc"));
+    expect(new Set(cues())).toEqual(new Set(["roleStep"]));
   });
 });

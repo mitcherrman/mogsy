@@ -24,6 +24,32 @@ export type RankTier = (typeof RANK_TIERS)[number];
 export const RANK_TRACKS = ["academy", "ranked"] as const;
 export type RankTrack = (typeof RANK_TRACKS)[number];
 
+/**
+ * The ladder's FLOOR, and the tier any account without a standing is shown as.
+ *
+ * MALT retired "Unranked". The ladder is bronze → silver → gold → diamond →
+ * challenger, so Bronze is the rank a player is working up FROM — and therefore
+ * the honest thing to show an account that has no standing yet. The old
+ * treatment rendered `unranked.png`, a sixth piece of art outside the five
+ * canonical tiers that read as "you are not part of this ladder" rather than
+ * "you are at the bottom of it".
+ *
+ * THIS IS NOT A TIER CLAIM. Nothing awards Bronze, computes it, or sends it
+ * anywhere. It is what a surface RENDERS when the backend has given it no tier;
+ * the emblem still carries `data-baseline` rather than `data-tier` (callers
+ * pass `earned={false}`), and the moment a real tier arrives it takes over.
+ *
+ * It is derived from `RANK_TIERS[0]` rather than written as `"bronze"`, so the
+ * floor can never drift from the ordering above.
+ *
+ * IT LIVES HERE BECAUSE MORE THAN ONE SURFACE NEEDS IT. It began as a private
+ * const inside `RankedLobbyHero`, which meant the PLAY1 match-entry record had
+ * no way to reach the rule and hid its crest instead — a blank rank slot on a
+ * sheet whose whole job is to say who is entering. One rule, one constant, both
+ * surfaces.
+ */
+export const BASELINE_RANK_TIER: RankTier = RANK_TIERS[0];
+
 export function isRankTier(value: unknown): value is RankTier {
   return typeof value === "string" && (RANK_TIERS as readonly string[]).includes(value);
 }

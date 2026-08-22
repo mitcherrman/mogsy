@@ -40,6 +40,7 @@ import {
   rankedInviteGateway,
   type RankedInviteAvailability,
 } from "@/lib/ranked-public/rankedInvite";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { PLAY_INK as INK } from "./ink";
 
 const NOTICE_ID = "play-invite-availability";
@@ -79,6 +80,17 @@ export default function InvitePlayView({
   const loading = roster === undefined && live.loading;
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /**
+   * PLAY1 SOUND — the roster's controls are ordinary ones.
+   *
+   * Choosing a summoner and going back are neither decisions about how to play
+   * nor anything the queue is doing, so both take the quiet fallback knock
+   * rather than the seal. The CHALLENGE control is deliberately not sounded:
+   * it has no `onClick` at all and is disabled while Ranked invites have no
+   * backend, so there is no press for a cue to answer — the phase that gives it
+   * an action gives it a sound.
+   */
+  const sfx = usePlaySfx();
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -218,7 +230,10 @@ export default function InvitePlayView({
                       role="option"
                       aria-selected={chosen}
                       data-testid={`play-invite-friend-${id}`}
-                      onClick={() => setSelectedId(chosen ? null : id)}
+                      onClick={() => {
+                        sfx.play("buttonPress");
+                        setSelectedId(chosen ? null : id);
+                      }}
                       className="play-scroll-clause flex min-h-[44px] w-full items-center gap-2.5 py-1.5 pl-3 pr-2.5"
                       data-emphasis={chosen ? "true" : undefined}
                     >
@@ -282,7 +297,10 @@ export default function InvitePlayView({
         <button
           type="button"
           data-testid="play-invite-back"
-          onClick={onBack}
+          onClick={() => {
+            sfx.play("buttonPress");
+            onBack();
+          }}
           className="play-scroll-back"
         >
           Back

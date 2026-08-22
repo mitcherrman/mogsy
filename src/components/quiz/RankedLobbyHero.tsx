@@ -78,7 +78,7 @@ import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 import { rankedTierLabel } from "@/lib/progression/rankedArt";
-import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
+import { BASELINE_RANK_TIER, parseRankTier, type RankTier } from "@/lib/progression/tiers";
 import { academyTierLabel, parseAcademyProgression } from "@/lib/progression/academy";
 import type { RankedProgressionView, MatchHistoryEntryView } from "@/lib/ranked-public/contracts";
 import {
@@ -118,8 +118,14 @@ const PLACEMENT_TOTAL = 5;
  * It is `RankTier`-typed on purpose, so it can only ever be one of the five
  * canonical tiers, and it renders through the same `RankEmblem` every earned
  * emblem does — no second art path, no invented asset.
+ *
+ * THE RULE MOVED, THE BEHAVIOUR DID NOT. This used to be a private const here,
+ * which is why the PLAY1 match-entry record could not reach it and hid its
+ * crest instead. It now lives with the tier vocabulary itself
+ * (`BASELINE_RANK_TIER`), so both surfaces read one constant; this alias keeps
+ * the name every line below already uses.
  */
-const BASELINE_TIER: RankTier = "bronze";
+const BASELINE_TIER: RankTier = BASELINE_RANK_TIER;
 
 /**
  * The ink this hero writes in.

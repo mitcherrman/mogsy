@@ -11,7 +11,24 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+
+/**
+ * PLAY1's sound layer, stubbed to a spy.
+ *
+ * The real `usePlaySfx` reads the app's one sound-settings store, which
+ * constructs the Supabase client — and the pinned jsdom gives that client no
+ * working Storage, so importing it turns a clean suite into one carrying an
+ * unhandled rejection (see `src/test/localStorageStub.ts`). The gate itself is
+ * covered by `src/lib/audio/play-sfx.test.ts`; here it is a spy, which is also
+ * exactly what a test asserting "one action, one cue" wants.
+ */
+vi.mock("@/lib/audio/usePlaySfx", () => ({
+  usePlaySfx: () => ({ play: sfx.play }),
+}));
+
 import LobbyPreviewPage from "./LobbyPreviewPage";
 import {
   LOBBY_PREVIEW_STATES,

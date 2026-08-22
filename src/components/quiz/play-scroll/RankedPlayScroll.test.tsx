@@ -18,6 +18,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { QueueState } from "@/pages/quiz-ranked/useRankedQueue";
 
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+
+/**
+ * PLAY1's sound layer, stubbed to a spy.
+ *
+ * The real `usePlaySfx` reads the app's one sound-settings store, which
+ * constructs the Supabase client — and the pinned jsdom gives that client no
+ * working Storage, so importing it turns a clean suite into one carrying an
+ * unhandled rejection (see `src/test/localStorageStub.ts`). The gate itself is
+ * covered by `src/lib/audio/play-sfx.test.ts`; here it is a spy, which is also
+ * exactly what a test asserting "one action, one cue" wants.
+ */
+vi.mock("@/lib/audio/usePlaySfx", () => ({
+  usePlaySfx: () => ({ play: sfx.play }),
+}));
+
 const h = vi.hoisted(() => ({
   queue: {
     state: "selecting_class" as QueueState,
@@ -50,7 +66,9 @@ vi.mock("@/lib/quiz/api", () => ({
 }));
 
 import RankedPlayScroll from "./RankedPlayScroll";
+import { isToastInteraction } from "./PlayScrollRecord";
 import type { RankedRole } from "@/lib/ranked-public/roles";
+import { BASELINE_RANK_TIER } from "@/lib/progression/tiers";
 import InvitePlayView from "./InvitePlayView";
 import { RANKED_INVITE_UNAVAILABLE_REASON } from "@/lib/ranked-public/rankedInvite";
 
@@ -928,15 +946,60 @@ describe("the Ranked emblem in the role selector", () => {
     expect(band.textContent).not.toMatch(/\bSILVER\b/i);
   });
 
-  it("withholds the crest entirely when there is no standing", () => {
-    // A placeholder crest would be a claim about an account that has none.
+  /**
+   * THE CREST IS NEVER WITHHELD. Mogzy retired "Unranked": the ladder's floor
+   * is Bronze, and an account with no standing is shown AT the floor rather
+   * than off the ladder. This band used to hide the emblem whenever
+   * `progression` was null — every guest, and every account before its first
+   * rated match — which left a blank rank slot on the one sheet whose job is
+   * to say who is entering.
+   */
+  it("still renders a crest when there is NO standing, at the ladder's floor", () => {
     renderScroll({ progression: null });
-    expect(
-      screen.getByTestId("play-scroll-role-banner")
-        .querySelector(".play-scroll-banner__standing"),
-    ).toBeNull();
+    const crest = screen
+      .getByTestId("play-scroll-role-banner")
+      .querySelector(".play-scroll-banner__standing");
+    expect(crest).not.toBeNull();
+    // The one shared rule, not a PLAY1-local guess.
+    expect(crest!.getAttribute("data-baseline")).toBe(BASELINE_RANK_TIER);
+    // BASELINE, not a tier claim: nothing here awards Bronze.
+    expect(crest!.getAttribute("data-tier")).toBeNull();
     // The stepper still works — the crest is decoration, not the control.
     expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Jungle");
+  });
+
+  it("never writes the word Unranked, and never leaves the rank slot empty", () => {
+    for (const progression of [null, undefined]) {
+      cleanup();
+      renderScroll({ progression });
+      const band = screen.getByTestId("play-scroll-role-banner");
+      expect(band.textContent).not.toMatch(/unranked/i);
+      expect(band.querySelector(".play-scroll-banner__standing")).not.toBeNull();
+    }
+  });
+
+  it("prefers a REAL standing over the floor whenever the account has one", () => {
+    // Silver, rated: the earned art and `data-tier` take over completely.
+    renderScroll();
+    const crest = screen
+      .getByTestId("play-scroll-role-banner")
+      .querySelector(".play-scroll-banner__standing");
+    expect(crest!.getAttribute("data-tier")).toBe("silver");
+    expect(crest!.getAttribute("data-baseline")).toBeNull();
+  });
+
+  it("shows an unrated account's tier as the FLOOR, not as an award", () => {
+    // `rated: false` means the tier is the ladder's starting value rather than
+    // anything won, so the crest is drawn as baseline even though a tier token
+    // came back from the backend.
+    const unrated = { ...(PROGRESSION as unknown as Record<string, unknown>), rated: false };
+    renderScroll({ progression: unrated as never });
+    const crest = screen
+      .getByTestId("play-scroll-role-banner")
+      .querySelector(".play-scroll-banner__standing");
+    expect(crest).not.toBeNull();
+    expect(crest!.getAttribute("data-tier")).toBeNull();
+    expect(crest!.getAttribute("data-baseline")).toBeTruthy();
   });
 });
 
@@ -1075,5 +1138,722 @@ describe("bots are not part of the primary PLAY experience", () => {
     expect(text).not.toMatch(/playtest/i);
     expect(text).not.toMatch(/\b(tank|mage|marksman)\b/i);
     expect(text).not.toMatch(/\b(easy|standard|hard)\b/i);
+  });
+});
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PLAY1 SOUND — the record's cues.
+ *
+ * The rule the whole layer is built on is "one user action, one sound", so
+ * every case below asserts the WHOLE call list rather than "was called". A cue
+ * that fires alongside another it should not have is exactly the defect this
+ * pass exists to prevent, and `toHaveBeenCalledWith` would not see it.
+ *
+ * The queue cues are keyed to the controller's own state TRANSITIONS, never to
+ * the button that started them: the record polls every 700ms during pairing and
+ * re-renders on every read, so anything driven by "the state is X" would repeat
+ * for as long as X lasted.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Every cue sounded so far, in order. */
+const cues = () => sfx.play.mock.calls.flat();
+
+/**
+ * Walk the fabricated controller through a state, the way the real one does.
+ *
+ * The mocked hook hands back the SAME object every render, so mutating it
+ * changes nothing by itself; `rerender` is what the real controller's
+ * `setState` does for free.
+ */
+function advance(
+  rerender: () => void,
+  state: QueueState,
+  patch: Partial<typeof h.queue> = {},
+) {
+  h.queue.state = state;
+  Object.assign(h.queue, patch);
+  rerender();
+}
+
+describe("sound — closing the record", () => {
+  it("sounds the sheet rolling shut, once, on the close control", () => {
+    const { onClose } = renderScroll();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-scroll-close"));
+    expect(cues()).toEqual(["scrollClose"]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("sounds it once on Escape, not once per handler in the chain", () => {
+    const { onClose } = renderScroll();
+    sfx.play.mockClear();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(cues()).toEqual(["scrollClose"]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays silent when the close is WITHHELD over a live queue entry", async () => {
+    // Every exit is withdrawn from `joining` onward, so the sheet does not
+    // move — and nothing may sound as though it had.
+    h.queue.state = "waiting";
+    h.queue.canCancel = true;
+    const { onClose } = renderScroll();
+    await openRanked();
+    sfx.play.mockClear();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    expect(cues()).toEqual([]);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("play-scroll-close")).toBeNull();
+  });
+});
+
+describe("sound — choosing a way to play", () => {
+  it("sounds the seal once for Ranked, then nothing until the queue moves", async () => {
+    renderScroll();
+    sfx.play.mockClear();
+    await openRanked();
+    expect(cues()).toEqual(["modeConfirm"]);
+  });
+
+  it("sounds the seal once for Invite", () => {
+    renderScroll();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-mode-invite"));
+    expect(cues()).toEqual(["modeConfirm"]);
+  });
+
+  /**
+   * Daily Challenge is the case a careless implementation doubles: it is a
+   * selection AND it closes the record. Closing there is a HANDOFF, and the
+   * handoff is already announced by the seal.
+   */
+  it("sounds the seal once for Daily Challenge — never the seal AND the close", () => {
+    const { onClose, onPlayDailyChallenge } = renderScroll();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-mode-daily"));
+    expect(cues()).toEqual(["modeConfirm"]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPlayDailyChallenge).toHaveBeenCalledTimes(1);
+  });
+
+  it("sounds the seal once for the Practice footer — and no close cue", () => {
+    const { onPlayPractice, onClose } = renderScroll();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-scroll-practice"));
+    expect(cues()).toEqual(["modeConfirm"]);
+    expect(onPlayPractice).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("sounds the seal once for the Practice action on a finished day", () => {
+    const { onPlayPractice } = renderScroll({ daily: DAILY_DONE });
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-mode-daily-action"));
+    expect(cues()).toEqual(["modeConfirm"]);
+    expect(onPlayPractice).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes no sound for a clause that cannot be selected", () => {
+    // A completed day is drawn as a PANEL with no button. Nothing to press,
+    // nothing to hear.
+    renderScroll({ daily: DAILY_DONE });
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-mode-daily-complete"));
+    expect(cues()).toEqual([]);
+  });
+});
+
+describe("sound — the Ranked role commit", () => {
+  it("sounds a refusal after the seal when the role write is declined", async () => {
+    const onCommitRole = vi.fn(async () => false);
+    renderScroll({ onCommitRole });
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+
+    await waitFor(() => expect(cues()).toEqual(["modeConfirm", "error"]));
+    // The record stayed on its menu, so the refusal has something on screen
+    // beside it — the host's own notice.
+    expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("menu");
+  });
+
+  it("never sounds a queue start for a refused commit", async () => {
+    const onCommitRole = vi.fn(async () => false);
+    renderScroll({ onCommitRole });
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await waitFor(() => expect(cues()).toContain("error"));
+    expect(cues()).not.toContain("queueStart");
+  });
+});
+
+/**
+ * A record whose fabricated queue can be walked through states.
+ *
+ * Its own harness rather than `renderScroll`'s, because these cases need to
+ * re-render on demand: the mocked controller hands back the SAME object every
+ * render, so mutating it changes nothing by itself — a re-render is what the
+ * real controller's `setState` does for free.
+ */
+type StatefulScrollProps = React.ComponentProps<typeof StatefulScroll>;
+
+function renderQueueScroll(over: Partial<StatefulScrollProps> = {}) {
+  const onClose = vi.fn();
+  const onEnterMatch = vi.fn();
+  const onPlayDailyChallenge = vi.fn();
+  const onPlayPractice = vi.fn();
+  const onCommitRole = vi.fn(() => true);
+  const onRoleChange = vi.fn();
+  const props: StatefulScrollProps = {
+    onClose,
+    initialRole: "jungle",
+    onRoleChange,
+    progression: PROGRESSION,
+    modes: ALL_MODES,
+    daily: DAILY,
+    signedIn: true,
+    onEnterMatch,
+    onPlayDailyChallenge,
+    onCommitRole,
+    onPlayPractice,
+    handoffDelayMs: 0,
+    ...over,
+  };
+  const utils = render(<StatefulScroll {...props} />);
+  /** Move the controller and let the record see it. */
+  const advance = (state: QueueState, patch: Partial<typeof h.queue> = {}) => {
+    h.queue.state = state;
+    Object.assign(h.queue, patch);
+    // A NEW element each time: an identical reference would let React bail out
+    // of the re-render and the record would never see the new state.
+    utils.rerender(<StatefulScroll {...props} />);
+  };
+  return { ...utils, advance, onClose, onEnterMatch, onCommitRole };
+}
+
+describe("sound — the queue's cues", () => {
+  it("acknowledges the join press, but does NOT sound a queue start for it", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-ranked-join"));
+    advance("joining");
+    // The control answers the press with the quiet fallback knock — and that is
+    // all. The request is out; the server has not accepted anything yet, so the
+    // cue that means "you are in the queue" has not been earned.
+    expect(cues()).toEqual(["buttonPress"]);
+  });
+
+  it("sounds the queue opening once the SERVER has the entry", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    sfx.play.mockClear();
+    advance("waiting", { canCancel: true });
+    expect(cues()).toEqual(["queueStart"]);
+  });
+
+  it("does not re-sound the queue opening while the wait polls on", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    advance("waiting", { canCancel: true });
+    sfx.play.mockClear();
+    for (let i = 0; i < 4; i += 1) advance("waiting", { canCancel: true });
+    expect(cues()).toEqual([]);
+  });
+
+  /**
+   * PASSIVE RECOVERY IS NOT AN EVENT. A record that opens onto a queue entry
+   * the server already had is looking at a standing state, not watching one
+   * arrive, and the player did nothing to start it.
+   */
+  it("says nothing when an existing queue entry is recovered on open", () => {
+    h.queue.state = "waiting";
+    h.queue.canCancel = true;
+    renderQueueScroll();
+    expect(cues()).toEqual([]);
+  });
+
+  it("sounds a REFUSAL, not a queue start, when the join is rejected", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    sfx.play.mockClear();
+    // `handleError(e, "action")` is the only thing that puts an in-flight join
+    // back to selection, and it prints the reason under the button.
+    advance("selecting_class", {
+      error: "Choose your role before joining the Ranked queue.",
+    });
+    expect(cues()).toEqual(["error"]);
+  });
+
+  it("sounds the opponent bell once, on the pairing window opening", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    advance("waiting", { canCancel: true });
+    sfx.play.mockClear();
+    advance("pairing", { canCancel: false });
+    expect(cues()).toEqual(["opponentFound"]);
+  });
+
+  /**
+   * THE POLLING TRAP. `pairing` is polled every 700ms and each read re-renders
+   * with the same status. The bell must ring for the NEWS, not for the state.
+   */
+  it("does not re-ring the bell as the same pairing state is polled again", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    advance("waiting", { canCancel: true });
+    advance("pairing");
+    sfx.play.mockClear();
+    for (let i = 0; i < 5; i += 1) advance("pairing");
+    expect(cues()).toEqual([]);
+  });
+
+  it("does not ring again when pairing becomes matched — that is the same news", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    advance("waiting", { canCancel: true });
+    advance("pairing");
+    sfx.play.mockClear();
+    advance("matched", { matchId: "rkm_1" });
+    advance("matched", { matchId: "rkm_1" });
+    expect(cues()).toEqual([]);
+  });
+
+  it("rings for a SECOND, real pairing after the first turned out to be wrong", async () => {
+    // The controller returns a pairing reading to `waiting` when both sources
+    // say there is no match after all. The next pairing is genuinely new news.
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    advance("waiting", { canCancel: true });
+    advance("pairing");
+    advance("waiting", { canCancel: true });
+    sfx.play.mockClear();
+    advance("pairing");
+    expect(cues()).toEqual(["opponentFound"]);
+  });
+
+  it("says nothing for a match recovered on open — no transition happened", () => {
+    h.queue.state = "matched";
+    h.queue.matchId = "rkm_recovered";
+    renderQueueScroll();
+    expect(cues()).toEqual([]);
+  });
+
+  it("stays silent through a rate limit and a network blip — internal retries", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("joining");
+    advance("waiting", { canCancel: true });
+    sfx.play.mockClear();
+    // The controller writes both of these into `error` and keeps polling from
+    // `waiting`. Neither is something the player has to act on.
+    advance("waiting", { error: "Slowing down to respect the queue rate limit…" });
+    advance("waiting", { error: "network unavailable" });
+    expect(cues()).toEqual([]);
+  });
+
+  it("sounds a refusal when Ranked closes under a player who is looking at it", async () => {
+    const { advance } = renderQueueScroll();
+    await openRanked();
+    advance("waiting", { canCancel: true });
+    sfx.play.mockClear();
+    advance("unavailable", {
+      unavailableReason: "Ranked matchmaking is paused right now.",
+      canCancel: false,
+    });
+    expect(cues()).toEqual(["error"]);
+    expect(screen.getByTestId("play-ranked-unavailable")).toBeTruthy();
+  });
+
+  it("says nothing when a closed queue is discovered behind the three clauses", () => {
+    // The controller polls from the moment the record mounts, so an
+    // unavailable verdict can land while the menu is still on screen — where
+    // there is no refusal on the page to go with a refusal sound.
+    const { advance } = renderQueueScroll();
+    sfx.play.mockClear();
+    advance("unavailable", {
+      unavailableReason: "Ranked matchmaking is paused right now.",
+    });
+    expect(cues()).toEqual([]);
+  });
+});
+
+describe("sound — the role stepper and the mascot", () => {
+  it("ticks once for the next arrow, and moves the role", async () => {
+    renderScroll();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));
+    await waitFor(() =>
+      expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("mid"),
+    );
+    expect(cues()).toEqual(["roleStep"]);
+  });
+
+  it("ticks once for the previous arrow", () => {
+    renderScroll();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-scroll-role-prev"));
+    expect(cues()).toEqual(["roleStep"]);
+  });
+
+  it("gives a hammered stepper one tick per notch — no more, and no fewer", async () => {
+    renderScroll();
+    sfx.play.mockClear();
+    const next = screen.getByTestId("play-scroll-role-next");
+    for (let i = 0; i < 5; i += 1) fireEvent.click(next);
+    expect(cues()).toEqual([
+      "roleStep", "roleStep", "roleStep", "roleStep", "roleStep",
+    ]);
+    // Five notches around a five-role ring: all the way back to where it began.
+    await waitFor(() =>
+      expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("jungle"),
+    );
+  });
+
+  it("writes nothing to the account, however far the stepper is worked", () => {
+    const { onCommitRole } = renderScroll();
+    for (let i = 0; i < 12; i += 1) {
+      fireEvent.click(screen.getByTestId("play-scroll-role-next"));
+    }
+    expect(onCommitRole).not.toHaveBeenCalled();
+  });
+
+  it("answers a poke at the mascot, once per poke", () => {
+    renderScroll();
+    sfx.play.mockClear();
+    const mascot = screen.getByTestId("play-scroll-mascot");
+    fireEvent.click(mascot);
+    fireEvent.click(mascot);
+    fireEvent.click(mascot);
+    expect(cues()).toEqual(["mascotReact", "mascotReact", "mascotReact"]);
+  });
+
+  it("still answers under prefers-reduced-motion, where the wiggle is dropped", () => {
+    // Less movement is not a request for silence — the app's audio preference
+    // is a separate switch, and `RoleMascot` drops only the animation.
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes("prefers-reduced-motion"),
+      media: q, onchange: null,
+      addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderScroll();
+      sfx.play.mockClear();
+      fireEvent.click(screen.getByTestId("play-scroll-mascot"));
+      expect(cues()).toEqual(["mascotReact"]);
+      expect(
+        screen.getByTestId("play-scroll-mascot-action").dataset.playing,
+      ).toBeUndefined();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+});
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE RANKED AUTH GATE, at the record's own boundary.
+ *
+ * `Quiz.rankedRole.test.tsx` proves the whole flow against the real page; these
+ * pin the RECORD's half of the contract — that the question is asked before
+ * anything is attempted, and that it is asked of Ranked alone.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+describe("Ranked's account gate", () => {
+  it("asks the host for an account instead of committing, when there is none", async () => {
+    const onRequireAccount = vi.fn();
+    const { onCommitRole } = renderScroll({ hasAccount: false, onRequireAccount });
+    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await waitFor(() => expect(onRequireAccount).toHaveBeenCalledTimes(1));
+
+    // Nothing was written and nothing was entered: the gate runs FIRST.
+    expect(onCommitRole).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("menu");
+    expect(screen.queryByTestId("play-ranked")).toBeNull();
+    expect(h.queue.joinWithoutClass).not.toHaveBeenCalled();
+  });
+
+  it("plays the seal and no negative cue — a gate is not a failure", async () => {
+    sfx.play.mockClear();
+    renderScroll({ hasAccount: false, onRequireAccount: vi.fn() });
+    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await waitFor(() => expect(cues()).toContain("modeConfirm"));
+    expect(cues()).toEqual(["modeConfirm"]);
+  });
+
+  it("leaves the local role exactly where the player put it", async () => {
+    const onRequireAccount = vi.fn();
+    const { onSelectRole } = renderScroll({ hasAccount: false, onRequireAccount });
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));   // jungle -> mid
+    await waitFor(() =>
+      expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("mid"),
+    );
+    onSelectRole.mockClear();
+
+    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await waitFor(() => expect(onRequireAccount).toHaveBeenCalled());
+    // Not reset, not cleared, not snapped back.
+    expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("mid");
+    expect(onSelectRole).not.toHaveBeenCalled();
+  });
+
+  it("gates RANKED only — the other entries never queue, so they never ask", async () => {
+    const onRequireAccount = vi.fn();
+    const { onPlayDailyChallenge } = renderScroll({ hasAccount: false, onRequireAccount });
+
+    fireEvent.click(screen.getByTestId("play-mode-invite"));
+    await waitFor(() =>
+      expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("invite"),
+    );
+    expect(onRequireAccount).not.toHaveBeenCalled();
+
+    cleanup();
+    const second = renderScroll({ hasAccount: false, onRequireAccount });
+    fireEvent.click(screen.getByTestId("play-scroll-practice"));
+    expect(second.onPlayPractice).toHaveBeenCalledTimes(1);
+    expect(onRequireAccount).not.toHaveBeenCalled();
+    void onPlayDailyChallenge;
+  });
+
+  it("lets a real account straight through to the commit", async () => {
+    const onRequireAccount = vi.fn();
+    const { onCommitRole } = renderScroll({ hasAccount: true, onRequireAccount });
+    await openRanked();
+    expect(onCommitRole).toHaveBeenCalledTimes(1);
+    expect(onRequireAccount).not.toHaveBeenCalled();
+  });
+
+  /** The default matters: every existing caller and both dev previews mount
+   *  this component without the prop and must be unchanged. */
+  it("assumes an account when the host says nothing", async () => {
+    const onRequireAccount = vi.fn();
+    const { onCommitRole } = renderScroll({ onRequireAccount });
+    await openRanked();
+    expect(onCommitRole).toHaveBeenCalledTimes(1);
+    expect(onRequireAccount).not.toHaveBeenCalled();
+  });
+});
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * THE ORDINARY CONTROLS.
+ *
+ * Every intentional press in the record makes a sound; the specialised cue
+ * wins wherever there is one, and the quiet fallback knock covers what is
+ * left. No control gets both.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+describe("sound — the record's ordinary controls", () => {
+  it("knocks once for Back out of the queue view", async () => {
+    renderScroll();
+    await openRanked();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-ranked-back"));
+    expect(cues()).toEqual(["buttonPress"]);
+    expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("menu");
+  });
+
+  it("knocks once for Back out of a refusal notice", async () => {
+    h.queue.state = "unavailable";
+    h.queue.unavailableReason = "Ranked matchmaking is paused right now.";
+    renderScroll();
+    await openRanked();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-ranked-back"));
+    expect(cues()).toEqual(["buttonPress"]);
+  });
+
+  it("knocks once for Cancel Queue, and never the negative cue", async () => {
+    h.queue.state = "waiting";
+    h.queue.canCancel = true;
+    renderScroll();
+    await openRanked();
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-ranked-cancel"));
+    // Leaving a queue you chose to join is not a refusal.
+    expect(cues()).toEqual(["buttonPress"]);
+    expect(h.queue.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("knocks once for Back out of Invite", () => {
+    renderScroll();
+    fireEvent.click(screen.getByTestId("play-mode-invite"));
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-invite-back"));
+    expect(cues()).toEqual(["buttonPress"]);
+  });
+
+  it("knocks once when a summoner is chosen from the roster", () => {
+    h.friends.friends = [
+      { id: "f1", profile: { id: "p1", display_name: "Sylvara", avatar_url: null } },
+    ];
+    renderScroll();
+    fireEvent.click(screen.getByTestId("play-mode-invite"));
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-invite-friend-p1"));
+    expect(cues()).toEqual(["buttonPress"]);
+  });
+
+  /**
+   * The CHALLENGE control is intentionally silent: it has no `onClick` at all
+   * and is disabled while Ranked invites have no backend, so there is no press
+   * for a cue to answer. The phase that gives it an action gives it a sound.
+   */
+  it("says nothing for the challenge control, which has no action yet", () => {
+    h.friends.friends = [
+      { id: "f1", profile: { id: "p1", display_name: "Sylvara", avatar_url: null } },
+    ];
+    renderScroll();
+    fireEvent.click(screen.getByTestId("play-mode-invite"));
+    fireEvent.click(screen.getByTestId("play-invite-friend-p1"));
+    sfx.play.mockClear();
+    fireEvent.click(screen.getByTestId("play-invite-send"));
+    expect(cues()).toEqual([]);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * ONE ACTION = ONE SOUND, as a property of the whole surface.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+describe("sound — no control ever gets two cues", () => {
+  /**
+   * The specialised cue WINS. A mode card is a seal and not also a knock; a
+   * role arrow is a tick and not also a knock; the close is a sheet and not
+   * also a knock. Asserting the whole call list per press is what catches a
+   * generic handler quietly stacking underneath a specific one.
+   */
+  const pressed: Array<[string, string, (() => void)?]> = [
+    ["play-mode-ranked", "modeConfirm"],
+    ["play-mode-daily", "modeConfirm"],
+    ["play-mode-invite", "modeConfirm"],
+    ["play-scroll-practice", "modeConfirm"],
+    ["play-scroll-role-next", "roleStep"],
+    ["play-scroll-role-prev", "roleStep"],
+    ["play-scroll-mascot", "mascotReact"],
+    ["play-scroll-close", "scrollClose"],
+  ];
+
+  for (const [testId, expected] of pressed) {
+    it(`${testId} makes exactly one sound: ${expected}`, async () => {
+      renderScroll();
+      sfx.play.mockClear();
+      fireEvent.click(screen.getByTestId(testId));
+      await waitFor(() => expect(cues().length).toBeGreaterThan(0));
+      expect(cues()).toEqual([expected]);
+    });
+  }
+
+  it("never lets the fallback knock reach a control that has its own cue", async () => {
+    renderScroll();
+    sfx.play.mockClear();
+    for (const [testId] of pressed.slice(0, 3)) {
+      cleanup();
+      renderScroll();
+      fireEvent.click(screen.getByTestId(testId));
+    }
+    await waitFor(() => expect(cues().length).toBeGreaterThan(0));
+    expect(cues()).not.toContain("buttonPress");
+  });
+});
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * SOUND MUST NEVER BE LOAD-BEARING.
+ *
+ * Every control here calls the cue from inside its click handler, and most of
+ * them sound it BEFORE doing the thing — `sfx.play("buttonPress"); onBack();`.
+ * That ordering is only safe because `usePlaySfx().play` cannot throw, which is
+ * a guarantee of the hook rather than of these call sites.
+ *
+ * The assertion therefore lives with the guarantee, in
+ * `src/lib/audio/play-sfx.test.ts` ("never throws into the caller, whatever the
+ * audio stack does"). A version of it here would prove nothing: this suite
+ * replaces `usePlaySfx` with a spy, so it would only be testing the spy.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * A TOAST IS NOT "OUTSIDE".
+ *
+ * The Ranked signup gate raises a persistent notice WHILE this record is open,
+ * so the player can act on it from here. Radix treats every pointer-down beyond
+ * its content as a dismissal, which made pressing "Create Account" do two
+ * things at once: dismiss the record (sounding the sheet rolling shut) and
+ * activate the CTA (sounding its own knock). One physical click, two cues and
+ * two outcomes — measured in the browser before this guard existed.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+describe("interacting with a toast does not dismiss the record", () => {
+  /** A pointer-down that originates inside sonner's container. */
+  function pressInsideToast() {
+    const toaster = document.createElement("div");
+    toaster.setAttribute("data-sonner-toaster", "");
+    const button = document.createElement("button");
+    toaster.appendChild(button);
+    document.body.appendChild(toaster);
+    fireEvent.pointerDown(button);
+    // Radix listens on the document for the follow-up as well.
+    fireEvent.pointerUp(button);
+    return () => toaster.remove();
+  }
+
+  it("keeps the record open, and stays silent, when a toast is pressed", async () => {
+    const { onClose } = renderScroll();
+    sfx.play.mockClear();
+    const cleanupToaster = pressInsideToast();
+    try {
+      await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+      expect(onClose).not.toHaveBeenCalled();
+      // No close cue, because nothing closed.
+      expect(cues()).toEqual([]);
+    } finally {
+      cleanupToaster();
+    }
+  });
+
+  /**
+   * The predicate itself, directly.
+   *
+   * Radix's outside-pointer-down detection does not fire for synthetic events
+   * under jsdom, so the "a real outside press still dismisses" half cannot be
+   * driven from here — the dismissal paths that CAN be are covered above
+   * (the close control, and Escape). What is testable, and what actually
+   * changed, is which interactions the record now declines to treat as
+   * outside.
+   */
+  describe("the predicate", () => {
+    const ev = (target: unknown) =>
+      ({ detail: { originalEvent: { target } as unknown as Event } });
+
+    it("recognises a press inside sonner's container", () => {
+      const toaster = document.createElement("div");
+      toaster.setAttribute("data-sonner-toaster", "");
+      const button = document.createElement("button");
+      toaster.appendChild(button);
+      expect(isToastInteraction(ev(button))).toBe(true);
+      expect(isToastInteraction(ev(toaster))).toBe(true);
+    });
+
+    it("does NOT swallow an ordinary press elsewhere on the page", () => {
+      const elsewhere = document.createElement("div");
+      expect(isToastInteraction(ev(elsewhere))).toBe(false);
+    });
+
+    it("is safe for an event with no usable target", () => {
+      expect(isToastInteraction(ev(null))).toBe(false);
+      expect(isToastInteraction(ev(undefined))).toBe(false);
+      expect(isToastInteraction({})).toBe(false);
+    });
   });
 });

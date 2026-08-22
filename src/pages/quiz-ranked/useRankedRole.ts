@@ -27,6 +27,22 @@ export interface RoleController {
   error: string | null;
   /** Persist a role. Resolves true only when the SERVER accepted it. */
   selectRole: (role: RankedRole) => Promise<boolean>;
+  /**
+   * The reason the LAST `selectRole` was refused, readable the instant it
+   * resolves — or null after one that held.
+   *
+   * `error` above is React state and is therefore a RENDER value: it is still
+   * the previous value in the tick where `await selectRole(...)` returns, so a
+   * caller that reads it to report the refusal reports the one before it (and,
+   * on the first refusal, reports nothing and falls back to generic copy).
+   * That is exactly how a guest pressing Ranked was told "Could not save your
+   * role. Try again." — a role-shaped message — when the server had actually
+   * said the account was not eligible.
+   *
+   * This is the same message, held in a ref, so the reason is available at the
+   * moment the promise settles. `error` is unchanged and still drives render.
+   */
+  readWriteError: () => string | null;
   clearError: () => void;
 }
 
@@ -62,6 +78,8 @@ export function useRankedRole(): RoleController {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
+  /** See `readWriteError` — the render-independent copy of the last refusal. */
+  const writeErrorRef = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -94,6 +112,7 @@ export function useRankedRole(): RoleController {
     savingRef.current = true;
     setSaving(true);
     setError(null);
+    writeErrorRef.current = null;
     try {
       const snapshot = await api.setRankedRole(next);
       // The SERVER's answer is what we adopt — never the optimistic value.
@@ -104,6 +123,9 @@ export function useRankedRole(): RoleController {
       const message = e instanceof RankedApiError && e.code
         ? SET_ERRORS[e.code] ?? e.message
         : e instanceof Error ? e.message : "could not save your role";
+      // The ref FIRST: it is what a caller awaiting this call can read, and it
+      // must be set before the promise settles. `setError` still drives render.
+      writeErrorRef.current = message;
       setError(message);
       return false;
     } finally {
@@ -112,7 +134,8 @@ export function useRankedRole(): RoleController {
     }
   }, []);
 
+  const readWriteError = useCallback(() => writeErrorRef.current, []);
   const clearError = useCallback(() => setError(null), []);
 
-  return { loadState, role, saving, error, selectRole, clearError };
+  return { loadState, role, saving, error, selectRole, readWriteError, clearError };
 }

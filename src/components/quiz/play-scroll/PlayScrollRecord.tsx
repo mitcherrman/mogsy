@@ -64,9 +64,34 @@ import PlayModeMenu, {
 } from "./PlayModeMenu";
 import RankedQueueView from "./RankedQueueView";
 import InvitePlayView from "./InvitePlayView";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { PLAY_INK as INK } from "./ink";
 
 type ScrollView = "menu" | "ranked" | "invite";
+
+/**
+ * Did this "outside" interaction actually happen inside a TOAST?
+ *
+ * Toasts are an app-level layer ABOVE any dialog: the Ranked signup gate raises
+ * one while this record is open, precisely so the player can act on it from
+ * here. Radix does not know that — every pointer-down outside its content is a
+ * dismissal to it — so pressing "Create Account" both dismissed the record and
+ * activated the CTA.
+ *
+ * That is one physical click producing two cues (`scrollClose`, then the
+ * button's own knock) and two outcomes, which breaks the flow's one-action-one-
+ * sound rule. Interacting with a notice is not dismissing the sheet behind it,
+ * so those interactions are excluded here and the record stays put; the route
+ * change the CTA starts unmounts it a moment later anyway.
+ *
+ * Keyed to sonner's own container attribute rather than to a class of ours, so
+ * it cannot drift from where the toasts actually render.
+ */
+export function isToastInteraction(event: { detail?: { originalEvent?: Event } }): boolean {
+  const target = event.detail?.originalEvent?.target;
+  if (!(target instanceof Element)) return false;
+  return target.closest("[data-sonner-toaster]") !== null;
+}
 
 /**
  * How long the "opponent found" beat is held before the handoff.
@@ -86,6 +111,8 @@ export default function PlayScrollRecord({
   daily = null,
   onSelectRole,
   onCommitRole,
+  hasAccount = true,
+  onRequireAccount,
   onEnterMatch,
   onPlayDailyChallenge,
   onPlayPractice,
@@ -134,6 +161,24 @@ export default function PlayScrollRecord({
    */
   onSelectRole: (role: RankedRole) => void;
   onCommitRole: (role: RankedRole) => boolean | Promise<boolean>;
+  /**
+   * Whether this visitor may enter Ranked at all — a REAL account, not a guest.
+   *
+   * Ranked is the one entry with an account requirement: `POST /api/ranked/queue`
+   * and `PUT /api/ranked/role` both sit behind `require_account_identity`, which
+   * answers an anonymous session `403 ACCOUNT_REQUIRED`. This is deliberately
+   * NOT `signedIn`, which is true for a guest with an anonymous Supabase
+   * session — the very visitor the gate exists for.
+   *
+   * Defaults to `true` so the dev previews and every non-Ranked caller are
+   * unchanged: the gate is something a host opts a real visitor INTO.
+   */
+  hasAccount?: boolean;
+  /**
+   * Raise the host's signup notice. Called INSTEAD of the Ranked flow, never
+   * alongside it — see `selectMode`.
+   */
+  onRequireAccount?: () => void;
   /** Hand the player into the live-match host at `/quiz/ranked`. */
   onEnterMatch: (matchId: string) => void;
   /** The host's OWN existing Daily Challenge entry. */
@@ -184,6 +229,30 @@ export default function PlayScrollRecord({
    * the first step calls `onSelectRole` or Ranked commits.
    */
   const displayRole = role ?? DEFAULT_PREVIEW_ROLE;
+  /**
+   * PLAY1 SOUND — what the record sounds, and why it is the one that sounds it.
+   *
+   * The OPEN cue is the hub's (`openPlay` in `LeaguecraftHub`); everything
+   * below belongs here because this component is the only place that can tell
+   * these beats apart:
+   *
+   *   scrollClose    a DISMISSAL, not a handoff. `onClose` is also called when
+   *                  the Daily Challenge starts and when the player is sent to
+   *                  Practice, and neither of those is the sheet rolling shut —
+   *                  they are already announced by `modeConfirm`. ONE cue per
+   *                  action: only `requestClose` sounds the close.
+   *   modeConfirm    the ACCEPTED selection, past the busy and completed-day
+   *                  guards, so a press that changes nothing is silent.
+   *   error          a refused Ranked role commit, or a refused join, or the
+   *                  queue closing under a player who is looking at it.
+   *   queueStart /
+   *   opponentFound  real transitions of the queue state machine, watched once
+   *                  below — never the join CLICK, because a join the server
+   *                  refuses never becomes a queue and a queue-start cue over a
+   *                  refusal would be the interface lying about what happened.
+   */
+  const sfx = usePlaySfx();
+
   /** True while the role write for a Ranked entry is in flight. */
   const [committing, setCommitting] = useState(false);
   const recordRef = useRef<HTMLDivElement | null>(null);
@@ -224,9 +293,105 @@ export default function PlayScrollRecord({
     queue.state === "fatal";
 
   const requestClose = useCallback(() => {
+    // A withheld close is not a close. While the server holds a queue entry
+    // every exit is withdrawn, and pressing Escape against that must not
+    // produce the sound of a sheet that did not move.
     if (!closeIsSafe) return;
+    sfx.play("scrollClose");
     onClose();
-  }, [closeIsSafe, onClose]);
+  }, [closeIsSafe, onClose, sfx]);
+
+  /**
+   * The queue state the sound layer has already reacted to.
+   *
+   * `null` until the first run, which is what makes the record's FIRST sight of
+   * the queue a STARTING POSITION rather than a transition. That matters
+   * because `useRankedQueue` polls from the moment this component mounts: on
+   * the refresh-recovery path it can read a live entry — or an already-paired
+   * one, or a closed queue — before the player has touched anything, and none
+   * of that is news that just happened.
+   */
+  const lastQueueStateRef = useRef<QueueController["state"] | null>(null);
+  /**
+   * Whether the opponent bell has rung for the pairing currently in progress.
+   *
+   * A boolean and not a match id, because the beat starts BEFORE there is an
+   * id: `pairing` is the opponent-found beat — the server has claimed the entry
+   * and is writing the match (see THE PAIRING WINDOW in `useRankedQueue`) — and
+   * `matched` is the same news one poll later. Pairing is polled every 700ms
+   * and every read re-renders, so without this the bell would ring on each tick.
+   *
+   * It is cleared whenever the server is demonstrably not pairing this account:
+   * the entry is gone, or it is back to `waiting`, which is what the controller
+   * does when a pairing reading turns out to be wrong. So a second, genuinely
+   * new pairing rings again.
+   */
+  const pairingSoundedRef = useRef(false);
+
+  // ── The queue's audible transitions ────────────────────────────────────
+  useEffect(() => {
+    const prev = lastQueueStateRef.current;
+    const now = queue.state;
+    lastQueueStateRef.current = now;
+
+    // Not pairing (or not any more): whatever happens next is a new event.
+    if (
+      now === "selecting_class" ||
+      now === "waiting" ||
+      now === "unavailable" ||
+      now === "fatal"
+    ) {
+      pairingSoundedRef.current = false;
+    }
+
+    // NOTHING BELOW IS A TRANSITION ON THE FIRST RUN. A record that opens onto
+    // a queue already somewhere — recovery — is looking at a standing state,
+    // not watching one arrive, and passive recovery must not sound.
+    if (prev === null || prev === now) return;
+
+    // OPPONENT FOUND — once per pairing, on the first state that means it,
+    // whichever of the two arrives first. Guarded by the ref rather than by
+    // `prev`, because `pairing` -> `matched` is the same news twice and a
+    // transition test alone would sound it on both.
+    if (now === "pairing" || now === "matched") {
+      if (!pairingSoundedRef.current) {
+        pairingSoundedRef.current = true;
+        sfx.play("opponentFound");
+      }
+      return;
+    }
+
+    // QUEUE START — the server ACCEPTED the entry. Keyed to LEAVING `joining`,
+    // not to the join button: a refused join never reaches `waiting`. Recovery
+    // is excluded for free, since a restored entry arrives from `recovering`
+    // and was not started by this press. And reaching `joining` at all means
+    // the Ranked role commit already held — the ranked view is unreachable
+    // otherwise (see `selectMode`).
+    if (prev === "joining" && now === "waiting") {
+      sfx.play("queueStart");
+      return;
+    }
+
+    // A REFUSED JOIN. `handleError(e, "action")` is the only thing that puts an
+    // in-flight join back to selection, and it prints the reason under the
+    // button — so this is a real, visible refusal.
+    if (prev === "joining" && now === "selecting_class") {
+      sfx.play("error");
+      return;
+    }
+
+    // RANKED CLOSED, or unreachable — but only while the player is actually
+    // looking at the queue. The controller polls from the moment the record
+    // mounts, so an unavailable verdict can land while the three clauses are
+    // still on screen, where there is no refusal on the page to go with it.
+    if ((now === "unavailable" || now === "fatal") && view === "ranked") {
+      sfx.play("error");
+    }
+    // Everything else the controller does — a rate-limit slowdown, a network
+    // blip that keeps polling, the pairing notice it writes into `error` — is
+    // an internal retry that never leaves `waiting`/`pairing`/`recovering`, and
+    // is silent by construction rather than by a list of exceptions.
+  }, [queue.state, view, sfx]);
 
   // ── The handoff ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -260,10 +425,14 @@ export default function PlayScrollRecord({
    * that is scrolling somewhere else is a trap.
    */
   const goToPractice = useCallback(() => {
+    // Practice is a chosen way to spend the session, so it gets the same seal
+    // the three clauses get — and NOT the close cue as well, even though the
+    // record does close behind it. One action, one sound.
+    sfx.play("modeConfirm");
     handingOffRef.current = true;
     onClose();
     onPlayPractice();
-  }, [onClose, onPlayPractice]);
+  }, [onClose, onPlayPractice, sfx]);
 
   const selectMode = useCallback(
     (id: PlayModeId) => {
@@ -273,7 +442,54 @@ export default function PlayScrollRecord({
       // over is a fact about the DAY, and the one thing that must never
       // happen is starting a set with nothing in it.
       if (id === "daily" && dailyComplete) return;
+      /*
+       * THE SEAL. Past every guard, so the selection is ACCEPTED and is
+       * sounded exactly once here, for all three clauses.
+       *
+       * For Ranked this is deliberately BEFORE the commit resolves: the seal
+       * answers the PRESS, and what the commit does next is a separate event
+       * with its own cue — `error` if the write is refused, and later
+       * `queueStart` once the server actually has an entry. Three distinct
+       * things happened, so three distinct things are said.
+       *
+       * The two clauses that close the record (Daily Challenge) or hand off
+       * (Practice) do NOT also sound `scrollClose`: that is a handoff, not a
+       * dismissal, and `requestClose` is the only thing that sounds a sheet
+       * rolling shut.
+       */
+      sfx.play("modeConfirm");
       if (id === "ranked") {
+        /*
+         * THE AUTH GATE, AND IT RUNS FIRST.
+         *
+         * Ranked is account-only on the server: both `PUT /api/ranked/role` and
+         * `POST /api/ranked/queue` sit behind `require_account_identity`, which
+         * answers an anonymous session `403 ACCOUNT_REQUIRED`. Discovering that
+         * by ATTEMPTING the write is what produced the two-notice bug this gate
+         * removes:
+         *
+         *   1. the role write was tried, was refused for an account reason, and
+         *      the host reported it with its ROLE copy — so a player who could
+         *      plainly see Top selected was told the write had failed, which
+         *      reads as "pick a role";
+         *   2. the queue, which this record polls from the moment it opens,
+         *      independently resolved `unavailable` for the same account reason
+         *      and had its own sign-in sentence ready to show.
+         *
+         * One cause, two messages, neither of them the actual point. So the
+         * eligibility question is asked HERE, before anything is attempted:
+         * nothing is written, no queue is joined, no role error can be
+         * produced, and the host raises exactly one notice.
+         *
+         * THE LOCAL ROLE IS UNTOUCHED. This returns before `onCommitRole`, so
+         * the page's one shared selection keeps whatever the player stepped to —
+         * the lobby behind the sheet does not snap back to Top, and the choice
+         * is still there when they come back signed in.
+         */
+        if (!hasAccount) {
+          onRequireAccount?.();
+          return;
+        }
         /*
          * THE COMMIT POINT. Ranked is the only entry that queues, and the
          * queue join sends no role at all — `POST /api/ranked/queue` reads the
@@ -298,7 +514,18 @@ export default function PlayScrollRecord({
             setCommitting(false);
             setBusyMode(null);
           }
-          if (held) setView("ranked");
+          if (held) {
+            setView("ranked");
+            return;
+          }
+          /*
+           * A REFUSED COMMIT IS A REAL, USER-FACING REFUSAL. The host has just
+           * surfaced its notice (one reused toast id) and the record stays on
+           * its menu — so the negative cue has something on screen beside it.
+           * This is the role-write refusal specifically; a refused JOIN is a
+           * different event and is caught by the queue watcher above.
+           */
+          sfx.play("error");
         })();
         return;
       }
@@ -313,7 +540,10 @@ export default function PlayScrollRecord({
       onClose();
       onPlayDailyChallenge();
     },
-    [busyMode, dailyComplete, onClose, onCommitRole, onPlayDailyChallenge, displayRole],
+    [
+      busyMode, dailyComplete, onClose, onCommitRole, onPlayDailyChallenge,
+      displayRole, sfx, hasAccount, onRequireAccount,
+    ],
   );
 
   /**
@@ -431,10 +661,10 @@ export default function PlayScrollRecord({
               if (!closeIsSafe) event.preventDefault();
             }}
             onPointerDownOutside={(event) => {
-              if (!closeIsSafe) event.preventDefault();
+              if (!closeIsSafe || isToastInteraction(event)) event.preventDefault();
             }}
             onInteractOutside={(event) => {
-              if (!closeIsSafe) event.preventDefault();
+              if (!closeIsSafe || isToastInteraction(event)) event.preventDefault();
             }}
           >
             {/* The material. Inert and hidden: it is what the record is
