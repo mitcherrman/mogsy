@@ -146,7 +146,11 @@ export default function RegistrationForm({
           aria-invalid={rankError ? "true" : undefined}
           aria-describedby={rankError ? `${rankId}-error` : undefined}
         >
-          <option value="">Where do you play?</option>
+          {/* Says what the control is FOR, not where its owner lives. A native
+              select's first option is the only placeholder it has, so this
+              line is doing the job `placeholder` does on the name field.
+              Carried over from HI1-C6, which never reached main. */}
+          <option value="">Select your rank in League of Legends</option>
           {LEAGUE_RANKS.map((rank) => (
             <option key={rank.id} value={rank.id}>
               {rank.label}

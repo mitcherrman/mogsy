@@ -26,10 +26,10 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AcademyWelcomePage from "./AcademyWelcomePage";
-import { ACADEMY_CHAPTERS } from "./academyChapters";
-import { OPENING_PAUSE_MS } from "./phrases";
+import { ACADEMY_CHAPTERS, CHAMPION_ART } from "./academyChapters";
+import { BLOCK_INTERVAL_MS, HEADING_INTERVAL_MS, OPENING_PAUSE_MS } from "./cadence";
 import { SCENE_READY_CAP_MS } from "./useSceneReady";
-import { slotCount, slotWriteMs } from "./useRevealSequence";
+import { slotCount, slotRevealMs } from "./useRevealSequence";
 import {
   hasHandledAcademyWelcome,
   markAcademyWelcomeHandled,
@@ -233,7 +233,7 @@ describe("the sequence", () => {
     burst();
     expect(screen.getByRole("heading", { level: 1 })).toBeTruthy();
     expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
-    expect(page()).toHaveAttribute("data-chapter", "the-record");
+    expect(page()).toHaveAttribute("data-chapter", "library");
   });
 
   it("goes back to re-read a chapter, and offers no Back on the first", () => {
@@ -338,16 +338,14 @@ describe("the internal reveal", () => {
     expect(page()).toHaveAttribute("data-chapter-index", "1");
   });
 
-  it("does not offer Next while the last sentence is still being written", async () => {
-    // `step` reaching the end means every slot has been RELEASED; the ink of
-    // the final sentence is still landing. Offering "Next" there would invite
-    // the visitor to turn away from words they never saw.
+  it("does not offer Next while the last block is still arriving", async () => {
+    // `step` reaching the end means every slot has been RELEASED; the last
+    // block is still settling. Offering "Next" there would invite the visitor
+    // to turn away from words they never saw.
     //
-    // The wait below is DERIVED from the last slot's own write window rather
-    // than a fixed number of milliseconds. HI1-C3 writes a whole sentence per
-    // slot, so that window depends on the copy — a hard-coded budget here
-    // would pass or fail on how long someone made the last line, which is
-    // exactly the coupling this test exists to catch.
+    // The wait below is DERIVED from the last slot's own arrival window rather
+    // than from a fixed number of milliseconds, so re-tuning the cadence
+    // cannot quietly turn this guard into a coin flip.
     render(<AcademyWelcomePage />);
     const chapter = ACADEMY_CHAPTERS[0];
     const total = slotCount(chapter);
@@ -359,10 +357,10 @@ describe("the internal reveal", () => {
     expect(screen.getByTestId("academy-welcome-advance")).toHaveAttribute("data-mode", "reveal");
 
     // Still writing halfway through the final sentence's ink.
-    await run(slotWriteMs(chapter, total - 1) / 2, 100);
+    await run(slotRevealMs(chapter, total - 1) / 2, 100);
     expect(page()).toHaveAttribute("data-complete", "false");
 
-    await run(slotWriteMs(chapter, total - 1) + 1_000, 250);
+    await run(slotRevealMs(chapter, total - 1) + 1_000, 250);
     expect(page()).toHaveAttribute("data-complete", "true");
   });
 
@@ -388,13 +386,13 @@ describe("the internal reveal", () => {
     // contract: the triangular composition develops while the copy beside it is
     // still arriving.
     render(<AcademyWelcomePage />);
-    const lastIndex = ACADEMY_CHAPTERS.findIndex((c) => c.id === "the-record");
+    const lastIndex = ACADEMY_CHAPTERS.findIndex((c) => c.id === "library");
     for (let i = 0; i < lastIndex; i += 1) {
       advance(); // finish the chapter
       nextChapter(); // turn the page — or answer the register, which turns it
       await run(1_000); // let the sheet land
     }
-    expect(page()).toHaveAttribute("data-chapter", "the-record");
+    expect(page()).toHaveAttribute("data-chapter", "library");
 
     const total = slotCount(ACADEMY_CHAPTERS[lastIndex]);
     for (let i = 0; i < 60 && page().getAttribute("data-art") !== "true"; i += 1) {
@@ -465,9 +463,12 @@ describe("sound", () => {
     vi.useFakeTimers();
     render(<AcademyWelcomePage />);
 
-    // Let a couple of slots arrive on their own beat — each asks for a
-    // scribble scoped to its own write window.
-    await run(2_500);
+    // Let the first slot arrive on its own beat — it asks for a scribble
+    // scoped to its own arrival window. Deliberately stopped BEFORE the last
+    // block, and derived from the cadence rather than from a round number: the
+    // whole chapter now lands inside a second and a half, so a fixed 2.5s wait
+    // would be asserting about a page that had already finished.
+    await run(OPENING_PAUSE_MS + HEADING_INTERVAL_MS + 60, 60);
     expect(audio.scribble).toHaveBeenCalled();
     expect(stepOf()).toBeGreaterThan(0);
     expect(page()).toHaveAttribute("data-complete", "false");
@@ -519,7 +520,7 @@ describe("reduced motion", () => {
 });
 
 describe("exits", () => {
-  it("Start Exploring records the outcome and goes to the hub", () => {
+  it("Enter the Academy records the outcome and goes to the hub", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
     fireEvent.click(screen.getByTestId("academy-welcome-explore"));
@@ -540,13 +541,29 @@ describe("exits", () => {
   it("labels the two paths as approved, and gives neither the air of a penalty", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
-    expect(screen.getByTestId("academy-welcome-explore").textContent).toContain("Start Exploring");
-    // "Start the tutorial", not "Take the tutorial" — both exits are framed as
-    // something you START, so neither reads as the price of entry.
+    expect(screen.getByTestId("academy-welcome-explore").textContent).toContain(
+      "Enter the Academy",
+    );
+    // "Start the tutorial", not "Take the tutorial" — the tutorial must never
+    // read as the price of entry.
     expect(screen.getByTestId("academy-welcome-tutorial").textContent).toContain(
       "Start the tutorial",
     );
     expect(screen.queryByText(/Take the tutorial/)).toBeNull();
+  });
+
+  it("carries two labels and no explanation — this page closes, it does not brief", () => {
+    // The exits used to carry a line of description each and a footnote under
+    // them. On a page whose whole job is to end the book that reads as a
+    // dashboard, and it was most of what made the spread overflow.
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const exits = screen.getByTestId("academy-welcome-explore").parentElement!;
+    expect(exits.querySelector(".tome-footnote")).toBeNull();
+    expect(exits.querySelector(".tome-exit-detail")).toBeNull();
+    expect(screen.queryByText(/Head into the Academy/)).toBeNull();
+    expect(screen.queryByText(/guided run through a Ranked duel/)).toBeNull();
+    expect(screen.queryByText(/about five minutes/)).toBeNull();
   });
 
   it("drops the advance and skip controls once the two choices stand alone", () => {
@@ -1110,55 +1127,302 @@ describe("content contract", () => {
     // Ranked lives INSIDE Leaguecraft. Promoting it to a chapter would tell a
     // new visitor they are two products to choose between, which is wrong.
     expect(ACADEMY_CHAPTERS.map((c) => c.heading)).not.toContain("Ranked");
-    expect(ACADEMY_CHAPTERS.find((c) => c.id === "leaguecraft")?.marginalia).toContain("Ranked");
   });
 
   it("promises only surfaces that exist", () => {
-    // The data chapter is grounded in the shipped pro-match explorer and live
-    // esports viewer. It must never be renamed to a product a visitor cannot
-    // find — GRAPH1 is a dev route and is not a destination.
+    // The last chapter is grounded in the shipped pro-match explorer, the live
+    // esports viewer and the archives. It must never name a product a visitor
+    // cannot find — GRAPH1 is a dev route and is not a destination.
     const headings = ACADEMY_CHAPTERS.map((c) => c.heading);
-    expect(headings).toContain("Pro Data & the Archives");
+    expect(headings).toContain("The Complete League Library");
     expect(headings).not.toContain("League Graphs");
-    // The merged spread still names both halves of what it merged: every
-    // docket entry is a real hub destination, spelled the way the hub spells it.
-    const docket = ACADEMY_CHAPTERS.find((c) => c.id === "the-record")?.docket ?? [];
-    expect(docket.map((d) => d.label)).toContain("Mogzy Archives");
-    expect(docket.map((d) => d.label)).toContain("Patch reports");
   });
 
   it("keeps the sequence short enough to sit through", () => {
-    // The redesign exists to stop this feeling like a wizard, and HI1-C5 added
-    // a page that ASKS for something — so the informational chapters had to pay
-    // for it. Five spreads, exactly one of which is a form. Two lines per
-    // chapter remains the ceiling: this is a book being written, not a landing
-    // page.
+    // The redesign exists to stop this feeling like a wizard. Five spreads,
+    // exactly one of which is a form, and THREE BLOCKS per chapter is the
+    // ceiling — that is the pacing budget as much as the page's: one more
+    // block is one more stop on every chapter that takes it.
     expect(ACADEMY_CHAPTERS).toHaveLength(5);
     expect(ACADEMY_CHAPTERS.filter((c) => c.registration)).toHaveLength(1);
     for (const chapter of ACADEMY_CHAPTERS) {
-      expect(chapter.lines.length).toBeLessThanOrEqual(2);
+      expect(chapter.lines.length).toBeLessThanOrEqual(3);
     }
   });
 
-  it("ends on the merged spread rather than on a page that only asks", () => {
-    // The finale used to be its own chapter of no copy. Folding the exits onto
-    // the last informational spread is what bought the register its page back,
-    // and a re-added "How would you like to begin?" page would silently undo it.
+});
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The approved copy, word for word.
+ *
+ * Asserted against the RENDERED page rather than against ACADEMY_CHAPTERS, so
+ * these hold whatever a future refactor does to the data shape — and asserted
+ * in full sentences rather than by keyword, because "the wording was approved"
+ * is exactly the kind of thing a well-meaning edit erodes one clause at a time.
+ * (Headings are displayed in caps by CSS; the document keeps the sentence, and
+ * that is what a screen reader reads and what is checked here.)
+ */
+describe("the approved copy", () => {
+  /** The whole page's text, whitespace-normalised. */
+  const text = () => (page().textContent ?? "").replace(/\s+/g, " ");
+
+  it("Arrival", () => {
+    render(<AcademyWelcomePage />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Welcome, Summoner");
+    expect(text()).toContain("Welcome to Mogzy's Academy.");
+    expect(text()).toContain(
+      "There's always more to learn about League. Let's see how far you can go.",
+    );
+  });
+
+  it("Registration", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Every student needs a name.",
+    );
+    expect(text()).toContain("Choose your Academy Username.");
+    expect(text()).toContain("Select your League of Legends Rank.");
+  });
+
+  it("Leaguecraft", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Leaguecraft");
+    expect(text()).toContain(
+      "Quizzes designed to grow your game knowledge and test your limits.",
+    );
+    expect(text()).toContain("Prove you're the smartest.");
+  });
+
+  it("Combat Lab", () => {
+    render(<AcademyWelcomePage />);
+    advance();
+    register();
+    advance();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Combat Lab");
+    expect(text()).toContain("Simulate any matchup.");
+    expect(text()).toContain("Calculate any situation.");
+    expect(text()).toContain("Master every detail of the Rift.");
+  });
+
+  it("the last page", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "The Complete League Library",
+    );
+    expect(text()).toContain(
+      "Mogzy brings together every champion, item, rune, system, and interaction in League of Legends.",
+    );
+    expect(text()).toContain(
+      "Explore pro data. Learn the history of League esports and your favorite players.",
+    );
+    expect(text()).toContain("Discover insights. Share what you find.");
+  });
+
+  it("keeps the rank placeholder exactly as approved", () => {
+    // A native select's first option IS its placeholder — there is no attribute
+    // to fall back on — so this string is load-bearing UI copy, not decoration.
+    render(<AcademyWelcomePage />);
+    advance();
+    const rank = screen.getByTestId("academy-registration-rank");
+    expect(rank.querySelector("option")?.textContent).toBe(
+      "Select your rank in League of Legends",
+    );
+  });
+
+  it("carries none of the removed pills, on any page", () => {
+    // Leaguecraft and the Combat Lab each ended in a row of small-caps pills
+    // naming their sub-features. They said nothing the copy above them did not,
+    // and they are the "feature grid" language this redesign exists to escape.
+    //
+    // Asserted STRUCTURALLY, not by sweeping the page's text: "any matchup" is
+    // now a phrase in the Combat Lab's own approved copy, and "Ranked" is a
+    // substring of the rank picker's "Unranked". A text sweep for those labels
+    // would fail on the very copy this pass introduced — the regression to
+    // catch is a row of chips coming back, so the chips are what is looked for.
+    const gone = [
+      "quizzes",
+      "mastery",
+      "ranked",
+      "stat check",
+      "any matchup",
+      "any build",
+      "full breakdown",
+    ];
+    render(<AcademyWelcomePage />);
+    for (let i = 0; i < ACADEMY_CHAPTERS.length; i += 1) {
+      expect(page().querySelector(".tome-marginalia")).toBeNull();
+      for (const item of Array.from(page().querySelectorAll("li"))) {
+        const label = (item.textContent ?? "").trim().toLowerCase();
+        expect(gone).not.toContain(label);
+      }
+      if (i < ACADEMY_CHAPTERS.length - 1) nextChapter();
+    }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The reveal advances by BLOCKS, not by words.
+ *
+ * The visible complaint this pass fixes, written down. A block is one authored
+ * line and it arrives whole; nothing on the page is staged per word, per
+ * sentence or per character, and the sequence has exactly one stop per block.
+ */
+describe("the block reveal", () => {
+  it("stages a whole paragraph as one element, with no per-word markup", () => {
+    render(<AcademyWelcomePage />);
+    // The old machinery: a span per word carrying its own `--w` delay, and a
+    // span per sentence gating it. Neither may come back.
+    expect(page().querySelector(".tome-word")).toBeNull();
+    expect(page().querySelector(".tome-phrase")).toBeNull();
+
+    const blocks = Array.from(page().querySelectorAll<HTMLElement>(".tome-block"));
+    expect(blocks.map((b) => b.textContent)).toEqual(ACADEMY_CHAPTERS[0].lines);
+    // Each block is ONE gated element holding its whole paragraph as text.
+    for (const block of blocks) {
+      expect(block.getAttribute("data-revealed")).toBeTruthy();
+      expect(block.querySelectorAll("span")).toHaveLength(0);
+    }
+  });
+
+  it("releases one block per beat, in order, at the specified pace", async () => {
+    setReducedMotion(false);
+    vi.useFakeTimers();
+    render(<AcademyWelcomePage />);
+    const blocks = () => Array.from(page().querySelectorAll(".tome-block"));
+    const shown = () => blocks().filter((b) => b.getAttribute("data-revealed") === "true").length;
+
+    // Nothing yet; then the heading; then the blocks, one at a time.
+    expect(shown()).toBe(0);
+    await run(OPENING_PAUSE_MS + HEADING_INTERVAL_MS + 60, 60);
+    expect(shown()).toBe(1);
+    await run(BLOCK_INTERVAL_MS, 60);
+    expect(shown()).toBe(2);
+    expect(stepOf()).toBe(slotCount(ACADEMY_CHAPTERS[0]));
+  });
+
+  it("has one stop per block and no more", () => {
+    // Slot arithmetic is the cadence: a chapter's slots are its heading, its
+    // blocks, and — where it has them — its controls. Anything else in there
+    // is a beat the reader has to sit through for nothing.
+    for (const chapter of ACADEMY_CHAPTERS) {
+      const controls = (chapter.finale || chapter.registration ? 1 : 0) + (chapter.registration ? 1 : 0);
+      expect(slotCount(chapter)).toBe(1 + chapter.lines.length + controls);
+    }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+/** The champion drawings faded into the paper. */
+describe("the champions in the paper", () => {
+  it("prints at most one per page, everywhere in the book", () => {
+    render(<AcademyWelcomePage />);
+    for (let i = 0; i < ACADEMY_CHAPTERS.length; i += 1) {
+      for (const region of Array.from(page().querySelectorAll(".tome-page, .tome-sheet"))) {
+        expect(region.querySelectorAll("[data-testid='tome-champion']").length).toBeLessThanOrEqual(
+          1,
+        );
+      }
+      if (i < ACADEMY_CHAPTERS.length - 1) nextChapter();
+    }
+  });
+
+  it("opens on Ahri behind Mogzy and Jinx behind the words", () => {
+    render(<AcademyWelcomePage />);
+    const verso = page().querySelector(".tome-page-verso")!;
+    const recto = page().querySelector(".tome-page-recto")!;
+    expect(verso.querySelector("[data-testid='tome-champion'] img")?.getAttribute("src")).toBe(
+      CHAMPION_ART.ahri,
+    );
+    expect(recto.querySelector("[data-testid='tome-champion'] img")?.getAttribute("src")).toBe(
+      CHAMPION_ART.jinx,
+    );
+  });
+
+  it("closes the book with one champion, on the page that carries the copy", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const verso = page().querySelector(".tome-page-verso")!;
+    const recto = page().querySelector(".tome-page-recto")!;
+    // The graph stands ALONE on the left. Nothing is printed behind it.
+    expect(verso.querySelector("[data-testid='tome-champion']")).toBeNull();
+    expect(recto.querySelector("[data-testid='tome-champion'] img")?.getAttribute("src")).toBe(
+      CHAMPION_ART.yasuo,
+    );
+  });
+
+  it("uses the approved files as they are, with no derivative in the path", () => {
+    // No mask, no engraving, no processed splash: the drawings the product
+    // already has, served from where they already live.
+    render(<AcademyWelcomePage />);
+    for (let i = 0; i < ACADEMY_CHAPTERS.length; i += 1) {
+      for (const img of Array.from(
+        page().querySelectorAll<HTMLImageElement>("[data-testid='tome-champion'] img"),
+      )) {
+        expect(Object.values(CHAMPION_ART)).toContain(img.getAttribute("src"));
+      }
+      if (i < ACADEMY_CHAPTERS.length - 1) nextChapter();
+    }
+  });
+
+  it("keeps them out of the accessibility tree — they are paper, not content", () => {
+    render(<AcademyWelcomePage />);
+    for (const layer of Array.from(page().querySelectorAll("[data-testid='tome-champion']"))) {
+      expect(layer.getAttribute("aria-hidden")).toBe("true");
+    }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+/** The restored last spread. */
+describe("the last spread", () => {
+  it("puts the restored Pro Data graph on the left, and only it", () => {
+    // The exact approved animated graph from the Pro Data chapter, recovered
+    // from 75d60da9 — ruled axes, two series and five plotted points, drawn in
+    // ink with `tome-stroke` / `tome-dot`. Restoring it is the point of the
+    // pass, so its parts are counted rather than merely looked for.
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const verso = page().querySelector(".tome-page-verso")!;
+    const svg = verso.querySelector("svg")!;
+    expect(svg).toBeTruthy();
+    expect(svg.getAttribute("viewBox")).toBe("0 0 200 200");
+    expect(svg.querySelectorAll(".tome-stroke").length).toBe(7);
+    expect(svg.querySelectorAll(".tome-dot").length).toBe(5);
+    // ONE figure on that page. Not three modules, not a triangle, not cards.
+    expect(verso.querySelectorAll("svg")).toHaveLength(1);
+    expect(ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1].art.kind).toBe("chart");
+  });
+
+  it("carries none of the dashboard the finale used to be", () => {
+    // The reference docket, the panel grounds of the triangular composition and
+    // the footnote all went with the rewrite. This page is a conclusion.
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    expect(screen.queryByTestId("academy-welcome-docket")).toBeNull();
+    expect(page().querySelector(".tome-docket")).toBeNull();
+    expect(page().querySelector(".tome-fade")).toBeNull();
+    expect(page().querySelector(".tome-footnote")).toBeNull();
+    const text = (page().textContent ?? "").replace(/\s+/g, " ");
+    expect(text).not.toContain("Mogzy Archives");
+    expect(text).not.toContain("Patch reports");
+    expect(text).not.toContain("Pro Data & the Archives");
+  });
+
+  it("ends the book rather than adding a page that only asks", () => {
     const last = ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1];
     expect(last.finale).toBe(true);
-    expect(last.id).toBe("the-record");
     expect(last.lines.length).toBeGreaterThan(0);
     expect(ACADEMY_CHAPTERS.filter((c) => c.finale)).toHaveLength(1);
   });
-
-  it("gives the last spread a triangle on the left and a docket on the right", () => {
-    // The composition IS the contract here: the left page is the statistical
-    // side as a deliberate triangular figure, the right is the reference side
-    // as a document. Swapping either for a row of cards is the regression.
-    const last = ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1];
-    expect(last.art.kind).toBe("triptych");
-    expect(last.docket).toHaveLength(3);
-    // One annotation, never two — the docket IS this page's marginalia.
-    expect(last.marginalia).toBeUndefined();
-  });
 });
+

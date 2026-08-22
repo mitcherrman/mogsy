@@ -1,6 +1,9 @@
+import { useCallback, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 
 import bookSpread from "@/academy/welcome/academy-book-spread.png";
+
+import type { ChampionBackdrop, ChapterChampions } from "./academyChapters";
 
 /**
  * The tome — the whole stage of the Academy introduction.
@@ -43,6 +46,16 @@ import bookSpread from "@/academy/welcome/academy-book-spread.png";
  * writes itself onto the uncovered spread. The whole thing is presentational —
  * `aria-hidden`, driven by one CSS animation, removed on a timer by the page.
  *
+ * ONE CHAMPION PER PAGE, PRINTED INTO THE PAPER. A chapter may name a champion
+ * drawing for either page (see academyChapters). It is rendered here rather
+ * than inside ChapterPlate because it is a property of the PAGE, not of the
+ * illustration: it sits behind everything on that page, it is clipped by the
+ * page box so the paper does the cropping, and on the writing page it has to
+ * pass under running text. The rule that at most one may appear on a page is
+ * structural — each page slot takes a single descriptor, and the phone's single
+ * sheet is one page and therefore takes one drawing, whichever the chapter
+ * defines first.
+ *
  * MOBILE IS NOT A SMALLER SPREAD. A 3:2 two-page spread at 360px wide is 260px
  * tall, and half of that is frame — there is no honest way to write a chapter
  * into it. A landscape phone fails the same test from the other direction: the
@@ -63,6 +76,8 @@ export interface TomeTurning {
 export default function AcademyTome({
   art,
   body,
+  champions,
+  championsVisible = false,
   turning = null,
   variant,
   chrome,
@@ -72,6 +87,14 @@ export default function AcademyTome({
   art: ReactNode;
   /** The chapter's writing. Right page on a spread, below on a single page. */
   body: ReactNode;
+  /** The chapter's champion drawings, at most one per page. */
+  champions?: ChapterChampions;
+  /**
+   * Whether the drawings are on the paper yet. They ride the illustration
+   * channel — one layer, fading in as a whole under copy already on the page —
+   * so the page hands the same `artRevealed` it hands the illustration.
+   */
+  championsVisible?: boolean;
   /** The outgoing chapter, while its page is physically turning. */
   turning?: TomeTurning | null;
   /**
@@ -87,6 +110,28 @@ export default function AcademyTome({
   chrome: number;
   className?: string;
 }) {
+  /**
+   * Whether the painted book has actually arrived.
+   *
+   * The champion drawings are printed ON the paper, so they may not appear
+   * before the paper does — and the readiness gate cannot promise that it has:
+   * useSceneReady caps its wait at SCENE_READY_CAP_MS and opens the tome
+   * regardless, which is correct (an introduction may not hang on a decode) but
+   * leaves a window in which the page boxes are live over the bare room. A
+   * drawing at 16% opacity is nearly invisible on parchment and conspicuous on
+   * a near-black backdrop, so it waits for its own ground rather than for the
+   * scene's.
+   *
+   * The ref callback covers the warm-cache case, where the image is already
+   * complete before React attaches a listener and `load` never fires at all.
+   * Only the painted spread needs this: a phone's sheet is CSS, and CSS is
+   * always there.
+   */
+  const [bookLoaded, setBookLoaded] = useState(false);
+  const bookRef = useCallback((img: HTMLImageElement | null) => {
+    if (img?.complete) setBookLoaded(true);
+  }, []);
+
   if (variant !== "spread") {
     const beside = variant === "panel";
     return (
@@ -100,6 +145,12 @@ export default function AcademyTome({
             beside ? "flex items-center gap-4" : "flex flex-col items-center"
           }`}
         >
+          {/* One sheet is one page, so it takes ONE drawing — the illustration
+              page's if the chapter has one, otherwise the writing page's. */}
+          <PageChampion
+            champion={champions?.verso ?? champions?.recto}
+            visible={championsVisible}
+          />
           <div className="tome-single-art">{art}</div>
           <div className={beside ? "tome-rule-v" : "tome-rule"} aria-hidden="true" />
           <div className="tome-single-body">{body}</div>
@@ -141,6 +192,9 @@ export default function AcademyTome({
         draggable={false}
         decoding="async"
         fetchPriority="high"
+        ref={bookRef}
+        onLoad={() => setBookLoaded(true)}
+        onError={() => setBookLoaded(true)}
         /* The painting's own pixel dimensions, and the reason the opening frame
            is now stable (HI1-C4). This element has `height: auto`, so until the
            file decoded the browser had nothing to derive a height from: the img
@@ -161,8 +215,14 @@ export default function AcademyTome({
             frame, so nothing is ever written into the gutter or over the gold.
             Their insets — including the inward offset HI1-C4 added — live in
             index.css beside the rest of the tome's geometry, as one tunable. */}
-        <div className="tome-page tome-page-verso">{art}</div>
-        <div className="tome-page tome-page-recto">{body}</div>
+        <div className="tome-page tome-page-verso">
+          <PageChampion champion={champions?.verso} visible={championsVisible && bookLoaded} />
+          {art}
+        </div>
+        <div className="tome-page tome-page-recto">
+          <PageChampion champion={champions?.recto} visible={championsVisible && bookLoaded} />
+          {body}
+        </div>
       </div>
       {turning && (
         <div className="tome-leaf-stage" aria-hidden="true">
@@ -179,6 +239,57 @@ export default function AcademyTome({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One champion drawing, faded into a single page of the tome.
+ *
+ * ENTIRELY DECORATIVE, and clipped by its own box — the wrapper is `inset: 0`
+ * over the page region with `overflow: hidden`, so the drawing can never reach
+ * the gutter, the painted frame or the sheet's edge whatever its aspect ratio
+ * and whatever the viewport is doing. `object-fit: contain` keeps it whole and
+ * lets the page crop it rather than the file being cropped in advance.
+ *
+ * THE STEADY STATE IS VISIBLE, and it is reached by a TRANSITION rather than an
+ * animation. A layer whose only visible state lives inside a keyframe is
+ * invisible whenever the clock is not running — a backgrounded tab really does
+ * freeze it — so the worst case here is a drawing that is simply already there.
+ *
+ * `loading="lazy"` and no place in the readiness gate, deliberately: these are
+ * the largest files on the route, they sit at roughly a tenth of an opacity
+ * behind everything else, and nothing about the introduction's first frame may
+ * wait on one. See the same rule for the room plate in AcademyWelcomePage.
+ */
+function PageChampion({
+  champion,
+  visible,
+}: {
+  champion?: ChampionBackdrop;
+  visible: boolean;
+}) {
+  if (!champion) return null;
+  return (
+    <div
+      className="tome-champion"
+      data-testid="tome-champion"
+      data-visible={visible ? "true" : "false"}
+      aria-hidden="true"
+      style={{ ["--tome-champion-strength" as string]: String(champion.strength) } as CSSProperties}
+    >
+      <img
+        src={champion.src}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        loading="lazy"
+        decoding="async"
+        className="tome-champion-art"
+        style={{ objectPosition: champion.focus ?? "center" }}
+      />
     </div>
   );
 }

@@ -1,50 +1,38 @@
 // ---------------------------------------------------------------------------
-// Academy Welcome (HI1-C) — the cinematic sequence's content.
+// Academy Welcome (HI1) — the cinematic sequence's content.
 //
-// The introduction is one continuous scene: a tome opens and writes itself, a
+// The introduction is one continuous scene: a tome opens and reveals itself, a
 // chapter at a time. This module is the SCRIPT for that scene — nothing here
-// knows about timing, animation or layout, which live in useRevealSequence and
-// AcademyTome respectively. Rewriting the copy should never require touching a
-// component.
+// knows about timing, animation or layout, which live in cadence.ts,
+// useRevealSequence and AcademyTome respectively. Rewriting the copy should
+// never require touching a component.
 //
 // SHAPE OF A CHAPTER. Every chapter is the same object, and the tome renders
-// them all identically: an illustration inked onto the left page, and words
-// written onto the right. Uniformity is the point — HI1-2 learned that any
+// them all identically: an illustration on the left page, words on the right,
+// and — where the script asks for one — a single champion drawing faded into
+// the paper behind either. Uniformity is the point: HI1-2 learned that any
 // layout which lets chapters differ immediately exposes which ones have
-// finished artwork and which do not. Here the art gap is absorbed by the
-// composition rather than displayed by it.
+// finished artwork and which do not.
 //
-// WHAT IS IN THE SEQUENCE, AND WHY (HI1-C5 — five spreads, down from six).
+// THE COPY IS SHORT ON PURPOSE (HI1 rewrite). Every chapter below was cut to
+// the fewest words that still say the thing. The earlier script explained the
+// product; this one introduces it and gets out of the way, because the page a
+// visitor is fastest to leave is the page that talks longest. A chapter is a
+// heading and two or three SHORT blocks, and the reveal releases those blocks
+// whole rather than word by word (see cadence.ts).
 //
-//   1 Arrival        — what Mogzy is, in one breath.
+// WHAT IS IN THE SEQUENCE, AND WHY — five spreads.
+//
+//   1 Arrival        — what this is, in two lines.
 //   2 Registration   — a name and a rank, written into the register. The one
-//                      interactive spread, and the reason the introduction now
-//                      hands the product a person rather than a guest. It sits
-//                      second on purpose: after the visitor knows who is
-//                      speaking to them, and before any of the tour, so that
-//                      everything after it is addressed to someone.
-//   3 Leaguecraft    — knowledge, quizzes, mastery, Ranked. Stat Check is folded
-//                      in here as one of its ways to test yourself rather than
-//                      taking a chapter: it is a knowledge duel, it lives under
-//                      the same idea, and an extra beat would work against the
-//                      pacing this redesign exists to fix.
-//   4 Combat Lab     — simulate fights, compare builds. Named Combat Lab because
-//                      that is what the hub, the route and the product call it;
-//                      the chapter's own words carry the "combat sim" framing.
-//   5 The record     — Pro Data, Esports, the Archives and Patch Reports as ONE
-//                      spread, and the last page. See below.
-//
-// WHY THE LAST TWO INFORMATIONAL CHAPTERS ARE NOW ONE. Pro Data and Archives
-// were separate spreads reading, in effect, "here are the numbers" and "here is
-// where they are written down" — two beats for one idea, arriving at the point
-// in the sequence where a reader's patience is thinnest. Merged, the spread
-// splits the idea across the book's own two pages instead of across two page
-// turns: the LEFT page is the live, statistical, competitive side (a triangular
-// composition of three ink modules — see ChapterPlate), and the RIGHT page is
-// the reference side, set as a ruled docket of things you can look up. Adding
-// a page to the register cost a beat; merging these two gives back more than
-// one, and the finale's exits move onto this spread so the sequence ends on a
-// page that says something rather than on a page that only asks.
+//                      interactive spread. It sits second on purpose: after the
+//                      visitor knows who is speaking to them, and before any of
+//                      the tour, so everything after it is addressed to someone.
+//   3 Leaguecraft    — the quizzes.
+//   4 Combat Lab     — the simulator.
+//   5 The library    — everything Mogzy holds, and the two exits. The last
+//                      page, and the only one that both says something and asks
+//                      something.
 //
 // NOT INCLUDED — Quiz History and Meta Reflex. Both are real hub destinations.
 // Neither belongs in a first-run introduction: history is empty on a first
@@ -57,10 +45,10 @@
  *
  * A closed union rather than "an image URL", because these are genuinely
  * different objects — a painted Academy plate, a staged duel, the mascot, a
- * register card that fills in as the visitor types, and a triangular data
- * composition drawn stroke by stroke. Every one of them is rendered inside the
- * same inked-plate treatment (see ChapterPlate), which is what keeps them at
- * equal visual weight despite the uneven source art.
+ * register card that fills in as the visitor types, and a chart drawn stroke by
+ * stroke. Every one of them is rendered inside the same inked-plate treatment
+ * (see ChapterPlate), which is what keeps them at equal visual weight despite
+ * the uneven source art.
  */
 export type ChapterArt =
   /** A painted Academy plate, framed as a medallion pressed into the page. */
@@ -74,13 +62,12 @@ export type ChapterArt =
    */
   | { kind: "register" }
   /**
-   * Three data modules composed as a triangle — a strong apex over two
-   * supporting studies, with the triangle itself ruled in behind them. Drawn in
-   * ink rather than photographed, for the reason ChapterPlate's ChartArt gives:
-   * this side of the product has no source artwork, and a fabricated screenshot
-   * of a real surface is worse than an honest diagram.
+   * A chart drawn stroke by stroke, as if ruled onto the page in ink — the
+   * last spread's single visual. Restored verbatim from the pre-consolidation
+   * Pro Data chapter (75d60da9); see ChapterPlate's ChartArt for why this side
+   * of the product is DRAWN and never photographed.
    */
-  | { kind: "triptych" }
+  | { kind: "chart" }
   /**
    * Mogzy himself. `entrance` gives him the magical materialization — the
    * gathering glow, motes and condensing silhouette reserved for the moment
@@ -89,17 +76,48 @@ export type ChapterArt =
   | { kind: "mascot"; entrance?: boolean };
 
 /**
- * One line of the reference docket on the last spread's right page.
+ * A champion drawing faded into one page of the spread.
  *
- * Deliberately a label and a note rather than a link: the introduction promises
- * destinations, it does not navigate to them, and a page full of live links at
- * the moment of the final choice would compete with that choice.
+ * ONE PER PAGE, NEVER TWO. The whole effect is "there is a drawing in this
+ * paper"; two of them on one page is a collage, and a collage behind running
+ * text is unreadable. The type enforces it structurally — a page slot holds a
+ * single descriptor — and a test holds it at the rendered DOM as well.
+ *
+ * THE FILES ARE USED AS THEY ARE. `/images/{champion}.png` are the approved
+ * pencil drawings: line art on a transparent ground, which is already the
+ * register the rest of this book is drawn in. Nothing is masked, engraved,
+ * recoloured or derived from splash art — the page prints them faintly and
+ * lets the page box crop them. `strength` is the layer's opacity, and it is
+ * lower behind running text than behind an illustration for the obvious
+ * reason; see the contrast note in index.css.
  */
-export interface DocketEntry {
-  /** What it is called in the hub. Never invent a name here. */
-  label: string;
-  /** Four or five words on what is actually in it. */
-  note: string;
+export interface ChampionBackdrop {
+  /** Public path of the drawing. Served as-is; no derivative, no processing. */
+  src: string;
+  /** Layer opacity. Text pages stay at or below 0.15 — see the CSS note. */
+  strength: number;
+  /** `object-position` for the crop. The page box does the cropping. */
+  focus?: string;
+}
+
+/** The champion drawings this introduction is allowed to print. */
+export const CHAMPION_ART = {
+  ahri: "/images/ahri.png",
+  jinx: "/images/jinx.png",
+  yasuo: "/images/yasuo.png",
+} as const;
+
+/**
+ * The champion drawings on a chapter's two pages.
+ *
+ * `verso` is the illustration page (left on a spread), `recto` is the writing
+ * page (right). A phone reads one sheet rather than a spread, so it prints
+ * whichever of the two the chapter defines — one page, one champion, at every
+ * viewport. See AcademyTome.
+ */
+export interface ChapterChampions {
+  verso?: ChampionBackdrop;
+  recto?: ChampionBackdrop;
 }
 
 export interface AcademyChapter {
@@ -110,24 +128,19 @@ export interface AcademyChapter {
   /** The chapter heading. Must match how the hub names the destination. */
   heading: string;
   /**
-   * Body copy, one short paragraph per entry. Two at most, and the second is
-   * always the shorter — this is a book being written, not a landing page.
+   * The body, one BLOCK per entry — and a block is what the reveal releases
+   * whole. Three at most, and short: this is a book being read aloud, not a
+   * landing page.
    */
   lines: string[];
-  /** Three words at most each. Answers "what is actually in there?". */
-  marginalia?: string[];
-  /**
-   * The ruled reference block on the last spread's right page. Occupies the
-   * same reveal slot marginalia would, and no chapter has both — it IS the
-   * marginalia of a page whose subject is documents.
-   */
-  docket?: DocketEntry[];
   art: ChapterArt;
+  /** At most one faded champion drawing per page. Usually absent. */
+  champions?: ChapterChampions;
   /**
    * This chapter's forward control is a FORM, not the tome's Next. The
    * sequence's own advance is suppressed on it (see AcademyWelcomePage), so a
    * click on the scene, the arrow keys or an impatient tap can finish the
-   * writing but can never turn past the register without answering it. The
+   * reveal but can never turn past the register without answering it. The
    * rail's "Skip to the Academy" is untouched and remains a real exit from
    * this page as from every other — required is not the same as trapped.
    */
@@ -147,10 +160,19 @@ export const ACADEMY_CHAPTERS: AcademyChapter[] = [
     eyebrow: "The Academy",
     heading: "Welcome, Summoner",
     lines: [
-      "This is Mogzy's Academy — a place to learn League, test what you already know, and take apart the systems underneath it.",
-      "Let me show you what is here.",
+      "Welcome to Mogzy's Academy.",
+      "There's always more to learn about League. Let's see how far you can go.",
     ],
     art: { kind: "mascot", entrance: true },
+    // The opening spread, and the only one with a champion on BOTH pages: Ahri
+    // stands in the paper behind Mogzy, Jinx behind the words. He is still the
+    // subject — his page's drawing is the fainter of the two under him and he
+    // is drawn in full colour on top of it, while hers sits under running text
+    // at the strength the contrast floor allows.
+    champions: {
+      verso: { src: CHAMPION_ART.ahri, strength: 0.16, focus: "center 34%" },
+      recto: { src: CHAMPION_ART.jinx, strength: 0.13, focus: "center 38%" },
+    },
   },
   {
     // The tone line is the HEADING, not the body: it is the shortest, most
@@ -160,9 +182,7 @@ export const ACADEMY_CHAPTERS: AcademyChapter[] = [
     id: "registration",
     eyebrow: "Academy Registration",
     heading: "Every student needs a name.",
-    lines: [
-      "Choose what the Academy will call you, and tell us roughly where you play.",
-    ],
+    lines: ["Choose your Academy Username.", "Select your League of Legends Rank."],
     art: { kind: "register" },
     registration: true,
   },
@@ -171,10 +191,9 @@ export const ACADEMY_CHAPTERS: AcademyChapter[] = [
     eyebrow: "Chapter One",
     heading: "Leaguecraft",
     lines: [
-      "Champions, items, abilities, numbers. Quizzes that teach as you play, mastery tracks that go deeper, and Ranked duels when you want it to count.",
-      "Stat Check lives here too — pure knowledge, head to head.",
+      "Quizzes designed to grow your game knowledge and test your limits.",
+      "Prove you're the smartest.",
     ],
-    marginalia: ["Quizzes", "Mastery", "Ranked", "Stat Check"],
     // 251×280 plate; the engraved name sits in the bottom fifth, so the crop
     // frames the emblem and pushes it out. See ChapterPlate for why.
     art: { kind: "plate", src: leaguecraftArt, emblemFocus: "center 32%" },
@@ -183,40 +202,34 @@ export const ACADEMY_CHAPTERS: AcademyChapter[] = [
     id: "combat-lab",
     eyebrow: "Chapter Two",
     heading: "Combat Lab",
-    lines: [
-      "Put two champions in a room and simulate the fight. Build them however you like, run it, and read exactly where every point of damage came from.",
-      "Real formulas, not estimates.",
-    ],
-    marginalia: ["Any matchup", "Any build", "Full breakdown"],
+    lines: ["Simulate any matchup.", "Calculate any situation.", "Master every detail of the Rift."],
     art: { kind: "duel" },
   },
   {
-    // The merged final spread. Its two paragraphs are addressed to the two
-    // pages in order: the first to the triangular data composition on the left,
-    // the second to the docket on the right, so the reader's eye is sent across
-    // the gutter by the copy rather than left to find its own way.
+    // The last spread. Its left page is the restored Pro Data graph, ALONE —
+    // no cards, no docket, no diagram beside it (see ChapterPlate's ChartArt
+    // and the note in AcademyWelcomePage). Its right page is the closing copy
+    // and the two exits, over Yasuo faded into the paper.
     //
-    // Everything named here exists and is reachable: /lol/docs/pro (champions,
-    // players, teams, seasons), /esports/live, /lol/docs ("Mogzy Archives" in
-    // the hub) and /lol/patch-reports. GRAPH1 remains a dev route and is still
-    // not promised.
-    id: "the-record",
+    // Everything the copy names exists and is reachable: /lol/docs/pro
+    // (champions, players, teams, seasons), /esports/live, /lol/docs and
+    // /lol/patch-reports. GRAPH1 remains a dev route and is not promised.
+    id: "library",
     eyebrow: "Chapter Three",
-    heading: "Pro Data & the Archives",
-    // Shorter than either chapter it replaces, deliberately. This page carries
-    // a spread's worth of writing AND the two exits, and the copy is the only
-    // part of that a rewrite can shorten — so it is written to the space rather
-    // than trimmed to fit it afterwards.
+    heading: "The Complete League Library",
     lines: [
-      "Millions of professional games, charted — champions across seasons, players, teams, and live results as they land.",
-      "Beside them, the reference shelf: every champion written down, every patch read through.",
+      "Mogzy brings together every champion, item, rune, system, and interaction in League of Legends.",
+      "Explore pro data. Learn the history of League esports and your favorite players.",
+      "Discover insights. Share what you find.",
     ],
-    docket: [
-      { label: "Mogzy Archives", note: "every champion, written down" },
-      { label: "Abilities & items", note: "ratios, cooldowns, costs" },
-      { label: "Patch reports", note: "each patch, read through" },
-    ],
-    art: { kind: "triptych" },
+    art: { kind: "chart" },
+    // Yasuo rather than Ahri or Jinx: the opening spread already spent those
+    // two, and a face returning on the last page would read as a shortage of
+    // drawings rather than as a composition. He is also the most vertical of
+    // the three, which is the shape a page of five stacked elements leaves.
+    champions: {
+      recto: { src: CHAMPION_ART.yasuo, strength: 0.15, focus: "center 36%" },
+    },
     finale: true,
   },
 ];

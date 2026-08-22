@@ -2,50 +2,43 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { AcademyChapter } from "./academyChapters";
 import {
-  chapterSentences,
+  BLOCK_FADE_MS,
+  BLOCK_PAUSE_MS,
+  chapterBlocks,
   CONTROL_PAUSE_MS,
-  DOCKET_PAUSE_MS,
-  DOCKET_WRITE_MS,
-  headingWriteMs,
-  INK_SETTLE_TAIL_MS,
-  MARGINALIA_PAUSE_MS,
-  MARGINALIA_WRITE_MS,
-  OPENING_PAUSE_MS,
+  HEADING_FADE_MS,
   HEADING_PAUSE_MS,
-  sentencePauseMs,
-  sentenceWriteMs,
-} from "./phrases";
+  OPENING_PAUSE_MS,
+  SETTLE_TAIL_MS,
+} from "./cadence";
 
 // ---------------------------------------------------------------------------
-// The sequence controller for the cinematic Academy introduction (HI1-C).
+// The sequence controller for the cinematic Academy introduction.
 //
-// One position — `{ chapter, step }` — and a timer that pushes it forward. Every
-// piece of a chapter's WRITING (its heading, each SENTENCE of its copy, its
-// marginalia) is a SLOT, and `step` is how many of them have been released onto
-// the page. The view renders slot N once `step > N`; nothing here knows what a
-// slot looks like, and nothing in the view decides when it appears.
+// One position — `{ chapter, step }` — and a timer that pushes it forward.
+// Every piece of a chapter is a SLOT, and `step` is how many of them have been
+// released onto the page. The view renders slot N once `step > N`; nothing here
+// knows what a slot looks like, and nothing in the view decides when it
+// appears.
 //
-// THE SLOT IS A SENTENCE (HI1-C3). It used to be a phrase — a clause or comma
-// group — and the controller therefore stopped five or six times a chapter,
-// several of them mid-thought, because a stop is simply what sits between two
-// slots. Making the slot a sentence is the whole cadence fix: the page now
-// stops only where a reader would, the writing inside a slot runs continuously
-// however far it wraps, and the pauses that remain are short. Every duration
-// this file uses lives in phrases.ts.
+// THE SLOT IS A BLOCK. It was a phrase (HI1-C2), then a sentence (HI1-C3), and
+// under both the words themselves were revealed one at a time. A slot is now a
+// whole BLOCK of copy — one authored line — arriving in one piece. That is the
+// pacing rewrite in a sentence: the controller has fewer places it can stop,
+// and each stop is short. Every duration lives in cadence.ts.
 //
-// TWO CHANNELS, ONE CLOCK (HI1-C2). The illustration is deliberately NOT a
-// slot. It is its own channel, keyed off the writing's progress: it begins
-// once the first sentence starts arriving (`artRevealed`) and then develops on
-// its own long CSS timeline while the remaining sentences are still being
-// written. That controlled desynchronisation — writing first, painting a beat
-// behind it, both alive at once — is the choreography the redesign asks for,
-// and it costs the controller nothing: one derived boolean.
+// TWO CHANNELS, ONE CLOCK. The illustration is deliberately NOT a slot. It is
+// its own channel, keyed off the copy's progress: it begins once the first
+// block arrives (`artRevealed`) and then settles on its own CSS timeline while
+// the remaining blocks land. The page's champion drawing rides the same
+// channel, as ONE layer — see AcademyTome. That controlled desynchronisation —
+// copy first, art a beat behind it, both alive at once — is the choreography
+// the redesign asks for, and it costs the controller one derived boolean.
 //
-// THE PAGE NEVER TURNS ITSELF (HI1-C2). A chapter writes itself out, settles,
-// and then STOPS — the finished spread stays up until the visitor presses
-// Next. The earlier build auto-advanced after a dwell; that swept readers off
-// pages mid-thought, so the dwell is gone and the only page-turn is the
-// visitor's.
+// THE PAGE NEVER TURNS ITSELF (HI1-C2). A chapter reveals itself, settles, and
+// then STOPS — the finished spread stays up until the visitor presses Next. An
+// earlier build auto-advanced after a dwell; that swept readers off pages
+// mid-thought, so the dwell is gone and the only page-turn is the visitor's.
 //
 // WHY A COUNTER AND NOT AN ANIMATION LIBRARY. HI1-1 shipped, and then had to
 // remove, `<AnimatePresence mode="wait">`: it holds the incoming child until the
@@ -63,47 +56,28 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
- * How many reveal slots a chapter's writing has.
+ * How many reveal slots a chapter has.
  *
- * Slot 0 is the eyebrow and heading together; then one slot per SENTENCE of
- * body copy (see phrases.ts — a whole sentence, written straight through,
- * however many display lines it wraps onto); then marginalia if the chapter has
- * any; and on the finale, one final slot for the two exits. The illustration is
- * not a slot — it is the second channel, keyed off `artRevealed`. Exported
- * because the view resolves the same slot numbers and the two must never
- * disagree.
+ * Slot 0 is the chapter label and heading together; then one slot per BLOCK of
+ * body copy; then, on the two pages that have one, a terminal slot for the
+ * control that belongs to the page (the finale's exits, or the register's
+ * form); then, on the register alone, the sign-in line. The illustration is not
+ * a slot — it is the second channel, keyed off `artRevealed`. Exported because
+ * the view resolves the same slot numbers and the two must never disagree.
  *
- * HI1-C3 halved this count without touching a word of copy: the same paragraph
- * that used to be five or six phrase slots is now two or three sentence slots,
- * which is the whole of the "stop pausing every line" fix — the controller
- * simply has fewer places it can stop.
+ * The annotation slot that used to sit between the copy and the terminal is
+ * gone with the marginalia pills and the reference docket it served.
  */
 export function slotCount(chapter: AcademyChapter): number {
   return (
-    1 +
-    chapterSentences(chapter.lines).length +
-    (hasAnnotation(chapter) ? 1 : 0) +
-    (hasTerminal(chapter) ? 1 : 0) +
-    (hasSignIn(chapter) ? 1 : 0)
+    1 + chapterBlocks(chapter.lines).length + (hasTerminal(chapter) ? 1 : 0) + (hasSignIn(chapter) ? 1 : 0)
   );
-}
-
-/**
- * The annotation slot: marginalia, or the last spread's reference docket.
- *
- * One slot, never two — a chapter has one or the other. They are different
- * furniture for the same job (what is actually in there?) on pages with
- * different subjects, and giving the docket its own extra stop would add a beat
- * to the one page that already carries the most.
- */
-export function hasAnnotation(chapter: AcademyChapter): boolean {
-  return Boolean(chapter.marginalia?.length || chapter.docket?.length);
 }
 
 /**
  * The terminal slot: the finale's two exits, or the register's form.
  *
- * Both are CONTROLS rather than writing, both are the last thing to arrive on
+ * Both are CONTROLS rather than copy, both are the last thing to arrive on
  * their page, and both mean the same thing to the sequence — that this page's
  * forward action belongs to the page and not to the tome's Next. Treating them
  * as one slot kind is what keeps useRevealSequence unaware of either.
@@ -116,7 +90,7 @@ export function hasTerminal(chapter: AcademyChapter): boolean {
  * The register's last slot: the quiet "already have an account?" line.
  *
  * A SLOT OF ITS OWN, which is the entire mechanism behind the rule that it
- * arrives last. It is not part of the form and it is not part of the writing;
+ * arrives last. It is not part of the form and it is not part of the copy;
  * it is one more thing the page releases, after the register and its button
  * have finished arriving, so a new visitor reads the register as the page's
  * business and only then notices the way out. Nothing about it is optional at
@@ -128,88 +102,67 @@ export function hasSignIn(chapter: AcademyChapter): boolean {
 }
 
 /**
- * The writing already on the page when the illustration starts.
+ * The copy already on the page when the illustration channel starts.
  *
- * `step >= 2` means the heading has been written and the first SENTENCE is
- * being written — "roughly one beat after the first text line". The CSS adds
- * its own small delay on top so the painting visibly starts under words already
- * arriving, never in lockstep with them.
- *
- * The slower writing of HI1-C3 only deepens this: a sentence now occupies two
- * to three seconds rather than one, so the illustration's whole wash runs
- * underneath a single sentence still being written instead of racing it.
+ * `step >= 2` means the heading has landed and the first BLOCK is arriving.
+ * The CSS adds its own small delay on top, so the illustration and the page's
+ * champion drawing visibly begin under copy already on the paper, never in
+ * lockstep with it.
  */
 export const ART_START_STEP = 2;
 
 /**
- * How long the sequence holds at `step` before releasing the next slot —
- * i.e. how long slot `step - 1`'s ink takes to land, plus the breath after it.
- *
- * Sentences are timed from their own length (see phrases.ts) so a long one is
- * never overtaken by the next; the beats around them are fixed. Every number
- * lives in phrases.ts — this function is only the assignment of those numbers
- * to slots, so the cadence can be retuned in one file.
- */
-/**
  * The breath after slot `slot` has finished arriving.
  *
- * Paired with slotWriteMs below, this is the whole cadence model: a slot takes
- * as long to arrive as it takes, and is then followed by a beat chosen for what
- * KIND of thing it was. Splitting it out this way is what let HI1-C5B add a
- * fourth kind of slot — a control that arrives after another control — without
- * the hold function growing a special case per page.
+ * Paired with slotRevealMs below, this is the whole cadence model: a slot takes
+ * as long to arrive as its KIND takes, and is then followed by a beat chosen
+ * for the same reason. Splitting it out this way is what lets a control that
+ * arrives after another control (the register's sign-in line) get its own beat
+ * without this function growing a special case per page.
  */
 function slotPauseMs(chapter: AcademyChapter, slot: number): number {
   if (slot === 0) return HEADING_PAUSE_MS;
-  const sentences = chapterSentences(chapter.lines);
-  const sentence = sentences[slot - 1];
-  if (sentence) return sentencePauseMs(sentence);
-  if (slot === 1 + sentences.length) {
-    if (chapter.docket?.length) return DOCKET_PAUSE_MS;
-    if (chapter.marginalia?.length) return MARGINALIA_PAUSE_MS;
-  }
+  if (slot <= chapterBlocks(chapter.lines).length) return BLOCK_PAUSE_MS;
   // A control arrived. The beat before whatever follows it.
   return CONTROL_PAUSE_MS;
 }
 
 function slotHold(chapter: AcademyChapter, step: number): number {
   if (step === 0) return OPENING_PAUSE_MS;
-  return slotWriteMs(chapter, step - 1) + slotPauseMs(chapter, step - 1);
-}
-
-/** Visible writing time of the slot just released — the scribble's window. */
-export function slotWriteMs(chapter: AcademyChapter, slot: number): number {
-  if (slot === 0) return headingWriteMs(chapter.eyebrow, chapter.heading);
-  const sentences = chapterSentences(chapter.lines);
-  const sentence = sentences[slot - 1];
-  if (sentence) return sentenceWriteMs(sentence);
-  if (slot === 1 + sentences.length) {
-    if (chapter.docket?.length) return DOCKET_WRITE_MS;
-    if (chapter.marginalia?.length) return MARGINALIA_WRITE_MS;
-  }
-  return 0; // exits, the register's form and its sign-in line are not written
+  return slotRevealMs(chapter, step - 1) + slotPauseMs(chapter, step - 1);
 }
 
 /**
- * How long the last slot's ink needs to land after it is released.
+ * How long the slot just released takes to ARRIVE — and so the window the
+ * pen's sound is scheduled for.
+ *
+ * Flat per kind rather than derived from the copy's length, which is the
+ * consequence of a block arriving in one piece: a long paragraph and a short
+ * one now fade in over the same BLOCK_FADE_MS, because neither is being
+ * written a word at a time. Controls are not drawn at all, so they return 0 and
+ * the pen stays silent for them.
+ */
+export function slotRevealMs(chapter: AcademyChapter, slot: number): number {
+  if (slot === 0) return HEADING_FADE_MS;
+  if (slot <= chapterBlocks(chapter.lines).length) return BLOCK_FADE_MS;
+  return 0; // exits, the register's form and its sign-in line are not drawn
+}
+
+/**
+ * How long the last slot needs to land after it has been released.
  *
  * `step` reaching the slot count means every piece has been RELEASED, not that
- * it has finished arriving — the words of the final sentence are still
- * darkening into place after that. Without this the control would offer "Next"
- * over a page that is visibly still being written, and a visitor taking it at
- * its word would turn away from words they never saw. The chapter is only
- * "complete" once the ink has settled.
+ * it has finished arriving — the last block is still settling. Without this the
+ * control would offer "Next" over a page visibly still assembling itself, and a
+ * visitor taking it at its word would turn away from words they never saw. The
+ * chapter is only "complete" once the last slot has landed.
  *
- * DERIVED, NOT A CONSTANT (HI1-C3). This used to be a flat 700ms, which held
- * only because HI1-C2's final beat was a short phrase; a whole final sentence
- * written at the new pace can take twice that, and a fixed number would have
- * quietly reintroduced the exact bug this guard exists to prevent. It is now
- * the last slot's own write window plus a small tail, so it is correct for any
- * copy. The floor covers the finale, whose last slot is the two exits — they
- * arrive, they are not written.
+ * Derived rather than a constant, so re-tuning BLOCK_FADE_MS cannot silently
+ * reintroduce the bug this guard exists to prevent. The floor covers the
+ * finale, whose last slot is the two exits — they arrive, they are not drawn.
  */
 function settleMs(chapter: AcademyChapter): number {
-  return Math.max(320, slotWriteMs(chapter, slotCount(chapter) - 1) + INK_SETTLE_TAIL_MS);
+  return Math.max(220, slotRevealMs(chapter, slotCount(chapter) - 1) + SETTLE_TAIL_MS);
 }
 
 export interface RevealSequence {
@@ -219,9 +172,9 @@ export interface RevealSequence {
   step: number;
   /** Total slots on the current chapter. */
   total: number;
-  /** Every slot is out AND its ink has landed. The page now waits for Next. */
+  /** Every slot is out AND the last has landed. The page now waits for Next. */
   complete: boolean;
-  /** Every slot is out. True a beat before `complete` while the ink settles. */
+  /** Every slot is out. True a beat before `complete` while the last settles. */
   released: boolean;
   /** The illustration channel has begun (or arrived, under skip/reduce). */
   artRevealed: boolean;
@@ -247,7 +200,7 @@ export interface RevealSequence {
   /**
    * True on the register — the one chapter whose forward action is its own
    * form. `advance()` still FINISHES it (an impatient tap must always be able
-   * to land the writing), but the page refuses to turn it; see
+   * to land the copy), but the page refuses to turn it; see
    * AcademyWelcomePage.
    */
   isRegistration: boolean;
@@ -264,7 +217,7 @@ export function useRevealSequence({
   reducedMotion = false,
   /**
    * True while the physical page-turn is playing over this hook's output. The
-   * clock holds so the incoming chapter does not start writing itself under
+   * clock holds so the incoming chapter does not start revealing itself under
    * the turning sheet; it resumes the moment the sheet lands.
    */
   paused = false,
@@ -328,8 +281,8 @@ export function useRevealSequence({
 
   const advance = useCallback(() => {
     if (!complete) {
-      // Mid-reveal: land the rest of this page at once — including whatever ink
-      // is still arriving. Never a page turn: an impatient tap must not cost the
+      // Mid-reveal: land the rest of this page at once — including whatever is
+      // still arriving. Never a page turn: an impatient tap must not cost the
       // visitor content they have not read.
       setStep(total);
       setInstant(true);

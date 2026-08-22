@@ -2078,10 +2078,10 @@ html.high-contrast * { text-shadow: none !important; }
   /* Measured against the pages' mid-tone (#e8e0cb), because parchment is a
      LIGHT surface and the app's palette is built for dark ones — a colour that
      reads as "quiet" on #04070f can be illegible here. Ratios: heading 10.7,
-     body 6.7, eyebrow and marginalia 5.5, footnote 6.1. A brighter gold
-     (#8a6d2a) was tried for the marginalia and measures 3.7 — below the 4.5
-     floor for text that size, so gold on this surface stays in the rules and
-     borders and never carries a word. */
+     body 6.7, eyebrow 5.5. A brighter gold (#8a6d2a) was tried for small
+     supporting type and measures 3.7 — below the 4.5 floor at that size — so
+     gold on this surface stays in the rules and borders and never carries a
+     word. */
   --tome-ink: #1d2b47;
   --tome-ink-soft: #3f4a63;
   --tome-ink-faint: rgba(43, 58, 87, 0.86);
@@ -2278,9 +2278,17 @@ html.high-contrast * { text-shadow: none !important; }
 .academy-welcome .tome-heading {
   margin-top: 0.3em;
   font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
-  font-size: clamp(1.15rem, 3.3cqw, 2.05rem);
+  font-size: clamp(1.1rem, 3.1cqw, 1.95rem);
   font-weight: 700;
-  line-height: 1.13;
+  line-height: 1.16;
+  /* Set in caps, as the approved copy is written — and as a display face on a
+     title page is set. The DOM keeps the sentence in its natural case, which is
+     what a screen reader reads and what a test asserts; only the display is
+     capitalised, so "Every student needs a name." is still a sentence to
+     everything that is not an eye. The tracking is what keeps caps at this size
+     from reading as a shout. */
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
   text-wrap: balance;
   color: var(--tome-ink);
 }
@@ -2292,26 +2300,6 @@ html.high-contrast * { text-shadow: none !important; }
   line-height: 1.58;
   text-wrap: pretty;
   color: var(--tome-ink-soft);
-}
-
-/* Notes in the margin: three or four words, never a sentence. */
-.academy-welcome .tome-marginalia {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.3rem 0.4rem;
-  margin-top: 1em;
-}
-
-.academy-welcome .tome-marginalia li {
-  border: 1px solid rgba(107, 84, 24, 0.42);
-  border-radius: 999px;
-  padding: 0.12em 0.7em;
-  font-size: clamp(0.55rem, 1.02cqw, 0.72rem);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--tome-gilt);
-  background: rgba(107, 84, 24, 0.06);
 }
 
 /* ---- The register (HI1-C5) ----------------------------------------------- */
@@ -2379,8 +2367,18 @@ html.high-contrast * { text-shadow: none !important; }
   /* The rule brightens and the paper under it warms — a nib resting on the
      line. A focus RING would be a box, which is the one thing this page is
      built to avoid; the contrast change is carried by two properties so it is
-     not colour alone. */
-  background: rgba(255, 250, 233, 0.55);
+     not colour alone.
+
+     `background-color`, NEVER the `background` shorthand (HI1-C6). The
+     shorthand resets every background longhand it does not mention, including
+     `background-repeat` — and this rule outranks the rank picker's own
+     `no-repeat` below it (two classes plus a pseudo-class beats two classes).
+     The result was that focusing the rank field tiled its 0.3em caret triangles
+     across the entire control: a dense block of repeated glyph-like marks over
+     the text, and the reported "corrupted" selector. Nothing about the font,
+     the options or the reveal was involved. Setting only the colour touches
+     only the colour. */
+  background-color: rgba(255, 250, 233, 0.55);
   box-shadow: 0 1px 0 0 #6b5418;
 }
 
@@ -2398,12 +2396,17 @@ html.high-contrast * { text-shadow: none !important; }
   background-repeat: no-repeat;
 }
 
+/* Belt and braces for the caret (HI1-C6).
+
+   With the focus rule above corrected this rule changes nothing — the two
+   layers survive from the base rule untouched, and the focus wash arrives as a
+   plain background-colour. It stays because the failure it guards against is
+   silent and disfiguring: any future `background:` shorthand anywhere in this
+   field's cascade would re-tile a 0.3em triangle across the whole control, and
+   the only way to notice is to focus the rank picker and look. Restating the
+   one longhand that a shorthand would clobber makes that impossible. */
 .academy-welcome .tome-field-select:focus {
-  background-image: linear-gradient(45deg, transparent 50%, rgba(43, 58, 87, 0.7) 50%),
-    linear-gradient(135deg, rgba(43, 58, 87, 0.7) 50%, transparent 50%),
-    linear-gradient(rgba(255, 250, 233, 0.55), rgba(255, 250, 233, 0.55));
-  background-position: right 0.5em top 58%, right 0.22em top 58%, 0 0;
-  background-size: 0.3em 0.3em, 0.3em 0.3em, 100% 100%;
+  background-repeat: no-repeat;
 }
 
 /* The option list is drawn by the OS in its own colours; on a dark system theme
@@ -2611,54 +2614,6 @@ html.high-contrast * { text-shadow: none !important; }
   }
 }
 
-/* ---- The reference docket (HI1-C5) --------------------------------------- */
-
-/* The last spread's right page. Three ruled entries — a name, a leader rule,
-   and what is in it — which is what a reference shelf looks like written down.
-   The counterweight to the triangular data composition opposite it, and
-   deliberately the opposite kind of object: nothing here is drawn, and nothing
-   here is a control. */
-.academy-welcome .tome-docket {
-  display: flex;
-  width: 100%;
-  max-width: calc(100% - var(--tome-page-inward));
-  flex-direction: column;
-  gap: 0.34em;
-  margin-top: 0.95em;
-  text-align: left;
-}
-
-.academy-welcome .tome-docket-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4em;
-}
-
-.academy-welcome .tome-docket-label {
-  flex-shrink: 0;
-  font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;
-  font-size: clamp(0.6rem, 1.24cqw, 0.82rem);
-  font-weight: 700;
-  color: var(--tome-ink);
-}
-
-/* The leader. A rule rather than a row of dots: dots at this size render as
-   mush at half the pixel densities this page is read at. */
-.academy-welcome .tome-docket-rule {
-  flex: 1 1 auto;
-  height: 1px;
-  min-width: 0.8em;
-  transform: translateY(-0.16em);
-  background: linear-gradient(90deg, rgba(107, 84, 24, 0.42), rgba(107, 84, 24, 0.16));
-}
-
-.academy-welcome .tome-docket-note {
-  flex-shrink: 0;
-  font-size: clamp(0.56rem, 1.14cqw, 0.76rem);
-  line-height: 1.35;
-  color: var(--tome-ink-soft);
-}
-
 /* ---- The last page ------------------------------------------------------- */
 
 .academy-welcome .tome-exits {
@@ -2676,13 +2631,18 @@ html.high-contrast * { text-shadow: none !important; }
   margin-top: 1.1em;
 }
 
+/* A ROW, not a stack. Each exit used to be an icon over a label over a line of
+   explanation, which needed a column; with the explanation gone a column leaves
+   a small mark floating above two words. Icon beside label reads as one control
+   and gives the page back a line of height. */
 .academy-welcome .tome-exit {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 0.12rem;
+  justify-content: center;
+  gap: 0.5rem;
   border-radius: 0.6rem;
-  padding: 0.55em 0.8em;
+  padding: 0.62em 0.8em;
   border: 1px solid rgba(107, 84, 24, 0.5);
   background: rgba(255, 250, 233, 0.5);
   transition: background-color 180ms ease, border-color 180ms ease;
@@ -2721,77 +2681,153 @@ html.high-contrast * { text-shadow: none !important; }
   color: var(--tome-ink);
 }
 
-.academy-welcome .tome-exit-detail {
-  font-size: clamp(0.6rem, 1.22cqw, 0.8rem);
-  line-height: 1.35;
-  color: var(--tome-ink-soft);
+/* ---- The champion drawings in the paper ----------------------------------- */
+
+/* ONE PER PAGE, BEHIND EVERYTHING ON IT.
+
+   The wrapper is the page box itself — `inset: 0` with `overflow: hidden` — so
+   the drawing is CROPPED BY THE PAGE and can never reach the gutter, the
+   painted frame or the sheet's edge, at any viewport or aspect ratio. That is
+   the whole containment story; there is no negative inset anywhere below.
+
+   `z-index: 0` puts it in the positioned layer BELOW the page's own content,
+   which is lifted to `z-index: 1` by the rule under this one. Everything the
+   visitor reads or presses is above the paper, never in it.
+
+   NO `mix-blend-mode`. Multiply would be the obvious way to sink line art into
+   parchment, and it does not survive this DOM: the page regions sit inside a
+   `container-type` element, and any positioned ancestor with a z-index gives
+   the blend a transparent backdrop to blend against instead of the painted
+   paper. Low opacity over a warm filter reaches the same place with none of
+   that fragility — these are graphite drawings on a transparent ground, so
+   there is nothing but ink to print in the first place.
+
+   THE STRENGTHS ARE A CONTRAST BUDGET, not taste (see academyChapters), and
+   the budget was MEASURED off the files rather than guessed. Sampled, the
+   darkest pixel in any of the three drawings sits at luminance ~45/255 (they
+   are graphite, not ink) and under 5% of their opaque pixels are anywhere near
+   it. Composite that worst-case stroke onto this parchment at 0.15 and the
+   body ink (`--tome-ink-soft`, 6.7:1 on bare paper) still reads at about
+   5.0:1 — clear of the 4.5 floor with room to spare, and almost every actual
+   pixel is far lighter than the one that sum used. A writing page therefore
+   runs at 0.13–0.15; the illustration page has no running text on it at all
+   and carries 0.16. Raising any of them means re-doing that measurement, not
+   re-deciding the taste. */
+.academy-welcome .tome-champion {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+  /* Feathered rather than cut: a hard rectangular edge would read as a picture
+     pasted onto the page instead of an impression in it. */
+  -webkit-mask-image: radial-gradient(118% 98% at 50% 44%, #000 46%, transparent 94%);
+  mask-image: radial-gradient(118% 98% at 50% 44%, #000 46%, transparent 94%);
 }
 
-.academy-welcome .tome-exit[data-primary="true"] .tome-exit-detail {
-  color: rgba(29, 43, 71, 0.78);
+/* The page's own content, lifted over the drawing. */
+.academy-welcome .tome-page > :not(.tome-champion),
+.academy-welcome .tome-sheet > :not(.tome-champion) {
+  position: relative;
+  z-index: 1;
 }
 
-.academy-welcome .tome-footnote {
-  margin-top: 0.5em;
-  font-size: clamp(0.55rem, 1.08cqw, 0.72rem);
-  line-height: 1.4;
-  color: var(--tome-ink-faint);
+.academy-welcome .tome-champion-art {
+  width: 100%;
+  height: 100%;
+  /* `cover`, so the PAGE decides the crop. `contain` letterboxes the drawing
+     inside whatever box it is given, which on a landscape phone's wide, short
+     sheet leaves a 144px-wide figure marooned in the middle of it — a picture
+     placed on the page rather than an impression in it. Covering means the
+     drawing always fills the paper and the paper always cuts it, which is what
+     it looks like when something is printed. `focus` moves the crop. */
+  object-fit: cover;
+  opacity: 0;
+  /* A TRANSITION, not an animation. A layer whose only visible state lives
+     inside a keyframe is invisible whenever the clock is not running — a
+     backgrounded tab really does freeze it — and the worst case here has to be
+     a drawing that is simply already there. */
+  transition: opacity 900ms ease-out;
+  /* Graphite into sepia, so the drawing belongs to the same hand as the rest of
+     the book rather than sitting on it as a grey photograph. */
+  filter: sepia(0.74) saturate(0.6) contrast(1.05) brightness(0.94);
+}
+
+.academy-welcome .tome-champion[data-visible="true"] .tome-champion-art {
+  opacity: var(--tome-champion-strength, 0.1);
+}
+
+/* A phone's single sheet is BOTH pages at once, so whichever drawing it prints
+   is always under running text — including the illustration-page drawings,
+   which are authored for a page that has none. Capped here rather than by
+   giving the script a second set of numbers per viewport: the chapter says how
+   strong the drawing is, and the layout that cannot honour that says so. */
+.academy-welcome .tome-single .tome-champion[data-visible="true"] .tome-champion-art {
+  opacity: min(var(--tome-champion-strength, 0.1), 0.12);
 }
 
 /* ---- The crowded last spread --------------------------------------------- */
 
-/* HI1-C5 merged two informational chapters and moved the exits onto the result,
-   so one page now carries an eyebrow, a heading, two paragraphs, a three-line
-   docket, two exits and a footnote — and at the tome's own type sizes that
-   composition overflowed the page box by about a fifth of its height, printing
-   the chapter's name off the top of the paper.
-   
-   The copy was rewritten shorter first; this is the rest of it. Every value
-   below takes air OUT of the page and nothing takes content out — the reader
-   loses no word, no entry and no choice, and the spacing lands where the
-   painted paper actually is. It applies only to a finale that carries writing,
-   which is exactly the page that has the problem: a finale of no copy (what
-   this used to be) reads at the ordinary rhythm. */
+/* The last spread carries a chapter's copy AND the two exits: an eyebrow, a
+   two-line heading, three blocks of copy and two buttons, on one page of a book
+   that is sized by whichever of width and height runs out first. At the tight
+   end of that — a short landscape window, where the whole tome is under 500px
+   wide — the composition overflowed the page box by about a third of its
+   height and printed the chapter's name off the top of the paper onto the
+   frame. Every rule below takes height out of that page and nothing takes
+   content out: the reader loses no word and no choice. It applies only to a
+   finale that carries copy, which is exactly the page that has the problem.
 
-/* The heading and the copy give up a little leading, and nothing else. Both
-   stay well inside what is comfortable at this size — the body's measure and
-   leading together still read as the same page as every other chapter. */
+   IN THIS ORDER, cheapest first: unused paper, then leading, then type. */
+
+/* THE PAGE BOX GIVES GROUND FIRST, and it costs nothing at all. The 15%/13%
+   insets are a deliberately conservative frame for the painted sheet — the
+   paper runs a good deal further than that at both ends — so on the one page
+   that needs the room, the box simply claims some of what is already there.
+   `:has()` rather than a second data attribute on the page, so the marker stays
+   where it belongs: on the WRITING, which is what makes a ghosted sheet measure
+   as the chapter it is showing rather than as the chapter behind it. */
+.academy-welcome .tome-page:has(.tome-writing[data-crowded="true"]) {
+  top: 9%;
+  bottom: 8%;
+}
+
+/* Then the leading and the measure. Both stay inside what is comfortable at
+   this size — four extra characters a line is still well within the 45–75 band
+   for a centred column, and it buys a whole display line back from each
+   block. */
 .academy-welcome .tome-writing[data-crowded="true"] .tome-heading {
-  margin-top: 0.2em;
-  line-height: 1.08;
+  margin-top: 0.18em;
+  line-height: 1.06;
+  font-size: clamp(0.95rem, 2.75cqw, 1.75rem);
+}
+
+.academy-welcome .tome-writing[data-crowded="true"] .tome-eyebrow {
+  font-size: clamp(0.5rem, 1cqw, 0.72rem);
 }
 
 .academy-welcome .tome-writing[data-crowded="true"] .tome-body {
-  margin-top: 0.6em;
-  line-height: 1.5;
-  /* Four extra characters a line. The measure is still comfortably inside the
-     45–75 character band for a centred column at this size, and it buys a whole
-     display line back from each paragraph — the single largest saving here. */
-  max-width: 34ch;
+  margin-top: 0.5em;
+  line-height: 1.42;
+  max-width: 36ch;
+  font-size: clamp(0.66rem, 1.5cqw, 0.94rem);
 }
 
-.academy-welcome .tome-writing[data-crowded="true"] .tome-docket {
-  margin-top: 0.7em;
-  gap: 0.24em;
-}
-
+/* And last the controls. The labels stay the largest thing on the page after
+   the heading — they are the page's whole question — they simply stop being
+   set at chapter-heading scale. */
 .academy-welcome .tome-writing[data-crowded="true"] .tome-exits {
-  margin-top: 0.8em;
-  gap: 0.4rem;
+  margin-top: 0.7em;
+  gap: 0.35rem;
 }
 
 .academy-welcome .tome-writing[data-crowded="true"] .tome-exit {
-  padding: 0.45em 0.8em;
-  gap: 0;
+  padding: 0.42em 0.7em;
 }
 
-.academy-welcome .tome-writing[data-crowded="true"] .tome-exit-detail,
-.academy-welcome .tome-writing[data-crowded="true"] .tome-docket-note {
-  line-height: 1.25;
-}
-
-.academy-welcome .tome-writing[data-crowded="true"] .tome-footnote {
-  margin-top: 0.35em;
+.academy-welcome .tome-writing[data-crowded="true"] .tome-exit-label {
+  font-size: clamp(0.68rem, 1.45cqw, 0.94rem);
 }
 
 /* ---- Controls around the tome -------------------------------------------- */
@@ -2880,16 +2916,8 @@ html.high-contrast * { text-shadow: none !important; }
   max-width: 34ch;
 }
 
-.academy-welcome .tome-single .tome-marginalia li {
-  font-size: clamp(0.58rem, 2.5vw, 0.7rem);
-}
-
 .academy-welcome .tome-single .tome-exit-label {
   font-size: clamp(0.85rem, 3.8vw, 1rem);
-}
-
-.academy-welcome .tome-single .tome-exit-detail {
-  font-size: clamp(0.68rem, 3vw, 0.8rem);
 }
 
 .academy-welcome .tome-single .tome-exit-icon {
@@ -2897,11 +2925,7 @@ html.high-contrast * { text-shadow: none !important; }
   height: 1.05rem;
 }
 
-.academy-welcome .tome-single .tome-footnote {
-  font-size: clamp(0.6rem, 2.6vw, 0.72rem);
-}
-
-/* The register and the docket at phone scale. Same reason as everything above:
+/* The register at phone scale. Same reason as everything above:
    on a single sheet the container IS roughly the viewport, so `cqw` would set
    the register at 8% of a page rather than at a size a thumb can aim at. The
    input font size in particular must not fall below 16px on iOS, or Safari
@@ -2945,14 +2969,6 @@ html.high-contrast * { text-shadow: none !important; }
   height: 1.75rem;
 }
 
-.academy-welcome .tome-single .tome-docket-label {
-  font-size: clamp(0.7rem, 3vw, 0.82rem);
-}
-
-.academy-welcome .tome-single .tome-docket-note {
-  font-size: clamp(0.62rem, 2.7vw, 0.74rem);
-}
-
 /* Landscape phone: art beside the writing, everything a notch tighter. There
    is width to spare and ~360px of height, so nothing may stack. */
 .academy-welcome .tome-single-wide {
@@ -2985,17 +3001,9 @@ html.high-contrast * { text-shadow: none !important; }
   max-width: 46ch;
 }
 
-.academy-welcome .tome-single-wide .tome-marginalia {
-  margin-top: 0.55em;
-}
-
 .academy-welcome .tome-single-wide .tome-exits {
   flex-direction: row;
   margin-top: 0.7em;
-}
-
-.academy-welcome .tome-single-wide .tome-exits .tome-footnote {
-  display: none;
 }
 
 .academy-welcome .tome-single-wide .tome-exit {
@@ -3066,14 +3074,6 @@ html.high-contrast * { text-shadow: none !important; }
   font-size: clamp(0.58rem, 1.4vw, 0.76rem);
 }
 
-.academy-welcome .tome-single-wide .tome-docket-label {
-  font-size: clamp(0.6rem, 1.5vw, 0.76rem);
-}
-
-.academy-welcome .tome-single-wide .tome-docket-note {
-  font-size: clamp(0.55rem, 1.35vw, 0.7rem);
-}
-
 .academy-welcome .tome-single-wide .tome-register {
   gap: 0.3em;
   padding: 6% 7%;
@@ -3087,11 +3087,6 @@ html.high-contrast * { text-shadow: none !important; }
   width: 1.25rem;
   height: 1.25rem;
   margin-top: 0;
-}
-
-.academy-welcome .tome-single-wide .tome-docket {
-  gap: 0.24em;
-  margin-top: 0.55em;
 }
 
 /* The crowded-spread measure is a fix for the painted book's fixed page box —
@@ -3114,71 +3109,64 @@ html.high-contrast * { text-shadow: none !important; }
 
 /* ---- Reveal slots -------------------------------------------------------- */
 
-/* Closed slots are transparent, never absent: the words stay in the document so
+/* Closed slots are transparent, never absent: the copy stays in the document so
    assistive technology, find-in-page and tests all read a finished chapter
-   while only the eye experiences it being written. */
+   while only the eye experiences it arriving.
+
+   A SLOT ARRIVES AS ONE PIECE, which is the pacing rewrite expressed in CSS.
+   There is no per-word rule below this line and no `--w` delay anywhere: the
+   whole slot — the label with its heading, a block of copy, a control — fades
+   and settles together. `tome-block-in` is the single reveal animation on this
+   page, and its duration must stay in step with BLOCK_FADE_MS / HEADING_FADE_MS
+   in cadence.ts, because the sequence controller times its breaths from it. */
 .tome-slot {
   opacity: 0;
 }
 
 .tome-slot[data-revealed="true"] {
-  opacity: 1;
+  animation: tome-block-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ---- Writing ------------------------------------------------------------- */
-
-.tome-word {
-  display: inline;
-}
-
-/* One phrase of body copy — the conversational beat (HI1-C2). Inline inside its
-   paragraph so the prose wraps and copies as prose, but gated exactly like a
-   slot: transparent until the controller releases it, never absent. */
-.tome-phrase {
+/* One BLOCK of body copy. Gated exactly like a slot — transparent until the
+   controller releases it, never absent — and revealed by the same animation, a
+   touch quicker because there are two or three of them in a row. */
+.tome-block {
   opacity: 0;
 }
 
-.tome-phrase[data-revealed="true"] {
-  opacity: 1;
+.tome-block[data-revealed="true"] {
+  animation: tome-block-in 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.tome-slot[data-revealed="true"] .tome-word,
-.tome-phrase[data-revealed="true"] .tome-word {
-  /* 520ms must stay in step with WORD_INK_MS in phrases.ts — the sequence
-     controller times its breaths from this animation. Raised from 420ms in
-     HI1-C3: each word's ink now takes longer to darken, and with word starts
-     spaced further apart (BODY_WORD_PACE) roughly six words are in flight
-     instead of twelve — slower, and legibly one word at a time. */
-  animation: tome-ink-in 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--w, 0) * 1ms);
-}
-
-@keyframes tome-ink-in {
+@keyframes tome-block-in {
   from {
     opacity: 0;
-    filter: blur(2.5px);
-  }
-  60% {
-    opacity: 1;
+    transform: translateY(0.3em);
+    filter: blur(2px);
   }
   to {
     opacity: 1;
+    transform: none;
     filter: blur(0);
   }
 }
 
 /* ---- Illustration -------------------------------------------------------- */
 
-/* Washed onto the page rather than faded in, and SLOWLY (HI1-C2): the
-   illustration is the second channel of the performance, released a beat after
-   the writing starts and still developing while the next phrases arrive. The
-   shape sweeps in first as a desaturated sketch, then the colour soaks in over
-   a couple of seconds — the page is being painted under words that are still
-   being written, never taking its turn after them. The entrance mascot has its
-   own materialisation instead (below). */
+/* Washed onto the page rather than faded in: the illustration is the second
+   channel of the performance, released a beat after the first block of copy
+   lands and still developing while the next block arrives. The shape sweeps in
+   as a desaturated sketch and the colour soaks in behind it — the page is being
+   painted under words already on it, never taking its turn after them. The
+   entrance mascot has its own materialisation instead (below).
+
+   1400ms, down from 2600ms. The wash was timed against a chapter that took the
+   better part of ten seconds to write itself; against a chapter that now
+   composes in under three it was still developing long after the page had
+   offered Next, which is a wash the visitor never sees the end of. */
 .tome-slot[data-revealed="true"] .tome-art:not(.tome-mogzy-entrance) {
-  animation: tome-wash-in 2600ms cubic-bezier(0.3, 0.4, 0.25, 1) both;
-  animation-delay: 320ms;
+  animation: tome-wash-in 1400ms cubic-bezier(0.3, 0.4, 0.25, 1) both;
+  animation-delay: 220ms;
 }
 
 @keyframes tome-wash-in {
@@ -3348,25 +3336,6 @@ html.high-contrast * { text-shadow: none !important; }
   animation-delay: calc(var(--d, 0) * 1ms);
   transform-box: fill-box;
   transform-origin: center;
-}
-
-/* A shape that soaks in rather than being drawn: the panel grounds behind the
-   last spread's triangular composition. `tome-stroke` rules an outline and
-   `tome-dot` presses a mark; neither is right for a wash of tone, and a fill
-   that simply appeared under a frame still being ruled would arrive before the
-   thing it is inside. Same indexed `--d` beat as the other two. */
-.tome-slot[data-revealed="true"] .tome-fade {
-  animation: tome-fade-in 620ms ease-out both;
-  animation-delay: calc(var(--d, 0) * 1ms);
-}
-
-@keyframes tome-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 @keyframes tome-press-in {
@@ -3657,10 +3626,10 @@ html.high-contrast * { text-shadow: none !important; }
 
 /* Everything on the page lands at once. Nothing here may leave a slot hidden —
    this is the state a fast-clicking visitor spends most of their time in. */
-.academy-welcome[data-instant="true"] .tome-word,
+.academy-welcome[data-instant="true"] .tome-slot[data-revealed="true"],
+.academy-welcome[data-instant="true"] .tome-block[data-revealed="true"],
 .academy-welcome[data-instant="true"] .tome-art,
 .academy-welcome[data-instant="true"] .tome-dot,
-.academy-welcome[data-instant="true"] .tome-fade,
 .academy-welcome[data-instant="true"] .tome-mogzy-figure {
   animation: none;
   opacity: 1;
@@ -3673,6 +3642,10 @@ html.high-contrast * { text-shadow: none !important; }
   animation: none;
   stroke-dasharray: none;
   stroke-dashoffset: 0;
+}
+
+.academy-welcome[data-instant="true"] .tome-champion-art {
+  transition: none;
 }
 
 /* The apparition's flourish is a one-time performance, not content — a skip
@@ -3688,10 +3661,11 @@ html.high-contrast * { text-shadow: none !important; }
    left page while the sheet crosses it). Every ink animation is pinned at its
    finished frame: the words RIDE the turning paper — nothing on it may replay,
    flicker, or write itself again. */
-.academy-welcome .tome-ghost .tome-word,
+.academy-welcome .tome-ghost .tome-slot,
+.academy-welcome .tome-ghost .tome-block,
+.academy-welcome .tome-ghost.tome-slot,
 .academy-welcome .tome-ghost .tome-art,
 .academy-welcome .tome-ghost .tome-dot,
-.academy-welcome .tome-ghost .tome-fade,
 .academy-welcome .tome-ghost .tome-mogzy-figure {
   animation: none;
   opacity: 1;
@@ -3706,13 +3680,6 @@ html.high-contrast * { text-shadow: none !important; }
   stroke-dashoffset: 0;
 }
 
-.academy-welcome .tome-ghost .tome-slot,
-.academy-welcome .tome-ghost .tome-phrase,
-.academy-welcome .tome-ghost.tome-slot,
-.academy-welcome .tome-ghost.tome-writing .tome-phrase {
-  opacity: 1;
-}
-
 .academy-welcome .tome-ghost .tome-mogzy-glow,
 .academy-welcome .tome-ghost .tome-mogzy-motes {
   display: none;
@@ -3725,10 +3692,10 @@ html.high-contrast * { text-shadow: none !important; }
    controller also stops its clock, and the page component never mounts the
    turning leaf, so pages turn only when they say so and turn instantly. */
 @media (prefers-reduced-motion: reduce) {
-  .academy-welcome .tome-word,
+  .academy-welcome .tome-slot,
+  .academy-welcome .tome-block,
   .academy-welcome .tome-art,
   .academy-welcome .tome-dot,
-  .academy-welcome .tome-fade,
   .academy-welcome .tome-mogzy-figure,
   .academy-welcome .tome-leaf,
   .academy-welcome .tome-leaf-shade,
@@ -3757,9 +3724,10 @@ html.high-contrast * { text-shadow: none !important; }
     opacity: 1;
   }
 
-  .academy-welcome .tome-slot,
-  .academy-welcome .tome-phrase {
-    opacity: 1;
+  /* The drawing in the paper is content, not motion: a motion-sensitive
+     visitor sees the same page, it simply does not fade in. */
+  .academy-welcome .tome-champion-art {
+    transition: none;
   }
 
   .academy-welcome .tome-mogzy-glow,
