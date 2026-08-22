@@ -20,12 +20,14 @@
  * Deleting this directory and its route line removes the demo completely.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
+import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
 import {
   LOBBY_PREVIEW_STATES,
   PREVIEW_SETS,
+  TIMMY_RANKED_RECORD_PREVIEW,
   type LobbyPreviewProfile,
 } from "./lobbyPreviewFixtures";
 
@@ -47,6 +49,30 @@ export default function LobbyPreviewPage() {
   // moves the demo, and there is no writer behind it.
   const state = LOBBY_PREVIEW_STATES[profile];
   const [role, setRole] = useState(state.rankedRole);
+
+  /**
+   * The Review pane's bank, HANDED IN rather than loaded.
+   *
+   * The pane loads its own data on the real lobby. Here it must not: this
+   * page's whole contract is that it reads no account, and a reviewer opening
+   * the Review tab would otherwise have fired a real request from a demo
+   * screen. Every action on the resolved state is inert, exactly like the
+   * callbacks above.
+   */
+  const review: MissedQuestionsState = useMemo(
+    () => ({
+      data: state.missedQuestions,
+      items: [...state.missedQuestions.results],
+      loading: false,
+      loadingMore: false,
+      error: null,
+      hasMore: false,
+      totalCount: state.missedQuestions.total_count ?? state.missedQuestions.results.length,
+      loadMore: noop,
+      retry: noop,
+    }),
+    [state.missedQuestions],
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,6 +137,13 @@ export default function LobbyPreviewPage() {
           history={state.history}
           historyLoading={false}
           historyError={null}
+          reviewState={review}
+          /* PHASE B DESIGN PREVIEW, and only for the account that has duels.
+             Ranked history is not wired into the real record — `Quiz.tsx`
+             passes nothing — so this is the one place the treatment renders.
+             The newcomer gets none, because a new account HAS none and the
+             empty record has to stay the real empty record. */
+          rankedHistoryPreview={profile === "timmy" ? TIMMY_RANKED_RECORD_PREVIEW : undefined}
           rankedRole={role}
           onSelectRankedRole={setRole}
           rankedProgression={state.progression}

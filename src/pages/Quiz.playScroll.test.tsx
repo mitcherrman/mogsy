@@ -87,10 +87,13 @@ const SETS = [
   { id: 5, name: "All Current Questions", description: "Everything", question_count: 1260 },
 ];
 
+/** Which set a start actually opened — the Practice handoff turns on this. */
+const questionsMock = vi.fn(async () => ({ questions: [] }));
+
 vi.mock("@/lib/quiz/api", () => ({
   quizApi: {
     sets: async () => ({ sets: SETS }),
-    questions: async () => ({ questions: [] }),
+    questions: (...args: unknown[]) => questionsMock(...(args as [])),
     getProgress: async () => ({ rank_name: "Bronze", attempts: 2, accuracy: 71 }),
     getCategories: async () => ({ categories: [] }),
     getAchievements: async () => ({ achievements: [] }),
@@ -116,9 +119,11 @@ async function renderLobby(entry: unknown = "/quiz") {
       <LocationProbe />
     </MemoryRouter>,
   );
+  // The Leaguecraft Record is the lobby's stable landmark. The practice tiles
+  // used to be this signal; the panel holding them is withheld now
+  // (HUB_MODULES.practicePanel), so it waits on the record instead.
   await waitFor(() =>
-    expect(utils.container.querySelectorAll('[data-testid="practice-tile"]').length)
-      .toBeGreaterThan(0),
+    expect(utils.container.querySelector('[data-testid="leaguecraft-workspace"]')).not.toBeNull(),
   );
   return utils;
 }
@@ -201,7 +206,7 @@ describe("arriving from the retired /quiz/ranked menu", () => {
     fireEvent.click(screen.getByTestId("play-scroll-close"));
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
     // A re-render must not resurrect the record from the same router state.
-    fireEvent.click(screen.getByTestId("practice-tile"));
+    fireEvent.click(screen.getByTestId("workspace-tab-review"));
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
   });
 
@@ -261,7 +266,7 @@ describe("Daily Challenge hands off to the page's own host", () => {
     await waitFor(() =>
       expect(screen.getByText(/Hand of Baron/)).toBeTruthy(),
     );
-    expect(container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(0);
+    expect(container.querySelector('[data-testid="leaguecraft-workspace"]')).toBeNull();
 
     // Still no navigation. The Daily Challenge is hosted in place.
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
@@ -292,8 +297,7 @@ describe("Daily Challenge hands off to the page's own host", () => {
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
     // Back on the lobby, with no question and no message.
     await waitFor(() =>
-      expect(container.querySelectorAll('[data-testid="practice-tile"]').length)
-        .toBeGreaterThan(0),
+      expect(container.querySelector('[data-testid="leaguecraft-workspace"]')).not.toBeNull(),
     );
     expect(screen.queryByText(/Already answered/)).toBeNull();
   });
@@ -339,79 +343,68 @@ describe("a finished Daily Challenge hands the player to Practice", () => {
     expect(panel.textContent).toContain("Come back tomorrow.");
   });
 
-  it("closes the record and moves to the real Practice section", async () => {
+  /**
+   * WHAT CHANGED, AND WHY IT HAD TO.
+   *
+   * This entry used to close the record and SCROLL to the lobby's Practice
+   * panel, deliberately stopping short of starting anything. The panel is
+   * withheld now (`HUB_MODULES.practicePanel`) — the category rail above it
+   * is becoming the practice selector — so a scroll would have travelled to
+   * nothing at all, which is precisely the silent-no-op defect the old scroll
+   * machinery existed to prevent.
+   *
+   * So the entry now does what its own label has always promised — "Play
+   * practice questions to improve" — and starts the catalog-wide set in
+   * place, the same set the panel's primary action opened. The deferred
+   * scroll, its ref and its Radix-teardown ordering note went with it: a
+   * phase change has no such race, and it is the same synchronous shape the
+   * Daily Challenge entry beside it already uses.
+   */
+  it("closes the record and STARTS practice, because there is no panel to visit", async () => {
     await openRecordOnAFinishedDay();
-
-    const practice = screen.getByTestId("hub-practice-section");
-    const scrollIntoView = vi.fn();
-    // jsdom implements neither, so both are installed rather than spied on.
-    (practice as HTMLElement).scrollIntoView = scrollIntoView;
 
     fireEvent.click(screen.getByTestId("play-mode-daily-action"));
 
-    // The record gets out of the way first.
+    // The record gets out of the way first — a dialog left open over a page
+    // that is swapping itself out is a trap.
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
 
-    // Then the page travels — to the SECTION, by ref, not to an offset.
-    // The FIRST call is the one under test. A second may follow ~350ms later
-    // if the smooth scroll did not take — see `goToSection`'s arrival check.
-    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
-    expect(scrollIntoView.mock.calls[0][0]).toMatchObject({ block: "start" });
+    // …and the catalog-wide practice set is the one that starts.
+    await waitFor(() =>
+      expect(questionsMock).toHaveBeenCalledWith("All Current Questions", 10),
+    );
 
-    // Focus landed on the landmark, so the arrival is announced rather than
-    // merely positional — and NOT back on the PLAY seal, which would have
-    // scrolled the player straight back up.
-    expect(document.activeElement).toBe(practice);
-
-    // Still on the hub, and no quiz was started.
+    // Still on the hub's own route: practice is a phase of this page, never
+    // a navigation.
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
-    expect(screen.getByTestId("hub-practice-section")).toBeTruthy();
   });
 
-  it("scrolls immediately under prefers-reduced-motion", async () => {
-    const media = window.matchMedia;
-    window.matchMedia = ((query: string) => ({
-      matches: query.includes("prefers-reduced-motion"),
-      media: query,
-      addEventListener() {}, removeEventListener() {},
-      addListener() {}, removeListener() {},
-      onchange: null, dispatchEvent: () => false,
-    })) as unknown as typeof window.matchMedia;
+  it("does not scroll anywhere — there is no section left to scroll to", async () => {
+    // The old contract travelled by ref to `hub-practice-section`. That
+    // landmark is gone with the panel, and a handoff must not fall back to
+    // scrolling the reader to an offset that means nothing.
+    const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
     try {
       await openRecordOnAFinishedDay();
-      const practice = screen.getByTestId("hub-practice-section");
-      const scrollIntoView = vi.fn();
-      (practice as HTMLElement).scrollIntoView = scrollIntoView;
-
+      scrollIntoView.mockClear();
       fireEvent.click(screen.getByTestId("play-mode-daily-action"));
-      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
-      expect(scrollIntoView.mock.calls[0][0]).toMatchObject({ behavior: "auto" });
+      await waitFor(() =>
+        expect(questionsMock).toHaveBeenCalledWith("All Current Questions", 10),
+      );
+      expect(scrollIntoView).not.toHaveBeenCalled();
     } finally {
-      window.matchMedia = media;
+      Element.prototype.scrollIntoView = original;
     }
   });
 
-  it("uses a smooth scroll for everyone else", async () => {
+  it("leaves the withheld Practice panel withheld", async () => {
     await openRecordOnAFinishedDay();
-    const practice = screen.getByTestId("hub-practice-section");
-    const scrollIntoView = vi.fn();
-    (practice as HTMLElement).scrollIntoView = scrollIntoView;
-
-    fireEvent.click(screen.getByTestId("play-mode-daily-action"));
-    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
-    expect(scrollIntoView.mock.calls[0][0]).toMatchObject({ behavior: "smooth" });
-  });
-
-  it("does not start a Practice quiz — it only takes the player there", async () => {
-    await openRecordOnAFinishedDay();
-    const practice = screen.getByTestId("hub-practice-section");
-    (practice as HTMLElement).scrollIntoView = vi.fn();
-
     fireEvent.click(screen.getByTestId("play-mode-daily-action"));
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
-
-    // The lobby is still the lobby: the practice sets are listed, not running.
-    expect(screen.getByTestId("practice-tiles")).toBeTruthy();
-    expect(screen.queryByTestId("quiz-question")).toBeNull();
+    // Starting practice must not resurrect the panel as a side effect.
+    expect(screen.queryByTestId("hub-practice-section")).toBeNull();
+    expect(screen.queryByTestId("practice-tiles")).toBeNull();
   });
 });

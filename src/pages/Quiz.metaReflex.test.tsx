@@ -91,10 +91,10 @@ async function renderHub() {
       <QuizPage />
     </MemoryRouter>,
   );
+  // The Leaguecraft Record is the lobby's stable landmark; the practice tiles
+  // that used to be this signal live in a panel that is withheld now.
   await waitFor(() =>
-    expect(utils.container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(
-      SETS.length,
-    ),
+    expect(utils.container.querySelector('[data-testid="leaguecraft-workspace"]')).not.toBeNull(),
   );
   return utils;
 }
@@ -140,7 +140,9 @@ describe("Leaguecraft → Meta Reflex, withheld from the Ranked-first hub", () =
   it("leaves the Leaguecraft mode entry that the redesign keeps intact", async () => {
     await renderHub();
     // Mastery Journey is the one standalone mode the Ranked-first hub still
-    // hosts; Stat Check is withheld with Meta Reflex, at /quiz/stat-check.
+    // hosts — one quiet link in the lobby's utility row since the Practice
+    // panel that used to carry it was withheld. Stat Check is withheld with
+    // Meta Reflex, at /quiz/stat-check.
     expect(screen.getByTestId("hub-mastery-link").getAttribute("href")).toBe("/quiz/mastery");
     expect(screen.queryByTestId("hub-stat-check-link")).toBeNull();
   });

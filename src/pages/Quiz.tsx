@@ -20,7 +20,6 @@ import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type Q
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
-import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import LeaguecraftTutorialLink from "@/components/quiz/LeaguecraftTutorialLink";
 import {
   META_REFLEX_NAME,
@@ -99,8 +98,20 @@ type HubModuleFlags = {
   achievements: boolean;
   /** Pre-redesign five-card practice grid, replaced by the compact tiles. */
   legacyPracticeGrid: boolean;
-  /** Compact Mastery Journey strip (kept: it is one quiet line). */
+  /** Mastery Journey link (kept: it is one quiet line, and this page holds
+   *  the ONLY entrance to /quiz/mastery in the product). */
   masteryJourney: boolean;
+  /**
+   * "Practice for Ranked" panel in the lobby's lower half.
+   *
+   * WITHHELD, not retired. The full-width category rail directly above it is
+   * becoming Leaguecraft's practice selector, and until it opens the two were
+   * stacked navigations to the same six subjects. The panel, its sets, their
+   * real question counts and its start action are all intact behind this flag
+   * inside `LeaguecraftHub`; every practice ROUTE and question set is
+   * untouched.
+   */
+  practicePanel: boolean;
 };
 
 const HUB_MODULES: HubModuleFlags = {
@@ -112,6 +123,7 @@ const HUB_MODULES: HubModuleFlags = {
   achievements: false,
   legacyPracticeGrid: false,
   masteryJourney: true,
+  practicePanel: false,
 };
 
 /**
@@ -1289,7 +1301,7 @@ export default function Quiz() {
               history={recentHistory}
               historyLoading={historyLoading}
               historyError={historyError}
-              showMastery={HUB_MODULES.masteryJourney}
+              showPractice={HUB_MODULES.practicePanel}
               /* The lobby shows the UNSAVED choice; the account is written at
                  PLAY. See `pendingRankedRole`. */
               rankedRole={effectiveRankedRole}
@@ -1500,6 +1512,28 @@ export default function Quiz() {
               data-testid="hub-utility-line"
               className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 border-t border-[#c9a84c]/12 pt-2"
             >
+              {/* MASTERY JOURNEY — RELOCATED, not restored and not new.
+                  It was one quiet line inside the "Practice for Ranked"
+                  panel, and that panel is withheld this phase. This page
+                  holds the ONLY entrance to /quiz/mastery in the product —
+                  every other link to it lives inside the mastery pages
+                  themselves — so hiding the panel around it would have
+                  stranded a whole live route. It moves to the row that
+                  already exists for exactly this: one quiet link at the foot
+                  of the lobby, rather than a panel of its own. Guided
+                  champion progressions are not a practice SELECTOR, so this
+                  is not the replacement navigation the rail is going to
+                  become. Same flag, same route, same words. */}
+              {HUB_MODULES.masteryJourney && (
+                <Link
+                  to="/quiz/mastery"
+                  data-testid="hub-mastery-link"
+                  className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                  Mastery Journey
+                </Link>
+              )}
               <LeaguecraftTutorialLink />
               {LOBBY_SHOWS_DIAGNOSTICS && (
                 <Link

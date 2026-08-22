@@ -40,7 +40,12 @@
  * gaps the real lobby shows.
  */
 
-import type { QuizProgress, QuizSet, QuizHistoryResponse } from "@/lib/quiz/api";
+import type {
+  QuizProgress,
+  QuizSet,
+  QuizHistoryResponse,
+  MissedQuestionsResponse,
+} from "@/lib/quiz/api";
 import type {
   MatchHistoryEntryView,
   RankedProgressionView,
@@ -146,13 +151,56 @@ const TIMMY_ROWS: Array<{
   { role: "mid", outcome: "win", delta: null, opponent: "Duskrune", bot: false, days: 31 },
 ];
 
+/**
+ * The ladder Timmy actually walked, rather than the same number twenty times.
+ *
+ * `ratingAfter` used to be `TIMMY_PROGRESSION.rating` on EVERY row, which is a
+ * shape the backend could never send: it would mean two hundred rated matches
+ * all finishing on the same score. It matters now because the Ranked record
+ * design prints the rating a match started from, derived as
+ * `ratingAfter - ratingDelta` — against a flat column that derivation produced
+ * the same pair on every row and told us nothing about the design.
+ *
+ * So the chain is walked BACKWARDS from Timmy's current standing: the newest
+ * match ends on it, and each older match ends where the one after it began.
+ * A pre-rating row (`delta: null`) has no `ratingAfter` at all and the walk
+ * simply carries past it — which is exactly what a real account with results
+ * older than rating application looks like.
+ */
+const TIMMY_RATING_AFTER: Array<number | null> = (() => {
+  const out: Array<number | null> = [];
+  let running = TIMMY_PROGRESSION.rating;
+  for (const row of TIMMY_ROWS) {
+    if (row.delta === null) {
+      out.push(null);
+      continue;
+    }
+    out.push(running);
+    running -= row.delta;
+  }
+  return out;
+})();
+
+/**
+ * Terminal reasons, so the record is not one shape repeated. Most duels are
+ * played out; the fixture carries one forfeit and one void result because the
+ * contract has three `terminal_reason` values and a design that only ever
+ * meets the common one has not been reviewed.
+ */
+const TIMMY_TERMINAL: Record<number, { reason: "forfeit" | "no_contest"; rounds: number }> = {
+  4: { reason: "forfeit", rounds: 2 },
+  11: { reason: "no_contest", rounds: 4 },
+};
+
 export const TIMMY_MATCH_HISTORY: readonly MatchHistoryEntryView[] = Object.freeze(
   TIMMY_ROWS.map((row, i) => ({
     matchId: `demo-timmy-${i}`,
     viewerOutcome: row.outcome,
-    terminalReason: "combat",
-    completionReason: "rounds_complete",
-    finalRoundNumber: 5,
+    terminalReason: TIMMY_TERMINAL[i]?.reason ?? "combat",
+    completionReason: TIMMY_TERMINAL[i] ? TIMMY_TERMINAL[i].reason : "rounds_complete",
+    // Match LENGTH, never a score: the contract carries the round a duel ended
+    // on and no per-round results. A short one is a duel that ended early.
+    finalRoundNumber: TIMMY_TERMINAL[i]?.rounds ?? (i % 4 === 0 ? 7 : i % 3 === 0 ? 3 : 5),
     completedAt: daysAgo(row.days, 20 - (i % 6)),
     isBotMatch: row.bot,
     viewerClass: "mage",
@@ -162,8 +210,20 @@ export const TIMMY_MATCH_HISTORY: readonly MatchHistoryEntryView[] = Object.free
     opponentDisplayName: row.opponent,
     opponentIsBot: row.bot,
     ratingDelta: row.delta,
-    ratingAfter: row.delta === null ? null : TIMMY_PROGRESSION.rating,
+    ratingAfter: TIMMY_RATING_AFTER[i],
   })) satisfies MatchHistoryEntryView[],
+);
+
+/**
+ * What the Ranked design preview is handed: the most recent duels, beside the
+ * study rows they have to share a record with. Six is enough to judge the
+ * rhythm of several units at once without turning the demo into a Ranked page.
+ *
+ * PREVIEW ONLY. `Quiz.tsx` passes no Ranked entries into the Leaguecraft
+ * Record — Ranked full history is Phase B.
+ */
+export const TIMMY_RANKED_RECORD_PREVIEW: readonly MatchHistoryEntryView[] = Object.freeze(
+  TIMMY_MATCH_HISTORY.slice(0, 6),
 );
 
 /**
@@ -235,6 +295,44 @@ export const PREVIEW_SETS: readonly QuizSet[] = Object.freeze([
   { id: 4, name: "Rune Recognition", description: "Keystones and shards on sight.", question_count: 410 },
 ]);
 
+/**
+ * Timmy's study record — a FULL Free window, so the unified History ledger can
+ * be judged at the density a real account actually reaches.
+ *
+ * THE WINDOW IS THE POINT, AND IT IS EXACT.
+ * The quiz-history endpoint serves a Free account its most recent
+ * `free_limit` sessions and flags the truncation. Timmy is `is_pro: false`
+ * with
+ * `free_limit: 10`, so the honest payload is TEN rows out of a career of 96 —
+ * not four, which was a placeholder, and not twelve, which no Free account
+ * could ever be served. The ledger's scope line therefore reads "your last 10
+ * of 96", the ten rows below it are exactly what it counted, and the Free-cap
+ * notice under them is the real one. Nothing here is inconsistent with
+ * anything else here: change `free_limit` and the row count has to move too.
+ *
+ * WHAT THE ROWS ARE FOR. Every field a row can vary by is varied, because the
+ * ledger has to stay readable when they disagree:
+ *   - the two modes the stream actually carries — practice sets (`standard`,
+ *     which carry the set name as their category) and the legacy Daily
+ *     (`daily`, which carries none) — plus one older `legacy` backfill row
+ *     with no category at all, so the neutral fallback label is on screen;
+ *   - accuracy across the ledger's full tint range: two sessions at 90%+, a
+ *     run of middling ones, and a genuine 20% so the rough tone is visible;
+ *   - question counts that are not all ten, so the score column has to hold
+ *     alignment against 5, 12 and 20;
+ *   - durations from 74 seconds to nearly nine minutes, and ONE row with none
+ *     at all, because real history has them and the column must not collapse;
+ *   - ages from today to nearly a month back, so the date column is exercised
+ *     by both a same-day and a much older stamp.
+ *
+ * Every `accuracy` equals its own `score / total_questions`. A fixture whose
+ * figures disagreed with each other would make the summary line untestable by
+ * eye, which is the one thing this data exists to support.
+ *
+ * NO RANKED ROWS, deliberately. The Ranked duel writes none of these — it has
+ * its own contract — and Ranked full history is Phase B. Inventing one here
+ * would put a record on screen that Phase A cannot honestly serve.
+ */
 export const TIMMY_QUIZ_HISTORY: QuizHistoryResponse = Object.freeze({
   ok: true,
   is_pro: false,
@@ -244,10 +342,16 @@ export const TIMMY_QUIZ_HISTORY: QuizHistoryResponse = Object.freeze({
   upsell_message: null,
   entitlement_status: "ok",
   results: [
-    { session_id: 96, date: daysAgo(0), mode: "practice", category: "Champion Cooldowns", score: 9, total_questions: 10, accuracy: 90 },
-    { session_id: 95, date: daysAgo(1), mode: "practice", category: "Item Exact Stats", score: 6, total_questions: 10, accuracy: 60 },
-    { session_id: 94, date: daysAgo(2), mode: "practice", category: "Rune Recognition", score: 8, total_questions: 10, accuracy: 80 },
-    { session_id: 93, date: daysAgo(4), mode: "practice", category: "Champion Cooldowns", score: 7, total_questions: 10, accuracy: 70 },
+    { session_id: 96, date: daysAgo(0), completed_at: daysAgo(0, 20), mode: "standard", category: "Champion Cooldowns", score: 9, total_questions: 10, accuracy: 90, duration_seconds: 214 },
+    { session_id: 95, date: daysAgo(0), completed_at: daysAgo(0, 9), mode: "daily", category: null, score: 5, total_questions: 5, accuracy: 100, duration_seconds: 96 },
+    { session_id: 94, date: daysAgo(1), completed_at: daysAgo(1, 21), mode: "standard", category: "Item Exact Stats", score: 6, total_questions: 10, accuracy: 60, duration_seconds: 331 },
+    { session_id: 93, date: daysAgo(2), completed_at: daysAgo(2, 19), mode: "standard", category: "Rune Recognition", score: 8, total_questions: 10, accuracy: 80, duration_seconds: 187 },
+    { session_id: 92, date: daysAgo(3), completed_at: daysAgo(3, 8), mode: "daily", category: null, score: 3, total_questions: 5, accuracy: 60, duration_seconds: 74 },
+    { session_id: 91, date: daysAgo(4), completed_at: daysAgo(4, 23), mode: "standard", category: "Objectives & Timers", score: 2, total_questions: 10, accuracy: 20, duration_seconds: 412 },
+    { session_id: 90, date: daysAgo(6), completed_at: daysAgo(6, 18), mode: "standard", category: "Wave Management", score: 7, total_questions: 10, accuracy: 70, duration_seconds: 268 },
+    { session_id: 89, date: daysAgo(9), completed_at: daysAgo(9, 22), mode: "standard", category: "Summoner Spells", score: 15, total_questions: 20, accuracy: 75, duration_seconds: 501 },
+    { session_id: 88, date: daysAgo(18), completed_at: daysAgo(18, 20), mode: "legacy", category: null, score: 4, total_questions: 10, accuracy: 40, duration_seconds: null },
+    { session_id: 87, date: daysAgo(26), completed_at: daysAgo(26, 17), mode: "standard", category: "Vision Control", score: 11, total_questions: 12, accuracy: 91.7, duration_seconds: 143 },
   ],
 });
 
@@ -262,6 +366,40 @@ export const NEWCOMER_QUIZ_HISTORY: QuizHistoryResponse = Object.freeze({
   results: [],
 });
 
+/**
+ * MALT — the Review pane's bank, for both demo accounts.
+ *
+ * BOTH ARE LOCKED, and that is the fixture being truthful rather than the
+ * fixture being lazy. Timmy's quiz history already carries `is_pro: false`
+ * with the Free cap applied (`limited`, 96 sessions, ten of them served), so
+ * a Pro-only missed-question bank that opened for him would be a demo account
+ * contradicting itself — and the paywall is the state a real free player
+ * meets, which makes it the one worth reviewing in place.
+ *
+ * A populated bank is a Pro state. It is covered by the Review pane's own
+ * tests and is reachable on `/quiz#review` with a Pro account; it is not
+ * invented here, because a demo that shows an entitlement the demo account
+ * does not have is exactly the kind of thing this fixture file exists to
+ * prevent.
+ */
+export const TIMMY_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze({
+  ok: true,
+  is_pro: false,
+  locked: true,
+  results: [],
+  upsell_message:
+    "Upgrade to Mogsy Pro to review every question you missed and practice your weak spots.",
+});
+
+export const NEWCOMER_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze({
+  ok: true,
+  is_pro: false,
+  locked: true,
+  results: [],
+  upsell_message:
+    "Upgrade to Mogsy Pro to review every question you missed and practice your weak spots.",
+});
+
 /** Everything one preview state needs, in the shape the hub's props expect. */
 export interface LobbyPreviewState {
   label: string;
@@ -273,6 +411,8 @@ export interface LobbyPreviewState {
   progression: RankedProgressionView | null;
   matchHistory: readonly MatchHistoryEntryView[];
   history: QuizHistoryResponse;
+  /** The Review pane's bank — see `TIMMY_MISSED_QUESTIONS`. */
+  missedQuestions: MissedQuestionsResponse;
   /** DEMO ONLY — see `TIMMY_ROLE_MASTERY`. Null for the newcomer state, which
    *  must render exactly what a real new account renders. */
   demoRoleMastery: Partial<Record<RankedRole, DemoRoleMastery>> | null;
@@ -289,6 +429,7 @@ export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState
     progression: TIMMY_PROGRESSION,
     matchHistory: TIMMY_MATCH_HISTORY,
     history: TIMMY_QUIZ_HISTORY,
+    missedQuestions: TIMMY_MISSED_QUESTIONS,
     demoRoleMastery: TIMMY_ROLE_MASTERY,
   },
   newcomer: {
@@ -301,6 +442,7 @@ export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState
     progression: null,
     matchHistory: [],
     history: NEWCOMER_QUIZ_HISTORY,
+    missedQuestions: NEWCOMER_MISSED_QUESTIONS,
     demoRoleMastery: null,
   },
 };

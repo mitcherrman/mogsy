@@ -34,6 +34,7 @@ import {
   LOBBY_PREVIEW_STATES,
   TIMMY_MATCH_HISTORY,
   TIMMY_PROGRESSION,
+  TIMMY_QUIZ_HISTORY,
   TIMMY_ROLE_MASTERY,
 } from "./lobbyPreviewFixtures";
 import { tallyRoleMastery } from "@/lib/ranked-public/roleRecords";
@@ -138,6 +139,67 @@ describe("the Role Mastery score is DEMO-ONLY", () => {
 
   it("gives the NEWCOMER none, so the empty state is the real empty state", () => {
     expect(LOBBY_PREVIEW_STATES.newcomer.demoRoleMastery).toBeNull();
+  });
+});
+
+describe("Timmy's study record — dense enough to judge, and self-consistent", () => {
+  // The ledger exists to be read at real density, so the fixture has to REACH
+  // real density. Four rows told us nothing about how ten rows sit together.
+  it("fills the Free window exactly, rather than approximating it", () => {
+    const h = TIMMY_QUIZ_HISTORY;
+    expect(h.limited).toBe(true);
+    expect(h.is_pro).toBe(false);
+    // The window is the endpoint's own rule: a Free account is served its
+    // most recent `free_limit` sessions. Ten rows, and the scope line above
+    // them counts the same ten — a fixture serving any other number would
+    // print a sentence its own rows contradict.
+    expect(h.results.length).toBe(h.free_limit);
+    expect(h.total_count).toBeGreaterThan(h.results.length);
+  });
+
+  it("states an accuracy every row can actually prove", () => {
+    // The summary line averages these. If a row's percentage disagreed with
+    // its own score the average would be unverifiable by eye, which is the
+    // one thing this data exists to support.
+    for (const r of TIMMY_QUIZ_HISTORY.results) {
+      expect(Math.round(r.accuracy)).toBe(
+        Math.round((r.score / r.total_questions) * 100),
+      );
+    }
+  });
+
+  it("varies enough to stress the ledger instead of repeating one row", () => {
+    const rows = TIMMY_QUIZ_HISTORY.results;
+    const acc = rows.map((r) => r.accuracy);
+    // The full tint range: a strong session, a middling one, and a genuinely
+    // rough one, so all three tones are on screen at once.
+    expect(Math.max(...acc)).toBeGreaterThanOrEqual(90);
+    expect(Math.min(...acc)).toBeLessThanOrEqual(30);
+    expect(acc.some((a) => a > 30 && a < 90)).toBe(true);
+    // Both modes the stream carries, plus a categoryless legacy backfill, so
+    // the neutral fallback label is exercised rather than assumed.
+    expect(rows.some((r) => r.mode === "daily")).toBe(true);
+    expect(rows.some((r) => r.mode === "standard")).toBe(true);
+    expect(rows.some((r) => !r.category)).toBe(true);
+    // Question counts that are not all ten, and one row with no duration at
+    // all — real history has them and the column must not collapse.
+    expect(new Set(rows.map((r) => r.total_questions)).size).toBeGreaterThan(2);
+    expect(rows.some((r) => r.duration_seconds == null)).toBe(true);
+    expect(rows.some((r) => (r.duration_seconds ?? 0) > 300)).toBe(true);
+    // Today through to weeks back, so the date column is exercised at both ends.
+    const stamps = rows.map((r) => new Date(r.completed_at!).getTime());
+    expect(Math.max(...stamps) - Math.min(...stamps)).toBeGreaterThan(
+      20 * 24 * 60 * 60 * 1000,
+    );
+  });
+
+  it("carries NO Ranked rows — Ranked history is Phase B", () => {
+    // The Ranked duel writes none of these; it has its own contract. A Ranked
+    // row here would put a record on screen that Phase A cannot serve.
+    for (const r of TIMMY_QUIZ_HISTORY.results) {
+      expect(r.mode).not.toBe("ranked");
+      expect(String(r.category ?? "")).not.toMatch(/ranked/i);
+    }
   });
 });
 

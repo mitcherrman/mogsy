@@ -59,7 +59,11 @@ describe("LolHistory", () => {
     getHistory.mockResolvedValue(HISTORY);
     renderPage();
     await waitFor(() => expect(screen.getByText("9/10")).toBeTruthy());
-    expect(screen.getByText("Daily Challenge")).toBeTruthy();
+    // MALT: "Daily", not "Daily Challenge". The Leaguecraft workspace renders
+    // the SAME ledger on /quiz, where spelling out the withheld module's full
+    // name would read as its entrance being back on the lobby — so one label
+    // is used for the mode on both surfaces. See `sessionLabel`.
+    expect(screen.getByText("Daily")).toBeTruthy();
     expect(screen.getByText("Item Knowledge")).toBeTruthy();
     expect(screen.queryByText("No completed quizzes yet.")).toBeNull();
   });

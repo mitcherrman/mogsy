@@ -73,6 +73,7 @@ import RankEmblem from "@/components/ranked/RankEmblem";
 import RankedClassCarousel from "@/components/quiz/RankedClassCarousel";
 import RankedPlayGem from "@/components/quiz/RankedPlayGem";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
+import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
@@ -139,47 +140,14 @@ const BASELINE_TIER: RankTier = BASELINE_RANK_TIER;
  * Scoped to the three top columns ON PURPOSE. The rest of the lobby — the
  * study panel, the section headings, the classroom behind them — is still on
  * dark and keeps the palette it already had; nothing here recolours the page.
- */
-/*
- * Every value below clears 4.5:1 against the parchment AT ITS DARKEST POINT
- * UNDER TEXT — a flanking scroll, at the inner edge where the edge shading
- * still bites: rgb(209,187,158). That is the binding case, not the sheet's
- * mid-tone, and it caps ink luminance at 0.0747.
  *
- * These values moved once already. The ageing pass darkened the sheet, and a
- * darker background does not merely shift dark ink's contrast — it REDUCES
- * it. Twelve runs that cleared 4.5:1 on the bright parchment fell as low as
- * 3.03 the moment the tone came down, so the palette is re-derived from the
- * composited background rather than carried across.
+ * The values themselves live in `@/components/quiz/leaguecraft-ink` — MALT
+ * moved them there when the study workspace became the THIRD surface that
+ * would otherwise have hand-copied a palette. Every one clears 4.5:1 against
+ * the parchment at its darkest point under text; the derivation, and the
+ * reason it must be re-run after any tone change, is stated with them.
  */
-const INK = {
-  /** Headlines and figures: the darkest thing on the sheet. */
-  strong: "#241708",
-  /** Body copy and secondary lines. */
-  body: "#3f2c14",
-  /** Labels, captions, the quietest readable line. Still the quietest — it
-   *  has to stay LIGHTER than `body`, which the first retune inverted. */
-  faint: "#56412a",
-  /** Section headings. Between `strong` and `brass`: dark enough to hold the
-   *  top of the hierarchy on the sheet, warm enough to still read as a
-   *  manuscript header rather than as body copy in caps. */
-  heading: "#3a2708",
-  /** Brass, dropped from a glow to a pigment so it reads on beige. */
-  brass: "#533808",
-  /** The interactive accent. The lobby's cyan, taken to a depth that holds
-   *  against parchment instead of vanishing into it. */
-  accent: "#08404f",
-  /** Hairlines and tile borders, in the sheet's own brown. Carried down with
-   *  the sheet's tone so the tiles do not dissolve into the darker beige. */
-  rule: "rgba(96, 68, 28, 0.5)",
-  /** A tile a shade deeper than the sheet, for grouped rows. */
-  inset: "rgba(112, 82, 36, 0.16)",
-  /** The press. One hairline of parchment-coloured light above each glyph,
-   *  which is what a letterpress leaves behind and what separates ink that
-   *  was printed ONTO the sheet from text that is merely sitting over it.
-   *  Kept to a single sub-pixel offset: any more and it reads as a glow. */
-  press: "0 1px 0 rgba(255, 249, 233, 0.5)",
-} as const;
+const INK = LEAGUECRAFT_INK;
 
 const OUTCOME_STYLE: Record<MatchHistoryEntryView["viewerOutcome"], { label: string; className: string }> = {
   win: { label: "Victory", className: "text-[#0d3f28]" },
@@ -726,7 +694,15 @@ export default function RankedLobbyHero({
             size="sm"
             className="h-6 text-[11.5px] font-semibold text-[#3f2c14] hover:bg-[#60442024] hover:text-[#241708]"
           >
-            <Link to="/lol/history">Full history</Link>
+            {/* MALT: it said "Full history" and pointed at `/lol/history`,
+                one row under "Ranked matches" — and `/lol/history` holds ZERO
+                Ranked records. Read next to that row it promised a Ranked
+                career this destination cannot show. It is named for what it
+                actually opens (the study record) and points at the lobby's
+                own History workspace, which is now on the page. It is NOT
+                relabelled as Ranked history: there is no Ranked history
+                surface to send anyone to yet. */}
+            <Link to="/quiz#history">Study history</Link>
           </Button>
         </div>
         </LobbyPanel>

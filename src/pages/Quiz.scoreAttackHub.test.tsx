@@ -81,7 +81,9 @@ async function renderHub() {
       <QuizPage />
     </MemoryRouter>,
   );
-  await waitFor(() => expect(screen.getByText("Item Build Paths")).toBeTruthy());
+  // The set name used to be the "hub is up" signal, via the practice tiles.
+  // That panel is withheld now, so it waits on the Leaguecraft Record.
+  await waitFor(() => expect(screen.getByTestId("leaguecraft-workspace")).toBeTruthy());
   return utils;
 }
 
@@ -125,7 +127,9 @@ describe("Leaguecraft hub — daily modes withheld", () => {
     expect(screen.queryByText("Daily Challenge")).not.toBeInTheDocument();
     // The Ranked-first loop occupies the space the daily pair used to hold.
     expect(screen.getByTestId("hub-ranked-section")).toBeInTheDocument();
-    expect(screen.getByTestId("hub-practice-section")).toBeInTheDocument();
+    // The Practice panel is withheld; the Leaguecraft Record is what fills
+    // the lower half of the lobby now.
+    expect(screen.getByTestId("hub-record-section")).toBeInTheDocument();
   });
 
   it("does not surface a terminal official run on the hub either", async () => {

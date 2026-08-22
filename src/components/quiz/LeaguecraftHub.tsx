@@ -1,15 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import { BookOpen, ChevronRight, HelpCircle, RotateCcw, RotateCw, ScrollText } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ChevronRight, HelpCircle, Library, RotateCcw, ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
-import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
 import RankedPlayScroll from "@/components/quiz/play-scroll/RankedPlayScroll";
+ 
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+
+import LeaguecraftWorkspace, {
+  parseWorkspaceHash,
+  workspaceHash,
+  type WorkspaceMode,
+} from "@/components/quiz/workspace/LeaguecraftWorkspace";
+import StudyHistoryLedger from "@/components/quiz/workspace/StudyHistoryLedger";
+import MissedQuestionsReview from "@/components/quiz/workspace/MissedQuestionsReview";
+import { SectionHeading } from "@/components/quiz/workspace/primitives";
+import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
+import { authHref } from "@/lib/auth/auth-destination";
+
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { DailyChallengeState, RankedState } from "@/lib/quiz/featured-mock";
 import type { PlayModeVisibility } from "@/lib/quiz/playModes";
@@ -159,7 +171,9 @@ export default function LeaguecraftHub({
   history,
   historyLoading,
   historyError,
-  showMastery = true,
+  showPractice = false,
+  rankedHistoryPreview,
+  reviewState,
   rankedRole = null,
   onSelectRankedRole,
   roleSelectDisabled = false,
@@ -262,7 +276,34 @@ export default function LeaguecraftHub({
   history: QuizHistoryResponse | null;
   historyLoading: boolean;
   historyError: string | null;
-  showMastery?: boolean;
+  /**
+   * Render the withheld "Practice for Ranked" panel.
+   *
+   * Default OFF. The category rail above it is becoming Leaguecraft's
+   * practice selector, and until it opens the panel was a second, louder
+   * navigation to the same six subjects. `HUB_MODULES.practicePanel` in
+   * `Quiz.tsx` is the switch; the sets, their counts and the start action are
+   * all still here behind it, and no practice route changed.
+   */
+  showPractice?: boolean;
+  /**
+   * PHASE B DESIGN PREVIEW — Ranked duels inside the Leaguecraft Record.
+   *
+   * Deliberately NOT `matchHistory`. This component already receives the
+   * account's real Ranked rows for the centre parchment's own ledger, and
+   * forwarding those here would ship Ranked history rather than preview it.
+   * `Quiz.tsx` passes nothing; `/dev/lobby-preview` passes frozen fixtures, so
+   * the treatment can be judged against the study rows it must live beside
+   * without any production surface claiming Phase B is done.
+   */
+  rankedHistoryPreview?: readonly MatchHistoryEntryView[];
+  /**
+   * MALT: a pre-resolved missed-question bank for the Review pane, for a host
+   * that must not fetch. `/dev/lobby-preview` is the only caller — its whole
+   * contract is that it reads no account. `Quiz.tsx` passes nothing and the
+   * pane loads the real bank the moment a reader opens Review.
+   */
+  reviewState?: MissedQuestionsState;
 }) {
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
   const secondarySets = sets.filter((s) => s.id !== primarySet?.id);
@@ -273,12 +314,59 @@ export default function LeaguecraftHub({
   // whatever had focus when the dialog mounted — `document.body` on every
   // browser that does not focus a button on click.
   const playSealRef = useRef<HTMLButtonElement | null>(null);
-  /**
-   * The Practice section, so the record can send a player to it by NAME
-   * rather than by pixel. The section already existed and already had its own
-   * heading; this is a ref on it and nothing more.
-   */
-  const practiceSectionRef = useRef<HTMLElement | null>(null);
+  /* ─── MALT: THE HISTORY / REVIEW WORKSPACE ──────────────────────────────
+     The lower workspace's open pane is ADDRESSABLE — `/quiz#history` and
+     `/quiz#review` — so a link from anywhere in the product can open the
+     record on the question it means, and so the back button undoes a tab
+     switch instead of leaving the page.
+
+     The hash is the single source of truth and local state is only its
+     fallback, which is what keeps back/forward honest: a `navigate` on a tab
+     press pushes an entry, and popping it re-reads the hash below rather than
+     restoring a stale piece of component state. No router change is involved
+     — this is the hash the router already carries.
+
+     ONLY AN EXPLICIT HASH SCROLLS. A reader who merely lands on /quiz must
+     not be thrown past the ceremonial first screen they arrived for, so
+     arrival scrolls only when the URL actually named a pane, and only once
+     per hash. */
+  const { hash } = useLocation();
+  const navigate = useNavigate();
+  const workspaceSectionRef = useRef<HTMLElement | null>(null);
+  const hashMode = useMemo(() => parseWorkspaceHash(hash), [hash]);
+  const [localMode, setLocalMode] = useState<WorkspaceMode>("history");
+  const workspaceMode = hashMode ?? localMode;
+  const arrivedFor = useRef<WorkspaceMode | null>(null);
+
+  useEffect(() => {
+    if (!hashMode) {
+      arrivedFor.current = null;
+      return;
+    }
+    setLocalMode(hashMode);
+    if (arrivedFor.current === hashMode) return;
+    arrivedFor.current = hashMode;
+    goToSection(workspaceSectionRef.current);
+  }, [hashMode]);
+
+  /** Open a pane FROM THE PAGE — a tab press, or Recent Studies' own footer.
+   *  Writes the hash so the pane is shareable and the press is undoable. */
+  const openWorkspace = useCallback(
+    (mode: WorkspaceMode) => {
+      setLocalMode(mode);
+      // Re-selecting the pane that is already open must still travel — the
+      // Recent Studies footer's whole job is to take the reader there — but
+      // must not stack another identical history entry to back out of.
+      if (hashMode === mode) {
+        goToSection(workspaceSectionRef.current);
+        return;
+      }
+      arrivedFor.current = mode;
+      navigate(workspaceHash(mode));
+      goToSection(workspaceSectionRef.current);
+    },
+    [hashMode, navigate],
+  );
 
   /**
    * PLAY: commit the chosen role, then open the record.
@@ -339,40 +427,34 @@ export default function LeaguecraftHub({
   const closePlay = useCallback(() => setPlayOpen(false), []);
 
   /**
-   * The record's Practice handoff: close, then travel.
+   * The record's Practice handoff — and what changed under it.
    *
-   * NO PHASE CHANGE IS NEEDED. This whole component only renders under the
-   * page's `sets` phase, and the record renders inside it — so if the record
-   * is open, the lobby is already the thing underneath and Practice is
-   * already on the page.
+   * On a finished Daily Challenge the record offers "Play practice questions
+   * to improve". It used to CLOSE and then SCROLL to the Practice panel
+   * further down the lobby, deliberately stopping short of starting anything.
    *
-   * THE MOVE CANNOT HAPPEN IN THE CLICK, AND IT CANNOT HAPPEN A FRAME LATER.
-   * The record is a Radix dialog, and closing one tears down two things that
-   * both fight this: a focus scope that restores focus to whatever it
-   * captured, and a scroll lock that owns `body`'s overflow while the dialog
-   * is up. Both run during the unmount commit. Measured in Chrome: scrolling
-   * and focusing from a `requestAnimationFrame` scheduled in the click ran
-   * BEFORE that teardown finished, and the page was left exactly where it
-   * started with focus nowhere — the handoff silently did nothing, while the
-   * same code passed in jsdom, which has neither mechanism.
+   * That panel is withheld now (see `showPractice`), so scrolling would take
+   * the reader to nothing at all — a handoff that silently does nothing is
+   * the exact defect the original scroll machinery existed to prevent. The
+   * entry therefore does what its own label has always said: it STARTS the
+   * catalog-wide practice set, in place, the same way the panel's primary
+   * action did.
    *
-   * So the flag is set here and the move is done in an effect below, which
-   * React runs after the unmount is committed and every child cleanup has
-   * already gone. That is an ordering guarantee rather than a delay long
-   * enough to probably win.
+   * The deferred-scroll machinery it replaces is gone with it. That existed
+   * because Radix's focus scope and scroll lock tear down during the record's
+   * unmount and would have eaten a scroll scheduled from the click. A phase
+   * change has no such race — it is the same synchronous shape the Daily
+   * Challenge entry beside it already uses — so the ref, the effect and the
+   * frame-ordering note are no longer carrying anything.
+   *
+   * When the catalog has not loaded there is no set to start, and the entry
+   * does nothing rather than starting a set that is not there. The panel's
+   * own action had the same floor.
    */
-  const pendingPracticeRef = useRef(false);
-
   const goToPractice = useCallback(() => {
-    pendingPracticeRef.current = true;
-  }, []);
-
-  useEffect(() => {
-    if (playOpen) return;
-    if (!pendingPracticeRef.current) return;
-    pendingPracticeRef.current = false;
-    goToSection(practiceSectionRef.current);
-  }, [playOpen]);
+    if (!primarySet) return;
+    onSelectSet(primarySet);
+  }, [onSelectSet, primarySet]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -408,7 +490,30 @@ export default function LeaguecraftHub({
           back, so it is that plus the same `pt-4` (2.5rem). Below `lg` there
           is no min-height at all — the stacked rack is already several
           viewports tall and the fold means nothing there. */}
-      <div className="flex flex-col gap-2 lg:min-h-[calc(100dvh_-_2.25rem)] xl:min-h-[calc(100dvh_-_0.75rem)]">
+      {/* THE RESERVE IS NOW HEIGHT-AWARE, and that is the whole change.
+          A flat `100dvh` reserve did one job well and one job badly. On a
+          SHORT desktop it is what makes the rack and rail read as a composed
+          screen that ends. On a TALL one the rack+rail only reach ~820px, so
+          the same rule reserved everything above that as empty classroom —
+          measured at 268px of dead background at 1920x1080 — purely to keep
+          the record out of sight. That is a worse defect than the peeking it
+          was preventing.
+
+          So the reserve is bounded by a HEIGHT query rather than removed: it
+          still applies below 880px tall, where the composition genuinely
+          needs it and the record still lands at or below the fold; above that
+          it is not emitted at all and the record simply follows the rail at a
+          fixed, natural distance (see the record's own top margin). 880px is
+          the crossover because the composition bottoms out around 820: every
+          supported short desktop (800, 832, 864) stays under it, and the dead
+          band never gets a chance to grow past ~60px.
+
+          The height condition is stacked INSIDE the width variant on purpose.
+          Written as a separate `min-h-0` override it would depend on Tailwind
+          emitting it after the `xl:` rule, which is an ordering assumption
+          rather than a guarantee; as one nested query there is exactly one
+          rule per breakpoint and nothing to lose a specificity race with. */}
+      <div className="flex flex-col gap-2 lg:[@media(max-height:879px)]:min-h-[calc(100dvh_-_2.25rem)] xl:[@media(max-height:879px)]:min-h-[calc(100dvh_-_0.75rem)]">
       <section className="w-full" data-testid="hub-ranked-section">
         <RankedLobbyHero
           progress={progress}
@@ -461,129 +566,148 @@ export default function LeaguecraftHub({
       </div>
       </div>
 
-      {/* 3 ── Secondary row: where I've been, and where else I can study.
-              Both panels are short by construction — no auto-rows-fr, no
-              stretched tile grid — so the classroom reads around them. The
-              rule and the extra top margin push the row below the lobby's
-              fold: the three-column hero owns the upper screen, and these
-              stay fully reachable one scroll down.
+      {/* 3 ── Practice for Ranked — WITHHELD, not deleted.
+              ──────────────────────────────────────────────
+              The category rail directly above is becoming Leaguecraft's
+              practice selector. Until it opens, this panel and the rail were
+              two navigations to the same six subjects stacked on top of each
+              other, and the temporary one was the louder of the two — so the
+              panel is hidden and the rail is left to inherit the job.
 
-              LC1 panel pass: now that the lobby columns sit on their own
-              plates, the row no longer needs a wide moat to read as separate —
-              the panels do that. The rule stays (it is what makes this a
-              second act rather than more hero), the gap shrinks, and the top
-              of Recent Studies reaches the first viewport on a normal desktop
-              instead of starting entirely below it. */}
-      <div
-        data-testid="hub-workspace"
-        /* The rule that used to open this row is gone: the RAIL above is the
-           rule now, and a hairline immediately under the rail's own bottom
-           edge read as a double line. The `pt-3` stays — it is also what keeps
-           the first content clear of the rail at the moment it pins. */
-        className="mt-3 grid grid-cols-1 gap-3 pt-1 lg:grid-cols-12"
-      >
-        <section className="flex flex-col lg:col-span-7" data-testid="hub-recent-section">
-          <SectionHeading icon={RotateCw} title="Recent Studies" hint="How am I doing?" />
-          {/* The empty state opens PRACTICE, not Ranked. A Ranked match never
-              produces a row in this card (see its header comment), so the old
-              "Play Ranked" button was pointing at the one activity whose
-              result would never show up in the thing it was empty. It opens
-              the same set the panel's own primary action does, and falls back
-              to nothing at all when the catalog has not loaded — never to a
-              dead button. */}
-          <QuizRecentResultsCard
-            history={history}
-            loading={historyLoading}
-            error={historyError}
-            onStartPractice={primarySet ? () => onSelectSet(primarySet) : undefined}
-            hideHeader
-            className="mt-1.5 flex-1"
-          />
-        </section>
+              INTACT AND RESTORABLE, in the same shape the rest of the page's
+              withheld modules take: the sets, their real question counts and
+              the start action are all still here, and `HUB_MODULES.practicePanel`
+              in `Quiz.tsx` is the one switch. The ROUTES and the question sets
+              are untouched — nothing about practice stopped working, it simply
+              stopped having a second doorway on this page.
 
-        {/* 3b ─ Study: Practice + Mastery, demoted to one compact panel. The
-                routes and sets are untouched — only their visual weight. */}
-        {/* `tabIndex={-1}` makes the section focusable PROGRAMMATICALLY and
-            never a tab stop, which is what lets the Practice handoff land the
-            player on the landmark rather than at a scroll offset. */}
-        <section
-          ref={practiceSectionRef}
-          tabIndex={-1}
-          className="flex flex-col outline-none lg:col-span-5"
-          data-testid="hub-practice-section"
+              Recent Studies used to share this row. It is gone rather than
+              hidden: it was a three-row preview of the very same payload the
+              Leaguecraft Record's History ledger now prints in full, and two
+              renderings of one record is the duplication this pass exists to
+              remove. Everything it did that the ledger did not — the session
+              summary, the practice call to action on an empty record, the
+              sign-in state — moved into the ledger. */}
+      {showPractice && (
+        <div
+          data-testid="hub-workspace"
+          className="mt-3 grid grid-cols-1 gap-3 pt-1 lg:grid-cols-12"
         >
-          <SectionHeading
-            icon={ScrollText}
-            title="Practice for Ranked"
-            hint="Sharpen the knowledge used in Ranked."
-          />
-          {/* The six subjects used to head this panel. They are the RAIL above
-              now — the same six icons at the width they actually apply to —
-              so the panel is only the ways IN, and the overview and the doors
-              no longer share a box. */}
-          <LobbyPanel className="mt-1.5 gap-2">
-            {setsLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-full rounded-md" />
-                <Skeleton className="h-16 w-full rounded-md" />
-              </div>
-            ) : sets.length === 0 ? (
-              <div className="flex flex-col items-start gap-2 py-2" data-testid="practice-empty">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <HelpCircle className="h-4 w-4" />
-                  No quiz sets available right now.
+          <section
+            className="flex flex-col lg:col-span-7"
+            data-testid="hub-practice-section"
+          >
+            <SectionHeading
+              icon={ScrollText}
+              title="Practice for Ranked"
+              hint="Sharpen the knowledge used in Ranked."
+            />
+            <LobbyPanel className="mt-1.5 gap-2">
+              {setsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-full rounded-md" />
+                  <Skeleton className="h-16 w-full rounded-md" />
                 </div>
-                <Button onClick={onRefreshSets} variant="ghost" size="sm" className="text-xs">
-                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                  Refresh
-                </Button>
-              </div>
-            ) : (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-2">
-                {primarySet && (
-                  <Button
-                    onClick={() => onSelectSet(primarySet)}
-                    data-testid="practice-primary-cta"
-                    variant="ghost"
-                    className="h-8 w-full justify-between border border-[#c9a84c]/30 px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2c877] hover:bg-[#c9a84c]/12 hover:text-[#f0d78c]"
-                  >
-                    Practice Questions
-                    <ChevronRight className="h-3.5 w-3.5" />
+              ) : sets.length === 0 ? (
+                <div className="flex flex-col items-start gap-2 py-2" data-testid="practice-empty">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <HelpCircle className="h-4 w-4" />
+                    No quiz sets available right now.
+                  </div>
+                  <Button onClick={onRefreshSets} variant="ghost" size="sm" className="text-xs">
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                    Refresh
                   </Button>
-                )}
-                {/* The remaining sets as one-line chips: still every set, still
-                    the same start action, at a fraction of the old grid's
-                    visual weight. */}
-                <div className="flex flex-col gap-1" data-testid="practice-tiles">
-                  {primarySet && <PracticeTile set={primarySet} onSelect={() => onSelectSet(primarySet)} />}
-                  {secondarySets.map((set) => (
-                    <PracticeTile key={set.id} set={set} onSelect={() => onSelectSet(set)} />
-                  ))}
                 </div>
-              </motion.div>
-            )}
+              ) : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-2">
+                  {primarySet && (
+                    <Button
+                      onClick={() => onSelectSet(primarySet)}
+                      data-testid="practice-primary-cta"
+                      variant="ghost"
+                      className="h-8 w-full justify-between border border-[#c9a84c]/30 px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2c877] hover:bg-[#c9a84c]/12 hover:text-[#f0d78c]"
+                    >
+                      Practice Questions
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {/* The remaining sets as one-line chips: still every set, still
+                      the same start action, at a fraction of the old grid's
+                      visual weight. */}
+                  <div className="flex flex-col gap-1" data-testid="practice-tiles">
+                    {primarySet && <PracticeTile set={primarySet} onSelect={() => onSelectSet(primarySet)} />}
+                    {secondarySets.map((set) => (
+                      <PracticeTile key={set.id} set={set} onSelect={() => onSelectSet(set)} />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </LobbyPanel>
+          </section>
+        </div>
+      )}
 
-            {/* Mastery — the quietest line on the page, inside the study panel
-                rather than as its own full-width band. */}
-            {showMastery && (
-              <Link
-                to="/quiz/mastery"
-                data-testid="hub-mastery-link"
-                className="group mt-auto flex items-center gap-2 rounded-md border border-[#c9a84c]/15 px-2.5 py-1.5 transition-colors hover:border-[#c9a84c]/35 hover:bg-[#c9a84c]/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <BookOpen className="h-3.5 w-3.5 shrink-0 text-[#c9a84c]/75" aria-hidden="true" />
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.2em] text-[#c9a84c]/80">
-                  Mastery Journey
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
-                  Guided champion progressions
-                </span>
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-              </Link>
-            )}
-          </LobbyPanel>
-        </section>
-      </div>
+
+      {/* 4 ── The record. History and Review, the two questions a player asks
+              AFTER a session rather than before one, so it sits below the row
+              that offers the next one.
+
+              It is deliberately the page's deepest section: the ceremonial
+              first screen is what the lobby is for, the secondary row is how
+              you get back into it, and this is where you go to study what
+              already happened. `tabIndex={-1}` makes the section focusable
+              programmatically and never a tab stop, which is what lets a
+              `#history` link land a reader on the landmark rather than at a
+              scroll offset. */}
+      {/* The seam under the rail is the ROOT's `gap-3` and nothing else.
+          It used to be that gap PLUS this section's own `mt-3`, which read as
+          a break between two pages rather than as one system continuing. The
+          first screen's `min-h` still holds the record below the fold, so the
+          band above it is whatever that reserve leaves — see the note there. */}
+      {/* On a SHORT screen the seam is the root's `gap-3` and the reserve
+          above supplies the rest, so the record lands at or below the fold.
+          On a TALL screen there is no reserve, so the record would otherwise
+          sit 12px under the rail — too tight to read as its own section. The
+          extra 24px is added under the SAME height query that drops the
+          reserve, which puts the gap at 36px there: enough to separate the
+          record from the rail, little enough that they still read as one
+          continuous system. */}
+      <section
+        ref={workspaceSectionRef}
+        tabIndex={-1}
+        className="flex flex-col outline-none [@media(min-height:880px)]:mt-6"
+        data-testid="hub-record-section"
+        aria-label="Leaguecraft record"
+      >
+        <SectionHeading
+          icon={Library}
+          title="Leaguecraft Record"
+          hint="What I have studied, and what I got wrong."
+        />
+        <LeaguecraftWorkspace
+          className="mt-1.5"
+          mode={workspaceMode}
+          onModeChange={openWorkspace}
+          history={
+            <StudyHistoryLedger
+              history={history}
+              loading={historyLoading}
+              error={historyError}
+              /* The lobby's ONE empty-record action, inherited from the Recent
+                 Studies card: it opens the catalog-wide practice set in place,
+                 never a Ranked match. */
+              onStartPractice={primarySet ? () => onSelectSet(primarySet) : undefined}
+              rankedEntries={rankedHistoryPreview}
+              signInHref={authHref("/quiz#history")}
+            />
+          }
+          /* Mounted only while Review is the open pane — the missed-question
+             bank is Pro-gated and must not be read on every lobby load by a
+             reader who never opens it. */
+          review={<MissedQuestionsReview enabled={workspaceMode === "review"} state={reviewState} />}
+        />
+      </section>
 
       {/* The match-entry record. Mounted only while it is open, so the Ranked
           queue is polled and the Academy roster is read only when the player
@@ -609,26 +733,6 @@ export default function LeaguecraftHub({
           onPlayPractice={goToPractice}
         />
       )}
-    </div>
-  );
-}
-
-function SectionHeading({
-  icon: Icon,
-  title,
-  hint,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  hint: string;
-}) {
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-      <h2 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-[#e2c877]/85">
-        <Icon className="h-3 w-3 text-[#c9a84c]/70" aria-hidden="true" />
-        {title}
-      </h2>
-      <p className="text-[10px] text-muted-foreground">{hint}</p>
     </div>
   );
 }

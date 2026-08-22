@@ -100,12 +100,12 @@ async function renderHub() {
       <LocationProbe />
     </MemoryRouter>,
   );
-  // Wait on the practice tiles, not on a set name: category names such as
-  // "Item Knowledge" legitimately appear in the history rows too.
+  // Wait on the Leaguecraft Record, not on a set name: category names such as
+  // "Item Knowledge" legitimately appear in the history rows too. The practice
+  // tiles used to be this signal; the panel that held them is withheld now
+  // (HUB_MODULES.practicePanel), so the record is the stable landmark.
   await waitFor(() =>
-    expect(utils.container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(
-      SETS.length,
-    ),
+    expect(utils.container.querySelector('[data-testid="leaguecraft-workspace"]')).not.toBeNull(),
   );
   return utils;
 }
@@ -194,21 +194,54 @@ describe("Leaguecraft hub — top chrome", () => {
 });
 
 describe("Leaguecraft hub — hierarchy", () => {
-  it("orders Ranked hero → Recent Studies → the demoted Practice panel", async () => {
+  // The consolidation pass: the lobby reads Ranked → rail → ONE record.
+  it("orders Ranked hero → category rail → the Leaguecraft Record, and nothing between", async () => {
     const { container } = await renderHub();
     const ranked = container.querySelector('[data-testid="hub-ranked-section"]')!;
-    const recent = container.querySelector('[data-testid="hub-recent-section"]')!;
-    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
-    for (const el of [ranked, recent, practice]) expect(el).not.toBeNull();
+    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
+    const record = container.querySelector('[data-testid="hub-record-section"]')!;
+    for (const el of [ranked, rail, record]) expect(el).not.toBeNull();
     const follows = (a: Element, b: Element) =>
       a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
-    expect(follows(ranked, recent)).toBeTruthy();
-    expect(follows(recent, practice)).toBeTruthy();
+    expect(follows(ranked, rail)).toBeTruthy();
+    expect(follows(rail, record)).toBeTruthy();
     expect(ranked.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
-    // Mastery no longer gets a band of its own: it lives inside the study
-    // panel, below Practice, as the quietest link on the page.
+    // Mastery has never had a band of its own and still does not: it is one
+    // quiet link, now in the lobby's utility line rather than inside the
+    // withheld Practice panel — /quiz is the only entrance to the route.
     expect(container.querySelector('[data-testid="hub-mastery-section"]')).toBeNull();
-    expect(practice.querySelector('[data-testid="hub-mastery-link"]')).not.toBeNull();
+    const utility = container.querySelector('[data-testid="hub-utility-line"]')!;
+    expect(utility.querySelector('[data-testid="hub-mastery-link"]')).not.toBeNull();
+  });
+
+  it("no longer renders a standalone Recent Studies module", async () => {
+    // It was a three-row preview of the payload the record's History ledger
+    // prints in full. Two renderings of one record is the duplication this
+    // pass removed — so there is no second preview, no second heading and no
+    // second "view full history" action anywhere on the page.
+    const { container } = await renderHub();
+    expect(container.querySelector('[data-testid="hub-recent-section"]')).toBeNull();
+    expect(container.querySelector('[data-testid="recent-results-card"]')).toBeNull();
+    expect(container.querySelector('[data-testid="history-row"]')).toBeNull();
+    expect(screen.queryByText("Recent Studies")).toBeNull();
+    expect(screen.queryByText(/View full history/)).toBeNull();
+    // …and the record itself is present exactly once.
+    expect(container.querySelectorAll('[data-testid="leaguecraft-workspace"]').length).toBe(1);
+  });
+
+  it("withholds the Practice for Ranked panel without touching practice itself", async () => {
+    // The category rail above is becoming the practice selector; until it
+    // opens, the panel was a second navigation to the same six subjects.
+    const { container } = await renderHub();
+    expect(container.querySelector('[data-testid="hub-practice-section"]')).toBeNull();
+    expect(container.querySelector('[data-testid="practice-tiles"]')).toBeNull();
+    expect(container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(0);
+    expect(container.querySelector('[data-testid="practice-primary-cta"]')).toBeNull();
+    expect(screen.queryByText("Practice for Ranked")).toBeNull();
+    // Hidden, never replaced: no substitute practice navigation appeared, and
+    // the rail stays the inert overview it was.
+    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
+    expect(rail.querySelectorAll("button, a, [role='button']").length).toBe(0);
   });
 
   it("the Ranked hero keeps the personal records ledger + profile link", async () => {
@@ -271,18 +304,20 @@ describe("Leaguecraft hub — category rail", () => {
     expect(container.querySelectorAll('[data-testid="quiz-category-rail-tile"]').length).toBe(6);
   });
 
-  it("no longer renders the strip inside the Practice panel", async () => {
+  it("is the page's only copy of the six subjects", async () => {
+    // The strip that used to head the Practice panel is gone, and so is the
+    // panel — the rail is the single surface carrying the categories.
     const { container } = await renderHub();
     expect(container.querySelector('[data-testid="quiz-category-strip"]')).toBeNull();
-    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
-    expect(practice.querySelector('[data-testid="quiz-category-rail"]')).toBeNull();
+    expect(container.querySelectorAll('[data-testid="quiz-category-rail"]').length).toBe(1);
   });
 
   it("sits between the lobby and the workspace, at the composition's full width", async () => {
     const { container } = await renderHub();
     const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
     const lobby = container.querySelector('[data-testid="hub-ranked-section"]')!;
-    const workspace = container.querySelector('[data-testid="hub-workspace"]')!;
+    // The workspace below the rail IS the Leaguecraft Record now.
+    const workspace = container.querySelector('[data-testid="hub-record-section"]')!;
     // DOM order IS reading order and tab order: lobby → rail → workspace.
     expect(lobby.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(rail.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -306,7 +341,8 @@ describe("Leaguecraft hub — category rail", () => {
     const { container } = await renderHub();
     const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
     const lobby = container.querySelector('[data-testid="hub-ranked-section"]')!;
-    const workspace = container.querySelector('[data-testid="hub-workspace"]')!;
+    // The workspace below the rail IS the Leaguecraft Record now.
+    const workspace = container.querySelector('[data-testid="hub-record-section"]')!;
     const firstScreen = lobby.parentElement!;
     // Rack and rail together, workspace outside — the wrapper is what holds
     // the fold, so the workspace must not be inside it.
@@ -316,90 +352,118 @@ describe("Leaguecraft hub — category rail", () => {
     expect(firstScreen.lastElementChild!.contains(rail)).toBe(true);
   });
 
-  it("holds the first screen to the viewport so the workspace starts below it", async () => {
+  // The reserve that holds the first screen together is HEIGHT-AWARE now.
+  // A flat 100dvh reserve is right on a short desktop and wrong on a tall
+  // one, where the rack and rail reach only ~820px and everything above that
+  // became empty classroom (268px measured at 1920x1080) purely to keep the
+  // record out of sight. Below 880px tall it still applies; above it the
+  // record follows the rail at a fixed distance instead.
+  it("reserves the first screen on SHORT desktops only", async () => {
     const { container } = await renderHub();
     const firstScreen = container.querySelector('[data-testid="hub-ranked-section"]')!.parentElement!;
     // Only from lg: below it the rack is stacked and several viewports tall,
     // where a min-height would mean nothing and a fold does not exist.
-    expect(firstScreen.className).toContain("lg:min-h-[calc(100dvh_-_2.25rem)]");
-    expect(firstScreen.className).toContain("xl:min-h-[calc(100dvh_-_0.75rem)]");
+    expect(firstScreen.className).toContain(
+      "lg:[@media(max-height:879px)]:min-h-[calc(100dvh_-_2.25rem)]",
+    );
+    expect(firstScreen.className).toContain(
+      "xl:[@media(max-height:879px)]:min-h-[calc(100dvh_-_0.75rem)]",
+    );
+    // Never unconditional: an unprefixed min-h would reserve the band at
+    // every height and bring the dead desert back.
     expect(firstScreen.className).not.toMatch(/(^|\s)min-h-/);
     // The seam inside it is TIGHTER than the gap to the workspace outside it
     // (the root's gap-3), which is what makes rack+rail read as one thing.
     expect(firstScreen.className).toContain("gap-2");
   });
-});
 
-describe("Leaguecraft hub — Practice for Ranked", () => {
-  it("states its purpose and offers one primary action", async () => {
-    await renderHub();
-    expect(screen.getByRole("heading", { name: /Practice for Ranked/i })).toBeTruthy();
-    expect(screen.getByText("Sharpen the knowledge used in Ranked.")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("practice-primary-cta"));
-    await waitFor(() =>
-      expect(questionsMock).toHaveBeenCalledWith("All Current Questions", 10),
-    );
-  });
-
-  it("keeps every category compact, with its real question count and start action", async () => {
+  it("gives the record its own breathing room exactly where the reserve stops", async () => {
+    // Without the reserve the record would sit 12px under the rail — too
+    // tight to read as its own section. The extra margin is bound to the SAME
+    // height query, so the two can never disagree about which regime is on.
     const { container } = await renderHub();
-    const tiles = Array.from(container.querySelectorAll('[data-testid="practice-tile"]'));
-    expect(tiles.length).toBe(SETS.length);
-    // Real counts from the catalog, not invented numbers.
-    const tileText = container.querySelector('[data-testid="practice-tiles"]')!.textContent!;
-    expect(tileText).toContain("1,260 Q");
-    expect(tileText).toContain("606 Q");
-    const championTile = tiles.find((t) => t.textContent?.includes("Champion Basics"))!;
-    fireEvent.click(championTile);
-    await waitFor(() => expect(questionsMock).toHaveBeenCalledWith("Champion Basics", 10));
+    const record = container.querySelector('[data-testid="hub-record-section"]')!;
+    expect(record.className).toContain("[@media(min-height:880px)]:mt-6");
+    expect(record.className).not.toMatch(/(^|\s)mt-/);
   });
 });
 
-describe("Leaguecraft hub — Recent Studies", () => {
-  it("uses the real history data and the real history route", async () => {
+describe("Leaguecraft hub — the Leaguecraft Record", () => {
+  it("is the ONE study record: the full ledger, on the page, from real data", async () => {
     const { container } = await renderHub();
-    expect(screen.getByRole("heading", { name: /Recent Studies/i })).toBeTruthy();
-    expect(screen.getByText("How am I doing?")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Leaguecraft Record/i })).toBeTruthy();
     await waitFor(() =>
-      expect(container.querySelectorAll('[data-testid="history-row"]').length).toBe(3),
+      expect(container.querySelectorAll('[data-testid="study-history-row"]').length).toBe(
+        HISTORY.results.length,
+      ),
     );
-    const rows = container.querySelectorAll('[data-testid="history-row"]');
+    const rows = container.querySelectorAll('[data-testid="study-history-row"]');
     expect(rows[0].textContent).toContain("Item Knowledge");
     expect(rows[0].textContent).toContain("8/10");
     expect(rows[0].textContent).toContain("80%");
+    // "Daily", never the withheld module's full name; a legacy row falls back
+    // to the neutral label rather than inventing a category.
     expect(rows[1].textContent).toContain("Daily");
-    expect(rows[2].textContent).toContain("2/10");
-    expect(
-      screen.getByRole("link", { name: /View full history/ }).getAttribute("href"),
-    ).toBe("/lol/history");
+    expect(rows[2].textContent).toContain("Champion Basics");
+    // Every row is printed once — there is no preview of the same payload
+    // above it any more.
+    expect(container.querySelectorAll('[data-testid="history-row"]').length).toBe(0);
+    // The summary the Recent Studies card carried, folded into one line.
+    const scope = screen.getByTestId("study-history-scope").textContent!;
+    expect(scope).toContain("12");
+    expect(scope).toMatch(/average/);
+    expect(scope).toMatch(/best/);
   });
 
-  it("shows the honest empty state, whose CTA opens PRACTICE and not Ranked", async () => {
-    // Recent Studies is practice-only: a Ranked match writes no row into this
-    // card, so its empty state must not send the reader to the one activity
-    // whose result could never fill it. The CTA opens the same primary set
-    // the Practice panel's own action does, in place — not a route change.
+  it("owns the ONLY empty-history CTA, and it opens PRACTICE not Ranked", async () => {
+    // The record is practice-shaped: a Ranked duel writes no row into this
+    // stream, so the empty state must not send the reader to the one activity
+    // whose result could never fill it. It starts the primary set in place —
+    // not a route change — and it is the page's only empty state.
     historyMock.mockResolvedValue({ ...HISTORY, results: [], total_count: 0 });
     const { container } = await renderHub();
     await waitFor(() =>
-      expect(container.querySelector('[data-testid="history-empty"]')).not.toBeNull(),
+      expect(container.querySelector('[data-testid="study-history-empty"]')).not.toBeNull(),
     );
-    expect(screen.getByText("No study sessions yet")).toBeTruthy();
-    const empty = container.querySelector('[data-testid="history-empty"]') as HTMLElement;
+    expect(container.querySelectorAll('[data-testid="study-history-empty"]').length).toBe(1);
+    expect(container.querySelector('[data-testid="history-empty"]')).toBeNull();
+    const empty = container.querySelector('[data-testid="study-history-empty"]') as HTMLElement;
     expect(within(empty).queryByRole("button", { name: /Ranked/i })).toBeNull();
     fireEvent.click(within(empty).getByRole("button", { name: /Start practising/ }));
+    await waitFor(() =>
+      expect(questionsMock).toHaveBeenCalledWith("All Current Questions", 10),
+    );
     await waitFor(() =>
       expect(container.querySelector('[data-testid="hub-ranked-section"]')).toBeNull(),
     );
     // Still on /quiz — practice is a phase of this page, never a navigation.
     expect(screen.getByTestId("location").textContent).toBe("/quiz");
   });
+
+  it("keeps Review as the second pane, reachable from the record", async () => {
+    const { container } = await renderHub();
+    fireEvent.click(screen.getByTestId("workspace-tab-review"));
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
+      ).toBe("review"),
+    );
+    expect(container.querySelector('[data-testid="workspace-panel-review"]')).not.toBeNull();
+  });
 });
 
 describe("Leaguecraft hub — Mastery", () => {
-  it("keeps Mastery as one quiet strip that still links to the journeys", async () => {
-    await renderHub();
-    expect(screen.getByTestId("hub-mastery-link").getAttribute("href")).toBe("/quiz/mastery");
+  // /quiz is the ONLY entrance to /quiz/mastery in the product, so hiding the
+  // Practice panel that used to contain this link had to relocate it, not
+  // withhold it with the panel. It is still one quiet line — in the lobby's
+  // utility row now, beside the tutorial entry.
+  it("keeps Mastery as one quiet link that still reaches the journeys", async () => {
+    const { container } = await renderHub();
+    const link = screen.getByTestId("hub-mastery-link");
+    expect(link.getAttribute("href")).toBe("/quiz/mastery");
+    expect(container.querySelector('[data-testid="hub-utility-line"]')!.contains(link)).toBe(true);
+    // One entrance, not two.
+    expect(container.querySelectorAll('[data-testid="hub-mastery-link"]').length).toBe(1);
   });
 });
 
@@ -414,8 +478,8 @@ describe("Leaguecraft hub — modes withheld from this page", () => {
     // …and the page is not simply empty in their place: the Ranked-first loop
     // is fully present.
     expect(container.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="hub-practice-section"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="hub-recent-section"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="quiz-category-rail"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="hub-record-section"]')).not.toBeNull();
   });
 
   it("keeps the diagnostics entry available for testing", async () => {

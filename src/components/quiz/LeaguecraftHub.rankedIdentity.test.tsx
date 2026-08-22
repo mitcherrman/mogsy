@@ -104,12 +104,15 @@ describe("LeaguecraftHub — Ranked identity (RE1 Phase 4B)", () => {
   it("preserves the LC1 hub structure and section order", () => {
     const { container } = renderHub();
     const ranked = container.querySelector('[data-testid="hub-ranked-section"]')!;
-    const recent = container.querySelector('[data-testid="hub-recent-section"]')!;
-    const practice = container.querySelector('[data-testid="hub-practice-section"]')!;
-    for (const el of [ranked, recent, practice]) expect(el).not.toBeNull();
-    // Ranked hero first, then the secondary row — the LC1 hierarchy.
-    expect(ranked.compareDocumentPosition(recent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(recent.compareDocumentPosition(practice) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
+    const record = container.querySelector('[data-testid="hub-record-section"]')!;
+    for (const el of [ranked, rail, record]) expect(el).not.toBeNull();
+    // Ranked hero, then the rail, then the ONE record — the consolidated
+    // hierarchy. Recent Studies and the Practice panel no longer sit between.
+    expect(ranked.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(rail.compareDocumentPosition(record) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('[data-testid="hub-recent-section"]')).toBeNull();
+    expect(container.querySelector('[data-testid="hub-practice-section"]')).toBeNull();
     expect(ranked.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
     // MALT: the four rounded stat tiles became the Academy sheet's ledger.
     expect(screen.getByTestId("hero-personal-records")).toBeTruthy();
