@@ -9,6 +9,7 @@ import LobbyPanel from "@/components/quiz/LobbyPanel";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
 import RankedPlayScroll from "@/components/quiz/play-scroll/RankedPlayScroll";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
 import type { DailyChallengeState, RankedState } from "@/lib/quiz/featured-mock";
 import type { PlayModeVisibility } from "@/lib/quiz/playModes";
@@ -144,6 +145,8 @@ export default function LeaguecraftHub({
   onPlayRanked,
   playDisabled = false,
   onCommitRole,
+  hasAccount = true,
+  onRequireAccount,
   onEnterMatch,
   onPlayDailyChallenge,
   playModes,
@@ -229,6 +232,11 @@ export default function LeaguecraftHub({
    * surface that now owns the choice. See `PlayScrollRecord.onCommitRole`.
    */
   onCommitRole: (role: RankedRole) => boolean | Promise<boolean>;
+  /** PLAY1: whether this visitor may enter Ranked — a real account, not a
+   *  guest. Forwarded untouched; see `PlayScrollRecord.hasAccount`. */
+  hasAccount?: boolean;
+  /** PLAY1: raise the host's signup notice when a guest presses Ranked. */
+  onRequireAccount?: () => void;
   onEnterMatch: (matchId: string) => void;
   /**
    * PLAY1: the host's OWN Daily Challenge entry. `Quiz.tsx` hosts the daily
@@ -295,11 +303,37 @@ export default function LeaguecraftHub({
    * not navigate") carried over unchanged; only the thing being withheld
    * changed from a route to a record.
    */
+  /**
+   * PLAY1 SOUND — the hub owns exactly one cue: the record unrolling.
+   *
+   * It is sounded from THIS ACTION, never from the record's lifecycle. An
+   * effect inside the record would fire again on a StrictMode double-invoke,
+   * and would also sound for the `playScrollOpenOnMount` arrival from
+   * `/quiz/ranked` — which is a route landing, not a press. The engine's
+   * first-gesture gate makes that arrival silent on a cold load anyway; not
+   * having a mount trigger is what makes it silent on a warm one too.
+   *
+   * Everything else the record can say is the record's, because it is the only
+   * thing that can tell a dismissal from a handoff and a refusal from a retry.
+   * See `PlayScrollRecord`.
+   */
+  const sfx = usePlaySfx();
+
   const openPlay = useCallback(async () => {
     const committed = await onPlayRanked();
+    /*
+     * NO CUE FOR A WITHHELD OPEN, and no `error` either.
+     *
+     * `onPlayRanked` no longer writes anything — the role commit moved onto
+     * the record's Ranked entry — so the only thing it withholds for is a
+     * write already in flight from a previous press. Nothing is put on screen
+     * for that, and a negative cue with no visible refusal beside it is the
+     * interface making a noise about its own internals.
+     */
     if (!committed) return;
+    sfx.play("scrollOpen");
     setPlayOpen(true);
-  }, [onPlayRanked]);
+  }, [onPlayRanked, sfx]);
   // Focus is restored by the record itself, on its own unmount — see
   // `returnFocusTo`. Doing it here would race Radix's own restore.
   const closePlay = useCallback(() => setPlayOpen(false), []);
@@ -568,6 +602,8 @@ export default function LeaguecraftHub({
              selection, two renderings of it. */
           onSelectRole={onSelectRankedRole ?? (() => {})}
           onCommitRole={onCommitRole}
+          hasAccount={hasAccount}
+          onRequireAccount={onRequireAccount}
           onEnterMatch={onEnterMatch}
           onPlayDailyChallenge={onPlayDailyChallenge}
           onPlayPractice={goToPractice}

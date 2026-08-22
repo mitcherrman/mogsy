@@ -14,8 +14,16 @@ import {
   invalidateSoundSettingsCache,
 } from "@/hooks/useSoundSettings";
 import { tomeAudioEngine } from "@/pages/welcome/tomeAudio";
+import { playSfxEngine, resetPlaySfxGuards } from "@/lib/audio/play-sfx";
+import { PLAY_SFX_SETTING_KEY } from "@/lib/audio/usePlaySfx";
 
-const GROUPS = ["General", "Swiping", "Card Animations", "Shop", "Academy Welcome"] as const;
+const GROUPS = ["General", "Swiping", "Card Animations", "Shop", "Academy Welcome", "Match Entry"] as const;
+
+/** Setting key -> PLAY1 cue, inverted from the ONE map in `usePlaySfx` so
+ *  the two cannot drift. Lets Preview play the real cue. */
+const PLAY_SFX_BY_KEY = Object.fromEntries(
+  Object.entries(PLAY_SFX_SETTING_KEY).map(([cue, key]) => [key, cue]),
+) as Record<string, keyof typeof PLAY_SFX_SETTING_KEY>;
 
 function groupedEntries() {
   const keys = Object.keys(SOUND_LABELS) as (keyof SoundSettings)[];
@@ -29,6 +37,13 @@ function synthesizeSound(ctx: AudioContext, key: keyof SoundSettings) {
   // The welcome tome's sounds live with the tome — preview the real thing.
   if (key === "welcome_scribble") { tomeAudioEngine.scribble(700); return; }
   if (key === "welcome_page_turn") { tomeAudioEngine.pageTurn(); return; }
+
+  // Same rule for PLAY1's match-entry cues: preview what the player hears, not
+  // an approximation of it. The engine's own repeat guard is cleared first so
+  // pressing Preview twice actually sounds twice — that guard exists to absorb
+  // duplicate TRIGGERS in the product, and a deliberate second press is not one.
+  const playCue = PLAY_SFX_BY_KEY[key];
+  if (playCue) { resetPlaySfxGuards(); playSfxEngine.play(playCue); return; }
 
   const t = ctx.currentTime;
   const g = ctx.createGain();

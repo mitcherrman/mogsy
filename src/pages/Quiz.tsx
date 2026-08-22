@@ -37,7 +37,9 @@ import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-att
 import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
-import type { RankedRole } from "@/lib/ranked-public/roles";
+import { isRankedRole, type RankedRole } from "@/lib/ranked-public/roles";
+import { authHref } from "@/lib/auth/auth-destination";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
 import { playModeVisibility } from "@/lib/quiz/playModes";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -271,6 +273,26 @@ type SessionAnswer = {
  * another the reader has not read yet.
  */
 const RANKED_ROLE_TOAST_ID = "ranked-role-write";
+/**
+ * The signup gate's one notice. A stable id so a burst of Ranked presses
+ * UPDATES the standing notice instead of stacking copies of it — the same
+ * technique, and the same reason, as `RANKED_ROLE_TOAST_ID`.
+ */
+const RANKED_ACCOUNT_TOAST_ID = "ranked-account-required";
+
+/**
+ * How the Leaguecraft lobby is asked to restore itself after an auth trip.
+ *
+ * These are read from the URL rather than from `location.state` because state
+ * does NOT survive the round trip: signing up leaves the SPA entirely (and an
+ * emailed confirmation link re-enters it in a fresh document), so anything the
+ * lobby wants back has to be in the path. That is exactly what `authHref` is
+ * built for — its own doc says to pass `pathname + search` when the destination
+ * is parameterised — so this adds no second auth-return system, only a
+ * parameterised destination for the existing one.
+ */
+const PLAY_RETURN_PARAM = "play";
+const ROLE_RETURN_PARAM = "role";
 
 export default function Quiz() {
   const { user } = useAuth();
@@ -310,7 +332,20 @@ export default function Quiz() {
    * `handlePlayRanked` for why that is the correct — and the only safe —
    * commit point.
    */
-  const [pendingRankedRole, setPendingRankedRole] = useState<RankedRole | null>(null);
+  // Declared before the state below, which reads the URL to restore itself
+  // after the signup gate's auth trip.
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [pendingRankedRole, setPendingRankedRole] = useState<RankedRole | null>(
+    () => {
+      // Restored after the signup gate's auth trip, so a guest who chose Jungle
+      // and then made an account does not come back to Top. Validated against
+      // the canonical vocabulary — this is URL input, so anything else is
+      // simply ignored and the account's stored role wins as usual.
+      const raw = new URLSearchParams(location.search).get(ROLE_RETURN_PARAM);
+      return isRankedRole(raw) ? raw : null;
+    },
+  );
   /** What the lobby SHOWS as chosen: the unsaved local choice if there is one,
    *  otherwise the account's stored role. This is what the carousel is given
    *  as its `value`, which keeps `aria-checked` on the mascot the reader is
@@ -318,8 +353,6 @@ export default function Quiz() {
    *  "don't re-select what is already selected" guard (e07da052) measuring
    *  against the right role. */
   const effectiveRankedRole = pendingRankedRole ?? rankedRole.role;
-  const navigate = useNavigate();
-  const location = useLocation();
   // PLAY1: which entries the match-entry record offers. The same app_settings
   // rows the admin panel writes and the rest of the platform reads — there is
   // one policy store, and this adds no second one.
@@ -331,9 +364,12 @@ export default function Quiz() {
    * the record every time the lobby re-renders, including right after the
    * player closed it.
    */
-  const [openPlayOnMount] = useState(
-    () => (location.state as { openPlay?: boolean } | null)?.openPlay === true,
-  );
+  const [openPlayOnMount] = useState(() => {
+    if ((location.state as { openPlay?: boolean } | null)?.openPlay === true) return true;
+    // …and the same request as a QUERY, which is how it survives the auth trip
+    // the signup gate sends a guest on. See `PLAY_RETURN_PARAM`.
+    return new URLSearchParams(location.search).get(PLAY_RETURN_PARAM) === "1";
+  });
 
   /**
    * PLAY — opens the record. It no longer writes anything.
@@ -394,8 +430,13 @@ export default function Quiz() {
       // up on the lobby. A stable id makes sonner UPDATE the standing notice
       // instead of stacking another copy. This suppresses nothing: the
       // message still changes with the refusal.
+      // The reason is read from the controller's REF, not from its render
+      // state: `error` is still the previous value in the tick this promise
+      // settles in, which is how a refusal used to be reported with generic
+      // role copy instead of the server's actual sentence. See
+      // `readWriteError`.
       toast.error(
-        rankedRole.error ?? "Could not save your role. Try again.",
+        rankedRole.readWriteError() ?? "Could not save your role. Try again.",
         { id: RANKED_ROLE_TOAST_ID },
       );
       return false;
@@ -422,6 +463,61 @@ export default function Quiz() {
     return () => { cancelled = true; };
   }, []);
   const isAnonymous = !user || user.is_anonymous === true;
+  /**
+   * PLAY1 SOUND — the page owns exactly one cue: the signup CTA's.
+   *
+   * It takes the quiet fallback knock rather than `modeConfirm`. The seal
+   * means "a way to play has been chosen", and Create Account chooses no way
+   * to play — it leaves the lobby entirely to go and make an account. A seal
+   * here would claim more than the press does, and would sound the same as
+   * pressing Ranked, which is the thing this control exists BECAUSE the player
+   * could not do.
+   */
+  const sfx = usePlaySfx();
+
+  /**
+   * THE RANKED SIGNUP GATE — one notice, and it lingers.
+   *
+   * Raised INSTEAD of the Ranked flow when a guest presses Ranked Match (see
+   * `PlayScrollRecord`'s gate), so nothing is written, no queue is joined, and
+   * no role error can be produced. It is the only thing the player is told.
+   *
+   * IT IS NOT AN ERROR, and it is deliberately not styled as one. Needing an
+   * account to play Ranked is a fact about the mode, not a failure by the
+   * player — so this is a plain notice, `toast.error` is not used, and the
+   * record plays no negative cue for it.
+   *
+   * IT DOES NOT EXPIRE. `duration: Infinity` is the app's existing sticky-toast
+   * idiom (the admin panels use it for failures a reader must actually read),
+   * and the global `Toaster` already renders a `closeButton`, so the notice is
+   * dismissible and both of its controls are real, focusable buttons. Nothing
+   * about it blocks navigation — it is a toast, not a modal.
+   *
+   * THE DESTINATION IS THE CANONICAL ONE. `authHref` is AUTH1's single builder
+   * for every sender ("did this one remember returnTo?" stops being a
+   * per-call-site question), and its own doc says to pass `pathname + search`
+   * when the destination is parameterised. So the return target carries the
+   * lobby's own state as query: come back to Leaguecraft, on the role the
+   * player had chosen, with CHOOSE MODE reopened. It does NOT queue them —
+   * they press Ranked again, which is the explicit second action.
+   */
+  const handleRequireRankedAccount = useCallback(() => {
+    const params = new URLSearchParams({ [PLAY_RETURN_PARAM]: "1" });
+    if (effectiveRankedRole) params.set(ROLE_RETURN_PARAM, effectiveRankedRole);
+    const back = `/quiz?${params.toString()}`;
+    toast("Create an account to play Ranked", {
+      id: RANKED_ACCOUNT_TOAST_ID,
+      description: "Your Leaguecraft setup will be waiting when you return.",
+      duration: Infinity,
+      action: {
+        label: "Create Account",
+        onClick: () => {
+          sfx.play("buttonPress");
+          navigate(authHref(back, { mode: "signup" }));
+        },
+      },
+    });
+  }, [effectiveRankedRole, navigate, sfx]);
   const [phase, setPhase] = useState<QuizPhase>("sets");
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [sets, setSets] = useState<QuizSet[]>([]);
@@ -1168,6 +1264,12 @@ export default function Quiz() {
               ranked={getRankedState(userProgress?.attempts ?? 0)}
               onPlayRanked={() => handlePlayRanked()}
               onCommitRole={handleCommitRankedRole}
+              /* Ranked is account-only on the server, so the record asks
+                 BEFORE it writes or queues. `signedIn` is the wrong signal
+                 here — it is true for a guest holding an anonymous Supabase
+                 session, which is the very visitor this gate exists for. */
+              hasAccount={!isAnonymous}
+              onRequireAccount={handleRequireRankedAccount}
               /* PLAY1: PLAY opens the match-entry record in place. The only
                  navigation left is the handoff, once the SERVER has a match —
                  `/quiz/ranked` is the live-match host. The id travels in
@@ -1192,7 +1294,20 @@ export default function Quiz() {
                  PLAY. See `pendingRankedRole`. */
               rankedRole={effectiveRankedRole}
               onSelectRankedRole={setPendingRankedRole}
-              roleSelectDisabled={rankedRole.loadState !== "ready" || rankedRole.saving}
+              /* Held still ONLY while the one write is in flight.
+               *
+               * It used to also be held whenever `loadState !== "ready"`, which
+               * is every GUEST — the role read is account-only, so a guest's
+               * controller reports `unavailable`. That rule was written when
+               * moving the stage WAS a server write; it no longer is
+               * (`onSelectRankedRole` is `setPendingRankedRole`, pure local
+               * state), so the only thing it still achieved was throwing a
+               * guest's choice away: the ring turned, nothing was recorded, and
+               * the match-entry record opened on Top regardless of the mascot
+               * the player was looking at. Choosing locally costs nothing and
+               * persists nothing; Ranked is where an account is required, and
+               * that is now gated explicitly. */
+              roleSelectDisabled={rankedRole.saving}
               roleSaving={savingRankedRole}
               /* The seal is the commit, so it holds still while the one write
                  it triggers is in flight — a second press must not start a

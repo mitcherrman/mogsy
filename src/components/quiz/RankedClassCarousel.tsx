@@ -58,6 +58,7 @@ import {
 import { getRankedRoleMascotPath } from "@/components/mascot/mascot-assets";
 import { getRankedRoleChampion } from "@/lib/ranked-public/roleChampions";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 
 /** A real, already-tallied record for one role. Never defaulted to zeros —
  *  a role the host has no rows for is simply absent from the map. */
@@ -259,6 +260,23 @@ export default function RankedClassCarousel({
   className?: string;
 }) {
   const reducedMotion = useReducedMotion() === true;
+  /**
+   * PLAY1 SOUND — the role tick, on the lobby's stage as well as the record's.
+   *
+   * The two role surfaces share one selection, so they must sound the same. The
+   * cue is fired from `moveTo` and from nowhere else, which is what makes that
+   * safe: `moveTo` is the single funnel every INTENTIONAL move goes through —
+   * the two chevrons, a click on a flank, and Arrow/Home/End — while the
+   * passive path is the `useEffect` on `value` below, which calls
+   * `setViewIndex` directly and therefore cannot make a sound.
+   *
+   * That distinction is the whole design. Pressing the RECORD's arrow moves the
+   * host's shared role, which arrives here as a new `value` and turns this ring
+   * behind the sheet: one press, two surfaces, and only the pressed one speaks.
+   * The same holds for a role restored from the URL after the signup gate's
+   * auth trip, for a re-render, and for the first paint.
+   */
+  const sfx = usePlaySfx();
   const length = RANKED_ROLES.length;
   // Two different things, deliberately not conflated: whether the stage can
   // MOVE (always) and whether a move SELECTS (only when the host can persist
@@ -302,6 +320,11 @@ export default function RankedClassCarousel({
     const next = (index + length) % length;
     const nextRole = RANKED_ROLES[next];
     if (viaKeyboard) shouldFocus.current = true;
+    // The tick is for the ring MOVING, not for the press. Clicking the figure
+    // already standing centre-stage is a no-op here — exactly as it is for
+    // `onSelect` below — and a sound for a no-op is the noise this pass exists
+    // to avoid. Every real notch is heard; rapid stepping is unthrottled.
+    if (next !== viewIndex) sfx.play("roleStep");
     setViewIndex(next);
     // A move only SELECTS when it lands somewhere the account is not already
     // stored as. `onSelect` is a SERVER WRITE (PUT /api/ranked/role), and this

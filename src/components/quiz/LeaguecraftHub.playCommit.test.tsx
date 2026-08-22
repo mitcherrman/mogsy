@@ -21,7 +21,23 @@
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const sfx = vi.hoisted(() => ({ play: vi.fn() }));
+
+/**
+ * PLAY1's sound layer, stubbed to a spy.
+ *
+ * The real `usePlaySfx` reads the app's one sound-settings store, which
+ * constructs the Supabase client — and the pinned jsdom gives that client no
+ * working Storage, so importing it turns a clean suite into one carrying an
+ * unhandled rejection (see `src/test/localStorageStub.ts`). The gate itself is
+ * covered by `src/lib/audio/play-sfx.test.ts`; the spy is also what lets the
+ * cases below count soundings.
+ */
+vi.mock("@/lib/audio/usePlaySfx", () => ({
+  usePlaySfx: () => ({ play: sfx.play }),
+}));
 
 // The record polls the Ranked queue and reads the Academy roster the moment it
 // opens. Neither is what these tests are about, and neither should reach a
@@ -52,6 +68,7 @@ import LeaguecraftHub from "./LeaguecraftHub";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 
 afterEach(cleanup);
+beforeEach(() => sfx.play.mockClear());
 
 const PLACED: RankedState = {
   placementMatchesRemaining: 0,
@@ -154,5 +171,59 @@ describe("PLAY commits the role, then opens the record", () => {
     const { onPlayRanked } = renderHub({ playScrollOpenOnMount: true });
     await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
     expect(onPlayRanked).not.toHaveBeenCalled();
+  });
+});
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * PLAY1 SOUND — the hub's one cue.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+describe("the PLAY seal's sound", () => {
+  const cues = () => sfx.play.mock.calls.flat();
+
+  it("sounds the record unrolling exactly once", async () => {
+    renderHub();
+    fireEvent.click(seal());
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+    expect(cues()).toEqual(["scrollOpen"]);
+  });
+
+  it("stays silent while an async gate is still resolving", async () => {
+    let release: (ok: boolean) => void = () => {};
+    renderHub({
+      onPlayRanked: vi.fn(() => new Promise<boolean>((r) => { release = r; })),
+    });
+    fireEvent.click(seal());
+    // Nothing has been decided, so nothing may be announced.
+    expect(cues()).toEqual([]);
+    release(true);
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+    expect(cues()).toEqual(["scrollOpen"]);
+  });
+
+  /**
+   * A WITHHELD OPEN IS SILENT — no unroll, and no refusal cue either.
+   *
+   * `onPlayRanked` no longer writes anything: the role commit moved onto the
+   * record's Ranked clause. The only thing it withholds for is a write already
+   * in flight from a previous press, and nothing is put on screen for that. A
+   * negative cue with no visible refusal beside it is the interface making a
+   * noise about its own internals.
+   */
+  it("says nothing at all when the open is withheld", async () => {
+    renderHub({ onPlayRanked: vi.fn(() => false) });
+    fireEvent.click(seal());
+    await Promise.resolve();
+    expect(cues()).toEqual([]);
+    expect(screen.queryByTestId("play-scroll")).toBeNull();
+  });
+
+  it("makes no sound when the ROUTE opened the record for us", async () => {
+    // Arriving from a matchless `/quiz/ranked`. Nothing was pressed on this
+    // lobby, so there is no action to sound — the record simply is open.
+    renderHub({ playScrollOpenOnMount: true });
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+    expect(cues()).toEqual([]);
   });
 });

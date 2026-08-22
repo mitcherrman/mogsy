@@ -17,6 +17,23 @@ export interface SoundSettings {
   shop_powerup: boolean;
   welcome_scribble: boolean;
   welcome_page_turn: boolean;
+  /* PLAY1 — the CHOOSE MODE record's eight cues. One key each rather than one
+     key for the whole flow: they differ by an order of magnitude in how often
+     they fire, and an operator silencing the role tick must not lose the
+     opponent bell with it. See src/lib/audio/play-sfx.ts. */
+  play_scroll_open: boolean;
+  play_scroll_close: boolean;
+  play_role_step: boolean;
+  play_mascot_react: boolean;
+  play_mode_confirm: boolean;
+  play_queue_start: boolean;
+  play_opponent_found: boolean;
+  play_error: boolean;
+  /* The FALLBACK press. Every other key above is a moment; this one is the
+     ordinary controls — Back, Cancel, a roster row, the signup CTA — so that
+     no button in the flow is silent. A control with a specialised cue never
+     also sounds this. */
+  play_button_press: boolean;
 }
 
 export const SOUND_DEFAULTS: SoundSettings = {
@@ -35,6 +52,15 @@ export const SOUND_DEFAULTS: SoundSettings = {
   shop_powerup: true,
   welcome_scribble: true,
   welcome_page_turn: true,
+  play_scroll_open: true,
+  play_scroll_close: true,
+  play_role_step: true,
+  play_mascot_react: true,
+  play_mode_confirm: true,
+  play_queue_start: true,
+  play_opponent_found: true,
+  play_error: true,
+  play_button_press: true,
 };
 
 export const SOUND_LABELS: Record<keyof SoundSettings, { label: string; group: string; description: string }> = {
@@ -53,6 +79,15 @@ export const SOUND_LABELS: Record<keyof SoundSettings, { label: string; group: s
   shop_powerup: { label: "Power-Up Whoosh", group: "Shop", description: "Rising whoosh for power-up actions" },
   welcome_scribble: { label: "Quill Scribble", group: "Academy Welcome", description: "Faint writing scratch while the welcome book writes itself" },
   welcome_page_turn: { label: "Page Turn", group: "Academy Welcome", description: "Soft paper turn when a welcome chapter's page is turned" },
+  play_scroll_open: { label: "Record Unrolls", group: "Match Entry", description: "Parchment unrolling when PLAY opens the Choose Mode record" },
+  play_scroll_close: { label: "Record Rolls Shut", group: "Match Entry", description: "The sheet rolling closed when the record is dismissed" },
+  play_role_step: { label: "Role Step", group: "Match Entry", description: "Quiet parchment tick as the record's role stepper moves one notch" },
+  play_mascot_react: { label: "Mascot Poke", group: "Match Entry", description: "Playful blip when the record's role mascot is tapped" },
+  play_mode_confirm: { label: "Seal Pressed", group: "Match Entry", description: "Wax seal when a way to play is chosen on the record" },
+  play_queue_start: { label: "Queue Opens", group: "Match Entry", description: "Rune taking light once the Ranked queue accepts the entry" },
+  play_opponent_found: { label: "Opponent Found", group: "Match Entry", description: "Struck bell when the academy has paired the duel" },
+  play_error: { label: "Match Entry Refused", group: "Match Entry", description: "Restrained negative cue when a role write or queue entry is refused" },
+  play_button_press: { label: "Button Press", group: "Match Entry", description: "Quiet wooden knock for the record's ordinary controls — Back, Cancel, roster rows, the signup action" },
 };
 
 // Singleton cache so all hooks share one fetch

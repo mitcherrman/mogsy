@@ -38,17 +38,48 @@
  * plate-direction correction and the `interactive` click reaction, including
  * its playback token for repeated poking and its reduced-motion drop. Nothing
  * about that behaviour is re-implemented or configured here.
+ *
+ * SOUND LIVES ON THE ACTIONS, NOT ON THE STATE (PLAY1 SFX)
+ * ───────────────────────────────────────────────────────
+ * Both cues this file owns are fired from the interaction that CAUSED them:
+ *
+ *   roleStep     from `back`/`forward`, the two arrow handlers. Stepping moves
+ *                the host's one local role, so the mascot here AND the lobby's
+ *                carousel behind the dimmed sheet both re-render for it — two
+ *                surfaces, one action. Firing from anything that watches the
+ *                role VALUE (an effect, a render) would sound twice, or would
+ *                sound for a role that arrived from somewhere else entirely.
+ *                Nothing in `RankedClassCarousel` or `RankedLobbyHero` makes a
+ *                sound, so "one press, one tick" is structural rather than a
+ *                rule someone has to remember.
+ *
+ *   mascotReact  from a CAPTURE-phase handler on the figure's wrapper, not
+ *                from inside `RoleMascot`. That component is shared with the
+ *                Ranked arena and its contract is that the reaction is a
+ *                closed local toy with no host callback; putting a cue inside
+ *                it would sonify every interactive mascot in Mogzy from a
+ *                PLAY1 phase. Capture is what makes the wrapper work at all —
+ *                the mascot's own handler calls `stopPropagation`, so a
+ *                bubbling `onClick` here would never run, while capture is
+ *                dispatched on the way down and fires exactly once per click.
+ *
+ * The poke cue sits OUTSIDE the reduced-motion drop on purpose. `RoleMascot`
+ * refuses the animation under `prefers-reduced-motion`; audio is a separate
+ * preference (`useSoundSettings` plus the global mute), and a reader who asked
+ * for less movement did not ask for silence — so poking still answers.
  */
 
 import { useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { RoleMascot } from "@/components/mascot/RoleMascot";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import RankEmblem from "@/components/ranked/RankEmblem";
 import {
   RANKED_ROLES,
   RANKED_ROLE_LABELS,
   type RankedRole,
 } from "@/lib/ranked-public/roles";
+import { BASELINE_RANK_TIER } from "@/lib/progression/tiers";
 import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
 import { PLAY_INK as INK } from "./ink";
 
@@ -82,9 +113,41 @@ export default function PlayScrollRoleSelector({
   /** Held still while the record is committing or a queue entry is live. */
   disabled?: boolean;
 }) {
-  const tier = progression?.tier ?? null;
-  const back = useCallback(() => onStep(stepRole(role, -1)), [role, onStep]);
-  const forward = useCallback(() => onStep(stepRole(role, 1)), [role, onStep]);
+  /**
+   * THE CREST ALWAYS RENDERS.
+   *
+   * Mogzy has no "Unranked" state: the ladder's floor is Bronze and an account
+   * with no standing is shown AT the floor, not off the ladder — the one rule,
+   * shared with the lobby hero, in `BASELINE_RANK_TIER`.
+   *
+   * This band used to hide the emblem whenever `progression` was null, which is
+   * every guest, every account that has never had a rated match, and every
+   * moment before the progression read lands. The result was a blank rank slot
+   * on the one sheet whose job is to say who is entering — and it read as a
+   * broken layout rather than as a new player.
+   *
+   * `earned` is what separates the two states, and it is the ONLY thing that
+   * does: `RankEmblem` stamps `data-baseline` instead of `data-tier` and gives
+   * the baseline its own tint. Nothing here awards a rank, and no word is
+   * printed beside the crest — the tier's NAME belongs on the Ranked clause
+   * below, in that tier's own metal, which is where a player is deciding
+   * whether to queue. Printing "Bronze" here would state it twice.
+   */
+  const tier = progression?.tier ?? BASELINE_RANK_TIER;
+  const earned = progression?.rated ?? false;
+  const sfx = usePlaySfx();
+  // The tick belongs to the PRESS. Both arrows are ordinary buttons that are
+  // `disabled` while the record is committing or has left the menu, so a press
+  // that reaches here is always a real step — there is no "already on it" case
+  // to stay silent for, the way the lobby's ring has.
+  const back = useCallback(() => {
+    sfx.play("roleStep");
+    onStep(stepRole(role, -1));
+  }, [role, onStep, sfx]);
+  const forward = useCallback(() => {
+    sfx.play("roleStep");
+    onStep(stepRole(role, 1));
+  }, [role, onStep, sfx]);
 
   return (
     <div
@@ -110,7 +173,16 @@ export default function PlayScrollRoleSelector({
           </span>
         </button>
 
-        <div className="play-scroll-stepper__figure">
+        <div
+          className="play-scroll-stepper__figure"
+          /* The poke cue's boundary — see SOUND LIVES ON THE ACTIONS above.
+             Capture, so the mascot's own `stopPropagation` cannot swallow it.
+             This box already existed for layout; it gains no role, no tabIndex
+             and no accessible name, so the mascot stays a decorative surface
+             that wiggles. */
+          data-testid="play-scroll-mascot-sound"
+          onClickCapture={() => sfx.play("mascotReact")}
+        >
           {/* Decorative and pokeable: the role's name is written directly
               beneath it, so the art carries no identity of its own. */}
           <RoleMascot
@@ -166,24 +238,22 @@ export default function PlayScrollRoleSelector({
         >
           {RANKED_ROLE_LABELS[role]}
         </p>
-        {tier !== null && (
-          <RankEmblem
-            tier={tier}
-            earned={progression?.rated ?? false}
-            /* `hero` is the ART size — the small emblem set is the incomplete
-               one — and the band sizes that box down in CSS. `standard`
-               emphasis holds the light back: a fully ceremonial crest here
-               would outrank the three clauses it sits above.
+        <RankEmblem
+          tier={tier}
+          earned={earned}
+          /* `hero` is the ART size — the small emblem set is the incomplete
+             one — and the band sizes that box down in CSS. `standard`
+             emphasis holds the light back: a fully ceremonial crest here
+             would outrank the three clauses it sits above.
 
-               It carries NO caption. The crest is the standing; the tier's
-               WORD is written on the Ranked clause below, in that tier's own
-               metal, which is where a player is deciding whether to queue. */
-            variant="hero"
-            emphasis="standard"
-            decorative
-            className="play-scroll-banner__standing"
-          />
-        )}
+             It carries NO caption. The crest is the standing; the tier's
+             WORD is written on the Ranked clause below, in that tier's own
+             metal, which is where a player is deciding whether to queue. */
+          variant="hero"
+          emphasis="standard"
+          decorative
+          className="play-scroll-banner__standing"
+        />
       </div>
     </div>
   );

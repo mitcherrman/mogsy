@@ -57,6 +57,7 @@ import { useState } from "react";
 import { Bot, Loader2, Swords } from "lucide-react";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 import type { QueueController } from "@/pages/quiz-ranked/useRankedQueue";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import PlayModePlate from "./PlayModePlate";
 import { PLAY_INK as INK } from "./ink";
 
@@ -119,6 +120,12 @@ export default function RankedQueueView({
   isAdmin?: boolean;
 }) {
   const state = queue.state;
+  const sfx = usePlaySfx();
+
+  const goBack = () => {
+    sfx.play("buttonPress");
+    onBack();
+  };
   /**
    * The admin's bot switch. Local, and local is the point: this component is
    * mounted only while Ranked is the open view, so the switch is OFF again on
@@ -133,7 +140,7 @@ export default function RankedQueueView({
         eyebrow="Competitive"
         heading="Ranked is closed right now"
         body={queue.unavailableReason ?? "Ranked isn't available at the moment."}
-        onBack={onBack}
+        onBack={goBack}
       />
     );
   }
@@ -145,7 +152,7 @@ export default function RankedQueueView({
         eyebrow="Competitive"
         heading="Ranked couldn't be reached"
         body={queue.error ?? "Something went wrong reaching the Ranked service."}
-        onBack={onBack}
+        onBack={goBack}
       />
     );
   }
@@ -251,7 +258,10 @@ export default function RankedQueueView({
             type="button"
             data-testid="play-ranked-join"
             disabled={state === "recovering" || role === null}
-            onClick={() => onJoin(botArmed ? { matchWithBot: true } : undefined)}
+            onClick={() => {
+              sfx.play("buttonPress");
+              onJoin(botArmed ? { matchWithBot: true } : undefined);
+            }}
             className="play-scroll-clause flex min-h-[46px] w-full items-center justify-center gap-2 px-4 text-[13px] font-black uppercase tracking-[0.2em] disabled:cursor-not-allowed disabled:opacity-60"
             data-emphasis="true"
             style={{ color: INK.strong }}
@@ -317,7 +327,10 @@ export default function RankedQueueView({
             type="button"
             data-testid="play-ranked-cancel"
             disabled={!queue.canCancel}
-            onClick={queue.cancel}
+            onClick={() => {
+              sfx.play("buttonPress");
+              queue.cancel();
+            }}
             className="play-scroll-control disabled:cursor-not-allowed disabled:opacity-60"
           >
             {state === "cancelling" ? "Cancelling…" : "Cancel Queue"}
@@ -332,7 +345,7 @@ export default function RankedQueueView({
           <button
             type="button"
             data-testid="play-ranked-back"
-            onClick={onBack}
+            onClick={goBack}
             className="play-scroll-back"
           >
             Back
