@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchLeagueProfiles } from "@/lib/league-profiles";
 import { subscribeFriendsChanged } from "@/lib/community/friends-refresh";
+import {
+  attempt,
+  SEND_REQUEST_MESSAGES,
+  type SocialResult,
+} from "@/lib/community/social-result";
 
 export type FriendStatus = "none" | "pending_sent" | "pending_received" | "friends" | "blocked";
 
@@ -138,39 +143,52 @@ export function useFriends() {
   // immediately rather than waiting on the friendships realtime subscription.
   useEffect(() => subscribeFriendsChanged(() => void refresh()), [refresh]);
 
-  const sendRequest = async (targetProfileId: string) => {
-    if (!myProfileId) return;
-    await supabase.from("friendships").insert({
-      requester_id: myProfileId,
-      addressee_id: targetProfileId,
-    });
+  /**
+   * COM1-1 / P0-2. Every mutation below now REPORTS. They used to be
+   * fire-and-forget `await supabase...` calls whose `{ error }` was discarded,
+   * so a request refused by `enforce_friendship_rules` — a block, a rate
+   * limit, an outstanding-request cap — was indistinguishable from one that
+   * landed, and the UI showed neither a change nor a reason.
+   *
+   * `refresh()` still runs on every path, success or failure: a refusal often
+   * means the caller's view is the thing that was wrong.
+   */
+  const sendRequest = async (targetProfileId: string): Promise<SocialResult> => {
+    if (!myProfileId) return { ok: false, code: "unavailable", error: "Sign in to add friends." };
+    const result = await attempt(
+      () => supabase.from("friendships").insert({
+        requester_id: myProfileId,
+        addressee_id: targetProfileId,
+      }),
+      SEND_REQUEST_MESSAGES,
+    );
     await refresh();
+    return result;
   };
 
-  const acceptRequest = async (friendshipId: string) => {
-    await supabase
-      .from("friendships")
-      .update({ status: "accepted" })
-      .eq("id", friendshipId);
+  const acceptRequest = async (friendshipId: string): Promise<SocialResult> => {
+    const result = await attempt(() =>
+      supabase.from("friendships").update({ status: "accepted" }).eq("id", friendshipId));
     await refresh();
+    return result;
   };
 
-  const declineRequest = async (friendshipId: string) => {
-    await supabase.from("friendships").delete().eq("id", friendshipId);
+  /**
+   * Decline, cancel and remove are the SAME statement — a row delete — and are
+   * named separately so each call site reads as its own intent. A delete that
+   * matches nothing is not an error: the row is already gone, which is the end
+   * state the caller asked for.
+   */
+  const deleteFriendship = async (friendshipId: string): Promise<SocialResult> => {
+    const result = await attempt(() =>
+      supabase.from("friendships").delete().eq("id", friendshipId));
     await refresh();
+    return result;
   };
 
-  const removeFriend = async (friendshipId: string) => {
-    await supabase.from("friendships").delete().eq("id", friendshipId);
-    await refresh();
-  };
-
-  /** Withdraw a request this user sent. Same row delete as decline/remove,
-   *  named separately so the drawer's intent is readable at the call site. */
-  const cancelRequest = async (friendshipId: string) => {
-    await supabase.from("friendships").delete().eq("id", friendshipId);
-    await refresh();
-  };
+  const declineRequest = (friendshipId: string) => deleteFriendship(friendshipId);
+  const removeFriend = (friendshipId: string) => deleteFriendship(friendshipId);
+  const cancelRequest = (friendshipId: string) => deleteFriendship(friendshipId);
 
   return {
     myProfileId,

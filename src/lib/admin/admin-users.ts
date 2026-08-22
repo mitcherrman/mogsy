@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 
 import { supabase } from "@/integrations/supabase/client";
+import { usernameMessage } from "@/lib/identity/username";
 
 export const ADMIN_USERS_PATH = "/admin/users";
 
@@ -275,9 +276,41 @@ export interface CreateBotInput {
   addToMyFriends?: boolean;
 }
 
+/**
+ * COM1-1 / P0-3. A bot name is now checked by the SAME AUTH3 authority a
+ * person's is (migration 20260823121000), so these RPCs can return any AUTH3
+ * problem code. `invalid_display_name` is kept for the empty/absurd-length
+ * cases the ADM2 contract already had.
+ */
+export type BotNameCode =
+  | "invalid_display_name"
+  | "too_short"
+  | "too_long"
+  | "invalid_characters"
+  | "reserved"
+  | "taken";
+
+const BOT_NAME_CODES: ReadonlySet<string> = new Set<BotNameCode>([
+  "invalid_display_name", "too_short", "too_long",
+  "invalid_characters", "reserved", "taken",
+]);
+
+export const isBotNameCode = (code: string): code is BotNameCode =>
+  BOT_NAME_CODES.has(code);
+
+/**
+ * The finished sentence for a rejected bot name. Reuses the AUTH3 map so the
+ * admin form and the player-facing username field say the same thing about the
+ * same rule — and so a raw `unique_violation` string can never reach a screen.
+ */
+export function botNameMessage(code: string): string {
+  if (code === "invalid_display_name") return "Enter a name for the bot.";
+  return usernameMessage(code);
+}
+
 export interface CreateBotResult {
   ok: boolean;
-  code: "created" | "invalid_display_name" | "error";
+  code: BotNameCode | "created" | "error";
   profileId?: string | null;
   friendship?: LinkFriendshipResult | null;
 }
@@ -320,7 +353,7 @@ export interface UpdateBotInput {
 
 export interface UpdateBotResult {
   ok: boolean;
-  code: "updated" | "not_a_bot" | "invalid_display_name" | "error";
+  code: BotNameCode | "updated" | "not_a_bot" | "error";
 }
 
 export async function adminUpdateBotProfile(input: UpdateBotInput): Promise<UpdateBotResult> {

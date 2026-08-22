@@ -33,6 +33,8 @@ import {
   LINK_FRIENDSHIP_MESSAGES,
   adminCreateBotProfile,
   adminUpdateBotProfile,
+  botNameMessage,
+  isBotNameCode,
 } from "@/lib/admin/admin-users";
 
 interface BotProfile {
@@ -89,7 +91,9 @@ export default function AdminBots() {
 
     if (!result.ok) {
       toast.error(
-        result.code === "invalid_display_name"
+        isBotNameCode(result.code)
+          ? botNameMessage(result.code)
+          : result.code === "invalid_display_name"
           ? "A display name of 1–60 characters is required."
           : "Couldn't create the bot.",
       );
@@ -139,7 +143,9 @@ export default function AdminBots() {
     setSavingEdit(false);
     if (!result.ok) {
       toast.error(
-        result.code === "not_a_bot"
+        isBotNameCode(result.code)
+          ? botNameMessage(result.code)
+          : result.code === "not_a_bot"
           ? "That profile is not a bot."
           : result.code === "invalid_display_name"
             ? "A display name of 1–60 characters is required."

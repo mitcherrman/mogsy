@@ -10,6 +10,13 @@ material part of the social system does not live in Supabase at all.
 **Date:** 2026-08-22
 **Status:** audit only. No code, schema, or data was changed.
 
+> **Update — COM1-1 (branch `com1/phase1-safety-fe` / `com1/phase1-safety-be`).**
+> All four **P0** findings below are addressed; see
+> [`COM1_PHASE1_SAFETY.md`](./COM1_PHASE1_SAFETY.md) for severity, root cause, contract
+> changes, migrations and baseline evidence. The P0 table in this document is annotated
+> accordingly. **P1 and below are untouched** and remain the record of what is still open.
+> The two migrations COM1-1 authored are **not yet applied**.
+
 ---
 
 ## 0. Executive summary
@@ -688,12 +695,14 @@ bot tab; invite links overlapping the word "invite".
 
 ### P0 — correctness / security
 
-| ID | Finding | Evidence |
-| --- | --- | --- |
-| P0-1 | **`user_notifications.sent_by_user_id` leaks a cross-user Supabase auth uid** to the recipient of every friend request/acceptance. This is the exact identifier `20260730150000` was written to withhold, and `REQUIRE_SUPABASE_AUTH` is **confirmed absent** on Railway, so the backend's `/api/quiz/{user_id}` reads still honour a foreign uid. | `20260523081658:226,240`; `MogzyIdentityMenu.tsx:268`; `20260520093257`; `supabase_auth.py:243-261`; Railway check §D.3.4 |
-| P0-2 | **Ranked publishes the opponent's auth uid** as `player_id` in every live round view — while Ranked *history* explicitly rejects account ids. Two disciplines in one feature. | `useRankedMatch.ts:88,233`; `contracts.ts:1245-1248`; `migrate_add_ranked_public.py:61-62` |
-| P0-3 | **Every Supabase social mutation swallows its error.** `sendRequest`, `acceptRequest`, `declineRequest`, `cancelRequest`, `removeFriend`, `blockUser`, `reportUser` never inspect `{ error }`. Block and report show a success toast unconditionally. | `useFriends.ts:136-171`; `useBlocks.ts:38-95`; `FriendActionMenu.tsx:66-88` |
-| P0-4 | **`admin_create_bot_profile` bypasses AUTH3, and the backstop index is already live.** A colliding bot name raises a raw `unique_violation` out of a jsonb-contract function — a present-tense admin-facing break, not a latent one. Bots may also hold reserved and 25–60 character names AUTH3 forbids humans. | ADM2 `20260803120000:594-655` vs AUTH3 §4/§9; backstop confirmed active §B.4 |
+> Every row below is **FIXED on `com1/phase1-safety-*`**, pending migration apply and push.
+
+| ID | Finding | Evidence | COM1-1 |
+| --- | --- | --- | --- |
+| P0-1 | **`user_notifications.sent_by_user_id` leaks a cross-user Supabase auth uid** to the recipient of every friend request/acceptance. This is the exact identifier `20260730150000` was written to withhold, and `REQUIRE_SUPABASE_AUTH` is **confirmed absent** on Railway, so the backend's `/api/quiz/{user_id}` reads still honour a foreign uid. | `20260523081658:226,240`; `MogzyIdentityMenu.tsx:268`; `20260520093257`; `supabase_auth.py:243-261`; Railway check §D.3.4 | ✅ migration `20260823120000` + column allow-list |
+| P0-2 | **Ranked publishes the opponent's auth uid** as `player_id` in every live round view — while Ranked *history* explicitly rejects account ids. Two disciplines in one feature. | `useRankedMatch.ts:88,233`; `contracts.ts:1245-1248`; `migrate_add_ranked_public.py:61-62` | ✅ `ranked_public/identity_redaction.py`; opponents pseudonymised at the projection boundary |
+| P0-3 | **Every Supabase social mutation swallows its error.** `sendRequest`, `acceptRequest`, `declineRequest`, `cancelRequest`, `removeFriend`, `blockUser`, `reportUser` never inspect `{ error }`. Block and report show a success toast unconditionally. | `useFriends.ts:136-171`; `useBlocks.ts:38-95`; `FriendActionMenu.tsx:66-88` | ✅ `lib/community/social-result.ts`; every mutation returns `SocialResult` |
+| P0-4 | **`admin_create_bot_profile` bypasses AUTH3, and the backstop index is already live.** A colliding bot name raises a raw `unique_violation` out of a jsonb-contract function — a present-tense admin-facing break, not a latent one. Bots may also hold reserved and 25–60 character names AUTH3 forbids humans. | ADM2 `20260803120000:594-655` vs AUTH3 §4/§9; backstop confirmed active §B.4 | ✅ migration `20260823121000`; both bot RPCs routed through AUTH3 |
 
 ### P1 — broken user journeys
 
@@ -787,8 +796,8 @@ bot tab; invite links overlapping the word "invite".
 
 | Phase | Scope | Gate |
 | --- | --- | --- |
-| **COM1-0** | **Identity reconciliation (small).** AUTH3 is already live, so this is only the tail: route `admin_create_bot_profile` through `display_name_problem` + a `taken` check so bot creation stops raising raw `unique_violation` and stops claiming reserved names; regenerate `types.ts`; delete `legacyWrite()` and the two casts. | P0-4, P3-10, P3-11 |
-| **COM1-1** | **Security.** Strip `sent_by_user_id` from the client notification select (or drop the column from the read). Replace Ranked `player_id` with an opaque per-match seat token. Close the `/api/quiz/{user_id}` cross-user read (AUTH1 "Phase 4"), which is what makes both leaks exploitable. | P0-1, P0-2 |
+| **COM1-0** | **Partly absorbed into COM1-1.** The bot-name half is done (migration `20260823121000`). Still open: regenerate `types.ts` and delete `legacyWrite()` plus the two casts — neither has runtime effect. | P3-10, P3-11 |
+| **COM1-1** | ✅ **DONE** (unpushed). `sent_by_user_id` no longer written or selected; Ranked opponents pseudonymised; `/api/quiz/{user_id}` is self-only. Absorbed COM1-0's bot-name item as P0-4. See `COM1_PHASE1_SAFETY.md`. | P0-1 … P0-4 |
 | **COM1-2** | **Make mutations honest.** Four friendship RPCs + `block_profile`, each returning `{ok, code}`; one client mapper renders a sentence per code — the pattern `claimUsername` already proves. Add a confirm to unfriend. | P0-3, P1-4, P1-9 |
 | **COM1-3** | **Reachability.** Username search in the drawer. Restore a friends entry point in the HUD for League mode. Show the drawer on Stat Check, or put "Invite a friend" on the Stat Check lobby. Fix the Blocked tab (block-aware RPC). | P1-1, P1-2, P1-8, P1-10 |
 | **COM1-4** | **Make the profile worth visiting.** Profile-id-keyed public League stats endpoint; render Ranked rating, record, mastery, achievements on `/user/:id`. Link Ranked history opponents to it. | P1-3, P2-4 |

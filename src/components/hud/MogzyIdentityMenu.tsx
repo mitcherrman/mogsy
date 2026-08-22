@@ -107,6 +107,22 @@ export const isSupportedNotificationType = (type: string | null | undefined): bo
 export const isIntentionallySuppressedType = (type: string | null | undefined): boolean =>
   typeof type === "string" && INTENTIONALLY_SUPPRESSED_TYPES.has(type);
 
+/**
+ * The columns the bell reads, stated explicitly.
+ *
+ * COM1-1 / P0-1A. This was `select("*")`, which pulled `sent_by_user_id` — the
+ * OTHER account's Supabase auth id on every trigger-generated social row — into
+ * the recipient's browser. Migration 20260823120000 stops that id being written
+ * at all, which is the actual fix; this list is the second half of it, and the
+ * durable half: a `*` re-publishes whatever column is added to the table next,
+ * to whoever can read the row. An allow-list cannot.
+ *
+ * Every name here backs a field of `UserNotification` below. Adding one means
+ * deciding, deliberately, that a recipient may see it.
+ */
+const NOTIFICATION_COLUMNS =
+  "id, title, message, type, image_url, created_at, target_type, profile_id, metadata, action_url";
+
 interface UserNotification {
   id: string;
   title: string;
@@ -266,7 +282,7 @@ export default function MogzyIdentityMenu() {
     const [notifRes, readRes] = await Promise.all([
       supabase
         .from("user_notifications")
-        .select("*")
+        .select(NOTIFICATION_COLUMNS)
         .gte("created_at", signupCutoff)
         .order("created_at", { ascending: false })
         .limit(30),

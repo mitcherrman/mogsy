@@ -65,30 +65,37 @@ export default function FriendActionMenu({
   const [submitting, setSubmitting] = useState(false);
   const [inviting, setInviting] = useState(false);
 
+  /**
+   * COM1-1 / P0-2. Both handlers used to sit in a `try/catch` that could never
+   * fire — supabase-js resolves with `{ error }` rather than throwing — so the
+   * success toast printed unconditionally and the dialog closed on a write
+   * that never landed. Success is now reported only when the database
+   * confirmed it, and a refusal shows the reason the result carries.
+   */
   const handleReport = async () => {
     setSubmitting(true);
-    try {
-      await reportUser(targetProfileId, reportReason, reportDetails || undefined);
-      toast.success("Report submitted. We'll review it shortly.");
-      setShowReport(false);
-      setReportDetails("");
-    } catch {
-      toast.error("Failed to submit report");
-    }
+    const result = await reportUser(targetProfileId, reportReason, reportDetails || undefined);
     setSubmitting(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Report submitted. We'll review it shortly.");
+    setShowReport(false);
+    setReportDetails("");
   };
 
   const handleBlock = async () => {
     setSubmitting(true);
-    try {
-      await blockUser(targetProfileId);
-      toast.success(`${targetName} has been blocked`);
-      setShowBlock(false);
-      onBlocked?.();
-    } catch {
-      toast.error("Failed to block user");
-    }
+    const result = await blockUser(targetProfileId);
     setSubmitting(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success(`${targetName} has been blocked`);
+    setShowBlock(false);
+    onBlocked?.();
   };
 
   /**

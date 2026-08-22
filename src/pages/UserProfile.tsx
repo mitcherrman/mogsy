@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useFriendStatus } from "@/hooks/useFriends";
+import { attempt, SEND_REQUEST_MESSAGES } from "@/lib/community/social-result";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -120,10 +122,14 @@ function SaveButton({ profileId, userId }: { profileId: string; userId: string }
 
   const toggle = async () => {
     if (saved) {
-      await supabase.from("saved_profiles").delete().eq("user_id", userId).eq("saved_profile_id", profileId);
+      const removed = await attempt(() => supabase.from("saved_profiles")
+        .delete().eq("user_id", userId).eq("saved_profile_id", profileId));
+      if (!removed.ok) { setLoading(false); toast.error(removed.error); return; }
       setSaved(false);
     } else {
-      await supabase.from("saved_profiles").insert({ user_id: userId, saved_profile_id: profileId });
+      const added = await attempt(() => supabase.from("saved_profiles")
+        .insert({ user_id: userId, saved_profile_id: profileId }));
+      if (!added.ok) { setLoading(false); toast.error(added.error); return; }
       setSaved(true);
     }
   };
@@ -147,20 +153,46 @@ function FriendButton({ profileId, friendStatus, friendshipId, refreshFriend, us
 }) {
   const [acting, setActing] = useState(false);
 
+  /**
+   * COM1-1 / P0-2. Every branch here discarded its `{ error }`. The one that
+   * mattered: `useFriendStatus` can only see blocks the VIEWER created — RLS
+   * on `user_blocks` shows a caller nothing but their own rows — so when the
+   * target had blocked the viewer this button read "Add Friend",
+   * `enforce_friendship_rules` refused the insert, and the button silently
+   * returned to "Add Friend". Forever, on every attempt, with no message.
+   *
+   * The refusal is now reported. It is reported NEUTRALLY: naming the block
+   * would hand the requester the one fact the blocker withheld, so this shows
+   * the same sentence for a block as for any other refusal — matching the Stat
+   * Check backend, which answers `SC_INVITE_BLOCKED` with "This invite is not
+   * available." rather than explaining it.
+   */
   const handleAction = async () => {
     setActing(true);
+    let result: { ok: boolean; error?: string } = { ok: true };
+
     if (friendStatus === "none") {
-      const { data: myProfile } = await supabase.from("profiles").select("id, display_name").eq("user_id", userId).single();
-      if (myProfile) {
-        await supabase.from("friendships").insert({ requester_id: myProfile.id, addressee_id: profileId });
-      }
+      const { data: myProfile } = await supabase
+        .from("profiles").select("id, display_name").eq("user_id", userId).single();
+      result = myProfile
+        ? await attempt(
+            () => supabase.from("friendships")
+              .insert({ requester_id: myProfile.id, addressee_id: profileId }),
+            SEND_REQUEST_MESSAGES)
+        : { ok: false, error: "Sign in to add friends." };
     } else if (friendStatus === "pending_received" && friendshipId) {
-      await supabase.from("friendships").update({ status: "accepted" }).eq("id", friendshipId);
+      result = await attempt(() =>
+        supabase.from("friendships").update({ status: "accepted" }).eq("id", friendshipId));
     } else if (friendshipId) {
-      await supabase.from("friendships").delete().eq("id", friendshipId);
+      result = await attempt(() =>
+        supabase.from("friendships").delete().eq("id", friendshipId));
     }
+
+    // Refresh on BOTH paths: a refusal usually means this view was the stale
+    // thing, so re-reading is how the button stops offering the impossible.
     refreshFriend();
     setActing(false);
+    if (!result.ok && result.error) toast.error(result.error);
   };
 
   const config: Record<string, { label: string; icon: React.ReactNode; variant: "default" | "outline" | "ghost" }> = {

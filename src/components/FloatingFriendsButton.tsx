@@ -107,6 +107,19 @@ export default function FloatingFriendsButton() {
   const { blockedIds, unblockUser } = useBlocks();
   const [open, setOpen] = useState(false);
 
+  /**
+   * COM1-1 / P0-2. Accept / decline / cancel / remove used to be fired and
+   * forgotten: `useFriends` discarded the `{ error }` envelope, so a refused
+   * write simply produced no visible change and no reason. Each now reports.
+   *
+   * Only FAILURE is announced. A successful accept or decline is already
+   * legible — the row leaves the list — so a toast would be noise.
+   */
+  const runFriendAction = async (run: () => Promise<{ ok: boolean; error?: string }>) => {
+    const result = await run();
+    if (!result.ok && result.error) toast.error(result.error);
+  };
+
   // Listen for mobile nav trigger
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -194,7 +207,7 @@ export default function FloatingFriendsButton() {
                           targetProfileId={f.profile.id}
                           targetName={f.profile.display_name || "User"}
                           friendshipId={f.id}
-                          onRemoveFriend={removeFriend}
+                          onRemoveFriend={(id) => void runFriendAction(() => removeFriend(id))}
                           onBlocked={refreshFriends}
                           /* Safe here and only here: this tab renders
                              `friends`, which useFriends already filters to
@@ -226,14 +239,18 @@ export default function FloatingFriendsButton() {
                           </span>
                         </button>
                         <div className="flex gap-1.5 flex-shrink-0">
-                          <Button size="sm" onClick={() => acceptRequest(r.id)} className="h-8 px-3 text-xs">
+                          <Button
+                            size="sm"
+                            onClick={() => void runFriendAction(() => acceptRequest(r.id))}
+                            className="h-8 px-3 text-xs"
+                          >
                             Accept
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             aria-label="Decline request"
-                            onClick={() => declineRequest(r.id)}
+                            onClick={() => void runFriendAction(() => declineRequest(r.id))}
                             className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           >
                             <X className="h-4 w-4" />
@@ -271,7 +288,7 @@ export default function FloatingFriendsButton() {
                             variant="ghost"
                             size="sm"
                             aria-label="Cancel request"
-                            onClick={() => cancelRequest(r.id)}
+                            onClick={() => void runFriendAction(() => cancelRequest(r.id))}
                             className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           >
                             <X className="h-4 w-4" />
@@ -293,7 +310,11 @@ export default function FloatingFriendsButton() {
                 ) : (
                   <BlockedUsersList
                     blockedIds={blockedIds}
-                    onUnblock={async (id) => { await unblockUser(id); toast.success("User unblocked"); }}
+                    onUnblock={async (id) => {
+                      const result = await unblockUser(id);
+                      if (!result.ok) { toast.error(result.error); return; }
+                      toast.success("User unblocked");
+                    }}
                     navigate={navigate}
                     setOpen={setOpen}
                   />
