@@ -55,7 +55,9 @@ import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import type { DailyChallengeState } from "@/lib/quiz/featured-mock";
 import { isDailyChallengeComplete } from "@/lib/quiz/dailyChallengeStatus";
-import PlayScrollRoleBanner from "./PlayScrollRoleBanner";
+import PlayScrollRoleSelector, {
+  DEFAULT_PREVIEW_ROLE,
+} from "./PlayScrollRoleSelector";
 import PlayModeMenu, {
   type PlayModeCompletion,
   type PlayModeDetail,
@@ -82,6 +84,8 @@ export default function PlayScrollRecord({
   progression = null,
   modes,
   daily = null,
+  onSelectRole,
+  onCommitRole,
   onEnterMatch,
   onPlayDailyChallenge,
   onPlayPractice,
@@ -107,6 +111,29 @@ export default function PlayScrollRecord({
   modes: PlayModeVisibility;
   /** Today's real Daily Challenge state, for the clause's figure. */
   daily?: DailyChallengeState | null;
+  /**
+   * Persist the role the player settled on, and say whether it held.
+   *
+   * The ONE canonical write — the host's own `rankedRole.selectRole`, reached
+   * through `Quiz.tsx`. This component has no role API of its own and must
+   * never grow one: `PUT /api/ranked/role` is rate limited (`role_set`, ten a
+   * minute) and a second write path is a second way to spend that budget.
+   *
+   * Called exactly once, when the player chooses RANKED MATCH — see
+   * `selectMode`. Nothing else on the record commits: Daily Challenge, Invite
+   * and Practice do not queue, so none of them needs the account's stored
+   * role to be anything in particular, and writing on the way past would
+   * spend a rate-limited write on a player who never entered Ranked.
+   */
+  /**
+   * Move the page's ONE local role selection.
+   *
+   * The host's own setter — the same one the lobby's carousel is given — so
+   * the record and the stage behind it are two renderings of one value. Local
+   * only: this writes nothing to the account, however far the player steps.
+   */
+  onSelectRole: (role: RankedRole) => void;
+  onCommitRole: (role: RankedRole) => boolean | Promise<boolean>;
   /** Hand the player into the live-match host at `/quiz/ranked`. */
   onEnterMatch: (matchId: string) => void;
   /** The host's OWN existing Daily Challenge entry. */
@@ -132,6 +159,33 @@ export default function PlayScrollRecord({
   handoffDelayMs?: number;
 }) {
   const [view, setView] = useState<ScrollView>("menu");
+  /**
+   * The role on screen — the HOST's, not a copy of it.
+   *
+   * There is exactly ONE local role selection on this page and the record
+   * does not own it. `role` is the host's `effectiveRankedRole`, the same
+   * value the lobby's own carousel is rendering behind this sheet, and
+   * `onSelectRole` is the same setter that carousel calls. Stepping an arrow
+   * here therefore moves the lobby's stage too, in its own existing
+   * transition — the record is manipulating the Leaguecraft role state, not
+   * keeping a second opinion about it.
+   *
+   * It used to keep a `previewRole` of its own, seeded from this prop and
+   * never propagated back. Two independently mutable selections is one more
+   * than a page can be right about: the lobby went on showing whatever it had
+   * while the record showed something else, and closing the record threw the
+   * player's choice away.
+   *
+   * THERE IS STILL NO "NO ROLE CHOSEN". An account that has never picked
+   * renders the first canonical role — which is also what the lobby's own
+   * stage shows for a null value, so the two agree on the first frame without
+   * anything being written to make them. Nothing is persisted by that: the
+   * fallback is a rendering decision, and the account only gains a role when
+   * the first step calls `onSelectRole` or Ranked commits.
+   */
+  const displayRole = role ?? DEFAULT_PREVIEW_ROLE;
+  /** True while the role write for a Ranked entry is in flight. */
+  const [committing, setCommitting] = useState(false);
   const recordRef = useRef<HTMLDivElement | null>(null);
   const [busyMode, setBusyMode] = useState<PlayModeId | null>(null);
 
@@ -220,7 +274,32 @@ export default function PlayScrollRecord({
       // happen is starting a set with nothing in it.
       if (id === "daily" && dailyComplete) return;
       if (id === "ranked") {
-        setView("ranked");
+        /*
+         * THE COMMIT POINT. Ranked is the only entry that queues, and the
+         * queue join sends no role at all — `POST /api/ranked/queue` reads the
+         * player's STORED preference off the account inside its own
+         * transaction. So the previewed role has to reach the backend before
+         * matchmaking can be entered, or the player queues as whoever they
+         * used to be.
+         *
+         * A REFUSAL STAYS ON THE MENU. An active match, a live queue entry or
+         * a rate limit means the write did not land; carrying the player into
+         * matchmaking anyway would queue them under the wrong role with
+         * nothing on screen saying so. The host surfaces its own notice (one
+         * reused toast id), and the record simply does not move.
+         */
+        setBusyMode("ranked");
+        setCommitting(true);
+        void (async () => {
+          let held = false;
+          try {
+            held = await onCommitRole(displayRole);
+          } finally {
+            setCommitting(false);
+            setBusyMode(null);
+          }
+          if (held) setView("ranked");
+        })();
         return;
       }
       if (id === "invite") {
@@ -234,7 +313,7 @@ export default function PlayScrollRecord({
       onClose();
       onPlayDailyChallenge();
     },
-    [busyMode, dailyComplete, onClose, onPlayDailyChallenge],
+    [busyMode, dailyComplete, onClose, onCommitRole, onPlayDailyChallenge, displayRole],
   );
 
   /**
@@ -370,41 +449,68 @@ export default function PlayScrollRecord({
               <div className="lc-scroll__cap lc-scroll__cap--foot" />
             </div>
 
-            <div className="lc-scroll__content flex min-h-0 flex-col gap-3">
-              <header className="relative shrink-0">
-                {/* The close control, ON the writing area rather than over
-                    the head roll — the ornament is not usable surface, and a
-                    control placed there reads as damage to the sheet.
-                    Withheld — not merely disabled — while a queue entry is
-                    live, so the record cannot be dismissed over a match the
-                    player would then not know about. */}
-                {closeIsSafe && (
-                  <DialogPrimitive.Close asChild>
-                    <button
-                      type="button"
-                      data-testid="play-scroll-close"
-                      /* An ink stamp, not a browser chrome X: a struck disc
-                         in the sheet's own brown with a double rim, so the
-                         way out belongs to the parchment rather than sitting
-                         on top of it. It stays a full 32px target and keeps
-                         its own hover, focus and pressed states — see
-                         `.play-scroll-stamp` in index.css. */
-                      className="play-scroll-stamp absolute -top-1.5 right-0"
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span className="sr-only">Close match entry</span>
-                    </button>
-                  </DialogPrimitive.Close>
-                )}
-                <DialogPrimitive.Title
-                  className="play-scroll-heading text-center text-[10px] font-black uppercase tracking-[0.34em]"
-                  style={{ color: INK.heading, textShadow: INK.press }}
-                >
-                  Match Entry
-                </DialogPrimitive.Title>
+            <div className="lc-scroll__content flex min-h-0 flex-col gap-2">
+              <header className="shrink-0">
+                {/* A ROW, not a centred line with a control floated over it.
+                    The close stamp used to be absolutely positioned at the
+                    right of a full-width centred title, which was fine while
+                    the title was a 10px eyebrow and collided with it the
+                    moment the title became a title: at 375 the last letters
+                    of CHOOSE MODE ran under the stamp. Laying the header out
+                    as [gutter][title][stamp] centres the title between them
+                    at every width, with no overlap to tune and no padding to
+                    keep in sync with the stamp's size. */}
+                <div className="play-scroll-head">
+                  {/* The gutter. Mirrors the stamp so the title's centre is
+                      the SHEET's centre, not the centre of what is left over.
+                      Inert, and it holds its width whether or not the stamp
+                      is there — withdrawing the close must not shift the
+                      title sideways. */}
+                  <span className="play-scroll-head__gutter" aria-hidden="true" />
+
+                  {/* The sheet's title, and it is now sized like one. It was a
+                      10px tracked-out eyebrow, which read as a label ABOVE
+                      the content rather than as the heading OF it — the
+                      record's three entries are what the player came for and
+                      the line over them should say so. */}
+                  <DialogPrimitive.Title
+                    className="play-scroll-heading"
+                    style={{ color: INK.heading, textShadow: INK.press }}
+                  >
+                    Choose Mode
+                  </DialogPrimitive.Title>
+
+                  {/* The close control, ON the writing area rather than over
+                      the head roll — the ornament is not usable surface, and a
+                      control placed there reads as damage to the sheet.
+                      Withheld — not merely disabled — while a queue entry is
+                      live, so the record cannot be dismissed over a match the
+                      player would then not know about. */}
+                  <span className="play-scroll-head__gutter">
+                    {closeIsSafe && (
+                      <DialogPrimitive.Close asChild>
+                        <button
+                          type="button"
+                          data-testid="play-scroll-close"
+                          /* An ink stamp, not a browser chrome X: a struck
+                             disc in the sheet's own brown with a double rim,
+                             so the way out belongs to the parchment rather
+                             than sitting on top of it. Full 32px target, with
+                             its own hover, focus and pressed states — see
+                             `.play-scroll-stamp` in index.css. */
+                          className="play-scroll-stamp"
+                        >
+                          <X className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span className="sr-only">Close match entry</span>
+                        </button>
+                      </DialogPrimitive.Close>
+                    )}
+                  </span>
+                </div>
                 <DialogPrimitive.Description className="sr-only">
-                  Choose how to play: a Ranked match, today's Daily Challenge, or a
-                  challenge to a summoner on your Academy roster.
+                  Choose how to play: a Ranked match, today's Daily Challenge, a
+                  challenge to a summoner on your Academy roster, or practice
+                  questions. Step the arrows to choose the role you enter as.
                 </DialogPrimitive.Description>
                 {/* The head rule, with a diamond at its centre — the mark a
                     scribe rules under a title. One element; the diamond and
@@ -416,7 +522,17 @@ export default function PlayScrollRecord({
                   the scrolling body so the identity being entered never
                   leaves the sheet. */}
               <div className="shrink-0">
-                <PlayScrollRoleBanner role={role} progression={progression} />
+                <PlayScrollRoleSelector
+                  role={displayRole}
+                  /* The host's setter, verbatim — the same one the lobby's
+                     carousel calls. No local mirror to keep in step. */
+                  onStep={onSelectRole}
+                  progression={progression}
+                  /* Held still once the record has left the menu: the role is
+                     committed by then, and stepping it would show a figure the
+                     queue entry is not carrying. */
+                  disabled={committing || view !== "menu"}
+                />
               </div>
 
               {/* The writing area. Views that can grow (the roster) manage
@@ -431,12 +547,21 @@ export default function PlayScrollRecord({
                     onSelect={selectMode}
                     busyMode={busyMode}
                     completed={completed}
+                    /* The SAME handoff the completed Daily clause uses — one
+                       host ref, one scroll, one focus move. Practice is
+                       reachable here whatever Daily Challenge is doing. */
+                    onPlayPractice={goToPractice}
                   />
                 )}
                 {view === "ranked" && (
                   <RankedQueueView
                     queue={queue}
-                    role={role}
+                    /* The role the entry was committed under — the preview the
+                       player stepped to and Ranked wrote, not the lobby's
+                       stale value. The view still prefers the SERVER's own
+                       confirmation once a status lands; this is only the
+                       frame before that. */
+                    role={displayRole}
                     onJoin={queue.joinWithoutClass}
                     onBack={() => setView("menu")}
                   />

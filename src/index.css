@@ -6065,92 +6065,243 @@ html.high-contrast * { text-shadow: none !important; }
   text-decoration-color: rgba(36, 23, 8, 0.7);
 }
 
-/* ── The role band: two anchors and a name ──────────────────────────────
-   The band says WHO is entering and WHERE, and it used to say it five times
-   over — the role name, "· Ranked Silver" beside it, a SILVER caption under
-   the emblem, the emblem itself, and an unlabelled champion coin at the edge.
-   Three of those are gone (see the component). What is left got the room:
-   at full size the mascot is roughly twice its old height and the emblem
-   about three times its old box, so the band reads as an icon-and-name plate.
-
-   TWO BIG ANCHORS NEED THE SHEET'S WIDTH, NOT THE WINDOW'S.
-   The band is held OUTSIDE `.play-scroll__body` on purpose — the identity
-   being entered must not scroll away while the player checks it — so it is
-   not inside the `play-record` container the cards use, and for one revision
-   its sizes were keyed to the viewport instead. That measures the wrong box:
-   the sheet shrinks to fit `95vh` because its slices are `100% auto`, so a
-   tall 820x900 window yields a 239px writing area while a 1280x720 window
-   yields 411px. Keyed to the viewport, the tall window got the FULL-SIZE
-   anchors, they took 208px of 239, and "Jungle" was ellipsised down to
-   SEVEN PIXELS between them.
-
-   So `.lc-scroll__content` — the column that holds the band AND the body —
-   is itself a container, and the anchors step off the sheet's real width.
-   `play-record` (the body) stays exactly as it was; the cards were tuned
-   against it and it is 4px narrower than this one.
-   ───────────────────────────────────────────────────────────────────────── */
-
+/* THE SHEET IS A CONTAINER, and everything in the record's head measures
+   against it rather than against the viewport.
+   `.play-scroll-sizer` caps the sheet at `min(100%, 47rem, 84vh)` and
+   `.play-scroll` then shrinks it further to fit `95vh`, because the scroll's
+   three slices are `100% auto` and its HEIGHT follows its width. A tall
+   mid-width window therefore produces a far narrower sheet than its viewport
+   suggests — measured, a 900x880 window gives ~298px of writing area where a
+   1280x720 window gives ~411px. `play-record` (the body, 4px narrower) stays
+   the cards' container; this one is the head's, because the band lives
+   OUTSIDE the scrolling body so the identity never scrolls away. */
 .play-scroll .lc-scroll__content {
   container-type: inline-size;
   container-name: play-record-sheet;
 }
 
+/* The head row: [gutter][title][stamp]. The gutters are equal, so the title's
+   centre is the sheet's centre and stays there whether or not the close is
+   offered. `min-width: 0` lets the title shrink rather than push the stamp
+   off the sheet. */
+.play-scroll-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.play-scroll-head__gutter {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  width: 32px;
+}
+
+/* ── The sheet's title ──────────────────────────────────────────────────
+   "CHOOSE MODE" is the heading OF the record, not a label above it. It used
+   to be a 10px tracked-out eyebrow, which is the same treatment the clauses'
+   own kickers had — so the page had no dominant line at all and the title
+   read as furniture. It is now the largest thing on the sheet after the
+   mascot, in the parchment's own heading ink with the letterpress the rest of
+   the manuscript uses. */
+.play-scroll-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+  /* ONE LINE, ALWAYS. "CHOOSE MODE" broken across two lines reads as a
+     paragraph, not a title, and it pushed the stepper down far enough on a
+     phone to cost the Practice footer its place. The size and the tracking
+     are what give — measured against the title's own box, which is the sheet
+     minus the two 32px head gutters: ~187px at a 375 viewport and ~148px at
+     320. Never `white-space: normal` here. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@container play-record-sheet (min-width: 300px) {
+  .play-scroll-heading {
+    font-size: 26px;
+  }
+}
+
+@container play-record-sheet (min-width: 380px) {
+  .play-scroll-heading {
+    font-size: 30px;
+    letter-spacing: 0.16em;
+  }
+}
+
+/* ── The role stepper ───────────────────────────────────────────────────
+   ONE mascot, an arrow either side, the name and the crest beneath. Not the
+   lobby's three-mascot ring: that is a browsing surface for a page, and this
+   is a compact choice on a dialog the player opened to start a match.
+
+   The composition is CENTRED rather than spread. The band used to push a
+   mascot to the far left and a crest to the far right with the name adrift
+   between them, which read as three separate objects sharing a row. The
+   stepper is now a single centrepiece and the crest sits with the name under
+   it, so the whole band reads as one thing.
+
+   SIZES STEP OFF THE SHEET, not the viewport — `.play-scroll .lc-scroll__content`
+   is the `play-record-sheet` container, and the sheet shrinks to fit `95vh`
+   independently of how wide the window is. A tall mid-width window produces a
+   far narrower sheet than its viewport suggests. */
+
 .play-scroll-banner {
-  gap: 0.5rem;
-  padding-bottom: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(96, 68, 28, 0.5);
 }
 
-/* The figure. This class lands on `RoleMascot`'s OUTER box, which is the one
-   layer that component leaves entirely to its host — every inner layer fills
-   it exactly, and the host is explicitly forbidden from putting a transform
-   here so the idle float has the layer to itself. Size and placement only. */
+.play-scroll-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+/* The figure's box. Fixed so stepping between roles cannot resize the row —
+   the five plates are one aspect ratio, but a shrink-to-fit box would still
+   twitch on the frame the next image decodes. */
+.play-scroll-stepper__figure {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Wider than tall: `cover` crops the plate's empty head/foot room, so the box
+   is sized to the CHARACTER rather than to the artwork's letterboxing. */
 .play-scroll-banner__figure {
-  flex-shrink: 0;
-  /* Even the SMALLEST step is a real increase — the band's old mascot was
-     64px at every size. At a 255px sheet (375px phone) this and the crest
-     take 154px between them and still leave the name ~100px, which is more
-     than "Support" needs at 17px. */
-  width: 78px;
-  height: 78px;
+  width: 94px;
+  height: 74px;
 }
 
-/* The standing.
-   `variant="hero"` is chosen for the ART — the small emblem set is the
-   incomplete one — and the band then sizes hero's own 8rem/10rem box down to
-   something a header can carry. That override has to outrank
-   `.lc-emblem[data-variant="hero"]`, hence the two-class selector; this block
-   is appended after it, so equal specificity would also do, and the extra
-   class is there to survive being moved. */
-.lc-emblem.play-scroll-banner__standing {
-  flex-shrink: 0;
-  width: 60px;
-  height: 60px;
+/* The narrowest sheet a phone can produce — measured, a 320px viewport leaves
+   a ~216px writing area. The head gives up a few pixels there so the Practice
+   footer stays above the fold: a secondary action nobody can see without
+   scrolling a dialog is a secondary action nobody finds. The ARROWS never
+   shrink; a stepper whose targets shrink with the sheet stops being tappable
+   exactly where taps are all there is. */
+@container play-record-sheet (max-width: 264px) {
+  .play-scroll-banner__figure {
+    width: 84px;
+    height: 64px;
+  }
+
+  .play-scroll-banner__role {
+    font-size: 18px;
+  }
+
+  .lc-emblem.play-scroll-banner__standing {
+    width: 44px;
+    height: 44px;
+  }
+
 }
 
-/* The name block, centred between the two anchors — the band is a title
-   plate, and a left-set name left a hole between it and the crest. The
-   no-role case is an INSTRUCTION rather than a name, and a centred sentence
-   reads worse than a set one, so that branch takes the left. */
+/* The title gets its OWN narrow step, tighter than the head's.
+   The head's 264px step exists to buy vertical room for the Practice footer;
+   the title's constraint is horizontal and only bites on the very narrowest
+   sheet. Sharing one threshold made a 375 phone — which has 183px of title
+   box and needs 147 — take the 320 treatment for nothing. */
+@container play-record-sheet (max-width: 232px) {
+  .play-scroll-heading {
+    font-size: 16px;
+    letter-spacing: 0.05em;
+  }
+}
+
+@container play-record-sheet (min-width: 300px) {
+  .play-scroll-banner__figure {
+    width: 112px;
+    height: 86px;
+  }
+}
+
+@container play-record-sheet (min-width: 380px) {
+  .play-scroll-stepper {
+    gap: 0.6rem;
+  }
+
+  .play-scroll-banner__figure {
+    width: 132px;
+    height: 100px;
+  }
+}
+
+/* The arrows. Real buttons, struck into the parchment like the record's other
+   controls — a 40px target that stays a 40px target at every sheet width,
+   because a stepper whose arrows shrink with the sheet is a stepper that
+   stops being tappable exactly where taps are all there is. */
+.play-scroll-arrow {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 68, 28, 0.55);
+  background:
+    radial-gradient(
+      70% 70% at 50% 32%,
+      rgba(255, 249, 235, 0.55) 0%,
+      transparent 72%
+    ),
+    rgba(112, 82, 36, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 238, 0.34),
+    inset 0 -1px 2px rgba(60, 40, 12, 0.2);
+  color: #3f2c14;
+  transition: background-color 160ms ease, border-color 160ms ease,
+    color 160ms ease, transform 160ms ease;
+}
+
+.play-scroll-arrow:enabled:hover {
+  border-color: rgba(83, 56, 8, 0.8);
+  background-color: rgba(112, 82, 36, 0.28);
+  color: #241708;
+}
+
+.play-scroll-arrow:enabled:active {
+  transform: scale(0.94);
+  background-color: rgba(112, 82, 36, 0.36);
+}
+
+.play-scroll-arrow:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.play-scroll-arrow:focus-visible {
+  outline: 2px solid rgba(122, 40, 32, 0.92);
+  outline-offset: 2px;
+}
+
+/* The name and the crest, together under the figure. */
 .play-scroll-banner__name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
   text-align: center;
 }
 
-.play-scroll-banner[data-role="none"] .play-scroll-banner__name {
-  text-align: left;
-}
-
-/* The role's name. The only text on the band that is not a label, and the
-   one thing on it that must never be lost.
-
-   NO `min-width` HERE. A floor on this element is the wrong layer: its parent
-   is `min-w-0 flex-1`, so the parent shrinks past it and the name overflows
-   into the crest instead of ellipsising. The floor is enforced where it can
-   actually be honoured — the ANCHORS step down first, in the container
-   queries below, so the name is never asked to give up room it does not
-   have. Measured at 17px: the longest role, "Support", is 67px. */
 .play-scroll-banner__role {
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 900;
   line-height: 1.1;
   overflow: hidden;
@@ -6158,66 +6309,117 @@ html.high-contrast * { text-shadow: none !important; }
   white-space: nowrap;
 }
 
-/* The narrowest sheet a phone can produce. Measured: a 320px viewport leaves
-   a ~218px writing area, where the default anchors plus the name do not fit.
-   They come down together, so the band keeps its balance. */
-@container play-record-sheet (max-width: 264px) {
-  .play-scroll-banner__figure {
-    width: 64px;
-    height: 64px;
-  }
-
-  .lc-emblem.play-scroll-banner__standing {
-    width: 50px;
-    height: 50px;
-  }
-
-  .play-scroll-banner__role {
-    font-size: 16px;
-  }
-
-  /* "ENTERING AS" is eleven characters, and at 0.24em it needs 86px — which
-     is exactly the name column at this size, so it broke onto two lines and
-     pushed the role down. The tracking is the part that can give. */
-  .play-scroll-banner__name > p:first-child {
-    letter-spacing: 0.12em;
-  }
-}
-
 @container play-record-sheet (min-width: 300px) {
-  .play-scroll-banner__figure {
-    width: 88px;
-    height: 88px;
-  }
-
-  .lc-emblem.play-scroll-banner__standing {
-    width: 68px;
-    height: 68px;
-  }
-
   .play-scroll-banner__role {
-    font-size: 20px;
+    font-size: 23px;
   }
 }
 
 @container play-record-sheet (min-width: 380px) {
-  .play-scroll-banner {
-    gap: 0.75rem;
-  }
-
-  .play-scroll-banner__figure {
-    width: 112px;
-    height: 112px;
-  }
-
-  .lc-emblem.play-scroll-banner__standing {
-    width: 88px;
-    height: 88px;
-  }
-
   .play-scroll-banner__role {
-    font-size: 24px;
+    font-size: 27px;
   }
+}
+
+/* The standing. `variant="hero"` is chosen for the ART — the small emblem set
+   is the incomplete one — and the band sizes hero's own 8rem/10rem box down
+   to something a header can carry. The override needs
+   `.lc-emblem.play-scroll-banner__standing` to outrank `[data-variant]`. */
+.lc-emblem.play-scroll-banner__standing {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+}
+
+@container play-record-sheet (min-width: 300px) {
+  .lc-emblem.play-scroll-banner__standing {
+    width: 62px;
+    height: 62px;
+  }
+}
+
+@container play-record-sheet (min-width: 380px) {
+  .lc-emblem.play-scroll-banner__standing {
+    width: 74px;
+    height: 74px;
+  }
+}
+
+/* ── The Practice footer ────────────────────────────────────────────────
+   Secondary by construction: outside the clause list, under a rule, with no
+   frame, no plate, no accent and no supporting line. It is a struck link with
+   a mark beside it — the three modes stay the only cards on the sheet. */
+.play-scroll-footer {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(96, 68, 28, 0.35);
+  display: flex;
+  justify-content: center;
+}
+
+.play-scroll-practice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #3f2c14;
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.play-scroll-practice:hover {
+  color: #241708;
+}
+
+.play-scroll-practice:hover .play-scroll-practice__label {
+  text-decoration-color: rgba(36, 23, 8, 0.85);
+}
+
+.play-scroll-practice:active {
+  transform: translateY(1px);
+}
+
+.play-scroll-practice:focus-visible {
+  outline: 2px solid rgba(122, 40, 32, 0.92);
+  outline-offset: 2px;
+}
+
+.play-scroll-practice__label {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(96, 68, 28, 0.5);
+  transition: text-decoration-color 160ms ease;
+}
+
+/* The owner's mark. The slot holds its geometry whether or not art has been
+   supplied, so dropping a file in later moves nothing on the sheet. */
+.play-scroll-practice__mark {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 68, 28, 0.45);
+  background:
+    radial-gradient(
+      70% 70% at 50% 32%,
+      rgba(255, 249, 235, 0.5) 0%,
+      transparent 72%
+    ),
+    rgba(112, 82, 36, 0.12);
+  overflow: hidden;
+  color: #56412a;
+}
+
+.play-scroll-practice__mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ── A refusal ──────────────────────────────────────────────────────────── */
@@ -6459,5 +6661,16 @@ html.high-contrast * { text-shadow: none !important; }
 
   .play-mode-card__practice {
     transition: none;
+  }
+
+  .play-scroll-arrow,
+  .play-scroll-practice,
+  .play-scroll-practice__label {
+    transition: none;
+  }
+
+  .play-scroll-arrow:enabled:active,
+  .play-scroll-practice:active {
+    transform: none;
   }
 }

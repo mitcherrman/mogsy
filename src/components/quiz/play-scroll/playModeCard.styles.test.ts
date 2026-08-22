@@ -226,3 +226,44 @@ describe("the three eyebrow inks clear 4.5:1 on the parchment", () => {
     expect(css).toContain(`--pm-ink: ${ink}`);
   });
 });
+
+describe("CHOOSE MODE holds one line", () => {
+  /**
+   * A title broken across two lines reads as a paragraph rather than a
+   * heading, and on a phone it pushed the stepper down far enough to cost the
+   * Practice footer its place below the fold. The size and the tracking are
+   * what give; the single line is not negotiable.
+   */
+  const rule = (selector: string) => {
+    const at = css.indexOf(selector);
+    expect(at, `${selector} not found`).toBeGreaterThan(-1);
+    return css.slice(at, css.indexOf("}", at));
+  };
+
+  it("can never wrap", () => {
+    const base = rule(".play-scroll-heading {");
+    expect(base).toMatch(/white-space:\s*nowrap/);
+    // And it degrades by ellipsis rather than by spilling off the sheet.
+    expect(base).toMatch(/text-overflow:\s*ellipsis/);
+  });
+
+  it("steps DOWN on the narrowest sheet rather than wrapping", () => {
+    // The container the head measures against is the SHEET, which shrinks to
+    // fit 95vh independently of viewport width — see the head block.
+    const narrow = css.slice(css.indexOf("@container play-record-sheet (max-width: 232px)"));
+    const block = narrow.slice(0, narrow.indexOf("}\n}") + 3);
+    expect(block).toContain(".play-scroll-heading");
+    expect(block).toMatch(/font-size:\s*16px/);
+    // Tracking gives before the glyphs do.
+    expect(block).toMatch(/letter-spacing:\s*0\.05em/);
+  });
+
+  it("is still the sheet's dominant line, not an eyebrow", () => {
+    const base = rule(".play-scroll-heading {");
+    expect(base).toMatch(/font-weight:\s*900/);
+    expect(base).toMatch(/text-transform:\s*uppercase/);
+    // Larger than the clause titles it sits above (16px / 18px).
+    const size = Number(/font-size:\s*(\d+)px/.exec(base)?.[1] ?? 0);
+    expect(size).toBeGreaterThanOrEqual(19);
+  });
+});

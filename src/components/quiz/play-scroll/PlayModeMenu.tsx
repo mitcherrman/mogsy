@@ -56,7 +56,7 @@
  * per-role claim would be a sentence the server never made.
  */
 
-import { ArrowRight, Check, Flame } from "lucide-react";
+import { ArrowRight, Check, Flame, GraduationCap } from "lucide-react";
 import type { PlayModeDescriptor, PlayModeId } from "@/lib/quiz/playModes";
 import { rankedTierLabel } from "@/lib/progression/rankedArt";
 import type { RankTier } from "@/lib/progression/tiers";
@@ -130,6 +130,8 @@ export default function PlayModeMenu({
   onSelect,
   busyMode = null,
   completed = {},
+  onPlayPractice,
+  practiceIconSrc = null,
 }: {
   /** Already filtered and ordered by the host from the admin policy. */
   modes: readonly PlayModeDescriptor[];
@@ -145,6 +147,17 @@ export default function PlayModeMenu({
    * state it already holds, never discovered by trying.
    */
   completed?: Partial<Record<PlayModeId, PlayModeCompletion>>;
+  /**
+   * Take the player to the lobby's Practice section. Omit and the footer is
+   * not drawn at all — a link with nowhere to go is worse than no link.
+   */
+  onPlayPractice?: () => void;
+  /**
+   * The footer's mark. A small square asset supplied by the owner; when there
+   * is none the slot falls back to a struck glyph at the same size, so the
+   * geometry does not move when the real art arrives.
+   */
+  practiceIconSrc?: string | null;
 }) {
   if (modes.length === 0) {
     // Every entry is withheld by policy. The record still has to say
@@ -161,7 +174,8 @@ export default function PlayModeMenu({
   }
 
   return (
-    <ul className="flex flex-col gap-2" data-testid="play-scroll-modes">
+    <>
+      <ul className="flex flex-col gap-2" data-testid="play-scroll-modes">
       {modes.map((mode, index) => {
         const busy = busyMode === mode.id;
         const detail = details[mode.id];
@@ -187,7 +201,6 @@ export default function PlayModeMenu({
                 <PlayModePlate mode={mode.id} size="card" tone="soft" />
 
                 <span className="play-mode-card__text">
-                  <span className="play-mode-card__eyebrow">{mode.kicker}</span>
                   <span
                     className="play-mode-card__title"
                     style={{ textShadow: INK.press }}
@@ -259,7 +272,6 @@ export default function PlayModeMenu({
               <PlayModePlate mode={mode.id} size="card" />
 
               <span className="play-mode-card__text">
-                <span className="play-mode-card__eyebrow">{mode.kicker}</span>
                 <span
                   className="play-mode-card__title"
                   style={{ textShadow: INK.press }}
@@ -319,6 +331,46 @@ export default function PlayModeMenu({
           </li>
         );
       })}
-    </ul>
+      </ul>
+
+      {/*
+       * PRACTICE — a footer, deliberately not a fourth mode.
+       *
+       * The record is a CHOICE between three ways to play; practice is not one
+       * of them, it is the thing to do instead of playing. So it sits outside
+       * the list entirely, under a rule, with no frame, no plate, no accent
+       * and no supporting line — a struck link with a mark beside it, at a
+       * weight that reads as secondary at a glance.
+       *
+       * IT IS NOT ROUTED THROUGH DAILY CHALLENGE. It calls the host's practice
+       * handoff directly — the same one the completed Daily clause offers — so
+       * the Daily workstream can replace everything about that mode without
+       * this footer noticing. It commits no role: practice does not queue.
+       */}
+      {onPlayPractice && (
+        <div className="play-scroll-footer">
+          <button
+            type="button"
+            data-testid="play-scroll-practice"
+            onClick={onPlayPractice}
+            className="play-scroll-practice"
+          >
+            {/* The owner's mark goes here. Until a file is supplied the slot
+                is a struck roundel with a glyph rather than an invented
+                picture — it holds the exact geometry the art will take, so
+                dropping the asset in later moves nothing. */}
+            <span className="play-scroll-practice__mark" aria-hidden="true">
+              {practiceIconSrc ? (
+                <img src={practiceIconSrc} alt="" />
+              ) : (
+                <GraduationCap className="h-3.5 w-3.5" />
+              )}
+            </span>
+            <span className="play-scroll-practice__label">Practice Questions</span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </>
   );
 }

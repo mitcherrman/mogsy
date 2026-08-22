@@ -143,6 +143,7 @@ export default function LeaguecraftHub({
   ranked,
   onPlayRanked,
   playDisabled = false,
+  onCommitRole,
   onEnterMatch,
   onPlayDailyChallenge,
   playModes,
@@ -221,6 +222,13 @@ export default function LeaguecraftHub({
    * PLAY1: hand the player into the live-match host at `/quiz/ranked` once
    * the Ranked queue has a match. The hub never navigates itself.
    */
+  /**
+   * PLAY1: persist the role the player settled on INSIDE the record, and say
+   * whether it held. Forwarded untouched — the hub neither reads nor decides
+   * a role, it only carries the host's one canonical write down to the
+   * surface that now owns the choice. See `PlayScrollRecord.onCommitRole`.
+   */
+  onCommitRole: (role: RankedRole) => boolean | Promise<boolean>;
   onEnterMatch: (matchId: string) => void;
   /**
    * PLAY1: the host's OWN Daily Challenge entry. `Quiz.tsx` hosts the daily
@@ -555,6 +563,11 @@ export default function LeaguecraftHub({
           daily={dailyChallenge}
           returnFocusTo={playSealRef}
           signedIn={signedIn}
+          /* The SAME setter the lobby's own carousel is given, so stepping a
+             role on the record moves the stage behind it. One local
+             selection, two renderings of it. */
+          onSelectRole={onSelectRankedRole ?? (() => {})}
+          onCommitRole={onCommitRole}
           onEnterMatch={onEnterMatch}
           onPlayDailyChallenge={onPlayDailyChallenge}
           onPlayPractice={goToPractice}
