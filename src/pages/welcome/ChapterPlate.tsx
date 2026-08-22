@@ -272,8 +272,13 @@ function RegisterLine({ label, value }: { label: string; value: string }) {
  *
  * The shape is illustrative, not a data claim — no axis is labelled and no
  * number is printed, precisely so it cannot be read as a real statistic.
+ *
+ * EXPORTED because the last spread composes its own two pages rather than
+ * taking the templated illustration slot (see FinaleSpread), and this is the
+ * figure it puts on the left one. It is the same component drawing the same
+ * paths — nothing about the graph itself changed.
  */
-function ChartArt() {
+export function ChartArt() {
   const INK = "#2b3a57";
   const FAINT = "rgba(43,58,87,0.22)";
   const ACCENT = "#8a6d2a";

@@ -206,10 +206,13 @@ export const ACADEMY_CHAPTERS: AcademyChapter[] = [
     art: { kind: "duel" },
   },
   {
-    // The last spread. Its left page is the restored Pro Data graph, ALONE —
-    // no cards, no docket, no diagram beside it (see ChapterPlate's ChartArt
-    // and the note in AcademyWelcomePage). Its right page is the closing copy
-    // and the two exits, over Yasuo faded into the paper.
+    // The last spread, and the one page in the book that is COMPOSED rather
+    // than templated — see FinaleSpread for the whole of it. Its left page is
+    // the title, what the library holds (with the four things it holds drawn
+    // under the sentence that names them) and the restored Pro Data graph; its
+    // right page is one line, one picture of Mogzy with a Teemo emote, and the
+    // two exits. The copy below therefore crosses the gutter: blocks one and
+    // two are written on the left page, block three opens the right one.
     //
     // Everything the copy names exists and is reachable: /lol/docs/pro
     // (champions, players, teams, seasons), /esports/live, /lol/docs and
@@ -223,13 +226,12 @@ export const ACADEMY_CHAPTERS: AcademyChapter[] = [
       "Discover insights. Share what you find.",
     ],
     art: { kind: "chart" },
-    // Yasuo rather than Ahri or Jinx: the opening spread already spent those
-    // two, and a face returning on the last page would read as a shortage of
-    // drawings rather than as a composition. He is also the most vertical of
-    // the three, which is the shape a page of five stacked elements leaves.
-    champions: {
-      recto: { src: CHAMPION_ART.yasuo, strength: 0.15, focus: "center 36%" },
-    },
+    // NO CHAMPION IN THE PAPER, on either page — the one spread in the book
+    // that prints none. The left page already carries a heading, two
+    // paragraphs, four drawn symbols and the animated chart; the right page's
+    // entire job is to hold ONE picture. A faint figure behind either would be
+    // a fifth thing competing on a page that has run out of room to compete on,
+    // and the closing picture has to be the thing the eye lands on.
     finale: true,
   },
 ];

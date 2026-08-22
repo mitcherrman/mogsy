@@ -36,15 +36,29 @@ import type { ChampionBackdrop, ChapterChampions } from "./academyChapters";
  * failed. `--tome-chrome` is the vertical room the surrounding controls need;
  * 1.381 is the drawn book's own aspect ratio (0.768W / 0.556W).
  *
- * THE TURNING LEAF (HI1-C2). When `turning` is set, a physical sheet is staged
- * over the right page: its FRONT face carries the outgoing chapter's writing —
- * the words stay on the page that turns, they are never wiped first — and its
- * BACK face is blank parchment, because the next page has not been written
- * yet. The leaf rotates across the spine under a moving fold-light, throwing a
- * shadow ahead of itself, and lands on the left page; since its back matches
- * the blank paper beneath, its unmount is invisible and the new chapter then
- * writes itself onto the uncovered spread. The whole thing is presentational —
- * `aria-hidden`, driven by one CSS animation, removed on a timer by the page.
+ * THE TURNING LEAF (HI1-C2, re-cut in the polish pass). When `turning` is set,
+ * a physical sheet is staged over the right page: its FRONT face carries the
+ * outgoing chapter's writing — the words stay on the page that turns, they are
+ * never wiped first — and its BACK face is blank parchment, because the next
+ * page has not been written yet. The leaf rotates across the spine under a
+ * moving fold-light, throwing a shadow ahead of itself, and lands on the left
+ * page; since its back matches the blank paper beneath, its unmount is
+ * invisible and the new chapter then writes itself onto the uncovered spread.
+ * The whole thing is presentational — `aria-hidden`, driven by one CSS
+ * animation, removed on a timer by the page.
+ *
+ * AND THE SHEET IS CUT OUT OF THE PAINTING. The leaf used to be a hand-written
+ * beige gradient sized to a box that ran past the paper on all four sides, so
+ * at rest it was a slab lying ON the book rather than a page OF it, and its
+ * colour was simply a different cream from the painted paper's. Both faces are
+ * now the spread's own pixels: the box is the drawn paper — spine to cover, x
+ * 50–92%, y 13–88% of the tome, measured off the file — and `--tome-paper` is
+ * positioned into it so the front face shows the right page and the back face
+ * shows the left. At 0deg the leaf is invisible against the page under it, and
+ * at rest on the left page it is invisible against that one. There is no new
+ * colour anywhere in the turn; the fold light and the cast shadow are the only
+ * things added, and they darken and lighten the real paper rather than
+ * replacing it.
  *
  * ONE CHAMPION PER PAGE, PRINTED INTO THE PAPER. A chapter may name a champion
  * drawing for either page (see academyChapters). It is rendered here rather
@@ -180,7 +194,18 @@ export default function AcademyTome({
   return (
     <div
       className={`academy-tome tome-spread relative mx-auto ${className}`}
-      style={{ ["--tome-chrome" as string]: `${chrome}px` } as CSSProperties}
+      /* `--tome-paper` is the PAINTING ITSELF, handed to the CSS so the turning
+         leaf can be cut out of it rather than approximated by a gradient — see
+         the note on the leaf below, and the geometry in index.css. Passed from
+         here rather than written into the stylesheet so the sheet and the
+         painted spread resolve to the same hashed URL and the same cache
+         entry. */
+      style={
+        {
+          ["--tome-chrome" as string]: `${chrome}px`,
+          ["--tome-paper" as string]: `url(${bookSpread})`,
+        } as CSSProperties
+      }
     >
       <div className="tome-halo" aria-hidden="true" />
       {/* Decorative only — every word on the pages is live HTML above it, so a

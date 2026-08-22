@@ -44,6 +44,8 @@ import {
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 
+import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
+
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
 const mocks = vi.hoisted(() => ({ navigate: vi.fn(), adopt: vi.fn() }));
@@ -253,39 +255,70 @@ describe("the sequence", () => {
   });
 });
 
-describe("the dual-purpose control", () => {
+describe("Next — one control, one press, one page", () => {
   beforeEach(() => setReducedMotion(false));
 
-  it("finishes the current chapter first, and only then turns the page", () => {
-    // The guarantee an impatient visitor depends on: the first press may never
-    // cost them words they have not read.
+  it("lands the rest of a half-written page AND turns it, in one press", () => {
+    // The whole of the polish pass on this side. The control used to finish
+    // the reveal on the first press and turn on the second, which is a button
+    // labelled Next that does not go next.
     render(<AcademyWelcomePage />);
     expect(page()).toHaveAttribute("data-complete", "false");
-
-    advance();
-    expect(page()).toHaveAttribute("data-complete", "true");
     expect(page()).toHaveAttribute("data-chapter-index", "0");
 
     advance();
+
+    // One press: the page turned.
     expect(page()).toHaveAttribute("data-chapter-index", "1");
-    // The new chapter starts writing itself again rather than arriving whole.
+    // And the new chapter starts writing itself rather than arriving whole.
     expect(page()).toHaveAttribute("data-complete", "false");
+    expect(stepOf()).toBe(0);
   });
 
-  it("names what it will do", () => {
+  it("turns a page that had already finished writing itself, the same way", async () => {
+    vi.useFakeTimers();
+    render(<AcademyWelcomePage />);
+    for (let i = 0; i < 60 && page().getAttribute("data-complete") !== "true"; i += 1) {
+      await run(250, 250);
+    }
+    expect(page()).toHaveAttribute("data-complete", "true");
+
+    advance();
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
+  });
+
+  it("carries the skipped words away on the turning sheet rather than losing them", () => {
+    // Turning early is only safe because nothing is lost by it: the sheet in
+    // the air shows the chapter the visitor pressed through, complete.
+    render(<AcademyWelcomePage />);
+    advance();
+    expect(page()).toHaveAttribute("data-turning", "true");
+    // The staged sheet renders the outgoing chapter at its LAST slot. Read the
+    // whole leaf rather than one node of it: the spread's leaf carries the
+    // writing and a phone's carries the writing and the illustration, and this
+    // guarantee is the same on both.
+    const leaf = page().querySelector(".tome-leaf")!;
+    expect(leaf).toBeTruthy();
+    const written = (leaf.textContent ?? "").replace(/\s+/g, " ");
+    for (const line of ACADEMY_CHAPTERS[0].lines) expect(written).toContain(line);
+  });
+
+  it("says Next, and only Next", () => {
+    // No second word and no second mode. The old control renamed itself to
+    // "Skip reveal" mid-page, which is a second control wearing the first
+    // one's clothes.
     render(<AcademyWelcomePage />);
     const control = screen.getByTestId("academy-welcome-advance");
-    expect(control).toHaveAttribute("data-mode", "reveal");
-    expect(control.textContent).toContain("Skip reveal");
-    fireEvent.click(control);
-    expect(screen.getByTestId("academy-welcome-advance")).toHaveAttribute("data-mode", "next");
-    expect(screen.getByTestId("academy-welcome-advance").textContent).toContain("Next");
+    expect(control).toHaveAttribute("data-mode", "next");
+    expect(control).toHaveAttribute("data-reveal", "partial");
+    expect(control.textContent).toContain("Next");
+    expect(screen.queryByText(/Skip reveal/)).toBeNull();
   });
 
   it("treats a click anywhere on the scene as the same intent", () => {
     render(<AcademyWelcomePage />);
     fireEvent.click(screen.getByTestId("academy-tome-book"));
-    expect(page()).toHaveAttribute("data-complete", "true");
+    expect(page()).toHaveAttribute("data-chapter-index", "1");
   });
 
   it("responds to the keyboard, forwards and back", async () => {
@@ -352,9 +385,12 @@ describe("the internal reveal", () => {
 
     for (let i = 0; i < 60 && stepOf() < total; i += 1) await run(250, 250);
     expect(stepOf()).toBe(total);
-    // Everything is on the page, and the control still says so honestly.
+    // Everything is on the page, and the control still says so honestly — in
+    // the diagnostic attribute, not in its label. Next is always Next.
     expect(page()).toHaveAttribute("data-complete", "false");
-    expect(screen.getByTestId("academy-welcome-advance")).toHaveAttribute("data-mode", "reveal");
+    const control = screen.getByTestId("academy-welcome-advance");
+    expect(control).toHaveAttribute("data-mode", "next");
+    expect(control).toHaveAttribute("data-reveal", "partial");
 
     // Still writing halfway through the final sentence's ink.
     await run(slotRevealMs(chapter, total - 1) / 2, 100);
@@ -1347,16 +1383,17 @@ describe("the champions in the paper", () => {
     );
   });
 
-  it("closes the book with one champion, on the page that carries the copy", () => {
+  it("closes the book with NO champion, on either page", () => {
+    // The last spread is the one page in the book that prints none. Its left
+    // page already carries a heading, two paragraphs, four drawn symbols and
+    // the animated chart, and its right page's entire job is to hold ONE
+    // picture — a faint figure behind either would be a fifth thing competing
+    // on a page that has run out of room to compete on.
     render(<AcademyWelcomePage />);
     goToFinale();
-    const verso = page().querySelector(".tome-page-verso")!;
-    const recto = page().querySelector(".tome-page-recto")!;
-    // The graph stands ALONE on the left. Nothing is printed behind it.
-    expect(verso.querySelector("[data-testid='tome-champion']")).toBeNull();
-    expect(recto.querySelector("[data-testid='tome-champion'] img")?.getAttribute("src")).toBe(
-      CHAMPION_ART.yasuo,
-    );
+    expect(page().querySelector(".tome-page-verso [data-testid='tome-champion']")).toBeNull();
+    expect(page().querySelector(".tome-page-recto [data-testid='tome-champion']")).toBeNull();
+    expect(ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1].champions).toBeUndefined();
   });
 
   it("uses the approved files as they are, with no derivative in the path", () => {
@@ -1383,24 +1420,127 @@ describe("the champions in the paper", () => {
 
 /* -------------------------------------------------------------------------- */
 
-/** The restored last spread. */
+/**
+ * The last spread — the composed one.
+ *
+ * Chapters one to four are the same object and the tests above cover them as
+ * one. This page is not a chapter: its copy crosses the gutter, its left page
+ * carries four drawn symbols under the sentence that names them, and its right
+ * page is one line, one picture and two doors. Every part of that structure is
+ * asserted here, because the whole of it is a composition somebody could
+ * plausibly "tidy" back into the template.
+ */
 describe("the last spread", () => {
+  const verso = () => page().querySelector(".tome-page-verso")!;
+  const recto = () => page().querySelector(".tome-page-recto")!;
+  const flat = (el: Element | null) => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
+  const LIBRARY = ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1];
+
+  it("carries the approved copy, unchanged, across the two pages", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const left = flat(verso());
+    expect(left).toContain("The Complete League Library");
+    expect(left).toContain(
+      "Mogzy brings together every champion, item, rune, system, and interaction in League of Legends.",
+    );
+    expect(left).toContain(
+      "Explore pro data. Learn the history of League esports and your favorite players.",
+    );
+    // And the third block opens the FACING page, which is the structural
+    // change: this is the one chapter whose copy is not all on one leaf.
+    expect(flat(recto())).toContain("Discover insights. Share what you find.");
+    expect(left).not.toContain("Discover insights");
+  });
+
+  it("adds no copy of its own beyond the approved three blocks", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    // The heading, the three blocks, the eyebrow, and the two button labels.
+    // Nothing else is written anywhere on this spread — no captions under the
+    // symbols, no label on the graph, no line under the picture.
+    const spoken = [
+      LIBRARY.eyebrow,
+      LIBRARY.heading,
+      ...LIBRARY.lines,
+      "Enter the Academy",
+      "Start the tutorial",
+    ];
+    let left = flat(verso()) + " " + flat(recto());
+    for (const phrase of spoken) left = left.replace(phrase, "");
+    expect(left.replace(/[\s.,]/g, "")).toBe("");
+  });
+
   it("puts the restored Pro Data graph on the left, and only it", () => {
     // The exact approved animated graph from the Pro Data chapter, recovered
     // from 75d60da9 — ruled axes, two series and five plotted points, drawn in
-    // ink with `tome-stroke` / `tome-dot`. Restoring it is the point of the
-    // pass, so its parts are counted rather than merely looked for.
+    // ink with `tome-stroke` / `tome-dot`. Its parts are counted rather than
+    // merely looked for.
     render(<AcademyWelcomePage />);
     goToFinale();
-    const verso = page().querySelector(".tome-page-verso")!;
-    const svg = verso.querySelector("svg")!;
-    expect(svg).toBeTruthy();
-    expect(svg.getAttribute("viewBox")).toBe("0 0 200 200");
-    expect(svg.querySelectorAll(".tome-stroke").length).toBe(7);
-    expect(svg.querySelectorAll(".tome-dot").length).toBe(5);
+    const chart = verso().querySelector(".tome-library-chart svg")!;
+    expect(chart).toBeTruthy();
+    expect(chart.getAttribute("viewBox")).toBe("0 0 200 200");
+    expect(chart.querySelectorAll(".tome-stroke").length).toBe(7);
+    expect(chart.querySelectorAll(".tome-dot").length).toBe(5);
     // ONE figure on that page. Not three modules, not a triangle, not cards.
-    expect(verso.querySelectorAll("svg")).toHaveLength(1);
-    expect(ACADEMY_CHAPTERS[ACADEMY_CHAPTERS.length - 1].art.kind).toBe("chart");
+    expect(verso().querySelectorAll(".tome-library-chart svg")).toHaveLength(1);
+    expect(LIBRARY.art.kind).toBe("chart");
+  });
+
+  it("draws the four things the library holds under the sentence that names them", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const row = screen.getByTestId("academy-library-symbols");
+    // On the LEFT page, and under the first paragraph rather than beside it.
+    expect(verso().contains(row)).toBe(true);
+    expect(
+      Array.from(row.querySelectorAll("[data-symbol]")).map((s) => s.getAttribute("data-symbol")),
+    ).toEqual(["champion", "item", "rune", "system"]);
+    // The system symbol is the Elder Dragon, by name.
+    expect(
+      row.querySelector("[data-symbol='system'] img")?.getAttribute("src"),
+    ).toBe("/assets/ranked/elder-dragon.webp");
+  });
+
+  it("keeps the symbols supporting visuals — not controls, not labels, not chips", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const row = screen.getByTestId("academy-library-symbols");
+    // Nothing to press, nothing to tab to, nothing to read.
+    expect(row.querySelectorAll("button, a, [role='button'], input")).toHaveLength(0);
+    expect(row.getAttribute("aria-hidden")).toBe("true");
+    expect(flat(row)).toBe("");
+    // Not a list and not a table either — four marks in the paper.
+    expect(row.querySelectorAll("ul, ol, li, table, dl")).toHaveLength(0);
+  });
+
+  it("gives the right page one composed Mogzy and Teemo visual", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const scene = screen.getByTestId("academy-finale-mogzy-teemo");
+    expect(recto().contains(scene)).toBe(true);
+    expect(scene.getAttribute("aria-hidden")).toBe("true");
+    // The named asset, exactly.
+    expect(screen.getByTestId("academy-finale-teemo").getAttribute("src")).toBe(
+      "/images/teemo-emote.png",
+    );
+    // Mogzy is in it, and he is the ONE mascot pose with a real alpha channel —
+    // every other pose is RGB on solid black and would print a square onto the
+    // parchment.
+    const mogzy = scene.querySelector<HTMLImageElement>("img.tome-discovery-mogzy")!;
+    expect(mogzy.getAttribute("src")).toBe(MOGZY_MASCOT_ASSETS.base);
+    // ONE composed visual: two figures and a glow, and nothing scattered.
+    expect(scene.querySelectorAll("img")).toHaveLength(2);
+  });
+
+  it("puts the two exits at the foot of the right page, under the picture", () => {
+    render(<AcademyWelcomePage />);
+    goToFinale();
+    const exits = screen.getByTestId("academy-welcome-explore").parentElement!;
+    expect(recto().contains(exits)).toBe(true);
+    const children = Array.from(recto().querySelector(".tome-discovery")!.children);
+    expect(children.indexOf(exits)).toBe(children.length - 1);
   });
 
   it("carries none of the dashboard the finale used to be", () => {
@@ -1412,7 +1552,8 @@ describe("the last spread", () => {
     expect(page().querySelector(".tome-docket")).toBeNull();
     expect(page().querySelector(".tome-fade")).toBeNull();
     expect(page().querySelector(".tome-footnote")).toBeNull();
-    const text = (page().textContent ?? "").replace(/\s+/g, " ");
+    expect(page().querySelector(".tome-exit-detail")).toBeNull();
+    const text = flat(page());
     expect(text).not.toContain("Mogzy Archives");
     expect(text).not.toContain("Patch reports");
     expect(text).not.toContain("Pro Data & the Archives");
@@ -1425,4 +1566,3 @@ describe("the last spread", () => {
     expect(ACADEMY_CHAPTERS.filter((c) => c.finale)).toHaveLength(1);
   });
 });
-
