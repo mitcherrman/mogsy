@@ -34,6 +34,13 @@ const PROFILES: LobbyPreviewProfile[] = ["timmy", "newcomer"];
 /** Every host action the hub can fire, deliberately inert. */
 function noop() {}
 
+/** Today's set, finished. Demo state only — nothing here is read or written. */
+const PREVIEW_DAILY_DONE = {
+  date: "2026-08-21", answered: 5, correct: 4, target: 5, xpBonus: 250,
+  dailyStreak: 4, lastCompletedDate: "2026-08-21", completed: true, remaining: 0,
+  themeTitle: "Item Knowledge", themeBlurb: "Recipes and component paths.",
+};
+
 export default function LobbyPreviewPage() {
   const [profile, setProfile] = useState<LobbyPreviewProfile>("timmy");
   // The role the preview is "signed in" as. Local only: selecting a role here
@@ -82,7 +89,18 @@ export default function LobbyPreviewPage() {
         <LeaguecraftHub
           progress={state.progress}
           ranked={state.ranked}
-          onPlayRanked={noop}
+          /* The lobby's role COMMIT. Demo state only — this page writes no
+             account — so it simply reports that the commit held and lets the
+             record open, which is the branch a reviewer wants to look at. */
+          onPlayRanked={() => true}
+          onEnterMatch={noop}
+          onPlayDailyChallenge={noop}
+          /* A day already answered out, so the record's COMPLETED Daily
+             Challenge clause — and the Practice handoff it offers — can be
+             looked at over the real lobby. The handoff itself is real here:
+             the section it scrolls to is this page's own `LeaguecraftHub`. */
+          dailyChallenge={PREVIEW_DAILY_DONE}
+          playModes={{ ranked: true, daily: true, invite: true }}
           sets={[...PREVIEW_SETS]}
           setsLoading={false}
           onSelectSet={noop}

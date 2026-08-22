@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { BookOpen, ChevronRight, HelpCircle, RotateCcw, RotateCw, ScrollText } from "lucide-react";
@@ -7,8 +8,10 @@ import RankedLobbyHero, { type DemoRoleMastery } from "@/components/quiz/RankedL
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import QuizRecentResultsCard from "@/components/quiz/QuizRecentResultsCard";
 import QuizCategoryRail from "@/components/quiz/QuizCategoryRail";
+import RankedPlayScroll from "@/components/quiz/play-scroll/RankedPlayScroll";
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
-import type { RankedState } from "@/lib/quiz/featured-mock";
+import type { DailyChallengeState, RankedState } from "@/lib/quiz/featured-mock";
+import type { PlayModeVisibility } from "@/lib/quiz/playModes";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import type {
   RankedProgressionView,
@@ -22,6 +25,20 @@ import type {
  * study the knowledge Ranked asks for → play Ranked again. The LC1
  * simplification pass makes the first beat unmistakably dominant and demotes
  * the rest to a single quiet row beneath it:
+ *
+ * PLAY1 — PLAY OPENS THE RECORD, IT DOES NOT NAVIGATE
+ * ───────────────────────────────────────────────────
+ * The lobby's one PLAY seal used to be a link to `/quiz/ranked` and its
+ * pre-match menu. It now opens the MATCH-ENTRY SCROLL over this page: the
+ * lobby stays mounted and visible behind it, the role it just carried is
+ * carried forward rather than re-asked, and the Ranked queue runs inside the
+ * scroll. `/quiz/ranked` is still the live-match host and is where the scroll
+ * hands off once the server has a match.
+ *
+ * The hub owns the open/closed state because BOTH ways in — the PLAY seal and
+ * the "play Ranked" nudge on Recent Studies — are its own children. The host
+ * page supplies what the scroll cannot know: how to enter a match, how to
+ * start today's Daily Challenge, and which entries the admin policy allows.
  *
  *   1. Ranked lobby   — the three-column hero: the role character-select on
  *                       the left, the LEAGUECRAFT/RANKED identity and the one
@@ -51,6 +68,72 @@ import type {
  * the hero, so RE1 can change what a rank means without touching this file.
  */
 
+/**
+ * Move the page to a section, and put focus there.
+ *
+ * FOCUS FIRST, THEN SCROLL. Not a style choice — Chrome CANCELS an in-flight
+ * smooth scroll when an element is focused, so focusing after `scrollIntoView`
+ * freezes the scroll where it started and the player never arrives. The same
+ * ordering, and the same finding, is written down in `useSectionNavigation`
+ * (the Combat Lab's section nav); this is the one-target case and does not
+ * need that hook's measuring, ordering or scroll tracking.
+ *
+ * Focus is what makes the arrival LEGIBLE rather than merely positional: the
+ * section carries `tabIndex={-1}`, so it is focusable programmatically and
+ * never a tab stop, and a screen reader announces the landmark it just
+ * arrived at instead of the player being moved silently.
+ *
+ * `preventScroll` on the focus call is what keeps the two from fighting: the
+ * focus places the reading position, the scroll does the travelling.
+ *
+ * AND THEN IT CHECKS THAT IT WORKED.
+ * `behavior: "smooth"` is a request, not a guarantee. Measured in the review
+ * browser: every smooth scroll on this page is a no-op — including a bare
+ * `window.scrollTo({top: 400, behavior: "smooth"})` with no dialog, no lock
+ * and `prefers-reduced-motion` reporting false — while the identical call
+ * with `behavior: "auto"` scrolls correctly. Real users meet the same thing
+ * behind extensions, embedded webviews and hardened browser settings.
+ *
+ * A handoff that silently leaves the player where they were is the exact
+ * defect this whole change exists to remove, so the smooth path is verified
+ * and falls back to an immediate scroll if nothing moved. The check is cheap
+ * and cannot double-scroll a player who did arrive: an in-flight smooth
+ * scroll has already changed `scrollY` by the time it runs, and a section
+ * that was already at the top reports a top of ~0.
+ */
+function goToSection(el: HTMLElement | null): void {
+  if (!el) return;
+  el.focus?.({ preventScroll: true });
+
+  const reduced =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // A reduced-motion reader is taken there immediately, with no animation to
+  // verify and nothing to fall back from.
+  if (reduced) {
+    el.scrollIntoView?.({ behavior: "auto", block: "start" });
+    return;
+  }
+
+  const before = typeof window === "undefined" ? 0 : window.scrollY;
+  el.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  if (typeof window === "undefined") return;
+
+  window.setTimeout(() => {
+    const arrived =
+      window.scrollY !== before ||
+      Math.abs(el.getBoundingClientRect().top) < 4;
+    if (arrived) return;
+    el.scrollIntoView?.({ behavior: "auto", block: "start" });
+  }, SMOOTH_SCROLL_CHECK_MS);
+}
+
+/** Long enough for a smooth scroll to have visibly started, short enough that
+ *  a player who is going nowhere is not left wondering. */
+const SMOOTH_SCROLL_CHECK_MS = 350;
+
 /** The set the "Practice Questions" primary action opens, when the backend
  *  serves it. Falls back to the first catalog set so the action is never dead. */
 const PRIMARY_PRACTICE_SET = "All Current Questions";
@@ -60,6 +143,11 @@ export default function LeaguecraftHub({
   ranked,
   onPlayRanked,
   playDisabled = false,
+  onEnterMatch,
+  onPlayDailyChallenge,
+  playModes,
+  dailyChallenge = null,
+  playScrollOpenOnMount = false,
   sets,
   setsLoading,
   onSelectSet,
@@ -108,11 +196,49 @@ export default function LeaguecraftHub({
    * score. See `DemoRoleMastery` in `RankedLobbyHero`.
    */
   demoRoleMastery?: Partial<Record<RankedRole, DemoRoleMastery>> | null;
-  onPlayRanked: () => void;
+  /**
+   * PLAY — the lobby's ONE commit point, kept from the MALT lobby flow.
+   *
+   * The role carousel moves against local state so that browsing costs
+   * nothing (`role_set` is rate limited to ten writes a minute, and two
+   * laps of the carousel used to exhaust it). The account is written here
+   * instead, once, when the reader actually commits by pressing PLAY.
+   *
+   * IT RESOLVES TO WHETHER THE COMMIT HELD, and the hub does not open the
+   * match-entry record unless it did. That is the same rule the MALT flow
+   * wrote as "a refusal does not navigate", carried over intact now that
+   * PLAY opens a record instead of navigating: the queue join reads the
+   * player's STORED role off the account inside its own transaction, so
+   * entering the record on a refused write would queue them as whoever
+   * they used to be, with nothing on screen saying so.
+   */
+  onPlayRanked: () => boolean | Promise<boolean>;
   /** Holds the PLAY seal still while the host commits the chosen role. The
    *  seal is the lobby's one commit point, so a second press during that
-   *  write would start a second write and a second navigation. */
+   *  write would start a second write and a second record. */
   playDisabled?: boolean;
+  /**
+   * PLAY1: hand the player into the live-match host at `/quiz/ranked` once
+   * the Ranked queue has a match. The hub never navigates itself.
+   */
+  onEnterMatch: (matchId: string) => void;
+  /**
+   * PLAY1: the host's OWN Daily Challenge entry. `Quiz.tsx` hosts the daily
+   * set in-page (`handlePlayDailyChallenge`), which is a different feature
+   * from the Score Attack time trial at `/quiz/daily`; the scroll calls this
+   * rather than guessing a route.
+   */
+  onPlayDailyChallenge: () => void;
+  /** PLAY1: which entries the match-entry scroll offers (admin policy). */
+  playModes: PlayModeVisibility;
+  /** PLAY1: today's real Daily Challenge state, for the scroll's figure. */
+  dailyChallenge?: DailyChallengeState | null;
+  /**
+   * PLAY1: open the record as soon as the lobby mounts. Set when the player
+   * arrives from `/quiz/ranked` with no active match — that route sends them
+   * to the proper entry experience rather than resurrecting its old menu.
+   */
+  playScrollOpenOnMount?: boolean;
   sets: QuizSet[];
   setsLoading: boolean;
   onSelectSet: (set: QuizSet) => void;
@@ -124,6 +250,87 @@ export default function LeaguecraftHub({
 }) {
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
   const secondarySets = sets.filter((s) => s.id !== primarySet?.id);
+
+  const [playOpen, setPlayOpen] = useState(playScrollOpenOnMount);
+  // The seal the record was opened from, so the record can put focus back on
+  // it when it closes. Explicit rather than left to Radix, which restores to
+  // whatever had focus when the dialog mounted — `document.body` on every
+  // browser that does not focus a button on click.
+  const playSealRef = useRef<HTMLButtonElement | null>(null);
+  /**
+   * The Practice section, so the record can send a player to it by NAME
+   * rather than by pixel. The section already existed and already had its own
+   * heading; this is a ref on it and nothing more.
+   */
+  const practiceSectionRef = useRef<HTMLElement | null>(null);
+
+  /**
+   * PLAY: commit the chosen role, then open the record.
+   *
+   * The two halves come from opposite sides of this merge and both are
+   * load-bearing.
+   *
+   * The COMMIT is the MALT lobby flow's: the role carousel moves against
+   * local state so browsing costs nothing, and the account is written exactly
+   * once, here, when the reader commits. The queue join sends no role — the
+   * backend reads the player's stored preference inside the join transaction
+   * — so the write has to land BEFORE the record can be entered, or the
+   * reader queues as whoever they used to be.
+   *
+   * The OPEN is PLAY1's: pressing PLAY no longer navigates anywhere. The only
+   * navigation left in this flow is `onEnterMatch`, once the server actually
+   * has a match.
+   *
+   * A REFUSAL DOES NOTHING BUT SAY SO. If the account cannot be moved — an
+   * active match, a live queue entry, a rate limit — the host surfaces its
+   * notice and the record stays shut. That is the MALT rule ("a refusal does
+   * not navigate") carried over unchanged; only the thing being withheld
+   * changed from a route to a record.
+   */
+  const openPlay = useCallback(async () => {
+    const committed = await onPlayRanked();
+    if (!committed) return;
+    setPlayOpen(true);
+  }, [onPlayRanked]);
+  // Focus is restored by the record itself, on its own unmount — see
+  // `returnFocusTo`. Doing it here would race Radix's own restore.
+  const closePlay = useCallback(() => setPlayOpen(false), []);
+
+  /**
+   * The record's Practice handoff: close, then travel.
+   *
+   * NO PHASE CHANGE IS NEEDED. This whole component only renders under the
+   * page's `sets` phase, and the record renders inside it — so if the record
+   * is open, the lobby is already the thing underneath and Practice is
+   * already on the page.
+   *
+   * THE MOVE CANNOT HAPPEN IN THE CLICK, AND IT CANNOT HAPPEN A FRAME LATER.
+   * The record is a Radix dialog, and closing one tears down two things that
+   * both fight this: a focus scope that restores focus to whatever it
+   * captured, and a scroll lock that owns `body`'s overflow while the dialog
+   * is up. Both run during the unmount commit. Measured in Chrome: scrolling
+   * and focusing from a `requestAnimationFrame` scheduled in the click ran
+   * BEFORE that teardown finished, and the page was left exactly where it
+   * started with focus nowhere — the handoff silently did nothing, while the
+   * same code passed in jsdom, which has neither mechanism.
+   *
+   * So the flag is set here and the move is done in an effect below, which
+   * React runs after the unmount is committed and every child cleanup has
+   * already gone. That is an ordering guarantee rather than a delay long
+   * enough to probably win.
+   */
+  const pendingPracticeRef = useRef(false);
+
+  const goToPractice = useCallback(() => {
+    pendingPracticeRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (playOpen) return;
+    if (!pendingPracticeRef.current) return;
+    pendingPracticeRef.current = false;
+    goToSection(practiceSectionRef.current);
+  }, [playOpen]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -164,8 +371,9 @@ export default function LeaguecraftHub({
         <RankedLobbyHero
           progress={progress}
           ranked={ranked}
-          onPlayRanked={onPlayRanked}
+          onPlayRanked={openPlay}
           playDisabled={playDisabled}
+          playButtonRef={playSealRef}
           rankedRole={rankedRole}
           onSelectRole={onSelectRankedRole}
           roleSelectDisabled={roleSelectDisabled}
@@ -253,7 +461,15 @@ export default function LeaguecraftHub({
 
         {/* 3b ─ Study: Practice + Mastery, demoted to one compact panel. The
                 routes and sets are untouched — only their visual weight. */}
-        <section className="flex flex-col lg:col-span-5" data-testid="hub-practice-section">
+        {/* `tabIndex={-1}` makes the section focusable PROGRAMMATICALLY and
+            never a tab stop, which is what lets the Practice handoff land the
+            player on the landmark rather than at a scroll offset. */}
+        <section
+          ref={practiceSectionRef}
+          tabIndex={-1}
+          className="flex flex-col outline-none lg:col-span-5"
+          data-testid="hub-practice-section"
+        >
           <SectionHeading
             icon={ScrollText}
             title="Practice for Ranked"
@@ -326,6 +542,24 @@ export default function LeaguecraftHub({
           </LobbyPanel>
         </section>
       </div>
+
+      {/* The match-entry record. Mounted only while it is open, so the Ranked
+          queue is polled and the Academy roster is read only when the player
+          is actually looking at them — never on every lobby load. */}
+      {playOpen && (
+        <RankedPlayScroll
+          onClose={closePlay}
+          role={rankedRole}
+          progression={rankedProgression}
+          modes={playModes}
+          daily={dailyChallenge}
+          returnFocusTo={playSealRef}
+          signedIn={signedIn}
+          onEnterMatch={onEnterMatch}
+          onPlayDailyChallenge={onPlayDailyChallenge}
+          onPlayPractice={goToPractice}
+        />
+      )}
     </div>
   );
 }

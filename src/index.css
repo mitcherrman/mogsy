@@ -4368,3 +4368,1518 @@ html.high-contrast * { text-shadow: none !important; }
     box-shadow: 0 0 8px 0 rgba(201, 168, 76, 0.22);
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PLAY1 — the match-entry scroll
+   ══════════════════════════════════════════════════════════════════════════
+   Pressing PLAY does not leave the lobby. The academy opens your match-entry
+   record ON the desk you are already sitting at: a single large sheet of the
+   SAME parchment the three lobby scrolls are printed on, unrolled over them.
+
+   The material is not re-implemented here. The shell reuses `.lc-scroll` and
+   its three-slice geometry verbatim — head roll, plain body, foot roll, each
+   `100% auto` so the image's own aspect ratio drives every height — and this
+   block only changes what an OVERLAY needs that a column does not:
+
+     · no bleed. A column hangs its roll flare into the lobby's gutter; a
+       centred overlay has no gutter and would hang it over the page edge.
+     · a shallower side margin. The sheet is much wider than a lobby column,
+       so 15.5% of it is a far bigger number of pixels; held at the column's
+       inset the writing area became a narrow ribbon down the middle.
+     · a bounded height with the writing area scrolling INSIDE it, so a long
+       state (the roster) never grows the sheet past the viewport and never
+       pushes the foot roll off screen.
+
+   THE LOBBY BEHIND IT stays visible and is only de-emphasised — this is the
+   next step of the same room, not a new screen. The wash is the classroom's
+   own navy rather than black, for the reason the scroll's lift is: a black
+   veil over a navy room reads as a cut-out.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.play-scroll-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: radial-gradient(
+      120% 90% at 50% 40%,
+      rgba(4, 10, 22, 0.62) 0%,
+      rgba(2, 6, 14, 0.86) 100%
+    );
+  backdrop-filter: blur(2.5px) saturate(0.85);
+  -webkit-backdrop-filter: blur(2.5px) saturate(0.85);
+  animation: play-scroll-veil-in 220ms ease-out both;
+}
+
+@keyframes play-scroll-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The positioning frame. A flex box rather than a translate, so the sheet
+   stays whole-pixel aligned and a tall state simply centres what fits. */
+.play-scroll-frame {
+  position: fixed;
+  inset: 0;
+  z-index: 61;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5vh 1rem;
+  pointer-events: none;
+}
+
+/* The SIZER, and why the record cannot do without one.
+   `.lc-scroll`'s manuscript margin is expressed in percentages, and a
+   percentage padding resolves against the CONTAINING BLOCK's width — not the
+   element's own. In the lobby that is a grid column roughly the width of the
+   scroll, so the two are interchangeable and the geometry comments treat them
+   as such. Over a full-screen frame they are not: at 1280 the frame is 1248
+   wide, so a "15%" top margin came out as 187px on a 752px sheet, ate 57% of
+   its height between the two ends, and pushed the third clause into a
+   scrollbar. This box is exactly the sheet's width, so the margins mean on
+   the record what they mean in the lobby. */
+.play-scroll-sizer {
+  pointer-events: none;
+  display: flex;
+  /*
+   * WIDTH IS ALSO CAPPED BY HEIGHT, and the `84vh` term is not a typo.
+   *
+   * The manuscript margin is a percentage of the sheet's WIDTH — that is what
+   * keeps the ornament's proportions at every size — so a wide sheet spends a
+   * lot of VERTICAL space on margin: at 47rem the two ends cost 259px before
+   * a word is written. In a short window that is most of the room, and the
+   * writing area collapses to a slot.
+   *
+   * Narrowing the sheet shrinks the margins with it, in proportion, which is
+   * the one adjustment that buys vertical room without breaking the geometry.
+   * So the sheet is as wide as the window allows AND as wide as the window is
+   * tall enough to justify.
+   */
+  width: min(100%, 47rem, 84vh);
+  max-height: 95vh;
+}
+
+.play-scroll {
+  pointer-events: auto;
+  /* No gutter to hang into. */
+  --lc-scroll-bleed: 0%;
+  /* The overlay is the page's one lit object, so it gets the centre column's
+     brighter tone rather than a flank's. */
+  --lc-scroll-tint: brightness(0.95) saturate(1);
+  --lc-age: 0.72;
+  --lc-scroll-lift: drop-shadow(0 10px 14px rgba(3, 7, 14, 0.5))
+    drop-shadow(0 40px 68px rgba(3, 7, 14, 0.62));
+
+  width: 100%;
+  /* `flex: 1 1 auto` from `.lc-scroll` would make the sheet eat the frame. */
+  flex: 0 1 auto;
+  max-height: 100%;
+  /* Percentages resolve against the SIZER's width on every side, which is the
+     rule the ornament needs. THE SIDES ARE THE ONES THAT BITE: with the bleed
+     at zero the painted sheet's own edge sits at 13.1% of the layer, so a
+     side inset below that puts text on transparent background outside the
+     paper — 11.5% did exactly that, and ran the clause list past both edges
+     of the sheet it was supposed to be written on. 16% clears the paper edge
+     with a written margin. Vertically the head roll's box is 13.35% and the
+     foot roll's is 15.2%; these clear both by a margin rather than a pixel. */
+  padding: 16.5% 16% 18%;
+}
+
+/* The writing area. Header and foot hold still; only the middle scrolls, so
+   the role banner the player is checking never leaves the sheet. */
+.play-scroll__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* The sheet's own edge shading sits under a browser scrollbar badly, so the
+     track is pulled in off the margin. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 68, 28, 0.5) transparent;
+}
+
+.play-scroll__body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.play-scroll__body::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: rgba(96, 68, 28, 0.45);
+}
+
+/* The entrance. The sheet unrolls with the same curve the lobby's scrolls
+   use — it is the same object — and the veil has already landed by the time
+   it starts, so the room dims first and the record then opens onto it. */
+.play-scroll .lc-scroll__sheet {
+  --lc-scroll-delay: 60ms;
+}
+
+/* ── The written page ───────────────────────────────────────────────────── */
+
+/* One clause of the record. A ruled entry on the sheet, not a card ON it:
+   the fill is a wash of the parchment's own brown and the rule is its ink, so
+   nothing here introduces a second material. */
+.play-scroll-clause {
+  position: relative;
+  /* Deliberately NO `display` here. This block is appended after Tailwind's
+     utilities, so a `display: block` would outrank the `flex` utility on the
+     elements that use it — which is what dropped every clause's chevron onto
+     its own line. The material is this rule's job; the layout is the call
+     site's. */
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(96, 68, 28, 0.42);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(112, 82, 36, 0.1) 0%,
+    rgba(112, 82, 36, 0.19) 100%
+  );
+  transition: border-color 160ms ease, background-color 160ms ease,
+    transform 160ms ease, box-shadow 160ms ease;
+}
+
+.play-scroll-clause::before {
+  /* The rubricated initial rule: a hairline of red-brown down the leading
+     edge, the way a scribe marks the start of a clause. */
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(122, 40, 32, 0) 0%,
+    rgba(122, 40, 32, 0.55) 22%,
+    rgba(122, 40, 32, 0.55) 78%,
+    rgba(122, 40, 32, 0) 100%
+  );
+}
+
+.play-scroll-clause:enabled:hover {
+  border-color: rgba(83, 56, 8, 0.7);
+  background-color: rgba(112, 82, 36, 0.24);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -10px rgba(36, 23, 8, 0.7);
+}
+
+.play-scroll-clause:focus-visible {
+  outline: 2px solid #7a2820;
+  outline-offset: 2px;
+}
+
+.play-scroll-clause[data-emphasis="true"] {
+  border-color: rgba(83, 56, 8, 0.62);
+  background: linear-gradient(
+    180deg,
+    rgba(140, 104, 44, 0.16) 0%,
+    rgba(112, 82, 36, 0.26) 100%
+  );
+}
+
+/* The searching mark: a slow sweep of light across the sheet under the
+   matchmaking copy. One moving element, and nothing is communicated by it —
+   the state is always written out in words beside it. */
+.play-scroll-search {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(96, 68, 28, 0.22);
+}
+
+.play-scroll-search::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(214, 176, 92, 0.75) 45%,
+    rgba(122, 40, 32, 0.5) 55%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: play-scroll-sweep 1750ms cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+@keyframes play-scroll-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .play-scroll-overlay,
+  .play-scroll .lc-scroll__sheet {
+    animation: none;
+  }
+
+  .play-scroll .lc-scroll__sheet {
+    --lc-unfurl: 0%;
+  }
+
+  .play-scroll-clause {
+    transition: none;
+  }
+
+  .play-scroll-clause:enabled:hover {
+    transform: none;
+  }
+
+  /* The sweep becomes a still bar. The copy beside it already says what is
+     happening, so nothing is lost by stopping it. */
+  .play-scroll-search::after {
+    animation: none;
+    transform: none;
+    background: rgba(122, 40, 32, 0.42);
+  }
+}
+
+/* ── Narrow screens ─────────────────────────────────────────────────────
+   A phone is all sheet and no room, so the margin comes in — at 360px the
+   desktop inset left ~250px of writing area — and the frame's own padding
+   goes with it. The ornament still governs the top and foot: those two can
+   only ever be reduced to the roll boxes themselves (13.35% / 15.2%), never
+   past them. */
+@media (max-width: 639px) {
+  .play-scroll-frame {
+    padding: 1.5vh 0.5rem;
+  }
+
+  .play-scroll-sizer {
+    max-height: 97vh;
+  }
+
+  .play-scroll {
+    /* Narrow screens can only ever move the sides IN toward the paper edge,
+       never out past it: 13.1% is the floor, not a suggestion. */
+    padding: 15.5% 14.5% 17%;
+  }
+}
+
+/* ── Short viewports ────────────────────────────────────────────────────
+   A laptop in a 640px-tall window has no room for a 95vh sheet with a 15%
+   margin at both ends. The sheet keeps its proportions; the frame stops
+   trying to centre a sheet taller than the room. */
+@media (max-height: 620px) {
+  .play-scroll-frame {
+    padding: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .play-scroll-sizer {
+    max-height: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PLAY1 — the illuminated mode card, and the record's own controls
+   ══════════════════════════════════════════════════════════════════════════
+   The match-entry record's three entries are the three ways to PLAY. Drawn as
+   ruled rows they read as a settings list; drawn as illuminated clauses —
+   a painted miniature in the margin, a double rule, four corner ticks, a
+   struck seal to press — they read as what they are.
+
+   THE PARCHMENT STILL DOMINATES. Every value below is either the sheet's own
+   brown, the sheet's own light, or one of three MUTED accents derived to sit
+   inside that palette. Nothing here is a saturated panel colour, nothing has
+   a modern radius, and no card introduces a second material.
+
+   THE THREE ACCENTS, and what each is for:
+     ranked   warm gold / bronze. The strongest rule, the only standing glow,
+              the most ceremonial. Baron is the heaviest object on the sheet.
+     daily    a scholar's slate-blue. Cooler, quieter, study rather than duel.
+     invite   a muted arcane plum. Warmer than Ranked's ceremony, social, and
+              a long way short of neon.
+
+   INK IS NOT AN ACCENT. Every accent below is used for RULES, GLOW and
+   ORNAMENT only. The three eyebrow inks are separate values, each derived
+   against the parchment at its darkest point under text — rgb(209,187,158) —
+   which caps ink luminance at 0.0747 for 4.5:1. Measured:
+     #5c3d08 → 0.0563    #173d4d → 0.0406    #4a2a55 → 0.0376
+   Every card wash is at or under the alpha `.play-scroll-clause` already
+   ships (0.10 → 0.19, emphasis 0.26), so no card darkens its own background
+   past a tone these inks have already been proven against.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.play-mode-card {
+  /* Defaults, overridden per mode below. `--pm-ink` is the eyebrow only. */
+  --pm-accent: rgba(96, 68, 28, 0.6);
+  --pm-rim: rgba(96, 68, 28, 0.5);
+  --pm-glow: rgba(150, 110, 40, 0.35);
+  --pm-ink: #56412a;
+  --pm-plate-wash: rgba(112, 82, 36, 0.14);
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 72px;
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+  /* The illuminated double rule: the border is the outer line, and the inset
+     ring one pixel inside it is the etched inner line a rubricator would draw
+     between the two. A second `border-width` would just be a thicker line. */
+  border-color: var(--pm-rim);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 232, 0.26),
+    inset 0 1px 0 rgba(255, 250, 236, 0.42);
+}
+
+/* The four corner ticks. One box, eight hairline backgrounds — the L-marks a
+   scribe strikes at the corners of an illuminated entry. Inert, and it never
+   takes a pointer event off the button it decorates. */
+.play-mode-card::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  opacity: 0.85;
+  transition: opacity 160ms ease;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(var(--pm-accent), var(--pm-accent)),
+    linear-gradient(var(--pm-accent), var(--pm-accent)),
+    linear-gradient(var(--pm-accent), var(--pm-accent)),
+    linear-gradient(var(--pm-accent), var(--pm-accent)),
+    linear-gradient(var(--pm-accent), var(--pm-accent)),
+    linear-gradient(var(--pm-accent), var(--pm-accent)),
+    linear-gradient(var(--pm-accent), var(--pm-accent)),
+    linear-gradient(var(--pm-accent), var(--pm-accent));
+  background-size:
+    10px 1px, 1px 10px,
+    10px 1px, 1px 10px,
+    10px 1px, 1px 10px,
+    10px 1px, 1px 10px;
+  background-position:
+    left top, left top,
+    right top, right top,
+    left bottom, left bottom,
+    right bottom, right bottom;
+}
+
+/* The rubricated leading edge, recoloured to the entry's own accent. */
+.play-mode-card::before {
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--pm-accent) 24%,
+    var(--pm-accent) 76%,
+    transparent 100%
+  );
+}
+
+.play-mode-card[data-mode="ranked"] {
+  --pm-accent: rgba(122, 83, 18, 0.72);
+  --pm-rim: rgba(107, 72, 16, 0.66);
+  --pm-glow: rgba(198, 150, 58, 0.5);
+  --pm-ink: #5c3d08;
+  --pm-plate-wash: rgba(112, 78, 24, 0.2);
+}
+
+.play-mode-card[data-mode="daily"] {
+  --pm-accent: rgba(47, 74, 92, 0.6);
+  --pm-rim: rgba(48, 72, 88, 0.55);
+  --pm-glow: rgba(96, 140, 168, 0.42);
+  --pm-ink: #173d4d;
+  --pm-plate-wash: rgba(62, 92, 112, 0.15);
+}
+
+.play-mode-card[data-mode="invite"] {
+  --pm-accent: rgba(87, 58, 99, 0.6);
+  --pm-rim: rgba(84, 56, 96, 0.55);
+  --pm-glow: rgba(140, 100, 158, 0.42);
+  --pm-ink: #4a2a55;
+  --pm-plate-wash: rgba(96, 66, 110, 0.15);
+}
+
+/* Ranked's standing weight. The one entry on the sheet with a glow of its
+   own — restrained, always on, and a property of the object rather than an
+   animation, which is the LC1 light rule the seal and the emblem follow. */
+.play-mode-card[data-emphasis="true"] {
+  background: linear-gradient(
+    180deg,
+    rgba(140, 104, 44, 0.15) 0%,
+    rgba(112, 82, 36, 0.25) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 232, 0.32),
+    inset 0 1px 0 rgba(255, 250, 236, 0.5),
+    0 0 14px -6px var(--pm-glow);
+}
+
+/* ── The written column ─────────────────────────────────────────────────── */
+
+.play-mode-card__text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.play-mode-card__eyebrow {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--pm-ink);
+}
+
+.play-mode-card__title {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.12;
+  color: #241708;
+}
+
+@container play-record (min-width: 380px) {
+  .play-mode-card__title {
+    font-size: 18px;
+  }
+}
+
+.play-mode-card__note {
+  margin-top: 1px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #3f2c14;
+}
+
+/* ── The mark: one written line, not a row of chips ─────────────────────
+   This was bordered pills. Three small outlined tags under a written clause
+   read as a dashboard widget dropped onto a manuscript — the one thing on the
+   sheet that was not written on it — so the mark is plain inline text in the
+   record's own ink now, and COLOUR is the only thing that separates its
+   parts. It still wraps: a narrow sheet must break the line rather than push
+   the seal off the card. */
+.play-mode-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.45em;
+  row-gap: 1px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The quiet word before a figure. Body ink — it is a label, not the value. */
+.play-mode-card__meta-label {
+  color: #3f2c14;
+  font-weight: 600;
+}
+
+/* The figure. The entry's own accent, at the same weight as the tier beside
+   it, so the two read as one line rather than as a value and a tag. */
+.play-mode-card__meta-figure {
+  color: var(--pm-ink);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+/* ── The tier, in its own metal ─────────────────────────────────────────
+   THE CONSTRAINT NOBODY CAN WISH AWAY: this is TEXT on parchment, and the
+   sheet at its darkest point under text is rgb(209,187,158), which caps ink
+   luminance at 0.0747 for 4.5:1. A literally bright silver — a light grey —
+   lands around 3:1 there and is the least readable thing on the page.
+
+   So a tier reads as its metal the way a manuscript does it: a dark enough
+   ink in that metal's own HUE, lifted by one hairline of parchment-coloured
+   light above the glyph. Silver is a cool steel rather than a warm brown,
+   which is what separates it from every other ink on the sheet, and it is
+   deliberately the LIGHTEST of the five — it is the lightest metal.
+
+   Measured luminances (cap 0.0747):
+     bronze #5c3512 → 0.0487   silver #414d5b → 0.0719   gold #5f4708 → 0.0696
+     diamond #1b4c5e → 0.0621  challenger #6a2540 → 0.0476
+   Pinned in `playModeCard.styles.test.ts`. Do not lighten one without
+   re-deriving it. */
+.play-mode-card__meta-tier {
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-shadow: 0 1px 0 rgba(255, 249, 233, 0.62);
+}
+
+.play-mode-card__meta-tier[data-tier="bronze"] { color: #5c3512; }
+.play-mode-card__meta-tier[data-tier="silver"] { color: #414d5b; }
+.play-mode-card__meta-tier[data-tier="gold"] { color: #5f4708; }
+.play-mode-card__meta-tier[data-tier="diamond"] { color: #1b4c5e; }
+.play-mode-card__meta-tier[data-tier="challenger"] { color: #6a2540; }
+
+/* ── The streak ─────────────────────────────────────────────────────────
+   Written text with a red flame in front of it. The flame is DECORATIVE —
+   "4-day streak" is spelled out right beside it — which is what lets it take
+   a genuinely red tone (#a5321f, 3.66:1 on the sheet: past the 3:1 that
+   non-text graphics answer to, and nowhere near the 4.5:1 the words next to
+   it must clear, which they do in body ink). */
+.play-mode-card__streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  color: #3f2c14;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.play-mode-card__flame {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: #a5321f;
+  /* The glint's resting state. Declared HERE and not only inside the
+     keyframes, so the flame looks the same when the animation is off as it
+     does at 0% when it is on. */
+  filter: drop-shadow(0 0 0 rgba(214, 122, 60, 0));
+  animation: play-streak-glint 6.4s ease-in-out infinite;
+  will-change: filter;
+}
+
+/* A rare glint, not a loop you notice.
+   The project's existing light language — the Ranked emblem catches the light
+   about every eleven seconds, the PLAY seal a little faster — and this
+   follows it: a long dwell at rest, one brief brightening, back to rest.
+   Filter and opacity ONLY. Nothing here touches geometry, so there is no
+   bounce, no reflow, and no layout shift at any point in the cycle. */
+@keyframes play-streak-glint {
+  0%,
+  78% {
+    filter: drop-shadow(0 0 0 rgba(214, 122, 60, 0)) brightness(1);
+  }
+  86% {
+    filter: drop-shadow(0 0 4px rgba(226, 138, 74, 0.75)) brightness(1.28);
+  }
+  94%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(214, 122, 60, 0)) brightness(1);
+  }
+}
+
+/* ── The seal: the thing you press ──────────────────────────────────────── */
+
+.play-mode-card__seal {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--pm-rim);
+  /* Struck metal: a lit top edge, a shadowed foot, and an etched inner rim. */
+  background:
+    linear-gradient(
+      160deg,
+      rgba(255, 249, 235, 0.5) 0%,
+      rgba(150, 112, 52, 0.16) 52%,
+      rgba(84, 58, 22, 0.22) 100%
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 238, 0.34),
+    inset 0 -1px 2px rgba(60, 40, 12, 0.22);
+  color: var(--pm-ink);
+  transition: transform 160ms ease, box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+@container play-record (min-width: 380px) {
+  .play-mode-card__seal {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+/* ── Response to the hand ───────────────────────────────────────────────── */
+
+.play-mode-card:enabled:hover {
+  border-color: var(--pm-accent);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 238, 0.42),
+    inset 0 1px 0 rgba(255, 252, 242, 0.58),
+    0 0 18px -6px var(--pm-glow),
+    0 8px 20px -12px rgba(36, 23, 8, 0.7);
+}
+
+.play-mode-card:enabled:hover::after {
+  opacity: 1;
+}
+
+.play-mode-card:enabled:hover .play-mode-card__seal {
+  border-color: var(--pm-accent);
+  transform: translateX(2px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 252, 242, 0.5),
+    inset 0 -1px 2px rgba(60, 40, 12, 0.2),
+    0 0 10px -3px var(--pm-glow);
+}
+
+/* The press. A real depression rather than a colour change: the card settles
+   back onto the sheet and the seal loses its lift. */
+.play-mode-card:enabled:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 232, 0.22),
+    inset 0 2px 4px rgba(52, 34, 10, 0.3);
+}
+
+.play-mode-card:enabled:active .play-mode-card__seal {
+  transform: translateX(2px) scale(0.94);
+}
+
+/* Keyboard focus reaches the same illumination the pointer does, so a card
+   the keyboard is on is lit the same way a card the mouse is on is — the
+   outline says WHICH, the illumination says the card is live. */
+.play-mode-card:focus-visible {
+  border-color: var(--pm-accent);
+}
+
+.play-mode-card:focus-visible .play-mode-card__seal {
+  border-color: var(--pm-accent);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 252, 242, 0.5),
+    0 0 10px -3px var(--pm-glow);
+}
+
+/* ── A clause that is already DONE for today ────────────────────────────
+   It must read as COMPLETED, not as unavailable. So it keeps everything that
+   said "this is a real entry" — the frame, the corner ticks, the slate accent,
+   the plate, the slot's exact geometry — and gives up only the things that
+   said "press me": the pointer, the lift, the rim glow, the arrow.
+
+   There is no grey. A drained card is the visual language of a broken
+   feature, and nothing here is broken; the day is finished, which is the
+   good outcome. The wash comes DOWN rather than out, so the panel settles
+   into the sheet instead of being switched off on top of it.
+
+   It is a `<div>` and it never becomes a button — see `PlayModeCompletion`.
+   `.play-scroll-clause:enabled:hover` and `.play-mode-card:enabled:hover`
+   cannot match a non-form element at all, so the hover states are structurally
+   gone rather than overridden. These rules only mop up what is left. */
+.play-mode-card--done {
+  cursor: default;
+  background: linear-gradient(
+    180deg,
+    rgba(112, 82, 36, 0.06) 0%,
+    rgba(112, 82, 36, 0.13) 100%
+  );
+}
+
+.play-mode-card--done:hover {
+  transform: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 232, 0.26),
+    inset 0 1px 0 rgba(255, 250, 236, 0.42);
+}
+
+/* The rubricated leading edge stays, at half strength: the clause is still a
+   clause. */
+.play-mode-card--done::before {
+  opacity: 0.55;
+}
+
+.play-mode-card--done::after {
+  opacity: 0.6;
+}
+
+/* The seal, struck rather than pressable. Same disc, same box, same place as
+   the arrow it replaces — a finished day changes what the card says, never
+   where anything sits — with the lift and the travel taken out of it. */
+.play-mode-card__seal--done {
+  color: #2f4a5c;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 238, 0.3),
+    inset 0 -1px 2px rgba(60, 40, 12, 0.16);
+}
+
+/* ── The one action a finished clause offers ────────────────────────────
+   An ordinary control with NO interactive ancestor, so it is a plain tab
+   stop. It is drawn as a written link rather than as a second seal: the
+   panel is not a choice any more, and a button-shaped thing inside it would
+   read as the card becoming pressable again. */
+.play-mode-card__practice {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(47, 74, 92, 0.5);
+  /* The Daily clause's own slate, at ink depth: 0.0406 luminance against the
+     sheet's darkest point under text — 4.5:1 with room to spare. Measured in
+     `playModeCard.styles.test.ts` alongside the three eyebrow inks. */
+  color: #173d4d;
+  cursor: pointer;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
+}
+
+.play-mode-card__practice:hover {
+  color: #0d2c3a;
+  text-decoration-color: rgba(23, 61, 77, 0.9);
+}
+
+.play-mode-card__practice:focus-visible {
+  outline: 2px solid rgba(122, 40, 32, 0.92);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   The plate — one mode's miniature, in its frame
+   ══════════════════════════════════════════════════════════════════════════
+   THREE SIZES, ONE ORNAMENT. `card` sits beside a clause, `hero` heads the
+   state that clause opened — which is what makes Ranked matchmaking read as
+   the Ranked card expanded rather than as a different screen — and `notice`
+   is the muted plate a refusal carries.
+
+   TWO KINDS OF PICTURE. `ranked.png` is an opaque full-bleed splash and is
+   CROPPED into the frame, then married to the parchment by a vignette and a
+   warm grade; `DC.png` and `invite.png` are cut-outs with their own baked
+   halo and are INSET so that halo stays whole. Cropping a cut-out would clip
+   its glow into a hard square and lose the one thing that makes it read as
+   painted onto the page. See `modeArt.ts`.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.play-plate {
+  --plate-size: 54px;
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: var(--plate-size);
+  height: var(--plate-size);
+  border-radius: 3px;
+  overflow: hidden;
+  /* The inset parchment the picture is laid into: a shade deeper than the
+     sheet, tinted toward the entry's own accent. */
+  background:
+    radial-gradient(
+      75% 75% at 50% 38%,
+      rgba(255, 246, 224, 0.42) 0%,
+      transparent 70%
+    ),
+    var(--pm-plate-wash, rgba(112, 82, 36, 0.14));
+  box-shadow:
+    inset 0 1px 3px rgba(48, 32, 10, 0.32),
+    0 1px 0 rgba(255, 250, 236, 0.4);
+  transition: box-shadow 200ms ease, filter 200ms ease;
+}
+
+@container play-record (min-width: 380px) {
+  .play-plate {
+    --plate-size: 58px;
+  }
+}
+
+/* No `margin-inline: auto` on either of these. Both of their call sites
+   already centre them — the notice is a centred flex column, the queue view
+   wraps the hero in `justify-center` — and a self-centring plate then had to
+   be un-centred with an `!important` utility at the one site that lays it out
+   in a row. Centring belongs to whatever is doing the layout. */
+.play-plate[data-size="hero"] {
+  --plate-size: 84px;
+}
+
+@container play-record (min-width: 380px) {
+  .play-plate[data-size="hero"] {
+    --plate-size: 96px;
+  }
+}
+
+.play-plate[data-size="notice"] {
+  --plate-size: 64px;
+}
+
+.play-plate__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+/* The full-bleed painting. Cropped, warmed toward the sheet, and masked so
+   its corners fall away into the parchment instead of butting against the
+   frame as a hard square of dark teal. */
+.play-plate[data-fit="cover"] .play-plate__art {
+  object-fit: cover;
+  transform: scale(1.06);
+  filter: sepia(0.16) saturate(1.06) contrast(1.04) brightness(0.98);
+  -webkit-mask-image: radial-gradient(
+    116% 116% at 50% 44%,
+    #000 52%,
+    rgba(0, 0, 0, 0.72) 82%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    116% 116% at 50% 44%,
+    #000 52%,
+    rgba(0, 0, 0, 0.72) 82%,
+    transparent 100%
+  );
+}
+
+/* The cut-outs. Inset so the halo they already carry is not clipped, and
+   pulled back a little in saturation for a reason that is about the SHEET
+   rather than about the pictures: both are lit, high-chroma emotes, and left
+   at full strength the poro out-shouted Baron — the brightest thing on the
+   record would have been the third entry rather than the first. A touch of
+   the parchment's own warmth in the same move settles them onto the page. */
+.play-plate[data-fit="contain"] .play-plate__art {
+  object-fit: contain;
+  padding: 5%;
+  filter: saturate(0.9) sepia(0.08)
+    drop-shadow(0 1px 2px rgba(40, 26, 8, 0.34));
+}
+
+/* The illumination: an etched inner rule and the same four corner ticks the
+   card carries, at plate scale. Painted OVER the picture, so it frames it. */
+.play-plate__frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid var(--pm-rim, rgba(96, 68, 28, 0.5));
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(255, 248, 232, 0.3);
+}
+
+/* NO CORNER TICKS ON THE PLATE. It had its own set, inside the card's, and a
+   frame within a frame is what made an entry read as an ornate hung painting
+   rather than as a written clause with a thumbnail beside it. One illuminated
+   frame per card; the plate is a clean inset with a hairline rim. */
+
+/* A plate outside a card carries no `--pm-*` of its own, so it declares the
+   entry's accents itself. Same three values as the card's `data-mode` block;
+   they are here rather than shared because the plate must be able to stand
+   alone at the head of a state and inside a refusal. */
+.play-plate[data-mode="ranked"] {
+  --pm-accent: rgba(122, 83, 18, 0.72);
+  --pm-rim: rgba(107, 72, 16, 0.66);
+  --pm-glow: rgba(198, 150, 58, 0.5);
+  --pm-plate-wash: rgba(112, 78, 24, 0.2);
+}
+
+.play-plate[data-mode="daily"] {
+  --pm-accent: rgba(47, 74, 92, 0.6);
+  --pm-rim: rgba(48, 72, 88, 0.55);
+  --pm-glow: rgba(96, 140, 168, 0.42);
+  --pm-plate-wash: rgba(62, 92, 112, 0.15);
+}
+
+.play-plate[data-mode="invite"] {
+  --pm-accent: rgba(87, 58, 99, 0.6);
+  --pm-rim: rgba(84, 56, 96, 0.55);
+  --pm-glow: rgba(140, 100, 158, 0.42);
+  --pm-plate-wash: rgba(96, 66, 110, 0.15);
+}
+
+/* Hovering the CARD brightens its picture. The vignette opens a little and
+   the frame catches light — the miniature reacting to the hand, without the
+   card moving under it. */
+.play-mode-card:enabled:hover .play-plate {
+  box-shadow:
+    inset 0 1px 3px rgba(48, 32, 10, 0.26),
+    0 1px 0 rgba(255, 250, 236, 0.5),
+    0 0 12px -4px var(--pm-glow);
+  filter: brightness(1.06) saturate(1.04);
+}
+
+/* A refusal's plate. Drained, so it can never read as an invitation. */
+.play-plate[data-tone="muted"] {
+  filter: grayscale(0.62) brightness(0.9) contrast(0.94);
+  opacity: 0.85;
+}
+
+/* A FINISHED entry's plate. Eased back, not drained — the day was completed,
+   which is the good outcome, and a grey thumbnail is what a broken feature
+   looks like. It keeps its colour and nearly all of its light; only the
+   contrast comes down, so the panel settles into the sheet rather than
+   switching off on top of it. */
+.play-plate[data-tone="soft"] {
+  filter: saturate(0.82) brightness(0.99) contrast(0.96);
+  opacity: 0.94;
+}
+
+/* The Ranked plate while the server actually holds an entry. The same rim
+   light the searching mark below it runs on — one slow breath, so the head
+   of the state and the mark under it are visibly the same event. */
+.play-plate.is-live {
+  animation: play-plate-live 2600ms ease-in-out infinite;
+}
+
+@keyframes play-plate-live {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 3px rgba(48, 32, 10, 0.32),
+      0 0 10px -4px var(--pm-glow);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 3px rgba(48, 32, 10, 0.26),
+      0 0 20px -4px var(--pm-glow);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   The record's own controls
+   ══════════════════════════════════════════════════════════════════════════
+   ONE FOCUS TREATMENT, SCOPED TO THE SHEET. Every control inside the record
+   took the browser's default focus ring, which on this platform is a bright
+   blue rectangle — a dev-console artifact sitting on a parchment sheet — and
+   the roster's search took Tailwind's `ring`, whose `--ring` in this theme is
+   the same blue (210 80% 65%). Both are replaced here by the sheet's own
+   rubric red at a full 2px with an offset, so keyboard focus stays LOUDER
+   than hover, not quieter, and is never removed.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.play-scroll :is(button, input, [role="option"], [tabindex]):focus-visible {
+  outline: 2px solid rgba(122, 40, 32, 0.92);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* AND ON THE CONTROLS THEMSELVES, not only through their ancestor.
+   `.play-invite-search` clears the UA outline; if the only replacement were
+   the scoped rule above, the same control rendered anywhere outside a
+   `.play-scroll` would have NO focus indicator at all — which is exactly
+   what happened the moment `/dev/play-scroll` began rendering the roster
+   view on its own page. A control that removes its own focus ring owns the
+   replacement. */
+.play-scroll-stamp:focus-visible,
+.play-scroll-control:focus-visible,
+.play-scroll-back:focus-visible,
+.play-invite-search:focus-visible {
+  outline: 2px solid rgba(122, 40, 32, 0.92);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* The record's own frame is focused programmatically on open so its name and
+   description are read first (see `onOpenAutoFocus`). That is not a keyboard
+   landing the player navigated to, and drawing a ring around the entire sheet
+   for it is what the blue rectangle actually was. */
+.play-scroll:focus-visible {
+  outline: none;
+}
+
+/* The heading rule: a diamond struck at the centre of two tapering hairlines,
+   the mark a scribe rules under a title. */
+.play-scroll-rule {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(96, 68, 28, 0.5) 22%,
+    rgba(96, 68, 28, 0.5) 78%,
+    transparent 100%
+  );
+}
+
+.play-scroll-rule::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: rgba(83, 56, 8, 0.62);
+  box-shadow: 0 0 0 2px rgba(232, 214, 180, 0.85);
+}
+
+/* THE CLOSE STAMP. An ink-stamped disc in the sheet's own brown with a double
+   rim, rather than a browser-chrome X sitting on the parchment. It keeps a
+   32px target, its screen-reader name, and states loud enough to find. */
+.play-scroll-stamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 68, 28, 0.55);
+  background:
+    radial-gradient(
+      70% 70% at 50% 32%,
+      rgba(255, 249, 235, 0.55) 0%,
+      transparent 72%
+    ),
+    rgba(112, 82, 36, 0.14);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 250, 238, 0.34),
+    inset 0 -1px 2px rgba(60, 40, 12, 0.2);
+  color: #3f2c14;
+  transition: background-color 160ms ease, border-color 160ms ease,
+    color 160ms ease, transform 160ms ease;
+}
+
+.play-scroll-stamp:hover {
+  border-color: rgba(83, 56, 8, 0.8);
+  background-color: rgba(112, 82, 36, 0.3);
+  color: #241708;
+}
+
+.play-scroll-stamp:active {
+  transform: scale(0.94);
+  background-color: rgba(112, 82, 36, 0.38);
+}
+
+/* A ruled control — Cancel Queue, Back to match entry. A struck label on the
+   sheet rather than a link, so a real action never reads as a footnote. */
+.play-scroll-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 1.1rem;
+  border: 1px solid rgba(96, 68, 28, 0.55);
+  border-radius: 3px;
+  background: rgba(255, 248, 230, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 250, 238, 0.42);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #3f2c14;
+  transition: background-color 160ms ease, border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.play-scroll-control:enabled:hover {
+  border-color: rgba(83, 56, 8, 0.78);
+  background-color: rgba(112, 82, 36, 0.24);
+  color: #241708;
+}
+
+.play-scroll-control:enabled:active {
+  transform: translateY(1px);
+  background-color: rgba(112, 82, 36, 0.32);
+}
+
+/* The quiet way back, where a ruled control would compete with the action
+   above it. Still a real target, still underlined. */
+.play-scroll-back {
+  min-height: 32px;
+  padding: 0 0.5rem;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(86, 65, 42, 0.5);
+  color: #56412a;
+  transition: color 160ms ease, text-decoration-color 160ms ease;
+}
+
+.play-scroll-back:hover {
+  color: #241708;
+  text-decoration-color: rgba(36, 23, 8, 0.7);
+}
+
+/* ── The role band: two anchors and a name ──────────────────────────────
+   The band says WHO is entering and WHERE, and it used to say it five times
+   over — the role name, "· Ranked Silver" beside it, a SILVER caption under
+   the emblem, the emblem itself, and an unlabelled champion coin at the edge.
+   Three of those are gone (see the component). What is left got the room:
+   at full size the mascot is roughly twice its old height and the emblem
+   about three times its old box, so the band reads as an icon-and-name plate.
+
+   TWO BIG ANCHORS NEED THE SHEET'S WIDTH, NOT THE WINDOW'S.
+   The band is held OUTSIDE `.play-scroll__body` on purpose — the identity
+   being entered must not scroll away while the player checks it — so it is
+   not inside the `play-record` container the cards use, and for one revision
+   its sizes were keyed to the viewport instead. That measures the wrong box:
+   the sheet shrinks to fit `95vh` because its slices are `100% auto`, so a
+   tall 820x900 window yields a 239px writing area while a 1280x720 window
+   yields 411px. Keyed to the viewport, the tall window got the FULL-SIZE
+   anchors, they took 208px of 239, and "Jungle" was ellipsised down to
+   SEVEN PIXELS between them.
+
+   So `.lc-scroll__content` — the column that holds the band AND the body —
+   is itself a container, and the anchors step off the sheet's real width.
+   `play-record` (the body) stays exactly as it was; the cards were tuned
+   against it and it is 4px narrower than this one.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.play-scroll .lc-scroll__content {
+  container-type: inline-size;
+  container-name: play-record-sheet;
+}
+
+.play-scroll-banner {
+  gap: 0.5rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid rgba(96, 68, 28, 0.5);
+}
+
+/* The figure. This class lands on `RoleMascot`'s OUTER box, which is the one
+   layer that component leaves entirely to its host — every inner layer fills
+   it exactly, and the host is explicitly forbidden from putting a transform
+   here so the idle float has the layer to itself. Size and placement only. */
+.play-scroll-banner__figure {
+  flex-shrink: 0;
+  /* Even the SMALLEST step is a real increase — the band's old mascot was
+     64px at every size. At a 255px sheet (375px phone) this and the crest
+     take 154px between them and still leave the name ~100px, which is more
+     than "Support" needs at 17px. */
+  width: 78px;
+  height: 78px;
+}
+
+/* The standing.
+   `variant="hero"` is chosen for the ART — the small emblem set is the
+   incomplete one — and the band then sizes hero's own 8rem/10rem box down to
+   something a header can carry. That override has to outrank
+   `.lc-emblem[data-variant="hero"]`, hence the two-class selector; this block
+   is appended after it, so equal specificity would also do, and the extra
+   class is there to survive being moved. */
+.lc-emblem.play-scroll-banner__standing {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+}
+
+/* The name block, centred between the two anchors — the band is a title
+   plate, and a left-set name left a hole between it and the crest. The
+   no-role case is an INSTRUCTION rather than a name, and a centred sentence
+   reads worse than a set one, so that branch takes the left. */
+.play-scroll-banner__name {
+  text-align: center;
+}
+
+.play-scroll-banner[data-role="none"] .play-scroll-banner__name {
+  text-align: left;
+}
+
+/* The role's name. The only text on the band that is not a label, and the
+   one thing on it that must never be lost.
+
+   NO `min-width` HERE. A floor on this element is the wrong layer: its parent
+   is `min-w-0 flex-1`, so the parent shrinks past it and the name overflows
+   into the crest instead of ellipsising. The floor is enforced where it can
+   actually be honoured — the ANCHORS step down first, in the container
+   queries below, so the name is never asked to give up room it does not
+   have. Measured at 17px: the longest role, "Support", is 67px. */
+.play-scroll-banner__role {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The narrowest sheet a phone can produce. Measured: a 320px viewport leaves
+   a ~218px writing area, where the default anchors plus the name do not fit.
+   They come down together, so the band keeps its balance. */
+@container play-record-sheet (max-width: 264px) {
+  .play-scroll-banner__figure {
+    width: 64px;
+    height: 64px;
+  }
+
+  .lc-emblem.play-scroll-banner__standing {
+    width: 50px;
+    height: 50px;
+  }
+
+  .play-scroll-banner__role {
+    font-size: 16px;
+  }
+
+  /* "ENTERING AS" is eleven characters, and at 0.24em it needs 86px — which
+     is exactly the name column at this size, so it broke onto two lines and
+     pushed the role down. The tracking is the part that can give. */
+  .play-scroll-banner__name > p:first-child {
+    letter-spacing: 0.12em;
+  }
+}
+
+@container play-record-sheet (min-width: 300px) {
+  .play-scroll-banner__figure {
+    width: 88px;
+    height: 88px;
+  }
+
+  .lc-emblem.play-scroll-banner__standing {
+    width: 68px;
+    height: 68px;
+  }
+
+  .play-scroll-banner__role {
+    font-size: 20px;
+  }
+}
+
+@container play-record-sheet (min-width: 380px) {
+  .play-scroll-banner {
+    gap: 0.75rem;
+  }
+
+  .play-scroll-banner__figure {
+    width: 112px;
+    height: 112px;
+  }
+
+  .lc-emblem.play-scroll-banner__standing {
+    width: 88px;
+    height: 88px;
+  }
+
+  .play-scroll-banner__role {
+    font-size: 24px;
+  }
+}
+
+/* ── A refusal ──────────────────────────────────────────────────────────── */
+
+.play-scroll-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0 0.25rem;
+  text-align: center;
+}
+
+.play-scroll-notice__reason {
+  max-width: 36ch;
+  margin-top: 0.15rem;
+  padding: 0.5rem 0.9rem;
+  border-left: 2px solid rgba(122, 40, 32, 0.55);
+  background: rgba(112, 82, 36, 0.12);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+}
+
+/* ── The roster register ────────────────────────────────────────────────── */
+
+/* The head band: the Invite clause's own layout, promoted. */
+.play-invite-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  text-align: left;
+}
+
+.play-invite-register {
+  /* A FLOOR, so the register can never be squeezed out of existence by the
+     matter above and below it. `flex: 1` alone let it collapse to 18px on a
+     720-tall window — a scroll container with no room to scroll in. Below
+     this the record's own body takes over the scrolling, which is exactly
+     what `.play-scroll__body`'s `overflow-y` is the last resort for. */
+  min-height: 7.5rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid rgba(96, 68, 28, 0.4);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    rgba(112, 82, 36, 0.07) 0%,
+    rgba(112, 82, 36, 0.14) 100%
+  );
+  box-shadow: inset 0 1px 2px rgba(48, 32, 10, 0.14);
+}
+
+.play-invite-search {
+  height: 36px;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  padding: 0 0.5rem 0 2rem;
+  border: 1px solid rgba(96, 68, 28, 0.5);
+  border-radius: 3px;
+  background: rgba(255, 248, 230, 0.3);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #241708;
+  outline: none;
+}
+
+.play-invite-search::placeholder {
+  color: #56412a;
+  opacity: 0.75;
+}
+
+.play-invite-chosen {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border: 1px solid rgba(122, 40, 32, 0.5);
+  border-radius: 2px;
+  background: rgba(122, 40, 32, 0.1);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #7a2820;
+}
+
+.play-invite-notice {
+  padding: 0.5rem 0.9rem;
+  border-left: 2px solid rgba(122, 40, 32, 0.5);
+  background: rgba(112, 82, 36, 0.12);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+}
+
+/* Sized to the register's own floor: the whole composition has to sit inside
+   7.5rem minus the register's padding, or an empty roster opens on a panel
+   that is itself scrolled — which reads as a bug, not as an empty page. */
+.play-invite-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.7rem 0.5rem;
+  text-align: center;
+}
+
+.play-invite-empty__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 0.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 68, 28, 0.45);
+  background:
+    radial-gradient(
+      70% 70% at 50% 32%,
+      rgba(255, 249, 235, 0.5) 0%,
+      transparent 72%
+    ),
+    rgba(112, 82, 36, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 238, 0.3);
+  color: #56412a;
+}
+
+/* ── A NARROW SHEET, WHICH IS NOT A NARROW WINDOW ───────────────────────
+   The record's writing area is NOT a function of the viewport width, and a
+   `@media (max-width: …)` step here measures the wrong thing.
+
+   `.play-scroll-sizer` caps the sheet at `min(100%, 47rem, 84vh)` and
+   `.play-scroll` then shrinks it further to fit `95vh`, because the sheet's
+   three slices are `100% auto` and its HEIGHT is therefore a function of its
+   width. A tall, mid-width window — 900×880, say — produces a sheet far
+   narrower than the same window's `max-width` query would suggest: measured,
+   a 900px-wide window gives a ~298px writing area while a 1280×720 window
+   gives ~411px. Keyed off the viewport, the wide window got the roomy card
+   and the narrow sheet got it too, and the title wrapped mid-name.
+
+   So the step is a CONTAINER query on the writing area itself, which is the
+   box the cards are actually laid out in. It is right at every combination
+   of the two axes, including the ones nobody thought to check.
+
+   NOTHING IS HIDDEN AT ANY SIZE. The card keeps its three columns down to
+   375 — the miniature is what makes an entry legible before it is read, and
+   folding it under the text would cost exactly what this pass added. It
+   comes DOWN in size instead, the gutters close, and the marks wrap. */
+.play-scroll__body {
+  container-type: inline-size;
+  container-name: play-record;
+}
+
+@container play-record (max-width: 320px) {
+  .play-mode-card {
+    gap: 0.5rem;
+    min-height: 68px;
+    padding: 0.45rem 0.35rem 0.45rem 0.6rem;
+  }
+
+  .play-plate {
+    --plate-size: 48px;
+  }
+
+  .play-mode-card__seal {
+    width: 26px;
+    height: 26px;
+  }
+
+  .play-mode-card__title {
+    font-size: 15px;
+  }
+
+  .play-mode-card__note {
+    font-size: 11px;
+  }
+
+}
+
+/* THE BAND IS NOT IN THE CONTAINER, and cannot be.
+   `.play-scroll-banner` is held OUTSIDE `.play-scroll__body` on purpose — the
+   identity being entered must not scroll away while the player checks it —
+   so it is not a descendant of the container above and a `@container` rule
+   can never reach it. This one is keyed to the viewport instead, at exactly
+   the breakpoint where `.play-scroll` pulls its own manuscript margins in
+   (639px, above): the band's problem IS that margin pressure, so the two
+   belong on the same trigger.
+
+   The tier's WORD comes off the band there. It is still written two lines to
+   the left — "Leaguecraft Academy · Ranked Silver" — so nothing is lost, and
+   at 375 the label sat flush against the paper's own edge shading while the
+   role name it was crowding had wrapped to two lines. The emblem stays: it
+   is the part that cannot be read from the line beside it. */
+
+
+/* ── Reduced motion ─────────────────────────────────────────────────────
+   Everything this pass added that MOVES stops. The two things it added that
+   are LIGHT — the standing glow on Ranked, the lit rim on hover — stay, and
+   deliberately: a glow that does not animate is not motion, and removing the
+   hover illumination would leave the pointer with no feedback at all. The
+   live plate keeps its brightest rim as a still state, so the head of the
+   matchmaking view still reads as live. */
+@media (prefers-reduced-motion: reduce) {
+  .play-mode-card,
+  .play-mode-card::after,
+  .play-mode-card__seal,
+  .play-plate,
+  .play-scroll-stamp,
+  .play-scroll-control,
+  .play-scroll-back {
+    transition: none;
+  }
+
+  .play-mode-card:enabled:hover .play-mode-card__seal,
+  .play-mode-card:enabled:active .play-mode-card__seal,
+  .play-mode-card:enabled:active,
+  .play-scroll-stamp:active,
+  .play-scroll-control:enabled:active {
+    transform: none;
+  }
+
+  .play-plate.is-live {
+    animation: none;
+    box-shadow:
+      inset 0 1px 3px rgba(48, 32, 10, 0.26),
+      0 0 20px -4px var(--pm-glow);
+  }
+
+  /* The streak's glint stops, and the flame holds its RESTING look rather
+     than a keyframe's peak: the glint is decoration on a figure that is
+     already written out in words, so there is nothing to preserve by
+     freezing it lit. The flame stays red — that is colour, not motion. */
+  .play-mode-card__flame {
+    animation: none;
+    filter: none;
+  }
+
+  .play-mode-card__practice {
+    transition: none;
+  }
+}

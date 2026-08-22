@@ -23,6 +23,11 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: () => ({
       select: () => ({
         eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }),
+      // PLAY1: `useAppSettings` reads the whole app_settings table with a
+      // bare `.select(...).then(...)` to resolve global platform policy. No
+      // rows -> the fail-safe defaults, which is all three PLAY entries
+      // visible.
+      then: (resolve: (v: { data: unknown[] }) => unknown) => resolve({ data: [] }),
       }),
     }),
   },
@@ -237,12 +242,18 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(screen.getByRole("button", { name: /^Play$/ })).toBeTruthy();
   });
 
-  it("the Ranked CTA still reaches the Ranked flow", async () => {
+  /**
+   * PLAY1: PLAY opens the match-entry record ON the lobby. It does NOT
+   * navigate — the lobby stays mounted behind the record, and `/quiz/ranked`
+   * is only reached once the server actually has a match.
+   */
+  it("the Ranked CTA opens the match-entry record without leaving the lobby", async () => {
     await renderHub();
     fireEvent.click(screen.getByRole("button", { name: /^Play$/ }));
-    await waitFor(() =>
-      expect(screen.getByTestId("location").textContent).toBe("/quiz/ranked"),
-    );
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
+    // The lobby is still there, behind the record.
+    expect(screen.getByTestId("hub-ranked-section")).toBeTruthy();
   });
 });
 

@@ -57,16 +57,24 @@
  * and CSS `:active` cannot see both.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, type RefObject } from "react";
 
 export default function RankedPlayGem({
   onClick,
   disabled = false,
   label = "Play",
   className = "",
+  buttonRef,
 }: {
   onClick: () => void;
   disabled?: boolean;
+  /**
+   * PLAY1: the seal is what the match-entry record is opened FROM, so a
+   * closing record has to be able to put focus back on it. A plain object ref
+   * rather than `forwardRef`, because the only caller is the lobby and the
+   * seal is not a generic control anyone else composes.
+   */
+  buttonRef?: RefObject<HTMLButtonElement | null>;
   /**
    * The accessible name. NOT the visible word — that is baked into the art;
    * see THE BAKED WORD above. Keep it one word, and keep it "Play".
@@ -84,6 +92,7 @@ export default function RankedPlayGem({
   return (
     <button
       type="button"
+      ref={buttonRef}
       onClick={onClick}
       disabled={disabled}
       data-testid="ranked-play-gem"

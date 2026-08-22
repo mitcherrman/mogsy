@@ -38,7 +38,14 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: { signInAnonymously: vi.fn() },
     from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }),
+      select: () => ({
+        eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }),
+      // PLAY1: `useAppSettings` reads the whole app_settings table with a
+      // bare `.select(...).then(...)` to resolve global platform policy. No
+      // rows -> the fail-safe defaults, which is all three PLAY entries
+      // visible.
+      then: (resolve: (v: { data: unknown[] }) => unknown) => resolve({ data: [] }),
+      }),
     }),
   },
 }));

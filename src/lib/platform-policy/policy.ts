@@ -20,6 +20,12 @@ export const POLICY_KEYS = {
   tutorialCompletionRequiredForNewUsers: "tutorial_completion_required_for_new_users",
   globalNavbarVisible: "global_navbar_visible",
   showBotLabels: "show_bot_labels",
+  // PLAY1 — which entries the Ranked lobby's PLAY scroll offers. One row per
+  // mode, so a mode can be withdrawn without touching the other two and
+  // without a deploy.
+  playModeRankedVisible: "play_mode_ranked_visible",
+  playModeDailyChallengeVisible: "play_mode_daily_challenge_visible",
+  playModeInviteVisible: "play_mode_invite_visible",
 } as const;
 
 export interface PlatformPolicy {
@@ -58,6 +64,33 @@ export interface PlatformPolicy {
      */
     showBotLabels: boolean;
   };
+  /**
+   * PLAY1 — the Ranked lobby's PLAY scroll.
+   *
+   * `modes` is deliberately a record of independent booleans rather than a
+   * single "which modes" enum: the product's intent is that all three are
+   * visible, and the switches exist so ONE of them can be withdrawn during an
+   * incident without implying anything about the others.
+   *
+   * Presentation/navigation only. Hiding a mode withholds its entry from this
+   * scroll; it never disables the underlying feature, never changes
+   * authorization, and never removes a route. Ranked's own availability is
+   * still the backend's to decide (`RANKED_QUEUE_DISABLED` and friends), and
+   * a mode hidden here is still reachable by anyone holding its URL.
+   *
+   * The section is a `play` object rather than three loose fields so the
+   * controls named in the PLAY1 brief as LATER work — an emphasised mode,
+   * queue-population messaging, practice visibility, temporary availability
+   * notices — have an obvious home when they are actually built. None of them
+   * are declared here: an unread field is a claim the product cannot keep.
+   */
+  play: {
+    modes: {
+      ranked: boolean;
+      dailyChallenge: boolean;
+      invite: boolean;
+    };
+  };
 }
 
 /**
@@ -81,6 +114,12 @@ export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
   tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
   navigation: { globalNavbarVisible: true },
   community: { showBotLabels: false },
+  // All three PLAY modes default TRUE, and that is what reproduces the
+  // intended presentation: the scroll offers Ranked, Daily Challenge and
+  // Invite & Play. Fail-SAFE rather than fail-closed, for the same reason the
+  // navbar is: an unreadable settings table must not silently empty the one
+  // menu the lobby's primary action opens.
+  play: { modes: { ranked: true, dailyChallenge: true, invite: true } },
 };
 
 export interface AppSettingRow {
@@ -108,6 +147,7 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
     tutorial: { ...DEFAULT_PLATFORM_POLICY.tutorial },
     navigation: { ...DEFAULT_PLATFORM_POLICY.navigation },
     community: { ...DEFAULT_PLATFORM_POLICY.community },
+    play: { modes: { ...DEFAULT_PLATFORM_POLICY.play.modes } },
   };
   if (!rows) return policy;
 
@@ -132,6 +172,18 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
       case POLICY_KEYS.showBotLabels:
         policy.community.showBotLabels = readEnabled(
           row.value, DEFAULT_PLATFORM_POLICY.community.showBotLabels);
+        break;
+      case POLICY_KEYS.playModeRankedVisible:
+        policy.play.modes.ranked = readEnabled(
+          row.value, DEFAULT_PLATFORM_POLICY.play.modes.ranked);
+        break;
+      case POLICY_KEYS.playModeDailyChallengeVisible:
+        policy.play.modes.dailyChallenge = readEnabled(
+          row.value, DEFAULT_PLATFORM_POLICY.play.modes.dailyChallenge);
+        break;
+      case POLICY_KEYS.playModeInviteVisible:
+        policy.play.modes.invite = readEnabled(
+          row.value, DEFAULT_PLATFORM_POLICY.play.modes.invite);
         break;
     }
   }

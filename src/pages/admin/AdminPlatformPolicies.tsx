@@ -34,7 +34,10 @@ type PolicyField =
   | "tutorialAutoPopup"
   | "tutorialCompletionRequired"
   | "globalNavbar"
-  | "showBotLabels";
+  | "showBotLabels"
+  | "playModeRanked"
+  | "playModeDailyChallenge"
+  | "playModeInvite";
 
 const CONTROLS: {
   field: PolicyField;
@@ -96,6 +99,41 @@ const CONTROLS: {
     warning:
       "Bot personas are visibly labelled for every user. This is presentation only — it changes no permissions, no filtering, no analytics, no search-engine indexing, and no bot behaviour. Admin screens always show real bot status whichever way this is set.",
   },
+  // ── PLAY1 · the Ranked lobby's match-entry scroll ──────────────────────
+  // Three independent switches rather than one "which modes" setting, so a
+  // single entry can be withdrawn during an incident without implying
+  // anything about the other two. All three default ON, which is the intended
+  // presentation: the scroll offers all three.
+  {
+    field: "playModeRanked",
+    settingKey: POLICY_KEYS.playModeRankedVisible,
+    label: "Play menu · Ranked Match",
+    description:
+      "Offer Ranked Match on the Leaguecraft lobby's PLAY scroll.",
+    warnWhen: "off",
+    warning:
+      "The PLAY scroll stops offering Ranked Match. This is presentation only — it does not pause matchmaking, end live matches, or change eligibility, and anyone already in a match is unaffected. To actually stop Ranked, use the backend queue switch.",
+  },
+  {
+    field: "playModeDailyChallenge",
+    settingKey: POLICY_KEYS.playModeDailyChallengeVisible,
+    label: "Play menu · Daily Challenge",
+    description:
+      "Offer today's Daily Challenge on the Leaguecraft lobby's PLAY scroll.",
+    warnWhen: "off",
+    warning:
+      "The PLAY scroll stops offering the Daily Challenge. The challenge itself still runs, still counts, and still keeps streaks — only this entry to it is withheld.",
+  },
+  {
+    field: "playModeInvite",
+    settingKey: POLICY_KEYS.playModeInviteVisible,
+    label: "Play menu · Invite & Play",
+    description:
+      "Offer Invite & Play on the Leaguecraft lobby's PLAY scroll.",
+    warnWhen: "off",
+    warning:
+      "The PLAY scroll stops offering Invite & Play. Friendships, rosters and every other social surface are unaffected — this hides one entry point, nothing else.",
+  },
 ];
 
 function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
@@ -105,6 +143,9 @@ function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
     tutorialCompletionRequired: policy.tutorial.completionRequiredForNewUsers,
     globalNavbar: policy.navigation.globalNavbarVisible,
     showBotLabels: policy.community.showBotLabels,
+    playModeRanked: policy.play.modes.ranked,
+    playModeDailyChallenge: policy.play.modes.dailyChallenge,
+    playModeInvite: policy.play.modes.invite,
   };
 }
 
@@ -182,8 +223,8 @@ export default function AdminPlatformPolicies() {
       setSaveError({ field, message: "Saved, but couldn't confirm. Reload to verify." });
       return;
     }
-    // Merge only THIS field: parsing a single row yields defaults for the other
-    // two, which would clobber their real values.
+    // Merge only THIS field: parsing a single row yields defaults for every
+    // other key, which would clobber their real values.
     const confirmed = flatten(
       parsePlatformPolicy([data as { key: string; value: unknown }]),
     )[field];

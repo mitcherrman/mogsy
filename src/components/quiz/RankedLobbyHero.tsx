@@ -228,6 +228,7 @@ export default function RankedLobbyHero({
   progress,
   ranked,
   onPlayRanked,
+  playButtonRef,
   playDisabled = false,
   rankedRole = null,
   onSelectRole,
@@ -244,6 +245,9 @@ export default function RankedLobbyHero({
   progress: QuizProgress | null;
   ranked: RankedState;
   onPlayRanked: () => void;
+  /** PLAY1: the seal's own node, so a closing match-entry record can put
+   *  focus back where it came from. */
+  playButtonRef?: React.RefObject<HTMLButtonElement | null>;
   playDisabled?: boolean;
   rankedRole?: RankedRole | null;
   /** Persist a role. Absent means role identity is read-only here. */
@@ -486,7 +490,12 @@ export default function RankedLobbyHero({
           )}
         </div>
 
-        <RankedPlayGem className="mt-3" onClick={onPlayRanked} disabled={playDisabled} />
+        <RankedPlayGem
+          className="mt-3"
+          onClick={onPlayRanked}
+          disabled={playDisabled}
+          buttonRef={playButtonRef}
+        />
 
         {/* Stakes, directly under the action they belong to. Wraps and carries
             a tighter gap: stacked at 768 the sheet's own margin leaves ~206px

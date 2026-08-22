@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -39,6 +39,8 @@ import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
+import { playModeVisibility } from "@/lib/quiz/playModes";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import AdSlot from "@/components/ads/AdSlot";
@@ -317,38 +319,52 @@ export default function Quiz() {
    *  against the right role. */
   const effectiveRankedRole = pendingRankedRole ?? rankedRole.role;
   const navigate = useNavigate();
+  const location = useLocation();
+  // PLAY1: which entries the match-entry record offers. The same app_settings
+  // rows the admin panel writes and the rest of the platform reads — there is
+  // one policy store, and this adds no second one.
+  const { settings: appSettings } = useAppSettings();
+  /**
+   * PLAY1: `/quiz/ranked` sends a player with no active match here rather than
+   * resurrecting its retired pre-match menu, and asks for the proper entry
+   * experience to be opened. Read ONCE on mount: re-reading it would re-open
+   * the record every time the lobby re-renders, including right after the
+   * player closed it.
+   */
+  const [openPlayOnMount] = useState(
+    () => (location.state as { openPlay?: boolean } | null)?.openPlay === true,
+  );
 
   /**
    * PLAY — the commit point, and the reason it has to be this one.
    *
-   * The Ranked route does NOT carry a role across the navigation: it mounts
-   * its own `useRankedRole()` and re-reads `GET /api/ranked/role`, and the
-   * queue join sends no role at all — `POST /api/ranked/queue` reads the
-   * player's stored preference off the account inside the join transaction.
-   * The persisted role IS the queued identity. So a local choice must reach
-   * the backend BEFORE the navigation, or the reader queues as whoever they
-   * used to be.
+   * The Ranked queue join sends NO role: `POST /api/ranked/queue` reads the
+   * player's stored preference off the account inside the join transaction,
+   * so the persisted role IS the queued identity. The lobby's carousel moves
+   * against local state (browsing must cost nothing — `role_set` is limited
+   * to ten writes a minute and two laps used to exhaust it), which means a
+   * local choice has to reach the backend BEFORE the player can enter the
+   * match-entry record, or they queue as whoever they used to be.
    *
    * The write is skipped entirely when the choice already matches the stored
-   * role, which is the ordinary case for a reader who browsed back to where
-   * they started, or never moved at all.
+   * role — the ordinary case for a reader who browsed back to where they
+   * started, or never moved at all.
    *
-   * A REFUSAL DOES NOT NAVIGATE. If the account cannot be moved to the chosen
-   * role — an active match, a live queue entry, a rate limit — sending the
-   * reader onward would land them in Ranked as the wrong role with no sign
-   * that anything failed. The notice is surfaced on the lobby and they stay
-   * put, which is the state they can actually act on.
+   * IT NO LONGER NAVIGATES, and that is the PLAY1 half of this. Pressing
+   * PLAY opens the record on the lobby; the only navigation left in the flow
+   * is the handoff once the server has a match. What survives unchanged is
+   * the RULE the navigation used to carry: a refusal does not proceed. The
+   * boolean is that rule — the lobby opens the record only when the commit
+   * held, so a failed role write can no longer put the reader into Ranked as
+   * the wrong role with nothing on screen saying so.
    */
-  const handlePlayRanked = useCallback(async () => {
-    if (rankedRole.saving) return;
+  const handlePlayRanked = useCallback(async (): Promise<boolean> => {
+    if (rankedRole.saving) return false;
     const next = effectiveRankedRole;
     // Nothing chosen (a guest, an older backend, an account that has never
-    // picked), or nothing changed: there is no write to make. The Ranked page
-    // still fails closed on a null role and offers its own picker.
-    if (next === null || next === rankedRole.role) {
-      navigate("/quiz/ranked");
-      return;
-    }
+    // picked), or nothing changed: there is no write to make. The record
+    // still refuses to queue without a role and says so in its own view.
+    if (next === null || next === rankedRole.role) return true;
     setSavingRankedRole(next);
     const accepted = await rankedRole.selectRole(next);
     setSavingRankedRole(null);
@@ -364,11 +380,11 @@ export default function Quiz() {
         rankedRole.error ?? "Could not save your role. Try again.",
         { id: RANKED_ROLE_TOAST_ID },
       );
-      return;
+      return false;
     }
     setPendingRankedRole(null);
-    navigate("/quiz/ranked");
-  }, [effectiveRankedRole, rankedRole, navigate]);
+    return true;
+  }, [effectiveRankedRole, rankedRole]);
   const userId = user?.id || "anonymous";
 
   useEffect(() => {
@@ -1130,7 +1146,19 @@ export default function Quiz() {
             <LeaguecraftHub
               progress={userProgress}
               ranked={getRankedState(userProgress?.attempts ?? 0)}
-              onPlayRanked={() => void handlePlayRanked()}
+              onPlayRanked={() => handlePlayRanked()}
+              /* PLAY1: PLAY opens the match-entry record in place. The only
+                 navigation left is the handoff, once the SERVER has a match —
+                 `/quiz/ranked` is the live-match host. The id travels in
+                 router state so the host enters the match immediately instead
+                 of re-discovering it, and the host still falls back to
+                 account-bound discovery when it arrives without one. */
+              onEnterMatch={(matchId) =>
+                navigate("/quiz/ranked", { state: { matchId } })}
+              onPlayDailyChallenge={() => void handlePlayDailyChallenge()}
+              playModes={playModeVisibility(appSettings.policy)}
+              dailyChallenge={dailyChallenge}
+              playScrollOpenOnMount={openPlayOnMount}
               sets={sets}
               setsLoading={setsLoading}
               onSelectSet={handleSelectSet}

@@ -16,23 +16,28 @@ import RankedPlayGem from "./RankedPlayGem";
 
 afterEach(cleanup);
 
+
 /**
- * The reduced-motion block that actually governs THIS component.
+ * The `prefers-reduced-motion` block that governs a given selector.
  *
- * Anchored on a selector the block must contain, not on `lastIndexOf` — index.css
- * carries a dozen `prefers-reduced-motion` blocks and "the last one" is whichever
- * feature appended CSS most recently, which is not a fact about this component.
+ * This used to be `css.slice(css.lastIndexOf("@media (prefers-reduced-motion:
+ * reduce)"))` — "the last one in the file" — which silently meant "whichever
+ * surface was added to `index.css` most recently", and broke the moment any
+ * new reduced-motion rule was added below. The block is now found by what it
+ * CONTAINS, and bounded at the next media query so a `not.toMatch` assertion
+ * is still a statement about this block rather than about the whole sheet.
  */
-const reducedMotionBlockContaining = (css: string, anchor: string): string => {
-  const starts = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\)/g)].map(
-    (m) => m.index as number,
-  );
-  for (let i = starts.length - 1; i >= 0; i -= 1) {
-    const block = css.slice(starts[i], starts[i + 1] ?? css.length);
-    if (block.includes(anchor)) return block;
+function reducedMotionBlockFor(css: string, needle: string): string {
+  const block = css
+    .split("@media (prefers-reduced-motion: reduce)")
+    .slice(1)
+    .map((chunk) => chunk.split("@media")[0])
+    .find((chunk) => chunk.includes(needle));
+  if (block === undefined) {
+    throw new Error(`no reduced-motion block mentions ${needle}`);
   }
-  throw new Error(`no reduced-motion block contains ${anchor}`);
-};
+  return block;
+}
 
 describe("RankedPlayGem", () => {
   it("is a real button whose accessible name is exactly the visible word", () => {
@@ -182,10 +187,12 @@ describe("the PLAY seal's CSS invariants", () => {
   });
 
   it("under reduced motion, changes light but never travels", () => {
-    const reduced = reducedMotionBlockContaining(css, "--lc-seal-scale: 1");
+    // Keyed on the glint selector, not on `--lc-seal-scale: 1` — that value
+    // also appears in the seal's own base rule, which sits inside an earlier
+    // reduced-motion block's span.
+    const reduced = reducedMotionBlockFor(css, ".lc-seal__glint");
     expect(reduced).toContain("--lc-seal-scale: 1");
     expect(reduced).toContain("--lc-seal-lift: 0px");
-    expect(reduced).toContain(".lc-seal__glint");
     // The ambient glow is a property of the object, not an animation, so it
     // survives: the seal keeps its whole identity with motion off.
     expect(reduced).not.toMatch(/--lc-seal-glow:/);

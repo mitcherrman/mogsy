@@ -102,6 +102,57 @@ describe("loading and rendering", () => {
     expect(screen.getByTestId("policy-globalNavbar")).toBeTruthy();
   });
 
+  /**
+   * PLAY1 — the Ranked lobby's PLAY scroll. Three independent switches, in
+   * the same admin panel and the same `app_settings` table as everything
+   * else: there is one platform-policy framework and this adds no second one.
+   */
+  it("shows one switch per match-entry option, all on by default", async () => {
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("policy-playModeRanked")).toBeTruthy());
+    expect(screen.getByTestId("policy-playModeDailyChallenge")).toBeTruthy();
+    expect(screen.getByTestId("policy-playModeInvite")).toBeTruthy();
+    for (const field of ["playModeRanked", "playModeDailyChallenge", "playModeInvite"]) {
+      expect(
+        screen.getByTestId(`policy-${field}`).querySelector('[role="switch"]'),
+      ).toHaveAttribute("aria-checked", "true");
+    }
+  });
+
+  it("writes the play-mode switch to its own app_settings key", async () => {
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("policy-playModeInvite")).toBeTruthy());
+    // The server's confirming read, so the panel is not left optimistic.
+    mocks.singleRow = row(POLICY_KEYS.playModeInviteVisible, false);
+    fireEvent.click(
+      screen.getByTestId("policy-playModeInvite").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() =>
+      expect(mocks.upsertCalls).toContainEqual({
+        key: POLICY_KEYS.playModeInviteVisible,
+        value: { enabled: false },
+      }),
+    );
+    // ONE key written: a play-mode toggle never touches the other two.
+    expect(mocks.upsertCalls).toHaveLength(1);
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("policy-playModeInvite").querySelector('[role="switch"]'),
+      ).toHaveAttribute("aria-checked", "false"),
+    );
+    expect(
+      screen.getByTestId("policy-playModeRanked").querySelector('[role="switch"]'),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("warns that hiding Ranked Match does not stop matchmaking", async () => {
+    mocks.selectResult.data = [row(POLICY_KEYS.playModeRankedVisible, false)];
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-warning-playModeRanked").textContent)
+        .toContain("does not pause matchmaking"));
+  });
+
   it("shows the warning copy only for a switch that is OFF", async () => {
     mocks.selectResult.data = [
       row(POLICY_KEYS.combatSimTokensRequiredForNonPro, false),

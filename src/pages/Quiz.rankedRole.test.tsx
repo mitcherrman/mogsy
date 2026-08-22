@@ -38,7 +38,14 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: { signInAnonymously: vi.fn() },
     from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }),
+      select: () => ({
+        eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }),
+      // PLAY1: `useAppSettings` reads the whole app_settings table with a
+      // bare `.select(...).then(...)` to resolve global platform policy. No
+      // rows -> the fail-safe defaults, which is all three PLAY entries
+      // visible.
+      then: (resolve: (v: { data: unknown[] }) => unknown) => resolve({ data: [] }),
+      }),
     }),
   },
 }));
@@ -220,7 +227,7 @@ describe("Leaguecraft lobby — browsing is local", () => {
 });
 
 describe("Leaguecraft lobby — PLAY commits the role", () => {
-  it("persists the settled role exactly once, then continues into Ranked", async () => {
+  it("persists the settled role exactly once, then opens the record", async () => {
     // Stored role is Top; the reader wanders and settles on Mid.
     await renderHub();
     browseRing(15);          // three full laps, back on Top
@@ -230,7 +237,11 @@ describe("Leaguecraft lobby — PLAY commits the role", () => {
     play();
     await waitFor(() => expect(selectRole).toHaveBeenCalledTimes(1));
     expect(selectRole).toHaveBeenLastCalledWith("mid");
-    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/quiz/ranked"));
+    // PLAY1: the commit no longer ends in a navigation. The record opens on
+    // the lobby, and `/quiz/ranked` is entered only once the SERVER has a
+    // match. Staying on /quiz is now part of the assertion, not incidental.
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
   });
 
   it("writes NOTHING when the settled role is the one already stored", async () => {
@@ -241,14 +252,16 @@ describe("Leaguecraft lobby — PLAY commits the role", () => {
     expect(screen.getByTestId("ranked-class-champion").getAttribute("data-role")).toBe("top");
 
     play();
-    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/quiz/ranked"));
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
     expect(selectRole).not.toHaveBeenCalled();
   });
 
   it("writes NOTHING when the reader never touches the stage", async () => {
     await renderHub();
     play();
-    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/quiz/ranked"));
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
     expect(selectRole).not.toHaveBeenCalled();
   });
 
