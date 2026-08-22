@@ -60,8 +60,21 @@ const renderAuth = (search: string) => {
 const submitButton = () =>
   document.querySelector('button[type="submit"]') as HTMLButtonElement;
 
-/** Fill the signup form and submit it. Email + password + submit, nothing else. */
-const submitSignup = async (password: string, email = "new@example.com") => {
+/**
+ * Fill the signup form and submit it.
+ *
+ * AUTH3 added a username to this form — signup is an identity moment, not only
+ * an auth one. It is filled here so these AUTH1/AUTH2 cases keep testing what
+ * they are about (the password policy, verification, the destination) rather
+ * than tripping on a field they do not care about. Auth.username.test.tsx owns
+ * the username's own behaviour.
+ */
+const submitSignup = async (
+  password: string,
+  email = "new@example.com",
+  username = "MogzyKing",
+) => {
+  fireEvent.change(screen.getByLabelText("Username"), { target: { value: username } });
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: email } });
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: password } });
   await act(async () => {
@@ -82,7 +95,9 @@ describe("password policy at signup (AUTH1 §2)", () => {
   it("accepts a 6-character password with no symbol, uppercase, or number", async () => {
     renderAuth("?mode=signup");
     await submitSignup("abcdef");
-    expect(auth.signUp).toHaveBeenCalledWith("new@example.com", "abcdef");
+    // AUTH3: the chosen username rides along as the third argument, so
+    // handle_new_user() writes it on the profile row it is already creating.
+    expect(auth.signUp).toHaveBeenCalledWith("new@example.com", "abcdef", "MogzyKing");
   });
 
   it("accepts an all-digit password", async () => {
@@ -100,13 +115,16 @@ describe("password policy at signup (AUTH1 §2)", () => {
     );
   });
 
-  it("asks for email and password and nothing else (AUTH2 §13)", () => {
+  it("asks for a username, an email and a password — and nothing else (AUTH2 §13, AUTH3 §13)", () => {
     renderAuth("?mode=signup");
     // The confirmation field is gone; a reveal toggle does the job it was
-    // there for, and does it for password-manager users too.
+    // there for, and does it for password-manager users too. AUTH3 adds the
+    // username and stops there: no avatar, no rank, no role, no region, and no
+    // profile-completion ceremony merely because those columns exist.
     expect(screen.queryByLabelText(/confirm password/i)).toBeNull();
     const inputs = Array.from(document.querySelectorAll("form input"));
-    expect(inputs).toHaveLength(2);
+    expect(inputs).toHaveLength(3);
+    expect(screen.getByLabelText("Username")).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Password")).toBeTruthy();
   });

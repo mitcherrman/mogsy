@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/lib/auth/password-policy";
-import { containsProfanity, getProfanityMessage } from "@/lib/profanity-filter";
+import { claimUsername } from "@/lib/identity/claim-username";
+import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
 import { searchCities } from "@/lib/cities-data";
 import { toast } from "sonner";
 import OnboardingDots from "./OnboardingDots";
@@ -110,10 +111,16 @@ export default function OnboardingProfile({ onNext }: Props) {
     setNameError("");
     setLinkError("");
 
-    if (displayName.trim() && containsProfanity(displayName)) {
-      setNameError(getProfanityMessage());
-      setSaving(false);
-      return;
+    // AUTH3: the shared username policy, not a profanity check alone. This
+    // step writes the SAME column as /welcome and /profile, so it now answers
+    // to the same rules and the same sentences.
+    if (displayName.trim()) {
+      const problem = usernameProblem(displayName);
+      if (problem) {
+        setNameError(USERNAME_MESSAGES[problem]);
+        setSaving(false);
+        return;
+      }
     }
 
     try {
@@ -151,8 +158,20 @@ export default function OnboardingProfile({ onNext }: Props) {
         }
       }
 
+      // The name goes through set_display_name() — the one write path that can
+      // see other accounts and therefore the only one that can refuse a
+      // duplicate. Everything else on this step is private to the profile and
+      // still saves as a plain update.
+      if (displayName.trim()) {
+        const claim = await claimUsername(displayName);
+        if (!claim.ok) {
+          setNameError(claim.error ?? USERNAME_MESSAGES.unavailable);
+          setSaving(false);
+          return;
+        }
+      }
+
       const updates: Record<string, any> = {};
-      if (displayName.trim()) updates.display_name = displayName.trim();
       if (age && parseInt(age) >= 13) updates.age = parseInt(age);
       if (location.trim()) updates.location = location.trim();
       if (avatarUrl) updates.avatar_url = avatarUrl;
@@ -250,7 +269,7 @@ export default function OnboardingProfile({ onNext }: Props) {
         {fields.display_name.enabled && (
           <div className="space-y-1.5">
             <Label htmlFor="onb-name" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-              <User className="h-3.5 w-3.5" /> Display Name{fields.display_name.required ? " *" : ""}
+              <User className="h-3.5 w-3.5" /> Username{fields.display_name.required ? " *" : ""}
             </Label>
             <Input
               id="onb-name"

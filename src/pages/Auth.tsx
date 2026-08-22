@@ -18,6 +18,10 @@ import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/
 import { mapAuthError } from "@/lib/auth/auth-errors";
 import AccountUpgradePanel from "@/components/auth/AccountUpgradePanel";
 import PasswordField from "@/components/auth/PasswordField";
+import UsernameField from "@/components/auth/UsernameField";
+import { claimUsername } from "@/lib/identity/claim-username";
+import { readPreferredUsername } from "@/lib/identity/preferred-username";
+import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
 
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
@@ -27,6 +31,26 @@ export default function Auth() {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // AUTH3 — the public Mogzy name, seeded from whatever identity this visitor
+  // has already chosen. On this form there is no session yet, so the only
+  // source available is the Academy registration on the device; the guest
+  // upgrade panel, which DOES have a session, also considers the profile.
+  // Read once, at mount: re-reading would fight the user's own edits.
+  const [username, setUsername] = useState(() => readPreferredUsername().value);
+  const [usernameCarried] = useState(() => readPreferredUsername().source !== "none");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  /**
+   * The account was created, but the username it asked for was taken.
+   *
+   * This state exists because the two halves of signup have different
+   * reversibility. Creating the account is done and cannot be repeated —
+   * pressing the button again would hit "User already registered" and bounce
+   * the user, who has done nothing wrong, into the sign-in form. Choosing the
+   * name is the half that failed and the only half left to retry, so from here
+   * the form is a name picker with a working session behind it.
+   */
+  const [awaitingUsername, setAwaitingUsername] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -164,6 +188,33 @@ export default function Auth() {
         navigate(safeReturnTo, { replace: true });
       }
     } else if (mode === "signup") {
+      setSubmitted(true);
+      // AUTH3 — shape is checked before anything irreversible happens. It is
+      // the same rule the database holds, so a name that passes here fails
+      // afterwards only for the one reason the client genuinely cannot know:
+      // somebody else has it.
+      const nameProblem = usernameProblem(username);
+      if (nameProblem) {
+        setUsernameError(USERNAME_MESSAGES[nameProblem]);
+        setLoading(false);
+        return;
+      }
+      setUsernameError(null);
+      // The account already exists and only the name is outstanding: claim it
+      // and go. Never a second signUp() — see awaitingUsername.
+      if (awaitingUsername) {
+        const retry = await claimUsername(username, { onlyIfUnset: true });
+        if (!retry.ok) {
+          setUsernameError(retry.error ?? USERNAME_MESSAGES.unavailable);
+          setLoading(false);
+          return;
+        }
+        setAwaitingUsername(false);
+        toast({ title: `Welcome to Mogzy, ${retry.username}!` });
+        navigate(safeReturnTo, { replace: true });
+        setLoading(false);
+        return;
+      }
       // One shared policy — length only, no composition rules, and no
       // confirmation field to satisfy (AUTH2; see components/auth/PasswordField).
       const pw = validateNewPassword(password);
@@ -180,7 +231,11 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const { error, session } = await signUp(email, password);
+      // The name rides along as auth metadata so handle_new_user() writes it
+      // on the profile row it is already creating. That is the whole
+      // carry-forward: no second write, no window where the account is
+      // nameless, and nothing for the user to retype.
+      const { error, session } = await signUp(email, password, username);
       if (error) {
         const mapped = mapAuthError(error, "signup");
         if (mapped.offerSignIn) {
@@ -204,6 +259,27 @@ export default function Auth() {
           trackFunnelEvent("auth_signup_completed_from_quiz", { returnTo: safeReturnTo, flow: "email_signup" });
         }
         resetGateState();
+        // handle_new_user() takes the name only if it was valid AND free. It
+        // cannot report which, and it must not fail the signup to say so — an
+        // account that exists and works is never worth refusing over a name.
+        // So the claim is confirmed here, now that there is a session to make
+        // it with: normally a no-op that agrees with the trigger, and
+        // otherwise the one place the user is told the name is taken. The
+        // account is already usable either way, which is why this changes the
+        // form rather than the destination.
+        if (session) {
+          const claim = await claimUsername(username, { onlyIfUnset: true });
+          if (!claim.ok && claim.taken) {
+            setAwaitingUsername(true);
+            setUsernameError(claim.error ?? USERNAME_MESSAGES.taken);
+            toast({
+              title: "Pick another username",
+              description: "Your account is ready — that name is just already taken.",
+            });
+            setLoading(false);
+            return;
+          }
+        }
         if (session) {
           // AUTH1 §3: the account is signed in and usable right now. Email
           // verification must not stand between signing up and continuing, so
@@ -376,7 +452,11 @@ export default function Auth() {
               the AccountUpgradePanel branch above returns first — so the
               "claim your account" header this used to carry was unreachable. */}
           <h2 className="text-xl font-bold text-foreground">
-            {mode === "signin" ? "Welcome back" : "Create your account"}
+            {mode === "signin"
+              ? "Welcome back"
+              : awaitingUsername
+                ? "Pick your username"
+                : "Create your account"}
           </h2>
           {inviteCode && mode === "signup" && (
             <p className="text-xs text-primary font-medium mt-2">🎁 You've been invited! Sign up to claim your rewards.</p>
@@ -384,7 +464,7 @@ export default function Auth() {
         </div>
 
         {/* Sign In / Sign Up toggle tabs */}
-        {!showLinkFlow && (
+        {!showLinkFlow && !awaitingUsername && (
           <div className="flex rounded-lg bg-muted p-1 mb-6">
             <button
               onClick={() => setMode("signin")}
@@ -433,22 +513,44 @@ export default function Auth() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
+          {/* AUTH3: signup only. Sign in is email + password and stays that
+              way — a returning user proves who they are with a credential,
+              never by remembering their public name. */}
+          {mode === "signup" && (
+            <UsernameField
+              id="signup-username"
+              value={username}
+              onChange={(next) => {
+                setUsername(next);
+                setUsernameError(null);
+              }}
+              submitted={submitted}
+              error={usernameError}
+              carriedForward={usernameCarried}
+              data-testid="signup-username-input"
             />
-          </div>
+          )}
+          {/* Both credentials are already set once the account exists; only
+              the name is outstanding, so this is a name picker from here. */}
+          {!awaitingUsername && (
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+          )}
           {/* AUTH2: one password field with a reveal toggle. The confirmation
               field it replaces caught typos only for people not using a
               password manager, and guarded the one failure that "Forgot
               password?" already fixes in a click. */}
+          {!awaitingUsername && (
           <PasswordField
             id="password"
             label="Password"
@@ -468,19 +570,21 @@ export default function Auth() {
               ) : null
             }
           />
+          )}
 
-          {mode === "signup" && (
+          {mode === "signup" && !awaitingUsername && (
             <p className="text-[10px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
           )}
 
           <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            {mode === "signin" ? "Sign In" : "Create Account"}
+            {mode === "signin" ? "Sign In" : awaitingUsername ? "Choose Username" : "Create Account"}
           </Button>
         </form>
 
-        {/* Quick switch hint at bottom */}
-        <p className="mt-5 text-center text-xs text-muted-foreground">
+        {/* Quick switch hint at bottom. Suppressed while a just-created account
+            is choosing its name — there is nothing to switch to. */}
+        <p className="mt-5 text-center text-xs text-muted-foreground" hidden={awaitingUsername}>
             {mode === "signin" ? (
               <>New to Mogzy?{" "}
                 <button onClick={() => setMode("signup")} className="text-primary font-semibold hover:underline">

@@ -97,8 +97,12 @@ describe("validating a name", () => {
     expect(validateUsername("  Summoner   Yi  ")).toEqual({ ok: true, value: "Summoner Yi" });
   });
 
-  it("refuses an empty name in the chapter's own words", () => {
-    expect(validateUsername("   ").error).toMatch(/needs a name/i);
+  it("refuses an empty name, in the product's one voice", () => {
+    // AUTH3: the register's bespoke "Every student needs a name." was replaced
+    // by the shared sentence, because this field and the signup field and the
+    // profile field are now one field and must not be told apart by their
+    // error messages. See lib/identity/username.ts.
+    expect(validateUsername("   ").error).toMatch(/between 2 and 24 characters/i);
     expect(validateUsername("").ok).toBe(false);
   });
 

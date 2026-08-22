@@ -13,7 +13,7 @@
 // collect on return.
 // ---------------------------------------------------------------------------
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAccountUpgrade } from "@/lib/auth/useAccountUpgrade";
 import PasswordField from "@/components/auth/PasswordField";
+import UsernameField from "@/components/auth/UsernameField";
+import { useProfileIdentity } from "@/hooks/useProfileIdentity";
+import { useAuth } from "@/hooks/useAuth";
+import { readPreferredUsername } from "@/lib/identity/preferred-username";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "@/lib/auth/password-policy";
 
 interface Props {
@@ -41,6 +45,32 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
   );
   const [emailInput, setEmailInput] = useState(upgrade.email);
   const [passwordInput, setPasswordInput] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  // AUTH3 — the guest's public name. This surface has a session, so unlike the
+  // brand-new signup form it can consider the account's OWN name first and the
+  // device's Academy record second. A guest still called 'Anonymous5472' reads
+  // as having no name at all (isPlaceholderUsername), so the field arrives
+  // empty and invites a real one — which is the entire point of asking here.
+  const { user } = useAuth();
+  const identity = useProfileIdentity(user?.id ?? null);
+  const [username, setUsername] = useState("");
+  const [usernameCarried, setUsernameCarried] = useState(false);
+  const seeded = useRef(false);
+
+  // Seeded once, and only once the profile read has actually resolved —
+  // otherwise the first render's `null` name would seed an empty field and
+  // then fight the user for it when the real value arrives.
+  useEffect(() => {
+    if (seeded.current || identity.loading) return;
+    seeded.current = true;
+    const preferred = readPreferredUsername({
+      profileName: identity.displayName,
+      isAnonymous: user?.is_anonymous === true,
+    });
+    setUsername(preferred.value);
+    setUsernameCarried(preferred.source !== "none");
+  }, [identity.loading, identity.displayName, user?.is_anonymous]);
 
   const busy = upgrade.phase === "submitting" || upgrade.phase === "converted";
 
@@ -131,10 +161,22 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void upgrade.submit(emailInput, passwordInput);
+          setSubmitted(true);
+          void upgrade.submit(emailInput, passwordInput, undefined, username);
         }}
         className="space-y-4"
       >
+        <UsernameField
+          id="upgrade-username"
+          value={username}
+          onChange={setUsername}
+          submitted={submitted}
+          error={upgrade.usernameError}
+          carriedForward={usernameCarried}
+          disabled={busy}
+          data-testid="upgrade-username-input"
+        />
+
         <div className="space-y-2">
           <Label htmlFor="upgrade-email">Email</Label>
           <Input

@@ -11,7 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { containsProfanity, getProfanityMessage } from "@/lib/profanity-filter";
+import { claimUsername } from "@/lib/identity/claim-username";
+import { usernameProblem, USERNAME_MESSAGES, USERNAME_MAX, cleanUsername } from "@/lib/identity/username";
 import { searchCities } from "@/lib/cities-data";
 import { validateSocialLink } from "@/lib/social-validators";
 import SEOHead from "@/components/SEOHead";
@@ -222,7 +223,15 @@ export default function Profile() {
 
   const handleChange = (field: string, value: string) => {
     if (field === "displayName") {
-      setNameError(containsProfanity(value) ? getProfanityMessage() : "");
+      // AUTH3: the shared policy, which is the same rule the database holds —
+      // this field used to check profanity and nothing else, so a name that
+      // /welcome refused (too long, illegal characters) was accepted here and
+      // the two screens disagreed about one column. Uniqueness is still not
+      // decided here; it cannot be, and claimUsername() decides it on save.
+      // A field the user is still typing into is not "too short" yet, so that
+      // one problem stays quiet until they try to save.
+      const problem = usernameProblem(value);
+      setNameError(problem && problem !== "too_short" ? USERNAME_MESSAGES[problem] : "");
     }
     if (field === "age") {
       // Only allow numeric input
@@ -366,8 +375,20 @@ export default function Profile() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) return;
-    if (containsProfanity(form.displayName)) {
-      toast({ title: "Inappropriate name", description: getProfanityMessage(), variant: "destructive" });
+    // AUTH3 — the username is saved SEPARATELY from the rest of the profile,
+    // through set_display_name(). It is the only field on this form that has
+    // to be checked against every other account, and RLS means this client
+    // cannot see another account to check against. A plain profiles.update()
+    // here is how two players ended up able to hold one public identity.
+    //
+    // It goes FIRST: if the name is refused, nothing else is written either,
+    // so the form still reflects exactly what is stored and a retry is one
+    // corrected field rather than a half-saved profile.
+    const wantedName = cleanUsername(form.displayName);
+    const nameProblem = usernameProblem(wantedName);
+    if (nameProblem) {
+      setNameError(USERNAME_MESSAGES[nameProblem]);
+      toast({ title: "Check your username", description: USERNAME_MESSAGES[nameProblem], variant: "destructive" });
       return;
     }
     // Re-validate socials
@@ -393,7 +414,6 @@ export default function Profile() {
     };
 
     const updatePayload: any = {
-      display_name: form.displayName,
       age,
       location: form.location,
       status_message: form.statusMessage,
@@ -408,13 +428,38 @@ export default function Profile() {
       updatePayload.avatar_url = randomPhoto.url;
     }
 
+    // Renaming is free and uncapped. No cooldown exists in Mogzy today and
+    // AUTH3 does not add one: nobody should be locked into a typo, and fixing
+    // your own name is never a paid feature. If identity confusion ever becomes
+    // a real problem, that is abuse prevention and belongs in its own change.
+    const claim = await claimUsername(wantedName);
+    if (!claim.ok) {
+      setNameError(claim.error ?? USERNAME_MESSAGES.unavailable);
+      toast({
+        title: claim.taken ? "Username taken" : "Couldn't save your username",
+        description: claim.error ?? USERNAME_MESSAGES.unavailable,
+        variant: "destructive",
+      });
+      setSaving(false);
+      return;
+    }
+    // The stored form is the normalised one; show the user what was actually
+    // saved rather than what they typed.
+    setForm((prev) => ({ ...prev, displayName: claim.username ?? wantedName }));
+
     const { error } = await supabase
       .from("profiles")
       .update(updatePayload)
       .eq("id", profileId);
 
     if (error) {
-      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      // The name is already saved at this point and saying otherwise would be
+      // false. Name it as the partial save it is.
+      toast({
+        title: "Some changes weren't saved",
+        description: "Your username was updated, but the rest of your profile wasn't. Please try again.",
+        variant: "destructive",
+      });
     } else {
       toast({ title: "Profile saved!" });
       setEditMode(false);
@@ -747,16 +792,18 @@ export default function Profile() {
                     {/* Display Name */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label htmlFor="displayName">Display Name *</Label>
+                        {/* AUTH3: "Username", the same word signup and the onboarding step
+                            use for the same column. One identity, one name for it. */}
+                        <Label htmlFor="displayName">Username *</Label>
                         {isFieldFilled("displayName") && !isEditing("displayName") && (
-                          <button type="button" onClick={() => toggleEdit("displayName")} className="text-muted-foreground hover:text-primary transition-colors">
+                          <button type="button" data-testid="profile-username-edit" onClick={() => toggleEdit("displayName")} className="text-muted-foreground hover:text-primary transition-colors">
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>
                       {isEditing("displayName") || !isFieldFilled("displayName") ? (
                         <>
-                          <Input id="displayName" value={form.displayName} onChange={(e) => handleChange("displayName", e.target.value)} required maxLength={30} />
+                          <Input id="displayName" value={form.displayName} onChange={(e) => handleChange("displayName", e.target.value)} required maxLength={USERNAME_MAX} data-testid="profile-username-input" />
                           {nameError ? (
                             <p className="text-xs text-destructive flex items-center gap-1">
                               <AlertCircle className="h-3 w-3" /> {nameError}

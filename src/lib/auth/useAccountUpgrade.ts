@@ -23,6 +23,8 @@ import {
 } from "@/lib/auth/account-upgrade";
 import { validateNewPassword } from "@/lib/auth/password-policy";
 import { resetGateState } from "@/lib/quiz/onboarding-gate";
+import { claimUsername } from "@/lib/identity/claim-username";
+import { usernameProblem, USERNAME_MESSAGES } from "@/lib/identity/username";
 
 export type UpgradePhase =
   | "idle"
@@ -47,7 +49,21 @@ export interface AccountUpgradeState {
    * surface without a confirmation field can omit it; when present it is
    * checked by the shared policy, not by a local rule.
    */
-  submit: (email: string, password: string, confirmPassword?: string) => Promise<void>;
+  submit: (
+    email: string,
+    password: string,
+    confirmPassword?: string,
+    /**
+     * AUTH3 — the public Mogzy name. Claimed BEFORE the conversion, which is
+     * the whole reason a guest gets a better deal here than a brand-new signup
+     * does: a guest already holds a session, so "that username is taken" can
+     * be answered while nothing irreversible has happened yet. Omit to leave
+     * the current name (including an 'Anonymous<n>' placeholder) alone.
+     */
+    username?: string,
+  ) => Promise<void>;
+  /** A refusal that belongs to the username field rather than the form. */
+  usernameError: string | null;
   resend: () => Promise<void>;
   changeEmail: () => void;
 }
@@ -71,6 +87,7 @@ export function useAccountUpgrade(
   const [email, setEmail] = useState<string>(initialPending?.email ?? "");
   const [error, setError] = useState<string | null>(null);
   const [emailInUse, setEmailInUse] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(initialPending ? RESEND_COOLDOWN_SECONDS : 0);
   const submittingRef = useRef(false);
 
@@ -92,7 +109,7 @@ export function useAccountUpgrade(
   );
 
   const submit = useCallback(
-    async (rawEmail: string, password: string, confirmPassword?: string) => {
+    async (rawEmail: string, password: string, confirmPassword?: string, username?: string) => {
       // Wait for auth to resolve; require an anonymous user; block duplicates.
       if (authLoading) return;
       if (submittingRef.current) return;
@@ -114,10 +131,37 @@ export function useAccountUpgrade(
         setPhase("error");
         return;
       }
+      // AUTH3 — the name first, and deliberately so. This guest is already
+      // authenticated, so the claim can be made and REFUSED before the account
+      // becomes permanent; a taken name costs them a corrected field rather
+      // than an account they now have to go and rename. Nothing here is
+      // irreversible, which is exactly what makes this the right order.
+      const wantedName = (username ?? "").trim();
+      if (wantedName) {
+        const localProblem = usernameProblem(wantedName);
+        if (localProblem) {
+          setUsernameError(USERNAME_MESSAGES[localProblem]);
+          setPhase("error");
+          return;
+        }
+      }
+
       submittingRef.current = true;
       setPhase("submitting");
       setError(null);
+      setUsernameError(null);
       setEmailInUse(false);
+
+      if (wantedName) {
+        const claim = await claimUsername(wantedName);
+        if (!claim.ok) {
+          submittingRef.current = false;
+          setUsernameError(claim.error ?? USERNAME_MESSAGES.unavailable);
+          setPhase("error");
+          return;
+        }
+      }
+
       const res = await upgradeAnonymousEmail(trimmed, password, callbackUrl());
       submittingRef.current = false;
       if (res.ok) {
@@ -168,6 +212,7 @@ export function useAccountUpgrade(
     clearPendingUpgrade();
     setPhase("idle");
     setError(null);
+    setUsernameError(null);
     setEmailInUse(false);
     setCooldown(0);
   }, []);
@@ -176,6 +221,7 @@ export function useAccountUpgrade(
     phase,
     email,
     error,
+    usernameError,
     emailInUse,
     cooldown,
     isAnonymous: user?.is_anonymous === true,

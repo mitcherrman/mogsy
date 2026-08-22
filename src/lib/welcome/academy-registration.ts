@@ -36,6 +36,7 @@
 // ---------------------------------------------------------------------------
 
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
+import { validateUsername } from "@/lib/identity/username";
 
 /**
  * The self-reported League rank options, in ladder order.
@@ -111,47 +112,29 @@ export interface AcademyRegistration {
 /** Follows the `mogsy.<domain>.v<n>` convention of every other local record. */
 export const ACADEMY_REGISTRATION_STORAGE_KEY = "mogsy.academyRegistration.v1";
 
-/** Longest name the register will hold. Long enough for a real Riot ID tag. */
-export const USERNAME_MAX = 24;
-/** Shortest name worth calling someone by. */
-export const USERNAME_MIN = 2;
-
-/** Letters, digits, spaces and a few name-ish punctuation marks. */
-const USERNAME_ALLOWED = /^[\p{L}\p{N} ._'-]+$/u;
-
-export interface UsernameCheck {
-  ok: boolean;
-  /** The normalised name to store, when ok. */
-  value?: string;
-  /** A complete, user-facing sentence, when not. */
-  error?: string;
-}
-
 /**
- * Validate and normalise a typed name.
+ * The register's bounds and rules, re-exported from the ONE username policy
+ * (AUTH3 — see lib/identity/username.ts).
  *
- * Normalisation is part of validation on purpose: the stored name is the one
- * that will be printed back at the visitor AND written to profiles.display_name,
- * so runs of whitespace are collapsed and the ends are trimmed before anything
- * is measured. Nothing here rejects a name for being unusual — no reserved-word
- * list, no profanity filter, no uniqueness check. Uniqueness in particular is
- * NOT enforceable from this screen: a signed-out visitor has no account and no
- * server to ask, and display_name carries no unique index.
+ * WHY THEY MOVED. These constants and the validator below used to be defined
+ * here, and this screen was the only place in Mogzy that had a real name
+ * policy: the profile editor and the onboarding step each enforced something
+ * different, so a name accepted at /welcome could be rejected on /profile and
+ * vice versa. The rules themselves are UNCHANGED — 2..24 characters, letters,
+ * digits, spaces and . _ ' - — they simply live somewhere every surface and
+ * the database can share. The re-exports keep this module's public shape, so
+ * every existing importer of USERNAME_MAX / validateUsername is untouched.
+ *
+ * UNIQUENESS IS STILL NOT CHECKED HERE, and cannot be: a signed-out visitor
+ * has no account and no server to ask. The register records an intent; the
+ * claim happens at signup, against set_display_name().
  */
-export function validateUsername(raw: string): UsernameCheck {
-  const value = raw.replace(/\s+/g, " ").trim();
-  if (!value) return { ok: false, error: "Every student needs a name." };
-  if (value.length < USERNAME_MIN) {
-    return { ok: false, error: `A name needs at least ${USERNAME_MIN} characters.` };
-  }
-  if (value.length > USERNAME_MAX) {
-    return { ok: false, error: `Names are up to ${USERNAME_MAX} characters.` };
-  }
-  if (!USERNAME_ALLOWED.test(value)) {
-    return { ok: false, error: "Letters, numbers, spaces and . _ ' - only." };
-  }
-  return { ok: true, value };
-}
+export {
+  USERNAME_MAX,
+  USERNAME_MIN,
+  validateUsername,
+  type UsernameCheck,
+} from "@/lib/identity/username";
 
 function readRaw(): string | null {
   try {

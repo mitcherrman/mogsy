@@ -625,8 +625,11 @@ describe("the register (HI1-C5 / C5B)", () => {
     fireEvent.click(screen.getByTestId("academy-registration-submit"));
 
     expect(page()).toHaveAttribute("data-chapter", "registration");
+    // AUTH3: the register no longer has its own sentence for this. The name it
+    // takes is the same public username signup and /profile take, so the three
+    // screens share one policy and one voice — see lib/identity/username.ts.
     expect(screen.getByTestId("academy-registration-username-error").textContent).toMatch(
-      /needs a name/i,
+      /between 2 and 24 characters/i,
     );
     expect(screen.getByTestId("academy-registration-rank-error")).toBeTruthy();
     expect(screen.getByTestId("academy-registration-username")).toHaveAttribute(

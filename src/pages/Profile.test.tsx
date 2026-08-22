@@ -7,6 +7,27 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installLocalStorageStub } from "@/test/localStorageStub";
+
+// AUTH3: this suite has been red on `localStorage.clear is not a function`
+// since jsdom 20 + vitest 3 (which ship no working Storage) — the same reason
+// account-upgrade.test.ts opts into the shared stub. Opting in here is what
+// makes the profile rename testable at all.
+installLocalStorageStub();
+
+/**
+ * AUTH3 — the username is no longer part of the profile's update payload. It
+ * is claimed through set_display_name(), the one write path that can see
+ * whether another account already holds the name; RLS shows this client only
+ * its own row, so a plain profiles.update() could never have refused a
+ * duplicate. See lib/identity/claim-username.
+ */
+const claim = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/identity/claim-username", () => ({
+  claimUsername: claim,
+  checkUsernameAvailable: vi.fn(),
+}));
+
 import Profile from "./Profile";
 
 const mocks = vi.hoisted(() => {
@@ -99,6 +120,7 @@ function renderProfile() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  claim.mockResolvedValue({ ok: true, code: "set", username: "RiftMaster" });
   mocks.updateCalls.length = 0;
   mocks.authUser = { id: "u1", is_anonymous: false };
   mocks.getProgress.mockResolvedValue({
@@ -219,10 +241,10 @@ describe("Profile — signed in", () => {
     await screen.findByText("Basic Info");
 
     // Enter field-edit mode for display name and type a new value.
-    const nameSection = screen.getByText("Display Name *").closest("div")!.parentElement!;
+    const nameSection = screen.getByText("Username *").closest("div")!.parentElement!;
     const pencil = nameSection.querySelector("button");
     if (pencil) fireEvent.click(pencil);
-    const input = (await screen.findByLabelText(/Display Name/)) as HTMLInputElement;
+    const input = (await screen.findByLabelText(/Username/)) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "SomebodyElse" } });
     expect(screen.getByText("SomebodyElse")).toBeTruthy();
 
@@ -244,8 +266,68 @@ describe("Profile — signed in", () => {
     );
     await waitFor(() => expect(screen.queryByText("Basic Info")).toBeNull());
     const payload = mocks.updateCalls.find((c) => c.table === "profiles")!.payload as Record<string, unknown>;
-    expect(payload.display_name).toBe("RiftMaster");
+    // AUTH3: the name went through the claim, not the payload.
+    expect(claim).toHaveBeenCalledWith("RiftMaster");
+    expect(payload.display_name).toBeUndefined();
     expect(payload.custom_theme).toBe("default");
+  });
+
+  it("renaming is free — no cooldown, no charge, no premium gate (AUTH3 §10, §16)", async () => {
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Basic Info");
+    fireEvent.click(screen.getByTestId("profile-username-edit"));
+    fireEvent.change(screen.getByTestId("profile-username-input"), {
+      target: { value: "MogzyKing" },
+    });
+    claim.mockResolvedValue({ ok: true, code: "set", username: "MogzyKing" });
+    fireEvent.click(screen.getByRole("button", { name: /Save Profile/ }));
+
+    await waitFor(() => expect(claim).toHaveBeenCalledWith("MogzyKing"));
+    // Nothing in the way: no confirmation step, no cost, no is_pro check.
+    expect(screen.queryByText(/upgrade|pro only|cooldown|wait/i)).toBeNull();
+  });
+
+  it("refuses a taken name in plain language, and saves nothing else either", async () => {
+    claim.mockResolvedValue({
+      ok: false,
+      code: "taken",
+      taken: true,
+      error: "That username is already taken.",
+    });
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Basic Info");
+    fireEvent.click(screen.getByTestId("profile-username-edit"));
+    fireEvent.change(screen.getByTestId("profile-username-input"), {
+      target: { value: "SomebodyElsesName" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Save Profile/ }));
+
+    await waitFor(() =>
+      expect(screen.getAllByText("That username is already taken.").length).toBeGreaterThan(0),
+    );
+    // The name goes first precisely so a refusal leaves the stored profile
+    // exactly as it was — the form still reflects reality and a retry is one
+    // corrected field, not a half-saved profile.
+    expect(mocks.updateCalls.filter((c) => c.table === "profiles")).toHaveLength(0);
+    expect(screen.queryByText("Basic Info")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/constraint|duplicate key|23505/i);
+  });
+
+  it("refuses a name that fails the shared rules without any round trip", async () => {
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Basic Info");
+    fireEvent.click(screen.getByTestId("profile-username-edit"));
+    fireEvent.change(screen.getByTestId("profile-username-input"), { target: { value: "A" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save Profile/ }));
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/between 2 and 24 characters/i).length).toBeGreaterThan(0),
+    );
+    expect(claim).not.toHaveBeenCalled();
+    expect(mocks.updateCalls.filter((c) => c.table === "profiles")).toHaveLength(0);
   });
 
   it("keeps the theme selector intact inside edit mode (options + lock state)", async () => {

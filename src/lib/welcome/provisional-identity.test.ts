@@ -24,6 +24,16 @@ const supa = vi.hoisted(() => ({
   insert: vi.fn(),
 }));
 
+/**
+ * AUTH3 — the NAME no longer travels in the same patch as the rank. It goes
+ * through set_display_name(), the one write path that can see whether anybody
+ * else already holds it; the rank, which has no uniqueness and no other writer,
+ * is still a plain update. So the two halves are asserted separately from here
+ * on: `claim` for the name, `supa.update` for the rank.
+ */
+const claim = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/identity/claim-username", () => ({ claimUsername: claim }));
+
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: { getSession: supa.getSession },
@@ -74,6 +84,7 @@ beforeEach(() => {
   supa.getSession.mockResolvedValue({ data: { session: null } });
   supa.maybeSingle.mockResolvedValue(profile());
   supa.updateEq.mockResolvedValue({ error: null });
+  claim.mockResolvedValue({ ok: true, code: "set", username: REG.username });
 });
 
 describe("recognising a placeholder name", () => {
@@ -111,16 +122,42 @@ describe("recognising a placeholder name", () => {
 });
 
 describe("writing a registration through to a profile", () => {
-  it("writes both fields into an empty profile", () => {
-    return adoptRegistrationForUser(REG, "u1").then((res) => {
-      expect(supa.update).toHaveBeenCalledWith({
-        display_name: "Orianna",
-        league_rank: "emerald",
-        league_rank_reported_at: REG.at,
-      });
-      expect(res.written).toEqual(["display_name", "league_rank"]);
-      expect(res.settled).toBe(true);
+  it("writes both fields into an empty profile", async () => {
+    const res = await adoptRegistrationForUser(REG, "u1");
+    // First-write-wins is carried INTO the statement that writes, rather than
+    // being decided by a read that could race a rename.
+    expect(claim).toHaveBeenCalledWith("Orianna", { onlyIfUnset: true });
+    expect(supa.update).toHaveBeenCalledWith({
+      league_rank: "emerald",
+      league_rank_reported_at: REG.at,
     });
+    expect(res.written).toEqual(["display_name", "league_rank"]);
+    expect(res.settled).toBe(true);
+  });
+
+  it("does not attach a name somebody else already holds", async () => {
+    // A device-local record cannot know this, and only the database can decide
+    // it. A refusal is final — retrying will not make the name free — so the
+    // record still settles and the account simply keeps no name from it.
+    claim.mockResolvedValue({ ok: false, code: "taken", taken: true, error: "taken" });
+    saveAcademyRegistration({ username: REG.username, rank: REG.rank });
+
+    const res = await adoptRegistrationForUser(REG, "u1");
+
+    expect(res.written).toEqual(["league_rank"]);
+    expect(res.settled).toBe(true);
+    expect(readAcademyRegistration()?.adoptedBy).toBe("u1");
+  });
+
+  it("leaves the record retryable when the claim could not be made at all", async () => {
+    // A dropped connection is a "not yet", not a "no".
+    claim.mockResolvedValue({ ok: false, code: "unavailable", error: "unavailable" });
+    saveAcademyRegistration({ username: REG.username, rank: REG.rank });
+
+    const res = await adoptRegistrationForUser(REG, "u1");
+
+    expect(res).toMatchObject({ settled: false, reason: "error" });
+    expect(readAcademyRegistration()?.adoptedBy).toBeNull();
   });
 
   it("names an anonymous guest whose profile carries the generated placeholder", async () => {
@@ -128,9 +165,7 @@ describe("writing a registration through to a profile", () => {
       profile({ display_name: "Anonymous41", is_anonymous: true }),
     );
     const res = await adoptRegistrationForUser(REG, "u1");
-    expect(supa.update).toHaveBeenCalledWith(
-      expect.objectContaining({ display_name: "Orianna" }),
-    );
+    expect(claim).toHaveBeenCalledWith("Orianna", { onlyIfUnset: true });
     expect(res.written).toContain("display_name");
   });
 
@@ -140,6 +175,7 @@ describe("writing a registration through to a profile", () => {
     // they have never given is additive, not destructive.
     supa.maybeSingle.mockResolvedValue(profile({ display_name: "Faker", is_anonymous: false }));
     const res = await adoptRegistrationForUser(REG, "u1");
+    expect(claim).not.toHaveBeenCalled();
     expect(supa.update).toHaveBeenCalledWith({
       league_rank: "emerald",
       league_rank_reported_at: REG.at,
@@ -150,9 +186,9 @@ describe("writing a registration through to a profile", () => {
   it("never overwrites a rank the account has already reported", async () => {
     supa.maybeSingle.mockResolvedValue(profile({ league_rank: "diamond" }));
     await adoptRegistrationForUser(REG, "u1");
-    expect(supa.update).toHaveBeenCalledWith(
-      expect.not.objectContaining({ league_rank: expect.anything() }),
-    );
+    // The rank was the only thing this update ever carried, so a rank that is
+    // already the account's own means there is no update to make at all.
+    expect(supa.update).not.toHaveBeenCalled();
   });
 
   it("writes nothing at all when both fields are already the account's own", async () => {
@@ -161,6 +197,7 @@ describe("writing a registration through to a profile", () => {
       profile({ display_name: "Faker", is_anonymous: false, league_rank: "diamond" }),
     );
     const res = await adoptRegistrationForUser(REG, "u1");
+    expect(claim).not.toHaveBeenCalled();
     expect(supa.update).not.toHaveBeenCalled();
     expect(res).toMatchObject({ written: [], settled: true, reason: "profile-established" });
     // Settled: there is nothing this record could ever contribute, so it must
@@ -211,6 +248,7 @@ describe("writing a registration through to a profile", () => {
       reason: "no-session",
     });
     expect(supa.maybeSingle).not.toHaveBeenCalled();
+    expect(claim).not.toHaveBeenCalled();
   });
 
   it("stamps a report time even for a record that somehow carries none", async () => {
@@ -241,7 +279,8 @@ describe("a deployment where the migration has not run yet", () => {
     saveAcademyRegistration({ username: REG.username, rank: REG.rank });
     const res = await adoptRegistrationForUser(REG, "u1");
 
-    expect(supa.update).toHaveBeenCalledWith({ display_name: "Orianna" });
+    expect(claim).toHaveBeenCalledWith("Orianna", { onlyIfUnset: true });
+    expect(supa.update).not.toHaveBeenCalled();
     expect(res.written).toEqual(["display_name"]);
     expect(res.rankColumnMissing).toBe(true);
   });
@@ -277,6 +316,7 @@ describe("a deployment where the migration has not run yet", () => {
     );
     saveAcademyRegistration({ username: REG.username, rank: REG.rank });
     const res = await adoptRegistrationForUser(REG, "u1");
+    expect(claim).not.toHaveBeenCalled();
     expect(supa.update).not.toHaveBeenCalled();
     expect(res.settled).toBe(false);
     expect(readAcademyRegistration()?.adoptedBy).toBeNull();
@@ -322,9 +362,7 @@ describe("adopting whatever this device is holding", () => {
     saveAcademyRegistration({ username: REG.username, rank: REG.rank });
     supa.getSession.mockResolvedValue({ data: { session: { user: { id: "u9" } } } });
     await adoptAcademyIdentity();
-    expect(supa.update).toHaveBeenCalledWith(
-      expect.objectContaining({ display_name: REG.username }),
-    );
+    expect(claim).toHaveBeenCalledWith(REG.username, { onlyIfUnset: true });
     expect(readAcademyRegistration()?.adoptedBy).toBe("u9");
   });
 
@@ -333,13 +371,13 @@ describe("adopting whatever this device is holding", () => {
     // browser first must not follow every account that later signs in on it.
     saveAcademyRegistration({ username: REG.username, rank: REG.rank });
     await adoptAcademyIdentity("u1");
-    expect(supa.update).toHaveBeenCalledTimes(1);
+    expect(claim).toHaveBeenCalledTimes(1);
 
     supa.maybeSingle.mockClear();
     const second = await adoptAcademyIdentity("u2");
     expect(second).toMatchObject({ settled: true, reason: "already-adopted" });
     expect(supa.maybeSingle).not.toHaveBeenCalled();
-    expect(supa.update).toHaveBeenCalledTimes(1);
+    expect(claim).toHaveBeenCalledTimes(1);
   });
 
   it("tries again after a recoverable failure", async () => {
@@ -351,8 +389,6 @@ describe("adopting whatever this device is holding", () => {
     supa.maybeSingle.mockResolvedValue(profile());
     const res = await adoptAcademyIdentity("u1");
     expect(res.settled).toBe(true);
-    expect(supa.update).toHaveBeenCalledWith(
-      expect.objectContaining({ display_name: REG.username }),
-    );
+    expect(claim).toHaveBeenCalledWith(REG.username, { onlyIfUnset: true });
   });
 });

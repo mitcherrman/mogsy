@@ -45,6 +45,8 @@
 // ---------------------------------------------------------------------------
 
 import { supabase } from "@/integrations/supabase/client";
+import { claimUsername } from "@/lib/identity/claim-username";
+import { isPlaceholderUsername } from "@/lib/identity/username";
 
 import {
   markAcademyRegistrationAdopted,
@@ -59,24 +61,29 @@ import {
  * Anchored and digits-only on purpose. A person who genuinely chooses to be
  * called "Anonymous", or "Anonymous Wizard", has chosen a name and keeps it.
  */
-const GENERATED_ANON_NAME = /^Anonymous\d+$/;
-
 /**
  * Whether this profile's display name is a placeholder rather than a choice.
  *
- * Blank is the obvious case (a real signup whose metadata carried no name).
- * The second case is the trigger's generated 'Anonymous<n>', and it is only
- * treated as a placeholder while the row still says the account is anonymous —
- * once an account has converted, whatever its name says is the name it kept.
+ * AUTH3: delegates to the shared predicate (lib/identity/username), which is
+ * also the client half of `is_claimed_display_name()` in the migration — the
+ * SQL predicate that decides which rows the uniqueness index binds. Three
+ * copies of "is this a real name" drifting apart is exactly how a placeholder
+ * ends up permanently attached to a real account, so there is now one.
+ *
+ * Kept exported under this name: existing callers and tests import it.
  */
 export function isPlaceholderDisplayName(
   displayName: string | null | undefined,
   isAnonymous: boolean | null | undefined,
 ): boolean {
-  const name = (displayName ?? "").trim();
-  if (!name) return true;
-  return isAnonymous === true && GENERATED_ANON_NAME.test(name);
+  return isPlaceholderUsername(displayName, isAnonymous);
 }
+
+/**
+ * Claim outcomes that mean "not yet" rather than "no". Only these leave the
+ * local record unadopted for another attempt; every other refusal is final.
+ */
+const RETRYABLE_CLAIM_CODES = new Set(["unavailable", "no_profile", "unauthenticated"]);
 
 export type AdoptionReason =
   /** No auth user yet. The record waits; this is the ordinary state. */
@@ -190,41 +197,60 @@ export async function adoptRegistrationForUser(
     // creating it. Leaving the record unadopted is what makes the retry real.
     if (!profile) return NOTHING("no-profile");
 
-    const patch: Record<string, string> = {};
+    const written: AdoptionResult["written"] = [];
+
+    // ----------------------------------------------------------------- name
+    //
+    // AUTH3: the name goes through set_display_name(), not a bare profiles
+    // update. That RPC is the only thing in the system that can see whether
+    // somebody else already holds this name — RLS shows this client its own
+    // row and nothing else — so a direct write here could mint a duplicate
+    // public identity out of a device-local record nobody ever checked.
+    //
+    // `onlyIfUnset` carries the first-write-wins rule INTO the statement that
+    // writes, which is stronger than the read-then-write it replaces: replaying
+    // /welcome on an established account can no longer overwrite that account's
+    // chosen name even if the profile read raced with a rename.
     if (isPlaceholderDisplayName(profile.display_name, profile.is_anonymous)) {
-      patch.display_name = username;
+      const claim = await claimUsername(username, { onlyIfUnset: true });
+      if (claim.ok) {
+        if (claim.code === "set") written.push("display_name");
+      } else if (RETRYABLE_CLAIM_CODES.has(claim.code)) {
+        // The profile row or the session was not ready. Retryable, so the
+        // record stays unadopted and the next auth event tries again.
+        return NOTHING("error");
+      }
+      // Anything else — taken, too long, reserved — will not become true by
+      // trying again, and this screen has no way to ask for a different name.
+      // The account simply keeps no name from this record; signup and the
+      // profile editor are where a real choice gets made, and both report the
+      // reason properly. Adoption is still settled below.
     }
-    // Skipped entirely while the column does not exist — writing it would fail
-    // the whole update and take the name with it.
+
+    // ----------------------------------------------------------------- rank
+    //
+    // Still a plain update: league_rank has no uniqueness, no shared policy and
+    // no other writer. Skipped entirely while the column does not exist —
+    // writing it would fail the request.
     if (!rankColumnMissing && profile.league_rank == null) {
-      patch.league_rank = registration.rank;
-      patch.league_rank_reported_at = registration.at || new Date().toISOString();
+      const { error: writeErr } = await supabase
+        .from("profiles")
+        .update({
+          league_rank: registration.rank,
+          league_rank_reported_at: registration.at || new Date().toISOString(),
+        })
+        .eq("user_id", userId);
+      if (writeErr) return NOTHING("error");
+      written.push("league_rank");
     }
 
-    if (Object.keys(patch).length === 0) {
-      // Nothing left to contribute. Settled — unless the only reason there is
-      // nothing to write is that the rank column has not shipped yet, in which
-      // case this record still owes the account a rank.
-      if (!rankColumnMissing) markAcademyRegistrationAdopted(userId);
-      return {
-        written: [],
-        settled: !rankColumnMissing,
-        reason: "profile-established",
-        rankColumnMissing,
-      };
-    }
-
-    const { error: writeErr } = await supabase
-      .from("profiles")
-      .update(patch)
-      .eq("user_id", userId);
-    if (writeErr) return NOTHING("error");
-
-    // Only a write that got BOTH halves is finished with this record.
+    // Only a pass that got BOTH halves is finished with this record. A record
+    // whose rank column has not shipped yet still owes the account a rank.
     if (!rankColumnMissing) markAcademyRegistrationAdopted(userId);
     return {
-      written: (["display_name", "league_rank"] as const).filter((k) => k in patch),
+      written,
       settled: !rankColumnMissing,
+      reason: written.length === 0 ? "profile-established" : undefined,
       rankColumnMissing,
     };
   } catch {

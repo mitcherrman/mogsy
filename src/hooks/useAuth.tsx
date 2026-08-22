@@ -27,6 +27,16 @@ interface AuthContextType {
   signUp: (
     email: string,
     password: string,
+    /**
+     * AUTH3: the public username the visitor already chose — at /welcome, or
+     * on the signup form itself. Passed as auth metadata so handle_new_user()
+     * writes it on the profile row it is already creating, in the same
+     * transaction, instead of leaving the account nameless until a follow-up
+     * write lands. The trigger accepts it only if it is valid AND free; when
+     * it is not, the row is created with '' and the caller's claim reports
+     * why. Omitted entirely when there is no name to carry.
+     */
+    displayName?: string,
   ) => Promise<{ error: any; session: Session | null }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -129,11 +139,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, displayName?: string) => {
+    const name = (displayName ?? "").replace(/\s+/g, " ").trim();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: window.location.origin,
+        // Only sent when there is actually a name. An empty metadata key would
+        // be indistinguishable from "no name given" at the trigger anyway, and
+        // writing one would put a meaningless field on every auth user.
+        ...(name ? { data: { display_name: name } } : {}),
+      },
     });
     // `data.session` is non-null only when the project does not require email
     // confirmation. That is the signal — not a guess about configuration —
