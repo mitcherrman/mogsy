@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,9 @@ import { resetGateState } from "@/lib/quiz/onboarding-gate";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { resolveReturnTo } from "@/lib/auth/auth-destination";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT, validateNewPassword } from "@/lib/auth/password-policy";
+import { mapAuthError } from "@/lib/auth/auth-errors";
 import AccountUpgradePanel from "@/components/auth/AccountUpgradePanel";
+import PasswordField from "@/components/auth/PasswordField";
 
 type AuthMode = "signin" | "signup" | "forgot" | "confirm-sent" | "reset-sent";
 
@@ -25,7 +27,6 @@ export default function Auth() {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -138,29 +139,22 @@ export default function Auth() {
     setLoading(true);
 
     if (mode === "signin") {
-      // Explicit sign-in to an EXISTING account is a separate action from guest
-      // account creation. Switching accounts requires ending the guest session
-      // first — this is NOT the anonymous-upgrade path (that never signs out).
-      if (isAnonymous) {
-        await supabase.auth.signOut();
-      }
+      // AUTH2: do NOT sign out first. signInWithPassword replaces the session
+      // on success all by itself (measured), so the pre-emptive signOut bought
+      // nothing — and it cost the user their guest session on every FAILED
+      // attempt. One typo'd password used to end the anonymous session, and an
+      // anonymous session has no credential to get back into: the guest's XP,
+      // streak and history became permanently unreachable because they
+      // mistyped. Signing in over the live session keeps the guest intact when
+      // the attempt fails, and replaces it cleanly when it succeeds.
       const { error } = await signIn(email, password);
       if (error) {
-        if (error.message?.includes("Email not confirmed")) {
-          toast({
-            title: "Email not confirmed",
-            description: "Check your inbox for a confirmation link, or resend it below.",
-            variant: "destructive",
-          });
+        const mapped = mapAuthError(error, "signin");
+        if (mapped.kind === "email_not_confirmed") {
+          toast({ title: "Confirm your email", description: mapped.message, variant: "destructive" });
           setMode("confirm-sent");
-        } else if (error.message?.includes("Invalid login credentials")) {
-          toast({
-            title: "Invalid credentials",
-            description: "Wrong email or password. Need an account? Switch to Sign Up.",
-            variant: "destructive",
-          });
         } else {
-          toast({ title: "Login failed", description: error.message, variant: "destructive" });
+          toast({ title: "Couldn't sign in", description: mapped.message, variant: "destructive" });
         }
       } else {
         resetGateState();
@@ -170,8 +164,9 @@ export default function Auth() {
         navigate(safeReturnTo, { replace: true });
       }
     } else if (mode === "signup") {
-      // One shared policy — length only, no composition rules (AUTH1 §2).
-      const pw = validateNewPassword(password, confirmPassword);
+      // One shared policy — length only, no composition rules, and no
+      // confirmation field to satisfy (AUTH2; see components/auth/PasswordField).
+      const pw = validateNewPassword(password);
       if (!pw.ok) {
         toast({ title: pw.error, variant: "destructive" });
         setLoading(false);
@@ -187,15 +182,22 @@ export default function Auth() {
       }
       const { error, session } = await signUp(email, password);
       if (error) {
-        if (error.message?.includes("already been registered")) {
+        const mapped = mapAuthError(error, "signup");
+        if (mapped.offerSignIn) {
+          // AUTH2: this branch used to test for the literal "already been
+          // registered" while the server actually says "User already
+          // registered", so the ONE error with an obvious next step fell
+          // through to the generic handler and printed the raw string. The
+          // shared mapper decides now. The email stays in the field and the
+          // returnTo is untouched, so signing in is one password away.
           toast({
-            title: "Account already exists",
-            description: "Try signing in instead, or reset your password.",
-            variant: "destructive",
+            title: "You already have an account",
+            description: "Signed up before? Enter your password to sign in.",
           });
+          setPassword("");
           setMode("signin");
         } else {
-          toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+          toast({ title: "Couldn't create your account", description: mapped.message, variant: "destructive" });
         }
       } else {
         if (cameFromQuiz) {
@@ -370,23 +372,13 @@ export default function Auth() {
           <Link to="/" className="inline-block mb-4">
             <img src={mogsyLogo} alt="Mogzy" className="h-14 mx-auto" />
           </Link>
-          {isAnonymous && showLinkFlow ? (
-            <>
-              <h2 className="text-xl font-bold text-foreground">
-                {LEAGUE_ONLY_MODE ? "Save your score" : "Claim your account"}
-              </h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {LEAGUE_ONLY_MODE
-                  ? "Save your score and track your League knowledge"
-                  : "Keep all your progress, matches, and settings"}
-              </p>
-            </>
-          ) : (
-            <h2 className="text-xl font-bold text-foreground">
-              {mode === "signin" ? "Welcome back" : "Create your account"}
-            </h2>
-          )}
-          {inviteCode && mode === "signup" && !showLinkFlow && (
+          {/* An anonymous guest with showLinkFlow set never reaches this form —
+              the AccountUpgradePanel branch above returns first — so the
+              "claim your account" header this used to carry was unreachable. */}
+          <h2 className="text-xl font-bold text-foreground">
+            {mode === "signin" ? "Welcome back" : "Create your account"}
+          </h2>
+          {inviteCode && mode === "signup" && (
             <p className="text-xs text-primary font-medium mt-2">🎁 You've been invited! Sign up to claim your rewards.</p>
           )}
         </div>
@@ -417,12 +409,25 @@ export default function Auth() {
           </div>
         )}
 
-        {isAnonymous && showLinkFlow && (
-          <div className="mb-4 rounded-lg bg-primary/10 border border-primary/20 p-3">
-            <p className="text-xs text-primary font-medium">
-              {LEAGUE_ONLY_MODE
-                ? "✨ Your quiz XP, streaks, rank, and results will all be preserved!"
-                : "✨ Your match history, Elo ratings, diamonds, and settings will all be preserved!"}
+        {/* AUTH2 §6 — a guest signing in to an EXISTING account switches
+            identity, and the progress built up in this guest session belongs to
+            the guest, not to that account. There is no merge, so the honest
+            thing is to say so BEFORE the switch and point at the option that
+            does keep it. Silently swapping accounts and leaving the user to
+            notice their streak vanished is the outcome this replaces. */}
+        {isAnonymous && mode === "signin" && (
+          <div className="mb-4 rounded-lg border border-border bg-muted/50 p-3" data-testid="guest-signin-notice">
+            <p className="text-xs text-muted-foreground">
+              Signing in switches to your existing account. Progress from this guest session
+              stays with the guest and won&apos;t move over.{" "}
+              <button
+                type="button"
+                onClick={() => { setMode("signup"); setShowLinkFlow(true); }}
+                className="text-primary font-semibold hover:underline"
+              >
+                Create an account instead
+              </button>{" "}
+              to keep it.
             </p>
           </div>
         )}
@@ -440,10 +445,19 @@ export default function Auth() {
               autoComplete="email"
             />
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              {mode === "signin" && (
+          {/* AUTH2: one password field with a reveal toggle. The confirmation
+              field it replaces caught typos only for people not using a
+              password manager, and guarded the one failure that "Forgot
+              password?" already fixes in a click. */}
+          <PasswordField
+            id="password"
+            label="Password"
+            value={password}
+            onChange={setPassword}
+            minLength={PASSWORD_MIN_LENGTH}
+            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            labelAction={
+              mode === "signin" ? (
                 <button
                   type="button"
                   onClick={() => setMode("forgot")}
@@ -451,61 +465,22 @@ export default function Auth() {
                 >
                   Forgot password?
                 </button>
-              )}
-            </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={PASSWORD_MIN_LENGTH}
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
-            />
-          </div>
+              ) : null
+            }
+          />
 
-          {/* Confirm password for signup / anonymous linking */}
-          <AnimatePresence>
-            {(mode === "signup" || showLinkFlow) && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-2 overflow-hidden"
-              >
-                <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={PASSWORD_MIN_LENGTH}
-                  autoComplete="new-password"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {(mode === "signup" || showLinkFlow) && (
+          {mode === "signup" && (
             <p className="text-[10px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
           )}
 
           <Button type="submit" variant="hero" className="w-full" size="lg" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            {showLinkFlow
-              ? "Create Account & Keep Progress"
-              : mode === "signin"
-              ? "Sign In"
-              : "Create Account"}
+            {mode === "signin" ? "Sign In" : "Create Account"}
           </Button>
         </form>
 
         {/* Quick switch hint at bottom */}
-        {!showLinkFlow && (
-          <p className="mt-5 text-center text-xs text-muted-foreground">
+        <p className="mt-5 text-center text-xs text-muted-foreground">
             {mode === "signin" ? (
               <>New to Mogzy?{" "}
                 <button onClick={() => setMode("signup")} className="text-primary font-semibold hover:underline">
@@ -519,25 +494,10 @@ export default function Auth() {
                 </button>
               </>
             )}
-          </p>
-        )}
-
-        {/* Link for anonymous users to keep progress */}
-        {isAnonymous && !showLinkFlow && (
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            Want to keep your current progress?{" "}
-            <button onClick={() => setShowLinkFlow(true)} className="text-primary font-semibold hover:underline">
-              Link your account
-            </button>
-          </p>
-        )}
-        {showLinkFlow && (
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            <button onClick={() => { setShowLinkFlow(false); setMode("signin"); }} className="text-primary font-semibold hover:underline">
-              ← Back to Sign In
-            </button>
-          </p>
-        )}
+        </p>
+        {/* The old "Link your account" hint lived here. A guest is now told what
+            signing in costs them, inline and above the form, rather than being
+            offered a second vocabulary ("link") for the same action. */}
       </motion.div>
     </div>
   );

@@ -80,19 +80,89 @@ describe("initiateAnonymousEmailUpgrade", () => {
     redirectTo: "https://mogzy.lol/auth/callback?returnTo=%2Fquiz",
   };
 
-  it("sets the password FIRST, then attaches the email — never signOut, never signUp", async () => {
+  it("sends email AND password in ONE call — never signOut, never signUp", async () => {
     const res = await initiateAnonymousEmailUpgrade(args);
     expect(res.ok).toBe(true);
-    // AUTH1 order: the credential exists before the email branch is decided,
-    // so the user never has to come back to a form to finish.
-    expect(mocks.updateUser).toHaveBeenNthCalledWith(1, { password: "sixtee" });
+    // AUTH2 regression guard. The predecessor sent { password } on its own
+    // first, and the auth server rejects that on an anonymous user with
+    //   422 "Updating password of an anonymous user without an email or phone
+    //   is not allowed"
+    // so guest signup could not succeed at all. Carrying the email in the SAME
+    // request is what makes the password legal.
+    expect(mocks.updateUser).toHaveBeenCalledTimes(1);
+    expect(mocks.updateUser).toHaveBeenNthCalledWith(
+      1,
+      { email: "Guest@Example.com", password: "sixtee" },
+      { emailRedirectTo: args.redirectTo },
+    );
+    expect(mocks.signOut).not.toHaveBeenCalled();
+    // signUp() with an anonymous session active mints a DIFFERENT user id,
+    // which would strand every row belonging to the guest.
+    expect(mocks.signUp).not.toHaveBeenCalled();
+  });
+
+  it("never sends a password-only update to an anonymous user", async () => {
+    await initiateAnonymousEmailUpgrade(args);
+    for (const call of mocks.updateUser.mock.calls) {
+      const attrs = call[0] as Record<string, unknown>;
+      if ("password" in attrs) expect(attrs).toHaveProperty("email");
+    }
+  });
+
+  it("falls back to email-then-password if a server rejects the combined call", async () => {
+    // Narrow safety net for the ordering rule being tightened server-side.
+    // Keyed to that one sentence so it cannot swallow an unrelated failure.
+    mocks.updateUser
+      .mockResolvedValueOnce({
+        data: {},
+        error: {
+          code: "validation_failed",
+          message:
+            "Updating password of an anonymous user without an email or phone is not allowed",
+        },
+      })
+      .mockResolvedValueOnce({ data: {}, error: null })
+      .mockResolvedValueOnce({ data: {}, error: null });
+    mocks.getUser.mockResolvedValue({ data: { user: permanent }, error: null });
+
+    const res = await initiateAnonymousEmailUpgrade(args);
+    expect(res.ok).toBe(true);
+    expect(res.converted).toBe(true);
     expect(mocks.updateUser).toHaveBeenNthCalledWith(
       2,
       { email: "Guest@Example.com" },
       { emailRedirectTo: args.redirectTo },
     );
-    expect(mocks.signOut).not.toHaveBeenCalled();
-    expect(mocks.signUp).not.toHaveBeenCalled();
+    expect(mocks.updateUser).toHaveBeenNthCalledWith(3, { password: "sixtee" });
+  });
+
+  it("does not retry the fallback for an unrelated failure", async () => {
+    mocks.updateUser.mockResolvedValueOnce({
+      data: {},
+      error: { code: "over_request_rate_limit", message: "Request rate limit reached" },
+    });
+    const res = await initiateAnonymousEmailUpgrade(args);
+    expect(res.ok).toBe(false);
+    expect(mocks.updateUser).toHaveBeenCalledTimes(1);
+  });
+
+  it("never shows the user a raw auth string", async () => {
+    mocks.updateUser.mockResolvedValueOnce({
+      data: {},
+      error: {
+        code: "validation_failed",
+        message: "Updating password of an anonymous user without an email or phone is not allowed",
+      },
+    });
+    // …and the retry fails too, so the mapped message is what reaches the UI.
+    mocks.updateUser.mockResolvedValueOnce({
+      data: {},
+      error: { code: "unexpected_failure", message: "Database error granting user" },
+    });
+    const res = await initiateAnonymousEmailUpgrade(args);
+    expect(res.ok).toBe(false);
+    expect(res.error).not.toMatch(/anonymous user/i);
+    expect(res.error).not.toMatch(/Database error/i);
   });
 
   it("reports converted and syncs the profile when no confirmation is required", async () => {
@@ -126,16 +196,21 @@ describe("initiateAnonymousEmailUpgrade", () => {
     expect(readPendingUpgrade()?.email).toBe("guest@example.com");
   });
 
-  it("does not write a pending record and surfaces emailInUse on 'already registered'", async () => {
-    mocks.updateUser
-      .mockResolvedValueOnce({ data: {}, error: null })          // password step
-      .mockResolvedValueOnce({                                    // email step
-        data: {},
-        error: { message: "Email address already been registered" },
-      });
+  it("does not write a pending record and surfaces emailInUse for a taken email", async () => {
+    // The real shape, measured against the live project: code `email_exists`,
+    // message "A user with this email address has already been registered".
+    // The anonymous user is left untouched, so a retry is safe.
+    mocks.updateUser.mockResolvedValueOnce({
+      data: {},
+      error: {
+        code: "email_exists",
+        message: "A user with this email address has already been registered",
+      },
+    });
     const res = await initiateAnonymousEmailUpgrade({ ...args, email: "taken@example.com" });
     expect(res.ok).toBe(false);
     expect(res.emailInUse).toBe(true);
+    expect(res.error).toMatch(/already has an account/i);
     expect(readPendingUpgrade()).toBeNull();
   });
 
@@ -144,12 +219,27 @@ describe("initiateAnonymousEmailUpgrade", () => {
     expect(mocks.profileUpdate).not.toHaveBeenCalled();
   });
 
-  it("stops at the password step when it fails, without touching the email", async () => {
-    mocks.updateUser.mockResolvedValueOnce({ data: {}, error: { message: "weak" } });
+  it("writes nothing when the single conversion call fails", async () => {
+    mocks.updateUser.mockResolvedValueOnce({
+      data: {},
+      error: { code: "weak_password", message: "Password should be at least 6 characters." },
+    });
     const res = await initiateAnonymousEmailUpgrade(args);
     expect(res.ok).toBe(false);
     expect(mocks.updateUser).toHaveBeenCalledTimes(1);
+    expect(mocks.profileUpdate).not.toHaveBeenCalled();
     expect(readPendingUpgrade()).toBeNull();
+  });
+
+  it("still reports success when only the derived profile flag fails to sync", async () => {
+    // The account IS permanent by this point — the credential works. Reporting
+    // failure would be false AND would dead-end the user on a form they cannot
+    // satisfy. The flag is repaired by ensureProfilePermanent instead.
+    mocks.getUser.mockResolvedValue({ data: { user: permanent }, error: null });
+    mocks.profileRead.mockResolvedValue({ data: { is_anonymous: true }, error: null });
+    const res = await initiateAnonymousEmailUpgrade(args);
+    expect(res.ok).toBe(true);
+    expect(res.converted).toBe(true);
   });
 });
 

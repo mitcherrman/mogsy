@@ -49,8 +49,15 @@ describe("the sign-in hand-off", () => {
   });
 
   it("is read, validated and navigated to by /auth on a successful sign-in", () => {
-    expect(authSource).toContain('safeReturnPath(searchParams.get("returnTo")');
-    expect(authSource).toContain("navigate(safeReturnTo)");
+    // AUTH2: this asserted the pre-AUTH1 call shape
+    // `safeReturnPath(searchParams.get("returnTo")`. /auth now goes through
+    // resolveReturnTo, which calls safeReturnPath itself AND reports whether
+    // the destination was explicit — the flag that stops onboarding overriding
+    // a chosen destination. The behaviour this suite exists to pin is
+    // unchanged (proved by the safeReturnPath case above); only the name of the
+    // function /auth calls moved, so the assertion follows it.
+    expect(authSource).toContain('resolveReturnTo(searchParams.get("returnTo")');
+    expect(authSource).toContain("navigate(safeReturnTo");
   });
 
   it("never carries a returning visitor back into the introduction", () => {

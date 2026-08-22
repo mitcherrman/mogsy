@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { authHref } from "@/lib/auth/auth-destination";
 import { useSubmitPrediction } from "@/hooks/useCombatBattles";
 import { BattlesApiError } from "@/lib/combat-battles/api";
 import { fmtDateTime, sideName } from "@/lib/combat-battles/lifecycle";
@@ -37,7 +38,7 @@ export default function PredictionPanel(props: Props) {
 
   async function choose(side: Side) {
     if (!isAccount) {
-      navigate(`/auth?mode=signup&returnTo=${encodeURIComponent(`/lol/combat-battles/${slug}`)}`);
+      navigate(authHref(`/lol/combat-battles/${slug}`, { mode: "signup" }));
       return;
     }
     setPending(side);
@@ -104,7 +105,14 @@ export default function PredictionPanel(props: Props) {
     <div className="space-y-3">
       {!isAccount && (
         <p className="text-sm text-muted-foreground">
-          <Link to="/auth?mode=signup" className="font-medium text-primary underline">
+          {/* AUTH2: this link used to be a bare /auth?mode=signup with no
+              returnTo, so creating an account from here dropped the user at the
+              hub instead of back at the battle they were reading. Every other
+              sender on this page already carried the destination. */}
+          <Link
+            to={authHref(`/lol/combat-battles/${slug}`, { mode: "signup" })}
+            className="font-medium text-primary underline"
+          >
             Create a free account
           </Link>{" "}
           to back a side and earn Arena Score.

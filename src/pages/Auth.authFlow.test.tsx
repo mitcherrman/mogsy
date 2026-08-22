@@ -60,15 +60,10 @@ const renderAuth = (search: string) => {
 const submitButton = () =>
   document.querySelector('button[type="submit"]') as HTMLButtonElement;
 
-/** Fill the signup form and submit it. */
-const submitSignup = async (password: string, confirm = password) => {
-  fireEvent.change(screen.getByLabelText("Email"), {
-    target: { value: "new@example.com" },
-  });
+/** Fill the signup form and submit it. Email + password + submit, nothing else. */
+const submitSignup = async (password: string, email = "new@example.com") => {
+  fireEvent.change(screen.getByLabelText("Email"), { target: { value: email } });
   fireEvent.change(screen.getByLabelText("Password"), { target: { value: password } });
-  fireEvent.change(screen.getByLabelText("Confirm Password"), {
-    target: { value: confirm },
-  });
   await act(async () => {
     fireEvent.click(submitButton());
   });
@@ -105,13 +100,31 @@ describe("password policy at signup (AUTH1 §2)", () => {
     );
   });
 
-  it("rejects a confirmation mismatch without calling auth", async () => {
+  it("asks for email and password and nothing else (AUTH2 §13)", () => {
     renderAuth("?mode=signup");
-    await submitSignup("abcdef", "abcdeg");
-    expect(auth.signUp).not.toHaveBeenCalled();
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: expect.stringMatching(/match/i) }),
-    );
+    // The confirmation field is gone; a reveal toggle does the job it was
+    // there for, and does it for password-manager users too.
+    expect(screen.queryByLabelText(/confirm password/i)).toBeNull();
+    const inputs = Array.from(document.querySelectorAll("form input"));
+    expect(inputs).toHaveLength(2);
+    expect(screen.getByLabelText("Email")).toBeTruthy();
+    expect(screen.getByLabelText("Password")).toBeTruthy();
+  });
+
+  it("can reveal the password so a typo is visible before submitting", async () => {
+    renderAuth("?mode=signup");
+    const field = screen.getByLabelText("Password") as HTMLInputElement;
+    expect(field.type).toBe("password");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /show password/i }));
+    });
+    expect((screen.getByLabelText("Password") as HTMLInputElement).type).toBe("text");
+  });
+
+  it("marks the password field for password managers", () => {
+    renderAuth("?mode=signup");
+    expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe("new-password");
+    expect(screen.getByLabelText("Email").getAttribute("autocomplete")).toBe("email");
   });
 
   it("advertises the eased rule and no composition checklist", () => {
@@ -227,5 +240,99 @@ describe("existing unverified account can still sign in", () => {
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith("/quiz/ranked", { replace: true }),
     );
+  });
+});
+
+
+/* -------------------------------------------------------------------------- */
+/* AUTH2                                                                        */
+/* -------------------------------------------------------------------------- */
+
+describe("an email that already has an account leads to Sign In (AUTH2 §7)", () => {
+  /** The message the auth server really returns for a duplicate signup. */
+  const alreadyRegistered = {
+    code: "user_already_exists",
+    message: "User already registered",
+  };
+
+  it("switches to sign-in instead of dead-ending", async () => {
+    auth.signUp = vi.fn().mockResolvedValue({ error: alreadyRegistered, session: null });
+    renderAuth("?mode=signup&returnTo=%2Fquiz%2Franked");
+    await submitSignup("abcdef", "taken@example.com");
+
+    // The predecessor matched the literal "already been registered", which the
+    // server does not say here, so this case fell through to the generic
+    // handler and printed the raw string with no way forward.
+    expect(submitButton().textContent).toMatch(/sign in/i);
+    expect(screen.getByLabelText("Password")).toBeTruthy();
+  });
+
+  it("keeps the typed email and the destination", async () => {
+    auth.signUp = vi.fn().mockResolvedValue({ error: alreadyRegistered, session: null });
+    renderAuth("?mode=signup&returnTo=%2Fquiz%2Franked");
+    await submitSignup("abcdef", "taken@example.com");
+
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("taken@example.com");
+
+    auth.signIn = vi.fn().mockResolvedValue({ error: null });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "abcdef" } });
+    await act(async () => { fireEvent.click(submitButton()); });
+    expect(navigate).toHaveBeenCalledWith("/quiz/ranked", { replace: true });
+  });
+
+  it("never shows the raw auth string", async () => {
+    auth.signUp = vi.fn().mockResolvedValue({ error: alreadyRegistered, session: null });
+    renderAuth("?mode=signup");
+    await submitSignup("abcdef", "taken@example.com");
+    const shown = JSON.stringify(toast.mock.calls);
+    expect(shown).not.toContain("User already registered");
+  });
+});
+
+describe("a guest signing in keeps their guest session (AUTH2 §6)", () => {
+  beforeEach(() => {
+    auth.user = { id: "anon-1", is_anonymous: true };
+  });
+
+  it("does not sign the guest out before attempting sign-in", async () => {
+    auth.signIn = vi.fn().mockResolvedValue({
+      error: { code: "invalid_credentials", message: "Invalid login credentials" },
+    });
+    renderAuth("?returnTo=%2Fquiz");
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "me@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "wrongpw" } });
+    await act(async () => { fireEvent.click(submitButton()); });
+
+    // The predecessor called signOut() BEFORE signIn, so one mistyped password
+    // ended the anonymous session — and an anonymous session has no credential
+    // to get back into, making that guest's progress permanently unreachable.
+    expect(sb.signOut).not.toHaveBeenCalled();
+    expect(auth.signIn).toHaveBeenCalled();
+  });
+
+  it("explains that guest progress does not move to the existing account", () => {
+    renderAuth("?returnTo=%2Fquiz");
+    expect(screen.getByTestId("guest-signin-notice").textContent).toMatch(/won.t move over/i);
+  });
+
+  it("offers the path that DOES keep the progress", async () => {
+    renderAuth("?returnTo=%2Fquiz");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /create an account instead/i }));
+    });
+    expect(screen.getByTestId("upgrade-panel")).toBeTruthy();
+  });
+
+  it("maps a wrong password to plain language", async () => {
+    auth.signIn = vi.fn().mockResolvedValue({
+      error: { code: "invalid_credentials", message: "Invalid login credentials" },
+    });
+    renderAuth("");
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "me@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "wrongpw" } });
+    await act(async () => { fireEvent.click(submitButton()); });
+    const shown = JSON.stringify(toast.mock.calls);
+    expect(shown).not.toContain("Invalid login credentials");
+    expect(shown).toMatch(/wrong email or password/i);
   });
 });

@@ -2,9 +2,10 @@
 // AccountUpgradePanel — the single shared "Save your progress" upgrade UI for
 // anonymous guests. Rendered by /auth (signup intent) and reusable elsewhere.
 //
-// AUTH1: collects email AND password together and converts the guest in place,
-// in one submit. The guest is signed in and back where they started without
-// ever leaving the site — email verification is not a blocker (AUTH1 §3).
+// Collects email AND password together and converts the guest IN PLACE, in one
+// submit, on the same auth user id — so nothing is copied and nothing can be
+// lost in the copying. The guest is signed in and back where they started
+// without ever leaving the site; email verification is not a blocker.
 //
 // The pending-verification state is RETAINED and still rendered when the
 // project requires a confirmation link; it is simply no longer the normal
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAccountUpgrade } from "@/lib/auth/useAccountUpgrade";
+import PasswordField from "@/components/auth/PasswordField";
 import { PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "@/lib/auth/password-policy";
 
 interface Props {
@@ -39,7 +41,6 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
   );
   const [emailInput, setEmailInput] = useState(upgrade.email);
   const [passwordInput, setPasswordInput] = useState("");
-  const [confirmInput, setConfirmInput] = useState("");
 
   const busy = upgrade.phase === "submitting" || upgrade.phase === "converted";
 
@@ -130,7 +131,7 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void upgrade.submit(emailInput, passwordInput, confirmInput);
+          void upgrade.submit(emailInput, passwordInput);
         }}
         className="space-y-4"
       >
@@ -148,36 +149,19 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="upgrade-password">Password</Label>
-          <Input
-            id="upgrade-password"
-            type="password"
-            placeholder="••••••••"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            required
-            minLength={PASSWORD_MIN_LENGTH}
-            autoComplete="new-password"
-            data-testid="upgrade-password-input"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="upgrade-confirm">Confirm password</Label>
-          <Input
-            id="upgrade-confirm"
-            type="password"
-            placeholder="••••••••"
-            value={confirmInput}
-            onChange={(e) => setConfirmInput(e.target.value)}
-            required
-            minLength={PASSWORD_MIN_LENGTH}
-            autoComplete="new-password"
-            data-testid="upgrade-confirm-input"
-          />
-          <p className="text-[11px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
-        </div>
+        {/* AUTH2: email + password + submit, and nothing else. The confirmation
+            field that used to sit here is replaced by the reveal toggle — see
+            components/auth/PasswordField for why that is the better guard. */}
+        <PasswordField
+          id="upgrade-password"
+          label="Password"
+          value={passwordInput}
+          onChange={setPasswordInput}
+          minLength={PASSWORD_MIN_LENGTH}
+          autoComplete="new-password"
+          data-testid="upgrade-password-input"
+        />
+        <p className="text-[11px] text-muted-foreground">{PASSWORD_RULE_TEXT}</p>
 
         {upgrade.error && (
           <p className="text-sm text-destructive" role="alert" data-testid="upgrade-error">

@@ -2,7 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import {
+  ensureProfilePermanent,
   initiateAnonymousEmailUpgrade,
+  syncProfilePermanent,
   type UpgradeResult,
 } from "@/lib/auth/account-upgrade";
 import { getE2EIdentity, e2eSession, e2eEnabled } from "@/lib/e2e/identity";
@@ -88,6 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(session.user);
           setLoading(false);
         }
+        // AUTH2: reconcile a permanent auth user whose profile row still says
+        // anonymous. Those two flags are written by different systems, and when
+        // they disagree the admin purge believes the profile and deletes a real
+        // account. Fire-and-forget: never gates loading, never surfaces an error.
+        if (session.user.is_anonymous !== true) {
+          void ensureProfilePermanent(session.user.id);
+        }
         return;
       }
 
@@ -154,7 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { ok: false, error: "No active session to upgrade. Please reload." };
     }
     if (user.is_anonymous !== true) {
-      return { ok: false, error: "This account is already registered." };
+      // AUTH2: this is reached when the FIRST attempt already converted auth but
+      // its profile write failed, so the user pressed the button again. The
+      // account genuinely exists and is theirs — telling them "already
+      // registered" would strand them on a form they can never satisfy. Finish
+      // the half-done job instead and let the caller route them onward.
+      const sync = await syncProfilePermanent(user.id);
+      if (!sync.ok) {
+        console.error("[auth:upgrade] repair sync failed", sync.error);
+      }
+      return { ok: true, converted: true };
     }
     return initiateAnonymousEmailUpgrade({ userId: user.id, email, password, redirectTo });
   };
