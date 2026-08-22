@@ -90,6 +90,7 @@ export default function PlayScrollRecord({
   onPlayDailyChallenge,
   onPlayPractice,
   signedIn = false,
+  isAdmin = false,
   returnFocusTo,
   handoffDelayMs = DEFAULT_HANDOFF_MS,
 }: {
@@ -148,6 +149,17 @@ export default function PlayScrollRecord({
    */
   onPlayPractice: () => void;
   signedIn?: boolean;
+  /**
+   * Whether the viewer is an admin, resolved by the caller.
+   *
+   * Its ONLY effect is whether the Ranked view offers the admin's
+   * Match-with-Bot testing control. It is not authorization: the backend
+   * re-decides that from the verified session, and a browser that flips this
+   * gets a 403 rather than a bot. Defaults to false so every surface that
+   * does not supply it — including `/dev/play-scroll` — draws the ordinary
+   * player's record.
+   */
+  isAdmin?: boolean;
   /**
    * Where focus goes when the record closes — the PLAY seal it was opened
    * from. Radix restores focus to whatever was active when the dialog
@@ -553,6 +565,10 @@ export default function PlayScrollRecord({
                     onPlayPractice={goToPractice}
                   />
                 )}
+                {/* Mounted only while Ranked is the open view, which is what
+                    makes the bot toggle default OFF every time: it holds its
+                    own state and leaving Ranked — or closing the record —
+                    unmounts it. Nothing is remembered between opens. */}
                 {view === "ranked" && (
                   <RankedQueueView
                     queue={queue}
@@ -562,6 +578,7 @@ export default function PlayScrollRecord({
                        confirmation once a status lands; this is only the
                        frame before that. */
                     role={displayRole}
+                    isAdmin={isAdmin}
                     onJoin={queue.joinWithoutClass}
                     onBack={() => setView("menu")}
                   />

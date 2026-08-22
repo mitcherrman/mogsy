@@ -108,8 +108,16 @@ export interface QueueController {
    * and reads the player's League role from the account's stored preference
    * inside the join transaction. The client therefore never picks a class on
    * the player's behalf and — critically — never derives one from the role.
+   *
+   * `matchWithBot` is the ADMIN TESTING request. It changes nothing about
+   * this state machine: the backend answers `matched` with a match id
+   * immediately instead of `waiting`, so the existing matched -> handoff beat
+   * carries the player into the arena with no extra state, no polling, and no
+   * bot-specific branch. Authorization is the SERVER's — a non-admin sending
+   * it is refused, and this controller shows that refusal like any other join
+   * error.
    */
-  joinWithoutClass: () => void;
+  joinWithoutClass: (options?: { matchWithBot?: boolean }) => void;
   cancel: () => void;
   /**
    * PLAY1: whether Cancel is a legal action right now. False during the
@@ -323,7 +331,7 @@ export function useRankedQueue(): QueueController {
 
   const join = useCallback(() => joinAs(selectedClass), [joinAs, selectedClass]);
 
-  const joinWithoutClass = useCallback(() => {
+  const joinWithoutClass = useCallback((options?: { matchWithBot?: boolean }) => {
     if (JOIN_BLOCKED_STATES.has(stateRef.current)) return;
     stateRef.current = "joining";
     setState("joining");
@@ -332,7 +340,7 @@ export function useRankedQueue(): QueueController {
       const controller = new AbortController();
       abortRef.current = controller;
       try {
-        const s = await api.joinQueue(null, controller.signal);
+        const s = await api.joinQueue(null, controller.signal, options);
         const resolved = applyStatus(s);
         if (resolved === "waiting" || resolved === "pairing") {
           failuresRef.current = 0;

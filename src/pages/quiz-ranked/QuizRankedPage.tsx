@@ -20,10 +20,15 @@
  * for some time. Entry now belongs to the lobby's match-entry scroll, which
  * carries the role forward and runs the same queue.
  *
- * Nothing was DELETED to achieve that. The bot backend, `createBotMatch`, the
- * role picker, the tier panel and the history list all still exist; they are
- * simply no longer this route's job. Bots are for a later Practice/Training
- * surface to host, deliberately not this one.
+ * The role picker, the tier panel and the history list all still exist; they
+ * are simply no longer this route's job.
+ *
+ * The bot survived too, as an ADMIN TESTING lever rather than a mode: the
+ * match-entry scroll offers an admin a Match-with-Bot switch on the ordinary
+ * Ranked join, and the backend creates a real unrated Ranked match. Its old
+ * standalone client and endpoint are gone — one join, one authorization
+ * point. Nothing about it is reachable from this route or from an ordinary
+ * player's record.
  *
  * WHERE A MENULESS VISITOR GOES
  * ─────────────────────────────

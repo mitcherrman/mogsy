@@ -37,6 +37,16 @@ vi.mock("@/pages/quiz-ranked/useRankedQueue", () => ({
 vi.mock("@/hooks/useFriends", () => ({
   useFriends: () => ({ friends: [], loading: false }),
 }));
+// The record also asks whether the viewer is an admin, to decide whether to
+// offer the Match-with-Bot testing switch. Same reason as the two above: it is
+// an auth read, it is not what these tests are about, and the hub is rendered
+// here without the app's AuthProvider.
+vi.mock("@/hooks/useAdminRoles", () => ({
+  useAdminRoles: () => ({
+    loading: false, roles: [], isAdmin: false, isMasterAdmin: false,
+    isModerator: false,
+  }),
+}));
 
 import LeaguecraftHub from "./LeaguecraftHub";
 import type { RankedState } from "@/lib/quiz/featured-mock";

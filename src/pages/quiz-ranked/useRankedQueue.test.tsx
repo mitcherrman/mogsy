@@ -273,3 +273,45 @@ describe("useRankedQueue — duplicate join protection", () => {
     expect(cancelQueue).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The admin bot request adds NO state to this controller. The backend answers
+ * the join as an entry that is already matched, which is a beat the machine
+ * already had, so the handoff is the ordinary one.
+ */
+describe("the admin bot request", () => {
+  it("passes the option straight through to the join, and nothing else", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();                       // mounts idle, as a real open does
+    // The bot join's answer: an entry that is ALREADY matched.
+    state.status = "matched"; state.matchId = "rkb_abc";
+    act(() => result.current.joinWithoutClass({ matchWithBot: true }));
+    await flush();
+    expect(joinQueue).toHaveBeenCalledTimes(1);
+    // (classId, signal, options) — the class is still null on the role path.
+    const args = joinQueue.mock.calls[0] as unknown[];
+    expect(args[0]).toBeNull();
+    expect(args[2]).toEqual({ matchWithBot: true });
+    expect(result.current.state).toBe("matched");
+    expect(result.current.matchId).toBe("rkb_abc");
+  });
+
+  it("sends no bot option on an ordinary join", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    act(() => result.current.joinWithoutClass());
+    await flush();
+    expect((joinQueue.mock.calls[0] as unknown[])[2]).toBeUndefined();
+  });
+
+  it("surfaces a refusal as an ordinary join error and stays out of the queue", async () => {
+    state.joinError = new FakeApiError("RANKED_BOT_NOT_AUTHORIZED", 403);
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    act(() => result.current.joinWithoutClass({ matchWithBot: true }));
+    await flush();
+    expect(result.current.state).toBe("selecting_class");
+    expect(result.current.matchId).toBeNull();
+    expect(result.current.error).toBeTruthy();
+  });
+});

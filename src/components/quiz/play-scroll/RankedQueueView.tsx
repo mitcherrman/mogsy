@@ -30,9 +30,31 @@
  * is written here is what the server confirmed the entry carries, falling
  * back to the account's own role only for the frame before the first status
  * lands.
+ *
+ * MATCH WITH BOT — AN ADMIN TESTING CONTROL
+ * ─────────────────────────────────────────
+ * Normal bots were removed from public matchmaking, and nothing here brings
+ * them back as a mode. What this offers an ADMIN is a way to enter a real
+ * Ranked match on demand: the same format, the same questions, the same
+ * arena, the same settlement — with a server-driven opponent, and unrated.
+ *
+ * It is deliberately the smallest possible thing:
+ *
+ *   - it is drawn only when the caller has resolved the viewer as an admin,
+ *     and it is not authorization — the backend refuses a non-admin who sends
+ *     the flag anyway;
+ *   - it is a single switch. There is no difficulty, no class, no response
+ *     speed and no bot identity to choose, because the backend has one bot
+ *     policy and nothing to select;
+ *   - it starts OFF on every open. The state lives in this component and this
+ *     component is unmounted the moment Ranked is left, so there is nothing to
+ *     remember and nothing to reset;
+ *   - it sits UNDER the action, in the record's quiet ink, so the Ranked
+ *     choice above it stays the thing on the page.
  */
 
-import { Loader2, Swords } from "lucide-react";
+import { useState } from "react";
+import { Bot, Loader2, Swords } from "lucide-react";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
 import type { QueueController } from "@/pages/quiz-ranked/useRankedQueue";
 import PlayModePlate from "./PlayModePlate";
@@ -73,21 +95,36 @@ const BEAT: Record<string, { eyebrow: string; headline: string; note: string }> 
   },
 };
 
+/** What the ready beat says INSTEAD while the admin's bot switch is on. It
+ *  replaces two claims that would otherwise be false: that an opponent is
+ *  being looked for, and that rating is at stake. */
+const BOT_READY_NOTE =
+  "Admin test: a bot opponent, starting immediately. Unrated.";
+
 export default function RankedQueueView({
   queue,
   role,
   onJoin,
   onBack,
+  isAdmin = false,
 }: {
   queue: QueueController;
   /** The account's stored role, used only until the server confirms one. */
   role: RankedRole | null;
-  onJoin: () => void;
+  onJoin: (options?: { matchWithBot?: boolean }) => void;
   /** Leave Ranked and go back to the record's three clauses. Only offered
    *  when leaving is actually safe — see `RankedPlayScroll`. */
   onBack: () => void;
+  /** Whether to OFFER the admin bot-testing switch. Never authorization. */
+  isAdmin?: boolean;
 }) {
   const state = queue.state;
+  /**
+   * The admin's bot switch. Local, and local is the point: this component is
+   * mounted only while Ranked is the open view, so the switch is OFF again on
+   * every open of the record with no reset logic to get wrong.
+   */
+  const [matchWithBot, setMatchWithBot] = useState(false);
 
   if (state === "unavailable") {
     return (
@@ -130,6 +167,12 @@ export default function RankedQueueView({
   // account's stored role only as the pre-first-poll fallback.
   const entryRole = queue.status?.role ?? role;
   const inFlight = state === "waiting" || state === "pairing" || state === "matched";
+  const idle = state === "selecting_class" || state === "recovering";
+  // The switch may only be OFFERED while the account is idle. Once the server
+  // has an entry — or a match — there is nothing left for it to change, and a
+  // control that cannot do anything is worse than no control.
+  const showBotToggle = isAdmin && idle;
+  const botArmed = showBotToggle && matchWithBot;
 
   return (
     <div className="flex flex-col gap-3" data-testid="play-ranked" data-queue-state={state}>
@@ -166,7 +209,7 @@ export default function RankedQueueView({
           className="mx-auto mt-1 max-w-[34ch] text-[12px] font-medium leading-snug"
           style={{ color: INK.body }}
         >
-          {beat.note}
+          {botArmed ? BOT_READY_NOTE : beat.note}
         </p>
       </div>
 
@@ -203,19 +246,47 @@ export default function RankedQueueView({
       )}
 
       <div className="mt-1 flex flex-col items-center gap-2">
-        {(state === "selecting_class" || state === "recovering") && (
+        {idle && (
           <button
             type="button"
             data-testid="play-ranked-join"
             disabled={state === "recovering" || role === null}
-            onClick={onJoin}
+            onClick={() => onJoin(botArmed ? { matchWithBot: true } : undefined)}
             className="play-scroll-clause flex min-h-[46px] w-full items-center justify-center gap-2 px-4 text-[13px] font-black uppercase tracking-[0.2em] disabled:cursor-not-allowed disabled:opacity-60"
             data-emphasis="true"
             style={{ color: INK.strong }}
           >
-            <Swords className="h-4 w-4" aria-hidden="true" />
-            Enter the Queue
+            {botArmed ? (
+              <Bot className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Swords className="h-4 w-4" aria-hidden="true" />
+            )}
+            {botArmed ? "Enter vs Bot" : "Enter the Queue"}
           </button>
+        )}
+
+        {/* THE ADMIN SWITCH. Under the action, in the record's faint ink, and
+            drawn as one line of the page rather than as a panel — it is a
+            testing lever on the Ranked entry, not a second choice beside it. */}
+        {showBotToggle && (
+          <label
+            data-testid="play-ranked-bot-toggle"
+            className="flex cursor-pointer items-center gap-2 text-[11px] font-semibold"
+            style={{ color: INK.faint }}
+          >
+            <input
+              type="checkbox"
+              data-testid="play-ranked-bot-toggle-input"
+              checked={matchWithBot}
+              onChange={(event) => setMatchWithBot(event.target.checked)}
+              className="h-3.5 w-3.5 cursor-pointer accent-[#7a5c2e]"
+            />
+            Match with Bot
+            <span className="sr-only">
+              {" "}(admin testing: starts an unrated Ranked match against a bot
+              immediately)
+            </span>
+          </label>
         )}
 
         {state === "joining" && (
@@ -254,7 +325,9 @@ export default function RankedQueueView({
         )}
 
         {/* Back to the three clauses. Withheld the moment the server has an
-            entry for this account: leaving then would hide a live queue. */}
+            entry for this account: leaving then would hide a live queue.
+            Leaving also drops the bot switch with this whole view, which is
+            what makes it OFF again next time. */}
         {!inFlight && state !== "joining" && state !== "cancelling" && (
           <button
             type="button"

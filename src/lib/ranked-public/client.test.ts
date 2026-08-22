@@ -148,3 +148,47 @@ describe("R1 — the role endpoints and the class-free join", () => {
     });
   });
 });
+
+/**
+ * The ADMIN bot-testing request. It is an option on the ORDINARY join, not a
+ * second endpoint: the retired `POST /api/ranked/bot-matches` was open to
+ * every verified account, and one creation path with server-side
+ * authorization replaces it.
+ */
+describe("match_with_bot", () => {
+  it("is omitted entirely from an ordinary join", async () => {
+    stub(() => json(queueStatusV1("waiting")));
+    await api.joinQueue(null);
+    expect("match_with_bot" in JSON.parse(String(calls[0].init.body))).toBe(false);
+    await api.joinQueue(null, undefined, {});
+    expect("match_with_bot" in JSON.parse(String(calls[1].init.body))).toBe(false);
+    await api.joinQueue(null, undefined, { matchWithBot: false });
+    expect("match_with_bot" in JSON.parse(String(calls[2].init.body))).toBe(false);
+  });
+
+  it("travels on the same queue POST when asked for", async () => {
+    stub(() => json(queueStatusV1("waiting")));
+    await api.joinQueue(null, undefined, { matchWithBot: true });
+    expect(calls[0].url).toContain("/api/ranked/queue");
+    expect(calls[0].init.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init.body))).toEqual({ match_with_bot: true });
+  });
+
+  it("reads the immediate match out of an ordinary matched queue status", async () => {
+    // No bot-specific transport: the backend answers the join as an entry
+    // that is ALREADY matched, which is a state the controller already has.
+    stub(() => json(queueStatusV1("matched", "rkb_abc")));
+    const status = await api.joinQueue(null, undefined, { matchWithBot: true });
+    expect(status.status).toBe("matched");
+    expect(status.matchId).toBe("rkb_abc");
+  });
+
+  it("surfaces a refused bot request as a typed code", async () => {
+    stub(() => json({ detail: {
+      code: "RANKED_BOT_NOT_AUTHORIZED",
+      message: "matching with a bot is an admin-only testing path",
+    } }, 403));
+    await expect(api.joinQueue(null, undefined, { matchWithBot: true }))
+      .rejects.toMatchObject({ code: "RANKED_BOT_NOT_AUTHORIZED", status: 403 });
+  });
+});

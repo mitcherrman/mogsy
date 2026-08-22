@@ -84,14 +84,6 @@ export interface SegmentChallengeAck {
   nextChallengeIndex: number;
 }
 
-export interface BotMatchCreated {
-  matchId: string;
-  botDifficulty: string;
-  questionBankMode: string;
-}
-
-export type BotDifficulty = "easy" | "standard" | "hard";
-
 /** A 429 throttle is transient — back off and retry, never fatal. */
 export const isRateLimited = (e: unknown): boolean =>
   e instanceof RankedApiError && (e.status === 429 || e.code === "RANKED_RATE_LIMITED");
@@ -231,10 +223,31 @@ export const getRankedProgression = (signal?: AbortSignal): Promise<RankedProgre
  * above all, never derives one from the player's role. The role the entry
  * carries is read server-side from the account's stored preference, so it
  * cannot be spoofed or accidentally set by a queue request.
+ *
+ * `matchWithBot` is the ADMIN TESTING path and the only thing that changes
+ * the shape of the answer: the backend verifies admin authorization from the
+ * caller's own verified session, creates an unrated Ranked match against a
+ * bot, and replies with a `matched` status carrying its id — so the ordinary
+ * matched -> handoff path runs unchanged and there is no bot-specific state
+ * anywhere in the controller. A non-admin sending it is REFUSED
+ * (`RANKED_BOT_NOT_AUTHORIZED`), never silently queued: authorization lives
+ * on the server and this flag is a request, not a grant.
+ *
+ * The field is omitted entirely when false, so an ordinary join sends exactly
+ * the body it always sent.
  */
-export const joinQueue = (classId: string | null, signal?: AbortSignal): Promise<QueueStatusView> =>
+export const joinQueue = (
+  classId: string | null,
+  signal?: AbortSignal,
+  options?: { matchWithBot?: boolean },
+): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, {
-    method: "POST", body: classId ? { class_id: classId } : {}, signal,
+    method: "POST",
+    body: {
+      ...(classId ? { class_id: classId } : {}),
+      ...(options?.matchWithBot ? { match_with_bot: true } : {}),
+    },
+    signal,
   });
 
 export const getQueueStatus = (signal?: AbortSignal): Promise<QueueStatusView> =>
@@ -257,28 +270,17 @@ export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | 
     return { matchId: m.match_id, isBotMatch: m.is_bot_match === true };
   }, { signal });
 
-/**
- * Normal authenticated "Play vs Bot" match. The backend remains authoritative
- * for account identity, the operational bot switch, and match validity; the
- * client never asserts eligibility itself.
+/*
+ * THERE IS NO `createBotMatch`. `POST /api/ranked/bot-matches` — the
+ * standalone Ranked Bot product's endpoint, open to every verified account and
+ * carrying a difficulty and a bot class — is retired on the backend and its
+ * client is gone with it.
+ *
+ * A bot match is now an ADMIN TESTING request on the ordinary join:
+ * `joinQueue(null, signal, { matchWithBot: true })`. That keeps one creation
+ * path, one transport, and one place where authorization is decided (the
+ * server, from the verified session).
  */
-export const createBotMatch = (
-  classId: string, difficulty: BotDifficulty | null, signal?: AbortSignal,
-): Promise<BotMatchCreated> =>
-  request("/api/ranked/bot-matches", (json) => {
-    const o = json as Record<string, unknown>;
-    const matchId = o.match_id;
-    if (typeof matchId !== "string") throw new Error("missing match_id");
-    return {
-      matchId,
-      botDifficulty: typeof o.bot_difficulty === "string" ? o.bot_difficulty : "standard",
-      questionBankMode: typeof o.question_bank_mode === "string" ? o.question_bank_mode : "placeholder",
-    };
-  }, {
-    method: "POST",
-    body: { class_id: classId, ...(difficulty ? { difficulty } : {}) },
-    signal,
-  });
 
 export const cancelQueue = (signal?: AbortSignal): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, { method: "DELETE", signal });

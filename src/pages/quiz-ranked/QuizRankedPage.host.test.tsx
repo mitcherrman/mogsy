@@ -149,17 +149,26 @@ describe("/quiz/ranked — the retired pre-match menu", () => {
 });
 
 /**
- * The bot backend was not deleted, only unhosted. Removing the client would
- * make a later Practice/Training surface re-invent it, and PLAY1's brief is
- * explicit that the bot system stays.
+ * The bot system still exists — its ENTRY POINT moved.
+ *
+ * PLAY1 unhosted the old menu but kept `createBotMatch`, on the reasoning that
+ * a later surface would otherwise re-invent it. That surface arrived, and it
+ * is not a separate creation call: an admin asks for a bot on the ORDINARY
+ * join (`joinQueue(..., { matchWithBot: true })`), and the backend's
+ * `POST /api/ranked/bot-matches` — which every verified account could call —
+ * is retired. So the client went with the endpoint it called, and what this
+ * pins now is that one join is the only way in.
  */
-describe("the bot system is unhosted, not deleted", () => {
-  it("still exports a bot-match client", async () => {
+describe("the bot system has one entry point: the ordinary join", () => {
+  it("has no standalone bot-match client left", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const client = readFileSync(
       resolve(process.cwd(), "src/lib/ranked-public/client.ts"), "utf8",
     );
-    expect(client).toContain("export const createBotMatch");
+    expect(client).not.toContain("export const createBotMatch");
+    expect(client).not.toContain('"/api/ranked/bot-matches"');
+    // The join is where a bot is asked for, and it is an OPTION on it.
+    expect(client).toContain("matchWithBot");
   });
 });

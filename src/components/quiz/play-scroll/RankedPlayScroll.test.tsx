@@ -11,7 +11,9 @@
  *     which is the Score Attack time trial and a different feature;
  *   · Invite & Play is a finished frontend that refuses to claim a Ranked
  *     invite backend it does not have;
- *   · admin policy decides which entries appear.
+ *   · admin policy decides which entries appear;
+ *   · the admin's Match-with-Bot switch is admin-only, starts OFF on every
+ *     open, and changes exactly one thing about the join it modifies.
  */
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +39,13 @@ const h = vi.hoisted(() => ({
     friends: [] as unknown[],
     loading: false,
   },
+  roles: {
+    loading: false,
+    roles: [] as string[],
+    isAdmin: false,
+    isMasterAdmin: false,
+    isModerator: false,
+  },
 }));
 
 vi.mock("@/pages/quiz-ranked/useRankedQueue", () => ({
@@ -44,6 +53,9 @@ vi.mock("@/pages/quiz-ranked/useRankedQueue", () => ({
 }));
 vi.mock("@/hooks/useFriends", () => ({
   useFriends: () => h.friends,
+}));
+vi.mock("@/hooks/useAdminRoles", () => ({
+  useAdminRoles: () => h.roles,
 }));
 vi.mock("@/lib/quiz/api", () => ({
   resolveQuizAssetUrl: (p?: string) => (p ? `http://assets.local/${p}` : undefined),
@@ -163,6 +175,8 @@ beforeEach(() => {
   h.queue.canCancel = false;
   h.friends.friends = [];
   h.friends.loading = false;
+  h.roles.isAdmin = false;
+  h.roles.loading = false;
   vi.clearAllMocks();
 });
 afterEach(cleanup);
@@ -1075,5 +1089,122 @@ describe("bots are not part of the primary PLAY experience", () => {
     expect(text).not.toMatch(/playtest/i);
     expect(text).not.toMatch(/\b(tank|mage|marksman)\b/i);
     expect(text).not.toMatch(/\b(easy|standard|hard)\b/i);
+  });
+
+  it("shows an ordinary player no bot control anywhere on the record", async () => {
+    renderScroll();
+    expect(screen.queryByTestId("play-ranked-bot-toggle")).toBeNull();
+    await openRanked();
+    // Asserted only once matchmaking is actually on screen — a `queryBy`
+    // that runs before the view opens is true of every possible page.
+    expect(screen.getByTestId("play-ranked")).toBeTruthy();
+    expect(screen.queryByTestId("play-ranked-bot-toggle")).toBeNull();
+    expect(screen.getByTestId("play-ranked-join").textContent)
+      .toContain("Enter the Queue");
+  });
+
+  it("shows nothing while the admin answer is still unknown", async () => {
+    // Not-yet-known must read as NOT admin: the control is never drawn on a
+    // guess and then taken away.
+    h.roles.loading = true;
+    renderScroll();
+    await openRanked();
+    expect(screen.getByTestId("play-ranked")).toBeTruthy();
+    expect(screen.queryByTestId("play-ranked-bot-toggle")).toBeNull();
+  });
+});
+
+/**
+ * MATCH WITH BOT — the admin's Ranked testing lever.
+ *
+ * It is one switch on the existing Ranked entry: no mode, no card, no
+ * difficulty, no class, no bot identity. Everything below is about it staying
+ * that small, and about it never reaching an ordinary player.
+ *
+ * Entering matchmaking goes through `openRanked`, because pressing Ranked is
+ * no longer a synchronous view change — the record commits the role it is
+ * previewing first and moves only when that write holds.
+ */
+describe("the admin Match-with-Bot switch", () => {
+  const openRankedAsAdmin = async (
+    over: Partial<React.ComponentProps<typeof RankedPlayScroll>> = {},
+  ) => {
+    h.roles.isAdmin = true;
+    const utils = renderScroll(over);
+    await openRanked();
+    return utils;
+  };
+
+  it("is offered to an admin, and is OFF when the record opens", async () => {
+    await openRankedAsAdmin();
+    const input = screen.getByTestId("play-ranked-bot-toggle-input") as HTMLInputElement;
+    expect(input.checked).toBe(false);
+    expect(screen.getByTestId("play-ranked-bot-toggle").textContent)
+      .toContain("Match with Bot");
+  });
+
+  it("joins normally while it is off", async () => {
+    await openRankedAsAdmin();
+    fireEvent.click(screen.getByTestId("play-ranked-join"));
+    expect(h.queue.joinWithoutClass).toHaveBeenCalledTimes(1);
+    expect(h.queue.joinWithoutClass.mock.calls[0][0]).toBeUndefined();
+  });
+
+  it("asks for a bot ONLY when it is on", async () => {
+    await openRankedAsAdmin();
+    fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
+    fireEvent.click(screen.getByTestId("play-ranked-join"));
+    expect(h.queue.joinWithoutClass).toHaveBeenCalledWith({ matchWithBot: true });
+  });
+
+  it("says what pressing Play will now do, without shouting about it", async () => {
+    await openRankedAsAdmin();
+    fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
+    // The two claims that would otherwise be false are withdrawn: that an
+    // opponent is being searched for, and that rating is at stake.
+    const text = screen.getByTestId("play-ranked").textContent ?? "";
+    expect(text).toContain("Unrated");
+    expect(text).not.toContain("Rating is at stake");
+    expect(screen.getByTestId("play-ranked-join").textContent).toContain("Bot");
+  });
+
+  it("forgets it between opens — there is no sticky bot mode", async () => {
+    const { unmount } = await openRankedAsAdmin();
+    fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
+    expect((screen.getByTestId("play-ranked-bot-toggle-input") as HTMLInputElement)
+      .checked).toBe(true);
+    // Leaving Ranked, then coming back inside the SAME open record.
+    fireEvent.click(screen.getByTestId("play-ranked-back"));
+    await openRanked();
+    expect((screen.getByTestId("play-ranked-bot-toggle-input") as HTMLInputElement)
+      .checked).toBe(false);
+    // And across a fresh open of the whole record.
+    unmount();
+    await openRankedAsAdmin();
+    expect((screen.getByTestId("play-ranked-bot-toggle-input") as HTMLInputElement)
+      .checked).toBe(false);
+  });
+
+  it("is withdrawn once the server has an entry — it can change nothing then", async () => {
+    h.queue.state = "waiting";
+    h.queue.canCancel = true;
+    await openRankedAsAdmin();
+    // The view IS open and IS mid-queue; the control is absent from that, not
+    // absent because nothing rendered.
+    expect(screen.getByTestId("play-ranked").getAttribute("data-queue-state"))
+      .toBe("waiting");
+    expect(screen.queryByTestId("play-ranked-bot-toggle")).toBeNull();
+  });
+
+  it("adds no difficulty, class, speed or bot-identity choice", async () => {
+    await openRankedAsAdmin();
+    fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
+    const text = screen.getByRole("dialog").textContent ?? "";
+    expect(text).not.toMatch(/\b(easy|standard|hard)\b/i);
+    expect(text).not.toMatch(/\b(tank|mage|marksman)\b/i);
+    expect(text).not.toMatch(/difficulty/i);
+    // ONE control on the Ranked entry, and it is the switch itself.
+    expect(screen.getByTestId("play-ranked")
+      .querySelectorAll("input[type=checkbox]")).toHaveLength(1);
   });
 });
