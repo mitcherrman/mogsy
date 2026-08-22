@@ -93,6 +93,9 @@ export default function LobbyPreviewPage() {
              account — so it simply reports that the commit held and lets the
              record open, which is the branch a reviewer wants to look at. */
           onPlayRanked={() => true}
+          /* Demo state only — this page writes no account, so the commit
+             simply reports that it held and lets Ranked proceed. */
+          onCommitRole={() => true}
           onEnterMatch={noop}
           onPlayDailyChallenge={noop}
           /* A day already answered out, so the record's COMPLETED Daily

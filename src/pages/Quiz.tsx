@@ -336,35 +336,55 @@ export default function Quiz() {
   );
 
   /**
-   * PLAY — the commit point, and the reason it has to be this one.
+   * PLAY — opens the record. It no longer writes anything.
    *
-   * The Ranked queue join sends NO role: `POST /api/ranked/queue` reads the
-   * player's stored preference off the account inside the join transaction,
-   * so the persisted role IS the queued identity. The lobby's carousel moves
-   * against local state (browsing must cost nothing — `role_set` is limited
-   * to ten writes a minute and two laps used to exhaust it), which means a
-   * local choice has to reach the backend BEFORE the player can enter the
-   * match-entry record, or they queue as whoever they used to be.
+   * The commit MOVED, and it moved because the record now owns the choice.
+   * The match-entry scroll has its own role stepper, and it is the surface a
+   * player actually decides on: pressing PLAY is "show me my options", not
+   * "I have chosen". Writing here would spend a rate-limited `role_set` on
+   * every reader who opened the record to look at Daily Challenge.
    *
-   * The write is skipped entirely when the choice already matches the stored
-   * role — the ordinary case for a reader who browsed back to where they
-   * started, or never moved at all.
-   *
-   * IT NO LONGER NAVIGATES, and that is the PLAY1 half of this. Pressing
-   * PLAY opens the record on the lobby; the only navigation left in the flow
-   * is the handoff once the server has a match. What survives unchanged is
-   * the RULE the navigation used to carry: a refusal does not proceed. The
-   * boolean is that rule — the lobby opens the record only when the commit
-   * held, so a failed role write can no longer put the reader into Ranked as
-   * the wrong role with nothing on screen saying so.
+   * The gate itself is kept — it is still the hook the lobby uses to withhold
+   * the record — and it still resolves to whether opening is allowed.
    */
   const handlePlayRanked = useCallback(async (): Promise<boolean> => {
     if (rankedRole.saving) return false;
-    const next = effectiveRankedRole;
-    // Nothing chosen (a guest, an older backend, an account that has never
-    // picked), or nothing changed: there is no write to make. The record
-    // still refuses to queue without a role and says so in its own view.
-    if (next === null || next === rankedRole.role) return true;
+    return true;
+  }, [rankedRole.saving]);
+
+  /**
+   * The account's role, written once, from inside the record.
+   *
+   * THE ONE CANONICAL WRITE. Everything that persists a Ranked role on this
+   * page goes through here and through `rankedRole.selectRole` beneath it —
+   * `PUT /api/ranked/role` is rate limited to ten writes a minute
+   * (`role_set`), and a second write path is a second way to spend that
+   * budget without anyone noticing.
+   *
+   * It is reached from exactly one place: choosing RANKED MATCH on the
+   * record. Browsing the lobby's ring writes nothing, stepping the record's
+   * arrows writes nothing, and Daily Challenge, Invite and Practice write
+   * nothing — none of them queues, so none of them needs the stored role to
+   * be anything in particular.
+   *
+   * The write is SKIPPED when the choice already matches what the account
+   * holds, which is the ordinary case for a player who stepped back to where
+   * they started or never stepped at all.
+   *
+   * A REFUSAL RETURNS FALSE AND THE RECORD STAYS ON ITS MENU. The queue join
+   * sends no role — `POST /api/ranked/queue` reads the stored preference
+   * inside its own transaction — so entering matchmaking on a failed write
+   * would queue the player as whoever they used to be, with nothing on screen
+   * saying so.
+   */
+  const handleCommitRankedRole = useCallback(async (next: RankedRole): Promise<boolean> => {
+    if (rankedRole.saving) return false;
+    if (next === rankedRole.role) {
+      // Already the account's role. Keep the lobby's stage in step with what
+      // the record settled on, then get out of the way.
+      setPendingRankedRole(null);
+      return true;
+    }
     setSavingRankedRole(next);
     const accepted = await rankedRole.selectRole(next);
     setSavingRankedRole(null);
@@ -372,19 +392,19 @@ export default function Quiz() {
       // ONE toast, reused. An id-less `toast.error` mints a NEW toast every
       // time, which is how identical "too many requests" notices used to pile
       // up on the lobby. A stable id makes sonner UPDATE the standing notice
-      // instead of stacking another copy. This suppresses nothing: the message
-      // still changes with the refusal, and every other toast here is
-      // untouched. Kept even though browsing no longer writes — a burst is
-      // still reachable through repeated PLAY presses.
+      // instead of stacking another copy. This suppresses nothing: the
+      // message still changes with the refusal.
       toast.error(
         rankedRole.error ?? "Could not save your role. Try again.",
         { id: RANKED_ROLE_TOAST_ID },
       );
       return false;
     }
+    // The record's choice is now the account's, so the lobby's stage has
+    // nothing left to hold locally.
     setPendingRankedRole(null);
     return true;
-  }, [effectiveRankedRole, rankedRole]);
+  }, [rankedRole]);
   const userId = user?.id || "anonymous";
 
   useEffect(() => {
@@ -1147,6 +1167,7 @@ export default function Quiz() {
               progress={userProgress}
               ranked={getRankedState(userProgress?.attempts ?? 0)}
               onPlayRanked={() => handlePlayRanked()}
+              onCommitRole={handleCommitRankedRole}
               /* PLAY1: PLAY opens the match-entry record in place. The only
                  navigation left is the handoff, once the SERVER has a match —
                  `/quiz/ranked` is the live-match host. The id travels in

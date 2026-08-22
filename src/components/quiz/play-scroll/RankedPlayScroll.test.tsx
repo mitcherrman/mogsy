@@ -13,6 +13,7 @@
  *     invite backend it does not have;
  *   · admin policy decides which entries appear.
  */
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { QueueState } from "@/pages/quiz-ranked/useRankedQueue";
@@ -49,6 +50,7 @@ vi.mock("@/lib/quiz/api", () => ({
 }));
 
 import RankedPlayScroll from "./RankedPlayScroll";
+import type { RankedRole } from "@/lib/ranked-public/roles";
 import InvitePlayView from "./InvitePlayView";
 import { RANKED_INVITE_UNAVAILABLE_REASON } from "@/lib/ranked-public/rankedInvite";
 
@@ -72,27 +74,84 @@ const DAILY_DONE = {
   lastCompletedDate: "2026-08-21",
 };
 
-function renderScroll(over: Partial<React.ComponentProps<typeof RankedPlayScroll>> = {}) {
+/**
+ * A stand-in for the page's ONE local role selection.
+ *
+ * The record does not own the role any more — it renders the host's value and
+ * calls the host's setter, the same pair the lobby's carousel is given. A
+ * harness that passed a frozen `role` prop would render a stepper that cannot
+ * step, and would pass while the real thing was broken. So the harness holds
+ * the state exactly as `Quiz.tsx` does, and `onSelectRole` is spied ON TOP of
+ * a real setter rather than instead of one.
+ */
+function StatefulScroll({
+  initialRole,
+  onRoleChange,
+  ...props
+}: Omit<React.ComponentProps<typeof RankedPlayScroll>, "role" | "onSelectRole"> & {
+  initialRole: RankedRole | null;
+  onRoleChange: (role: RankedRole) => void;
+}) {
+  const [role, setRole] = useState<RankedRole | null>(initialRole);
+  return (
+    <RankedPlayScroll
+      {...props}
+      role={role}
+      onSelectRole={(next) => { setRole(next); onRoleChange(next); }}
+    />
+  );
+}
+
+function renderScroll(
+  over: Partial<React.ComponentProps<typeof RankedPlayScroll>> & {
+    role?: RankedRole | null;
+  } = {},
+) {
   const onClose = vi.fn();
   const onEnterMatch = vi.fn();
   const onPlayDailyChallenge = vi.fn();
   const onPlayPractice = vi.fn();
+  const onCommitRole = vi.fn(() => true);
+  const onSelectRole = vi.fn();
+  const { role: initialRole = "jungle", ...rest } = over;
   const utils = render(
-    <RankedPlayScroll
+    <StatefulScroll
       onClose={onClose}
-      role="jungle"
+      initialRole={initialRole}
+      onRoleChange={onSelectRole}
       progression={PROGRESSION}
       modes={ALL_MODES}
       daily={DAILY}
       signedIn
       onEnterMatch={onEnterMatch}
       onPlayDailyChallenge={onPlayDailyChallenge}
+      onCommitRole={onCommitRole}
       onPlayPractice={onPlayPractice}
       handoffDelayMs={0}
-      {...over}
+      {...rest}
     />,
   );
-  return { ...utils, onClose, onEnterMatch, onPlayDailyChallenge, onPlayPractice };
+  return {
+    ...utils, onClose, onEnterMatch, onPlayDailyChallenge, onPlayPractice,
+    onCommitRole, onSelectRole,
+  };
+}
+
+/**
+ * Choose RANKED MATCH and let the role commit settle.
+ *
+ * Pressing Ranked is no longer a synchronous view change: the record writes
+ * the role it is previewing and moves only when that write holds. Every test
+ * that enters matchmaking goes through here, so the awaited commit is stated
+ * once rather than in twenty places.
+ */
+async function openRanked() {
+  fireEvent.click(screen.getByTestId("play-mode-ranked"));
+  // The VIEW, not one view's body — an unavailable or unreachable queue
+  // renders its own notice inside the same view.
+  await waitFor(() =>
+    expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("ranked"),
+  );
 }
 
 beforeEach(() => {
@@ -109,11 +168,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("the record itself", () => {
-  it("is a dialog with a name, over a lobby that is still there", () => {
+  it("is a dialog with a name, over a lobby that is still there", async () => {
     renderScroll();
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAttribute("data-testid", "play-scroll");
-    expect(dialog.textContent).toContain("Match Entry");
+    expect(dialog.textContent).toContain("Choose Mode");
   });
 
   it("carries the role forward and never asks for it again", () => {
@@ -146,7 +205,6 @@ describe("the record itself", () => {
     expect(band.querySelector("[data-champion]")).toBeNull();
 
     // What remains: the label, the role, and the two anchors.
-    expect(text).toContain("Entering as");
     expect(text).toContain("Jungle");
     expect(band.querySelector(".play-scroll-banner__standing")).toBeTruthy();
   });
@@ -177,11 +235,16 @@ describe("the record itself", () => {
     expect(emblem?.getAttribute("data-tier")).toBeNull();
   });
 
-  it("says so plainly when the account has no role yet", () => {
+  it("opens on a real role for an account that has never picked one", () => {
+    // There is no "No role chosen" state any more. The band IS the choice, so
+    // an empty header with an instruction to go back to the lobby would be
+    // telling the player to leave the surface that can answer them. Nothing
+    // is persisted by opening here — the preview is local until Ranked
+    // commits it.
     renderScroll({ role: null });
-    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("No role chosen");
-    // And there is no mascot to draw, so none is drawn.
-    expect(screen.queryByTestId("play-scroll-mascot")).toBeNull();
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Top");
+    expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("top");
+    expect(screen.getByTestId("play-scroll").textContent).not.toContain("No role chosen");
   });
 
   describe("the mascot is the project's mascot, and it is a toy", () => {
@@ -435,36 +498,44 @@ describe("admin policy decides which entries appear", () => {
 });
 
 describe("Ranked Match", () => {
-  it("opens matchmaking on the same sheet — not another setup screen", () => {
+  it("opens matchmaking on the same sheet — not another setup screen", async () => {
     renderScroll();
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await openRanked();
     expect(screen.getByTestId("play-ranked")).toBeTruthy();
     expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("ranked");
     // The role banner is still on the sheet: the identity did not change.
     expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Jungle");
   });
 
-  it("joins the EXISTING queue, sending no class of its own", () => {
+  it("joins the EXISTING queue, sending no class of its own", async () => {
     renderScroll();
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await openRanked();
     fireEvent.click(screen.getByTestId("play-ranked-join"));
     expect(h.queue.joinWithoutClass).toHaveBeenCalledTimes(1);
     expect(h.queue.joinAs).not.toHaveBeenCalled();
   });
 
-  it("refuses to join without a role, and says why", () => {
-    renderScroll({ role: null });
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
-    expect(screen.getByTestId("play-ranked-join")).toBeDisabled();
-    expect(screen.getByTestId("play-ranked-role-required")).toBeTruthy();
+  it("lets an account with NO stored role enter, on the role it stepped to", async () => {
+    // The old behaviour was a disabled join and "choose a role on the lobby's
+    // role scroll" — an instruction to leave the surface that can answer it.
+    // The record's stepper always has a real role now, so there is nothing to
+    // refuse: Ranked commits whatever it is showing.
+    const { onCommitRole } = renderScroll({ role: null });
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Jungle");
+
+    await openRanked();
+    expect(onCommitRole).toHaveBeenCalledWith("jungle");
+    expect(screen.getByTestId("play-ranked-join")).not.toBeDisabled();
+    expect(screen.queryByTestId("play-ranked-role-required")).toBeNull();
   });
 
-  it("shows the search state with a cancel, and the role the entry carries", () => {
+  it("shows the search state with a cancel, and the role the entry carries", async () => {
     h.queue.state = "waiting";
     h.queue.canCancel = true;
     h.queue.status = { role: "support" };
     renderScroll();
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await openRanked();
     expect(screen.getByTestId("play-ranked-headline").textContent)
       .toContain("Searching for an opponent");
     // The SERVER's confirmed role wins over the account's local one.
@@ -473,11 +544,11 @@ describe("Ranked Match", () => {
     expect(h.queue.cancel).toHaveBeenCalledTimes(1);
   });
 
-  it("shows opponent-found during the pairing window, and withdraws Cancel", () => {
+  it("shows opponent-found during the pairing window, and withdraws Cancel", async () => {
     h.queue.state = "pairing";
     h.queue.canCancel = false;
     renderScroll();
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await openRanked();
     expect(screen.getByTestId("play-ranked-headline").textContent)
       .toContain("Preparing your match");
     expect(screen.getByTestId("play-ranked").textContent).toContain("Opponent found");
@@ -489,16 +560,16 @@ describe("Ranked Match", () => {
     h.queue.state = "matched";
     h.queue.matchId = "rkm_go";
     const { onEnterMatch } = renderScroll();
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await openRanked();
     await waitFor(() => expect(onEnterMatch).toHaveBeenCalledWith("rkm_go"));
     expect(onEnterMatch).toHaveBeenCalledTimes(1);
   });
 
-  it("surfaces an unavailable queue instead of a dead button", () => {
+  it("surfaces an unavailable queue instead of a dead button", async () => {
     h.queue.state = "unavailable";
     h.queue.unavailableReason = "Ranked matchmaking is paused right now.";
     renderScroll();
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await openRanked();
     expect(screen.getByTestId("play-ranked-unavailable").textContent)
       .toContain("paused right now");
     // And leaving is safe again, because nothing is live.
@@ -508,11 +579,11 @@ describe("Ranked Match", () => {
 
 describe("the record cannot be dismissed over a live queue entry", () => {
   for (const state of ["joining", "waiting", "pairing", "matched", "cancelling"] as QueueState[]) {
-    it(`withholds every exit while the queue is ${state}`, () => {
+    it(`withholds every exit while the queue is ${state}`, async () => {
       h.queue.state = state;
       h.queue.matchId = state === "matched" ? "rkm_x" : null;
       const { onClose } = renderScroll();
-      fireEvent.click(screen.getByTestId("play-mode-ranked"));
+      await openRanked();
       expect(screen.queryByTestId("play-scroll-close")).toBeNull();
       expect(screen.queryByTestId("play-ranked-back")).toBeNull();
       fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
@@ -520,9 +591,9 @@ describe("the record cannot be dismissed over a live queue entry", () => {
     });
   }
 
-  it("lets the player back out while the queue is idle", () => {
+  it("lets the player back out while the queue is idle", async () => {
     renderScroll();
-    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await openRanked();
     fireEvent.click(screen.getByTestId("play-ranked-back"));
     expect(screen.getByTestId("play-scroll-modes")).toBeTruthy();
   });
@@ -604,12 +675,10 @@ describe("a Daily Challenge that is already done for today", () => {
     expect(panel.textContent).not.toMatch(/unavailable|disabled|error|closed/i);
   });
 
-  it("still keeps the entry's own eyebrow and its streak", () => {
-    // The day was completed; the streak it fed is the reward for that, and
-    // the eyebrow is what still identifies which clause this slot is.
+  it("still keeps its streak", () => {
+    // The day was completed; the streak it fed is the reward for that.
     renderScroll({ daily: DAILY_DONE });
     const panel = screen.getByTestId("play-mode-daily-complete");
-    expect(panel.textContent).toContain("Today's Study");
     expect(panel.textContent).toContain("4-day streak");
   });
 
@@ -684,6 +753,230 @@ describe("a Daily Challenge that is already done for today", () => {
     });
     expect(screen.getByTestId("play-mode-daily")).toBeTruthy();
     expect(screen.queryByTestId("play-mode-daily-complete")).toBeNull();
+  });
+});
+
+describe("the role stepper on the record", () => {
+  /**
+   * THE RULE THIS SECTION EXISTS FOR: browsing is local.
+   *
+   * `PUT /api/ranked/role` is rate limited to ten writes per account per
+   * minute (`role_set`). A five-role ring is two laps from exhausting it, so
+   * stepping the arrows must cost nothing — the account is written exactly
+   * once, when the player commits by choosing Ranked Match.
+   */
+
+  it("opens on the role the lobby had already settled on", () => {
+    renderScroll();
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Jungle");
+    expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("jungle");
+  });
+
+  it("steps the preview, and the mascot with it", () => {
+    renderScroll();
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Mid");
+    expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("mid");
+
+    fireEvent.click(screen.getByTestId("play-scroll-role-prev"));
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Jungle");
+    expect(screen.getByTestId("play-scroll-mascot").getAttribute("data-role")).toBe("jungle");
+  });
+
+  it("WRITES NOTHING while the player steps, however far they go", () => {
+    // Three full laps of a five-role ring: thirty presses. Under the old
+    // per-move write that is three times the whole minute's budget.
+    const { onCommitRole } = renderScroll();
+    for (let i = 0; i < 15; i += 1) {
+      fireEvent.click(screen.getByTestId("play-scroll-role-next"));
+    }
+    for (let i = 0; i < 15; i += 1) {
+      fireEvent.click(screen.getByTestId("play-scroll-role-prev"));
+    }
+    expect(onCommitRole).not.toHaveBeenCalled();
+    // And a full lap each way lands exactly where it started.
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Jungle");
+  });
+
+  it("wraps at both ends, in the lobby's own order", () => {
+    // The canonical order is top → jungle → mid → adc → support, and the
+    // lobby's ring wraps; one step right off the end must mean the same thing
+    // on both surfaces.
+    renderScroll({ role: "support" });
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Top");
+
+    cleanup();
+    renderScroll({ role: "top" });
+    fireEvent.click(screen.getByTestId("play-scroll-role-prev"));
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Support");
+  });
+
+  it("names the destination on each arrow, not just a direction", () => {
+    // "Previous role" alone makes a screen-reader user step blind to hear
+    // where they landed.
+    renderScroll();
+    expect(screen.getByTestId("play-scroll-role-prev").textContent).toContain("Top");
+    expect(screen.getByTestId("play-scroll-role-next").textContent).toContain("Mid");
+  });
+
+  it("keeps the arrows as real, keyboard-reachable buttons", () => {
+    renderScroll();
+    for (const id of ["play-scroll-role-prev", "play-scroll-role-next"]) {
+      const arrow = screen.getByTestId(id);
+      expect(arrow.tagName).toBe("BUTTON");
+      expect(arrow.getAttribute("type")).toBe("button");
+      expect(arrow).not.toBeDisabled();
+    }
+  });
+
+  it("commits the STEPPED role when Ranked is chosen, and only then", async () => {
+    const { onCommitRole } = renderScroll();
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));   // mid
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));   // adc
+    expect(onCommitRole).not.toHaveBeenCalled();
+
+    await openRanked();
+    expect(onCommitRole).toHaveBeenCalledTimes(1);
+    expect(onCommitRole).toHaveBeenCalledWith("adc");
+  });
+
+  it("does NOT enter matchmaking when the commit is refused", async () => {
+    // The queue join sends no role — the backend reads the STORED preference
+    // inside its own transaction — so entering on a failed write would queue
+    // the player as whoever they used to be.
+    const onCommitRole = vi.fn(async () => false);
+    renderScroll({ onCommitRole });
+    fireEvent.click(screen.getByTestId("play-scroll-role-next"));
+
+    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await waitFor(() => expect(onCommitRole).toHaveBeenCalledWith("mid"));
+
+    // Still on the menu, with every entry offered again.
+    expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("menu");
+    expect(screen.queryByTestId("play-ranked")).toBeNull();
+    expect(screen.getByTestId("play-mode-ranked")).not.toBeDisabled();
+    expect(h.queue.joinWithoutClass).not.toHaveBeenCalled();
+  });
+
+  it("waits for a slow commit before entering matchmaking", async () => {
+    let release: (ok: boolean) => void = () => {};
+    const onCommitRole = vi.fn(
+      () => new Promise<boolean>((resolve) => { release = resolve; }),
+    );
+    renderScroll({ onCommitRole });
+
+    fireEvent.click(screen.getByTestId("play-mode-ranked"));
+    await waitFor(() => expect(onCommitRole).toHaveBeenCalled());
+    // The write is in flight: matchmaking must not be on screen yet.
+    expect(screen.queryByTestId("play-ranked")).toBeNull();
+
+    release(true);
+    await waitFor(() =>
+      expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("ranked"),
+    );
+  });
+
+  it("commits NOTHING for Daily Challenge, Invite or Practice", async () => {
+    // None of the three queues, so none of them needs the account's stored
+    // role to be anything in particular — and each would otherwise spend one
+    // of ten rate-limited writes a minute on a player who never entered
+    // Ranked.
+    const daily = renderScroll();
+    fireEvent.click(screen.getByTestId("play-mode-daily"));
+    expect(daily.onCommitRole).not.toHaveBeenCalled();
+    expect(daily.onPlayDailyChallenge).toHaveBeenCalledTimes(1);
+    cleanup();
+
+    const invite = renderScroll();
+    fireEvent.click(screen.getByTestId("play-mode-invite"));
+    await waitFor(() =>
+      expect(screen.getByRole("dialog").getAttribute("data-view")).toBe("invite"),
+    );
+    expect(invite.onCommitRole).not.toHaveBeenCalled();
+    cleanup();
+
+    const practice = renderScroll();
+    fireEvent.click(screen.getByTestId("play-scroll-practice"));
+    expect(practice.onCommitRole).not.toHaveBeenCalled();
+    expect(practice.onPlayPractice).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the Ranked emblem in the role selector", () => {
+  it("renders the account's crest beside the role", () => {
+    renderScroll();
+    const emblem = screen
+      .getByTestId("play-scroll-role-banner")
+      .querySelector(".play-scroll-banner__standing");
+    expect(emblem).toBeTruthy();
+    // Earned, from the fixture's `rated: true`. An unrated account gets
+    // `data-baseline` — the contract every Ranked surface reads.
+    expect(emblem?.getAttribute("data-tier")).toBe("silver");
+    expect(emblem?.getAttribute("data-variant")).toBe("hero");
+  });
+
+  it("carries NO tier caption — the crest is the rank", () => {
+    // The old band said the standing three times: the crest, a SILVER caption
+    // under it, and "· Ranked Silver" beside the role. The tier's WORD belongs
+    // on the Ranked clause, in that tier's own metal, where the player is
+    // deciding whether to queue.
+    renderScroll();
+    const band = screen.getByTestId("play-scroll-role-banner");
+    expect(band.textContent).toBe("Previous role — TopNext role — MidJungle");
+    expect(band.textContent).not.toMatch(/Ranked Silver/i);
+    expect(band.textContent).not.toMatch(/\bSILVER\b/i);
+  });
+
+  it("withholds the crest entirely when there is no standing", () => {
+    // A placeholder crest would be a claim about an account that has none.
+    renderScroll({ progression: null });
+    expect(
+      screen.getByTestId("play-scroll-role-banner")
+        .querySelector(".play-scroll-banner__standing"),
+    ).toBeNull();
+    // The stepper still works — the crest is decoration, not the control.
+    expect(screen.getByTestId("play-scroll-role-name").textContent).toBe("Jungle");
+  });
+});
+
+describe("the permanent Practice entry", () => {
+  it("is a footer, not a fourth mode", () => {
+    renderScroll();
+    const footer = screen.getByTestId("play-scroll-practice");
+    // Outside the clause list entirely.
+    expect(footer.closest('[data-testid="play-scroll-modes"]')).toBeNull();
+    expect(screen.getAllByTestId(/^play-mode-(ranked|daily|invite)$/)).toHaveLength(3);
+    expect(footer.textContent).toContain("Practice Questions");
+  });
+
+  it("is a reachable control with an accessible name", () => {
+    renderScroll();
+    const footer = screen.getByRole("button", { name: /Practice Questions/ });
+    expect(footer.tagName).toBe("BUTTON");
+    expect(footer.getAttribute("type")).toBe("button");
+  });
+
+  it("closes the record and hands the player to Practice", () => {
+    const { onClose, onPlayPractice, onPlayDailyChallenge } = renderScroll();
+    fireEvent.click(screen.getByTestId("play-scroll-practice"));
+    // Closed first, then travelled — the host owns the page underneath.
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPlayPractice).toHaveBeenCalledTimes(1);
+    // NOT routed through Daily Challenge: the Daily workstream can replace
+    // that mode entirely without this footer noticing.
+    expect(onPlayDailyChallenge).not.toHaveBeenCalled();
+  });
+
+  it("holds the icon slot without inventing a picture", () => {
+    // The owner supplies the mark. Until then the slot keeps its geometry so
+    // dropping the asset in later moves nothing on the sheet.
+    renderScroll();
+    const mark = screen.getByTestId("play-scroll-practice")
+      .querySelector(".play-scroll-practice__mark");
+    expect(mark).toBeTruthy();
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(mark?.querySelector("img")).toBeNull();
   });
 });
 

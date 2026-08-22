@@ -306,6 +306,11 @@ export default function PlayScrollPreviewPage() {
           daily={dailyDone ? DAILY_DONE : DAILY}
           signedIn
           onEnterMatch={noop}
+          /* The page's own role state, so the preview's role chips and the
+             record's arrows move the same value — the same relationship the
+             lobby and the record have in production. */
+          onSelectRole={setRole}
+          onCommitRole={() => true}
           onPlayDailyChallenge={noop}
           onPlayPractice={noop}
           /* The handoff would otherwise fire a beat after the "Preparing"

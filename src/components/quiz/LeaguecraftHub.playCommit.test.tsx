@@ -58,6 +58,7 @@ function renderHub(over: Partial<React.ComponentProps<typeof LeaguecraftHub>> = 
         progress={{ rank_name: "Bronze", next_rank_name: "Silver", progress_percent: 10 }}
         ranked={PLACED}
         onPlayRanked={onPlayRanked}
+        onCommitRole={() => true}
         onEnterMatch={() => {}}
         onPlayDailyChallenge={() => {}}
         playModes={{ ranked: true, daily: true, invite: true }}
