@@ -3,6 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AcademyChapter } from "./academyChapters";
 import {
   chapterSentences,
+  CONTROL_PAUSE_MS,
+  DOCKET_PAUSE_MS,
+  DOCKET_WRITE_MS,
   headingWriteMs,
   INK_SETTLE_TAIL_MS,
   MARGINALIA_PAUSE_MS,
@@ -79,9 +82,49 @@ export function slotCount(chapter: AcademyChapter): number {
   return (
     1 +
     chapterSentences(chapter.lines).length +
-    (chapter.marginalia?.length ? 1 : 0) +
-    (chapter.finale ? 1 : 0)
+    (hasAnnotation(chapter) ? 1 : 0) +
+    (hasTerminal(chapter) ? 1 : 0) +
+    (hasSignIn(chapter) ? 1 : 0)
   );
+}
+
+/**
+ * The annotation slot: marginalia, or the last spread's reference docket.
+ *
+ * One slot, never two — a chapter has one or the other. They are different
+ * furniture for the same job (what is actually in there?) on pages with
+ * different subjects, and giving the docket its own extra stop would add a beat
+ * to the one page that already carries the most.
+ */
+export function hasAnnotation(chapter: AcademyChapter): boolean {
+  return Boolean(chapter.marginalia?.length || chapter.docket?.length);
+}
+
+/**
+ * The terminal slot: the finale's two exits, or the register's form.
+ *
+ * Both are CONTROLS rather than writing, both are the last thing to arrive on
+ * their page, and both mean the same thing to the sequence — that this page's
+ * forward action belongs to the page and not to the tome's Next. Treating them
+ * as one slot kind is what keeps useRevealSequence unaware of either.
+ */
+export function hasTerminal(chapter: AcademyChapter): boolean {
+  return Boolean(chapter.finale || chapter.registration);
+}
+
+/**
+ * The register's last slot: the quiet "already have an account?" line.
+ *
+ * A SLOT OF ITS OWN, which is the entire mechanism behind the rule that it
+ * arrives last. It is not part of the form and it is not part of the writing;
+ * it is one more thing the page releases, after the register and its button
+ * have finished arriving, so a new visitor reads the register as the page's
+ * business and only then notices the way out. Nothing about it is optional at
+ * the sequence level — the register always has one — so the count is exact and
+ * the view's slot numbers cannot drift from it.
+ */
+export function hasSignIn(chapter: AcademyChapter): boolean {
+  return Boolean(chapter.registration);
 }
 
 /**
@@ -107,13 +150,31 @@ export const ART_START_STEP = 2;
  * lives in phrases.ts — this function is only the assignment of those numbers
  * to slots, so the cadence can be retuned in one file.
  */
+/**
+ * The breath after slot `slot` has finished arriving.
+ *
+ * Paired with slotWriteMs below, this is the whole cadence model: a slot takes
+ * as long to arrive as it takes, and is then followed by a beat chosen for what
+ * KIND of thing it was. Splitting it out this way is what let HI1-C5B add a
+ * fourth kind of slot — a control that arrives after another control — without
+ * the hold function growing a special case per page.
+ */
+function slotPauseMs(chapter: AcademyChapter, slot: number): number {
+  if (slot === 0) return HEADING_PAUSE_MS;
+  const sentences = chapterSentences(chapter.lines);
+  const sentence = sentences[slot - 1];
+  if (sentence) return sentencePauseMs(sentence);
+  if (slot === 1 + sentences.length) {
+    if (chapter.docket?.length) return DOCKET_PAUSE_MS;
+    if (chapter.marginalia?.length) return MARGINALIA_PAUSE_MS;
+  }
+  // A control arrived. The beat before whatever follows it.
+  return CONTROL_PAUSE_MS;
+}
+
 function slotHold(chapter: AcademyChapter, step: number): number {
   if (step === 0) return OPENING_PAUSE_MS;
-  if (step === 1) return headingWriteMs(chapter.eyebrow, chapter.heading) + HEADING_PAUSE_MS;
-  const sentences = chapterSentences(chapter.lines);
-  const sentence = sentences[step - 2];
-  if (sentence) return sentenceWriteMs(sentence) + sentencePauseMs(sentence);
-  return MARGINALIA_WRITE_MS + MARGINALIA_PAUSE_MS;
+  return slotWriteMs(chapter, step - 1) + slotPauseMs(chapter, step - 1);
 }
 
 /** Visible writing time of the slot just released — the scribble's window. */
@@ -122,8 +183,11 @@ export function slotWriteMs(chapter: AcademyChapter, slot: number): number {
   const sentences = chapterSentences(chapter.lines);
   const sentence = sentences[slot - 1];
   if (sentence) return sentenceWriteMs(sentence);
-  if (chapter.marginalia?.length && slot === 1 + sentences.length) return MARGINALIA_WRITE_MS;
-  return 0; // the finale's exits arrive, they are not written
+  if (slot === 1 + sentences.length) {
+    if (chapter.docket?.length) return DOCKET_WRITE_MS;
+    if (chapter.marginalia?.length) return MARGINALIA_WRITE_MS;
+  }
+  return 0; // exits, the register's form and its sign-in line are not written
 }
 
 /**
@@ -170,10 +234,23 @@ export interface RevealSequence {
   instant: boolean;
   /** Finish this chapter's reveal, or turn the page if it is already finished. */
   advance: () => void;
+  /**
+   * Turn the page unconditionally. The register's submit uses this; nothing
+   * else should, because everywhere else the dual-purpose `advance` is the
+   * correct meaning of a press.
+   */
+  goNext: () => void;
   /** Back to the previous chapter, shown complete. */
   back: () => void;
   canGoBack: boolean;
   isFinale: boolean;
+  /**
+   * True on the register — the one chapter whose forward action is its own
+   * form. `advance()` still FINISHES it (an impatient tap must always be able
+   * to land the writing), but the page refuses to turn it; see
+   * AcademyWelcomePage.
+   */
+  isRegistration: boolean;
 }
 
 export function useRevealSequence({
@@ -206,6 +283,7 @@ export function useRevealSequence({
   const released = step >= total;
   const complete = released && settled;
   const isFinale = Boolean(chapter.finale);
+  const isRegistration = Boolean(chapter.registration);
   const artRevealed = released || step >= Math.min(ART_START_STEP, total);
 
   // Reduced motion can flip mid-session (a visitor changing the OS setting, or
@@ -233,6 +311,21 @@ export function useRevealSequence({
     [chapters],
   );
 
+  /**
+   * Turn to the next chapter, whatever this one's ink is doing.
+   *
+   * Separate from `advance()` because the register's own submit button can be
+   * pressed during the settle window — the form is released with the rest of
+   * its slots, a beat before `complete` becomes true — and a turn that quietly
+   * became "finish the current page" instead would leave the visitor looking at
+   * a register they had just handed in. `advance()` still routes through here,
+   * so there remains exactly one way a chapter is left.
+   */
+  const goNext = useCallback(() => {
+    if (chapterIndex >= chapters.length - 1) return;
+    goToChapter(chapterIndex + 1, { revealed: reducedMotion });
+  }, [chapterIndex, chapters.length, goToChapter, reducedMotion]);
+
   const advance = useCallback(() => {
     if (!complete) {
       // Mid-reveal: land the rest of this page at once — including whatever ink
@@ -243,9 +336,8 @@ export function useRevealSequence({
       setSettled(true);
       return;
     }
-    if (chapterIndex >= chapters.length - 1) return;
-    goToChapter(chapterIndex + 1, { revealed: reducedMotion });
-  }, [complete, total, chapterIndex, chapters.length, goToChapter, reducedMotion]);
+    goNext();
+  }, [complete, total, goNext]);
 
   const back = useCallback(() => {
     if (chapterIndex === 0) return;
@@ -289,10 +381,26 @@ export function useRevealSequence({
       artRevealed,
       instant,
       advance,
+      goNext,
       back,
       canGoBack: chapterIndex > 0,
       isFinale,
+      isRegistration,
     }),
-    [chapterIndex, chapter, step, total, complete, released, artRevealed, instant, advance, back, isFinale],
+    [
+      chapterIndex,
+      chapter,
+      step,
+      total,
+      complete,
+      released,
+      artRevealed,
+      instant,
+      advance,
+      goNext,
+      back,
+      isFinale,
+      isRegistration,
+    ],
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ChevronLeft, Compass, GraduationCap } from "lucide-react";
 
@@ -6,13 +6,21 @@ import SEOHead from "@/components/SEOHead";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
+import {
+  ACADEMY_SIGN_IN_ROUTE,
+  leagueRankLabel,
+  readAcademyRegistration,
+  saveAcademyRegistration,
+} from "@/lib/welcome/academy-registration";
+import { adoptAcademyIdentity } from "@/lib/welcome/provisional-identity";
 import { useViewportTier } from "@/pages/dev/mogzy-entry-v2/useViewportTier";
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 
 import AcademyTome from "./AcademyTome";
-import ChapterPlate from "./ChapterPlate";
+import ChapterPlate, { type RegisterMirror } from "./ChapterPlate";
 import InkText, { InkPhrase, RevealSlot } from "./InkText";
-import { ACADEMY_CHAPTERS, type AcademyChapter } from "./academyChapters";
+import RegistrationForm, { type RegistrationValue } from "./RegistrationForm";
+import { ACADEMY_CHAPTERS, type AcademyChapter, type DocketEntry } from "./academyChapters";
 import {
   EYEBROW_WORD_PACE,
   HEADING_OFFSET,
@@ -68,6 +76,34 @@ import { useTomeAudio } from "./tomeAudio";
  * chapter one's illustration decoded. Only then does the tome rise and the
  * clock start. Nothing about the cadence past that first frame changed.
  *
+ * THE REGISTER IS THE ONE PAGE THAT ANSWERS BACK (HI1-C5). Spread two is a
+ * form: a name and a self-reported rank, written onto ruled lines in the book's
+ * own hand, mirrored by a registration card on the facing page. It is the one
+ * place the dual-purpose control above is deliberately HALF disabled — a tap
+ * still finishes the writing, but the tome will not turn past an unanswered
+ * register, and the page's forward action is the form's own button instead.
+ *
+ * AND IT IS A REAL GATE (HI1-C5B). Until the register is answered the rail
+ * carries no exit at all: "Skip to the Academy" does not exist yet, because an
+ * exit beside a required question is an invitation to answer it with a shrug.
+ * It appears the moment a registration exists — on this page, and on every page
+ * after it — so the introduction stops being mandatory the instant the one
+ * thing it needs has been given. The visitor is still never STUCK: Back
+ * re-reads the arrival, and Sign In below the form is a real way out for
+ * someone who is not a new user at all.
+ *
+ * WHAT THE REGISTER COLLECTS IS DURABLE USER DATA, NOT ONBOARDING STATE. The
+ * name becomes profiles.display_name and the rank becomes profiles.league_rank;
+ * this page writes the local half and asks for adoption, and the identity
+ * bridge in App.tsx finishes the job whenever an account appears. See
+ * lib/welcome/provisional-identity.ts for the first-write-wins rules that stop
+ * a replay from ever overwriting an established account.
+ *
+ * FIVE SPREADS, NOT SIX. Adding the register cost a beat, so Pro Data and
+ * Archives — two spreads for one idea — became one, and the finale's exits
+ * moved onto it. The sequence now ends on a page that says something rather
+ * than on a page that only asks. See academyChapters.ts.
+ *
  * REDUCED MOTION IS A DIFFERENT EXPERIENCE, NOT A DEGRADED ONE. The clock stops
  * and every chapter opens complete and still: the same words, the same artwork,
  * the same chapters, turned by the visitor at their own pace — no turning
@@ -91,6 +127,22 @@ export default function AcademyWelcomePage() {
   // allowed to arrive whenever it arrives.
   const sceneReady = useSceneReady(CRITICAL_SCENE_IMAGES, TOME_DISPLAY_FONT);
   const [roomLoaded, setRoomLoaded] = useState(false);
+  // The register's live answers. Owned here rather than inside the form because
+  // the facing page's card mirrors them, and because a visitor who steps Back
+  // to re-read the arrival and returns must find what they had already typed.
+  //
+  // SEEDED FROM THE STORED RECORD. /welcome is replayable forever, and someone
+  // replaying it has already answered this — presenting them an empty register
+  // and requiring them to type their own name again to get past a page they
+  // have seen before would be the introduction forgetting them.
+  const [registration, setRegistration] = useState<RegistrationValue>(() => {
+    const stored = readAcademyRegistration();
+    return stored ? { username: stored.username, rank: stored.rank } : { username: "", rank: "" };
+  });
+  // Whether this device has a registration AT ALL — the one thing the rail's
+  // exit is gated on. Initialised from storage so a replaying visitor is not
+  // re-gated, and raised (never lowered) the moment the register is answered.
+  const [registered, setRegistered] = useState(() => readAcademyRegistration() !== null);
   // Ref callback rather than `onLoad` alone: on a warm arrival the plate is
   // already decoded before React attaches a listener, `load` never fires, and
   // the fade-in below would leave it at zero for ever.
@@ -116,7 +168,17 @@ export default function AcademyWelcomePage() {
     // the air, or the stage is not up yet. Both are "do not write onto this".
     paused: turning !== null || !sceneReady,
   });
-  const { chapter, chapterIndex, step, complete, released, artRevealed, instant, isFinale } = seq;
+  const {
+    chapter,
+    chapterIndex,
+    step,
+    complete,
+    released,
+    artRevealed,
+    instant,
+    isFinale,
+    isRegistration,
+  } = seq;
 
   // Portrait phones read a single page; everything else reads the spread. A
   // landscape phone is wide and ~360px tall, which is the spread's own shape.
@@ -149,6 +211,26 @@ export default function AcademyWelcomePage() {
    * the incoming chapter's clock until the sheet lands. Mid-turn: nothing —
    * this single early return is the whole burst-click story.
    */
+  /**
+   * Physically turn the page. The whole of the staging — the sound as the sheet
+   * BEGINS lifting, the outgoing chapter held on the leaf, the clock paused
+   * until it lands — lives here so that the two things that can turn a page
+   * (the dual-purpose control, and the register's own submit) turn it
+   * identically. A second, subtly different turn would be visible.
+   */
+  const turnPage = useCallback(() => {
+    audio.stopScribble();
+    audio.pageTurn();
+    if (!prefersReducedMotion) {
+      setTurning({ chapter: seq.chapter });
+      turnTimerRef.current = setTimeout(() => setTurning(null), TURN_MS);
+    }
+    // `goNext`, not `advance`: the register's form is released a beat BEFORE
+    // its chapter reports complete, so a visitor who fills it in quickly would
+    // otherwise get a staged sheet over a page that never turned.
+    seq.goNext();
+  }, [seq, audio, prefersReducedMotion]);
+
   const handleAdvance = useCallback(() => {
     if (turning) return;
     if (!seq.complete) {
@@ -156,22 +238,82 @@ export default function AcademyWelcomePage() {
       seq.advance();
       return;
     }
-    if (seq.isFinale) return;
-    audio.stopScribble();
-    // As the page BEGINS lifting, not after it lands.
-    audio.pageTurn();
-    if (!prefersReducedMotion) {
-      setTurning({ chapter: seq.chapter });
-      turnTimerRef.current = setTimeout(() => setTurning(null), TURN_MS);
-    }
-    seq.advance();
-  }, [turning, seq, audio, prefersReducedMotion]);
+    // The two pages the tome does not turn by itself. The finale is the last
+    // page and there is nothing after it; the register is waiting for an
+    // answer, and turning past it on a stray tap would be the sequence
+    // deciding, on the visitor's behalf, that they did not want a name.
+    if (seq.isFinale || seq.isRegistration) return;
+    turnPage();
+  }, [turning, seq, audio, turnPage]);
 
   const handleBack = useCallback(() => {
     if (turning) return;
     audio.stopScribble();
     seq.back();
   }, [turning, seq, audio]);
+
+  /**
+   * The register has been answered. Everything that happens to it happens here.
+   *
+   * ORDER MATTERS, AND SO DOES WHAT IS AWAITED. The record is written
+   * synchronously and cannot throw (see saveAcademyRegistration), so the local
+   * identity is real before anything else is attempted. The adoption is
+   * fire-and-forget: at /welcome there is usually no session at all, and on the
+   * occasions there is, a cold backend must not hold a page turn. Whatever it
+   * does or does not manage, the identity bridge in App.tsx will finish the job
+   * the next time an account is present — so the page turns on the next line
+   * regardless, which is the only behaviour a first impression can afford.
+   *
+   * `setRegistered` is what opens the rail's exit. It is raised here rather
+   * than derived from storage on every render because storage can be blocked
+   * (private mode), and a visitor who answered the register must not be gated
+   * by a write they could not see fail.
+   */
+  const handleRegistered = useCallback(
+    (value: { username: string; rank: Exclude<RegistrationValue["rank"], ""> }) => {
+      if (turning) return;
+      saveAcademyRegistration({ username: value.username, rank: value.rank });
+      setRegistered(true);
+      // Writes profiles.display_name / profiles.league_rank if and only if a
+      // session exists and those fields are not already the account's own. The
+      // catch is a floor under a function that already catches everything: a
+      // rejection escaping here would surface as an unhandled error on the
+      // first screen a new visitor ever sees.
+      void adoptAcademyIdentity().catch(() => undefined);
+      turnPage();
+    },
+    [turning, turnPage],
+  );
+
+  /**
+   * "Already have an account?" — the register's escape hatch.
+   *
+   * Hands off to the EXISTING auth screen rather than growing a second login:
+   * /auth already owns sign-in, the confirmation resend, the forgotten-password
+   * path and the guest-upgrade panel. `ACADEMY_SIGN_IN_ROUTE` carries
+   * `returnTo=/lol`, which /auth validates through safeReturnPath() and then
+   * navigates to on success — so a returning account holder lands in the hub
+   * and is never dropped back into chapters three to five of an introduction
+   * they do not need.
+   *
+   * The introduction is marked handled on the way out, for the same reason: the
+   * strongest possible signal that someone is not a new user is that they said
+   * so. Not `replace`, unlike the finale's exits — those are decisions, this is
+   * a detour, and Back should return to the book rather than past it.
+   */
+  const startSignIn = useCallback(() => {
+    markAcademyWelcomeHandled("signed-in");
+    navigate(ACADEMY_SIGN_IN_ROUTE);
+  }, [navigate]);
+
+  /** What the facing page's register card is showing right now. */
+  const registerMirror = useMemo<RegisterMirror>(
+    () => ({
+      username: registration.username.replace(/\s+/g, " ").trim(),
+      rankLabel: leagueRankLabel(registration.rank),
+    }),
+    [registration.username, registration.rank],
+  );
 
   // The pen's sound, synchronised to the writing itself: each slot arriving on
   // its own beat scratches for as long as its ink visibly takes, and nothing
@@ -204,7 +346,17 @@ export default function AcademyWelcomePage() {
   // reading, not someone hurrying.
   const onSceneClick = useCallback(
     (e: React.MouseEvent) => {
-      if ((e.target as HTMLElement).closest("button, a, [role='button']")) return;
+      // A control, a label, a rule of the register — anything the visitor might
+      // be aiming AT means itself, not "I'm ready". `[data-tome-interactive]`
+      // covers the register's whitespace as well as its controls, so a miss
+      // inside the form does not turn the page out from under it.
+      if (
+        (e.target as HTMLElement).closest(
+          "button, a, [role='button'], input, select, textarea, label, [data-tome-interactive]",
+        )
+      ) {
+        return;
+      }
       if (typeof window !== "undefined" && window.getSelection?.()?.toString()) return;
       handleAdvance();
     },
@@ -243,6 +395,22 @@ export default function AcademyWelcomePage() {
     if (exitsVisible) exitsRef.current?.focus?.({ preventScroll: true });
   }, [exitsVisible]);
 
+  /**
+   * The register's form is on the page, and IT is the forward control.
+   *
+   * Keyed off `released` for the same reason the exits are: the form is the
+   * register's last slot, so it appears the moment that slot opens rather than
+   * a beat later, and leaving a "Next" on screen underneath a live form would
+   * offer a way past it that does not work.
+   *
+   * Focus is deliberately NOT moved here, unlike at the finale. The first
+   * control on this page is a text field, and stealing focus into it would open
+   * the keyboard on every phone the moment the page turned — over a landscape
+   * layout that has ~360px of height to begin with. The finale moves focus
+   * because its control unmounts underneath the visitor; nothing unmounts here.
+   */
+  const formVisible = isRegistration && released;
+
   const isSpread = variant === "spread";
 
   // The live illustration channel. During a spread's page turn the LEFT page
@@ -253,11 +421,13 @@ export default function AcademyWelcomePage() {
   const art =
     turning && isSpread ? (
       <RevealSlot revealed className="tome-ghost flex h-full w-full items-center justify-center">
-        <ChapterPlate art={turning.chapter.art} />
+        {/* The same mirror the live card had a moment ago — the register must
+            ride the turn showing what it was showing, not blank. */}
+        <ChapterPlate art={turning.chapter.art} register={registerMirror} />
       </RevealSlot>
     ) : (
       <RevealSlot revealed={artRevealed} className="flex h-full w-full items-center justify-center">
-        <ChapterPlate art={chapter.art} />
+        <ChapterPlate art={chapter.art} register={registerMirror} />
       </RevealSlot>
     );
 
@@ -266,8 +436,15 @@ export default function AcademyWelcomePage() {
       chapter={chapter}
       step={step}
       headingId={`tome-chapter-${chapter.id}`}
-      exits={
-        chapter.finale ? (
+      onSignIn={startSignIn}
+      terminal={
+        chapter.registration ? (
+          <RegistrationForm
+            value={registration}
+            onChange={setRegistration}
+            onSubmit={handleRegistered}
+          />
+        ) : chapter.finale ? (
           <div className="tome-exits">
             <ExitButton
               buttonRef={exitsRef}
@@ -287,8 +464,11 @@ export default function AcademyWelcomePage() {
               label="Start the tutorial"
               detail="A guided run through a Ranked duel."
             />
+            {/* "No account needed either way" was true when the introduction
+                asked for nothing. The visitor now arrives here with a name, so
+                the footnote says what is actually reassuring about that. */}
             <p className="tome-footnote">
-              The tutorial takes about five minutes. No account needed either way.
+              The tutorial takes about five minutes. Both paths keep the name you chose.
             </p>
           </div>
         ) : null
@@ -305,6 +485,8 @@ export default function AcademyWelcomePage() {
       data-complete={complete ? "true" : "false"}
       data-art={artRevealed ? "true" : "false"}
       data-turning={turning ? "true" : "false"}
+      data-gate={formVisible ? "registration" : "none"}
+      data-registered={registered ? "true" : "false"}
       data-instant={instant ? "true" : "false"}
       data-ready={sceneReady ? "true" : "false"}
       className="academy-welcome relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#04070f]"
@@ -415,7 +597,7 @@ export default function AcademyWelcomePage() {
         {/* The advance control. Present until the finale is fully open, at
             which point the two exits ARE the controls and a third one here
             would only muddy the decision. */}
-        {!exitsVisible && (
+        {!exitsVisible && !formVisible && (
           <button
             type="button"
             onClick={handleAdvance}
@@ -461,8 +643,17 @@ export default function AcademyWelcomePage() {
                 who already knows Mogzy should not have to sit through an
                 introduction, and should not have to interpret a bare "Skip".
                 It performs exactly what Start Exploring performs. It disappears
-                at the finale, where the two paths ARE the exit. */}
-            {!exitsVisible && (
+                at the finale, where the two paths ARE the exit.
+
+                AND IT DOES NOT EXIST BEFORE THE REGISTER IS ANSWERED (HI1-C5B).
+                An exit offered beside a required question is an invitation to
+                answer it with a shrug — and the two answers behind it are the
+                only reason the introduction asks for anything at all. Gated on
+                a registration EXISTING rather than on the chapter index, so a
+                returning visitor replaying the introduction keeps their exit on
+                page one: they have already given what it is being withheld
+                for. */}
+            {!exitsVisible && registered && (
               <button
                 type="button"
                 onClick={startExploring}
@@ -485,39 +676,68 @@ export default function AcademyWelcomePage() {
 
 /**
  * A chapter's right-hand page: eyebrow, heading, the body copy sentence by
- * sentence, marginalia, and (on the finale) the exits.
+ * sentence, its annotation, and — on the two pages that have one — its terminal
+ * control.
  *
  * Rendered twice per page turn: live on the incoming spread, and as a GHOST on
  * the front face of the turning sheet — the outgoing words must visibly ride
  * the paper as it lifts. The ghost is presentation only: no ids (the live
- * heading keeps its), no live region, no controls (the finale never turns), and
- * a `tome-ghost` wrapper class the CSS uses to hold every ink animation at its
- * finished frame. Slot numbering must match slotCount() in useRevealSequence:
- * the heading is slot 0, each SENTENCE (see phrases.ts) takes the next slot,
- * then marginalia, then the finale's exits.
+ * heading keeps its), no live region, no controls, and a `tome-ghost` wrapper
+ * class the CSS uses to hold every ink animation at its finished frame.
+ *
+ * SLOT NUMBERING MUST MATCH slotCount() in useRevealSequence. The heading is
+ * slot 0; each SENTENCE (see phrases.ts) takes the next slot; then ONE
+ * annotation slot — marginalia, or the last spread's reference docket, never
+ * both; then ONE terminal slot, which is the finale's exits or the register's
+ * form. The two kinds of terminal are one slot on purpose: they are the same
+ * thing to the sequence, a control that belongs to the page rather than to the
+ * tome, arriving last.
+ *
+ * NO CONTROL IS EVER RENDERED ON A GHOST. A focusable control sitting
+ * invisibly in the tab order is a trap, and the terminal slot is the only one
+ * that contains controls. The finale's sheet never turns at all; the register's
+ * does, immediately after its form was submitted, and the form's absence from
+ * that half-second of turning paper is invisible and correct.
  */
 function ChapterWriting({
   chapter,
   step,
   ghost = false,
   headingId,
-  exits = null,
+  terminal = null,
+  onSignIn,
 }: {
   chapter: AcademyChapter;
   step: number;
   ghost?: boolean;
   headingId?: string;
-  exits?: React.ReactNode;
+  /** The finale's exits, or the register's form. Never rendered on a ghost. */
+  terminal?: React.ReactNode;
+  /**
+   * The register's quiet way out for a returning visitor. A handler rather than
+   * a node, because the markup and the slot arithmetic that decides when it is
+   * live belong together — see the render below.
+   */
+  onSignIn?: () => void;
 }) {
   const lines = chapter.lines.map((line) => sentencesOf(line));
   const sentenceTotal = lines.reduce((n, ss) => n + ss.length, 0);
-  const marginaliaSlot = 1 + sentenceTotal;
-  const exitsSlot = marginaliaSlot + (chapter.marginalia?.length ? 1 : 0);
+  const annotation = chapter.docket?.length || chapter.marginalia?.length;
+  const annotationSlot = 1 + sentenceTotal;
+  const terminalSlot = annotationSlot + (annotation ? 1 : 0);
+  const signInSlot = terminalSlot + (chapter.registration ? 1 : 0);
 
   let sentenceIndex = 0;
   return (
     <div
       className={["tome-writing", ghost ? "tome-ghost" : ""].join(" ")}
+      /* The one page that carries a chapter's writing AND the two exits. It is
+         marked by what makes it dense rather than by its id, so the CSS that
+         tightens it stays true if the last spread is ever rewritten — and so
+         that a finale of no copy, which is what this used to be, would take
+         none of it. Set on the writing rather than on <main> so a ghosted
+         sheet is measured as the chapter it is showing. */
+      data-crowded={chapter.finale && chapter.lines.length > 0 ? "true" : "false"}
       // The chapter as a whole is announced, so a screen reader hears a
       // complete page rather than a trickle of fragments. The visual reveal is
       // decoration over text that is already in the document.
@@ -550,8 +770,12 @@ function ChapterWriting({
         );
       })}
 
-      {chapter.marginalia?.length ? (
-        <RevealSlot revealed={step > marginaliaSlot} className="w-full">
+      {chapter.docket?.length ? (
+        <RevealSlot revealed={step > annotationSlot} className="w-full">
+          <ReferenceDocket entries={chapter.docket} />
+        </RevealSlot>
+      ) : chapter.marginalia?.length ? (
+        <RevealSlot revealed={step > annotationSlot} className="w-full">
           <ul className="tome-marginalia">
             {chapter.marginalia.map((m) => (
               <li key={m}>{m}</li>
@@ -560,12 +784,74 @@ function ChapterWriting({
         </RevealSlot>
       ) : null}
 
-      {/* The two real exits. Conditionally mounted, unlike everything above:
-          a focusable control sitting invisibly in the tab order is a trap, and
-          this is the one slot that contains controls. Never on a ghost — the
-          finale is the last page and its sheet never turns. */}
-      {!ghost && chapter.finale && step > exitsSlot && exits}
+      {/* Conditionally mounted, unlike everything above — see the note on
+          ghosts and the tab order at the top of this component. */}
+      {!ghost && step > terminalSlot && terminal}
+
+      {/* The last thing on the last slot of the register, and the reason it is
+          a slot at all: a new visitor has read the register, filled it in and
+          seen its button before this line exists to be read. A returning
+          visitor scanning for it finds it exactly where an escape hatch belongs
+          — at the bottom, after the page's own business.
+
+          MOUNTED FROM THE START, REVEALED LAST. Unlike the terminal slot above
+          it, this one holds its space in the layout the whole time: the
+          register is a form someone is typing into, and a line appearing under
+          it would shove the field they are looking at. So the row is always in
+          flow and only its INK waits — which is exactly the contract every
+          other slot on the page already keeps.
+
+          The button is `disabled` until its slot opens, which is what stops a
+          transparent control from being a tab trap or a stray click target; the
+          conditional mount the exits use would not reserve the space, and
+          `aria-hidden` alone would not stop a keyboard reaching it. */}
+      {!ghost && chapter.registration && onSignIn && (
+        <RevealSlot revealed={step > signInSlot} className="w-full">
+          <p className="tome-signin" aria-hidden={step > signInSlot ? undefined : "true"}>
+            <span className="tome-signin-lead">Already have an account?</span>
+            <button
+              type="button"
+              onClick={onSignIn}
+              disabled={step <= signInSlot}
+              data-testid="academy-welcome-signin"
+              className="tome-signin-action"
+            >
+              Sign In
+            </button>
+          </p>
+        </RevealSlot>
+      )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The last spread's right page — the reference side, as a ruled docket.
+ *
+ * The left page of that spread is a triangular composition of live, statistical
+ * things (see ChapterPlate). This is its counterweight, and it is deliberately
+ * the OPPOSITE kind of object: no diagram, no chart, no picture — three ruled
+ * entries with leader rules between a name and what is in it, which is what a
+ * reference shelf looks like when it is written down rather than drawn.
+ *
+ * A list, and not a set of links. The introduction promises destinations; it
+ * does not navigate to them, and three live links arriving directly above the
+ * final choice would compete with that choice for the same press. It is also
+ * what keeps this page from feeling overcrowded — nothing here is a control.
+ */
+function ReferenceDocket({ entries }: { entries: DocketEntry[] }) {
+  return (
+    <ul className="tome-docket" data-testid="academy-welcome-docket">
+      {entries.map((entry) => (
+        <li key={entry.label} className="tome-docket-row">
+          <span className="tome-docket-label">{entry.label}</span>
+          <span className="tome-docket-rule" aria-hidden="true" />
+          <span className="tome-docket-note">{entry.note}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
