@@ -44,7 +44,7 @@ export const ACADEMY_WELCOME_ROUTE = "/welcome";
  * questions later (did people want guidance, or did they want to browse?), and
  * because collapsing them to a bare boolean would throw that away irreversibly.
  *
- * There is deliberately no "skipped" outcome: leaving early via Start Exploring
+ * There is deliberately no "skipped" outcome: leaving early via Enter the Academy
  * IS the skip, and inventing a state would imply a distinction the UI does not
  * offer.
  *

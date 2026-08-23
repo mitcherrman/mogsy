@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, ChevronLeft, Compass, GraduationCap } from "lucide-react";
 
@@ -18,19 +19,16 @@ import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 
 import AcademyTome from "./AcademyTome";
 import ChapterPlate, { type RegisterMirror } from "./ChapterPlate";
-import InkText, { InkPhrase, RevealSlot } from "./InkText";
+import { FinaleDiscoveryPage, FinaleLibraryPage } from "./FinaleSpread";
+import { InkBlock, RevealSlot } from "./InkText";
 import RegistrationForm, { type RegistrationValue } from "./RegistrationForm";
-import { ACADEMY_CHAPTERS, type AcademyChapter, type DocketEntry } from "./academyChapters";
-import {
-  EYEBROW_WORD_PACE,
-  HEADING_OFFSET,
-  HEADING_WORD_PACE,
-  sentencesOf,
-} from "./phrases";
+import { ACADEMY_CHAPTERS, type AcademyChapter } from "./academyChapters";
+import { chapterBlocks } from "./cadence";
+import { SCENE_PADDING, TOME_CHROME } from "./tomeChrome";
 import { CRITICAL_SCENE_IMAGES, TOME_DISPLAY_FONT } from "./sceneAssets";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 import { useSceneReady } from "./useSceneReady";
-import { slotCount, slotWriteMs, useRevealSequence } from "./useRevealSequence";
+import { slotCount, slotRevealMs, useRevealSequence } from "./useRevealSequence";
 import { useTomeAudio } from "./tomeAudio";
 
 /**
@@ -45,25 +43,51 @@ import { useTomeAudio } from "./tomeAudio";
  * WHAT HI1-C CHANGED IS THE PRESENTATION, COMPLETELY. HI1 shipped three stages
  * with a Continue button under each — correct, and unmistakably a wizard. This
  * is one continuous scene instead: a tome opens in front of the visitor and
- * writes itself, sentence by sentence, illustration by illustration. HI1-C2 then
- * made each spread a PERFORMANCE with a curtain call: the writing and the
- * painting run as two concurrent, deliberately desynchronised channels; the
- * finished page then waits — indefinitely — and pressing Next physically turns
- * the sheet, old words still on it, with a page-turn sound as it lifts.
+ * composes itself, a block at a time. Each spread is a PERFORMANCE with a
+ * curtain call: the copy and the artwork run as two concurrent, deliberately
+ * desynchronised channels; the finished page then waits — indefinitely — and
+ * pressing Next physically turns the sheet, old words still on it, with a
+ * page-turn sound as it lifts.
  *
- * ONE CONTROL WITH TWO MEANINGS. Every input — the button, a click anywhere on
- * the scene, Space, the arrow keys — means the same thing: "I'm ready". While a
- * page is still being written that FINISHES it; once it is finished it TURNS
- * it. An impatient tap can never cost the visitor words they have not read,
- * which is the whole reason the control is dual-purpose rather than a Next.
- * While the sheet itself is mid-turn, every input is ignored: a burst of
- * clicks turns exactly one page, never two, and can never stack sheets or
- * flip sounds.
+ * AND IT IS FAST NOW. The reveal used to animate every WORD of every line on
+ * its own delay, at a pace slow enough to read as handwriting; a two-line
+ * chapter took the better part of ten seconds before it would offer Next. The
+ * unit is now a BLOCK — a whole short paragraph, arriving in one piece, roughly
+ * half a second after the one before it — and the copy itself was cut to two or
+ * three short blocks a chapter. The longest spread in the book is under three
+ * seconds end to end. Every number is in cadence.ts and nowhere else.
+ *
+ * THE PAPER HAS CHAMPIONS IN IT. Ahri stands behind Mogzy on the opening left
+ * page and Jinx behind the words facing him. One per page, never two, faint
+ * enough to pass under running text, clipped by the page box — see AcademyTome's
+ * PageChampion. They ride the illustration channel as a single layer rather than
+ * arriving one at a time. The last spread prints none, on either page: it is
+ * already carrying four drawn symbols, an animated chart and a picture.
+ *
+ * ONE CONTROL, ONE MEANING: NEXT (HI1 polish). Every input — the button, a
+ * click anywhere on the scene, Space, the arrow keys — means "next page", and
+ * it always turns one. If the page is still writing itself, the press lands the
+ * rest of it AND turns, in the same interaction: the words the visitor skipped
+ * are not lost, they ride the turning sheet in full (the leaf's front face is
+ * the outgoing chapter at its LAST slot — see `turning` below), so a press
+ * still never costs anyone a sentence.
+ *
+ * That replaces a dual-purpose control which finished the reveal on the first
+ * press and turned on the second. It read as correct and tested as correct, and
+ * it was still wrong: a visitor who has decided to move on presses a button
+ * called Next and the book does not turn, so they press it again. One control,
+ * one outcome, one press. The two pages that own their own forward action are
+ * the exceptions and always were — the register will not be turned past
+ * unanswered, and there is nothing after the finale — and on those a press
+ * still lands the reveal, which is all there is left for it to do.
+ *
+ * While the sheet itself is mid-turn, every input is ignored: a burst of clicks
+ * turns exactly one page, never two, and can never stack sheets or flip sounds.
  *
  * NOT TRAPPED, EVER — BUT NEVER SWEPT ALONG EITHER. Each chapter writes itself
  * out on its own; the page turn is always the visitor's. Back re-reads a
  * chapter; Skip to the Academy leaves for the hub from any chapter, recording
- * the same outcome Start Exploring records. Browser Back leaves the route
+ * the same outcome Enter the Academy records. Browser Back leaves the route
  * rather than stepping through chapters — the chapters are component state,
  * not history entries, and pushing six entries per visit would make Back feel
  * broken from wherever the visitor lands next.
@@ -99,10 +123,17 @@ import { useTomeAudio } from "./tomeAudio";
  * lib/welcome/provisional-identity.ts for the first-write-wins rules that stop
  * a replay from ever overwriting an established account.
  *
- * FIVE SPREADS, NOT SIX. Adding the register cost a beat, so Pro Data and
- * Archives — two spreads for one idea — became one, and the finale's exits
- * moved onto it. The sequence now ends on a page that says something rather
- * than on a page that only asks. See academyChapters.ts.
+ * FIVE SPREADS, AND THE LAST ONE IS COMPOSED RATHER THAN TEMPLATED. Chapters
+ * one to four are the same object — plate left, words right. The finale is not:
+ * its LEFT page is the library and only the library, one sentence under the
+ * title with champion, item, rune and the Elder Dragon drawn large beneath it;
+ * its RIGHT page runs pro data, then discovery, then the doors — the copy that
+ * introduces the graph, the graph itself (restored from the chapter it was
+ * drawn for, 75d60da9), the closing line with a Teemo emote as its accent, and
+ * the two exits. The chapter's copy therefore crosses the gutter. It costs the
+ * sequence nothing — the slot COUNT is unchanged, only where each slot lands —
+ * and it is the only page allowed to break the template, because it is the only
+ * page that is not a chapter. See FinaleSpread.tsx.
  *
  * REDUCED MOTION IS A DIFFERENT EXPERIENCE, NOT A DEGRADED ONE. The clock stops
  * and every chapter opens complete and still: the same words, the same artwork,
@@ -113,8 +144,27 @@ import { useTomeAudio } from "./tomeAudio";
  * motion-sensitive reader.
  */
 
+/**
+ * THE BOOK DOES NOT MOVE (HI1 polish).
+ *
+ * The scene is a centred column — tome, forward control, rail — and the two
+ * control blocks used to be conditionally MOUNTED inside it. A centred column
+ * whose height changes re-centres, so dropping the forward control on the
+ * register and on the finale slid the tome down the screen by ~29px and back
+ * up again on the next turn. Measured, not guessed: 1440x900, y 51.03 with the
+ * control present and 80.11 without it, at identical size.
+ *
+ * Both blocks now RESERVE their height whether or not anything is inside them
+ * (`tome-controls` / `tome-rail`, sized from tomeChrome.ts), so the column is a
+ * constant of the viewport. Nothing is transformed and nothing is overlaid —
+ * the rows are simply honest about the room they were always going to take.
+ * The tome's own size never depended on them: it is sized against `budget`,
+ * which is a constant per viewport shape, and it is the same 955.64 x 690.97 at
+ * 1440x900 as it was before this pass.
+ */
+
 /** How long the physical page turn holds the stage. Matches the CSS. */
-const TURN_MS = 820;
+const TURN_MS = 980;
 
 export default function AcademyWelcomePage() {
   const navigate = useNavigate();
@@ -187,8 +237,10 @@ export default function AcademyWelcomePage() {
   const variant = isPhonePortrait ? "page" : isLandscapePhone ? "panel" : "spread";
   // Vertical room the controls need, so the tome sizes itself around them
   // rather than pushing them under the fold — the exact failure of the popup
-  // this replaces.
-  const chrome = isLandscapePhone ? 132 : 208;
+  // this replaces. RESERVED rather than measured, which is what keeps the tome
+  // still: see tomeChrome.ts and the note above.
+  const chromeKey = isLandscapePhone ? "compact" : "regular";
+  const chrome = TOME_CHROME[chromeKey];
 
   const finish = useCallback(
     (outcome: "explored" | "tutorial") => {
@@ -204,13 +256,6 @@ export default function AcademyWelcomePage() {
   const startExploring = useCallback(() => finish("explored"), [finish]);
   const startTutorial = useCallback(() => finish("tutorial"), [finish]);
 
-  /**
-   * The one advance action, wrapped around the sequence's own so the page can
-   * stage the physical turn and the sounds. Mid-reveal: finish the page and
-   * silence the pen at once. Complete: lift the sheet, sound the paper, hold
-   * the incoming chapter's clock until the sheet lands. Mid-turn: nothing —
-   * this single early return is the whole burst-click story.
-   */
   /**
    * Physically turn the page. The whole of the staging — the sound as the sheet
    * BEGINS lifting, the outgoing chapter held on the leaf, the clock paused
@@ -231,17 +276,36 @@ export default function AcademyWelcomePage() {
     seq.goNext();
   }, [seq, audio, prefersReducedMotion]);
 
+  /**
+   * Next. One press, one page (HI1 polish).
+   *
+   * A press on a page that is still writing itself does BOTH things at once:
+   * it lands every remaining slot and then turns. It used to do only the
+   * first, and require a second press to turn — which is a button labelled
+   * Next that does not go next, and the reason this pass exists.
+   *
+   * Nothing is lost by turning early. `seq.advance()` runs first, so the
+   * chapter is complete before `turnPage` captures it, and the leaf's front
+   * face renders that chapter at its LAST slot: the skipped words are on the
+   * sheet, in full, as it lifts. Both state updates are in one React event, so
+   * the intermediate `step = total` never paints — the visitor sees a finished
+   * page ride away, which is exactly what happened.
+   *
+   * TWO PAGES STILL DO NOT TURN, and both were exceptions before this change.
+   * The finale is the last page. The register is waiting for an answer, and
+   * turning past it would be the sequence deciding, on the visitor's behalf,
+   * that they did not want a name — its own submit is the forward control, and
+   * it is the one that calls `turnPage`. On both, a press still lands the
+   * reveal, which is all there is left for a press to do.
+   *
+   * Mid-turn: nothing. This single early return is the whole burst-click story.
+   */
   const handleAdvance = useCallback(() => {
     if (turning) return;
     if (!seq.complete) {
       audio.stopScribble();
       seq.advance();
-      return;
     }
-    // The two pages the tome does not turn by itself. The finale is the last
-    // page and there is nothing after it; the register is waiting for an
-    // answer, and turning past it on a stray tap would be the sequence
-    // deciding, on the visitor's behalf, that they did not want a name.
     if (seq.isFinale || seq.isRegistration) return;
     turnPage();
   }, [turning, seq, audio, turnPage]);
@@ -334,7 +398,7 @@ export default function AcademyWelcomePage() {
     if (prefersReducedMotion || instant) return;
     if (chapterIndex !== prevChapter) return;
     if (step === prevStep + 1 && step > 0) {
-      const ms = slotWriteMs(chapter, step - 1);
+      const ms = slotRevealMs(chapter, step - 1);
       if (ms > 0) audio.scribble(ms);
     }
   }, [step, chapterIndex, instant, chapter, audio, prefersReducedMotion]);
@@ -418,6 +482,13 @@ export default function AcademyWelcomePage() {
   // sheet that is turning, and wiping it early is exactly the "content swap"
   // this pass removes. The landing sheet then covers it, and the new chapter's
   // art washes in on its own beat after the turn.
+  //
+  // AND THE LAST SPREAD'S LEFT PAGE IS NOT AN ILLUSTRATION AT ALL. It is the
+  // title, the one sentence that names what the library holds, and the four
+  // icons that name it again — a composed page rather than a plate in a box
+  // (see FinaleSpread). It still arrives on this slot because this slot IS the
+  // left page; it simply brings its own reveal slots instead of riding one
+  // wash. The finale's actual drawing, the graph, is on the facing page.
   const art =
     turning && isSpread ? (
       <RevealSlot revealed className="tome-ghost flex h-full w-full items-center justify-center">
@@ -425,13 +496,59 @@ export default function AcademyWelcomePage() {
             ride the turn showing what it was showing, not blank. */}
         <ChapterPlate art={turning.chapter.art} register={registerMirror} />
       </RevealSlot>
+    ) : isFinale ? (
+      <FinaleLibraryPage
+        chapter={chapter}
+        step={step}
+        headingId={`tome-chapter-${chapter.id}`}
+      />
     ) : (
       <RevealSlot revealed={artRevealed} className="flex h-full w-full items-center justify-center">
         <ChapterPlate art={chapter.art} register={registerMirror} />
       </RevealSlot>
     );
 
-  const body = (
+  // The page's champion drawings, on the same channel and for the same reason
+  // as the illustration above: a turning spread keeps showing the OUTGOING
+  // chapter's paper until the sheet lands, so the drawing does not fade out
+  // from under a page that is still on screen.
+  const backdropChapter = turning?.chapter ?? chapter;
+
+  /* Two labels and nothing else. The exits used to carry a line of explanation
+     each and a footnote under them; on a page whose whole job is to CLOSE, that
+     reads as a dashboard rather than as an ending. */
+  const exits = (
+    <div className="tome-exits">
+      <ExitButton
+        buttonRef={exitsRef}
+        onClick={startExploring}
+        testId="academy-welcome-explore"
+        Icon={Compass}
+        label="Enter the Academy"
+        primary
+      />
+      {/* Genuinely a peer, not a trap door: both routes into the product are
+          legitimate, and the tutorial must never read as the price of entry. */}
+      <ExitButton
+        onClick={startTutorial}
+        testId="academy-welcome-tutorial"
+        Icon={GraduationCap}
+        label="Start the tutorial"
+      />
+    </div>
+  );
+
+  // The right page. Four chapters out of five are the same templated writing;
+  // the finale composes its own (see FinaleSpread).
+  const body = isFinale ? (
+    <FinaleDiscoveryPage
+      chapter={chapter}
+      step={step}
+      terminalSlot={1 + chapterBlocks(chapter.lines).length}
+      artRevealed={artRevealed}
+      terminal={exits}
+    />
+  ) : (
     <ChapterWriting
       chapter={chapter}
       step={step}
@@ -444,33 +561,6 @@ export default function AcademyWelcomePage() {
             onChange={setRegistration}
             onSubmit={handleRegistered}
           />
-        ) : chapter.finale ? (
-          <div className="tome-exits">
-            <ExitButton
-              buttonRef={exitsRef}
-              onClick={startExploring}
-              testId="academy-welcome-explore"
-              Icon={Compass}
-              label="Start Exploring"
-              detail="Head into the Academy and look around."
-              primary
-            />
-            {/* Genuinely a peer, not a trap door: both routes into the product are
-                legitimate, and the tutorial must never read as the price of entry. */}
-            <ExitButton
-              onClick={startTutorial}
-              testId="academy-welcome-tutorial"
-              Icon={GraduationCap}
-              label="Start the tutorial"
-              detail="A guided run through a Ranked duel."
-            />
-            {/* "No account needed either way" was true when the introduction
-                asked for nothing. The visitor now arrives here with a name, so
-                the footnote says what is actually reassuring about that. */}
-            <p className="tome-footnote">
-              The tutorial takes about five minutes. Both paths keep the name you chose.
-            </p>
-          </div>
         ) : null
       }
     />
@@ -557,10 +647,12 @@ export default function AcademyWelcomePage() {
           controls. */}
       <div
         onClick={onSceneClick}
-        className={[
-          "relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6",
-          isLandscapePhone ? "py-3" : "py-5 sm:py-7",
-        ].join(" ")}
+        data-testid="academy-welcome-scene"
+        className="tome-scene relative z-10 flex flex-1 flex-col items-center justify-center px-4 sm:px-6"
+        /* The scene's own padding is part of the chrome budget the tome sizes
+           itself against, so it is stated here from the same table rather than
+           as a Tailwind class the budget cannot see. */
+        style={{ paddingTop: SCENE_PADDING[chromeKey] / 2, paddingBottom: SCENE_PADDING[chromeKey] / 2 }}
       >
         <div className="tome-opening w-full">
           {/* NOT keyed by chapter: the tome is the stage and must persist
@@ -571,6 +663,8 @@ export default function AcademyWelcomePage() {
           <AcademyTome
             art={art}
             body={body}
+            champions={backdropChapter.champions}
+            championsVisible={artRevealed || turning !== null}
             turning={
               turning
                 ? {
@@ -590,37 +684,60 @@ export default function AcademyWelcomePage() {
                 : null
             }
             variant={variant}
-            chrome={chrome}
+            chrome={chrome.budget}
           />
         </div>
 
-        {/* The advance control. Present until the finale is fully open, at
-            which point the two exits ARE the controls and a third one here
-            would only muddy the decision. */}
-        {!exitsVisible && !formVisible && (
-          <button
-            type="button"
-            onClick={handleAdvance}
-            data-testid="academy-welcome-advance"
-            data-mode={complete ? "next" : "reveal"}
-            className={["tome-advance group", isLandscapePhone ? "mt-3" : "mt-5 sm:mt-6"].join(" ")}
-          >
-            <span>{complete ? "Next" : "Skip reveal"}</span>
-            <ArrowRight
-              className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
-          </button>
-        )}
+        {/* ---------------------------------------------------------------- */}
+        {/* The forward control                                                */}
+        {/* ---------------------------------------------------------------- */}
+        {/* THE ROW IS ALWAYS HERE; the button inside it is not. That is the
+            whole of the tome-stability fix on this side: the row reserves its
+            height from tomeChrome.ts whether or not it has a control in it, so
+            dropping the button on the register and on the finale no longer
+            re-centres the column and slides the book down the screen. It is
+            `aria-hidden` when empty rather than merely childless, so nothing
+            announces an empty group. */}
+        <div
+          className="tome-controls"
+          data-testid="academy-welcome-controls"
+          data-occupied={!exitsVisible && !formVisible ? "true" : "false"}
+          style={{ ["--tome-controls-h" as string]: `${chrome.controls}px` } as CSSProperties}
+        >
+          {/* Present until the page's own forward action takes over: the
+              register's submit, or the finale's two exits. A third control
+              beside either would only muddy the decision. */}
+          {!exitsVisible && !formVisible && (
+            <button
+              type="button"
+              onClick={handleAdvance}
+              data-testid="academy-welcome-advance"
+              data-mode="next"
+              /* What the press will do to the REVEAL, for tests and for anyone
+                 debugging the cadence. It deliberately does not change the
+                 label: one control, one word, one outcome. */
+              data-reveal={complete ? "complete" : "partial"}
+              className="tome-advance group"
+            >
+              <span>Next</span>
+              <ArrowRight
+                className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </button>
+          )}
+        </div>
 
         {/* -------------------------------------------------------------- */}
         {/* The rail — back, the ribbon, and the low-key exit               */}
         {/* -------------------------------------------------------------- */}
+        {/* Reserved exactly like the row above it, and for the same reason:
+            Back appears on chapter two and the exit appears once the register
+            is answered, and neither may move the book. */}
         <div
-          className={[
-            "flex w-full max-w-3xl shrink-0 items-center justify-between gap-4",
-            isLandscapePhone ? "mt-2" : "mt-4",
-          ].join(" ")}
+          className="tome-rail"
+          data-testid="academy-welcome-rail"
+          style={{ ["--tome-rail-h" as string]: `${chrome.rail}px` } as CSSProperties}
         >
           <div className="flex-1">
             {seq.canGoBack && (
@@ -642,7 +759,7 @@ export default function AcademyWelcomePage() {
             {/* Named by its destination, not by the act of leaving — someone
                 who already knows Mogzy should not have to sit through an
                 introduction, and should not have to interpret a bare "Skip".
-                It performs exactly what Start Exploring performs. It disappears
+                It performs exactly what Enter the Academy performs. It disappears
                 at the finale, where the two paths ARE the exit.
 
                 AND IT DOES NOT EXIST BEFORE THE REGISTER IS ANSWERED (HI1-C5B).
@@ -675,9 +792,12 @@ export default function AcademyWelcomePage() {
 /* -------------------------------------------------------------------------- */
 
 /**
- * A chapter's right-hand page: eyebrow, heading, the body copy sentence by
- * sentence, its annotation, and — on the two pages that have one — its terminal
- * control.
+ * A chapter's right-hand page: eyebrow, heading, the body copy block by block,
+ * and — on the register — its terminal control.
+ *
+ * FOUR CHAPTERS OUT OF FIVE. The finale composes its own two pages instead (see
+ * FinaleSpread), which is why the only terminal this renders now is the
+ * register's form.
  *
  * Rendered twice per page turn: live on the incoming spread, and as a GHOST on
  * the front face of the turning sheet — the outgoing words must visibly ride
@@ -685,13 +805,12 @@ export default function AcademyWelcomePage() {
  * heading keeps its), no live region, no controls, and a `tome-ghost` wrapper
  * class the CSS uses to hold every ink animation at its finished frame.
  *
- * SLOT NUMBERING MUST MATCH slotCount() in useRevealSequence. The heading is
- * slot 0; each SENTENCE (see phrases.ts) takes the next slot; then ONE
- * annotation slot — marginalia, or the last spread's reference docket, never
- * both; then ONE terminal slot, which is the finale's exits or the register's
- * form. The two kinds of terminal are one slot on purpose: they are the same
- * thing to the sequence, a control that belongs to the page rather than to the
- * tome, arriving last.
+ * SLOT NUMBERING MUST MATCH slotCount() in useRevealSequence. The chapter
+ * label and heading are slot 0, together; each BLOCK of copy (see cadence.ts —
+ * one authored line, arriving whole) takes the next slot; then ONE terminal
+ * slot, which is the finale's exits or the register's form. The two kinds of
+ * terminal are one slot on purpose: they are the same thing to the sequence, a
+ * control that belongs to the page rather than to the tome, arriving last.
  *
  * NO CONTROL IS EVER RENDERED ON A GHOST. A focusable control sitting
  * invisibly in the tab order is a trap, and the terminal slot is the only one
@@ -720,69 +839,32 @@ function ChapterWriting({
    */
   onSignIn?: () => void;
 }) {
-  const lines = chapter.lines.map((line) => sentencesOf(line));
-  const sentenceTotal = lines.reduce((n, ss) => n + ss.length, 0);
-  const annotation = chapter.docket?.length || chapter.marginalia?.length;
-  const annotationSlot = 1 + sentenceTotal;
-  const terminalSlot = annotationSlot + (annotation ? 1 : 0);
+  const blocks = chapterBlocks(chapter.lines);
+  const terminalSlot = 1 + blocks.length;
   const signInSlot = terminalSlot + (chapter.registration ? 1 : 0);
 
-  let sentenceIndex = 0;
   return (
     <div
       className={["tome-writing", ghost ? "tome-ghost" : ""].join(" ")}
-      /* The one page that carries a chapter's writing AND the two exits. It is
-         marked by what makes it dense rather than by its id, so the CSS that
-         tightens it stays true if the last spread is ever rewritten — and so
-         that a finale of no copy, which is what this used to be, would take
-         none of it. Set on the writing rather than on <main> so a ghosted
-         sheet is measured as the chapter it is showing. */
-      data-crowded={chapter.finale && chapter.lines.length > 0 ? "true" : "false"}
       // The chapter as a whole is announced, so a screen reader hears a
       // complete page rather than a trickle of fragments. The visual reveal is
       // decoration over text that is already in the document.
       aria-live={ghost ? undefined : "polite"}
       aria-atomic={ghost ? undefined : "true"}
     >
+      {/* The chapter label and its heading are ONE beat: they arrive together,
+          which is what makes the top of the page read as a title rather than as
+          two things taking turns. */}
       <RevealSlot revealed={step > 0} className="w-full">
-        <p className="tome-eyebrow">
-          <InkText as="span" text={chapter.eyebrow} pace={EYEBROW_WORD_PACE} />
-        </p>
+        <p className="tome-eyebrow">{chapter.eyebrow}</p>
         <h1 id={ghost ? undefined : headingId} className="tome-heading">
-          <InkText as="span" text={chapter.heading} pace={HEADING_WORD_PACE} offset={HEADING_OFFSET} />
+          {chapter.heading}
         </h1>
       </RevealSlot>
 
-      {lines.map((sentences, lineIdx) => {
-        const start = sentenceIndex;
-        sentenceIndex += sentences.length;
-        return (
-          <p key={chapter.lines[lineIdx]} className="tome-body">
-            {sentences.map((sentence, j) => (
-              <InkPhrase
-                key={`${j}-${sentence.text}`}
-                text={sentence.text}
-                revealed={step > 1 + start + j}
-                trailingSpace={j < sentences.length - 1}
-              />
-            ))}
-          </p>
-        );
-      })}
-
-      {chapter.docket?.length ? (
-        <RevealSlot revealed={step > annotationSlot} className="w-full">
-          <ReferenceDocket entries={chapter.docket} />
-        </RevealSlot>
-      ) : chapter.marginalia?.length ? (
-        <RevealSlot revealed={step > annotationSlot} className="w-full">
-          <ul className="tome-marginalia">
-            {chapter.marginalia.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
-        </RevealSlot>
-      ) : null}
+      {blocks.map((text, i) => (
+        <InkBlock key={text} text={text} revealed={step > 1 + i} />
+      ))}
 
       {/* Conditionally mounted, unlike everything above — see the note on
           ghosts and the tab order at the top of this component. */}
@@ -828,36 +910,6 @@ function ChapterWriting({
 /* -------------------------------------------------------------------------- */
 
 /**
- * The last spread's right page — the reference side, as a ruled docket.
- *
- * The left page of that spread is a triangular composition of live, statistical
- * things (see ChapterPlate). This is its counterweight, and it is deliberately
- * the OPPOSITE kind of object: no diagram, no chart, no picture — three ruled
- * entries with leader rules between a name and what is in it, which is what a
- * reference shelf looks like when it is written down rather than drawn.
- *
- * A list, and not a set of links. The introduction promises destinations; it
- * does not navigate to them, and three live links arriving directly above the
- * final choice would compete with that choice for the same press. It is also
- * what keeps this page from feeling overcrowded — nothing here is a control.
- */
-function ReferenceDocket({ entries }: { entries: DocketEntry[] }) {
-  return (
-    <ul className="tome-docket" data-testid="academy-welcome-docket">
-      {entries.map((entry) => (
-        <li key={entry.label} className="tome-docket-row">
-          <span className="tome-docket-label">{entry.label}</span>
-          <span className="tome-docket-rule" aria-hidden="true" />
-          <span className="tome-docket-note">{entry.note}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-
-/**
  * Chapter position, as the gilt edges of the pages already turned.
  *
  * Deliberately not carousel dots. Dots announce "this is a slideshow with N
@@ -890,7 +942,6 @@ function ExitButton({
   testId,
   Icon,
   label,
-  detail,
   primary = false,
 }: {
   buttonRef?: React.Ref<HTMLButtonElement>;
@@ -898,7 +949,6 @@ function ExitButton({
   testId: string;
   Icon: React.ElementType;
   label: string;
-  detail: string;
   primary?: boolean;
 }) {
   return (
@@ -912,7 +962,6 @@ function ExitButton({
     >
       <Icon className="tome-exit-icon" aria-hidden="true" />
       <span className="tome-exit-label">{label}</span>
-      <span className="tome-exit-detail">{detail}</span>
     </button>
   );
 }
