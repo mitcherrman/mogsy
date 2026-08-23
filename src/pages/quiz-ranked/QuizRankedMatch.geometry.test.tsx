@@ -135,7 +135,16 @@ describe("ability tray geometry", () => {
  *     of internal scroll          at 1440x900
  */
 describe("the Ranked arena declares no internal scroll region", () => {
+  // A source scan, not a render assertion, deliberately: the live-round tests
+  // and the browser probe only ever reach the ACTIVE arena, and the leftover
+  // that motivated this check was in the terminal match-over branch, which
+  // neither of them mounts.
+  // ARENA1 Step 3: the arena's JSX — including the terminal branch this check
+  // was written for — lives in `CanonicalArena` now, and the stage frame it
+  // sits in lives in `ArenaShell`, so the scan follows both.
   const files = [
+    "src/components/ranked-arena/CanonicalArena.tsx",
+    "src/components/ranked-arena/ArenaShell.tsx",
     "src/pages/quiz-ranked/QuizRankedMatch.tsx",
     "src/pages/quiz-ranked/QuizRankedPage.tsx",
     "src/components/Layout.tsx",
@@ -157,7 +166,10 @@ describe("the Ranked arena declares no internal scroll region", () => {
   });
 
   it("makes the stage a FLOOR, so oversized content grows the page", () => {
-    const src = sourceOf("src/pages/quiz-ranked/QuizRankedPage.tsx");
+    // ARENA1 Step 3: the frame is `ArenaShell` now. Same declaration, same
+    // tokens, one directory over — every mode that reaches the arena inherits
+    // it instead of only the route that used to write it.
+    const src = sourceOf("src/components/ranked-arena/ArenaShell.tsx");
     // `min-h`, never `h`: a cap is what forces content to be clipped or to
     // scroll inside the card, and that is the design being retired here.
     expect(src).toContain("lg:min-h-[var(--ranked-stage-h)]");
@@ -173,9 +185,9 @@ describe("the Ranked arena declares no internal scroll region", () => {
     // `min-h-0` is the switch that lets a flex child be SHORTER than its
     // content. On the arena grid or the question card that is a clip; the
     // whole no-scroll design depends on it not being there.
-    const src = sourceOf("src/pages/quiz-ranked/QuizRankedMatch.tsx");
+    const src = sourceOf("src/components/ranked-arena/CanonicalArena.tsx");
     expect(src).not.toContain("lg:min-h-0");
-    expect(sourceOf("src/pages/quiz-ranked/QuizRankedPage.tsx")).not.toContain("min-h-0");
+    expect(sourceOf("src/components/ranked-arena/ArenaShell.tsx")).not.toContain("min-h-0");
   });
 
   it("still keeps the shell's header offset and the viewport token", () => {
@@ -268,16 +280,22 @@ describe("the live arena's status slots", () => {
     await mountArena();
     // The row used to unmount entirely during progression, tearing its whole
     // height out of the middle of the page.
+    // ARENA1 Step 3: same gate, same rule — the flag is `surface.ownsSubmission`
+    // on the view model now, and the row it guards is in CanonicalArena.
     const source = readFileSync(
-      resolve(process.cwd(), "src/pages/quiz-ranked/QuizRankedMatch.tsx"), "utf8");
-    expect(source).toContain("{!moduleOwnsSubmission && (");
-    expect(source).not.toContain("!moduleOwnsSubmission && !isProgression");
+      resolve(process.cwd(), "src/components/ranked-arena/CanonicalArena.tsx"), "utf8");
+    expect(source).toContain("{!surface.ownsSubmission && (");
+    expect(source).not.toContain("!surface.ownsSubmission && !progression");
   });
 });
 
 describe("R1 geometry: a no-progression match reclaims the ability row", () => {
+  // The DECISION is still Ranked's (it reads the match's own
+  // `progressionEnabled`); the ROW is the arena's.
   const source = () => readFileSync(
     resolve(process.cwd(), "src/pages/quiz-ranked/QuizRankedMatch.tsx"), "utf8");
+  const arena = () => readFileSync(
+    resolve(process.cwd(), "src/components/ranked-arena/CanonicalArena.tsx"), "utf8");
 
   it("removes the tray by not mounting it — no reserved empty track", () => {
     // The tray was ALREADY conditional, so `progressionEnabled` joins the
@@ -291,13 +309,15 @@ describe("R1 geometry: a no-progression match reclaims the ability row", () => {
     // The row is gated on the module, not on progression: the status line is
     // the one thing nothing else on screen shows, and its reserved height is
     // what stops the HUD resizing between "Submitting…" and an error.
-    expect(source()).toContain("{!moduleOwnsSubmission && (");
-    expect(source()).not.toContain("!moduleOwnsSubmission && progressionEnabled && (");
+    expect(arena()).toContain("{!surface.ownsSubmission && (");
+    expect(arena()).not.toContain("!surface.ownsSubmission && progressionEnabled && (");
   });
 
   it("hides the level-2 overlay without touching the flow it overlays", () => {
     // The overlay is absolutely positioned over the question, so hiding it
     // moves nothing — the question surface keeps its box either way.
-    expect(source()).toContain('className={renderer && (question || moduleOwnsSubmission)\n                ? "absolute inset-x-0 top-0 z-20" : ""}');
+    // `hasSurface` is the same condition the old inline expression spelled out:
+    // a resolved renderer AND something for it to draw.
+    expect(arena()).toContain('className={hasSurface ? "absolute inset-x-0 top-0 z-20" : ""}');
   });
 });

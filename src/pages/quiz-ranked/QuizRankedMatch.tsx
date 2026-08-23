@@ -1,28 +1,38 @@
 /**
- * Public Ranked live-match view (F1.5). Composes the canonical arena from
- * backend v2 data via the match controller — no arena component is forked and
- * no combat value is computed here. Reveal/HP/XP/damage are all authoritative
- * pass-through.
+ * THE RANKED ADAPTER — the mode half of the arena (ARENA1 Step 3).
+ *
+ * This file used to be the arena as well as the mode. The renderer moved to
+ * `components/ranked-arena/CanonicalArena`, unchanged; what stayed is
+ * everything that is TRUE OF RANKED AND OF NOTHING ELSE:
+ *
+ *   * the live-match controller (`useRankedMatch`) — polling, skew, submission,
+ *     the reveal hold, presence, terminal states;
+ *   * the projections that turn one Ranked snapshot into neutral view models;
+ *   * the surface-lag rule that keeps the question mounted across a round
+ *     boundary;
+ *   * the accumulated record of what each round's segment WAS, which the
+ *     timeline is derived from;
+ *   * Ranked's own copy — "vs Bot", "waiting for opponent…", "Back to Quiz".
+ *
+ * The result is one `ArenaViewModel` per render. Reveal/HP/XP/damage are all
+ * authoritative pass-through; no combat value is computed here, and none is
+ * computed in the arena either.
  */
 import { useEffect, useMemo, useState } from "react";
-import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
-import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
-import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
-import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
-import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import type { ReactNode } from "react";
+import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
+import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import {
   DiscoveryReveal, discoveryRevealHasContent,
 } from "@/components/ranked-arena/DiscoveryReveal";
-import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
-import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
-import { RoundResultBeat } from "@/components/ranked-arena/RoundResultBeat";
-import { RoundTimeline } from "@/components/ranked-arena/RoundTimeline";
-import { SegmentResultBeat } from "@/components/ranked-arena/SegmentResultBeat";
-import { SegmentTranscript } from "@/components/ranked-arena/SegmentTranscript";
-import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
+import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
+import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
-import { NO_INTERACTIONS, SubmissionPhase } from "@/lib/ranked-core/viewTypes";
+import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
 import type { ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
+import type {
+  ArenaRail, ArenaTerminalView, ArenaViewModel,
+} from "@/lib/ranked-core/arenaView";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import {
   abilityTrayIsUseful, opponentPresenceLabel, projectAbilities,
@@ -57,9 +67,22 @@ function revealNames(settlement: ResolvedRoundView): Record<string, string> {
   };
 }
 
-export function QuizRankedMatch({ matchId, viewerUserId }:
-{ matchId: string; viewerUserId: string }) {
+export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
+{
+  matchId: string;
+  viewerUserId: string;
+  /**
+   * The route's own chrome, rendered in the shell's header slot.
+   *
+   * A PROP rather than something this file writes, because the row contains a
+   * router `Link` and the arena is not a routed thing — every test that mounts
+   * a match would otherwise need a Router to render a title bar it does not
+   * assert. The route supplies it; the arena renders it.
+   */
+  chrome?: ReactNode;
+}) {
   const m = useRankedMatch(matchId, viewerUserId);
+  // The mode soundtrack, for as long as there is a live match to score.
   const modeSoundtrackActive = m.publicRound !== null
     && m.phase !== "match_over"
     && m.phase !== "fatal"
@@ -76,17 +99,6 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const discoveries = useMatchDiscoveries(matchId, m.phase === "match_over");
   const [tick, setTick] = useState(0);
   const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
-  /**
-   * The Meta Reflex transcript's disclosure, owned HERE rather than by the
-   * beat that offers the control.
-   *
-   * The transcript is a per-challenge table and cannot live inside the result
-   * plate: the header strip is a `.ranked-panel`, which is `overflow: hidden`,
-   * so anything hung off the plate is clipped by its own strip. It is rendered
-   * against the SHELL instead, absolutely positioned under the header, which
-   * is why the state lives at this level.
-   */
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   /**
    * The snapshot the QUESTION SURFACE renders from — deliberately laggier than
@@ -140,15 +152,6 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     opponent: combatants
       ? projectRoundHistory(m.damageLog, combatants.opponent.playerId) : [],
   }), [m.damageLog, combatants]);
-  // A NEW block always starts with its transcript collapsed. Render-time
-  // reset, no effect tick. Keyed on the SEGMENT settlement alone: an ordinary
-  // round has no transcript, and keying on it too would close the disclosure
-  // every time a quiz round settled underneath an open one.
-  const [seenSegment, setSeenSegment] = useState(m.lastSegmentSettlement);
-  if (seenSegment !== m.lastSegmentSettlement) {
-    setSeenSegment(m.lastSegmentSettlement);
-    setDetailsOpen(false);
-  }
   const revealOutcomes = useMemo(
     () => projectRevealOutcomes(m.lastResolved, m.revealHold),
     [m.lastResolved, m.revealHold]);
@@ -266,12 +269,19 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   }), [m.submitSegmentChallenge, m.submitting, m.actionError]);
   void tick;
 
+  // ── Ranked-only failure states ─────────────────────────────────────────
+  //
+  // Neither is an arena. They are what the ROUTE shows when there is no match
+  // to render, and both describe a transport problem in Ranked's own words, so
+  // they stay here — rendered in the same canonical shell the arena uses.
   if (m.phase === "fatal") {
     return (
-      <section data-testid="ranked-fatal" className="rounded-lg border border-destructive bg-card p-4">
-        <h3 className="font-semibold text-destructive">Match ended</h3>
-        <p className="text-sm">{m.error}</p>
-      </section>
+      <ArenaShell size="wide" header={chrome}>
+        <section data-testid="ranked-fatal" className="rounded-lg border border-destructive bg-card p-4">
+          <h3 className="font-semibold text-destructive">Match ended</h3>
+          <p className="text-sm">{m.error}</p>
+        </section>
+      </ArenaShell>
     );
   }
   if (m.contractError) {
@@ -282,37 +292,38 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     // — so the state says so, offers a retry, and shows the reader's own field
     // complaint. The message names a contract path, never a payload value.
     return (
-      <section data-testid="ranked-contract-error"
-        className="ranked-panel space-y-2 border border-destructive/60 p-4">
-        <h3 className="font-semibold text-destructive">This match needs a newer client</h3>
-        <p className="text-sm text-muted-foreground">
-          Your browser could not read the latest match data. Your match is safe —
-          reload the page to pick it up where it left off.
-        </p>
-        <p className="font-mono text-xs text-muted-foreground" data-testid="ranked-contract-detail">
-          {m.contractError}
-        </p>
-        <div className="flex gap-2">
-          <button type="button" onClick={m.retry} data-testid="ranked-contract-retry"
-            className="rounded border border-border px-3 py-1.5 text-sm font-semibold">
-            Try again
-          </button>
-          <button type="button" onClick={() => window.location.reload()}
-            className="rounded border border-border px-3 py-1.5 text-sm font-semibold">
-            Reload
-          </button>
-        </div>
-      </section>
+      <ArenaShell size="wide" header={chrome}>
+        <section data-testid="ranked-contract-error"
+          className="ranked-panel space-y-2 border border-destructive/60 p-4">
+          <h3 className="font-semibold text-destructive">This match needs a newer client</h3>
+          <p className="text-sm text-muted-foreground">
+            Your browser could not read the latest match data. Your match is safe —
+            reload the page to pick it up where it left off.
+          </p>
+          <p className="font-mono text-xs text-muted-foreground" data-testid="ranked-contract-detail">
+            {m.contractError}
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={m.retry} data-testid="ranked-contract-retry"
+              className="rounded border border-border px-3 py-1.5 text-sm font-semibold">
+              Try again
+            </button>
+            <button type="button" onClick={() => window.location.reload()}
+              className="rounded border border-border px-3 py-1.5 text-sm font-semibold">
+              Reload
+            </button>
+          </div>
+        </section>
+      </ArenaShell>
     );
   }
+
+  // Nothing to draw yet. The arena owns the placeholder so the shell, the skin
+  // and the geometry are the same ones the match will land in.
   if (!m.publicRound || !combatants) {
     return (
-      <section data-testid="ranked-recovering" className="ranked-shell">
-        <div className="ranked-panel p-6 text-center space-y-1">
-          <div className="ranked-eyebrow ranked-eyebrow--cyan">Ranked Duel</div>
-          <p className="text-sm text-muted-foreground">Recovering match…</p>
-        </div>
-      </section>
+      <CanonicalArena view={null} chrome={chrome}
+        recovering={{ eyebrow: "Ranked Duel", message: "Recovering match…" }} />
     );
   }
 
@@ -335,37 +346,34 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     const reason = m.result?.terminalReason ?? "combat";
     const won = m.result?.winnerUserId === viewerUserId;
     const draw = m.result?.outcome === "draw";
-    const result = draw ? "draw" : won ? "victory" : "defeat";
-    const subheading = reason === "forfeit"
-      ? (won ? "Opponent forfeited." : "You forfeited.")
-      : reason === "no_contest" ? "No contest — both players left." : undefined;
-    // Ordinary flow, like the live arena: the terminal frame and the final
-    // reveal are free to be taller than the viewport and the DOCUMENT scrolls
-    // them. This used to carry its own `lg:overflow-y-auto` game-viewport
-    // containment, which is exactly the nested scrollbar 1.5 removed.
-    return (
-      <div className="ranked-shell flex flex-col gap-4" data-testid="ranked-match-over">
-        {/* PT1.3 rides the frame's EXISTING summary slot, so the outcome, the
-            combatant panels and any progression this match carried are all
-            read first and the reward follows them. The slot is left undefined
-            — and the frame renders no summary block, and therefore no stray
-            flex gap — whenever there is nothing honest to say. The CTA goes to
-            `/quiz#review`, which opens REVIEW on OWNED already (PT1.2); there
-            is no second collection surface and no Library route. */}
-        <MatchOverFrame result={result} player={combatants.player} opponent={combatants.opponent}
-          subheading={subheading} progressionEnabled={progressionEnabled}
-          summary={discoveryRevealHasContent(discoveries.view)
-            ? (<DiscoveryReveal view={discoveries.view}
-                onReview={() => { window.location.assign("/quiz#review"); }} />)
-            : undefined}
-          primaryAction={{ label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } }} />
-        {m.lastResolved && (
-          <RevealPanel settlement={m.lastResolved} viewerSlot="p1"
-            namesByPlayerId={revealNames(m.lastResolved)}
-            showAbilities={progressionEnabled} />
-        )}
-      </div>
-    );
+    const terminal: ArenaTerminalView = {
+      result: draw ? "draw" : won ? "victory" : "defeat",
+      player: combatants.player,
+      opponent: combatants.opponent,
+      subheading: reason === "forfeit"
+        ? (won ? "Opponent forfeited." : "You forfeited.")
+        : reason === "no_contest" ? "No contest — both players left." : undefined,
+      progressionEnabled,
+      primaryAction: { label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } },
+      // PT1.3 rides the frame's EXISTING summary slot, so the outcome, the
+      // combatant panels and any progression this match carried are all read
+      // first and the reward follows them. Left undefined — and the frame
+      // renders no summary block, and therefore no stray flex gap — whenever
+      // there is nothing honest to say. The CTA goes to `/quiz#review`, which
+      // opens REVIEW on OWNED already (PT1.2); there is no second collection
+      // surface and no Library route.
+      summary: discoveryRevealHasContent(discoveries.view)
+        ? (<DiscoveryReveal view={discoveries.view}
+            onReview={() => { window.location.assign("/quiz#review"); }} />)
+        : undefined,
+      reveal: m.lastResolved ? {
+        settlement: m.lastResolved,
+        viewerSlot: "p1",
+        namesByPlayerId: revealNames(m.lastResolved),
+        showAbilities: progressionEnabled,
+      } : null,
+    };
+    return <CanonicalArena view={null} terminal={terminal} chrome={chrome} />;
   }
 
   const opponentLabel = opponentPresenceLabel(m.presence);
@@ -415,436 +423,97 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // `progression_pending_players`), so this is defence in depth — but it is
   // the check that keeps the two answers from ever disagreeing.
   const isProgression = m.phase === "progression" && progressionEnabled;
-  // The question surface stays MOUNTED and IN FLOW at all times — including
-  // during the reveal beat and a level-2 choice. It used to be `display:none`
-  // for those, which collapsed its box to zero and let everything below it jump
-  // several hundred pixels; the beat is expressed by withholding interaction
-  // (see `inputOpen`) and by the reveal appearing beneath, not by removing the
-  // question from the layout. Keeping it mounted also preserves the RA1 1.2
-  // guarantee that the scenario loop and answer entrance never restart.
 
-  /**
-   * THE BOTTOM OF THE ARENA IS NOT A RESULT SURFACE — for ANY active state.
-   *
-   * There is no result panel down there any more, and there is no longer an
-   * exception. `RevealBanner` went first (it flashed for the ~1.5s settlement
-   * beat of every ordinary round); `SegmentResultBanner` followed, for the
-   * same reason applied honestly: a Meta Reflex block settling once every five
-   * rounds still put a full-width bar in the region the round timeline needs
-   * to hold continuously. "Rarely" is not "never", and the invariant is never.
-   *
-   * Both results now resolve in the TOP strip, in one shared plate:
-   *   * an ordinary round → `RoundResultBeat`
-   *   * a settled block   → `SegmentResultBeat`, whose vocabulary is extended
-   *     exactly far enough to carry the one thing a round cannot say — each
-   *     player's N/5 — and no further.
-   *
-   * Settlement feedback for an ordinary round is otherwise carried, in full, by
-   * the answer tablets' reveal (`projectSurfaceReveal`) and each duelist
-   * column's verdict row and recent-round ledger. `RevealBanner` survives as
-   * the arena inspector's fixture; the segment banner had no other caller and
-   * is deleted outright — its one irreplaceable part, the card-by-card
-   * transcript, is disclosed from the block's own beat instead.
-   */
-  const segmentSettlement = m.lastSegmentSettlement;
+  /** Ranked fills both flanks with a duelist. */
+  const rail = (which: "player" | "opponent"): ArenaRail => {
+    const c = combatants[which];
+    return {
+      kind: "combatant",
+      combatant: c,
+      damage: roundHistory[which],
+      outcome: revealOutcomes[c.playerId] ?? null,
+      damageDealt: revealDamage[c.playerId] ?? null,
+      reaction: mascotReactions[c.playerId] ?? null,
+    };
+  };
 
-  return (
-    /* RG1 — THE STABLE SHELL.
-       The frame hands this element one region (see `Frame`'s stage floor) and
-       the four bands below divide it: the top strip, the arena grid, the HUD
-       row and the timeline. Three of those are fixed chrome and sit at
-       `shrink-0`; only the arena grid flexes, so every pixel the stage gains
-       goes to the question and the duelist rails and nothing else moves. The
-       strip's top, the rails' top, the HUD row and the timeline sit at fixed
-       offsets for the life of the match, whatever the round is showing.
+  const view: ArenaViewModel = {
+    header: {
+      eyebrow: `Ranked Duel${m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}`,
+      title: roundLabel,
+      transitionNote: inTransition ? "Preparing next round…" : null,
+      playtestNote: m.publicRound.playtest?.isPlaceholder ? "Playtest · Placeholder" : null,
+      presenceNote: opponentLabel,
+      timer,
+      timerLabel: "Shared round timer",
+    },
+    roundBeat: m.lastResolved ? { settlement: m.lastResolved, viewerSlot: "p1" } : null,
+    segmentBeat: m.lastSegmentSettlement ? {
+      settlement: m.lastSegmentSettlement,
+      roundNumber: m.lastSegmentRoundNumber,
+      viewerUserId,
+      opponentUserId: m.opponentUserId,
+    } : null,
+    left: rail("player"),
+    right: rail("opponent"),
+    surface: {
+      renderer,
+      publicRound: surfaceRound!,
+      segmentState: surfaceRound!.segmentState,
+      selection: m.selectedOptionId,
+      permissions,
+      actions: segmentActions,
+      skewMs: m.skewMs,
+      reveal,
+      // R3: selecting an option IS answering. The index comes from the
+      // projected question so the arena never guesses it from the option id.
+      onSelect: (sel) => {
+        const option = question?.options.find((o) => o.id === sel);
+        if (option) m.answer(option.id, option.index);
+      },
+      ownsSubmission: moduleOwnsSubmission,
+      inputOpen,
+      hasContent: question !== null || moduleOwnsSubmission,
+    },
+    progression: isProgression ? {
+      options: (m.privatePlayer?.ownAbilities.level2Options ?? []).map((id) => ({
+        id, name: abilityName(id), description: abilityDescription(id),
+      })),
+      pendingOptionId: pendingLevel2,
+      busy: m.submitting,
+      onSelectOption: (id) => {
+        if (m.submitting || pendingLevel2 !== null) return;  // double-click safe
+        setPendingLevel2(id);
+        m.chooseLevelTwo(id);
+      },
+    } : null,
+    abilityHud: showAbilityTray ? {
+      abilities,
+      selectedAbilityId: m.selectedAbilityId,
+      permissions: abilityPermissions,
+      onSelectAbility: m.selectAbility,
+      noAbilityLabel: "Clear ability",
+    } : null,
+    status: {
+      text: m.actionError ? m.actionError
+        : m.submitting ? "Submitting…"
+          : m.phase === "locked" ? "Answer locked — waiting for opponent…"
+            : "Choose an answer to lock it in.",
+      isError: m.actionError !== null,
+    },
+    // RG1 — the arena's quiet control. Ranked's is Forfeit Match: the ONE
+    // intent signal Ranked has, since a route change, a closed tab, a reload
+    // and a dead network are indistinguishable at the server. The arena places
+    // it (end of the status row, or its own slim row on a module-owned round)
+    // and never learns what it means.
+    hudAction: (
+      <ForfeitControl onForfeit={m.forfeit} disabled={m.submitting}
+        className="shrink-0 pt-0.5" />
+    ),
+    timeline,
+    revealHold: m.revealHold,
+    progressionEnabled,
+  };
 
-       `flex-1` and NOT `min-h-full`: a percentage minimum resolves against the
-       region only while the region's height is definite, and measured live it
-       simply did not — the shell stopped at its content height and left 220px
-       of the reclaimed viewport empty under the timeline. Growing into the
-       region is unconditional. And because `flex-basis: 0` leaves the
-       automatic minimum size in force, content the viewport genuinely cannot
-       seat still grows this column and scrolls the page, rather than being
-       clipped or handed a scrollbar of its own.
-
-       The gap is a step tighter from `lg` (12px -> 8px). Four bands means
-       three gaps, and 12px of air between a strip and a grid is chrome — at
-       three viewports it was 12px the question could have had.
-
-       Below `lg` this is the ordinary flow column it has always been: the
-       arena stacks there and its natural height exceeds any narrow viewport. */
-    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-2"
-      data-testid="ranked-match" data-reveal-hold={m.revealHold ? "true" : "false"}>
-      {/* The strip, plus the one thing that hangs BENEATH it.
-          `.ranked-panel` is `overflow: hidden`, so the transcript cannot live
-          inside the strip — it would be clipped by it. This wrapper is the
-          anchor instead, and it is styleless apart from that, so the strip's
-          own geometry is untouched. The inline z-index is deliberate:
-          `.ranked-shell > *` pins every child to `z-index: 1`, and a class
-          cannot outrank it, so an open transcript would paint under the arena.
-          It is applied ONLY while open, so nothing about the resting page
-          changes. */}
-      <div className="relative lg:shrink-0" style={detailsOpen ? { zIndex: 30 } : undefined}>
-      {/* Condensed top strip — mode · round · timer in one compact row.
-          `min-h` reserves the tallest state this strip ever reaches, so the
-          transition pill appearing or the timer gaining a notice line cannot
-          push the arena below it. */}
-      <section data-testid="ranked-header"
-        className="ranked-panel ranked-header-plate flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
-        <div className="flex items-baseline gap-3">
-          <div>
-            <div className="ranked-eyebrow">
-              Ranked Duel{m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}
-            </div>
-            <h3 className="ranked-title text-lg font-bold leading-tight">{roundLabel}</h3>
-          </div>
-          {inTransition && (
-            <span data-testid="ranked-round-transition"
-              className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
-              Preparing next round…
-            </span>
-          )}
-        </div>
-        {/* THE ROUND-RESOLUTION BEAT. Third child of a `justify-between` row,
-            so it takes the gap the strip already had between the round title
-            and the clock — the left group and the timer keep their ends, and
-            neither moves when it appears.
-
-            `key` on the ROUND is what makes this a beat rather than a static
-            summary: a new settlement remounts the plate and replays its
-            entrance. A round settles exactly once, so the round number is a
-            stable, monotonic event id.
-
-            `hidden md:flex` because below that width the strip has no gap to
-            take (the duelist ledgers carry the history at every width). The
-            plate is a fixed 2.5rem and never wraps, so it cannot grow the
-            strip past its reserved min-height or crowd the timer. */}
-        {segmentSettlement ? (
-          // A settled block wins the slot: it describes the same round the
-          // arena settlement does, and two plates would be two answers to one
-          // question. It also says strictly more — a round beat cannot report
-          // a 5-card scoreline.
-          <SegmentResultBeat key={`segment-${m.lastSegmentRoundNumber ?? "?"}`}
-            settlement={segmentSettlement} viewerUserId={viewerUserId}
-            opponentUserId={m.opponentUserId}
-            roundNumber={m.lastSegmentRoundNumber}
-            detailsOpen={detailsOpen} onToggleDetails={setDetailsOpen}
-            className="hidden md:flex" />
-        ) : m.lastResolved ? (
-          <RoundResultBeat key={m.lastResolved.roundNumber}
-            settlement={m.lastResolved} viewerSlot="p1"
-            className="hidden md:flex" />
-        ) : null}
-        {/* RA10: the timer block sits behind a brass hairline, scoreboard-style,
-            so the clock reads as its own instrument. Border only — the strip's
-            reserved min-height is untouched. */}
-        <div className="flex items-center gap-3 sm:border-l sm:border-[#b9934c]/30 sm:pl-4">
-          {(m.publicRound.playtest?.isPlaceholder || opponentLabel) && (
-            <div className="hidden text-right sm:block">
-              {m.publicRound.playtest?.isPlaceholder && (
-                <p data-testid="ranked-playtest-label"
-                  className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Playtest · Placeholder
-                </p>
-              )}
-              {opponentLabel && (
-                <p data-testid="ranked-presence" className="text-[11px] text-muted-foreground">{opponentLabel}</p>
-              )}
-            </div>
-          )}
-          {timer && <TimerDisplay timer={timer} label="Shared round timer" />}
-        </div>
-      </section>
-      {/* THE CARD-BY-CARD TRANSCRIPT — the one thing the retired segment
-          banner owned that a 2.5rem plate cannot hold.
-          Closed by default, opened only from the beat's own control, and
-          ABSOLUTELY POSITIONED so it costs the header no height and moves
-          nothing in the arena, and gone the moment the player dismisses it or
-          the next block settles.
-          It sizes to its CONTENT and owns no scroll container: a block has a
-          fixed, small challenge count, so there is nothing here to scroll — and
-          the arena's standing rule is that no surface inside it scrolls
-          internally (see the source guard in `QuizRankedMatch.geometry`). */}
-      {detailsOpen && segmentSettlement && (
-        <div data-testid="segment-details-popover"
-          className="absolute right-0 top-full z-30 mt-1 w-[min(40rem,100%)]
-            whitespace-normal rounded-lg border border-[#b9934c]/40
-            bg-[#070f1c] p-3 text-left shadow-2xl">
-          <SegmentTranscript
-            reveal={segmentSettlement.reveal}
-            viewerUserId={viewerUserId}
-            opponentUserId={m.opponentUserId}
-            damageDealt={segmentSettlement.damageByPlayerId[viewerUserId] ?? null}
-            // R1: no ability layer means no ability reveal. An empty map
-            // renders no ability row at all, rather than a "—" placeholder.
-            abilitiesByPlayerId={progressionEnabled
-              ? segmentSettlement.abilitiesByPlayerId : {}}
-          />
-        </div>
-      )}
-      </div>
-
-      {/* Mobile-only presence/playtest line (hidden in the strip on <sm). */}
-      {(m.publicRound.playtest?.isPlaceholder || opponentLabel) && (
-        <div className="flex flex-wrap gap-x-3 px-1 sm:hidden">
-          {m.publicRound.playtest?.isPlaceholder && (
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Playtest · Placeholder
-            </span>
-          )}
-          {opponentLabel && <span className="text-[11px] text-muted-foreground">{opponentLabel}</span>}
-        </div>
-      )}
-
-      {/* Arena body: You ⚔ focus ⚔ Opponent. Ordinary flow — the centre column
-          is NOT a scroll container; the page scrolls. `items-start` keeps the
-          duelist panels at their natural height so a taller centre column can
-          never stretch them.
-
-          RA10: the question board is the centre of gravity — the duelist rails
-          give up a step at lg (14rem) where width is scarce and return to
-          15rem at xl, where the wider match frame (see Frame) has already
-          grown the centre track instead.
-
-          RA11: from 1500px the frame runs stage-wide (90rem), so the rails
-          step OUT to 17rem and the gutters widen — the duelists move toward
-          the flanks while the centre track still absorbs most of the gain.
-
-          Phase 11 — TRUE THREE COLUMNS. The rails stopped being fixed rem
-          tracks and became PROPORTIONS of the arena: 23% / 54% / 23%. Two
-          things follow, and both were the point:
-
-           * the side columns grow with the stage instead of pinning at 14rem,
-             which is what made them read as "two small cards flanking a giant
-             centre" rather than as two of three columns;
-           * `items-stretch` replaces `items-start`, so the three tracks share
-             one vertical extent instead of the rails floating at their own
-             natural height against a much taller centre (the §14 constraint).
-             The panels themselves still size their own CONTENT — stretching
-             the track is not stretching the content. */}
-      <div className="grid grid-cols-2 gap-3 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
-        {/* `h-full` on BOTH the track cell and the panel: `items-stretch`
-            stretches the grid cell, and without this the panel would still sit
-            at its own content height inside a taller cell — which is the
-            "tiny floating side cards beside a giant centre" reading §14 rules
-            out. The panel's own sections keep their sizes; only the shared
-            column extent changes. */}
-        <div className="lg:col-start-1 lg:row-start-1 lg:h-full">
-          <CombatantPanel combatant={combatants.player}
-            progressionEnabled={progressionEnabled}
-            damage={roundHistory.player}
-            outcome={revealOutcomes[combatants.player.playerId] ?? null}
-            damageDealt={revealDamage[combatants.player.playerId] ?? null}
-            reaction={mascotReactions[combatants.player.playerId] ?? null} />
-        </div>
-        <div className="lg:col-start-3 lg:row-start-1 lg:h-full">
-          <CombatantPanel combatant={combatants.opponent}
-            progressionEnabled={progressionEnabled}
-            damage={roundHistory.opponent}
-            outcome={revealOutcomes[combatants.opponent.playerId] ?? null}
-            damageDealt={revealDamage[combatants.opponent.playerId] ?? null}
-            reaction={mascotReactions[combatants.opponent.playerId] ?? null} />
-        </div>
-
-        <div data-testid="ranked-focus-column"
-          className="relative col-span-2 flex flex-col gap-3 lg:col-span-1 lg:col-start-2 lg:row-start-1">
-          {/* The level-2 choice is OVERLAID on the question rather than
-              inserted above it. In flow it added ~192px to the middle of the
-              page the instant a round resolved, pushing the question, the
-              ability tray and the status panel down under the player's cursor.
-              The panel is opaque and sits in the same place the question does,
-              so it reads as the focal control without moving anything. */}
-          {isProgression && (
-            <section data-testid="ranked-progression"
-              // Overlaid on the question so nothing below it moves — EXCEPT
-              // when the focus column has no surface at all (a phased segment
-              // between engine rounds): overlaying an empty column would hang
-              // the panel over whatever sits beneath, so it renders in flow
-              // there (the column was empty; nothing shifts).
-              className={renderer && (question || moduleOwnsSubmission)
-                ? "absolute inset-x-0 top-0 z-20" : ""}>
-              <LevelUpPanel
-                event={{
-                  kind: "level2-choice",
-                  options: (m.privatePlayer?.ownAbilities.level2Options ?? []).map((id) => ({
-                    id, name: abilityName(id), description: abilityDescription(id),
-                  })),
-                  // R3: the pending id marks the choice IN FLIGHT, not one awaiting
-                  // a confirmation click. The server's acceptance is what ends the
-                  // progression phase, so nothing is confirmed locally.
-                  pendingOptionId: pendingLevel2, confirmedOptionId: null,
-                }}
-                permissions={{ ...NO_INTERACTIONS, canSelectAbility: !m.submitting }}
-                onSelectOption={(id) => {
-                  if (m.submitting || pendingLevel2 !== null) return;  // double-click safe
-                  setPendingLevel2(id);
-                  m.chooseLevelTwo(id);
-                }}
-                gatesNextRound
-              />
-            </section>
-          )}
-          {renderer && (question || moduleOwnsSubmission) && (
-            <section data-testid="ranked-question"
-              // Always mounted AND always in flow. During the reveal beat the
-              // surface is dimmed, never collapsed: `opacity` costs no layout,
-              // `display:none` cost several hundred pixels of jump.
-              data-input-open={inputOpen ? "true" : "false"}
-              // `ranked-folio` is the RA4 academy skin for this exact box —
-              // colour only. The reserved scenario-band box and the answer
-              // grid inside are untouched. RA11 widens the HORIZONTAL padding
-              // on the big stage only — vertical rhythm (and with it the
-              // no-scroll desktop budget) is unchanged.
-              className={`ranked-panel ranked-folio p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-1 lg:flex-col ${
-                m.revealHold || isProgression ? "opacity-60" : "opacity-100"}`}>
-              {/* RG1 — WHERE AN OVERSIZED QUESTION IS ABSORBED, and the only
-                  place in the arena that is allowed to scroll.
-                  The card takes the arena band's height and the surface sits
-                  inside it. While the question fits — which is every ordinary
-                  round at every desktop viewport measured for this phase —
-                  this box is exactly its content's height and no scrollbar
-                  exists. When a genuinely oversized round arrives (a long
-                  macro prompt with four wrapping options, a tall media
-                  scenario) the OVERFLOW STAYS HERE: the surface scrolls
-                  inside the card and the duelist rails, the HUD row and the
-                  timeline do not move, instead of the document growing and
-                  taking the whole composition with it.
-                  `overscroll-contain` stops a flick at the end of the question
-                  chaining into the page behind it. Below `lg` there is no
-                  scroll region at all — the stage is not pinned there, so
-                  there is nothing to overflow. */}
-              {/* THE QUESTION'S BOX. It takes the card's height and there is
-                  NOTHING to scroll inside it — no `overflow`, no clipping, no
-                  bar in the parchment. The stage is sized so real content fits
-                  whole (audited: 108-character prompts, 63-character options),
-                  and content that genuinely cannot be seated grows the page
-                  instead, which is the browser's job and not the folio's. */}
-              <div className="lg:flex lg:flex-1 lg:flex-col"
-                data-testid="ranked-question-body">
-              {/* `my-auto`, deliberately NOT `justify-center`. Both centre the
-                  question in a card that is taller than its content; only this
-                  one degrades correctly when the content is TALLER than the
-                  card, because auto margins resolve to zero the moment there
-                  is no free space left, while `justify-content: center` would
-                  push the first lines of a long prompt off the top. */}
-              <div className="lg:my-auto lg:w-full">
-              <renderer.Viewport
-                // The FROZEN snapshot: the surface keeps rendering the round the
-                // player was looking at until the next one is genuinely ready.
-                publicRound={surfaceRound!}
-                selection={m.selectedOptionId}
-                permissions={permissions}
-                // R3: selecting an option IS answering. The index comes from
-                // the projected question so the shell never guesses it from
-                // the option id.
-                onSelect={(sel) => {
-                  const option = question?.options.find((o) => o.id === sel);
-                  if (option) m.answer(option.id, option.index);
-                }}
-                // The state from the SAME snapshot the renderer was resolved
-                // from. Reading the live state here instead coupled a frozen
-                // renderer to a moving state: across a segment boundary the
-                // surface still shows module A while the live state already
-                // describes module B, so a Meta Reflex viewport was handed a
-                // null state and rendered "Loading the block…" for the whole
-                // reveal beat — and, worse, a v1 renderer could be handed a v4
-                // block whose cards it cannot read. During play the two are the
-                // same object; they differ only while the surface is
-                // deliberately lagging, which is exactly when they must not be
-                // mixed.
-                segmentState={surfaceRound!.segmentState}
-                actions={segmentActions}
-                skewMs={m.skewMs}
-                reveal={reveal}
-              />
-              </div>
-              </div>
-            </section>
-          )}
-          {!renderer && (
-            // Fail closed: never render a quiz input for an unrecognised
-            // module — a mismatched input shape could submit a meaningless
-            // answer into a rated match.
-            <section data-testid="ranked-unsupported-module"
-              className="ranked-panel p-3 sm:p-4">
-              <p className="text-sm text-muted-foreground">
-                This round uses a game mode your client does not support yet.
-                Please refresh to update.
-              </p>
-            </section>
-          )}
-        </div>
-      </div>
-
-      {/* Lower HUD: the OPTIONAL ability hotbar plus ONE inline status line.
-          There is no Lock In button — clicking an answer submits it.
-          The row is rendered for the whole match, INCLUDING a level-2 choice:
-          unmounting it there tore ~230px out of the middle of the page.
-
-          Phase 2 compact layout: the old side-by-side status CARD duplicated
-          state already visible in the answer grid (selected answer) and the
-          tray (armed ability) and cost a 20rem track plus ~94px of height.
-          What survives is the one thing nothing else shows — the transient
-          submission status / error — as a reserved-height line under the
-          tray. */}
-      {!moduleOwnsSubmission && (
-          <div className="flex flex-col gap-1.5 lg:shrink-0">
-            {showAbilityTray && (
-              // RA11: no panel chrome around the tray any more — the tray IS
-              // the object (one connected spellbook-spine dock, see
-              // .ability-spine in index.css). A wrapper panel around it is
-              // exactly the "box containing cards" reading being retired.
-              <section data-testid="ranked-abilities">
-                <AbilityTray abilities={abilities} selectedAbilityId={m.selectedAbilityId}
-                  permissions={abilityPermissions} onSelectAbility={m.selectAbility}
-                  noAbilityLabel="Clear ability" />
-              </section>
-            )}
-            {/* One reserved line box: the three status strings (and an error)
-                differ in length, and swapping them used to change the HUD's
-                height whenever one of them wrapped.
-
-                RG1 puts Forfeit Match at the far end of this SAME row rather
-                than in a band of its own. The row is already mounted for the
-                whole match with a reserved height, so the quietest control in
-                the arena costs the stage no pixels and cannot move an anchor —
-                and it sits as far from the answer grid as the arena allows. */}
-            <div className="flex items-start justify-between gap-3 px-1">
-              <p role={m.actionError ? "alert" : "status"} data-testid="submission-status"
-                className={`line-clamp-2 min-h-[2.25rem] text-xs ${
-                  m.actionError ? "text-destructive" : "text-muted-foreground"}`}>
-                {m.actionError ? m.actionError
-                  : m.submitting ? "Submitting…"
-                    : m.phase === "locked" ? "Answer locked — waiting for opponent…"
-                      : "Choose an answer to lock it in."}
-              </p>
-              <ForfeitControl onForfeit={m.forfeit} disabled={m.submitting}
-                className="shrink-0 pt-0.5" />
-            </div>
-          </div>
-      )}
-
-      {/* THE FORFEIT, on a round the module owns.
-          A Meta Reflex block hides the HUD row (the module renders its own
-          submission chrome), and with it the control would go — leaving a
-          player mid-block with no way to say they are done and only the
-          45-second absence path to reach it by. So the control gets its own
-          slim row for exactly those rounds: same component, same command, and
-          it appears only where the row that normally carries it does not. */}
-      {moduleOwnsSubmission && (
-        <div className="flex justify-end px-1 lg:shrink-0">
-          <ForfeitControl onForfeit={m.forfeit} disabled={m.submitting} />
-        </div>
-      )}
-
-      {/* THE BOTTOM REGION — progression, and only progression.
-          Nothing else follows the HUD row in any active state: not an ordinary
-          round's result, not a settled Meta Reflex block's, not during a
-          transition. The strip is mounted continuously — through the reveal
-          beat, through a block settlement and through a level-2 choice — which
-          is what makes it the arena's floor rather than another thing that
-          appears and disappears down here. */}
-      {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
-    </div>
-  );
+  return <CanonicalArena view={view} chrome={chrome} />;
 }

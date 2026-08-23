@@ -193,7 +193,7 @@ describe("the seam reaches the whole canonical surface", () => {
           verdict: "incorrect", resolved: false, disclosureAllowed: false,
           retryAvailable: true, scoreLocked: true,
           selectedOptionId: "1", correctOptionId: null,
-          eliminatedOptionIds: ["1"], evidence: null, explanation: null,
+          eliminatedOptionIds: ["1"], evidence: null, explanationOptional: null,
         }}
       />,
     );

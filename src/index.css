@@ -665,6 +665,42 @@
   border-color: transparent;
 }
 
+/* ===== Answer-tablet entrance (ARENA1 Step 3) =====
+   THE RESTING STATE IS VISIBLE. That is the whole rule, and it is the reason
+   this lives in CSS instead of in the component.
+
+   The entrance used to be a framer-motion `initial={{opacity:0,y:14}}` on each
+   tablet's wrapper, which writes `opacity: 0` into the DOM and relies on an
+   animation frame arriving to take it back. When one did not — a remount that
+   skipped the enter, a missed frame, a library quirk — the grid stayed in the
+   document, correctly labelled, keyboard-reachable, ENABLED, and completely
+   invisible. It shipped that way once; DC1's Daily grid was written with no
+   entrance at all to avoid inheriting it.
+
+   Expressed as keyframes, the hidden state can no longer be a resting state:
+   it exists only while the animation is running, it is owned by the document
+   timeline rather than by a component that can unmount underneath it, and if
+   the animation never applies at all the tablet simply renders — visible —
+   at its base style. The timing is unchanged from the animation it replaces
+   (350ms, easeOut, 150ms + 70ms per tablet, supplied inline by the grid).
+
+   `backwards` holds the offset through the stagger delay, exactly as the old
+   inline initial state did, so the motion is identical. It is bounded by the
+   delay and cannot outlive it. */
+@keyframes quiz-choice-enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+[data-quiz-answer-options] > div {
+  animation: quiz-choice-enter 350ms cubic-bezier(0, 0, 0.58, 1) backwards;
+}
+/* Reduced motion drops the entrance outright rather than shortening it — and
+   because the resting state is the visible one, dropping it is safe by
+   construction. The previous framer implementation ignored the preference. */
+@media (prefers-reduced-motion: reduce) {
+  [data-quiz-answer-options] > div { animation: none; }
+}
+
 /* Cinematic round title — gold, Cinzel where the theme font is present. */
 .ranked-title {
   font-family: "Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif;

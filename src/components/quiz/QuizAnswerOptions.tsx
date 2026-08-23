@@ -9,7 +9,6 @@
  * carries no correct-answer information in the DOM.
  */
 import { useState } from "react";
-import { motion } from "framer-motion";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
@@ -196,12 +195,13 @@ export default function QuizAnswerOptions({
             : "text-current opacity-80";
 
         return (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 + idx * 0.07, duration: 0.35, ease: "easeOut" }}
-          >
+          // The entrance is `@keyframes quiz-choice-enter` in index.css, and
+          // it is there rather than here on purpose: a JS animation owns the
+          // tablet's opacity through an inline style, so a frame that never
+          // arrives leaves an enabled, labelled, keyboard-reachable answer at
+          // `opacity: 0`. This wrapper's RESTING style is visible; the stagger
+          // is the only thing supplied from here, because it is per-index.
+          <div key={idx} style={{ animationDelay: `${150 + idx * 70}ms` }}>
             <Button
               variant={btnVariant}
               data-quiz-choice={idx}
@@ -276,7 +276,7 @@ export default function QuizAnswerOptions({
               {/* The reason, for anyone who cannot see the strike-through. */}
               {isEliminated && <span className="sr-only">Eliminated</span>}
             </Button>
-          </motion.div>
+          </div>
         );
       })}
     </div>
