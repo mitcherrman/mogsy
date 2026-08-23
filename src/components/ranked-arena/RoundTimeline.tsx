@@ -65,16 +65,18 @@
  * node as its neutral token: a round this client has not been told about has
  * no topic, and no topic draws the hollow ring. Nothing is inferred.
  */
+// ARENA1 Step 2A — the shared arena layer reads its view types from
+// `lib/ranked-core`, never upward from the Ranked PAGE. The types are
+// mode-neutral; the page that happened to declare them is not.
 import type {
-  RoundTimelineView, TimelineNode, TimelineSegmentKind,
-} from "@/pages/quiz-ranked/roundTimeline";
+  ResultKind, RoundTimelineView, TimelineNode, TimelineSegmentKind,
+} from "@/lib/ranked-core/viewTypes";
 import { QuizTimelineNode } from "@/components/quiz/timeline/QuizTimelineNode";
 import {
   resolveNodeArt,
   type QuizTimelineNodeModel,
 } from "@/components/quiz/timeline/timelineNodeModel";
 import { categoryLabel } from "@/lib/quiz/publicCategory";
-import type { ResultKind } from "./RoundResultBeat";
 
 /**
  * Per-identity presentation. Literal hex, like the rest of the Ranked skin, so

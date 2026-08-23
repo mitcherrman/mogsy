@@ -56,9 +56,11 @@
  */
 import { META_REFLEX_MIXED_VERSION, type SegmentMeta } from "@/lib/ranked-public/contracts";
 import { ITEM_COST_DUEL_MODULE_ID } from "@/lib/ranked-core/modules/itemCostDuelModule";
-import type { PlayerSlot, ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
-import { resultKind, type ResultKind } from "@/components/ranked-arena/RoundResultBeat";
-import type { RankedRole } from "@/lib/ranked-public/roles";
+import type {
+  PlayerSlot, ResolvedRoundView, ResultKind, RoundTimelineView, TimelineNode,
+  TimelineNodeState, TimelineNodeTag, TimelineSegmentKind,
+} from "@/lib/ranked-core/viewTypes";
+import { resultKind } from "@/components/ranked-arena/RoundResultBeat";
 import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 
 /**
@@ -83,93 +85,14 @@ export const TIMELINE_ANCHOR_INDEX = 4;
  */
 export const OBSERVED_KINDS_MEMORY = 64;
 
-/**
- * A round's segment identity, as stated by the SERVER.
- *
- * Two values, because two are all the public contract distinguishes: a Meta
- * Reflex block (`item_cost_duel` at the mixed-card version or later) and an
- * ordinary round. There is deliberately no difficulty here — no public field
- * carries one.
- */
-export type TimelineSegmentKind = "meta-reflex" | "standard";
-
-export type TimelineNodeState = "resolved" | "current" | "upcoming";
-
-/**
- * RESERVED — a future per-question tag on a node.
- *
- * No public Ranked field carries one today: `players[].role` is the
- * PARTICIPANT's frozen League role (R1), not a property of the question, and
- * the question block publishes no role, difficulty or family. So
- * `projectRoundTimeline` returns `null` here for every node, always, and the
- * only thing this type does is fix the shape a later phase fills once the
- * backend publishes an authoritative tag. It is NOT a place to smuggle
- * `metadata_json`, to read a category string as a role, or to guess.
- */
-export type TimelineNodeTag = { kind: "role"; role: RankedRole };
-
-export interface TimelineNode {
-  roundNumber: number;
-  /**
-   * Slot offset from `windowStart`.
-   *
-   * `-1` and `TIMELINE_VISIBLE_NODES` are the OFF-EDGE BUFFER: nodes that are
-   * mounted but clipped, so a round leaving on the left and one arriving on
-   * the right both travel rather than popping in and out of existence.
-   */
-  index: number;
-  /** False for the two buffer slots. */
-  visible: boolean;
-  state: TimelineNodeState;
-  /**
-   * What the server said this round's segment is, or null when this client has
-   * never been told. Null is the ordinary state for a future round and for a
-   * past round played before this client connected — it is "not observed",
-   * never "an ordinary round".
-   */
-  segmentKind: TimelineSegmentKind | null;
-  /**
-   * The viewer's settled verdict, in the arena's existing vocabulary, or null.
-   *
-   * Null on an unresolved round AND on a resolved round whose settlement has
-   * aged out of the bounded ledger — a real and ordinary state, not an error.
-   * Such a node stays resolved and simply carries no verdict.
-   */
-  outcome: ResultKind | null;
-  /** Always null today. See `TimelineNodeTag`. */
-  tag: TimelineNodeTag | null;
-  /**
-   * RG2 — what the round is ABOUT: public subject, difficulty tier, proven
-   * icon. `null` when this client has never been told, which is the ordinary
-   * state for a FUTURE round and for a past round played before this client
-   * connected.
-   *
-   * The rule stated at the top of this file is unchanged and this field does
-   * not bend it: a topic is only ever something the SERVER published for a
-   * specific round (`question.topic` on the live snapshot), accumulated as the
-   * match plays. Nothing is derived from an ordinal, from the pacing wave, or
-   * from a neighbouring round. A Ranked future round's question has not been
-   * generated, so there is nothing to publish and this stays null — and the
-   * node draws the neutral token, exactly as before.
-   */
-  topic: TimelineTopic | null;
-}
-
-export interface RoundTimelineView {
-  /** Constant for the whole match. Never varies round to round. */
-  visibleNodes: number;
-  /** The slot the current round occupies once the opening rounds are past. */
-  anchorIndex: number;
-  /** The round at slot 0. */
-  windowStart: number;
-  /** Slot of the current round, or null once the match is over. */
-  currentIndex: number | null;
-  currentRoundNumber: number | null;
-  /** True once the current round has reached `anchorIndex` and stays there. */
-  anchored: boolean;
-  /** Ascending, INCLUDING the off-edge buffer. See `TimelineNode.index`. */
-  nodes: TimelineNode[];
-}
+// ARENA1 Step 2A: every type below is declared in `lib/ranked-core/viewTypes`
+// now — `RoundTimeline` renders them and must not import upward from this
+// page. Re-exported unchanged, so every existing import site still resolves
+// here. The DERIVATION (the whole rest of this file) did not move.
+export type {
+  RoundTimelineView, TimelineNode, TimelineNodeState, TimelineNodeTag,
+  TimelineSegmentKind,
+};
 
 /** Is this segment a Meta Reflex block? The renderer registry's own rule. */
 export function isMetaReflexSegment(

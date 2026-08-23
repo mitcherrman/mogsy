@@ -83,7 +83,13 @@ type QuizAnswerOptionsProps = {
   selectedAnswer: string | null;
   /** Non-null once the answer is judged; enables reveal styling + disables buttons. */
   answerResult: QuizAnswerRevealResult | null;
-  onSelect: (label: string) => void;
+  /**
+   * `index` is the choice's POSITION in `choices`. Additive — every existing
+   * caller ignores it — but a caller whose labels are not unique (an
+   * image-only or recognition choice set) cannot map a label back to a
+   * choice, and position is the only thing that always identifies one.
+   */
+  onSelect: (label: string, index: number) => void;
   /**
    * Column strategy. "auto" (default) is the classic quiz behaviour and is
    * unchanged. "wide-2" additionally goes 2-up from lg — for compact
@@ -118,7 +124,7 @@ type QuizAnswerOptionsProps = {
    * Ignored once `answerResult` is set — a resolved card is a reveal, and one
    * surface must not be painted by two vocabularies at once.
    */
-  eliminatedIndexes?: number[];
+  eliminatedIndexes?: readonly number[];
 };
 
 export default function QuizAnswerOptions({
@@ -200,10 +206,14 @@ export default function QuizAnswerOptions({
               variant={btnVariant}
               data-quiz-choice={idx}
               data-choice-state={choiceState}
-              onClick={() => onSelect(label)}
+              onClick={() => onSelect(label, idx)}
               // An eliminated option is unavailable INDIVIDUALLY: the rest of
               // the grid stays live, which is what makes the retry a retry.
               disabled={!!answerResult || isEliminated}
+              // `disabled` already takes the tablet out of pointer and
+              // keyboard reach; `aria-disabled` plus the note below are what
+              // say WHY, so it is explained rather than silently gone.
+              aria-disabled={isEliminated || undefined}
               className={[
                 imgUrl
                   ? "w-full h-auto flex-col items-center gap-2 py-3 px-3 whitespace-normal font-medium text-sm leading-relaxed"
@@ -263,6 +273,8 @@ export default function QuizAnswerOptions({
                   )}
                 </>
               )}
+              {/* The reason, for anyone who cannot see the strike-through. */}
+              {isEliminated && <span className="sr-only">Eliminated</span>}
             </Button>
           </motion.div>
         );

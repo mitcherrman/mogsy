@@ -44,7 +44,7 @@ export interface AnswerGridProps {
    * eliminations and no `revealedCorrectOptionId` stays `open`, because the
    * card genuinely is.
    */
-  eliminatedOptionIds?: string[];
+  eliminatedOptionIds?: readonly string[];
 }
 
 export function AnswerGrid({
@@ -69,9 +69,13 @@ export function AnswerGrid({
     selectedOptionId === null ? permissions.canSelectAnswer : permissions.canChangeAnswer;
   const interactive = canPick && revealed === null;
 
-  const handleSelect = (label: string) => {
+  const handleSelect = (label: string, index: number) => {
     if (!interactive) return;
-    const option = options.find((o) => o.label === label);
+    // POSITION FIRST. A label does not identify a choice when two options
+    // share one — an image-only or recognition choice set — and the grid
+    // speaks in ids, so it has to land on the right option before it can
+    // check whether that option was retired.
+    const option = options[index] ?? options.find((o) => o.label === label);
     // Refused here as well as disabled in the DOM: a struck-out option must
     // never reach a controller, because the backend rejects it outright
     // (`OPTION_ELIMINATED`) and a client that sent one would turn a stale

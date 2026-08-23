@@ -30,8 +30,9 @@
  */
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Hourglass, Lock, ShieldCheck, Swords, XCircle } from "lucide-react";
-import { CombatantView, ResolvedCombatantView } from "@/lib/ranked-core/viewTypes";
-import type { MascotReaction, RoundHistoryEntry } from "@/pages/quiz-ranked/rankedViews";
+import type {
+  CombatantView, MascotReaction, ResolvedCombatantView, RoundHistoryEntry,
+} from "@/lib/ranked-core/viewTypes";
 import { ClassIdentity, classIdentityFor } from "./classIdentity";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
 

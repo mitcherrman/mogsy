@@ -38,7 +38,7 @@
  */
 import { CheckCircle2, Hourglass, Swords, XCircle } from "lucide-react";
 import type {
-  PlayerSlot, ResolvedCombatantView, ResolvedRoundView,
+  PlayerSlot, ResolvedCombatantView, ResolvedRoundView, ResultKind,
 } from "@/lib/ranked-core/viewTypes";
 import { resultHeadline } from "./RevealBanner";
 
@@ -53,7 +53,11 @@ import { resultHeadline } from "./RevealBanner";
  * SUCCESS needed distinguishing, because that is the one a single tone would
  * have mis-sold as a win.
  */
-export type ResultKind = "correct" | "both-correct" | "incorrect" | "timed-out";
+// ARENA1 Step 2A: the type itself now lives in `lib/ranked-core/viewTypes`
+// (the timeline node type needs it, and a view type in `lib/` must not reach
+// into `components/`). Re-exported here so every `from "./RoundResultBeat"`
+// import site is unchanged.
+export type { ResultKind };
 
 export function resultKind(
   viewer: ResolvedCombatantView, opponent: ResolvedCombatantView,

@@ -18,6 +18,11 @@ import type {
   AdaptedSettlement,
   AdaptedPlayerSettlement,
 } from "./backend/adaptBackendSettlement";
+import type { RankedRole } from "@/lib/ranked-public/roles";
+// RG2's node subject. A type-only import of a shared PRESENTATION model — the
+// boundary this layer enforces is against a mode's `pages/` directory, and
+// `components/quiz/timeline` is neither Ranked's nor the Daily's.
+import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 
 /**
  * Frontend-stable settlement slot: p1 = the viewer/owner, p2 = the other
@@ -219,3 +224,157 @@ export const NO_INTERACTIONS: InteractionPermissions = Object.freeze({
  */
 export type ResolvedRoundView = AdaptedSettlement;
 export type ResolvedCombatantView = AdaptedPlayerSettlement;
+
+// ---------------------------------------------------------------------------
+// ARENA1 Step 2A — SETTLED-ROUND PRESENTATION TYPES.
+//
+// These five groups were declared in `src/pages/quiz-ranked/` and imported
+// UPWARD by `components/ranked-arena/CombatantPanel` and `RoundTimeline`, so
+// the shared arena layer depended on the Ranked page layer. They are pure
+// display shapes over `ResolvedCombatantView` — nothing about them is
+// Ranked-page-specific — so they live here with the rest of the neutral view
+// contracts, and every previous declaration site now re-exports them.
+//
+// This is a TYPE MOVE ONLY. No projection function moved, no runtime value
+// moved, and every field is byte-identical to the declaration it replaces.
+// ---------------------------------------------------------------------------
+
+/**
+ * The four presentation tones a settled round resolves into, from the
+ * VIEWER's point of view.
+ *
+ * "Both incorrect" and "Both timed out" deliberately do NOT get their own
+ * tone — they are still the viewer being wrong or out of time. Only the shared
+ * SUCCESS needed distinguishing, because that is the one a single tone would
+ * have mis-sold as a win.
+ *
+ * Declared here rather than in `RoundResultBeat` because the timeline node
+ * type below needs it, and a view type in `lib/` must never reach into
+ * `components/`. `RoundResultBeat` re-exports it, so every existing
+ * `from "./RoundResultBeat"` import is unchanged.
+ */
+export type ResultKind = "correct" | "both-correct" | "incorrect" | "timed-out";
+
+/**
+ * One row of a duelist's recent-round ledger: what happened to THAT player in
+ * one settled round.
+ *
+ * Every field is read straight off the authoritative settlement. Nothing is
+ * derived arithmetically — in particular `taken` is the backend's
+ * `finalDamageReceived`, never `hpBefore - hpAfter`, because the two can
+ * legitimately differ (a floor, a heal, a clamp) and the settlement is the
+ * authority on which one is the damage.
+ */
+export interface RoundHistoryEntry {
+  /** Stable key: a round is settled once, so the round number identifies it. */
+  roundNumber: number;
+  /** This player's verdict in that round. */
+  outcome: ResolvedCombatantView["outcome"];
+  /** Damage this player DEALT. 0 = none. */
+  dealt: number;
+  /** Damage this player TOOK. 0 = none. */
+  taken: number;
+  /** Damage a shield absorbed for this player. 0 = none. */
+  absorbed: number;
+  /** Authoritative HP either side of the round, for the accessible description. */
+  hpBefore: number;
+  hpAfter: number;
+  /** The round ended on the clock rather than on both answers. */
+  timeExpired: boolean;
+}
+
+/** One mascot reaction: what to play, and the id that makes it retriggerable. */
+export interface MascotReaction {
+  action: "attack" | "hit";
+  /** The settled round this reaction belongs to. A round settles exactly once,
+   *  so the round number is a stable, monotonic event id — which is precisely
+   *  what `RoleMascot`'s edge-triggered playback needs. */
+  actionId: number;
+}
+
+/**
+ * A round's segment identity, as stated by the SERVER.
+ *
+ * Two values, because two are all the public contract distinguishes: a Meta
+ * Reflex block (`item_cost_duel` at the mixed-card version or later) and an
+ * ordinary round. There is deliberately no difficulty here — no public field
+ * carries one.
+ */
+export type TimelineSegmentKind = "meta-reflex" | "standard";
+
+export type TimelineNodeState = "resolved" | "current" | "upcoming";
+
+/**
+ * RESERVED — a future per-question tag on a node.
+ *
+ * No public Ranked field carries one today: `players[].role` is the
+ * PARTICIPANT's frozen League role (R1), not a property of the question, and
+ * the question block publishes no role, difficulty or family. So
+ * `projectRoundTimeline` returns `null` here for every node, always, and the
+ * only thing this type does is fix the shape a later phase fills once the
+ * backend publishes an authoritative tag. It is NOT a place to smuggle
+ * `metadata_json`, to read a category string as a role, or to guess.
+ */
+export type TimelineNodeTag = { kind: "role"; role: RankedRole };
+
+export interface TimelineNode {
+  roundNumber: number;
+  /**
+   * Slot offset from `windowStart`.
+   *
+   * `-1` and `TIMELINE_VISIBLE_NODES` are the OFF-EDGE BUFFER: nodes that are
+   * mounted but clipped, so a round leaving on the left and one arriving on
+   * the right both travel rather than popping in and out of existence.
+   */
+  index: number;
+  /** False for the two buffer slots. */
+  visible: boolean;
+  state: TimelineNodeState;
+  /**
+   * What the server said this round's segment is, or null when this client has
+   * never been told. Null is the ordinary state for a future round and for a
+   * past round played before this client connected — it is "not observed",
+   * never "an ordinary round".
+   */
+  segmentKind: TimelineSegmentKind | null;
+  /**
+   * The viewer's settled verdict, in the arena's existing vocabulary, or null.
+   *
+   * Null on an unresolved round AND on a resolved round whose settlement has
+   * aged out of the bounded ledger — a real and ordinary state, not an error.
+   * Such a node stays resolved and simply carries no verdict.
+   */
+  outcome: ResultKind | null;
+  /** Always null today. See `TimelineNodeTag`. */
+  tag: TimelineNodeTag | null;
+  /**
+   * RG2 — what the round is ABOUT: public subject, difficulty tier, proven
+   * icon. `null` when this client has never been told, which is the ordinary
+   * state for a FUTURE round and for a past round played before this client
+   * connected.
+   *
+   * A topic is only ever something the SERVER published for a specific round
+   * (`question.topic` on the live snapshot), accumulated as the match plays.
+   * Nothing is derived from an ordinal, from the pacing wave, or from a
+   * neighbouring round. A Ranked future round's question has not been
+   * generated, so there is nothing to publish and this stays null — and the
+   * node draws the neutral token.
+   */
+  topic: TimelineTopic | null;
+}
+
+export interface RoundTimelineView {
+  /** Constant for the whole match. Never varies round to round. */
+  visibleNodes: number;
+  /** The slot the current round occupies once the opening rounds are past. */
+  anchorIndex: number;
+  /** The round at slot 0. */
+  windowStart: number;
+  /** Slot of the current round, or null once the match is over. */
+  currentIndex: number | null;
+  currentRoundNumber: number | null;
+  /** True once the current round has reached `anchorIndex` and stays there. */
+  anchored: boolean;
+  /** Ascending, INCLUDING the off-edge buffer. See `TimelineNode.index`. */
+  nodes: TimelineNode[];
+}

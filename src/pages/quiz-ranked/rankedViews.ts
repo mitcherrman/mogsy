@@ -23,10 +23,12 @@ import { remainingSeconds } from "@/lib/ranked-core/timerMath";
 import {
   AbilityView,
   InteractionPermissions,
+  MascotReaction,
   ResolvedCombatantView,
   ResolvedRoundView,
   NO_INTERACTIONS,
   QuestionView,
+  RoundHistoryEntry,
   SubmissionPhase,
   TimerView,
 } from "@/lib/ranked-core/viewTypes";
@@ -238,23 +240,9 @@ export function opponentPresenceLabel(presence: PresenceView | null): string | n
  * legitimately differ (a floor, a heal, a clamp) and the settlement is the
  * authority on which one is the damage.
  */
-export interface RoundHistoryEntry {
-  /** Stable key: a round is settled once, so the round number identifies it. */
-  roundNumber: number;
-  /** This player's verdict in that round. */
-  outcome: ResolvedCombatantView["outcome"];
-  /** Damage this player DEALT. 0 = none. */
-  dealt: number;
-  /** Damage this player TOOK. 0 = none. */
-  taken: number;
-  /** Damage a shield absorbed for this player. 0 = none. */
-  absorbed: number;
-  /** Authoritative HP either side of the round, for the accessible description. */
-  hpBefore: number;
-  hpAfter: number;
-  /** The round ended on the clock rather than on both answers. */
-  timeExpired: boolean;
-}
+// ARENA1 Step 2A: declared in `lib/ranked-core/viewTypes` now — `CombatantPanel`
+// renders it and must not import upward from this page. Re-exported unchanged.
+export type { RoundHistoryEntry };
 
 /**
  * The last few settled rounds for one player, oldest first.
@@ -376,14 +364,9 @@ export function projectSurfaceReveal(
 // AI1 Phase 2 — mascot reactions for a settled round.
 // ---------------------------------------------------------------------------
 
-/** One mascot reaction: what to play, and the id that makes it retriggerable. */
-export interface MascotReaction {
-  action: "attack" | "hit";
-  /** The settled round this reaction belongs to. A round settles exactly once,
-   *  so the round number is a stable, monotonic event id — which is precisely
-   *  what `RoleMascot`'s edge-triggered playback needs. */
-  actionId: number;
-}
+// ARENA1 Step 2A: declared in `lib/ranked-core/viewTypes` now, for the same
+// reason as `RoundHistoryEntry` above. Re-exported unchanged.
+export type { MascotReaction };
 
 /**
  * The mascot reaction for each player in the settlement being revealed.
