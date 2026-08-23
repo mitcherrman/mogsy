@@ -42,11 +42,15 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
-import { LEDGER_INK } from "@/components/quiz/leaguecraft-ink";
+import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { LedgerRow, WorkspaceNote } from "@/components/quiz/workspace/primitives";
-import RankedMatchRow from "@/components/quiz/workspace/RankedMatchRow";
+import RankedMatchRow, { relativeMatchAge } from "@/components/quiz/workspace/RankedMatchRow";
+import { useMatchReviews } from "@/components/quiz/workspace/useMatchReviews";
 import type { QuizHistoryEntry, QuizHistoryResponse } from "@/lib/quiz/api";
-import type { MatchHistoryEntryView } from "@/lib/ranked-public/contracts";
+import type {
+  MatchHistoryEntryView,
+  MatchReviewView,
+} from "@/lib/ranked-public/contracts";
 
 /** Backend timestamps are UTC without a zone suffix. */
 function parseStamp(iso?: string | null): Date | null {
@@ -55,15 +59,26 @@ function parseStamp(iso?: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * How long ago, never when.
+ *
+ * The unified Record answers "what have I been studying lately", and an exact
+ * `Aug 22, 8:00 PM` makes the reader do date arithmetic to answer it. The
+ * Ranked rows already print relative age, and one ledger that dated half its
+ * rows one way and half the other would read as two ledgers — so this is
+ * literally the same function, imported rather than re-derived.
+ *
+ * `/lol/history` mounts this same component and therefore changes with it.
+ * That is the right outcome rather than a side effect: it is the SAME record,
+ * and a reader who saw "2d ago" on the lobby and `Aug 20, 8:00 PM` on the
+ * full page would reasonably wonder whether they were looking at two
+ * different things. Adding a prop to keep them different would have been
+ * machinery in service of an inconsistency.
+ */
 export function formatSessionDate(iso?: string | null): string {
   const d = parseStamp(iso);
   if (!d) return iso ?? "";
-  return d.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return relativeMatchAge(d.toISOString());
 }
 
 export function formatDuration(seconds?: number | null): string | null {
@@ -87,12 +102,25 @@ export function sessionLabel(entry: QuizHistoryEntry): string {
   return "Practice";
 }
 
-/** Good / mid / rough accuracy. Analytics tinting only — these are study
- *  sessions, never head-to-head results, so this is not a W/L colour. */
-function accuracyTone(acc: number): string {
-  if (acc >= 70) return "border-emerald-400/40 bg-emerald-400/10 text-emerald-300";
-  if (acc >= 40) return "border-cyan-400/30 bg-cyan-400/5 text-cyan-200";
-  return "border-rose-400/30 bg-rose-400/5 text-rose-300";
+/**
+ * Good / mid / rough accuracy. Analytics tinting only — these are study
+ * sessions, never head-to-head results, so this is not a W/L colour.
+ *
+ * Printed as INK, not as a lit chip: the dark-surface version glowed a
+ * 300-weight colour on a 10%-alpha fill, which on paper reads as a highlighter
+ * mark. Here the figure itself carries the colour, on the sheet's own deeper
+ * tile, so the pill states a number rather than shouting it.
+ */
+const ACCURACY_TONE = {
+  good: { color: "#1f5c3c", border: "rgba(31,92,60,0.34)" },
+  mid: { color: LEAGUECRAFT_INK.body, border: "rgba(96,68,28,0.28)" },
+  rough: { color: LEAGUECRAFT_INK.rubric, border: "rgba(122,40,32,0.3)" },
+} as const;
+
+function accuracyTone(acc: number) {
+  if (acc >= 70) return ACCURACY_TONE.good;
+  if (acc >= 40) return ACCURACY_TONE.mid;
+  return ACCURACY_TONE.rough;
 }
 
 export default function StudyHistoryLedger({
@@ -102,6 +130,7 @@ export default function StudyHistoryLedger({
   onRetry,
   onStartPractice,
   rankedEntries,
+  rankedReviews,
   signInHref,
   className = "",
 }: {
@@ -122,18 +151,22 @@ export default function StudyHistoryLedger({
    */
   onStartPractice?: () => void;
   /**
-   * PHASE B PREVIEW — Ranked duels in the same record.
+   * Ranked duels in the same record. PRODUCTION as of B1: `Quiz.tsx` hands
+   * down the rows it already holds (`useRankedMatchHistory`), so the lobby's
+   * record is one record. `/dev/lobby-preview` supplies frozen Timmy matches
+   * instead, which is what keeps the visual pass deterministic.
    *
-   * Undefined everywhere in production: `Quiz.tsx` holds real Ranked history
-   * (the centre parchment's ledger reads it) and deliberately does NOT hand it
-   * here, because Ranked full history is Phase B and this is a design pass.
-   * `/dev/lobby-preview` supplies frozen Timmy matches so the treatment can be
-   * judged beside the study rows it has to live with.
-   *
-   * When absent, everything below behaves exactly as it did: no filter, no
-   * Ranked rows, one stream.
+   * When absent — the standalone `/lol/history` page, and any host with no
+   * Ranked payload — everything below behaves exactly as it did: no filter,
+   * no Ranked rows, one stream.
    */
   rankedEntries?: readonly MatchHistoryEntryView[];
+  /**
+   * Frozen review payloads, by match id. `/dev/lobby-preview` supplies these
+   * so the timeline and its popover can be judged without a backend; when it
+   * is absent the ledger loads real reviews through `useMatchReviews`.
+   */
+  rankedReviews?: Readonly<Record<string, MatchReviewView>>;
   /**
    * Where an unauthenticated reader signs in. Supplied by the lobby, whose
    * guest error ("sign-in required") is a STATE rather than a failure; the
@@ -158,6 +191,21 @@ export default function StudyHistoryLedger({
   const hasRanked = !!rankedEntries && rankedEntries.length > 0;
   const [stream, setStream] = useState<"all" | "study" | "ranked">("all");
   const studyRows = history?.results ?? [];
+
+  /**
+   * ONE loader for every timeline on the page.
+   *
+   * Mounted here rather than inside `RankedMatchRow` because twenty rows each
+   * owning a fetch is twenty simultaneous reads of the database live matches
+   * are settling in. `useMatchReviews` walks them two at a time in display
+   * order and caches by match id; a frozen fixture host passes `rankedReviews`
+   * and this asks for nothing at all.
+   */
+  const reviewIds = useMemo(
+    () => (rankedReviews ? [] : (rankedEntries ?? []).map((e) => e.matchId)),
+    [rankedEntries, rankedReviews],
+  );
+  const reviews = useMatchReviews(reviewIds);
 
   const timeline = useMemo(() => {
     const study = studyRows.map((entry) => ({
@@ -292,11 +340,17 @@ export default function StudyHistoryLedger({
               data-testid={`history-stream-${id}`}
               aria-pressed={stream === id}
               onClick={() => setStream(id)}
-              className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className="rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              style={
                 stream === id
-                  ? "border-[#c9a84c]/45 bg-[#c9a84c]/12 text-[#e2c877]"
-                  : "border-[#c9a84c]/15 text-muted-foreground hover:border-[#c9a84c]/35 hover:text-[#e2c877]/80"
-              }`}
+                  ? {
+                      borderColor: "rgba(96,68,28,0.55)",
+                      background: LEAGUECRAFT_INK.inset,
+                      color: LEAGUECRAFT_INK.heading,
+                      textShadow: LEAGUECRAFT_INK.press,
+                    }
+                  : { borderColor: "rgba(96,68,28,0.22)", color: LEAGUECRAFT_INK.faint }
+              }
             >
               {id}
             </button>
@@ -308,7 +362,7 @@ export default function StudyHistoryLedger({
         {stream === "ranked" ? (
           <WorkspaceNote testId="study-history-scope">
             Showing your last{" "}
-            <span className="font-semibold tabular-nums text-foreground/80">
+            <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
               {rankedEntries?.length ?? 0}
             </span>{" "}
             ranked duels.
@@ -318,24 +372,24 @@ export default function StudyHistoryLedger({
           {limited ? (
             <>
               Showing your last{" "}
-              <span className="font-semibold tabular-nums text-foreground/80">{results.length}</span>{" "}
+              <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{results.length}</span>{" "}
               of{" "}
-              <span className="font-semibold tabular-nums text-foreground/80">{totalCount}</span>{" "}
+              <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{totalCount}</span>{" "}
               sessions
             </>
           ) : (
             <>
-              <span className="font-semibold tabular-nums text-foreground/80">{totalCount}</span>{" "}
+              <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{totalCount}</span>{" "}
               session{totalCount === 1 ? "" : "s"} on record
             </>
           )}
           {avgAccuracy !== null && (
             <>
               {" · "}
-              <span className="font-semibold tabular-nums text-foreground/80">{avgAccuracy}%</span>{" "}
+              <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{avgAccuracy}%</span>{" "}
               average
               {" · "}
-              <span className="font-semibold tabular-nums text-foreground/80">{bestAccuracy}%</span>{" "}
+              <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>{bestAccuracy}%</span>{" "}
               best
               {limited ? " over these" : ""}
             </>
@@ -357,38 +411,65 @@ export default function StudyHistoryLedger({
       <ul className="w-full">
         {timeline.map((item) => {
           if (item.kind === "ranked") {
-            return <RankedMatchRow key={item.key} entry={item.entry} />;
+            const loaded = reviews.get(item.entry.matchId);
+            return (
+              <RankedMatchRow
+                key={item.key}
+                entry={item.entry}
+                review={
+                  rankedReviews?.[item.entry.matchId] ??
+                  (loaded?.status === "ready" ? loaded.review : null)
+                }
+              />
+            );
           }
           const entry = item.entry;
           const acc = Math.round(Number(entry.accuracy || 0));
+          const tone = accuracyTone(acc);
           const duration = formatDuration(entry.duration_seconds);
           return (
             <LedgerRow key={item.key} testId="study-history-row">
               <div className="flex items-center gap-2 text-[11.5px]">
                 <span
-                  className={`w-[38px] shrink-0 rounded border px-1 py-px text-center text-[10px] font-bold tabular-nums ${accuracyTone(acc)}`}
+                  className="w-[38px] shrink-0 rounded border px-1 py-px text-center text-[10px] font-bold tabular-nums"
+                  style={{
+                    borderColor: tone.border,
+                    background: LEAGUECRAFT_INK.inset,
+                    color: tone.color,
+                  }}
                 >
                   {acc}%
                 </span>
-                <span className="shrink-0 font-semibold text-foreground/85">
+                <span
+                  className="w-[3.9rem] shrink-0 font-semibold"
+                  style={{ color: LEAGUECRAFT_INK.strong }}
+                >
                   {sessionLabel(entry)}
                 </span>
-                {entry.category && (
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                    {entry.category}
-                  </span>
-                )}
-                {!entry.category && <span className="min-w-0 flex-1" />}
-                <span className="shrink-0 font-mono text-[11px] tabular-nums text-foreground/80">
+                <span
+                  className="min-w-0 flex-1 truncate"
+                  style={{ color: LEAGUECRAFT_INK.body }}
+                >
+                  {entry.category ?? ""}
+                </span>
+                <span
+                  className="shrink-0 font-mono text-[11px] tabular-nums"
+                  style={{ color: LEAGUECRAFT_INK.body }}
+                >
                   {entry.score}/{entry.total_questions}
                 </span>
                 <span
-                  className="hidden w-[52px] shrink-0 text-right text-[10.5px] tabular-nums text-muted-foreground/80 sm:inline"
+                  className="hidden w-[52px] shrink-0 text-right text-[10.5px] tabular-nums sm:inline"
+                  style={{ color: LEAGUECRAFT_INK.faint }}
                   title="Time taken"
                 >
                   {duration ?? "—"}
                 </span>
-                <span className="shrink-0 text-right text-[10.5px] text-muted-foreground/70">
+                <span
+                  data-testid="study-history-age"
+                  className="w-[52px] shrink-0 text-right text-[10.5px]"
+                  style={{ color: LEAGUECRAFT_INK.faint }}
+                >
                   {formatSessionDate(entry.completed_at || entry.started_at || entry.date)}
                 </span>
               </div>
@@ -404,13 +485,19 @@ export default function StudyHistoryLedger({
         <div
           className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-md border px-2.5 py-2"
           data-testid="study-history-upsell"
-          style={{ borderColor: LEDGER_INK.ruleStrong, background: LEDGER_INK.inset }}
+          style={{ borderColor: "rgba(96,68,28,0.42)", background: LEAGUECRAFT_INK.inset }}
         >
-          <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+          <p className="min-w-0 flex-1 text-[11px]" style={{ color: LEAGUECRAFT_INK.body }}>
             {history?.upsell_message ||
               `Free accounts save your last ${history?.free_limit ?? 10} results. Upgrade to Mogsy Pro to unlock your full quiz history.`}
           </p>
-          <Button asChild size="sm" variant="outline" className="h-7 border-[#c9a84c]/40 text-[11px] text-[#e2c877]">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="h-7 text-[11px]"
+            style={{ borderColor: "rgba(96,68,28,0.45)", color: LEAGUECRAFT_INK.brass }}
+          >
             <Link to="/lol/pro">Unlock Full History</Link>
           </Button>
         </div>

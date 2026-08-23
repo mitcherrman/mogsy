@@ -12,13 +12,15 @@
  * rendered before — but the workspace needs the same treatment, and a second
  * hand-written copy is the thing this directory exists to avoid.
  *
- * Deliberately NOT parchment. The canonical visual reference is explicit that
- * the scroll is the academy's material for ceremonial, identity and record
- * surfaces, and that a dense workspace on parchment inherits a manuscript
- * margin costing ~30% of its width and an ink ceiling of 0.0747 luminance.
- * This surface is dense by design, so it stays on the plate.
+ * TWO SURFACES, TWO INKS. `SectionHeading` sits OUTSIDE the record, on the
+ * classroom's dark plate, and keeps the brass it has always printed in.
+ * Everything else here is printed ON the vellum sheet and uses
+ * `LEAGUECRAFT_INK` — the same parchment palette the lobby scrolls use, which
+ * this surface is entitled to because its crop guarantees a sheet no darker
+ * under text than the one those values were derived against (see `.lc-vellum`
+ * in `index.css`).
  */
-import { LEDGER_INK } from "@/components/quiz/leaguecraft-ink";
+import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 
 /**
  * A labelled part of the page begins here.
@@ -55,14 +57,17 @@ export function SectionHeading({
 export function LedgerTitle({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#c9a84c]/80">
+      <span
+        className="shrink-0 text-[10px] font-extrabold uppercase tracking-[0.2em]"
+        style={{ color: LEAGUECRAFT_INK.brass, textShadow: LEAGUECRAFT_INK.press }}
+      >
         {children}
       </span>
       <span
         aria-hidden="true"
         className="h-px min-w-0 flex-1"
         style={{
-          background: `linear-gradient(90deg, ${LEDGER_INK.ruleStrong} 0%, rgba(201,168,76,0.04) 100%)`,
+          background: `linear-gradient(90deg, ${LEAGUECRAFT_INK.rule} 0%, rgba(96,68,28,0.04) 100%)`,
         }}
       />
     </div>
@@ -87,7 +92,7 @@ export function LedgerRow({
     <li
       data-testid={testId}
       className={`border-b py-1.5 last:border-b-0 ${className}`}
-      style={{ borderColor: LEDGER_INK.rule }}
+      style={{ borderColor: "rgba(96,68,28,0.24)" }}
     >
       {children}
     </li>
@@ -108,7 +113,11 @@ export function WorkspaceNote({
   testId?: string;
 }) {
   return (
-    <p data-testid={testId} className="text-[11px] leading-relaxed text-muted-foreground">
+    <p
+      data-testid={testId}
+      className="text-[11px] leading-relaxed"
+      style={{ color: LEAGUECRAFT_INK.faint }}
+    >
       {children}
     </p>
   );

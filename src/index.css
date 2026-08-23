@@ -7032,6 +7032,187 @@ html.high-contrast * { text-shadow: none !important; }
    hover illumination would leave the pointer with no feedback at all. The
    live plate keeps its brightest rim as a still state, so the head of the
    matchmaking view still reads as live. */
+/* ═══════════════════════════════════════════════════════════════════════════
+   MALT B1 — THE MATCH-HISTORY PARCHMENT (the Leaguecraft Record)
+
+   The lower half of /quiz is a RECORD BOOK, and this is the page it is
+   written on. It is deliberately the quieter half of a two-material
+   hierarchy:
+
+     the three lobby scrolls  ceremonial parchment, dimensional, with rolls
+     the Leaguecraft Record   one flat torn sheet, no rolls, no ornament
+
+   ── THE SHEET IS A SILHOUETTE, NOT A RECTANGLE ────────────────────────────
+   `parchment-match-history.png` is 1448x1086 RGBA: a torn, burnt-edged sheet
+   on a TRANSPARENT surround. That is why this variant has no border and no
+   rounded corners — the sheet's own edge is the panel's edge, and drawing a
+   rectangle around it would frame a torn page in a box. For the same reason
+   the lift is a `drop-shadow` on the sheet layer, which follows the alpha
+   silhouette, rather than a `box-shadow`, which would cast a rectangle out of
+   the transparent corners. `.lc-scroll` solves its own edge the same way.
+
+   ── THE GEOMETRY, WHICH IS MEASURED ───────────────────────────────────────
+   The burnt edge is genuinely dark — it reaches rgb(127,71,26) — and it is
+   not symmetric: sampling the composited sheet in glyph-sized cells shows the
+   field is clean 5% in from the left and right but only 9% in from the top
+   and bottom.
+
+   Horizontal is handled by padding, because CSS percentage padding is
+   relative to WIDTH on all four sides — which makes it exactly right for the
+   left/right edges and useless for the top/bottom ones. So the top and bottom
+   char bands are CROPPED instead: `background-size: 100% 122%` centred pushes
+   image rows 0-9% and 91-100% outside the box, leaving the two torn edges you
+   actually read past — the long ones — fully visible.
+
+   ── THE WASH, AND WHY THE NUMBER IS 0.50 ──────────────────────────────────
+   The sheet is never shown raw; a light wash is composited over it, the same
+   technique `.ranked-academy .ranked-folio` and `.tome-sheet` already use for
+   this family of art. Here it is MASKED by the sheet's own alpha, so it lifts
+   the page without filling the transparent surround and squaring off the
+   silhouette.
+
+   0.50 is arithmetic, not taste. Text legibility is governed by the mean of a
+   GLYPH-SIZED region, not by the darkest single pixel (a speck under one
+   stem does not make a word unreadable), so the floor is measured over
+   14x18px cells — one glyph at this surface's type size. With the crop, 6%
+   horizontal padding and a 0.50 wash, the worst such cell inside the text
+   area is relative luminance 0.5546, which is LIGHTER than rgb(209,187,158) /
+   0.5156 — the parchment binding case `LEAGUECRAFT_INK` was derived against.
+   That is the whole reason this surface may reuse the approved palette
+   verbatim instead of minting a third one.
+
+   Lowering the wash, reducing the crop, or reducing the padding all break
+   that guarantee. `LeaguecraftRecord.vellum.test.tsx` re-derives it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.lc-vellum {
+  /* The sheet itself, and the ink that survives on it. */
+  --background: 41 62% 80%;
+  --foreground: 32 64% 9%;          /* LEAGUECRAFT_INK.strong  #241708 */
+  --card: 41 62% 80%;
+  --card-foreground: 32 64% 9%;
+  --popover: 41 62% 80%;
+  --popover-foreground: 32 64% 9%;
+  --muted: 38 40% 74%;
+  --muted-foreground: 31 34% 25%;   /* LEAGUECRAFT_INK.faint   #56412a */
+  --primary: 38 82% 18%;            /* LEAGUECRAFT_INK.brass   #533808 */
+  --primary-foreground: 41 62% 90%;
+  --secondary: 38 32% 71%;
+  --secondary-foreground: 33 52% 16%;
+  --accent: 38 40% 76%;
+  --accent-foreground: 33 52% 16%;
+  --destructive: 5 58% 30%;         /* LEAGUECRAFT_INK.rubric  #7a2820 */
+  --destructive-foreground: 41 62% 92%;
+  --border: 34 38% 52%;
+  --input: 34 38% 52%;
+  --ring: 193 82% 27%;              /* LEAGUECRAFT_INK.accent, lifted to read
+                                       as a focus ring on a light sheet */
+  color: hsl(var(--foreground));
+}
+
+/* The sheet layer. Inert and hidden from assistive tech: it is the material
+   the record is printed on, not part of the record's meaning. */
+.lc-vellum__sheet {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("/assets/ranked/parchment-match-history.png");
+  background-size: 100% 122%;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.5));
+}
+
+/* The wash, clipped to the sheet's own silhouette. Without the mask it would
+   paint the transparent surround too and turn a torn page back into a card. */
+.lc-vellum__sheet::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(247, 238, 214, 0.5);
+  -webkit-mask-image: url("/assets/ranked/parchment-match-history.png");
+  mask-image: url("/assets/ranked/parchment-match-history.png");
+  -webkit-mask-size: 100% 122%;
+  mask-size: 100% 122%;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* The text area. 6% left/right keeps ink off the torn edge (measured); the
+   vertical inset is ordinary padding because the char band above and below is
+   cropped away by the 122% stretch rather than padded around. */
+.lc-vellum__content {
+  position: relative;
+  padding: 1.4rem 6%;
+}
+
+/* `.theme-lol` forces every `.bg-card` to a navy plate with a cyan inset
+   frame. That is right for the classroom and wrong for a page in a book, so
+   it is unwound here rather than by removing `bg-card` from components that
+   are correct everywhere else. Same specificity, later in the file. */
+.lc-vellum .bg-card {
+  background-color: hsl(var(--card));
+  box-shadow: none;
+}
+
+/* The heading glow is a dark-surface device: a gold halo on paper reads as a
+   printing fault. The letterpress below replaces it — one hairline of
+   sheet-coloured light above each glyph, which is what separates ink printed
+   ONTO a sheet from text sitting over it. */
+.lc-vellum h1,
+.lc-vellum h2,
+.lc-vellum h3 {
+  text-shadow: 0 1px 0 rgba(255, 249, 233, 0.5);
+}
+.lc-vellum h1,
+.lc-vellum h2 {
+  color: hsl(37 76% 13%);           /* LEAGUECRAFT_INK.heading #3a2708 */
+}
+.lc-vellum .bg-primary {
+  background-image: none;
+  background-color: hsl(var(--primary));
+  box-shadow: none;
+}
+.lc-vellum .text-primary {
+  color: hsl(38 82% 18%);
+}
+
+/* The REVIEW POPOVER borrows the ink but not the torn silhouette: a floating
+   card with burnt edges reads as a scrap, and it has to hold a bounded,
+   scrollable box. It gets the sheet's tone as a flat wash plus the same
+   hairline the rest of the record is ruled in. */
+.lc-vellum--card {
+  background-color: rgb(241, 229, 200);
+  background-image: linear-gradient(
+    178deg,
+    rgba(250, 242, 222, 0.55) 0%,
+    rgba(233, 216, 181, 0.55) 100%
+  );
+}
+
+/* A Ranked record warms its edge on hover the way anything openable should.
+   It lives here rather than as a Tailwind arbitrary variant because the
+   resting border is an inline style (the sheet's own brown at a specific
+   alpha) and a `hover:border-*` class would lose to it. */
+.lc-ranked-row:hover {
+  border-color: rgba(96, 68, 28, 0.62) !important;
+}
+
+/* The question icon warms its ring on hover, same reasoning. */
+.lc-question-icon:not(:disabled):hover,
+.lc-question-icon[data-open="true"] {
+  border-color: #241708 !important;
+}
+
+/* NOTE ON PLACEMENT — the reduced-motion block below must stay LAST in this
+   file. `playModeCard.styles.test.ts` extracts it by slicing from its
+   `@media` to the NEXT `@media`, so any rule appended after it is read as
+   part of it (a `box-shadow: none` added at the end of the file failed that
+   suite's "keeps the LIGHT" assertion exactly this way). New sections go
+   ABOVE this line. */
+
 @media (prefers-reduced-motion: reduce) {
   .play-mode-card,
   .play-mode-card::after,

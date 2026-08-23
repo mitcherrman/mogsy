@@ -63,9 +63,12 @@ describe("Timmy demo — isolation from production state", () => {
   });
 
   it("performs no fetch, no write and no storage or auth access", () => {
+    // Every source this route can reach, including the synthetic Ranked match
+    // set — a fixture that could fetch would stop being a fixture.
     const sources = [
       readFileSync(resolve(__dirname, "lobbyPreviewFixtures.ts"), "utf8"),
       readFileSync(resolve(__dirname, "LobbyPreviewPage.tsx"), "utf8"),
+      readFileSync(resolve(__dirname, "syntheticRankedHistory.ts"), "utf8"),
     ].join("\n");
     for (const forbidden of [
       "fetch(", "axios", "supabase", "quizApi", "localStorage", "sessionStorage",

@@ -48,9 +48,16 @@ import type {
 } from "@/lib/quiz/api";
 import type {
   MatchHistoryEntryView,
+  MatchReviewView,
   RankedProgressionView,
+  ReviewQuestion,
+  ReviewRound,
 } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
+import {
+  SYNTHETIC_RANKED_HISTORY,
+  SYNTHETIC_RANKED_REVIEWS,
+} from "@/pages/dev/lobby-preview/syntheticRankedHistory";
 import type { DemoRoleMastery } from "@/components/quiz/RankedLobbyHero";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 
@@ -192,15 +199,28 @@ const TIMMY_TERMINAL: Record<number, { reason: "forfeit" | "no_contest"; rounds:
   11: { reason: "no_contest", rounds: 4 },
 };
 
-export const TIMMY_MATCH_HISTORY: readonly MatchHistoryEntryView[] = Object.freeze(
-  TIMMY_ROWS.map((row, i) => ({
+/**
+ * One deliberately LONG match, so the preview exercises what the common case
+ * cannot: a question timeline that has to page. Five icons a page means a
+ * 15-round match is three pages, which is the only length that proves both
+ * arrows, both edges, and a middle page where neither is disabled.
+ */
+const TIMMY_LONG_MATCHES: Record<number, number> = { 2: 15 };
+
+const TIMMY_OLDER_ROWS: readonly MatchHistoryEntryView[] = Object.freeze(
+  TIMMY_ROWS.slice(SYNTHETIC_RANKED_HISTORY.length).map((row, idx) => {
+    const i = idx + SYNTHETIC_RANKED_HISTORY.length;
+    return ({
     matchId: `demo-timmy-${i}`,
     viewerOutcome: row.outcome,
     terminalReason: TIMMY_TERMINAL[i]?.reason ?? "combat",
     completionReason: TIMMY_TERMINAL[i] ? TIMMY_TERMINAL[i].reason : "rounds_complete",
     // Match LENGTH, never a score: the contract carries the round a duel ended
     // on and no per-round results. A short one is a duel that ended early.
-    finalRoundNumber: TIMMY_TERMINAL[i]?.rounds ?? (i % 4 === 0 ? 7 : i % 3 === 0 ? 3 : 5),
+    finalRoundNumber:
+      TIMMY_TERMINAL[i]?.rounds ??
+      TIMMY_LONG_MATCHES[i] ??
+      (i % 4 === 0 ? 7 : i % 3 === 0 ? 3 : 5),
     completedAt: daysAgo(row.days, 20 - (i % 6)),
     isBotMatch: row.bot,
     viewerClass: "mage",
@@ -211,20 +231,43 @@ export const TIMMY_MATCH_HISTORY: readonly MatchHistoryEntryView[] = Object.free
     opponentIsBot: row.bot,
     ratingDelta: row.delta,
     ratingAfter: TIMMY_RATING_AFTER[i],
-  })) satisfies MatchHistoryEntryView[],
+  });
+  }) satisfies MatchHistoryEntryView[],
 );
 
 /**
- * What the Ranked design preview is handed: the most recent duels, beside the
- * study rows they have to share a record with. Six is enough to judge the
- * rhythm of several units at once without turning the demo into a Ranked page.
+ * The centre parchment's own ledger, and the sample the role tally is computed
+ * over. Twenty rows, because a five-role tally built from nine games tells you
+ * very little.
  *
- * PREVIEW ONLY. `Quiz.tsx` passes no Ranked entries into the Leaguecraft
- * Record — Ranked full history is Phase B.
+ * It OPENS with the same nine matches the Leaguecraft Record shows — one demo
+ * account cannot have two different recent histories on one screen — and
+ * continues into the older rows below, which exist to give the tally depth and
+ * to keep a pre-rating (`delta: null`) row on the wire.
  */
-export const TIMMY_RANKED_RECORD_PREVIEW: readonly MatchHistoryEntryView[] = Object.freeze(
-  TIMMY_MATCH_HISTORY.slice(0, 6),
-);
+export const TIMMY_MATCH_HISTORY: readonly MatchHistoryEntryView[] = Object.freeze([
+  ...SYNTHETIC_RANKED_HISTORY,
+  ...TIMMY_OLDER_ROWS,
+] satisfies MatchHistoryEntryView[]);
+
+/**
+ * THE RECORD'S RANKED ROWS — the synthetic match set.
+ *
+ * Re-exported from `syntheticRankedHistory.ts`, which is where the nine
+ * theoretical matches and every one of their rounds are defined. It lives in
+ * its own module because it is a substantial dataset with a rule of its own
+ * (every question declares its true subject and the icon hint is derived from
+ * that declaration), and because a filename that says SYNTHETIC is the
+ * cheapest possible guard against anyone mistaking it for real play.
+ *
+ * PREVIEW ONLY. `Quiz.tsx` passes none of this: production reads the
+ * account's own Ranked history and per-match review from the backend, through
+ * `ranked-public/client`. Nothing in this directory may name an endpoint —
+ * `LobbyPreviewPage.test.tsx` scans these sources for one.
+ */
+export const TIMMY_RANKED_RECORD_PREVIEW = SYNTHETIC_RANKED_HISTORY;
+export const TIMMY_MATCH_REVIEWS = SYNTHETIC_RANKED_REVIEWS;
+
 
 /**
  * Representative Role Mastery scores — DEMO ONLY, and the clearest example of
@@ -237,16 +280,18 @@ export const TIMMY_RANKED_RECORD_PREVIEW: readonly MatchHistoryEntryView[] = Obj
  * account is shown its own recent win rate instead, labelled as recent.
  *
  * Ordered to match Timmy's actual play: strongest where he has the games and
- * the win rate, weakest on the role he has touched once. A mastery score that
- * disagreed with the record printed beside it would make the band read as
- * decorative, which is the one thing the demo must not teach us.
+ * the win rate, weakest on the role he has barely touched. A mastery score
+ * that disagreed with the record printed beside it would make the band read
+ * as decorative, which is the one thing the demo must not teach us — so when
+ * the record's match set changed, these moved with it. Mid leads on seven
+ * games; ADC trails on two.
  */
 export const TIMMY_ROLE_MASTERY: Partial<Record<RankedRole, DemoRoleMastery>> = Object.freeze({
   mid: { score: 742, label: "Adept" },
   jungle: { score: 518, label: "Practised" },
   top: { score: 264, label: "Apprentice" },
-  adc: { score: 193, label: "Apprentice" },
-  support: { score: 61, label: "Novice" },
+  support: { score: 193, label: "Apprentice" },
+  adc: { score: 61, label: "Novice" },
 });
 
 // ── Academy ────────────────────────────────────────────────────────────────

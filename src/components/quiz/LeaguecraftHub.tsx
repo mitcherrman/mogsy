@@ -29,6 +29,7 @@ import type { RankedRole } from "@/lib/ranked-public/roles";
 import type {
   RankedProgressionView,
   MatchHistoryEntryView,
+  MatchReviewView,
 } from "@/lib/ranked-public/contracts";
 
 /**
@@ -173,6 +174,7 @@ export default function LeaguecraftHub({
   historyError,
   showPractice = false,
   rankedHistoryPreview,
+  rankedReviewPreview,
   reviewState,
   rankedRole = null,
   onSelectRankedRole,
@@ -287,16 +289,20 @@ export default function LeaguecraftHub({
    */
   showPractice?: boolean;
   /**
-   * PHASE B DESIGN PREVIEW — Ranked duels inside the Leaguecraft Record.
+   * FROZEN OVERRIDE for the Record's Ranked rows.
    *
-   * Deliberately NOT `matchHistory`. This component already receives the
-   * account's real Ranked rows for the centre parchment's own ledger, and
-   * forwarding those here would ship Ranked history rather than preview it.
-   * `Quiz.tsx` passes nothing; `/dev/lobby-preview` passes frozen fixtures, so
-   * the treatment can be judged against the study rows it must live beside
-   * without any production surface claiming Phase B is done.
+   * B1 shipped Ranked history into the Record, so production now renders
+   * `matchHistory` — the account's real rows, which this component already
+   * receives for the centre parchment's ledger and which are read ONCE for
+   * both. This prop stays because `/dev/lobby-preview` needs a deterministic
+   * set to judge the treatment against, and because a fixture host must never
+   * be able to reach the network. When it is supplied it REPLACES the real
+   * rows; when it is not, nothing about the lobby's own read changes.
    */
   rankedHistoryPreview?: readonly MatchHistoryEntryView[];
+  /** Frozen review payloads by match id, for the same fixture host. Absent in
+   *  production, where the ledger loads reviews itself. */
+  rankedReviewPreview?: Readonly<Record<string, MatchReviewView>>;
   /**
    * MALT: a pre-resolved missed-question bank for the Review pane, for a host
    * that must not fetch. `/dev/lobby-preview` is the only caller — its whole
@@ -698,7 +704,10 @@ export default function LeaguecraftHub({
                  Studies card: it opens the catalog-wide practice set in place,
                  never a Ranked match. */
               onStartPractice={primarySet ? () => onSelectSet(primarySet) : undefined}
-              rankedEntries={rankedHistoryPreview}
+              /* One record: the account's real Ranked rows, or the frozen
+                 fixture set when a preview host supplied one. */
+              rankedEntries={rankedHistoryPreview ?? matchHistory}
+              rankedReviews={rankedReviewPreview}
               signInHref={authHref("/quiz#history")}
             />
           }

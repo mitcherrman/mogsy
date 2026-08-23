@@ -71,7 +71,16 @@ export const LEAGUECRAFT_INK = {
  *
  * Not a second parchment palette taken to a dark surface: these are the exact
  * values the lobby's lower half already shipped with, collected so the study
- * workspace can print in them instead of writing a third set of hexes.
+ * workspace could print in them instead of writing a third set of hexes.
+ *
+ * NO CURRENT CONSUMER, AND KEPT ON PURPOSE. MALT B1 re-materialled the
+ * Leaguecraft Record onto vellum, so the record and everything in it now
+ * prints in `LEAGUECRAFT_INK` above — the surface's crop and wash guarantee a
+ * sheet no darker under text than the one that palette was derived against
+ * (see `.lc-vellum` in `index.css`). These values remain the record of what
+ * the dark plate printed in, and the palette any FUTURE dark-surface
+ * Leaguecraft panel should reach for rather than re-deriving brass by hand,
+ * which is the mistake this module exists to prevent.
  *
  * `brass` is the study surface's heading ink — the same `#e2c877` the hub's
  * section headings and the category rail's labels use — and the rules are the

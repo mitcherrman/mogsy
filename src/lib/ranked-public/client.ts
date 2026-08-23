@@ -13,6 +13,7 @@ import { getBackendAuthHeaders } from "@/lib/backend-auth";
 import {
   readHeartbeat,
   readMatchHistory,
+  readMatchReview,
   readMatchResult,
   readPrivatePlayer,
   readPublicRound,
@@ -23,6 +24,7 @@ import {
   readResume,
   HeartbeatView,
   MatchHistoryView,
+  MatchReviewView,
   MatchResultView,
   PrivatePlayerView,
   PublicRoundView,
@@ -418,3 +420,16 @@ export const getMatchResult = (matchId: string, signal?: AbortSignal): Promise<M
 /** The caller's own completed matches, newest first (limit clamped server-side). */
 export const getMatchHistory = (limit?: number, signal?: AbortSignal): Promise<MatchHistoryView> =>
   request(`/api/ranked/history${limit ? `?limit=${limit}` : ""}`, readMatchHistory, { signal });
+
+/**
+ * MALT B1 — the caller's post-match review of ONE finished match.
+ *
+ * Terminal-only and membership-gated on the server: 403 for a match the caller
+ * did not play, 409 while it is still running. Correct answers are present
+ * because the match is over, and a round that never resolved still withholds
+ * its own — which is why this is a separate call rather than a widening of
+ * `/history` or of the answer-free `/question-library`.
+ */
+export const getMatchReview = (matchId: string, signal?: AbortSignal): Promise<MatchReviewView> =>
+  request(`/api/ranked/matches/${encodeURIComponent(matchId)}/review`,
+    readMatchReview, { signal });

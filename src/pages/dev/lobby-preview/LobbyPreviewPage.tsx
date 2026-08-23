@@ -27,6 +27,7 @@ import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissed
 import {
   LOBBY_PREVIEW_STATES,
   PREVIEW_SETS,
+  TIMMY_MATCH_REVIEWS,
   TIMMY_RANKED_RECORD_PREVIEW,
   type LobbyPreviewProfile,
 } from "./lobbyPreviewFixtures";
@@ -138,12 +139,15 @@ export default function LobbyPreviewPage() {
           historyLoading={false}
           historyError={null}
           reviewState={review}
-          /* PHASE B DESIGN PREVIEW, and only for the account that has duels.
-             Ranked history is not wired into the real record — `Quiz.tsx`
-             passes nothing — so this is the one place the treatment renders.
-             The newcomer gets none, because a new account HAS none and the
-             empty record has to stay the real empty record. */
+          /* FROZEN OVERRIDE, and only for the account that has duels. Ranked
+             history IS wired into the real record now (B1); this replaces it
+             with a fixed set so the visual pass is deterministic and this page
+             stays offline. The newcomer gets none, because a new account HAS
+             none and the empty record has to stay the real empty record. */
           rankedHistoryPreview={profile === "timmy" ? TIMMY_RANKED_RECORD_PREVIEW : undefined}
+          /* Frozen reviews, so the question timelines and their popovers draw
+             from a fixed set and this page never reaches the network. */
+          rankedReviewPreview={profile === "timmy" ? TIMMY_MATCH_REVIEWS : undefined}
           rankedRole={role}
           onSelectRankedRole={setRole}
           rankedProgression={state.progression}

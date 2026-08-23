@@ -10,12 +10,17 @@
  * SUBORDINATE BY CONSTRUCTION
  * ───────────────────────────
  * The canonical visual reference is explicit that the three-scroll rack is
- * this page's LAYOUT, not the Leaguecraft system, and that a dense workspace
- * on parchment inherits a manuscript margin costing ~30% of its width and an
- * ink ceiling of 0.0747 luminance. So this is not a fourth scroll, not a
- * second hero and not a three-column rack: it is one `LobbyPanel` plate — the
- * lobby's existing lower-area shell — carrying ruled headings and ruled rows
- * in the brass the workspace already prints in. Ledger, not dashboard.
+ * this page's LAYOUT, not the Leaguecraft system. So this is not a fourth
+ * scroll, not a second hero and not a three-column rack: it is ONE sheet of
+ * the academy's vellum — flat, unrolled, unornamented — carrying ruled
+ * headings and ruled rows. A record book, not a dashboard.
+ *
+ * The material is the hierarchy. The three lobby scrolls are ceremonial and
+ * dimensional; a record is paper. That is why the sheet has no rolls, no
+ * second frame and no ornament, and why it is measurably flatter: see the
+ * `.lc-vellum` rules in `index.css` for the crop that keeps the sheet's dark
+ * vignette off the text, which is what lets this surface reuse the approved
+ * parchment ink rather than mint a palette of its own.
  *
  * THE SHELL IS THE POINT, NOT THE TWO TABS IN IT
  * ──────────────────────────────────────────────
@@ -37,7 +42,7 @@
  */
 import { BookX, History as HistoryIcon } from "lucide-react";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
-import { LEDGER_INK } from "@/components/quiz/leaguecraft-ink";
+import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 
 /** Which top-level question the workspace is answering. Also the URL hash. */
 export type WorkspaceMode = "history" | "review";
@@ -92,7 +97,7 @@ export default function LeaguecraftWorkspace({
 
   return (
     <div className={className} data-testid="leaguecraft-workspace" data-mode={mode}>
-      <LobbyPanel className="gap-2">
+      <LobbyPanel variant="vellum" className="gap-2">
         {/* The tab strip. Real tabs — `tablist`/`tab`/`tabpanel` with roving
             selection — because these are two views of one surface, not two
             destinations; a reader on a screen reader should be told the panel
@@ -102,7 +107,7 @@ export default function LeaguecraftWorkspace({
           aria-label="Leaguecraft record"
           data-testid="workspace-tablist"
           className="flex items-end gap-1 border-b pb-px"
-          style={{ borderColor: LEDGER_INK.rule }}
+          style={{ borderColor: LEAGUECRAFT_INK.rule }}
         >
           {WORKSPACE_MODES.map((id) => {
             const active = id === mode;
@@ -129,11 +134,17 @@ export default function LeaguecraftWorkspace({
                       : (i - 1 + WORKSPACE_MODES.length) % WORKSPACE_MODES.length;
                   onModeChange(WORKSPACE_MODES[next]);
                 }}
+                /* Ink, not brass-on-black: the ACTIVE tab is the darkest
+                   thing on the strip and is underscored in the sheet's own
+                   brown, which is how a book marks the page you are on. */
                 className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                  active
-                    ? "border-[#e2c877]/70 text-[#e2c877]"
-                    : "border-transparent text-muted-foreground hover:text-[#e2c877]/75"
+                  active ? "" : "border-transparent"
                 }`}
+                style={
+                  active
+                    ? { borderColor: LEAGUECRAFT_INK.brass, color: LEAGUECRAFT_INK.heading, textShadow: LEAGUECRAFT_INK.press }
+                    : { color: LEAGUECRAFT_INK.faint }
+                }
               >
                 <Icon className="h-3 w-3" aria-hidden="true" />
                 {MODE_META[id].label}
@@ -142,7 +153,10 @@ export default function LeaguecraftWorkspace({
           })}
           {/* The open pane's own line, on the strip's far end where it reads as
               a caption for what is below rather than as a second heading. */}
-          <span className="ml-auto hidden pb-1.5 pl-3 text-[10px] text-muted-foreground/80 sm:inline">
+          <span
+            className="ml-auto hidden pb-1.5 pl-3 text-[10px] sm:inline"
+            style={{ color: LEAGUECRAFT_INK.faint }}
+          >
             {meta.hint}
           </span>
         </div>

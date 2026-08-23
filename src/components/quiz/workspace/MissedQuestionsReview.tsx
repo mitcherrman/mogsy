@@ -34,7 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
-import { LEDGER_INK } from "@/components/quiz/leaguecraft-ink";
+import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { WorkspaceNote } from "@/components/quiz/workspace/primitives";
 import type { MissedQuestion } from "@/lib/quiz/api";
 import { useMissedQuestions, type MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
@@ -58,7 +58,7 @@ function MissedQuestionEntry({ q }: { q: MissedQuestion }) {
     <li
       data-testid="missed-question"
       className="rounded-md border px-3 py-2.5"
-      style={{ borderColor: LEDGER_INK.rule, background: LEDGER_INK.inset }}
+      style={{ borderColor: "rgba(96,68,28,0.34)", background: LEAGUECRAFT_INK.inset }}
     >
       <div className="flex flex-wrap items-center gap-1.5">
         {q.category && (
@@ -79,19 +79,20 @@ function MissedQuestionEntry({ q }: { q: MissedQuestion }) {
         {q.question_text || "Question no longer available."}
       </p>
       <div className="mt-1.5 space-y-1 text-[11.5px]">
-        <p className="flex items-start gap-1.5 text-destructive">
+        <p className="flex items-start gap-1.5" style={{ color: LEAGUECRAFT_INK.rubric }}>
           <XIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>Your answer: {q.selected_answer || "—"}</span>
         </p>
         {q.correct_answer && (
-          <p className="flex items-start gap-1.5 text-emerald-400">
+          <p className="flex items-start gap-1.5" style={{ color: "#1f5c3c" }}>
             <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>Correct answer: {q.correct_answer}</span>
           </p>
         )}
       </div>
       {q.explanation && (
-        <p className="mt-2 rounded-md bg-muted/40 p-2 text-[11.5px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 rounded-md p-2 text-[11.5px] leading-relaxed"
+          style={{ background: LEAGUECRAFT_INK.inset, color: LEAGUECRAFT_INK.body }}>
           {q.explanation}
         </p>
       )}
@@ -146,9 +147,9 @@ export default function MissedQuestionsReview({
       <div
         className={`flex flex-col items-center gap-3 rounded-md border px-4 py-8 text-center ${className}`}
         data-testid="missed-questions-locked"
-        style={{ borderColor: LEDGER_INK.ruleStrong, background: LEDGER_INK.inset }}
+        style={{ borderColor: "rgba(96,68,28,0.42)", background: LEAGUECRAFT_INK.inset }}
       >
-        <Lock className="h-7 w-7 text-[#c9a84c]" aria-hidden="true" />
+        <Lock className="h-7 w-7" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />
         <p className="max-w-md text-[12.5px] text-foreground/85">
           {data.upsell_message ||
             "Upgrade to Mogsy Pro to review every question you missed and practice your weak spots."}

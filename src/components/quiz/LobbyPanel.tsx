@@ -6,10 +6,15 @@
  *
  *   `scroll`  The three hero columns. A parchment scroll that has unfurled into
  *             place — the academy library's own material, not a dashboard card.
- *   `plate`   The study panel beneath them. The original translucent navy wash.
- *             The lower half of the lobby is scheduled for its own redesign, so
- *             it deliberately keeps the treatment it shipped with rather than
- *             being half-converted here.
+ *   `plate`   The original translucent navy wash, kept for any lower-lobby
+ *             surface that has not been re-materialled.
+ *   `vellum`  The Leaguecraft Record (MALT B1). One torn sheet of the
+ *             academy's match-history parchment — the quieter half of the
+ *             two-material hierarchy: the scrolls are ceremonial and
+ *             dimensional, a record book is a page. No rolls, no ornament,
+ *             no second frame; the geometry and the contrast floor that let
+ *             it reuse the parchment ink are documented over the
+ *             `.lc-vellum` rules in `index.css`.
  *
  * THE SCROLL
  * ──────────
@@ -57,7 +62,7 @@ export default function LobbyPanel({
   className = "",
   children,
 }: {
-  variant?: "scroll" | "plate";
+  variant?: "scroll" | "plate" | "vellum";
   order?: LobbyScrollOrder;
   emphasis?: boolean;
   className?: string;
@@ -86,6 +91,40 @@ export default function LobbyPanel({
             shell. `items-center text-center` has to align the centre column's
             children; on the outer box it would only align the parchment. */}
         <div className={`lc-scroll__content ${className}`}>{children}</div>
+      </div>
+    );
+  }
+
+  if (variant === "vellum") {
+    return (
+      /**
+       * A torn page, not a card on a page.
+       *
+       * The sheet is a separate, inert layer behind the content — the same
+       * architecture `.lc-scroll` uses, and for the same reason: the lift has
+       * to be a `drop-shadow` that follows the artwork's alpha silhouette, and
+       * a filter on the panel itself would apply to every glyph inside it.
+       *
+       * NO BORDER AND NO RADIUS. The artwork's own burnt edge is the panel's
+       * edge; a rounded rectangle around it would frame a torn page in a box.
+       * The geometry that keeps ink off that edge — a 122% vertical stretch
+       * and 6% side padding, both measured — lives with the `.lc-vellum` rules
+       * in `index.css`.
+       *
+       * `lc-vellum` is the INK scope and carries no background of its own, so
+       * it can be reused verbatim by the review popover, which renders in a
+       * portal outside this subtree and would otherwise print dark-theme text
+       * on a light sheet.
+       */
+      <div
+        data-testid="hero-panel"
+        data-variant="vellum"
+        className="lc-vellum relative flex flex-1 flex-col"
+      >
+        <div className="lc-vellum__sheet" aria-hidden="true" />
+        <div className={`lc-vellum__content flex flex-1 flex-col ${className}`}>
+          {children}
+        </div>
       </div>
     );
   }

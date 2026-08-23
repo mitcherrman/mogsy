@@ -133,15 +133,37 @@ describe("MALT — the workspace exists, below the approved first screen", () =>
     expect(container.querySelector('[data-testid="hub-practice-section"]')).toBeNull();
   });
 
-  it("is NOT another parchment scroll — it sits on the lower lobby's plate", () => {
+  it("is a flat VELLUM sheet, and is NOT another parchment scroll", () => {
+    // The material is the hierarchy: the three lobby columns are ceremonial
+    // scrolls with rolls and ornament, and a record book is a flat page. B1
+    // moved this surface onto the academy's vellum; what it must never do is
+    // become a fourth scroll or a second hero.
     const { container } = renderHub();
     const record = container.querySelector('[data-testid="hub-record-section"]')!;
     const panel = record.querySelector('[data-testid="hero-panel"]')!;
-    expect(panel.getAttribute("data-variant")).toBe("plate");
+    expect(panel.getAttribute("data-variant")).toBe("vellum");
+    expect(panel.className).toContain("lc-vellum");
+    // The sheet is a separate inert layer, so its drop-shadow can follow the
+    // artwork's alpha without blurring every glyph on top of it.
+    const sheet = panel.querySelector(".lc-vellum__sheet")!;
+    expect(sheet).not.toBeNull();
+    expect(sheet.getAttribute("aria-hidden")).toBe("true");
+    expect(panel.querySelector(".lc-vellum__content")).not.toBeNull();
     expect(record.querySelector(".lc-scroll")).toBeNull();
-    // …and the page's ONE ceremonial emblem is still the centre column's, so
-    // the workspace did not become a second hero.
+    // The page's ONE ceremonial emblem is still the centre column's.
     expect(container.querySelectorAll('[data-emphasis="true"]').length).toBeLessThanOrEqual(1);
+  });
+
+  it("uses the EXISTING vellum asset and no new parchment art", () => {
+    const { container } = renderHub();
+    const panel = container
+      .querySelector('[data-testid="hub-record-section"]')!
+      .querySelector('[data-testid="hero-panel"]')!;
+    // The sheet is painted by `.lc-vellum__sheet` in `index.css`, which points
+    // at an asset already in the repo. No <img>, no second texture, and no
+    // inline background that could quietly become a different file.
+    expect(panel.querySelector("img")).toBeNull();
+    expect(panel.getAttribute("style") ?? "").not.toContain("url(");
   });
 
   it("leaves the approved first screen exactly as it was", () => {
@@ -284,7 +306,7 @@ describe("MALT — History", () => {
   });
 });
 
-describe("MALT — the Ranked record (Phase B design preview)", () => {
+describe("MALT — the Ranked record", () => {
   const RANKED = [
     {
       matchId: "m1", viewerOutcome: "win" as const, terminalReason: "combat" as const,
@@ -306,10 +328,10 @@ describe("MALT — the Ranked record (Phase B design preview)", () => {
     },
   ];
 
-  it("renders NOTHING unless a host supplies entries — Phase B is not wired", () => {
-    // `Quiz.tsx` holds the account's real Ranked rows for the centre
-    // parchment and deliberately does not hand them to the record. A record
-    // that quietly started printing them would BE Phase B.
+  it("renders NOTHING when the account has no Ranked rows", () => {
+    // B1 wired Ranked history in, so the record now prints `matchHistory`.
+    // An account with none still gets no Ranked rows and no stream filter —
+    // a filter over a single stream is furniture.
     const { container } = renderHub();
     expect(container.querySelector('[data-testid="ranked-match-row"]')).toBeNull();
     expect(container.querySelector('[data-testid="history-stream-filter"]')).toBeNull();
@@ -323,8 +345,14 @@ describe("MALT — the Ranked record (Phase B design preview)", () => {
     expect(row.textContent).toContain("Sylvara");
     expect(row.textContent).toContain("Mid");
     expect(row.textContent).toContain("+22");
-    // finalRoundNumber is match LENGTH. It must never be dressed as a score.
-    expect(row.textContent).toContain("5 rounds");
+    // Relative age, never an exact stamp or a duration (B1, owner's call).
+    expect(within(row).getByTestId("ranked-match-age").textContent).toMatch(
+      /just now|\d+m ago|Today|\d+d ago|\d+mo ago/,
+    );
+    // finalRoundNumber is match LENGTH, and B1 draws it as the timeline
+    // instead of printing it. It must never be dressed as a score either way.
+    expect(within(row).getByTestId("question-timeline").getAttribute("data-total"))
+      .toBe("5");
     expect(row.textContent).not.toMatch(/\b\d+\s*[-–]\s*\d+\b/);
     // Rating before is DERIVED, and only from two present halves.
     expect(screen.getByTestId("ranked-match-ladder").textContent).toMatch(/1262.*1284/);
@@ -342,26 +370,39 @@ describe("MALT — the Ranked record (Phase B design preview)", () => {
     expect(pre.textContent).toContain("forfeit");
   });
 
-  it("invents no analytics, no champions and no round strip", () => {
+  it("invents no analytics verdicts", () => {
     const { container } = renderHub({ rankedHistoryPreview: RANKED });
     const text = container.querySelector('[data-testid="hub-record-section"]')!.textContent!;
     for (const invented of [/dominant/i, /comeback/i, /outdrafted/i, /clutch/i, /mvp/i]) {
       expect(text).not.toMatch(invented);
     }
-    // No champion art: Ranked records a class and a role, never a champion.
+  });
+
+  it("draws no ROW art of its own — the only pictures are the questions", () => {
+    // Ranked records a class and a role, never a champion, so the row itself
+    // still has no portrait. What B1 added is the timeline, whose icons are
+    // the QUESTIONS' own subjects — and with no review loaded there is not
+    // even one of those.
+    renderHub({ rankedHistoryPreview: RANKED });
     const imgs = screen.getAllByTestId("ranked-match-row").flatMap((r) =>
       Array.from(r.querySelectorAll("img")),
     );
     expect(imgs).toHaveLength(0);
   });
 
-  it("is a record, not a button — there is no match review to open yet", () => {
+  it("the ROW is still a record, not a link — only its questions open", () => {
     renderHub({ rankedHistoryPreview: RANKED });
     const row = screen.getAllByTestId("ranked-match-row")[0];
     expect(row.tagName).toBe("LI");
     expect(row.getAttribute("role")).toBeNull();
     expect(row.getAttribute("tabindex")).toBeNull();
-    expect(row.querySelector("a, button")).toBeNull();
+    // No anchor, and nothing that navigates: the record does not go anywhere.
+    expect(row.querySelector("a")).toBeNull();
+    // Its only controls are the timeline's, and with no review loaded they are
+    // disabled — a control that opens nothing is not a tab stop.
+    for (const b of Array.from(row.querySelectorAll("button"))) {
+      expect(b.closest('[data-testid="question-timeline"]')).not.toBeNull();
+    }
   });
 
   it("interleaves both streams into ONE record, newest first", () => {

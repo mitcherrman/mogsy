@@ -1391,3 +1391,255 @@ export function readResume(body: unknown): ResumeView {
     result: p.result === null || p.result === undefined ? null : readMatchResult(p.result),
   };
 }
+
+// ---------------------------------------------- MALT B1: post-match review
+
+/**
+ * What an icon on a match timeline was PROVEN to depict.
+ *
+ * The backend derives this from the round's frozen, already-sanitized media
+ * blob and never from the prompt's prose, so a `champion` hint is a fact about
+ * the question rather than a guess about its wording. The ladder degrades
+ * honestly: a verified entity, then a picture whose class is unstated
+ * (`entity`), then the round's `category`, then nothing.
+ */
+export type ReviewIconKind =
+  | "champion"
+  | "ability"
+  | "item"
+  | "rune"
+  | "summoner_spell"
+  | "entity"
+  | "meta_reflex"
+  | "category"
+  | "generic";
+
+const REVIEW_ICON_KINDS: readonly string[] = [
+  "champion", "ability", "item", "rune", "summoner_spell",
+  "entity", "meta_reflex", "category", "generic",
+];
+
+export interface ReviewIconHint {
+  kind: ReviewIconKind;
+  /** The entity's name, or the category string. `null` when nothing is named. */
+  key: string | null;
+  /**
+   * A repo-relative asset path the backend verified on disk before freezing
+   * it. Non-null therefore means the file exists — but it still has to be
+   * resolved against the API base before it is an `src`.
+   */
+  icon: string | null;
+}
+
+export interface ReviewQuestion {
+  prompt: string;
+  options: string[];
+  /** `null` while the round is not `revealed` — see `ReviewRound.revealed`. */
+  correctOptionIndex: number | null;
+  /**
+   * The candidate's own STRUCTURED review material — formula id, rounding
+   * rule, worked steps, distractor derivations, scenario note. It is
+   * deliberately not prose: the question pipeline has never had a single
+   * explanation string, so this carries the reviewed fields verbatim and the
+   * renderer decides how to print them.
+   */
+  explanation: Record<string, unknown> | null;
+}
+
+export interface ReviewCardSide {
+  /** Reveal-only: a recognition card's label IS its answer. */
+  label: string | null;
+  icon: string | null;
+  value: number | string | null;
+}
+
+export interface ReviewChallenge {
+  challengeIndex: number;
+  prompt: string | null;
+  kind: string | null;
+  entityKind: string | null;
+  left: ReviewCardSide;
+  right: ReviewCardSide;
+  correctSide: "left" | "right" | null;
+  viewerSide: "left" | "right" | null;
+  isCorrect: boolean | null;
+}
+
+export interface ReviewSubmission {
+  answerIndex: number | null;
+  isCorrect: boolean | null;
+  /** Meta Reflex only — a five-card block is not one answer. */
+  correctCount: number | null;
+  answeredCount: number | null;
+  challengeCount: number | null;
+}
+
+export interface ReviewRound {
+  roundNumber: number;
+  kind: "quiz" | "meta_reflex";
+  moduleId: string;
+  category: string | null;
+  canonicalQuestionRef: string | null;
+  /**
+   * Whether this ROUND resolved. A terminal match can still hold an abandoned
+   * round, and the shared question bank means its answer must stay withheld —
+   * so `revealed: false` carries prompt and options with a null correct index.
+   */
+  revealed: boolean;
+  iconHint: ReviewIconHint;
+  question: ReviewQuestion | null;
+  challenges: ReviewChallenge[] | null;
+  viewerSubmission: ReviewSubmission;
+}
+
+export interface MatchReviewView {
+  schemaVersion: string;
+  serverTime: string;
+  matchId: string;
+  /** The round the match ENDED on. Not a score. */
+  finalRoundNumber: number;
+  roundCount: number;
+  rounds: ReviewRound[];
+}
+
+function reviewIconHint(raw: unknown, label: string): ReviewIconHint {
+  const h = rec(raw, label);
+  const kind = str(h.kind, `${label}.kind`);
+  if (!REVIEW_ICON_KINDS.includes(kind)) {
+    throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
+  }
+  return {
+    kind: kind as ReviewIconKind,
+    key: nstr(h.key, `${label}.key`),
+    icon: nstr(h.icon, `${label}.icon`),
+  };
+}
+
+function reviewSide(raw: unknown, label: string): ReviewCardSide {
+  const s = rec(raw, label);
+  const value = s.value;
+  return {
+    label: nstr(s.label, `${label}.label`),
+    icon: nstr(s.icon, `${label}.icon`),
+    value:
+      value === null || value === undefined
+        ? null
+        : typeof value === "number" || typeof value === "string"
+          ? value
+          : null,
+  };
+}
+
+function reviewChallenge(raw: unknown, label: string): ReviewChallenge {
+  const c = rec(raw, label);
+  const side = (v: unknown, name: string): "left" | "right" | null => {
+    const s = nstr(v, name);
+    if (s === null) return null;
+    if (s !== "left" && s !== "right") {
+      throw new RankedPublicParseError(`${name} must be "left" or "right"`);
+    }
+    return s;
+  };
+  return {
+    challengeIndex: num(c.challenge_index, `${label}.challenge_index`),
+    prompt: nstr(c.prompt, `${label}.prompt`),
+    kind: nstr(c.kind, `${label}.kind`),
+    entityKind: nstr(c.entity_kind, `${label}.entity_kind`),
+    left: reviewSide(c.left, `${label}.left`),
+    right: reviewSide(c.right, `${label}.right`),
+    correctSide: side(c.correct_side, `${label}.correct_side`),
+    viewerSide: side(c.viewer_side, `${label}.viewer_side`),
+    isCorrect: nbool(c.is_correct, `${label}.is_correct`),
+  };
+}
+
+/**
+ * Post-match review (`ranked_duel.match_review.v1`).
+ *
+ * This is the ONE reader that expects a correct answer, so the guard that
+ * belongs here is the inverse of `assertNoCorrectness`: an UNREVEALED round
+ * must not carry one. A backend that ever regressed the per-round gate would
+ * fail loudly at the client boundary rather than quietly print the answer to
+ * a question the reader can be asked again.
+ */
+export function readMatchReview(body: unknown): MatchReviewView {
+  const env = envelope(body, "match_review", "ranked_duel.match_review.v1");
+  const p = env.payload;
+  if (!Array.isArray(p.rounds)) {
+    throw new RankedPublicParseError("rounds must be an array");
+  }
+  const rounds = p.rounds.map((raw, i) => {
+    const label = `rounds[${i}]`;
+    const r = rec(raw, label);
+    const kind = str(r.kind, `${label}.kind`);
+    if (kind !== "quiz" && kind !== "meta_reflex") {
+      throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
+    }
+    const revealed = bool(r.revealed, `${label}.revealed`);
+
+    let question: ReviewQuestion | null = null;
+    if (r.question !== null && r.question !== undefined) {
+      const q = rec(r.question, `${label}.question`);
+      const correctOptionIndex = nnum(
+        q.correct_option_index, `${label}.question.correct_option_index`);
+      if (!revealed && correctOptionIndex !== null) {
+        throw new RankedPublicParseError(
+          `${label} is not revealed but carried a correct answer`);
+      }
+      const explanation =
+        q.explanation === null || q.explanation === undefined
+          ? null
+          : rec(q.explanation, `${label}.question.explanation`);
+      if (!revealed && explanation !== null) {
+        throw new RankedPublicParseError(
+          `${label} is not revealed but carried an explanation`);
+      }
+      question = {
+        prompt: str(q.prompt, `${label}.question.prompt`),
+        options: strList(q.options, `${label}.question.options`),
+        correctOptionIndex,
+        explanation,
+      };
+    }
+
+    let challenges: ReviewChallenge[] | null = null;
+    if (Array.isArray(r.challenges)) {
+      challenges = r.challenges.map((c, j) =>
+        reviewChallenge(c, `${label}.challenges[${j}]`));
+      if (!revealed && challenges.some((c) => c.correctSide !== null)) {
+        throw new RankedPublicParseError(
+          `${label} is not revealed but named a correct card`);
+      }
+    }
+
+    const sub = rec(r.viewer_submission, `${label}.viewer_submission`);
+    return {
+      roundNumber: num(r.round_number, `${label}.round_number`),
+      kind,
+      moduleId: str(r.module_id, `${label}.module_id`),
+      category: nstr(r.category, `${label}.category`),
+      canonicalQuestionRef: nstr(
+        r.canonical_question_ref, `${label}.canonical_question_ref`),
+      revealed,
+      iconHint: reviewIconHint(r.icon_hint, `${label}.icon_hint`),
+      question,
+      challenges,
+      viewerSubmission: {
+        answerIndex: nnum(sub.answer_index, `${label}.viewer_submission.answer_index`),
+        isCorrect: nbool(sub.is_correct, `${label}.viewer_submission.is_correct`),
+        correctCount: nnum(sub.correct_count, `${label}.viewer_submission.correct_count`),
+        answeredCount: nnum(sub.answered_count, `${label}.viewer_submission.answered_count`),
+        challengeCount: nnum(sub.challenge_count, `${label}.viewer_submission.challenge_count`),
+      },
+    } satisfies ReviewRound;
+  });
+
+  return {
+    schemaVersion: env.schemaVersion,
+    serverTime: env.serverTime,
+    matchId: str(p.match_id, "match_id"),
+    finalRoundNumber: num(p.final_round_number, "final_round_number"),
+    roundCount: num(p.round_count, "round_count"),
+    rounds,
+  };
+}
