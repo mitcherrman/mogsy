@@ -222,21 +222,21 @@ describe("arriving from the retired /quiz/ranked menu", () => {
  * This exists because the opposite was reported: on `/dev/play-scroll`,
  * pressing Daily Challenge appeared to do nothing at all. It genuinely does
  * nothing there — that route wires `onPlayDailyChallenge` to a no-op because
- * it has no quiz host to hand a set to, so the record simply closes and
- * leaves the preview page's own furniture on screen.
+ * it has no host to hand anything to, so the record simply closes and leaves
+ * the preview page's own furniture on screen.
  *
- * The claim that needed evidence rather than a reading of the wiring is this
- * one: on the REAL page the same press starts the real Daily Challenge. So
- * these two run the actual `Quiz` page, press the actual clause, and watch
- * the actual host.
+ * DC1 PHASE 5 CHANGED WHERE THE PRESS GOES, and these tests changed with it.
+ * They used to assert that the lobby swapped itself out for the legacy Daily's
+ * questions IN PLACE, with no navigation — which was true, and is exactly what
+ * this phase replaces. The Daily now has its own route and its own arena on
+ * the DC2 transport, so the claim worth evidence is that the clause reaches
+ * it: the record closes, the page navigates, and the legacy in-page flow is
+ * not started on the way past.
  */
-describe("Daily Challenge hands off to the page's own host", () => {
-  it("closes the record and swaps the lobby out for today's questions", async () => {
+describe("Daily Challenge hands off to the Daily Challenge route", () => {
+  it("closes the record and navigates to the Daily Challenge arena", async () => {
     dailyResponse = () => ({
       ok: true,
-      // The real `QuizQuestion` shape — `question_text` and `choices`, not
-      // `question`/`options`. A question the host cannot render would make
-      // this test pass for the wrong reason.
       questions: [
         {
           id: 901,
@@ -256,50 +256,35 @@ describe("Daily Challenge hands off to the page's own host", () => {
 
     fireEvent.click(screen.getByTestId("play-mode-daily"));
 
-    // The record gets out of the way — the host replaces the whole lobby, and
-    // a dialog left open over a page that no longer exists is a trap.
+    // The record gets out of the way — the player is leaving this page, and a
+    // dialog left open over a page that is navigating is a trap.
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
 
-    // And the host really did take over: the lobby is gone and the day's
-    // question is on screen. This is the assertion the dev preview cannot
-    // make, and the one the report turns on.
+    // THE handoff: a real route change to the DC2 arena.
     await waitFor(() =>
-      expect(screen.getByText(/Hand of Baron/)).toBeTruthy(),
+      expect(screen.getByTestId("location").textContent).toBe("/quiz/daily-challenge"),
     );
-    expect(container.querySelector('[data-testid="leaguecraft-workspace"]')).toBeNull();
 
-    // Still no navigation. The Daily Challenge is hosted in place.
-    expect(screen.getByTestId("location").textContent).toBe("/quiz");
+    // And the legacy in-page Daily was NOT started on the way: its question
+    // never reaches the screen, and the lobby is not swapped out underneath.
+    expect(screen.queryByText(/Hand of Baron/)).toBeNull();
+    expect(container.querySelector('[data-testid="leaguecraft-workspace"]')).not.toBeNull();
   });
 
-  it("returns to the lobby when the day's set is already finished", async () => {
-    // A REAL production case, and a quiet one: the host filters to unanswered
-    // questions, finds none, and puts the page back to `sets` — which is the
-    // lobby. Pressing Daily Challenge on a completed day therefore closes the
-    // record and appears to do nothing. Pinned here because the streak-only
-    // clause no longer prints "Complete", so nothing on the card warns first.
-    dailyResponse = () => ({
-      ok: true,
-      questions: [
-        {
-          id: 902, category: "Monsters", question_text: "Already answered",
-          format: "multiple_choice", choices: ["a"], answered: true,
-        },
-      ],
-      answered: 5, target: 5, daily_streak: 4,
-    });
+  it("does not depend on the legacy Daily endpoint answering", async () => {
+    // The old handoff loaded the day's questions before it could show
+    // anything, so a failing legacy read stranded the player on a dead lobby.
+    // The new one is a navigation: the arena reads its own transport.
+    dailyResponse = () => ({ ok: false, error: "legacy daily is down" });
 
-    const { container } = await renderLobby();
+    await renderLobby();
     fireEvent.click(screen.getByTestId("ranked-play-gem"));
     await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
     fireEvent.click(screen.getByTestId("play-mode-daily"));
 
-    await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
-    // Back on the lobby, with no question and no message.
     await waitFor(() =>
-      expect(container.querySelector('[data-testid="leaguecraft-workspace"]')).not.toBeNull(),
+      expect(screen.getByTestId("location").textContent).toBe("/quiz/daily-challenge"),
     );
-    expect(screen.queryByText(/Already answered/)).toBeNull();
   });
 });
 

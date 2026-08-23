@@ -8,6 +8,13 @@
  * Supports paused (tutorial), urgent, and zero states. Ticking digits are
  * aria-live="off" so screen readers are not flooded; controllers announce
  * warnings through their own live region.
+ *
+ * The two copy lines are OVERRIDABLE and default to Ranked's wording. They
+ * describe a shared PvP round ("shared round", "waiting for the round to
+ * resolve"), which is true of a duel and false of a solo run — DC1's Daily
+ * Challenge has no second player to wait for, and telling a player otherwise
+ * is the exact fiction that mode is built to avoid. Every existing caller
+ * passes neither and renders byte-identically.
  */
 import { Badge } from "@/components/ui/badge";
 import { TimerView } from "@/lib/ranked-core/viewTypes";
@@ -19,7 +26,19 @@ const format = (totalSeconds: number): string => {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
-export function TimerDisplay({ timer, label = "Round timer" }: { timer: TimerView; label?: string }) {
+export function TimerDisplay({
+  timer,
+  label = "Round timer",
+  durationNote,
+  expiredNote = "Time's up — waiting for the round to resolve.",
+}: {
+  timer: TimerView;
+  label?: string;
+  /** Replaces "of M:SS shared round". Receives the formatted duration. */
+  durationNote?: (duration: string) => string;
+  /** Replaces the expired line. */
+  expiredNote?: string;
+}) {
   const { remainingSeconds, durationSeconds, paused, urgent, modifierNotices } = timer;
   const expired = remainingSeconds <= 0;
   // `relative` + a fixed minimum width: the digits are tabular and the label is
@@ -41,7 +60,9 @@ export function TimerDisplay({ timer, label = "Round timer" }: { timer: TimerVie
         {format(remainingSeconds)}
       </div>
       <div className="text-[10px] leading-tight text-muted-foreground tabular-nums">
-        of {format(durationSeconds)} shared round
+        {durationNote
+          ? durationNote(format(durationSeconds))
+          : `of ${format(durationSeconds)} shared round`}
       </div>
       <div className="pointer-events-none absolute inset-x-0 top-full space-y-1 pt-0.5">
         {paused && (
@@ -51,7 +72,7 @@ export function TimerDisplay({ timer, label = "Round timer" }: { timer: TimerVie
         )}
         {expired && !paused && (
           <div role="status" className="text-xs text-muted-foreground">
-            Time's up — waiting for the round to resolve.
+            {expiredNote}
           </div>
         )}
         {(modifierNotices ?? []).map((notice) => (

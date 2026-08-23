@@ -175,6 +175,9 @@ const DailyScoreAttackPage = lazy(() => import("./pages/dev/daily-score-attack/D
 // Production Daily Score Attack surface (feature-flagged server-side; the
 // Quiz hub only links here when the backend reports the mode enabled).
 const QuizDailyScoreAttack = lazy(() => import("./pages/QuizDailyScoreAttack"));
+// DC1 Phase 5. A DIFFERENT mode from QuizDailyScoreAttack above: that one is
+// Time Trial at /quiz/daily and is untouched. This is the Daily Challenge.
+const QuizDailyChallengePage = lazy(() => import("./pages/quiz-daily-challenge/QuizDailyChallengePage"));
 
 // Public Ranked route (F1.5) — allowlisted/feature-gated server-side; the
 // page fails closed on backend disabled/ineligible via typed error codes.
@@ -519,6 +522,7 @@ const App = () => (
                   <Route path="/quiz/tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><Quiz /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/daily" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense></RequireRankedTutorial>} />
+                  <Route path="/quiz/daily-challenge" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/ranked" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />

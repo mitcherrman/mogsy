@@ -1380,7 +1380,17 @@ export default function Quiz() {
                  account-bound discovery when it arrives without one. */
               onEnterMatch={(matchId) =>
                 navigate("/quiz/ranked", { state: { matchId } })}
-              onPlayDailyChallenge={() => void handlePlayDailyChallenge()}
+              /*
+               * DC1 Phase 5 — the PLAY record now opens the DC2 arena.
+               *
+               * The legacy in-page Daily flow below (`handlePlayDailyChallenge`,
+               * `isDailyChallenge`, the daily branches of the question view) is left
+               * exactly where it is and simply stops being reachable from here:
+               * the new surface is not certified in production yet, and
+               * deleting the old one in the same phase that replaces it would
+               * leave nothing to fall back to. Retiring it is its own change.
+               */
+              onPlayDailyChallenge={() => navigate("/quiz/daily-challenge")}
               playModes={playModeVisibility(appSettings.policy)}
               dailyChallenge={dailyChallenge}
               playScrollOpenOnMount={openPlayOnMount}
