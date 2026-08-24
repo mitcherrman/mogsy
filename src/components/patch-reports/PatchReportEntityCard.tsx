@@ -7,6 +7,7 @@ import {
   type PatchReportChange,
 } from "@/lib/patch-reports/api";
 import { cn } from "@/lib/utils";
+import { HistoricalContext } from "./HistoricalContext";
 
 const STATUS_STYLES: Record<MogzyStatus, string> = {
   matches: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40",
@@ -120,6 +121,9 @@ const ChangeRow = ({ change }: { change: PatchReportChange }) => (
           <span className="italic">value not available in Mogzy</span>
         )}
       </p>
+    )}
+    {change.change_kind === "numeric" && (
+      <HistoricalContext context={change.historical_context} />
     )}
   </li>
 );

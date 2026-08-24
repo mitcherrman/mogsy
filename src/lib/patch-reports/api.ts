@@ -25,6 +25,58 @@ export type PatchNumericDirection =
   | "neutral"
   | "non_numeric";
 
+export type HistoricalClassification =
+  | "exact_revert"
+  | "partial_revert"
+  | "over_revert"
+  | "return_to_historical_state"
+  | "no_historical_match"
+  | "mixed_or_incomparable";
+
+export type HistoricalNormalizedValue = {
+  kind: "integer" | "decimal" | "ratio" | "rank_array" | "ratio_array" | string;
+  unit: string;
+  values: string[];
+};
+
+export type HistoricalSourceSummary = {
+  type: string;
+  url: string | null;
+  revision_id: string | null;
+};
+
+export type HistoricalReference = {
+  candidate_id?: number | null;
+  patch_version: string | null;
+  before: HistoricalNormalizedValue | null;
+  after: HistoricalNormalizedValue | null;
+  source: HistoricalSourceSummary | null;
+};
+
+/**
+ * Additive Step 2G contract. Every field remains optional so a partial rollout
+ * or an older backend can never make the underlying Riot change unreadable.
+ */
+export type PatchHistoricalContext = {
+  status: "analyzed" | "mismatch" | "unresolved" | "ineligible" | "unavailable" | string;
+  reason?: string | null;
+  lifecycle?: "preview" | "published" | "shipped" | "withdrawn_or_blocked" | string;
+  lifecycle_state?: string | null;
+  active?: boolean;
+  hypothetical?: boolean;
+  parameter_key?: string | null;
+  normalized_before?: HistoricalNormalizedValue | null;
+  normalized_after?: HistoricalNormalizedValue | null;
+  verified_latest?: HistoricalNormalizedValue | null;
+  before_matches?: boolean | null;
+  classification?: HistoricalClassification | null;
+  flags?: string[];
+  patches_elapsed?: number | null;
+  calendar_days_elapsed?: number | null;
+  current_source?: { url?: string | null; parser_revision?: string | null } | null;
+  reference?: HistoricalReference | null;
+};
+
 export type PatchReportChange = {
   group_title: string;
   ability_slot: string | null;
@@ -40,6 +92,7 @@ export type PatchReportChange = {
   mogzy_status: MogzyStatus;
   proposal_id: number | null;
   proposal_status: string | null;
+  historical_context?: PatchHistoricalContext | null;
 };
 
 export type PatchReportCard = {
@@ -83,6 +136,7 @@ export type PatchReportDetail = {
   built_at: string;
   section_titles: string[];
   skipped_sections: string[];
+  historical_context_summary?: unknown;
   cards: PatchReportCard[];
 };
 
