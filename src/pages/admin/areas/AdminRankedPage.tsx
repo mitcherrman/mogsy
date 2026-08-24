@@ -20,8 +20,12 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+  CheckCircle2, AlertTriangle, XCircle, RefreshCw, GraduationCap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ADMIN_TUTORIAL_REPLAY_ROUTE } from "@/lib/ranked-tutorial/adminReplay";
 import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import {
   AdminAreaHeader,
@@ -175,6 +179,53 @@ function RatingStatusPanel({ nonce }: { nonce: number }) {
   );
 }
 
+/**
+ * LAUNCH THE REAL RANKED TUTORIAL — the admin's own way in (ARENA1 Step 4).
+ *
+ * Not a preview, not a fixture bench and not a second copy of the tutorial:
+ * the link opens `/quiz/tutorial`, the SHIPPED route, running the real
+ * controller against the real scripted fixtures on the canonical arena. What
+ * the parameter changes is the run MODE, and only for a viewer the server has
+ * confirmed is staff: the run records nothing, so it cannot stamp an admin's
+ * first completion, cannot overwrite an existing one, and cannot alter what
+ * their own forced-tutorial gate does next. It also clears nothing — an admin's
+ * completion and progression are untouched in both directions.
+ *
+ * Ordinary players are unaffected in every respect: the parameter does nothing
+ * for them, no ordinary user becomes eligible to replay, and no control for
+ * this appears anywhere outside Admin.
+ */
+function TutorialReplayPanel() {
+  return (
+    <AdminPanel
+      title="Ranked Tutorial"
+      description="Open the shipped tutorial at any time, from its first step, as a testing run that writes nothing."
+      testId="ranked-tutorial-replay"
+    >
+      <div className="space-y-2">
+        <Button asChild size="sm" variant="outline" className="h-7 gap-1 text-[11px]">
+          <Link to={ADMIN_TUTORIAL_REPLAY_ROUTE} data-testid="launch-tutorial-replay">
+            <GraduationCap className="h-3 w-3" aria-hidden /> Launch Tutorial
+          </Link>
+        </Button>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Runs the real <code>/quiz/tutorial</code> route through the real tutorial
+          controller. Authorization is the same server-side <code>has_role</code> check
+          every admin route uses — the query parameter alone authorizes nothing, and for a
+          non-admin it is simply ignored. Repeatable: leave and come back, or use Restart
+          inside the tutorial.
+        </p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Writes nothing.</strong> Completion is not
+          recorded and nothing is reset. An admin who has never completed the tutorial is
+          still required to complete it normally — a replay is a rehearsal, not a
+          completion.
+        </p>
+      </div>
+    </AdminPanel>
+  );
+}
+
 export default function AdminRankedPage() {
   const area = ADMIN_AREAS_BY_ID.ranked;
   const [section, setSection] = useAreaSection(area);
@@ -224,6 +275,7 @@ export default function AdminRankedPage() {
                   note="creates real ranked matches; the page's admin-key field is the only gate on that route"
                 />
               </AdminPanel>
+              <TutorialReplayPanel />
               <AdminToolGrid tools={toolsForSection("ranked", "matches")} />
             </>
           )}

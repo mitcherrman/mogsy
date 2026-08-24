@@ -801,6 +801,24 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "DEFERRED — STILL ACCESSIBLE. Documented with its exact contract rather than given a one-click button; a new production-write form is beyond a navigation reorganization.",
   },
   {
+    id: "ranked-tutorial-replay",
+    title: "Launch Ranked Tutorial",
+    description:
+      "Opens the shipped Ranked Tutorial from its first step as an admin testing run that records nothing.",
+    area: "ranked",
+    section: "matches",
+    kind: "route",
+    path: "/quiz/tutorial?adminReplay=1",
+    oldLocation: "No admin surface — the tutorial could only be reached as a player",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    authorization:
+      "Server-side has_role (admin / master_admin), the same security-definer RPC AdminRoute uses. The query parameter authorizes nothing on its own: for a non-admin it is ignored and the ordinary tutorial runs.",
+    notes:
+      "The REAL /quiz/tutorial route and the real tutorial controller — not a preview or a fixture bench. The run mode is forced to 'replay', so no completion is written and none is cleared; an admin who has not completed the tutorial is still required to complete it normally. Ordinary users are unaffected and gain no replay eligibility.",
+  },
+  {
     id: "ranked-bot-matches",
     title: "Ranked Bot Matches",
     description:

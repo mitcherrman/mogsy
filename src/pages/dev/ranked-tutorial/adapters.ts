@@ -1,6 +1,11 @@
 // ---------------------------------------------------------------------------
 // Tutorial → canonical Ranked view projection.
 //
+// ARENA1 Step 4: the tutorial renders `CanonicalArena`, the same component
+// production Ranked renders, so these projections now produce the SAME shapes
+// Ranked's controller produces — including a `PublicRoundView` for the
+// canonical question surface. Nothing here draws anything.
+//
 // Pure functions from TutorialState + authored fixtures into the neutral
 // ranked-core view contracts consumed by the shared arena components. All
 // resolved numbers are AUTHORED fixture pass-throughs — nothing here (or
@@ -15,15 +20,13 @@ import {
   CombatantView,
   InteractionPermissions,
   NO_INTERACTIONS,
-  QuestionView,
   ResolvedRoundView,
-  SubmissionView,
   TimerView,
 } from "@/lib/ranked-core/viewTypes";
-import {
-  permissionsForSubmissionPhase,
-  restrictPermissions,
-} from "@/lib/ranked-core/permissions";
+import { restrictPermissions } from "@/lib/ranked-core/permissions";
+import { answerOptionId } from "@/lib/ranked-core/adapters/adaptToViews";
+import { LEGACY_SEGMENT } from "@/lib/ranked-public/contracts";
+import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 import { STEPS } from "./tutorialSteps";
 import {
   LEVEL_THRESHOLDS,
@@ -36,6 +39,7 @@ import {
   TUTORIAL_QUESTIONS,
   TUTORIAL_ROUNDS,
   TutorialAbility,
+  TutorialRoundId,
 } from "./fixtures";
 import { unlockedAbilityIds } from "./tutorialMachine";
 import { RevealedRoundResult, RoundState, TutorialState, TutorialTrack } from "./types";
@@ -114,28 +118,81 @@ export function combatantViewsFromTutorial(state: TutorialState): {
   };
 }
 
-export function questionViewFromRound(round: RoundState): QuestionView {
-  const q = TUTORIAL_QUESTIONS[round.questionIndex];
+/**
+ * THE TUTORIAL'S ROUND, IN THE ARENA'S OWN INPUT SHAPE.
+ *
+ * The arena's centre column is driven by a module renderer resolved from a
+ * `PublicRoundView`'s segment (`rendererForSegment`), and the tutorial's rounds
+ * are ordinary one-challenge quiz segments — so this projects one, declares
+ * `LEGACY_SEGMENT` (which IS `quiz.v1`), and the canonical registry resolves
+ * the same `quiz.v1` viewport Ranked gets. The tutorial therefore inherits the
+ * scenario band, the answer tablets, option media, the metadata lookup and the
+ * reveal behaviour without naming any of them.
+ *
+ * It is a projection, not a payload: nothing here is parsed from or sent to a
+ * backend, and the ids are visibly tutorial-owned.
+ */
+export function publicRoundFromTutorial(state: TutorialState): PublicRoundView {
+  // Before the first round exists (the timer lesson) the arena still needs a
+  // segment to resolve a renderer from, or it would show its unsupported-module
+  // fail-closed panel for a tutorial that supports its own questions perfectly
+  // well. The first scripted round's question is the honest stand-in; whether
+  // the question stage DRAWS is a separate decision, made by the adapter.
+  const round = state.round;
+  const questionIndex = round
+    ? round.questionIndex
+    : TUTORIAL_ROUNDS[TUTORIAL_ROUND_ORDER[state.track][0]].questionIndex;
+  const q = TUTORIAL_QUESTIONS[questionIndex];
+  const combatants = combatantViewsFromTutorial(state);
   return {
-    questionId: `tutorial-q${round.questionIndex}`,
-    prompt: q.prompt,
-    options: q.choices.map((label, index) => ({ id: String(index), index, label })),
-    category: "Training",
+    schemaVersion: "tutorial.local.v1",
+    serverTime: "",
+    matchId: TUTORIAL_MATCH_ID,
+    matchStatus: state.matchOver ? "completed" : "active",
+    matchOver: state.matchOver,
+    winnerId: state.matchOver ? TUTORIAL_PLAYER_ID : null,
+    completionReason: state.matchOver ? "knockout" : null,
+    completedRounds: state.settled.length,
+    players: [combatants.player, combatants.opponent].map((c) => ({
+      playerId: c.playerId,
+      classId: c.classId,
+      hp: c.hp,
+      maxHp: c.maxHp,
+      totalXp: c.xp,
+      level: c.level,
+      hasSubmitted: c.hasSubmitted,
+      abilitySelectionPhase: c.abilityWindow,
+      hasAbilitySelected: c.hasAbilitySelected,
+      role: null,
+    })),
+    activeRound: null,
+    nextRoundDurationSeconds: state.timer.duration,
+    // The ONE field the canonical quiz viewport reads. Pre-reveal and
+    // correctness-free, exactly like the real thing: the tutorial's answer key
+    // lives in its fixtures and reaches the surface only through `reveal`.
+    question: {
+      questionId: `tutorial-q${questionIndex}`,
+      prompt: q.prompt,
+      options: [...q.choices],
+      category: "Training",
+      presentation: null,
+      optionMedia: null,
+    },
+    segment: LEGACY_SEGMENT,
+    segmentState: null,
+    progressionPendingPlayers: [],
+    progressionEnabled: state.track !== "r1",
+    presence: null,
+    playtest: null,
   };
 }
 
-export function submissionViewFromRound(round: RoundState): SubmissionView {
-  return {
-    selectedOptionId:
-      round.playerAnswerIndex === null ? null : String(round.playerAnswerIndex),
-    selectedAbilityId: round.playerAbilityId,
-    phase:
-      round.phase === "selecting"
-        ? "selecting"
-        : round.phase === "reviewing"
-          ? "reviewing"
-          : "locked",
-  };
+/** The viewer's pending answer, as the arena's surface selection. */
+export function selectionFromRound(round: RoundState | null): string | null {
+  if (!round || round.playerAnswerIndex === null || round.playerAnswerIndex < 0) {
+    return null;
+  }
+  return answerOptionId(round.playerAnswerIndex);
 }
 
 export function abilityViewsFromTutorial(state: TutorialState): AbilityView[] {
@@ -187,34 +244,60 @@ export function timerViewFromTutorial(state: TutorialState): TimerView {
 }
 
 /**
- * Interaction permissions: the canonical submission sequencing, restricted
- * by the tutorial director (coach nudges block confirmation with a reason;
- * non-interactive steps expose no interactions at all).
+ * ANSWER-GRID PERMISSIONS — the one-click sequence Ranked ships.
+ *
+ * Ranked's own projection is `projectPermissions("selecting", inputOpen,
+ * submitting)`: the grid is live while the round is open and dead once it is
+ * locked, and there is no review or confirm state on either side of it. This
+ * says the same thing in the tutorial's vocabulary.
+ *
+ * A coach nudge does NOT close the grid — closing it would strand a learner
+ * who has just been told to pick again with nothing to pick. It leaves the
+ * tablets live and carries its reason, which the arena's status line shows.
  */
 export function permissionsFromTutorial(
   state: TutorialState,
   interactive: boolean,
 ): InteractionPermissions {
   const round = state.round;
-  if (!round || !interactive || round.phase === "revealed") return NO_INTERACTIONS;
-  const base = permissionsForSubmissionPhase(submissionViewFromRound(round).phase, true);
-  if (round.coachNudge === "answer") {
-    return restrictPermissions(base, {
-      canConfirmSubmission: false,
-      disabledReasons: {
-        confirm: "Training tip: that answer won't land this lesson — edit and pick again.",
-      },
+  if (!round || !interactive || round.phase !== "selecting") return NO_INTERACTIONS;
+  const base: InteractionPermissions = {
+    canSelectAnswer: true,
+    canChangeAnswer: true,
+    canSelectAbility: true,
+    canReviewSubmission: false,
+    canConfirmSubmission: false,
+    canAdvance: false,
+  };
+  if (round.coachNudge === null) return base;
+  return restrictPermissions(base, {
+    disabledReasons: { answer: coachNoteFor(round.coachNudge) },
+  });
+}
+
+/** The coaching sentence for a refused submission. */
+export function coachNoteFor(nudge: "answer" | "ability"): string {
+  return nudge === "answer"
+    ? "Training tip: that answer won't land this lesson — pick again."
+    : "Training tip: this lesson needs a different ability armed — arm it, then answer.";
+}
+
+/**
+ * ABILITY-TRAY PERMISSIONS — gated INDEPENDENTLY of the answer, exactly as
+ * Ranked gates its own tray: the tray is live for as long as the round's
+ * selection window is open, and dead the moment the answer locks it.
+ */
+export function abilityPermissionsFromTutorial(
+  state: TutorialState,
+  interactive: boolean,
+): InteractionPermissions {
+  const round = state.round;
+  if (!round || !interactive || round.phase !== "selecting") {
+    return restrictPermissions(NO_INTERACTIONS, {
+      disabledReasons: { ability: round ? "Ability locked for this round." : undefined },
     });
   }
-  if (round.coachNudge === "ability") {
-    return restrictPermissions(base, {
-      canConfirmSubmission: false,
-      disabledReasons: {
-        confirm: "Training tip: this lesson needs a different ability setup — edit before locking.",
-      },
-    });
-  }
-  return base;
+  return { ...NO_INTERACTIONS, canSelectAbility: true };
 }
 
 /**
@@ -223,9 +306,35 @@ export function permissionsFromTutorial(
  * an authored pass-through (damage, mitigation defaults to zero unless the
  * fixture authored it; nothing is computed from formulas).
  */
+/**
+ * ROUND ORDER PER TRACK — the tutorial's own answer to "which round is this?".
+ *
+ * Needed because the R1 track skips the four ability lessons: its victory
+ * round is the FOURTH round the learner plays, not the eighth. The previous
+ * derivation (`"ABCDEFGH".indexOf(roundId) + 1`) could not see that at all —
+ * `H_R1` is not a letter of that string, so it produced round 0.
+ */
+export const TUTORIAL_ROUND_ORDER: Record<TutorialTrack, readonly TutorialRoundId[]> = {
+  legacy: ["A", "B", "C", "D", "E", "F", "G", "H"],
+  r1: ["A", "B", "C", "H_R1"],
+};
+
+/** 1-based round number of a round on a track, or 0 if it is not on it. */
+export function tutorialRoundNumber(
+  roundId: TutorialRoundId, track: TutorialTrack = "legacy",
+): number {
+  return TUTORIAL_ROUND_ORDER[track].indexOf(roundId) + 1;
+}
+
+/** How many rounds the whole scripted match runs to on this track. */
+export function tutorialRoundCount(track: TutorialTrack): number {
+  return TUTORIAL_ROUND_ORDER[track].length;
+}
+
 export function resolvedRoundViewFromResult(
   result: RevealedRoundResult,
   fixture: ResolvedRoundFixture = TUTORIAL_ROUNDS[result.roundId],
+  track: TutorialTrack = "legacy",
 ): ResolvedRoundView {
   const playerOutcome = result.playerTimedOut
     ? "timed_out"
@@ -252,7 +361,7 @@ export function resolvedRoundViewFromResult(
   const matchOver = result.opponentHpAfter <= 0;
   return {
     matchId: TUTORIAL_MATCH_ID,
-    roundNumber: "ABCDEFGH".indexOf(result.roundId) + 1,
+    roundNumber: tutorialRoundNumber(result.roundId, track),
     questionId: `tutorial-q${fixture.questionIndex}`,
     endReason:
       result.playerTimedOut && result.opponentTimedOut ? "deadline_expired" : "both_answered",
@@ -327,11 +436,15 @@ export function resolvedRoundViewFromResult(
     sharedNextRoundDurationSeconds: fixture.nextRoundDurationAfterAbility,
     sharedTimerDeltaSeconds: fixture.nextRoundDurationAfterAbility - 30,
     matchOver,
-    // QUIZ1 Phase 11: the tutorial's authored fixtures carry outcomes, not a
-    // correct OPTION index, so there is nothing truthful to put here and the
-    // tutorial's answer tablets stay unresolved. Fabricating an index from
-    // `playerCorrect` would highlight whatever the learner happened to click.
-    correctOptionIndex: null,
+    // ARENA1 Step 4: the fixtures now AUTHOR the correct choice (see
+    // `ResolvedRoundFixture.correctAnswer`), so the canonical answer tablets
+    // resolve at reveal exactly as they do in Ranked.
+    //
+    // The QUIZ1 Phase 11 rule this replaces still holds and is the reason the
+    // field is authored rather than derived: an index inferred from
+    // `playerCorrect` would highlight whatever the learner happened to click,
+    // and round E deliberately guides them into a wrong one.
+    correctOptionIndex: fixture.correctAnswer,
     // The tutorial is a scripted fixture, not a served question: it has no
     // reviewed candidate behind it and therefore no frozen rationale to
     // quote. Null, never invented text.
@@ -355,6 +468,19 @@ export function revealedAnswersByPlayerId(
     [TUTORIAL_GOLEM_ID]:
       result.opponentAnswer === null ? null : q.choices[result.opponentAnswer] ?? null,
   };
+}
+
+/**
+ * Every settled round of this run, as canonical settlements.
+ *
+ * The same array Ranked's controller keeps as its damage log, and it feeds the
+ * same two consumers: each duelist rail's recent-round ledger, and the round
+ * timeline. Derived from the machine's own reveals, so a round appears here if
+ * and only if it actually resolved.
+ */
+export function settlementsFromTutorial(state: TutorialState): ResolvedRoundView[] {
+  return state.settled.map((result) =>
+    resolvedRoundViewFromResult(result, TUTORIAL_ROUNDS[result.roundId], state.track));
 }
 
 export const TUTORIAL_NAMES_BY_ID: Record<string, string> = {

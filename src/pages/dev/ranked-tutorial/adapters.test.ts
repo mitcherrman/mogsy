@@ -3,11 +3,13 @@ import {
   abilityViewsFromTutorial,
   combatantViewsFromTutorial,
   permissionsFromTutorial,
-  questionViewFromRound,
+  publicRoundFromTutorial,
   resolvedRoundViewFromResult,
   revealedAnswersByPlayerId,
-  submissionViewFromRound,
+  selectionFromRound,
+  settlementsFromTutorial,
   timerViewFromTutorial,
+  tutorialRoundNumber,
   TUTORIAL_GOLEM_ID,
   TUTORIAL_MATCH_ID,
   TUTORIAL_PLAYER_ID,
@@ -22,14 +24,7 @@ const reduceAll = (events: TutorialEvent[], from?: TutorialState) =>
 const toRoundA = () => reduceAll([{ type: "CONTINUE" }]);
 
 const lockedRoundA = () =>
-  reduceAll(
-    [
-      { type: "SELECT_ANSWER", answerIndex: 1 },
-      { type: "LOCK_SUBMISSION" },
-      { type: "CONFIRM_LOCK" },
-    ],
-    toRoundA(),
-  );
+  tutorialReducer(toRoundA(), { type: "SUBMIT_ANSWER", answerIndex: 1 });
 
 const revealedRoundA = () => reduceAll([{ type: "CONTINUE" }], lockedRoundA());
 
@@ -56,54 +51,73 @@ describe("combatant views", () => {
   });
 });
 
-describe("question / submission views", () => {
-  it("maps options with stable stringified-index ids", () => {
-    const s = toRoundA();
-    const q = questionViewFromRound(s.round!);
-    expect(q.options.map((o) => o.id)).toEqual(["0", "1", "2", "3"]);
-    expect(q.options[1].index).toBe(1);
-    expect(q.prompt).toMatch(/Summoner's Rift/);
+describe("the arena's question surface input", () => {
+  it("projects a quiz.v1 segment, so the CANONICAL renderer resolves", () => {
+    const pub = publicRoundFromTutorial(toRoundA());
+    expect(pub.segment.moduleId).toBe("quiz");
+    expect(pub.segment.moduleVersion).toBe(1);
+    expect(pub.question?.options).toEqual([
+      "Three", "Five", "Seven", "Ten",
+    ]);
+    expect(pub.question?.prompt).toMatch(/Summoner's Rift/);
   });
 
-  it("maps round phases onto canonical submission phases", () => {
-    let s = toRoundA();
-    expect(submissionViewFromRound(s.round!).phase).toBe("selecting");
-    s = reduceAll(
-      [{ type: "SELECT_ANSWER", answerIndex: 1 }, { type: "LOCK_SUBMISSION" }],
-      s,
-    );
-    expect(submissionViewFromRound(s.round!).phase).toBe("reviewing");
-    expect(submissionViewFromRound(s.round!).selectedOptionId).toBe("1");
-    s = tutorialReducer(s, { type: "CONFIRM_LOCK" });
-    expect(submissionViewFromRound(s.round!).phase).toBe("locked");
+  it("carries no correctness pre-reveal, exactly like a real public round", () => {
+    const serialized = JSON.stringify(publicRoundFromTutorial(toRoundA()));
+    expect(serialized).not.toMatch(/correct/i);
+  });
+
+  it("exists before the first round so the arena never fails closed", () => {
+    // The timer lesson has no round yet. A null public round would resolve no
+    // renderer, and the arena would show its unsupported-module panel.
+    const pub = publicRoundFromTutorial(initialTutorialState());
+    expect(pub.segment.moduleId).toBe("quiz");
+    expect(pub.question).not.toBeNull();
+  });
+
+  it("maps the pending answer onto the canonical option id", () => {
+    expect(selectionFromRound(toRoundA().round)).toBeNull();
+    expect(selectionFromRound(lockedRoundA().round)).toBe("1");
   });
 });
 
 describe("permissions", () => {
-  it("follows canonical sequencing and tutorial restrictions only remove", () => {
+  it("is the one-click Ranked sequence: live while selecting, dead once locked", () => {
     const selecting = permissionsFromTutorial(toRoundA(), true);
     expect(selecting.canSelectAnswer).toBe(true);
+    expect(selecting.canChangeAnswer).toBe(true);
+    // There is no review step to reach and no confirmation to give.
+    expect(selecting.canReviewSubmission).toBe(false);
     expect(selecting.canConfirmSubmission).toBe(false);
-    const reviewing = permissionsFromTutorial(
-      reduceAll(
-        [{ type: "SELECT_ANSWER", answerIndex: 1 }, { type: "LOCK_SUBMISSION" }],
-        toRoundA(),
-      ),
-      true,
-    );
-    expect(reviewing.canConfirmSubmission).toBe(true);
-    // Coach nudge (wrong answer) removes confirmation with a reason.
-    const nudged = permissionsFromTutorial(
-      reduceAll(
-        [{ type: "SELECT_ANSWER", answerIndex: 0 }, { type: "LOCK_SUBMISSION" }],
-        toRoundA(),
-      ),
-      true,
-    );
-    expect(nudged.canConfirmSubmission).toBe(false);
-    expect(nudged.disabledReasons?.confirm).toMatch(/Training tip/);
+    expect(permissionsFromTutorial(lockedRoundA(), true).canSelectAnswer).toBe(false);
     // Non-interactive contexts expose nothing.
     expect(permissionsFromTutorial(toRoundA(), false).canSelectAnswer).toBe(false);
+  });
+
+  it("a coach nudge keeps the grid LIVE and carries its reason", () => {
+    const nudged = permissionsFromTutorial(
+      tutorialReducer(toRoundA(), { type: "SUBMIT_ANSWER", answerIndex: 0 }), true);
+    // Closing the grid would strand a learner who was just told to pick again.
+    expect(nudged.canSelectAnswer).toBe(true);
+    expect(nudged.disabledReasons?.answer).toMatch(/Training tip/);
+  });
+});
+
+describe("the settled ledger", () => {
+  it("is empty until a round resolves, then carries one settlement per round", () => {
+    expect(settlementsFromTutorial(toRoundA())).toEqual([]);
+    const settled = settlementsFromTutorial(revealedRoundA());
+    expect(settled).toHaveLength(1);
+    expect(settled[0].roundNumber).toBe(1);
+    expect(settled[0].players.p1.finalDamageDealt).toBe(TUTORIAL_ROUNDS.A.playerDamage);
+  });
+
+  it("numbers a round by its position on ITS OWN track", () => {
+    // The R1 track skips the four ability lessons, so its victory round is the
+    // fourth round played. The old derivation read `H_R1` as round 0.
+    expect(tutorialRoundNumber("H", "legacy")).toBe(8);
+    expect(tutorialRoundNumber("H_R1", "r1")).toBe(4);
+    expect(tutorialRoundNumber("A", "r1")).toBe(1);
   });
 });
 
@@ -135,31 +149,28 @@ describe("fixture → ResolvedRoundView mapping", () => {
     expect(p1.chargeConsumed).toBe(false);
     expect(view.matchOver).toBe(false);
     expect(view.winner).toBeNull();
+    // ARENA1 Step 4: the tablets resolve at reveal, from an AUTHORED index —
+    // never one inferred from what the learner clicked.
+    expect(view.correctOptionIndex).toBe(TUTORIAL_ROUNDS.A.correctAnswer);
   });
 
   it("carries ability commitment facts and level-up events when authored", () => {
     // Round D revealed result, built via the machine's own walk.
     const s = reduceAll(
       [
-        { type: "SELECT_ANSWER", answerIndex: 1 },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
+        { type: "SUBMIT_ANSWER", answerIndex: 1 },
         { type: "CONTINUE" },
         { type: "CONTINUE" },
         { type: "CONTINUE" }, // Round B
         ...Array(7).fill({ type: "TICK" }),
-        { type: "SELECT_ANSWER", answerIndex: 1 },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
+        { type: "SUBMIT_ANSWER", answerIndex: 1 },
         { type: "CONTINUE" },
         { type: "CONTINUE" }, // Round C
         { type: "SIMULATE_TIMEOUT" },
         { type: "CONTINUE" }, // xp_intro
         { type: "CONTINUE" }, // Round D
-        { type: "SELECT_ANSWER", answerIndex: 0 },
         { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
+        { type: "SUBMIT_ANSWER", answerIndex: 0 },
         { type: "CONTINUE" }, // reveal D
       ] as TutorialEvent[],
       toRoundA(),

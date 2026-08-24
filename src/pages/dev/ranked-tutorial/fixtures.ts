@@ -177,6 +177,19 @@ export interface ResolvedRoundFixture {
   questionIndex: number;
   /** Authored answer the coaching guides the player to lock. */
   playerAnswer: number;
+  /**
+   * The question's ACTUAL correct choice index.
+   *
+   * Not the same thing as `playerAnswer`: round E deliberately guides the
+   * learner into a wrong answer to teach that an armed charge commits anyway,
+   * and round C is a timeout with no submission at all. Authored separately so
+   * the canonical answer tablets can resolve at reveal exactly the way they do
+   * in Ranked — the alternative the tutorial shipped with was to send no
+   * correct index at all, which left the tablets unresolved and made the
+   * "both answers reveal together" lesson weaker on the tutorial's own screen
+   * than it is in the real game.
+   */
+  correctAnswer: number;
   /** Scripted Golem behavior. null answer = timeout. */
   opponentAnswer: number | null;
   playerCorrect: boolean;
@@ -230,6 +243,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "A",
     questionIndex: 0,
     playerAnswer: 1, // "Five"
+    correctAnswer: 1,
     opponentAnswer: 0, // "Three" — scripted wrong
     playerCorrect: true,
     opponentCorrect: false,
@@ -267,6 +281,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "B",
     questionIndex: 1,
     playerAnswer: 1, // "Mid lane"
+    correctAnswer: 1,
     opponentAnswer: 1,
     playerCorrect: true,
     opponentCorrect: true,
@@ -306,6 +321,8 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "C",
     questionIndex: 2,
     playerAnswer: -1, // no submission — timeout
+    // "Gold" — nobody submits this round; the tablets still resolve at reveal.
+    correctAnswer: 0,
     opponentAnswer: null,
     playerCorrect: false,
     opponentCorrect: false,
@@ -345,6 +362,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "D",
     questionIndex: 3,
     playerAnswer: 0, // "Soak damage up front"
+    correctAnswer: 0,
     opponentAnswer: 1, // scripted wrong
     playerCorrect: true,
     opponentCorrect: false,
@@ -386,6 +404,8 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "E",
     questionIndex: 4,
     playerAnswer: 3, // "Four" — deliberately wrong, guided demonstration (correct is "Two")
+    // "Two" — the guided answer above is deliberately wrong (see the lesson).
+    correctAnswer: 1,
     opponentAnswer: 0, // "One" — scripted wrong too — a wash round
     playerCorrect: false,
     opponentCorrect: false,
@@ -425,6 +445,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "F",
     questionIndex: 5,
     playerAnswer: 0, // "Blue"
+    correctAnswer: 0,
     opponentAnswer: 1,
     playerCorrect: true,
     opponentCorrect: false,
@@ -462,6 +483,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "G",
     questionIndex: 6,
     playerAnswer: 0, // "Destroying the enemy Nexus"
+    correctAnswer: 0,
     opponentAnswer: 3,
     playerCorrect: true,
     opponentCorrect: false,
@@ -499,6 +521,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "H",
     questionIndex: 7,
     playerAnswer: 0, // "Reducing your opponent's HP to zero"
+    correctAnswer: 0,
     opponentAnswer: 3,
     playerCorrect: true,
     opponentCorrect: false,
@@ -546,6 +569,7 @@ export const TUTORIAL_ROUNDS: Record<TutorialRoundId, ResolvedRoundFixture> = {
     roundId: "H_R1",
     questionIndex: 7,
     playerAnswer: 0, // "Reducing your opponent's HP to zero"
+    correctAnswer: 0,
     opponentAnswer: 3,
     playerCorrect: true,
     opponentCorrect: false,

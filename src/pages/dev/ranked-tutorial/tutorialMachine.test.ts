@@ -25,9 +25,7 @@ const toAnswerSelection = () => reduceAll([{ type: "CONTINUE" }]);
 const throughRoundA = () =>
   reduceAll(
     [
-      { type: "SELECT_ANSWER", answerIndex: 1 },
-      { type: "LOCK_SUBMISSION" },
-      { type: "CONFIRM_LOCK" }, // → answer_locked
+      { type: "SUBMIT_ANSWER", answerIndex: 1 }, // one click → answer_locked
       { type: "CONTINUE" }, // → simultaneous_reveal (fixture A applied)
       { type: "CONTINUE" }, // → damage_intro
       { type: "CONTINUE" }, // → both_correct_demo (Round B starts)
@@ -41,9 +39,7 @@ const throughRoundB = () =>
   reduceAll(
     [
       ...ticks(7), // 30 → 24, then the trigger tick: Golem submits, cut → 19
-      { type: "SELECT_ANSWER", answerIndex: 1 },
-      { type: "LOCK_SUBMISSION" },
-      { type: "CONFIRM_LOCK" },
+      { type: "SUBMIT_ANSWER", answerIndex: 1 },
       { type: "CONTINUE" }, // reveal (fixture B applied)
       { type: "CONTINUE" }, // → failure_demo (Round C starts)
     ],
@@ -59,10 +55,10 @@ const toRoundD = () => reduceAll([{ type: "CONTINUE" }], throughRoundC());
 const throughRoundD = () =>
   reduceAll(
     [
-      { type: "SELECT_ANSWER", answerIndex: 0 },
+      // The ability is armed BEFORE the answer now: the answer click IS the
+      // lock, so whatever is armed at that moment is what commits.
       { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
-      { type: "LOCK_SUBMISSION" },
-      { type: "CONFIRM_LOCK" },
+      { type: "SUBMIT_ANSWER", answerIndex: 0 },
       { type: "CONTINUE" }, // reveal D (charge 3→2, effect triggered)
       { type: "CONTINUE" }, // → ability_resolution (Round E at 35s)
     ],
@@ -73,10 +69,8 @@ const throughRoundE = () =>
   reduceAll(
     [
       { type: "TICK" }, // Golem answers instantly: 35 → 30
-      { type: "SELECT_ANSWER", answerIndex: 3 }, // guided wrong answer ("Four"; correct is "Two")
       { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
-      { type: "LOCK_SUBMISSION" },
-      { type: "CONFIRM_LOCK" },
+      { type: "SUBMIT_ANSWER", answerIndex: 3 }, // guided wrong answer ("Four"; correct is "Two")
       { type: "CONTINUE" }, // reveal E (charge 2→1, no effect)
       { type: "CONTINUE" }, // → level_two_choice
     ],
@@ -94,9 +88,7 @@ const throughLevelTwo = (choice: "tank.brace" | "tank.barrier" = "tank.brace") =
   );
 
 const drillRound: TutorialEvent[] = [
-  { type: "SELECT_ANSWER", answerIndex: 0 },
-  { type: "LOCK_SUBMISSION" },
-  { type: "CONFIRM_LOCK" },
+  { type: "SUBMIT_ANSWER", answerIndex: 0 },
   { type: "CONTINUE" }, // reveal
 ];
 
@@ -147,15 +139,12 @@ describe("tutorialMachine foundation", () => {
   it("rejects unpermitted and out-of-order events without state change", () => {
     const start = initialTutorialState();
     // timer_intro permits only CONTINUE/RESTART; round/combat events are rejected.
-    expect(tutorialReducer(start, { type: "SELECT_ANSWER", answerIndex: 0 })).toBe(start);
-    expect(tutorialReducer(start, { type: "CONFIRM_LOCK" })).toBe(start);
+    expect(tutorialReducer(start, { type: "SUBMIT_ANSWER", answerIndex: 0 })).toBe(start);
+    expect(tutorialReducer(start, { type: "SELECT_ABILITY", abilityId: null })).toBe(start);
     expect(tutorialReducer(start, { type: "SIMULATE_TIMEOUT" })).toBe(start);
     const sel = toAnswerSelection();
     expect(tutorialReducer(sel, { type: "SIMULATE_TIMEOUT" })).toBe(sel);
     expect(tutorialReducer(sel, { type: "CHOOSE_LEVEL_TWO", abilityId: "tank.brace" })).toBe(sel);
-    // Confirm without review is rejected.
-    const picked = tutorialReducer(sel, { type: "SELECT_ANSWER", answerIndex: 1 });
-    expect(tutorialReducer(picked, { type: "CONFIRM_LOCK" })).toBe(picked);
   });
 
   it("every step defines copy, announcement, timer mode, permitted events, RESTART", () => {
@@ -173,12 +162,19 @@ describe("tutorialMachine foundation", () => {
 // --- Answer selection & locking -------------------------------------------------
 
 describe("answer selection and lock", () => {
-  it("answers can be selected and replaced before lock", () => {
+  it("a refused answer is remembered but locks nothing, so another can be picked", () => {
+    // ONE CLICK IS THE SUBMISSION. There is no select-then-lock any more, so
+    // "changing your answer" only exists where the lesson refused the first —
+    // which is exactly where a learner needs it.
     let s = toAnswerSelection();
-    s = tutorialReducer(s, { type: "SELECT_ANSWER", answerIndex: 0 });
+    s = tutorialReducer(s, { type: "SUBMIT_ANSWER", answerIndex: 0 });
     expect(s.round?.playerAnswerIndex).toBe(0);
-    s = tutorialReducer(s, { type: "SELECT_ANSWER", answerIndex: 1 });
+    expect(s.round?.phase).toBe("selecting");   // nothing locked
+    expect(s.round?.coachNudge).toBe("answer"); // and it said why
+    s = tutorialReducer(s, { type: "SUBMIT_ANSWER", answerIndex: 1 });
     expect(s.round?.playerAnswerIndex).toBe(1);
+    expect(s.round?.phase).toBe("locked");
+    expect(s.round?.coachNudge).toBeNull();
   });
 
   it("no-ability selection is explicit and defaults to null", () => {
@@ -188,41 +184,29 @@ describe("answer selection and lock", () => {
     expect(s.round?.playerAbilityId).toBeNull();
   });
 
-  it("LOCK_SUBMISSION requires an answer and enters review", () => {
-    let s = toAnswerSelection();
-    expect(tutorialReducer(s, { type: "LOCK_SUBMISSION" })).toBe(s);
-    s = reduceAll([{ type: "SELECT_ANSWER", answerIndex: 1 }, { type: "LOCK_SUBMISSION" }], s);
-    expect(s.round?.phase).toBe("reviewing");
+  it("the machine never enters a review phase — one click is the submission", () => {
+    const s = tutorialReducer(toAnswerSelection(), { type: "SUBMIT_ANSWER", answerIndex: 1 });
+    expect(s.round?.phase).toBe("locked");
+    expect(s.stepId).toBe("answer_locked");
   });
 
-  it("review of a non-authored answer sets a coach nudge and blocks confirm", () => {
-    let s = reduceAll(
-      [{ type: "SELECT_ANSWER", answerIndex: 0 }, { type: "LOCK_SUBMISSION" }],
-      toAnswerSelection(),
-    );
+  it("a non-authored answer is REFUSED with a coach nudge and locks nothing", () => {
+    const s = tutorialReducer(toAnswerSelection(), { type: "SUBMIT_ANSWER", answerIndex: 0 });
     expect(s.round?.coachNudge).toBe("answer");
-    expect(tutorialReducer(s, { type: "CONFIRM_LOCK" })).toBe(s);
-    // EDIT_SUBMISSION returns to selection for another pick.
-    s = tutorialReducer(s, { type: "EDIT_SUBMISSION" });
     expect(s.round?.phase).toBe("selecting");
+    expect(s.stepId).toBe("answer_selection");
+    // The grid is still live: the authored answer still lands.
+    const landed = tutorialReducer(s, { type: "SUBMIT_ANSWER", answerIndex: 1 });
+    expect(landed.round?.phase).toBe("locked");
   });
 
-  it("after CONFIRM_LOCK nothing about the submission can change", () => {
-    const s = reduceAll(
-      [
-        { type: "SELECT_ANSWER", answerIndex: 1 },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
-      ],
-      toAnswerSelection(),
-    );
+  it("once the answer has locked nothing about the submission can change", () => {
+    const s = tutorialReducer(toAnswerSelection(), { type: "SUBMIT_ANSWER", answerIndex: 1 });
     expect(s.stepId).toBe("answer_locked");
     expect(s.round?.phase).toBe("locked");
     // Answer, ability, duplicate submissions all rejected.
-    expect(tutorialReducer(s, { type: "SELECT_ANSWER", answerIndex: 2 })).toBe(s);
+    expect(tutorialReducer(s, { type: "SUBMIT_ANSWER", answerIndex: 2 })).toBe(s);
     expect(tutorialReducer(s, { type: "SELECT_ABILITY", abilityId: null })).toBe(s);
-    expect(tutorialReducer(s, { type: "LOCK_SUBMISSION" })).toBe(s);
-    expect(tutorialReducer(s, { type: "CONFIRM_LOCK" })).toBe(s);
   });
 });
 
@@ -230,14 +214,8 @@ describe("answer selection and lock", () => {
 
 describe("hidden-information boundary", () => {
   it("opponent answer and all outcome data are absent before reveal", () => {
-    const locked = reduceAll(
-      [
-        { type: "SELECT_ANSWER", answerIndex: 1 },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
-      ],
-      toAnswerSelection(),
-    );
+    const locked = tutorialReducer(
+      toAnswerSelection(), { type: "SUBMIT_ANSWER", answerIndex: 1 });
     expect(locked.round?.opponentStatus).toBe("submitted"); // neutral status only
     expect(locked.round?.result).toBeNull();
     for (const snapshot of [JSON.stringify(locked), JSON.stringify(visibleState(locked))]) {
@@ -250,14 +228,8 @@ describe("hidden-information boundary", () => {
   });
 
   it("both answers become visible in the same reveal transition", () => {
-    const locked = reduceAll(
-      [
-        { type: "SELECT_ANSWER", answerIndex: 1 },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
-      ],
-      toAnswerSelection(),
-    );
+    const locked = tutorialReducer(
+      toAnswerSelection(), { type: "SUBMIT_ANSWER", answerIndex: 1 });
     const revealed = tutorialReducer(locked, { type: "CONTINUE" });
     expect(revealed.stepId).toBe("simultaneous_reveal");
     expect(revealed.round?.phase).toBe("revealed");
@@ -406,10 +378,8 @@ describe("timer and restart", () => {
   it("RESTART returns to the initial state from every implemented round state", () => {
     const checkpoints = [
       toAnswerSelection(),
-      reduceAll(
-        [{ type: "SELECT_ANSWER", answerIndex: 1 }, { type: "LOCK_SUBMISSION" }],
-        toAnswerSelection(),
-      ),
+      // A round mid-coaching: submitted, refused, still selecting.
+      tutorialReducer(toAnswerSelection(), { type: "SUBMIT_ANSWER", answerIndex: 0 }),
       throughRoundA(),
       throughRoundB(),
       tutorialReducer(throughRoundB(), { type: "SIMULATE_TIMEOUT" }),
@@ -453,31 +423,31 @@ describe("Fortify demonstration (Round D)", () => {
     expect(s.round?.playerAbilityId).toBeNull();
   });
 
-  it("selecting Fortify does not consume a charge before resolution", () => {
-    const s = reduceAll(
-      [
-        { type: "SELECT_ANSWER", answerIndex: 0 },
-        { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
-        { type: "LOCK_SUBMISSION" },
-      ],
-      toRoundD(),
-    );
+  it("arming Fortify does not consume a charge before resolution", () => {
+    const s = tutorialReducer(toRoundD(), {
+      type: "SELECT_ABILITY", abilityId: "tank.fortify" });
     expect(s.charges["tank.fortify"]).toBe(3);
-    // Ability changeable before confirmation via edit.
-    const edited = tutorialReducer(s, { type: "EDIT_SUBMISSION" });
+    // Still changeable: nothing is committed until the answer locks the round.
     expect(
-      tutorialReducer(edited, { type: "SELECT_ABILITY", abilityId: null }).round
+      tutorialReducer(s, { type: "SELECT_ABILITY", abilityId: null }).round
         ?.playerAbilityId,
     ).toBeNull();
   });
 
-  it("locking without Fortify in Round D triggers the ability coach nudge", () => {
-    const s = reduceAll(
-      [{ type: "SELECT_ANSWER", answerIndex: 0 }, { type: "LOCK_SUBMISSION" }],
-      toRoundD(),
-    );
+  it("answering without Fortify armed in Round D is refused with the ability nudge", () => {
+    const s = tutorialReducer(toRoundD(), { type: "SUBMIT_ANSWER", answerIndex: 0 });
     expect(s.round?.coachNudge).toBe("ability");
-    expect(tutorialReducer(s, { type: "CONFIRM_LOCK" })).toBe(s);
+    expect(s.round?.phase).toBe("selecting"); // nothing locked
+    // Arming it and answering again lands.
+    const armed = reduceAll(
+      [
+        { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
+        { type: "SUBMIT_ANSWER", answerIndex: 0 },
+      ],
+      s,
+    );
+    expect(armed.round?.phase).toBe("locked");
+    expect(armed.round?.coachNudge).toBeNull();
   });
 
   it("resolution consumes exactly one charge and triggers the effect", () => {
@@ -496,10 +466,8 @@ describe("Fortify demonstration (Round D)", () => {
   it("the ability stays hidden before reveal", () => {
     const locked = reduceAll(
       [
-        { type: "SELECT_ANSWER", answerIndex: 0 },
         { type: "SELECT_ABILITY", abilityId: "tank.fortify" },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
+        { type: "SUBMIT_ANSWER", answerIndex: 0 },
       ],
       toRoundD(),
     );
@@ -698,18 +666,11 @@ describe("Level 3 automatic unlock", () => {
 // --- Victory & match over -----------------------------------------------------------
 
 describe("victory round and match over", () => {
-  it("requires explicit lock; opponent hidden before reveal", () => {
+  it("requires an actual answer; opponent hidden before reveal", () => {
     const s = throughLevelThree();
     expect(s.stepId).toBe("victory_round");
     expect(tutorialReducer(s, { type: "CONTINUE" })).toBe(s); // no skipping
-    const locked = reduceAll(
-      [
-        { type: "SELECT_ANSWER", answerIndex: 0 },
-        { type: "LOCK_SUBMISSION" },
-        { type: "CONFIRM_LOCK" },
-      ],
-      s,
-    );
+    const locked = tutorialReducer(s, { type: "SUBMIT_ANSWER", answerIndex: 0 });
     expect(locked.round?.result).toBeNull();
     expect(locked.matchOver).toBe(false); // only after resolution
   });
@@ -726,10 +687,8 @@ describe("victory round and match over", () => {
   it("the player may arm an available ability in the victory round", () => {
     const s = reduceAll(
       [
-        { type: "SELECT_ANSWER", answerIndex: 0 },
         { type: "SELECT_ABILITY", abilityId: "tank.brace" },
-        { type: "LOCK_SUBMISSION" }, // allowAnyAbility: no nudge
-        { type: "CONFIRM_LOCK" },
+        { type: "SUBMIT_ANSWER", answerIndex: 0 }, // allowAnyAbility: no nudge
         { type: "CONTINUE" },
       ],
       throughLevelThree("tank.brace"),

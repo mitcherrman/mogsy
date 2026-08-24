@@ -1,42 +1,48 @@
 // ---------------------------------------------------------------------------
-// /dev/ranked-tutorial — Ranked TUTORIAL on the canonical Ranked arena.
+// THE RANKED TUTORIAL — the production Ranked arena, with a teacher in it.
 //
-// The tutorial director (tutorialMachine + tutorialSteps + fixtures) drives
-// the SHARED arena components through neutral view contracts and
-// InteractionPermissions — the same game board real Ranked uses, with
-// tutorial-controlled permissions, scripted content, and instruction.
+// ARENA1 Step 4. The tutorial used to compose the arena itself: a shell of its
+// own (`TrainingMatchShell`), its own round area stitching a question surface,
+// an ability tray and a submission review together (`TutorialRoundArea`), and
+// its own select → review → confirm answer flow, which production Ranked had
+// already retired. All of that is gone. What renders now is `CanonicalArena` —
+// the same component `QuizRankedMatch` renders — reading a view model this
+// page's adapter projects out of `tutorialMachine`.
+//
+// WHAT THIS FILE STILL OWNS, AND ONLY THIS:
+//   * the director — the machine, the step order, the countdown, focus
+//     management, and which steps are interactive;
+//   * the teaching CONTENT — the coach panel, the scripted simulation panels,
+//     the completion panel, and the match-over summary;
+//   * the tutorial's own chrome — the step progress bar and Restart.
+//
+// The arena receives that teaching content through ONE slot (`guidance`) and
+// never learns what any of it is.
+//
 // Fully local: no auth, no API calls, no ads, no persistence.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
-import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
-import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
-import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
+import { arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
+import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
+import type { ArenaTerminalView } from "@/lib/ranked-core/arenaView";
 import { initialTutorialState, tutorialReducer, visibleState } from "./tutorialMachine";
 import type { TutorialTrack } from "./types";
 import {
-  abilityViewsFromTutorial,
-  combatantViewsFromTutorial,
-  permissionsFromTutorial,
-  timerViewFromTutorial,
+  combatantViewsFromTutorial, TUTORIAL_NAMES_BY_ID,
 } from "./adapters";
+import { currentSettlement, tutorialArenaView } from "./tutorialArenaView";
 import { TANK_LEVEL_TWO_OPTIONS, TANK_STARTER } from "./fixtures";
 import { InstructionPanel } from "./components/InstructionPanel";
+import { RoundRevealCoach } from "./components/RoundRevealCoach";
 import { TutorialProgress } from "./components/TutorialProgress";
-import { TrainingMatchShell } from "./components/TrainingMatchShell";
-import { TutorialRoundArea } from "./components/TutorialRoundArea";
 import { QueueSimulationPanel } from "./components/QueueSimulationPanel";
 import { RecoverySimulationPanel } from "./components/RecoverySimulationPanel";
 import { AdsProEducationPanel } from "./components/AdsProEducationPanel";
 import { TutorialCompletePanel } from "./components/TutorialCompletePanel";
-
-const COACH_NOTES: Record<string, string> = {
-  answer: "Training tip: that answer won't land this lesson — Edit and pick again.",
-  ability: "Training tip: this lesson needs a different ability setup — Edit before locking.",
-};
 
 export default function RankedTutorialPage({ track = "legacy" }: { track?: TutorialTrack } = {}) {
   // The track is fixed for the life of the run: `useReducer`'s initializer
@@ -103,24 +109,133 @@ export default function RankedTutorialPage({ track = "legacy" }: { track?: Tutor
       stepId === "level_three_unlock" ||
       stepId === "victory_round");
 
-  const combatants = combatantViewsFromTutorial(state);
-  const timer = timerViewFromTutorial(state);
-  const permissions = permissionsFromTutorial(state, roundInteractive);
-  const coachNote = view.round?.coachNudge ? COACH_NOTES[view.round.coachNudge] : null;
+  const arena = useMemo(() => tutorialArenaView(state, {
+    roundInteractive,
+    abilityTrayActive,
+    levelTwoChoiceOpen: stepId === "level_two_choice",
+    levelTwoOptions: TANK_LEVEL_TWO_OPTIONS.map((a) => ({
+      id: a.id, name: a.name, description: a.description,
+    })),
+  }, dispatch), [state, roundInteractive, abilityTrayActive, stepId]);
 
-  const showRoundArea =
-    view.round !== null &&
-    stepId !== "level_two_choice" &&
-    stepId !== "match_over" &&
-    stepId !== "queue_explanation" &&
-    stepId !== "reconnect_explanation" &&
-    stepId !== "ads_pro_explanation" &&
-    stepId !== "complete";
+  /**
+   * THE TERMINAL FRAME, at the one step that is about the match ending.
+   *
+   * The three education steps that follow (queue, recovery, ads) and the
+   * completion panel are not about the result, so they return to the live
+   * arena — the duelists, the ledgers and the finished timeline stay on screen
+   * behind their lesson, which is the point of putting the tutorial in the
+   * arena at all.
+   */
+  const terminal: ArenaTerminalView | null = stepId === "match_over" ? {
+    result: "victory",
+    player: combatantViewsFromTutorial(state).player,
+    opponent: combatantViewsFromTutorial(state).opponent,
+    heading: "Victory!",
+    subheading: "Training match complete — the Golem is at 0 HP.",
+    summary: (
+      <div className="space-y-2" data-testid="match-over-summary-content">
+        <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-0.5">
+          <li>Correct answers deal damage.</li>
+          <li>Both players may deal damage in the same round.</li>
+          {abilityLayerTaught ? (
+            <>
+              <li>XP unlocks abilities — HP decides the winner.</li>
+              <li>Ability charges are limited; armed means committed.</li>
+            </>
+          ) : (
+            <li>XP tracks the match — HP decides the winner.</li>
+          )}
+          <li>Zero HP ends the match.</li>
+        </ul>
+        <p className="text-sm font-medium" data-testid="no-mutation-note">
+          This training match did not affect your rating, history, or
+          permanent progression.
+        </p>
+      </div>
+    ),
+    progressionEnabled: abilityLayerTaught,
+    primaryAction: { label: "Continue", onClick: () => dispatch({ type: "CONTINUE" }) },
+    reveal: (() => {
+      const settlement = currentSettlement(state);
+      return settlement ? {
+        settlement,
+        viewerSlot: "p1" as const,
+        namesByPlayerId: TUTORIAL_NAMES_BY_ID,
+        showAbilities: abilityLayerTaught,
+      } : null;
+    })(),
+  } : null;
 
-  return (
-    <main className="container max-w-4xl mx-auto px-4 py-6 space-y-4">
-      <header className="flex flex-wrap items-center gap-2">
-        <h1 className="text-xl font-bold">Training Match</h1>
+  /**
+   * THE TEACHING, in the arena's guidance slot.
+   *
+   * Everything below is tutorial-owned copy and tutorial-owned controls. None
+   * of it renders a game surface: the question, the answers, the abilities,
+   * the timer, the duelists, the reveal and the timeline are all the arena's,
+   * and this only says what to do about them.
+   */
+  const guidance = (
+    <div ref={instructionRef} tabIndex={-1}
+      className="outline-none space-y-4" data-testid="tutorial-guidance">
+      <InstructionPanel
+        step={view.step}
+        onContinue={() => dispatch({ type: "CONTINUE" })}
+        continueDisabled={
+          (stepId === "both_correct_demo" ||
+            stepId === "failure_demo" ||
+            stepId === "starter_ability_intro" ||
+            stepId === "ability_resolution" ||
+            stepId === "level_three_unlock" ||
+            stepId === "victory_round") &&
+          view.round?.phase !== "revealed" &&
+          view.round?.phase !== "locked"
+        }
+      />
+      {/* The settled round, explained. Canonical reveal component, tutorial
+          placement: the arena has already turned the tablets over and resolved
+          both rails — this says which option each side picked and why the
+          round went the way it did. */}
+      {view.round && !terminal && (
+        <RoundRevealCoach round={view.round} track={state.track} />
+      )}
+      {stepId === "failure_demo" && view.round?.phase !== "revealed" && (
+        <Button
+          variant="secondary"
+          onClick={() => dispatch({ type: "SIMULATE_TIMEOUT" })}
+          data-testid="simulate-timeout"
+        >
+          Demonstrate timeout
+        </Button>
+      )}
+      {stepId === "queue_explanation" && (
+        <QueueSimulationPanel done={view.queueSimulationDone} dispatch={dispatch} />
+      )}
+      {stepId === "reconnect_explanation" && (
+        <RecoverySimulationPanel
+          done={view.recoverySimulationDone}
+          player={view.player}
+          fortifyCharges={view.charges[TANK_STARTER.id] ?? 0}
+          dispatch={dispatch}
+        />
+      )}
+      {stepId === "ads_pro_explanation" && <AdsProEducationPanel />}
+      {stepId === "complete" && <TutorialCompletePanel dispatch={dispatch} />}
+    </div>
+  );
+
+  /**
+   * The tutorial's own chrome, in the shell's header slot.
+   *
+   * `arenaHeaderRowClass` is the SHELL's geometry for this row — it is what
+   * clears the shell's fixed "League Hub" pill at each width, and Ranked's own
+   * header row uses it for the same reason. The CONTENT below is the
+   * tutorial's; the row's clearance is not the tutorial's to reinvent.
+   */
+  const chrome = (
+    <div className="space-y-3">
+      <header className={`${arenaHeaderRowClass("wide")} flex-wrap gap-2`}>
+        <h1 className="ranked-title text-lg font-bold leading-tight">Training Match</h1>
         <Badge variant="secondary">Ranked tutorial · scripted practice</Badge>
         <Button
           variant="outline"
@@ -133,140 +248,21 @@ export default function RankedTutorialPage({ track = "legacy" }: { track?: Tutor
           Restart
         </Button>
       </header>
-
       <TutorialProgress currentStepId={state.stepId} />
-
       {/* Dynamic announcements (lock, reveal, damage, XP, level, timer
           warnings). Separate from the per-step instruction live region. */}
       <div aria-live="polite" className="sr-only" data-testid="event-live">
         {view.lastAnnouncement}
       </div>
+    </div>
+  );
 
-      <TrainingMatchShell
-        player={combatants.player}
-        opponent={combatants.opponent}
-        timer={timer}
-      >
-        <div ref={instructionRef} tabIndex={-1} className="outline-none space-y-4">
-          <InstructionPanel
-            step={view.step}
-            onContinue={() => dispatch({ type: "CONTINUE" })}
-            continueDisabled={
-              (stepId === "both_correct_demo" ||
-                stepId === "failure_demo" ||
-                stepId === "starter_ability_intro" ||
-                stepId === "ability_resolution" ||
-                stepId === "level_three_unlock" ||
-                stepId === "victory_round") &&
-              view.round?.phase !== "revealed" &&
-              view.round?.phase !== "locked"
-            }
-          />
-          {stepId === "failure_demo" && view.round?.phase !== "revealed" && (
-            <Button
-              variant="secondary"
-              onClick={() => dispatch({ type: "SIMULATE_TIMEOUT" })}
-              data-testid="simulate-timeout"
-            >
-              Demonstrate timeout
-            </Button>
-          )}
-
-          {stepId === "level_two_choice" && (
-            <LevelUpPanel
-              event={{
-                kind: "level2-choice",
-                options: TANK_LEVEL_TWO_OPTIONS.map((a) => ({
-                  id: a.id,
-                  name: a.name,
-                  description: a.description,
-                })),
-                pendingOptionId: view.pendingLevelTwoChoiceId,
-                confirmedOptionId: view.chosenLevelTwoAbilityId,
-              }}
-              permissions={
-                view.chosenLevelTwoAbilityId
-                  ? NO_INTERACTIONS
-                  : {
-                      ...NO_INTERACTIONS,
-                      canSelectAbility: true,
-                      canConfirmSubmission: view.pendingLevelTwoChoiceId !== null,
-                    }
-              }
-              onSelectOption={(optionId) =>
-                dispatch({ type: "CHOOSE_LEVEL_TWO", abilityId: optionId })
-              }
-              onConfirmOption={() => dispatch({ type: "CONFIRM_LEVEL_TWO" })}
-            />
-          )}
-
-          {stepId === "queue_explanation" && (
-            <QueueSimulationPanel done={view.queueSimulationDone} dispatch={dispatch} />
-          )}
-          {stepId === "reconnect_explanation" && (
-            <RecoverySimulationPanel
-              done={view.recoverySimulationDone}
-              player={view.player}
-              fortifyCharges={view.charges[TANK_STARTER.id] ?? 0}
-              dispatch={dispatch}
-            />
-          )}
-          {stepId === "ads_pro_explanation" && <AdsProEducationPanel />}
-          {stepId === "complete" && <TutorialCompletePanel dispatch={dispatch} />}
-
-          {stepId === "match_over" && (
-            <MatchOverFrame
-              result="victory"
-              player={combatants.player}
-              opponent={combatants.opponent}
-              heading="Victory!"
-              subheading="Training match complete — the Golem is at 0 HP."
-              summary={
-                <div className="space-y-2" data-testid="match-over-summary-content">
-                  <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-0.5">
-                    <li>Correct answers deal damage.</li>
-                    <li>Both players may deal damage in the same round.</li>
-                    {abilityLayerTaught ? (
-                      <>
-                        <li>XP unlocks abilities — HP decides the winner.</li>
-                        <li>Ability charges are limited; armed means committed.</li>
-                      </>
-                    ) : (
-                      <li>XP tracks the match — HP decides the winner.</li>
-                    )}
-                    <li>Zero HP ends the match.</li>
-                  </ul>
-                  <p className="text-sm font-medium" data-testid="no-mutation-note">
-                    This training match did not affect your rating, history, or
-                    permanent progression.
-                  </p>
-                </div>
-              }
-              primaryAction={{
-                label: "Continue",
-                onClick: () => dispatch({ type: "CONTINUE" }),
-              }}
-            />
-          )}
-
-          {showRoundArea && view.round && (
-            <TutorialRoundArea
-              round={view.round}
-              abilities={abilityViewsFromTutorial(state)}
-              showAbilityTray={abilityTrayActive}
-              permissions={permissions}
-              coachNote={coachNote}
-              dispatch={dispatch}
-            />
-          )}
-        </div>
-      </TrainingMatchShell>
-
-      <p className="text-[11px] text-muted-foreground">
-        Development prototype. Nothing in this tutorial is saved and nothing
-        affects Ranked rating, history, or progression. Training damage
-        numbers are demonstrations, not Ranked balance.
-      </p>
-    </main>
+  return (
+    <CanonicalArena
+      view={terminal ? null : arena}
+      terminal={terminal}
+      chrome={chrome}
+      guidance={guidance}
+    />
   );
 }

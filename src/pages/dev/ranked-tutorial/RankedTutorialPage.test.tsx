@@ -53,12 +53,13 @@ const setTabHidden = (hidden: boolean) => {
 // --- Walk helpers (fireEvent.click on native buttons = keyboard operable) ----
 
 const cont = () => fireEvent.click(screen.getByTestId("continue-step"));
+/**
+ * ONE CLICK IS THE SUBMISSION — the production Ranked interaction, and now the
+ * tutorial's. There is no review button and no confirm button to press: the
+ * three-step flow the tutorial used to teach no longer exists in the game.
+ */
 const pickAnswer = (label: string) =>
   fireEvent.click(screen.getByRole("button", { name: new RegExp(label) }));
-const reviewAndConfirm = () => {
-  fireEvent.click(screen.getByTestId("review-button"));
-  fireEvent.click(screen.getByTestId("confirm-button"));
-};
 
 /** timer_intro (Step 1) → answer_selection (Step 2) */
 const toRoundA = () => {
@@ -69,7 +70,6 @@ const toRoundA = () => {
 const throughRoundA = () => {
   toRoundA();
   pickAnswer("Five");
-  reviewAndConfirm();
   cont(); // simultaneous reveal
   cont(); // damage_intro
   cont(); // both_correct_demo
@@ -84,38 +84,33 @@ const completeFullMatch = (choice: "tank.brace" | "tank.barrier" = "tank.brace")
     vi.advanceTimersByTime(7000); // 30 → 24, then the trigger tick → 19
   });
   pickAnswer("Mid lane");
-  reviewAndConfirm();
   cont(); // reveal B
   cont(); // → failure_demo
   fireEvent.click(screen.getByTestId("simulate-timeout"));
   cont(); // → xp_intro
   cont(); // → starter_ability_intro (Round D)
-  pickAnswer("Soak damage up front");
+  // The ability is armed BEFORE the answer: the answer click is the lock.
   fireEvent.click(screen.getByTestId("ability-tank.fortify"));
-  reviewAndConfirm();
+  pickAnswer("Soak damage up front");
   cont(); // reveal D
   cont(); // → ability_resolution (Round E at 35s)
   act(() => {
     vi.advanceTimersByTime(1000); // Golem answers instantly: 35 → 30
   });
-  pickAnswer("Four");
   fireEvent.click(screen.getByTestId("ability-tank.fortify"));
-  reviewAndConfirm();
+  pickAnswer("Four");
   cont(); // reveal E
   cont(); // → level_two_choice
+  // ONE CLICK, exactly as Ranked's level-2 choice is one click.
   fireEvent.click(screen.getByTestId(`level-option-${choice}`));
-  fireEvent.click(screen.getByTestId("level-confirm"));
   cont(); // → level_three_unlock (Round F)
   pickAnswer("Blue");
-  reviewAndConfirm();
   cont(); // reveal F
   cont(); // → Round G
   pickAnswer("Destroying the enemy Nexus");
-  reviewAndConfirm();
   cont(); // reveal G
   cont(); // → victory_round (Round H)
   pickAnswer("Reducing your opponent's HP to zero");
-  reviewAndConfirm();
   cont(); // reveal H
   cont(); // → match_over
 };
@@ -153,41 +148,39 @@ describe("shell on the canonical arena", () => {
 });
 
 describe("canonical answer interaction", () => {
-  it("select → review → confirm; nothing submits silently", () => {
+  it("one click on a tablet locks the round — the production Ranked flow", () => {
     renderPage();
     toRoundA();
     expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "open");
-    pickAnswer("Five");
-    // Still selecting: no locked banner, no reveal.
-    expect(screen.queryByTestId("locked-banner")).toBeNull();
+    // The retired select → review → confirm controls are gone entirely.
+    expect(screen.queryByTestId("review-button")).toBeNull();
+    expect(screen.queryByTestId("confirm-button")).toBeNull();
     expect(screen.queryByTestId("reveal-panel")).toBeNull();
-    fireEvent.click(screen.getByTestId("review-button"));
-    expect(screen.getByTestId("review-answer")).toHaveTextContent("Five");
-    expect(screen.getByTestId("review-ability")).toHaveTextContent("No ability");
-    fireEvent.click(screen.getByTestId("confirm-button"));
-    expect(screen.getByTestId("locked-banner")).toBeInTheDocument();
-    expect(screen.getByTestId("locked-answer")).toHaveTextContent("Five");
+    pickAnswer("Five");
+    // Locked, in one click, without leaving the arena.
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 18");
+    expect(screen.getByTestId("answer-grid")).not.toHaveAttribute(
+      "data-answers-state", "open");
   });
 
-  it("a wrong pick gets a coach note and a disabled confirm; Edit recovers", () => {
+  it("a wrong pick is REFUSED with a coach note, and the grid stays live", () => {
     renderPage();
     toRoundA();
     pickAnswer("Three");
-    fireEvent.click(screen.getByTestId("review-button"));
+    // Nothing locked: still the answer step, still open.
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 2 of 18");
     expect(screen.getByTestId("submission-status")).toHaveTextContent("Training tip");
-    expect(screen.getByTestId("confirm-button")).toBeDisabled();
-    fireEvent.click(screen.getByTestId("edit-button"));
+    expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "open");
+    // The authored answer still lands, from the same live grid.
     pickAnswer("Five");
-    fireEvent.click(screen.getByTestId("review-button"));
-    expect(screen.getByTestId("confirm-button")).toBeEnabled();
+    expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 18");
   });
 
   it("locked step shows 'Reveal answers' and only advances on click — no auto-advance", () => {
     vi.useFakeTimers();
     renderPage();
     toRoundA(); // → answer_selection (Step 2)
-    pickAnswer("Five");
-    reviewAndConfirm(); // → answer_locked (Step 3)
+    pickAnswer("Five"); // one click → answer_locked (Step 3)
     expect(screen.getByTestId("tutorial-progress")).toHaveTextContent("Step 3 of 18");
     const revealBtn = screen.getByTestId("continue-step");
     expect(revealBtn).toHaveTextContent("Reveal answers");
@@ -207,7 +200,6 @@ describe("canonical answer interaction", () => {
     renderPage();
     toRoundA();
     pickAnswer("Five");
-    reviewAndConfirm();
     // Neutral canonical status chips only — no answer content anywhere.
     expect(screen.getByTestId(`status-${TUTORIAL_GOLEM_ID}`)).toHaveTextContent(
       "Answer locked",
@@ -259,7 +251,6 @@ describe("Fortify on the canonical ability tray", () => {
       vi.advanceTimersByTime(7000);
     });
     pickAnswer("Mid lane");
-    reviewAndConfirm();
     cont();
     cont(); // failure_demo
     fireEvent.click(screen.getByTestId("simulate-timeout"));
@@ -272,17 +263,14 @@ describe("Fortify on the canonical ability tray", () => {
       "data-ability-state",
       "locked-progression",
     );
-    pickAnswer("Soak damage up front");
     fireEvent.click(fortify);
     expect(screen.getByTestId("ability-tank.fortify")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
-    // Selecting does not consume the charge.
+    // Arming does not consume the charge.
     expect(screen.getByTestId("ability-tank.fortify")).toHaveTextContent("3 charges left");
-    fireEvent.click(screen.getByTestId("review-button"));
-    expect(screen.getByTestId("review-ability")).toHaveTextContent("Fortify");
-    fireEvent.click(screen.getByTestId("confirm-button"));
+    pickAnswer("Soak damage up front"); // one click: answer + armed ability commit
     cont(); // reveal D
     const reveal = screen.getByTestId("reveal-panel");
     expect(within(reveal).getByTestId(`ability-${TUTORIAL_PLAYER_ID}`)).toHaveTextContent(
@@ -300,7 +288,7 @@ describe("Fortify on the canonical ability tray", () => {
 });
 
 describe("Level 2 and Level 3 on the canonical LevelUpPanel", () => {
-  it("Brace branch reaches match over through level-option select + confirm", () => {
+  it("Brace branch reaches match over through the one-click level option", () => {
     completeFullMatch("tank.brace");
     expect(screen.getByTestId("match-over-frame")).toBeInTheDocument();
   });

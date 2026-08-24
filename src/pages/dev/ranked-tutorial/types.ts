@@ -57,14 +57,23 @@ export type TutorialEvent =
   | { type: "CONTINUE" }
   | { type: "RESTART" }
   | { type: "TICK" }
-  | { type: "SELECT_ANSWER"; answerIndex: number }
+  /**
+   * ONE CLICK ON AN ANSWER TABLET IS THE SUBMISSION — the same interaction
+   * production Ranked ships (ARENA1 Step 4 §7).
+   *
+   * The tutorial used to teach select → review → confirm, a flow Ranked
+   * retired. Teaching a sequence the real game does not have is worse than
+   * teaching nothing, so the tutorial answers the way Ranked answers.
+   *
+   * The COACHING the review step used to carry did not go with it: a click
+   * that does not match the lesson's authored answer (or is made without the
+   * ability the lesson needs armed) sets `coachNudge` and locks NOTHING. The
+   * grid stays open, the status line says why, and the player picks again —
+   * which is exactly the non-failable guarantee the confirm gate provided,
+   * expressed in the one-click vocabulary.
+   */
+  | { type: "SUBMIT_ANSWER"; answerIndex: number }
   | { type: "SELECT_ABILITY"; abilityId: string | null }
-  /** "Lock Answer & Ability" — moves the submission into review. */
-  | { type: "LOCK_SUBMISSION" }
-  /** Leave review and change the selection. */
-  | { type: "EDIT_SUBMISSION" }
-  /** Final explicit confirmation — the authoritative lock moment. */
-  | { type: "CONFIRM_LOCK" }
   | { type: "SIMULATE_TIMEOUT" }
   /** Queue education: run the deterministic matchmaking simulation. */
   | { type: "SIMULATE_MATCHMAKING" }
@@ -85,8 +94,14 @@ export interface TutorialCombatant {
   level: number;
 }
 
-/** In-round submission flow. "locked" is final — no changes, no resubmit. */
-export type RoundPhase = "selecting" | "reviewing" | "locked" | "revealed";
+/**
+ * In-round submission flow. "locked" is final — no changes, no resubmit.
+ *
+ * There is no "reviewing" phase any more: one click on an answer either locks
+ * the round or is refused with a coaching nudge (see SUBMIT_ANSWER). Ranked
+ * has no review step, so neither does the tutorial that teaches Ranked.
+ */
+export type RoundPhase = "selecting" | "locked" | "revealed";
 
 /** Neutral opponent status — never the answer itself. */
 export type OpponentStatus = "thinking" | "submitted" | "timed_out";
@@ -132,7 +147,11 @@ export interface RoundState {
   /** Player's pending picks. Frozen once phase reaches "locked". */
   playerAnswerIndex: number | null;
   playerAbilityId: string | null;
-  /** Coaching flag: review found a non-authored answer or ability pick. */
+  /**
+   * Coaching flag: the last submission attempt named a non-authored answer, or
+   * was made without the ability this lesson needs armed. Set by a REFUSED
+   * SUBMIT_ANSWER, cleared by arming an ability or by a submission that lands.
+   */
   coachNudge: "answer" | "ability" | null;
   opponentStatus: OpponentStatus;
   /** Set in the same transition that flips phase to "revealed". */
@@ -170,6 +189,16 @@ export interface TutorialState {
   pendingLevelTwoChoiceId: string | null;
   /** Confirmed, permanent Level 2 choice. */
   chosenLevelTwoAbilityId: string | null;
+  /**
+   * Every round that has RESOLVED so far, oldest first.
+   *
+   * A live Ranked match has one of these (the controller's damage log) and the
+   * arena reads it for both duelist ledgers and the round timeline. The
+   * tutorial had no equivalent because nothing it rendered needed one; on the
+   * canonical arena it does, and the honest source is the reveals the machine
+   * has already produced — never a re-derivation from the step order.
+   */
+  settled: RevealedRoundResult[];
   /** True once the victory fixture has resolved the Golem to 0 HP. */
   matchOver: boolean;
   /** Educational simulations — purely visual, never networked. */

@@ -32,6 +32,12 @@ vi.mock("react-router-dom", async (orig) => {
   const actual = (await orig()) as Record<string, unknown>;
   return { ...actual, useNavigate: () => mocks.navigate };
 });
+vi.mock("@/hooks/useAdminAuthority", () => ({
+  // The admin-replay authority (`has_role`) is not what these tests are about,
+  // and it reads the auth context this suite deliberately does not mount.
+  // Answering "not an admin" is the state every one of them describes anyway.
+  useAdminAuthority: () => ({ loading: false, isAdmin: false }),
+}));
 vi.mock("@/hooks/useRankedTutorialStatus", () => ({
   useRankedTutorialStatus: () => mocks.status,
 }));

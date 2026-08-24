@@ -42,16 +42,15 @@ function play(track: TutorialTrack): {
   for (let i = 0; i < 400 && state.stepId !== "complete"; i += 1) {
     const before = state;
     const round = state.round;
-    if (round && round.phase === "selecting" && permits(state, "SELECT_ANSWER")) {
+    if (round && round.phase === "selecting" && permits(state, "SUBMIT_ANSWER")) {
       const fixture = TUTORIAL_ROUNDS[round.roundId];
-      send({ type: "SELECT_ANSWER", answerIndex: fixture.playerAnswer });
-      // Arm whatever ability the lesson expects — the legacy ability rounds
-      // refuse the lock until the armed selection matches what they teach.
+      // Arm whatever ability the lesson expects FIRST — the answer click is
+      // the lock, and the legacy ability rounds refuse it until the armed
+      // selection matches what they teach.
       if (permits(state, "SELECT_ABILITY")) {
         send({ type: "SELECT_ABILITY", abilityId: fixture.abilityId ?? null });
       }
-      send({ type: "LOCK_SUBMISSION" });
-      send({ type: "CONFIRM_LOCK" });
+      send({ type: "SUBMIT_ANSWER", answerIndex: fixture.playerAnswer });
     }
     if (permits(state, "SIMULATE_TIMEOUT")) send({ type: "SIMULATE_TIMEOUT" });
     if (permits(state, "CHOOSE_LEVEL_TWO")) {

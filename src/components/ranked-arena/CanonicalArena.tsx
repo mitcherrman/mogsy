@@ -47,6 +47,21 @@ export interface CanonicalArenaProps {
   terminal?: ArenaTerminalView | null;
   /** Chrome above the arena — a title row, a way back. */
   chrome?: ReactNode;
+  /**
+   * A SCRIPTED MODE'S GUIDANCE — the overlay seam (ARENA1 Step 4 §6).
+   *
+   * A scripted mode is the caller this exists for, and it is deliberately a
+   * slot rather than an API: the arena must never learn what an instruction
+   * panel, a scripted callout or a step of a script IS, or the fork this file
+   * exists to prevent starts here instead of in a second renderer.
+   *
+   * It is rendered in the arena's FOCAL region on both exit paths — the foot
+   * of the centre column while a match is live, and under the terminal frame
+   * once it is over — so the node sits with the thing it is about, and the
+   * mode never has to reproduce the arena around it to place it. Ranked
+   * supplies none, and renders exactly the DOM it always has.
+   */
+  guidance?: ReactNode;
   /** Copy for the null-view placeholder, which is a mode's own sentence. */
   recovering?: { eyebrow: string; message: string };
 }
@@ -66,7 +81,7 @@ function Rail({ rail, progressionEnabled }:
 }
 
 export function CanonicalArena({
-  view, terminal = null, chrome, recovering,
+  view, terminal = null, chrome, recovering, guidance,
 }: CanonicalArenaProps) {
   /**
    * The Meta Reflex transcript's disclosure, owned HERE rather than by the
@@ -100,9 +115,10 @@ export function CanonicalArena({
         <div className="ranked-shell flex flex-col gap-4" data-testid="ranked-match-over">
           <MatchOverFrame result={terminal.result} player={terminal.player}
             opponent={terminal.opponent}
+            heading={terminal.heading}
             subheading={terminal.subheading}
-            progressionEnabled={terminal.progressionEnabled}
             summary={terminal.summary}
+            progressionEnabled={terminal.progressionEnabled}
             primaryAction={terminal.primaryAction} />
           {terminal.reveal && (
             <RevealPanel settlement={terminal.reveal.settlement}
@@ -110,6 +126,7 @@ export function CanonicalArena({
               namesByPlayerId={terminal.reveal.namesByPlayerId}
               showAbilities={terminal.reveal.showAbilities} />
           )}
+          {guidance}
         </div>
       </ArenaShell>
     );
@@ -450,6 +467,12 @@ export function CanonicalArena({
               </p>
             </section>
           )}
+          {/* The guidance seam. Last in the focus column, so a mode's own node
+              sits directly under the question it speaks about, inside the same
+              54% track, and above the timeline the arena keeps as its floor.
+              Ranked passes nothing; React renders nothing; the column's DOM is
+              byte-for-byte what it was. */}
+          {guidance}
         </div>
       </div>
 

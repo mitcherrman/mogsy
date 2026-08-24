@@ -6,6 +6,10 @@
 //   /quiz/tutorial              — the permanent Leaguecraft entry, where any
 //                                 authenticated user may start or replay it.
 //
+// …and, on that second route only, the ADMIN REPLAY: `?adminReplay=1`, honoured
+// only for a server-confirmed staff admin, which runs the real tutorial from
+// its beginning and records nothing (see `lib/ranked-tutorial/adminReplay`).
+//
 // Reuses the exact same canonical tutorial implementation as /dev/ranked-tutorial
 // (no fork, no duplication). It adds only the production concerns: a minimal
 // welcome step, run-mode selection, durable completion persistence, and
@@ -15,18 +19,19 @@
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { useAdminAuthority } from "@/hooks/useAdminAuthority";
 import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
+import {
+  ADMIN_REPLAY_PARAM, isAdminReplayRequested, resolveTutorialRun,
+} from "@/lib/ranked-tutorial/adminReplay";
 import { RANKED_TUTORIAL_RETURN_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import RankedTutorialPage from "@/pages/dev/ranked-tutorial/RankedTutorialPage";
 import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
-import {
-  TutorialOnboardingProvider,
-  type TutorialMode,
-} from "@/pages/dev/ranked-tutorial/tutorialOnboardingContext";
+import { TutorialOnboardingProvider } from "@/pages/dev/ranked-tutorial/tutorialOnboardingContext";
 
 export default function RankedTutorialOnboardingPage() {
   const navigate = useNavigate();
@@ -35,19 +40,32 @@ export default function RankedTutorialOnboardingPage() {
   const [started, setStarted] = useState(false);
   const rankedRole = useRankedRole();
   const tutorialTrack = rankedRole.loadState === "ready" ? "r1" : "legacy";
+  const [params] = useSearchParams();
+  // ADMIN REPLAY. The parameter is a REQUEST; `useAdminAuthority` is the
+  // answer, and it is the server's (`has_role`). Until the server has replied
+  // the hook reports `false`, so an admin replay simply resolves as the
+  // ordinary run for that first moment and never as an unauthorized one.
+  const adminReplayRequested = isAdminReplayRequested(params.get(ADMIN_REPLAY_PARAM));
+  const { isAdmin, loading: adminLoading } = useAdminAuthority();
 
-  // Three separate concepts, deliberately not collapsed into one:
-  //   `completed` — durable ACCOUNT state: has this user ever finished?
-  //   `forced`    — eligibility AND global POLICY: is this run compulsory?
-  //   `mode`      — the resulting experience.
+  // Four separate concepts, deliberately not collapsed into one:
+  //   `completed`   — durable ACCOUNT state: has this user ever finished?
+  //   forced        — eligibility AND global POLICY: is this run compulsory?
+  //   `adminReplay` — an authorized staff rehearsal, which writes nothing;
+  //   `mode`        — the resulting experience.
   //
   // An incomplete user who is NOT forced (the permanent Leaguecraft route, or
   // the popup while the forced-tutorial policy is off) still gets their first
   // completion recorded — they simply are not trapped here while doing it. That
   // is what makes re-enabling the forced policy accurate later.
-  const forced = required && settings.policy.tutorial.completionRequiredForNewUsers;
-  const mode: TutorialMode = forced ? "mandatory" : completed ? "replay" : "voluntary";
-  const persistsCompletion = mode === "mandatory" || mode === "voluntary";
+  const run = resolveTutorialRun({
+    required,
+    policyForcesTutorial: settings.policy.tutorial.completionRequiredForNewUsers,
+    completed,
+    adminReplayRequested,
+    isAdmin,
+  });
+  const { mode, adminReplay, persistsCompletion } = run;
 
   const contextValue = useMemo(
     () => ({
@@ -68,7 +86,10 @@ export default function RankedTutorialOnboardingPage() {
     [mode, persistsCompletion, completeTutorial, navigate],
   );
 
-  if (loading || settingsLoading) {
+  // An admin replay must not START before the server has answered: beginning
+  // as an ordinary (recording) run and switching mid-flight is exactly the
+  // write this feature exists to prevent.
+  if (loading || settingsLoading || (adminReplayRequested && adminLoading)) {
     return <div className="min-h-dvh bg-background" data-testid="onboarding-loading" />;
   }
 
@@ -115,7 +136,14 @@ export default function RankedTutorialOnboardingPage() {
               </Button>
             )}
           </div>
-          {completed && (
+          {adminReplay ? (
+            <p className="text-[11px] text-muted-foreground"
+              data-testid="admin-replay-notice">
+              Admin replay. This runs the real tutorial from the beginning and
+              records nothing — your own completion, progression and gating are
+              untouched.
+            </p>
+          ) : completed && (
             <p className="text-[11px] text-muted-foreground">
               You&apos;ve already completed this tutorial — replaying won&apos;t change your progress.
             </p>

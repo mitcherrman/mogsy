@@ -196,18 +196,24 @@ export interface ArenaTerminalView {
   result: "victory" | "defeat" | "draw";
   player: CombatantView;
   opponent: CombatantView;
+  /** Overrides the frame's own "Victory / Defeat / Draw" headline. */
+  heading?: string;
   subheading?: string;
-  progressionEnabled: boolean;
-  primaryAction: { label: string; onClick: () => void };
   /**
-   * PT1.3 — the frame's existing summary slot, or undefined.
+   * Extra content INSIDE the frame, under the two duelists.
    *
-   * Ranked fills it with the questions the match added to the player's
-   * collection; a mode with a score fills it with the score. Left undefined
-   * the frame renders no summary block and therefore no stray flex gap, which
-   * is the honest rendering of "there is nothing to add".
+   * `MatchOverFrame` has always had this slot; the view model simply did not
+   * expose it. Three modes now fill it and each fills it with its own answer:
+   * the tutorial's match-over summary and its "nothing here was recorded"
+   * statement, Ranked's PT1.3 reveal of the questions the match added to the
+   * player's collection, and (later) a solo run's score.
+   *
+   * Left undefined the frame renders no summary block, and therefore no stray
+   * flex gap — the honest rendering of "there is nothing to add".
    */
   summary?: ReactNode;
+  progressionEnabled: boolean;
+  primaryAction: { label: string; onClick: () => void };
   /** The final settlement, rendered in full below the frame. */
   reveal: {
     settlement: ResolvedRoundView;

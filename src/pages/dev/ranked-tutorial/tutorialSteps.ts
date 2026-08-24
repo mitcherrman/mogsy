@@ -67,9 +67,9 @@ export const R1_STEP_COPY: Partial<Record<TutorialStepId,
   { title?: string; body: string; announcement: string }>> = {
   answer_selection: {
     body:
-      "Choose an answer. When you're ready, Lock it in and confirm. Until you confirm, you can change your mind. Take your time: training never fails you for reading.",
+      "Click an answer to lock it in — one click is your submission, exactly as it is in a real Ranked duel. Take your time: the training timer never fails you, and a pick that doesn't fit the lesson is simply not accepted.",
     announcement:
-      "Answer selection. Choose an answer, lock it in, then confirm.",
+      "Answer selection. Click an answer to lock it in — one click submits.",
   },
   xp_intro: {
     title: "XP builds every round",
@@ -122,16 +122,13 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Answer",
     title: "Pick your answer",
     body:
-      "Choose an answer. No ability is selected — that lesson comes later. When you're ready, Lock it in and confirm. Until you confirm, you can change your mind. Take your time: training never fails you for reading.",
+      "Click an answer to lock it in — one click is your submission, exactly as it is in a real Ranked duel. No ability is selected; that lesson comes later. Take your time: the training timer never fails you, and a pick that doesn't fit the lesson is simply not accepted.",
     announcement:
-      "Answer selection. Choose an answer, lock it in, then confirm.",
+      "Answer selection. Click an answer to lock it in — one click submits.",
     timerMode: "running",
     permittedEvents: [
-      "SELECT_ANSWER",
+      "SUBMIT_ANSWER",
       "SELECT_ABILITY",
-      "LOCK_SUBMISSION",
-      "EDIT_SUBMISSION",
-      "CONFIRM_LOCK",
       "TICK",
       "RESTART",
     ],
@@ -176,16 +173,13 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Both hit",
     title: "Both correct — both deal damage",
     body:
-      "This round the Golem answers first: watch the shared timer drop by 5 seconds the moment it locks in. Answer correctly and confirm — when both players are correct, both deal damage.",
+      "This round the Golem answers first: watch the shared timer drop by 5 seconds the moment it locks in. Answer correctly — when both players are correct, both deal damage.",
     announcement:
-      "Round two. The Golem will answer first and cut the shared timer by five seconds. Answer correctly and lock in.",
+      "Round two. The Golem will answer first and cut the shared timer by five seconds. Answer correctly to lock in.",
     timerMode: "running",
     permittedEvents: [
-      "SELECT_ANSWER",
+      "SUBMIT_ANSWER",
       "SELECT_ABILITY",
-      "LOCK_SUBMISSION",
-      "EDIT_SUBMISSION",
-      "CONFIRM_LOCK",
       "CONTINUE",
       "TICK",
       "RESTART",
@@ -221,16 +215,13 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Fortify",
     title: "Fortify is your starter ability",
     body:
-      "You begin with Fortify (3 charges): answer correctly with it armed and your NEXT question gains five seconds. Arm it before locking your answer — selecting it costs nothing yet; the charge is committed only when the round resolves. Your ability stays hidden until reveal.",
+      "You begin with Fortify (3 charges): answer correctly with it armed and your NEXT question gains five seconds. Arm it BEFORE you answer — your answer click locks the round, and whatever is armed at that moment is what commits. Arming costs nothing yet; the charge is spent only when the round resolves. Your ability stays hidden until reveal.",
     announcement:
       "Fortify, your starter ability. Arm it, answer correctly, and your next question gains five seconds.",
     timerMode: "running",
     permittedEvents: [
-      "SELECT_ANSWER",
+      "SUBMIT_ANSWER",
       "SELECT_ABILITY",
-      "LOCK_SUBMISSION",
-      "EDIT_SUBMISSION",
-      "CONFIRM_LOCK",
       "CONTINUE",
       "TICK",
       "RESTART",
@@ -242,16 +233,13 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Commit",
     title: "Armed means committed",
     body:
-      "This question starts at 35 seconds — Fortify added five. Now a controlled demonstration: arm Fortify again and lock in the guided wrong answer on purpose. You'll see the charge is consumed at resolution even though the effect never triggers. (The Golem answers instantly, so watch its first answer cut the shared timer by 5.)",
+      "This question starts at 35 seconds — Fortify added five. Now a controlled demonstration: arm Fortify again, then click the guided wrong answer on purpose. You'll see the charge is consumed at resolution even though the effect never triggers. (The Golem answers instantly, so watch its first answer cut the shared timer by 5.)",
     announcement:
-      "Commitment demonstration. This question starts at thirty-five seconds thanks to Fortify. Arm Fortify and lock the guided wrong answer on purpose.",
+      "Commitment demonstration. This question starts at thirty-five seconds thanks to Fortify. Arm Fortify, then answer with the guided wrong choice on purpose.",
     timerMode: "running",
     permittedEvents: [
-      "SELECT_ANSWER",
+      "SUBMIT_ANSWER",
       "SELECT_ABILITY",
-      "LOCK_SUBMISSION",
-      "EDIT_SUBMISSION",
-      "CONFIRM_LOCK",
       "CONTINUE",
       "TICK",
       "RESTART",
@@ -280,11 +268,8 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
       "Drive to Level three. Sixty-six XP unlocks your final ability automatically.",
     timerMode: "running",
     permittedEvents: [
-      "SELECT_ANSWER",
+      "SUBMIT_ANSWER",
       "SELECT_ABILITY",
-      "LOCK_SUBMISSION",
-      "EDIT_SUBMISSION",
-      "CONFIRM_LOCK",
       "CONTINUE",
       "TICK",
       "RESTART",
@@ -296,15 +281,12 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     label: "Victory",
     title: "Finish the match",
     body:
-      "Reduce your opponent to 0 HP to win. One last question — arm any available ability or none, lock in, and land the final hit.",
+      "Reduce your opponent to 0 HP to win. One last question — arm any available ability or none, then answer to land the final hit.",
     announcement: "Final round. Reduce the Golem to zero HP to win.",
     timerMode: "running",
     permittedEvents: [
-      "SELECT_ANSWER",
+      "SUBMIT_ANSWER",
       "SELECT_ABILITY",
-      "LOCK_SUBMISSION",
-      "EDIT_SUBMISSION",
-      "CONFIRM_LOCK",
       "CONTINUE",
       "TICK",
       "RESTART",

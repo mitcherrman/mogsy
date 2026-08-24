@@ -98,6 +98,7 @@ export const initialTutorialState = (track: TutorialTrack = "legacy"): TutorialS
   charges: initialCharges(),
   pendingLevelTwoChoiceId: null,
   chosenLevelTwoAbilityId: null,
+  settled: [],
   matchOver: false,
   queueSimulationDone: false,
   recoverySimulationDone: false,
@@ -240,6 +241,9 @@ const applyFixture = (state: TutorialState, f: ResolvedRoundFixture): TutorialSt
     },
     charges,
     round: { ...state.round, phase: "revealed", result },
+    // Append, never rebuild: this is the record of what HAPPENED, and it is
+    // what the duelist ledgers and the round timeline read.
+    settled: [...state.settled, result],
     timer: { ...state.timer, running: false },
     matchOver: state.matchOver || result.opponentHpAfter === 0,
     lastAnnouncement: bits.join(" "),
@@ -315,7 +319,7 @@ const continueFrom = (state: TutorialState): TutorialState => {
       return advance(state);
     }
     // Steps that host an unresolved interactive round can't be skipped
-    // (Round A's selection step advances via CONFIRM_LOCK instead).
+    // (Round A's selection step advances by ANSWERING instead).
     if (state.stepId !== "answer_selection") return state;
   }
   return advance(state);
@@ -374,26 +378,73 @@ export const tutorialReducer = (
       return { ...state, timer: t, lastAnnouncement: announcement };
     }
 
-    case "SELECT_ANSWER": {
-      // Canonical flow: the answer is changeable while selecting AND while
-      // reviewing (entering review submits nothing). A change during review
-      // recomputes the coach nudge against the authored guidance.
-      if (!round || !fixture) return state;
-      if (round.phase !== "selecting" && round.phase !== "reviewing") return state;
-      const answerNudge =
-        round.phase === "reviewing" && event.answerIndex !== fixture.playerAnswer;
+    /**
+     * ONE CLICK ANSWERS THE ROUND — or is refused with a coaching nudge.
+     *
+     * Ranked submits on the click; so does this. The lesson's guidance is not
+     * lost with the confirm gate, it MOVES here: a click that does not match
+     * the authored answer, or is made without the ability the lesson needs
+     * armed, changes nothing but `coachNudge`. Nothing locks, the tablets stay
+     * live, and the arena's status line explains what to do. Training still
+     * cannot fail the player — it simply does not accept a submission that
+     * would derail the scripted lesson.
+     */
+    case "SUBMIT_ANSWER": {
+      if (!round || !fixture || round.phase !== "selecting") return state;
+      const answerNudge = event.answerIndex !== fixture.playerAnswer;
       const abilityNudge =
-        round.phase === "reviewing" &&
         !answerNudge &&
         !fixture.allowAnyAbility &&
         round.playerAbilityId !== fixture.abilityId;
+      if (answerNudge || abilityNudge) {
+        return {
+          ...state,
+          round: {
+            ...round,
+            // The refused pick is still REMEMBERED, so the tablet the player
+            // clicked stays visibly chosen while they are being redirected.
+            playerAnswerIndex: event.answerIndex,
+            coachNudge: answerNudge ? "answer" : "ability",
+          },
+          lastAnnouncement: answerNudge
+            ? "That answer won't land this lesson. Pick again — training never fails you."
+            : "This lesson needs a different ability armed. Arm it, then answer.",
+        };
+      }
+
+      const locked: RoundState = {
+        ...round,
+        playerAnswerIndex: event.answerIndex,
+        coachNudge: null,
+        phase: "locked",
+        // The scripted Golem locks its own answer when you answer (unless this
+        // round scripts a Golem timeout).
+        opponentStatus:
+          fixture.opponentAnswer !== null ? "submitted" : round.opponentStatus,
+      };
+
+      // Round A: the dedicated `answer_locked` lesson exists to teach that a
+      // locked answer is sealed rather than revealed, so it gets its own step.
+      if (round.roundId === "A") {
+        return enterStep(
+          {
+            ...state,
+            round: locked,
+            timer: { ...state.timer, running: false },
+            lastAnnouncement:
+              "Answer locked. It stays hidden from the Golem until the reveal.",
+          },
+          "answer_locked",
+        );
+      }
       return {
         ...state,
-        round: {
-          ...round,
-          playerAnswerIndex: event.answerIndex,
-          coachNudge: answerNudge ? "answer" : abilityNudge ? "ability" : null,
-        },
+        round: locked,
+        timer: { ...state.timer, running: false },
+        lastAnnouncement:
+          round.playerAbilityId !== null
+            ? "Answer and ability locked together. Both stay hidden until the reveal."
+            : "Answer locked. Continue to the reveal.",
       };
     }
 
@@ -411,65 +462,6 @@ export const tutorialReducer = (
           event.abilityId === null
             ? "No ability selected. Selecting costs nothing until the round resolves."
             : `${event.abilityId === TANK_STARTER.id ? "Fortify" : "Ability"} armed. It stays hidden until reveal, and its charge is committed only when the round resolves.`,
-      };
-    }
-
-    case "LOCK_SUBMISSION": {
-      if (!round || !fixture || round.phase !== "selecting" || round.playerAnswerIndex === null)
-        return state;
-      const answerNudge = round.playerAnswerIndex !== fixture.playerAnswer;
-      const abilityNudge =
-        !fixture.allowAnyAbility && round.playerAbilityId !== fixture.abilityId;
-      return {
-        ...state,
-        round: {
-          ...round,
-          phase: "reviewing",
-          coachNudge: answerNudge ? "answer" : abilityNudge ? "ability" : null,
-        },
-        lastAnnouncement: "Review your submission, then confirm to lock it in.",
-      };
-    }
-
-    case "EDIT_SUBMISSION": {
-      if (!round || round.phase !== "reviewing") return state;
-      return {
-        ...state,
-        round: { ...round, phase: "selecting", coachNudge: null },
-        lastAnnouncement: "Back to answer selection.",
-      };
-    }
-
-    case "CONFIRM_LOCK": {
-      if (!round || !fixture || round.phase !== "reviewing") return state;
-      if (round.coachNudge) return state; // non-failable coaching gate
-
-      // Round A: the Golem locks its scripted answer once you confirm, and
-      // the machine advances to the dedicated answer_locked step.
-      if (round.roundId === "A") {
-        const locked: TutorialState = {
-          ...state,
-          round: { ...round, phase: "locked", opponentStatus: "submitted" },
-          timer: { ...state.timer, running: false },
-          lastAnnouncement:
-            "Answer locked. It stays hidden from the Golem until the reveal.",
-        };
-        return enterStep(locked, "answer_locked");
-      }
-      return {
-        ...state,
-        // The scripted Golem locks its own answer when you confirm (unless
-        // this round scripts a Golem timeout).
-        round: {
-          ...round,
-          phase: "locked",
-          opponentStatus: fixture.opponentAnswer !== null ? "submitted" : round.opponentStatus,
-        },
-        timer: { ...state.timer, running: false },
-        lastAnnouncement:
-          round.playerAbilityId !== null
-            ? "Answer and ability locked together. Both stay hidden until the reveal."
-            : "Answer locked. Continue to the reveal.",
       };
     }
 
