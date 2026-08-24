@@ -25,6 +25,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
+import { MetaReflexCardResult } from "@/components/ranked-arena/MetaReflexCardResult";
 import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
@@ -215,10 +216,23 @@ function BlockPhase({ state, cards, actions, skewMs }: {
   const now = useFastTick();
   const clock = cardCountdown(state.ownCardDeadline, skewMs, now, state.cardTimerMs);
 
+  // RG3 — the card the viewer most recently FINISHED, whatever ended it. The
+  // list is server-built and contains only settled cards, so "the last entry"
+  // is always the one that just resolved and never the one on screen.
+  const lastSettled = state.ownCardReveals.length
+    ? state.ownCardReveals[state.ownCardReveals.length - 1] : null;
+
   if (state.ownFinished || !current) {
     return (
       <div className="space-y-2" data-testid="mr-waiting">
         <MetaReflexHeader progress={`${state.challengeCount} / ${state.challengeCount}`} />
+        {/* The block is over, so the last card's resolution has the surface to
+            itself — nothing is competing with it for the player's clock. */}
+        <MetaReflexCardResult
+          key={lastSettled?.challengeIndex ?? "none"}
+          reveal={lastSettled}
+          cardNumber={lastSettled ? lastSettled.challengeIndex + 1 : null}
+        />
         <p className="text-sm text-muted-foreground" role="status">
           {state.opponentFinished
             ? "Both players are done — scoring the block…"
@@ -269,6 +283,15 @@ function BlockPhase({ state, cards, actions, skewMs }: {
           : expired ? "Time's up — next card…"
             : `Opponent: ${state.opponentChallengesCompleted} of ${state.challengeCount} done`}
       </p>
+
+      {/* RG3 — the previous card's resolution, BESIDE the live one. See
+          MetaReflexCardResult for why it cannot be laid over the card it
+          describes: that card's successor is already on the clock. */}
+      <MetaReflexCardResult
+        key={lastSettled?.challengeIndex ?? "none"}
+        reveal={lastSettled}
+        cardNumber={lastSettled ? lastSettled.challengeIndex + 1 : null}
+      />
     </div>
   );
 }

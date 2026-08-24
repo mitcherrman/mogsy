@@ -332,6 +332,10 @@ export function resolvedRoundViewFromResult(
     // tutorial's answer tablets stay unresolved. Fabricating an index from
     // `playerCorrect` would highlight whatever the learner happened to click.
     correctOptionIndex: null,
+    // The tutorial is a scripted fixture, not a served question: it has no
+    // reviewed candidate behind it and therefore no frozen rationale to
+    // quote. Null, never invented text.
+    questionExplanation: null,
     winner: matchOver ? "p1" : null,
     completionReason: matchOver ? "knockout" : null,
     summary: result.resultCopy,

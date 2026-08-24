@@ -19,6 +19,7 @@
  * "single_choice"; numeric/boolean would become future interaction adapters.
  * See docs/f1-question-surface-convergence.md.
  */
+import type { FeedbackEvidence } from "@/lib/question-feedback/model";
 import type { QuizQuestion } from "@/lib/quiz/api";
 import type {
   AnswerOptionView,
@@ -66,6 +67,16 @@ export interface SurfaceReveal {
   isCorrect?: boolean | null;
   correctOptionId?: string | null;
   explanation?: string | null;
+  /**
+   * RG3 — concise, backend-authoritative evidence for the resolved answer.
+   *
+   * Distinct from `explanation`, which is prose for a study surface and is
+   * gated behind `showExplanation`. This is at most one short line (or, for a
+   * comparison, the two values that decided it) and renders in EVERY variant,
+   * because "why is that the answer" is part of the answer beat rather than a
+   * study feature. Null is the common case and renders nothing.
+   */
+  evidence?: FeedbackEvidence | null;
 }
 
 /**

@@ -14,6 +14,7 @@ import {
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
 import { quizModule } from "@/lib/ranked-core/modules/quizModule";
 import type { ScenarioSource, SurfaceReveal } from "@/lib/question-surface/contract";
+import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import {
   permissionsForSubmissionPhase,
   restrictPermissions,
@@ -347,6 +348,12 @@ export function projectSurfaceReveal(
   settlement: ResolvedRoundView | null,
   surfaceRoundNumber: number | null,
   question: QuestionView | null,
+  /**
+   * RG3 — the viewer's own settled side, so the reveal can state the VERDICT
+   * as well as the answer. Optional: omitting it reproduces the pre-RG3 shape
+   * exactly, which is what every existing caller and test relies on.
+   */
+  viewer?: ResolvedCombatantView | null,
 ): SurfaceReveal | null {
   if (!settlement || settlement.correctOptionIndex === null) return null;
   if (surfaceRoundNumber === null) return null;
@@ -354,7 +361,15 @@ export function projectSurfaceReveal(
   const correct = question?.options.find(
     (o) => o.index === settlement.correctOptionIndex);
   if (!correct) return null;
-  return { revealed: true, correctOptionId: correct.id };
+  return {
+    revealed: true,
+    correctOptionId: correct.id,
+    isCorrect: viewer ? viewer.outcome === "correct" : null,
+    // Rides the SAME three gates as the correct option above. There is no
+    // separate condition under which evidence may appear, which is what stops
+    // the two from ever disagreeing about whether this round is disclosed.
+    evidence: conciseEvidence(settlement.questionExplanation),
+  };
 }
 
 // ---------------------------------------------------------------------------

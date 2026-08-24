@@ -120,4 +120,12 @@ export interface BackendResolvedRoundProjection {
    */
   correct_option_index?: number | null;
   option_count?: number | null;
+  /**
+   * RG3 — the question's frozen review material. Same siting and the same
+   * argument as `correct_option_index`: it is on the RESOLVED projection
+   * because that is the only projection the backend will build for a settled
+   * round. Optional, so a client can ship ahead of the backend that sends it,
+   * and commonly absent — most questions carry no rationale at all.
+   */
+  question_explanation?: Record<string, unknown> | null;
 }

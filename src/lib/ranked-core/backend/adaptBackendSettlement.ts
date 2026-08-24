@@ -118,6 +118,22 @@ export interface AdaptedSettlement {
    * any value that does not index the frozen option list.
    */
   correctOptionIndex: number | null;
+  /**
+   * RG3 — the question's frozen review material, or null.
+   *
+   * Structured, and copied verbatim from the reviewed candidate that produced
+   * the question (`ranked_duel_question_bank.candidate_explanation`): the
+   * canonical formula id, the rounding rule, the worked calculation steps, the
+   * distractor derivations. No text in that pipeline is authored, which is why
+   * a client may quote a line of it and why a client may never write one.
+   *
+   * Post-settlement by exactly the same construction as `correctOptionIndex`:
+   * it is here because it is in the RESOLVED projection, which the backend
+   * refuses to build for a round that has not settled. Null is permanent and
+   * common — most questions carry no rationale — and means the surface shows
+   * no evidence rather than inventing some.
+   */
+  questionExplanation: Record<string, unknown> | null;
   /** Null on non-terminal rounds AND on simultaneous-knockout draws. */
   winner: PlayerId | null;
   completionReason: BackendCompletionReason | null;
@@ -345,6 +361,15 @@ export function adaptBackendSettlement(
       && (typeof raw.option_count !== "number"
           || raw.correct_option_index < raw.option_count)
     ) ? raw.correct_option_index : null,
+    // Passed through as an opaque object, never parsed here: this adapter's job
+    // is identity mapping and validation, and the ONE thing it can usefully say
+    // about review material is that it is an object. Which line of it a surface
+    // quotes is a presentation decision (`lib/question-feedback/evidence`).
+    questionExplanation: (
+      typeof raw.question_explanation === "object"
+      && raw.question_explanation !== null
+      && !Array.isArray(raw.question_explanation)
+    ) ? (raw.question_explanation as Record<string, unknown>) : null,
     winner,
     completionReason: raw.completion_reason,
     summary: buildSummary(players),

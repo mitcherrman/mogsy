@@ -283,6 +283,46 @@ export type MetaReflexCard =
   | MetaReflexClassificationCard
   | MetaReflexRecognitionCard;
 
+/** One side of a settled card, as the backend described it. */
+export interface SettledCardSide {
+  label: string | null;
+  /**
+   * The compared value, ALREADY FORMATTED server-side ("3,200 gold", "66 AD",
+   * "Ranged"). `null` where the card compares nothing — a recognition card —
+   * which is a different statement from an empty string and is rendered as
+   * nothing rather than as a blank.
+   */
+  valueDisplay: string | null;
+}
+
+/**
+ * RG3 — one Meta Reflex card the viewer has FINISHED, and may therefore be
+ * told about.
+ *
+ * A reflex card is terminal after one tap or one expiry: the server has scored
+ * it and the player can never answer it again, which is exactly the argument
+ * that lets a settled ROUND disclose, applied one card down. The block's five
+ * cards are independent questions, so knowing card 1 says nothing about card 2.
+ *
+ * `outcome` is the server's word, not a comparison this client makes. A client
+ * that derived it by matching `selectedCardId` against `correctCardId` would be
+ * re-judging an attempt the server already judged, and the two could disagree
+ * on the one case that matters: a card that expired in the same instant it was
+ * tapped.
+ */
+export interface SettledCardReveal {
+  challengeIndex: number;
+  kind: MetaReflexCardKind | null;
+  entityKind: string | null;
+  outcome: "correct" | "incorrect" | "timeout" | "unanswered";
+  /** The positional token the viewer answered with, or null. */
+  selectedCardId: string | null;
+  /** The positional token that was right, or null if the payload omitted it. */
+  correctCardId: string | null;
+  left: SettledCardSide;
+  right: SettledCardSide;
+}
+
 /**
  * The block's cards, discriminated by the card contract the segment's module
  * version pins. Exactly one shape is ever present: the two are never merged
@@ -344,6 +384,12 @@ export interface SegmentStateView {
   prompt: string | null;
   /** Present only in the challenge phase; discriminated by card contract. */
   block: SegmentBlockView | null;
+  /**
+   * RG3 — the viewer's OWN finished cards, oldest first. Empty on every
+   * block-clocked segment, on a module version that does not publish them, and
+   * before the first card settles.
+   */
+  ownCardReveals: SettledCardReveal[];
 }
 
 /** Public round: neutral, pre-reveal. Players satisfy PublicCombatantSource. */
@@ -691,7 +737,25 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
   "opponent_submitted_at", "opponent_per_challenge_ms", "score", "scores",
   "winner", "winner_id", "segment_result", "outcomes", "reveal",
   "segment_private", "segment_private_json",
+  // RG3 — the mixed-card (v4) answer vocabulary. The set above was written
+  // against v1's item-cost payload and knew none of these spellings, so a
+  // compared value could have arrived on a LIVE card and passed the walk.
+  // Naming them is what makes `own_card_reveals` the only way any of them can
+  // reach this reader.
+  "left_value", "right_value", "correct_entity_id", "correct_side",
+  "correct_card_id",
 ]);
+
+/**
+ * The ONE key of a live segment payload that legitimately carries answers
+ * (RG3): the cards this viewer has already finished.
+ *
+ * It is LIFTED OUT before the pre-reveal walk and checked on its own terms,
+ * never exempted inside the walk. An exemption would blind the guard to the
+ * same field appearing anywhere under a key of this name; lifting it means the
+ * guard still sees — and still rejects — `left_value` everywhere else.
+ */
+const SETTLED_REVEAL_KEY = "own_card_reveals";
 
 function assertSegmentIsPreRevealSafe(node: unknown, depth = 0): void {
   if (depth > 12 || node === null || typeof node !== "object") return;
@@ -837,11 +901,70 @@ function readSubmittedChoices(raw: unknown, moduleVersion: number): (string | nu
  * unlike the tolerant `segment` discriminator, this block drives real input,
  * so a malformed one must not be rendered at all.
  */
+/** One settled card, read field by field. Nothing is forwarded wholesale. */
+function readSettledCardReveal(v: unknown, label: string): SettledCardReveal {
+  const o = rec(v, label);
+  const outcome = o.outcome;
+  if (outcome !== "correct" && outcome !== "incorrect"
+      && outcome !== "timeout" && outcome !== "unanswered") {
+    throw new RankedPublicParseError(
+      `${label}.outcome must be a settled-card outcome (got ${String(outcome)})`);
+  }
+  const side = (raw: unknown, where: string): SettledCardSide => {
+    const s = rec(raw, where);
+    return {
+      label: nstr(s.label, `${where}.label`),
+      valueDisplay: nstr(s.value_display, `${where}.value_display`),
+    };
+  };
+  const kind = o.kind;
+  return {
+    challengeIndex: num(o.challenge_index, `${label}.challenge_index`),
+    kind: typeof kind === "string" && _META_REFLEX_KINDS.has(kind)
+      ? (kind as MetaReflexCardKind) : null,
+    entityKind: nstr(o.entity_kind, `${label}.entity_kind`),
+    outcome,
+    selectedCardId: nstr(o.selected_card_id, `${label}.selected_card_id`),
+    correctCardId: nstr(o.correct_card_id, `${label}.correct_card_id`),
+    left: side(o.left, `${label}.left`),
+    right: side(o.right, `${label}.right`),
+  };
+}
+
+/**
+ * The settled-card reveals, re-checked against the viewer's own active index.
+ *
+ * The backend derives both from one schedule and asserts the same invariant at
+ * its transport boundary, so this can only fire on a payload that is already
+ * wrong. It exists anyway because the cost of being wrong here is the answer to
+ * a card the player is still looking at: the reader REFUSES the payload rather
+ * than filtering it, so a contract breach is loud instead of partially obeyed.
+ */
+function readSettledCardReveals(v: unknown, activeIndex: number): SettledCardReveal[] {
+  if (v === null || v === undefined) return [];
+  if (!Array.isArray(v)) {
+    throw new RankedPublicParseError("own_card_reveals must be an array");
+  }
+  return v.map((entry, i) => {
+    const reveal = readSettledCardReveal(entry, `own_card_reveals[${i}]`);
+    if (reveal.challengeIndex >= activeIndex) {
+      throw new RankedPublicParseError(
+        `own_card_reveals[${i}] discloses card ${reveal.challengeIndex} while `
+        + `the viewer may still answer card ${activeIndex}`);
+    }
+    return reveal;
+  });
+}
+
 function readSegmentState(v: unknown): SegmentStateView | null {
   if (v === null || v === undefined) return null;
   const o = rec(v, "segment_state");
   if (o.active === false) return null;
-  assertSegmentIsPreRevealSafe(o);
+  // The walk sees everything EXCEPT the settled-card carve-out, which is
+  // checked on its own terms below. See SETTLED_REVEAL_KEY.
+  const preReveal: Record<string, unknown> = { ...o };
+  delete preReveal[SETTLED_REVEAL_KEY];
+  assertSegmentIsPreRevealSafe(preReveal);
   const ability = rec(o.own_ability, "segment_state.own_ability");
   const unavailable: Record<string, string> = {};
   for (const [k, val] of Object.entries(
@@ -886,6 +1009,9 @@ function readSegmentState(v: unknown): SegmentStateView | null {
       : null,
     prompt: challengeBlock ? nstr(challengeBlock.prompt, "challenges.prompt") : null,
     block: readSegmentBlock(o.challenges, moduleVersion),
+    ownCardReveals: readSettledCardReveals(
+      o[SETTLED_REVEAL_KEY],
+      num(o.own_next_challenge_index, "own_next_challenge_index")),
   };
 }
 

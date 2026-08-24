@@ -22,6 +22,7 @@ import type {
   SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import { readSegmentSettlement } from "@/lib/ranked-public/contracts";
+import { conciseEvidence } from "@/lib/question-feedback/evidence";
 import { snapshotSkewMs } from "./rankedViews";
 
 const POLL_MS = 1500;
@@ -74,6 +75,22 @@ function mergeSettlements(
 export const REVEAL_HOLD_MS = 1500;
 /** Longer when the settlement contains a level-up: there is strictly more to read. */
 export const REVEAL_HOLD_LEVEL_UP_MS = 2600;
+/**
+ * RG3 — the same allowance, for the same reason, when the round shipped
+ * EVIDENCE.
+ *
+ * 1500ms is sized for a verdict and a highlighted tablet, which are read at a
+ * glance. A factual line under the grid is a sentence, and a beat that ends
+ * before it can be read is worse than no line at all — the player registers
+ * that something appeared and that they missed it.
+ *
+ * Deliberately the SAME number as the level-up hold rather than a third one:
+ * the two cases make the identical claim ("this settlement has more in it"),
+ * and inventing a second duration would imply a distinction nobody measured.
+ * It is applied ONLY when evidence actually exists, so the ordinary round —
+ * which is most rounds — keeps its 1500ms exactly.
+ */
+export const REVEAL_HOLD_EVIDENCE_MS = REVEAL_HOLD_LEVEL_UP_MS;
 
 /**
  * Explicit p1/p2 mapping derived from the SNAPSHOT being adapted, not from
@@ -300,13 +317,22 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
    * presentation: it reads `leveledUp` off the authoritative settlement only to
    * decide how LONG to hold, and holds nothing back from the server.
    */
-  const beginRevealHold = useCallback((leveledUp: boolean) => {
+  const beginRevealHold = useCallback((leveledUp: boolean, hasEvidence = false) => {
     if (revealTimerRef.current !== undefined) window.clearTimeout(revealTimerRef.current);
     setRevealHold(true);
+    // The LONGEST applicable allowance, not a chain of branches: a round that
+    // both levelled the player up and carried evidence has both things to
+    // read, and taking a max is the only combination that never shortens a
+    // beat by adding a reason to lengthen it.
+    const hold = Math.max(
+      REVEAL_HOLD_MS,
+      leveledUp ? REVEAL_HOLD_LEVEL_UP_MS : 0,
+      hasEvidence ? REVEAL_HOLD_EVIDENCE_MS : 0,
+    );
     revealTimerRef.current = window.setTimeout(() => {
       revealTimerRef.current = undefined;
       setRevealHold(false);
-    }, leveledUp ? REVEAL_HOLD_LEVEL_UP_MS : REVEAL_HOLD_MS);
+    }, hold);
   }, []);
 
   /**
@@ -377,7 +403,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     if (opts.hold !== false && (settlement || segment)) {
       const leveledUp = settlement !== null
         && (settlement.players.p1.leveledUp || settlement.players.p2.leveledUp);
-      beginRevealHold(leveledUp);
+      // Asked of the SAME selector the surface will render through, so the
+      // beat is lengthened exactly when a line will actually appear — never
+      // for a round whose frozen material produced nothing showable.
+      const hasEvidence = settlement !== null
+        && conciseEvidence(settlement.questionExplanation) !== null;
+      beginRevealHold(leveledUp, hasEvidence);
     }
   }, [matchId, beginRevealHold]);
 

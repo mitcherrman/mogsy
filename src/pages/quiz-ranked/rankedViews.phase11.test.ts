@@ -32,6 +32,7 @@ function round(n: number, p1: Partial<ResolvedCombatantView>,
     pressureApplied: false, sharedNextRoundDurationSeconds: 30,
     sharedTimerDeltaSeconds: 0, matchOver: false, winner: null,
     completionReason: null, summary: "", correctOptionIndex: null,
+    questionExplanation: null,
     players: { p1: player("userA", p1), p2: player("userB", p2) },
   };
 }
@@ -134,8 +135,12 @@ const settled = (n: number, index: number | null): ResolvedRoundView =>
 
 describe("projectSurfaceReveal", () => {
   it("resolves the tablets for the round that just settled", () => {
+    // RG3 widened the shape: `isCorrect` and `evidence` ride the same three
+    // gates. Both are null when the caller supplies no viewer and the round
+    // froze no review material, which is the pre-RG3 payload plus two nulls.
     expect(projectSurfaceReveal(settled(3, 2), 3, QUESTION))
-      .toEqual({ revealed: true, correctOptionId: "o2" });
+      .toEqual({ revealed: true, correctOptionId: "o2",
+                 isCorrect: null, evidence: null });
   });
 
   it("discloses nothing before any round has settled", () => {

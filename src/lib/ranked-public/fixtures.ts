@@ -284,6 +284,27 @@ export function metaReflexState(index = 0,
       challenge_count: 5,
       challenges: metaReflexCards(),
     },
+    // RG3 — the cards this viewer has FINISHED, which is every card before the
+    // active one. Built from `index` so the fixture cannot describe a state the
+    // server would never produce (a reveal of the card on screen).
+    own_card_reveals: Array.from({ length: index }, (_, i) => settledCardReveal(i)),
+    ...over,
+  };
+}
+
+/** One settled Meta Reflex card, as the live segment state publishes it. */
+export function settledCardReveal(index: number,
+                                  over: Partial<Record<string, unknown>> = {}) {
+  return {
+    challenge_index: index,
+    kind: "magnitude",
+    entity_kind: "item",
+    family_id: "item_cost",
+    outcome: "correct",
+    selected_card_id: `c${index}:left`,
+    correct_card_id: `c${index}:left`,
+    left: { label: "Infinity Edge", value_display: "3,450 gold" },
+    right: { label: "Bloodthirster", value_display: "3,400 gold" },
     ...over,
   };
 }

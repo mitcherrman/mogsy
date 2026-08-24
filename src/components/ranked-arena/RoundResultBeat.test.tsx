@@ -42,6 +42,7 @@ function settlement(
     sharedNextRoundDurationSeconds: 30, sharedTimerDeltaSeconds: 0,
     winner: null, matchOver: false, completionReason: null, summary: "",
     correctOptionIndex: null,
+    questionExplanation: null,
     players: { p1: player("userA", p1), p2: player("userB", p2) },
   };
 }

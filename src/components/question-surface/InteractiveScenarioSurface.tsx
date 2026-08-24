@@ -21,6 +21,9 @@
  */
 import { MotionConfig } from "framer-motion";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
+import { EvidenceLine } from "@/components/question-feedback/EvidenceLine";
+import { VerdictLine } from "@/components/question-feedback/VerdictLine";
+import type { ResolvedFeedback } from "@/lib/question-feedback/model";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/ScenarioCard";
 import { selectScenario } from "@/components/quiz-broadcast/scenario-cards/classify";
@@ -53,6 +56,24 @@ export interface InteractiveScenarioSurfaceProps {
   scenarioSource?: ScenarioSource | null;
   /** Backend-authoritative reveal facts; omit/null pre-reveal. */
   reveal?: SurfaceReveal | null;
+  /**
+   * RG3 — the whole resolved-feedback model, for a surface whose card can be
+   * JUDGED WITHOUT BEING DISCLOSED.
+   *
+   * `reveal` above cannot express that state: its `revealed` flag is both "the
+   * player has been judged" and "the answer may be shown", and the Daily
+   * Challenge's retry mechanic lives exactly in the gap between them. A first
+   * miss is `verdict: "incorrect", scoreLocked: true, disclosureAllowed:
+   * false` — a verdict, a struck-out option, and no answer.
+   *
+   * When supplied it is the authority for the correct option, the eliminated
+   * set and the evidence, and the surface ALSO draws a verdict line, because a
+   * surface that needs this model is one with no result strip of its own.
+   * Ranked passes `reveal` instead and keeps its verdict where it already
+   * resolves — in the arena's top strip — so there is never a second verdict
+   * beside the first.
+   */
+  feedback?: ResolvedFeedback | null;
   /** Optional short context line under the prompt. */
   context?: string | null;
 }
@@ -185,6 +206,7 @@ export function InteractiveScenarioSurface({
   settings: overrides,
   scenarioSource = null,
   reveal = null,
+  feedback = null,
   context = null,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
@@ -192,8 +214,18 @@ export function InteractiveScenarioSurface({
   // render like the existing selectScenario call; both are pure and cheap.
   const familyLayout = selectFamilyLayout(scenarioSource);
   const bandProfile = resolveBandProfile(scenarioSource, settings.mediaScale, familyLayout);
-  const revealed = reveal?.revealed === true;
-  const revealedCorrectOptionId = revealed ? (reveal?.correctOptionId ?? null) : null;
+  // ONE disclosure decision, whichever channel supplied it. `feedback` wins
+  // where both are present, because it is the richer statement of the same
+  // fact and a caller that passes it has said this surface's state is more
+  // than "revealed or not".
+  const revealed = feedback ? feedback.disclosureAllowed : reveal?.revealed === true;
+  const revealedCorrectOptionId = revealed
+    ? (feedback ? feedback.correctOptionId : (reveal?.correctOptionId ?? null))
+    : null;
+  const evidence = revealed
+    ? (feedback ? feedback.evidence : (reveal?.evidence ?? null))
+    : null;
+  const eliminatedOptionIds = feedback?.eliminatedOptionIds ?? [];
   const correctLabel =
     revealedCorrectOptionId != null
       ? (question.options.find((o) => o.id === revealedCorrectOptionId)?.label ?? undefined)
@@ -260,8 +292,39 @@ export function InteractiveScenarioSurface({
           onSelectOption={onSelectOption}
           revealedCorrectOptionId={revealedCorrectOptionId}
           wideTwoColumn={wideTwoColumn}
+          eliminatedOptionIds={eliminatedOptionIds}
         />
       </div>
+
+      {/* RG3 — the concise evidence beat.
+          Rendered in EVERY variant, and deliberately NOT behind
+          `showExplanation`: that flag governs the study-surface prose panel
+          below, whereas this is one short line (or a two-row comparison) that
+          says WHY the highlighted tablet is the right one. It is null for most
+          questions and renders nothing at all then — no placeholder, no empty
+          box — so a question with no authoritative evidence resolves to a
+          verdict and a highlighted answer, which is complete and honest.
+          It sits under the grid rather than over it so the tablets never
+          move when a round settles. */}
+      {/* The verdict, for a surface with no result strip of its own. Drawn
+          from `feedback` ONLY — see the prop's note. It renders on an
+          unresolved card too, which is the Daily's first miss: judged, score
+          spent, answer withheld. */}
+      {feedback?.verdict && (
+        <VerdictLine
+          verdict={feedback.verdict}
+          // Short enough to survive the narrowest realistic column. The
+          // longer wording ("…for this question") truncated to "SCORE LOCKED
+          // FOR T…" at 340px, which reads as a broken string rather than as a
+          // shortened one — and the card it sits on is the only question on
+          // screen, so the qualifier was saying nothing anyway.
+          note={
+            feedback.scoreLocked && !feedback.resolved ? "score locked" : null
+          }
+        />
+      )}
+
+      {revealed && evidence && <EvidenceLine evidence={evidence} />}
 
       {revealed && settings.showExplanation && (
         <QuizAnswerFeedback

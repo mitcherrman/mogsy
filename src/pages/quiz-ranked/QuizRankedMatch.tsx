@@ -229,8 +229,12 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   // round the surface is actually showing, which is deliberately NOT the live
   // round during the reveal beat.
   const surfaceRoundNumber = surfaceRound?.activeRound?.roundNumber ?? null;
+  // RG3 adds the viewer's own settled side, so the reveal carries the VERDICT
+  // and the round's frozen evidence alongside the correct tablet. The gate is
+  // unchanged — all three ride the same three conditions inside the projector.
   const reveal = useMemo(
-    () => projectSurfaceReveal(m.lastResolved, surfaceRoundNumber, question),
+    () => projectSurfaceReveal(m.lastResolved, surfaceRoundNumber, question,
+      m.lastResolved?.players.p1 ?? null),
     [m.lastResolved, surfaceRoundNumber, question]);
   // A module that owns its own ability window and submission renders those
   // itself; the shell must not also show the quiz confirm strip or ability

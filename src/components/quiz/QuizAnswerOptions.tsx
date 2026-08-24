@@ -99,6 +99,26 @@ type QuizAnswerOptionsProps = {
    * null entry costs layout space rather than shrinking its tablet.
    */
   optionMedia?: (QuizOptionMedia | null)[];
+  /**
+   * RG3 — positional indexes struck out by the player's own earlier wrong
+   * attempts on a card that is STILL UNRESOLVED (the Daily Challenge retry
+   * mechanic).
+   *
+   * This is not a reveal and must never be confused with one. Every index here
+   * is an option the player chose and was told was wrong; nothing about the
+   * remaining options is implied, and in particular the correct one is not
+   * identifiable from this list until only one option is left — which is the
+   * mechanic working, not a leak.
+   *
+   * Marked, never removed: the buttons keep their positions and their letters,
+   * because the index a client submits has to keep meaning what the server
+   * thinks it means, and because a struck-out choice the player can still SEE
+   * is the whole learning affordance.
+   *
+   * Ignored once `answerResult` is set — a resolved card is a reveal, and one
+   * surface must not be painted by two vocabularies at once.
+   */
+  eliminatedIndexes?: number[];
 };
 
 export default function QuizAnswerOptions({
@@ -108,7 +128,9 @@ export default function QuizAnswerOptions({
   onSelect,
   columns = "auto",
   optionMedia,
+  eliminatedIndexes,
 }: QuizAnswerOptionsProps) {
+  const eliminated = new Set(answerResult ? [] : (eliminatedIndexes ?? []));
   const hasImages = choicesHaveImages(choices);
   // Picture-choice mode already renders large per-choice art and manages its
   // own 2-up grid; an inline badge on top of it would be two pictures for one
@@ -133,11 +155,19 @@ export default function QuizAnswerOptions({
         const imgUrl = imgPath ? resolveQuizAssetUrl(imgPath) : undefined;
         const isSelected = selectedAnswer === label;
         const isCorrect = answerResult?.correct_answer === label;
+        const isEliminated = eliminated.has(idx);
         let btnVariant: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive" | "hero" | "accent" = "outline";
         if (answerResult) {
           if (isCorrect) btnVariant = "default";
           else if (isSelected) btnVariant = "destructive";
           else btnVariant = "outline";
+        } else if (isEliminated) {
+          // Deliberately NOT `destructive`: that variant is the reveal's
+          // "you picked this and it was wrong, here is the right one", and an
+          // unresolved card has not said the second half. An outline tablet
+          // struck through and dimmed says only what is true — this one is
+          // out — and leaves the reveal vocabulary unspent.
+          btnVariant = "outline";
         } else if (isSelected) {
           btnVariant = "default";
         }
@@ -147,9 +177,11 @@ export default function QuizAnswerOptions({
             : isSelected
               ? "incorrect-selected"
               : "idle"
-          : isSelected
-            ? "selected"
-            : "idle";
+          : isEliminated
+            ? "eliminated"
+            : isSelected
+              ? "selected"
+              : "idle";
         // On gold/red (default/destructive) buttons the muted-grey letter is
         // hard to read — inherit the button's foreground color instead.
         const letterClass =
@@ -169,12 +201,20 @@ export default function QuizAnswerOptions({
               data-quiz-choice={idx}
               data-choice-state={choiceState}
               onClick={() => onSelect(label)}
-              disabled={!!answerResult}
-              className={
+              // An eliminated option is unavailable INDIVIDUALLY: the rest of
+              // the grid stays live, which is what makes the retry a retry.
+              disabled={!!answerResult || isEliminated}
+              className={[
                 imgUrl
                   ? "w-full h-auto flex-col items-center gap-2 py-3 px-3 whitespace-normal font-medium text-sm leading-relaxed"
-                  : "w-full justify-start text-left h-auto py-3 px-4 whitespace-normal font-medium text-sm leading-relaxed"
-              }
+                  : "w-full justify-start text-left h-auto py-3 px-4 whitespace-normal font-medium text-sm leading-relaxed",
+                // `line-through` + opacity rather than a colour swap: the
+                // tablet keeps its size and its place in the grid, so striking
+                // one out never reflows the others.
+                isEliminated
+                  ? "line-through opacity-45 border-destructive/40 disabled:opacity-45"
+                  : "",
+              ].join(" ").trim()}
             >
               {imgUrl ? (
                 <>
