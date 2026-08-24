@@ -1554,6 +1554,141 @@
   text-shadow: 0 0 14px rgba(213,182,111,0.28);
 }
 
+/* ---- THE CANONICAL QUESTION STAGE (ARENA1 Phase 1) -------------------------
+
+   THE RULE: the card stays fixed, the content fits the card.
+
+   Before this block the arena's centre card was sized by whatever the round
+   happened to contain, and the three things inside it vary enormously and
+   independently:
+
+     * the scenario band       72px (compact plate) · 126px (family band)
+                               · up to 256px (cinematic Broadcast card)
+     * the prompt              one line to four
+     * the answer tablets      108px (2x2) · 118px (2x2 with option media)
+
+   Measured on the shipped corpus at 1440x900 the card ran 272px to 526px and
+   the round timeline underneath it moved 186px between consecutive rounds. A
+   board that moves is not a board.
+
+   THE FIX IS THREE RESERVED REGIONS, and nothing else. `InteractiveScenario-
+   Surface` marks its three parts with `data-surface-region`; this block gives
+   each one the height the TALLEST legitimate content of that kind needs, so a
+   shorter one gets breathing room instead of shrinking the arena. Their sum,
+   plus the card's own padding and the stack's two gaps, IS the stage height —
+   which is why the height is written as that arithmetic rather than as a
+   number somebody has to keep in step.
+
+   WHAT IT DELIBERATELY IS NOT
+   ───────────────────────────
+   Not a scroll container and not a clip: the reserve is a MINIMUM, so content
+   that genuinely exceeds it still extends the card rather than being cut off
+   or given its own scrollbar (the arena's standing no-inner-scroll rule).
+   Content that does that is a content-review candidate, not a layout case.
+
+   Not a shrink. `--qs-media-max` is set to the region's own height, which is
+   the tallest the cinematic band ever reaches at any supported width — so no
+   band, no prompt and no tablet is ever smaller than it was.
+
+   Not mode-specific. It is applied once, by `CanonicalArena`, to the one
+   section every mode's viewport renders into. Ranked, the Tutorial and the
+   Daily Challenge inherit it without a line of their own.
+
+   Below `lg` the tokens are simply not set: every region falls back to its
+   intrinsic height and the card is exactly what it was. That is deliberate —
+   the stacked narrow layout puts the answers in one column and rewraps every
+   prompt, so a desktop-derived reserve there would be a large empty box on a
+   phone. */
+.ranked-question-stage {
+  /* No token set = no reservation, so this resolves to the card's own padding
+     and gaps and can never bind. The desktop values are supplied below. */
+  min-height: calc(
+    2px                                 /* .ranked-panel's 1px border, both
+                                           edges: `min-height` is a border-box
+                                           length here, so leaving it out would
+                                           make the declared stage 2px shorter
+                                           than the regions actually need — and
+                                           a viewport with no answer region
+                                           (Meta Reflex) would land 2px short of
+                                           an ordinary round's card. */
+    + 2.5rem                            /* sm:p-5, top + bottom */
+    + var(--qs-media-h, 0px) + 0.75rem  /* media region + gap-3 */
+    + var(--qs-prompt-h, 0px) + 0.75rem /* prompt region + gap-3 */
+    + var(--qs-answers-h, 0px));        /* answer region */
+}
+@media (min-width: 1024px) {
+  .ranked-question-stage {
+    /* 256px — the tallest the 16/7 cinematic band reaches at ANY supported
+       width (measured 193px at 1024, 247–256px from 1280 up). Reserving the
+       maximum is what keeps `--qs-media-max` from ever shrinking a band. */
+    --qs-media-h: 16rem;
+    --qs-media-max: 16rem;
+    /* 152px — the category line (19px) plus FIVE prompt lines at 18px/1.45.
+       Five, not four, because the centre track is at its narrowest here and the
+       longest prompt in the playtest bank (202 characters) wraps to five; at
+       1280 and up the same prompt takes four. */
+    --qs-prompt-h: 9.5rem;
+    /* 136px — two rows of tablets with option media AND one wrapped label,
+       which is the tallest ordinary answer block at this width. */
+    --qs-answers-h: 8.5rem;
+    /*  = 2px + 38rem (610px) of stage. */
+  }
+}
+@media (min-width: 1280px) {
+  /* The centre track is wide enough here that the longest prompt in the bank
+     drops to four lines and option-media labels stop wrapping, so both reserves
+     step down and the stage is 2px + 35.25rem (566px). The media region and the
+     card's own padding are unchanged. */
+  .ranked-question-stage {
+    --qs-prompt-h: 7.75rem;
+    --qs-answers-h: 7.5rem;
+  }
+}
+@media (min-width: 1500px) {
+  /* The RA11 wide stage takes the prompt up a type step (1.25rem/1.45 — see
+     "Question prompt weight" below), so four lines is 116px rather than 104px
+     and the reserve follows it. Stage: 2px + 36rem (578px). */
+  .ranked-question-stage { --qs-prompt-h: 8.5rem; }
+}
+
+/* The stack the three regions live in. A flex column rather than the
+   `space-y-3` it replaces — same 12px rhythm, but a region can now declare a
+   height without a margin fighting it. Sized intrinsically by default: a
+   caller outside the arena stage (the admin candidate preview, the arena
+   inspector, Mastery) sets none of the tokens and renders exactly the stack it
+   always did. */
+.question-surface-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+/* The media region — the box the band sits INSIDE.
+   A column so the band still spans the full width, and `flex-start` so the
+   band's TOP edge is at the top of the card in every round: a 72px plate, a
+   126px family band and a 256px cinematic card all begin at the same
+   coordinate, and a short one simply leaves room beneath itself instead of
+   collapsing the card around it.
+   A FLOOR, like the other two regions — a band taller than the reserve would
+   extend the card rather than be clipped by the panel's `overflow: hidden`.
+   `--qs-media-max` above is what makes that unreachable for the one band whose
+   height is viewport-derived. */
+.question-surface-stack > [data-surface-region="media"] {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: var(--qs-media-h, 0px);
+}
+/* Prompt and answers reserve a FLOOR, never a ceiling: a four-line prompt and
+   a wrapped tablet set fill their region exactly, and anything longer grows
+   the card instead of being clipped. The answer region's floor is what pins
+   the tablets' origin — the one coordinate a player tracks between rounds. */
+.question-surface-stack > [data-surface-region="prompt"] {
+  min-height: var(--qs-prompt-h, 0px);
+}
+.question-surface-stack > [data-surface-region="answers"] {
+  min-height: var(--qs-answers-h, 0px);
+}
+
 /* ---- Question prompt weight -----------------------------------------------
    The folio is the gameplay board; its prompt reads a step larger than the
    surface's compact default so the question anchors the whole arena. On the

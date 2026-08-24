@@ -208,7 +208,14 @@ function HeroBand({
         // illegibility); maxHeight caps it on ultra-wide columns. Between the two
         // the aspect ratio drives height, so the subject art gets more room and
         // reads larger without an over-tall panel.
-        style={{ containerType: "size", aspectRatio, minHeight: bandMinHeight, maxHeight: bandMaxHeight }}
+        // `--qs-media-max` is the canonical question stage's reserved media
+        // region (ARENA1 Phase 1). It is set to that region's OWN height, which
+        // is the tallest this band reaches at any supported width, so inside the
+        // arena it caps the band to the box it already fits and shrinks nothing.
+        // Unset everywhere else, which is why the fallback is the value this
+        // band has always had.
+        style={{ containerType: "size", aspectRatio, minHeight: bandMinHeight,
+          maxHeight: `var(--qs-media-max, ${bandMaxHeight})` }}
       >
         <ScenarioCard question={scenarioSource!} revealActive={revealed} correctAnswer={correctAnswer} />
       </div>
@@ -266,18 +273,41 @@ export function InteractiveScenarioSurface({
       data-variant={variant}
       data-media={settings.mediaScale}
       data-band={bandProfile}
-      className="space-y-3"
+      /**
+       * THE THREE REGIONS OF THE QUESTION CARD (ARENA1 Phase 1).
+       *
+       * `question-surface-stack` replaces the `space-y-3` this section carried,
+       * and the three children below are marked `data-surface-region` so ONE
+       * canonical rule can reserve each one's height (see index.css, "THE
+       * CANONICAL QUESTION STAGE"). That reservation is what stops a media
+       * question growing the arena and a short question shrinking it, and it is
+       * what pins the answer tablets to one coordinate for every round.
+       *
+       * The regions are the same three things this stack always rendered, in the
+       * same order, with the same contents — the band, the prompt header, the
+       * answer grid. Nothing here decides a height; the stage does, and a caller
+       * that is not the arena stage sets no tokens and gets the intrinsic stack
+       * it always got.
+       */
+      className="question-surface-stack"
     >
-      <HeroBand
-        profile={bandProfile}
-        scenarioSource={scenarioSource}
-        question={question}
-        reveal={reveal}
-        settings={settings}
-        familyLayout={familyLayout}
-      />
+      {/* The MEDIA region. Rendered only when there IS a band, so a text-only
+          surface (`mediaScale: "none"`) still stacks prompt-then-answers with no
+          empty box between them. */}
+      {bandProfile !== "none" && (
+        <div data-surface-region="media">
+          <HeroBand
+            profile={bandProfile}
+            scenarioSource={scenarioSource}
+            question={question}
+            reveal={reveal}
+            settings={settings}
+            familyLayout={familyLayout}
+          />
+        </div>
+      )}
 
-      <header className="space-y-1">
+      <header data-surface-region="prompt" className="space-y-1">
         {/* Category shows once: in the compact band when that is shown, else here. */}
         {question.category && bandProfile !== "compact" && (
           // `scenario-category` is a styling HOOK, not new behaviour: the label
@@ -304,7 +334,8 @@ export function InteractiveScenarioSurface({
           this surface and NOT on the one thing that should trigger it. The
           scenario band deliberately sits outside this boundary: it keeps its own
           crossfade and its ambient loop is never interrupted. */}
-      <div role="group" aria-label="Answer options" key={question.questionId}>
+      <div data-surface-region="answers" role="group" aria-label="Answer options"
+        key={question.questionId}>
         <AnswerGrid
           options={question.options}
           selectedOptionId={selectedOptionId}

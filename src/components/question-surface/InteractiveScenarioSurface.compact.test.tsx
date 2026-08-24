@@ -63,9 +63,15 @@ describe("compact media budget", () => {
     // ability tray) and Phase 11 (no XP row) gave that space back and a fixed
     // cap left the band short in the middle of a half-empty screen. `min()`
     // keeps a short laptop screen near the old height.
+    //
+    // ARENA1 Phase 1: the variant's cap is now the FALLBACK of
+    // `--qs-media-max`, which the canonical question stage sets to its own
+    // reserved media region. Outside that stage the token is unset, so the
+    // effective cap is byte-for-byte the one this test has always asserted —
+    // which is exactly why it is asserted as the fallback rather than dropped.
     mount("competitive", SHORT_Q, ITEM_SCENARIO);
     const hero = screen.getByTestId("scenario-hero");
-    expect(hero.style.maxHeight).toBe("min(22rem, 34vh)");
+    expect(hero.style.maxHeight).toBe("var(--qs-media-max, min(22rem, 34vh))");
     expect(hero.style.minHeight).toBe("8rem");
   });
 
@@ -75,13 +81,13 @@ describe("compact media budget", () => {
     mount("standard", SHORT_Q, ITEM_SCENARIO);
     const comfortable = screen.getAllByTestId("scenario-hero")[1].style.maxHeight;
     expect(compact).not.toBe(comfortable);
-    expect(comfortable).toBe("30rem");
+    expect(comfortable).toBe("var(--qs-media-max, 30rem)");
   });
 
   it("keeps the tall presentation for comfortable surfaces", () => {
     mount("standard", SHORT_Q, ITEM_SCENARIO);
     const hero = screen.getByTestId("scenario-hero");
-    expect(hero.style.maxHeight).toBe("30rem");
+    expect(hero.style.maxHeight).toBe("var(--qs-media-max, 30rem)");
     expect(hero.style.minHeight).toBe("12.5rem");
   });
 

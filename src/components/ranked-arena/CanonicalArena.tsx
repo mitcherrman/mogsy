@@ -416,7 +416,23 @@ export function CanonicalArena({
               // grid inside are untouched. RA11 widens the HORIZONTAL padding
               // on the big stage only — vertical rhythm (and with it the
               // no-scroll desktop budget) is unchanged.
-              className={`ranked-panel ranked-folio p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-1 lg:flex-col ${
+              //
+              // `ranked-question-stage` is the arena's CANONICAL QUESTION
+              // FOOTPRINT (ARENA1 Phase 1) and it is declared here, once,
+              // because this section is the physical card: every mode's
+              // viewport renders inside it, so this is the narrowest layer that
+              // owns the box the player sees. It reserves the height of the
+              // three regions a question is made of, so a media round and a
+              // one-line round occupy the same space and the timeline below
+              // does not move between them. See index.css for the arithmetic;
+              // no mode adds or overrides a height, and none may.
+              //
+              // The `lg:flex` column is RG1's and is compatible by
+              // construction: the stage is a MIN-height floor and `flex-1`
+              // grows the card into whatever the arena band leaves above that
+              // floor. Neither is a cap, so an oversized round still grows the
+              // page rather than being clipped.
+              className={`ranked-panel ranked-folio ranked-question-stage p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-1 lg:flex-col ${
                 view.revealHold || progression ? "opacity-60" : "opacity-100"}`}>
               {/* THE QUESTION'S BOX. It takes the card's height and there is
                   NOTHING to scroll inside it — no `overflow`, no clipping, no
