@@ -18,11 +18,23 @@
  *
  * What did NOT change is a single rule. Every behaviour pinned here — one
  * scored attempt, elimination in place, no disclosure before resolution, the
- * explicit reflex activation, the held reveal, the solo copy — is the same
- * assertion it was, made against the canonical surface.
+ * held reveal, the solo copy — is the same assertion it was, made against the
+ * canonical surface.
+ *
+ * WHAT ARENA1 PHASE 2 CHANGED
+ * ───────────────────────────
+ * The mode's PACING, and only its pacing. The Daily used to ask for a press
+ * twice per card — START, to open a Meta Reflex window, and NEXT CARD, to
+ * leave a resolved one — and live Ranked asks for neither. The assertions that
+ * pinned those two buttons are replaced below by assertions that they do not
+ * exist and that the run moves itself: one click, a brief result beat, the next
+ * card. Every scoring rule underneath is untouched, and each is re-asserted
+ * through the new flow rather than dropped with the control that used to
+ * trigger it.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { REVEAL_HOLD_LEVEL_UP_MS } from "@/lib/ranked-core/pacing";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import QuizDailyChallengePage from "./QuizDailyChallengePage";
@@ -107,6 +119,28 @@ const feedback = (): HTMLElement | null =>
 /** Is a clock on screen at all? The arena mounts one only when a window is open. */
 const timerShown = () => screen.queryByTestId("timer-display") !== null;
 
+/**
+ * The result beat, generously. `REVEAL_HOLD_LEVEL_UP_MS` is the longer of the
+ * arena's two, so waiting past it covers both; the margin is for a loaded CI
+ * box, exactly as Ranked's own reveal-beat suite does it.
+ */
+const BEAT_TIMEOUT = REVEAL_HOLD_LEVEL_UP_MS + 2000;
+
+/**
+ * Every control the Daily must NOT offer, asserted as one sentence.
+ *
+ * Written against accessible names rather than test ids on purpose: a test id
+ * ban only catches the button coming back with its old id, and the thing being
+ * prevented is the INTERACTION, whatever it is called next time.
+ */
+const noManualProgressionControls = () => {
+  for (const name of [/next card/i, /continue/i, /confirm/i, /lock in/i,
+    /start card/i, /see results/i]) {
+    expect(screen.queryByRole("button", { name }),
+      `a manual progression control (${name}) is back on the Daily`).toBeNull();
+  }
+};
+
 beforeEach(() => {
   routes = [];
   calls.length = 0;
@@ -175,37 +209,99 @@ describe("entry", () => {
 describe("standard cards", () => {
   const openRun = rawRun({ cards: [{ sequence: 1 }], cardCount: 12 });
 
-  it("a first correct answer scores, and HOLDS on the reveal until the player moves on", async () => {
-    // The backend advances past a card in the same transaction that resolves
-    // it, so the run already describes card 2 when this lands. The stage stays
-    // on card 1 so its explanation is actually read.
-    const resolved = rawRun({
-      cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: true, correctIndex: 0,
-        awardedScore: 100, attemptCount: 1 }, { sequence: 2 }],
-      currentSequence: 2, resolvedCount: 1, score: 100,
-    });
+  /** A run whose card 1 resolved first try, already advanced to card 2. */
+  const resolvedFirstTry = rawRun({
+    cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: true, correctIndex: 0,
+      awardedScore: 100, attemptCount: 1 }, { sequence: 2 }],
+    currentSequence: 2, resolvedCount: 1, score: 100,
+  });
+
+  it("ONE CLICK scores the card — there is nothing to confirm", async () => {
     routes = [onToday(rawToday()), onStart(openRun),
-      onAnswer(rawAnswer({ score_delta: 100 }, resolved))];
+      onAnswer(rawAnswer({ score_delta: 100 }, resolvedFirstTry))];
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
 
-    // The score meter is the canonical duelist meter, labelled for this mode.
+    // The click WAS the submission: one POST, and the score moved.
     await waitFor(() =>
       expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
-    // The arena is STILL on card 1, and it is resolved: the answer tablet is
-    // marked and the explanation is on screen.
+    expect(calls.filter((c) => c.url.includes("/answers"))).toHaveLength(1);
+    noManualProgressionControls();
+  });
+
+  it("holds the resolved card for a brief beat, then ADVANCES BY ITSELF", async () => {
+    // The backend advances past a card in the same transaction that resolves
+    // it, so the run already describes card 2 when this lands. The stage stays
+    // on card 1 for the arena's result beat — and then leaves on its own.
+    routes = [onToday(rawToday()), onStart(openRun),
+      onAnswer(rawAnswer({ score_delta: 100 }, resolvedFirstTry))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+    // THE BEAT: still card 1, resolved, verdict on screen — and nothing to press.
     showingCard(1);
     expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "revealed");
     expect(feedback()).toHaveAttribute("data-verdict-tone", "positive");
     expect(feedback()).toHaveTextContent("Solved first try");
-    expect(feedback()).toHaveTextContent(/says so/);
+    noManualProgressionControls();
 
-    fireEvent.click(screen.getByTestId("dc-continue"));
-    await waitFor(() => showingCard(2));
-    // And the next card is a FRESH prompt, with the previous reveal gone.
+    // THEN, with no further input, the next card.
+    await waitFor(() => showingCard(2), { timeout: BEAT_TIMEOUT });
     expect(feedback()).toBeNull();
     expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "open");
+  });
+
+  it("a double click cannot spend a second scored attempt", async () => {
+    routes = [onToday(rawToday()), onStart(openRun),
+      onAnswer(rawAnswer({ score_delta: 100 }, resolvedFirstTry))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    const option = await screen.findByRole("button", { name: /Option A/ });
+    fireEvent.click(option);
+    fireEvent.click(option);
+    fireEvent.click(option);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+    // ONE submission reached the server, for a card that has exactly one
+    // scored attempt to spend.
+    expect(calls.filter((c) => c.url.includes("/answers"))).toHaveLength(1);
+  });
+
+  it("the beat cannot be answered THROUGH — the run has already moved on", async () => {
+    // While card 1's result is on screen the run's current card is 2. A click
+    // landing here would submit against a question the player cannot see.
+    routes = [onToday(rawToday()), onStart(openRun),
+      onAnswer(rawAnswer({ score_delta: 100 }, resolvedFirstTry))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
+    await waitFor(() =>
+      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+
+    for (const tablet of screen.getAllByRole("button", { name: /Option [A-D]/, hidden: true })) {
+      expect(tablet).toBeDisabled();
+      fireEvent.click(tablet);
+    }
+    expect(calls.filter((c) => c.url.includes("/answers"))).toHaveLength(1);
+  });
+
+  it("a REMOUNT during the beat lands on the run's real card, advancing once", async () => {
+    // The hold is presentation state and is deliberately not persisted. A
+    // refresh mid-beat is a fresh read of the projection, which already
+    // describes card 2 — so the player resumes there, and nothing advances a
+    // second time behind them.
+    routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 2, resolved_count: 1 }) })),
+      onRun(resolvedFirstTry)];
+    renderPage();
+    await screen.findByTestId("ranked-match");
+    await waitFor(() => showingCard(2));
+    expect(feedback()).toBeNull();
+    noManualProgressionControls();
   });
 
   it("a first wrong answer eliminates that option and does NOT reveal the answer", async () => {
@@ -233,6 +329,13 @@ describe("standard cards", () => {
     expect(feedback()).toBeNull();
     // The grid is OPEN, not revealed: an elimination is not a resolution.
     expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "open");
+    // A miss interrupts NOTHING: no result screen, no control to dismiss, and
+    // above all no auto-advance — the player is still on this card.
+    noManualProgressionControls();
+    showingCard(1);
+    await new Promise((r) => setTimeout(r, REVEAL_HOLD_LEVEL_UP_MS + 200));
+    showingCard(1);
+    expect(screen.getByRole("button", { name: /Option A/ })).toBeEnabled();
   });
 
   it("says the scored chance is spent, and says to keep going", async () => {
@@ -280,6 +383,32 @@ describe("standard cards", () => {
     expect(feedback()).toBeNull();
   });
 
+  it("EVENTUALLY solving auto-advances too, and restores no score", async () => {
+    const learned = rawRun({
+      cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: false,
+        scoreOutcome: "wrong_answer", correctIndex: 0, eliminated: [1],
+        attemptCount: 2, awardedScore: 0 }, { sequence: 2 }],
+      currentSequence: 2, resolvedCount: 1, score: 0,
+    });
+    routes = [onToday(rawToday()),
+      onStart(rawRun({ cards: [{ sequence: 1, scoreLocked: true,
+        scoreOutcome: "wrong_answer", eliminated: [1], attemptCount: 1 }] })),
+      onAnswer(rawAnswer({ phase: "learning", correct: true, resolved: true,
+        score_locked_now: false, score_delta: 0 }, learned))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
+
+    await waitFor(() => expect(feedback()).not.toBeNull());
+    // A learned card gets the SAME treatment a first-try one does: a brief
+    // beat and then the next card, with nothing to acknowledge.
+    noManualProgressionControls();
+    await waitFor(() => showingCard(2), { timeout: BEAT_TIMEOUT });
+    // No score was recovered by solving it late, and none was invented by
+    // moving on automatically.
+    expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("0");
+  });
+
   it("solving after a miss is LEARNED, and visibly not a first-try win", async () => {
     const learned = rawRun({
       cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: false,
@@ -310,56 +439,157 @@ describe("standard cards", () => {
 
 // ── Meta Reflex ────────────────────────────────────────────────────────────
 
+/**
+ * META REFLEX — a question sequence, not a mini-game (ARENA1 Phase 2 §8–§10).
+ *
+ * The backend contract is UNCHANGED and is the reason these tests are about
+ * activation at all: a reflex card must be activated before an answer to it is
+ * accepted (`META_REFLEX_NOT_ACTIVATED`), and the server stamps the deadline
+ * itself. What Phase 2 removed is the BUTTON that used to ask for it. The
+ * client now asks on the player's behalf, at the one moment that is honest —
+ * when the card is the card on screen — and the window it opens is drawn by the
+ * arena's own clock, never hidden.
+ */
 describe("Meta Reflex", () => {
   const readyReflex = rawRun({
     cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2 }],
     currentSequence: 7, cardCount: 12, resolvedCount: 6,
   });
-
-  it("rendering a reflex card does NOT start the timer", async () => {
-    routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
-      onRun(readyReflex)];
-    renderPage();
-    await screen.findByTestId("dc-reflex-gate");
-
-    // No countdown anywhere on the arena, and above all no activate call from
-    // merely arriving at the card.
-    expect(timerShown()).toBe(false);
-    expect(calls.some((c) => c.url.includes("/activate"))).toBe(false);
+  const activatedReflex = rawRun({
+    cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2, activated: true,
+      timerEndsAt: `${DATE}T12:00:06.000000+00:00` }],
+    currentSequence: 7, cardCount: 12, resolvedCount: 6,
+    serverNow: `${DATE}T12:00:00.000000+00:00`,
   });
 
-  it("the options are readable but inert before the clock exists", async () => {
+  it("opens its own window — there is no Start control", async () => {
     routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
-      onRun(readyReflex)];
+      onRun(readyReflex), onActivate(activatedReflex)];
     renderPage();
-    await screen.findByTestId("dc-reflex-gate");
+    await screen.findByTestId("ranked-match");
 
-    const options = screen.getAllByRole("button", { name: /Option [AB]/, hidden: true });
-    expect(options).toHaveLength(2);
-    options.forEach((o) => expect(o).toBeDisabled());
+    // Reaching the card IS the activation, and the server's deadline is what
+    // comes back — the client never invents one.
+    await waitFor(() =>
+      expect(calls.filter((c) => c.url.includes("/activate"))).toHaveLength(1));
+    await waitFor(() => expect(timerShown()).toBe(true));
+    noManualProgressionControls();
+    expect(screen.queryByTestId("dc-reflex-gate")).not.toBeInTheDocument();
   });
 
-  it("an explicit START activates and only then shows the server's window", async () => {
-    const activated = rawRun({
-      cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2, activated: true,
-        timerEndsAt: `${DATE}T12:00:06.000000+00:00` }],
-      currentSequence: 7, cardCount: 12, resolvedCount: 6,
-      serverNow: `${DATE}T12:00:00.000000+00:00`,
-    });
+  it("activates ONCE, not on every render of the same card", async () => {
     routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
-      onRun(readyReflex), onActivate(activated)];
+      onRun(readyReflex), onActivate(activatedReflex)];
     renderPage();
-    fireEvent.click(await screen.findByTestId("dc-reflex-start"));
+    await waitFor(() => expect(timerShown()).toBe(true));
+    // The page ticks its clock four times a second; none of those may re-ask.
+    await new Promise((r) => setTimeout(r, 800));
+    expect(calls.filter((c) => c.url.includes("/activate"))).toHaveLength(1);
+  });
 
-    // Only NOW does a clock exist, and it is the arena's own — in the header
-    // strip, where Ranked's round timer lives.
+  it("the window is DRAWN, not hidden — the score it can cost is visible", async () => {
+    // The owner's direction was to remove the mini-game ceremony, not to hide a
+    // live scoring clock. Six seconds that can silently cost the card's points
+    // is a hidden scoring surprise; the arena's own header clock is the same
+    // instrument a Ranked round uses, and it is what the player gets.
+    routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
+      onRun(readyReflex), onActivate(activatedReflex)];
+    renderPage();
     await waitFor(() => expect(timerShown()).toBe(true));
     expect(screen.getByTestId("ranked-header"))
       .toContainElement(screen.getByTestId("timer-display"));
-    expect(calls.filter((c) => c.url.includes("/activate"))).toHaveLength(1);
+  });
+
+  it("the card is answerable in ONE CLICK the moment the window is open", async () => {
+    routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
+      onRun(readyReflex), onActivate(activatedReflex)];
+    renderPage();
+    await waitFor(() => expect(timerShown()).toBe(true));
     expect(screen.getByRole("button", { name: /Option A/ })).toBeEnabled();
-    // The gate is gone the moment the window opens.
-    expect(screen.queryByTestId("dc-reflex-gate")).not.toBeInTheDocument();
+    noManualProgressionControls();
+  });
+
+  it("one reflex card leads to the next with no press in between", async () => {
+    const eight = rawRun({
+      cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2, activated: true,
+        resolved: true, firstAttemptCorrect: true, correctIndex: 0,
+        awardedScore: 100, attemptCount: 1 },
+      { sequence: 8, kind: "meta_reflex", optionCount: 2 }],
+      currentSequence: 8, cardCount: 12, resolvedCount: 7, score: 100,
+    });
+    const eightActivated = rawRun({
+      cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2, activated: true,
+        resolved: true, firstAttemptCorrect: true, correctIndex: 0,
+        awardedScore: 100, attemptCount: 1 },
+      { sequence: 8, kind: "meta_reflex", optionCount: 2, activated: true,
+        timerEndsAt: `${DATE}T12:00:20.000000+00:00` }],
+      currentSequence: 8, cardCount: 12, resolvedCount: 7, score: 100,
+      serverNow: `${DATE}T12:00:14.000000+00:00`,
+    });
+    let activations = 0;
+    routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
+      onRun(readyReflex),
+      onActivate(() => { activations += 1; return activations === 1 ? activatedReflex : eightActivated; }),
+      onAnswer(rawAnswer({ score_delta: 100 }, eight))];
+    renderPage();
+    await waitFor(() => expect(timerShown()).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: /Option A/ }));
+
+    await waitFor(() => showingCard(8), { timeout: BEAT_TIMEOUT });
+    noManualProgressionControls();
+    // And card 8 opened its own window, exactly as card 7 did.
+    await waitFor(() => expect(activations).toBe(2));
+  });
+
+  it("the NEXT card's clock does not start behind the previous card's beat", async () => {
+    // The whole reason the Start button could be removed safely. A six-second
+    // window opened while a resolved card is still on screen would be spent
+    // before the player ever saw the question.
+    const eight = rawRun({
+      cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2, activated: true,
+        resolved: true, firstAttemptCorrect: true, correctIndex: 0,
+        awardedScore: 100, attemptCount: 1 },
+      { sequence: 8, kind: "meta_reflex", optionCount: 2 }],
+      currentSequence: 8, cardCount: 12, resolvedCount: 7, score: 100,
+    });
+    routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
+      onRun(readyReflex), onActivate(activatedReflex),
+      onAnswer(rawAnswer({ score_delta: 100 }, eight))];
+    renderPage();
+    await waitFor(() => expect(timerShown()).toBe(true));
+    const beforeAnswer = calls.filter((c) => c.url.includes("/activate")).length;
+    fireEvent.click(screen.getByRole("button", { name: /Option A/ }));
+
+    // DURING the beat, card 7 is still on screen and card 8 has NOT been
+    // activated — the run has advanced but the player has not.
+    await waitFor(() =>
+      expect(screen.getByTestId("answer-grid"))
+        .toHaveAttribute("data-answers-state", "revealed"));
+    showingCard(7);
+    expect(calls.filter((c) => c.url.includes("/activate"))).toHaveLength(beforeAnswer);
+  });
+
+  it("returns to a STANDARD card automatically at the end of the block", async () => {
+    const eleven = rawRun({
+      cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2, activated: true,
+        resolved: true, firstAttemptCorrect: true, correctIndex: 0,
+        awardedScore: 100, attemptCount: 1 },
+      { sequence: 11 }],
+      currentSequence: 11, cardCount: 12, resolvedCount: 11, score: 100,
+    });
+    routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
+      onRun(readyReflex), onActivate(activatedReflex),
+      onAnswer(rawAnswer({ score_delta: 100 }, eleven))];
+    renderPage();
+    await waitFor(() => expect(timerShown()).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: /Option A/ }));
+
+    await waitFor(() => showingCard(11), { timeout: BEAT_TIMEOUT });
+    // An ordinary card has no window, so the clock is gone — and there is
+    // nothing at all to press to have got here.
+    await waitFor(() => expect(timerShown()).toBe(false));
+    noManualProgressionControls();
+    expect(screen.getByRole("button", { name: /Option A/ })).toBeEnabled();
   });
 
   it("a lapsed window is reported by the SERVER, with no timer and no answer", async () => {
@@ -374,25 +604,20 @@ describe("Meta Reflex", () => {
 
     expect(timerShown()).toBe(false);
     await waitFor(() => expect(status()).toHaveTextContent(/window closed/i));
-    // Untimed retry is open, and the answer is still withheld.
+    // Untimed retry is open, the answer is still withheld — and an already
+    // locked card is NOT re-activated, because it is no longer a ready one.
     expect(screen.getByRole("button", { name: /Option A/ })).toBeEnabled();
     expect(feedback()).toBeNull();
+    expect(calls.some((c) => c.url.includes("/activate"))).toBe(false);
   });
 
   it("the countdown speaks of a solo window, never a shared round", async () => {
     // Ranked's TimerDisplay defaults to "of M:SS shared round" and, on expiry,
     // "waiting for the round to resolve". Both describe a duel. Reusing the
     // component is right; reusing its copy would put an opponent on screen.
-    const activated = rawRun({
-      cards: [{ sequence: 7, kind: "meta_reflex", optionCount: 2, activated: true,
-        timerEndsAt: `${DATE}T12:00:06.000000+00:00` }],
-      currentSequence: 7, cardCount: 12, resolvedCount: 6,
-      serverNow: `${DATE}T12:00:00.000000+00:00`,
-    });
     routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
-      onRun(readyReflex), onActivate(activated)];
+      onRun(readyReflex), onActivate(activatedReflex)];
     const { container } = renderPage();
-    fireEvent.click(await screen.findByTestId("dc-reflex-start"));
     await screen.findByTestId("timer-display");
 
     const text = container.textContent ?? "";
@@ -403,15 +628,77 @@ describe("Meta Reflex", () => {
 
   it("never speaks of an opponent, anywhere on the surface", async () => {
     routes = [onToday(rawToday({ run: rawTodayRun({ current_sequence: 7 }) })),
-      onRun(readyReflex)];
+      onRun(readyReflex), onActivate(activatedReflex)];
     const { container } = renderPage();
-    await screen.findByTestId("dc-reflex-gate");
+    await waitFor(() => expect(timerShown()).toBe(true));
 
     const text = container.textContent?.toLowerCase() ?? "";
     for (const pvp of ["opponent", "vs ", "versus", "rematch", "bot", "faster than",
       "waiting for"]) {
       expect(text).not.toContain(pvp);
     }
+  });
+});
+
+/**
+ * THE EXPLANATION POLICY, THROUGH THE PAGE (ARENA1 Phase 2 §6).
+ *
+ * The unit rules live in `explanationPolicy.test.ts`; what is pinned here is
+ * that the decision actually reaches the rendered surface in both directions —
+ * a mode that computed the right answer and then passed the string through
+ * anyway would pass every unit test and change nothing a player sees.
+ */
+describe("explanations", () => {
+  const openRun = rawRun({ cards: [{ sequence: 1 }], cardCount: 12 });
+  const resolvedWith = (explanation: string) => rawRun({
+    cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: true, correctIndex: 0,
+      awardedScore: 100, attemptCount: 1, explanation,
+      prompt: "How much Ability Haste does Hubris give?" }, { sequence: 2 }],
+    currentSequence: 2, resolvedCount: 1, score: 100,
+  });
+
+  it("omits one that only restates the question and the revealed answer", async () => {
+    // The example from the phase brief. "Option A" is the revealed answer, so
+    // this sentence tells a player looking at the marked tablet nothing.
+    routes = [onToday(rawToday()), onStart(openRun),
+      onAnswer(rawAnswer({ score_delta: 100 },
+        resolvedWith("Hubris gives Option A Ability Haste.")))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
+
+    await waitFor(() => expect(feedback()).not.toBeNull());
+    // The verdict beat still plays — it is the result, not filler.
+    expect(feedback()).toHaveTextContent("Solved first try");
+    expect(feedback()).not.toHaveTextContent(/Ability Haste/);
+  });
+
+  it("keeps one that shows a mechanic the player could not otherwise see", async () => {
+    const worked = "Hubris gives 15 Ability Haste, so a 60s ultimate becomes "
+      + "60 × 100 / (100 + 15) = 52.2 seconds.";
+    routes = [onToday(rawToday()), onStart(openRun),
+      onAnswer(rawAnswer({ score_delta: 100 }, resolvedWith(worked)))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
+
+    await waitFor(() => expect(feedback()).not.toBeNull());
+    // VERBATIM. The mode filters; it never rewrites, shortens or softens.
+    expect(feedback()).toHaveTextContent(worked);
+  });
+
+  it("still advances by itself when an explanation is on screen", async () => {
+    const worked = "Hubris gives 15 Ability Haste, so a 60s ultimate becomes "
+      + "60 × 100 / (100 + 15) = 52.2 seconds.";
+    routes = [onToday(rawToday()), onStart(openRun),
+      onAnswer(rawAnswer({ score_delta: 100 }, resolvedWith(worked)))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
+
+    await waitFor(() => expect(feedback()).not.toBeNull());
+    noManualProgressionControls();
+    await waitFor(() => showingCard(2), { timeout: BEAT_TIMEOUT });
   });
 });
 

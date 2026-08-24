@@ -194,3 +194,61 @@ describe("the arena knows about no mode", () => {
     }
   });
 });
+
+// ── F · one click IS the answer, in every mode the arena serves ────────────
+
+/**
+ * THE SELECT → CONFIRM FLOW IS NOT REACHABLE (ARENA1 Phase 2 §4).
+ *
+ * `SubmissionReview` is the arena's "Lock in answer" strip. Production Ranked
+ * stopped using it when clicking a tablet became the submission, and the
+ * component survived only as a FIXTURE for two /dev pages — the arena inspector
+ * and the staff duel prototype. That is a legitimate reason for it to exist and
+ * a bad reason to delete it: it is a generic seam a future mode with a genuine
+ * review step could want, and the standing rule is not to destroy one merely
+ * because today's modes do not use it.
+ *
+ * What is asserted instead is the thing that matters: no PLAYER-FACING route
+ * can reach it. If it ever appears in the arena, in Ranked's adapter, in the
+ * Daily or in the Tutorial, this fails and the conversation happens before the
+ * merge rather than after a player is asked to click twice.
+ */
+describe("no production mode offers a confirm step", () => {
+  const CONFIRM_COMPONENT = /\bSubmissionReview\b/;
+
+  it("only the /dev fixtures reach the confirm strip", () => {
+    expect(filesMatching(CONFIRM_COMPONENT)).toEqual([
+      "components/ranked-arena/SubmissionReview.tsx",         // the component
+      "pages/dev/ranked-arena-inspector/RankedArenaInspector.tsx",
+      "pages/dev/ranked-duel-prototype/staff-duel/DuelArena.tsx",
+    ]);
+  });
+
+  it("the arena and all three modes name no confirm control", () => {
+    for (const file of [
+      "components/ranked-arena/CanonicalArena.tsx",
+      "components/ranked-arena/AnswerGrid.tsx",
+      "components/question-surface/InteractiveScenarioSurface.tsx",
+      "pages/quiz-ranked/QuizRankedMatch.tsx",
+      "pages/quiz-daily-challenge/QuizDailyChallengePage.tsx",
+      "pages/quiz-daily-challenge/dailyArenaView.ts",
+      "pages/dev/ranked-tutorial/RankedTutorialPage.tsx",
+    ]) {
+      const src = read(file);
+      expect(src, `${file} reached for the confirm strip`)
+        .not.toMatch(CONFIRM_COMPONENT);
+      // The strip's own words, in case it is reproduced rather than imported.
+      expect(src, `${file} grew its own Lock In control`).not.toContain("Lock in answer");
+    }
+  });
+
+  it("every mode withholds canChangeAnswer — there is no mind to change", () => {
+    // The permission that a select→confirm flow would need. Ranked's projection
+    // and the Daily's adapter both state it false explicitly; the Tutorial's
+    // director inherits NO_INTERACTIONS. A mode that flipped it would be
+    // introducing the second click this guard exists to prevent.
+    expect(read("pages/quiz-daily-challenge/dailyArenaView.ts"))
+      .toContain("canChangeAnswer: false");
+    expect(read("pages/quiz-ranked/rankedViews.ts")).toContain("canChangeAnswer");
+  });
+});

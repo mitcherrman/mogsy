@@ -35,6 +35,10 @@ export interface CardSpec {
   awardedScore?: number;
   points?: number;
   prompt?: string;
+  /** The frozen explanation. The default carries a causal clause, so it is
+      SHOWN by the Daily's display policy; pass a restatement to test the
+      other branch. */
+  explanation?: string;
 }
 
 export function rawCard(spec: CardSpec): Raw {
@@ -68,7 +72,8 @@ export function rawCard(spec: CardSpec): Raw {
   return {
     ...base,
     correct_index: spec.correctIndex ?? 0,
-    explanation: `Because card ${spec.sequence} says so.`,
+    explanation: spec.explanation
+      ?? `Because card ${spec.sequence} says so.`,
     first_attempt_correct: spec.firstAttemptCorrect ?? true,
     attempts: [],
     reveal: null,

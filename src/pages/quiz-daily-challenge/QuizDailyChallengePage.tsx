@@ -44,10 +44,9 @@ import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
 import { DailyChallengePanel } from "./DailyChallengePanel";
 import { DailyResultSummary } from "./DailyResultSummary";
-import { DailyRunControls } from "./DailyRunControls";
 import { dailyArenaView, dailyTerminalView } from "./dailyArenaView";
 import { useDailyChallengeRun } from "./useDailyChallengeRun";
-import { cardPhase, projectChallenge, projectTimer } from "./dailyChallengeViews";
+import { projectChallenge, projectTimer } from "./dailyChallengeViews";
 
 const LEAGUECRAFT_HREF = "/quiz";
 
@@ -109,15 +108,14 @@ export default function QuizDailyChallengePage() {
    * so an answer that solves card 3 returns a run whose current card is 4.
    * Rendering that straight away would replace the reveal with the next prompt
    * in the same frame. While a resolved card is held, the arena's surface shows
-   * it and the player moves on deliberately — the hold lives HERE, in
-   * presentation state around the arena, and the arena is simply handed the
-   * card it should be drawing.
+   * it — and the controller releases the hold by itself when the result beat is
+   * up (ARENA1 Phase 2). This page renders the held card; it does not decide
+   * how long it is held, and it offers nothing to press to end it.
    */
   const heldCard = dc.holdSequence !== null && run
     ? run.cards.find((c) => c.sequence === dc.holdSequence) ?? null
     : null;
   const card = heldCard ?? dc.card;
-  const phase = cardPhase(card);
 
   const timer = useMemo(
     () => projectTimer(heldCard ? null : card, dc.timerMaxMs, tick, dc.skewMs),
@@ -218,7 +216,8 @@ export default function QuizDailyChallengePage() {
           <ul className="space-y-1.5 text-xs text-muted-foreground">
             <li>Only your first answer on each card counts for score.</li>
             <li>Miss it and you keep going until you solve it — that still counts as learned.</li>
-            <li>The Meta Reflex block is timed. You choose when each card starts.</li>
+            <li>The Meta Reflex block is timed — six seconds a card, starting the
+              moment it appears.</li>
           </ul>
           {dc.error && (
             <p role="alert" data-testid="dc-entry-error" className="text-xs text-destructive">
@@ -303,22 +302,24 @@ export default function QuizDailyChallengePage() {
     onAnswer: dc.answer,
   });
 
+  /**
+   * NO GUIDANCE NODE (ARENA1 Phase 2).
+   *
+   * The arena's guidance slot is the seam a SCRIPTED mode uses, and the Daily
+   * used to hang two buttons in it — START, to open a Meta Reflex window, and
+   * NEXT CARD, to leave a resolved one. Both are gone: the window opens itself
+   * when the card is on screen, and a resolved card leaves on the arena's own
+   * result beat. What is left is the canonical arena with a mode's view model
+   * in it, which is the whole shape this phase was for.
+   *
+   * The seam itself is untouched — the Ranked Tutorial's coaching panel is its
+   * real caller, and teaching guidance is a Tutorial policy that this mode
+   * having no use for does not retire.
+   */
   return (
     <>
       {sting && <MetaReflexSting />}
-      <CanonicalArena
-        view={view}
-        chrome={<DailyRouteHeader size="wide" />}
-        guidance={
-          <DailyRunControls
-            reflexGate={phase === "reflex_ready"}
-            onContinue={heldCard ? dc.continueToNext : null}
-            continueLabel={run.status === "completed" ? "See results" : "Next card"}
-            busy={dc.busy}
-            onActivate={dc.activate}
-          />
-        }
-      />
+      <CanonicalArena view={view} chrome={<DailyRouteHeader size="wide" />} />
     </>
   );
 }

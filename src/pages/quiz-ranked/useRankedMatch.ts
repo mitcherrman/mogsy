@@ -9,6 +9,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  REVEAL_HOLD_EVIDENCE_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS,
+} from "@/lib/ranked-core/pacing";
 import { adaptBackendSettlement } from "@/lib/ranked-core/backend/adaptBackendSettlement";
 
 // The backend resolved payload is validated at runtime by the settlement
@@ -72,25 +75,19 @@ function mergeSettlements(
     .slice(-DAMAGE_LOG_LIMIT);
 }
 
-export const REVEAL_HOLD_MS = 1500;
-/** Longer when the settlement contains a level-up: there is strictly more to read. */
-export const REVEAL_HOLD_LEVEL_UP_MS = 2600;
 /**
- * RG3 — the same allowance, for the same reason, when the round shipped
- * EVIDENCE.
+ * The result beat, DECLARED IN THE SHARED LAYER (ARENA1 Phase 2).
  *
- * 1500ms is sized for a verdict and a highlighted tablet, which are read at a
- * glance. A factual line under the grid is a sentence, and a beat that ends
- * before it can be read is worse than no line at all — the player registers
- * that something appeared and that they missed it.
- *
- * Deliberately the SAME number as the level-up hold rather than a third one:
- * the two cases make the identical claim ("this settlement has more in it"),
- * and inventing a second duration would imply a distinction nobody measured.
- * It is applied ONLY when evidence actually exists, so the ordinary round —
- * which is most rounds — keeps its 1500ms exactly.
+ * The three numbers are unchanged and so is every use of them below; they
+ * simply stopped being Ranked's private constants once a second mode paced
+ * itself by the same beat. Re-exported here because this module is where every
+ * existing caller (and every existing test) names them, and a boundary guard
+ * forbids the Daily from importing anything out of `pages/quiz-ranked` — so the
+ * shared layer is the only place both modes can legitimately read them from.
  */
-export const REVEAL_HOLD_EVIDENCE_MS = REVEAL_HOLD_LEVEL_UP_MS;
+export {
+  REVEAL_HOLD_MS, REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_EVIDENCE_MS,
+} from "@/lib/ranked-core/pacing";
 
 /**
  * Explicit p1/p2 mapping derived from the SNAPSHOT being adapted, not from

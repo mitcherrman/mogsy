@@ -9,16 +9,39 @@
  * read off the projection and never mirrored, because a mirror is a second
  * answer that can be wrong.
  *
- * ACTIVATION ORDER IS THE LOAD-BEARING PART
- * ─────────────────────────────────────────
- * A Meta Reflex window is six seconds of the player's life, and it starts when
- * the SERVER says so. So nothing here activates on mount, on refresh, on
- * resume, or as a side effect of arriving at a card: `activate()` is called
- * only from a deliberate press, and the timed surface is not rendered until
- * the response carrying the deadline is in hand. The sequence is: render the
- * ready card → player presses → POST activate → receive the authoritative
- * deadline → render the timed card. A speculative activate before the UI is
- * ready would spend real seconds on a spinner.
+ * THE RUN MOVES ITSELF (ARENA1 Phase 2)
+ * ─────────────────────────────────────
+ * Nothing in the Daily waits for a press any more. A resolved card is held for
+ * the arena's canonical result beat and then released BY THIS CONTROLLER; a
+ * Meta Reflex card opens its own window the moment it is actually the card on
+ * screen. Both were buttons, and both were drift: live Ranked answers in one
+ * click and moves on by itself, and the Daily is the same game.
+ *
+ * ACTIVATION ORDER IS STILL THE LOAD-BEARING PART
+ * ───────────────────────────────────────────────
+ * A Meta Reflex window is six seconds of the player's life and it starts when
+ * the SERVER says so — that has not changed and cannot: the backend refuses an
+ * answer to an unactivated reflex card outright (`META_REFLEX_NOT_ACTIVATED`),
+ * and stamps the deadline itself. What changed is only WHO asks for it.
+ *
+ * The sequence is now: the card becomes the one on screen → POST activate →
+ * receive the authoritative deadline → render the timed card. The two guards
+ * that make that honest rather than merely automatic are:
+ *
+ *   * IT MUST BE ON SCREEN. `holdSequence` is checked first, so a reflex card
+ *     that the run has already advanced to cannot start its clock behind the
+ *     PREVIOUS card's result beat. Spending a second of a six-second window on
+ *     a card the player cannot see is exactly the theft the old Start button
+ *     existed to prevent, and removing the button must not reintroduce it;
+ *   * IT MUST HAPPEN ONCE. A per-sequence attempt counter, bounded at three,
+ *     so a failed activation is retried when the request settles and a server
+ *     that keeps refusing is not polled. Activation is idempotent and never
+ *     moves a deadline forward, so a duplicate costs a request and nothing else.
+ *
+ * The clock itself is NOT hidden: the arena's canonical timer renders it in the
+ * header strip, the same instrument Ranked's rounds use. A six-second scored
+ * window that the player cannot see is a hidden scoring surprise, and no amount
+ * of removing button ceremony justifies one.
  *
  * RECOVERY IS A REFETCH, NEVER A REPAIR
  * ─────────────────────────────────────
@@ -40,8 +63,12 @@ import {
   startRun,
   submitAnswer,
 } from "@/lib/daily-challenge/client";
-import type { DcCard, DcRun, DcToday } from "@/lib/daily-challenge/contracts";
+import { REVEAL_HOLD_LEVEL_UP_MS, REVEAL_HOLD_MS } from "@/lib/ranked-core/pacing";
+import type {
+  DcCard, DcResolvedCard, DcRun, DcToday,
+} from "@/lib/daily-challenge/contracts";
 import { currentCard } from "@/lib/daily-challenge/contracts";
+import { displayExplanation } from "./explanationPolicy";
 import {
   DcBeat,
   cardPhase,
@@ -76,16 +103,14 @@ export interface DailyChallengeRunState {
    * The backend advances `current_sequence` in the same transaction that
    * resolves a card, so by the time an answer lands the run already describes
    * the NEXT card. Rendering that immediately would flash the reveal — or skip
-   * it entirely — and the explanation is the thing the mode exists to deliver.
-   * So a resolved card is held here until the player presses on.
+   * it entirely. So a resolved card is held here for the arena's result beat,
+   * and then the hold releases ITSELF (ARENA1 Phase 2). Nothing the player can
+   * press is involved, and there is no verb below that would let one be.
    */
   holdSequence: number | null;
   start: () => void;
-  activate: () => void;
   answer: (optionIndex: number) => void;
   refresh: () => void;
-  continueToNext: () => void;
-  dismissBeat: () => void;
 }
 
 /** A sentence for the player. Backend codes never reach the surface. */
@@ -135,10 +160,28 @@ export function useDailyChallengeRun(): DailyChallengeRunState {
   // announces itself ONCE rather than on every subsequent poll or answer.
   const announcedTimeouts = useRef<Set<number>>(new Set());
   const runIdRef = useRef<string | null>(null);
+  /** The running result beat, so it can be cancelled rather than double-fired. */
+  const holdTimerRef = useRef<number | undefined>(undefined);
+  /**
+   * ONE submission at a time, at the controller rather than at the button.
+   *
+   * `busy` already disables the tablets, and a re-render lands between two
+   * physical clicks — but "lands between" is a scheduling fact, not a
+   * guarantee, and the cost of being wrong is a second scored attempt against
+   * a card that only has one. A ref is checked and set in the same synchronous
+   * turn as the click, so no ordering can slip a second submission past it.
+   */
+  const submittingRef = useRef(false);
+  /**
+   * Auto-activation attempts for the card on screen (ARENA1 Phase 2 §9).
+   * Bounded, so a server that keeps refusing is not turned into a poll.
+   */
+  const autoActivateRef = useRef<{ sequence: number; attempts: number } | null>(null);
 
   useEffect(() => () => {
     mountedRef.current = false;
     abortRef.current?.abort();
+    if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
   }, []);
 
   /**
@@ -256,12 +299,16 @@ export function useDailyChallengeRun(): DailyChallengeRunState {
   }, [withRequest, adopt]);
 
   /**
-   * Open the current card's scored window. Deliberate press only.
+   * Open the current card's scored window.
    *
-   * Guarded on the card actually being a ready reflex card, so a double press,
-   * a stray keystroke, or a re-render cannot re-send it — and even if one did,
-   * the backend's activation is idempotent and never moves a deadline forward,
-   * so the worst case is a wasted request rather than lost time.
+   * Guarded on the card actually being a ready reflex card, so a stray call, a
+   * re-render or a retry cannot re-send it — and even if one did, the backend's
+   * activation is idempotent and never moves a deadline forward, so the worst
+   * case is a wasted request rather than lost time.
+   *
+   * NOT EXPORTED. Phase 2 removed the press that used to call it; the effect
+   * below is the only caller, and keeping it off the returned interface is what
+   * stops a Start button growing back.
    */
   const activate = useCallback(() => {
     const runId = runIdRef.current;
@@ -273,14 +320,58 @@ export function useDailyChallengeRun(): DailyChallengeRunState {
     void withRequest((signal) => activateCard(runId, card.sequence, signal), adopt);
   }, [run, withRequest, adopt]);
 
+  /** End the result beat and let the run's own current card through. */
+  const releaseHold = useCallback(() => {
+    if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = undefined;
+    if (!mountedRef.current) return;
+    setHoldSequence(null);
+    setBeat(null);
+  }, []);
+
+  /**
+   * HOLD A RESOLVED CARD FOR ITS RESULT BEAT, THEN MOVE ON (ARENA1 Phase 2 §7).
+   *
+   * The beat's LENGTH is the arena's, not a Daily invention: `REVEAL_HOLD_MS`
+   * for a card that resolved with nothing but its verdict, and Ranked's longer
+   * "strictly more to read" beat for one whose explanation survived the display
+   * policy. Reusing the pair is what keeps the Daily's cadence and Ranked's the
+   * same cadence; inventing a third number is how two modes start to feel like
+   * two products.
+   *
+   * IT CANNOT RACE THE SERVER, by construction. The timer is armed HERE — in
+   * the success callback of the answer, after `ack.run` has been adopted — so
+   * the projection the hold is releasing INTO is already in hand before the
+   * clock starts. There is nothing outstanding for the release to outrun.
+   */
+  const beginResultBeat = useCallback((run_: DcRun, sequence: number) => {
+    if (holdTimerRef.current !== undefined) window.clearTimeout(holdTimerRef.current);
+    setHoldSequence(sequence);
+    const resolved = run_.cards.find(
+      (c): c is DcResolvedCard => c.sequence === sequence && c.resolved === true) ?? null;
+    const label = resolved
+      ? resolved.options.find((o) => o.index === resolved.correctIndex)?.label ?? null
+      : null;
+    const explained = resolved !== null
+      && displayExplanation(resolved.explanation, resolved.prompt, label) !== null;
+    holdTimerRef.current = window.setTimeout(
+      releaseHold, explained ? REVEAL_HOLD_LEVEL_UP_MS : REVEAL_HOLD_MS);
+  }, [releaseHold]);
+
   const answer = useCallback((optionIndex: number) => {
     const runId = runIdRef.current;
     const card = run ? currentCard(run) : null;
     if (!runId || !card) return;
+    // A HELD card is not the run's current card — the run advanced past it the
+    // moment it resolved. Answering during the beat would submit against the
+    // NEXT question with the previous one still on screen.
+    if (holdSequence !== null) return;
+    if (submittingRef.current) return;
     const phase = cardPhase(card);
     if (phase !== "open" && phase !== "reflex_timed" && phase !== "learning") return;
     if (card.eliminated.includes(optionIndex)) return;
 
+    submittingRef.current = true;
     void withRequest(
       (signal) => submitAnswer(runId, card.sequence, optionIndex, signal),
       (ack) => {
@@ -288,33 +379,50 @@ export function useDailyChallengeRun(): DailyChallengeRunState {
         // the run's new current card — by the time this lands the run may have
         // advanced, and the beat belongs to the card the player just played.
         setBeat(projectBeat(ack.event, card));
-        // Hold the surface on the card that just resolved, so its reveal and
-        // explanation are actually read. Not held on a miss: the player is
-        // still on that card and the options must stay live.
-        if (ack.event.resolved) setHoldSequence(card.sequence);
         adopt(ack.run);
-      });
-  }, [run, withRequest, adopt]);
+        // Hold the surface on the card that just resolved, so its reveal is
+        // seen at all. Not held on a miss: the player is still on that card and
+        // the options must stay live.
+        if (ack.event.resolved) beginResultBeat(ack.run, card.sequence);
+      }).finally(() => { submittingRef.current = false; });
+  }, [run, holdSequence, withRequest, adopt, beginResultBeat]);
 
-  const continueToNext = useCallback(() => {
-    setHoldSequence(null);
-    setBeat(null);
-  }, []);
-
-  const dismissBeat = useCallback(() => setBeat(null), []);
+  /**
+   * AUTO-ACTIVATION — the Start button, made unnecessary (ARENA1 Phase 2 §9).
+   *
+   * Fires only for the card the player is actually looking at: `holdSequence`
+   * must be clear, so a reflex card the run has already advanced to cannot burn
+   * its window behind the previous card's result beat.
+   *
+   * The backend is still the authority for every part of the window. This asks
+   * for one to be opened; the server decides when it opened and when it ends,
+   * and refuses an answer to a card that never was (`META_REFLEX_NOT_ACTIVATED`
+   * → a refetch, not an error). Nothing about the deadline is inferred here.
+   */
+  useEffect(() => {
+    if (holdSequence !== null || busy) return;
+    const current = run ? currentCard(run) : null;
+    if (!current || cardPhase(current) !== "reflex_ready") return;
+    const seen = autoActivateRef.current;
+    const attempts = seen && seen.sequence === current.sequence ? seen.attempts : 0;
+    if (attempts >= 3) return;
+    autoActivateRef.current = { sequence: current.sequence, attempts: attempts + 1 };
+    activate();
+  }, [run, holdSequence, busy, activate]);
 
   const card = useMemo(() => (run ? currentCard(run) : null), [run]);
 
   // Release the hold if the held card is no longer in the projection at all —
   // a refresh across a version change, say. The surface must never point at a
-  // card the run does not have.
+  // card the run does not have. Through `releaseHold`, so the pending beat is
+  // cancelled with it rather than firing later against a card that has gone.
   useEffect(() => {
     if (holdSequence === null || !run) return;
-    if (!run.cards.some((c) => c.sequence === holdSequence)) setHoldSequence(null);
-  }, [holdSequence, run]);
+    if (!run.cards.some((c) => c.sequence === holdSequence)) releaseHold();
+  }, [holdSequence, run, releaseHold]);
 
   return {
     stage, today, run, card, beat, busy, error, skewMs, timerMaxMs, holdSequence,
-    start, activate, answer, refresh, continueToNext, dismissBeat,
+    start, answer, refresh,
   };
 }

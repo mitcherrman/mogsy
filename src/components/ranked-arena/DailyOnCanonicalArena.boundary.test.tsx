@@ -183,20 +183,52 @@ describe("the Daily owns no game surface of its own", () => {
   /**
    * K — what Daily-specific UI is ALLOWED to be.
    *
-   * Two nodes and one summary, and each is content rather than presentation
-   * machinery: the right-hand target (the seam Step 3 built for exactly this),
-   * the mode's own two controls, and the finished day's numbers. If a fourth
-   * appears, it is worth a conversation before it is worth a merge.
+   * ONE node and one summary, and each is content rather than presentation
+   * machinery: the right-hand target (the seam Step 3 built for exactly this)
+   * and the finished day's numbers. If a third appears, it is worth a
+   * conversation before it is worth a merge.
+   *
+   * `DailyRunControls` was the third, and ARENA1 Phase 2 deleted it. It held a
+   * START button for a Meta Reflex window and a NEXT CARD button for a resolved
+   * one — two manual beats live Ranked does not have and this mode should never
+   * have grown. Its absence from this list is the guard against them returning
+   * as a pair of buttons under the question.
    */
-  it("its remaining components are semantic content, and there are three", () => {
+  it("its remaining components are semantic content, and there are two", () => {
     const components = DAILY_FILES()
       .filter((f) => f.endsWith(".tsx") && !f.endsWith("Page.tsx"))
       .map((f) => f.split("/").pop());
     expect(components).toEqual([
       "DailyChallengePanel.tsx",   // TODAY'S CHALLENGE — the right flank
       "DailyResultSummary.tsx",    // the finished day's own numbers
-      "DailyRunControls.tsx",      // START a reflex window, CONTINUE past a card
     ]);
+  });
+
+  /**
+   * THE DAILY OFFERS NOTHING TO PRESS BETWEEN CARDS (ARENA1 Phase 2).
+   *
+   * A source guard rather than a render assertion, because the thing being
+   * prevented is a control coming back ANYWHERE in the mode — in the arena's
+   * guidance slot, in the page, in a new component — and a DOM test can only
+   * see the state it happened to set up. The Daily plays like live Ranked:
+   * answer once, brief result, automatically continue.
+   */
+  it("names no manual progression control anywhere in its source", () => {
+    const offenders: string[] = [];
+    for (const file of DAILY_FILES()) {
+      const src = codeOnly(read(file));
+      for (const banned of [
+        "Next card", "Next Card", "Continue", "Start card", "See results",
+        "dc-continue", "dc-reflex-start", "dc-reflex-gate", "DailyRunControls",
+      ]) {
+        if (src.includes(banned)) offenders.push(`${file}: ${banned}`);
+      }
+    }
+    expect(offenders, [
+      "A manual progression control came back to the Daily.",
+      "The mode advances on the arena's own result beat and activates its own",
+      "Meta Reflex window; there is nothing for a player to press between cards.",
+    ].join(" ")).toEqual([]);
   });
 
   it("stayed a controller: it still owns the transport, the rules and the run", () => {

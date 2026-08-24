@@ -194,7 +194,16 @@ export function publicRoundFromCard(
  * is published and an unresolved one's is not, and the result is `sealed()`.
  * A second construction site would be a second place those rules could drift.
  */
-export function feedbackForCard(card: DcCard | null): ResolvedFeedback {
+export function feedbackForCard(
+  card: DcCard | null,
+  /**
+   * The explanation to PUBLISH, already through the mode's display policy —
+   * see `explanationPolicy`. Undefined means "whatever the card carries",
+   * which is what every non-arena caller (and every test of the mapping
+   * itself) wants.
+   */
+  displayedExplanation?: string | null,
+): ResolvedFeedback {
   if (!card) return NO_FEEDBACK;
   const resolved = card.resolved === true;
   return feedbackFromDailyCard({
@@ -206,7 +215,9 @@ export function feedbackForCard(card: DcCard | null): ResolvedFeedback {
     ...(resolved
       ? {
         correct_index: (card as DcResolvedCard).correctIndex,
-        explanation: (card as DcResolvedCard).explanation,
+        explanation: displayedExplanation === undefined
+          ? (card as DcResolvedCard).explanation
+          : displayedExplanation,
         attempts: (card as DcResolvedCard).attempts.map((a) => ({
           selected_index: a.selectedIndex, is_correct: a.isCorrect,
         })),

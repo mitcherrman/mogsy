@@ -40,6 +40,7 @@ import type {
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type { SurfaceReveal } from "@/lib/question-surface/contract";
 import { answerOptionId } from "@/lib/ranked-core/adapters/adaptToViews";
+import { displayExplanation } from "./explanationPolicy";
 import type { DcCard, DcResolvedCard, DcRun, DcToday } from "@/lib/daily-challenge/contracts";
 import {
   DAILY_PLAYER_ID, DcBeat, DcCardPhase, beatStatusText, canAnswer, cardPhase,
@@ -167,12 +168,17 @@ function statusFor(input: DailyArenaInput, phase: DcCardPhase | null): string {
   switch (phase) {
     case "learning":
       return "Scored attempt spent — keep solving to clear the card.";
+    // NOT "press to begin" any more: nothing is waiting on the player here.
+    // The window opens by itself the moment this card is the one on screen, so
+    // the honest line is what the clock is, not an instruction to start it.
     case "reflex_ready":
-      return "Read the card. The clock starts when you do.";
+      return "Meta Reflex — opening the window…";
     case "reflex_timed":
       return "Answer before the window closes.";
+    // The card moves on by itself, so the line says what happened and not what
+    // to press. A control it named would be a control that has to exist.
     case "resolved":
-      return "Card resolved — read the explanation, then continue.";
+      return "Card resolved.";
     case "open":
       return "Choose an answer to lock it in.";
     default:
@@ -209,7 +215,21 @@ export function dailyArenaView(input: DailyArenaInput): ArenaViewModel {
    * beside the score-locked note); see the handoff, it is a live product
    * question and not something this integration should decide silently.
    */
-  const feedback = feedbackForCard(card);
+  /**
+   * THE EXPLANATION, ONLY WHERE IT EARNS ITS PLACE (Phase 2 §6).
+   *
+   * The server's sentence, verbatim, or nothing — see `explanationPolicy` for
+   * the audit behind the test and why it is a filter rather than anything that
+   * could write a word of its own. Most of the bank's explanations restate the
+   * question and the answer the player is already looking at, and a beat spent
+   * on one of those is a beat spent on nothing.
+   */
+  const feedback = feedbackForCard(card, card && card.resolved === true
+    ? displayExplanation(
+      (card as DcResolvedCard).explanation,
+      card.prompt,
+      projectReveal(card as DcResolvedCard).correctLabel)
+    : null);
   /**
    * WHAT THIS MODE CALLS THE RESOLUTION.
    *
