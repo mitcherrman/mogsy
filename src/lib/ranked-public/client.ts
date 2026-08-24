@@ -261,6 +261,24 @@ export const getQueueStatus = (signal?: AbortSignal): Promise<QueueStatusView> =
 export interface ActiveMatchInfo {
   matchId: string;
   isBotMatch: boolean;
+  /**
+   * RG1 — the instant this match stops being reconnectable, and whether it
+   * still is.
+   *
+   * Ranked does not resume hours-old matches. An unexplained absence gets a
+   * short reconnect window (45s, `RECONNECT_WINDOW_SECONDS` on the backend);
+   * past it the match is forfeited by the ordinary lifecycle and the account
+   * is free to queue again. The endpoint SETTLES an expired match before
+   * answering, so in practice a match returned here is one that can genuinely
+   * be rejoined — the flag is read rather than assumed, because "the server
+   * still lists it" and "you may still play it" stopped being the same
+   * question when the window was introduced.
+   *
+   * Absent on an older backend, which is read as reconnectable: that
+   * deployment has no window, so every active match is one.
+   */
+  reconnectDeadline: string | null;
+  withinReconnectWindow: boolean;
 }
 
 export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | null> =>
@@ -269,8 +287,43 @@ export const getActiveMatch = (signal?: AbortSignal): Promise<ActiveMatchInfo | 
     if (am == null || typeof am !== "object") return null;
     const m = am as Record<string, unknown>;
     if (typeof m.match_id !== "string") return null;
-    return { matchId: m.match_id, isBotMatch: m.is_bot_match === true };
+    return {
+      matchId: m.match_id,
+      isBotMatch: m.is_bot_match === true,
+      reconnectDeadline: typeof m.reconnect_deadline === "string"
+        ? m.reconnect_deadline : null,
+      withinReconnectWindow: m.within_reconnect_window !== false,
+    };
   }, { signal });
+
+/**
+ * RG1 — concede the match, deliberately.
+ *
+ * The ONLY intent signal Ranked accepts. A closed tab, a reload, a route
+ * change and a dropped connection are indistinguishable at the server and are
+ * all treated as an absence with a reconnect window; this is how a player says
+ * the thing the transport cannot. The body is empty by design — identity comes
+ * from the token and the match from the path, so there is no field with which
+ * to forfeit anyone else or to claim any outcome.
+ *
+ * Idempotent: a match that is already terminal answers 200 with
+ * `forfeited: false`.
+ */
+export interface ForfeitResult {
+  matchId: string;
+  forfeited: boolean;
+  alreadyComplete: boolean;
+}
+
+export const forfeitMatch = (matchId: string, signal?: AbortSignal): Promise<ForfeitResult> =>
+  request(`/api/ranked/matches/${encodeURIComponent(matchId)}/forfeit`, (json) => {
+    const m = (json ?? {}) as Record<string, unknown>;
+    return {
+      matchId: typeof m.match_id === "string" ? m.match_id : matchId,
+      forfeited: m.forfeited === true,
+      alreadyComplete: m.already_complete === true,
+    };
+  }, { method: "POST", signal });
 
 /*
  * THERE IS NO `createBotMatch`. `POST /api/ranked/bot-matches` — the

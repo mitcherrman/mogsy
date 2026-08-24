@@ -144,6 +144,20 @@ export interface MatchController {
   /** Arm/change/clear the round's ability. Never blocks or gates the answer. */
   selectAbility: (id: string | null) => void;
   chooseLevelTwo: (abilityId: string) => void;
+  /**
+   * RG1 — concede the match, deliberately.
+   *
+   * The ONE intent signal Ranked has. A route change, a closed tab, a reload
+   * and a dead network are indistinguishable at the server, so none of them
+   * ends a match; they are an absence, and an absence gets the reconnect
+   * window. This is how a player says the thing the transport cannot.
+   *
+   * The BACKEND owns the settlement — same terminal path a timed-out forfeit
+   * takes — so this only sends the command and pokes the loop, which then
+   * reads the terminal result through the ordinary snapshot. The confirmation
+   * belongs to the surface offering the control, not here.
+   */
+  forfeit: () => void;
   /** Authoritative state of an active multi-challenge segment, or null. */
   segmentState: SegmentStateView | null;
   /** Transcript of the last resolved multi-challenge segment, or null. */
@@ -733,11 +747,31 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
     })();
   }, [matchId, submitting, poke]);
 
+  const forfeit = useCallback(() => {
+    if (!matchId || submitting) return;
+    setSubmitting(true); setActionError(null);
+    (async () => {
+      try {
+        await api.forfeitMatch(matchId);
+        setSubmitting(false);
+        // No local terminal state is invented: the poll reads the settlement
+        // the server wrote, so the match-over frame a forfeit produces is the
+        // same one every other terminal produces.
+        poke();
+      } catch (e) {
+        setSubmitting(false);
+        setActionError(e instanceof Error ? e.message : "could not forfeit");
+        poke();
+      }
+    })();
+  }, [matchId, submitting, poke]);
+
   return {
     phase, publicRound, roundNumber, privatePlayer, lastResolved, damageLog, result,
     presence: publicRound?.presence ?? null, skewMs, viewerUserId, opponentUserId,
     selectedOptionId, selectedAbilityId, submitting, abilityBusy, actionError,
     error, contractError, retry, roundLive, answer, selectAbility, chooseLevelTwo,
+    forfeit,
     segmentState, lastSegmentSettlement, lastSegmentRoundNumber,
     submitSegmentChallenge, revealHold,
   };

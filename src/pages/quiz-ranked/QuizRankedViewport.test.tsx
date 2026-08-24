@@ -1,5 +1,5 @@
 /**
- * RA1 Phase 1.1: viewport and scroll ownership.
+ * Viewport and scroll ownership — RA1 Phase 1.1, as revised by RG1.
  *
  * jsdom performs no layout, so these assert the CONTRACT that produces the
  * measured behaviour rather than the pixels themselves (the pixel checks are
@@ -10,9 +10,15 @@
  *   * nothing rendered INSIDE the shell asks for a full dynamic viewport —
  *     that is the double-count that raised a transient scrollbar during
  *     route-guard loading;
- *   * the live arena declares exactly one internal vertical scroll region, and
- *     the round HUD (timer strip, duelist panels, ability tray, status) is
- *     pinned outside it.
+ *   * the live arena declares exactly one internal vertical scroll region — the
+ *     question card's — and the round HUD (timer strip, duelist rails, ability
+ *     tray, status line, timeline) is pinned OUTSIDE it.
+ *
+ * RG1 restored the pinned stage this file once forbade. The nested-scrollbar
+ * failure that removed it came from pinning the centre column while the PAGE
+ * was still free to grow; the stage is now sized so the page does not scroll,
+ * so the question's scrollbar is the only one on screen. The measurements that
+ * justify the change are in `QuizRankedMatch.geometry`'s revised block.
  */
 
 import { readFileSync } from "node:fs";
@@ -136,26 +142,59 @@ describe("the live arena's scroll ownership", () => {
     return view;
   }
 
-  it("declares NO internal vertical scroll region", async () => {
+  it("declares NO internal scroll region, anywhere in the arena", async () => {
     const { container } = await mountArena();
-    // RA1 1.1 gave the centre column its own scrollbar. In a real browser that
-    // read as a nested scrollbar next to the browser's own, so the model is
-    // gone: Ranked scrolls with the document like every other route.
+    // Twice now this has been tried and twice it has been wrong. RA1 1.1 gave
+    // the centre column a scrollbar while the page was also free to grow, so
+    // both scrolled and read as nested bars. RG1's first draft pinned the
+    // stage and moved the scrollbar into the parchment, which held the anchors
+    // but put a document-reader control on a game screen.
+    //
+    // The content audit settled it: the longest question the bank can serve is
+    // a 108-character prompt with 63-character options, and the stage seats
+    // that whole at every supported viewport with room to spare. So there is
+    // no scroll region at all.
     const scrollers = Array.from(container.querySelectorAll<HTMLElement>("*"))
       .filter((el) => /overflow-y-auto|overflow-auto|overflow-y-scroll|overflow-y-hidden/
         .test(el.className || ""));
     expect(scrollers.map((el) => el.className)).toEqual([]);
+    // And no residue of the retired wrapper's name.
+    expect(screen.queryByTestId("ranked-question-scroll")).toBeNull();
   });
 
-  it("never pins its own height, so nothing inside it can be clipped", async () => {
-    const { container } = await mountArena();
+  it("gives the stage a FLOOR and lets exactly one band flex", async () => {
+    await mountArena();
     const root = screen.getByTestId("ranked-match");
-    // No flex-fill chain and no viewport-derived height anywhere in the arena.
-    expect(root.className).not.toMatch(/lg:flex-1|lg:min-h-0/);
-    const pinned = Array.from(container.querySelectorAll<HTMLElement>("*"))
-      .filter((el) => /(^|\s)(min-h-dvh|h-dvh|min-h-screen|h-screen)(\s|$)/.test(el.className || "")
-        || /app-viewport-h/.test(el.className || ""));
-    expect(pinned).toHaveLength(0);
+    // The four bands: strip, arena, HUD row, timeline. Only the arena flexes,
+    // which is what stops a taller question moving the other three.
+    expect(root.className).toContain("lg:flex-1");
+    const grid = root.querySelector<HTMLElement>(".grid")!;
+    expect(grid.className).toContain("lg:flex-1");
+    // `min-h-0` must NOT be here. It is the switch that lets a flex child be
+    // shorter than its content — i.e. the switch that clips a question — and
+    // removing it is what lets oversized content grow the page instead.
+    expect(root.className).not.toContain("min-h-0");
+    expect(grid.className).not.toContain("min-h-0");
+    // Every stage class is breakpoint-scoped: below lg the arena stacks into
+    // one column that legitimately exceeds a narrow viewport.
+    for (const el of [root, grid, screen.getByTestId("ranked-question-body")]) {
+      for (const cls of (el.className || "").split(/\s+/)) {
+        if (/^(h-full|min-h-0|flex-1|overflow-y-auto|shrink-0)$/.test(cls)) {
+          throw new Error(`unscoped stage class "${cls}" on ${el.dataset.testid ?? el.className}`);
+        }
+      }
+    }
+  });
+
+  it("keeps the arena's own chrome out of the flex distribution", async () => {
+    await mountArena();
+    const root = screen.getByTestId("ranked-match");
+    const kids = Array.from(root.children) as HTMLElement[];
+    const flexing = kids.filter((el) => /lg:flex-1/.test(el.className || ""));
+    // Exactly one band may take the leftover height. If a second one could,
+    // the two would negotiate and the timeline's Y would depend on content.
+    expect(flexing).toHaveLength(1);
+    expect(flexing[0].className).toContain("grid");
   });
 
   it("orders the HUD after the question, with only the timeline below it", async () => {

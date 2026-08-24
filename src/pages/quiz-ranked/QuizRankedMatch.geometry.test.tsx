@@ -27,6 +27,11 @@ import { privatePlayerV2, publicRoundV2 } from "@/lib/ranked-public/fixtures";
 
 const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 
+/** Source scans read STRUCTURE, so an explanation of a bug must not read as
+ *  the bug: comments are stripped before anything is asserted about a file. */
+const stripJsxComments = (src: string) =>
+  src.replace(/\{?\/\*[\s\S]*?\*\/\}?/g, "").replace(/^\s*\/\/.*$/gm, "");
+
 const combatant = (over: Partial<CombatantView> = {}): CombatantView => ({
   playerId: "userA", name: "You", tag: "Tank", side: "player", classId: "tank",
   hp: 150, maxHp: 170, xp: 12, level: 1, nextLevelThreshold: 30,
@@ -104,32 +109,80 @@ describe("ability tray geometry", () => {
   });
 });
 
-describe("no Ranked surface reintroduces internal scrolling or a pinned height", () => {
-  // A source scan, not a render assertion, deliberately: the live-round tests
-  // and the browser probe only ever reach the ACTIVE arena, and the leftover
-  // that motivated this check was in the terminal match-over branch, which
-  // neither of them mounts.
+/**
+ * THE SCROLL CONTRACT, as RG1 finally settled it.
+ *
+ * RA1 1.1 banned an internal scroll region outright, because a pinned game
+ * viewport had produced a second scrollbar beside the browser's own. RG1's
+ * first draft brought the pin back WITH a scrollbar inside the question card
+ * — and the owner rejected that: a scrollbar in the parchment is not what a
+ * game screen does.
+ *
+ * The content audit that followed showed the scrollbar had never been needed.
+ * Every question `ranked_modern` can currently serve (928 rows, all
+ * four-option) has a prompt of at most 108 characters and options of at most
+ * 63; the synthetic probe that forced the overflow was 4.4x and 2.1x those
+ * bounds. So the stage is a FLOOR sized to seat real content whole, the card
+ * scrolls nothing, and the pathological case grows the page and lets the
+ * browser's own scrollbar handle it.
+ *
+ * The rule is therefore back to "no internal scroll region", and it is now a
+ * rule the layout can actually keep:
+ *
+ *   BEFORE (RG1 draft)          AFTER
+ *   card had overflow-y-auto    no overflow anywhere in the arena
+ *   long real question: 145px   long real question: fits, 211px to spare
+ *     of internal scroll          at 1440x900
+ */
+describe("the Ranked arena declares no internal scroll region", () => {
   const files = [
     "src/pages/quiz-ranked/QuizRankedMatch.tsx",
     "src/pages/quiz-ranked/QuizRankedPage.tsx",
     "src/components/Layout.tsx",
   ];
-  const stripComments = (s: string) =>
-    s.replace(/\{?\/\*[\s\S]*?\*\/\}?/g, "").replace(/^\s*\/\/.*$/gm, "");
+  const sourceOf = (file: string) =>
+    stripJsxComments(readFileSync(resolve(process.cwd(), file), "utf8"));
 
-  it.each(files)("%s declares no scroll container and no viewport-derived height", (file) => {
-    const src = stripComments(readFileSync(resolve(process.cwd(), file), "utf8"));
-    expect(src).not.toMatch(/overflow-y-auto|overflow-auto|overflow-y-scroll/);
-    // `--app-viewport-h` may still be REFERENCED for loading placeholders (that
-    // is the route-loading overflow fix); what must not come back is an arena
-    // container sized to it, or a flex-fill chain that pins the arena's height.
-    expect(src).not.toMatch(/h-\[var\(--app-viewport-h\)\]/);
-    expect(src).not.toMatch(/lg:flex-1|lg:min-h-0/);
+  it.each(files)("%s declares no scroll container at all", (file) => {
+    expect(sourceOf(file)).not.toMatch(/overflow-y-auto|overflow-auto|overflow-y-scroll/);
+  });
+
+  it("leaves no residue of the retired scroll wrapper", () => {
+    // The wrapper survives as a structural flex box; what must not survive is
+    // a name that tells the next reader the card scrolls.
+    for (const file of files) {
+      expect(sourceOf(file)).not.toContain("ranked-question-scroll");
+    }
+    expect(css).not.toContain("ranked-question-scroll");
+  });
+
+  it("makes the stage a FLOOR, so oversized content grows the page", () => {
+    const src = sourceOf("src/pages/quiz-ranked/QuizRankedPage.tsx");
+    // `min-h`, never `h`: a cap is what forces content to be clipped or to
+    // scroll inside the card, and that is the design being retired here.
+    expect(src).toContain("lg:min-h-[var(--ranked-stage-h)]");
+    expect(src).not.toMatch(/lg:h-\[var\(--ranked-stage-h\)\]/);
+    // `--app-viewport-h` subtracts a header band this route no longer sits
+    // below (it reclaims it), so using it would leave the reclaimed strip
+    // unspent. The two tokens describe two different pages.
+    expect(src).not.toContain("app-viewport-h");
+    expect(css).toContain("--ranked-stage-h:");
+  });
+
+  it("keeps the automatic minimum size in force on the flexing bands", () => {
+    // `min-h-0` is the switch that lets a flex child be SHORTER than its
+    // content. On the arena grid or the question card that is a clip; the
+    // whole no-scroll design depends on it not being there.
+    const src = sourceOf("src/pages/quiz-ranked/QuizRankedMatch.tsx");
+    expect(src).not.toContain("lg:min-h-0");
+    expect(sourceOf("src/pages/quiz-ranked/QuizRankedPage.tsx")).not.toContain("min-h-0");
   });
 
   it("still keeps the shell's header offset and the viewport token", () => {
+    // Layout is UNTOUCHED. Ranked reclaims the band at the PAGE, the same way
+    // /lol and /quiz do, so every other route keeps the reservation and with it
+    // the RA1 1.1 route-loading overflow fix.
     const layout = readFileSync(resolve(process.cwd(), "src/components/Layout.tsx"), "utf8");
-    // Removing the game viewport must not undo the RA1 1.1 loading fix.
     expect(layout).toContain("pt-[var(--app-header-h)] pb-bottom-nav");
     expect(css).toContain("--app-viewport-h: calc(100dvh");
   });

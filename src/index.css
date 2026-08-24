@@ -25,6 +25,24 @@
        them automatically. */
     --app-viewport-h: calc(100dvh - var(--app-header-h) - var(--bottom-nav-clearance));
 
+    /* RG1 — THE RANKED STAGE FLOOR.
+       The Ranked route reclaims the HUD band (see `Frame` in QuizRankedPage:
+       the HUD is two corner chips, not a bar), so its stage starts at the
+       viewport top rather than below the reservation. The floor is therefore
+       the FULL dynamic viewport less a hairline of bottom breathing room, plus
+       the bottom-nav clearance the shell still reserves for everyone.
+
+       A FLOOR, not a cap: the frame applies it as `min-height`. The arena is
+       always at least this tall — that is what makes the question region big
+       — and a round the floor cannot seat grows the page rather than being
+       clipped or given a scrollbar inside the parchment.
+
+       Deliberately NOT `--app-viewport-h`: that token subtracts a header band
+       this route no longer sits below, and using it here would leave the
+       reclaimed 48/56px unspent at the bottom instead. The two tokens describe
+       two different pages and must not be conflated. */
+    --ranked-stage-h: calc(100dvh - 0.25rem - var(--bottom-nav-clearance));
+
     /* Scenario-card legibility unit (RA8). The Broadcast scenario cards size
        everything in `cqmin`, which on the 16:9 OBS stage is ~10px and reads
        beautifully — but inside the Ranked band the container is ~730x176, so
@@ -7261,5 +7279,87 @@ html.high-contrast * { text-shadow: none !important; }
   .play-scroll-arrow:enabled:active,
   .play-scroll-practice:active {
     transform: none;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   RG1 — THE SHORT-VIEWPORT COMPACTION, and nothing else.
+
+   The Ranked stage fills the viewport and the question card takes what the
+   fixed chrome leaves. At 1440x900 that is 584px, which seats every question
+   the bank can serve with ~210px to spare, so nothing here applies there.
+
+   On a SHORT desktop it is tighter. Measured, uncompacted:
+
+     1440x720   the longest real question overran by 7px, the media card by 66
+     1024x800   the longest real question overran by 48px
+
+   ("longest real" is measured, not guessed: 928 servable rows, prompts to 108
+   characters, options to 63 — see the probe's own note. The synthetic stress
+   probe is 4.4x that and is not what this is sized for.)
+
+   So this reclaims ~64px of SPACING at heights where the arena is short, and
+   deliberately reclaims none of the things that make the card good:
+
+     * no font-size change, on the prompt or on an answer;
+     * no answer tile narrower or shorter than its text;
+     * no media cropped — the band keeps its aspect and only its ceiling moves;
+     * the parchment keeps its border, its ground and its horizontal padding.
+
+   Scoped to `.ranked-academy`, which only the Ranked page frame applies, so
+   Daily Challenge, Practice and the Broadcast surfaces are untouched — they
+   share these components but not this class.
+
+   The width bound matters as much as the height bound: below 1024 the arena
+   stacks into one column, the stage floor does not apply, and the page scrolls
+   normally. Compacting there would tighten a layout that has room to spare.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) and (max-height: 860px) {
+  /* 1. The folio's vertical padding. Horizontal is untouched — the text
+        measure is what makes the parchment readable, and it is unchanged. */
+  .ranked-academy .ranked-folio {
+    padding-top: 0.875rem;
+    padding-bottom: 0.875rem;
+  }
+
+  /* 2. The surface's own stack rhythm: band → prompt → answers. 12px to 8px,
+        twice. This is the "slightly tighter spacing between prompt and
+        answers" allowance and it is the cheapest 8px in the card. */
+  .ranked-academy [data-testid="scenario-surface"] > * + * {
+    margin-top: 0.5rem;
+  }
+
+  /* 3. The COMPACT category band, on a text-only question. 4rem of plate to
+        carry one category word is the most decorative height in the card when
+        the card is short; 3.25rem still reads as a band. The CINEMATIC band
+        (a real scenario illustration) is handled separately below — that one
+        is content, not chrome. */
+  .ranked-academy [data-testid="scenario-compact"] {
+    height: 3.25rem;
+  }
+
+  /* 4. Answer tiles: 12px to 8px of vertical padding. The tile still grows to
+        its text — a two-line option is still two full lines — so this changes
+        the air around the label and never the label. */
+  .ranked-academy [data-answers-state] [data-quiz-choice] {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  /* 5. Media ceiling. The band keeps its 16/7 aspect and its `min-height`, so
+        nothing is cropped or letterboxed; only the height it is ALLOWED to
+        reach comes down, from 34vh to 26vh. Measured at 1440x720 that is
+        245px -> 187px, which is exactly the difference between the recipe card
+        fitting and the page scrolling.
+
+        `!important` is load-bearing and not laziness: the shared surface sets
+        this ceiling as an INLINE style (`max-height: min(22rem, 34vh)`), and
+        an inline declaration outranks any stylesheet rule without it. The
+        alternative was threading a Ranked-only prop down through
+        `InteractiveScenarioSurface`, which Daily Challenge, Practice and the
+        Broadcast stage also render — a shared API change to express a
+        route-local ceiling. This says the same thing in one place. */
+  .ranked-academy [data-testid="scenario-hero"] {
+    max-height: min(16rem, 26vh) !important;
   }
 }

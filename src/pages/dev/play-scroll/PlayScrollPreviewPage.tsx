@@ -126,9 +126,18 @@ export default function PlayScrollPreviewPage() {
    */
   const [admin, setAdmin] = useState(false);
 
+  /**
+   * RG1 — draw the RECONNECT beat: the account already has a live match.
+   *
+   * The real trigger is a join the server answered
+   * `RANKED_ACTIVE_MATCH_EXISTS`, which a preview cannot produce. Like the
+   * admin chip above, this changes only what is DRAWN.
+   */
+  const [resumed, setResumed] = useState(false);
+
   /** A plain object with the controller's shape. Nothing behind it. */
   const queue: QueueController = {
-    state: beat,
+    state: resumed ? "reconnect_required" : beat,
     status: beat === "waiting" || beat === "pairing"
       ? ({ role } as unknown as QueueController["status"])
       : null,
@@ -143,6 +152,10 @@ export default function PlayScrollPreviewPage() {
         ? "Pairing has already started — finding your match…"
         : null,
     canCancel: beat === "waiting",
+    // RG1: the reconnect beat is reviewable from the `Resumed` chip, which is
+    // the only thing on this route that can reach it.
+    reconnectMatch: resumed ? { matchId: "rkm_preview", isBotMatch: false } : null,
+    reconnect: () => {},
     setSelectedClass: noop,
     join: () => setBeat("waiting"),
     joinAs: () => setBeat("waiting"),
@@ -211,6 +224,19 @@ export default function PlayScrollPreviewPage() {
           }`}
         >
           Admin
+        </button>
+        <button
+          type="button"
+          data-testid="play-scroll-preview-resumed"
+          aria-pressed={resumed}
+          onClick={() => { setResumed((v) => !v); setOpen(true); }}
+          className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+            resumed
+              ? "border-primary bg-primary/15 text-primary"
+              : "border-primary/25 text-muted-foreground hover:border-primary/60"
+          }`}
+        >
+          Resumed
         </button>
         <button
           type="button"

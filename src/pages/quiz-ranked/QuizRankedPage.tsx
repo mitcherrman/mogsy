@@ -61,9 +61,58 @@ import { getActiveMatch } from "@/lib/ranked-public/client";
 import { QuizRankedMatch } from "./QuizRankedMatch";
 
 /**
- * Ordinary document-flow frame. There is no pinned-height / internal-scroll
- * variant any more: Ranked scrolls with the page like every other route, so the
- * browser scrollbar is the only one on screen.
+ * THE RANKED STAGE FRAME (RG1).
+ *
+ * Two things changed here, and they are the same change: the route now owns a
+ * STABLE VIEWPORT REGION instead of being an ordinary flow document whose
+ * height is whatever the current question happens to need.
+ *
+ * 1. THE RECLAIMED HUD BAND
+ * ─────────────────────────
+ * The shell reserves `--app-header-h` at the top of every page (Layout's
+ * `pt-[var(--app-header-h)]`). That reservation is older than the chrome it
+ * reserves for: the traditional navbar was retired and replaced by
+ * `GlobalHud`, which is `position: fixed`, `pointer-events: none`, and paints
+ * exactly two corner chips — measured at 1440px, a 44px hat at x 12–56 and a
+ * 224px identity cluster at x 1204–1428. The other ~80% of that full-width
+ * strip is empty, and on this route it pushed the arena down 56px for nothing.
+ *
+ * So from `lg` up the frame pulls itself back up into the band, the same way
+ * `/lol` and `/quiz` already do (`md:-mt-[var(--app-header-h)]`) — the shell's
+ * established idiom for a page that paints its own top edge, not an ad-hoc
+ * nudge, and Layout is untouched so every other route keeps the reservation
+ * (and with it the RA1 1.1 route-loading overflow fix).
+ *
+ * What moves INTO the band is the title row, which is the only thing here
+ * short enough to share it. It is inset on BOTH sides — `pl` clears the hat,
+ * `pr` clears the identity cluster — so the row lives in the strip's empty
+ * middle and collides with neither chip. The arena starts immediately below
+ * it, roughly 68px higher than before.
+ *
+ * 2. THE STAGE FLOOR
+ * ──────────────────
+ * From `lg` up the frame is a flex column with `min-h: --ranked-stage-h` — a
+ * FLOOR, deliberately not a cap. Two things follow, and both are the point:
+ *
+ *  * the stage always fills the viewport, so the arena is as large as the
+ *    screen allows rather than as small as the current question needs; and
+ *  * content the floor cannot seat GROWS the stage instead of being clipped
+ *    or handed a scrollbar of its own.
+ *
+ * The first draft of this phase capped the stage (`h-` rather than `min-h-`)
+ * and gave the question card `overflow-y-auto`. That held the anchors, but it
+ * bought them with a scrollbar inside the parchment — and the content audit
+ * that followed showed the trade was never necessary. Every question Ranked
+ * can currently serve (928 rows, all four-option) has a prompt of at most 108
+ * characters and options of at most 63; the synthetic probe that forced the
+ * scrollbar was 4.4x and 2.1x those bounds. So the floor is sized to seat real
+ * content whole, and the pathological case is allowed to do the honest thing:
+ * push the page and let the browser's own scrollbar handle it.
+ *
+ * Below `lg` the floor is deliberately NOT applied. There the arena stacks
+ * into one column whose natural height genuinely exceeds any phone or tablet
+ * viewport, and a floor would only add empty space above a page that is going
+ * to scroll anyway.
  *
  * `ranked-academy` (RA4 Slice A) is the ONE place the Mogzy academy theme is
  * switched on. It is a presentation class only — every rule it carries lives in
@@ -72,32 +121,49 @@ import { QuizRankedMatch } from "./QuizRankedMatch";
  * background it paints is a fixed layer inside <main>, so it adds no height and
  * cannot reach the navbar or any floating control.
  */
-function Frame({ children, size = "default" }:
+export function Frame({ children, size = "default" }:
 { children: React.ReactNode; size?: "default" | "wide" }) {
   return (
-    <div className={`ranked-shell ranked-academy mx-auto w-full space-y-3 px-4 py-3 ${
+    <div className={`ranked-shell ranked-academy mx-auto flex w-full flex-col gap-2 px-4 pt-3 pb-3
+      lg:-mt-[var(--app-header-h)] lg:gap-1 lg:pb-2 lg:pt-1
+      lg:min-h-[var(--ranked-stage-h)] ${
       // RA10 widened the live-match frame a step at xl; RA11 lets it take the
       // full stage at large desktops (the route is full-bleed now, so main's
       // reading column no longer caps it). The centre question track — not the
       // fixed duelist rails — absorbs every extra pixel.
       size === "wide" ? "max-w-6xl xl:max-w-[76rem] min-[1500px]:max-w-[90rem]" : "max-w-3xl"}`}
       data-testid="quiz-ranked">
-      {/* md:pl clears the shell's fixed "League Hub" pill (left-4, ~7rem wide),
-          which sits on this row now that the heading is one line. The default
-          frame's own left margin clears it from 1440px; the wide frame runs
-          nearly stage-wide from 1500px, so it keeps the padding until its
-          margin genuinely exceeds the pill (~1700px). */}
-      <header className={`flex min-h-7 items-center justify-between gap-3 ${
-        size === "wide"
-          ? "md:pl-28 min-[1440px]:pl-0 min-[1500px]:pl-28 min-[1700px]:pl-0"
-          : "md:pl-28 min-[1440px]:pl-0"}`}>
+      {/* THE TITLE ROW — from `lg`, INSIDE THE RECLAIMED HUD BAND.
+          The left inset clears `GlobalHud`'s hat chip and the right inset
+          clears its identity cluster, so the row occupies the strip's empty
+          middle and collides with neither. The insets are `lg:` for a measured
+          reason and not for tidiness: the two chips together are ~290px of
+          chrome, and at 379px they leave the band with no free middle at all —
+          the cluster alone spans x 147–371 there, straight through where this
+          row's title would be. So narrow widths keep the shell's reservation
+          and this row stays below it, exactly as before.
+          `shrink-0` keeps the row out of the stage budget's flex distribution:
+          the row is chrome, and only the match below it may take the rest. */}
+      {/* The row is sized to its TEXT (one 28px line), not to the band it now
+          sits in. Filling `--app-header-h` here spent 24px holding a strip
+          open for chrome that is `position: fixed` and does not need it — the
+          insets are what keep this row clear of the two chips, not its
+          height. Those 24px went to the question. */}
+      <header className="flex min-h-7 shrink-0 items-center justify-between gap-3
+        lg:min-h-8 lg:pl-14 lg:pr-56">
         <div className="flex items-baseline gap-2.5">
           <h1 className="ranked-title text-lg font-bold leading-tight">Ranked Duel</h1>
           <span className="ranked-eyebrow hidden sm:inline">Competitive Mode</span>
         </div>
         <Link to="/quiz" className="text-sm text-muted-foreground underline">Back to Quiz</Link>
       </header>
-      {children}
+      {/* The one region the match is given. `flex-1` grows it into everything
+          the title row leaves; there is deliberately no `min-h-0`, because
+          that is exactly the switch that lets a flex child be shorter than its
+          content — which is what would clip a question or force it to scroll.
+          Without it the automatic minimum size holds, so an oversized round
+          grows this box, grows the stage, and scrolls the PAGE. */}
+      <div className="flex flex-1 flex-col">{children}</div>
     </div>
   );
 }

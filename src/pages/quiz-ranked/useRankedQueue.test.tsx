@@ -14,7 +14,9 @@ const h = vi.hoisted(() => {
     joinError: null as unknown, statusError: null as unknown,
     cancelError: null as unknown,
     /** What `/api/ranked/active-match` answers. */
-    activeMatch: null as { matchId: string; isBotMatch: boolean } | null,
+    activeMatch: null as {
+      matchId: string; isBotMatch: boolean; withinReconnectWindow?: boolean;
+    } | null,
   };
   const snap = () => ({
     schemaVersion: "ranked_duel.queue_status.v1", serverTime: "t",
@@ -225,15 +227,26 @@ describe("useRankedQueue — cancel racing the pairing pass", () => {
     expect(result.current.matchId).toBe("rkm_from_active");
   });
 
-  it("a join refused because a match already exists recovers that match", async () => {
+  it("a join refused because a match already exists OFFERS that match", async () => {
+    // SUPERSEDED BEHAVIOUR, kept as the record of what changed. This used to
+    // assert `matched` — the silent recovery. RG1 replaced it: Ranked no
+    // longer walks a player into a duel they did not just create, because
+    // nothing distinguished "your match is still running" from "here is a new
+    // one", and a match frozen under a role the account had since changed then
+    // read as a bug in the role. The match is still FOUND; entering it is now
+    // the player's press.
     const { result } = renderHook(() => useRankedQueue());
     await flush();
     state.joinError = new FakeApiError("RANKED_ACTIVE_MATCH_EXISTS", 409);
-    state.activeMatch = { matchId: "rkm_existing", isBotMatch: true };
+    state.activeMatch = { matchId: "rkm_existing", isBotMatch: true,
+                          withinReconnectWindow: true };
 
     act(() => result.current.joinWithoutClass());
     await flush();
 
+    expect(result.current.state).toBe("reconnect_required");
+    expect(result.current.reconnectMatch?.matchId).toBe("rkm_existing");
+    act(() => result.current.reconnect());
     expect(result.current.state).toBe("matched");
     expect(result.current.matchId).toBe("rkm_existing");
   });
@@ -313,5 +326,146 @@ describe("the admin bot request", () => {
     expect(result.current.state).toBe("selecting_class");
     expect(result.current.matchId).toBeNull();
     expect(result.current.error).toBeTruthy();
+  });
+});
+
+/**
+ * RG1 — A RESUMED MATCH IS NOT A NEW ONE, and the controller has to say so.
+ *
+ * This is the reported "selected Top, arena said ADC" defect, at the layer
+ * where the false belief is formed. There is no race: `PUT /api/ranked/role`
+ * commits before the join is even sent, and the backend twin
+ * (`test_rg1_role_end_to_end.py`) proves all five roles survive a back-to-back
+ * write-then-create. What happens instead is that the join is REFUSED —
+ * `RANKED_ACTIVE_MATCH_EXISTS`, because the account already had a live match —
+ * and the client recovers into that older match without a word.
+ *
+ * Recovering is correct and stays. A participant's role freezes at creation
+ * and is deliberately immutable, so the recovered match can carry a role the
+ * account no longer prefers. Saying nothing about it is what is fixed here.
+ */
+/**
+ * RG1 — A LIVE MATCH IS OFFERED, NOT ENTERED.
+ *
+ * The old behaviour was silent: a join answered `RANKED_ACTIVE_MATCH_EXISTS`
+ * was recovered into whatever `getActiveMatch` returned, with nothing telling
+ * the player they had been handed an existing duel rather than a new one.
+ * That is right after a crash-reload and wrong for everything else — it is how
+ * a match frozen under a role the account had since changed came to look like
+ * a bug in the role.
+ *
+ * Ranked no longer resumes stale matches at all: an unexplained absence gets a
+ * 45-second reconnect window and is forfeited past it, and the backend settles
+ * an expired match before it can be discovered. So anything found here is
+ * genuinely still live, and rejoining it is a press.
+ */
+describe("RG1 — a live match is surfaced for an explicit reconnect", () => {
+  it("does NOT hand the player into an existing match on its own", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.joinError = new FakeApiError("RANKED_ACTIVE_MATCH_EXISTS", 409);
+    state.activeMatch = { matchId: "rkm_live", isBotMatch: false,
+                          withinReconnectWindow: true };
+
+    act(() => result.current.joinWithoutClass({ matchWithBot: true }));
+    await flush();
+
+    // The decisive assertion: NOT `matched`. Nothing has entered the arena.
+    expect(result.current.state).toBe("reconnect_required");
+    expect(result.current.reconnectMatch).toEqual(
+      { matchId: "rkm_live", isBotMatch: false });
+  });
+
+  it("enters only when the player presses Reconnect", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.joinError = new FakeApiError("RANKED_ACTIVE_MATCH_EXISTS", 409);
+    state.activeMatch = { matchId: "rkm_live", isBotMatch: false,
+                          withinReconnectWindow: true };
+    act(() => result.current.joinWithoutClass());
+    await flush();
+
+    act(() => result.current.reconnect());
+    await flush();
+    // `matched` is the SAME handoff beat an ordinary pairing lands on, so
+    // there is one way into the arena rather than a reconnect-specific second.
+    expect(result.current.state).toBe("matched");
+    expect(result.current.matchId).toBe("rkm_live");
+  });
+
+  it("refuses to join again while a live match is being offered", async () => {
+    // The window protects a player coming back. It must not become a way to
+    // walk away from a duel by pressing Play a second time.
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.joinError = new FakeApiError("RANKED_ACTIVE_MATCH_EXISTS", 409);
+    state.activeMatch = { matchId: "rkm_live", isBotMatch: false,
+                          withinReconnectWindow: true };
+    act(() => result.current.joinWithoutClass());
+    await flush();
+    joinQueue.mockClear();
+
+    act(() => result.current.joinWithoutClass());
+    await flush();
+    expect(joinQueue).not.toHaveBeenCalled();
+    expect(result.current.state).toBe("reconnect_required");
+  });
+
+  it("offers nothing when the match is past its reconnect window", async () => {
+    // The backend settles an expired match before it can be discovered, so
+    // this is belt and braces — but a client that offered a dead match would
+    // be the old silent-resume bug wearing a button.
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.joinError = new FakeApiError("RANKED_ACTIVE_MATCH_EXISTS", 409);
+    state.activeMatch = { matchId: "rkm_stale", isBotMatch: false,
+                          withinReconnectWindow: false };
+    act(() => result.current.joinWithoutClass());
+    await flush();
+
+    expect(result.current.state).not.toBe("reconnect_required");
+    expect(result.current.reconnectMatch).toBeNull();
+  });
+
+  it("offers nothing when the match ended between the refusal and the look", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.joinError = new FakeApiError("RANKED_ACTIVE_MATCH_EXISTS", 409);
+    state.activeMatch = null;
+    act(() => result.current.joinWithoutClass());
+    await flush();
+    expect(result.current.reconnectMatch).toBeNull();
+    expect(result.current.state).not.toBe("reconnect_required");
+  });
+
+  it("does NOT surface the cancel-vs-pairing race as a reconnect", async () => {
+    // That recovery lands on the match the player just queued for, so it is a
+    // new match by every meaning of the word and keeps its silent handoff.
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.status = "waiting";
+    act(() => result.current.joinWithoutClass());
+    await flush();
+
+    state.cancelError = new FakeApiError("RANKED_CANNOT_CANCEL", 409);
+    state.activeMatch = { matchId: "rkm_paired", isBotMatch: false,
+                          withinReconnectWindow: true };
+    act(() => result.current.cancel());
+    await flush();
+
+    expect(result.current.state).toBe("matched");
+    expect(result.current.matchId).toBe("rkm_paired");
+    expect(result.current.reconnectMatch).toBeNull();
+  });
+
+  it("does not mark an ordinary new match as a reconnect", async () => {
+    const { result } = renderHook(() => useRankedQueue());
+    await flush();
+    state.status = "matched";
+    state.matchId = "rkb_new";
+    act(() => result.current.joinWithoutClass({ matchWithBot: true }));
+    await flush();
+    expect(result.current.state).toBe("matched");
+    expect(result.current.reconnectMatch).toBeNull();
   });
 });

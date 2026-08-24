@@ -70,7 +70,8 @@ export default function Layout() {
   // confined at large desktop widths. The dev arena inspector escapes with
   // it, or its "Full" viewport could never reach the arena's wide-stage tier.
   const isFullBleed = isStatCheckSurface || pathname === "/lol" || pathname === "/quiz"
-    || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector";
+    || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector"
+    || pathname === "/dev/ranked-shell-probe";
 
   // The friends drawer is a floating overlay. On the full-bleed Stat Check
   // gameplay surface it would sit on top of the tabletop and its trigger would

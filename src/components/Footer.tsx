@@ -24,6 +24,8 @@ export default function Footer() {
     pathname.startsWith("/combat-lab/diagnostics") ||
     pathname.startsWith("/quiz") ||
     pathname.startsWith("/dev/stat-check") ||
+    // RG1: the dev Ranked shell probe mirrors /quiz/ranked exactly, footer included.
+    pathname.startsWith("/dev/ranked-shell-probe") ||
     pathname.startsWith("/admin");
   if (hidden) return null;
 

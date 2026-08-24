@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
+import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
@@ -405,7 +406,31 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
   const segmentSettlement = m.lastSegmentSettlement;
 
   return (
-    <div className="ranked-shell flex flex-col gap-3"
+    /* RG1 — THE STABLE SHELL.
+       The frame hands this element one region (see `Frame`'s stage floor) and
+       the four bands below divide it: the top strip, the arena grid, the HUD
+       row and the timeline. Three of those are fixed chrome and sit at
+       `shrink-0`; only the arena grid flexes, so every pixel the stage gains
+       goes to the question and the duelist rails and nothing else moves. The
+       strip's top, the rails' top, the HUD row and the timeline sit at fixed
+       offsets for the life of the match, whatever the round is showing.
+
+       `flex-1` and NOT `min-h-full`: a percentage minimum resolves against the
+       region only while the region's height is definite, and measured live it
+       simply did not — the shell stopped at its content height and left 220px
+       of the reclaimed viewport empty under the timeline. Growing into the
+       region is unconditional. And because `flex-basis: 0` leaves the
+       automatic minimum size in force, content the viewport genuinely cannot
+       seat still grows this column and scrolls the page, rather than being
+       clipped or handed a scrollbar of its own.
+
+       The gap is a step tighter from `lg` (12px -> 8px). Four bands means
+       three gaps, and 12px of air between a strip and a grid is chrome — at
+       three viewports it was 12px the question could have had.
+
+       Below `lg` this is the ordinary flow column it has always been: the
+       arena stacks there and its natural height exceeds any narrow viewport. */
+    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-2"
       data-testid="ranked-match" data-reveal-hold={m.revealHold ? "true" : "false"}>
       {/* The strip, plus the one thing that hangs BENEATH it.
           `.ranked-panel` is `overflow: hidden`, so the transcript cannot live
@@ -416,7 +441,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           cannot outrank it, so an open transcript would paint under the arena.
           It is applied ONLY while open, so nothing about the resting page
           changes. */}
-      <div className="relative" style={detailsOpen ? { zIndex: 30 } : undefined}>
+      <div className="relative lg:shrink-0" style={detailsOpen ? { zIndex: 30 } : undefined}>
       {/* Condensed top strip — mode · round · timer in one compact row.
           `min-h` reserves the tallest state this strip ever reaches, so the
           transition pill appearing or the timer gaining a notice line cannot
@@ -554,7 +579,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
              natural height against a much taller centre (the §14 constraint).
              The panels themselves still size their own CONTENT — stretching
              the track is not stretching the content. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:flex-1 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)] lg:items-stretch min-[1500px]:gap-4">
         {/* `h-full` on BOTH the track cell and the panel: `items-stretch`
             stretches the grid cell, and without this the panel would still sit
             at its own content height inside a taller cell — which is the
@@ -627,8 +652,39 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
               // grid inside are untouched. RA11 widens the HORIZONTAL padding
               // on the big stage only — vertical rhythm (and with it the
               // no-scroll desktop budget) is unchanged.
-              className={`ranked-panel ranked-folio p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none ${
+              className={`ranked-panel ranked-folio p-3 sm:p-5 min-[1500px]:px-7 transition-opacity duration-200 motion-reduce:transition-none lg:flex lg:flex-1 lg:flex-col ${
                 m.revealHold || isProgression ? "opacity-60" : "opacity-100"}`}>
+              {/* RG1 — WHERE AN OVERSIZED QUESTION IS ABSORBED, and the only
+                  place in the arena that is allowed to scroll.
+                  The card takes the arena band's height and the surface sits
+                  inside it. While the question fits — which is every ordinary
+                  round at every desktop viewport measured for this phase —
+                  this box is exactly its content's height and no scrollbar
+                  exists. When a genuinely oversized round arrives (a long
+                  macro prompt with four wrapping options, a tall media
+                  scenario) the OVERFLOW STAYS HERE: the surface scrolls
+                  inside the card and the duelist rails, the HUD row and the
+                  timeline do not move, instead of the document growing and
+                  taking the whole composition with it.
+                  `overscroll-contain` stops a flick at the end of the question
+                  chaining into the page behind it. Below `lg` there is no
+                  scroll region at all — the stage is not pinned there, so
+                  there is nothing to overflow. */}
+              {/* THE QUESTION'S BOX. It takes the card's height and there is
+                  NOTHING to scroll inside it — no `overflow`, no clipping, no
+                  bar in the parchment. The stage is sized so real content fits
+                  whole (audited: 108-character prompts, 63-character options),
+                  and content that genuinely cannot be seated grows the page
+                  instead, which is the browser's job and not the folio's. */}
+              <div className="lg:flex lg:flex-1 lg:flex-col"
+                data-testid="ranked-question-body">
+              {/* `my-auto`, deliberately NOT `justify-center`. Both centre the
+                  question in a card that is taller than its content; only this
+                  one degrades correctly when the content is TALLER than the
+                  card, because auto margins resolve to zero the moment there
+                  is no free space left, while `justify-content: center` would
+                  push the first lines of a long prompt off the top. */}
+              <div className="lg:my-auto lg:w-full">
               <renderer.Viewport
                 // The FROZEN snapshot: the surface keeps rendering the round the
                 // player was looking at until the next one is genuinely ready.
@@ -658,6 +714,8 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
                 skewMs={m.skewMs}
                 reveal={reveal}
               />
+              </div>
+              </div>
             </section>
           )}
           {!renderer && (
@@ -687,7 +745,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           submission status / error — as a reserved-height line under the
           tray. */}
       {!moduleOwnsSubmission && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 lg:shrink-0">
             {showAbilityTray && (
               // RA11: no panel chrome around the tray any more — the tray IS
               // the object (one connected spellbook-spine dock, see
@@ -701,16 +759,39 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
             )}
             {/* One reserved line box: the three status strings (and an error)
                 differ in length, and swapping them used to change the HUD's
-                height whenever one of them wrapped. */}
-            <p role={m.actionError ? "alert" : "status"} data-testid="submission-status"
-              className={`line-clamp-2 min-h-[2.25rem] px-1 text-xs ${
-                m.actionError ? "text-destructive" : "text-muted-foreground"}`}>
-              {m.actionError ? m.actionError
-                : m.submitting ? "Submitting…"
-                  : m.phase === "locked" ? "Answer locked — waiting for opponent…"
-                    : "Choose an answer to lock it in."}
-            </p>
+                height whenever one of them wrapped.
+
+                RG1 puts Forfeit Match at the far end of this SAME row rather
+                than in a band of its own. The row is already mounted for the
+                whole match with a reserved height, so the quietest control in
+                the arena costs the stage no pixels and cannot move an anchor —
+                and it sits as far from the answer grid as the arena allows. */}
+            <div className="flex items-start justify-between gap-3 px-1">
+              <p role={m.actionError ? "alert" : "status"} data-testid="submission-status"
+                className={`line-clamp-2 min-h-[2.25rem] text-xs ${
+                  m.actionError ? "text-destructive" : "text-muted-foreground"}`}>
+                {m.actionError ? m.actionError
+                  : m.submitting ? "Submitting…"
+                    : m.phase === "locked" ? "Answer locked — waiting for opponent…"
+                      : "Choose an answer to lock it in."}
+              </p>
+              <ForfeitControl onForfeit={m.forfeit} disabled={m.submitting}
+                className="shrink-0 pt-0.5" />
+            </div>
           </div>
+      )}
+
+      {/* THE FORFEIT, on a round the module owns.
+          A Meta Reflex block hides the HUD row (the module renders its own
+          submission chrome), and with it the control would go — leaving a
+          player mid-block with no way to say they are done and only the
+          45-second absence path to reach it by. So the control gets its own
+          slim row for exactly those rounds: same component, same command, and
+          it appears only where the row that normally carries it does not. */}
+      {moduleOwnsSubmission && (
+        <div className="flex justify-end px-1 lg:shrink-0">
+          <ForfeitControl onForfeit={m.forfeit} disabled={m.submitting} />
+        </div>
       )}
 
       {/* THE BOTTOM REGION — progression, and only progression.
@@ -720,7 +801,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
           beat, through a block settlement and through a level-2 choice — which
           is what makes it the arena's floor rather than another thing that
           appears and disappears down here. */}
-      {timeline && <RoundTimeline timeline={timeline} />}
+      {timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}
     </div>
   );
 }

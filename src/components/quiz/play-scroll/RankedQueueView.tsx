@@ -61,9 +61,11 @@ import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import PlayModePlate from "./PlayModePlate";
 import { PLAY_INK as INK } from "./ink";
 
+interface Beat { eyebrow: string; headline: string; note: string }
+
 /** The words for each beat. Held as data so the copy is checkable and so the
  *  reading order and the accessible status text are the same string. */
-const BEAT: Record<string, { eyebrow: string; headline: string; note: string }> = {
+const BEAT: Record<string, Beat> = {
   opening: {
     eyebrow: "Match entry",
     headline: "Opening the queue…",
@@ -94,6 +96,30 @@ const BEAT: Record<string, { eyebrow: string; headline: string; note: string }> 
     headline: "Entering the arena…",
     note: "Your duel is ready.",
   },
+};
+
+/**
+ * RG1 — what the beat says when the account already has a live Ranked match.
+ *
+ * This used to be a SILENT recovery: `RANKED_ACTIVE_MATCH_EXISTS` sent the
+ * player straight into whatever match the server still held, with nothing
+ * distinguishing "your duel is still running" from "you are starting a new
+ * one". That is right after a crash-reload and wrong everywhere else, and it
+ * is how a match frozen under a role the account had since changed came to
+ * look like a bug in the role.
+ *
+ * Ranked no longer resumes stale matches at all — an unexplained absence gets
+ * a 45-second reconnect window and is forfeited past it — so anything the
+ * server still offers here is a duel that is genuinely still live, with an
+ * opponent who may well be sitting in front of it. Rejoining that is a
+ * decision, and it gets a control.
+ */
+const RECONNECT_BEAT: Beat = {
+  eyebrow: "Match in progress",
+  headline: "Ranked match still in progress",
+  note: "You have a Ranked duel running. Rejoin it to carry on from where it "
+    + "left off — it keeps the role, the score and the round it was created "
+    + "with. Leaving it unattended forfeits it.",
 };
 
 /** What the ready beat says INSTEAD while the admin's bot switch is on. It
@@ -166,13 +192,24 @@ export default function RankedQueueView({
           ? BEAT.waiting
           : state === "pairing"
             ? BEAT.pairing
-            : state === "matched"
-              ? BEAT.matched
-              : BEAT.ready;
+            : state === "reconnect_required"
+              ? RECONNECT_BEAT
+              : state === "matched"
+                ? BEAT.matched
+                : BEAT.ready;
 
   // The identity the entry carries: the server's confirmation first, the
   // account's stored role only as the pre-first-poll fallback.
-  const entryRole = queue.status?.role ?? role;
+  //
+  // RG1 — and NO fallback at all while a reconnect is being offered. There is
+  // no join response for a match the player did not just create, so
+  // `queue.status` never carries that match's frozen role; falling back to the
+  // account's preference printed Top over a match created as ADC, which is
+  // exactly the claim the reported defect was made of. The record does not
+  // know this match's role, so it states none, and the arena — which reads it
+  // off the match — is one press away.
+  const entryRole = queue.status?.role
+    ?? (state === "reconnect_required" ? null : role);
   const inFlight = state === "waiting" || state === "pairing" || state === "matched";
   const idle = state === "selecting_class" || state === "recovering";
   // The switch may only be OFFERED while the account is idle. Once the server
@@ -253,6 +290,24 @@ export default function RankedQueueView({
       )}
 
       <div className="mt-1 flex flex-col items-center gap-2">
+        {/* RG1 — THE RECONNECT. The one control offered while a live match is
+            on the server, and the only way back into it: the handoff effect
+            waits for `matched`, which this is what produces. No auto-entry, no
+            timer, no "returning you in 3…" — the player presses it or they
+            don't. Not pressing it is not free, and the note above says so. */}
+        {state === "reconnect_required" && (
+          <button
+            type="button"
+            data-testid="play-ranked-reconnect"
+            onClick={() => { sfx.play("buttonPress"); queue.reconnect(); }}
+            className="play-scroll-clause flex min-h-[46px] w-full items-center justify-center gap-2 px-4 text-[13px] font-black uppercase tracking-[0.2em]"
+            data-emphasis="true"
+            style={{ color: INK.strong }}
+          >
+            <Swords className="h-4 w-4" aria-hidden="true" />
+            Reconnect
+          </button>
+        )}
         {idle && (
           <button
             type="button"

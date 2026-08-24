@@ -38,7 +38,23 @@ import type { QueueStatusView } from "@/lib/ranked-public/contracts";
 
 export type QueueState =
   | "recovering" | "selecting_class" | "joining" | "waiting" | "pairing" | "matched"
-  | "cancelling" | "unavailable" | "fatal";
+  | "cancelling" | "unavailable" | "fatal"
+  /**
+   * RG1 — the account already has a live Ranked match, and rejoining it is a
+   * DECISION the player makes, not something that happens to them.
+   *
+   * This replaces the silent `RANKED_ACTIVE_MATCH_EXISTS -> recover` path.
+   * That path was written for a crash-reload, where walking straight back in
+   * is obviously right, but it fired for any active match at all — so a
+   * player who pressed Ranked expecting a new duel was handed an old one with
+   * nothing on screen distinguishing the two, which is how a match frozen
+   * under a role they had since changed came to look like a bug in the role.
+   *
+   * It is only reachable for a match that is genuinely still reconnectable:
+   * the backend settles an expired one before it can be discovered. So this
+   * state means "your duel is still running", never "here is something old".
+   */
+  | "reconnect_required";
 
 export type RankedClass = "tank" | "mage" | "marksman";
 
@@ -57,6 +73,9 @@ const UNAVAILABLE_CODES = new Set([
 const JOIN_BLOCKED_STATES = new Set<QueueState>([
   "joining", "waiting", "pairing", "matched", "cancelling", "recovering",
   "unavailable", "fatal",
+  // A live match is on the server. Joining again can only be refused, and
+  // pressing past it must not be a way to abandon a duel in progress.
+  "reconnect_required",
 ]);
 
 // Player-facing copy per gate code. Unknown codes fall back to the backend
@@ -125,6 +144,19 @@ export interface QueueController {
    * cancel can only be refused.
    */
   canCancel: boolean;
+  /**
+   * RG1 — the live match the account already has, when a join found one.
+   *
+   * Non-null only in `reconnect_required`. The player is TOLD, and rejoining
+   * is their press: see `reconnect`.
+   */
+  reconnectMatch: { matchId: string; isBotMatch: boolean } | null;
+  /**
+   * Rejoin the match named by `reconnectMatch`. Moves to `matched`, which is
+   * the same handoff beat an ordinary pairing uses — one way into the arena,
+   * not two.
+   */
+  reconnect: () => void;
 }
 
 export function useRankedQueue(): QueueController {
@@ -134,6 +166,9 @@ export function useRankedQueue(): QueueController {
   const [selectedClass, setSelectedClass] = useState<RankedClass>("tank");
   const [unavailableReason, setUnavailableReason] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** See `reconnectMatch`. Set only by a join that found a live match. */
+  const [reconnectMatch, setReconnectMatch] =
+    useState<{ matchId: string; isBotMatch: boolean } | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const timerRef = useRef<number | undefined>(undefined);
@@ -292,6 +327,49 @@ export function useRankedQueue(): QueueController {
   }, [poll]);
 
   /**
+   * RG1 — a join met a live match. Surface it; do not enter it.
+   *
+   * The old behaviour was `enterPairing`, which walks straight into whatever
+   * `getActiveMatch` returns. That is right after a crash-reload and wrong for
+   * everything else, and nothing distinguished the two — so this asks the
+   * server what the match IS and hands the answer to the player instead.
+   *
+   * The backend settles an expired match before it can be discovered, so a
+   * match found here is genuinely still inside its reconnect window. If none
+   * comes back the match ended between the refusal and this call (its window
+   * ran out, or the opponent finished it), and the ordinary recovery poll
+   * returns the player to the menu where they can simply queue again.
+   */
+  const offerReconnect = useCallback(async (signal?: AbortSignal) => {
+    const found = await api.getActiveMatch(signal).catch(() => null);
+    if (!found || !found.withinReconnectWindow) {
+      setReconnectMatch(null);
+      failuresRef.current = 0;
+      clearTimer();
+      timerRef.current = window.setTimeout(() => void poll(), PAIRING_POLL_MS);
+      return false;
+    }
+    setReconnectMatch({ matchId: found.matchId, isBotMatch: found.isBotMatch });
+    setMatchId(found.matchId);
+    setState("reconnect_required");
+    stateRef.current = "reconnect_required";
+    setError(null);
+    clearTimer();
+    return true;
+  }, [poll]);
+
+  /**
+   * The player's press. `matched` is deliberately the same beat an ordinary
+   * pairing lands on, so there is ONE way into the arena rather than a second
+   * reconnect-specific handoff to keep in sync.
+   */
+  const reconnect = useCallback(() => {
+    if (stateRef.current !== "reconnect_required" || !reconnectMatch) return;
+    setState("matched");
+    stateRef.current = "matched";
+  }, [reconnectMatch]);
+
+  /**
    * R3: join as an EXPLICIT class in one call.
    *
    * The class travels as an argument rather than through `selectedClass` state
@@ -308,6 +386,7 @@ export function useRankedQueue(): QueueController {
     setSelectedClass(classId);
     setState("joining");
     setError(null);
+    setReconnectMatch(null);
     (async () => {
       const controller = new AbortController();
       abortRef.current = controller;
@@ -321,7 +400,9 @@ export function useRankedQueue(): QueueController {
         }
       } catch (e) {
         if (e instanceof RankedApiError && e.code === "RANKED_ACTIVE_MATCH_EXISTS") {
-          await enterPairing(controller.signal);
+          // NOT a new match, and NOT a silent handoff. The account already has
+          // a live duel; say so and let the player press Reconnect.
+          await offerReconnect(controller.signal);
           return;
         }
         handleError(e, "action");
@@ -336,6 +417,7 @@ export function useRankedQueue(): QueueController {
     stateRef.current = "joining";
     setState("joining");
     setError(null);
+    setReconnectMatch(null);
     (async () => {
       const controller = new AbortController();
       abortRef.current = controller;
@@ -349,7 +431,9 @@ export function useRankedQueue(): QueueController {
         }
       } catch (e) {
         if (e instanceof RankedApiError && e.code === "RANKED_ACTIVE_MATCH_EXISTS") {
-          await enterPairing(controller.signal);
+          // NOT a new match, and NOT a silent handoff. The account already has
+          // a live duel; say so and let the player press Reconnect.
+          await offerReconnect(controller.signal);
           return;
         }
         handleError(e, "action");
@@ -396,5 +480,6 @@ export function useRankedQueue(): QueueController {
     state, status, matchId, selectedClass, unavailableReason, error,
     setSelectedClass, join, joinAs, joinWithoutClass, cancel,
     canCancel: state === "waiting",
+    reconnectMatch, reconnect,
   };
 }
