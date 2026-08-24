@@ -3052,6 +3052,15 @@ export type Database = {
       }
     }
     Views: {
+      display_name_conflicts: {
+        Row: {
+          holders: number | null
+          normalized: string | null
+          spellings: string[] | null
+          user_ids: string[] | null
+        }
+        Relationships: []
+      }
       public_profiles: {
         Row: {
           avatar_url: string | null
@@ -3188,6 +3197,12 @@ export type Database = {
         }
         Returns: Json
       }
+      block_profile: { Args: { _target_profile_id: string }; Returns: Json }
+      bot_display_name_problem: {
+        Args: { _name: string; _self_profile_id?: string }
+        Returns: string
+      }
+      clean_display_name: { Args: { _name: string }; Returns: string }
       create_multiplayer_game: {
         Args: {
           _config?: Json
@@ -3203,7 +3218,9 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      display_name_problem: { Args: { _name: string }; Returns: string }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      enforce_display_name_uniqueness: { Args: never; Returns: string }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -3211,6 +3228,21 @@ export type Database = {
       finish_multiplayer_game: {
         Args: { _game_id: string; _result: Json }
         Returns: undefined
+      }
+      get_blocked_profiles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          blocked_at: string
+          created_at: string
+          display_name: string
+          id: string
+          is_anonymous: boolean
+          is_bot: boolean
+          is_disabled: boolean
+          is_pro: boolean
+          profile_frame: string
+        }[]
       }
       get_league_profiles: {
         Args: { _profile_ids: string[] }
@@ -3269,6 +3301,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_relationship_state: {
+        Args: { _target_profile_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3282,11 +3318,17 @@ export type Database = {
       }
       is_blocked_between: { Args: { _a: string; _b: string }; Returns: boolean }
       is_bot_available: { Args: { _profile_id: string }; Returns: boolean }
+      is_claimed_display_name: {
+        Args: { _is_anonymous: boolean; _name: string }
+        Returns: boolean
+      }
+      is_display_name_available: { Args: { _name: string }; Returns: Json }
       is_friendship_party: { Args: { _profile_id: string }; Returns: boolean }
       is_game_player: { Args: { _game_id: string }; Returns: boolean }
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
       is_master_admin: { Args: { _user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
+      is_reserved_display_name: { Args: { _name: string }; Returns: boolean }
       join_multiplayer_game: {
         Args: {
           _game_id: string
@@ -3312,6 +3354,8 @@ export type Database = {
         }
         Returns: number
       }
+      normalize_display_name: { Args: { _name: string }; Returns: string }
+      pair_lock_key: { Args: { _a: string; _b: string }; Returns: number }
       purchase_powerup: {
         Args: {
           _diamond_cost: number
@@ -3418,6 +3462,27 @@ export type Database = {
         }
         Returns: undefined
       }
+      search_league_profiles: {
+        Args: { _limit?: number; _query: string }
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          friendship_id: string
+          id: string
+          is_anonymous: boolean
+          is_bot: boolean
+          is_disabled: boolean
+          is_pro: boolean
+          match_rank: number
+          profile_frame: string
+          relationship: string
+        }[]
+      }
+      set_display_name: {
+        Args: { _name: string; _only_if_unset?: boolean }
+        Returns: Json
+      }
       set_round_winner: {
         Args: { _round_id: string; _winner_team_id: string }
         Returns: undefined
@@ -3432,6 +3497,8 @@ export type Database = {
         }
         Returns: Json
       }
+      system_notification_actor: { Args: never; Returns: string }
+      unblock_profile: { Args: { _target_profile_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "master_admin" | "demo_access"
