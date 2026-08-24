@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchLeagueProfiles } from "@/lib/league-profiles";
-import { subscribeFriendsChanged } from "@/lib/community/friends-refresh";
+import {
+  notifyFriendsChanged,
+  subscribeFriendsChanged,
+} from "@/lib/community/friends-refresh";
 import { fetchRelationshipState } from "@/lib/community/discovery";
 import type { Relationship } from "@/lib/community/relationship";
 import {
@@ -52,9 +55,15 @@ export function useFriends() {
       });
   }, [user]);
 
+  // True until the FIRST read completes. Every later read is silent: this hook
+  // is now driven by realtime and by a return-to-tab signal, and flipping
+  // `loading` on a background refresh would flash "Loading..." over a list the
+  // user is reading, or blank HomeFriendsSection mid-scroll.
+  const hasLoadedRef = useRef(false);
+
   const refresh = useCallback(async () => {
     if (!myProfileId) return;
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
 
     // Get blocked users to filter them out
     const { data: blockedRows } = await supabase
@@ -72,6 +81,7 @@ export function useFriends() {
       setFriends([]);
       setPendingRequests([]);
       setSentRequests([]);
+      hasLoadedRef.current = true;
       setLoading(false);
       return;
     }
@@ -133,6 +143,7 @@ export function useFriends() {
         (r) => r.status === "pending" &&r.requester_id === myProfileId
       )
     );
+    hasLoadedRef.current = true;
     setLoading(false);
   }, [myProfileId]);
 
@@ -140,10 +151,19 @@ export function useFriends() {
     refresh();
   }, [refresh]);
 
-  // An admin action can create a friendship from a surface far away from this
-  // hook. Subscribe to the explicit in-page signal so the drawer updates
-  // immediately rather than waiting on the friendships realtime subscription.
-  useEffect(() => subscribeFriendsChanged(() => void refresh()), [refresh]);
+  /**
+   * The ONE invalidation path. Every source of "your friends may have changed"
+   * arrives here: this hook's own mutations, another component's mutation, an
+   * admin action, a realtime frame for a friendship or block row, and the
+   * return-to-tab net. They all call `notifyFriendsChanged()` and this listener
+   * re-reads from the server — no source ever hands this hook a row.
+   *
+   * COM1-2B. `useFriends` is a per-instance hook, so FloatingFriendsButton,
+   * HomeFriendsSection, InvitePlayView and MultiplayerLobby each hold their own
+   * copy of this state. Before this, only the instance that issued a mutation
+   * refreshed; the rest showed the pre-mutation world until a page reload.
+   */
+  useEffect(() => subscribeFriendsChanged(refresh), [refresh]);
 
   /**
    * COM1-1 / P0-2. Every mutation below now REPORTS. They used to be
@@ -152,8 +172,13 @@ export function useFriends() {
    * limit, an outstanding-request cap — was indistinguishable from one that
    * landed, and the UI showed neither a change nor a reason.
    *
-   * `refresh()` still runs on every path, success or failure: a refusal often
-   * means the caller's view is the thing that was wrong.
+   * COM1-2B. Each one now signals `notifyFriendsChanged()` rather than
+   * refreshing only itself, so EVERY mounted social view re-reads — including
+   * the other party's, once their realtime frame lands. The signal is awaited,
+   * so the caller's own list is already correct when the promise resolves.
+   *
+   * It fires on every path, success or failure: a refusal often means the
+   * caller's view is the thing that was wrong.
    */
   const sendRequest = async (targetProfileId: string): Promise<SocialResult> => {
     if (!myProfileId) return { ok: false, code: "unavailable", error: "Sign in to add friends." };
@@ -164,14 +189,14 @@ export function useFriends() {
       }),
       SEND_REQUEST_MESSAGES,
     );
-    await refresh();
+    await notifyFriendsChanged();
     return result;
   };
 
   const acceptRequest = async (friendshipId: string): Promise<SocialResult> => {
     const result = await attempt(() =>
       supabase.from("friendships").update({ status: "accepted" }).eq("id", friendshipId));
-    await refresh();
+    await notifyFriendsChanged();
     return result;
   };
 
@@ -184,7 +209,7 @@ export function useFriends() {
   const deleteFriendship = async (friendshipId: string): Promise<SocialResult> => {
     const result = await attempt(() =>
       supabase.from("friendships").delete().eq("id", friendshipId));
-    await refresh();
+    await notifyFriendsChanged();
     return result;
   };
 
@@ -246,6 +271,13 @@ export function useFriendStatus(targetProfileId: string | undefined) {
   useEffect(() => {
     check();
   }, [check]);
+
+  // COM1-2B. `/user/:profileId` is a long-lived page: the other party can
+  // accept, decline or unfriend while it is open, and blocking from the menu on
+  // this very page used to leave every OTHER social view stale. One signal, one
+  // canonical re-read of `get_relationship_state` — the button text is never
+  // derived from what we think we just did.
+  useEffect(() => subscribeFriendsChanged(check), [check]);
 
   return { status, friendshipId, loading, refresh: check };
 }

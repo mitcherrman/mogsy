@@ -390,7 +390,28 @@ export default function MogzyIdentityMenu() {
           });
         }
       )
-      .subscribe();
+      /**
+       * COM1-2B — close the reconnect gap.
+       *
+       * A websocket that drops (tab suspended, network flap, server restart)
+       * re-subscribes silently, and Realtime does NOT replay what was missed
+       * while it was down. Anything that arrived in that window stayed invisible
+       * until a full page reload — which is exactly the class of "the bell is
+       * stale" the phase is closing. Re-reading on every SUBSCRIBED transition
+       * (the first one included, harmlessly) covers it.
+       *
+       * This cannot duplicate a row: `loadNotifications` REPLACES the list from
+       * a server read, and the streaming handler above keys on `notif.id`. A
+       * notification already read stays read — `readIds` comes from
+       * user_notification_reads in the same load, not from local memory.
+       */
+      .subscribe((subscriptionStatus) => {
+        if (subscriptionStatus !== "SUBSCRIBED") return;
+        void loadNotifications().catch(() => {
+          // A failed catch-up is not worth destroying a rendered inbox over;
+          // the next reconnect or the next open tries again.
+        });
+      });
 
     return () => {
       cancelled = true;

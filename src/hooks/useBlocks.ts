@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { blockProfile, unblockProfile } from "@/lib/community/discovery";
 import {
+  notifyFriendsChanged,
+  subscribeFriendsChanged,
+} from "@/lib/community/friends-refresh";
+import {
   attempt,
   failure,
   REPORT_MESSAGES,
@@ -42,6 +46,12 @@ export function useBlocks() {
     refresh();
   }, [refresh]);
 
+  // COM1-2B. `useBlocks` is instantiated separately inside every
+  // FriendActionMenu, so a block performed from one menu left every other
+  // instance — and the drawer's Blocked tab — holding a pre-block set. Same
+  // bus, same canonical re-read.
+  useEffect(() => subscribeFriendsChanged(refresh), [refresh]);
+
   /**
    * COM1-2. Blocking is now ONE call to `public.block_profile`, which records
    * the block and removes every friendship row with that profile inside a
@@ -62,7 +72,11 @@ export function useBlocks() {
    */
   const blockUser = async (targetProfileId: string): Promise<SocialResult> => {
     const result = await blockProfile(targetProfileId);
-    await refresh();
+    // COM1-2B. `block_profile` deletes the friendship rows too, so a block
+    // invalidates FRIENDS as well as blocks. Signalling the shared bus is what
+    // makes the blocked user leave the Friends list of every mounted view at
+    // once, instead of only the one that happened to own the menu.
+    await notifyFriendsChanged();
     return result;
   };
 
@@ -72,7 +86,7 @@ export function useBlocks() {
    */
   const unblockUser = async (targetProfileId: string): Promise<SocialResult> => {
     const result = await unblockProfile(targetProfileId);
-    await refresh();
+    await notifyFriendsChanged();
     return result;
   };
 

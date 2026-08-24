@@ -3,12 +3,12 @@ import { Suspense, useEffect, useLayoutEffect } from "react";
 import GlobalHud from "./hud/GlobalHud";
 import ThemeOverlay from "./ThemeOverlay";
 import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
-import FloatingScrollButton from "./FloatingScrollButton";
 import FloatingFriendsButton from "./FloatingFriendsButton";
 import HextechAmbience from "./HextechAmbience";
 import TutorialTipPopup from "./TutorialTipPopup";
 import Footer from "./Footer";
 import { useTrackActivity } from "@/hooks/useTrackActivity";
+import { useSocialSync } from "@/hooks/useSocialSync";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useSitewideTheme } from "@/hooks/useSitewideTheme";
@@ -19,6 +19,14 @@ import { StartupSurface } from "@/components/startup/StartupShells";
 
 export default function Layout() {
   useTrackActivity();
+  // COM1-2B. One Supabase Realtime subscription for the signed-in account's
+  // friendships and blocks, mounted here because Layout is the only shell
+  // component that is always present — the Community drawer is suppressed on
+  // Stat Check surfaces and the HUD bell renders only for a full account, so
+  // neither can own it. It holds no state: every frame becomes one
+  // `notifyFriendsChanged()` signal and every social view re-reads from the
+  // server. No-op for guests.
+  useSocialSync();
   const { loading } = useAuth();
   const { loading: settingsLoading } = useAppSettings();
   const { theme, themeId, visualThemeId, isEnabled, isCycleFading } = useSitewideTheme();
@@ -169,7 +177,14 @@ export default function Layout() {
       <Footer />
       {showFriendsDrawer && <FloatingFriendsButton />}
       {!isLolSection && <FloatingThemeSwitcher />}
-      <FloatingScrollButton />
+      {/* COM1-2B: <FloatingScrollButton /> was here. It was a legacy Mogzy
+          page-scroll control pinned to `fixed bottom-6 left-6 z-[60]` — the
+          Community trigger's exact coordinates, one stacking layer above it —
+          so on any desktop page taller than the viewport + 200px it covered the
+          Community button. It has been deleted rather than relocated: it only
+          ever called window.scrollTo(0) / window.scrollTo(bottom), which is
+          Home/End and the browser's own scrollbar. Ordinary page scrolling is
+          untouched — nothing about it was custom. */}
       <TutorialTipPopup />
     </div>
   );

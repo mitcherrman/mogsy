@@ -17,7 +17,6 @@ vi.mock("./hud/GlobalHud", () => ({ default: () => <nav data-testid="navbar" /> 
 vi.mock("./Footer", () => ({ default: () => null }));
 vi.mock("./ThemeOverlay", () => ({ default: () => null }));
 vi.mock("./FloatingThemeSwitcher", () => ({ default: () => null }));
-vi.mock("./FloatingScrollButton", () => ({ default: () => null }));
 vi.mock("./FloatingFriendsButton", () => ({ default: () => null }));
 vi.mock("./HextechAmbience", () => ({ default: () => null }));
 vi.mock("./TutorialTipPopup", () => ({ default: () => null }));

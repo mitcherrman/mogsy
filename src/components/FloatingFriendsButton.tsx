@@ -28,8 +28,22 @@
  * inside `{!LEAGUE_ONLY_MODE && …}` — which is false in production. Between
  * them, a phone had NO way to open this drawer unless a friend-request
  * notification happened to be waiting. The trigger is now visible at every
- * width; on mobile the bottom-left slot is otherwise empty, because
- * `FloatingScrollButton` shares the coordinates but is itself `hidden sm:flex`.
+ * width.
+ *
+ * THE BOTTOM-LEFT SLOT (COM1-2B)
+ * It used to be shared. `FloatingScrollButton` — a legacy Mogzy page-scroll
+ * control — was mounted unconditionally by Layout at the SAME `fixed bottom-6
+ * left-6`, at `z-[60]` against this button's `z-40`, and appeared on any page
+ * taller than the viewport + 200px. On desktop it covered this trigger
+ * outright. It was obsolete (the browser already scrolls) and has been deleted,
+ * not moved: this button now owns the slot at every width.
+ *
+ * LIVE STATE (COM1-2B)
+ * Nothing in this file holds social state of its own. `useFriends`,
+ * `useBlocks`, the Blocked tab and Find Players are all subscribed to the one
+ * `notifyFriendsChanged()` signal, which is driven by Supabase Realtime on
+ * `friendships` / `user_blocks` / `user_notifications`. Every arrival is a
+ * re-read, never a payload.
  *
  * Inviting a known friend to Stat Check has an entry point on the Friends tab,
  * which passes `canInviteToStatCheck` to FriendActionMenu. Only that tab may —
@@ -37,7 +51,7 @@
  * backend re-derives the sender from the JWT and re-checks friendship and
  * blocks anyway, so the prop is an affordance, not the security boundary.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Users, Clock, X, Ban, UserRoundSearch, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -53,8 +67,19 @@ import { useBlocks } from "@/hooks/useBlocks";
 import { useAdminRoles } from "@/hooks/useAdminRoles";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchBlockedProfiles, type BlockedProfile } from "@/lib/community/discovery";
+import {
+  notifyFriendsChanged,
+  subscribeFriendsChanged,
+} from "@/lib/community/friends-refresh";
+import { communityBadge } from "@/lib/community/community-badge";
 import type { SocialResult } from "@/lib/community/social-result";
 import { toast } from "sonner";
+
+/**
+ * How often the open drawer re-reads as a fallback. Long on purpose: it is a
+ * net under realtime, not the mechanism.
+ */
+const DRAWER_REFRESH_MS = 20_000;
 
 function BlockedUsersList({
   version,
@@ -69,6 +94,11 @@ function BlockedUsersList({
   setOpen: (v: boolean) => void;
 }) {
   const [profiles, setProfiles] = useState<BlockedProfile[]>([]);
+  // COM1-2B. Bumped by the shared social signal as well as by the parent, so a
+  // block or unblock performed anywhere — including from the other tab of this
+  // same drawer, or from /user/:profileId — lands here without a reload.
+  const [signal, setSignal] = useState(0);
+  useEffect(() => subscribeFriendsChanged(() => setSignal((n) => n + 1)), []);
 
   useEffect(() => {
     // COM1-2. This list rendered empty from the day it was written. It read
@@ -84,7 +114,7 @@ function BlockedUsersList({
     return () => {
       cancelled = true;
     };
-  }, [version]);
+  }, [version, signal]);
 
   if (profiles.length === 0) {
     return (
@@ -152,6 +182,8 @@ export default function FloatingFriendsButton() {
   // trusting a list it fetched before the mutation.
   const [blockVersion, setBlockVersion] = useState(0);
 
+  const badge = useMemo(() => communityBadge(pendingRequests.length), [pendingRequests.length]);
+
   /**
    * COM1-1 / P0-2. Accept / decline / cancel / remove report their outcome.
    * Only FAILURE is announced: a successful accept or decline is already
@@ -162,14 +194,17 @@ export default function FloatingFriendsButton() {
     if (!result.ok && result.error) toast.error(result.error);
   };
 
+  // `unblockUser` signals `notifyFriendsChanged()` itself, which every social
+  // view — this drawer's friends list and the Blocked tab included — is
+  // subscribed to. The version bump stays as the explicit local nudge for the
+  // Blocked tab, so the list is correct even if the bus is ever stubbed out.
   const handleUnblock = useCallback(
     async (targetProfileId: string): Promise<SocialResult> => {
       const result = await unblockUser(targetProfileId);
       setBlockVersion((v) => v + 1);
-      await refreshFriends();
       return result;
     },
-    [unblockUser, refreshFriends],
+    [unblockUser],
   );
 
   // Listen for the HUD's Community entry and for the friend_request
@@ -179,6 +214,25 @@ export default function FloatingFriendsButton() {
     window.addEventListener("open-friends-panel", handler);
     return () => window.removeEventListener("open-friends-panel", handler);
   }, []);
+
+  /**
+   * COM1-2B — the drawer's own safety net, and the only place this phase
+   * polls.
+   *
+   * Realtime is the primary path (lib/community/social-realtime.ts) and the
+   * return-to-tab signal covers a sleeping tab. Neither covers the one case
+   * this net exists for: two windows visible side by side on the same machine
+   * with the socket wedged, which is exactly the two-browser acceptance test.
+   * It is deliberately narrow — it runs ONLY while the drawer is on screen, it
+   * re-reads through the same canonical signal as everything else, and it stops
+   * the moment the drawer closes.
+   */
+  useEffect(() => {
+    if (!open) return;
+    void notifyFriendsChanged();
+    const timer = window.setInterval(() => void notifyFriendsChanged(), DRAWER_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [open]);
 
   if (!user) return null;
 
@@ -194,18 +248,30 @@ export default function FloatingFriendsButton() {
           <motion.button
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            aria-label="Community"
+            /* The count lives in the accessible NAME, not in a second element:
+               the badge below is aria-hidden, so a screen reader hears
+               "Community, 3 pending friend requests" once rather than twice. */
+            aria-label={badge ? `Community, ${badge.label}` : "Community"}
             data-testid="friends-drawer-trigger"
             /* COM1-2 / P1-2: `hidden sm:flex` is gone. This was the only
                trigger in League mode, so a phone could not open the drawer at
-               all. The bottom-left slot is free on mobile — FloatingScrollButton
-               shares the coordinates but is itself `hidden sm:flex`. */
+               all. COM1-2B removed FloatingScrollButton, which used to sit at
+               these exact coordinates with a HIGHER z-index and cover this
+               button on every scrollable desktop page — the slot is now this
+               button's alone at every width. */
             className="fixed bottom-6 left-6 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
           >
             <Users className="h-4 w-4" />
-            {pendingRequests.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
-                {pendingRequests.length}
+            {/* Purely decorative and absolutely positioned: it is out of flow,
+                so growing from "1" to "99+" cannot move or resize the trigger.
+                Same grammar as the HUD bell's badge. */}
+            {badge && (
+              <span
+                aria-hidden="true"
+                data-testid="community-badge"
+                className="pointer-events-none absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[9px] font-bold leading-none bg-destructive text-destructive-foreground"
+              >
+                {badge.display}
               </span>
             )}
           </motion.button>

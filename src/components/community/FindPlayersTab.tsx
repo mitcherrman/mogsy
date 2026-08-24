@@ -36,6 +36,7 @@ import {
   type PlayerSearchResult,
 } from "@/lib/community/discovery";
 import { presentRelationship } from "@/lib/community/relationship";
+import { subscribeFriendsChanged } from "@/lib/community/friends-refresh";
 import type { SocialResult } from "@/lib/community/social-result";
 
 interface Props {
@@ -92,6 +93,13 @@ export default function FindPlayersTab({
     const t = setTimeout(() => void run(query), debounceMs);
     return () => clearTimeout(t);
   }, [query, debounceMs, run]);
+
+  // COM1-2B. Each row carries a server-derived `relationship`, which the other
+  // party can change while these results sit on screen — accepting the request
+  // you just sent, or blocking you. The shared signal re-runs the SAME search
+  // rather than mutating a row locally, so the button on every row keeps coming
+  // from the database.
+  useEffect(() => subscribeFriendsChanged(() => run(query)), [run, query]);
 
   /**
    * Every action follows the same shape: run the mutation, report only what the
