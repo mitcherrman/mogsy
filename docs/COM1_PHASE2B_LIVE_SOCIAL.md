@@ -466,9 +466,9 @@ src/components/FloatingScrollButton.tsx
 
 ## 10. Commit
 
-`97908faf` — `feat(com1): make social state live, badge the Community button, delete the scroll control (COM1-2B)`
+`cd56d4e6` — `feat(com1): make social state live, badge the Community button, delete the scroll control (COM1-2B)`
 
-(The doc was written before the commit; this line is the only amend.)
+Everything in §9 is in that one commit. A commit cannot contain its own hash, so the line you are reading was added by a one-line follow-up (`docs(com1): record the COM1-2B commit sha`) which changes nothing else. Branch tip is that follow-up; the implementation to review is `cd56d4e6`.
 
 ## 11. Branch / worktree
 
