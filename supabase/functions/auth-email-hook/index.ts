@@ -15,7 +15,7 @@ const corsHeaders = {
 }
 
 // Configuration
-const SITE_NAME = "Match \u0026 Rank"
+const SITE_NAME = "mogzy"
 const SENDER_DOMAIN = "notify.mogzy.lol"
 const ROOT_DOMAIN = "mogzy.lol"
 const FROM_DOMAIN = "notify.mogzy.lol"
