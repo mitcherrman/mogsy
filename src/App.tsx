@@ -174,7 +174,6 @@ const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
 // no auth/API/persistence, not linked from any navigation.
 const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
 const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
-const Rg3FeedbackPage = lazy(() => import("./pages/dev/rg3-feedback/Rg3FeedbackPage"));
 const RankedShellProbe = lazy(() => import("./pages/dev/ranked-shell-probe/RankedShellProbe"));
 const Graph1RacePage = lazy(() => import("./pages/dev/graph1/Graph1RacePage"));
 // Dev-only League mechanics XP calculator (MECH1) — thin client over the
@@ -540,7 +539,6 @@ const App = () => (
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
                   <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
-                  <Route path="/dev/rg3-feedback" element={<Suspense fallback={<RouteFallback />}><Rg3FeedbackPage /></Suspense>} />
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />
                   <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />
                   <Route path="/dev/play-scroll" element={<Suspense fallback={<RouteFallback />}><PlayScrollPreviewPage /></Suspense>} />
