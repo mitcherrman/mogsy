@@ -59,6 +59,7 @@ import {
   type RankedState,
 } from "@/lib/quiz/featured-mock";
 import { useAuth } from "@/hooks/useAuth";
+import { useDailyChallengeStatus } from "@/lib/daily-challenge/useDailyChallengeStatus";
 import { supabase } from "@/integrations/supabase/client";
 import {
   incrementAnonymousActions,
@@ -612,6 +613,9 @@ export default function Quiz() {
   const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeState>(() =>
     getDailyChallenge(),
   );
+  // DC2's own answer for today — the authority for the match record's Daily
+  // clause. One read, no polling; unknown renders the ordinary clause.
+  const dailyStatus = useDailyChallengeStatus();
   const [recentXpGain, setRecentXpGain] = useState<number | null>(() => getRecentXpGain());
   // Gate / nudge state
   const [gateConfig, setGateConfig] = useState<QuizOnboardingConfig | null>(null);
@@ -1392,7 +1396,13 @@ export default function Quiz() {
                */
               onPlayDailyChallenge={() => navigate("/quiz/daily-challenge")}
               playModes={playModeVisibility(appSettings.policy)}
-              dailyChallenge={dailyChallenge}
+              /*
+               * ARENA1 Step 5 §19 — the record's Daily clause reads DC2, the
+               * service the button beside it opens. `dailyChallenge` below is
+               * the LEGACY payload and still drives the legacy in-page flow;
+               * it is no longer what the new entry believes about today.
+               */
+              dailyChallenge={dailyStatus}
               playScrollOpenOnMount={openPlayOnMount}
               sets={sets}
               setsLoading={setsLoading}

@@ -15,7 +15,9 @@
 // ---------------------------------------------------------------------------
 
 import type { ReactNode } from "react";
-import type { SurfaceReveal } from "@/lib/question-surface/contract";
+import type { SurfaceReveal, SurfaceSettings } from "@/lib/question-surface/contract";
+import type { ResolvedFeedback } from "@/lib/question-feedback/model";
+import type { QuizFeedbackVerdict } from "@/components/quiz/QuizAnswerFeedback";
 import type {
   PublicRoundView, SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
@@ -73,6 +75,23 @@ export interface ArenaHeaderView {
   presenceNote: string | null;
   timer: TimerView | null;
   timerLabel: string;
+  /**
+   * ARENA1 Step 5 — OPTIONAL replacements for the clock's two prose lines.
+   * Absent = Ranked's own wording, which is what every existing caller gets.
+   *
+   * `TimerDisplay` already took these (DC1 added them); the view model simply
+   * did not carry them, so a mode reaching the clock THROUGH the arena could
+   * not say anything but "of 0:06 shared round" and "waiting for the round to
+   * resolve". Both are true of a duel and false of a solo run, and a mode
+   * built on there being no opponent must not be made to claim one by the
+   * frame it renders in.
+   */
+  timerNotes?: {
+    /** Replaces "of M:SS shared round". Receives the formatted duration. */
+    duration?: (duration: string) => string;
+    /** Replaces the expired line. */
+    expired?: string;
+  } | null;
 }
 
 /**
@@ -121,6 +140,41 @@ export interface ArenaSurfaceView {
   inputOpen: boolean;
   /** There is something for the viewport to draw. */
   hasContent: boolean;
+  /**
+   * RG3 — the resolved-feedback model for a mode whose card can be JUDGED
+   * WITHOUT BEING DISCLOSED, or absent (Ranked, the Tutorial).
+   *
+   * This is the last link of the chain Step 2B started: per-option elimination
+   * reached the canonical `AnswerGrid` so a retry-until-correct mode would not
+   * need a second answer renderer, but nothing could reach it THROUGH the
+   * arena, and the Daily wrote its own grid instead.
+   *
+   * Step 5 opened this seam as a bare `eliminatedOptionIds` relay; RG3 landed
+   * on `main` first with the better answer, and this follows it. The struck
+   * set, the verdict, the score lock and the disclosure gate are four facts
+   * about one card and travel together, so no surface can be told the card is
+   * open by one prop and closed by another.
+   *
+   * It discloses nothing on its own: `disclosureAllowed` is the backend's
+   * `resolved`, never its `score_locked`.
+   */
+  feedback?: ResolvedFeedback | null;
+  /**
+   * ARENA1 Step 5 — the MODE'S WORD for the resolution, or absent (Ranked,
+   * the Tutorial). Presentation copy; it discloses nothing.
+   */
+  surfaceVerdict?: QuizFeedbackVerdict | null;
+  /**
+   * ARENA1 Step 5 — per-field overrides of the surface variant's defaults, or
+   * absent (Ranked, the Tutorial: both take the variant as it comes).
+   *
+   * `InteractiveScenarioSurface` has always accepted these; the arena had no
+   * way to pass them. The Daily needs exactly one — `showExplanation` — because
+   * the explanation IS the thing its retry loop exists to deliver, and the
+   * competitive variant suppresses it. Handing the surface its own documented
+   * override is the alternative to a second question renderer that shows one.
+   */
+  surfaceSettings?: Partial<SurfaceSettings>;
 }
 
 /** The level-progression choice, overlaid on the question. */
@@ -195,7 +249,17 @@ export interface ArenaViewModel {
 export interface ArenaTerminalView {
   result: "victory" | "defeat" | "draw";
   player: CombatantView;
-  opponent: CombatantView;
+  /**
+   * The other duelist, or ABSENT for a mode that has none (ARENA1 Step 5).
+   *
+   * Ranked and the Tutorial both fill it and their frame is unchanged. A solo
+   * mode passing a placeholder here would put a second combatant column on the
+   * end screen of a game with one player, which is the fake opponent the whole
+   * mode is built to avoid — so the frame renders one column instead.
+   */
+  opponent?: CombatantView | null;
+  /** Overrides the frame's own "Match Complete" eyebrow. */
+  eyebrow?: string;
   /** Overrides the frame's own "Victory / Defeat / Draw" headline. */
   heading?: string;
   subheading?: string;

@@ -1,10 +1,20 @@
 /**
- * THE DAILY CHALLENGE — the right column (DC1 Phase 5).
+ * TODAY'S CHALLENGE — the Daily's right flank (DC1 Phase 5, ARENA1 Step 5).
  *
- * This is what Ranked puts an opponent in, and the whole point of the mode is
- * that there isn't one. So the column holds the DAY itself: its date, its
- * theme, how much of it is left, and how much of it the player has actually
- * taken. It is a thing to get through, not a thing that answers back.
+ * The one piece of presentation this mode legitimately owns.
+ *
+ * Ranked puts a duelist in this column, and the whole premise of the Daily is
+ * that there isn't one. Step 3 built `ArenaRail.panel` for exactly this case —
+ * a flank a mode occupies with its own content — and this is its first caller.
+ * The outer geometry, the column's share of the grid and its stretched height
+ * all belong to `CanonicalArena`; what is inside belongs here.
+ *
+ * The frame deliberately MATCHES the duelist column opposite it: same card
+ * chrome, same border weight, same inset ring, same padding — so the arena
+ * reads as three columns rather than as a real panel beside an improvised one.
+ * Its accent is the arena's brass rather than the opponent column's red,
+ * because red means "the thing trying to beat you" and this is a day, not a
+ * player.
  *
  * WHAT IS DELIBERATELY ABSENT
  * ───────────────────────────
@@ -85,7 +95,11 @@ export function DailyChallengePanel({ challenge }: { challenge: DcChallengeView 
       aria-label="Today's Challenge"
       data-testid="dc-challenge-panel"
       data-complete={complete ? "true" : "false"}
-      className="ranked-panel flex h-full flex-col gap-3 p-3 sm:p-4"
+      /* The duelist column's own frame, in brass. See the note above: three
+         columns of one kind, not two panels and a stranger. */
+      className="relative flex h-full flex-col gap-3 rounded-xl border-2
+                 border-[#b9934c]/50 bg-card p-3 ring-1 ring-inset ring-white/5
+                 shadow-[0_0_24px_-12px_rgba(185,147,76,0.45)]"
     >
       <header className="space-y-1">
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">

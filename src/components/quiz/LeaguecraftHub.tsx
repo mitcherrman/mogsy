@@ -24,7 +24,8 @@ import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissed
 import { authHref } from "@/lib/auth/auth-destination";
 
 import type { QuizHistoryResponse, QuizProgress, QuizSet } from "@/lib/quiz/api";
-import type { DailyChallengeState, RankedState } from "@/lib/quiz/featured-mock";
+import type { RankedState } from "@/lib/quiz/featured-mock";
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import type { PlayModeVisibility } from "@/lib/quiz/playModes";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import type {
@@ -271,7 +272,8 @@ export default function LeaguecraftHub({
   /** PLAY1: which entries the match-entry scroll offers (admin policy). */
   playModes: PlayModeVisibility;
   /** PLAY1: today's real Daily Challenge state, for the scroll's figure. */
-  dailyChallenge?: DailyChallengeState | null;
+  /** DC2's own status for today, for the Daily clause in the match record. */
+  dailyChallenge?: DailyStatusView | null;
   /**
    * PLAY1: open the record as soon as the lobby mounts. Set when the player
    * arrives from `/quiz/ranked` with no active match — that route sends them

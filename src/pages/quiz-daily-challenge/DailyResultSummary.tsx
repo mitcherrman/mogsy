@@ -1,5 +1,12 @@
 /**
- * The finished day (DC1 Phase 5).
+ * THE FINISHED DAY'S NUMBERS (DC1 Phase 5, ARENA1 Step 5).
+ *
+ * Mounted in `MatchOverFrame`'s existing `summary` slot, through the arena's
+ * terminal surface — so the shell, the skin, the mascot, the frame, the
+ * headline and the way back are all the production ones, and this component is
+ * only the part that is genuinely the Daily's: a grade, and the figures behind
+ * it. It was a whole result SCREEN before, with its own frame, its own heading
+ * and its own back link, none of which it needed to own.
  *
  * The question it answers is HOW WELL DID I DO TODAY — never "you got them all
  * right eventually", which is true of every completed run by design and
@@ -12,9 +19,7 @@
  * guarantee that on the client is to never derive it.
  */
 
-import { Link } from "react-router-dom";
 import { Award, Flame, Sparkles, Target, Timer, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { DcResult, DcSummary } from "@/lib/daily-challenge/contracts";
 
 const GRADE_TONE: Record<string, string> = {
@@ -45,15 +50,13 @@ function Stat({
   );
 }
 
-export function DailyResultScreen({
-  result, summary, score, maxScore, challengeDate, homeHref = "/quiz",
+export function DailyResultSummary({
+  result, summary, score, maxScore,
 }: {
   result: DcResult;
   summary: DcSummary;
   score: number;
   maxScore: number;
-  challengeDate: string;
-  homeHref?: string;
 }) {
   const { rewards } = result;
   const accuracy = summary.firstAttemptAccuracyBp === null
@@ -63,7 +66,7 @@ export function DailyResultScreen({
     <section
       aria-label="Daily Challenge result"
       data-testid="dc-result"
-      className="ranked-panel ranked-folio mx-auto w-full max-w-2xl space-y-5 p-4 sm:p-6"
+      className="ranked-panel space-y-5 p-4 sm:p-6"
     >
       <header className="flex items-center gap-4">
         <div
@@ -77,10 +80,11 @@ export function DailyResultScreen({
           {result.grade ?? "—"}
         </div>
         <div className="min-w-0">
+          {/* The frame above already names the day and says what happened, so
+              this block leads with the SCORE instead of repeating either. */}
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Daily Challenge · <time dateTime={challengeDate}>{challengeDate}</time>
+            Score
           </p>
-          <h1 className="text-xl font-bold leading-tight">Challenge complete</h1>
           <p data-testid="dc-result-score" className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground tabular-nums">
               {score} / {maxScore}
@@ -170,11 +174,8 @@ export function DailyResultScreen({
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline">
-          <Link to={homeHref} data-testid="dc-result-home">Back to Leaguecraft</Link>
-        </Button>
-      </div>
+      {/* No "back" control here: the terminal frame's own primary action is
+          the way out, and two of them would be two answers to one question. */}
       <p className="text-[11px] text-muted-foreground">
         A new challenge is composed each day. Come back tomorrow.
       </p>

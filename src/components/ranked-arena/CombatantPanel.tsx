@@ -72,11 +72,14 @@ const mirrorAlign = (mirrored: boolean) => (mirrored ? "justify-end" : "");
 export function HealthMeter({ combatant }: { combatant: CombatantView }) {
   const { hp, maxHp, name } = combatant;
   const mirrored = isMirroredSide(combatant);
+  // ARENA1 Step 5: the NOUN is the mode's, everything else is the arena's.
+  // Absent is "HP" — every Ranked, staff-duel, inspector and tutorial column.
+  const meter = combatant.meterLabel ?? "HP";
   const pct = maxHp !== null && maxHp > 0 ? Math.min(100, Math.round((hp / maxHp) * 100)) : null;
   return (
     <div data-testid={`hp-${combatant.playerId}`}>
       <div className={`flex items-baseline justify-between mb-1 ${mirrorRow(mirrored)}`}>
-        <span className="text-xs font-semibold">HP</span>
+        <span className="text-xs font-semibold">{meter}</span>
         <span className="tabular-nums text-base font-bold leading-none">
           {hp}
           {maxHp !== null && (
@@ -87,7 +90,7 @@ export function HealthMeter({ combatant }: { combatant: CombatantView }) {
       {pct !== null ? (
         <div
           role="meter"
-          aria-label={`${name} HP`}
+          aria-label={`${name} ${meter}`}
           aria-valuenow={hp}
           aria-valuemin={0}
           aria-valuemax={maxHp!}
@@ -104,7 +107,7 @@ export function HealthMeter({ combatant }: { combatant: CombatantView }) {
         // Unknown maximum: no proportional bar — we never invent a max HP.
         <div
           className="text-[11px] text-muted-foreground"
-          aria-label={`${name} HP ${hp}, maximum unknown`}
+          aria-label={`${name} ${meter} ${hp}, maximum unknown`}
         >
           Max HP unavailable
         </div>

@@ -1,10 +1,26 @@
 /**
- * Daily Challenge — the arena (DC1 Phase 5).
+ * Daily Challenge — the production arena, with the day in the opposite column.
+ * (DC1 Phase 5, migrated onto `CanonicalArena` by ARENA1 Step 5.)
  *
- * A short solo version of modern Ranked. The three-column arena is Ranked's,
- * at Ranked's proportions, with the opponent column replaced by the DAY: you
- * on the left, the card in the middle, the challenge on the right, and the
- * finite run strip along the floor.
+ * WHAT THIS PAGE IS NOW
+ * ─────────────────────
+ * A CONTROLLER and a router of states. It reads the run, decides which of the
+ * mode's five entry states it is in, projects the playing ones into an
+ * `ArenaViewModel`, and hands that to the same `CanonicalArena` Ranked and the
+ * Ranked Tutorial render. It draws no shell, no header, no timer, no question,
+ * no answer grid, no timeline and no result frame — every one of those is the
+ * arena's, and this page cannot tell you what any of them look like.
+ *
+ * WHAT IT WAS
+ * ───────────
+ * A second arena. It laid out its own 23/54/23 grid, mounted its own card
+ * stage, its own answer grid, its own timeline and its own player column, and
+ * two ARENA1 guards failed the moment the two lines of work were put in one
+ * tree — `AnswerGrid.elimination` ("a second component started rendering answer
+ * choices") and `TutorialOnCanonicalArena` ("a second file laid out the
+ * 23/54/23 arena geometry"). None of that was wrong when it was written:
+ * `CanonicalArena` did not exist yet. It exists now, so the duplicates are
+ * deleted rather than maintained.
  *
  * NOT A RESTYLED LEGACY QUIZ. This page talks to the DC2 transport
  * (`/api/daily-challenge/*`) and shares no state, no types and no code path
@@ -20,40 +36,50 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarCheck, Loader2, Swords } from "lucide-react";
+import { Loader2, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { ArenaShell, arenaHeaderRowClass } from "@/components/ranked-arena/ArenaShell";
+import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
 import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
-import { DailyCardStage } from "./DailyCardStage";
-import { DailyCardTimeline } from "./DailyCardTimeline";
 import { DailyChallengePanel } from "./DailyChallengePanel";
-import { DailyPlayerPanel } from "./DailyPlayerPanel";
-import { DailyResultScreen } from "./DailyResultScreen";
+import { DailyResultSummary } from "./DailyResultSummary";
+import { DailyRunControls } from "./DailyRunControls";
+import { dailyArenaView, dailyTerminalView } from "./dailyArenaView";
 import { useDailyChallengeRun } from "./useDailyChallengeRun";
-import {
-  cardPhase,
-  latestReveal,
-  projectChallenge,
-  projectPlayer,
-  projectTimeline,
-  projectTimer,
-} from "./dailyChallengeViews";
+import { cardPhase, projectChallenge, projectTimer } from "./dailyChallengeViews";
 
 const LEAGUECRAFT_HREF = "/quiz";
 
-function Shell({ children }: { children: React.ReactNode }) {
+/** The route's chrome row — the Daily's title, and the way back. */
+function DailyRouteHeader({ size = "default" }: { size?: "default" | "wide" }) {
   return (
-    <main className="mx-auto w-full max-w-[1500px] space-y-3 px-3 py-4 sm:px-4 sm:py-6">
-      {children}
-    </main>
+    <header className={arenaHeaderRowClass(size)}>
+      <div className="flex items-baseline gap-2.5">
+        <h1 className="ranked-title text-lg font-bold leading-tight">Daily Challenge</h1>
+        <span className="ranked-eyebrow hidden sm:inline">Today's Challenge</span>
+      </div>
+      <Link to={LEAGUECRAFT_HREF} className="text-sm text-muted-foreground underline">
+        Back to Quiz
+      </Link>
+    </header>
   );
 }
 
+/**
+ * The non-playing states.
+ *
+ * Rendered inside the ARENA'S OWN SHELL at its reading width, so entry, an
+ * outage and the scoring pause all carry the same parchment and the same frame
+ * the run itself lands in. They used to be a local `<main>` with no
+ * `.ranked-academy` ancestor, which meant their `ranked-folio` class was inert
+ * and the mode's own skin never rendered on them.
+ */
 function Centred({ children }: { children: React.ReactNode }) {
   return (
-    <Shell>
+    <ArenaShell header={<DailyRouteHeader />}>
       <div className="mx-auto w-full max-w-lg">{children}</div>
-    </Shell>
+    </ArenaShell>
   );
 }
 
@@ -82,42 +108,59 @@ export default function QuizDailyChallengePage() {
    * The backend advances past a card in the same transaction that resolves it,
    * so an answer that solves card 3 returns a run whose current card is 4.
    * Rendering that straight away would replace the reveal with the next prompt
-   * in the same frame. While a resolved card is held, the stage shows it and
-   * the player moves on deliberately.
+   * in the same frame. While a resolved card is held, the arena's surface shows
+   * it and the player moves on deliberately — the hold lives HERE, in
+   * presentation state around the arena, and the arena is simply handed the
+   * card it should be drawing.
    */
-  const held = dc.holdSequence !== null && run
+  const heldCard = dc.holdSequence !== null && run
     ? run.cards.find((c) => c.sequence === dc.holdSequence) ?? null
     : null;
-  const card = held ?? dc.card;
+  const card = heldCard ?? dc.card;
   const phase = cardPhase(card);
 
   const timer = useMemo(
-    () => projectTimer(held ? null : card, dc.timerMaxMs, tick, dc.skewMs),
-    [held, card, dc.timerMaxMs, tick, dc.skewMs]);
+    () => projectTimer(heldCard ? null : card, dc.timerMaxMs, tick, dc.skewMs),
+    [heldCard, card, dc.timerMaxMs, tick, dc.skewMs]);
 
   /**
    * A lapsed window heals on the SERVER, on contact. The client notices the
-   * countdown has hit zero and asks — once per window — rather than deciding
-   * the card timed out by itself.
+   * countdown has hit zero and ASKS — it never decides the card timed out by
+   * itself, and it never writes anything.
+   *
+   * IT HAS TO BE ABLE TO ASK TWICE, and that is the whole of this ref.
+   *
+   * The backend allows a 750ms grace past the deadline, deliberately, so an
+   * answer already in flight when the clock struck is still honoured. The
+   * client's countdown reaches zero BEFORE that grace elapses — so the first
+   * ask can legitimately be answered "still live", and a single-shot ask left
+   * the player looking at a frozen 0:00 on a card the server had not locked
+   * yet, with nothing scheduled to look again. Observed in a browser against a
+   * real backend; it is a race the tests could not see, because a stubbed
+   * fetch answers instantly and always agrees.
+   *
+   * So: ask, and keep asking about once a second until the card stops being a
+   * timed one. BOUNDED, because an unbounded retry against a server that
+   * disagrees is a poll: five asks is well past a 750ms grace, and if the card
+   * is still live after that the server means it.
    */
-  const askedForRef = useRef<string | null>(null);
+  const expiryAskRef = useRef<{ key: string; at: number; asks: number } | null>(null);
   useEffect(() => {
     const live = dc.card;
     if (!live?.timer || !timer || timer.remainingSeconds > 0) return;
     const key = `${live.sequence}:${live.timer.endsAt}`;
-    if (askedForRef.current === key) return;
-    askedForRef.current = key;
+    const previous = expiryAskRef.current;
+    if (previous?.key === key) {
+      if (previous.asks >= 5 || tick - previous.at < 1000) return;
+      expiryAskRef.current = { key, at: tick, asks: previous.asks + 1 };
+    } else {
+      expiryAskRef.current = { key, at: tick, asks: 1 };
+    }
     dc.refresh();
-  }, [timer, dc]);
+  }, [timer, tick, dc]);
 
-  const reveal = useMemo(() => (run ? latestReveal(run) : null), [run]);
-  const player = useMemo(() => (run ? projectPlayer(run) : null), [run]);
   const challenge = useMemo(
     () => (run ? projectChallenge(run, dc.today?.challenge.theme ?? null) : null),
-    [run, dc.today]);
-  const nodes = useMemo(
-    () => (run ? projectTimeline(run, dc.today?.challenge.structure ?? null,
-      dc.today?.challenge.challengeVersion ?? null) : []),
     [run, dc.today]);
 
   // The block's entry sting, keyed on the block rather than the card, so it
@@ -147,7 +190,7 @@ export default function QuizDailyChallengePage() {
     return (
       <Centred>
         <div data-testid="dc-unavailable" className="ranked-panel space-y-3 p-6">
-          <h1 className="text-lg font-semibold">Today's challenge isn't ready</h1>
+          <h2 className="text-lg font-semibold">Today's challenge isn't ready</h2>
           <p className="text-sm text-muted-foreground">{dc.error}</p>
           <Button asChild variant="outline">
             <Link to={LEAGUECRAFT_HREF}>Back to Leaguecraft</Link>
@@ -163,10 +206,8 @@ export default function QuizDailyChallengePage() {
       <Centred>
         <div data-testid="dc-entry" className="ranked-panel ranked-folio space-y-4 p-6">
           <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-300/80">
-              Daily Challenge
-            </p>
-            <h1 className="text-xl font-bold leading-tight">Today's Challenge</h1>
+            <p className="ranked-eyebrow">Daily Challenge</p>
+            <h2 className="ranked-title text-xl font-bold leading-tight">Today's Challenge</h2>
             {challengeInfo && (
               <p className="text-sm text-muted-foreground">
                 {challengeInfo.cardCount} cards
@@ -184,13 +225,8 @@ export default function QuizDailyChallengePage() {
               {dc.error}
             </p>
           )}
-          <Button
-            type="button"
-            data-testid="dc-start"
-            onClick={dc.start}
-            disabled={dc.busy}
-            className="gap-1.5"
-          >
+          <Button type="button" data-testid="dc-start" onClick={dc.start}
+            disabled={dc.busy} className="gap-1.5">
             <Swords className="h-4 w-4" aria-hidden="true" />
             {dc.busy ? "Starting…" : "Begin"}
           </Button>
@@ -199,13 +235,12 @@ export default function QuizDailyChallengePage() {
     );
   }
 
-  if (!run || !player || !challenge) {
+  if (!run || !challenge) {
+    // The arena owns the placeholder, so the shell, the skin and the geometry
+    // are the same ones the run will land in.
     return (
-      <Centred>
-        <div data-testid="dc-loading" className="ranked-panel p-6">
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        </div>
-      </Centred>
+      <CanonicalArena view={null} chrome={<DailyRouteHeader size="wide" />}
+        recovering={{ eyebrow: "Daily Challenge", message: "Opening today's challenge…" }} />
     );
   }
 
@@ -213,8 +248,10 @@ export default function QuizDailyChallengePage() {
   //
   // A finished day shows its result and offers NO replay. The backend would
   // refuse a second official run anyway (`ux_dc2_official`), so a button here
-  // would be a promise the server does not keep.
-  if (dc.stage === "complete" && !held) {
+  // would be a promise the server does not keep. It waits for the HOLD to be
+  // released first, so the last card's explanation is read before the result
+  // takes the screen.
+  if (dc.stage === "complete" && !heldCard) {
     if (!run.result) {
       // Completed but not yet paid — the width of a crash. Every read
       // finalises, so this resolves itself; it is reported honestly rather
@@ -234,77 +271,54 @@ export default function QuizDailyChallengePage() {
         </Centred>
       );
     }
+    const terminal = dailyTerminalView({
+      run, today: dc.today, card: null, held: false, beat: null, busy: dc.busy,
+      error: dc.error, timer: null, skewMs: dc.skewMs, displayName,
+      summary: (
+        <DailyResultSummary result={run.result} summary={run.summary}
+          score={run.score} maxScore={run.maxScore} />
+      ),
+      onHome: () => { window.location.assign(LEAGUECRAFT_HREF); },
+    });
     return (
-      <Shell>
-        <DailyResultScreen
-          result={run.result}
-          summary={run.summary}
-          score={run.score}
-          maxScore={run.maxScore}
-          challengeDate={run.challengeDate}
-          homeHref={LEAGUECRAFT_HREF}
-        />
-        <DailyCardTimeline nodes={nodes} />
-      </Shell>
+      <CanonicalArena view={null} terminal={terminal}
+        chrome={<DailyRouteHeader size="wide" />} />
     );
   }
 
   // ── the arena ────────────────────────────────────────────────────────────
 
+  const view = dailyArenaView({
+    run,
+    today: dc.today,
+    card,
+    held: heldCard !== null,
+    beat: dc.beat,
+    busy: dc.busy,
+    error: dc.error,
+    timer,
+    skewMs: dc.skewMs,
+    displayName,
+    targetPanel: <DailyChallengePanel challenge={challenge} />,
+    onAnswer: dc.answer,
+  });
+
   return (
-    <Shell>
+    <>
       {sting && <MetaReflexSting />}
-      <div
-        data-testid="dc-arena"
-        /* Ranked's own proportions: 23 / 54 / 23. The centre dominates, and
-           the two columns are equal so neither reads as the "real" one. */
-        className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,23fr)_minmax(0,54fr)_minmax(0,23fr)]
-                   lg:items-stretch min-[1500px]:gap-4"
-      >
-        <div className="order-1 lg:order-1">
-          <DailyPlayerPanel player={player} displayName={displayName} />
-        </div>
-
-        {/* The card takes the full width below lg, where three columns would
-            make the prompt unreadable — the two side panels sit above and
-            below it rather than beside it. */}
-        <div className="order-3 col-span-2 lg:order-2 lg:col-span-1">
-          {card && phase ? (
-            <DailyCardStage
-              card={card}
-              phase={phase}
-              timer={timer}
-              beat={dc.beat}
-              reveal={reveal}
-              busy={dc.busy}
-              onActivate={dc.activate}
-              onAnswer={dc.answer}
-              onContinue={held ? dc.continueToNext : null}
-              continueLabel={run.status === "completed" ? "See results" : "Next card"}
-              footer={
-                <p
-                  role={dc.error ? "alert" : "status"}
-                  data-testid="dc-status"
-                  className={`line-clamp-2 min-h-[1.75rem] text-xs ${
-                    dc.error ? "text-destructive" : "text-muted-foreground"}`}
-                >
-                  {dc.error ?? (dc.busy ? "Sending…" : "")}
-                </p>
-              }
-            />
-          ) : (
-            <div className="ranked-panel p-6">
-              <p className="text-sm text-muted-foreground">Preparing the next card…</p>
-            </div>
-          )}
-        </div>
-
-        <div className="order-2 lg:order-3">
-          <DailyChallengePanel challenge={challenge} />
-        </div>
-      </div>
-
-      <DailyCardTimeline nodes={nodes} />
-    </Shell>
+      <CanonicalArena
+        view={view}
+        chrome={<DailyRouteHeader size="wide" />}
+        guidance={
+          <DailyRunControls
+            reflexGate={phase === "reflex_ready"}
+            onContinue={heldCard ? dc.continueToNext : null}
+            continueLabel={run.status === "completed" ? "See results" : "Next card"}
+            busy={dc.busy}
+            onActivate={dc.activate}
+          />
+        }
+      />
+    </>
   );
 }

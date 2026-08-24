@@ -1,25 +1,39 @@
 /**
- * DC1 Phase 5 — the projections, without a DOM.
+ * DC1 Phase 5 / ARENA1 Step 5 — the projections, without a DOM.
  *
  * These are the rules the arena renders FROM, so they are worth pinning apart
  * from any component: which surface a card is in, what a beat means, what the
  * challenge column measures, and how a finite plan of unknown length becomes a
  * strip.
+ *
+ * Step 5 replaced three of them. The question and option-media projections
+ * became ONE projection into `PublicRoundView` — the shape the production
+ * arena reads — and the bespoke timeline projection became two small inputs to
+ * the canonical `projectRoundTimeline`. The rules they encoded did not change;
+ * where they are applied did, and the assertions follow them there.
  */
 
 import { describe, expect, it } from "vitest";
+import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
+import { quizModule } from "@/lib/ranked-core/modules/quizModule";
+import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
 import { readRun } from "@/lib/daily-challenge/contracts";
+import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
+import { projectRoundTimeline } from "@/lib/ranked-core/roundTimeline";
 import {
   BEAT_COPY,
   canAnswer,
   cardPhase,
+  cardResultKind,
+  dailyOutcomes,
+  dailySegmentKinds,
+  feedbackForCard,
   projectBeat,
   projectChallenge,
-  projectOptionMedia,
   projectPlayer,
-  projectQuestion,
-  projectTimeline,
   projectTimer,
+  publicRoundFromCard,
+  roundHistoryFromRun,
   timeoutBeat,
 } from "./dailyChallengeViews";
 import type { DcStructureEntry } from "@/lib/daily-challenge/contracts";
@@ -72,23 +86,85 @@ describe("card phase", () => {
   });
 });
 
-describe("question projection", () => {
+describe("the card, as a public round", () => {
+  const questionOf = (c: Parameters<typeof card>[0]) =>
+    questionViewFromPublicQuestion(publicRoundFromCard(card(c), null)!.question!);
+
+  it("resolves the CANONICAL quiz renderer, never one of its own", () => {
+    const round = publicRoundFromCard(card({ sequence: 1 }), null);
+    expect(rendererForSegment(round.segment)).toBe(quizModule);
+  });
+
   it("option ids are the BACKEND index, including for eliminated options", () => {
-    const q = projectQuestion(card({ sequence: 1, eliminated: [1] }));
+    const q = questionOf({ sequence: 1, eliminated: [1] });
     expect(q.options.map((o) => o.id)).toEqual(["0", "1", "2", "3"]);
     expect(q.options.map((o) => o.index)).toEqual([0, 1, 2, 3]);
+    // And the struck one is named by the SAME id the grid will match on.
+    // The struck set rides RG3's feedback model now, which is the one
+    // channel the shared surface reads elimination, verdict and disclosure
+    // from — see `feedbackForCard`.
+    expect(feedbackForCard(card({ sequence: 1, eliminated: [1] })).eliminatedOptionIds)
+      .toEqual(["1"]);
   });
 
   it("a recognition side with no label projects an empty string, not undefined", () => {
     const raw = rawRun({ cards: [{ sequence: 1, kind: "meta_reflex", optionCount: 2 }] });
     const cards = raw.cards as Record<string, unknown>[];
     (cards[0].options as Record<string, unknown>[]).forEach((o) => { o.label = null; });
-    const q = projectQuestion(readRun(raw).cards[0]);
+    const q = questionViewFromPublicQuestion(
+      publicRoundFromCard(readRun(raw).cards[0], null)!.question!);
     expect(q.options.every((o) => o.label === "")).toBe(true);
   });
 
   it("reports no option media when the card has none", () => {
-    expect(projectOptionMedia(card({ sequence: 1 }))).toBeNull();
+    expect(publicRoundFromCard(card({ sequence: 1 }), null).question!.optionMedia).toBeNull();
+  });
+
+  /**
+   * THE ART, WHICH THE PREVIOUS PROJECTION THREW AWAY.
+   *
+   * `projectQuestion` set `media: null` on every option and never looked at the
+   * card's own `media` blob at all, so the mode rendered plain text for its
+   * whole life while carrying everything it needed to render League art.
+   */
+  it("carries each option's frozen art through to the canonical option media", () => {
+    const raw = rawRun({ cards: [{ sequence: 1, optionCount: 2 }] });
+    const cards = raw.cards as Record<string, unknown>[];
+    const opts = cards[0].options as Record<string, unknown>[];
+    opts[0].media = "assets/items/3157.png";
+    opts[0].entity_id = "3157";
+    opts[1].media = "assets/items/3089.png";
+    opts[1].entity_id = "3089";
+    const q = questionViewFromPublicQuestion(
+      publicRoundFromCard(readRun(raw).cards[0], null)!.question!);
+    expect(q.options.map((o) => o.media?.icon))
+      .toEqual(["assets/items/3157.png", "assets/items/3089.png"]);
+    expect(q.options.map((o) => o.media?.id)).toEqual(["3157", "3089"]);
+  });
+
+  /**
+   * The backend stores a quiz card's `media` as the question's own PRESENTATION
+   * metadata (`media=record.presentation`), which is the same Quiz/Broadcast
+   * blob Ranked transports — so passing it through is what gives the Daily the
+   * premium scenario band instead of a text fallback.
+   */
+  it("hands the card's presentation metadata to the canonical scenario adapter", () => {
+    const raw = rawRun({ cards: [{ sequence: 1 }] });
+    const cards = raw.cards as Record<string, unknown>[];
+    cards[0].media = { subject_type: "champion", champion: "Ahri" };
+    const round = publicRoundFromCard(readRun(raw).cards[0], null);
+    expect(round.question!.presentation).toEqual({ subject_type: "champion", champion: "Ahri" });
+    expect(scenarioSourceFromPublicQuestion(round.question!)).toMatchObject({
+      metadata: { subject_type: "champion", champion: "Ahri" },
+    });
+  });
+
+  it("declares no opponent, no ability layer and no active PvP round", () => {
+    const round = publicRoundFromCard(card({ sequence: 1 }), null);
+    expect(round.players).toEqual([]);
+    expect(round.activeRound).toBeNull();
+    expect(round.progressionEnabled).toBe(false);
+    expect(round.segmentState).toBeNull();
   });
 });
 
@@ -220,27 +296,50 @@ describe("the challenge column", () => {
 });
 
 describe("the player column", () => {
-  it("distinguishes first-try from learned in the record", () => {
+  /**
+   * The record moved OUT of a bespoke row of marks and INTO the canonical
+   * duelist ledger — the same `RoundHistoryEntry` rows Ranked's column renders.
+   * What it has to distinguish is unchanged, and it is the mode's whole shape:
+   * under retry-until-correct every card ends solved, so "done" says nothing.
+   */
+  it("distinguishes first-try from learned in the ledger", () => {
     const run = parseRun(rawRun({
       cards: [
-        { sequence: 1, resolved: true, firstAttemptCorrect: true },
+        { sequence: 1, resolved: true, firstAttemptCorrect: true, awardedScore: 100 },
         { sequence: 2, resolved: true, firstAttemptCorrect: false,
-          scoreOutcome: "wrong_answer" },
-        { sequence: 3, resolved: true, firstAttemptCorrect: false, scoreOutcome: "timeout" },
+          scoreOutcome: "wrong_answer", awardedScore: 0 },
+        { sequence: 3, resolved: true, firstAttemptCorrect: false,
+          scoreOutcome: "timeout", awardedScore: 0 },
         { sequence: 4 },
       ],
-      resolvedCount: 3, timeouts: 1,
+      currentSequence: 4, resolvedCount: 3, score: 100,
     }));
-    expect(projectPlayer(run).record).toEqual(["correct", "learned", "timeout"]);
+    const rows = roundHistoryFromRun(run);
+    expect(rows.map((r) => r.outcome)).toEqual(["correct", "incorrect", "timed_out"]);
+    // Only a first-attempt correct card awarded anything, and the running
+    // total is the SCORE the meter above the ledger is showing.
+    expect(rows.map((r) => r.dealt)).toEqual([100, 0, 0]);
+    expect(rows.map((r) => r.hpAfter)).toEqual([100, 100, 100]);
+    // A solo run has nothing that damages the player. Nothing is invented to
+    // fill a combat field.
+    expect(rows.every((r) => r.taken === 0 && r.absorbed === 0)).toBe(true);
+  });
+
+  it("numbers each ledger row by its CARD, not by an array position", () => {
+    const run = parseRun(rawRun({
+      cards: [{ sequence: 6, resolved: true }, { sequence: 7 }],
+      currentSequence: 7, resolvedCount: 6,
+    }));
+    expect(roundHistoryFromRun(run).map((r) => r.roundNumber)).toEqual([6]);
   });
 
   it("accuracy is null until a card settles", () => {
-    const run = parseRun(rawRun({ cards: [{ sequence: 1 }], accuracyBp: null }));
-    expect(projectPlayer(run).accuracyBp).toBeNull();
+    const fresh = parseRun(rawRun({ cards: [{ sequence: 1 }], accuracyBp: null }));
+    expect(projectPlayer(fresh).accuracyBp).toBeNull();
   });
 });
 
-describe("the run strip", () => {
+describe("the run strip — the canonical timeline, with a finite plan", () => {
   const structure = (rawToday().challenge as Record<string, unknown>)
     .structure as DcStructureEntry[];
 
@@ -248,18 +347,44 @@ describe("the run strip", () => {
     cards: [{ sequence: current }], cardCount, currentSequence: current,
   }));
 
+  /** Exactly what `dailyArenaView` passes, so these test the real inputs. */
+  const stripOf = (run: ReturnType<typeof parseRun>, structureVersion = 1) =>
+    projectRoundTimeline({
+      roundNumber: run.currentSequence,
+      completedRounds: run.resolvedCount,
+      segmentRoundNumber: null,
+      matchOver: run.status === "completed",
+      settlements: [],
+      viewerSlot: "p1",
+      totalRounds: run.cardCount,
+      observedKinds: dailySegmentKinds(structure, structureVersion, run.challengeVersion),
+      outcomes: dailyOutcomes(run),
+    });
+
   it.each([11, 12, 15])("draws one node per card for a %i-card day", (cardCount) => {
-    const nodes = projectTimeline(runOf(cardCount, 1), structure, 1);
-    expect(nodes).toHaveLength(cardCount);
-    expect(nodes.map((n) => n.sequence)).toEqual(
+    const strip = stripOf(runOf(cardCount, 1));
+    expect(strip.nodes).toHaveLength(cardCount);
+    expect(strip.visibleNodes).toBe(cardCount);
+    expect(strip.nodes.map((n) => n.roundNumber)).toEqual(
       Array.from({ length: cardCount }, (_, i) => i + 1));
+    // A finite plan is entirely on screen — no off-edge buffer, because there
+    // is no edge for a node to travel over.
+    expect(strip.nodes.every((n) => n.visible)).toBe(true);
   });
 
-  it("marks the current card active and everything past it as future", () => {
-    const nodes = projectTimeline(runOf(12, 4), structure, 1);
-    expect(nodes[3].state).toBe("active");
-    expect(nodes[4].state).toBe("future");
-    expect(nodes[11].state).toBe("future");
+  it("sketches NOTHING past the last card of the plan", () => {
+    // Ranked's window would run to `windowStart + 9`, which on a 12-card day
+    // played near the end would claim cards 13, 14 and 15 exist.
+    const strip = stripOf(runOf(12, 11));
+    expect(Math.max(...strip.nodes.map((n) => n.roundNumber))).toBe(12);
+  });
+
+  it("marks the current card current and everything past it upcoming", () => {
+    const strip = stripOf(runOf(12, 4));
+    expect(strip.nodes[3].state).toBe("current");
+    expect(strip.currentIndex).toBe(3);
+    expect(strip.nodes[4].state).toBe("upcoming");
+    expect(strip.nodes[11].state).toBe("upcoming");
   });
 
   it("gives first-try, learned and timed-out cards DIFFERENT marks", () => {
@@ -273,31 +398,47 @@ describe("the run strip", () => {
       ],
       cardCount: 12, currentSequence: 4, resolvedCount: 3,
     }));
-    const nodes = projectTimeline(run, structure, 1);
-    expect(nodes.slice(0, 4).map((n) => n.state))
-      .toEqual(["correct", "learned", "timeout", "active"]);
+    expect(stripOf(run).nodes.slice(0, 4).map((n) => n.outcome))
+      .toEqual(["correct", "incorrect", "timed-out", null]);
   });
 
-  it("brackets the Meta Reflex block as one object", () => {
-    const nodes = projectTimeline(runOf(12, 1), structure, 1);
-    const reflex = nodes.filter((n) => n.kind === "meta_reflex");
-    expect(reflex.map((n) => n.sequence)).toEqual([7, 8, 9, 10, 11]);
-    expect(reflex[0].blockStart).toBe(true);
-    expect(reflex[0].blockEnd).toBe(false);
-    expect(reflex[4].blockEnd).toBe(true);
+  it("never reads a learned card as a win", () => {
+    const learned = readRun(rawRun({
+      cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: false,
+        scoreOutcome: "wrong_answer" }],
+    })).cards[0];
+    expect(learned.resolved && cardResultKind(learned)).toBe("incorrect");
+  });
+
+  it("marks the Meta Reflex block from the SERVER's frozen plan", () => {
+    const strip = stripOf(runOf(12, 1));
+    expect(strip.nodes.filter((n) => n.segmentKind === "meta-reflex")
+      .map((n) => n.roundNumber)).toEqual([7, 8, 9, 10, 11]);
+    expect(strip.nodes[0].segmentKind).toBe("standard");
   });
 
   it("drops the kinds rather than guessing when the plan version disagrees", () => {
     // A run resumed across a regeneration plays an OLDER version whose shape
     // today's structure does not describe.
-    const nodes = projectTimeline(runOf(12, 1), structure, 2);
-    expect(nodes).toHaveLength(12);
-    expect(nodes.every((n) => n.kind === null)).toBe(true);
+    const strip = stripOf(runOf(12, 1), 2);
+    expect(strip.nodes).toHaveLength(12);
+    expect(strip.nodes.every((n) => n.segmentKind === null)).toBe(true);
   });
 
   it("never carries a prompt, option or category for an unreached card", () => {
-    const nodes = projectTimeline(runOf(12, 1), structure, 1);
-    const keys = new Set(nodes.flatMap((n) => Object.keys(n)));
-    expect(keys).toEqual(new Set(["sequence", "state", "kind", "blockStart", "blockEnd"]));
+    const strip = stripOf(runOf(12, 1));
+    const future = strip.nodes.filter((n) => n.state === "upcoming");
+    expect(future.length).toBeGreaterThan(0);
+    for (const node of future) {
+      expect(node.outcome).toBeNull();
+      expect(node.tag).toBeNull();
+      // RG2 gave the node a `topic` — the round's published SUBJECT — which is
+      // exactly the class of thing this test exists to keep off an unreached
+      // card. Null is the only value a card the player has not seen may carry.
+      expect(node.topic).toBeNull();
+      expect(Object.keys(node).sort()).toEqual(
+        ["index", "outcome", "roundNumber", "segmentKind", "state", "tag",
+          "topic", "visible"]);
+    }
   });
 });

@@ -26,7 +26,10 @@ function projectQuestion(pub: PublicRoundView): QuestionView | null {
   return pub.question ? questionViewFromPublicQuestion(pub.question) : null;
 }
 
-function QuizViewport({ publicRound, selection, permissions, onSelect, reveal }: ModuleViewportProps) {
+function QuizViewport({
+  publicRound, selection, permissions, onSelect, reveal, feedback,
+  surfaceVerdict, surfaceSettings,
+}: ModuleViewportProps) {
   const question = useMemo(() => projectQuestion(publicRound), [publicRound]);
   // Optional rich-visual source; null → the polished text fallback.
   //
@@ -53,6 +56,14 @@ function QuizViewport({ publicRound, selection, permissions, onSelect, reveal }:
       variant="competitive"
       scenarioSource={scenarioSource}
       reveal={reveal ?? null}
+      // ARENA1 Step 5 — both absent for Ranked and the Tutorial, so the
+      // surface receives `undefined`/null for each and renders exactly what it
+      // always has. A retry-until-correct mode passes RG3's feedback model —
+      // which is where its struck options, its verdict and its disclosure gate
+      // all live — and asks for the explanation; nothing else differs.
+      feedback={feedback ?? null}
+      verdict={surfaceVerdict ?? null}
+      settings={surfaceSettings}
     />
   );
 }

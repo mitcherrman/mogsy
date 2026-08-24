@@ -15,7 +15,7 @@ import { RoundTimeline, nodeLabel } from "./RoundTimeline";
 import {
   TIMELINE_ANCHOR_INDEX, TIMELINE_VISIBLE_NODES, projectRoundTimeline,
   type RoundTimelineInput, type TimelineNode, type TimelineSegmentKind,
-} from "@/pages/quiz-ranked/roundTimeline";
+} from "@/lib/ranked-core/roundTimeline";
 
 const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 const source = readFileSync(

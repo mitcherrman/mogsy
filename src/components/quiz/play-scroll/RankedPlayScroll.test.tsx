@@ -17,6 +17,7 @@
  */
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { QueueState } from "@/pages/quiz-ranked/useRankedQueue";
 
@@ -92,16 +93,28 @@ const PROGRESSION = {
   ratingToNext: 130, progressPercent: 13, rated: true, matchesRated: 40,
 } as never;
 
-const DAILY = {
-  date: "2026-08-21", answered: 2, correct: 2, target: 5, xpBonus: 250,
-  dailyStreak: 4, lastCompletedDate: null, completed: false, remaining: 3,
-  themeTitle: "Item Knowledge", themeBlurb: "Recipes",
+/**
+ * DC2's own status for today (ARENA1 Step 5 §19).
+ *
+ * The clause used to be handed the LEGACY quiz-daily payload and derive
+ * completion from three of its counts. It reads the Daily Challenge service
+ * the button beside it opens now, and that service answers the question
+ * directly — so the fixture is the answer rather than the arithmetic.
+ */
+const DAILY: DailyStatusView = {
+  known: true, completed: false, resumable: false,
+  resolved: 2, total: 12, streak: 4, theme: "Item Knowledge",
 };
 
-/** The same day, answered out. */
-const DAILY_DONE = {
-  ...DAILY, answered: 5, correct: 4, completed: true, remaining: 0,
-  lastCompletedDate: "2026-08-21",
+/** The same day, played out. */
+const DAILY_DONE: DailyStatusView = {
+  ...DAILY, completed: true, resumable: false, resolved: 12,
+};
+
+/** The service has not answered — an unknown day, which stays playable. */
+const DAILY_UNKNOWN: DailyStatusView = {
+  known: false, completed: false, resumable: false,
+  resolved: 0, total: 0, streak: null, theme: null,
 };
 
 /**
@@ -769,22 +782,39 @@ describe("a Daily Challenge that is already done for today", () => {
     expect(screen.queryByTestId("play-mode-invite-complete")).toBeNull();
   });
 
-  it("reads completion from the counts, not only from the flag", () => {
-    // `completed` can lag the day's own remainder — the host filters on what
-    // is LEFT, so what is left is what the clause must believe.
-    renderScroll({ daily: { ...DAILY, completed: false, remaining: 0 } });
+  it("reads completion from the service the button actually opens", () => {
+    // ARENA1 Step 5 §19. The legacy quiz-daily payload describes a DIFFERENT
+    // product — different card count, different retry model, different notion
+    // of "completed" — and the clause was deciding from it while the button
+    // beside it opened DC2. When the two disagreed, the clause either refused
+    // a playable day or opened a finished one.
+    renderScroll({ daily: { ...DAILY, completed: true, resolved: 12 } });
     expect(screen.getByTestId("play-mode-daily-complete")).toBeTruthy();
     expect(screen.queryByTestId("play-mode-daily")).toBeNull();
   });
 
-  it("treats an EMPTY daily payload as playable, never as finished", () => {
-    // A backend outage leaves every count at zero. Zero questions is an
-    // unknown day, not a finished one, and an unknown day stays offerable.
-    renderScroll({
-      daily: { ...DAILY, answered: 0, target: 0, remaining: 0, completed: false },
-    });
+  it("treats an UNANSWERED status as playable, never as finished", () => {
+    // A Daily service that is briefly unreachable, or a visitor whose session
+    // has not landed yet. An unknown day is not a finished one, and an unknown
+    // day stays offerable — the same safe default the legacy predicate had.
+    renderScroll({ daily: DAILY_UNKNOWN });
     expect(screen.getByTestId("play-mode-daily")).toBeTruthy();
     expect(screen.queryByTestId("play-mode-daily-complete")).toBeNull();
+  });
+
+  it("claims no streak when the service has not answered", () => {
+    renderScroll({ daily: DAILY_UNKNOWN });
+    // Not "0-day streak" and not an empty flame — the detail row is simply not
+    // drawn, which is what the clause already does for an absent figure.
+    expect(screen.queryByTestId("play-mode-daily-detail")).toBeNull();
+    expect(screen.getByTestId("play-mode-daily")).toBeTruthy();
+  });
+
+  it("claims no streak when the last finished run is too old to still count", () => {
+    // `liveStreak` returns null for a run older than yesterday, so the clause
+    // is never handed a number that stopped being true two days ago.
+    renderScroll({ daily: { ...DAILY, streak: null } });
+    expect(screen.queryByTestId("play-mode-daily-detail")).toBeNull();
   });
 });
 

@@ -22,7 +22,19 @@ export interface MatchOverAction {
 export interface MatchOverFrameProps {
   result: MatchResult;
   player: CombatantView;
-  opponent: CombatantView;
+  /**
+   * The other duelist, or absent (ARENA1 Step 5).
+   *
+   * "For a human opponent or a future boss unchanged" was this file's original
+   * promise, and it turned out to assume there is always a second column. A
+   * SOLO mode is the case that breaks it, and the honest answer is one column
+   * — not a placeholder combatant, which would be exactly the fake opponent a
+   * solo mode exists to avoid. Ranked and the Tutorial both pass one and their
+   * frame is untouched.
+   */
+  opponent?: CombatantView | null;
+  /** Controller copy override for the eyebrow above the headline. */
+  eyebrow?: string;
   /** Controller copy override; defaults derive from result only. */
   heading?: string;
   /** e.g. backend completion reason, round count — rendered verbatim. */
@@ -59,7 +71,8 @@ const RESULT_POSE: Record<MatchResult, MogzyMascotPose> = {
 export function MatchOverFrame({
   result,
   player,
-  opponent,
+  opponent = null,
+  eyebrow,
   heading,
   subheading,
   summary,
@@ -80,7 +93,7 @@ export function MatchOverFrame({
       <header className="ranked-panel px-4 py-6 text-center space-y-1">
         <MogzyMascot pose={RESULT_POSE[result]} decorative
           className="mx-auto mb-2 h-20 w-20 sm:h-24 sm:w-24" />
-        <div className={`ranked-eyebrow ${RESULT_STYLE[result].eyebrow}`}>Match Complete</div>
+        <div className={`ranked-eyebrow ${RESULT_STYLE[result].eyebrow}`}>{eyebrow ?? "Match Complete"}</div>
         <h2 className={`text-3xl font-black uppercase tracking-[0.06em] ${RESULT_STYLE[result].heading}`}
           data-testid="match-over-heading">
           {heading ?? DEFAULT_HEADING[result]}
@@ -92,11 +105,24 @@ export function MatchOverFrame({
         )}
       </header>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      {/* Two columns when there are two duelists; ONE COLUMN, at a duelist
+          column's width, when there is one.
+
+          Not a two-column grid with an empty cell — that reads as a missing
+          opponent rather than as a solo run. And not a full-bleed single
+          column either: this panel sizes its identity slot as a FRACTION of
+          its own width, so a column given the whole frame draws a crest the
+          height of a small poster. Capping it at roughly the width it would
+          have had beside a second duelist keeps the panel the same OBJECT the
+          arena has been showing all match. */}
+      <div className={`grid gap-3 ${
+        opponent ? "md:grid-cols-2" : "mx-auto w-full max-w-sm"}`}>
         <CombatantPanel combatant={player} showRoundStatus={false}
           progressionEnabled={progressionEnabled} />
-        <CombatantPanel combatant={opponent} showRoundStatus={false}
-          progressionEnabled={progressionEnabled} />
+        {opponent && (
+          <CombatantPanel combatant={opponent} showRoundStatus={false}
+            progressionEnabled={progressionEnabled} />
+        )}
       </div>
 
       {summary && <div data-testid="match-over-summary">{summary}</div>}

@@ -86,6 +86,22 @@ export interface CombatantView {
    * an absolute HP number without a proportional meter in that case.
    */
   maxHp: number | null;
+  /**
+   * ARENA1 Step 5 — WHAT THE PRIMARY METER IS CALLED. Absent = "HP", which is
+   * every existing caller, so the panel is byte-identical for them.
+   *
+   * The meter itself — its geometry, its thresholds, its colours, its
+   * accessible role — is the arena's and does not vary. What varies is the
+   * NOUN, and a solo mode has a real one: the Daily's `hp`/`maxHp` carry the
+   * run's score against the day's frozen maximum, which is the quantity that
+   * fills the same bar and reads the same way. Labelling that "HP" would be
+   * the arena telling the player they have health in a mode with no combat,
+   * and the fix for a wrong word is the right word — not a second meter.
+   *
+   * It is a label and nothing more. Nothing branches on it, and a mode cannot
+   * change what the meter DOES by naming it.
+   */
+  meterLabel?: string | null;
   xp: number;
   level: number;
   /**

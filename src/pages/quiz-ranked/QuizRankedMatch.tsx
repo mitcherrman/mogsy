@@ -34,16 +34,21 @@ import type {
   ArenaRail, ArenaTerminalView, ArenaViewModel,
 } from "@/lib/ranked-core/arenaView";
 import type { PublicRoundView } from "@/lib/ranked-public/contracts";
+// ARENA1 Step 5: the settlement projections moved down into `ranked-core`.
+// Ranked calls the same functions it always did, from where they now live.
+import {
+  projectMascotReactions, projectRevealDamage, projectRevealOutcomes,
+  projectRoundHistory, projectSurfaceReveal,
+} from "@/lib/ranked-core/settlementViews";
 import {
   abilityTrayIsUseful, opponentPresenceLabel, projectAbilities,
-  projectAbilityPermissions, projectCombatants, projectMascotReactions,
-  projectPermissions, projectRevealDamage, projectRevealOutcomes,
-  projectRoundHistory, projectSurfaceReveal, projectTimer,
+  projectAbilityPermissions, projectCombatants,
+  projectPermissions, projectTimer,
 } from "./rankedViews";
 import {
   EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
   type ObservedRoundKinds,
-} from "./roundTimeline";
+} from "@/lib/ranked-core/roundTimeline";
 import { useMatchDiscoveries } from "./useMatchDiscoveries";
 import { useRankedMatch } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";

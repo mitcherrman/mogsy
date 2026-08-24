@@ -23,7 +23,9 @@ import type {
   QuestionView,
 } from "@/lib/ranked-core/viewTypes";
 import type { SegmentChoice } from "@/lib/ranked-public/client";
-import type { SurfaceReveal } from "@/lib/question-surface/contract";
+import type { SurfaceReveal, SurfaceSettings } from "@/lib/question-surface/contract";
+import type { ResolvedFeedback } from "@/lib/question-feedback/model";
+import type { QuizFeedbackVerdict } from "@/components/quiz/QuizAnswerFeedback";
 import type { PublicRoundView, SegmentStateView } from "@/lib/ranked-public/contracts";
 
 /**
@@ -78,6 +80,34 @@ export interface ModuleViewportProps {
    * that owns its own reveal (Meta Reflex) ignores this.
    */
   reveal?: SurfaceReveal | null;
+  /**
+   * RG3 — the whole resolved-feedback model, for a mode whose card can be
+   * JUDGED WITHOUT BEING DISCLOSED.
+   *
+   * ARENA1 Step 5 originally opened this seam as a bare `eliminatedOptionIds`
+   * relay. RG3 landed on `main` first and answered the same question better:
+   * the struck set, the verdict, the score lock and the disclosure gate are
+   * FOUR FACTS ABOUT ONE CARD, and a surface handed them separately can be
+   * told the card is open by one prop and closed by another. So the seam is
+   * the whole model, and `ResolvedFeedback.eliminatedOptionIds` is where the
+   * struck ids ride.
+   *
+   * Absent for Ranked and the Tutorial, which pass `reveal` instead and keep
+   * their verdict where it already resolves — in the arena's top strip.
+   */
+  feedback?: ResolvedFeedback | null;
+  /**
+   * ARENA1 Step 5 — the MODE'S WORD for the resolution, or absent.
+   *
+   * Presentation copy relayed verbatim to the module's answer surface. It
+   * discloses nothing; see `InteractiveScenarioSurfaceProps.verdict`.
+   */
+  surfaceVerdict?: QuizFeedbackVerdict | null;
+  /**
+   * ARENA1 Step 5 — per-field overrides of the module's surface variant, or
+   * absent (every Ranked and Tutorial round).
+   */
+  surfaceSettings?: Partial<SurfaceSettings>;
 }
 
 /**

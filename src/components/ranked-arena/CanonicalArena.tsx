@@ -115,6 +115,7 @@ export function CanonicalArena({
         <div className="ranked-shell flex flex-col gap-4" data-testid="ranked-match-over">
           <MatchOverFrame result={terminal.result} player={terminal.player}
             opponent={terminal.opponent}
+            eyebrow={terminal.eyebrow}
             heading={terminal.heading}
             subheading={terminal.subheading}
             summary={terminal.summary}
@@ -282,7 +283,13 @@ export function CanonicalArena({
               )}
             </div>
           )}
-          {header.timer && <TimerDisplay timer={header.timer} label={header.timerLabel} />}
+          {header.timer && (
+            <TimerDisplay timer={header.timer} label={header.timerLabel}
+              // Absent on every Ranked and Tutorial clock, which is why
+              // both still read "of M:SS shared round".
+              durationNote={header.timerNotes?.duration}
+              expiredNote={header.timerNotes?.expired} />
+          )}
         </div>
       </section>
       {/* THE CARD-BY-CARD TRANSCRIPT — the one thing the retired segment
@@ -450,6 +457,12 @@ export function CanonicalArena({
                 actions={surface.actions}
                 skewMs={surface.skewMs}
                 reveal={surface.reveal}
+                // ARENA1 Step 5 — the two mode-supplied surface seams. Both
+                // are `undefined` for Ranked and the Tutorial, so the viewport
+                // receives exactly the props it always did.
+                feedback={surface.feedback}
+                surfaceVerdict={surface.surfaceVerdict}
+                surfaceSettings={surface.surfaceSettings}
               />
               </div>
               </div>

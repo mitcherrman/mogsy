@@ -20,7 +20,9 @@
  * branches. A mode passes `variant` and optional neutral `settings`.
  */
 import { MotionConfig } from "framer-motion";
-import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
+import QuizAnswerFeedback, {
+  type QuizFeedbackVerdict,
+} from "@/components/quiz/QuizAnswerFeedback";
 import { EvidenceLine } from "@/components/question-feedback/EvidenceLine";
 import { VerdictLine } from "@/components/question-feedback/VerdictLine";
 import type { ResolvedFeedback } from "@/lib/question-feedback/model";
@@ -74,6 +76,23 @@ export interface InteractiveScenarioSurfaceProps {
    * beside the first.
    */
   feedback?: ResolvedFeedback | null;
+  /**
+   * ARENA1 Step 5 — the MODE'S WORD for this resolution, or absent.
+   *
+   * Presentation copy and nothing else: it changes the explanation box's
+   * headline and colour, and it changes nothing about what is disclosed. The
+   * correct-answer line and the explanation are still gated on the
+   * backend-authoritative fields above, so a mode cannot use this to reveal
+   * anything or to claim a resolution that did not happen.
+   *
+   * It exists for the one state the shared two-word vocabulary cannot name: a
+   * retry-until-correct card SOLVED after its scored attempt was spent. That
+   * is neither "Correct!" nor "Incorrect", and shouting "Incorrect" in red at
+   * the moment a learner finally gets it right is the loudest thing this
+   * surface could say wrong about that mode. The words are the mode's because
+   * only the mode has them — Ranked has no such state and passes nothing.
+   */
+  verdict?: QuizFeedbackVerdict | null;
   /** Optional short context line under the prompt. */
   context?: string | null;
 }
@@ -207,6 +226,7 @@ export function InteractiveScenarioSurface({
   scenarioSource = null,
   reveal = null,
   feedback = null,
+  verdict = null,
   context = null,
 }: InteractiveScenarioSurfaceProps) {
   const settings = resolveSettings(variant, overrides);
@@ -329,9 +349,19 @@ export function InteractiveScenarioSurface({
       {revealed && settings.showExplanation && (
         <QuizAnswerFeedback
           result={{
-            is_correct: reveal?.isCorrect === true,
+            // The SAME channel precedence the disclosure decision above uses.
+            // Reading `reveal` here while `feedback` decided the disclosure is
+            // how a resolved card ends up drawn as an unanswered one.
+            is_correct: feedback
+              ? feedback.verdict === "correct"
+              : reveal?.isCorrect === true,
             correct_answer: correctLabel,
-            explanation: reveal?.explanation ?? undefined,
+            explanation: (feedback
+              ? feedback.explanationOptional
+              : reveal?.explanation) ?? undefined,
+            // Absent for Ranked, the Tutorial and the quiz: the box keeps its
+            // two-state verdict and its two colours.
+            verdict,
           }}
         />
       )}

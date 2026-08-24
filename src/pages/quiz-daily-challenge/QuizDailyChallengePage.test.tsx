@@ -1,11 +1,25 @@
 /**
- * DC1 Phase 5 — the arena, through the DOM.
+ * DC1 Phase 5 / ARENA1 Step 5 — the Daily, through the PRODUCTION arena's DOM.
  *
  * Every test drives the REAL page against a stubbed `fetch`, so the transport
  * contract, the parsers, the controller and the components are all exercised
  * together. What is stubbed is the network and nothing else: a payload shaped
  * differently from the backend's would fail at the boundary here exactly as it
  * would in a browser.
+ *
+ * WHY THE SELECTORS CHANGED IN STEP 5
+ * ───────────────────────────────────
+ * They are the ARENA'S now. `dc-card-stage`, `dc-answer-grid`, `dc-timeline`
+ * and `dc-player-panel` were four components the Daily owned; the same states
+ * are asserted below against `ranked-question`, `answer-grid`,
+ * `ranked-round-timeline` and `combatant-daily-player` — the ones Ranked and
+ * the Ranked Tutorial are asserted against. That substitution IS the phase: if
+ * a Daily-only selector ever comes back, a second renderer came back with it.
+ *
+ * What did NOT change is a single rule. Every behaviour pinned here — one
+ * scored attempt, elimination in place, no disclosure before resolution, the
+ * explicit reflex activation, the held reveal, the solo copy — is the same
+ * assertion it was, made against the canonical surface.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -72,6 +86,27 @@ function renderPage() {
   );
 }
 
+/**
+ * WHICH CARD THE ARENA IS SHOWING.
+ *
+ * From the header the arena draws, which is the only place the mode states it
+ * now — and the right place: it is the same strip that says "Round 3" in
+ * Ranked. The bespoke stage's `data-sequence` was an attribute on a component
+ * that no longer exists.
+ */
+const showingCard = (n: number) =>
+  expect(screen.getByTestId("ranked-header")).toHaveTextContent(`Card ${n} of`);
+
+/** The arena's ONE reserved status line — where every Daily beat lands. */
+const status = () => screen.getByTestId("submission-status");
+
+/** The canonical answer surface's post-resolution box, or null. */
+const feedback = (): HTMLElement | null =>
+  document.querySelector("[data-quiz-answer-feedback]");
+
+/** Is a clock on screen at all? The arena mounts one only when a window is open. */
+const timerShown = () => screen.queryByTestId("timer-display") !== null;
+
 beforeEach(() => {
   routes = [];
   calls.length = 0;
@@ -94,7 +129,7 @@ describe("entry", () => {
     routes = [onToday(rawToday()), onStart(rawRun({ cards: [{ sequence: 1 }] }))];
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
-    await screen.findByTestId("dc-arena");
+    await screen.findByTestId("ranked-match");
 
     const post = calls.find((c) => c.url.endsWith("/runs") && c.method === "POST");
     expect(post?.body).toBeNull();
@@ -111,9 +146,9 @@ describe("entry", () => {
       })),
     ];
     renderPage();
-    await screen.findByTestId("dc-arena");
+    await screen.findByTestId("ranked-match");
 
-    expect(screen.getByTestId("dc-card-stage")).toHaveAttribute("data-sequence", "3");
+    showingCard(3);
     expect(calls.some((c) => c.method === "POST")).toBe(false);
   });
 
@@ -131,7 +166,7 @@ describe("entry", () => {
 
     expect(screen.getByTestId("dc-result-grade")).toHaveTextContent("A");
     expect(screen.queryByTestId("dc-start")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("dc-arena")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ranked-match")).not.toBeInTheDocument();
   });
 });
 
@@ -155,18 +190,22 @@ describe("standard cards", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
 
-    await waitFor(() => expect(screen.getByTestId("dc-player-score")).toHaveTextContent("100"));
-    const stage = screen.getByTestId("dc-card-stage");
-    expect(stage).toHaveAttribute("data-sequence", "1");
-    expect(stage).toHaveAttribute("data-card-phase", "resolved");
-    expect(screen.getByTestId("dc-reveal")).toHaveAttribute("data-first-try", "true");
-    expect(screen.getByTestId("dc-reveal-explanation")).toBeInTheDocument();
+    // The score meter is the canonical duelist meter, labelled for this mode.
+    await waitFor(() =>
+      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+    // The arena is STILL on card 1, and it is resolved: the answer tablet is
+    // marked and the explanation is on screen.
+    showingCard(1);
+    expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "revealed");
+    expect(feedback()).toHaveAttribute("data-verdict-tone", "positive");
+    expect(feedback()).toHaveTextContent("Solved first try");
+    expect(feedback()).toHaveTextContent(/says so/);
 
     fireEvent.click(screen.getByTestId("dc-continue"));
-    await waitFor(() => expect(screen.getByTestId("dc-card-stage"))
-      .toHaveAttribute("data-sequence", "2"));
+    await waitFor(() => showingCard(2));
     // And the next card is a FRESH prompt, with the previous reveal gone.
-    expect(screen.queryByTestId("dc-reveal")).not.toBeInTheDocument();
+    expect(feedback()).toBeNull();
+    expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "open");
   });
 
   it("a first wrong answer eliminates that option and does NOT reveal the answer", async () => {
@@ -182,8 +221,7 @@ describe("standard cards", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option B/ }));
 
-    await waitFor(() => expect(screen.getByTestId("dc-beat"))
-      .toHaveAttribute("data-beat-kind", "first_miss"));
+    await waitFor(() => expect(status()).toHaveTextContent(/missed for score/i));
 
     // Struck out, still visible, out of the tab order.
     const struck = screen.getByRole("button", { name: /Option B/, hidden: true });
@@ -192,9 +230,9 @@ describe("standard cards", () => {
 
     // The card is STILL PLAYABLE and the answer is nowhere on the page.
     expect(screen.getByRole("button", { name: /Option A/ })).toBeEnabled();
-    expect(screen.queryByTestId("dc-reveal")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("dc-reveal-answer")).not.toBeInTheDocument();
-    expect(screen.getByTestId("dc-card-stage")).toHaveAttribute("data-card-phase", "learning");
+    expect(feedback()).toBeNull();
+    // The grid is OPEN, not revealed: an elimination is not a resolution.
+    expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "open");
   });
 
   it("says the scored chance is spent, and says to keep going", async () => {
@@ -210,10 +248,12 @@ describe("standard cards", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option B/ }));
 
-    const beat = await screen.findByTestId("dc-beat");
-    expect(beat).toHaveTextContent(/missed for score/i);
-    expect(beat).toHaveTextContent(/keep solving/i);
-    expect(beat).toHaveAttribute("data-beat-scored", "false");
+    await waitFor(() => expect(status()).toHaveTextContent(/missed for score/i));
+    expect(status()).toHaveTextContent(/keep solving/i);
+    // A miss is a COST, not a verdict: it is never announced as an error, and
+    // the player's own column does not shout at them.
+    expect(status()).toHaveAttribute("role", "status");
+    expect(screen.queryByTestId("outcome-daily-player")).not.toBeInTheDocument();
   });
 
   it("a second wrong answer is a QUIETER beat and strikes a second option", async () => {
@@ -231,11 +271,13 @@ describe("standard cards", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option C/ }));
 
-    await waitFor(() => expect(screen.getByTestId("dc-beat"))
-      .toHaveAttribute("data-beat-kind", "learning_miss"));
+    // A QUIETER line: the first miss spent the scored attempt, this one spent
+    // nothing, and the copy says so instead of replaying the same warning.
+    await waitFor(() => expect(status()).toHaveTextContent(/not that one/i));
+    expect(status()).not.toHaveTextContent(/missed for score/i);
     expect(screen.getAllByRole("button", { name: /Option [BC]/, hidden: true })
       .filter((b) => b.getAttribute("data-choice-state") === "eliminated")).toHaveLength(2);
-    expect(screen.queryByTestId("dc-reveal-answer")).not.toBeInTheDocument();
+    expect(feedback()).toBeNull();
   });
 
   it("solving after a miss is LEARNED, and visibly not a first-try win", async () => {
@@ -254,11 +296,15 @@ describe("standard cards", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
 
-    const reveal = await screen.findByTestId("dc-reveal");
-    expect(reveal).toHaveAttribute("data-first-try", "false");
-    expect(reveal).toHaveTextContent(/learned/i);
-    // No score was recovered, and the reveal does not pretend otherwise.
-    expect(screen.getByTestId("dc-player-score")).toHaveTextContent("0");
+    await waitFor(() => expect(feedback()).not.toBeNull());
+    // NEVER "Incorrect", and never in red: the card IS solved. What it did not
+    // do is score, which is exactly what the word says.
+    expect(feedback()).toHaveTextContent("Learned");
+    expect(feedback()).not.toHaveTextContent("Incorrect");
+    expect(feedback()).toHaveAttribute("data-verdict-tone", "neutral");
+    // No score was recovered, and nothing on screen pretends otherwise.
+    expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("0");
+    expect(screen.queryByTestId("outcome-daily-player")).not.toBeInTheDocument();
   });
 });
 
@@ -276,10 +322,9 @@ describe("Meta Reflex", () => {
     renderPage();
     await screen.findByTestId("dc-reflex-gate");
 
-    expect(screen.getByTestId("dc-card-stage"))
-      .toHaveAttribute("data-card-phase", "reflex_ready");
-    // No countdown, and above all no activate call from merely arriving.
-    expect(screen.getByTestId("dc-timer-slot")).toBeEmptyDOMElement();
+    // No countdown anywhere on the arena, and above all no activate call from
+    // merely arriving at the card.
+    expect(timerShown()).toBe(false);
     expect(calls.some((c) => c.url.includes("/activate"))).toBe(false);
   });
 
@@ -306,11 +351,15 @@ describe("Meta Reflex", () => {
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-reflex-start"));
 
-    await waitFor(() => expect(screen.getByTestId("dc-card-stage"))
-      .toHaveAttribute("data-card-phase", "reflex_timed"));
+    // Only NOW does a clock exist, and it is the arena's own — in the header
+    // strip, where Ranked's round timer lives.
+    await waitFor(() => expect(timerShown()).toBe(true));
+    expect(screen.getByTestId("ranked-header"))
+      .toContainElement(screen.getByTestId("timer-display"));
     expect(calls.filter((c) => c.url.includes("/activate"))).toHaveLength(1);
-    expect(screen.getByTestId("dc-timer-slot")).not.toBeEmptyDOMElement();
     expect(screen.getByRole("button", { name: /Option A/ })).toBeEnabled();
+    // The gate is gone the moment the window opens.
+    expect(screen.queryByTestId("dc-reflex-gate")).not.toBeInTheDocument();
   });
 
   it("a lapsed window is reported by the SERVER, with no timer and no answer", async () => {
@@ -321,16 +370,13 @@ describe("Meta Reflex", () => {
         currentSequence: 7, cardCount: 12, resolvedCount: 6, timeouts: 1,
       }))];
     renderPage();
-    await screen.findByTestId("dc-arena");
+    await screen.findByTestId("ranked-match");
 
-    expect(screen.getByTestId("dc-card-stage"))
-      .toHaveAttribute("data-card-phase", "learning");
-    expect(screen.getByTestId("dc-timer-slot")).toBeEmptyDOMElement();
-    expect(await screen.findByTestId("dc-beat"))
-      .toHaveAttribute("data-beat-kind", "reflex_timeout");
+    expect(timerShown()).toBe(false);
+    await waitFor(() => expect(status()).toHaveTextContent(/window closed/i));
     // Untimed retry is open, and the answer is still withheld.
     expect(screen.getByRole("button", { name: /Option A/ })).toBeEnabled();
-    expect(screen.queryByTestId("dc-reveal-answer")).not.toBeInTheDocument();
+    expect(feedback()).toBeNull();
   });
 
   it("the countdown speaks of a solo window, never a shared round", async () => {
@@ -398,24 +444,44 @@ describe("the arena columns", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option B/ }));
 
-    await screen.findByTestId("dc-beat");
+    await waitFor(() => expect(status()).toHaveTextContent(/missed for score/i));
     expect(screen.getByTestId("dc-score-meter")).toHaveAttribute("data-fill-bp", "0");
     expect(screen.getByTestId("dc-score-meter-value")).toHaveTextContent("0 / 1250");
   });
 
-  it("the left column names the player and their record", async () => {
+  it("the left column is the CANONICAL duelist column, showing this player", async () => {
     routes = [onToday(rawToday()), onStart(rawRun({
-      cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: true }, { sequence: 2 }],
+      cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: true, awardedScore: 100 },
+        { sequence: 2 }],
       currentSequence: 2, resolvedCount: 1, score: 100,
     }))];
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
 
-    const panel = await screen.findByTestId("dc-player-panel");
+    const panel = await screen.findByTestId("combatant-daily-player");
     expect(within(panel).getByText("Mogzy")).toBeInTheDocument();
-    expect(within(panel).getByTestId("dc-player-score")).toHaveTextContent("100");
-    expect(within(panel).getByTestId("dc-player-record")
-      .querySelectorAll("[data-mark]")).toHaveLength(1);
+    // The primary meter is the SCORE, and it is labelled what it is rather
+    // than being passed off as health in a mode with no combat.
+    expect(within(panel).getByTestId("hp-daily-player")).toHaveTextContent("100");
+    expect(within(panel).getByText("Score")).toBeInTheDocument();
+    expect(within(panel).queryByText("HP")).not.toBeInTheDocument();
+    // The record is the canonical recent-round ledger, one row per settled card.
+    expect(within(panel).getByTestId("ledger-row-daily-player-1"))
+      .toHaveAttribute("data-outcome", "correct");
+    // A Daily has no level or XP layer, so neither is drawn — not even empty.
+    expect(panel).toHaveAttribute("data-progression", "false");
+    expect(within(panel).queryByTestId("xp-daily-player")).not.toBeInTheDocument();
+  });
+
+  it("puts NO combatant in the right column — it is the day", async () => {
+    routes = [onToday(rawToday()), onStart(rawRun({ cards: [{ sequence: 1 }], cardCount: 12 }))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    await screen.findByTestId("ranked-match");
+
+    // Exactly one combatant column exists on the whole arena.
+    expect(document.querySelectorAll("[data-testid^=\"combatant-\"]")).toHaveLength(1);
+    expect(screen.queryByTestId("ranked-abilities")).not.toBeInTheDocument();
   });
 });
 
@@ -428,21 +494,30 @@ describe("the run strip", () => {
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
 
-    const strip = await screen.findByTestId("dc-timeline");
-    expect(strip).toHaveAttribute("data-node-count", String(cardCount));
+    const strip = await screen.findByTestId("ranked-round-timeline");
+    // The finite plan IS the strip: one node per card, all of them visible,
+    // and nothing sketched past the last one.
+    expect(strip).toHaveAttribute("data-visible-nodes", String(cardCount));
     expect(strip.querySelectorAll("li")).toHaveLength(cardCount);
+    expect(screen.queryByTestId(`timeline-node-${cardCount + 1}`)).toBeNull();
   });
 
   it("marks the Meta Reflex block distinctly", async () => {
     routes = [onToday(rawToday()), onStart(rawRun({ cards: [{ sequence: 1 }], cardCount: 12 }))];
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
-    await screen.findByTestId("dc-timeline");
+    await screen.findByTestId("ranked-round-timeline");
 
-    expect(screen.getByTestId("dc-timeline-node-7"))
-      .toHaveAttribute("data-kind", "meta_reflex");
-    expect(screen.getByTestId("dc-timeline-node-7")).toHaveAttribute("data-block-start", "true");
-    expect(screen.getByTestId("dc-timeline-node-1")).toHaveAttribute("data-kind", "quiz");
+    // The canonical Meta Reflex mark, on the block the SERVER's frozen plan
+    // names — the same glyph Ranked's own block gets.
+    expect(screen.getByTestId("timeline-node-7"))
+      .toHaveAttribute("data-segment", "meta-reflex");
+    expect(screen.getByTestId("timeline-node-1")).toHaveAttribute("data-segment", "standard");
+    const reflex = [7, 8, 9, 10, 11].map((n) =>
+      screen.getByTestId(`timeline-node-${n}`).getAttribute("data-segment"));
+    expect(reflex).toEqual(Array(5).fill("meta-reflex"));
+    // Exactly ONE block, and nothing outside it claims to be one.
+    expect(document.querySelectorAll('[data-segment="meta-reflex"]')).toHaveLength(5);
   });
 });
 
@@ -462,10 +537,12 @@ describe("recovery", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
 
-    await waitFor(() => expect(screen.getByTestId("dc-card-stage"))
-      .toHaveAttribute("data-sequence", "2"));
-    // Corrected quietly. No scary code reaches the player.
-    expect(screen.getByTestId("dc-status")).toHaveTextContent("");
+    await waitFor(() => showingCard(2));
+    // Corrected quietly: the board is simply right, the next card is open, and
+    // no backend code reaches the player.
+    expect(status()).toHaveTextContent("Choose an answer to lock it in.");
+    expect(status()).toHaveAttribute("role", "status");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("an already-eliminated option refetches rather than erroring", async () => {
@@ -488,15 +565,15 @@ describe("recovery", () => {
     routes = [onToday(rawToday()), onStart(rawRun({ cards: [{ sequence: 1 }] }))];
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
-    await screen.findByTestId("dc-arena");
+    await screen.findByTestId("ranked-match");
 
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
     fireEvent.click(screen.getByRole("button", { name: /Option A/ }));
 
-    await waitFor(() => expect(screen.getByTestId("dc-status"))
+    await waitFor(() => expect(screen.getByTestId("submission-status"))
       .toHaveTextContent(/progress is saved/i));
     // The card is still on screen — nothing was thrown away.
-    expect(screen.getByTestId("dc-card-stage")).toHaveAttribute("data-sequence", "1");
+    showingCard(1);
   });
 
   it("a completed run reached mid-answer goes to the result", async () => {
@@ -525,9 +602,9 @@ describe("disclosure", () => {
     }))];
     const { container } = renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
-    await screen.findByTestId("dc-arena");
+    await screen.findByTestId("ranked-match");
 
-    expect(screen.queryByTestId("dc-reveal")).not.toBeInTheDocument();
+    expect(feedback()).toBeNull();
     const html = container.innerHTML;
     for (const leak of ["correct_index", "correctIndex", "explanation", "score_lock",
       "module_payload", "question_key"]) {
@@ -549,13 +626,16 @@ describe("disclosure", () => {
       onAnswer(rawAnswer({ score_delta: 100 }, resolved))];
     renderPage();
     fireEvent.click(await screen.findByTestId("dc-start"));
-    expect(screen.queryByTestId("dc-reveal")).not.toBeInTheDocument();
+    expect(feedback()).toBeNull();
 
     fireEvent.click(await screen.findByRole("button", { name: /Option C/ }));
 
-    const reveal = await screen.findByTestId("dc-reveal");
-    expect(within(reveal).getByTestId("dc-reveal-answer")).toHaveTextContent("Option C");
-    expect(within(reveal).getByTestId("dc-reveal-explanation")).toHaveTextContent(/says so/);
+    // The canonical tablets resolve, through the canonical reveal gate.
+    await waitFor(() => expect(screen.getByTestId("answer-grid"))
+      .toHaveAttribute("data-answers-state", "revealed"));
+    expect(document.querySelector('[data-quiz-choice="2"]'))
+      .toHaveAttribute("data-choice-state", "correct");
+    expect(feedback()).toHaveTextContent(/says so/);
   });
 });
 

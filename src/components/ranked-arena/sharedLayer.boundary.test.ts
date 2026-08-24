@@ -105,6 +105,58 @@ describe("the shared arena layer does not depend on any mode's page", () => {
     }
   });
 
+  /**
+   * ARENA1 Step 5 — the same rule, one level up: a mode-neutral RUNTIME
+   * projection may not live in a mode's page either.
+   *
+   * The type move above fixed `components/` importing upward. It left the
+   * FUNCTIONS that produce those types in `pages/quiz-ranked/`, and Step 4 had
+   * the Tutorial importing them from there. That is the same inversion wearing
+   * a different hat, and it only became visible when a THIRD mode arrived: at
+   * that point Ranked's page directory is a shared library that nothing
+   * declares and no reader expects to be one.
+   *
+   * Declared in `lib/ranked-core`, re-exported from their historical homes.
+   */
+  it("keeps the neutral settlement and timeline projections in lib/ranked-core", () => {
+    const settlement = readFileSync(
+      join(ROOT, "lib", "ranked-core", "settlementViews.ts"), "utf8");
+    for (const fn of [
+      "projectRoundHistory", "projectRevealOutcomes", "projectRevealDamage",
+      "projectSurfaceReveal", "projectMascotReactions",
+    ]) {
+      expect(settlement, `${fn} must be DECLARED in lib/ranked-core/settlementViews`)
+        .toMatch(new RegExp(`export function ${fn}\\b`));
+    }
+    expect(readFileSync(join(ROOT, "lib", "ranked-core", "roundTimeline.ts"), "utf8"))
+      .toMatch(/export function projectRoundTimeline\b/);
+    // `resultKind` had to come with the timeline: the projection needs it, and
+    // a projection in `lib/` must not reach into `components/` for it.
+    expect(readFileSync(join(ROOT, "lib", "ranked-core", "resultKind.ts"), "utf8"))
+      .toMatch(/export function resultKind\b/);
+  });
+
+  it("leaves no neutral projection DECLARED in a mode's page", () => {
+    const offenders: string[] = [];
+    for (const file of sourceFiles(join(ROOT, "pages"))) {
+      const src = readFileSync(file, "utf8");
+      for (const fn of [
+        "projectRoundHistory", "projectRevealOutcomes", "projectRevealDamage",
+        "projectSurfaceReveal", "projectMascotReactions", "projectRoundTimeline",
+        "resultKind",
+      ]) {
+        if (new RegExp(`export function ${fn}\\b`).test(src)) {
+          offenders.push(`${file.slice(ROOT.length + 1)} declares ${fn}`);
+        }
+      }
+    }
+    expect(offenders, [
+      "A mode-neutral projection was declared in a page directory again.",
+      "Three modes render the arena; anything all three call belongs in",
+      "lib/ranked-core, with a re-export left behind.",
+    ].join(" ")).toEqual([]);
+  });
+
   it("still resolves those types from their historical import sites", async () => {
     // The move is only safe because nothing had to be rewritten downstream.
     // These are the two modules that declared them; both re-export.
@@ -112,7 +164,13 @@ describe("the shared arena layer does not depend on any mode's page", () => {
     const timeline = await import("@/pages/quiz-ranked/roundTimeline");
     expect(typeof views.projectRoundHistory).toBe("function");
     expect(typeof views.projectMascotReactions).toBe("function");
+    expect(typeof views.projectRevealOutcomes).toBe("function");
+    expect(typeof views.projectRevealDamage).toBe("function");
+    expect(typeof views.projectSurfaceReveal).toBe("function");
     expect(typeof timeline.projectRoundTimeline).toBe("function");
+    // And `resultKind` from the component that used to declare it.
+    const beat = await import("@/components/ranked-arena/RoundResultBeat");
+    expect(typeof beat.resultKind).toBe("function");
     // The runtime values that did NOT move are still exported from here.
     expect(timeline.TIMELINE_VISIBLE_NODES).toBe(9);
     expect(timeline.TIMELINE_ANCHOR_INDEX).toBe(4);

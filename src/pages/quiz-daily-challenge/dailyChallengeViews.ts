@@ -1,5 +1,5 @@
 /**
- * Daily Challenge presentation projections (DC1 Phase 5).
+ * Daily Challenge RULES → canonical arena data (DC1 Phase 5, ARENA1 Step 5).
  *
  * Pure functions from the authoritative run projection to display data. Nothing
  * here decides anything: not correctness, not score, not whether a window is
@@ -10,11 +10,33 @@
  * The one thing this module DOES own is vocabulary — turning a card's state
  * into the beat the player sees — and that vocabulary is derived from server
  * facts (`score_outcome`, `resolved`, `phase`) rather than remembered locally.
+ *
+ * WHAT ARENA1 STEP 5 CHANGED HERE
+ * ───────────────────────────────
+ * Three projections left. `projectQuestion` and `projectOptionMedia` produced
+ * a bespoke `QuestionView` with `media: null` on every option — the Daily's
+ * whole art layer was being thrown away one line before it reached a renderer
+ * that could have drawn it. `projectTimeline` produced a bespoke node list for
+ * a bespoke strip.
+ *
+ * All three are replaced by ONE projection into the shape the production arena
+ * already reads: `publicRoundFromCard`. The canonical registry resolves the
+ * renderer from it, the canonical adapters project the question from it, and
+ * the canonical asset resolver draws the art — so the Daily inherits item and
+ * champion art, ability icons, scenario bands, option media, image fallbacks
+ * and media sizing without owning a line of any of it.
  */
 
+import { LEGACY_SEGMENT } from "@/lib/ranked-public/contracts";
+import { feedbackFromDailyCard } from "@/lib/question-feedback/adapters";
+import { NO_FEEDBACK, type ResolvedFeedback } from "@/lib/question-feedback/model";
+import type { PublicRoundView } from "@/lib/ranked-public/contracts";
+import { answerOptionId } from "@/lib/ranked-core/adapters/adaptToViews";
 import type {
-  AnswerOptionView,
-  QuestionView,
+  OptionMediaView,
+  ResultKind,
+  RoundHistoryEntry,
+  TimelineSegmentKind,
   TimerView,
 } from "@/lib/ranked-core/viewTypes";
 import type {
@@ -26,6 +48,10 @@ import type {
   DcUnresolvedCard,
 } from "@/lib/daily-challenge/contracts";
 import { currentCard, lastResolvedCard } from "@/lib/daily-challenge/contracts";
+
+/** The one seat in a solo run. Stable, because the arena keys rails on it. */
+export const DAILY_PLAYER_ID = "daily-player";
+const DAILY_MATCH_ID = "daily-challenge";
 
 // ── the surface a card is showing ──────────────────────────────────────────
 
@@ -58,38 +84,143 @@ export function canAnswer(phase: DcCardPhase | null): boolean {
   return phase === "open" || phase === "reflex_timed" || phase === "learning";
 }
 
-// ── question + options ─────────────────────────────────────────────────────
+// ── the card, in the shape the production arena reads ──────────────────────
 
 /**
- * The card as the canonical arena's `QuestionView`.
+ * One option's canonical media, or null.
  *
- * Option ids are the BACKEND INDEX stringified, and stay so even for an
- * eliminated option — the whole point of the backend marking rather than
- * removing them is that index 2 keeps meaning index 2. Renumbering here would
- * make the next submission mean something the server did not intend.
+ * The backend freezes an entity's art WITH the card (see `snapshot.py`), so
+ * `media` is an asset PATH and `entity_id` is the canonical id — exactly the
+ * two things `OptionMediaView` carries. `side` ("left"/"right" on a Meta Reflex
+ * card) is not an entity TYPE and is deliberately not passed off as one: the
+ * type is only ever used for debug/tests, and claiming a wrong one would be a
+ * lie in a field the resolver does not need.
+ *
+ * `icon` is a backend-relative path, which is what `resolveQuizAssetUrl`
+ * expects — the same resolver every other League asset in the app goes through.
  */
-export function projectQuestion(card: DcCard): QuestionView {
+function optionMediaFromCard(card: DcCard): OptionMediaView[] | null {
+  if (!card.options.some((o) => o.media)) return null;
+  return card.options.map((o) => (o.media
+    ? {
+      type: "",
+      name: o.label ?? "",
+      icon: o.media,
+      ...(o.entityId !== null ? { id: o.entityId } : {}),
+    }
+    : null)) as OptionMediaView[];
+}
+
+/**
+ * THE CARD, AS A PUBLIC ROUND.
+ *
+ * The Daily's own transport is not the Ranked one and never will be — this is
+ * not an attempt to make it so. It is the smallest honest statement of "here
+ * is a question and its options" in the shape the canonical registry, the
+ * canonical question adapter and the canonical scenario adapter already read,
+ * so that the Daily reaches the SAME renderer Ranked does rather than a copy
+ * of it.
+ *
+ * `presentation` is the load-bearing line. The backend stores a quiz card's
+ * `media` as the question's own presentation metadata (`media=record.presentation`
+ * in `snapshot.py`) — the same Quiz/Broadcast-compatible blob Ranked transports
+ * — so passing it through is what gives the Daily the premium scenario band,
+ * the family band, champion splashes and item art. The previous projection
+ * dropped it on the floor and the mode rendered plain text prompts for its
+ * whole life.
+ *
+ * Everything below `question` is structural: the arena needs a round object,
+ * and a solo run has exactly one participant, no active PvP round, no segment
+ * phase and no ability layer. None of it is invented — it states absence.
+ */
+export function publicRoundFromCard(
+  card: DcCard | null, run: DcRun | null,
+): PublicRoundView {
   return {
-    questionId: `${card.sequence}`,
-    prompt: card.prompt,
-    category: card.category,
-    options: card.options.map((option): AnswerOptionView => ({
-      id: String(option.index),
-      index: option.index,
-      // A Meta Reflex recognition side has no label: its prompt names the
-      // target, so a label would be the answer. The art carries the option.
-      label: option.label ?? "",
-      media: null,
-    })),
+    schemaVersion: "daily-challenge.local.v1",
+    serverTime: run?.serverNow ?? "",
+    matchId: DAILY_MATCH_ID,
+    matchStatus: run?.status ?? "active",
+    matchOver: run?.status === "completed",
+    winnerId: null,
+    completionReason: null,
+    completedRounds: run?.resolvedCount ?? 0,
+    players: [],
+    activeRound: null,
+    nextRoundDurationSeconds: 0,
+    question: card
+      ? {
+        // The SEQUENCE identifies the question to the arena, and that matters:
+        // the answer grid keys its entrance animation on the question id, so a
+        // per-card id is what makes each card's tablets play in once.
+        questionId: `daily-${card.sequence}`,
+        prompt: card.prompt,
+        // A Meta Reflex recognition side has no label: its prompt names the
+        // target, so a label would be the answer. The art carries the option,
+        // and an empty string is the honest absence of text.
+        options: card.options.map((o) => o.label ?? ""),
+        category: card.category,
+        presentation: card.media,
+        optionMedia: optionMediaFromCard(card),
+      }
+      : null,
+    // A quiz segment: one challenge, the shell owns the submission, and the
+    // canonical registry resolves `quizModule` from it. Named through the
+    // production constant rather than written out, so a change to the default
+    // segment reaches the Daily too.
+    segment: LEGACY_SEGMENT,
+    segmentState: null,
+    progressionPendingPlayers: [],
+    // No level layer, no XP meter, no ability tray, no level-2 choice.
+    progressionEnabled: false,
+    presence: null,
+    playtest: null,
   };
 }
 
-/** Positional option art (an asset path), or null when this card has none. */
-export function projectOptionMedia(card: DcCard): (string | null)[] | null {
-  return card.options.some((o) => o.media)
-    ? card.options.map((o) => o.media ?? null)
-    : null;
+/**
+ * ONE CARD, as RG3's resolved-feedback model — the single channel the shared
+ * question surface reads its verdict, its struck options and its disclosure
+ * gate from.
+ *
+ * Nothing is decided here. `feedbackFromDailyCard` is `main`'s own adapter and
+ * it was written against the DC2 WIRE shape, anticipating exactly this caller;
+ * all this does is hand the parsed card back in the shape that adapter reads.
+ * The mapping is 1:1 and the field names are the only difference.
+ *
+ * Why go back through the adapter instead of building a `ResolvedFeedback`
+ * directly: the disclosure rules live inside it — `disclosureAllowed` is the
+ * backend's `resolved` and never its `score_locked`, a resolved card's answer
+ * is published and an unresolved one's is not, and the result is `sealed()`.
+ * A second construction site would be a second place those rules could drift.
+ */
+export function feedbackForCard(card: DcCard | null): ResolvedFeedback {
+  if (!card) return NO_FEEDBACK;
+  const resolved = card.resolved === true;
+  return feedbackFromDailyCard({
+    resolved,
+    score_locked: card.scoreLocked,
+    score_outcome: card.scoreOutcome,
+    eliminated: card.eliminated,
+    options: card.options.map((o) => ({ index: o.index })),
+    ...(resolved
+      ? {
+        correct_index: (card as DcResolvedCard).correctIndex,
+        explanation: (card as DcResolvedCard).explanation,
+        attempts: (card as DcResolvedCard).attempts.map((a) => ({
+          selected_index: a.selectedIndex, is_correct: a.isCorrect,
+        })),
+        // The Meta Reflex comparison the server published, verbatim. The
+        // adapter reads the named display fields off it and nothing else.
+        reveal: (card as DcResolvedCard).reveal as Parameters<
+          typeof feedbackFromDailyCard>[0]["reveal"],
+      }
+      : {}),
+  });
 }
+
+/** The viewer's selection: a Daily card has none — one click IS the answer. */
+export const DAILY_NO_SELECTION = null;
 
 // ── timer ──────────────────────────────────────────────────────────────────
 
@@ -193,6 +324,14 @@ export function timeoutBeat(card: DcCard): DcBeat | null {
   };
 }
 
+/**
+ * THE STATUS LINE, for each beat.
+ *
+ * These are the arena's ONE reserved status line — the same line Ranked writes
+ * "Answer locked — waiting for opponent…" into. The Daily's beats are longer
+ * lived than Ranked's because its rounds are, so the line is where they belong:
+ * it is reserved-height, it is announced politely, and it moves nothing.
+ */
 export const BEAT_COPY: Record<DcBeatKind, { title: string; detail: string }> = {
   first_correct: { title: "Solved first try", detail: "Scored." },
   // Says what it COST and what to do next, in that order, and never that the
@@ -202,6 +341,13 @@ export const BEAT_COPY: Record<DcBeatKind, { title: string; detail: string }> = 
   learned: { title: "Learned", detail: "Solved after the scored attempt." },
   reflex_timeout: { title: "Time", detail: "The window closed — solve it untimed." },
 };
+
+/** One line for the arena's status slot. */
+export function beatStatusText(beat: DcBeat): string {
+  const copy = BEAT_COPY[beat.kind];
+  const delta = beat.scored && beat.scoreDelta > 0 ? ` +${beat.scoreDelta}` : "";
+  return `${copy.title} — ${copy.detail}${delta}`;
+}
 
 // ── the challenge (RIGHT column) ───────────────────────────────────────────
 
@@ -270,19 +416,10 @@ export interface DcPlayerView {
   reflexCorrect: number;
   reflexTotal: number;
   timeouts: number;
-  /** Most recent first, oldest last — a compact record of the day so far. */
-  record: DcRecordMark[];
 }
-
-export type DcRecordMark = "correct" | "learned" | "timeout";
 
 export function projectPlayer(run: DcRun): DcPlayerView {
   const s = run.summary;
-  const record: DcRecordMark[] = run.cards
-    .filter((c): c is DcResolvedCard => c.resolved === true)
-    .sort((a, b) => a.sequence - b.sequence)
-    .map((c) => (c.firstAttemptCorrect ? "correct"
-      : c.scoreOutcome === "timeout" ? "timeout" : "learned"));
   return {
     score: run.score,
     maxScore: run.maxScore,
@@ -293,75 +430,101 @@ export function projectPlayer(run: DcRun): DcPlayerView {
     reflexCorrect: s.reflexFirstAttemptCorrect,
     reflexTotal: s.reflexCardCount,
     timeouts: s.timeoutCount,
-    record,
   };
 }
 
-// ── timeline ───────────────────────────────────────────────────────────────
+// ── what a settled card was ────────────────────────────────────────────────
 
-export type DcNodeState = "correct" | "learned" | "timeout" | "active" | "future";
+/**
+ * ONE CARD'S VERDICT, in the arena's four-tone vocabulary.
+ *
+ * The three-way distinction is the mode's whole shape, and it survives because
+ * the arena already has three of the tones it needs:
+ *
+ *   first try        → `correct`
+ *   window lapsed    → `timed-out`
+ *   solved afterwards→ `incorrect`
+ *
+ * The last one is the only mapping worth arguing about, and it is right: under
+ * retry-until-correct EVERY card ends solved, so "did it end solved" says
+ * nothing at all. What the mark reports is the FIRST ATTEMPT, which is the only
+ * attempt that scored — and the player's first attempt on a learned card was
+ * indeed incorrect. Reading a learned card as a win is the one thing the strip
+ * must not do.
+ *
+ * `both-correct` is unreachable here, and correctly so: it means "your opponent
+ * also got it right", and there is no opponent.
+ */
+export function cardResultKind(card: DcResolvedCard): ResultKind {
+  if (card.firstAttemptCorrect) return "correct";
+  return card.scoreOutcome === "timeout" ? "timed-out" : "incorrect";
+}
 
-export interface DcTimelineNode {
-  sequence: number;
-  state: DcNodeState;
-  /** null when the day's shape is not known (see `projectTimeline`). */
-  kind: "quiz" | "meta_reflex" | null;
-  /** First and last positions of a Meta Reflex block, for the bracket. */
-  blockStart: boolean;
-  blockEnd: boolean;
+/** Every settled card's verdict, by sequence — the canonical timeline's input. */
+export function dailyOutcomes(run: DcRun): Map<number, ResultKind> {
+  const out = new Map<number, ResultKind>();
+  for (const card of run.cards) {
+    if (card.resolved === true) out.set(card.sequence, cardResultKind(card));
+  }
+  return out;
 }
 
 /**
- * One node per card of THIS run, in play order.
+ * The day's shape, per position, as the timeline's SEGMENT identity.
  *
- * The length comes from the run's own `card_count`, never from a constant: a
- * Daily is 11–15 cards and the plan is the server's. `structure` is the
- * per-position kind from `GET /today` and is optional — it is a fact about
- * TODAY's challenge version, and a run resumed across a regeneration plays an
- * older version whose shape that structure does not describe. When the
- * versions disagree the kinds are dropped rather than guessed, and the strip
- * still renders every position honestly.
- *
- * A future node carries its POSITION and, at most, its kind. Never a prompt,
- * an option, a category or a difficulty — the run projection does not ship
- * unreached cards at all, and this must not reintroduce them.
+ * From `GET /today`'s frozen structure, which is a fact about TODAY's challenge
+ * version — so a run resumed across a regeneration plays an older version whose
+ * shape that structure does not describe. When the versions disagree the kinds
+ * are dropped rather than guessed, and every node renders as "not observed",
+ * which is exactly what the canonical strip's neutral token means.
  */
-export function projectTimeline(
-  run: DcRun,
+export function dailySegmentKinds(
   structure: DcStructureEntry[] | null,
   structureVersion: number | null,
-): DcTimelineNode[] {
-  const usable = structure && structureVersion === run.challengeVersion
-    ? new Map(structure.map((e) => [e.sequence, e.kind]))
-    : null;
-
-  const bySequence = new Map(run.cards.map((c) => [c.sequence, c]));
-  const nodes: DcTimelineNode[] = [];
-  for (let sequence = 1; sequence <= run.cardCount; sequence += 1) {
-    const card = bySequence.get(sequence) ?? null;
-    let state: DcNodeState = "future";
-    if (card && card.resolved) {
-      state = card.firstAttemptCorrect ? "correct"
-        : card.scoreOutcome === "timeout" ? "timeout" : "learned";
-    } else if (sequence === run.currentSequence) {
-      state = "active";
-    }
-    nodes.push({
-      sequence,
-      state,
-      kind: usable?.get(sequence) ?? null,
-      blockStart: false,
-      blockEnd: false,
-    });
+  runVersion: number | null,
+): Map<number, TimelineSegmentKind> {
+  const out = new Map<number, TimelineSegmentKind>();
+  if (!structure || structureVersion === null || structureVersion !== runVersion) return out;
+  for (const entry of structure) {
+    out.set(entry.sequence, entry.kind === "meta_reflex" ? "meta-reflex" : "standard");
   }
-  // Bracket each contiguous Meta Reflex run so the block reads as one object
-  // rather than five adjacent nodes that happen to share a colour.
-  nodes.forEach((node, i) => {
-    if (node.kind !== "meta_reflex") return;
-    node.blockStart = nodes[i - 1]?.kind !== "meta_reflex";
-    node.blockEnd = nodes[i + 1]?.kind !== "meta_reflex";
+  return out;
+}
+
+/**
+ * THE RUN AS A LEDGER — one row per settled card, oldest first.
+ *
+ * The same `RoundHistoryEntry` rows Ranked's duelist column reads, because the
+ * questions they answer are the same ones: what happened on that card, and what
+ * it did to the meter above. Nothing is invented to fill a combat field —
+ * `taken` and `absorbed` are zero because a solo run has nothing that damages
+ * the player, and `hpBefore`/`hpAfter` are the running score, which is what the
+ * meter is showing.
+ *
+ * `dealt` is the card's AWARDED score, straight off the backend. A learned card
+ * awarded nothing and shows nothing, which is the honest reading: it cost the
+ * player the card's points.
+ */
+export function roundHistoryFromRun(run: DcRun): RoundHistoryEntry[] {
+  const settled = run.cards
+    .filter((c): c is DcResolvedCard => c.resolved === true)
+    .sort((a, b) => a.sequence - b.sequence);
+  let running = 0;
+  return settled.map((card) => {
+    const before = running;
+    running += card.awardedScore;
+    return {
+      roundNumber: card.sequence,
+      outcome: card.firstAttemptCorrect ? "correct" as const
+        : card.scoreOutcome === "timeout" ? "timed_out" as const : "incorrect" as const,
+      dealt: card.awardedScore,
+      taken: 0,
+      absorbed: 0,
+      hpBefore: before,
+      hpAfter: running,
+      timeExpired: card.scoreOutcome === "timeout",
+    };
   });
-  return nodes;
 }
 
 // ── reveal ─────────────────────────────────────────────────────────────────

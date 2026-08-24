@@ -53,8 +53,7 @@ import type { QueueController } from "@/pages/quiz-ranked/useRankedQueue";
 import { visiblePlayModes, type PlayModeId, type PlayModeVisibility } from "@/lib/quiz/playModes";
 import type { RankedProgressionView } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
-import type { DailyChallengeState } from "@/lib/quiz/featured-mock";
-import { isDailyChallengeComplete } from "@/lib/quiz/dailyChallengeStatus";
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import PlayScrollRoleSelector, {
   DEFAULT_PREVIEW_ROLE,
 } from "./PlayScrollRoleSelector";
@@ -138,7 +137,8 @@ export default function PlayScrollRecord({
   /** Which entries the admin policy allows. Resolved by the host. */
   modes: PlayModeVisibility;
   /** Today's real Daily Challenge state, for the clause's figure. */
-  daily?: DailyChallengeState | null;
+  /** DC2's own answer for today. `known: false` = ordinary, playable. */
+  daily?: DailyStatusView | null;
   /**
    * Persist the role the player settled on, and say whether it held.
    *
@@ -420,14 +420,19 @@ export default function PlayScrollRecord({
   }, [queue.state, queue.matchId, handoffDelayMs, onEnterMatch]);
 
   /**
-   * Today's Daily Challenge, already finished.
+   * Today's Daily Challenge, already finished — ACCORDING TO DC2.
    *
-   * Known from state the record was HANDED — see `isDailyChallengeComplete`.
-   * Resolved before the clause is drawn, which is the whole point: the clause
-   * must never offer a day with nothing left in it and then discover that
-   * only after the player has pressed it.
+   * ARENA1 Step 5 §19: this used to read the LEGACY `/api/quiz/daily-challenge`
+   * payload, which describes a different product with a different card count,
+   * a different retry model and a different notion of "completed" — while the
+   * button beside it opened the DC2 arena. The two could disagree, and when
+   * they did the clause either refused a playable day or opened a finished one.
+   *
+   * An unread or unavailable status (`known: false`) renders the ordinary
+   * clause. That is the same safe default the predicate this replaced spelled
+   * out: an unknown day is not a finished one, and stays playable.
    */
-  const dailyComplete = isDailyChallengeComplete(daily);
+  const dailyComplete = daily?.known === true && daily.completed;
 
   /**
    * Close the record, then let the host move the player to Practice.
@@ -610,7 +615,10 @@ export default function PlayScrollRecord({
             tier: progression.tier,
           }
         : {},
-    daily: daily ? { streak: daily.dailyStreak } : {},
+    // Only a LIVE streak is claimed — see `liveStreak`. A run three days
+    // old carries a number that stopped being true two days ago.
+    daily: daily?.streak !== null && daily?.streak !== undefined
+      ? { streak: daily.streak } : {},
     // No figure. The roster is not read until the player opens Invite (see
     // `InvitePlayView`), so a connection count here would either be a guess or
     // a reason to query every account's friendships on open.

@@ -83,6 +83,23 @@ vi.mock("@/hooks/useFriends", () => ({
  */
 let dailyResponse: () => unknown = () => ({ ok: false });
 
+/**
+ * WHAT DC2 SAYS ABOUT TODAY (ARENA1 Step 5 §19).
+ *
+ * The match record's Daily clause reads the Daily Challenge service now, not
+ * the legacy `getDailyChallenge` payload above. That was the point of the
+ * change: the clause decides whether to OFFER a mode, and the button it offers
+ * opens DC2 — so a day the legacy endpoint calls finished and DC2 does not
+ * would either refuse a playable day or open a finished one.
+ *
+ * The legacy response stays mocked because the legacy in-page flow still reads
+ * it; it simply no longer decides anything the record draws.
+ */
+let dcStatus: DailyStatusView = { ...UNKNOWN_DAILY_STATUS };
+vi.mock("@/lib/daily-challenge/useDailyChallengeStatus", () => ({
+  useDailyChallengeStatus: () => dcStatus,
+}));
+
 const SETS = [
   { id: 5, name: "All Current Questions", description: "Everything", question_count: 1260 },
 ];
@@ -106,6 +123,8 @@ vi.mock("@/lib/quiz/api", () => ({
   progressAttempts: (p: { attempts?: number } | null) => p?.attempts ?? 0,
 }));
 
+import { UNKNOWN_DAILY_STATUS } from "@/lib/daily-challenge/status";
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import QuizPage from "./Quiz";
 
 function LocationProbe() {
@@ -131,6 +150,7 @@ async function renderLobby(entry: unknown = "/quiz") {
 beforeEach(() => {
   vi.clearAllMocks();
   dailyResponse = () => ({ ok: false });
+  dcStatus = { ...UNKNOWN_DAILY_STATUS };
 });
 afterEach(cleanup);
 
@@ -308,8 +328,34 @@ describe("a finished Daily Challenge hands the player to Practice", () => {
     questions: [],
   });
 
+  /**
+   * The two services disagreeing is not hypothetical: they are different
+   * products. The legacy Daily is one attempt per question over 5 questions;
+   * DC2 is 11–15 cards with retry-until-correct and a timed block. A player
+   * who finished the legacy set has not necessarily played today's Daily
+   * Challenge at all — and the clause opens the Daily Challenge.
+   */
+  it("offers the day when DC2 says it is unplayed, whatever the legacy set says", async () => {
+    dailyResponse = COMPLETED_DAY;
+    dcStatus = {
+      known: true, completed: false, resumable: false,
+      resolved: 0, total: 12, streak: 4, theme: "Item Knowledge",
+    };
+    await renderLobby();
+    fireEvent.click(screen.getByTestId("ranked-play-gem"));
+    await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
+
+    expect(screen.getByTestId("play-mode-daily")).toBeTruthy();
+    expect(screen.queryByTestId("play-mode-daily-complete")).toBeNull();
+  });
+
   async function openRecordOnAFinishedDay() {
     dailyResponse = COMPLETED_DAY;
+    // The clause's actual authority.
+    dcStatus = {
+      known: true, completed: true, resumable: false,
+      resolved: 12, total: 12, streak: 4, theme: "Item Knowledge",
+    };
     const utils = await renderLobby();
     fireEvent.click(screen.getByTestId("ranked-play-gem"));
     await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());

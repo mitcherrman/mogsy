@@ -24,7 +24,7 @@ import { RoundTimeline } from "@/components/ranked-arena/RoundTimeline";
 import {
   projectRoundTimeline, TIMELINE_VISIBLE_NODES,
   type RoundTimelineView, type TimelineNode, type TimelineSegmentKind,
-} from "@/pages/quiz-ranked/roundTimeline";
+} from "@/lib/ranked-core/roundTimeline";
 import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";

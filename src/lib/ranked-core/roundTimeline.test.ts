@@ -24,7 +24,7 @@ import {
   TIMELINE_VISIBLE_NODES, currentTimelineRound, isMetaReflexSegment,
   observeRoundKinds, projectRoundTimeline, timelineWindowStart,
   type RoundTimelineInput, type TimelineSegmentKind,
-} from "./roundTimeline";
+} from "@/lib/ranked-core/roundTimeline";
 
 // Same derivation the controller uses — the adapter exports the function, not
 // its payload type.

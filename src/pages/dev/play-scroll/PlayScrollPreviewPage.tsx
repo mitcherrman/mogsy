@@ -25,6 +25,7 @@
  * Deleting this directory and its route line removes the preview completely.
  */
 
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import PlayScrollRecord from "@/components/quiz/play-scroll/PlayScrollRecord";
@@ -62,18 +63,16 @@ const PROGRESSION = {
   matchesRated: 40,
 } as unknown as RankedProgressionView;
 
-const DAILY = {
-  date: "2026-08-21", answered: 2, correct: 2, target: 5, xpBonus: 250,
-  dailyStreak: 4, lastCompletedDate: null, completed: false, remaining: 3,
-  themeTitle: "Item Knowledge", themeBlurb: "Recipes and component paths.",
+const DAILY: DailyStatusView = {
+  known: true, completed: false, resumable: false,
+  resolved: 2, total: 12, streak: 4, theme: "Item Knowledge",
 };
 
 /** The same day, finished. The completed clause is otherwise only reachable
- *  by actually answering the day's set, which is not a thing a preview can
+ *  by actually playing the day out, which is not a thing a preview can
  *  do — and a state nobody can look at is a state nobody has checked. */
-const DAILY_DONE = {
-  ...DAILY, answered: 5, correct: 4, completed: true, remaining: 0,
-  lastCompletedDate: "2026-08-21",
+const DAILY_DONE: DailyStatusView = {
+  ...DAILY, completed: true, resolved: 12,
 };
 
 /**

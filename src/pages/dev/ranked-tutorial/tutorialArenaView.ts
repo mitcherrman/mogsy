@@ -29,11 +29,16 @@ import type { SurfaceReveal } from "@/lib/question-surface/contract";
 // authoritative settlement — the SAME ones Ranked's controller calls and the
 // same ones the arena inspector calls — so the tutorial's rails, its mascots
 // and its timeline are produced by the production code path, not a copy of it.
+//
+// ARENA1 Step 5 moved them out of `pages/quiz-ranked/` and into `ranked-core`,
+// which is where the tutorial should have been reaching for them all along:
+// they are neutral, and importing them from ANOTHER MODE'S PAGE is what made
+// Ranked's page a shared library nobody had declared.
 import {
   projectMascotReactions, projectRevealDamage, projectRevealOutcomes,
   projectRoundHistory, projectSurfaceReveal,
-} from "@/pages/quiz-ranked/rankedViews";
-import { projectRoundTimeline } from "@/pages/quiz-ranked/roundTimeline";
+} from "@/lib/ranked-core/settlementViews";
+import { projectRoundTimeline } from "@/lib/ranked-core/roundTimeline";
 import {
   abilityViewsFromTutorial, coachNoteFor, combatantViewsFromTutorial,
   permissionsFromTutorial, abilityPermissionsFromTutorial,

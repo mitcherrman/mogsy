@@ -40,6 +40,7 @@ import { CheckCircle2, Hourglass, Swords, XCircle } from "lucide-react";
 import type {
   PlayerSlot, ResolvedCombatantView, ResolvedRoundView, ResultKind,
 } from "@/lib/ranked-core/viewTypes";
+import { resultKind } from "@/lib/ranked-core/resultKind";
 import { resultHeadline } from "./RevealBanner";
 
 /**
@@ -53,19 +54,18 @@ import { resultHeadline } from "./RevealBanner";
  * SUCCESS needed distinguishing, because that is the one a single tone would
  * have mis-sold as a win.
  */
-// ARENA1 Step 2A: the type itself now lives in `lib/ranked-core/viewTypes`
-// (the timeline node type needs it, and a view type in `lib/` must not reach
-// into `components/`). Re-exported here so every `from "./RoundResultBeat"`
-// import site is unchanged.
+// ARENA1 Step 2A moved the TYPE into `lib/ranked-core/viewTypes` (the timeline
+// node type needs it, and a view type in `lib/` must not reach into
+// `components/`). Step 5 moved the FUNCTION after it, into
+// `lib/ranked-core/resultKind`, for the mirror-image reason: the timeline
+// PROJECTION needs it, and a projection in `lib/` must not reach into
+// `components/` either — which is exactly what kept `roundTimeline.ts`
+// stranded in Ranked's page directory.
+//
+// Both are re-exported here, so every `from "./RoundResultBeat"` import site
+// is unchanged. Neither the type nor the function was rewritten in either move.
 export type { ResultKind };
-
-export function resultKind(
-  viewer: ResolvedCombatantView, opponent: ResolvedCombatantView,
-): ResultKind {
-  if (viewer.outcome === "timed_out") return "timed-out";
-  if (viewer.outcome === "incorrect") return "incorrect";
-  return opponent.outcome === "correct" ? "both-correct" : "correct";
-}
+export { resultKind };
 
 /**
  * The beat's shared palette. Exported because the SEGMENT beat renders in the

@@ -20,6 +20,7 @@
  * Deleting this directory and its route line removes the demo completely.
  */
 
+import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
@@ -38,11 +39,10 @@ const PROFILES: LobbyPreviewProfile[] = ["timmy", "newcomer"];
 /** Every host action the hub can fire, deliberately inert. */
 function noop() {}
 
-/** Today's set, finished. Demo state only — nothing here is read or written. */
-const PREVIEW_DAILY_DONE = {
-  date: "2026-08-21", answered: 5, correct: 4, target: 5, xpBonus: 250,
-  dailyStreak: 4, lastCompletedDate: "2026-08-21", completed: true, remaining: 0,
-  themeTitle: "Item Knowledge", themeBlurb: "Recipes and component paths.",
+/** Today's Daily, finished. Demo state only — nothing here is read or written. */
+const PREVIEW_DAILY_DONE: DailyStatusView = {
+  known: true, completed: true, resumable: false,
+  resolved: 12, total: 12, streak: 4, theme: "Item Knowledge",
 };
 
 export default function LobbyPreviewPage() {

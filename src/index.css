@@ -1258,6 +1258,43 @@
   color: rgba(233,220,190,0.62);
 }
 
+/* ---- The post-resolution answer box, ON VELLUM (ARENA1 Step 5) -------------
+   `QuizAnswerFeedback` is tuned for a dark panel: emerald-400 on a 10%
+   emerald wash, destructive on a 10% destructive wash. Ranked never renders it
+   inside the arena — the competitive variant sets `showExplanation: false` —
+   so the folio has never had to skin it. The Daily is its first caller in
+   here, because the explanation IS what its retry loop exists to deliver, and
+   at those values it arrives as pale ink on pale paper.
+
+   Three tones, three inks, all from the academy palette: a deep leaf for a
+   scored solve, the folio's own oxblood for a wrong answer, and a slate blue
+   for LEARNED — which is neither, and must not be printed as either.
+
+   Colour and border only. The box keeps its own geometry, spacing and icon. */
+.ranked-academy .ranked-folio [data-quiz-answer-feedback] {
+  background-color: rgba(255,251,236,0.55);
+  border-color: rgba(122,98,54,0.45);
+  color: var(--ranked-ink);
+}
+.ranked-academy .ranked-folio [data-quiz-answer-feedback] .text-xs {
+  color: var(--ranked-ink-muted);
+}
+.ranked-academy .ranked-folio [data-verdict-tone="positive"] {
+  border-color: rgba(58,110,68,0.55);
+  background-color: rgba(86,138,92,0.14);
+  color: #2f5b38;
+}
+.ranked-academy .ranked-folio [data-verdict-tone="negative"] {
+  border-color: rgba(141,47,51,0.5);
+  background-color: rgba(141,47,51,0.10);
+  color: #8d2f33;
+}
+.ranked-academy .ranked-folio [data-verdict-tone="neutral"] {
+  border-color: rgba(58,92,126,0.5);
+  background-color: rgba(70,104,140,0.12);
+  color: #2f4f6d;
+}
+
 /* ---- Category heading -----------------------------------------------------
    A small academy label: a brass lozenge, the (formatted, meaning-preserving)
    category, then a hairline running out to the edge of the sheet. */
