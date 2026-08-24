@@ -41,6 +41,21 @@ function isProposed(context: PatchHistoricalContext): boolean {
   return Boolean(context.hypothetical && context.lifecycle !== "shipped");
 }
 
+function historicalSourceUrl(context: PatchHistoricalContext): string | null {
+  const source = context.reference?.source;
+  if (!source?.url) return null;
+  if (source.type !== "league_wiki" || !/^\d+$/.test(source.revision_id ?? "")) {
+    return source.url;
+  }
+  try {
+    const url = new URL(source.url);
+    url.searchParams.set("oldid", source.revision_id as string);
+    return url.toString();
+  } catch {
+    return source.url;
+  }
+}
+
 function ValueLineage({ context }: { context: PatchHistoricalContext }) {
   const historicalBefore = formatHistoricalValue(context.reference?.before);
   const historicalAfter = formatHistoricalValue(context.reference?.after);
@@ -78,6 +93,7 @@ export function HistoricalContext({ context }: { context?: PatchHistoricalContex
   const proposed = isProposed(context);
   const patch = context.reference?.patch_version ?? null;
   const restoresMultiple = context.flags?.includes("restores_multiple_changes");
+  const historicalUrl = historicalSourceUrl(context);
 
   return (
     <aside
@@ -110,9 +126,9 @@ export function HistoricalContext({ context }: { context?: PatchHistoricalContex
             {context.calendar_days_elapsed == null && context.patches_elapsed != null && (
               <p>{context.patches_elapsed.toLocaleString()} patches between verified states</p>
             )}
-            {context.reference?.source?.url && (
+            {historicalUrl && (
               <a
-                href={context.reference.source.url}
+                href={historicalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-fit underline hover:text-[#c9a84c]"

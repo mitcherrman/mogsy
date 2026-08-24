@@ -66,6 +66,29 @@ describe("HistoricalContext", () => {
     );
   });
 
+  it("links League Wiki evidence to the exact numeric revision", () => {
+    render(
+      <HistoricalContext
+        context={analyzed("exact_revert", {
+          reference: {
+            patch_version: "10.17",
+            before: ratio("0.2"),
+            after: ratio("0.1"),
+            source: {
+              type: "league_wiki",
+              url: "https://wiki.leagueoflegends.com/en-us/Qiyana/Patch_history",
+              revision_id: "4034672",
+            },
+          },
+        })}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "View historical source" })).toHaveAttribute(
+      "href",
+      "https://wiki.leagueoflegends.com/en-us/Qiyana/Patch_history?oldid=4034672",
+    );
+  });
+
   it("states a shipped exact revert as fact rather than a proposal", () => {
     render(
       <HistoricalContext
