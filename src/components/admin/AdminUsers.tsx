@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -101,6 +102,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [loading, setLoading] = useState(true);
   const [purging, setPurging] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  // COM1-2 deep link. `?user=<profileId>` preselects one account so another
+  // admin surface can hand off to THIS one instead of reimplementing it.
+  const [searchParams] = useSearchParams();
+  const deepLinkedProfileId = searchParams.get("user");
+  const deepLinkConsumed = useRef<string | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "notes" | "account" | "leagues" | "matches" | "purchases" | "comments" | "referrals" | "feedback">("overview");
   const [userComments, setUserComments] = useState<{ id: string; content: string; league_name: string; created_at: string; is_hidden: boolean }[]>([]);
 
@@ -355,6 +361,32 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     // Load referral data
     loadReferralData(profile.user_id);
   };
+
+  /**
+   * COM1-2 — the `?user=<profileId>` adapter.
+   *
+   * The Community drawer's admin Users tab finds an account and then hands it
+   * to this page rather than growing its own notes / roles / account-actions
+   * implementation. There is exactly one Users interface in the product and
+   * this is it; the drawer is a second door, not a second system.
+   *
+   * Deliberately a ONE-SHOT: `deepLinkConsumed` records the id already opened,
+   * so an admin who navigates away from the detail view is not dragged back to
+   * it on the next render, and a later re-selection is never overridden. The id
+   * is a `profiles.id` — the same public identifier already in every
+   * `/user/:profileId` URL — never an auth uid.
+   */
+  useEffect(() => {
+    if (!deepLinkedProfileId) return;
+    if (deepLinkConsumed.current === deepLinkedProfileId) return;
+    const match = profiles.find((p) => p.id === deepLinkedProfileId);
+    if (!match) return;
+    deepLinkConsumed.current = deepLinkedProfileId;
+    void openUserDetail(match);
+    // openUserDetail is a stable-enough closure over setters; re-running this
+    // on every render it changes would re-open the detail view continuously.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deepLinkedProfileId, profiles]);
 
   const loadReferralData = async (userId: string) => {
     const [{ data: links }, { data: redemptionsAsReferrer }, { data: redemptionSelf }] = await Promise.all([

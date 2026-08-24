@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { blockProfile, unblockProfile } from "@/lib/community/discovery";
 import {
   attempt,
-  BLOCK_MESSAGES,
   failure,
   REPORT_MESSAGES,
-  success,
   type SocialResult,
 } from "@/lib/community/social-result";
 
@@ -44,67 +43,35 @@ export function useBlocks() {
   }, [refresh]);
 
   /**
-   * COM1-1 / P0-2. Blocking is two statements — record the block, then drop any
-   * friendship — and neither used to be checked, so `FriendActionMenu` toasted
-   * "X has been blocked" even when the insert was refused outright.
+   * COM1-2. Blocking is now ONE call to `public.block_profile`, which records
+   * the block and removes every friendship row with that profile inside a
+   * single transaction, holding a pair-scoped advisory lock.
    *
-   * ORDER MATTERS AND IS DELIBERATE. The block lands FIRST and the unfriend
-   * only runs if it succeeded, so the failure mode is "blocked, still listed as
-   * a friend" rather than "unfriended, not blocked" — the first is a stale list
-   * the next refresh corrects (`refresh()` already filters blocked profiles
-   * out), the second silently fails to protect the user who asked to be
-   * protected.
+   * WHAT THIS REPLACES. The previous path was three separate round trips with
+   * no transaction around them: insert the block, read the friendships, delete
+   * them. COM1-1 made a failure between them VISIBLE — it could not make it
+   * impossible, and said so. Two states were reachable:
    *
-   * These two statements are still not ATOMIC. Making them one transaction
-   * needs a SECURITY DEFINER RPC and is tracked separately; what this change
-   * fixes is the reporting, which is what made the gap invisible.
+   *   - block written, unfriend lost  -> blocked and still listed as a friend
+   *   - a friend request committing between the read and the delete survived
+   *     the block entirely
+   *
+   * Both are now unreachable: the writes commit together, and
+   * `enforce_friendship_rules` takes the same pair lock before its block test,
+   * so a request and a block on one pair are serialised rather than crossing.
    */
   const blockUser = async (targetProfileId: string): Promise<SocialResult> => {
-    if (!myProfileId) return failure("unavailable", BLOCK_MESSAGES);
-
-    const blocked = await attempt(
-      () => supabase.from("user_blocks").insert({
-        blocker_profile_id: myProfileId,
-        blocked_profile_id: targetProfileId,
-      }),
-      BLOCK_MESSAGES,
-    );
-    if (!blocked.ok) {
-      await refresh();
-      return blocked;
-    }
-
-    const { data: friendships, error: readError } = await supabase
-      .from("friendships")
-      .select("id")
-      .or(
-        `and(requester_id.eq.${myProfileId},addressee_id.eq.${targetProfileId}),and(requester_id.eq.${targetProfileId},addressee_id.eq.${myProfileId})`
-      );
-
-    let unfriend: SocialResult = success();
-    if (!readError && friendships && friendships.length > 0) {
-      unfriend = await attempt(
-        () => supabase.from("friendships").delete().in("id", friendships.map(f => f.id)),
-        BLOCK_MESSAGES,
-      );
-    }
+    const result = await blockProfile(targetProfileId);
     await refresh();
-
-    // The block IS in place, so this is reported as a success with a refetch
-    // rather than a failure — saying "could not block" would be untrue and
-    // would invite the user to retry something already done.
-    if (readError || !unfriend.ok) return { ok: true, code: "already", refetch: true };
-    return blocked;
+    return result;
   };
 
+  /**
+   * COM1-2. Unblocking restores eligibility to interact. It deliberately does
+   * NOT recreate the friendship the block removed — see the RPC comment.
+   */
   const unblockUser = async (targetProfileId: string): Promise<SocialResult> => {
-    if (!myProfileId) return failure("unavailable", BLOCK_MESSAGES);
-    const result = await attempt(() =>
-      supabase
-        .from("user_blocks")
-        .delete()
-        .eq("blocker_profile_id", myProfileId)
-        .eq("blocked_profile_id", targetProfileId));
+    const result = await unblockProfile(targetProfileId);
     await refresh();
     return result;
   };

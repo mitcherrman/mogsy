@@ -1,8 +1,17 @@
 /**
- * Community drawer scope: the League drawer exposes Friends, incoming
- * Requests, outgoing Sent and Blocked -- and must NOT resurrect the legacy
- * dating-oriented "Saved" (bookmarked strangers) or "Find" (search every
- * profile by name) tabs.
+ * Community drawer scope.
+ *
+ * The League drawer exposes Friends, incoming Requests, outgoing Sent, Find
+ * Players and Blocked — and must NOT resurrect the legacy dating-oriented
+ * "Saved" tab (bookmarked strangers).
+ *
+ * COM1-2 CHANGED ONE OF THESE RULES DELIBERATELY. This suite used to assert
+ * that a "Find" tab did not exist, because the legacy one searched
+ * `public_profiles` — a `security_invoker` view over owner-only RLS — and
+ * returned an empty list for every query. That was a correct assertion about a
+ * broken surface. Discovery now goes through `public.search_league_profiles`,
+ * a SECURITY DEFINER RPC, and `public.profiles` RLS is unchanged. "Saved"
+ * stays gone, and that assertion is unchanged.
  */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -16,6 +25,8 @@ const friendsState = vi.hoisted(() => ({
   pendingRequests: [] as FriendRow[],
   sentRequests: [] as FriendRow[],
 }));
+
+const roleState = vi.hoisted(() => ({ isMasterAdmin: false }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: { id: "auth-1" }, loading: false }),
@@ -50,8 +61,28 @@ vi.mock("@/hooks/useBlocks", () => ({
   useReportUser: () => ({ reportUser: vi.fn(), myProfileId: "me" }),
 }));
 
+vi.mock("@/hooks/useAdminRoles", () => ({
+  useAdminRoles: () => ({
+    loading: false,
+    roles: roleState.isMasterAdmin ? ["master_admin"] : [],
+    isAdmin: roleState.isMasterAdmin,
+    isMasterAdmin: roleState.isMasterAdmin,
+    isModerator: false,
+  }),
+}));
+
+vi.mock("@/lib/community/discovery", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/community/discovery")>(
+    "@/lib/community/discovery",
+  );
+  return { ...actual, fetchBlockedProfiles: vi.fn().mockResolvedValue([]) };
+});
+
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { from: () => ({ select: () => ({ in: async () => ({ data: [] }) }) }) },
+  supabase: {
+    rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+    from: () => ({ select: async () => ({ data: [], error: null }) }),
+  },
 }));
 
 function row(id: string, name: string): FriendRow {
@@ -70,6 +101,7 @@ afterEach(() => {
   friendsState.friends = [];
   friendsState.pendingRequests = [];
   friendsState.sentRequests = [];
+  roleState.isMasterAdmin = false;
 });
 
 async function openDrawer() {
@@ -83,22 +115,20 @@ async function openDrawer() {
 }
 
 describe("community drawer scope", () => {
-  it("exposes exactly the four League tabs", async () => {
+  it("exposes exactly the five League tabs for an ordinary user", async () => {
     await openDrawer();
     const tabNames = screen.getAllByRole("tab").map((t) => (t.textContent || "").trim());
-    expect(tabNames).toHaveLength(4);
+    expect(tabNames).toHaveLength(5);
     expect(tabNames.join("|")).toMatch(/Friends/);
     expect(tabNames.join("|")).toMatch(/Requests/);
     expect(tabNames.join("|")).toMatch(/Sent/);
+    expect(tabNames.join("|")).toMatch(/Find Players/);
     expect(tabNames.join("|")).toMatch(/Blocked/);
   });
 
-  it("does not resurrect the legacy Saved or Find tabs", async () => {
+  it("does not resurrect the legacy Saved tab", async () => {
     await openDrawer();
     expect(screen.queryByRole("tab", { name: /saved/i })).toBeNull();
-    expect(screen.queryByRole("tab", { name: /find/i })).toBeNull();
-    // The stranger-search input is gone with the Find tab.
-    expect(screen.queryByPlaceholderText(/search by name/i)).toBeNull();
   });
 
   it("lists outgoing requests under Sent with a cancel action", async () => {

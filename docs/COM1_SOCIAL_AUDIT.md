@@ -14,8 +14,15 @@ material part of the social system does not live in Supabase at all.
 > All four **P0** findings below are addressed; see
 > [`COM1_PHASE1_SAFETY.md`](./COM1_PHASE1_SAFETY.md) for severity, root cause, contract
 > changes, migrations and baseline evidence. The P0 table in this document is annotated
-> accordingly. **P1 and below are untouched** and remain the record of what is still open.
-> The two migrations COM1-1 authored are **not yet applied**.
+> accordingly. The two migrations COM1-1 authored are **not yet applied**.
+>
+> **Update — COM1-2 (branch `com1/phase2-community`).** Reachability and blocking. Closes
+> **P1-1**, **P1-2**, **P1-4** and **P1-10**, and makes block+unfriend atomic. See
+> [`COM1_PHASE2_COMMUNITY.md`](./COM1_PHASE2_COMMUNITY.md). Migration
+> `20260823130000_com1_community_reachability.sql` is authored and **not yet applied** — it
+> replaces the live `enforce_friendship_rules` trigger, so §C and §G below describe the
+> system as it stands *today*, before that apply. Findings this phase closed are annotated
+> inline. **P1-3, P1-5 … P1-9, P2 and P3 are untouched.**
 
 ---
 
@@ -36,8 +43,11 @@ result is a social product that a real user cannot actually enter:
   route is redirect-gated; Ranked hands you a display name with no profile id. The only
   "Add Friend" button in the product lives on `/user/:profileId`, and nothing in the live
   League experience ever produces a `profileId` for someone you don't already know.
+  **→ CLOSED by COM1-2** (`search_league_profiles` + the Find Players tab).
 - **On mobile there is no way to open the friends drawer**, because the one entry point in
   the HUD is behind `!LEAGUE_ONLY_MODE`.
+  **→ CLOSED by COM1-2** (the trigger is no longer `hidden sm:flex`, and the HUD gained a
+  Community entry outside that guard).
 - **A public profile shows nothing.** Another user's `/user/:id` renders avatar + name +
   join date. Every stat block is disabled for non-self viewers.
 - **AUTH3 is live and correct.** `set_display_name`, `is_display_name_available` and the
@@ -275,6 +285,18 @@ error predicate away from being live again. Classification: **P3 cleanup — del
    which excludes profiles blocked by me — so a badge can show 0 while a row exists.
 
 ### C.4 Proposed canonical state machine
+
+> **COM1-2 shipped part of this.** `block_profile` and `unblock_profile` exist and make
+> block+unfriend atomic under a pair-scoped advisory lock; `get_relationship_state` is the
+> canonical A↔B read; and the trigger now block-tests the `pending → accepted` transition, so
+> C.3's risk 3 ("blocked-but-still-friends is prevented but not enforced") is closed.
+> `friend_request` / `friend_respond` / `friend_remove` were **not** written: those three
+> paths already report honestly through `SocialResult` after COM1-1, so an RPC would have
+> bought a transaction nothing needs. Risk 2 (`rows[0]` with no ordering) is closed for
+> `useFriendStatus`, which now reads the RPC's M2 pair predicate; the drawer's own list still
+> reads `friendships` directly and is still safe only while nothing writes `'declined'` —
+> P3-3 stands. `friend_request_events` is still unwritten and the rate limit is still
+> evadable (P3-9). See `COM1_PHASE2_COMMUNITY.md` §7.
 
 Keep the shape; move the writes server-side.
 
@@ -515,8 +537,16 @@ account's auth uid to `anon`. **The correct public boundary today is `get_league
 no post-match "add friend", no leaderboard link that resolves. A user can only friend someone
 whose `profiles.id` they already possess.
 
-**Dead / self-only links:** `/user/:id` for another user renders an empty shell (§F.2);
-the Blocked tab renders zero rows by construction.
+> **COM1-2: there is one now.** `public.search_league_profiles` searches the AUTH3 normalised
+> `display_name`, and the drawer's Find Players tab is its entry point. The other rows of the
+> table above are unchanged: Ranked still hands out a name with no profile id, and the
+> leaderboard route is still redirect-gated. Search excludes bots (no `auth.users` row, so a
+> request could never be accepted), disabled profiles, unclaimed placeholder names, and
+> profiles that blocked the caller.
+
+**Dead / self-only links:** `/user/:id` for another user renders an empty shell (§F.2).
+~~the Blocked tab renders zero rows by construction~~ — **fixed by COM1-2**:
+`get_blocked_profiles` is the block-aware read that `get_league_profiles` could never be.
 
 ---
 
@@ -576,7 +606,7 @@ without falling through to an "Unknown" ghost (`useFriends.ts:104-112`). Well de
 | `AdminMultiplayer` mounted at `/admin/play`, `/admin/gaming` | **misleading/debt** — an admin console for a retired feature | `AdminPlay.tsx`, `AdminGaming.tsx` |
 | `saved_profiles` + the Save button on `/user/:id` | **misleading/debt** — write-only. The drawer's "Saved" tab was removed; nothing reads the rows | `UserProfile.tsx:110-127`; `FloatingFriendsButton.tsx:8-10` |
 | `public_profiles` view | **dangerous stale behaviour** — dormant today, publishes `user_id` to `anon` the moment profiles RLS is widened | §F.3 |
-| Blocked-users list in the drawer | **misleading/debt** — always renders empty, acknowledged in-code | `FloatingFriendsButton.tsx:56-64` |
+| Blocked-users list in the drawer | ~~**misleading/debt** — always renders empty~~ — **FIXED by COM1-2** (`get_blocked_profiles`) | `FloatingFriendsButton.tsx:56-64` |
 | `comment_reply` / `comment_reaction` triggers | **misleading/debt** — write rows the client permanently suppresses | `MogzyIdentityMenu.tsx:83-101` |
 | `'declined'` friendship status | **misleading/debt** — legal, never written; breaks `rows[0]` if used | `20260730140000` §1 |
 | `legacyWrite()` in `claim-username.ts` | **dead but harmless today** — unreachable now that `set_display_name` exists; still an unguarded, uniqueness-free write one predicate change away from being live. Delete | §B.4.2 |
@@ -708,16 +738,16 @@ bot tab; invite links overlapping the word "invite".
 
 | ID | Finding | Evidence |
 | --- | --- | --- |
-| P1-1 | **No way to add a friend.** No search, no leaderboard link, no post-match affordance. `/user/:id` is the only "Add Friend" and nothing produces a stranger's `profiles.id`. | `FloatingFriendsButton.tsx:9-18`; `App.tsx:366` |
-| P1-2 | **Friends drawer is unreachable on mobile.** Trigger is `hidden sm:flex`; the HUD entry is inside `!LEAGUE_ONLY_MODE`. | `FloatingFriendsButton.tsx:130`; `MogzyIdentityMenu.tsx:809-836` |
-| P1-3 | **A stranger's profile is empty.** All stat blocks disabled for non-self viewers. | `UserProfile.tsx:526-535`; `LeaguePublicProfile.tsx:122-136` |
-| P1-4 | **A request to someone who blocked you fails silently forever.** | `useFriends.ts:206-211` + trigger |
+| P1-1 | **No way to add a friend.** No search, no leaderboard link, no post-match affordance. `/user/:id` is the only "Add Friend" and nothing produces a stranger's `profiles.id`. **→ CLOSED by COM1-2.** | `FloatingFriendsButton.tsx:9-18`; `App.tsx:366` |
+| P1-2 | **Friends drawer is unreachable on mobile.** Trigger is `hidden sm:flex`; the HUD entry is inside `!LEAGUE_ONLY_MODE`. **→ CLOSED by COM1-2** (both doors opened; verified at 375×812). | `FloatingFriendsButton.tsx:130`; `MogzyIdentityMenu.tsx:809-836` |
+| P1-3 | **A stranger's profile is empty.** All stat blocks disabled for non-self viewers. **STILL OPEN — and now the next bottleneck**, since search delivers users to it. | `UserProfile.tsx:526-535`; `LeaguePublicProfile.tsx:122-136` |
+| P1-4 | **A request to someone who blocked you fails silently forever.** **→ CLOSED.** COM1-1 made the refusal audible; COM1-2 moved the state read to `get_relationship_state`, so `useFriendStatus` no longer reports a state it cannot see. The block itself stays undisclosed by design. | `useFriends.ts:206-211` + trigger |
 | P1-5 | **Notification state outlives social state.** Cancelled/declined requests keep their bell entry permanently. | §E.2.1 |
 | P1-6 | **A bot can be invited to Stat Check and can never accept.** | §H.1 |
 | P1-7 | **Invite sender gets no feedback and cannot cancel.** `cancelInvite` has zero UI; no accept/decline/expiry notification. | `client.ts:200-206`; grep |
 | P1-8 | **The friends drawer is suppressed on Stat Check**, hiding the only invite entry point from the game it invites to. | `Layout.tsx:75-79` |
 | P1-9 | **Unfriend is one unconfirmed click** on `/user/:id`. | `UserProfile.tsx:159-161` |
-| P1-10 | **Blocked tab always renders empty.** | `FloatingFriendsButton.tsx:56-64` |
+| P1-10 | **Blocked tab always renders empty.** **→ CLOSED by COM1-2** (`get_blocked_profiles`, a block-aware read that returns only the caller's own blocks). | `FloatingFriendsButton.tsx:56-64` |
 
 ### P2 — coherence / UX
 
@@ -798,8 +828,8 @@ bot tab; invite links overlapping the word "invite".
 | --- | --- | --- |
 | **COM1-0** | **Partly absorbed into COM1-1.** The bot-name half is done (migration `20260823121000`). Still open: regenerate `types.ts` and delete `legacyWrite()` plus the two casts — neither has runtime effect. | P3-10, P3-11 |
 | **COM1-1** | ✅ **DONE** (unpushed). `sent_by_user_id` no longer written or selected; Ranked opponents pseudonymised; `/api/quiz/{user_id}` is self-only. Absorbed COM1-0's bot-name item as P0-4. See `COM1_PHASE1_SAFETY.md`. | P0-1 … P0-4 |
-| **COM1-2** | **Make mutations honest.** Four friendship RPCs + `block_profile`, each returning `{ok, code}`; one client mapper renders a sentence per code — the pattern `claimUsername` already proves. Add a confirm to unfriend. | P0-3, P1-4, P1-9 |
-| **COM1-3** | **Reachability.** Username search in the drawer. Restore a friends entry point in the HUD for League mode. Show the drawer on Stat Check, or put "Invite a friend" on the Stat Check lobby. Fix the Blocked tab (block-aware RPC). | P1-1, P1-2, P1-8, P1-10 |
+| **COM1-2** | ✅ **DONE** (unpushed) — **and it is the reachability phase, not the "honest mutations" one.** COM1-1 had already made every mutation report through `SocialResult`, so the four friendship RPCs this row proposed would have bought nothing. What shipped instead: username search, the Find Players tab, mobile reachability, an admin Users entry point, `block_profile` / `unblock_profile` (atomic, pair-locked), `get_relationship_state`, `get_blocked_profiles`. **Still open from this row: the unfriend confirmation (P1-9).** See `COM1_PHASE2_COMMUNITY.md`. | P1-1, P1-2, P1-4, P1-10 |
+| **COM1-3** | **Reachability — mostly absorbed by COM1-2.** Remaining: show the drawer on Stat Check, or put "Invite a friend" on the Stat Check lobby (P1-8). The phase is otherwise free for structured sending, which should consume `get_relationship_state` rather than re-derive the answer. | P1-8 |
 | **COM1-4** | **Make the profile worth visiting.** Profile-id-keyed public League stats endpoint; render Ranked rating, record, mastery, achievements on `/user/:id`. Link Ranked history opponents to it. | P1-3, P2-4 |
 | **COM1-5** | **Invite lifecycle.** Notifications for invite accepted / declined / expired. Cancel-invite UI. Unify the two notification streams and tie notification lifecycle to social state. | P1-5, P1-7, P2-3 |
 | **COM1-6** | **Bots.** Decide: either give test bots real `auth.users` rows behind a master-admin-only provisioning path (so they can actually accept), or remove "invite a bot" from every test plan and say so. Wire `show_bot_labels` to a real badge. | P1-6, P2-9 |

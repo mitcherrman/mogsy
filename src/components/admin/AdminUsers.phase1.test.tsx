@@ -1,6 +1,18 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminUsers from "./AdminUsers";
+
+/**
+ * COM1-2 added a `?user=<profileId>` deep link so the Community drawer's admin
+ * Users tab can hand a selected account to THIS page instead of growing its own
+ * notes / roles / account-actions implementation. Reading a search param needs
+ * a router in scope. The component only ever mounts inside one in production
+ * (`/admin` and `/admin/people`), so this wrapper matches reality rather than
+ * papering over a new requirement.
+ */
+const mount = (ui: React.ReactElement, path = "/admin/people?section=users") =>
+  render(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
 
 const profile = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -57,6 +69,45 @@ const { deleteProfile, invoke, supabase } = vi.hoisted(() => {
 vi.mock("@/integrations/supabase/client", () => ({ supabase }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+describe("COM1-2 · the ?user deep link", () => {
+  beforeEach(() => {
+    invoke.mockReset();
+    invoke.mockResolvedValue({ data: { auth_info: {
+      email: "owner@example.com", email_confirmed: true, email_confirmed_at: "2026-08-01T00:00:00Z",
+      created_at: "2026-08-01T00:00:00Z", last_sign_in_at: "2026-08-19T00:00:00Z",
+      is_anonymous: false, banned_until: null, provider: "email",
+    } }, error: null });
+  });
+
+  it("preselects the profile the Community drawer handed over", async () => {
+    mount(
+      <AdminUsers isMasterAdmin />,
+      `/admin/people?section=users&user=${profile.id}`,
+    );
+    // No click: the detail view opens because the URL named this account. This
+    // is what lets the drawer's Users tab be an entry point rather than a
+    // second implementation of notes, roles and account actions.
+    await screen.findByText("Profile UUID:");
+    expect(screen.getByText(profile.id)).toBeInTheDocument();
+  });
+
+  it("ignores a profile id that is not in the directory", async () => {
+    mount(
+      <AdminUsers isMasterAdmin />,
+      "/admin/people?section=users&user=99999999-9999-4999-8999-999999999999",
+    );
+    await screen.findByText("Mogzy Owner");
+    // The list renders; nothing is selected, and nothing throws.
+    expect(screen.queryByText("Profile UUID:")).not.toBeInTheDocument();
+  });
+
+  it("opens nothing when no user is named", async () => {
+    mount(<AdminUsers isMasterAdmin />);
+    await screen.findByText("Mogzy Owner");
+    expect(screen.queryByText("Profile UUID:")).not.toBeInTheDocument();
+  });
+});
+
 describe("AdminUsers Phase 1 safety", () => {
   beforeEach(() => {
     deleteProfile.mockClear();
@@ -69,7 +120,7 @@ describe("AdminUsers Phase 1 safety", () => {
   });
 
   async function openUser() {
-    render(<AdminUsers isMasterAdmin />);
+    mount(<AdminUsers isMasterAdmin />);
     fireEvent.click(await screen.findByText("Mogzy Owner"));
     await screen.findByText("Profile UUID:");
   }
@@ -118,7 +169,7 @@ describe("AdminUsers Phase 1 safety", () => {
   it("distinguishes a failed users query from an empty result", async () => {
     const normalRpc = supabase.rpc.getMockImplementation();
     supabase.rpc.mockImplementationOnce(() => Promise.resolve({ data: null, error: { message: "denied" } }));
-    render(<AdminUsers isMasterAdmin />);
+    mount(<AdminUsers isMasterAdmin />);
     expect(await screen.findByRole("alert")).toHaveTextContent("admin users query failed");
     expect(screen.queryByText("No users found")).not.toBeInTheDocument();
     if (normalRpc) supabase.rpc.mockImplementation(normalRpc);

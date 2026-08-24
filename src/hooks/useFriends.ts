@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchLeagueProfiles } from "@/lib/league-profiles";
 import { subscribeFriendsChanged } from "@/lib/community/friends-refresh";
+import { fetchRelationshipState } from "@/lib/community/discovery";
+import type { Relationship } from "@/lib/community/relationship";
 import {
   attempt,
   SEND_REQUEST_MESSAGES,
@@ -205,6 +207,25 @@ export function useFriends() {
   };
 }
 
+/**
+ * COM1-2. The A<->B state for one profile, read from
+ * `public.get_relationship_state` instead of being re-derived in the client.
+ *
+ * WHAT WAS WRONG. This hook used to run two queries of its own: a `user_blocks`
+ * lookup limited to blocks THIS user created, then `friendships` with
+ * `rows[0]` and no ordering. It therefore could not see a block the other party
+ * created — so the button read "Add Friend", the insert was refused by
+ * `enforce_friendship_rules`, and (before COM1-1) nothing was reported. And
+ * `rows[0]` is only deterministic while nothing writes 'declined'; the RPC uses
+ * the M2 pair predicate, which is.
+ *
+ * The `blocked` state still means "I blocked them" and only that. A block the
+ * OTHER party created is deliberately reported as `none` — the refusal happens
+ * at the write and arrives as a neutral sentence.
+ *
+ * The `FriendStatus` names are preserved so existing call sites
+ * (`/user/:profileId`) are untouched.
+ */
 export function useFriendStatus(targetProfileId: string | undefined) {
   const { user } = useAuth();
   const [status, setStatus] = useState<FriendStatus>("none");
@@ -216,56 +237,9 @@ export function useFriendStatus(targetProfileId: string | undefined) {
       setLoading(false);
       return;
     }
-
-    const { data: myProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!myProfile) {
-      setLoading(false);
-      return;
-    }
-
-    const me = myProfile.id;
-
-    // Check if blocked
-    const { data: blockedRow } = await supabase
-      .from("user_blocks")
-      .select("id")
-      .eq("blocker_profile_id", me)
-      .eq("blocked_profile_id", targetProfileId)
-      .maybeSingle();
-
-    if (blockedRow) {
-      setStatus("blocked");
-      setFriendshipId(null);
-      setLoading(false);
-      return;
-    }
-
-    const { data: rows } = await supabase
-      .from("friendships")
-      .select("*")
-      .or(
-        `and(requester_id.eq.${me},addressee_id.eq.${targetProfileId}),and(requester_id.eq.${targetProfileId},addressee_id.eq.${me})`
-      );
-
-    if (!rows || rows.length === 0) {
-      setStatus("none");
-      setFriendshipId(null);
-    } else {
-      const row = rows[0];
-      setFriendshipId(row.id);
-      if (row.status === "accepted") {
-        setStatus("friends");
-      } else if (row.requester_id === me) {
-        setStatus("pending_sent");
-      } else {
-        setStatus("pending_received");
-      }
-    }
+    const state = await fetchRelationshipState(targetProfileId);
+    setFriendshipId(state.friendshipId);
+    setStatus(RELATIONSHIP_TO_FRIEND_STATUS[state.relationship]);
     setLoading(false);
   }, [user, targetProfileId]);
 
@@ -275,3 +249,19 @@ export function useFriendStatus(targetProfileId: string | undefined) {
 
   return { status, friendshipId, loading, refresh: check };
 }
+
+/**
+ * The legacy `FriendStatus` union has no word for `self` or `unavailable`, and
+ * both are states in which no friend action is offered. They map to "none"
+ * for the status string; the call sites that matter (`/user/:profileId`)
+ * already suppress the controls on your own profile by a separate check.
+ */
+const RELATIONSHIP_TO_FRIEND_STATUS: Record<Relationship, FriendStatus> = {
+  none: "none",
+  outgoing: "pending_sent",
+  incoming: "pending_received",
+  friends: "friends",
+  blocked: "blocked",
+  self: "none",
+  unavailable: "none",
+};

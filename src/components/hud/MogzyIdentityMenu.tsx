@@ -780,6 +780,26 @@ export default function MogzyIdentityMenu() {
 
   const utilityFooter = (
     <div className="shrink-0 border-t border-border bg-card p-1">
+      {/* COM1-2 / P1-2. The SECOND way into the Community drawer, and in League
+          mode the only one that is part of the navigation rather than a
+          floating overlay. The legacy "Friends" entry further down sits inside
+          `{!LEAGUE_ONLY_MODE && …}` — false in production — so before this,
+          a phone whose viewport hid the floating trigger could reach the drawer
+          only by receiving a friend-request notification. This entry is not
+          gated: the drawer is a League surface now. */}
+      <button
+        type="button"
+        data-testid="hud-community-item"
+        onClick={() => {
+          closePanel();
+          window.dispatchEvent(new CustomEvent("open-friends-panel"));
+        }}
+        className={footerItemClass}
+      >
+        <Users className="h-4 w-4 shrink-0" aria-hidden="true" />
+        Community
+      </button>
+
       <Link
         to="/settings"
         data-testid="hud-settings-link"
