@@ -77,20 +77,40 @@ GRANT EXECUTE ON FUNCTION public.pair_lock_key(uuid, uuid) TO authenticated;
 -- ---------------------------------------------------------------------------
 -- 2. enforce_friendship_rules — rewritten
 --
--- Every rule from 20260730140000 is preserved verbatim. Two things are added:
+-- BASELINE: this is a line-for-line copy of the ADM2 version
+-- (20260803120000 §4), NOT the M2 version (20260730140000 §6). ADM2 re-created
+-- this function and ADM2 is what is live. The difference matters: ADM2 added
+-- the `_admin_self_link` exemption WITHOUT which `admin_link_friendship`
+-- cannot insert its accepted row and "Add to My Friends" raises
+-- check_violation on every call. Anyone editing this function again must
+-- diff against the NEWEST prior definition, not the one the audit's function
+-- table happens to cite first.
 --
---   INSERT: take the pair lock BEFORE testing is_blocked_between, so the test
---           and the insert are one critical section with respect to any
---           concurrent block on the same pair.
+-- Every ADM2 rule is preserved verbatim:
+--   * the master-admin self-link exemption, all three of its conditions
+--   * "a new friendship must start as pending" for everyone else
+--   * the block gate, unconditional — it applies to the admin path too
+--   * the 10/hour and 20-outstanding rate limits, still skipped for an admin
+--     self-link, still applied to the ordinary pending path
+--   * party immutability
+--   * the legal-transition guard, including 'declined' as a legal target
+--   * every exception message and every ERRCODE
 --
---   UPDATE: a pending row may not be accepted across a block. block_profile()
---           deletes the row, so in practice the accept finds nothing — but the
---           UPDATE branch had NO block test at all, and "cannot remain
---           actionable" should be enforced by the rule, not only by the race
---           having gone the other way.
+-- COM1-2 ADDS EXACTLY TWO THINGS:
 --
--- The rate limits are unchanged and remain evadable exactly as
--- 20260730140000 documents (decline/cancel/remove all DELETE). Closing that
+--   INSERT: `pg_advisory_xact_lock(pair_lock_key(...))`, taken AFTER the status
+--           check and BEFORE `is_blocked_between`, so the block test and the
+--           insert are one critical section against a concurrent block on the
+--           same pair. It is taken on EVERY insert path including the admin
+--           self-link, because the block gate applies to that path too.
+--
+--   UPDATE: a block test on the `pending -> accepted` transition. The UPDATE
+--           branch had none. block_profile() deletes the row so the accept
+--           usually finds nothing, but "cannot remain actionable" should be a
+--           rule, not a race that happened to go the right way.
+--
+-- Nothing else changes. The rate limits remain evadable exactly as
+-- 20260730140000 documents (decline/cancel/remove all DELETE); closing that
 -- needs an append-only event log and is not this phase.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.enforce_friendship_rules()
@@ -102,16 +122,30 @@ AS $$
 DECLARE
   _recent int;
   _open   int;
+  _admin_self_link boolean;
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    IF NEW.status IS DISTINCT FROM 'pending' THEN
+    -- ADM2 Phase A: master-admin linking THEMSELVES to a target, accepted.
+    -- is_master_admin, not has_role, so a plain admin is still refused; and
+    -- NEW.requester_id must be the actor's OWN profile, which is what stops a
+    -- master admin fabricating a friendship between two third parties.
+    _admin_self_link :=
+      NEW.status = 'accepted'
+      AND auth.uid() IS NOT NULL
+      AND public.is_master_admin(auth.uid())
+      AND NEW.requester_id = (
+        SELECT p.id FROM public.profiles p WHERE p.user_id = auth.uid()
+      );
+
+    IF NEW.status IS DISTINCT FROM 'pending' AND NOT _admin_self_link THEN
       RAISE EXCEPTION 'a new friendship must start as pending'
         USING ERRCODE = 'check_violation';
     END IF;
 
     -- COM1-2. Serialise against block_profile() on this pair. Taken before the
     -- block test so a block committing concurrently is either fully visible
-    -- here or fully behind us.
+    -- here or fully behind us. Unconditional: the block gate below applies to
+    -- the admin self-link path as well, so that path must hold the lock too.
     PERFORM pg_advisory_xact_lock(
       public.pair_lock_key(NEW.requester_id, NEW.addressee_id)
     );
@@ -121,22 +155,26 @@ BEGIN
         USING ERRCODE = 'check_violation';
     END IF;
 
-    SELECT count(*) INTO _recent
-    FROM public.friendships f
-    WHERE f.requester_id = NEW.requester_id
-      AND f.created_at > now() - interval '1 hour';
-    IF _recent >= 10 THEN
-      RAISE EXCEPTION 'friend request rate limit exceeded (max 10 per hour)'
-        USING ERRCODE = 'check_violation';
-    END IF;
+    -- Rate limits apply to the ordinary pending path. An admin self-link is a
+    -- deliberate, audited, one-at-a-time action and is not a request burst.
+    IF NOT _admin_self_link THEN
+      SELECT count(*) INTO _recent
+      FROM public.friendships f
+      WHERE f.requester_id = NEW.requester_id
+        AND f.created_at > now() - interval '1 hour';
+      IF _recent >= 10 THEN
+        RAISE EXCEPTION 'friend request rate limit exceeded (max 10 per hour)'
+          USING ERRCODE = 'check_violation';
+      END IF;
 
-    SELECT count(*) INTO _open
-    FROM public.friendships f
-    WHERE f.requester_id = NEW.requester_id
-      AND f.status = 'pending';
-    IF _open >= 20 THEN
-      RAISE EXCEPTION 'too many open friend requests (max 20 outstanding)'
-        USING ERRCODE = 'check_violation';
+      SELECT count(*) INTO _open
+      FROM public.friendships f
+      WHERE f.requester_id = NEW.requester_id
+        AND f.status = 'pending';
+      IF _open >= 20 THEN
+        RAISE EXCEPTION 'too many open friend requests (max 20 outstanding)'
+          USING ERRCODE = 'check_violation';
+      END IF;
     END IF;
 
   ELSIF TG_OP = 'UPDATE' THEN

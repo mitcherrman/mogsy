@@ -16,7 +16,7 @@
  *   - nothing here widens RLS on `public.profiles`
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const MIGRATION =
@@ -250,6 +250,158 @@ describe("COM1-2 · blocks are never disclosed", () => {
     const raises =
       trigger.match(/friend request refused: a block exists between these profiles/g) ?? [];
     expect(raises.length).toBe(2);
+  });
+});
+
+/**
+ * The trigger replacement, proved against the definition it actually replaces.
+ *
+ * WHY THIS SUITE EXISTS. The first draft of this migration was written against
+ * the M2 text (20260730140000 §6) — but ADM2 (20260803120000 §4) had ALREADY
+ * re-created the function, and ADM2 is what is live. The draft therefore
+ * silently dropped ADM2's `_admin_self_link` exemption, which would have made
+ * `admin_link_friendship` raise check_violation on every call and broken
+ * "Add to My Friends" and bot auto-friending outright.
+ *
+ * So this suite does not hard-code a baseline. It FINDS the newest migration
+ * before this one that defines the function and proves the replacement is that
+ * definition plus additions only. The next person to touch this function gets
+ * the same protection without having to know this story.
+ */
+describe("COM1-2 · enforce_friendship_rules is the LIVE definition plus additions", () => {
+  const MIGRATIONS_DIR = "supabase/migrations";
+  const SIGNATURE = "CREATE OR REPLACE FUNCTION public.enforce_friendship_rules()";
+
+  /** Executable lines only: `--` comments and blanks removed. */
+  function triggerLines(file: string): string[] {
+    const text = readFileSync(resolve(process.cwd(), MIGRATIONS_DIR, file), "utf8");
+    const i = text.indexOf(SIGNATURE);
+    if (i === -1) return [];
+    const j = text.indexOf("\n$$;", i);
+    return text
+      .slice(i, j)
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("--"));
+  }
+
+  /** Every migration that defines the function, oldest first (names sort by date). */
+  const definers = readdirSync(resolve(process.cwd(), MIGRATIONS_DIR))
+    .filter((f) => f.endsWith(".sql"))
+    .sort()
+    .filter((f) => triggerLines(f).length > 0);
+
+  const OURS = "20260823130000_com1_community_reachability.sql";
+
+  it("this migration is the newest definition of the function", () => {
+    expect(definers[definers.length - 1]).toBe(OURS);
+  });
+
+  it("more than one prior definition exists — the baseline is NOT the oldest", () => {
+    // The trap that produced the bug: M2 is the first definer and the obvious
+    // one to diff against. It is not the live one.
+    expect(definers.length).toBeGreaterThanOrEqual(3);
+    expect(definers[0]).toContain("friendship_hardening");
+  });
+
+  it("preserves every executable line of the live definition, in order", () => {
+    const live = triggerLines(definers[definers.length - 2]);
+    const ours = triggerLines(OURS);
+    expect(live.length).toBeGreaterThan(0);
+
+    // Subsequence walk: every live line must still be present, in the same
+    // relative order. A deleted or edited line breaks the walk and names itself.
+    let k = 0;
+    for (const line of live) {
+      const at = ours.indexOf(line, k);
+      expect(at, `live line dropped or reordered: ${line}`).toBeGreaterThan(-1);
+      k = at + 1;
+    }
+  });
+
+  it("adds ONLY the advisory lock and the accept-transition block test", () => {
+    const live = triggerLines(definers[definers.length - 2]);
+    const ours = triggerLines(OURS);
+
+    // Walk again, collecting what is extra.
+    const added: string[] = [];
+    let k = 0;
+    for (const line of live) {
+      const at = ours.indexOf(line, k);
+      added.push(...ours.slice(k, at));
+      k = at + 1;
+    }
+    added.push(...ours.slice(k));
+
+    expect(added.join(" ")).toContain("pg_advisory_xact_lock");
+    expect(added.join(" ")).toContain("public.pair_lock_key(NEW.requester_id, NEW.addressee_id)");
+    expect(added.join(" ")).toContain("NEW.status = 'accepted'");
+    expect(added.join(" ")).toContain("OLD.status = 'pending'");
+    // Nothing else. If a future edit smuggles a rule change in alongside the
+    // lock, it shows up here as an unexpected added line.
+    const unexpected = added.filter(
+      (l) =>
+        !/pg_advisory_xact_lock|pair_lock_key|NEW\.status = 'accepted'|OLD\.status = 'pending'|is_blocked_between|RAISE EXCEPTION 'friend request refused|USING ERRCODE = 'check_violation'|^\);$|^\)$|^IF |^END IF;$|^AND /.test(l),
+    );
+    expect(unexpected, `unexpected additions: ${JSON.stringify(unexpected)}`).toEqual([]);
+  });
+
+  it("keeps the ADM2 master-admin self-link exemption intact, all three conditions", () => {
+    // Without this, admin_link_friendship cannot insert its accepted row and
+    // "Add to My Friends" raises check_violation on every call — including the
+    // copy of that button on the new Community · Users tab.
+    const body = functionBody("enforce_friendship_rules");
+    expect(body).toContain("_admin_self_link boolean;");
+    expect(body).toMatch(/_admin_self_link :=\s*\n\s*NEW\.status = 'accepted'/);
+    expect(body).toContain("public.is_master_admin(auth.uid())");
+    expect(body).toMatch(
+      /NEW\.requester_id = \(\s*\n\s*SELECT p\.id FROM public\.profiles p WHERE p\.user_id = auth\.uid\(\)/,
+    );
+    // The status gate still honours it...
+    expect(body).toContain("IF NEW.status IS DISTINCT FROM 'pending' AND NOT _admin_self_link THEN");
+    // ...and the rate limits still skip it.
+    expect(body).toContain("IF NOT _admin_self_link THEN");
+  });
+
+  it("keeps the block gate UNCONDITIONAL — the admin path is not exempt from it", () => {
+    const body = statementsOnly("enforce_friendship_rules");
+    const gate = body.indexOf("IF public.is_blocked_between(NEW.requester_id, NEW.addressee_id) THEN");
+    const skip = body.indexOf("IF NOT _admin_self_link THEN");
+    expect(gate).toBeGreaterThan(-1);
+    // The block test must sit BEFORE the rate-limit skip block, i.e. outside it.
+    expect(gate).toBeLessThan(skip);
+  });
+
+  it("takes the pair lock on EVERY insert path, including the admin self-link", () => {
+    const body = statementsOnly("enforce_friendship_rules");
+    const lock = body.indexOf("pg_advisory_xact_lock");
+    const skip = body.indexOf("IF NOT _admin_self_link THEN");
+    // Same reasoning: the lock is outside the exemption branch, so an admin
+    // link and a concurrent block on that pair still serialise.
+    expect(lock).toBeLessThan(skip);
+  });
+
+  it("changes no exception message and no ERRCODE", () => {
+    const live = triggerLines(definers[definers.length - 2]);
+    const ours = triggerLines(OURS);
+    const messages = (lines: string[]) =>
+      lines.filter((l) => l.startsWith("RAISE EXCEPTION")).sort();
+    const liveMsgs = messages(live);
+    const ourMsgs = messages(ours);
+    // The frontend classifier matches on this exact vocabulary
+    // (TRIGGER_VOCABULARY in lib/community/social-result.ts). Changing a word
+    // would silently downgrade a mapped code to `unavailable`.
+    for (const m of liveMsgs) expect(ourMsgs).toContain(m);
+    // The one addition re-raises an EXISTING message rather than inventing one.
+    expect(new Set(ourMsgs).size).toBe(new Set(liveMsgs).size);
+  });
+
+  it("keeps 'declined' in the legal-transition set", () => {
+    // Nothing writes it, but removing it here would be an unrelated behaviour
+    // change smuggled in with the lock. Retiring it is P3-3, a separate call.
+    expect(statementsOnly("enforce_friendship_rules")).toContain(
+      "NEW.status IN ('accepted', 'declined')",
+    );
   });
 });
 

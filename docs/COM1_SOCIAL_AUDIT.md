@@ -132,7 +132,7 @@ All of these are behind `leagueGate(...)` (`App.tsx:292`) with `LEAGUE_ONLY_MODE
 | --- | --- | --- | --- |
 | `get_league_profiles(uuid[])` | `20260730150000`, re-created in `20260803120000` | `authenticated` | The ONE cross-user profile read. 9-column contract, **no `user_id`**, symmetric block filter, `LIMIT 200`. |
 | `is_blocked_between(uuid,uuid)` | `20260730140000` | `authenticated` | Symmetric block test the invoker cannot compute |
-| `enforce_friendship_rules()` | `20260730140000` / ADM2 | trigger only | status domain, no-self, block gate, rate limits, party immutability, legal transitions |
+| `enforce_friendship_rules()` | `20260730140000`, **re-created in `20260803120000` (ADM2 §4)**, re-created again in COM1-2 `20260823130000` | trigger only | status domain, no-self, block gate, rate limits, party immutability, legal transitions, **and the ADM2 master-admin self-link exemption**. ⚠️ **ADM2 is the definition to diff against, not M2** — COM1-2's first draft diffed against M2 and silently dropped the exemption, which would have broken `admin_link_friendship` on every call |
 | `notify_on_friendship_change()` | `20260523081658` | trigger only | writes `friend_request` / `friend_accepted` |
 | `is_bot_available(uuid)` | ADM2 | `authenticated` | bot enabled test |
 | `admin_link_friendship(uuid)` | ADM2 | `authenticated` (raises unless master_admin) | admin-created accepted friendship + audit |

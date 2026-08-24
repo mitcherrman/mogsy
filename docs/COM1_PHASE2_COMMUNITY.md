@@ -310,13 +310,104 @@ is revoked from `authenticated` too, so it has no direct-call surface.
 is `<alias>.user_id = auth.uid()` — resolving the *caller*. A test counts them and fails if
 the two numbers ever diverge.
 
+### Pre-push review of the trigger replacement — a defect was found and fixed
+
+`enforce_friendship_rules` is the only **replacement** in this migration; the other six
+functions are new (verified: zero prior `FUNCTION public.<name>(` definitions, and none
+present in the generated types).
+
+**The defect.** The replacement was originally written against the **M2** text
+(`20260730140000` §6). But **ADM2 (`20260803120000` §4) had already re-created the
+function**, and ADM2 is what is live. The draft therefore silently dropped ADM2's
+`_admin_self_link` exemption:
+
+```
+-  _admin_self_link boolean;
+-  _admin_self_link := NEW.status = 'accepted'
+-    AND public.is_master_admin(auth.uid())
+-    AND NEW.requester_id = (SELECT p.id FROM public.profiles p WHERE p.user_id = auth.uid());
+-  IF NEW.status IS DISTINCT FROM 'pending' AND NOT _admin_self_link THEN
++  IF NEW.status IS DISTINCT FROM 'pending' THEN
+       RAISE EXCEPTION 'a new friendship must start as pending' …
+```
+
+**Impact had it been applied:** `admin_link_friendship` inserts
+`(actor, target, 'accepted')` directly, so the INSERT branch would have raised
+`check_violation` on **every** call. "Add to My Friends" would have broken outright —
+including the copy of that button on this phase's own Community · Users tab — along with
+`admin_create_bot_profile(_add_to_my_friends => true)`. The rate-limit skip for admin
+self-links was lost too.
+
+**Root cause worth remembering:** the audit's §B.2 function table cites this function as
+`20260730140000 / ADM2`. M2 is listed first and is the obvious thing to diff against. It is
+not the live definition. *Always diff against the newest prior definition, not the first.*
+
+**The fix.** Section 2 is now a line-for-line copy of the **ADM2** body plus the two COM1-2
+additions. Comments stripped, the diff against the live definition is **two insertions,
+zero deletions, zero modifications**:
+
+```diff
+--- ADM2 20260803120000 (LIVE)
++++ COM1-2 20260823130000 (replacement)
+@@ INSERT branch, after the status check, before the block gate
++    PERFORM pg_advisory_xact_lock(
++      public.pair_lock_key(NEW.requester_id, NEW.addressee_id)
++    );
+@@ UPDATE branch, after the legal-transition guard
++    IF NEW.status = 'accepted'
++       AND OLD.status = 'pending'
++       AND public.is_blocked_between(NEW.requester_id, NEW.addressee_id) THEN
++      RAISE EXCEPTION 'friend request refused: a block exists between these profiles'
++        USING ERRCODE = 'check_violation';
++    END IF;
+```
+
+**Every pre-existing rule, and where it is preserved:**
+
+| Pre-existing rule | Owner | Status in the replacement |
+| --- | --- | --- |
+| No self-friendship | `friendships_no_self` **table CHECK** | Untouched — never lived in the trigger |
+| Requester/addressee semantics | `friendships_*_fkey` + RLS INSERT policy | Untouched |
+| Duplicate / live-pair protection | `UNIQUE(requester_id, addressee_id)` + `friendships_unique_live_pair` **partial index** | Untouched — table constraints, not trigger logic. The lock is taken *before* the insert, so the index still adjudicates and still raises `23505` → client `already` |
+| Status domain | `friendships_status_check` **table CHECK** | Untouched |
+| "must start as pending" | trigger | Preserved verbatim, **including `AND NOT _admin_self_link`** |
+| ADM2 master-admin self-link exemption (all 3 conditions) | trigger | Preserved verbatim |
+| Block gate | trigger | Preserved verbatim, and still **unconditional** — the admin path is not exempt |
+| 10/hour + 20-outstanding rate limits | trigger | Preserved verbatim, still skipped for an admin self-link |
+| Party immutability | trigger | Preserved verbatim |
+| Legal transitions incl. `'declined'` | trigger | Preserved verbatim |
+| Exception vocabulary + ERRCODEs | trigger | **Unchanged.** The one added `RAISE` re-uses an existing message, so the set of distinct messages is identical — which matters because `TRIGGER_VOCABULARY` in `lib/community/social-result.ts` matches on that exact text |
+
+**What COM1-2 adds, exhaustively:**
+
+| Addition | Where | Effect |
+| --- | --- | --- |
+| Pair advisory lock | INSERT, after the status check, before `is_blocked_between` | Serialises against `block_profile` on the same pair. Taken on **every** insert path including the admin self-link, because the block gate applies there too |
+| Accept-transition block test | UPDATE, after the transition guard | `pending → accepted` across a block now refuses instead of relying on the row already having been deleted |
+| Ordering change | none | The lock is *inserted between* two existing steps; no existing step moved relative to another |
+| Exception behaviour change | none | Same messages, same `check_violation` ERRCODE, same client classification |
+| Transaction semantics change | none for this function | It is a `BEFORE` trigger and stays one. The advisory lock is transaction-scoped and released at commit/rollback like any other. `block_profile` is where the multi-statement atomicity lives |
+
+**Deadlock analysis.** Both writers take the pair lock as their first lock, and the key is
+order-independent (`least || ':' || greatest`), so two transactions touching `{A,B}` acquire
+the same lock in the same order. `admin_link_friendship` holds no conflicting lock before
+its INSERT (its pre-checks are plain `SELECT`s), so it cannot invert the order either.
+
+**Regression cover.** `src/test/security/com1CommunityReachability.test.ts` gained 9 tests
+that do not hard-code a baseline: they enumerate every migration defining the function,
+assert this one is newest, assert **more than one prior definition exists** (the trap), and
+prove by subsequence walk that every executable line of the *live* definition survives in
+order with only the two known additions. Mutation-checked: re-injecting the original defect
+fails 3 of them; restoring passes 38/38.
+
 ### Applying it
 
 Not applied. It is idempotent (`CREATE OR REPLACE` throughout) and safe to re-run.
 
 ⚠️ **Section 2 replaces a live trigger function.** Applying the migration changes friendship
 INSERT/UPDATE behaviour for every user immediately. It is strictly additive in what it
-refuses — the M2 rules are byte-identical — but it is the one part that is not new surface.
+refuses — the **ADM2** body is line-for-line identical — but it is the one part that is not
+new surface. See the pre-push review above.
 
 Until it is applied, the three new read RPCs return PostgREST `404`. The UI degrades
 honestly: Find Players shows "Search is unavailable right now." and the Blocked tab shows
@@ -353,11 +444,11 @@ compared only after the sets match, per standing practice.
 (`AdminBots.tsx` ×2, `LeaguecraftWorkspace.test.tsx`, `admin-users.test.ts` ×2,
 `social-result.test.ts`) are all pre-existing on `origin/main`.
 
-### New coverage — 76 tests across 6 files
+### New coverage — 85 tests across 8 files
 
 | File | Tests | Covers |
 | --- | --- | --- |
-| `src/test/security/com1CommunityReachability.test.ts` | 29 | The migration contract: no `user_id`, min length, hard row cap, LIKE-metacharacter escaping, one-directional block hiding, pair lock ordering, atomic block, unblock touches nothing else, every M2 rule preserved, no RLS widening |
+| `src/test/security/com1CommunityReachability.test.ts` | 38 | The migration contract: no `user_id`, min length, hard row cap, LIKE-metacharacter escaping, one-directional block hiding, pair lock ordering, atomic block, unblock touches nothing else, every M2 rule preserved, no RLS widening |
 | `src/lib/community/discovery.test.ts` | 25 | Row narrowing (decoy `user_id` and `admin_notes` proven absent), unknown relationship → `unavailable`, short query never sent, envelope → `SocialResult`, no server text leaks |
 | `src/lib/community/relationship.test.ts` | 11 | The state → presentation map; `unavailable` explains nothing |
 | `src/components/community/FindPlayersTab.test.tsx` | 17 | Exact / case-insensitive / partial search, debounce, out-of-order response discarded, every relationship's control, refused mutation shows no success and names no block |
