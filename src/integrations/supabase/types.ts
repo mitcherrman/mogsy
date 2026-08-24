@@ -3214,17 +3214,8 @@ export type Database = {
         }
         Returns: Json
       }
-      delete_email: {
-        Args: { message_id: number; queue_name: string }
-        Returns: boolean
-      }
       display_name_problem: { Args: { _name: string }; Returns: string }
-      email_queue_dispatch: { Args: never; Returns: undefined }
       enforce_display_name_uniqueness: { Args: never; Returns: string }
-      enqueue_email: {
-        Args: { payload: Json; queue_name: string }
-        Returns: number
-      }
       finish_multiplayer_game: {
         Args: { _game_id: string; _result: Json }
         Returns: undefined
@@ -3345,15 +3336,6 @@ export type Database = {
         Args: { p_game_slug?: string }
         Returns: number
       }
-      move_to_dlq: {
-        Args: {
-          dlq_name: string
-          message_id: number
-          payload: Json
-          source_queue: string
-        }
-        Returns: number
-      }
       normalize_display_name: { Args: { _name: string }; Returns: string }
       pair_lock_key: { Args: { _a: string; _b: string }; Returns: number }
       purchase_powerup: {
@@ -3363,14 +3345,6 @@ export type Database = {
           _profile_id: string
         }
         Returns: Json
-      }
-      read_email_batch: {
-        Args: { batch_size: number; queue_name: string; vt: number }
-        Returns: {
-          message: Json
-          msg_id: number
-          read_ct: number
-        }[]
       }
       realtime_is_admin_topic: { Args: { _topic: string }; Returns: boolean }
       realtime_is_game_topic_player: {
