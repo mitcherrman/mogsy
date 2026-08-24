@@ -6,6 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import type { AdaptedPublicRound } from "../transport/adaptPublicRound";
+import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 import { abilityDescription, abilityName } from "../abilityDisplay";
 import {
   AbilityView,
@@ -244,6 +245,19 @@ export interface PublicQuestionSource {
    * on quantity/free-text questions and on rounds frozen before RA6.
    */
   optionMedia?: OptionMediaView[] | null;
+  /**
+   * RG2 — what this question is ABOUT, as the timeline draws it: the public
+   * subject, the segment's difficulty tier and the backend's proven icon.
+   *
+   * A sibling of `category` rather than a replacement for it. `category` is
+   * the RAW stored string (`Item Exact Stats`, `purchase_history_total`) and
+   * existing readers depend on it; `topic.category` is the resolved public
+   * subject those three live spellings all collapse to.
+   *
+   * Absent on a round frozen before RG2 and on any payload from an older
+   * backend, which is an ordinary state: the node simply stays neutral.
+   */
+  topic?: TimelineTopic | null;
 }
 
 /**

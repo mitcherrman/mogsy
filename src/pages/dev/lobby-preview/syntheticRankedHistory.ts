@@ -56,6 +56,8 @@ import type {
   TerminalReason,
 } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
+import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
+import { legacyCategoryKey } from "@/lib/quiz/publicCategory";
 
 /** What a question is centred on. `category` means "no single entity", which
  *  is a claim in its own right and the most common honest answer. */
@@ -84,6 +86,22 @@ export function iconHintFor(q: SyntheticQuestion): ReviewIconHint {
     return { kind: "category", key: q.category, icon: null };
   }
   return { kind: q.subject.kind, key: q.subject.name, icon: q.subject.icon };
+}
+
+/**
+ * RG2's topic block for one synthetic question.
+ *
+ * The demo's own classification, through the SAME legacy bridge a real
+ * pre-RG2 round takes — so a fixture cannot print a subject the live path
+ * could not. `tier` is deliberately null: this demo bank has no difficulty
+ * metadata, and the node draws no strips for what it was not told.
+ */
+export function topicFor(q: SyntheticQuestion): TimelineTopic {
+  return {
+    category: legacyCategoryKey(q.category),
+    tier: null,
+    iconHint: iconHintFor(q),
+  };
 }
 
 // ───────────────────────────────────────────────────────── the question bank
@@ -463,6 +481,10 @@ function metaReflexRound(roundNumber: number, viewerSides: (("left" | "right") |
     canonicalQuestionRef: null,
     revealed: true,
     iconHint: { kind: "meta_reflex", key: null, icon: null },
+    topic: {
+      category: "meta-reflex", tier: null,
+      iconHint: { kind: "meta_reflex", key: null, icon: null },
+    },
     question: null,
     challenges,
     viewerSubmission: {
@@ -497,6 +519,7 @@ function quizRound(roundNumber: number, spec: RoundSpec): ReviewRound {
     canonicalQuestionRef: `ranked:demo-${q.id}`,
     revealed,
     iconHint: iconHintFor(q),
+    topic: topicFor(q),
     question: {
       prompt: q.prompt,
       options: q.options,

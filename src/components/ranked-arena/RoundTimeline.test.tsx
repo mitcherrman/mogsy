@@ -36,8 +36,15 @@ const mount = (round = 8, over: Partial<RoundTimelineInput> = {}) =>
 
 const strip = () => screen.getByTestId("ranked-round-timeline");
 const node = (round: number) => screen.getByTestId(`timeline-node-${round}`);
+/**
+ * The node's PLATE — since RG2 this is the shared `QuizTimelineNode`, and the
+ * Ranked strip supplies only the box it sits in.
+ */
 const plate = (round: number) =>
-  node(round).querySelector(".ranked-timeline-plate") as HTMLElement;
+  node(round).querySelector(".quiz-timeline-plate") as HTMLElement;
+/** The box the strip reserves for a plate; the marker rings exactly this. */
+const slot = (round: number) =>
+  node(round).querySelector("span[class*='h-8']") as HTMLElement;
 const marker = () => screen.getByTestId("ranked-timeline-marker");
 /** The X offset a node/marker is parked at, in whole slots. */
 const slotOffset = (el: HTMLElement) =>
@@ -80,10 +87,17 @@ describe("the strip's shape", () => {
 
   it("keeps every node the same fixed box, whatever its state", () => {
     mount(8);
-    const plates = Array.from(
-      document.querySelectorAll<HTMLElement>(".ranked-timeline-plate"));
-    const boxes = new Set(plates.map((p) => p.className.match(/h-\d+/)?.[0]));
+    // The BOX is the strip's, not the shared node's: the marker rings it with
+    // its own slot arithmetic, so a node that sized itself would drift out of
+    // the ring. Every one of them is the same fixed height in every state.
+    const boxes = new Set(Array.from(screen.getAllByRole("listitem"))
+      .map((li) => (li.querySelector("span[class*='h-8']") as HTMLElement)
+        ?.className.match(/h-\d+/)?.[0]));
     expect(boxes).toEqual(new Set(["h-8"]));
+    // And a node gaining a verdict, a subject or a difficulty paints INSIDE
+    // that box: both status channels are absolutely placed.
+    expect(css).toMatch(/\.quiz-timeline-result \{[^}]*position: absolute/);
+    expect(css).toMatch(/\.quiz-timeline-metal \{[^}]*position: absolute/);
     // One slot width for every node, so the track divides the strip exactly.
     const widths = new Set(Array.from(screen.getAllByRole("listitem"))
       .map((li) => (li as HTMLElement).style.width));
@@ -215,15 +229,30 @@ describe("past, current and future", () => {
 
   it("separates the three states by FILL, not only by hue", () => {
     expect(css).toMatch(
-      /\.ranked-timeline-node\[data-state="upcoming"\] \.ranked-timeline-plate \{[^}]*opacity/);
+      /\.ranked-timeline-node\[data-state="upcoming"\] \.quiz-timeline-face \{[^}]*opacity/);
     expect(css).toMatch(
-      /\.ranked-timeline-node\[data-state="resolved"\] \.ranked-timeline-plate \{[^}]*background-color/);
+      /\.ranked-timeline-node\[data-state="resolved"\] \.quiz-timeline-plate \{[^}]*background-color/);
     expect(css).toMatch(
-      /\.ranked-timeline-node\[data-state="current"\] \.ranked-timeline-plate \{[^}]*background-color/);
+      /\.ranked-timeline-node\[data-state="current"\] \.quiz-timeline-plate \{[^}]*background-color/);
     // The upcoming rule sets NO fill — that absence is the cue.
-    const upcoming = /\.ranked-timeline-node\[data-state="upcoming"\] \.ranked-timeline-plate \{([^}]*)\}/
-      .exec(css)![1];
-    expect(upcoming).not.toContain("background-color");
+    expect(css).not.toMatch(
+      /\.ranked-timeline-node\[data-state="upcoming"\] \.quiz-timeline-plate \{/);
+  });
+
+  it("fades the SUBJECT of a settled node and never its status channels", () => {
+    // RG2 moved the state opacity off the plate and onto its face. `opacity`
+    // composites a whole subtree, so a recessed plate would take its own
+    // result stripe and difficulty metal down with it — and those two are the
+    // things on a settled node most worth reading at a glance. The pre-RG2
+    // node kept its verdict mark outside the plate for exactly this reason.
+    expect(css).toMatch(
+      /\.ranked-timeline-node\[data-state="resolved"\] \.quiz-timeline-face \{[^}]*opacity/);
+    for (const state of ["upcoming", "resolved", "current"]) {
+      const rule = new RegExp(
+        `\\.ranked-timeline-node\\[data-state="${state}"\\] \\.quiz-timeline-plate \\{([^}]*)\\}`)
+        .exec(css);
+      expect(rule?.[1] ?? "", state).not.toContain("opacity");
+    }
   });
 
   it("drops the marker entirely once the match is over", () => {
@@ -242,21 +271,36 @@ describe("the node vocabulary", () => {
   const KINDS = new Map<number, TimelineSegmentKind>([
     [16, "standard"], [17, "meta-reflex"], [18, "standard"], [20, "meta-reflex"],
   ]);
+  const metaReflexTopic = {
+    category: "meta-reflex" as const, tier: null,
+    iconHint: { kind: "meta_reflex", key: null, icon: null },
+  };
 
-  it("draws three marks and no more: block, ordinary round, unknown", () => {
-    mount(20, { observedKinds: KINDS });
-    // Meta Reflex: the SAME four-point star the block's own sting draws — one
-    // system, not a second emblem invented for the strip.
+  it("draws the Meta Reflex mark from the block's own vocabulary", () => {
+    mount(20, {
+      observedKinds: KINDS,
+      observedTopics: new Map([[17, metaReflexTopic]]),
+    });
+    // The SAME four-point star the block's own sting draws — one system, not a
+    // second emblem invented for the strip.
     expect(plate(17).querySelector("path")!.getAttribute("d"))
       .toBe("M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3z");
     expect(node(17)).toHaveAttribute("data-segment", "meta-reflex");
-    // A server-named ordinary round: a solid engraved diamond.
+    expect(plate(17)).toHaveAttribute("data-category", "meta-reflex");
+  });
+
+  it("gives a round with NO published topic the neutral token", () => {
+    mount(20, { observedKinds: KINDS });
+    // The segment kind is known — the server named it — but no topic was ever
+    // published for this round, so the plate says nothing about its subject.
     expect(node(16)).toHaveAttribute("data-segment", "standard");
-    expect(plate(16).querySelector("path")!.getAttribute("fill")).toBe("currentColor");
-    // Never told: a hollow placeholder, NOT the ordinary-round mark.
+    expect(plate(16)).toHaveAttribute("data-category", "");
+    expect(plate(16)).toHaveAttribute("data-tier", "");
+    expect(plate(16).querySelector("circle")!.getAttribute("fill")).toBe("none");
+    expect(plate(16).querySelector("img")).toBeNull();
+    // Never told about the segment either: same neutral token.
     expect(node(19)).toHaveAttribute("data-segment", "");
     expect(plate(19).querySelector("circle")!.getAttribute("fill")).toBe("none");
-    expect(plate(19).querySelector("path")).toBeNull();
   });
 
   it("leaves every future node neutral", () => {
@@ -265,6 +309,13 @@ describe("the node vocabulary", () => {
       expect(node(round), `round ${round}`).toHaveAttribute("data-segment", "");
       expect(plate(round).querySelector("circle")).not.toBeNull();
       expect(node(round)).toHaveAttribute("data-outcome", "");
+      // And — the rule RG2 had to be careful not to bend — no subject, no
+      // difficulty. A Ranked future round's question has not been generated,
+      // so there is nothing authoritative to draw.
+      expect(plate(round)).toHaveAttribute("data-category", "");
+      expect(plate(round)).toHaveAttribute("data-strips", "0");
+      expect(plate(round).querySelector("[data-testid='quiz-timeline-difficulty']"))
+        .toBeNull();
     }
   });
 
@@ -286,17 +337,17 @@ describe("the node vocabulary", () => {
 describe("resolved outcomes", () => {
   const NODES: TimelineNode[] = [
     { roundNumber: 16, index: 0, visible: true, state: "resolved",
-      segmentKind: "standard", outcome: "correct", tag: null },
+      segmentKind: "standard", outcome: "correct", tag: null, topic: null },
     { roundNumber: 17, index: 1, visible: true, state: "resolved",
-      segmentKind: "standard", outcome: "both-correct", tag: null },
+      segmentKind: "standard", outcome: "both-correct", tag: null, topic: null },
     { roundNumber: 18, index: 2, visible: true, state: "resolved",
-      segmentKind: "standard", outcome: "incorrect", tag: null },
+      segmentKind: "standard", outcome: "incorrect", tag: null, topic: null },
     { roundNumber: 19, index: 3, visible: true, state: "resolved",
-      segmentKind: "meta-reflex", outcome: "timed-out", tag: null },
+      segmentKind: "meta-reflex", outcome: "timed-out", tag: null, topic: null },
     { roundNumber: 15, index: -1, visible: false, state: "resolved",
-      segmentKind: null, outcome: null, tag: null },
+      segmentKind: null, outcome: null, tag: null, topic: null },
     { roundNumber: 20, index: 4, visible: true, state: "current",
-      segmentKind: "standard", outcome: null, tag: null },
+      segmentKind: "standard", outcome: null, tag: null, topic: null },
   ];
 
   const mountNodes = () => render(<RoundTimeline timeline={{
@@ -304,8 +355,9 @@ describe("resolved outcomes", () => {
     windowStart: 16, currentIndex: 4, currentRoundNumber: 20, anchored: true,
     nodes: NODES }} />);
 
-  const mark = (round: number) =>
-    node(round).querySelector(".relative > svg:last-child") as SVGElement | null;
+  /** RG2: the verdict is a stripe on the plate's TOP EDGE, not a corner mark. */
+  const mark = (round: number) => node(round).querySelector(
+    "[data-testid='quiz-timeline-result-stripe']") as HTMLElement | null;
 
   it("marks each settled verdict in a distinct SHAPE per outcome", () => {
     mountNodes();
@@ -313,12 +365,25 @@ describe("resolved outcomes", () => {
     expect(node(17)).toHaveAttribute("data-outcome", "both-correct");
     expect(node(18)).toHaveAttribute("data-outcome", "incorrect");
     expect(node(19)).toHaveAttribute("data-outcome", "timed-out");
-    // filled dot / ringed dot / cross / hollow ring — four drawings, so the
+    // THE POINT OF THIS TEST SURVIVES THE REDESIGN. Right is green and wrong
+    // is red, which is the single most common colour-vision failure there is,
+    // so the stripe is also SEGMENTED differently per verdict: one unbroken
+    // bar for correct, two for both-correct, a broken bar for incorrect. The
     // verdict is never carried by colour alone.
-    expect(mark(16)!.querySelectorAll("circle")).toHaveLength(1);
-    expect(mark(17)!.querySelectorAll("circle")).toHaveLength(2);
-    expect(mark(18)!.querySelectorAll("path")).toHaveLength(1);
-    expect(mark(19)!.querySelector("circle")!.getAttribute("fill")).toBe("none");
+    expect(mark(16)!.querySelectorAll(".quiz-timeline-result-segment"))
+      .toHaveLength(1);
+    expect(mark(17)!.querySelectorAll(".quiz-timeline-result-segment"))
+      .toHaveLength(2);
+    expect(mark(18)!.querySelectorAll(".quiz-timeline-result-segment"))
+      .toHaveLength(4);
+    // Timed out is the verdict that is an ABSENCE, so it is present-but-unlit
+    // rather than another break pattern.
+    expect(mark(19)).toHaveAttribute("data-segments", "1");
+    expect(css).toMatch(
+      /\[data-outcome="timed-out"\] \.quiz-timeline-result \{[^}]*opacity/);
+    const segments = new Set([16, 17, 18].map(
+      (r) => mark(r)!.getAttribute("data-segments")));
+    expect(segments.size).toBe(3);
   });
 
   it("shows a resolved round whose verdict has aged out with NO mark", () => {
@@ -326,17 +391,22 @@ describe("resolved outcomes", () => {
     expect(node(15)).toHaveAttribute("data-state", "resolved");
     expect(node(15)).toHaveAttribute("data-outcome", "");
     expect(mark(15)).toBeNull();
-    // ...and the current round, which has not settled, likewise.
+    // ...and the current round, which has not settled, likewise. An empty
+    // channel is how "not yet" is drawn — never a grey fifth verdict.
     expect(mark(20)).toBeNull();
   });
 
-  it("keeps the verdict OUT of the recessed plate so it does not fade with it", () => {
-    // Opacity composites a whole subtree. Nested inside the plate, a settled
-    // node's verdict would dim with it — and the verdict is the one thing on a
-    // past node worth reading.
+  it("keeps the verdict out of the fade so it does not dim with the plate", () => {
+    // Opacity composites a whole subtree. The pre-RG2 node solved this by
+    // keeping the verdict OUTSIDE the plate; the shared node draws all three
+    // channels inside one box, so the fade moved onto the FACE instead and
+    // the stripe is a sibling of it. Same property, different mechanism.
     mountNodes();
-    expect(plate(16).querySelector("circle")).toBeNull();
-    expect(mark(16)).not.toBeNull();
+    const face = plate(16).querySelector(".quiz-timeline-face")!;
+    expect(face.contains(mark(16))).toBe(false);
+    expect(plate(16).contains(mark(16))).toBe(true);
+    expect(css).toMatch(
+      /\.ranked-timeline-node\[data-state="resolved"\] \.quiz-timeline-face \{[^}]*opacity/);
   });
 
   it("reports NO damage, no HP and no score anywhere in the strip", () => {
@@ -365,7 +435,7 @@ describe("accessible labels", () => {
 
   it("adds the viewer's settled verdict to a resolved node's label", () => {
     const base = { roundNumber: 3, index: 0, visible: true,
-      state: "resolved" as const, segmentKind: null, tag: null };
+      state: "resolved" as const, segmentKind: null, tag: null, topic: null };
     expect(nodeLabel({ ...base, outcome: "correct" }))
       .toBe("Round 3, resolved, you answered correctly");
     expect(nodeLabel({ ...base, outcome: "both-correct" }))
@@ -399,6 +469,7 @@ describe("accessible labels", () => {
     expect(nodeLabel({
       roundNumber: 8, index: 4, visible: true, state: "current",
       segmentKind: null, outcome: null, tag: { kind: "role", role: "jungle" },
+      topic: null,
     })).toBe("Round 8, current round, jungle question");
   });
 });
@@ -427,7 +498,7 @@ describe("motion", () => {
     expect(css).toMatch(reduced);
     // The state change is still perceptible — it simply cross-fades instead.
     const block = css.slice(css.indexOf("Reduced motion: the strip still UPDATES"));
-    expect(block).toMatch(/\.ranked-timeline-plate,[\s\S]*?transition: opacity 160ms linear/);
+    expect(block).toMatch(/\.quiz-timeline-face,[\s\S]*?transition: opacity 160ms linear/);
   });
 });
 

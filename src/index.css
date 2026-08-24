@@ -926,31 +926,47 @@
   transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* The node plate takes its ink from the round's IDENTITY (set inline) and its
-   state from here, so the two stay independent: a Meta Reflex node is cyan
-   whether it is settled or in play. */
-.ranked-timeline-node .ranked-timeline-plate {
+/* The node plate takes its ink from the round's IDENTITY (set inline, carried
+   down as `currentColor`) and its state from here, so the two stay
+   independent: a Meta Reflex node is cyan whether it is settled or in play.
+
+   RG2 — THE STATE OPACITY MOVED OFF THE PLATE AND ONTO ITS FACE, and that is
+   load-bearing rather than tidy. `opacity` composites a whole subtree, so a
+   resolved plate at 0.66 would take its own result stripe and its own
+   difficulty metal down with it — and those two are the things on a settled
+   node most worth reading at a glance. The old node kept its verdict mark
+   outside the plate for exactly this reason; the shared node draws all three
+   channels inside one box, so the fade now applies to the SUBJECT only and
+   the two status channels keep full contrast. */
+.ranked-timeline-node .quiz-timeline-plate {
   border-color: currentColor;
   background-color: transparent;
-  transition: opacity 260ms ease, background-color 260ms ease, box-shadow 260ms ease;
+  transition: background-color 260ms ease, box-shadow 260ms ease;
+}
+.ranked-timeline-node .quiz-timeline-face {
+  transition: opacity 260ms ease;
 }
 
 /* UPCOMING — outline only. The absence of a fill is the state cue that is not
    a colour: a round that exists and nothing more. */
-.ranked-timeline-node[data-state="upcoming"] .ranked-timeline-plate {
+.ranked-timeline-node[data-state="upcoming"] .quiz-timeline-face {
   opacity: 0.34;
 }
 /* RESOLVED — filled and recessed. It recedes, but it stays legible, and its
-   verdict mark keeps full contrast (it is a sibling, not a child). */
-.ranked-timeline-node[data-state="resolved"] .ranked-timeline-plate {
-  opacity: 0.66;
+   result stripe and difficulty metal keep full contrast. */
+.ranked-timeline-node[data-state="resolved"] .quiz-timeline-face {
+  opacity: 0.72;
+}
+.ranked-timeline-node[data-state="resolved"] .quiz-timeline-plate {
   background-color: rgba(255,255,255,0.05);
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
 }
 /* CURRENT — full ink and a warm fill. The ring and caret come from the marker
    layer, so this is the part that travels away as the round becomes history. */
-.ranked-timeline-node[data-state="current"] .ranked-timeline-plate {
+.ranked-timeline-node[data-state="current"] .quiz-timeline-face {
   opacity: 1;
+}
+.ranked-timeline-node[data-state="current"] .quiz-timeline-plate {
   background-color: rgba(240,215,140,0.12);
 }
 
@@ -982,8 +998,161 @@
   .ranked-timeline-marker {
     transition: none;
   }
-  .ranked-timeline-node .ranked-timeline-plate,
+  .ranked-timeline-node .quiz-timeline-face,
   .ranked-timeline-ordinal {
+    transition: opacity 160ms linear;
+  }
+}
+
+/* ---- RG2: the universal quiz timeline node -------------------------------
+   One plate, three independent channels: a result stripe on the top edge, the
+   subject in the middle, difficulty metal on the bottom edge.
+
+   EVERY RULE HERE IS A COLOUR, AN OPACITY, A SHADOW OR AN ABSOLUTE PLACEMENT.
+   Nothing lays out. The plate's size comes from whatever mounts it — the
+   Ranked strip rings it with a marker at an exact slot width — so a node
+   gaining a verdict, a difficulty or a subject must not change its box by a
+   pixel. Both channels are `position: absolute` against the plate for exactly
+   that reason.
+
+   Literal hex, like the rest of the Ranked skin, so the node renders
+   identically on the themed /quiz route and in the dev arena inspector, which
+   carries no theme. */
+.quiz-timeline-plate {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  border-radius: 0.3rem;
+  border: 1px solid currentColor;
+  overflow: hidden;
+}
+
+/* THE SUBJECT. Centred and inset past both channels, so a tall icon can never
+   collide with the stripe above it or the metal below it. */
+.quiz-timeline-face {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4px 2px 5px;
+}
+.quiz-timeline-art {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  border-radius: 2px;
+  object-fit: contain;
+}
+/* A CATEGORY tile is printed a shade quieter than a proven entity portrait —
+   but only a shade. The tiles are real League art (Objectives is the Elder
+   Dragon; Summoners is Flash), so at full strength they read as "this question
+   is about Flash", which is a false specificity. Dulled far, though, they stop
+   being recognisable at all, because those icons are recognised BY their
+   colour — which trades one wrong reading for a worse one. So most of the
+   colour survives and the difference is carried mostly by the badge. */
+.quiz-timeline-art[data-specific="false"] {
+  opacity: 0.86;
+  filter: saturate(0.9);
+}
+
+/* THE BADGE. Which KIND of question, over a subject portrait. On a filled disc
+   because champion splash art is busy and a bare line mark vanishes into it. */
+/* Lifted clear of the difficulty band below it. The metal sits at the very
+   bottom edge and a scenario node has four slices, so a badge parked on that
+   line crowds them at exactly the size where counting them is the job. */
+.quiz-timeline-badge {
+  position: absolute;
+  right: -1px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 12px;
+  width: 12px;
+  border-radius: 999px;
+  color: #f0e2bb;
+  background: rgba(6, 14, 24, 0.92);
+  box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.55);
+}
+
+/* THE RESULT CHANNEL — top edge, glowing.
+   A bar plus a bloom beneath it, both from one `--result-ink`, so a verdict
+   can never be lit in a different hue than it is painted. It is ABSENT rather
+   than grey on an unresolved node: an empty channel is how "not yet" is
+   drawn, and a grey bar would be a fifth verdict. */
+.quiz-timeline-result {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  display: flex;
+  gap: 1.5px;
+  pointer-events: none;
+  /* The GLOW belongs to the channel, not to each segment: four little blooms
+     read as four lights, and this is one verdict. */
+  filter: drop-shadow(0 1px 5px var(--result-ink));
+}
+.quiz-timeline-result-segment {
+  flex: 1 1 0;
+  height: 100%;
+  background: var(--result-ink);
+  border-radius: 0 0 1px 1px;
+}
+/* Timed out is the one verdict that is an ABSENCE — no answer landed — so it
+   is drawn as a present-but-unlit bar rather than a bright one. */
+.quiz-timeline-result[data-segments="1"] {
+  filter: drop-shadow(0 1px 5px var(--result-ink));
+}
+.quiz-timeline-plate[data-outcome="timed-out"] .quiz-timeline-result {
+  filter: none;
+  opacity: 0.7;
+}
+
+/* THE DIFFICULTY CHANNEL — bottom edge, metal.
+   Slices sit ON the edge, centred, fixed width, never stretched: a row that
+   filled the plate would read as a progress bar. Each slice is a dark body
+   with a lit top line, which is what makes it read as a physical plate rather
+   than a coloured rule. */
+.quiz-timeline-metal {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.5px;
+  padding-bottom: 1px;
+  pointer-events: none;
+}
+.quiz-timeline-metal-strip {
+  display: block;
+  height: 2.5px;
+  width: 6px;
+  border-radius: 1px;
+  background: linear-gradient(180deg,
+    var(--metal-lit) 0%,
+    var(--metal-lit) 40%,
+    var(--metal-dark) 100%);
+  box-shadow: 0 0 3px -1px var(--metal-lit);
+}
+
+/* STATE. The plate takes its INK from the caller (the Ranked strip sets it per
+   segment identity) and its weight from here, so the two stay independent. */
+.quiz-timeline-plate {
+  background-color: transparent;
+  transition: opacity 260ms ease, background-color 260ms ease,
+    box-shadow 260ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-timeline-plate {
     transition: opacity 160ms linear;
   }
 }

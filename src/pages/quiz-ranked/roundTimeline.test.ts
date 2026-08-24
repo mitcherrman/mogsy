@@ -540,3 +540,158 @@ describe("a finished match", () => {
     expect(view.currentRoundNumber).toBe(1);
   });
 });
+
+// ─────────────────────────────────────────── RG2: the published topic
+
+/**
+ * The SUBJECT and DIFFICULTY channels, under the same rule as everything else
+ * on this strip: a node may state what the server published FOR THAT ROUND,
+ * and nothing else. This section exists mostly to prove that adding two
+ * expressive channels did not quietly re-open the door the model's docstring
+ * closed — the twelve-segment pacing wave is still not a source of facts here,
+ * even though it is now genuinely knowable server-side.
+ */
+describe("the published topic", () => {
+  const topic = (category: string, tier: string | null = null) => ({
+    category, tier, iconHint: null,
+  } as never);
+
+  const withTopic = (round: number, ...facts: [number, unknown][]) =>
+    atRound(round, {
+      observedTopics: new Map(facts as never) as never,
+    });
+
+  it("carries the server's topic onto the round it names", () => {
+    const view = withTopic(20, [20, topic("itemization", "easy")]);
+    const node = view.nodes.find((n) => n.roundNumber === 20)!;
+    expect(node.topic).toEqual({
+      category: "itemization", tier: "easy", iconHint: null });
+  });
+
+  it("leaves EVERY other round null — no spreading, no neighbours", () => {
+    const view = withTopic(20, [20, topic("itemization", "easy")]);
+    for (const node of view.nodes) {
+      if (node.roundNumber === 20) continue;
+      expect(node.topic, `round ${node.roundNumber}`).toBeNull();
+    }
+  });
+
+  it("never derives a future round's topic from the pacing wave", () => {
+    // The format's twelve-segment pattern IS frozen on the match and the
+    // server could publish it. It does not, and this model must not act as if
+    // it had: an unplayed round's question has not been generated, so there is
+    // nothing authoritative to draw and the node stays neutral.
+    const view = withTopic(12,
+      [10, topic("abilities", "scenario")],
+      [11, topic("itemization", "medium")],
+      [12, topic("summoner-spells", "easy")]);
+    for (const node of view.nodes.filter((n) => n.state === "upcoming")) {
+      expect(node.topic, `round ${node.roundNumber}`).toBeNull();
+    }
+    // Round 22 is segment 10 of the next cycle — the scenario peak. Still null.
+    expect(view.nodes.find((n) => n.roundNumber === 13)!.topic).toBeNull();
+  });
+
+  it("keeps a past round's topic as the window slides over it", () => {
+    let observed = observeRoundKinds(EMPTY_OBSERVED_ROUND_KINDS, {
+      matchId: "m1", segment: quizSegment(4), segmentRoundNumber: 4,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("itemization", "easy"), questionRoundNumber: 4,
+    });
+    observed = observeRoundKinds(observed, {
+      matchId: "m1", segment: quizSegment(9), segmentRoundNumber: 9,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("abilities", "hard"), questionRoundNumber: 9,
+    });
+    const view = atRound(9, { observedTopics: observed.topics });
+    expect(view.nodes.find((n) => n.roundNumber === 4)!.topic)
+      .toMatchObject({ category: "itemization" });
+    expect(view.nodes.find((n) => n.roundNumber === 9)!.topic)
+      .toMatchObject({ category: "abilities" });
+  });
+
+  it("records a round's topic ONCE and never lets a later poll rewrite it", () => {
+    let observed = observeRoundKinds(EMPTY_OBSERVED_ROUND_KINDS, {
+      matchId: "m1", segment: null, segmentRoundNumber: null,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("itemization", "easy"), questionRoundNumber: 3,
+    });
+    observed = observeRoundKinds(observed, {
+      matchId: "m1", segment: null, segmentRoundNumber: null,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("runes", "hard"), questionRoundNumber: 3,
+    });
+    expect(observed.topics.get(3)).toMatchObject({ category: "itemization" });
+  });
+
+  it("returns the SAME record when a poll says nothing new", () => {
+    const first = observeRoundKinds(EMPTY_OBSERVED_ROUND_KINDS, {
+      matchId: "m1", segment: quizSegment(2), segmentRoundNumber: 2,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("vision"), questionRoundNumber: 2,
+    });
+    const again = observeRoundKinds(first, {
+      matchId: "m1", segment: quizSegment(2), segmentRoundNumber: 2,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("vision"), questionRoundNumber: 2,
+    });
+    expect(again).toBe(first);
+  });
+
+  it("discards the whole record when the match changes", () => {
+    const first = observeRoundKinds(EMPTY_OBSERVED_ROUND_KINDS, {
+      matchId: "m1", segment: quizSegment(2), segmentRoundNumber: 2,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("vision"), questionRoundNumber: 2,
+    });
+    const second = observeRoundKinds(first, {
+      matchId: "m2", segment: quizSegment(1), segmentRoundNumber: 1,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("runes"), questionRoundNumber: 1,
+    });
+    expect(second.topics.has(2)).toBe(false);
+    expect(second.topics.get(1)).toMatchObject({ category: "runes" });
+  });
+
+  it("bounds the topic record exactly as it bounds the kinds", () => {
+    let observed = EMPTY_OBSERVED_ROUND_KINDS;
+    for (let round = 1; round <= OBSERVED_KINDS_MEMORY + 40; round += 1) {
+      observed = observeRoundKinds(observed, {
+        matchId: "m1", segment: quizSegment(round), segmentRoundNumber: round,
+        settledReveal: null, settledRoundNumber: null,
+        questionTopic: topic("itemization"), questionRoundNumber: round,
+      });
+    }
+    expect(observed.topics.size).toBeLessThanOrEqual(OBSERVED_KINDS_MEMORY);
+    // Both maps are trimmed against ONE floor, so a round can never keep a
+    // topic the kind map has forgotten or the other way round.
+    expect([...observed.topics.keys()].sort((a, b) => a - b)[0])
+      .toBe([...observed.byRound.keys()].sort((a, b) => a - b)[0]);
+  });
+
+  it("ignores a topic with no round to attach it to", () => {
+    const observed = observeRoundKinds(EMPTY_OBSERVED_ROUND_KINDS, {
+      matchId: "m1", segment: null, segmentRoundNumber: null,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("itemization"), questionRoundNumber: null,
+    });
+    expect(observed.topics.size).toBe(0);
+    // (The record is still rebuilt, because the match id itself is new — that
+    // is the pre-existing rule, not the topic's doing.)
+    expect(observed.matchId).toBe("m1");
+    expect(observeRoundKinds(observed, {
+      matchId: "m1", segment: null, segmentRoundNumber: null,
+      settledReveal: null, settledRoundNumber: null,
+      questionTopic: topic("itemization"), questionRoundNumber: null,
+    })).toBe(observed);
+  });
+
+  it("says nothing about a match this client joined late", () => {
+    // No topic was ever published to THIS client for rounds 1..8, so they are
+    // neutral. A reconnect does not retroactively learn what it did not see.
+    const view = withTopic(9, [9, topic("abilities", "hard")]);
+    for (const node of view.nodes.filter((n) => n.state === "resolved")) {
+      expect(node.topic, `round ${node.roundNumber}`).toBeNull();
+    }
+  });
+});

@@ -77,6 +77,11 @@ function quizRound(n: number, over: Partial<ReviewRound> = {}): ReviewRound {
     canonicalQuestionRef: `ranked:c${n}`,
     revealed: true,
     iconHint: { kind: "item", key: "Doran's Blade", icon: "assets/items/1055.png" },
+    topic: {
+      category: "itemization", tier: "easy",
+      iconHint: { kind: "item", key: "Doran's Blade",
+        icon: "assets/items/1055.png" },
+    },
     question: {
       prompt: `Prompt ${n}`,
       options: ["A", "B", "C", "D"],
@@ -255,10 +260,19 @@ describe("MALT B1 — what an icon shows", () => {
 
   it("draws nothing rather than guessing when the data proves nothing", () => {
     expect(resolveQuestionIcon({ kind: "generic", key: null, icon: null }).src).toBeUndefined();
-    // A category the strip has no art for is normal — the bank grows.
+    // A category the taxonomy does not classify is normal — the bank grows,
+    // and some of what it holds is not quiz content at all. `Patch History` is
+    // a seeded category for patch-note material; it has no public subject and
+    // no art, and resolving it to a plausible neighbour would be worse than
+    // resolving it to nothing.
+    expect(
+      resolveQuestionIcon({ kind: "category", key: "Patch History", icon: null }).src,
+    ).toBeUndefined();
+    // `Rune Identity` DOES now resolve — RG2 moved classification to the
+    // canonical taxonomy, which knows a rune-identity question is about runes.
     expect(
       resolveQuestionIcon({ kind: "category", key: "Rune Identity", icon: null }).src,
-    ).toBeUndefined();
+    ).toBeDefined();
   });
 
   it("never builds a path from a name the backend refused to verify", () => {

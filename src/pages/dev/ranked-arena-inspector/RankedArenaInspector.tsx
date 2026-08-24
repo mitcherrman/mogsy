@@ -22,8 +22,9 @@ import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
 import { RoundTimeline } from "@/components/ranked-arena/RoundTimeline";
 import {
   projectRoundTimeline, TIMELINE_VISIBLE_NODES,
-  type TimelineSegmentKind,
+  type RoundTimelineView, type TimelineNode, type TimelineSegmentKind,
 } from "@/pages/quiz-ranked/roundTimeline";
+import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
@@ -460,6 +461,49 @@ function benchSettlements(current: number) {
   return rows;
 }
 
+/**
+ * RG2 — the topics this client would have accumulated, round by round.
+ *
+ * Modelled on the twelve-segment Ranked pattern because that is what a real
+ * match serves, but PUBLISHED ONLY FOR ROUNDS ALREADY PLAYED — which is the
+ * whole point of the bench. The strip must show subjects and difficulties
+ * behind the marker and nothing at all in front of it, and a fixture that
+ * filled in the future would hide exactly the bug worth catching.
+ */
+// NOTE the icon paths: the canonical champion portrait is
+// `assets/champions/<Name>/icon.png`, NOT `<Name>.png` — the latter 404s on
+// the asset host, which is exactly the case-and-convention class of mistake
+// the backend verifies paths on disk to prevent. A bench that gets it wrong
+// certifies a blank plate.
+const BENCH_PATTERN: Array<[string, string | null, string | null, string | null]> = [
+  ["itemization", "easy", "item", "assets/items/1055.png"],
+  ["summoner-spells", "easy", "summoner_spell", "assets/summoner_spells/Flash.png"],
+  ["itemization", "medium", "item", "assets/items/3031.png"],
+  ["meta-reflex", null, "meta_reflex", null],
+  ["itemization", "medium", "item", "assets/items/3078.png"],
+  ["abilities", "hard", "champion", "assets/champions/Aatrox/icon.png"],
+  ["itemization", "easy", "item", "assets/items/1001.png"],
+  ["abilities", "medium", "champion", "assets/champions/Lux/icon.png"],
+  ["meta-reflex", null, "meta_reflex", null],
+  ["abilities", "scenario", "champion", "assets/champions/Darius/icon.png"],
+  ["champion-stats", "medium", "champion", "assets/champions/Garen/icon.png"],
+  ["objectives", "easy", "category", null],
+];
+
+function benchTopics(current: number): Map<number, TimelineTopic> {
+  const topics = new Map<number, TimelineTopic>();
+  // Rounds this client actually SAW — up to and including the one in play.
+  for (let r = 1; r <= current; r += 1) {
+    const [category, tier, kind, icon] = BENCH_PATTERN[(r - 1) % 12];
+    topics.set(r, {
+      category: category as TimelineTopic["category"],
+      tier: tier as TimelineTopic["tier"],
+      iconHint: { kind: kind as string, key: null, icon },
+    });
+  }
+  return topics;
+}
+
 function benchTimeline(current: number, matchOver = false) {
   return projectRoundTimeline({
     roundNumber: current,
@@ -467,9 +511,106 @@ function benchTimeline(current: number, matchOver = false) {
     segmentRoundNumber: current,
     matchOver,
     observedKinds: benchObservedKinds(current),
+    observedTopics: benchTopics(current),
     settlements: benchSettlements(current),
     viewerSlot: "p1",
   });
+}
+
+/**
+ * RG2 — every node state on one strip, for the visual certification.
+ *
+ * Not a projection: a hand-built window, because the point is to see all nine
+ * public categories, all four difficulties, all four verdicts and all three
+ * states SIDE BY SIDE and judge whether the node reads at the size it actually
+ * ships at. The live behaviour is what the steppable bench above is for.
+ */
+const CERT_ROW: Array<Partial<TimelineNode> & { roundNumber: number }> = [
+  { roundNumber: 1, state: "resolved", outcome: "correct",
+    topic: t("objectives", "easy", "category", null) },
+  { roundNumber: 2, state: "resolved", outcome: "incorrect",
+    topic: t("wave-management", "medium", "category", null) },
+  { roundNumber: 3, state: "resolved", outcome: "correct",
+    topic: t("summoner-spells", "hard", "summoner_spell",
+      "assets/summoner_spells/Flash.png") },
+  { roundNumber: 4, state: "resolved", outcome: "both-correct",
+    topic: t("itemization", "medium", "item", "assets/items/3031.png") },
+  { roundNumber: 5, state: "resolved", outcome: "timed-out",
+    topic: t("abilities", "scenario", "champion",
+      "assets/champions/Aatrox/icon.png") },
+  { roundNumber: 6, state: "resolved", outcome: "correct",
+    topic: t("vision", "easy", "category", null) },
+  { roundNumber: 7, state: "resolved", outcome: "incorrect",
+    topic: t("champion-stats", "medium", "champion",
+      "assets/champions/Garen/icon.png") },
+  { roundNumber: 8, state: "resolved", outcome: "correct",
+    topic: t("scenarios", "scenario", "champion",
+      "assets/champions/Darius/icon.png") },
+  { roundNumber: 9, state: "resolved", outcome: "correct",
+    topic: t("runes", "hard", "category", null) },
+  { roundNumber: 10, state: "resolved", outcome: "incorrect",
+    topic: t("fundamentals", "easy", "category", null) },
+  { roundNumber: 11, state: "resolved", outcome: "correct",
+    topic: t("meta-reflex", null, "meta_reflex", null) },
+  { roundNumber: 12, state: "current", outcome: null,
+    topic: t("itemization", "medium", "item", "assets/items/3078.png") },
+  { roundNumber: 13, state: "upcoming", outcome: null,
+    topic: t("abilities", "hard", "category", null) },
+  { roundNumber: 14, state: "upcoming", outcome: null, topic: null },
+];
+
+function t(category: string, tier: string | null, kind: string,
+  icon: string | null): TimelineTopic {
+  return {
+    category: category as TimelineTopic["category"],
+    tier: tier as TimelineTopic["tier"],
+    iconHint: { kind, key: null, icon },
+  };
+}
+
+function certTimeline(from: number, count: number): RoundTimelineView {
+  const slice = CERT_ROW.slice(from, from + count);
+  return {
+    visibleNodes: count,
+    anchorIndex: Math.min(4, count - 1),
+    windowStart: slice[0].roundNumber,
+    currentIndex: slice.findIndex((n) => n.state === "current") >= 0
+      ? slice.findIndex((n) => n.state === "current") : null,
+    currentRoundNumber: slice.find((n) => n.state === "current")?.roundNumber
+      ?? null,
+    anchored: true,
+    nodes: slice.map((n, index) => ({
+      index, visible: true, segmentKind: null, tag: null, outcome: null,
+      topic: null, state: "resolved", ...n,
+    }) as TimelineNode),
+  };
+}
+
+function NodeCertificationBench() {
+  return (
+    <div className="space-y-4">
+      <p className="text-[11px] text-muted-foreground">
+        RG2 — every node state at shipping size. Top edge = result, middle =
+        subject (+ badge), bottom edge = difficulty metal — 1 bronze, 2 silver,
+        3 gold, and never more than three. Nodes 5 and 8 are scenario-tier and
+        must be indistinguishable from a hard node here; their scenario-ness
+        is carried by the subject and badge instead. Round 14 is a future round
+        with NO published topic: neutral, and no difficulty.
+      </p>
+      {[[0, 7], [7, 7]].map(([from, count]) => (
+        <div key={from} className="ranked-shell ranked-academy">
+          <RoundTimeline timeline={certTimeline(from, count)} />
+        </div>
+      ))}
+      <p className="text-[11px] text-muted-foreground">
+        Row 1: Objectives easy/correct · Waves medium/incorrect · Summoners
+        hard/correct · Items medium/both-correct · Abilities
+        scenario/timed-out · Vision easy/correct · Champion Stats
+        medium/incorrect. Row 2: Scenarios · Runes · Fundamentals · Meta Reflex
+        · CURRENT · future known · future unknown.
+      </p>
+    </div>
+  );
 }
 
 /**
@@ -910,6 +1051,8 @@ const STATES: InspectorState[] = [
     render: () => <MascotBench /> },
   { key: "rg-timeline", label: "RG — round timeline (steppable)",
     render: () => <RoundTimelineBench /> },
+  { key: "rg2-nodes", label: "RG2 — timeline node states",
+    render: () => <NodeCertificationBench /> },
 ];
 
 const VIEWPORTS: { key: string; label: string; width: number | null }[] = [

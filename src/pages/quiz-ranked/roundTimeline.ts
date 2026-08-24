@@ -59,6 +59,7 @@ import { ITEM_COST_DUEL_MODULE_ID } from "@/lib/ranked-core/modules/itemCostDuel
 import type { PlayerSlot, ResolvedRoundView } from "@/lib/ranked-core/viewTypes";
 import { resultKind, type ResultKind } from "@/components/ranked-arena/RoundResultBeat";
 import type { RankedRole } from "@/lib/ranked-public/roles";
+import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 
 /**
  * How many round slots the strip shows at once.
@@ -137,6 +138,21 @@ export interface TimelineNode {
   outcome: ResultKind | null;
   /** Always null today. See `TimelineNodeTag`. */
   tag: TimelineNodeTag | null;
+  /**
+   * RG2 — what the round is ABOUT: public subject, difficulty tier, proven
+   * icon. `null` when this client has never been told, which is the ordinary
+   * state for a FUTURE round and for a past round played before this client
+   * connected.
+   *
+   * The rule stated at the top of this file is unchanged and this field does
+   * not bend it: a topic is only ever something the SERVER published for a
+   * specific round (`question.topic` on the live snapshot), accumulated as the
+   * match plays. Nothing is derived from an ordinal, from the pacing wave, or
+   * from a neighbouring round. A Ranked future round's question has not been
+   * generated, so there is nothing to publish and this stays null — and the
+   * node draws the neutral token, exactly as before.
+   */
+  topic: TimelineTopic | null;
 }
 
 export interface RoundTimelineView {
@@ -182,10 +198,27 @@ export function isMetaReflexSegment(
 export interface ObservedRoundKinds {
   matchId: string | null;
   byRound: ReadonlyMap<number, TimelineSegmentKind>;
+  /**
+   * RG2 — the round's published topic, by round number.
+   *
+   * A SECOND map rather than a richer value in the first, because the two
+   * facts have genuinely different availability and collapsing them would
+   * lose that. A segment's KIND is proven by its module id, which the live
+   * snapshot and the settled transcript both carry — so a Meta Reflex block
+   * is identifiable even from a settlement with no question in it. A TOPIC is
+   * published on the question block, so it exists only while the round is the
+   * live one. Rounds therefore routinely have a kind and no topic, and a
+   * single map would have to invent a value for one of them.
+   */
+  topics: ReadonlyMap<number, TimelineTopic>;
 }
 
 export const EMPTY_OBSERVED_ROUND_KINDS: ObservedRoundKinds =
-  Object.freeze({ matchId: null, byRound: new Map<number, TimelineSegmentKind>() });
+  Object.freeze({
+    matchId: null,
+    byRound: new Map<number, TimelineSegmentKind>(),
+    topics: new Map<number, TimelineTopic>(),
+  });
 
 export interface RoundKindObservation {
   matchId: string | null;
@@ -195,6 +228,14 @@ export interface RoundKindObservation {
   /** The last settled block's transcript, and the round it settled on. */
   settledReveal: { moduleId: string; moduleVersion: number } | null;
   settledRoundNumber: number | null;
+  /**
+   * RG2 — the topic the LIVE question block published, and the round it
+   * describes. Momentary in exactly the way the segment is: it speaks for the
+   * round in play and nothing else, which is why it is folded into a record
+   * rather than read fresh each time the strip renders.
+   */
+  questionTopic?: TimelineTopic | null;
+  questionRoundNumber?: number | null;
 }
 
 /**
@@ -208,7 +249,10 @@ export interface RoundKindObservation {
 export function observeRoundKinds(
   previous: ObservedRoundKinds, observation: RoundKindObservation,
 ): ObservedRoundKinds {
-  const { matchId, segment, segmentRoundNumber, settledReveal, settledRoundNumber } = observation;
+  const {
+    matchId, segment, segmentRoundNumber, settledReveal, settledRoundNumber,
+    questionTopic, questionRoundNumber,
+  } = observation;
   const sameMatch = previous.matchId === matchId;
   const facts: [number, TimelineSegmentKind][] = [];
   if (segment && segmentRoundNumber !== null && segmentRoundNumber >= 1) {
@@ -220,17 +264,36 @@ export function observeRoundKinds(
       isMetaReflexSegment(settledReveal.moduleId, settledReveal.moduleVersion)
         ? "meta-reflex" : "standard"]);
   }
-  if (sameMatch && facts.every(([r, k]) => previous.byRound.get(r) === k)) return previous;
+  // RG2: the live question's topic, for the round it names. A topic is
+  // recorded ONCE per round and never overwritten — the first publication is
+  // the round's own, and a later poll cannot re-describe a round that has
+  // moved into history.
+  const topicRound = questionRoundNumber ?? null;
+  const newTopic = questionTopic && topicRound !== null && topicRound >= 1
+    && !(sameMatch && previous.topics.has(topicRound))
+    ? ([topicRound, questionTopic] as const)
+    : null;
+
+  if (sameMatch && !newTopic
+      && facts.every(([r, k]) => previous.byRound.get(r) === k)) return previous;
 
   const byRound = new Map(sameMatch ? previous.byRound : []);
   for (const [round, kind] of facts) byRound.set(round, kind);
+  const topics = new Map(sameMatch ? previous.topics : []);
+  if (newTopic) topics.set(newTopic[0], newTopic[1]);
   // Bounded: a match has no round ceiling, so drop what the window can never
-  // reach again rather than growing for its whole length.
-  if (byRound.size > OBSERVED_KINDS_MEMORY) {
-    const floor = Math.max(...byRound.keys()) - OBSERVED_KINDS_MEMORY + 1;
+  // reach again rather than growing for its whole length. Both maps are
+  // trimmed against the SAME floor, taken from the furthest round either has
+  // seen — trimming them independently would let one forget a round the other
+  // still describes, and a node with a topic and no kind is a worse state than
+  // a node with neither.
+  const highest = Math.max(0, ...byRound.keys(), ...topics.keys());
+  if (byRound.size > OBSERVED_KINDS_MEMORY || topics.size > OBSERVED_KINDS_MEMORY) {
+    const floor = highest - OBSERVED_KINDS_MEMORY + 1;
     for (const round of [...byRound.keys()]) if (round < floor) byRound.delete(round);
+    for (const round of [...topics.keys()]) if (round < floor) topics.delete(round);
   }
-  return { matchId, byRound };
+  return { matchId, byRound, topics };
 }
 
 // -------------------------------------------------------- the window itself
@@ -291,6 +354,8 @@ export interface RoundTimelineInput {
   matchOver?: boolean;
   /** Server-stated segment identity per round (see `observeRoundKinds`). */
   observedKinds?: ReadonlyMap<number, TimelineSegmentKind>;
+  /** RG2 — server-published topic per round (see `observeRoundKinds`). */
+  observedTopics?: ReadonlyMap<number, TimelineTopic>;
   /** The bounded settlement ledger the duelist columns already read. */
   settlements: readonly ResolvedRoundView[];
   /** Which slot of a settlement is the viewer. The arena maps the viewer to p1. */
@@ -308,7 +373,7 @@ export interface RoundTimelineInput {
 export function projectRoundTimeline(input: RoundTimelineInput): RoundTimelineView {
   const {
     roundNumber, completedRounds, segmentRoundNumber, settlements, viewerSlot,
-    observedKinds, matchOver = false,
+    observedKinds, observedTopics, matchOver = false,
   } = input;
 
   const settled = Math.max(0, completedRounds);
@@ -351,6 +416,9 @@ export function projectRoundTimeline(input: RoundTimelineInput): RoundTimelineVi
       segmentKind: observedKinds?.get(rn) ?? null,
       outcome: viewer && opponent ? resultKind(viewer, opponent) : null,
       tag: null,
+      // Same rule, same source of truth: only what the server published for
+      // THIS round. Never derived from the ordinal.
+      topic: observedTopics?.get(rn) ?? null,
     });
   }
 

@@ -178,6 +178,14 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     // is the same rule the renderer registry dispatches on, not a looser one.
     settledReveal: m.lastSegmentSettlement?.reveal ?? null,
     settledRoundNumber: m.lastSegmentRoundNumber,
+    // RG2 — the live question's own topic, for the round it names. Momentary
+    // in exactly the way the segment is: it describes the round in play and
+    // nothing else, so it is folded into the same record rather than read
+    // fresh at render. A round the client never saw live keeps no topic and
+    // draws the neutral token, which is the truthful rendering of "this client
+    // was not here".
+    questionTopic: m.publicRound?.question?.topic ?? null,
+    questionRoundNumber: segmentRoundNumber,
   });
   if (nextObservedKinds !== observedKinds) setObservedKinds(nextObservedKinds);
 
@@ -196,6 +204,7 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     segmentRoundNumber,
     matchOver: m.publicRound.matchOver,
     observedKinds: nextObservedKinds.byRound,
+    observedTopics: nextObservedKinds.topics,
     settlements: m.damageLog,
     // The arena maps the viewer to p1 everywhere (see `idMappingFromRound`),
     // which is the same slot the top result beat reads.

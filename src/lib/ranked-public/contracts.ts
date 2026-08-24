@@ -22,6 +22,9 @@ import type {
 } from "@/lib/ranked-core/adapters/adaptToViews";
 import type { OptionMediaView } from "@/lib/ranked-core/viewTypes";
 import { isRankedRole, type RankedRole } from "./roles";
+import {
+  readTimelineTopic, type TimelineTopic,
+} from "@/components/quiz/timeline/timelineNodeModel";
 import { parseRankTier, type RankTier } from "@/lib/progression/tiers";
 
 export class RankedPublicParseError extends Error {
@@ -592,6 +595,11 @@ function readQuestion(value: unknown): PublicQuestionSource | null {
     category: nstr(q.category, "category"),
     presentation: readOptionalPresentation(q.presentation),
     optionMedia: readOptionMedia(q.option_media),
+    // RG2. Tolerant like the presentation reader above and for the same
+    // reason: this block carries no secret and no combat value, so a malformed
+    // or absent one degrades to a neutral timeline node rather than breaking
+    // an otherwise valid live match.
+    topic: readTimelineTopic(q.topic),
   };
 }
 
@@ -1487,6 +1495,15 @@ export interface ReviewRound {
    */
   revealed: boolean;
   iconHint: ReviewIconHint;
+  /**
+   * RG2 — the resolved public subject, difficulty tier and proven icon, the
+   * SAME block a live round carries. `iconHint` above is unchanged and stays
+   * beside it: shipped clients read it there.
+   *
+   * `null` for a payload from a backend that predates RG2, which is what the
+   * legacy bridge in `@/lib/quiz/publicCategory` exists to cover.
+   */
+  topic: TimelineTopic | null;
   question: ReviewQuestion | null;
   challenges: ReviewChallenge[] | null;
   viewerSubmission: ReviewSubmission;
@@ -1622,6 +1639,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
         r.canonical_question_ref, `${label}.canonical_question_ref`),
       revealed,
       iconHint: reviewIconHint(r.icon_hint, `${label}.icon_hint`),
+      topic: readTimelineTopic((r as Record<string, unknown>).topic),
       question,
       challenges,
       viewerSubmission: {

@@ -22,67 +22,32 @@
  * a neutral glyph is not a failure — it is the truthful rendering of "the data
  * proves the subject and no more".
  *
- * WHY THE CATEGORY MAP IS SPELT OUT
- * ─────────────────────────────────
- * Ranked question categories arrive in two shapes, because two providers wrote
- * them: generator SLUGS (`purchase_history_total`, `champion_ability_identity`)
- * from the placeholder bank, and human LABELS (`Item Costs`, `Champion Ability
- * Cooldowns`) from the accepted bank. Both are real and both are on rows in
- * production today, so the map keys on a normalized form of either and neither
- * is treated as the canonical one. An unknown category is normal — the bank
- * grows — and resolves to the neutral glyph rather than to a wrong picture.
+ * RG2 — THE CATEGORY MAP LEFT THIS FILE
+ * ─────────────────────────────────────
+ * It used to live here: a private table reconciling the spellings a Ranked
+ * category arrives in — generator SLUGS (`purchase_history_total`) from the
+ * placeholder bank, human LABELS (`Item Costs`) from the accepted bank, and
+ * `quiz_categories` names from the shared bank. All three are on live rows, so
+ * the table was real work; the problem was where it was. Sitting in one
+ * component's file, applied to one surface, it could not be checked against
+ * the family contract that actually defines the bank, and the arena timeline
+ * would have needed a second copy of it.
+ *
+ * Classification now happens once, in `quiz/public_category.py` — the only
+ * place that can see the family contract, the pool specs and the seeding
+ * scripts — and travels as a stable key on each round's `topic`. What is left
+ * here is the half that was always the frontend's: turning that key into a
+ * picture, through the shared `@/lib/quiz/publicCategory` art so this surface
+ * and the timeline cannot print different icons for the same subject.
  */
-import { resolveCategoryIconUrl, QUIZ_CATEGORY_ICONS } from "@/components/quiz/QuizCategoryStrip";
+import {
+  categoryIconUrl,
+  categoryLabel,
+  legacyCategoryKey,
+  type CategoryKey,
+} from "@/lib/quiz/publicCategory";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import type { ReviewIconHint, ReviewRound } from "@/lib/ranked-public/contracts";
-
-/** The category-strip tile ids, by their own id, for one lookup. */
-const STRIP_BY_ID = new Map(QUIZ_CATEGORY_ICONS.map((c) => [c.id, c]));
-
-/** Lowercased, punctuation-flattened: `Item Costs` and `item_costs` collide. */
-function normalizeCategory(raw: string): string {
-  return raw.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-}
-
-/**
- * Ranked category -> a category-strip tile id.
- *
- * Keyed by NORMALIZED category, so each entry covers the slug and the human
- * label of the same subject without listing both. Only subjects the strip
- * actually has art for appear; everything else is deliberately absent.
- */
-const CATEGORY_TO_STRIP: Record<string, string> = {
-  // Itemization — costs, components, recipes, stat lines, comparisons.
-  item_costs: "itemization",
-  item_components: "itemization",
-  item_builds_into: "itemization",
-  item_exact_stats: "itemization",
-  item_stat_diversity: "itemization",
-  item_stats: "itemization",
-  item_recipe: "itemization",
-  item_comparison: "itemization",
-  purchase_history_total: "itemization",
-  flat_inventory_stat_total: "itemization",
-  // Abilities & cooldowns.
-  champion_ability_cooldowns: "abilities",
-  champion_ability_identity: "abilities",
-  ability_identity: "abilities",
-  post_mitigation_damage: "abilities",
-  // Summoner spells.
-  summoner_spells: "summoner-spells",
-  summoner_spell_identity: "summoner-spells",
-  // Objectives.
-  objective_timers: "objectives",
-  objectives: "objectives",
-  // Champion knowledge that is not about a specific ability. There is no
-  // champion tile on the strip (the six are subjects, not entity classes), so
-  // this deliberately has no entry and resolves to the neutral glyph — see
-  // `resolveQuestionIcon`. Listing it against a wrong tile would be worse.
-  // Vision.
-  vision: "vision",
-  // Wave management.
-  wave_management: "wave-management",
-};
 
 /**
  * How a question icon should be drawn.
@@ -115,6 +80,35 @@ export interface QuestionIconView {
  * is its own case above both — the module id is the proof, and the block is
  * not "about" any one entity.
  */
+/**
+ * Art for a round whose backend DID publish a topic — the RG2 path.
+ *
+ * Preferred over `resolveQuestionIcon` wherever a whole round is in hand,
+ * because a topic carries the resolved public key and this file then does no
+ * classification at all.
+ */
+export function resolveRoundIcon(round: ReviewRound): QuestionIconView {
+  const topic = round.topic;
+  if (!topic) return resolveQuestionIcon(round.iconHint);
+  if (topic.category === "meta-reflex") {
+    return { glyph: "meta_reflex", label: "Meta Reflex", specific: true };
+  }
+  const hint = topic.iconHint;
+  if (hint?.icon) {
+    return {
+      src: resolveQuizAssetUrl(hint.icon),
+      label: hint.key ?? categoryLabel(topic.category),
+      specific: true,
+    };
+  }
+  return {
+    src: categoryIconUrl(topic.category as CategoryKey),
+    label: hint?.key && hint.kind !== "category"
+      ? hint.key : categoryLabel(topic.category),
+    specific: false,
+  };
+}
+
 export function resolveQuestionIcon(hint: ReviewIconHint): QuestionIconView {
   if (hint.kind === "meta_reflex") {
     /**
@@ -137,9 +131,11 @@ export function resolveQuestionIcon(hint: ReviewIconHint): QuestionIconView {
     };
   }
   if (hint.kind === "category" && hint.key) {
-    const tile = STRIP_BY_ID.get(CATEGORY_TO_STRIP[normalizeCategory(hint.key)] ?? "");
+    // The key here is the RAW stored string, not a public key: this branch is
+    // only reached for a round the backend classified before RG2. The bridge
+    // maps what it can and answers `general` for the rest — never a guess.
     return {
-      src: tile ? resolveCategoryIconUrl(tile.iconPath) : undefined,
+      src: categoryIconUrl(legacyCategoryKey(hint.key)),
       label: prettyCategory(hint.key),
       specific: false,
     };

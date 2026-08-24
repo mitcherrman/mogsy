@@ -46,13 +46,34 @@
  * no public field describes an ungenerated question, and a strip that guessed
  * would be inventing the one thing the player cannot check.
  *
- * There are exactly three node glyphs, and two of them require the server to
- * have said so: the Meta Reflex mark, the ordinary-round mark, and a neutral
- * token for every round this client has not been told about.
+ * RG2 — WHAT THE NODE ITSELF IS
+ * ─────────────────────────────
+ * The plate is no longer drawn here. It is `QuizTimelineNode`, the one node
+ * every quiz surface uses, and it draws three independent channels: a result
+ * stripe on its top edge, the question's SUBJECT in the middle, and difficulty
+ * metal on its bottom edge. What this file kept is everything that is about
+ * the STRIP rather than the node — the moving window, the fixed rail, the
+ * stationary marker, and the arithmetic that keeps the marker over the node it
+ * rings.
+ *
+ * That split is the point of the phase. A Ranked round and a Daily card are
+ * different objects with different lifecycles; a node showing "an easy
+ * Itemization question you got right" is the same picture in both, and it was
+ * previously only expressible here.
+ *
+ * The three-glyph rule the old node was built on survives inside the shared
+ * node as its neutral token: a round this client has not been told about has
+ * no topic, and no topic draws the hollow ring. Nothing is inferred.
  */
 import type {
   RoundTimelineView, TimelineNode, TimelineSegmentKind,
 } from "@/pages/quiz-ranked/roundTimeline";
+import { QuizTimelineNode } from "@/components/quiz/timeline/QuizTimelineNode";
+import {
+  resolveNodeArt,
+  type QuizTimelineNodeModel,
+} from "@/components/quiz/timeline/timelineNodeModel";
+import { categoryLabel } from "@/lib/quiz/publicCategory";
 import type { ResultKind } from "./RoundResultBeat";
 
 /**
@@ -94,74 +115,61 @@ const STATE_LABEL: Record<TimelineNode["state"], string> = {
  * It names only what the node knows. A round whose segment this client was
  * never told about says nothing about its kind, rather than describing it as
  * ordinary — and a future round says nothing beyond existing.
+ *
+ * RG2 adds the SUBJECT and the DIFFICULTY, and this is the only place they
+ * become words. The visible design is a picture and three metal strips, which
+ * is right for nine plates at 36px and useless to a reader who cannot see
+ * them, so the accessible name carries what the drawing carries: "Round 6,
+ * resolved, Aatrox, Abilities & Cooldowns, hard, you answered incorrectly".
+ * Both are added only when the server actually published a topic.
  */
 export function nodeLabel(node: TimelineNode): string {
   const identity = IDENTITY[identityOf(node.segmentKind)].label;
   const kind = identity ? `, ${identity}` : "";
   const outcome = node.outcome ? `, ${OUTCOME[node.outcome].label}` : "";
   const tag = node.tag ? `, ${node.tag.role} question` : "";
-  return `Round ${node.roundNumber}, ${STATE_LABEL[node.state]}${kind}${outcome}${tag}`;
-}
-
-/** The Meta Reflex mark — the SAME four-point star the block's sting uses. */
-function MetaReflexGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden>
-      <path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" />
-    </svg>
-  );
-}
-
-/** An ordinary round the server has named: a solid engraved diamond. */
-function StandardGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden>
-      <path d="M12 3l6 9-6 9-6-9z" fill="currentColor" />
-    </svg>
-  );
+  return `Round ${node.roundNumber}, ${STATE_LABEL[node.state]}${kind}`
+    + `${subjectPhrase(node)}${outcome}${tag}`;
 }
 
 /**
- * A round this client has not been told about — a future round, or one played
- * before it connected. Hollow on purpose: an outline reads as a placeholder,
- * and a placeholder is exactly what it is.
+ * The topic half of the label, or an empty string.
+ *
+ * Empty whenever the server published no topic — the timeline's standing rule,
+ * applied to the words as well as to the picture. A Meta Reflex block is
+ * skipped because `kind` above already named it and saying it twice reads as a
+ * stutter, which is the one case the two channels genuinely overlap.
  */
-function UnknownGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-3 w-3" aria-hidden>
-      <circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" strokeWidth="2.4" />
-    </svg>
-  );
+function subjectPhrase(node: TimelineNode): string {
+  const topic = node.topic;
+  if (!topic || topic.category === "meta-reflex") return "";
+  const art = resolveNodeArt(topic);
+  const category = categoryLabel(topic.category);
+  // "Aatrox, Abilities & Cooldowns" — the entity alone does not say which kind
+  // of Aatrox question this is, and neither should the sentence.
+  const subject = art.specific && art.label !== category
+    ? `, ${art.label}, ${category}` : `, ${category}`;
+  return topic.tier ? `${subject}, ${topic.tier}` : subject;
 }
 
 /**
- * The settled verdict, as a SHAPE as well as a colour: filled dot, ringed dot,
- * cross, hollow ring. Absolutely placed against the node's plate wrapper so it
- * costs no height and its arrival moves nothing.
+ * One Ranked round -> the mode-neutral node the shared renderer takes.
+ *
+ * Deliberately a projection and not a cast. `TimelineNode` carries things that
+ * are Ranked's own — the window index, whether the node is inside the clip,
+ * the segment kind, the reserved per-question tag — and none of them are the
+ * NODE's business. What crosses is the four facts every mode has: where it is,
+ * what state it is in, what it is about, and how it went.
  */
-function OutcomeMark({ outcome }: { outcome: ResultKind }) {
-  const { ink } = OUTCOME[outcome];
-  return (
-    <svg viewBox="0 0 12 12" className="absolute -bottom-1 -right-1 h-[9px] w-[9px]"
-      style={{ color: ink }} aria-hidden>
-      {outcome === "correct" && <circle cx="6" cy="6" r="3.4" fill="currentColor" />}
-      {outcome === "both-correct" && (
-        <>
-          <circle cx="6" cy="6" r="2.1" fill="currentColor" />
-          <circle cx="6" cy="6" r="4.4" fill="none" stroke="currentColor" strokeWidth="1.1" />
-        </>
-      )}
-      {outcome === "incorrect" && (
-        <path d="M2.6 2.6l6.8 6.8M9.4 2.6l-6.8 6.8" stroke="currentColor"
-          strokeWidth="1.8" strokeLinecap="round" />
-      )}
-      {outcome === "timed-out" && (
-        <circle cx="6" cy="6" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      )}
-    </svg>
-  );
+function nodeModel(node: TimelineNode): QuizTimelineNodeModel {
+  return {
+    ordinal: node.roundNumber,
+    state: node.state,
+    topic: node.topic,
+    outcome: node.outcome,
+  };
 }
+
 
 function TimelineNodeMark({ node, slotWidth }: { node: TimelineNode; slotWidth: string }) {
   const identity = IDENTITY[identityOf(node.segmentKind)];
@@ -185,22 +193,15 @@ function TimelineNodeMark({ node, slotWidth }: { node: TimelineNode; slotWidth: 
         items-center justify-end gap-[3px]"
     >
       <span className="sr-only">{nodeLabel(node)}</span>
-      {/* The plate and its verdict mark are SIBLINGS inside this wrapper, not
-          parent and child. A past node's plate recedes with `opacity`, and
-          opacity composites the whole subtree — nested, the verdict would fade
-          with the plate, and the verdict is the one thing on a settled node
-          worth reading at a glance. */}
-      <span aria-hidden className="relative block h-8 w-full max-w-[2.25rem]">
-        <span
-          style={{ color: identity.ink }}
-          className="ranked-timeline-plate flex h-8 w-full items-center justify-center
-            rounded-[0.3rem] border"
-        >
-          {node.segmentKind === "meta-reflex" ? <MetaReflexGlyph />
-            : node.segmentKind === "standard" ? <StandardGlyph />
-              : <UnknownGlyph />}
-        </span>
-        {node.outcome && <OutcomeMark outcome={node.outcome} />}
+      {/* The plate is the SHARED node (`QuizTimelineNode`): result stripe on
+          its top edge, subject in the middle, difficulty metal on its bottom
+          edge. This wrapper supplies only what is Ranked's to supply — the
+          slot geometry the marker's arithmetic depends on, and the segment
+          identity's ink, which `currentColor` carries down into the plate's
+          border. */}
+      <span aria-hidden style={{ color: identity.ink }}
+        className="relative block h-8 w-full max-w-[2.25rem]">
+        <QuizTimelineNode node={nodeModel(node)} />
       </span>
       <span aria-hidden
         className="ranked-timeline-ordinal block text-[9px] font-semibold leading-none tabular-nums">
