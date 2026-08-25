@@ -11,6 +11,7 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { loadEnv } from "vite";
 import {
   buildStaticEntries,
   championDocEntries,
@@ -20,6 +21,8 @@ import {
   renderSitemap,
   type SitemapEntry,
 } from "../src/lib/seo/sitemap";
+
+const viteEnv = loadEnv("production", process.cwd(), "");
 
 const SUPABASE_URL =
   process.env.VITE_SUPABASE_URL ?? "https://kewgjwrzpzpeltwidvuc.supabase.co";
@@ -31,7 +34,11 @@ const SUPABASE_ANON_KEY =
 // Combat/quiz backend — used for League Docs champion pages and pro-data
 // years. No hardcoded fallback: when the env var is absent, those dynamic
 // entries are omitted with an explicit warning.
-const COMBAT_API_URL = (process.env.VITE_COMBAT_API_URL ?? "").replace(/\/+$/, "");
+const COMBAT_API_URL = (
+  process.env.VITE_COMBAT_API_URL ??
+  viteEnv.VITE_COMBAT_API_URL ??
+  ""
+).replace(/\/+$/, "");
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { accept: "application/json" } });

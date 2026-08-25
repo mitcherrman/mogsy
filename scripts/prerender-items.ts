@@ -1,12 +1,18 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
+import { loadEnv } from "vite";
 import ItemReference from "../src/components/items/ItemReference";
 import { buildItemJsonLd, buildItemSeo } from "../src/lib/items/seo";
 import { PRERENDERED_ITEM_SLUGS } from "../src/lib/items/prerender-manifest";
 import { itemIconUrl, type CanonicalItem } from "../src/lib/items/types";
 
-const api = (process.env.VITE_COMBAT_API_URL ?? "").replace(/\/+$/, "");
+const env = loadEnv("production", process.cwd(), "");
+const api = (
+  process.env.VITE_COMBAT_API_URL ??
+  env.VITE_COMBAT_API_URL ??
+  ""
+).replace(/\/+$/, "");
 const dist = resolve("dist");
 const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 function meta(html: string, selector: string, attribute: string, key: string, value: string) {
