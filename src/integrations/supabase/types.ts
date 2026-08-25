@@ -278,6 +278,233 @@ export type Database = {
         }
         Relationships: []
       }
+      audio_assets: {
+        Row: {
+          artist: string | null
+          artwork_storage_path: string | null
+          artwork_url: string | null
+          created_at: string
+          duration_ms: number | null
+          enabled: boolean
+          id: string
+          kind: string
+          mime_type: string
+          relative_gain: number
+          show_now_playing_notification: boolean
+          source_type: string
+          source_url: string | null
+          storage_path: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          artist?: string | null
+          artwork_storage_path?: string | null
+          artwork_url?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          enabled?: boolean
+          id?: string
+          kind: string
+          mime_type: string
+          relative_gain?: number
+          show_now_playing_notification?: boolean
+          source_type: string
+          source_url?: string | null
+          storage_path?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          artist?: string | null
+          artwork_storage_path?: string | null
+          artwork_url?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          enabled?: boolean
+          id?: string
+          kind?: string
+          mime_type?: string
+          relative_gain?: number
+          show_now_playing_notification?: boolean
+          source_type?: string
+          source_url?: string | null
+          storage_path?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      audio_event_bindings: {
+        Row: {
+          audio_asset_id: string | null
+          created_at: string
+          enabled: boolean
+          event_key: string
+          generator_id: string | null
+          relative_gain: number
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          audio_asset_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          event_key: string
+          generator_id?: string | null
+          relative_gain?: number
+          source_type: string
+          updated_at?: string
+        }
+        Update: {
+          audio_asset_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          event_key?: string
+          generator_id?: string | null
+          relative_gain?: number
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_event_bindings_audio_asset_id_fkey"
+            columns: ["audio_asset_id"]
+            isOneToOne: false
+            referencedRelation: "audio_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_mode_bindings: {
+        Row: {
+          audio_asset_id: string | null
+          created_at: string
+          default_audible: boolean
+          enabled: boolean
+          exit_behavior: string
+          mode_key: string
+          playlist_id: string | null
+          source_type: string
+          start_behavior: string
+          updated_at: string
+        }
+        Insert: {
+          audio_asset_id?: string | null
+          created_at?: string
+          default_audible?: boolean
+          enabled?: boolean
+          exit_behavior?: string
+          mode_key: string
+          playlist_id?: string | null
+          source_type: string
+          start_behavior?: string
+          updated_at?: string
+        }
+        Update: {
+          audio_asset_id?: string | null
+          created_at?: string
+          default_audible?: boolean
+          enabled?: boolean
+          exit_behavior?: string
+          mode_key?: string
+          playlist_id?: string | null
+          source_type?: string
+          start_behavior?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_mode_bindings_audio_asset_id_fkey"
+            columns: ["audio_asset_id"]
+            isOneToOne: false
+            referencedRelation: "audio_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_mode_bindings_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "audio_playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_playlist_items: {
+        Row: {
+          audio_asset_id: string
+          created_at: string
+          enabled: boolean
+          playlist_id: string
+          position: number
+        }
+        Insert: {
+          audio_asset_id: string
+          created_at?: string
+          enabled?: boolean
+          playlist_id: string
+          position: number
+        }
+        Update: {
+          audio_asset_id?: string
+          created_at?: string
+          enabled?: boolean
+          playlist_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_playlist_items_audio_asset_id_fkey"
+            columns: ["audio_asset_id"]
+            isOneToOne: false
+            referencedRelation: "audio_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_playlist_items_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "audio_playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audio_playlists: {
+        Row: {
+          created_at: string
+          description: string
+          enabled: boolean
+          id: string
+          name: string
+          shuffle_mode: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          shuffle_mode?: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          shuffle_mode?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       blog_post_views: {
         Row: {
           created_at: string
