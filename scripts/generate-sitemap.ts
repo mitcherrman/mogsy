@@ -14,6 +14,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   buildStaticEntries,
   championDocEntries,
+  itemEntries,
   leagueBlogEntries,
   proYearEntries,
   renderSitemap,
@@ -81,6 +82,17 @@ async function fetchProYearEntriesFromApi(): Promise<SitemapEntry[]> {
   }
 }
 
+async function fetchItemEntries(): Promise<SitemapEntry[]> {
+  if (!COMBAT_API_URL) return [];
+  try {
+    const data = await fetchJson<{ items?: Array<{ slug?: string }> }>(`${COMBAT_API_URL}/api/items`);
+    return itemEntries((data.items ?? []).map((item) => item.slug ?? "").filter(Boolean));
+  } catch (error) {
+    console.warn("[sitemap] item pages OMITTED:", error instanceof Error ? error.message : error);
+    return [];
+  }
+}
+
 async function fetchBlogEntries(): Promise<SitemapEntry[]> {
   if (!SUPABASE_ANON_KEY) {
     console.warn("[sitemap] No Supabase anon key — blog posts OMITTED.");
@@ -108,15 +120,16 @@ async function fetchBlogEntries(): Promise<SitemapEntry[]> {
 
 async function main() {
   const staticEntries = buildStaticEntries();
-  const [champions, proYears, blog] = await Promise.all([
+  const [champions, proYears, items, blog] = await Promise.all([
     fetchChampionEntries(),
     fetchProYearEntriesFromApi(),
+    fetchItemEntries(),
     fetchBlogEntries(),
   ]);
-  const all = [...staticEntries, ...champions, ...proYears, ...blog];
+  const all = [...staticEntries, ...champions, ...proYears, ...items, ...blog];
   writeFileSync(resolve("public/sitemap.xml"), renderSitemap(all));
   console.log(
-    `[sitemap] wrote ${all.length} entries (${staticEntries.length} static + ${champions.length} champions + ${proYears.length} pro years + ${blog.length} blog)`,
+    `[sitemap] wrote ${all.length} entries (${staticEntries.length} static + ${champions.length} champions + ${proYears.length} pro years + ${items.length} items + ${blog.length} blog)`,
   );
 }
 

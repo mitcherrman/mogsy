@@ -75,6 +75,7 @@ const LeagueSwipeGame = R.LeagueSwipeGame.Component;
 const LeagueSwipeStats = R.LeagueSwipeStats.Component;
 const LolTierList = R.LolTierList.Component;
 const LolDevChangelog = R.LolDevChangelog.Component;
+const ItemDetail = R.ItemDetail.Component;
 const LeagueDocsLanding = R.LeagueDocsLanding.Component;
 const LeagueDocsChampionIndex = R.LeagueDocsChampionIndex.Component;
 const LeagueDocsChampionDetail = R.LeagueDocsChampionDetail.Component;
@@ -509,6 +510,7 @@ const App = () => (
                   <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LeagueDocsLanding /></Suspense>} />
                   <Route path="/lol/docs/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionIndex /></Suspense>} />
                   <Route path="/lol/docs/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionDetail /></Suspense>} />
+                  <Route path="/items/:slug" element={<Suspense fallback={<RouteFallback />}><ItemDetail /></Suspense>} />
                   <Route path="/lol/docs/pro" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProData /></Suspense>} />
                   <Route path="/lol/docs/pro/years/:year" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProYear /></Suspense>} />
                   <Route path="/lol/docs/pro/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProChampionIndex /></Suspense>} />

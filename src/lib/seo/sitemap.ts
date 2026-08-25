@@ -8,6 +8,7 @@
 // this module under plain tsx without tsconfig path resolution.
 import { SITE_URL } from "../site-config";
 import { isLeagueBlogPost } from "../blog/league-content";
+import { PRERENDERED_ITEM_SLUGS } from "../items/prerender-manifest";
 
 export interface SitemapEntry {
   path: string;
@@ -50,6 +51,13 @@ export function buildStaticEntries(): SitemapEntry[] {
     { path: "/security", changefreq: "monthly", priority: "0.5" },
     { path: "/contact", changefreq: "monthly", priority: "0.6" },
   ];
+}
+
+export function itemEntries(known: string[]): SitemapEntry[] {
+  const available = new Set(known);
+  return PRERENDERED_ITEM_SLUGS.filter((slug) => available.has(slug)).map((slug) => ({
+    path: `/items/${slug}`, changefreq: "weekly" as const, priority: "0.7",
+  }));
 }
 
 /** Champion doc entries from validated champion names. */
