@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import {
   CheckCircle2, XCircle, AlertTriangle, Star, StarOff, EyeOff, Eye,
   ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ImageOff,
-  ArrowLeft, Loader2, Wrench, ListChecks, Send, Package, KeyRound,
+  ArrowLeft, Loader2, Wrench, ListChecks, Send, Package, KeyRound, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -923,6 +923,8 @@ export default function AdminQuizReview({
 } = {}) {
   const [filters, setFilters] = useState<ReviewFilters>({ page: 1, page_size: PAGE_SIZE });
   const [search, setSearch] = useState("");
+  const [exportScope, setExportScope] = useState<"all" | "changed" | "flagged">("all");
+  const [exporting, setExporting] = useState(false);
   const [internalSelectedId, setInternalSelectedId] = useState<number | null>(null);
   const controlledSelection = selectedQuestionId !== undefined;
   const selectedId = controlledSelection ? (selectedQuestionId ?? null) : internalSelectedId;
@@ -1013,6 +1015,20 @@ export default function AdminQuizReview({
   const clearSelection = () => setCheckedQuestions(new Map());
   const checkedCount = checkedQuestions.size;
 
+  const downloadExport = async () => {
+    setExporting(true);
+    try {
+      const result = await quizApi.downloadReviewExport(exportScope);
+      const url = URL.createObjectURL(result.blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; anchor.download = result.filename; anchor.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${result.filename}`, { description: result.rowCount == null ? undefined : `${result.rowCount.toLocaleString()} rows` });
+    } catch (error) {
+      toast.error("Question export failed", { description: error instanceof Error ? error.message : "Unknown error" });
+    } finally { setExporting(false); }
+  };
+
   const saveToPlaylist = () => {
     const selected = Array.from(checkedQuestions.values());
     const playlist: BroadcastPlaylist = {
@@ -1082,6 +1098,17 @@ export default function AdminQuizReview({
           <h1 className="text-sm font-semibold">Quiz Review Console</h1>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Select value={exportScope} onValueChange={(value) => setExportScope(value as typeof exportScope)}>
+            <SelectTrigger className="h-7 w-44 text-[11px]" aria-label="Question export mode"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Export All Questions</SelectItem>
+              <SelectItem value="changed">Export Changed Questions</SelectItem>
+              <SelectItem value="flagged">Export Flagged Questions</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" disabled={exporting} onClick={downloadExport}>
+            {exporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />} Export CSV
+          </Button>
           {isLoading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (

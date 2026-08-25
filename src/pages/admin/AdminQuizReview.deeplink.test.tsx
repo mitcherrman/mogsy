@@ -10,6 +10,7 @@ import type { ReviewQuestion } from "@/lib/quiz/api";
 const getReviewQuestions = vi.fn();
 const getReviewQuestion = vi.fn();
 const getReviewFilterOptions = vi.fn();
+const downloadReviewExport = vi.fn();
 
 vi.mock("@/lib/quiz/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/quiz/api")>();
@@ -20,6 +21,7 @@ vi.mock("@/lib/quiz/api", async (importOriginal) => {
       getReviewQuestions: (...a: unknown[]) => getReviewQuestions(...a),
       getReviewQuestion: (...a: unknown[]) => getReviewQuestion(...a),
       getReviewFilterOptions: () => getReviewFilterOptions(),
+      downloadReviewExport: (...a: unknown[]) => downloadReviewExport(...a),
     },
   };
 });
@@ -89,6 +91,9 @@ beforeEach(() => {
     if (id === 1) return { ok: true, question: mkQuestion(1) };
     throw new Error("Quiz API 404: not found");
   });
+  downloadReviewExport.mockResolvedValue({ blob: new Blob(["question_id\n1\n"]), filename: "mogzy-question-review_all_26.17_2026-08-25.csv", rowCount: 1 });
+  URL.createObjectURL = vi.fn(() => "blob:review-export");
+  URL.revokeObjectURL = vi.fn();
 });
 afterEach(() => {
   cleanup();
@@ -130,5 +135,15 @@ describe("Review deep link (controlled selection by id)", () => {
     await waitFor(() => expect(getReviewQuestions.mock.calls.length).toBeGreaterThan(callsBefore));
     const lastFilters = getReviewQuestions.mock.calls.at(-1)?.[0] as { search?: string };
     expect(lastFilters.search).toBe("sunfire");
+  });
+
+  it("downloads the canonical all-questions CSV from the protected backend", async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    renderReview({ selectedQuestionId: null, onSelectQuestion: vi.fn() });
+    fireEvent.click(await screen.findByRole("button", { name: /Export CSV/i }));
+    await waitFor(() => expect(downloadReviewExport).toHaveBeenCalledWith("all"));
+    expect(click).toHaveBeenCalled();
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    click.mockRestore();
   });
 });

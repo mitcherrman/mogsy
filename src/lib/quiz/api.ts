@@ -347,6 +347,23 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
+async function adminDownload(path: string): Promise<{ blob: Blob; filename: string; rowCount?: number }> {
+  const key = getAdminKey();
+  const authHeaders = await getBackendAuthHeaders();
+  const headers: Record<string, string> = { ...authHeaders };
+  if (key) headers["X-Admin-Key"] = key;
+  const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (!res.ok) {
+    const detail = await res.text();
+    if (res.status === 403) throw new QuizAdminAuthError("Not authorized for admin access");
+    throw new Error(`Quiz API ${res.status}: ${detail || res.statusText}`);
+  }
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || "mogzy-question-review.csv";
+  const count = res.headers.get("X-Export-Row-Count");
+  return { blob: await res.blob(), filename, rowCount: count == null ? undefined : Number(count) };
+}
+
 export type QuizReport = {
   id: number | string;
   question_id: number | string;
@@ -813,6 +830,11 @@ export const quizApi = {
     ),
   getReviewFilterOptions: () =>
     adminRequest<ReviewFilterOptions>("/api/quiz/admin/review/filter-options"),
+  downloadReviewExport: (scope: "all" | "changed" | "flagged", currentBaseline = "current") => {
+    const params = new URLSearchParams({ scope });
+    if (currentBaseline) params.set("current_baseline", currentBaseline);
+    return adminDownload(`/api/quiz/admin/review/export.csv?${params}`);
+  },
   getReviewPacks: () =>
     adminRequest<ReviewPacksResponse>("/api/quiz/admin/review/packs"),
   getReviewPackQuestions: (packKey: string) =>
