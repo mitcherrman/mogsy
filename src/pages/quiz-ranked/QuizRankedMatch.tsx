@@ -32,6 +32,7 @@ import {
   type ObservedRoundKinds,
 } from "./roundTimeline";
 import { useRankedMatch } from "./useRankedMatch";
+import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
 
 /** Identity of the module/segment a snapshot belongs to. */
 function segmentKey(round: PublicRoundView): string {
@@ -55,6 +56,11 @@ function revealNames(settlement: ResolvedRoundView): Record<string, string> {
 export function QuizRankedMatch({ matchId, viewerUserId }:
 { matchId: string; viewerUserId: string }) {
   const m = useRankedMatch(matchId, viewerUserId);
+  const modeSoundtrackActive = m.publicRound !== null
+    && m.phase !== "match_over"
+    && m.phase !== "fatal"
+    && m.contractError === null;
+  useRankedAudioBoundary(matchId, modeSoundtrackActive);
   const [tick, setTick] = useState(0);
   const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
   /**

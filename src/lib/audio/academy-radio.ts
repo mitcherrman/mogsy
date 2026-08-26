@@ -17,6 +17,7 @@
  */
 
 import { useSyncExternalStore } from "react";
+import { mogzyAudio } from "./engine";
 
 /* -------------------------------------------------------------------------- */
 /* Playlist                                                                   */
@@ -111,6 +112,8 @@ export interface RadioSnapshot {
   isAudible: boolean;
   muted: boolean;
   muteReason: "manual" | "inactivity" | null;
+  /** Temporary routing policy; never persisted as a listener preference. */
+  suppressedByMode: boolean;
   /** Whether ordinary app-entry gestures may start the radio automatically. */
   playRadioByDefault: boolean;
   autoMuteWhenInactive: boolean;
@@ -140,6 +143,7 @@ interface RadioState {
   status: RadioStatus;
   muted: boolean;
   muteReason: "manual" | "inactivity" | null;
+  suppressedByMode: boolean;
   playRadioByDefault: boolean;
   autoMuteWhenInactive: boolean;
   volume: number;
@@ -230,6 +234,7 @@ function getState(): RadioState {
       status: "idle",
       muted,
       muteReason: readMuteReason(muted),
+      suppressedByMode: false,
       playRadioByDefault: resolvePlayRadioByDefault(),
       autoMuteWhenInactive: readBoolean(RADIO_STORAGE_KEYS.autoMuteWhenInactive, true),
       volume: Number.isFinite(storedVolume) ? clamp01(storedVolume) : DEFAULT_MUSIC_VOLUME,
@@ -248,6 +253,7 @@ function getState(): RadioState {
     // its element, listeners, playback state, mute and volume while filling in
     // only fields that did not exist in the older shape.
     state.muteReason ??= state.muted ? readMuteReason(true) : null;
+    state.suppressedByMode ??= false;
     state.playRadioByDefault ??= resolvePlayRadioByDefault();
     state.autoMuteWhenInactive ??= readBoolean(RADIO_STORAGE_KEYS.autoMuteWhenInactive, true);
     state.stationEpoch ??= readStationEpoch();
@@ -280,9 +286,10 @@ function buildSnapshot(state: RadioState): RadioSnapshot {
   return {
     status: state.status,
     isPlaying: state.status === "playing",
-    isAudible: state.status === "playing" && !state.muted,
+    isAudible: state.status === "playing" && !state.muted && !state.suppressedByMode,
     muted: state.muted,
     muteReason: state.muteReason,
+    suppressedByMode: state.suppressedByMode,
     playRadioByDefault: state.playRadioByDefault,
     autoMuteWhenInactive: state.autoMuteWhenInactive,
     volume: state.volume,
@@ -443,7 +450,7 @@ function ensureElement(): HTMLAudioElement | null {
   audio.loop = RADIO_PLAYLIST.length === 1;
   // Silent until a gesture. Nothing here can be heard.
   audio.volume = 0;
-  audio.muted = state.muted;
+  audio.muted = state.muted || state.suppressedByMode;
 
   applyTrackSources(audio, state.trackIndex);
   audio.addEventListener("ended", handleEnded);
@@ -558,6 +565,7 @@ export function evaluateRadioInactivity(
   if (
     state.autoMuteWhenInactive &&
     !state.muted &&
+    !state.suppressedByMode &&
     state.status === "playing" &&
     at - state.lastActivityAt >= RADIO_INACTIVITY_TIMEOUT_MS
   ) fadeOutThenMute(state, fadeMs);
@@ -610,7 +618,7 @@ async function playAndFade(
     // Only a first start swells from silence. A resume keeps whatever level it
     // had so it does not dip back to nothing.
     if (!state.started) audio.volume = 0;
-    audio.muted = state.muted;
+    audio.muted = state.muted || state.suppressedByMode;
     reconcileNativePosition(state, true);
     setStatus(state, "loading");
     await audio.play();
@@ -711,7 +719,7 @@ function applyMuted(
   state.muteReason = muted ? reason : null;
   // Muting the element rather than zeroing the volume is what keeps the
   // pre-mute level intact for free.
-  if (state.element) state.element.muted = muted;
+  if (state.element) state.element.muted = muted || state.suppressedByMode;
   writeStorage(RADIO_STORAGE_KEYS.muted, String(muted));
   writeStorage(RADIO_STORAGE_KEYS.muteReason, muted ? state.muteReason ?? "manual" : "none");
   if (muted) clearInactivityTimer(state);
@@ -733,6 +741,17 @@ export function setRadioMuted(muted: boolean): void {
 
 export function toggleRadioMute(): void {
   setRadioMuted(!getState().muted);
+}
+
+/** Silence/resume physical output without changing Radio's live clock or preferences. */
+export function setRadioSuppressedByMode(suppressed: boolean): void {
+  const state = getState();
+  if (state.suppressedByMode === suppressed) return;
+  state.suppressedByMode = suppressed;
+  if (state.element) state.element.muted = state.muted || suppressed;
+  if (suppressed) clearInactivityTimer(state);
+  else if (!state.muted) scheduleInactivityMute(state);
+  emit(state);
 }
 
 /** Persist the default-entry preference without changing current playback. */
@@ -969,3 +988,15 @@ export function resetRadioForTests(): void {
     }
   }
 }
+
+mogzyAudio.registerRadio<RadioSnapshot>({
+  getSnapshot: getRadioSnapshot,
+  subscribe: subscribeRadio,
+  play: playRadio,
+  pause: pauseRadio,
+  setMuted: setRadioMuted,
+  setVolume: setRadioVolume,
+  setPlayByDefault: setPlayRadioByDefault,
+  setAutoMuteWhenInactive,
+  setSuppressedByMode: setRadioSuppressedByMode,
+});

@@ -19,12 +19,18 @@ import {
   setPlayRadioByDefault,
   useAcademyRadio,
 } from "@/lib/audio/academy-radio";
+import {
+  setModeSoundtrackVolume,
+  setPlayModeMusicAutomatically,
+  useModeSoundtrack,
+} from "@/lib/audio/mode-soundtrack";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const radio = useAcademyRadio();
+  const modeMusic = useModeSoundtrack();
 
   const handleSignOut = async () => {
     // Clear all cached data before signing out to prevent stale state
@@ -194,6 +200,35 @@ export default function Settings() {
             checked={soundsMuted}
             onChange={setSoundsMuted}
           />
+        </motion.section>
+
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.07 }}
+          className="rounded-2xl border border-border bg-card p-6 mb-6"
+        >
+          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
+            <Music className="h-4 w-4" /> Mode Soundtracks
+          </h2>
+          <ToggleRow
+            icon={<Music className="h-3.5 w-3.5" />}
+            label="Play mode music automatically"
+            description="Start an available mode soundtrack when its match begins"
+            checked={modeMusic.playAutomatically}
+            onChange={setPlayModeMusicAutomatically}
+          />
+          <label className="mt-4 flex items-center gap-3 border-t border-border pt-4 text-sm">
+            <span className="min-w-0 flex-1">Mode music volume</span>
+            <input
+              type="range" min={0} max={1} step={0.01} value={modeMusic.volume}
+              onChange={(event) => setModeSoundtrackVolume(Number(event.target.value))}
+              aria-label="Mode music volume" className="w-32 accent-primary"
+            />
+            <span className="w-10 text-right tabular-nums">
+              {Math.round(modeMusic.volume * 100)}%
+            </span>
+          </label>
         </motion.section>
 
         <motion.section

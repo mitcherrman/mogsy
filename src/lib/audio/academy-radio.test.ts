@@ -31,6 +31,7 @@ import {
   setPlayRadioByDefault,
   setAutoMuteWhenInactive,
   setRadioMuted,
+  setRadioSuppressedByMode,
   setRadioVolume,
   startRadio,
   subscribeRadio,
@@ -713,4 +714,37 @@ describe("Academy Radio — inactivity policy", () => {
     expect(getRadioSnapshot().muteReason).toBe("manual");
     expect(getRadioSnapshot().muted).toBe(true);
   });
+});
+
+describe("Academy Radio — temporary Mode suppression", () => {
+  it("restores the existing live state without changing preferences or station epoch", async () => {
+    setPlayRadioByDefault(false);
+    prepareRadio();
+    await playRadio();
+    const before = getRadioSnapshot();
+
+    setRadioSuppressedByMode(true);
+    expect(getRadioSnapshot()).toMatchObject({
+      isPlaying: true, isAudible: false, muted: false, suppressedByMode: true,
+      playRadioByDefault: false, stationEpoch: before.stationEpoch,
+    });
+    setRadioSuppressedByMode(false);
+    expect(getRadioSnapshot()).toMatchObject({
+      isPlaying: true, isAudible: true, muted: false, suppressedByMode: false,
+      playRadioByDefault: false, stationEpoch: before.stationEpoch,
+    });
+  });
+
+  it.each(["manual", "inactivity"] as const)(
+    "preserves an existing %s mute across suppression",
+    async (reason) => {
+      prepareRadio();
+      await playRadio();
+      if (reason === "manual") setRadioMuted(true);
+      else evaluateRadioInactivity(Date.now() + RADIO_INACTIVITY_TIMEOUT_MS, 0);
+      setRadioSuppressedByMode(true);
+      setRadioSuppressedByMode(false);
+      expect(getRadioSnapshot()).toMatchObject({ muted: true, muteReason: reason });
+    },
+  );
 });
