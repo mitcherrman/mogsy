@@ -1,10 +1,9 @@
 import { useReducedMotion } from "framer-motion";
-import { Pause, Play, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Play, SkipForward, Volume2, VolumeX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
   nextRadioTrack,
-  pauseRadio,
   playRadio,
   setRadioVolume,
   toggleRadioMute,
@@ -36,8 +35,8 @@ const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
   idle: "Ready",
   ready: "Ready",
   loading: "Loading",
-  playing: "Playing",
-  paused: "Paused",
+  playing: "Live",
+  paused: "Ready",
   blocked: "Press play to start",
   failed: "Track unavailable",
 };
@@ -140,14 +139,14 @@ export default function AcademyRadioDock({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => (radio.isPlaying ? pauseRadio() : void playRadio())}
-          aria-pressed={radio.isPlaying}
-          aria-label={radio.isPlaying ? "Pause Academy Radio" : "Play Academy Radio"}
+          onClick={() => (radio.isAudible ? toggleRadioMute() : void playRadio())}
+          aria-pressed={radio.isAudible}
+          aria-label={radio.isAudible ? "Mute Academy Radio" : "Tune in to Academy Radio"}
           className={cn(controlButton, primaryButton, "h-10 w-10 shrink-0")}
           data-testid={`academy-radio-playpause-${suffix}`}
         >
-          {radio.isPlaying ? (
-            <Pause className="h-[18px] w-[18px]" aria-hidden="true" />
+          {radio.isAudible ? (
+            <VolumeX className="h-[18px] w-[18px]" aria-hidden="true" />
           ) : (
             // Nudged right so the triangle reads centred in the round button.
             <Play className="h-[18px] w-[18px] translate-x-[1px]" aria-hidden="true" />
@@ -160,7 +159,7 @@ export default function AcademyRadioDock({
                 central lane; there the bars would cost the title its room, so
                 they only join from xl up. The mobile dock always has space. */}
             <SpectrumBars
-              active={radio.isPlaying}
+              active={radio.isAudible}
               still={reducedMotion}
               className={variant === "desktop" ? "hidden xl:flex" : "flex"}
             />

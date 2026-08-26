@@ -134,7 +134,7 @@ describe("Academy Radio controls — what they show", () => {
     render(<AcademyRadioControls />);
 
     expect(playPause()).toHaveAttribute("aria-pressed", "false");
-    expect(playPause()).toHaveAccessibleName("Play Academy Radio");
+    expect(playPause()).toHaveAccessibleName("Tune in to Academy Radio");
   });
 
   it("reflects real playback state once play() resolves", async () => {
@@ -143,7 +143,7 @@ describe("Academy Radio controls — what they show", () => {
     fireEvent.click(playPause());
 
     await waitFor(() => expect(playPause()).toHaveAttribute("aria-pressed", "true"));
-    expect(playPause()).toHaveAccessibleName("Pause Academy Radio");
+    expect(playPause()).toHaveAccessibleName("Mute Academy Radio");
     expect(getRadioSnapshot().isPlaying).toBe(true);
   });
 
@@ -157,7 +157,7 @@ describe("Academy Radio controls — what they show", () => {
     expect(playPause()).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("pauses back from playing", async () => {
+  it("mutes without pausing the live station", async () => {
     render(<AcademyRadioControls />);
     fireEvent.click(playPause());
     await waitFor(() => expect(playPause()).toHaveAttribute("aria-pressed", "true"));
@@ -165,7 +165,7 @@ describe("Academy Radio controls — what they show", () => {
     fireEvent.click(playPause());
 
     expect(playPause()).toHaveAttribute("aria-pressed", "false");
-    expect(getRadioSnapshot().status).toBe("paused");
+    expect(getRadioSnapshot()).toMatchObject({ status: "playing", muted: true, isAudible: false });
   });
 });
 
@@ -335,6 +335,6 @@ describe("Academy Radio controls — accessibility", () => {
 
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
     // The state is still readable without any animation at all.
-    expect(playPause()).toHaveAccessibleName("Pause Academy Radio");
+    expect(playPause()).toHaveAccessibleName("Mute Academy Radio");
   });
 });

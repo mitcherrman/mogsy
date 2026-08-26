@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Music, Pause, Play, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Music, Play, SkipForward, Volume2, VolumeX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
   nextRadioTrack,
-  pauseRadio,
   playRadio,
   setRadioVolume,
   toggleRadioMute,
@@ -36,8 +35,8 @@ const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
   idle: "Ready",
   ready: "Ready",
   loading: "Loading",
-  playing: "Playing",
-  paused: "Paused",
+  playing: "Live",
+  paused: "Ready",
   blocked: "Press play to start",
   failed: "Track unavailable",
 };
@@ -110,15 +109,15 @@ export default function AcademyRadioControls({
   const playPauseButton = (size: string) => (
     <button
       type="button"
-      onClick={() => (radio.isPlaying ? pauseRadio() : void playRadio())}
-      aria-pressed={radio.isPlaying}
-      aria-label={radio.isPlaying ? "Pause Academy Radio" : "Play Academy Radio"}
-      title={radio.isPlaying ? "Pause Academy Radio" : "Play Academy Radio"}
+      onClick={() => (radio.isAudible ? toggleRadioMute() : void playRadio())}
+      aria-pressed={radio.isAudible}
+      aria-label={radio.isAudible ? "Mute Academy Radio" : "Tune in to Academy Radio"}
+      title={radio.isAudible ? "Mute Academy Radio" : "Tune in to Academy Radio"}
       className={cn(iconButton, size)}
       data-testid={`academy-radio-playpause-${variant}`}
     >
-      {radio.isPlaying ? (
-        <Pause className="h-4 w-4" aria-hidden="true" />
+      {radio.isAudible ? (
+        <VolumeX className="h-4 w-4" aria-hidden="true" />
       ) : (
         <Play className="h-4 w-4" aria-hidden="true" />
       )}
@@ -195,7 +194,7 @@ export default function AcademyRadioControls({
       data-testid={`academy-radio-panel-${variant}`}
     >
       <div className="flex items-center gap-2">
-        <PlayingIndicator active={radio.isPlaying} still={reducedMotion} />
+        <PlayingIndicator active={radio.isAudible} still={reducedMotion} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">{radio.trackTitle}</p>
           <p className="text-[11px] text-muted-foreground">
@@ -295,7 +294,7 @@ export default function AcademyRadioControls({
         )}
         data-testid="academy-radio-title"
       >
-        <PlayingIndicator active={radio.isPlaying} still={reducedMotion} />
+        <PlayingIndicator active={radio.isAudible} still={reducedMotion} />
         <span className="hidden truncate lg:inline">{radio.trackTitle}</span>
       </button>
 
@@ -316,7 +315,7 @@ export default function AcademyRadioControls({
 function RadioLiveRegion({ radio }: { radio: RadioSnapshot }) {
   return (
     <span aria-live="polite" className="sr-only">
-      {radio.isPlaying ? `Academy Radio now playing: ${radio.trackTitle}` : ""}
+      {radio.isAudible ? `Academy Radio now playing: ${radio.trackTitle}` : ""}
     </span>
   );
 }

@@ -59,12 +59,15 @@ export const RADIO_PLAYLIST: readonly RadioTrack[] = [
  * peak), and music sits under the UI rather than fronting it, so the element
  * level stays low. Files are used exactly as encoded — no normalisation.
  */
-export const DEFAULT_MUSIC_VOLUME = 0.18;
+export const DEFAULT_MUSIC_VOLUME = 0.15;
 
 /** The entrance swell. Preserved verbatim from the first Tidecaller pass. */
 export const FADE_IN_MS = 2500;
 /** Explicit Play and track switches: present, but not a 2.5s wait. */
 export const FADE_SHORT_MS = 400;
+export const RADIO_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
+export const RADIO_INACTIVITY_FADE_MS = 1800;
+export const RADIO_DRIFT_TOLERANCE_SECONDS = 2;
 
 /**
  * Namespaced under `mogsy.` to match the storage prefix the app already uses
@@ -73,7 +76,11 @@ export const FADE_SHORT_MS = 400;
  */
 export const RADIO_STORAGE_KEYS = {
   muted: "mogsy.audio.musicMuted",
+  muteReason: "mogsy.audio.radioMuteReason",
   volume: "mogsy.audio.musicVolume",
+  playByDefault: "mogsy.audio.playRadioByDefault",
+  autoMuteWhenInactive: "mogsy.audio.autoMuteWhenInactive",
+  stationEpoch: "mogsy.audio.stationEpoch",
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -89,7 +96,7 @@ export type RadioStatus =
   | "loading"
   /** play() resolved — sound is actually coming out. */
   | "playing"
-  /** The visitor paused it. */
+  /** Compatibility status for a failed/legacy stopped native transport. */
   | "paused"
   /** play() was refused and the radio has never sounded (autoplay policy). */
   | "blocked"
@@ -100,7 +107,13 @@ export interface RadioSnapshot {
   status: RadioStatus;
   /** True only once play() has actually resolved — never optimistic. */
   isPlaying: boolean;
+  /** Playing and not muted. This is the user-facing "tuned in" state. */
+  isAudible: boolean;
   muted: boolean;
+  muteReason: "manual" | "inactivity" | null;
+  /** Whether ordinary app-entry gestures may start the radio automatically. */
+  playRadioByDefault: boolean;
+  autoMuteWhenInactive: boolean;
   /** 0..1. Survives muting: mute silences the output, not the setting. */
   volume: number;
   trackIndex: number;
@@ -109,6 +122,10 @@ export interface RadioSnapshot {
   trackCount: number;
   /** False while the playlist has a single track — Next has nowhere to go. */
   canGoNext: boolean;
+  stationEpoch: number;
+  trackStartedAt: number;
+  stationElapsedSeconds: number;
+  trackPositionSeconds: number;
 }
 
 interface RadioState {
@@ -122,9 +139,16 @@ interface RadioState {
   trackIndex: number;
   status: RadioStatus;
   muted: boolean;
+  muteReason: "manual" | "inactivity" | null;
+  playRadioByDefault: boolean;
+  autoMuteWhenInactive: boolean;
   volume: number;
-  /** Set by an explicit Pause. Blocks auto-resume for the rest of the session. */
-  userPaused: boolean;
+  /** Stable wall-clock anchor; the station advances whether the listener is muted. */
+  stationEpoch: number;
+  trackDurations: Record<string, number>;
+  inactivityTimer: ReturnType<typeof setTimeout> | null;
+  detachActivity: (() => void) | null;
+  lastActivityAt: number;
   /** Removes the first-gesture listeners, or null when they are not armed. */
   detachUnlock: (() => void) | null;
   listeners: Set<() => void>;
@@ -159,11 +183,44 @@ function writeStorage(key: string, value: string): void {
   }
 }
 
+function readBoolean(key: string, fallback: boolean): boolean {
+  const value = readStorage(key);
+  return value === null ? fallback : value === "true";
+}
+
+function readStationEpoch(): number {
+  const stored = Number.parseInt(readStorage(RADIO_STORAGE_KEYS.stationEpoch) ?? "", 10);
+  if (Number.isFinite(stored) && stored > 0) return stored;
+  const epoch = Date.now();
+  writeStorage(RADIO_STORAGE_KEYS.stationEpoch, String(epoch));
+  return epoch;
+}
+
+function readMuteReason(muted: boolean): RadioState["muteReason"] {
+  if (!muted) return null;
+  return readStorage(RADIO_STORAGE_KEYS.muteReason) === "inactivity" ? "inactivity" : "manual";
+}
+
+/**
+ * Resolve the new explicit preference without resetting existing radio users.
+ * A notice alone is deliberately not evidence of an old music preference.
+ */
+export function resolvePlayRadioByDefault(): boolean {
+  const explicit = readStorage(RADIO_STORAGE_KEYS.playByDefault);
+  if (explicit !== null) return explicit === "true";
+
+  const legacyMuted = readStorage(RADIO_STORAGE_KEYS.muted);
+  if (legacyMuted !== null) return legacyMuted !== "true";
+
+  return readStorage(RADIO_STORAGE_KEYS.volume) !== null;
+}
+
 function getState(): RadioState {
   const host = globalThis as StateHost;
   let state = host.__mogzyEntryMusic__;
   if (!state) {
     const storedVolume = Number.parseFloat(readStorage(RADIO_STORAGE_KEYS.volume) ?? "");
+    const muted = readStorage(RADIO_STORAGE_KEYS.muted) === "true";
     state = {
       element: null,
       fadeFrame: null,
@@ -171,14 +228,33 @@ function getState(): RadioState {
       started: false,
       trackIndex: 0,
       status: "idle",
-      muted: readStorage(RADIO_STORAGE_KEYS.muted) === "true",
+      muted,
+      muteReason: readMuteReason(muted),
+      playRadioByDefault: resolvePlayRadioByDefault(),
+      autoMuteWhenInactive: readBoolean(RADIO_STORAGE_KEYS.autoMuteWhenInactive, true),
       volume: Number.isFinite(storedVolume) ? clamp01(storedVolume) : DEFAULT_MUSIC_VOLUME,
-      userPaused: false,
+      stationEpoch: readStationEpoch(),
+      trackDurations: {},
+      inactivityTimer: null,
+      detachActivity: null,
+      lastActivityAt: Date.now(),
       detachUnlock: null,
       listeners: new Set(),
       snapshot: null,
     };
     host.__mogzyEntryMusic__ = state;
+  } else {
+    // Adopt a singleton created by the pre-live-radio module during HMR. Keep
+    // its element, listeners, playback state, mute and volume while filling in
+    // only fields that did not exist in the older shape.
+    state.muteReason ??= state.muted ? readMuteReason(true) : null;
+    state.playRadioByDefault ??= resolvePlayRadioByDefault();
+    state.autoMuteWhenInactive ??= readBoolean(RADIO_STORAGE_KEYS.autoMuteWhenInactive, true);
+    state.stationEpoch ??= readStationEpoch();
+    state.trackDurations ??= {};
+    state.inactivityTimer ??= null;
+    state.detachActivity ??= null;
+    state.lastActivityAt ??= Date.now();
   }
   return state;
 }
@@ -189,22 +265,36 @@ function now(): number {
     : Date.now();
 }
 
+function effectiveVolume(state: RadioState): number {
+  return state.volume;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Subscription                                                               */
 /* -------------------------------------------------------------------------- */
 
 function buildSnapshot(state: RadioState): RadioSnapshot {
-  const track = RADIO_PLAYLIST[state.trackIndex] ?? RADIO_PLAYLIST[0];
+  const tracks = RADIO_PLAYLIST;
+  const track = tracks[state.trackIndex] ?? tracks[0];
+  const station = getStationPosition(state);
   return {
     status: state.status,
     isPlaying: state.status === "playing",
+    isAudible: state.status === "playing" && !state.muted,
     muted: state.muted,
+    muteReason: state.muteReason,
+    playRadioByDefault: state.playRadioByDefault,
+    autoMuteWhenInactive: state.autoMuteWhenInactive,
     volume: state.volume,
     trackIndex: state.trackIndex,
     trackId: track.id,
     trackTitle: track.title,
-    trackCount: RADIO_PLAYLIST.length,
-    canGoNext: RADIO_PLAYLIST.length > 1,
+    trackCount: tracks.length,
+    canGoNext: tracks.length > 1,
+    stationEpoch: state.stationEpoch,
+    trackStartedAt: station.trackStartedAt,
+    stationElapsedSeconds: station.stationElapsedSeconds,
+    trackPositionSeconds: station.positionSeconds,
   };
 }
 
@@ -244,6 +334,62 @@ function setStatus(state: RadioState, status: RadioStatus): void {
   emit(state);
 }
 
+interface StationPosition {
+  trackIndex: number;
+  positionSeconds: number;
+  stationElapsedSeconds: number;
+  trackStartedAt: number;
+}
+
+/** The single centralized wall-clock calculation for the live station. */
+function getStationPosition(state: RadioState, at = Date.now()): StationPosition {
+  const elapsed = Math.max(0, (at - state.stationEpoch) / 1000);
+  const durations = RADIO_PLAYLIST.map((track) => state.trackDurations[track.id]);
+  if (durations.some((duration) => !Number.isFinite(duration) || duration <= 0)) {
+    return {
+      trackIndex: state.trackIndex,
+      positionSeconds: 0,
+      stationElapsedSeconds: elapsed,
+      trackStartedAt: state.stationEpoch,
+    };
+  }
+
+  const cycleDuration = durations.reduce((sum, duration) => sum + duration, 0);
+  let cyclePosition = elapsed % cycleDuration;
+  for (let index = 0; index < durations.length; index += 1) {
+    if (cyclePosition < durations[index]) {
+      return {
+        trackIndex: index,
+        positionSeconds: cyclePosition,
+        stationElapsedSeconds: elapsed,
+        trackStartedAt: at - cyclePosition * 1000,
+      };
+    }
+    cyclePosition -= durations[index];
+  }
+  return { trackIndex: 0, positionSeconds: 0, stationElapsedSeconds: elapsed, trackStartedAt: at };
+}
+
+function reconcileNativePosition(state: RadioState, force = false): void {
+  const audio = state.element;
+  if (!audio) return;
+  const station = getStationPosition(state);
+  if (station.trackIndex !== state.trackIndex) {
+    state.trackIndex = station.trackIndex;
+    applyTrackSources(audio, station.trackIndex);
+    audio.load();
+  }
+  if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+  const expected = station.positionSeconds % audio.duration;
+  if (force || !Number.isFinite(audio.currentTime) || Math.abs(audio.currentTime - expected) > RADIO_DRIFT_TOLERANCE_SECONDS) {
+    try {
+      audio.currentTime = expected;
+    } catch {
+      /* metadata/seekability can lag source selection */
+    }
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* The element                                                                */
 /* -------------------------------------------------------------------------- */
@@ -260,11 +406,21 @@ function applyTrackSources(audio: HTMLAudioElement, index: number): void {
 }
 
 function handleEnded(): void {
-  // With a single track the element loops itself and this never fires; the
-  // guard is what keeps a future one-track regression from going silent.
-  if (RADIO_PLAYLIST.length < 2) return;
   const state = getState();
-  goToTrack(state, (state.trackIndex + 1) % RADIO_PLAYLIST.length);
+  // Native playback is subordinate to the station clock. Rejoin the current
+  // logical position instead of allowing `ended` to stop the broadcast.
+  reconcileNativePosition(state, true);
+  if (state.started) void startRadio({ automatic: false, fadeMs: 0 });
+}
+
+function handleLoadedMetadata(): void {
+  const state = getState();
+  const audio = state.element;
+  if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
+  const track = RADIO_PLAYLIST[state.trackIndex] ?? RADIO_PLAYLIST[0];
+  state.trackDurations[track.id] = audio.duration;
+  reconcileNativePosition(state, true);
+  emit(state);
 }
 
 function handleError(): void {
@@ -282,8 +438,8 @@ function ensureElement(): HTMLAudioElement | null {
 
   const audio = document.createElement("audio");
   audio.preload = "auto";
-  // One track: the element loops itself, so there is no gap and no `ended`.
-  // Several tracks: `ended` is what advances the playlist.
+  // Native looping avoids a one-track gap; the logical clock remains the
+  // authority when we explicitly reconcile or receive a stray `ended` event.
   audio.loop = RADIO_PLAYLIST.length === 1;
   // Silent until a gesture. Nothing here can be heard.
   audio.volume = 0;
@@ -291,6 +447,7 @@ function ensureElement(): HTMLAudioElement | null {
 
   applyTrackSources(audio, state.trackIndex);
   audio.addEventListener("ended", handleEnded);
+  audio.addEventListener("loadedmetadata", handleLoadedMetadata);
   audio.addEventListener("error", handleError);
 
   state.element = audio;
@@ -320,7 +477,7 @@ function fadeIn(audio: HTMLAudioElement, state: RadioState, durationMs: number):
   // Exactly one fade in flight, always.
   cancelFade(state);
 
-  const target = state.volume;
+  const target = effectiveVolume(state);
   const from = Math.min(Math.max(audio.volume, 0), target);
   if (from >= target) {
     audio.volume = target;
@@ -346,6 +503,99 @@ function fadeIn(audio: HTMLAudioElement, state: RadioState, durationMs: number):
   state.fadeFrame = window.requestAnimationFrame(tick);
 }
 
+function fadeOutThenMute(state: RadioState, durationMs = RADIO_INACTIVITY_FADE_MS): void {
+  const audio = state.element;
+  if (!audio || state.muted || state.status !== "playing") return;
+  cancelFade(state);
+  const from = audio.volume;
+  const startedAt = now();
+
+  const finish = () => {
+    audio.volume = effectiveVolume(state);
+    applyMuted(state, true, "inactivity");
+  };
+  if (durationMs <= 0) {
+    finish();
+    return;
+  }
+  if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+    finish();
+    return;
+  }
+  const tick = () => {
+    const progress = Math.min((now() - startedAt) / durationMs, 1);
+    audio.volume = from * (1 - progress);
+    if (progress < 1) state.fadeFrame = window.requestAnimationFrame(tick);
+    else {
+      state.fadeFrame = null;
+      finish();
+    }
+  };
+  state.fadeFrame = window.requestAnimationFrame(tick);
+}
+
+function clearInactivityTimer(state: RadioState): void {
+  if (state.inactivityTimer !== null) clearTimeout(state.inactivityTimer);
+  state.inactivityTimer = null;
+}
+
+function scheduleInactivityMute(state: RadioState): void {
+  clearInactivityTimer(state);
+  if (!state.autoMuteWhenInactive || state.muted || state.status !== "playing") return;
+  const remaining = Math.max(0, RADIO_INACTIVITY_TIMEOUT_MS - (Date.now() - state.lastActivityAt));
+  state.inactivityTimer = setTimeout(() => {
+    state.inactivityTimer = null;
+    evaluateRadioInactivity();
+  }, remaining);
+}
+
+/** Central policy check, also used after long sleeps where timers may be throttled. */
+export function evaluateRadioInactivity(
+  at = Date.now(),
+  fadeMs = RADIO_INACTIVITY_FADE_MS,
+): void {
+  const state = getState();
+  if (
+    state.autoMuteWhenInactive &&
+    !state.muted &&
+    state.status === "playing" &&
+    at - state.lastActivityAt >= RADIO_INACTIVITY_TIMEOUT_MS
+  ) fadeOutThenMute(state, fadeMs);
+}
+
+/** One global activity owner; activity reschedules while audible but never unmutes. */
+export function installRadioInactivityMonitor(): () => void {
+  const noop = () => undefined;
+  if (typeof window === "undefined" || typeof document === "undefined") return noop;
+  const state = getState();
+  if (state.detachActivity) return state.detachActivity;
+
+  const onActivity = () => {
+    const current = getState();
+    current.lastActivityAt = Date.now();
+    reconcileNativePosition(current);
+    scheduleInactivityMute(current);
+  };
+  const onVisibility = () => {
+    const current = getState();
+    reconcileNativePosition(current);
+    evaluateRadioInactivity();
+    if (document.visibilityState === "visible" && !current.muted) onActivity();
+  };
+  const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "touchstart", "focus"];
+  events.forEach((event) => window.addEventListener(event, onActivity, { passive: true }));
+  document.addEventListener("visibilitychange", onVisibility);
+  const detach = () => {
+    events.forEach((event) => window.removeEventListener(event, onActivity));
+    document.removeEventListener("visibilitychange", onVisibility);
+    clearInactivityTimer(getState());
+    if (getState().detachActivity === detach) getState().detachActivity = null;
+  };
+  state.detachActivity = detach;
+  scheduleInactivityMute(state);
+  return detach;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Playback                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -361,12 +611,13 @@ async function playAndFade(
     // had so it does not dip back to nothing.
     if (!state.started) audio.volume = 0;
     audio.muted = state.muted;
+    reconcileNativePosition(state, true);
     setStatus(state, "loading");
     await audio.play();
     state.started = true;
-    state.userPaused = false;
     setStatus(state, "playing");
     fadeIn(audio, state, fadeMs);
+    scheduleInactivityMute(state);
     return true;
   } catch {
     // Autoplay policy, missing file, unsupported codec — no caller cares and
@@ -377,6 +628,11 @@ async function playAndFade(
 }
 
 export interface StartRadioOptions {
+  /**
+   * True when the app decided to start the music rather than the visitor asking
+   * for it by name. Only an automatic start earns the one-time toast.
+   */
+  automatic?: boolean;
   fadeMs?: number;
 }
 
@@ -387,8 +643,11 @@ export interface StartRadioOptions {
  * `void` from inside a click handler without risking whatever follows it.
  */
 export function startRadio(options: StartRadioOptions = {}): Promise<boolean> {
-  const { fadeMs = FADE_IN_MS } = options;
+  const { automatic = false, fadeMs = FADE_IN_MS } = options;
   try {
+    // Preparation may still happen globally, but an automatic call never earns
+    // audible playback unless the visitor's resolved preference permits it.
+    if (automatic && !getState().playRadioByDefault) return Promise.resolve(false);
     const audio = ensureElement();
     if (!audio) return Promise.resolve(false);
 
@@ -397,7 +656,8 @@ export function startRadio(options: StartRadioOptions = {}): Promise<boolean> {
     // Already sounding: never restart the track. Still make sure it actually
     // reaches the target, in case an earlier fade was interrupted part-way up.
     if (!audio.paused) {
-      if (audio.volume < state.volume) fadeIn(audio, state, fadeMs);
+      reconcileNativePosition(state);
+      if (audio.volume < effectiveVolume(state)) fadeIn(audio, state, fadeMs);
       setStatus(state, "playing");
       return Promise.resolve(true);
     }
@@ -422,63 +682,82 @@ export function startRadio(options: StartRadioOptions = {}): Promise<boolean> {
  */
 export function playRadio(): Promise<boolean> {
   const state = getState();
-  state.userPaused = false;
-  if (state.muted) applyMuted(state, false);
+  state.lastActivityAt = Date.now();
+  if (state.muted) applyMuted(state, false, null);
   // The visitor found the controls; the first-gesture net has nothing left to do.
   state.detachUnlock?.();
-  return startRadio({ fadeMs: FADE_SHORT_MS });
+  return startRadio({ automatic: false, fadeMs: FADE_SHORT_MS });
 }
 
 /**
- * The Pause control. Distinct from mute: this stops the transport, and for the
- * rest of the page session no incidental interaction may resume it.
+ * Compatibility alias for old callers. A live station cannot be paused, so
+ * leaving it only mutes output while the native/logical timeline continues.
  */
 export function pauseRadio(): void {
-  const state = getState();
-  state.userPaused = true;
-  state.starting = null;
-  state.detachUnlock?.();
-
-  const audio = state.element;
-  if (audio) {
-    cancelFade(state);
-    try {
-      audio.pause();
-    } catch {
-      /* jsdom and other non-implementing hosts */
-    }
-  }
-  setStatus(state, "paused");
+  setRadioMuted(true);
 }
 
 export function toggleRadioPlayback(): void {
-  if (getState().status === "playing") pauseRadio();
+  if (getState().status === "playing" && !getState().muted) pauseRadio();
   else void playRadio();
 }
 
-function applyMuted(state: RadioState, muted: boolean): void {
+function applyMuted(
+  state: RadioState,
+  muted: boolean,
+  reason: RadioState["muteReason"] = muted ? "manual" : null,
+): void {
   state.muted = muted;
+  state.muteReason = muted ? reason : null;
   // Muting the element rather than zeroing the volume is what keeps the
   // pre-mute level intact for free.
   if (state.element) state.element.muted = muted;
   writeStorage(RADIO_STORAGE_KEYS.muted, String(muted));
+  writeStorage(RADIO_STORAGE_KEYS.muteReason, muted ? state.muteReason ?? "manual" : "none");
+  if (muted) clearInactivityTimer(state);
+  else scheduleInactivityMute(state);
   emit(state);
 }
 
 export function setRadioMuted(muted: boolean): void {
   const state = getState();
   if (state.muted === muted) return;
-  applyMuted(state, muted);
+  state.lastActivityAt = Date.now();
+  applyMuted(state, muted, muted ? "manual" : null);
 
   // Unmuting is both a gesture and an explicit request to hear something — but
-  // it must not override a deliberate pause.
-  if (!muted && !state.userPaused) {
-    void startRadio({ fadeMs: FADE_SHORT_MS });
+  if (!muted) {
+    void startRadio({ automatic: false, fadeMs: FADE_SHORT_MS });
   }
 }
 
 export function toggleRadioMute(): void {
   setRadioMuted(!getState().muted);
+}
+
+/** Persist the default-entry preference without changing current playback. */
+export function setPlayRadioByDefault(enabled: boolean): void {
+  const state = getState();
+  if (state.playRadioByDefault === enabled && readStorage(RADIO_STORAGE_KEYS.playByDefault) !== null) {
+    return;
+  }
+  state.playRadioByDefault = enabled;
+  writeStorage(RADIO_STORAGE_KEYS.playByDefault, String(enabled));
+  emit(state);
+}
+
+/** Persist inactivity policy without changing current audibility. */
+export function setAutoMuteWhenInactive(enabled: boolean): void {
+  const state = getState();
+  if (
+    state.autoMuteWhenInactive === enabled &&
+    readStorage(RADIO_STORAGE_KEYS.autoMuteWhenInactive) !== null
+  ) return;
+  state.autoMuteWhenInactive = enabled;
+  writeStorage(RADIO_STORAGE_KEYS.autoMuteWhenInactive, String(enabled));
+  if (enabled) scheduleInactivityMute(state);
+  else clearInactivityTimer(state);
+  emit(state);
 }
 
 export function setRadioVolume(next: number): void {
@@ -493,7 +772,7 @@ export function setRadioVolume(next: number): void {
   if (audio && state.started) {
     // A live drag has to land immediately instead of chasing a fade.
     cancelFade(state);
-    audio.volume = volume;
+    audio.volume = effectiveVolume(state);
   }
   emit(state);
 }
@@ -513,7 +792,7 @@ function goToTrack(state: RadioState, index: number): void {
   }
   emit(state);
 
-  if (wasPlaying) void startRadio({ fadeMs: FADE_SHORT_MS });
+  if (wasPlaying) void startRadio({ automatic: false, fadeMs: FADE_SHORT_MS });
 }
 
 /** Advance the playlist. A no-op while there is nowhere distinct to go. */
@@ -585,20 +864,20 @@ export function installFirstGestureUnlock(): () => void {
   if (state.detachUnlock) return state.detachUnlock;
   // A visitor who muted the radio gets no audible auto-start, so there is
   // nothing to wait for. Unmuting from the navbar starts it directly.
-  if (state.muted) return noop;
+  if (state.muted || !state.playRadioByDefault) return noop;
 
   let attempting = false;
 
   const handle = () => {
     const current = getState();
     // A preference has settled the question — stop watching entirely.
-    if (current.muted || current.userPaused) {
+    if (current.muted || !current.playRadioByDefault) {
       detach();
       return;
     }
     if (attempting) return;
     attempting = true;
-    void startRadio({ fadeMs: FADE_IN_MS }).then((ok) => {
+    void startRadio({ automatic: true, fadeMs: FADE_IN_MS }).then((ok) => {
       attempting = false;
       // Only a start that actually produced sound retires the listener.
       //
@@ -678,6 +957,7 @@ export function resetRadioForTests(): void {
   if (state) {
     cancelFade(state);
     state.detachUnlock?.();
+    state.detachActivity?.();
     state.listeners.clear();
   }
   delete host.__mogzyEntryMusic__;

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import {
   installFirstGestureUnlock,
+  installRadioInactivityMonitor,
   prepareRadio,
   startRadio,
 } from "@/lib/audio/academy-radio";
@@ -29,6 +30,7 @@ export default function AcademyRadioController() {
   useEffect(() => {
     prepareRadio();
     installFirstGestureUnlock();
+    installRadioInactivityMonitor();
   }, []);
 
   return null;
@@ -45,7 +47,7 @@ export default function AcademyRadioController() {
  * inside its click handler without risking the navigation that follows.
  */
 export function startEntryMusic(): Promise<boolean> {
-  return startRadio();
+  return startRadio({ automatic: true });
 }
 
 /** Test-only: drops the cross-module singleton so specs start from silence. */

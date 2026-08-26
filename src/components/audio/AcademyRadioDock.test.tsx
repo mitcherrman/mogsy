@@ -16,7 +16,6 @@ import AcademyRadioDock from "./AcademyRadioDock";
 import AcademyRadioControls from "./AcademyRadioControls";
 import {
   getRadioSnapshot,
-  installFirstGestureUnlock,
   RADIO_STORAGE_KEYS,
   resetRadioForTests,
   toggleRadioMute,
@@ -149,8 +148,8 @@ describe("Academy Radio dock — what it shows", () => {
     fireEvent.click(playPause());
 
     await waitFor(() => expect(playPause()).toHaveAttribute("aria-pressed", "true"));
-    expect(playPause()).toHaveAccessibleName("Pause Academy Radio");
-    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Playing/);
+    expect(playPause()).toHaveAccessibleName("Mute Academy Radio");
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Live/);
     expect(getRadioSnapshot().isPlaying).toBe(true);
   });
 
@@ -188,25 +187,16 @@ describe("Academy Radio dock — transport behaviour", () => {
     expect(mute()).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("an explicit Pause blocks unrelated gesture auto-resume for the session", async () => {
-    render(
-      <>
-        <AcademyRadioDock />
-        <button type="button">Open a book</button>
-      </>,
-    );
+  it("Mute leaves the live transport running and unrelated gestures do not unmute it", async () => {
+    render(<AcademyRadioDock />);
     fireEvent.click(playPause());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     fireEvent.click(playPause());
-    expect(getRadioSnapshot().status).toBe("paused");
+    expect(getRadioSnapshot()).toMatchObject({ status: "playing", muted: true, isAudible: false });
     play.mockClear();
-
-    installFirstGestureUnlock();
-    fireEvent.click(screen.getByRole("button", { name: "Open a book" }));
-
     expect(play).not.toHaveBeenCalled();
-    expect(getRadioSnapshot().status).toBe("paused");
+    expect(getRadioSnapshot().muteReason).toBe("manual");
   });
 
   it("persists mute and volume choices under the canonical storage keys", () => {
@@ -305,7 +295,7 @@ describe("Academy Radio dock — accessibility", () => {
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
-    expect(playPause()).toHaveAccessibleName("Pause Academy Radio");
-    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Playing/);
+    expect(playPause()).toHaveAccessibleName("Mute Academy Radio");
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Live/);
   });
 });

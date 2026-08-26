@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { LogOut, LogIn, UserPlus, ArrowLeft, Lock, Mail, Volume2, Eye, Sparkles, Type, Contrast, ShieldCheck } from "lucide-react";
+import { LogOut, LogIn, UserPlus, ArrowLeft, Lock, Mail, Volume2, VolumeX, Music, Eye, Sparkles, Type, Contrast, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { validateNewPassword, PASSWORD_MIN_LENGTH, PASSWORD_RULE_TEXT } from "@/lib/auth/password-policy";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,17 @@ import { toast } from "sonner";
 import SEOHead from "@/components/SEOHead";
 import TwoFactorAuth from "@/components/TwoFactorAuth";
 import UiSfxSettings from "@/components/UiSfxSettings";
+import {
+  setAutoMuteWhenInactive,
+  setPlayRadioByDefault,
+  useAcademyRadio,
+} from "@/lib/audio/academy-radio";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const radio = useAcademyRadio();
 
   const handleSignOut = async () => {
     // Clear all cached data before signing out to prevent stale state
@@ -190,6 +196,33 @@ export default function Settings() {
           />
         </motion.section>
 
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06 }}
+          className="rounded-2xl border border-border bg-card p-6 mb-6"
+        >
+          <h2 className="font-bold text-foreground mb-4 flex items-center gap-2">
+            <Music className="h-4 w-4" /> Academy Radio
+          </h2>
+          <ToggleRow
+            icon={<Music className="h-3.5 w-3.5" />}
+            label="Play Radio by default"
+            description="Tune in automatically after your first interaction when you enter Mogzy"
+            checked={radio.playRadioByDefault}
+            onChange={setPlayRadioByDefault}
+          />
+          <div className="mt-4 border-t border-border pt-4">
+            <ToggleRow
+              icon={<VolumeX className="h-3.5 w-3.5" />}
+              label="Auto-mute Radio when inactive"
+              description="Fade out after 10 minutes of inactivity; tune back in when you're ready"
+              checked={radio.autoMuteWhenInactive}
+              onChange={setAutoMuteWhenInactive}
+            />
+          </div>
+        </motion.section>
+
         {/* Sound Effects (main app UI SFX) */}
         <UiSfxSettings />
 
@@ -286,7 +319,7 @@ function ToggleRow({ icon, label, description, checked, onChange }: {
         <Label className="text-sm font-medium flex items-center gap-1.5">{icon}{label}</Label>
         <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch aria-label={label} checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

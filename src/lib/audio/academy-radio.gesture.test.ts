@@ -12,8 +12,6 @@
  * are stubbed locally in this file only — the shared setup is left alone.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { toast } from "sonner";
-
 import {
   RADIO_STORAGE_KEYS,
   getRadioSnapshot,
@@ -23,16 +21,10 @@ import {
   playRadio,
   prepareRadio,
   resetRadioForTests,
+  setPlayRadioByDefault,
   setRadioMuted,
   startRadio,
 } from "./academy-radio";
-
-// The radio deliberately shows no playback notification. The mock is kept as a
-// tripwire so a reintroduced toast fails the "playback notifications" specs
-// below rather than quietly reappearing in front of visitors.
-vi.mock("sonner", () => ({ toast: vi.fn() }));
-
-const toastMock = vi.mocked(toast);
 
 /* -------------------------------------------------------------------------- */
 /* Local stubs                                                                */
@@ -112,7 +104,9 @@ function aButton(): HTMLButtonElement {
 beforeEach(() => {
   installLocalStorageStub();
   resetRadioForTests();
-  toastMock.mockClear();
+  // Most existing gesture specs describe an opted-in/legacy visitor. Tests
+  // below reset this explicitly when exercising the new-user path.
+  setPlayRadioByDefault(true);
   document.body.innerHTML = "";
 
   paused = true;
@@ -171,6 +165,42 @@ describe("first meaningful interaction — the silent load", () => {
     await flush();
 
     expect(play).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("first meaningful interaction — default preference gating", () => {
+  it("does not arm or play for a genuinely new browser", async () => {
+    resetRadioForTests();
+    prepareRadio();
+    installFirstGestureUnlock();
+
+    expect(getRadioSnapshot().playRadioByDefault).toBe(false);
+    expect(isFirstGestureUnlockArmed()).toBe(false);
+    click(aButton());
+    await flush();
+    expect(play).not.toHaveBeenCalled();
+  });
+
+  it("preserves automatic playback for a legacy unmuted visitor", async () => {
+    resetRadioForTests();
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "false");
+    prepareRadio();
+    installFirstGestureUnlock();
+
+    click(aButton());
+    await flush();
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a legacy muted visitor silent", async () => {
+    resetRadioForTests();
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "true");
+    prepareRadio();
+    installFirstGestureUnlock();
+
+    click(aButton());
+    await flush();
+    expect(play).not.toHaveBeenCalled();
   });
 });
 
@@ -368,6 +398,7 @@ describe("first meaningful interaction — explicit preferences win", () => {
   });
 
   it("honours a mute preference restored from a previous visit", async () => {
+    resetRadioForTests();
     localStorage.setItem(RADIO_STORAGE_KEYS.muted, "true");
     prepareRadio();
 
@@ -378,7 +409,7 @@ describe("first meaningful interaction — explicit preferences win", () => {
     expect(play).not.toHaveBeenCalled();
   });
 
-  it("does not auto-resume a session the visitor explicitly paused", async () => {
+  it("does not auto-unmute a session the visitor explicitly muted", async () => {
     prepareRadio();
     await startRadio();
     pauseRadio();
@@ -390,10 +421,11 @@ describe("first meaningful interaction — explicit preferences win", () => {
     await flush();
 
     expect(play).not.toHaveBeenCalled();
-    expect(getRadioSnapshot().status).toBe("paused");
+    expect(getRadioSnapshot().status).toBe("playing");
+    expect(getRadioSnapshot().muted).toBe(true);
   });
 
-  it("a later explicit Play still resumes a paused session", async () => {
+  it("a later explicit Tune In unmutes the continuing station", async () => {
     prepareRadio();
     await startRadio();
     pauseRadio();
@@ -401,73 +433,8 @@ describe("first meaningful interaction — explicit preferences win", () => {
 
     await playRadio();
 
-    expect(play).toHaveBeenCalledTimes(1);
+    expect(play).not.toHaveBeenCalled();
     expect(getRadioSnapshot().isPlaying).toBe(true);
-  });
-});
-
-/**
- * The radio announces itself with nothing but its own controls.
- *
- * There was a one-time "Academy Radio is playing" toast here. It is gone by
- * decision, not by accident, so `sonner` stays mocked in this file purely as the
- * tripwire: if any path back into a playback notification is ever reintroduced,
- * these assertions are what fail.
- */
-describe("playback notifications", () => {
-  it("says nothing when the first meaningful gesture starts the radio", async () => {
-    prepareRadio();
-    installFirstGestureUnlock();
-
-    click(aButton());
-    await flush();
-
-    expect(play).toHaveBeenCalledTimes(1);
-    expect(getRadioSnapshot().isPlaying).toBe(true);
-    expect(toastMock).not.toHaveBeenCalled();
-  });
-
-  it("says nothing when the visitor presses Play themselves", async () => {
-    prepareRadio();
-    await playRadio();
-
-    expect(getRadioSnapshot().isPlaying).toBe(true);
-    expect(toastMock).not.toHaveBeenCalled();
-  });
-
-  it("says nothing when a start is refused", async () => {
-    play.mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
-    prepareRadio();
-    installFirstGestureUnlock();
-
-    click(aButton());
-    await flush();
-
-    expect(toastMock).not.toHaveBeenCalled();
-  });
-
-  it("stays quiet across repeated starts within a session", async () => {
-    prepareRadio();
-    installFirstGestureUnlock();
-
-    click(aButton());
-    await flush();
-    await startRadio();
-
-    expect(toastMock).not.toHaveBeenCalled();
-  });
-
-  it("persists no notice flag, only the visitor's own preferences", async () => {
-    prepareRadio();
-    installFirstGestureUnlock();
-
-    click(aButton());
-    await flush();
-
-    expect(localStorage.getItem("mogsy.audio.radioNoticeSeen")).toBeNull();
-    expect(Object.values(RADIO_STORAGE_KEYS)).toEqual([
-      "mogsy.audio.musicMuted",
-      "mogsy.audio.musicVolume",
-    ]);
+    expect(getRadioSnapshot().muted).toBe(false);
   });
 });

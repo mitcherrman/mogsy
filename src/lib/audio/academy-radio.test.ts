@@ -15,14 +15,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_MUSIC_VOLUME,
   FADE_IN_MS,
+  RADIO_INACTIVITY_FADE_MS,
+  RADIO_INACTIVITY_TIMEOUT_MS,
   RADIO_PLAYLIST,
   RADIO_STORAGE_KEYS,
   getRadioSnapshot,
+  evaluateRadioInactivity,
+  installRadioInactivityMonitor,
   nextRadioTrack,
   pauseRadio,
   playRadio,
   prepareRadio,
   resetRadioForTests,
+  resolvePlayRadioByDefault,
+  setPlayRadioByDefault,
+  setAutoMuteWhenInactive,
   setRadioMuted,
   setRadioVolume,
   startRadio,
@@ -413,7 +420,14 @@ describe("Academy Radio — mute is not pause", () => {
 
 describe("Academy Radio — volume", () => {
   it("defaults to the Tidecaller target", () => {
+    expect(DEFAULT_MUSIC_VOLUME).toBe(0.15);
     expect(getRadioSnapshot().volume).toBeCloseTo(DEFAULT_MUSIC_VOLUME, 5);
+  });
+
+  it("falls back safely when the stored volume is invalid", () => {
+    localStorage.setItem(RADIO_STORAGE_KEYS.volume, "not-a-number");
+    simulateReload();
+    expect(getRadioSnapshot().volume).toBe(0.15);
   });
 
   it("applies a live change immediately instead of chasing the fade", async () => {
@@ -455,19 +469,65 @@ describe("Academy Radio — volume", () => {
   });
 });
 
-describe("Academy Radio — pause and explicit play", () => {
-  it("explicit pause stops the transport and reports paused", async () => {
+describe("Academy Radio — Play Radio by default migration", () => {
+  it("defaults genuinely new browsers off and ignores noticeSeen alone", () => {
+    expect(resolvePlayRadioByDefault()).toBe(false);
+    localStorage.setItem(RADIO_STORAGE_KEYS.noticeSeen, "true");
+    expect(resolvePlayRadioByDefault()).toBe(false);
+  });
+
+  it("derives the preference from legacy mute state", () => {
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "false");
+    expect(resolvePlayRadioByDefault()).toBe(true);
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "true");
+    expect(resolvePlayRadioByDefault()).toBe(false);
+  });
+
+  it("treats a stored volume as an existing radio user and preserves it", () => {
+    localStorage.setItem(RADIO_STORAGE_KEYS.volume, "0.42");
+    simulateReload();
+    expect(getRadioSnapshot().playRadioByDefault).toBe(true);
+    expect(getRadioSnapshot().volume).toBe(0.42);
+  });
+
+  it("lets an explicit false preference win over legacy-on state", () => {
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "false");
+    localStorage.setItem(RADIO_STORAGE_KEYS.playByDefault, "false");
+    simulateReload();
+    expect(getRadioSnapshot().playRadioByDefault).toBe(false);
+  });
+
+  it("lets an explicit true preference win over legacy-muted state", () => {
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "true");
+    localStorage.setItem(RADIO_STORAGE_KEYS.playByDefault, "true");
+    simulateReload();
+    expect(getRadioSnapshot().playRadioByDefault).toBe(true);
+  });
+
+  it("persists an explicit change without starting playback", () => {
+    prepareRadio();
+    setPlayRadioByDefault(true);
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.playByDefault)).toBe("true");
+    expect(getRadioSnapshot().playRadioByDefault).toBe(true);
+    expect(play).not.toHaveBeenCalled();
+  });
+});
+
+describe("Academy Radio — live tune and mute", () => {
+  it("the legacy pause action mutes without stopping the live transport", async () => {
     prepareRadio();
     await startRadio();
 
     pauseRadio();
 
-    expect(pause).toHaveBeenCalledTimes(1);
-    expect(getRadioSnapshot().status).toBe("paused");
-    expect(getRadioSnapshot().isPlaying).toBe(false);
+    expect(pause).not.toHaveBeenCalled();
+    expect(getRadioSnapshot().status).toBe("playing");
+    expect(getRadioSnapshot().isPlaying).toBe(true);
+    expect(getRadioSnapshot().isAudible).toBe(false);
+    expect(getRadioSnapshot().muteReason).toBe("manual");
   });
 
-  it("explicit play resumes after a pause", async () => {
+  it("explicit Tune In unmutes the continuing transport", async () => {
     prepareRadio();
     await startRadio();
     pauseRadio();
@@ -475,8 +535,9 @@ describe("Academy Radio — pause and explicit play", () => {
 
     await playRadio();
 
-    expect(play).toHaveBeenCalledTimes(1);
+    expect(play).not.toHaveBeenCalled();
     expect(getRadioSnapshot().isPlaying).toBe(true);
+    expect(getRadioSnapshot().isAudible).toBe(true);
   });
 
   it("explicit play lifts a mute — Mute stays the deliberate silent control", async () => {
@@ -490,7 +551,7 @@ describe("Academy Radio — pause and explicit play", () => {
     expect(getRadioSnapshot().isPlaying).toBe(true);
   });
 
-  it("toggling playback alternates between the two", async () => {
+  it("the compatibility toggle alternates between tuned in and muted", async () => {
     prepareRadio();
 
     toggleRadioPlayback();
@@ -499,7 +560,8 @@ describe("Academy Radio — pause and explicit play", () => {
     expect(getRadioSnapshot().isPlaying).toBe(true);
 
     toggleRadioPlayback();
-    expect(getRadioSnapshot().isPlaying).toBe(false);
+    expect(getRadioSnapshot().isPlaying).toBe(true);
+    expect(getRadioSnapshot().isAudible).toBe(false);
   });
 
   it("resuming keeps its level rather than dropping back to silence", async () => {
@@ -552,5 +614,103 @@ describe("Academy Radio — one-track playlist", () => {
 
     expect(getRadioSnapshot().status).toBe("failed");
     expect(getRadioSnapshot().isPlaying).toBe(false);
+  });
+});
+
+describe("Academy Radio — live station clock", () => {
+  function installDuration(seconds: number) {
+    Object.defineProperty(theAudio(), "duration", { configurable: true, value: seconds });
+    Object.defineProperty(theAudio(), "currentTime", { configurable: true, writable: true, value: 0 });
+    theAudio().dispatchEvent(new Event("loadedmetadata"));
+  }
+
+  it("tunes in at the deterministic station position", async () => {
+    const wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockReturnValue(wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 250_000));
+    prepareRadio();
+    installDuration(100);
+
+    await playRadio();
+
+    expect(theAudio().currentTime).toBeCloseTo(50, 5);
+    expect(getRadioSnapshot().trackPositionSeconds).toBeCloseTo(50, 5);
+    expect(getRadioSnapshot().volume).toBe(DEFAULT_MUSIC_VOLUME);
+  });
+
+  it("rejoins at the progressed position after time passes while muted", async () => {
+    let wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 10_000));
+    prepareRadio();
+    installDuration(100);
+    await playRadio();
+    pauseRadio();
+
+    wallClock += 25_000;
+    await playRadio();
+
+    expect(pause).not.toHaveBeenCalled();
+    expect(theAudio().currentTime).toBeCloseTo(35, 5);
+    expect(getRadioSnapshot().isAudible).toBe(true);
+  });
+
+  it("persists its epoch so a recreated store rejoins the same broadcast", () => {
+    const wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockReturnValue(wallClock);
+    prepareRadio();
+    const epoch = localStorage.getItem(RADIO_STORAGE_KEYS.stationEpoch);
+
+    simulateReload();
+    prepareRadio();
+
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.stationEpoch)).toBe(epoch);
+    expect(getRadioSnapshot().stationEpoch).toBe(Number(epoch));
+  });
+
+});
+
+describe("Academy Radio — inactivity policy", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("fades an audible station to an inactivity mute and never auto-unmutes", async () => {
+    prepareRadio();
+    installRadioInactivityMonitor();
+    await playRadio();
+
+    evaluateRadioInactivity(Date.now() + RADIO_INACTIVITY_TIMEOUT_MS, 0);
+
+    expect(getRadioSnapshot().muteReason).toBe("inactivity");
+    expect(getRadioSnapshot().isPlaying).toBe(true);
+    expect(getRadioSnapshot().isAudible).toBe(false);
+    window.dispatchEvent(new Event("pointerdown"));
+    expect(getRadioSnapshot().muted).toBe(true);
+  });
+
+  it("does nothing when the inactivity preference is disabled", async () => {
+    setAutoMuteWhenInactive(false);
+    prepareRadio();
+    installRadioInactivityMonitor();
+    await playRadio();
+
+    vi.advanceTimersByTime(RADIO_INACTIVITY_TIMEOUT_MS + RADIO_INACTIVITY_FADE_MS);
+    advanceFrames(RADIO_INACTIVITY_FADE_MS);
+
+    expect(getRadioSnapshot().isAudible).toBe(true);
+    expect(getRadioSnapshot().muteReason).toBeNull();
+  });
+
+  it("keeps manual mute distinct from inactivity and activity cannot clear it", async () => {
+    prepareRadio();
+    installRadioInactivityMonitor();
+    await playRadio();
+    setRadioMuted(true);
+
+    vi.advanceTimersByTime(RADIO_INACTIVITY_TIMEOUT_MS);
+    window.dispatchEvent(new Event("keydown"));
+
+    expect(getRadioSnapshot().muteReason).toBe("manual");
+    expect(getRadioSnapshot().muted).toBe(true);
   });
 });

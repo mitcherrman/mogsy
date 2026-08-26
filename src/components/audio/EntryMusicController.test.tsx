@@ -17,8 +17,9 @@ import EntryMusicController, {
   resetEntryMusicForTests,
   startEntryMusic,
 } from "./EntryMusicController";
+import { setPlayRadioByDefault } from "@/lib/audio/academy-radio";
 
-const TARGET_VOLUME = 0.18;
+const TARGET_VOLUME = 0.15;
 const FADE_IN_MS = 2500;
 const STATE_KEY = "__mogzyEntryMusic__";
 
@@ -67,6 +68,8 @@ function theAudio(): HTMLAudioElement {
 
 beforeEach(() => {
   resetEntryMusicForTests();
+  // Existing controller specs exercise the opted-in automatic path.
+  setPlayRadioByDefault(true);
 
   audios = [];
   audioCreations = 0;
@@ -181,6 +184,14 @@ describe("EntryMusicController — nothing happens without a gesture", () => {
 });
 
 describe("startEntryMusic — the gesture path", () => {
+  it("keeps a genuinely new visitor silent", async () => {
+    resetEntryMusicForTests();
+    render(<EntryMusicController />);
+
+    await expect(startEntryMusic()).resolves.toBe(false);
+    expect(play).not.toHaveBeenCalled();
+  });
+
   it("plays after invocation and reports success", async () => {
     render(<EntryMusicController />);
 
@@ -205,7 +216,7 @@ describe("startEntryMusic — the gesture path", () => {
     expect(() => void startEntryMusic()).not.toThrow();
   });
 
-  it("fades from silence to the 0.18 target over 2500ms", async () => {
+  it("fades from silence to the 0.15 target over 2500ms", async () => {
     render(<EntryMusicController />);
     await startEntryMusic();
 
