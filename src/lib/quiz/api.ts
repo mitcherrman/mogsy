@@ -450,6 +450,41 @@ export type ReviewPackSummary = {
 };
 
 export type ReviewPacksResponse = { ok: boolean; packs: ReviewPackSummary[] };
+export type ReviewUniverseRow = {
+  review_key: string;
+  source_kind: string;
+  materialization: string;
+  family: string;
+  question_text: string;
+  options: string[];
+  correct_answer: string;
+  explanation: string;
+  difficulty: number | string;
+  topic_category: string;
+  source_status: string;
+  review_status: string;
+  source_version: string;
+  dataset_id: string;
+  metadata: Record<string, unknown>;
+};
+export type ReviewUniverseResponse = {
+  ok: boolean;
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+  rows: ReviewUniverseRow[];
+  provenance: {
+    schema_version: string;
+    exported_at: string;
+    baseline_id: string;
+    content_digest: string;
+    row_count: number;
+    source_counts: Record<string, number>;
+    collector_errors: Array<{ source: string; error: string }>;
+    database: { name: string; dataset_id: string; size_bytes?: number | null };
+  };
+};
 export type ReviewPackQuestionsResponse = {
   ok: boolean;
   pack: ReviewPackSummary;
@@ -835,6 +870,12 @@ export const quizApi = {
     if (currentBaseline) params.set("current_baseline", currentBaseline);
     return adminDownload(`/api/quiz/admin/review/export.csv?${params}`);
   },
+  getReviewUniverse: (filters: { source_kind?: string; family?: string; materialization?: string; source_status?: string; search?: string; page?: number; page_size?: number } = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== "") params.set(key, String(value)); });
+    return adminRequest<ReviewUniverseResponse>(`/api/quiz/admin/review/universe?${params}`);
+  },
+  downloadReviewUniverseExport: () => adminDownload("/api/quiz/admin/review/universe/export.csv"),
   getReviewPacks: () =>
     adminRequest<ReviewPacksResponse>("/api/quiz/admin/review/packs"),
   getReviewPackQuestions: (packKey: string) =>
