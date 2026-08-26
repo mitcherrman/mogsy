@@ -20,6 +20,7 @@ import {
   type ReviewFilters,
   type ReviewFilterOptions,
   type ReviewPatchPayload,
+  type ReviewUniverseRow,
   type QuizQuestion,
 } from "@/lib/quiz/api";
 import {
@@ -99,6 +100,21 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 const DIFFICULTY_LABELS: Record<number, string> = {
   1: "Recognition", 2: "Recall", 3: "Comparison", 4: "Reasoning", 5: "Simulation",
 };
+
+const SOURCE_LABELS: Record<string, string> = {
+  stored_question: "Stored questions", mastery_question: "Mastery", ranked_candidate: "Ranked candidates",
+  ranked_fallback: "Ranked fallback", family_definition: "Family definitions",
+  meta_reflex_rule: "Meta Reflex rules", meta_reflex_specimen: "Meta Reflex specimens",
+};
+
+function UniverseRow({ row }: { row: ReviewUniverseRow }) {
+  return <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3 border-b px-3 py-2 text-[11px] last:border-b-0">
+    <div><div className="font-medium">{SOURCE_LABELS[row.source_kind] ?? row.source_kind}</div><div className="text-muted-foreground">{row.materialization}</div></div>
+    <div className="truncate" title={row.family}>{row.family || "—"}</div>
+    <div className="min-w-0"><div className="truncate font-medium" title={row.question_text}>{row.question_text || row.review_key}</div><div className="truncate text-muted-foreground">{row.review_key}</div></div>
+    <div><div>{row.source_status || "—"}</div><div className="truncate text-muted-foreground" title={row.source_version}>{row.source_version || "—"}</div></div>
+  </div>;
+}
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -925,6 +941,10 @@ export default function AdminQuizReview({
   const [search, setSearch] = useState("");
   const [exportScope, setExportScope] = useState<"all" | "changed" | "flagged">("all");
   const [exporting, setExporting] = useState(false);
+  const [showUniverse, setShowUniverse] = useState(false);
+  const [universeSource, setUniverseSource] = useState("all");
+  const [universeMaterialization, setUniverseMaterialization] = useState("all");
+  const [universeSearch, setUniverseSearch] = useState("");
   const [internalSelectedId, setInternalSelectedId] = useState<number | null>(null);
   const controlledSelection = selectedQuestionId !== undefined;
   const selectedId = controlledSelection ? (selectedQuestionId ?? null) : internalSelectedId;
@@ -985,6 +1005,17 @@ export default function AdminQuizReview({
     enabled: authorized,
     retry: false,
   });
+  const universe = useQuery({
+    queryKey: ["review-universe", universeSource, universeMaterialization, universeSearch],
+    queryFn: () => quizApi.getReviewUniverse({
+      source_kind: universeSource === "all" ? undefined : universeSource,
+      materialization: universeMaterialization === "all" ? undefined : universeMaterialization,
+      search: universeSearch || undefined, page_size: 200,
+    }),
+    enabled: authorized && showUniverse,
+    staleTime: 30_000,
+    retry: false,
+  });
 
   const authError = !authorized || isAuthError(error);
 
@@ -1027,6 +1058,17 @@ export default function AdminQuizReview({
     } catch (error) {
       toast.error("Question export failed", { description: error instanceof Error ? error.message : "Unknown error" });
     } finally { setExporting(false); }
+  };
+
+  const downloadUniverse = async () => {
+    setExporting(true);
+    try {
+      const result = await quizApi.downloadReviewUniverseExport();
+      const url = URL.createObjectURL(result.blob); const anchor = document.createElement("a");
+      anchor.href = url; anchor.download = result.filename; anchor.click(); URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${result.filename}`, { description: result.rowCount == null ? undefined : `${result.rowCount.toLocaleString()} source-explicit rows` });
+    } catch (error) { toast.error("Universe export failed", { description: error instanceof Error ? error.message : "Unknown error" }); }
+    finally { setExporting(false); }
   };
 
   const saveToPlaylist = () => {
@@ -1096,6 +1138,9 @@ export default function AdminQuizReview({
             </>
           )}
           <h1 className="text-sm font-semibold">Quiz Review Console</h1>
+          <Button size="sm" variant={showUniverse ? "secondary" : "ghost"} className="h-7 text-[11px]" onClick={() => setShowUniverse((value) => !value)}>
+            {showUniverse ? "Stored review" : "All sources"}
+          </Button>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Select value={exportScope} onValueChange={(value) => setExportScope(value as typeof exportScope)}>
@@ -1117,8 +1162,33 @@ export default function AdminQuizReview({
         </div>
       </div>
 
+      {showUniverse && (
+        <div className="min-h-0 flex-1 overflow-auto bg-background">
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur">
+            <Select value={universeSource} onValueChange={setUniverseSource}>
+              <SelectTrigger className="h-8 w-52 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All sources</SelectItem>{Object.entries(SOURCE_LABELS).map(([value,label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={universeMaterialization} onValueChange={setUniverseMaterialization}>
+              <SelectTrigger className="h-8 w-48 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">Stored + generated</SelectItem><SelectItem value="stored">Stored only</SelectItem><SelectItem value="definition">Definitions</SelectItem><SelectItem value="code_generated">Code-generated</SelectItem><SelectItem value="deterministic_specimen">Specimens</SelectItem></SelectContent>
+            </Select>
+            <Input className="h-8 w-56 text-xs" value={universeSearch} onChange={(event) => setUniverseSearch(event.target.value)} placeholder="Filter family, key, or text…" />
+            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" disabled={exporting} onClick={downloadUniverse}><Download className="h-3 w-3" /> Export source universe</Button>
+            {universe.data && <div className="ml-auto text-[11px] text-muted-foreground">
+              {universe.data.total.toLocaleString()} rows · schema {universe.data.provenance.schema_version} · baseline {universe.data.provenance.baseline_id.slice(0, 10)} · DB {universe.data.provenance.database.name}
+            </div>}
+          </div>
+          <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3 border-b bg-muted/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Source</span><span>Family</span><span>Review material</span><span>Status / version</span></div>
+          {universe.isLoading ? <div className="p-8 text-center text-xs text-muted-foreground">Loading review sources…</div>
+            : universe.isError ? <div className="p-8 text-center text-xs text-red-400">Could not load the source universe.</div>
+            : universe.data?.rows.map((row) => <UniverseRow key={row.review_key} row={row} />)}
+          {!!universe.data?.provenance.collector_errors.length && <div className="m-4 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Some sources were unavailable: {universe.data.provenance.collector_errors.map((item) => item.source).join(", ")}</div>}
+        </div>
+      )}
+
       {/* Body */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      {!showUniverse && <div className="flex min-h-0 flex-1 overflow-hidden">
 
         {/* Filter sidebar */}
         <div className="h-full w-64 shrink-0 overflow-y-auto border-r px-3 py-3">
@@ -1249,7 +1319,7 @@ export default function AdminQuizReview({
             Select a question to review
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
