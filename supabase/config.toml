@@ -11,6 +11,13 @@ project_id = "kewgjwrzpzpeltwidvuc"
     verify_jwt = false
   [functions.customer-portal]
     verify_jwt = false
+  # The provider OAuth redirect (Discord/Riot -> GET) carries no Supabase JWT,
+  # so the gateway must not reject it. The function authenticates every action
+  # that needs a Mogzy account itself, in requirePermanentUser.
+  # Declared here so a repo-driven deploy reproduces the live callback
+  # architecture instead of silently defaulting verify_jwt back to true.
+  [functions.identity-link]
+    verify_jwt = false
   [functions.populate-preset-images]
     verify_jwt = false
   [functions.purge-anonymous-users]
