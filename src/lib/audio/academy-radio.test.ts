@@ -19,6 +19,7 @@ import {
   RADIO_INACTIVITY_TIMEOUT_MS,
   RADIO_PLAYLIST,
   RADIO_STORAGE_KEYS,
+  adoptAcademyRadioPlaylist,
   getRadioSnapshot,
   evaluateRadioInactivity,
   installRadioInactivityMonitor,
@@ -747,4 +748,29 @@ describe("Academy Radio — temporary Mode suppression", () => {
       expect(getRadioSnapshot()).toMatchObject({ muted: true, muteReason: reason });
     },
   );
+
+  it("adopts a valid live playlist immediately while Radio is silent", () => {
+    expect(adoptAcademyRadioPlaylist([{ id: "live", title: "Live Track", durationMs: 60000,
+      relativeGain: 0.5, sources: [{ src: "/audio/live.mp3", type: "audio/mpeg" }] }])).toBe(true);
+    expect(getRadioSnapshot()).toMatchObject({ trackId: "live", trackTitle: "Live Track", trackCount: 1 });
+    prepareRadio();
+    setRadioVolume(0.8);
+    expect(theAudio().volume).toBe(0);
+  });
+
+  it("keeps bundled Tidecaller when runtime playlist data is missing or invalid", () => {
+    expect(adoptAcademyRadioPlaylist([])).toBe(false);
+    expect(adoptAcademyRadioPlaylist([{ id: "invalid", title: "Invalid", sources: [] }])).toBe(false);
+    expect(getRadioSnapshot()).toMatchObject({ trackId: "tidecaller", trackTitle: "Tidecaller" });
+  });
+
+  it("defers late live config without interrupting an audible Radio session", async () => {
+    prepareRadio();
+    await playRadio();
+    const before = getRadioSnapshot();
+    expect(adoptAcademyRadioPlaylist([{ id: "late", title: "Late Track",
+      sources: [{ src: "/audio/late.mp3", type: "audio/mpeg" }] }])).toBe(false);
+    expect(getRadioSnapshot()).toMatchObject({ trackId: before.trackId, isAudible: true });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import { mogzyAudio } from "./engine";
+import { resolveModeSoundtrack } from "./audio-studio-runtime";
 import type { ModeSoundtrackRequest, ModeSoundtrackSnapshot } from "./types";
 
 export const DEFAULT_MODE_VOLUME = 0.15;
@@ -16,10 +17,35 @@ export interface ModeSoundtrackConfig {
   relativeGain?: number;
 }
 
-/** Ranked deliberately has no production binding until an asset is approved. */
-const MODE_CONFIGS: Record<string, ModeSoundtrackConfig> = {
-  ranked: { id: "ranked", title: "Ranked Soundtrack", sources: [] },
-};
+/** Test-only overrides. Production bindings are resolved through Audio Studio. */
+const MODE_CONFIGS: Record<string, ModeSoundtrackConfig> = {};
+
+function snapshotModeConfig(id: string | undefined): ModeSoundtrackConfig | null {
+  if (!id) return null;
+  if (Object.prototype.hasOwnProperty.call(MODE_CONFIGS, id)) {
+    const override = MODE_CONFIGS[id];
+    return override.sources.length > 0 ? override : null;
+  }
+  const resolved = resolveModeSoundtrack(id);
+  if (resolved.sourceType === "asset") {
+    return {
+      id: resolved.asset.id,
+      title: resolved.asset.title,
+      sources: resolved.asset.sources,
+      relativeGain: resolved.asset.relativeGain,
+    };
+  }
+  if (resolved.sourceType === "playlist") {
+    const track = resolved.playlist.tracks[0];
+    return track ? {
+      id: track.id,
+      title: track.title,
+      sources: track.sources,
+      relativeGain: track.relativeGain,
+    } : null;
+  }
+  return null;
+}
 
 interface ModeState {
   element: HTMLAudioElement | null;
@@ -180,9 +206,9 @@ export async function acquireModeSoundtrack(request: ModeSoundtrackRequest): Pro
   setRadioSuppressed(s, false);
   try { s.element?.pause(); } catch { /* optional media */ }
   s.owner = request.owner;
-  s.config = request.source === "track" && request.sourceId
-    ? MODE_CONFIGS[request.sourceId] ?? null
-    : null;
+  // This is deliberately a synchronous snapshot of the currently cached
+  // binding. Runtime data arriving later can affect only a future acquisition.
+  s.config = request.source === "track" ? snapshotModeConfig(request.sourceId) : null;
   s.status = "idle";
   s.muted = false;
   s.starting = null;
@@ -239,6 +265,10 @@ export function setPlayModeMusicAutomatically(enabled: boolean): void {
 
 export function setModeSoundtrackConfigForTests(id: string, config: ModeSoundtrackConfig): void {
   MODE_CONFIGS[id] = config;
+}
+
+export function clearModeSoundtrackConfigForTests(id: string): void {
+  delete MODE_CONFIGS[id];
 }
 
 export function resetModeSoundtrackForTests(): void {

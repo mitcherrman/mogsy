@@ -6,6 +6,7 @@ import {
   DEFAULT_MODE_VOLUME,
   MODE_STORAGE_KEYS,
   acquireModeSoundtrack,
+  clearModeSoundtrackConfigForTests,
   getModeSoundtrackSnapshot,
   pauseModeSoundtrack,
   playModeSoundtrack,
@@ -149,6 +150,27 @@ describe("canonical Mode Soundtrack", () => {
       id: "ranked", title: "Ranked Soundtrack", sources: [],
     });
     expect(await acquireModeSoundtrack(request())).toBe(false);
+    expect(audioCreations).toBe(0);
+    expect(suppress).not.toHaveBeenCalled();
+  });
+
+  it("snapshots configuration for an ownership session", async () => {
+    await acquireModeSoundtrack(request());
+    expect(getModeSoundtrackSnapshot().trackTitle).toBe("Ranked Test Theme");
+    setModeSoundtrackConfigForTests("ranked", {
+      id: "replacement", title: "Late Replacement",
+      sources: [{ src: "/audio/late.mp3", type: "audio/mpeg" }],
+    });
+    expect(await acquireModeSoundtrack(request())).toBe(true);
+    expect(getModeSoundtrackSnapshot().trackTitle).toBe("Ranked Test Theme");
+  });
+
+  it("keeps unbound Ranked silent without suppressing Radio", async () => {
+    clearModeSoundtrackConfigForTests("ranked");
+    expect(await acquireModeSoundtrack(request())).toBe(false);
+    expect(getModeSoundtrackSnapshot()).toMatchObject({
+      owner: "ranked:m1", available: false, status: "idle",
+    });
     expect(audioCreations).toBe(0);
     expect(suppress).not.toHaveBeenCalled();
   });

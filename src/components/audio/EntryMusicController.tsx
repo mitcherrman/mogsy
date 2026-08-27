@@ -1,11 +1,16 @@
 import { useEffect } from "react";
 
 import {
+  adoptAcademyRadioPlaylist,
   installFirstGestureUnlock,
   installRadioInactivityMonitor,
   prepareRadio,
   startRadio,
 } from "@/lib/audio/academy-radio";
+import {
+  loadAudioStudioRuntime,
+  resolveRuntimePlaylist,
+} from "@/lib/audio/audio-studio-runtime";
 
 /**
  * Academy Radio mount point.
@@ -31,6 +36,19 @@ export default function AcademyRadioController() {
     prepareRadio();
     installFirstGestureUnlock();
     installRadioInactivityMonitor();
+    void loadAudioStudioRuntime().then((runtime) => {
+      const playlist = resolveRuntimePlaylist(runtime.config, "academy-radio");
+      if (!playlist) return;
+      adoptAcademyRadioPlaylist(playlist.tracks.map((track) => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        artworkUrl: track.artworkUrl,
+        sources: track.sources,
+        relativeGain: track.relativeGain,
+        durationMs: track.durationMs,
+      })));
+    });
   }, []);
 
   return null;

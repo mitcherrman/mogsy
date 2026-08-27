@@ -34,6 +34,10 @@ export interface RadioTrack {
   title: string;
   /** Preferred encoding first; the browser picks the first it can decode. */
   sources: RadioSource[];
+  artist?: string;
+  artworkUrl?: string;
+  relativeGain?: number;
+  durationMs?: number;
 }
 
 /**
@@ -140,6 +144,8 @@ interface RadioState {
   /** True once play() has resolved once — gates the load() warm-up. */
   started: boolean;
   trackIndex: number;
+  playlist: readonly RadioTrack[];
+  pendingPlaylist: readonly RadioTrack[] | null;
   status: RadioStatus;
   muted: boolean;
   muteReason: "manual" | "inactivity" | null;
@@ -231,6 +237,8 @@ function getState(): RadioState {
       starting: null,
       started: false,
       trackIndex: 0,
+      playlist: RADIO_PLAYLIST,
+      pendingPlaylist: null,
       status: "idle",
       muted,
       muteReason: readMuteReason(muted),
@@ -258,6 +266,8 @@ function getState(): RadioState {
     state.autoMuteWhenInactive ??= readBoolean(RADIO_STORAGE_KEYS.autoMuteWhenInactive, true);
     state.stationEpoch ??= readStationEpoch();
     state.trackDurations ??= {};
+    state.playlist ??= RADIO_PLAYLIST;
+    state.pendingPlaylist ??= null;
     state.inactivityTimer ??= null;
     state.detachActivity ??= null;
     state.lastActivityAt ??= Date.now();
@@ -272,7 +282,13 @@ function now(): number {
 }
 
 function effectiveVolume(state: RadioState): number {
-  return state.volume;
+  const tracks = getPlaylist(state);
+  const track = tracks[state.trackIndex] ?? tracks[0];
+  return clamp01(state.volume * (track.relativeGain ?? 1));
+}
+
+function getPlaylist(state = getState()): readonly RadioTrack[] {
+  return state.playlist.length > 0 ? state.playlist : RADIO_PLAYLIST;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -280,7 +296,7 @@ function effectiveVolume(state: RadioState): number {
 /* -------------------------------------------------------------------------- */
 
 function buildSnapshot(state: RadioState): RadioSnapshot {
-  const tracks = RADIO_PLAYLIST;
+  const tracks = getPlaylist(state);
   const track = tracks[state.trackIndex] ?? tracks[0];
   const station = getStationPosition(state);
   return {
@@ -351,7 +367,7 @@ interface StationPosition {
 /** The single centralized wall-clock calculation for the live station. */
 function getStationPosition(state: RadioState, at = Date.now()): StationPosition {
   const elapsed = Math.max(0, (at - state.stationEpoch) / 1000);
-  const durations = RADIO_PLAYLIST.map((track) => state.trackDurations[track.id]);
+  const durations = getPlaylist(state).map((track) => state.trackDurations[track.id]);
   if (durations.some((duration) => !Number.isFinite(duration) || duration <= 0)) {
     return {
       trackIndex: state.trackIndex,
@@ -402,7 +418,8 @@ function reconcileNativePosition(state: RadioState, force = false): void {
 /* -------------------------------------------------------------------------- */
 
 function applyTrackSources(audio: HTMLAudioElement, index: number): void {
-  const track = RADIO_PLAYLIST[index] ?? RADIO_PLAYLIST[0];
+  const tracks = getPlaylist();
+  const track = tracks[index] ?? tracks[0];
   while (audio.firstChild) audio.removeChild(audio.firstChild);
   for (const source of track.sources) {
     const element = document.createElement("source");
@@ -424,7 +441,8 @@ function handleLoadedMetadata(): void {
   const state = getState();
   const audio = state.element;
   if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) return;
-  const track = RADIO_PLAYLIST[state.trackIndex] ?? RADIO_PLAYLIST[0];
+  const tracks = getPlaylist(state);
+  const track = tracks[state.trackIndex] ?? tracks[0];
   state.trackDurations[track.id] = audio.duration;
   reconcileNativePosition(state, true);
   emit(state);
@@ -447,7 +465,7 @@ function ensureElement(): HTMLAudioElement | null {
   audio.preload = "auto";
   // Native looping avoids a one-track gap; the logical clock remains the
   // authority when we explicitly reconcile or receive a stray `ended` event.
-  audio.loop = RADIO_PLAYLIST.length === 1;
+  audio.loop = getPlaylist(state).length === 1;
   // Silent until a gesture. Nothing here can be heard.
   audio.volume = 0;
   audio.muted = state.muted || state.suppressedByMode;
@@ -690,6 +708,7 @@ export function startRadio(options: StartRadioOptions = {}): Promise<boolean> {
  */
 export function playRadio(): Promise<boolean> {
   const state = getState();
+  if (state.pendingPlaylist && !isPhysicallyAudible(state)) adoptPendingPlaylist(state);
   state.lastActivityAt = Date.now();
   if (state.muted) applyMuted(state, false, null);
   // The visitor found the controls; the first-gesture net has nothing left to do.
@@ -816,9 +835,46 @@ function goToTrack(state: RadioState, index: number): void {
 
 /** Advance the playlist. A no-op while there is nowhere distinct to go. */
 export function nextRadioTrack(): void {
-  if (RADIO_PLAYLIST.length < 2) return;
+  const tracks = getPlaylist();
+  if (tracks.length < 2) return;
   const state = getState();
-  goToTrack(state, (state.trackIndex + 1) % RADIO_PLAYLIST.length);
+  goToTrack(state, (state.trackIndex + 1) % tracks.length);
+}
+
+function isPhysicallyAudible(state: RadioState): boolean {
+  return state.status === "playing" && !state.muted && !state.suppressedByMode;
+}
+
+function adoptPendingPlaylist(state: RadioState): void {
+  const next = state.pendingPlaylist;
+  if (!next?.length) return;
+  state.pendingPlaylist = null;
+  state.playlist = next;
+  state.trackIndex = 0;
+  state.trackDurations = Object.fromEntries(next.flatMap((track) =>
+    track.durationMs && track.durationMs > 0 ? [[track.id, track.durationMs / 1000]] : []));
+  if (state.element) {
+    state.element.loop = next.length === 1;
+    applyTrackSources(state.element, 0);
+    state.element.load();
+  }
+  emit(state);
+}
+
+/**
+ * Installs live Academy Radio metadata without cutting across an audible track.
+ * A sounding session defers the new station until it is silent or rebuilt.
+ */
+export function adoptAcademyRadioPlaylist(next: readonly RadioTrack[]): boolean {
+  if (
+    next.length === 0 ||
+    next.some((track) => !track.id || !track.title || track.sources.length === 0)
+  ) return false;
+  const state = getState();
+  state.pendingPlaylist = next;
+  if (isPhysicallyAudible(state)) return false;
+  adoptPendingPlaylist(state);
+  return true;
 }
 
 /* -------------------------------------------------------------------------- */
