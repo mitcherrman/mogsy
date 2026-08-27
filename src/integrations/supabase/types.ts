@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -1186,51 +1186,94 @@ export type Database = {
       }
       feedback: {
         Row: {
+          actual_result: string | null
           admin_notes: string | null
           body: string
           category: string
+          client_meta: Json
           created_at: string
+          duplicate_of: string | null
+          entry_intent: string
+          evidence_url: string | null
+          expected_result: string | null
           id: string
           is_archived: boolean
+          legacy_category: string | null
           page_reference: string | null
+          page_url: string | null
           priority: string
-          profile_id: string
+          profile_id: string | null
+          reproducibility: string | null
+          screenshot_path: string | null
+          severity: string | null
           status: string
           title: string
+          type: string
           updated_at: string
           upvotes: number
         }
         Insert: {
+          actual_result?: string | null
           admin_notes?: string | null
           body?: string
           category?: string
+          client_meta?: Json
           created_at?: string
+          duplicate_of?: string | null
+          entry_intent?: string
+          evidence_url?: string | null
+          expected_result?: string | null
           id?: string
           is_archived?: boolean
+          legacy_category?: string | null
           page_reference?: string | null
+          page_url?: string | null
           priority?: string
-          profile_id: string
+          profile_id?: string | null
+          reproducibility?: string | null
+          screenshot_path?: string | null
+          severity?: string | null
           status?: string
           title?: string
+          type?: string
           updated_at?: string
           upvotes?: number
         }
         Update: {
+          actual_result?: string | null
           admin_notes?: string | null
           body?: string
           category?: string
+          client_meta?: Json
           created_at?: string
+          duplicate_of?: string | null
+          entry_intent?: string
+          evidence_url?: string | null
+          expected_result?: string | null
           id?: string
           is_archived?: boolean
+          legacy_category?: string | null
           page_reference?: string | null
+          page_url?: string | null
           priority?: string
-          profile_id?: string
+          profile_id?: string | null
+          reproducibility?: string | null
+          screenshot_path?: string | null
+          severity?: string | null
           status?: string
           title?: string
+          type?: string
           updated_at?: string
           upvotes?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "feedback_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "feedback"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "feedback_profile_id_fkey"
             columns: ["profile_id"]
@@ -3031,6 +3074,57 @@ export type Database = {
           },
         ]
       }
+      user_identity_links: {
+        Row: {
+          avatar_url: string | null
+          contact_consent: boolean
+          created_at: string
+          display_name: string | null
+          id: string
+          metadata: Json
+          provider: string
+          provider_user_id: string
+          public_on_profile: boolean
+          tag_line: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
+          verified_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metadata?: Json
+          provider: string
+          provider_user_id: string
+          public_on_profile?: boolean
+          tag_line?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          verified_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metadata?: Json
+          provider?: string
+          provider_user_id?: string
+          public_on_profile?: boolean
+          tag_line?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          verified_at?: string
+        }
+        Relationships: []
+      }
       user_invite_settings: {
         Row: {
           id: string
@@ -3343,17 +3437,29 @@ export type Database = {
       admin_list_feedback: {
         Args: { _show_archived?: boolean }
         Returns: {
+          actual_result: string | null
           admin_notes: string | null
           body: string
           category: string
+          client_meta: Json
           created_at: string
+          duplicate_of: string | null
+          entry_intent: string
+          evidence_url: string | null
+          expected_result: string | null
           id: string
           is_archived: boolean
+          legacy_category: string | null
           page_reference: string | null
+          page_url: string | null
           priority: string
-          profile_id: string
+          profile_id: string | null
+          reproducibility: string | null
+          screenshot_path: string | null
+          severity: string | null
           status: string
           title: string
+          type: string
           updated_at: string
           upvotes: number
         }[]
@@ -3363,6 +3469,20 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      admin_list_identity_links: {
+        Args: never
+        Returns: {
+          contact_consent: boolean
+          display_name: string
+          profile_id: string
+          provider: string
+          provider_user_id: string
+          public_on_profile: boolean
+          tag_line: string
+          username: string
+          verified_at: string
+        }[]
       }
       admin_list_profiles: {
         Args: never
@@ -3562,6 +3682,28 @@ export type Database = {
       league_swipe_recompute_ratings: {
         Args: { p_game_slug?: string }
         Returns: number
+      }
+      list_my_feedback: {
+        Args: never
+        Returns: {
+          actual_result: string
+          body: string
+          category: string
+          created_at: string
+          entry_intent: string
+          evidence_url: string
+          expected_result: string
+          id: string
+          page_reference: string
+          page_url: string
+          reproducibility: string
+          screenshot_path: string
+          severity: string
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }[]
       }
       normalize_display_name: { Args: { _name: string }; Returns: string }
       pair_lock_key: { Args: { _a: string; _b: string }; Returns: number }
