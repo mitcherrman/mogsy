@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import {
   adoptAcademyRadioPlaylist,
+  attemptRadioAutostart,
   installFirstGestureUnlock,
   installRadioInactivityMonitor,
   prepareRadio,
@@ -19,7 +20,9 @@ import {
  *
  * All of the behaviour lives in the store (src/lib/audio/academy-radio.ts); this
  * component exists only to give it a lifecycle. On mount it builds and warms the
- * single music element and arms the centralized first-interaction listener.
+ * single music element, arms the centralized first-interaction listener, starts
+ * the presence monitor, and makes one startup attempt — which the browser is
+ * free to refuse, leaving the first-interaction net to pick it up.
  *
  * Placement is load-bearing. It is mounted inside <BrowserRouter> but outside
  * <Routes> so it spans every route, and it must not move into <Layout /> (the
@@ -36,8 +39,11 @@ import {
 export default function AcademyRadioController() {
   useEffect(() => {
     prepareRadio();
+    // Armed before the attempt: a refused autoplay must already have somewhere
+    // to fall back to by the time it is refused.
     installFirstGestureUnlock();
     installRadioInactivityMonitor();
+    void attemptRadioAutostart();
     const applyRuntime = (runtime = getAudioStudioRuntimeSnapshot()) => {
       const playlist = resolveRuntimePlaylist(runtime.config, "academy-radio");
       if (!playlist) return;

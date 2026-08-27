@@ -169,12 +169,26 @@ describe("first meaningful interaction — the silent load", () => {
 });
 
 describe("first meaningful interaction — default preference gating", () => {
-  it("does not arm or play for a genuinely new browser", async () => {
+  it("arms and plays for a genuinely new browser, which is now default-on", async () => {
     resetRadioForTests();
     prepareRadio();
     installFirstGestureUnlock();
 
-    expect(getRadioSnapshot().playRadioByDefault).toBe(false);
+    expect(getRadioSnapshot().playRadioByDefault).toBe(true);
+    expect(isFirstGestureUnlockArmed()).toBe(true);
+    click(aButton());
+    await flush();
+    expect(play).toHaveBeenCalledTimes(1);
+    // The net retires itself the moment a start actually produces sound.
+    expect(isFirstGestureUnlockArmed()).toBe(false);
+  });
+
+  it("does not arm for a visitor who has turned Radio off", async () => {
+    resetRadioForTests();
+    setPlayRadioByDefault(false);
+    prepareRadio();
+    installFirstGestureUnlock();
+
     expect(isFirstGestureUnlockArmed()).toBe(false);
     click(aButton());
     await flush();

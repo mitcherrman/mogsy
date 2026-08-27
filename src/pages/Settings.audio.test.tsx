@@ -64,14 +64,15 @@ describe("Settings — Mode Soundtracks", () => {
 });
 
 describe("Settings — Academy Radio", () => {
-  it("renders new users off and persists an explicit preference without starting music", () => {
+  it("renders new users on and persists an opt-out without starting music", () => {
     const { container } = render(<Settings />);
     const toggle = screen.getByRole("switch", { name: "Play Radio by default" });
-    expect(toggle).toHaveAttribute("data-state", "unchecked");
-    fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("data-state", "checked");
-    expect(localStorage.getItem(RADIO_STORAGE_KEYS.playByDefault)).toBe("true");
-    expect(getRadioSnapshot()).toMatchObject({ playRadioByDefault: true, isPlaying: false });
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("data-state", "unchecked");
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.playByDefault)).toBe("false");
+    expect(getRadioSnapshot()).toMatchObject({ playRadioByDefault: false, isPlaying: false });
+    // Settings is not a mount point: reading the preference builds no element.
     expect(container.querySelector("audio")).toBeNull();
   });
 

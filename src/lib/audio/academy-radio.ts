@@ -12,8 +12,11 @@
  * src/lib/ads/consent.ts) and drive it through the exported actions, so the
  * navbar player and the entrance both talk to the same state.
  *
- * Nothing here is ever audible without a real user gesture. The module has no
- * import-time side effects at all: no element, no listeners, no storage reads.
+ * The module has no import-time side effects at all: no element, no listeners,
+ * no storage reads. Radio is on by default, but nothing here overrides the
+ * browser's autoplay policy: a refused start is a silent non-event that waits
+ * for the visitor's first real interaction. Audibility is additionally gated on
+ * presence — see installRadioInactivityMonitor().
  */
 
 import { useSyncExternalStore } from "react";
@@ -70,8 +73,19 @@ export const DEFAULT_MUSIC_VOLUME = 0.15;
 export const FADE_IN_MS = 2500;
 /** Explicit Play and track switches: present, but not a 2.5s wait. */
 export const FADE_SHORT_MS = 400;
-export const RADIO_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
+/**
+ * Audible only while somebody is actually here. Two minutes without a real
+ * interaction is treated as "nobody is listening" and the station fades out.
+ */
+export const RADIO_INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000;
 export const RADIO_INACTIVITY_FADE_MS = 1800;
+/**
+ * Coming back is deliberately unhurried. The hold keeps the music from landing
+ * on top of the visitor's first click, and the ramp is long enough that the
+ * station arrives rather than appears.
+ */
+export const RADIO_RETURN_GRACE_MS = 1500;
+export const RADIO_RETURN_FADE_MS = 4500;
 export const RADIO_DRIFT_TOLERANCE_SECONDS = 2;
 
 /**
@@ -95,11 +109,28 @@ export const RADIO_STORAGE_KEYS = {
   noticeSeen: "mogsy.audio.radioNoticeSeen",
 } as const;
 
-export const RADIO_PREFERENCE_VERSION = 1;
+/**
+ * v1 forced every client to Radio OFF. v2 supersedes it: the radio is a
+ * default-on part of the Academy, so each client is carried across exactly
+ * once and the marker then leaves every later choice of theirs alone.
+ */
+export const RADIO_PREFERENCE_VERSION = 2;
 
 /* -------------------------------------------------------------------------- */
 /* State                                                                      */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * Why the radio is silent. `manual` is the visitor's own decision and is never
+ * undone automatically; the other two are the system's own doing, and only
+ * those are eligible for the return fade-in.
+ */
+export type RadioMuteReason = "manual" | "inactivity" | "hidden" | null;
+
+/** The system's own mutes — the only ones an automatic return may lift. */
+export function isSystemMuteReason(reason: RadioMuteReason): boolean {
+  return reason === "inactivity" || reason === "hidden";
+}
 
 export type RadioStatus =
   /** Nothing prepared yet. */
@@ -124,7 +155,7 @@ export interface RadioSnapshot {
   /** Playing and not muted. This is the user-facing "tuned in" state. */
   isAudible: boolean;
   muted: boolean;
-  muteReason: "manual" | "inactivity" | null;
+  muteReason: RadioMuteReason;
   /** Temporary routing policy; never persisted as a listener preference. */
   suppressedByMode: boolean;
   /** Whether ordinary app-entry gestures may start the radio automatically. */
@@ -157,7 +188,7 @@ interface RadioState {
   pendingPlaylist: readonly RadioTrack[] | null;
   status: RadioStatus;
   muted: boolean;
-  muteReason: "manual" | "inactivity" | null;
+  muteReason: RadioMuteReason;
   suppressedByMode: boolean;
   playRadioByDefault: boolean;
   autoMuteWhenInactive: boolean;
@@ -166,6 +197,8 @@ interface RadioState {
   stationEpoch: number;
   trackDurations: Record<string, number>;
   inactivityTimer: ReturnType<typeof setTimeout> | null;
+  /** The single pending automatic return, or null. Never more than one. */
+  returnTimer: ReturnType<typeof setTimeout> | null;
   detachActivity: (() => void) | null;
   lastActivityAt: number;
   /** Removes the first-gesture listeners, or null when they are not armed. */
@@ -202,14 +235,23 @@ function writeStorage(key: string, value: string): void {
   }
 }
 
-/** One-time product migration. Deliberately leaves the independent station epoch alone. */
+/**
+ * One-time product migration to the current default. Deliberately leaves the
+ * independent station epoch alone.
+ *
+ * The version marker is what makes this safe to change: a client already at
+ * RADIO_PREFERENCE_VERSION is never rewritten, so a visitor who mutes the radio
+ * or moves the slider after being migrated keeps that choice forever. Bumping
+ * the constant — rather than editing v1 in place — is what carries the cohort
+ * that v1 forced OFF across to the new default exactly once.
+ */
 export function migrateRadioPreferences(): boolean {
   const stored = Number.parseInt(readStorage(RADIO_STORAGE_KEYS.preferenceVersion) ?? "0", 10);
   if (stored >= RADIO_PREFERENCE_VERSION) return false;
-  writeStorage(RADIO_STORAGE_KEYS.playByDefault, "false");
+  writeStorage(RADIO_STORAGE_KEYS.playByDefault, "true");
   writeStorage(RADIO_STORAGE_KEYS.volume, String(DEFAULT_MUSIC_VOLUME));
-  writeStorage(RADIO_STORAGE_KEYS.muted, "true");
-  writeStorage(RADIO_STORAGE_KEYS.muteReason, "manual");
+  writeStorage(RADIO_STORAGE_KEYS.muted, "false");
+  writeStorage(RADIO_STORAGE_KEYS.muteReason, "none");
   writeStorage(RADIO_STORAGE_KEYS.preferenceVersion, String(RADIO_PREFERENCE_VERSION));
   return true;
 }
@@ -227,14 +269,23 @@ function readStationEpoch(): number {
   return epoch;
 }
 
-function readMuteReason(muted: boolean): RadioState["muteReason"] {
+/**
+ * A persisted system mute stays a system mute across a reload, so a visitor who
+ * closed the tab while the radio was idle-muted gets the gentle return rather
+ * than a station that is silent until they find the control.
+ */
+function readMuteReason(muted: boolean): RadioMuteReason {
   if (!muted) return null;
-  return readStorage(RADIO_STORAGE_KEYS.muteReason) === "inactivity" ? "inactivity" : "manual";
+  const stored = readStorage(RADIO_STORAGE_KEYS.muteReason);
+  return stored === "inactivity" || stored === "hidden" ? stored : "manual";
 }
 
 /**
- * Resolve the new explicit preference without resetting existing radio users.
+ * Resolve the explicit preference without resetting existing radio users.
  * A notice alone is deliberately not evidence of an old music preference.
+ *
+ * The final fallback is the product default, which is now ON: a browser with no
+ * radio history at all is a new listener, not an opt-out.
  */
 export function resolvePlayRadioByDefault(): boolean {
   const explicit = readStorage(RADIO_STORAGE_KEYS.playByDefault);
@@ -243,7 +294,7 @@ export function resolvePlayRadioByDefault(): boolean {
   const legacyMuted = readStorage(RADIO_STORAGE_KEYS.muted);
   if (legacyMuted !== null) return legacyMuted !== "true";
 
-  return readStorage(RADIO_STORAGE_KEYS.volume) !== null;
+  return true;
 }
 
 /**
@@ -285,6 +336,7 @@ function getState(): RadioState {
       stationEpoch: readStationEpoch(),
       trackDurations: {},
       inactivityTimer: null,
+      returnTimer: null,
       detachActivity: null,
       lastActivityAt: Date.now(),
       detachUnlock: null,
@@ -305,6 +357,7 @@ function getState(): RadioState {
     state.playlist ??= RADIO_PLAYLIST;
     state.pendingPlaylist ??= null;
     state.inactivityTimer ??= null;
+    state.returnTimer ??= null;
     state.detachActivity ??= null;
     state.lastActivityAt ??= Date.now();
   }
@@ -604,7 +657,11 @@ function fadeIn(audio: HTMLAudioElement, state: RadioState, durationMs: number):
   state.fadeFrame = window.requestAnimationFrame(tick);
 }
 
-function fadeOutThenMute(state: RadioState, durationMs = RADIO_INACTIVITY_FADE_MS): void {
+function fadeOutThenMute(
+  state: RadioState,
+  durationMs = RADIO_INACTIVITY_FADE_MS,
+  reason: "inactivity" | "hidden" = "inactivity",
+): void {
   const audio = state.element;
   if (!audio || state.muted || state.status !== "playing") return;
   cancelFade(state);
@@ -613,7 +670,7 @@ function fadeOutThenMute(state: RadioState, durationMs = RADIO_INACTIVITY_FADE_M
 
   const finish = () => {
     audio.volume = effectiveVolume(state);
-    applyMuted(state, true, "inactivity");
+    applyMuted(state, true, reason);
   };
   if (durationMs <= 0) {
     finish();
@@ -640,6 +697,82 @@ function clearInactivityTimer(state: RadioState): void {
   state.inactivityTimer = null;
 }
 
+function clearReturnTimer(state: RadioState): void {
+  if (state.returnTimer !== null) clearTimeout(state.returnTimer);
+  state.returnTimer = null;
+}
+
+/**
+ * Is Mogzy actually in front of somebody?
+ *
+ * Visibility is the authority and the only thing worth polling: a blurred but
+ * visible window is reported by an event, not by a readable flag jsdom or a
+ * headless host would agree on. Everything else here is driven by the real
+ * focus/visibility events rather than by asking after the fact.
+ */
+function isPageVisible(): boolean {
+  if (typeof document === "undefined") return true;
+  return document.visibilityState !== "hidden";
+}
+
+/**
+ * Silence the radio on the system's behalf.
+ *
+ * Two invariants, both load-bearing. A manual mute is never overwritten — the
+ * visitor's decision outranks any policy — and an already-silent station is
+ * left exactly as it is, so a tab switch that fires both `blur` and
+ * `visibilitychange` cannot churn the reason or stack a second fade.
+ */
+function applySystemMute(
+  state: RadioState,
+  reason: "inactivity" | "hidden",
+  fadeMs: number,
+): void {
+  if (state.muted || state.suppressedByMode || state.status !== "playing") return;
+  clearReturnTimer(state);
+  if (fadeMs > 0) fadeOutThenMute(state, fadeMs, reason);
+  else applyMuted(state, true, reason);
+}
+
+/**
+ * Come back from a system mute, gently.
+ *
+ * Returning is not the same as pressing Play. The station has been running the
+ * whole time, so this reconciles to the live position first, holds for a beat
+ * so the music does not arrive on top of the visitor's first click, and then
+ * ramps to their configured volume instead of snapping to it.
+ *
+ * Every reason to abandon the return is re-checked when the timer fires: the
+ * visitor may have muted by hand, left again, or handed the floor to a Mode
+ * during the grace period, and any of those outrank a scheduled fade-in.
+ */
+function scheduleAutomaticReturn(state: RadioState): void {
+  if (!state.muted || !isSystemMuteReason(state.muteReason)) return;
+  if (state.suppressedByMode || !state.playRadioByDefault) return;
+  if (!isPageVisible() || state.returnTimer !== null) return;
+
+  state.returnTimer = setTimeout(() => {
+    const current = getState();
+    current.returnTimer = null;
+    if (!current.muted || !isSystemMuteReason(current.muteReason)) return;
+    if (current.suppressedByMode || !current.playRadioByDefault) return;
+    if (!isPageVisible()) return;
+
+    current.lastActivityAt = Date.now();
+    const audio = current.element;
+    if (audio) {
+      // Drop to silence BEFORE lifting the mute: the element kept its pre-mute
+      // level while muted, and unmuting it at that level is exactly the
+      // full-volume surprise the fade exists to avoid.
+      cancelFade(current);
+      audio.volume = 0;
+      reconcileNativePosition(current, true);
+    }
+    applyMuted(current, false, null);
+    void startRadio({ automatic: false, fadeMs: RADIO_RETURN_FADE_MS });
+  }, RADIO_RETURN_GRACE_MS);
+}
+
 function scheduleInactivityMute(state: RadioState): void {
   clearInactivityTimer(state);
   if (!state.autoMuteWhenInactive || state.muted || state.status !== "playing") return;
@@ -658,14 +791,23 @@ export function evaluateRadioInactivity(
   const state = getState();
   if (
     state.autoMuteWhenInactive &&
-    !state.muted &&
-    !state.suppressedByMode &&
-    state.status === "playing" &&
     at - state.lastActivityAt >= RADIO_INACTIVITY_TIMEOUT_MS
-  ) fadeOutThenMute(state, fadeMs);
+  ) applySystemMute(state, "inactivity", fadeMs);
 }
 
-/** One global activity owner; activity reschedules while audible but never unmutes. */
+/**
+ * One global presence owner: the radio is audible while somebody is here and
+ * silent while they are not.
+ *
+ * Three signals, each covering a case the others cannot see. Interaction is
+ * what keeps the inactivity clock alive. `visibilitychange` is the authority on
+ * a tab switch. Window `blur`/`focus` is the ONLY signal for an alt-tab between
+ * applications, where the page never stops being `visible` and
+ * `visibilitychange` therefore never fires.
+ *
+ * Leaving is instant and returning is not: see applySystemMute() and
+ * scheduleAutomaticReturn() for why each direction is shaped the way it is.
+ */
 export function installRadioInactivityMonitor(): () => void {
   const noop = () => undefined;
   if (typeof window === "undefined" || typeof document === "undefined") return noop;
@@ -678,30 +820,49 @@ export function installRadioInactivityMonitor(): () => void {
     // A click or a keystroke is not a wake. Honour the drift tolerance so the
     // element is not re-seeked — and audibly stuttered — on every interaction.
     rejoinStation(false);
+    // Somebody is back at the keyboard: an idle mute may now be lifted, but
+    // only on the system's own terms and never a mute they asked for.
+    scheduleAutomaticReturn(current);
     scheduleInactivityMute(current);
   };
-  // Window focus is the only wake signal for an alt-tab between applications:
-  // the page never stops being `visible`, so `visibilitychange` never fires.
-  const onWake = () => {
+
+  /**
+   * Mogzy is no longer in front of anyone. Silence it at once and with no fade:
+   * requestAnimationFrame is throttled to a standstill in a hidden tab, so a
+   * ramp would never land and the music would keep playing at full volume in
+   * the background — the exact thing this is here to prevent.
+   */
+  const onLeave = () => {
+    const current = getState();
+    clearReturnTimer(current);
+    applySystemMute(current, "hidden", 0);
+  };
+
+  const onReturn = () => {
     const current = getState();
     current.lastActivityAt = Date.now();
     reconcileRadioOnWake();
+    scheduleAutomaticReturn(current);
     scheduleInactivityMute(current);
   };
+
   const onVisibility = () => {
-    const current = getState();
-    reconcileRadioOnWake();
-    if (document.visibilityState === "visible" && !current.muted) onActivity();
+    if (document.visibilityState === "hidden") onLeave();
+    else onReturn();
   };
+
   const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "touchstart"];
   events.forEach((event) => window.addEventListener(event, onActivity, { passive: true }));
-  window.addEventListener("focus", onWake, { passive: true });
+  window.addEventListener("focus", onReturn, { passive: true });
+  window.addEventListener("blur", onLeave, { passive: true });
   document.addEventListener("visibilitychange", onVisibility);
   const detach = () => {
     events.forEach((event) => window.removeEventListener(event, onActivity));
-    window.removeEventListener("focus", onWake);
+    window.removeEventListener("focus", onReturn);
+    window.removeEventListener("blur", onLeave);
     document.removeEventListener("visibilitychange", onVisibility);
     clearInactivityTimer(getState());
+    clearReturnTimer(getState());
     if (getState().detachActivity === detach) getState().detachActivity = null;
   };
   state.detachActivity = detach;
@@ -828,6 +989,8 @@ function applyMuted(
   if (state.element) state.element.muted = muted || state.suppressedByMode;
   writeStorage(RADIO_STORAGE_KEYS.muted, String(muted));
   writeStorage(RADIO_STORAGE_KEYS.muteReason, muted ? state.muteReason ?? "manual" : "none");
+  // Any settled mute decision outranks a fade-in that has not started yet.
+  clearReturnTimer(state);
   if (muted) clearInactivityTimer(state);
   else scheduleInactivityMute(state);
   emit(state);
@@ -835,7 +998,17 @@ function applyMuted(
 
 export function setRadioMuted(muted: boolean): void {
   const state = getState();
-  if (state.muted === muted) return;
+  if (state.muted === muted) {
+    // Already silent, but on the system's terms. Asking for it by hand makes the
+    // mute theirs, and that is exactly what forbids the automatic return: a
+    // system mute the visitor has since confirmed is no longer the system's to
+    // lift. Nothing is audible either way, so only the reason changes.
+    if (muted && isSystemMuteReason(state.muteReason)) {
+      state.lastActivityAt = Date.now();
+      applyMuted(state, true, "manual");
+    }
+    return;
+  }
   state.lastActivityAt = Date.now();
   applyMuted(state, muted, muted ? "manual" : null);
 
@@ -855,6 +1028,7 @@ export function setRadioSuppressedByMode(suppressed: boolean): void {
   if (state.suppressedByMode === suppressed) return;
   state.suppressedByMode = suppressed;
   if (state.element) state.element.muted = state.muted || suppressed;
+  if (suppressed) clearReturnTimer(state);
   if (suppressed) clearInactivityTimer(state);
   else if (!state.muted) scheduleInactivityMute(state);
   emit(state);
@@ -1125,12 +1299,34 @@ export function prepareRadio(): void {
   setStatus(state, "ready");
 }
 
+/**
+ * The startup attempt, made once the app has mounted.
+ *
+ * Radio is on by default, so the browser — not the app — decides whether that
+ * can be honoured immediately. A permitted autoplay swells in normally; a
+ * refusal is a silent non-event that leaves installFirstGestureUnlock()'s net
+ * armed, so the station simply starts on the visitor's first real interaction.
+ *
+ * Kept separate from prepareRadio(), whose contract is that it is never audible.
+ */
+export function attemptRadioAutostart(): Promise<boolean> {
+  const state = getState();
+  if (state.muted || state.suppressedByMode || !state.playRadioByDefault) {
+    return Promise.resolve(false);
+  }
+  // Starting into a tab nobody is looking at is the one thing presence forbids.
+  if (!isPageVisible()) return Promise.resolve(false);
+  return startRadio({ automatic: true, fadeMs: FADE_IN_MS });
+}
+
 /** Test-only: drops the cross-module singleton so specs start from silence. */
 export function resetRadioForTests(): void {
   const host = globalThis as StateHost;
   const state = host.__mogzyEntryMusic__;
   if (state) {
     cancelFade(state);
+    clearInactivityTimer(state);
+    clearReturnTimer(state);
     state.detachUnlock?.();
     state.detachActivity?.();
     state.listeners.clear();

@@ -2,7 +2,12 @@ export interface RadioEngineSnapshot {
   isPlaying: boolean;
   isAudible: boolean;
   muted: boolean;
-  muteReason: "manual" | "inactivity" | null;
+  /**
+   * Kept structurally in sync with RadioMuteReason in ./academy-radio, and
+   * spelled out here rather than imported: engine.ts consumes this contract and
+   * the store imports engine.ts, so a type import back would close the cycle.
+   */
+  muteReason: "manual" | "inactivity" | "hidden" | null;
   suppressedByMode: boolean;
   volume: number;
   trackId: string;

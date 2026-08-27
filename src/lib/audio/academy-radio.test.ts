@@ -18,9 +18,12 @@ import {
   RADIO_INACTIVITY_FADE_MS,
   RADIO_INACTIVITY_TIMEOUT_MS,
   RADIO_PLAYLIST,
+  RADIO_RETURN_FADE_MS,
+  RADIO_RETURN_GRACE_MS,
   RADIO_PREFERENCE_VERSION,
   RADIO_STORAGE_KEYS,
   adoptAcademyRadioPlaylist,
+  attemptRadioAutostart,
   getRadioSnapshot,
   evaluateRadioInactivity,
   installRadioInactivityMonitor,
@@ -110,6 +113,34 @@ function theAudio(): HTMLAudioElement {
   return audios[0];
 }
 
+const nativeVisibility = Object.getOwnPropertyDescriptor(
+  Document.prototype,
+  "visibilityState",
+);
+
+/** Drive real presence transitions rather than poking at store internals. */
+function setVisibility(value: DocumentVisibilityState) {
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    get: () => value,
+  });
+  document.dispatchEvent(new Event("visibilitychange"));
+}
+
+function restoreVisibility() {
+  delete (document as unknown as Record<string, unknown>).visibilityState;
+  if (nativeVisibility) {
+    Object.defineProperty(Document.prototype, "visibilityState", nativeVisibility);
+  }
+}
+
+/** Give the element a real duration so the live station offset can resolve. */
+function installDuration(seconds: number) {
+  Object.defineProperty(theAudio(), "duration", { configurable: true, value: seconds });
+  Object.defineProperty(theAudio(), "currentTime", { configurable: true, writable: true, value: 0 });
+  theAudio().dispatchEvent(new Event("loadedmetadata"));
+}
+
 /** Drops the singleton but keeps localStorage, the way a page reload does. */
 function simulateReload() {
   delete (globalThis as Record<string, unknown>)[STATE_KEY];
@@ -169,6 +200,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  restoreVisibility();
   resetRadioForTests();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -475,25 +507,44 @@ describe("Academy Radio — volume", () => {
 });
 
 describe("Academy Radio — Play Radio by default migration", () => {
-  it("migrates every persisted client once to OFF, muted, and 15% without moving the epoch", () => {
+  it("migrates every persisted client once to ON, unmuted, and 15% without moving the epoch", () => {
     const epoch = 1_700_000_000_000;
     localStorage.removeItem(RADIO_STORAGE_KEYS.preferenceVersion);
-    localStorage.setItem(RADIO_STORAGE_KEYS.playByDefault, "true");
-    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "false");
+    localStorage.setItem(RADIO_STORAGE_KEYS.playByDefault, "false");
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "true");
     localStorage.setItem(RADIO_STORAGE_KEYS.volume, "0.72");
     localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(epoch));
     simulateReload();
 
     expect(getRadioSnapshot()).toMatchObject({
-      playRadioByDefault: false,
-      muted: true,
-      muteReason: "manual",
-      volume: 0.15,
+      playRadioByDefault: true,
+      muted: false,
+      muteReason: null,
+      volume: DEFAULT_MUSIC_VOLUME,
       stationEpoch: epoch,
     });
     expect(localStorage.getItem(RADIO_STORAGE_KEYS.preferenceVersion)).toBe(
       String(RADIO_PREFERENCE_VERSION),
     );
+  });
+
+  it("carries the cohort v1 forced OFF across exactly once", () => {
+    // Precisely the state the superseded v1 migration left behind.
+    localStorage.setItem(RADIO_STORAGE_KEYS.preferenceVersion, "1");
+    localStorage.setItem(RADIO_STORAGE_KEYS.playByDefault, "false");
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "true");
+    localStorage.setItem(RADIO_STORAGE_KEYS.muteReason, "manual");
+    simulateReload();
+
+    expect(getRadioSnapshot()).toMatchObject({
+      playRadioByDefault: true, muted: false, volume: DEFAULT_MUSIC_VOLUME,
+    });
+
+    // ...and their next decision is theirs to keep.
+    setPlayRadioByDefault(false);
+    setRadioMuted(true);
+    simulateReload();
+    expect(getRadioSnapshot()).toMatchObject({ playRadioByDefault: false, muted: true });
   });
 
   it("runs once and never overwrites later listener changes", () => {
@@ -510,10 +561,42 @@ describe("Academy Radio — Play Radio by default migration", () => {
       volume: 0.48,
     });
   });
-  it("defaults genuinely new browsers off and ignores noticeSeen alone", () => {
-    expect(resolvePlayRadioByDefault()).toBe(false);
+  it("defaults a genuinely new browser on, with a dismissed notice still not a preference", () => {
+    expect(resolvePlayRadioByDefault()).toBe(true);
     localStorage.setItem(RADIO_STORAGE_KEYS.noticeSeen, "true");
-    expect(resolvePlayRadioByDefault()).toBe(false);
+    expect(resolvePlayRadioByDefault()).toBe(true);
+    // The notice records only that they saw it — never a playback choice.
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.playByDefault)).toBeNull();
+  });
+
+  it("starts a default-on visitor at 15% when the browser permits it", async () => {
+    prepareRadio();
+
+    await expect(attemptRadioAutostart()).resolves.toBe(true);
+
+    expect(getRadioSnapshot()).toMatchObject({ isPlaying: true, muted: false });
+    expect(getRadioSnapshot().volume).toBe(DEFAULT_MUSIC_VOLUME);
+    // A swell, not a jump: the ramp has to be walked to reach the target.
+    expect(theAudio().volume).toBe(0);
+    advanceFrames(FADE_IN_MS);
+    expect(theAudio().volume).toBeCloseTo(DEFAULT_MUSIC_VOLUME, 5);
+  });
+
+  it("leaves the autostart to the first gesture when the browser refuses it", async () => {
+    play.mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
+    prepareRadio();
+
+    await expect(attemptRadioAutostart()).resolves.toBe(false);
+
+    expect(getRadioSnapshot()).toMatchObject({ isPlaying: false, status: "blocked" });
+  });
+
+  it("makes no startup attempt for a visitor who turned Radio off", async () => {
+    setPlayRadioByDefault(false);
+    prepareRadio();
+
+    await expect(attemptRadioAutostart()).resolves.toBe(false);
+    expect(play).not.toHaveBeenCalled();
   });
 
   it("derives the preference from legacy mute state", () => {
@@ -658,12 +741,6 @@ describe("Academy Radio — one-track playlist", () => {
 });
 
 describe("Academy Radio — live station clock", () => {
-  function installDuration(seconds: number) {
-    Object.defineProperty(theAudio(), "duration", { configurable: true, value: seconds });
-    Object.defineProperty(theAudio(), "currentTime", { configurable: true, writable: true, value: 0 });
-    theAudio().dispatchEvent(new Event("loadedmetadata"));
-  }
-
   it("tunes in at the deterministic station position", async () => {
     const wallClock = 1_800_000_000_000;
     vi.spyOn(Date, "now").mockReturnValue(wallClock);
@@ -790,22 +867,73 @@ describe("Academy Radio — live station clock", () => {
 
 });
 
+const POLICY_TIMERS = {
+  toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
+} as const;
+
 describe("Academy Radio — inactivity policy", () => {
-  beforeEach(() => vi.useFakeTimers());
+  // Deliberately NOT the default fake-timer set: it would also fake
+  // requestAnimationFrame and take the hand-driven frame loop these specs use
+  // to walk a fade frame by frame.
+  beforeEach(() => vi.useFakeTimers({ toFake: [...POLICY_TIMERS.toFake] }));
   afterEach(() => vi.useRealTimers());
 
-  it("fades an audible station to an inactivity mute and never auto-unmutes", async () => {
+  it("gives the listener two minutes before deciding nobody is there", () => {
+    expect(RADIO_INACTIVITY_TIMEOUT_MS).toBe(2 * 60 * 1000);
+  });
+
+  it("mutes on its own two minutes after the last interaction", async () => {
     prepareRadio();
     installRadioInactivityMonitor();
     await playRadio();
 
+    vi.advanceTimersByTime(RADIO_INACTIVITY_TIMEOUT_MS - 1);
+    expect(getRadioSnapshot().isAudible).toBe(true);
+
+    vi.advanceTimersByTime(1);
+    advanceFrames(RADIO_INACTIVITY_FADE_MS);
+
+    expect(getRadioSnapshot()).toMatchObject({
+      muted: true, muteReason: "inactivity", isAudible: false,
+      // The transport is untouched: this is a mute, not a stop.
+      isPlaying: true,
+    });
+  });
+
+  it("fades out rather than cutting off, and the fade is what mutes", async () => {
+    prepareRadio();
+    installRadioInactivityMonitor();
+    await playRadio();
+    advanceFrames(FADE_IN_MS);
+    expect(theAudio().volume).toBeCloseTo(DEFAULT_MUSIC_VOLUME, 5);
+
+    evaluateRadioInactivity(Date.now() + RADIO_INACTIVITY_TIMEOUT_MS);
+
+    advanceFrames(RADIO_INACTIVITY_FADE_MS / 2);
+    // Half way down, and still not muted: the mute lands with the fade.
+    expect(theAudio().volume).toBeCloseTo(DEFAULT_MUSIC_VOLUME / 2, 5);
+    expect(getRadioSnapshot().muted).toBe(false);
+
+    advanceFrames(RADIO_INACTIVITY_FADE_MS / 2);
+    expect(getRadioSnapshot()).toMatchObject({ muted: true, muteReason: "inactivity" });
+  });
+
+  it("holds the fade-in behind a grace period rather than resuming under their hand", async () => {
+    prepareRadio();
+    installRadioInactivityMonitor();
+    await playRadio();
     evaluateRadioInactivity(Date.now() + RADIO_INACTIVITY_TIMEOUT_MS, 0);
 
-    expect(getRadioSnapshot().muteReason).toBe("inactivity");
-    expect(getRadioSnapshot().isPlaying).toBe(true);
-    expect(getRadioSnapshot().isAudible).toBe(false);
     window.dispatchEvent(new Event("pointerdown"));
+
+    // The click itself must not make noise — the return is deliberately late.
     expect(getRadioSnapshot().muted).toBe(true);
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS - 1);
+    expect(getRadioSnapshot().muted).toBe(true);
+
+    vi.advanceTimersByTime(1);
+    expect(getRadioSnapshot()).toMatchObject({ muted: false, muteReason: null });
+    expect(theAudio().volume).toBe(0);
   });
 
   it("does nothing when the inactivity preference is disabled", async () => {
@@ -829,9 +957,206 @@ describe("Academy Radio — inactivity policy", () => {
 
     vi.advanceTimersByTime(RADIO_INACTIVITY_TIMEOUT_MS);
     window.dispatchEvent(new Event("keydown"));
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS * 4);
 
     expect(getRadioSnapshot().muteReason).toBe("manual");
     expect(getRadioSnapshot().muted).toBe(true);
+  });
+
+  it("never lets an idle mute overwrite a mute the visitor asked for", async () => {
+    prepareRadio();
+    installRadioInactivityMonitor();
+    await playRadio();
+    setRadioMuted(true);
+
+    evaluateRadioInactivity(Date.now() + RADIO_INACTIVITY_TIMEOUT_MS, 0);
+
+    expect(getRadioSnapshot().muteReason).toBe("manual");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+describe("Academy Radio — presence", () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: [...POLICY_TIMERS.toFake] }));
+  afterEach(() => vi.useRealTimers());
+
+  /** An audible station with the presence monitor running. */
+  async function tunedIn() {
+    prepareRadio();
+    const detach = installRadioInactivityMonitor();
+    await playRadio();
+    advanceFrames(FADE_IN_MS);
+    expect(getRadioSnapshot().isAudible).toBe(true);
+    return detach;
+  }
+
+  it("mutes the moment the tab is hidden, with no fade to be throttled", async () => {
+    const detach = await tunedIn();
+
+    setVisibility("hidden");
+
+    // Immediate: a hidden tab throttles rAF, so a ramp would never land.
+    expect(getRadioSnapshot()).toMatchObject({
+      muted: true, muteReason: "hidden", isAudible: false,
+    });
+    expect(pause).not.toHaveBeenCalled();
+    detach();
+  });
+
+  it("mutes on window blur, which is the only signal an alt-tab produces", async () => {
+    const detach = await tunedIn();
+
+    // The page never stops being `visible` when another application takes over.
+    window.dispatchEvent(new Event("blur"));
+
+    expect(getRadioSnapshot()).toMatchObject({ muted: true, muteReason: "hidden" });
+    detach();
+  });
+
+  it("is not a manual mute, and does not churn when blur and hide both fire", async () => {
+    const detach = await tunedIn();
+
+    window.dispatchEvent(new Event("blur"));
+    setVisibility("hidden");
+    window.dispatchEvent(new Event("blur"));
+
+    expect(getRadioSnapshot().muteReason).toBe("hidden");
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.muteReason)).toBe("hidden");
+    detach();
+  });
+
+  it("keeps the logical station running while hidden and rejoins the live offset", async () => {
+    let wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock));
+    prepareRadio();
+    const detach = installRadioInactivityMonitor();
+    installDuration(600);
+    await playRadio();
+
+    setVisibility("hidden");
+    expect(getRadioSnapshot().stationElapsedSeconds).toBeCloseTo(0, 5);
+    wallClock += 90_000;
+
+    setVisibility("visible");
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS);
+
+    // The station is wall-clock, not playback: ninety seconds passed while it
+    // was silent, and coming back rejoins there rather than where it left off.
+    expect(getRadioSnapshot().stationElapsedSeconds).toBeCloseTo(90, 5);
+    expect(theAudio().currentTime).toBeCloseTo(90, 5);
+    expect(getRadioSnapshot().muted).toBe(false);
+    detach();
+  });
+
+  it("returns by fading in gradually rather than snapping to full volume", async () => {
+    const detach = await tunedIn();
+    setVisibility("hidden");
+    setVisibility("visible");
+
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS);
+    expect(theAudio().volume).toBe(0);
+
+    advanceFrames(RADIO_RETURN_FADE_MS / 3);
+    const partway = theAudio().volume;
+    expect(partway).toBeGreaterThan(0);
+    expect(partway).toBeLessThan(DEFAULT_MUSIC_VOLUME);
+
+    advanceFrames(RADIO_RETURN_FADE_MS);
+    expect(theAudio().volume).toBeCloseTo(DEFAULT_MUSIC_VOLUME, 5);
+    detach();
+  });
+
+  it("resumes the running transport instead of restarting the track at zero", async () => {
+    const detach = await tunedIn();
+    play.mockClear();
+    load.mockClear();
+
+    setVisibility("hidden");
+    setVisibility("visible");
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS);
+
+    // Muting never paused it, so there is nothing to re-issue and nothing to reload.
+    expect(play).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+    expect(getRadioSnapshot().isPlaying).toBe(true);
+    detach();
+  });
+
+  it("does not auto-resume a mute the visitor asked for", async () => {
+    const detach = await tunedIn();
+    setRadioMuted(true);
+
+    setVisibility("hidden");
+    setVisibility("visible");
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("pointerdown"));
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS * 4);
+
+    expect(getRadioSnapshot()).toMatchObject({ muted: true, muteReason: "manual" });
+    detach();
+  });
+
+  it("abandons a scheduled return if the visitor mutes during the grace period", async () => {
+    const detach = await tunedIn();
+    setVisibility("hidden");
+    setVisibility("visible");
+
+    setRadioMuted(true);
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS * 4);
+
+    expect(getRadioSnapshot()).toMatchObject({ muted: true, muteReason: "manual" });
+    detach();
+  });
+
+  it("abandons a scheduled return if Mogzy is left again before it fires", async () => {
+    const detach = await tunedIn();
+    setVisibility("hidden");
+    setVisibility("visible");
+
+    setVisibility("hidden");
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS * 4);
+
+    expect(getRadioSnapshot()).toMatchObject({ muted: true, muteReason: "hidden" });
+    detach();
+  });
+
+  it("does not resume a visitor who has turned Radio off", async () => {
+    const detach = await tunedIn();
+    setVisibility("hidden");
+    setPlayRadioByDefault(false);
+    setVisibility("visible");
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS * 4);
+
+    expect(getRadioSnapshot().muted).toBe(true);
+    detach();
+  });
+
+  it("leaves a Mode-owned floor alone in both directions", async () => {
+    const detach = await tunedIn();
+    setRadioSuppressedByMode(true);
+
+    setVisibility("hidden");
+    // Nothing was audible to silence, so no system mute is recorded.
+    expect(getRadioSnapshot()).toMatchObject({ muted: false, muteReason: null });
+
+    setVisibility("visible");
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS * 4);
+    setRadioSuppressedByMode(false);
+
+    expect(getRadioSnapshot()).toMatchObject({ muted: false, isAudible: true });
+    detach();
+  });
+
+  it("stops watching once detached", async () => {
+    const detach = await tunedIn();
+    detach();
+
+    setVisibility("hidden");
+    window.dispatchEvent(new Event("blur"));
+
+    expect(getRadioSnapshot().muted).toBe(false);
   });
 });
 

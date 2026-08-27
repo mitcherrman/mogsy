@@ -150,16 +150,34 @@ describe("EntryMusicController — nothing happens without a gesture", () => {
     expect((globalThis as Record<string, unknown>)[STATE_KEY]).toBeUndefined();
   });
 
-  it("mounting the controller prepares one element and starts no playback", () => {
+  it("mounting the controller prepares one element and makes one startup attempt", async () => {
     render(<EntryMusicController />);
 
     expect(audioCreations).toBe(1);
-    expect(play).not.toHaveBeenCalled();
-    // Silent, looping, and pre-buffered — but not sounding.
+    // Radio is default-on, so mounting asks once — and the browser decides.
+    expect(play).toHaveBeenCalledTimes(1);
+    // Looping, pre-buffered, and starting from silence rather than at 15%.
     expect(theAudio().volume).toBe(0);
     expect(theAudio().loop).toBe(true);
     expect(theAudio().preload).toBe("auto");
     expect(load).toHaveBeenCalledTimes(1);
+
+    // The ramp is armed only once play() resolves, one microtask turn later.
+    await Promise.resolve();
+    await Promise.resolve();
+    advanceFrames(FADE_IN_MS);
+    expect(theAudio().volume).toBeCloseTo(TARGET_VOLUME, 5);
+  });
+
+  it("makes no startup attempt for a visitor who has turned Radio off", () => {
+    resetEntryMusicForTests();
+    setPlayRadioByDefault(false);
+
+    render(<EntryMusicController />);
+
+    expect(audioCreations).toBe(1);
+    expect(play).not.toHaveBeenCalled();
+    expect(theAudio().volume).toBe(0);
   });
 
   it("offers WebM/Opus first and MP3 as the fallback", () => {
@@ -171,21 +189,33 @@ describe("EntryMusicController — nothing happens without a gesture", () => {
     expect(sources[1].getAttribute("src")).toBe("/audio/music/tidecaller.mp3");
   });
 
-  it("mounting twice never creates a second element", () => {
+  it("mounting twice never creates a second element or a second start", () => {
     const first = render(<EntryMusicController />);
     render(<EntryMusicController />);
 
     expect(audioCreations).toBe(1);
+    // The second mount finds the station already sounding and leaves it alone.
+    expect(play).toHaveBeenCalledTimes(1);
 
     // Unmounting the entrance-side mount must not silence the shared element.
     first.unmount();
-    expect(play).not.toHaveBeenCalled();
+    expect(play).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("startEntryMusic — the gesture path", () => {
-  it("keeps a genuinely new visitor silent", async () => {
+  it("starts a genuinely new visitor, who is now default-on", async () => {
     resetEntryMusicForTests();
+    render(<EntryMusicController />);
+
+    await expect(startEntryMusic()).resolves.toBe(true);
+    // The mount already started it; the entrance gesture must not stack a second.
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a visitor who turned Radio off silent", async () => {
+    resetEntryMusicForTests();
+    setPlayRadioByDefault(false);
     render(<EntryMusicController />);
 
     await expect(startEntryMusic()).resolves.toBe(false);

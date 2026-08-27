@@ -16,8 +16,10 @@ import AcademyRadioControls from "./AcademyRadioControls";
 import {
   DEFAULT_MUSIC_VOLUME,
   getRadioSnapshot,
+  playRadio,
   RADIO_STORAGE_KEYS,
   resetRadioForTests,
+  setRadioMuted,
 } from "@/lib/audio/academy-radio";
 
 const mocks = vi.hoisted(() => ({ reducedMotion: false }));
@@ -290,7 +292,7 @@ describe("Academy Radio controls — HUD notice", () => {
     expect(notice()).not.toHaveClass("h-8");
   });
 
-  it("rotates only the two approved strings and carries no subtitle", () => {
+  it("rotates only the two approved strings while the radio is still silent", () => {
     vi.useFakeTimers();
     render(<AcademyRadioControls variant="hud" />);
 
@@ -346,6 +348,51 @@ describe("Academy Radio controls — HUD notice", () => {
     render(<AcademyRadioControls variant="hud" />);
 
     expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
+  });
+
+  it("drops the invitation once the radio is actually audible", async () => {
+    render(<AcademyRadioControls variant="hud" />);
+    expect(notice().textContent).toBe("Turn on the Radio!");
+
+    await act(async () => { await playRadio(); });
+
+    // Nothing to turn on any more — discovery is all that is left to offer.
+    expect(getRadioSnapshot().isAudible).toBe(true);
+    expect(notice().textContent).toBe("See what's playing!");
+  });
+
+  it("does not rotate the invitation back in once audible", async () => {
+    render(<AcademyRadioControls variant="hud" />);
+    await act(async () => { await playRadio(); });
+
+    // Fake timers only for the rotation window, so nothing async runs under them.
+    vi.useFakeTimers();
+    act(() => vi.advanceTimersByTime(21_000));
+    vi.useRealTimers();
+
+    expect(notice().textContent).toBe("See what's playing!");
+  });
+
+  it("does not nag a visitor who muted the radio themselves", async () => {
+    render(<AcademyRadioControls variant="hud" />);
+    await act(async () => { await playRadio(); });
+
+    act(() => setRadioMuted(true));
+
+    expect(getRadioSnapshot().muteReason).toBe("manual");
+    expect(notice().textContent).toBe("See what's playing!");
+  });
+
+  it("keeps the invitation while startup has not succeeded yet", async () => {
+    // Autoplay refused: the station has never sounded, so turning it on really
+    // is the next step and the invitation is still the honest copy.
+    play.mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
+    render(<AcademyRadioControls variant="hud" />);
+
+    await act(async () => { await playRadio(); });
+
+    expect(getRadioSnapshot().status).toBe("blocked");
+    expect(notice().textContent).toBe("Turn on the Radio!");
   });
 
   it("is never a toast and never announces itself", () => {

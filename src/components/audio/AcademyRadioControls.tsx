@@ -44,10 +44,15 @@ const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
 };
 
 /**
- * The whole of the notice's copy. Two strings, rotated — no subtitle and no
- * second line, so the container can be sized by its text instead of a box.
+ * The whole of the notice's copy. No subtitle and no second line, so the
+ * container can be sized by its text instead of a box.
+ *
+ * Discovery is always worth offering. The invitation to turn the radio on is
+ * only honest while it is genuinely off, so it is rotated in conditionally —
+ * see `canPromptToTuneIn` below.
  */
-const HUD_NOTICE_PROMPTS = ["Turn on the Radio!", "See what's playing!"] as const;
+const HUD_NOTICE_DISCOVERY = "See what's playing!";
+const HUD_NOTICE_PROMPTS = ["Turn on the Radio!", HUD_NOTICE_DISCOVERY] as const;
 
 const iconButton =
   "inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors " +
@@ -99,6 +104,21 @@ export default function AcademyRadioControls({
   const statusLabel = STATUS_LABEL[radio.status];
   const volumePercent = Math.round(radio.volume * 100);
 
+  /**
+   * Offer to turn the radio on only when that is actually the missing step: the
+   * station has never sounded AND the silence is not the visitor's own doing.
+   *
+   * That leaves exactly one case rotating the invitation — startup or autoplay
+   * has not succeeded yet. A mute the visitor chose is not something to nag
+   * them out of; a Mode holding the floor is not theirs to override; and an
+   * automatic idle or hidden-tab mute lifts itself the moment they come back.
+   * In all of those the notice falls back to plain discovery.
+   */
+  const canPromptToTuneIn = !radio.isPlaying && !radio.muted;
+  const noticePrompt = canPromptToTuneIn
+    ? HUD_NOTICE_PROMPTS[promptIndex % HUD_NOTICE_PROMPTS.length]
+    : HUD_NOTICE_DISCOVERY;
+
   // Dismiss the panel the way every other transient surface does: click away or
   // press Escape. Keyboard users are never trapped inside it.
   useEffect(() => {
@@ -118,14 +138,15 @@ export default function AcademyRadioControls({
   }, [panelOpen]);
 
   useEffect(() => {
-    // Rotating copy is motion. Reduced motion keeps the first prompt still.
-    if (variant !== "hud" || reducedMotion || noticeDismissed) return;
+    // Rotating copy is motion. Reduced motion keeps the first prompt still, and
+    // a notice that is down to one string has nothing to rotate.
+    if (variant !== "hud" || reducedMotion || noticeDismissed || !canPromptToTuneIn) return;
     const timer = window.setInterval(
       () => setPromptIndex((index) => (index + 1) % HUD_NOTICE_PROMPTS.length),
       7000,
     );
     return () => window.clearInterval(timer);
-  }, [variant, reducedMotion, noticeDismissed]);
+  }, [variant, reducedMotion, noticeDismissed, canPromptToTuneIn]);
 
   /**
    * One dismissal for both routes into it — clicking the notice, and using the
@@ -299,7 +320,7 @@ export default function AcademyRadioControls({
             data-testid="academy-radio-hud-prompt"
             aria-hidden="true"
           >
-            {HUD_NOTICE_PROMPTS[promptIndex]}
+            {noticePrompt}
           </div>
         )}
         {panelOpen && panel(true)}
