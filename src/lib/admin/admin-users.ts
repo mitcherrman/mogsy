@@ -24,6 +24,86 @@ import { usernameMessage } from "@/lib/identity/username";
 
 export const ADMIN_USERS_PATH = "/admin/users";
 
+/**
+ * Verified external identities, as the directory is allowed to hold them.
+ *
+ * `admin_list_identity_links()` returns BOTH `user_id` and `profile_id`. Only
+ * `profile_id` is read here. The auth id exists in that RPC so an admin running
+ * SQL can reconcile a link whose profile row is missing — it is not something
+ * this module carries, for the same reason `toDirectoryProfile` drops it.
+ *
+ * There is no ticket hash, no pending record and no token in this shape,
+ * because none of those are verified associations and none belong on a screen.
+ */
+export interface AdminDiscordIdentity {
+  username: string | null;
+  displayName: string | null;
+  contactConsent: boolean;
+  verifiedAt: string | null;
+}
+
+export interface AdminRiotIdentity {
+  gameName: string | null;
+  tagLine: string | null;
+  verifiedAt: string | null;
+}
+
+export interface AdminIdentitySummary {
+  discord: AdminDiscordIdentity | null;
+  riot: AdminRiotIdentity | null;
+}
+
+export const EMPTY_IDENTITIES: AdminIdentitySummary = { discord: null, riot: null };
+
+/**
+ * Identities for a profile, tolerating a row that predates the field.
+ * Filtering and search must never throw on a profile assembled elsewhere.
+ */
+export function identitiesOf(p: Pick<AdminDirectoryProfile, "identities">): AdminIdentitySummary {
+  return p.identities ?? EMPTY_IDENTITIES;
+}
+
+/** `gameName#tagLine`, or null when neither half is present. */
+export function riotIdLabel(riot: AdminRiotIdentity | null): string | null {
+  if (!riot) return null;
+  if (riot.gameName && riot.tagLine) return `${riot.gameName}#${riot.tagLine}`;
+  return riot.gameName ?? riot.tagLine ?? null;
+}
+
+/** Raw `admin_list_identity_links()` rows, grouped by the PUBLIC profile id. */
+export function groupIdentityLinks(
+  rows: Record<string, unknown>[],
+): Map<string, AdminIdentitySummary> {
+  const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
+  const byProfile = new Map<string, AdminIdentitySummary>();
+  for (const row of rows) {
+    // A link whose user has no profile row cannot be placed on a card. It is
+    // surfaced as an unreconciled count instead of being silently dropped.
+    const profileId = str(row.profile_id);
+    if (!profileId) continue;
+    // An unrecognised provider records nothing at all, so it cannot leave an
+    // empty entry behind that reads as "this profile has identities".
+    if (row.provider !== "discord" && row.provider !== "riot") continue;
+    const current = byProfile.get(profileId) ?? { discord: null, riot: null };
+    if (row.provider === "discord") {
+      current.discord = {
+        username: str(row.username),
+        displayName: str(row.display_name),
+        contactConsent: row.contact_consent === true,
+        verifiedAt: str(row.verified_at),
+      };
+    } else {
+      current.riot = {
+        gameName: str(row.username),
+        tagLine: str(row.tag_line),
+        verifiedAt: str(row.verified_at),
+      };
+    }
+    byProfile.set(profileId, current);
+  }
+  return byProfile;
+}
+
 /** The only profile fields the admin directory may hold or render. */
 export interface AdminDirectoryProfile {
   /** public.profiles.id — the public profile identifier used in /user/:profileId */
@@ -40,6 +120,8 @@ export interface AdminDirectoryProfile {
   onboardingCompleted: boolean;
   /** Role names from public.user_roles, resolved separately. */
   roles: string[];
+  /** Verified external identities, resolved separately. */
+  identities: AdminIdentitySummary;
 }
 
 /**
@@ -64,6 +146,7 @@ export function toDirectoryProfile(row: Record<string, unknown>): AdminDirectory
     isAnonymous: bool(row.is_anonymous),
     onboardingCompleted: bool(row.onboarding_completed),
     roles: [],
+    identities: EMPTY_IDENTITIES,
   };
 }
 
@@ -83,6 +166,10 @@ export const DIRECTORY_FILTERS = [
   "disabled-bots",
   "pro",
   "admins",
+  // Who has actually agreed to be contacted on Discord. This is the list the
+  // owner recruits playtesters from, and it must never be approximated by
+  // "has Discord linked" — linking is not consent.
+  "discord-contact",
 ] as const;
 export type DirectoryFilter = (typeof DIRECTORY_FILTERS)[number];
 
@@ -106,6 +193,7 @@ export const DIRECTORY_FILTER_LABELS: Record<DirectoryFilter, string> = {
   "disabled-bots": "Disabled bots",
   pro: "Pro",
   admins: "Admins",
+  "discord-contact": "Discord contact OK",
 };
 
 const ADMIN_ROLES = new Set(["admin", "master_admin"]);
@@ -129,14 +217,32 @@ export function matchesFilter(p: AdminDirectoryProfile, filter: DirectoryFilter)
       return p.isPro;
     case "admins":
       return p.roles.some((r) => ADMIN_ROLES.has(r));
+    case "discord-contact":
+      return identitiesOf(p).discord?.contactConsent === true;
   }
 }
 
-/** Case-insensitive display-name substring match. Empty query matches all. */
+/**
+ * Case-insensitive substring match over the display name and any verified
+ * external identity.
+ *
+ * Searching a Discord name or a Riot ID matters because that is often the only
+ * name the owner knows a tester by — they met them in a Discord server, not in
+ * the Mogzy directory. The Riot ID matches both as `gameName` alone and as the
+ * full `gameName#tagLine`.
+ */
 export function matchesSearch(p: AdminDirectoryProfile, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return (p.displayName ?? "").toLowerCase().includes(q);
+  const identities = identitiesOf(p);
+  const haystack = [
+    p.displayName,
+    identities.discord?.username,
+    identities.discord?.displayName,
+    identities.riot?.gameName,
+    riotIdLabel(identities.riot),
+  ];
+  return haystack.some((v) => (v ?? "").toLowerCase().includes(q));
 }
 
 /** Newest accounts first. Rows with no created_at sort last, stably. */
@@ -233,11 +339,26 @@ function readJson(data: unknown): Record<string, unknown> | null {
  * It is never stored in the returned objects.
  */
 export async function fetchAdminDirectory(): Promise<AdminDirectoryProfile[]> {
-  const [{ data: profileRows, error }, { data: roleRows }] = await Promise.all([
-    supabase.rpc("admin_list_profiles" as never),
-    supabase.from("user_roles").select("user_id, role"),
-  ]);
+  const [{ data: profileRows, error }, { data: roleRows }, { data: identityRows }] =
+    await Promise.all([
+      supabase.rpc("admin_list_profiles" as never),
+      supabase.from("user_roles").select("user_id, role"),
+      // Same shape of join as roles: a separate authorised RPC, merged in
+      // memory. It reuses the existing has_role admin architecture and returns
+      // no token, no ticket and no pending record. A failure here degrades the
+      // identity columns to empty rather than failing the whole directory.
+      supabase.rpc("admin_list_identity_links" as never).then(
+        (r) => r,
+        () => ({ data: null }),
+      ),
+    ]);
   if (error) throw error;
+
+  // Shape-guarded rather than cast: an unexpected payload must degrade the
+  // identity columns to empty, never take the whole directory down with it.
+  const identitiesByProfile = groupIdentityLinks(
+    Array.isArray(identityRows) ? (identityRows as Record<string, unknown>[]) : [],
+  );
 
   const rolesByUser = new Map<string, string[]>();
   for (const r of (roleRows ?? []) as { user_id: string; role: string }[]) {
@@ -250,8 +371,11 @@ export async function fetchAdminDirectory(): Promise<AdminDirectoryProfile[]> {
   return raw.map((row) => {
     const roles = rolesByUser.get(String(row.user_id ?? "")) ?? [];
     // `row.user_id` is read here and nowhere else; toDirectoryProfile does not
-    // copy it, so it does not survive into component state.
-    return { ...toDirectoryProfile(row), roles };
+    // copy it, so it does not survive into component state. Identities are
+    // keyed by the PUBLIC profile id for the same reason.
+    const base = toDirectoryProfile(row);
+    const identities = identitiesByProfile.get(base.id) ?? EMPTY_IDENTITIES;
+    return { ...base, roles, identities };
   });
 }
 

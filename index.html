@@ -3,6 +3,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Same as the modern browser default, stated explicitly: cross-origin
+         requests send only the origin, never the path or query. The identity
+         link callback briefly carries a redemption ticket in the query string,
+         and this keeps it out of any Referer header. -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mogzy — League of Legends Quiz &amp; Game Knowledge</title>
     <meta name="description" content="Test your League of Legends knowledge on Mogzy: LoL quiz, item builds, champion abilities and cooldowns, esports trivia, and game knowledge challenges." />

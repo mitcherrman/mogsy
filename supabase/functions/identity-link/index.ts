@@ -10,7 +10,8 @@
 //
 //   start    (POST, authenticated)  → records an attempt, returns authorize URL
 //   callback (GET,  unauthenticated) → proves ownership, parks a PENDING identity
-//   redeem   (POST, authenticated)  → commits the link
+//   preview  (POST, authenticated)  → shows WHICH account, consuming nothing
+//   redeem   (POST, authenticated)  → commits the link, on explicit confirmation
 //
 // The middle leg is unauthenticated because Discord and Riot redirect a
 // browser to us and will not carry a Mogzy JWT. The previous implementation
@@ -338,8 +339,19 @@ async function handle(req: Request): Promise<Response> {
     if (!origin) return json({ error: "invalid_origin" }, 400);
     const path = safeReturnPath(body.returnTo);
 
+    // Opportunistic cleanup. A ceremony abandoned at the provider's consent
+    // screen never reaches the callback, so this is the only step that can
+    // reliably sweep it. Failure here must never block a link — and note the
+    // query builder is a thenable, not a Promise, so it carries no .catch().
+    const admin = adminClient();
+    try {
+      await admin.rpc("identity_link_purge_expired");
+    } catch {
+      console.error("[identity-link] purge failed");
+    }
+
     const expiresAt = Date.now() + ATTEMPT_TTL_MS;
-    const { data: attempt, error } = await adminClient()
+    const { data: attempt, error } = await admin
       .from("identity_link_attempts")
       .insert({
         user_id: userId,
@@ -361,6 +373,44 @@ async function handle(req: Request): Promise<Response> {
         discordAuthorize: "https://discord.com/oauth2/authorize",
         riotAuthorize: `${RIOT_AUTH_BASE}/authorize`,
       }),
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // LEG 2.5 — preview. Read-only. Shows WHICH account is about to be linked.
+  //
+  // Bound to the authenticated caller exactly as redeem is, and deliberately
+  // NOT consuming: a user who previews and then walks away has spent nothing,
+  // and a wrong-user preview returns the same generic result as a ticket that
+  // never existed, so it reveals nothing about whose ceremony it is.
+  //
+  // Returns display-safe fields only. provider_user_id — the Discord snowflake
+  // and the Riot PUUID — is a durable cross-service identifier that the
+  // confirmation UI does not need, so it never leaves the server.
+  // -------------------------------------------------------------------------
+  if (action === "preview") {
+    const ticket = body.ticket;
+    if (typeof ticket !== "string" || !ticket) return json({ error: "invalid_ticket" }, 400);
+
+    const { data, error } = await adminClient().rpc("identity_link_preview", {
+      p_ticket_hash: await hashTicket(ticket),
+      p_user_id: userId,
+    });
+    if (error) {
+      console.error("[identity-link] preview failed");
+      return json({ error: "preview_failed" }, 500);
+    }
+    const row = Array.isArray(data) ? data[0] : null;
+    if (!row) return json({ error: "invalid_ticket" }, 400);
+
+    return json({
+      identity: {
+        provider: row.out_provider,
+        username: row.out_username,
+        displayName: row.out_display_name,
+        tagLine: row.out_tag_line,
+        avatarUrl: row.out_avatar_url,
+      },
     });
   }
 

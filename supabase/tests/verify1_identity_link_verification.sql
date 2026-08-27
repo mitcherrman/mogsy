@@ -16,7 +16,8 @@
 -- "VERIFY1 HARNESS PASSED" and leaves no residue. Prefer staging; it is safe on
 -- production only because it rolls back, and the rollback is not optional.
 --
--- Each assertion names the numbered case from the VERIFY1 Phase 2 test plan.
+-- Each assertion names the numbered case from the VERIFY1 Phase 2 test plan,
+-- plus the preview cases added with the confirmation step.
 -- ===========================================================================
 
 BEGIN;
@@ -168,6 +169,66 @@ BEGIN
   RAISE NOTICE 'server-side ceremony cases passed (1,2,3,4,5,15,16,17)';
 END
 $harness$;
+
+-- ===========================================================================
+-- PREVIEW — the confirmation step must show, and commit nothing.
+--
+-- Preview is what lets a user see WHICH external account they are about to
+-- attach. It is only safe if it is read-only and bound to the same user as
+-- redemption, so these assert exactly that.
+-- ===========================================================================
+
+DO $preview$
+DECLARE
+  u_a uuid := '00000000-0000-4000-8000-00000000000a';
+  u_b uuid := '00000000-0000-4000-8000-00000000000b';
+  t_prev text := 'ticket-hash-preview';
+  v_rows int;
+  v_name text;
+  status text;
+BEGIN
+  INSERT INTO public.identity_link_pending
+    (ticket_hash, user_id, provider, provider_user_id, username, display_name, expires_at)
+  VALUES (t_prev, u_a, 'discord', 'discord-account-preview', 'mogzy_dev', 'Mogzy',
+          now() + interval '5 minutes');
+
+  -- The owner sees the identity.
+  SELECT count(*) INTO v_rows FROM public.identity_link_preview(t_prev, u_a);
+  IF v_rows <> 1 THEN RAISE EXCEPTION 'PREVIEW: owner could not preview their own ticket'; END IF;
+
+  SELECT out_display_name INTO v_name FROM public.identity_link_preview(t_prev, u_a);
+  IF v_name <> 'Mogzy' THEN RAISE EXCEPTION 'PREVIEW: wrong identity returned'; END IF;
+
+  -- A different Mogzy user gets nothing — the same result as a ticket that
+  -- never existed, so this cannot be used to discover whose ceremony it is.
+  SELECT count(*) INTO v_rows FROM public.identity_link_preview(t_prev, u_b);
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'PREVIEW: wrong user could preview the ticket'; END IF;
+
+  -- Preview must not consume. Two previews, then a redeem, must all succeed.
+  SELECT count(*) INTO v_rows FROM public.identity_link_preview(t_prev, u_a);
+  IF v_rows <> 1 THEN RAISE EXCEPTION 'PREVIEW: second preview failed — it consumed the ticket'; END IF;
+
+  SELECT count(*) INTO v_rows
+    FROM public.identity_link_pending WHERE ticket_hash = t_prev AND consumed_at IS NULL;
+  IF v_rows <> 1 THEN RAISE EXCEPTION 'PREVIEW: preview marked the ticket consumed'; END IF;
+
+  -- Preview must not create a link.
+  SELECT count(*) INTO v_rows
+    FROM public.user_identity_links
+   WHERE provider = 'discord' AND provider_user_id = 'discord-account-preview';
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'PREVIEW: preview created a durable link'; END IF;
+
+  -- And the ticket still redeems afterwards.
+  status := public.identity_link_redeem(t_prev, u_a);
+  IF status <> 'success' THEN RAISE EXCEPTION 'PREVIEW: ticket did not redeem after preview (%)', status; END IF;
+
+  -- A consumed ticket previews nothing.
+  SELECT count(*) INTO v_rows FROM public.identity_link_preview(t_prev, u_a);
+  IF v_rows <> 0 THEN RAISE EXCEPTION 'PREVIEW: consumed ticket still previewable'; END IF;
+
+  RAISE NOTICE 'preview cases passed';
+END
+$preview$;
 
 -- ===========================================================================
 -- CASES 18, 19, 20 — what the BROWSER role can and cannot do.

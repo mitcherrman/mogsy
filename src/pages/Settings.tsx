@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import SEOHead from "@/components/SEOHead";
 import TwoFactorAuth from "@/components/TwoFactorAuth";
 import UiSfxSettings from "@/components/UiSfxSettings";
+import AccountConnections from "@/components/settings/AccountConnections";
 import {
   setAutoMuteWhenInactive,
   setPlayRadioByDefault,
@@ -295,6 +296,9 @@ export default function Settings() {
             />
           </div>
         </motion.section>
+
+        {/* Account Connections — verified external identities */}
+        <AccountConnections />
 
         {/* Account */}
         <motion.section

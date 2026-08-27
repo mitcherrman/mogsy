@@ -17,7 +17,9 @@ import { ExternalLink } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
 import { AddToMyFriendsButton } from "@/components/admin/AddToMyFriendsButton";
 import {
+  identitiesOf,
   profileHref,
+  riotIdLabel,
   type AdminDirectoryProfile,
   type LinkFriendshipResult,
 } from "@/lib/admin/admin-users";
@@ -106,6 +108,8 @@ export function AdminUserCard({ profile, onFriendshipCompleted, botActions }: Pr
             </div>
           </dl>
 
+          <IdentityLines profile={profile} />
+
           {/* The public profile id is the only identifier shown. It is already
               in the URL of the profile link, so it discloses nothing new. */}
           <p className="truncate font-mono text-[10px] text-muted-foreground/70">{profile.id}</p>
@@ -130,6 +134,56 @@ export function AdminUserCard({ profile, onFriendshipCompleted, botActions }: Pr
         {botActions}
       </div>
     </article>
+  );
+}
+
+/**
+ * Verified external identities.
+ *
+ * Renders only what admin_list_identity_links returns, which carries no token,
+ * no ticket hash and no pending record. A pending ceremony is NOT an
+ * association and never reaches this component.
+ *
+ * Contact consent is shown as explicit words rather than a colour or a bare
+ * icon, because "may I message this person" is the one fact here that must not
+ * be misread at a glance.
+ */
+function IdentityLines({ profile }: { profile: AdminDirectoryProfile }) {
+  const { discord, riot } = identitiesOf(profile);
+  if (!discord && !riot) return null;
+  const riotId = riotIdLabel(riot);
+  return (
+    <dl
+      className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground"
+      data-testid={`admin-user-identities-${profile.id}`}
+    >
+      {discord && (
+        <div data-testid={`identity-discord-${profile.id}`}>
+          <dt className="inline">Discord </dt>
+          <dd className="inline text-foreground">
+            {discord.displayName || discord.username || "linked"}
+          </dd>
+          <span
+            data-testid={`identity-discord-consent-${profile.id}`}
+            className={`ml-1.5 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+              discord.contactConsent
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {discord.contactConsent ? "Contact OK" : "No contact"}
+          </span>
+          {discord.verifiedAt && <span className="ml-1.5">· {stamp(discord.verifiedAt)}</span>}
+        </div>
+      )}
+      {riot && (
+        <div data-testid={`identity-riot-${profile.id}`}>
+          <dt className="inline">Riot </dt>
+          <dd className="inline text-foreground">{riotId ?? "linked"}</dd>
+          {riot.verifiedAt && <span className="ml-1.5">· {stamp(riot.verifiedAt)}</span>}
+        </div>
+      )}
+    </dl>
   );
 }
 

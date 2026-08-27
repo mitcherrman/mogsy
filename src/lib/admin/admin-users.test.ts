@@ -102,6 +102,9 @@ describe("toDirectoryProfile", () => {
         "createdAt",
         "displayName",
         "id",
+        // VERIFY1: verified external identities, resolved separately and
+        // defaulted empty here — exactly as `roles` is.
+        "identities",
         "isAnonymous",
         "isBot",
         "isDisabled",
@@ -176,6 +179,8 @@ describe("filters", () => {
       "disabled-bots",
       "pro",
       "admins",
+      // VERIFY1: who has actually agreed to Discord contact.
+      "discord-contact",
     ]);
   });
 
