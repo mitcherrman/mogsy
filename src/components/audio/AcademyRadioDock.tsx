@@ -1,12 +1,11 @@
 import { useReducedMotion } from "framer-motion";
-import { Radio, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Pause, Play, SkipForward, Volume2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
   nextRadioTrack,
-  playRadio,
   setRadioVolume,
-  toggleRadioMute,
+  toggleRadioPlayback,
   useAcademyRadio,
   type RadioSnapshot,
 } from "@/lib/audio/academy-radio";
@@ -15,10 +14,10 @@ import {
  * Academy Radio — the broadcast dock.
  *
  * The compact control deck fixed to the base of the Academy Broadcast tome:
- * one flat strip with the transport row (play/pause first, then the current
- * track and its true state, then mute and the subdued Next) over a slim
- * volume row. The centerpiece above it establishes the Academy Broadcast
- * context, so the dock carries no plaque or repeated labels of its own.
+ * one flat strip with the transport row (Play/Pause first, then the current
+ * track and its true state) over a slim volume row that ends in the subdued
+ * Next. The centerpiece above it establishes the Academy Broadcast context,
+ * so the dock carries no plaque or repeated labels of its own.
  *
  * Pure UI, exactly like the navbar player: it never creates or touches an
  * <audio> element — it reads the shared snapshot through useAcademyRadio()
@@ -110,6 +109,12 @@ export default function AcademyRadioDock({
   const statusLine =
     statusLabel + (radio.muted && radio.status !== "failed" ? " · Muted" : "");
   const volumePercent = Math.round(radio.volume * 100);
+  /**
+   * Exactly the predicate toggleRadioPlayback() branches on, so the glyph can
+   * never disagree with what pressing it will do. (`isAudible` additionally
+   * folds in mode suppression, which this control does not govern.)
+   */
+  const isPlayingMusic = radio.isPlaying && !radio.muted;
 
   return (
     <div
@@ -137,19 +142,23 @@ export default function AcademyRadioDock({
 
       {/* Transport row */}
       <div className="flex items-center gap-2">
+        {/* The League Hub control is a plain Play/Pause button and nothing
+            else: one action, the two glyphs everyone already knows, and an
+            accessible name that says the same thing. No broadcast mark, no
+            tune/mute vocabulary, no extra states — the dock's other Radio
+            detail is carried by the status line and the volume row. */}
         <button
           type="button"
-          onClick={() => (radio.isAudible ? toggleRadioMute() : void playRadio())}
-          aria-pressed={radio.isAudible}
-          aria-label={radio.isAudible ? "Mute Academy Radio" : "Tune in to Academy Radio"}
+          onClick={() => toggleRadioPlayback()}
+          aria-label={isPlayingMusic ? "Pause music" : "Play music"}
           className={cn(controlButton, primaryButton, "h-10 w-10 shrink-0")}
           data-testid={`academy-radio-tune-${suffix}`}
         >
-          {radio.isAudible ? (
-            <VolumeX className="h-[18px] w-[18px]" aria-hidden="true" />
+          {isPlayingMusic ? (
+            <Pause className="h-[18px] w-[18px]" aria-hidden="true" />
           ) : (
             // Nudged right so the triangle reads centred in the round button.
-            <Radio className="h-[18px] w-[18px]" aria-hidden="true" />
+            <Play className="h-[18px] w-[18px] translate-x-[1px]" aria-hidden="true" />
           )}
         </button>
 

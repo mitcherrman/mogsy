@@ -16,6 +16,7 @@ import AcademyRadioControls from "./AcademyRadioControls";
 import {
   DEFAULT_MUSIC_VOLUME,
   getRadioSnapshot,
+  RADIO_STORAGE_KEYS,
   resetRadioForTests,
 } from "@/lib/audio/academy-radio";
 
@@ -259,31 +260,100 @@ describe("Academy Radio controls — desktop and mobile share one transport", ()
   });
 });
 
-describe("Academy Radio controls — HUD prompt", () => {
-  it("rotates in a stable local footprint and explains how to listen while off", () => {
+/**
+ * The HUD notice is a small, temporary nudge hanging under the top-right Radio
+ * control — not a fixture of the bar. These specs pin where it sits, that its
+ * copy is only the two approved strings, and that it goes away for good once
+ * the visitor has answered it either way.
+ */
+describe("Academy Radio controls — HUD notice", () => {
+  const notice = () => screen.getByTestId("academy-radio-hud-prompt");
+  const trigger = () => screen.getByTestId("academy-radio-hud-trigger");
+
+  it("hangs directly below the Radio control rather than inside the bar", () => {
+    render(<AcademyRadioControls variant="hud" />);
+
+    // Same anchor box as the control, and after it in the DOM: the notice is
+    // positioned off the trigger, not laid out beside it in the HUD cluster.
+    expect(notice().parentElement).toBe(trigger().parentElement);
+    expect(
+      trigger().compareDocumentPosition(notice()) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(notice()).toHaveClass("absolute", "top-full", "right-0");
+  });
+
+  it("is sized by its copy — no fixed box, so it can shift nothing", () => {
+    render(<AcademyRadioControls variant="hud" />);
+
+    expect(notice()).toHaveClass("w-fit", "whitespace-nowrap");
+    expect(notice()).not.toHaveClass("w-36");
+    expect(notice()).not.toHaveClass("h-8");
+  });
+
+  it("rotates only the two approved strings and carries no subtitle", () => {
     vi.useFakeTimers();
     render(<AcademyRadioControls variant="hud" />);
-    const prompt = screen.getByTestId("academy-radio-hud-prompt");
-    expect(prompt).toHaveClass("w-36", "h-8");
-    expect(prompt).toHaveTextContent("Turn on the Radio!");
-    expect(prompt).toHaveTextContent("Tune In to listen");
+
+    expect(notice().textContent).toBe("Turn on the Radio!");
     act(() => vi.advanceTimersByTime(7000));
-    expect(prompt).toHaveTextContent("See what's playing!");
-    expect(screen.queryByLabelText(/Pause Academy Radio/i)).toBeNull();
+    expect(notice().textContent).toBe("See what's playing!");
+    act(() => vi.advanceTimersByTime(7000));
+    expect(notice().textContent).toBe("Turn on the Radio!");
+
+    expect(notice()).not.toHaveTextContent(/Tune In to listen/i);
+    expect(screen.queryByText(/Tune In to listen/i)).toBeNull();
     vi.useRealTimers();
   });
 
-  it("holds the prompt still under reduced motion", () => {
+  it("holds the notice still under reduced motion", () => {
     mocks.reducedMotion = true;
     vi.useFakeTimers();
     render(<AcademyRadioControls variant="hud" />);
-    const prompt = screen.getByTestId("academy-radio-hud-prompt");
-    expect(prompt).toHaveTextContent("Turn on the Radio!");
 
+    expect(notice().textContent).toBe("Turn on the Radio!");
     act(() => vi.advanceTimersByTime(21_000));
 
-    expect(prompt).toHaveTextContent("Turn on the Radio!");
+    expect(notice().textContent).toBe("Turn on the Radio!");
+    expect(screen.getByTestId("academy-radio-hud-prompt")).toBeTruthy();
     vi.useRealTimers();
+  });
+
+  it("dismisses when the notice itself is clicked", () => {
+    render(<AcademyRadioControls variant="hud" />);
+
+    fireEvent.click(notice());
+
+    expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.noticeSeen)).toBe("true");
+  });
+
+  it("dismisses when the Radio control is used instead", () => {
+    render(<AcademyRadioControls variant="hud" />);
+
+    fireEvent.click(trigger());
+
+    expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.noticeSeen)).toBe("true");
+    // The control still does its own job.
+    expect(trigger()).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("stays dismissed on the next mount", () => {
+    const first = render(<AcademyRadioControls variant="hud" />);
+    fireEvent.click(notice());
+    first.unmount();
+
+    render(<AcademyRadioControls variant="hud" />);
+
+    expect(screen.queryByTestId("academy-radio-hud-prompt")).toBeNull();
+  });
+
+  it("is never a toast and never announces itself", () => {
+    const { baseElement } = render(<AcademyRadioControls variant="hud" />);
+
+    expect(baseElement.querySelector('[role="status"], [role="alert"]')).toBeNull();
+    expect(notice()).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByLabelText(/Pause Academy Radio/i)).toBeNull();
   });
 });
 

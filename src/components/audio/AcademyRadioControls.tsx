@@ -4,6 +4,8 @@ import { Music, Radio, SkipForward, VolumeX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
+  dismissRadioNotice,
+  isRadioNoticeDismissed,
   nextRadioTrack,
   playRadio,
   setRadioVolume,
@@ -40,6 +42,12 @@ const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
   blocked: "Tune in to listen",
   failed: "Track unavailable",
 };
+
+/**
+ * The whole of the notice's copy. Two strings, rotated — no subtitle and no
+ * second line, so the container can be sized by its text instead of a box.
+ */
+const HUD_NOTICE_PROMPTS = ["Turn on the Radio!", "See what's playing!"] as const;
 
 const iconButton =
   "inline-flex items-center justify-center rounded-md text-muted-foreground transition-colors " +
@@ -82,6 +90,8 @@ export default function AcademyRadioControls({
   const reducedMotion = useReducedMotion() === true;
   const [panelOpen, setPanelOpen] = useState(false);
   const [promptIndex, setPromptIndex] = useState(0);
+  // Read once, at mount, so a dismissed notice never flashes before it is hidden.
+  const [noticeDismissed, setNoticeDismissed] = useState(() => isRadioNoticeDismissed());
   const containerRef = useRef<HTMLDivElement>(null);
 
   const panelId = `academy-radio-panel-${variant}`;
@@ -109,10 +119,24 @@ export default function AcademyRadioControls({
 
   useEffect(() => {
     // Rotating copy is motion. Reduced motion keeps the first prompt still.
-    if (variant !== "hud" || reducedMotion) return;
-    const timer = window.setInterval(() => setPromptIndex((index) => (index + 1) % 2), 7000);
+    if (variant !== "hud" || reducedMotion || noticeDismissed) return;
+    const timer = window.setInterval(
+      () => setPromptIndex((index) => (index + 1) % HUD_NOTICE_PROMPTS.length),
+      7000,
+    );
     return () => window.clearInterval(timer);
-  }, [variant, reducedMotion]);
+  }, [variant, reducedMotion, noticeDismissed]);
+
+  /**
+   * One dismissal for both routes into it — clicking the notice, and using the
+   * Radio control it points at. Persisted, so it does not come back on the next
+   * visit; it is a nudge, and a nudge only earns one showing.
+   */
+  const dismissNotice = () => {
+    if (variant !== "hud" || noticeDismissed) return;
+    setNoticeDismissed(true);
+    dismissRadioNotice();
+  };
 
   const tuneButton = (size: string) => (
     <button
@@ -229,7 +253,10 @@ export default function AcademyRadioControls({
       >
         <button
           type="button"
-          onClick={() => setPanelOpen((open) => !open)}
+          onClick={() => {
+            dismissNotice();
+            setPanelOpen((open) => !open);
+          }}
           aria-expanded={panelOpen}
           aria-controls={panelId}
           aria-label={`Academy Radio — ${statusLabel}`}
@@ -253,32 +280,34 @@ export default function AcademyRadioControls({
             <Music className="h-5 w-5" aria-hidden="true" />
           )}
         </button>
+        {variant === "hud" && !noticeDismissed && (
+          /* A temporary nudge hanging under the control, not a fixture of the
+             bar: absolutely positioned, so it reserves no space and nothing in
+             the HUD cluster moves when it appears or goes away. Width comes
+             from the copy (`w-fit` + `whitespace-nowrap`), never from a fixed
+             box. Still aria-hidden and still not a live region — it would
+             otherwise re-read itself on every rotation, and the trigger beside
+             it already carries the real accessible name and dismisses it too. */
+          <div
+            onClick={dismissNotice}
+            className={cn(
+              "absolute right-0 top-full z-40 mt-1.5 w-fit cursor-pointer",
+              "whitespace-nowrap rounded-md border border-[#c9a84c]/30 bg-[#0a1020]/90",
+              "px-2 py-1 text-[10px] font-semibold text-foreground/85 shadow-lg backdrop-blur-md",
+              "transition-colors hover:text-foreground",
+            )}
+            data-testid="academy-radio-hud-prompt"
+            aria-hidden="true"
+          >
+            {HUD_NOTICE_PROMPTS[promptIndex]}
+          </div>
+        )}
         {panelOpen && panel(true)}
         {nextNote}
         <RadioLiveRegion radio={radio} />
       </div>
     );
-    if (variant !== "hud") return control;
-    const prompts = ["Turn on the Radio!", "See what's playing!"];
-    return (
-      <div className="flex items-center gap-1.5">
-        {/* A nudge, not an announcement: a live region here would re-read itself
-            every 7s forever. The Tune In button carries the real accessible name. */}
-        <div
-          className="hidden h-8 w-36 shrink-0 flex-col justify-center rounded-md border border-white/10 bg-black/20 px-2 text-right sm:flex"
-          data-testid="academy-radio-hud-prompt"
-          aria-hidden="true"
-        >
-          <span className="truncate text-[10px] font-semibold text-foreground/85">
-            {prompts[promptIndex]}
-          </span>
-          {!radio.isAudible && (
-            <span className="truncate text-[9px] text-muted-foreground">Tune In to listen</span>
-          )}
-        </div>
-        {control}
-      </div>
-    );
+    return control;
   }
 
   return (

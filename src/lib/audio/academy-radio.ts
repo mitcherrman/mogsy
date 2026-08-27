@@ -87,6 +87,12 @@ export const RADIO_STORAGE_KEYS = {
   autoMuteWhenInactive: "mogsy.audio.autoMuteWhenInactive",
   stationEpoch: "mogsy.audio.stationEpoch",
   preferenceVersion: "mogsy.audio.radioPreferenceVersion",
+  /**
+   * The top-right Radio nudge has been dismissed. Deliberately NOT a playback
+   * preference: it records only that the visitor has seen the notice, so
+   * resolvePlayRadioByDefault() ignores it and the migration never writes it.
+   */
+  noticeSeen: "mogsy.audio.radioNoticeSeen",
 } as const;
 
 export const RADIO_PREFERENCE_VERSION = 1;
@@ -238,6 +244,20 @@ export function resolvePlayRadioByDefault(): boolean {
   if (legacyMuted !== null) return legacyMuted !== "true";
 
   return readStorage(RADIO_STORAGE_KEYS.volume) !== null;
+}
+
+/**
+ * The top-right Radio notice — a one-shot nudge, not a preference. Reading and
+ * writing it lives here so the HUD control shares the store's storage guards
+ * (private mode never throws) and so resetRadioForTests() clears it with every
+ * other Radio key.
+ */
+export function isRadioNoticeDismissed(): boolean {
+  return readStorage(RADIO_STORAGE_KEYS.noticeSeen) === "true";
+}
+
+export function dismissRadioNotice(): void {
+  writeStorage(RADIO_STORAGE_KEYS.noticeSeen, "true");
 }
 
 function getState(): RadioState {

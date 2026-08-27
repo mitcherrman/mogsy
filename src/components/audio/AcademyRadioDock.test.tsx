@@ -114,6 +114,8 @@ afterEach(() => {
 /* -------------------------------------------------------------------------- */
 
 const tune = (suffix = "dock") => screen.getByTestId(`academy-radio-tune-${suffix}`);
+/** lucide stamps every icon with `lucide-<kebab-name>`, so the glyph is assertable. */
+const glyph = (el: HTMLElement) => el.querySelector("svg")?.getAttribute("class") ?? "";
 const next = (suffix = "dock") => screen.getByTestId(`academy-radio-next-${suffix}`);
 const volume = (suffix = "dock") =>
   screen.getByTestId(`academy-radio-volume-${suffix}`) as HTMLInputElement;
@@ -143,11 +145,10 @@ describe("Academy Radio dock — what it shows", () => {
   it("reflects real playback state once play() resolves — never optimistically", async () => {
     render(<AcademyRadioDock />);
 
-    expect(tune()).toHaveAttribute("aria-pressed", "false");
+    expect(tune()).toHaveAccessibleName("Play music");
     fireEvent.click(tune());
 
-    await waitFor(() => expect(tune()).toHaveAttribute("aria-pressed", "true"));
-    expect(tune()).toHaveAccessibleName("Mute Academy Radio");
+    await waitFor(() => expect(tune()).toHaveAccessibleName("Pause music"));
     expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Live/);
     expect(getRadioSnapshot().isPlaying).toBe(true);
   });
@@ -159,7 +160,7 @@ describe("Academy Radio dock — what it shows", () => {
     fireEvent.click(tune());
 
     await waitFor(() => expect(getRadioSnapshot().status).toBe("blocked"));
-    expect(tune()).toHaveAttribute("aria-pressed", "false");
+    expect(tune()).toHaveAccessibleName("Play music");
     expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Tune in to listen/);
   });
 
@@ -174,7 +175,7 @@ describe("Academy Radio dock — what it shows", () => {
 });
 
 describe("Academy Radio dock — transport behaviour", () => {
-  it("Tune In is an explicit request to hear the radio: it also lifts a mute", async () => {
+  it("Play is an explicit request to hear the radio: it also lifts a mute", async () => {
     render(<AcademyRadioDock />);
     toggleRadioMute();
     expect(getRadioSnapshot().muted).toBe(true);
@@ -183,10 +184,10 @@ describe("Academy Radio dock — transport behaviour", () => {
 
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
     expect(getRadioSnapshot().muted).toBe(false);
-    expect(tune()).toHaveAttribute("aria-pressed", "true");
+    expect(tune()).toHaveAccessibleName("Pause music");
   });
 
-  it("Mute leaves the live transport running and unrelated gestures do not unmute it", async () => {
+  it("Pause leaves the live transport running and unrelated gestures do not resume it", async () => {
     render(<AcademyRadioDock />);
     fireEvent.click(tune());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
@@ -198,7 +199,7 @@ describe("Academy Radio dock — transport behaviour", () => {
     expect(getRadioSnapshot().muteReason).toBe("manual");
   });
 
-  it("persists mute and volume choices under the canonical storage keys", async () => {
+  it("persists the paused and volume choices under the canonical storage keys", async () => {
     render(<AcademyRadioDock />);
 
     fireEvent.change(volume(), { target: { value: "0.42" } });
@@ -240,14 +241,14 @@ describe("Academy Radio dock — one transport across every surface", () => {
     // Exactly one element serves all three surfaces.
     expect(audioCreations).toBe(1);
     expect(play).toHaveBeenCalledTimes(1);
-    expect(tune("dock-mobile")).toHaveAttribute("aria-pressed", "true");
+    expect(tune("dock-mobile")).toHaveAccessibleName("Pause music");
     expect(screen.getByTestId("academy-radio-tune-desktop")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
 
     fireEvent.click(tune("dock-mobile"));
-    expect(tune("dock")).toHaveAttribute("aria-pressed", "false");
+    expect(tune("dock")).toHaveAccessibleName("Play music");
     expect(screen.getByTestId("academy-radio-tune-desktop")).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -293,7 +294,73 @@ describe("Academy Radio dock — accessibility", () => {
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
-    expect(tune()).toHaveAccessibleName("Mute Academy Radio");
+    expect(tune()).toHaveAccessibleName("Pause music");
     expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent(/Live/);
+  });
+});
+
+/**
+ * The League Hub control is deliberately the simplest thing in the dock: a
+ * Play triangle, a Pause bar, and one action behind them. These specs pin both
+ * the glyph and the vocabulary, so neither a broadcast mark nor tune/mute
+ * wording can drift back in.
+ */
+describe("Academy Radio dock — League Hub Play/Pause", () => {
+  it("shows an ordinary Play triangle while music is not playing", () => {
+    render(<AcademyRadioDock />);
+
+    expect(glyph(tune())).toContain("lucide-play");
+    expect(glyph(tune())).not.toContain("lucide-pause");
+    expect(tune()).toHaveAccessibleName("Play music");
+  });
+
+  it("shows an ordinary Pause while music is playing", async () => {
+    render(<AcademyRadioDock />);
+
+    fireEvent.click(tune());
+    await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
+
+    expect(glyph(tune())).toContain("lucide-pause");
+    expect(glyph(tune())).not.toContain("lucide-play");
+    expect(tune()).toHaveAccessibleName("Pause music");
+  });
+
+  it("toggles music with each press, and does nothing else", async () => {
+    render(<AcademyRadioDock />);
+
+    fireEvent.click(tune());
+    await waitFor(() => expect(getRadioSnapshot().isAudible).toBe(true));
+
+    fireEvent.click(tune());
+    expect(getRadioSnapshot().isAudible).toBe(false);
+    expect(glyph(tune())).toContain("lucide-play");
+
+    fireEvent.click(tune());
+    await waitFor(() => expect(getRadioSnapshot().isAudible).toBe(true));
+    expect(glyph(tune())).toContain("lucide-pause");
+  });
+
+  it("carries no broadcast mark and no Tune In or Mute vocabulary", async () => {
+    render(<AcademyRadioDock />);
+
+    const marks = () => glyph(tune());
+    expect(marks()).not.toContain("lucide-radio");
+    expect(marks()).not.toContain("lucide-volume-x");
+    expect(screen.queryByRole("button", { name: /tune in|mute/i })).toBeNull();
+
+    fireEvent.click(tune());
+    await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
+
+    expect(marks()).not.toContain("lucide-radio");
+    expect(marks()).not.toContain("lucide-volume-x");
+    expect(screen.queryByRole("button", { name: /tune in|mute/i })).toBeNull();
+  });
+
+  it("leaves the volume row and the rest of the deck in place", () => {
+    render(<AcademyRadioDock />);
+
+    expect(volume()).toHaveAccessibleName("Music volume");
+    expect(next()).toBeTruthy();
+    expect(screen.getByTestId("academy-radio-dock")).toHaveTextContent("Tidecaller");
   });
 });
