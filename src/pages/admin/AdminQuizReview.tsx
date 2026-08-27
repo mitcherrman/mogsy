@@ -32,6 +32,7 @@ import {
 import { upsertPlaylist } from "@/lib/quiz-broadcast/storage";
 import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
 import { getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
+import { QuestionPreviewPanel } from "@/components/question-preview/QuestionPreviewPanel";
 
 // ---------------------------------------------------------------------------
 // Admin key (shared with Knowledge Admin — backend uses one KNOWLEDGE_ADMIN_KEY
@@ -107,12 +108,70 @@ const SOURCE_LABELS: Record<string, string> = {
   meta_reflex_rule: "Meta Reflex rules", meta_reflex_specimen: "Meta Reflex specimens",
 };
 
+/**
+ * The Ranked candidate id behind a universe row, or null.
+ *
+ * The universe emits `review_key = "ranked:<candidate_id>"` for the
+ * `ranked_candidate` source, which is exactly the id the preview endpoint
+ * takes. Reading it here is what lets Ranked questions be *seen as played*
+ * from inside Quiz Review — the one genuinely valuable capability of the
+ * retired Ranked Duel Review surface, kept rather than deleted with it.
+ */
+function rankedCandidateIdOf(row: ReviewUniverseRow): string | null {
+  if (row.source_kind !== "ranked_candidate") return null;
+  const id = row.review_key.startsWith("ranked:") ? row.review_key.slice(7) : "";
+  return id.trim() === "" ? null : id;
+}
+
+/**
+ * Which option is correct, as an INDEX.
+ *
+ * The preview payload deliberately carries no answer, so the reveal state needs
+ * the index from the admin row we already hold. `indexOf` returns -1 when the
+ * stored answer text does not match any option — a real defect the bank audit
+ * reports — and that is mapped to null so Reveal is simply unavailable rather
+ * than highlighting option 0 as correct.
+ */
+function correctIndexOf(row: ReviewUniverseRow): number | null {
+  const i = row.options.indexOf(row.correct_answer);
+  return i >= 0 ? i : null;
+}
+
 function UniverseRow({ row }: { row: ReviewUniverseRow }) {
-  return <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3 border-b px-3 py-2 text-[11px] last:border-b-0">
-    <div><div className="font-medium">{SOURCE_LABELS[row.source_kind] ?? row.source_kind}</div><div className="text-muted-foreground">{row.materialization}</div></div>
-    <div className="truncate" title={row.family}>{row.family || "—"}</div>
-    <div className="min-w-0"><div className="truncate font-medium" title={row.question_text}>{row.question_text || row.review_key}</div><div className="truncate text-muted-foreground">{row.review_key}</div></div>
-    <div><div>{row.source_status || "—"}</div><div className="truncate text-muted-foreground" title={row.source_version}>{row.source_version || "—"}</div></div>
+  const candidateId = rankedCandidateIdOf(row);
+  const [previewing, setPreviewing] = useState(false);
+
+  return <div className="border-b px-3 py-2 text-[11px] last:border-b-0">
+    <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3">
+      <div><div className="font-medium">{SOURCE_LABELS[row.source_kind] ?? row.source_kind}</div><div className="text-muted-foreground">{row.materialization}</div></div>
+      <div className="truncate" title={row.family}>{row.family || "—"}</div>
+      <div className="min-w-0"><div className="truncate font-medium" title={row.question_text}>{row.question_text || row.review_key}</div><div className="truncate text-muted-foreground">{row.review_key}</div></div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div>{row.source_status || "—"}</div>
+          <div className="truncate text-muted-foreground" title={row.source_version}>{row.source_version || "—"}</div>
+        </div>
+        {candidateId && (
+          <Button
+            size="sm"
+            variant={previewing ? "secondary" : "ghost"}
+            className="h-6 shrink-0 gap-1 px-1.5 text-[10px]"
+            data-testid={`universe-preview-toggle-${row.review_key}`}
+            onClick={() => setPreviewing((v) => !v)}
+          >
+            <Eye className="h-3 w-3" aria-hidden /> {previewing ? "Hide" : "Preview"}
+          </Button>
+        )}
+      </div>
+    </div>
+    {candidateId && previewing && (
+      <div className="mt-2 rounded border border-border/60 bg-muted/10 p-2">
+        <QuestionPreviewPanel
+          candidateId={candidateId}
+          correctAnswerIndex={correctIndexOf(row)}
+        />
+      </div>
+    )}
   </div>;
 }
 
@@ -926,6 +985,9 @@ export default function AdminQuizReview({
   embedded = false,
   selectedQuestionId,
   onSelectQuestion,
+  focusFilters,
+  focusLabel,
+  onClearFocus,
 }: {
   embedded?: boolean;
   /**
@@ -936,8 +998,38 @@ export default function AdminQuizReview({
    */
   selectedQuestionId?: number | null;
   onSelectQuestion?: (id: number | null) => void;
+  /**
+   * A diagnostic focus arriving from the Diagnostics tab: the exact rows (or
+   * family, or search term) a finding concerns. It SEEDS the filter state
+   * rather than locking it, so the operator can narrow further from here —
+   * and it is cleared explicitly, never by the next unrelated filter change.
+   */
+  focusFilters?: ReviewFilters;
+  focusLabel?: string;
+  onClearFocus?: () => void;
 } = {}) {
-  const [filters, setFilters] = useState<ReviewFilters>({ page: 1, page_size: PAGE_SIZE });
+  const [filters, setFilters] = useState<ReviewFilters>(() => ({
+    page: 1,
+    page_size: PAGE_SIZE,
+    ...(focusFilters ?? {}),
+  }));
+
+  // A NEW focus (a second click in Diagnostics) replaces the previous one and
+  // resets paging. Compared by value: the workspace rebuilds the object from
+  // URL params on every render, so an identity check would re-apply the same
+  // focus forever and stamp out the operator's own filter edits.
+  const focusKey = focusFilters ? JSON.stringify(focusFilters) : null;
+  const appliedFocus = useRef<string | null>(focusKey);
+  useEffect(() => {
+    if (focusKey === appliedFocus.current) return;
+    appliedFocus.current = focusKey;
+    setFilters((prev) => {
+      // Drop the previous focus keys before applying the new one, so two
+      // successive diagnostics don't intersect into an empty result.
+      const { ids: _ids, family: _family, search: _search, ...rest } = prev;
+      return { ...rest, page: 1, ...(focusKey ? JSON.parse(focusKey) : {}) };
+    });
+  }, [focusKey]);
   const [search, setSearch] = useState("");
   const [exportScope, setExportScope] = useState<"all" | "changed" | "flagged">("all");
   const [exporting, setExporting] = useState(false);
@@ -1141,6 +1233,31 @@ export default function AdminQuizReview({
           <Button size="sm" variant={showUniverse ? "secondary" : "ghost"} className="h-7 text-[11px]" onClick={() => setShowUniverse((value) => !value)}>
             {showUniverse ? "Stored review" : "All sources"}
           </Button>
+
+          {/* A diagnostic focus is stated, not silent. An operator who lands
+              here from Diagnostics must be able to see WHY the list is short
+              and get back to the whole bank in one click. */}
+          {focusFilters && (
+            <span
+              data-testid="review-focus-banner"
+              className="inline-flex items-center gap-1.5 rounded border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
+            >
+              <ListChecks className="h-3 w-3" aria-hidden />
+              Diagnostics: {focusLabel ?? "selection"}
+              {focusFilters.ids !== undefined && ` (${focusFilters.ids.length})`}
+              <button
+                type="button"
+                aria-label="Clear diagnostic filter"
+                className="rounded-sm px-0.5 hover:bg-primary/20"
+                onClick={() => {
+                  setFilters({ page: 1, page_size: PAGE_SIZE });
+                  onClearFocus?.();
+                }}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Select value={exportScope} onValueChange={(value) => setExportScope(value as typeof exportScope)}>

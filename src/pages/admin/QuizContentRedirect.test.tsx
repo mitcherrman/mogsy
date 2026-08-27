@@ -8,7 +8,7 @@ function Landing() {
   return <div data-testid="landing">{loc.pathname + loc.search}</div>;
 }
 
-const renderRedirect = (from: string, tab: "builder" | "review" | "ranked-duel") =>
+const renderRedirect = (from: string, tab: "review" | "diagnostics" = "review") =>
   render(
     <MemoryRouter initialEntries={[from]}>
       <Routes>
@@ -24,10 +24,11 @@ const landing = () => screen.getByTestId("landing").textContent ?? "";
 afterEach(cleanup);
 
 describe("QuizContentRedirect (legacy-route compatibility)", () => {
-  it("redirects /admin/quiz-builder to the workspace builder tab", () => {
-    renderRedirect("/admin/quiz-builder", "builder");
+  it("lands the retired Builder bookmark on Quiz Review, not on a dead tab", () => {
+    renderRedirect("/admin/quiz-builder", "review");
     expect(landing()).toContain("/admin/quiz-content");
-    expect(landing()).toContain("tab=builder");
+    expect(landing()).toContain("tab=review");
+    expect(landing()).not.toContain("tab=builder");
   });
 
   it("forces the review tab and preserves an existing questionId deep link", () => {
@@ -51,9 +52,10 @@ describe("QuizContentRedirect (legacy-route compatibility)", () => {
   });
 
   it("overrides a conflicting incoming tab with the forced destination tab", () => {
-    renderRedirect("/admin/quiz-builder?tab=review", "builder");
+    // A stale ?tab=ranked-duel bookmark must not survive the redirect.
+    renderRedirect("/admin/quiz-builder?tab=ranked-duel", "review");
     const url = landing();
-    expect(url).toContain("tab=builder");
-    expect(url).not.toContain("tab=review");
+    expect(url).toContain("tab=review");
+    expect(url).not.toContain("tab=ranked-duel");
   });
 });

@@ -1,17 +1,22 @@
 // ---------------------------------------------------------------------------
-// Legacy-route compatibility: /admin/quiz-builder and /admin/quiz-review
-// delegate into the unified workspace (/admin/quiz-content) on the matching
-// tab. This component preserves the incoming query string (filters, selected
-// ids, packs, pagination, search, questionId, …) so existing deep links keep
-// working — it only FORCES the `tab` and otherwise carries every param
-// forward. Nothing is silently discarded.
+// Legacy-route compatibility for /admin/quiz-content.
+//
+// The workspace now has two tabs, Quiz Review and Diagnostics. Bookmarks to
+// the retired Builder and Ranked Duel tabs land on Quiz Review rather than on
+// a tab that no longer exists — Ranked questions are reviewable there through
+// the source/family/type filters and the "All sources" view.
+//
+// The incoming query string (filters, packs, pagination, search, questionId, …)
+// is carried forward; only `tab` is forced. Nothing is silently discarded.
 // ---------------------------------------------------------------------------
 
 import { Navigate, useSearchParams } from "react-router-dom";
 
 const CANONICAL_PATH = "/admin/quiz-content";
 
-export function QuizContentRedirect({ tab }: { tab: "builder" | "review" | "ranked-duel" }) {
+export function QuizContentRedirect({
+  tab = "review",
+}: { tab?: "review" | "diagnostics" } = {}) {
   const [searchParams] = useSearchParams();
   const next = new URLSearchParams(searchParams);
   next.set("tab", tab); // force the destination tab, keep everything else

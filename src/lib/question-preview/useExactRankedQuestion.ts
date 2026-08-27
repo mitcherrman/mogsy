@@ -1,8 +1,8 @@
 /**
- * Exact-question loader for the admin candidate preview (RA9).
+ * Exact-question loader for the question preview.
  *
  * Loads ONE candidate's public-question projection from the Ranked candidate
- * review admin API and adapts it for `InteractiveScenarioSurface`.
+ * admin API and adapts it for `InteractiveScenarioSurface`.
  *
  * Side-effect boundary — this hook is the whole network surface of the preview:
  *  * it calls exactly one endpoint, `.../candidates/{id}/public-view`, a
@@ -19,10 +19,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  describeReviewError,
-  rankedReviewApi,
-  ReviewApiError,
-} from "@/lib/ranked-duel-review/api";
+  describePreviewError,
+  PreviewApiError,
+  questionPreviewApi,
+} from "./questionPreviewApi";
 import {
   adaptCandidatePreview,
   PreviewAdapterError,
@@ -69,8 +69,8 @@ export function useExactRankedQuestion(
     setError(null);
     setNotFound(false);
 
-    rankedReviewApi
-      .candidatePublicView(candidateId, controller.signal)
+    questionPreviewApi
+      .rankedCandidateView(candidateId, controller.signal)
       .then((payload) => {
         if (myGen !== gen.current) return;
         setModel(adaptCandidatePreview(payload));
@@ -78,13 +78,13 @@ export function useExactRankedQuestion(
       })
       .catch((err: unknown) => {
         if (myGen !== gen.current) return;
-        if (err instanceof ReviewApiError && err.kind === "aborted") return;
+        if (err instanceof PreviewApiError && err.kind === "aborted") return;
         setModel(null);
-        setNotFound(err instanceof ReviewApiError && err.kind === "not_found");
+        setNotFound(err instanceof PreviewApiError && err.kind === "not_found");
         setError(
           err instanceof PreviewAdapterError
             ? err.message
-            : describeReviewError(err),
+            : describePreviewError(err),
         );
         setStatus("error");
       });

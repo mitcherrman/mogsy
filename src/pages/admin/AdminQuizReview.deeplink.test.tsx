@@ -69,6 +69,9 @@ const FILTER_OPTIONS = {
 function renderReview(props: {
   selectedQuestionId?: number | null;
   onSelectQuestion?: (id: number | null) => void;
+  focusFilters?: import("@/lib/quiz/api").ReviewFilters;
+  focusLabel?: string;
+  onClearFocus?: () => void;
 }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -145,5 +148,56 @@ describe("Review deep link (controlled selection by id)", () => {
     expect(click).toHaveBeenCalled();
     expect(URL.createObjectURL).toHaveBeenCalled();
     click.mockRestore();
+  });
+});
+
+describe("Diagnostics focus (a diagnostic filter arriving from the other tab)", () => {
+  it("requests exactly the rows the diagnostic named", async () => {
+    renderReview({ selectedQuestionId: null, focusFilters: { ids: [101, 102], page: 1 } });
+    await waitFor(() => expect(getReviewQuestions).toHaveBeenCalled());
+    const filters = getReviewQuestions.mock.calls.at(-1)?.[0] as { ids?: number[] };
+    expect(filters.ids).toEqual([101, 102]);
+  });
+
+  it("passes a family focus through as a family filter", async () => {
+    renderReview({ selectedQuestionId: null, focusFilters: { family: "combat_cooldown", page: 1 } });
+    await waitFor(() => expect(getReviewQuestions).toHaveBeenCalled());
+    const filters = getReviewQuestions.mock.calls.at(-1)?.[0] as { family?: string };
+    expect(filters.family).toBe("combat_cooldown");
+  });
+
+  it("says WHY the list is short, and offers a way back to the whole bank", async () => {
+    const onClearFocus = vi.fn();
+    renderReview({
+      selectedQuestionId: null,
+      focusFilters: { ids: [101, 102], page: 1 },
+      focusLabel: "Live answer defects",
+      onClearFocus,
+    });
+    const banner = await screen.findByTestId("review-focus-banner");
+    expect(banner.textContent).toContain("Live answer defects");
+    expect(banner.textContent).toContain("(2)");
+
+    fireEvent.click(screen.getByRole("button", { name: /Clear diagnostic filter/i }));
+    expect(onClearFocus).toHaveBeenCalled();
+    await waitFor(() => {
+      const filters = getReviewQuestions.mock.calls.at(-1)?.[0] as { ids?: number[] };
+      expect(filters.ids).toBeUndefined();
+    });
+  });
+
+  it("shows no focus banner when no diagnostic sent one", async () => {
+    renderReview({ selectedQuestionId: null });
+    await waitFor(() => expect(getReviewQuestions).toHaveBeenCalled());
+    expect(screen.queryByTestId("review-focus-banner")).toBeNull();
+  });
+
+  it("keeps an empty diagnostic selection meaning NO rows, not the whole bank", async () => {
+    // A finding that matched nothing in this database must not silently show
+    // every question — the exact inversion this filter exists to avoid.
+    renderReview({ selectedQuestionId: null, focusFilters: { ids: [], page: 1 } });
+    await waitFor(() => expect(getReviewQuestions).toHaveBeenCalled());
+    const filters = getReviewQuestions.mock.calls.at(-1)?.[0] as { ids?: number[] };
+    expect(filters.ids).toEqual([]);
   });
 });

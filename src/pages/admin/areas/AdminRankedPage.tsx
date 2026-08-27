@@ -196,13 +196,13 @@ export default function AdminRankedPage() {
           {section.id === "question-bank" && (
             <>
               <AdminPanel
-                title="Ranked Duel candidates"
-                description="Candidate review lives in the unified quiz workspace and stays there — splitting Builder from Review would undo a deliberate consolidation that works."
+                title="Ranked questions"
+                description="Ranked questions are reviewed in the unified Quiz Review surface — the separate Ranked Duel Review workflow is retired. Filter by source, family or type, or use 'All sources' to see ranked_candidate and ranked_fallback provenance."
               >
                 <AdminCrossLink
-                  to="/admin/quiz-content?tab=ranked-duel"
-                  label="Open Ranked Duel Review"
-                  note="accept · reject · revise · validate · export"
+                  to="/admin/quiz-content?tab=review"
+                  label="Open Quiz Review"
+                  note="filter by source · family · type · export"
                 />
               </AdminPanel>
               <AdminToolGrid tools={toolsForSection("ranked", "question-bank")} />

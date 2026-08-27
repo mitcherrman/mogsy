@@ -262,8 +262,9 @@ describe("5 · Leaguecraft and quiz admin remain reachable", () => {
     expect(screen.getByTestId("admin-tool-quiz-content-workspace")).toBeTruthy();
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
     expect(links).toContain("/admin/quiz-content");
-    expect(links).toContain("/admin/quiz-content?tab=builder");
     expect(links).toContain("/admin/quiz-content?tab=review");
+    expect(links).toContain("/admin/quiz-content?tab=diagnostics");
+    expect(links).not.toContain("/admin/quiz-content?tab=builder");
   });
 
   it("keeps quiz reports and answer overrides reachable at /quiz/admin", async () => {

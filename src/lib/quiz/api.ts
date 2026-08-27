@@ -508,8 +508,140 @@ export type ReviewFilters = {
   ability_slot?: string;
   subject_type?: string;
   pack_key?: string;
+  /**
+   * Diagnostics deep link: the exact question rows a finding concerns.
+   * An EMPTY array is a real selection meaning "no rows" (the finding matched
+   * nothing in this database) and is sent as such — dropping it would silently
+   * widen the view to the whole bank, which is the opposite of what was asked.
+   */
+  ids?: number[];
+  /** Family = the `question_key` prefix the audit and the registry share. */
+  family?: string;
   page?: number;
   page_size?: number;
+};
+
+// ---------------------------------------------------------------------------
+// Quiz audit (Diagnostics) types — the compact shape of the read-only harness.
+// ---------------------------------------------------------------------------
+
+export type AuditSeverity = "critical" | "warn" | "info";
+
+/**
+ * Where a diagnostic card sends the operator in Quiz Review.
+ *  - `ids`      the exact rows the finding concerns (the common case)
+ *  - `family`   a question_key prefix, for family-level verdicts
+ *  - `search`   a term, for findings whose subject is an ITEM rather than a row
+ *  - `none`     nothing to open (e.g. a champion missing from the database)
+ */
+export type AuditTarget = {
+  kind: "ids" | "family" | "search" | "none";
+  ids: number[];
+  family?: string;
+  search?: string;
+  matched: number;
+  unmatched: number;
+  truncated: boolean;
+};
+
+export type AuditChip = { label: string; detail: string; target: AuditTarget };
+
+export type AuditGroup = {
+  id: string;
+  section: string;
+  label: string;
+  count: number;
+  severity: AuditSeverity;
+  target: AuditTarget;
+  detail: string;
+  chips: AuditChip[];
+};
+
+export type QuizAuditSummary = {
+  status: string;
+  database_roster_count: number;
+  expected_roster_count: number;
+  roster_complete: boolean;
+  roster_missing_from_database: string[];
+  expected_roster_source: string;
+  questions_audited: number;
+  suspicious_questions: number;
+  invalid_items: number;
+  retired_item_references: number;
+  realism_violations: number;
+  refresh_reconstruction_failures: number;
+  new_regressions: number | null;
+  families_needing_review: string[];
+  review_backlog: number;
+  critical_findings: number;
+};
+
+export type QuizAuditReport = {
+  ok: boolean;
+  cached: boolean;
+  status: string;
+  generated_at?: string | null;
+  elapsed_seconds?: number | null;
+  revision?: string | null;
+  database: { path: string; name: string };
+  tests_ran: boolean;
+  baseline_ran: boolean;
+  baseline_error?: string | null;
+  summary: QuizAuditSummary;
+  groups: AuditGroup[];
+  findings_total: number;
+  sections: {
+    roster?: Record<string, unknown>;
+    families?: { families?: number; active_families?: number; unregenerable?: string[]; unknown_to_registry?: string[] };
+    champions?: { unresolved?: string[] };
+    items?: { items_referenced?: number; current?: number; invalid_items?: string[]; retired_items?: string[]; questions_referencing_retired_items?: number; authority_findings?: Record<string, number> };
+    bank?: { questions?: number; gates?: Record<string, number>; live_answer_defects?: number; verdicts?: Record<string, number>; unchecked?: number };
+    realism?: { checked_family?: string; violations?: Record<string, number>; total?: number };
+    reconstruction?: { checked?: number; reconstructed?: number; failures?: Record<string, number>; total_failures?: number };
+    refresh?: { affected?: number; by_reason?: Record<string, number> };
+    generator?: { ran?: boolean; error?: string; would_create?: number; already_present?: number; skipped_total?: number; skipped_by_reason?: Record<string, number> };
+    tests?: { ran?: boolean; reason?: string; counts?: Record<string, number> };
+    environment?: Record<string, unknown>;
+  };
+  baseline?: {
+    rev?: string;
+    new_count: number;
+    new_critical: number;
+    fixed_count: number;
+    by_section?: Record<string, number>;
+    new: Array<{ id: string; section: string; kind: string; subject: string; detail?: string; severity?: string }>;
+  } | null;
+};
+
+/**
+ * Local-vs-production canonical database alignment.
+ *
+ * `gated` and `unreachable` are first-class statuses, deliberately distinct
+ * from MATCH: a check that could not see production must say so rather than
+ * stay quiet and read as aligned.
+ */
+export type DbDriftStatus = "MATCH" | "DRIFT DETECTED" | "INCOMPARABLE" | "gated" | "unreachable";
+
+export type DbDriftDifference = {
+  area: "schema" | "roster" | "table" | "questions" | "items" | string;
+  detail: string;
+  missing_locally?: string[];
+  missing_remotely?: string[];
+  families?: Array<{ family: string; local: number; remote: number }>;
+  table?: string;
+  local?: unknown;
+  remote?: unknown;
+};
+
+export type DbDriftReport = {
+  ok: boolean;
+  status: DbDriftStatus;
+  reason?: string;
+  differences: DbDriftDifference[];
+  local_source?: string;
+  remote_source?: string;
+  local_roster?: number | null;
+  remote_roster?: number | null;
 };
 
 export type ReviewPatchPayload = {
@@ -538,183 +670,6 @@ export type PlaylistResponse = {
   count: number;
   filters: Record<string, unknown>;
   questions: QuizQuestion[];
-};
-
-// ---------------------------------------------------------------------------
-// Quiz Builder (Pro Esports) — admin candidate generation, drafts, promotion.
-// All endpoints under /api/quiz/admin/builder/* and use the same adminRequest
-// wrapper (X-Admin-Key) as the review console.
-// ---------------------------------------------------------------------------
-
-export type QuizBuilderCoverageStatus =
-  | "complete" | "partial" | "in_progress" | "unavailable" | "unknown";
-
-export type QuizBuilderCorrectAnswer = { type: string; value: string };
-
-/** Evidence rows are backend-shaped stat objects (champion/picks/bans/…). */
-export type QuizBuilderEvidenceRow = Record<string, string | number | null>;
-
-export type QuizBuilderTemplateMeta = {
-  template_id: string;
-  label: string;
-  default_difficulty: number;
-  stat_column: string;
-};
-
-export type QuizBuilderScopeMeta = { scope_name: string; label: string };
-
-export type QuizBuilderYearMeta = {
-  year: number;
-  scopes: string[];
-  coverage_status: QuizBuilderCoverageStatus;
-  production_ready: boolean;
-  champions_with_stats: number;
-  job_counts: Record<string, number>;
-  notes: string[];
-};
-
-export type QuizBuilderMeta = {
-  source_types: string[];
-  templates: QuizBuilderTemplateMeta[];
-  scopes: QuizBuilderScopeMeta[];
-  years: QuizBuilderYearMeta[];
-  difficulties: number[];
-  max_candidate_count: number;
-};
-
-export type QuizBuilderGenerateRequest = {
-  source_type?: string;
-  template_id: string;
-  year: number;
-  scope_name: string;
-  candidate_count: number;
-  difficulty?: number;
-};
-
-export type QuizBuilderCandidate = {
-  template_id: string;
-  source_type: string;
-  question_text: string;
-  format: string;
-  choices: string[];
-  correct_answer: QuizBuilderCorrectAnswer;
-  explanation: string;
-  difficulty: number;
-  year: number;
-  scope_name: string;
-  scope_label: string;
-  coverage_status: QuizBuilderCoverageStatus;
-  production_ready: boolean;
-  coverage_warnings: string[];
-  evidence: QuizBuilderEvidenceRow[];
-  source_tables: string[];
-  generation_params: Record<string, unknown>;
-  warnings: string[];
-};
-
-export type QuizBuilderGenerateResponse = {
-  candidates: QuizBuilderCandidate[];
-  warnings: string[];
-};
-
-export type QuizBuilderDraftStatus = "draft" | "rejected" | "sent_to_review";
-
-/** POST /drafts body — mirrors a candidate; server owns key/status/timestamps. */
-export type QuizBuilderDraftCreate = {
-  source_type: string;
-  template_id: string;
-  year: number;
-  scope_name: string;
-  question_text: string;
-  question_format?: string;
-  choices: string[];
-  correct_answer: QuizBuilderCorrectAnswer;
-  explanation?: string | null;
-  evidence?: QuizBuilderEvidenceRow[];
-  generation_params?: Record<string, unknown> | null;
-  source_tables?: string[] | null;
-  difficulty: number;
-  answer_certainty?: string;
-  coverage_status?: string | null;
-  /** Optional League Docs Pro Data source ({champion_slug, year?, scope?, section?}). */
-  pro_data_source?: Record<string, unknown> | null;
-  created_by?: string | null;
-};
-
-/** PATCH /drafts/{id} body — only editable fields; immutable fields omitted. */
-export type QuizBuilderDraftUpdate = {
-  question_text?: string;
-  choices?: string[];
-  correct_answer?: QuizBuilderCorrectAnswer;
-  explanation?: string | null;
-  difficulty?: number;
-  evidence?: QuizBuilderEvidenceRow[];
-  generation_params?: Record<string, unknown>;
-  coverage_warning?: string | null;
-  status?: QuizBuilderDraftStatus;
-  rejection_reason?: string | null;
-  /** Object to set/replace, explicit null to clear, omit to leave untouched. */
-  pro_data_source?: Record<string, unknown> | null;
-  updated_by?: string | null;
-};
-
-export type QuizBuilderDraft = {
-  id: number;
-  question_key: string;
-  source_type: string;
-  template_id: string;
-  year: number;
-  scope_name: string;
-  question_text: string;
-  question_format: string;
-  choices: string[];
-  correct_answer: QuizBuilderCorrectAnswer;
-  explanation: string | null;
-  evidence: QuizBuilderEvidenceRow[];
-  generation_params: Record<string, unknown>;
-  source_tables: string[];
-  difficulty: number;
-  answer_certainty: string;
-  coverage_status: QuizBuilderCoverageStatus;
-  coverage_warning: string | null;
-  pro_data_source: Record<string, unknown> | null;
-  status: QuizBuilderDraftStatus;
-  rejection_reason: string | null;
-  promoted_question_id: number | null;
-  sent_to_review_at: string | null;
-  created_by: string | null;
-  updated_by: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-};
-
-export type QuizBuilderDraftListFilters = {
-  status?: string;
-  year?: number;
-  scope_name?: string;
-  template_id?: string;
-  source_type?: string;
-  coverage_status?: string;
-  search?: string;
-  limit?: number;
-  offset?: number;
-};
-
-export type QuizBuilderDraftListResponse = {
-  items: QuizBuilderDraft[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-export type QuizBuilderPromotionResponse = {
-  draft_id: number;
-  promoted_question_id: number;
-  draft_status: string;
-  review_status: string;
-  is_active: boolean;
-  sent_to_review_at: string | null;
-  reviewer_path: string;
 };
 
 export const quizApi = {
@@ -859,6 +814,10 @@ export const quizApi = {
     if (filters.ability_slot) params.set("ability_slot", filters.ability_slot);
     if (filters.subject_type) params.set("subject_type", filters.subject_type);
     if (filters.pack_key) params.set("pack_key", filters.pack_key);
+    // `ids: []` must still be sent (see the type doc): presence, not
+    // truthiness, is what distinguishes "nothing matched" from "not filtered".
+    if (filters.ids !== undefined) params.set("ids", filters.ids.join(","));
+    if (filters.family) params.set("family", filters.family);
     if (filters.page !== undefined) params.set("page", String(filters.page));
     if (filters.page_size !== undefined) params.set("page_size", String(filters.page_size));
     const qs = params.toString();
@@ -873,6 +832,22 @@ export const quizApi = {
     ),
   getReviewFilterOptions: () =>
     adminRequest<ReviewFilterOptions>("/api/quiz/admin/review/filter-options"),
+
+  // ---------------------------------------------------------------------------
+  // Quiz audit (Diagnostics tab). Read-only: the backend wraps the same harness
+  // `./scripts/quiz_audit.sh` runs, which opens mode=ro handles only.
+  // ---------------------------------------------------------------------------
+  getQuizAudit: (opts: { refresh?: boolean; tests?: boolean; baseline?: boolean } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.refresh) params.set("refresh", "true");
+    if (opts.tests) params.set("tests", "true");
+    if (opts.baseline) params.set("baseline", "true");
+    const qs = params.toString();
+    return adminRequest<QuizAuditReport>(`/api/quiz/admin/audit${qs ? `?${qs}` : ""}`);
+  },
+  downloadAuditFlaggedCsv: () => adminDownload("/api/quiz/admin/audit/flagged.csv"),
+  /** Compare this deployment's canonical DB state against production. */
+  getDbDrift: () => adminRequest<DbDriftReport>("/api/quiz/admin/db-drift"),
   downloadReviewExport: (scope: "all" | "changed" | "flagged", currentBaseline = "current") => {
     const params = new URLSearchParams({ scope });
     if (currentBaseline) params.set("current_baseline", currentBaseline);
@@ -889,49 +864,5 @@ export const quizApi = {
   getReviewPackQuestions: (packKey: string) =>
     adminRequest<ReviewPackQuestionsResponse>(
       `/api/quiz/admin/review/packs/${encodeURIComponent(packKey)}/questions`,
-    ),
-
-  // ---------------------------------------------------------------------------
-  // Quiz Builder (Pro Esports)
-  // ---------------------------------------------------------------------------
-  getQuizBuilderMeta: () =>
-    adminRequest<QuizBuilderMeta>("/api/quiz/admin/builder/meta"),
-  generateQuizBuilderCandidates: (req: QuizBuilderGenerateRequest) =>
-    adminRequest<QuizBuilderGenerateResponse>("/api/quiz/admin/builder/generate", {
-      method: "POST",
-      body: JSON.stringify({ source_type: "pro_esports", ...req }),
-    }),
-  createQuizBuilderDraft: (payload: QuizBuilderDraftCreate) =>
-    adminRequest<QuizBuilderDraft>("/api/quiz/admin/builder/drafts", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  listQuizBuilderDrafts: (filters: QuizBuilderDraftListFilters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.status) params.set("status", filters.status);
-    if (filters.year !== undefined) params.set("year", String(filters.year));
-    if (filters.scope_name) params.set("scope_name", filters.scope_name);
-    if (filters.template_id) params.set("template_id", filters.template_id);
-    if (filters.source_type) params.set("source_type", filters.source_type);
-    if (filters.coverage_status) params.set("coverage_status", filters.coverage_status);
-    if (filters.search) params.set("search", filters.search);
-    if (filters.limit !== undefined) params.set("limit", String(filters.limit));
-    if (filters.offset !== undefined) params.set("offset", String(filters.offset));
-    const qs = params.toString();
-    return adminRequest<QuizBuilderDraftListResponse>(
-      `/api/quiz/admin/builder/drafts${qs ? `?${qs}` : ""}`,
-    );
-  },
-  getQuizBuilderDraft: (id: number) =>
-    adminRequest<QuizBuilderDraft>(`/api/quiz/admin/builder/drafts/${id}`),
-  updateQuizBuilderDraft: (id: number, patch: QuizBuilderDraftUpdate) =>
-    adminRequest<QuizBuilderDraft>(`/api/quiz/admin/builder/drafts/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(patch),
-    }),
-  sendQuizBuilderDraftToReview: (id: number) =>
-    adminRequest<QuizBuilderPromotionResponse>(
-      `/api/quiz/admin/builder/drafts/${id}/send-to-review`,
-      { method: "POST" },
     ),
 };

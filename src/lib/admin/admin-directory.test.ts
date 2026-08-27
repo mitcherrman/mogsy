@@ -60,12 +60,12 @@ describe("admin-directory registry", () => {
     }
   });
 
-  it("preserves the exact Quiz Content child-action query strings", () => {
+  it("advertises exactly the two surviving Quiz Review tabs", () => {
+    // Quiz Builder and Ranked Duel Review are retired from this navigation.
     const workspace = ADMIN_DIRECTORY_ITEMS.find((i) => i.id === "quiz-content-workspace");
     expect(workspace?.childActions?.map((a) => a.path)).toEqual([
-      "/admin/quiz-content?tab=builder",
       "/admin/quiz-content?tab=review",
-      "/admin/quiz-content?tab=ranked-duel",
+      "/admin/quiz-content?tab=diagnostics",
     ]);
   });
 

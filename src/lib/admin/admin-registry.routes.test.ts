@@ -142,9 +142,11 @@ describe("registry ⇄ router agreement", () => {
     expect(appSource).toMatch(/path="legacy-dashboard" element=\{<Admin \/>\}/);
   });
 
-  it("preserves the three quiz workspace aliases exactly as they were", () => {
+  it("keeps every quiz workspace alias resolving, now onto the Review tab", () => {
+    // The bookmarks survive the retirement of the Builder tab: /admin/quiz-builder
+    // still resolves, and lands on Quiz Review rather than on a tab that is gone.
     expect(appSource).toContain('<Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />');
-    expect(appSource).toContain('<Route path="/admin/quiz-builder" element={<QuizContentRedirect tab="builder" />} />');
+    expect(appSource).toContain('<Route path="/admin/quiz-builder" element={<QuizContentRedirect tab="review" />} />');
     expect(appSource).toContain('<Route path="/admin/workspace" element={<Navigate to="/admin/quiz-content" replace />} />');
   });
 });

@@ -64,9 +64,9 @@ export const ADMIN_DIRECTORY_ITEMS: AdminDirectoryItem[] = [
   // --- Quiz Content --------------------------------------------------------
   {
     id: "quiz-content-workspace",
-    title: "Quiz Content Workspace",
+    title: "Admin Quiz Review",
     description:
-      "Unified workspace for building, reviewing, and curating quiz and Ranked Duel content.",
+      "Review individual quiz questions and the health of the quiz system in one place.",
     path: "/admin/quiz-content",
     category: "Quiz Content",
     status: "Production",
@@ -74,9 +74,8 @@ export const ADMIN_DIRECTORY_ITEMS: AdminDirectoryItem[] = [
     dangerLevel: "none",
     legacyAliases: ["/admin/quiz-builder", "/admin/quiz-review", "/admin/workspace"],
     childActions: [
-      { label: "Quiz Builder", path: "/admin/quiz-content?tab=builder" },
       { label: "Quiz Review", path: "/admin/quiz-content?tab=review" },
-      { label: "Ranked Duel Review", path: "/admin/quiz-content?tab=ranked-duel" },
+      { label: "Diagnostics", path: "/admin/quiz-content?tab=diagnostics" },
     ],
   },
   {

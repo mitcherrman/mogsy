@@ -444,7 +444,10 @@ const App = () => (
                   {/* Legacy routes delegate into the unified workspace on the matching tab,
                       preserving any incoming query params (filters, ids, packs, pagination). */}
                   <Route path="/admin/quiz-review" element={<QuizContentRedirect tab="review" />} />
-                  <Route path="/admin/quiz-builder" element={<QuizContentRedirect tab="builder" />} />
+                  {/* Quiz Builder and Ranked Duel Review are retired from the
+                      quiz workspace navigation; their bookmarks land on Quiz
+                      Review, which now covers Ranked questions too. */}
+                  <Route path="/admin/quiz-builder" element={<QuizContentRedirect tab="review" />} />
                   {/* Retain the earlier working name as a thin redirect so any bookmarks survive. */}
                   <Route path="/admin/workspace" element={<Navigate to="/admin/quiz-content" replace />} />
                   <Route

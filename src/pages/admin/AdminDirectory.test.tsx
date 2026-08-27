@@ -120,9 +120,11 @@ describe("AdminDirectory navigation", () => {
   it("preserves the Quiz Content child-action tab query strings", () => {
     renderDirectory();
     const hrefs = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
-    expect(hrefs).toContain("/admin/quiz-content?tab=builder");
     expect(hrefs).toContain("/admin/quiz-content?tab=review");
-    expect(hrefs).toContain("/admin/quiz-content?tab=ranked-duel");
+    expect(hrefs).toContain("/admin/quiz-content?tab=diagnostics");
+    // Retired from the visible navigation.
+    expect(hrefs).not.toContain("/admin/quiz-content?tab=builder");
+    expect(hrefs).not.toContain("/admin/quiz-content?tab=ranked-duel");
   });
 
   it("links Back to Mogzy to /lol", () => {

@@ -1,5 +1,5 @@
 /**
- * Structural side-effect boundary for the candidate preview (RA9).
+ * Structural side-effect boundary for the question preview.
  *
  * The preview's guarantee is that it CANNOT create a match, submit an answer,
  * score, rate, heartbeat, or persist anything — and the way that guarantee is
@@ -20,8 +20,16 @@ import { describe, expect, it } from "vitest";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "../..");
 
-/** Every file in the preview subtree, plus its admin host component. */
-const PREVIEW_FILES = [
+/**
+ * The preview's ONE network file. It is held to every rule below except the
+ * ban on `fetch` — being the single, audited place the subtree touches the
+ * network is its entire job. Isolating it to one named file is what makes
+ * "no raw fetch" meaningful for everything else.
+ */
+const PREVIEW_CLIENT = "lib/question-preview/questionPreviewApi.ts";
+
+/** Every other file in the preview subtree, plus its host component. */
+const PREVIEW_CONSUMERS = [
   "lib/question-preview/rankedPreviewAdapter.ts",
   "lib/question-preview/useExactRankedQuestion.ts",
   "lib/question-preview/usePreviewInteractionState.ts",
@@ -29,8 +37,10 @@ const PREVIEW_FILES = [
   "components/question-preview/PreviewStage.tsx",
   "components/question-preview/PreviewStateControl.tsx",
   "components/question-preview/PreviewViewportControl.tsx",
-  "components/admin/ranked-duel-review/CandidatePreview.tsx",
+  "components/question-preview/QuestionPreviewPanel.tsx",
 ];
+
+const PREVIEW_FILES = [...PREVIEW_CONSUMERS, PREVIEW_CLIENT];
 
 const codeOf = (rel: string): string =>
   readFileSync(path.join(root, rel), "utf8")
@@ -48,11 +58,13 @@ const FORBIDDEN_IMPORTS: Array<[string, RegExp]> = [
 const FORBIDDEN_CALLS: Array<[string, RegExp]> = [
   ["a ranked match endpoint", /\/api\/ranked\/matches/],
   ["the ranked queue", /\/api\/ranked\/queue/],
-  ["a raw fetch", /\bfetch\s*\(/],
   ["a websocket", /new\s+WebSocket/],
   ["supabase", /\bsupabase\b/i],
   ["local persistence", /\b(localStorage|sessionStorage|indexedDB)\b/],
 ];
+
+/** Applies to consumers only — the client is the one place a fetch belongs. */
+const NO_NETWORK: Array<[string, RegExp]> = [["a raw fetch", /\bfetch\s*\(/]];
 
 const MUTATION_METHODS = /method:\s*["'](POST|PUT|PATCH|DELETE)["']/;
 
@@ -72,17 +84,45 @@ describe("candidate preview side-effect boundary", () => {
     expect(MUTATION_METHODS.test(src), `${file} issued a mutation`).toBe(false);
   });
 
+  it.each(PREVIEW_CONSUMERS)("%s reaches the network only via the client", (file) => {
+    const src = codeOf(file);
+    for (const [label, pattern] of NO_NETWORK) {
+      expect(pattern.test(src), `${file} performed ${label}`).toBe(false);
+    }
+  });
+
+  it("keeps the whole subtree to exactly one network file", () => {
+    const fetchers = PREVIEW_FILES.filter((f) => /\bfetch\s*\(/.test(codeOf(f)));
+    expect(fetchers).toEqual([PREVIEW_CLIENT]);
+  });
+
   it("reaches the backend through exactly one endpoint", () => {
     const loader = codeOf("lib/question-preview/useExactRankedQuestion.ts");
     // The single API call in the whole subtree, and it is a documented read.
-    expect(loader).toMatch(/rankedReviewApi\s*\.\s*candidatePublicView/);
-    expect(loader).not.toMatch(
-      /rankedReviewApi\s*\.\s*(accept|reject|revise|export|validate)/,
-    );
+    expect(loader).toMatch(/questionPreviewApi\s*\.\s*rankedCandidateView/);
 
     for (const file of PREVIEW_FILES) {
       if (file.endsWith("useExactRankedQuestion.ts")) continue;
-      expect(codeOf(file)).not.toContain("rankedReviewApi");
+      if (file.endsWith("questionPreviewApi.ts")) continue;
+      expect(codeOf(file)).not.toContain("questionPreviewApi");
+    }
+  });
+
+  it("cannot express a mutation at all, rather than merely not writing one", () => {
+    // Stronger than asserting the absence of `method: "POST"`: the client has
+    // no `method` parameter, so a future caller cannot ask it to mutate. This
+    // replaced the retired review client, whose accept/reject/revise/export
+    // calls sat one property away from the preview.
+    const api = codeOf("lib/question-preview/questionPreviewApi.ts");
+    expect(api).toMatch(/method:\s*"GET"/);
+    for (const forbidden of [/\baccept\b/, /\breject\b/, /\brevise\b/, /\bvalidate\b/]) {
+      expect(forbidden.test(api), `preview client exposed ${forbidden}`).toBe(false);
+    }
+  });
+
+  it("retains no import of the retired Ranked Duel Review client", () => {
+    for (const file of PREVIEW_FILES) {
+      expect(codeOf(file)).not.toContain("ranked-duel-review");
     }
   });
 
@@ -102,12 +142,13 @@ describe("candidate preview side-effect boundary", () => {
     }
   });
 
-  it("keeps the review client's mutations out of the preview host", () => {
-    // The Preview tab is a sibling of the Data tab, never a second way to act
-    // on a candidate: the decision calls stay in the panel.
-    const host = codeOf("components/admin/ranked-duel-review/CandidatePreview.tsx");
+  it("offers no way to act on the question it previews", () => {
+    // The preview is a way to LOOK at a question, never a second way to decide
+    // on one. With the review workflow retired there is no decision call left
+    // to leak, and this keeps it that way.
+    const host = codeOf("components/question-preview/QuestionPreviewPanel.tsx");
     for (const pattern of [/\baccept\b/, /\breject\b/, /\brevise\b/, /\bexport\(/]) {
-      expect(pattern.test(host), `CandidatePreview matched ${pattern}`).toBe(false);
+      expect(pattern.test(host), `QuestionPreviewPanel matched ${pattern}`).toBe(false);
     }
   });
 });
