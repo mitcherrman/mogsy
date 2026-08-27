@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
-import { Music, Play, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Music, Radio, SkipForward, VolumeX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -37,7 +37,7 @@ const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
   loading: "Loading",
   playing: "Live",
   paused: "Ready",
-  blocked: "Press play to start",
+  blocked: "Tune in to listen",
   failed: "Track unavailable",
 };
 
@@ -81,6 +81,7 @@ export default function AcademyRadioControls({
   const radio = useAcademyRadio();
   const reducedMotion = useReducedMotion() === true;
   const [panelOpen, setPanelOpen] = useState(false);
+  const [promptIndex, setPromptIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const panelId = `academy-radio-panel-${variant}`;
@@ -106,7 +107,14 @@ export default function AcademyRadioControls({
     };
   }, [panelOpen]);
 
-  const playPauseButton = (size: string) => (
+  useEffect(() => {
+    // Rotating copy is motion. Reduced motion keeps the first prompt still.
+    if (variant !== "hud" || reducedMotion) return;
+    const timer = window.setInterval(() => setPromptIndex((index) => (index + 1) % 2), 7000);
+    return () => window.clearInterval(timer);
+  }, [variant, reducedMotion]);
+
+  const tuneButton = (size: string) => (
     <button
       type="button"
       onClick={() => (radio.isAudible ? toggleRadioMute() : void playRadio())}
@@ -114,30 +122,12 @@ export default function AcademyRadioControls({
       aria-label={radio.isAudible ? "Mute Academy Radio" : "Tune in to Academy Radio"}
       title={radio.isAudible ? "Mute Academy Radio" : "Tune in to Academy Radio"}
       className={cn(iconButton, size)}
-      data-testid={`academy-radio-playpause-${variant}`}
+      data-testid={`academy-radio-tune-${variant}`}
     >
       {radio.isAudible ? (
         <VolumeX className="h-4 w-4" aria-hidden="true" />
       ) : (
-        <Play className="h-4 w-4" aria-hidden="true" />
-      )}
-    </button>
-  );
-
-  const muteButton = (size: string) => (
-    <button
-      type="button"
-      onClick={() => toggleRadioMute()}
-      aria-pressed={radio.muted}
-      aria-label={radio.muted ? "Unmute Academy Radio" : "Mute Academy Radio"}
-      title={radio.muted ? "Unmute Academy Radio" : "Mute Academy Radio"}
-      className={cn(iconButton, size)}
-      data-testid={`academy-radio-mute-${variant}`}
-    >
-      {radio.muted ? (
-        <VolumeX className="h-4 w-4" aria-hidden="true" />
-      ) : (
-        <Volume2 className="h-4 w-4" aria-hidden="true" />
+        <Radio className="h-4 w-4" aria-hidden="true" />
       )}
     </button>
   );
@@ -206,8 +196,7 @@ export default function AcademyRadioControls({
 
       {withTransport && (
         <div className="mt-3 flex items-center gap-1">
-          {playPauseButton("h-10 w-10")}
-          {muteButton("h-10 w-10")}
+          {tuneButton("h-10 w-10")}
           {nextButton("h-10 w-10")}
         </div>
       )}
@@ -233,7 +222,7 @@ export default function AcademyRadioControls({
   /* ---------------------------------------------------------------------- */
 
   if (variant === "mobile" || variant === "hud") {
-    return (
+    const control = (
       <div
         ref={containerRef}
         className={cn("relative", variant === "mobile" && "sm:hidden", className)}
@@ -269,6 +258,27 @@ export default function AcademyRadioControls({
         <RadioLiveRegion radio={radio} />
       </div>
     );
+    if (variant !== "hud") return control;
+    const prompts = ["Turn on the Radio!", "See what's playing!"];
+    return (
+      <div className="flex items-center gap-1.5">
+        {/* A nudge, not an announcement: a live region here would re-read itself
+            every 7s forever. The Tune In button carries the real accessible name. */}
+        <div
+          className="hidden h-8 w-36 shrink-0 flex-col justify-center rounded-md border border-white/10 bg-black/20 px-2 text-right sm:flex"
+          data-testid="academy-radio-hud-prompt"
+          aria-hidden="true"
+        >
+          <span className="truncate text-[10px] font-semibold text-foreground/85">
+            {prompts[promptIndex]}
+          </span>
+          {!radio.isAudible && (
+            <span className="truncate text-[9px] text-muted-foreground">Tune In to listen</span>
+          )}
+        </div>
+        {control}
+      </div>
+    );
   }
 
   return (
@@ -277,7 +287,7 @@ export default function AcademyRadioControls({
       className={cn("relative hidden items-center gap-0.5 sm:flex", className)}
       data-testid="academy-radio-desktop"
     >
-      {playPauseButton("h-8 w-8")}
+      {tuneButton("h-8 w-8")}
 
       <button
         type="button"
@@ -298,7 +308,6 @@ export default function AcademyRadioControls({
         <span className="hidden truncate lg:inline">{radio.trackTitle}</span>
       </button>
 
-      {muteButton("h-8 w-8")}
       {nextButton("h-8 w-8")}
 
       {panelOpen && panel(false)}

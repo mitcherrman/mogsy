@@ -1,5 +1,5 @@
 import { useReducedMotion } from "framer-motion";
-import { Play, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Radio, SkipForward, Volume2, VolumeX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -37,7 +37,7 @@ const STATUS_LABEL: Record<RadioSnapshot["status"], string> = {
   loading: "Loading",
   playing: "Live",
   paused: "Ready",
-  blocked: "Press play to start",
+  blocked: "Tune in to listen",
   failed: "Track unavailable",
 };
 
@@ -143,13 +143,13 @@ export default function AcademyRadioDock({
           aria-pressed={radio.isAudible}
           aria-label={radio.isAudible ? "Mute Academy Radio" : "Tune in to Academy Radio"}
           className={cn(controlButton, primaryButton, "h-10 w-10 shrink-0")}
-          data-testid={`academy-radio-playpause-${suffix}`}
+          data-testid={`academy-radio-tune-${suffix}`}
         >
           {radio.isAudible ? (
             <VolumeX className="h-[18px] w-[18px]" aria-hidden="true" />
           ) : (
             // Nudged right so the triangle reads centred in the round button.
-            <Play className="h-[18px] w-[18px] translate-x-[1px]" aria-hidden="true" />
+            <Radio className="h-[18px] w-[18px]" aria-hidden="true" />
           )}
         </button>
 
@@ -175,20 +175,6 @@ export default function AcademyRadioDock({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => toggleRadioMute()}
-          aria-pressed={radio.muted}
-          aria-label={radio.muted ? "Unmute Academy Radio" : "Mute Academy Radio"}
-          className={cn(controlButton, sideButton, "h-8 w-8 shrink-0")}
-          data-testid={`academy-radio-mute-${suffix}`}
-        >
-          {radio.muted ? (
-            <VolumeX className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <Volume2 className="h-4 w-4" aria-hidden="true" />
-          )}
-        </button>
       </div>
 
       {/* Volume row. Next lives here at the subdued end of the deck: with one

@@ -8,8 +8,10 @@ import {
   startRadio,
 } from "@/lib/audio/academy-radio";
 import {
+  getAudioStudioRuntimeSnapshot,
   loadAudioStudioRuntime,
   resolveRuntimePlaylist,
+  subscribeAudioStudioRuntime,
 } from "@/lib/audio/audio-studio-runtime";
 
 /**
@@ -36,7 +38,7 @@ export default function AcademyRadioController() {
     prepareRadio();
     installFirstGestureUnlock();
     installRadioInactivityMonitor();
-    void loadAudioStudioRuntime().then((runtime) => {
+    const applyRuntime = (runtime = getAudioStudioRuntimeSnapshot()) => {
       const playlist = resolveRuntimePlaylist(runtime.config, "academy-radio");
       if (!playlist) return;
       adoptAcademyRadioPlaylist(playlist.tracks.map((track) => ({
@@ -48,7 +50,10 @@ export default function AcademyRadioController() {
         relativeGain: track.relativeGain,
         durationMs: track.durationMs,
       })));
-    });
+    };
+    const unsubscribe = subscribeAudioStudioRuntime(() => applyRuntime());
+    void loadAudioStudioRuntime().then(applyRuntime);
+    return unsubscribe;
   }, []);
 
   return null;

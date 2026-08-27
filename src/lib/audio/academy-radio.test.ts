@@ -18,15 +18,18 @@ import {
   RADIO_INACTIVITY_FADE_MS,
   RADIO_INACTIVITY_TIMEOUT_MS,
   RADIO_PLAYLIST,
+  RADIO_PREFERENCE_VERSION,
   RADIO_STORAGE_KEYS,
   adoptAcademyRadioPlaylist,
   getRadioSnapshot,
   evaluateRadioInactivity,
   installRadioInactivityMonitor,
+  migrateRadioPreferences,
   nextRadioTrack,
   pauseRadio,
   playRadio,
   prepareRadio,
+  reconcileRadioOnWake,
   resetRadioForTests,
   resolvePlayRadioByDefault,
   setPlayRadioByDefault,
@@ -472,6 +475,41 @@ describe("Academy Radio — volume", () => {
 });
 
 describe("Academy Radio — Play Radio by default migration", () => {
+  it("migrates every persisted client once to OFF, muted, and 15% without moving the epoch", () => {
+    const epoch = 1_700_000_000_000;
+    localStorage.removeItem(RADIO_STORAGE_KEYS.preferenceVersion);
+    localStorage.setItem(RADIO_STORAGE_KEYS.playByDefault, "true");
+    localStorage.setItem(RADIO_STORAGE_KEYS.muted, "false");
+    localStorage.setItem(RADIO_STORAGE_KEYS.volume, "0.72");
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(epoch));
+    simulateReload();
+
+    expect(getRadioSnapshot()).toMatchObject({
+      playRadioByDefault: false,
+      muted: true,
+      muteReason: "manual",
+      volume: 0.15,
+      stationEpoch: epoch,
+    });
+    expect(localStorage.getItem(RADIO_STORAGE_KEYS.preferenceVersion)).toBe(
+      String(RADIO_PREFERENCE_VERSION),
+    );
+  });
+
+  it("runs once and never overwrites later listener changes", () => {
+    localStorage.removeItem(RADIO_STORAGE_KEYS.preferenceVersion);
+    expect(migrateRadioPreferences()).toBe(true);
+    setPlayRadioByDefault(true);
+    setRadioMuted(false);
+    setRadioVolume(0.48);
+    expect(migrateRadioPreferences()).toBe(false);
+    simulateReload();
+    expect(getRadioSnapshot()).toMatchObject({
+      playRadioByDefault: true,
+      muted: false,
+      volume: 0.48,
+    });
+  });
   it("defaults genuinely new browsers off and ignores noticeSeen alone", () => {
     expect(resolvePlayRadioByDefault()).toBe(false);
     localStorage.setItem(RADIO_STORAGE_KEYS.noticeSeen, "true");
@@ -668,6 +706,86 @@ describe("Academy Radio — live station clock", () => {
 
     expect(localStorage.getItem(RADIO_STORAGE_KEYS.stationEpoch)).toBe(epoch);
     expect(getRadioSnapshot().stationEpoch).toBe(Number(epoch));
+  });
+
+  it("reconciles a browser-suspended singleton on visibility/focus without restarting at zero", async () => {
+    let wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 20_000));
+    prepareRadio();
+    installDuration(100);
+    await playRadio();
+    const singleton = theAudio();
+    play.mockClear();
+    paused = true;
+    wallClock += 17_000;
+
+    reconcileRadioOnWake();
+    await Promise.resolve();
+
+    expect(theAudio()).toBe(singleton);
+    expect(theAudio().currentTime).toBeCloseTo(37, 5);
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+
+  it("crosses a hidden track boundary and rejoins the correct live offset", async () => {
+    let wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 9_000));
+    adoptAcademyRadioPlaylist([
+      { id: "one", title: "One", durationMs: 10_000, sources: [{ src: "/one.mp3", type: "audio/mpeg" }] },
+      { id: "two", title: "Two", durationMs: 20_000, sources: [{ src: "/two.mp3", type: "audio/mpeg" }] },
+    ]);
+    prepareRadio();
+    Object.defineProperty(theAudio(), "duration", { configurable: true, value: 10 });
+    Object.defineProperty(theAudio(), "currentTime", { configurable: true, writable: true, value: 9 });
+    await playRadio();
+    paused = true;
+    load.mockClear();
+    wallClock += 6_000;
+
+    reconcileRadioOnWake();
+
+    expect(getRadioSnapshot()).toMatchObject({ trackId: "two", trackIndex: 1 });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds station rather than resetting to zero while a track duration is unknown", async () => {
+    let wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 7_000));
+    // The second track carries no duration: the live offset cannot be resolved.
+    adoptAcademyRadioPlaylist([
+      { id: "one", title: "One", durationMs: 10_000, sources: [{ src: "/one.mp3", type: "audio/mpeg" }] },
+      { id: "two", title: "Two", sources: [{ src: "/two.mp3", type: "audio/mpeg" }] },
+    ]);
+    prepareRadio();
+    Object.defineProperty(theAudio(), "duration", { configurable: true, value: 10 });
+    Object.defineProperty(theAudio(), "currentTime", { configurable: true, writable: true, value: 7 });
+    await playRadio();
+    paused = true;
+    wallClock += 30_000;
+
+    reconcileRadioOnWake();
+
+    expect(theAudio().currentTime).toBe(7);
+  });
+
+  it("treats routine input as activity, not a wake, and leaves tolerable drift alone", async () => {
+    const wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 20_000));
+    prepareRadio();
+    installDuration(100);
+    await playRadio();
+    const detach = installRadioInactivityMonitor();
+    // One second off the 20s live offset: inside RADIO_DRIFT_TOLERANCE_SECONDS.
+    theAudio().currentTime = 21;
+
+    window.dispatchEvent(new Event("pointerdown"));
+
+    expect(theAudio().currentTime).toBe(21);
+    detach();
   });
 
 });

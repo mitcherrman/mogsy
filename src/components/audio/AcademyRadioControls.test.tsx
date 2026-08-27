@@ -10,7 +10,7 @@
  * `localStorage` has no methods, so both are stubbed locally in this file only.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import AcademyRadioControls from "./AcademyRadioControls";
 import {
@@ -111,9 +111,8 @@ afterEach(() => {
 
 /* -------------------------------------------------------------------------- */
 
-const playPause = (variant = "desktop") =>
-  screen.getByTestId(`academy-radio-playpause-${variant}`);
-const mute = (variant = "desktop") => screen.getByTestId(`academy-radio-mute-${variant}`);
+const tune = (variant = "desktop") =>
+  screen.getByTestId(`academy-radio-tune-${variant}`);
 const next = (variant = "desktop") => screen.getByTestId(`academy-radio-next-${variant}`);
 
 describe("Academy Radio controls — what they show", () => {
@@ -133,17 +132,17 @@ describe("Academy Radio controls — what they show", () => {
   it("does not claim to be playing before playback has actually started", () => {
     render(<AcademyRadioControls />);
 
-    expect(playPause()).toHaveAttribute("aria-pressed", "false");
-    expect(playPause()).toHaveAccessibleName("Tune in to Academy Radio");
+    expect(tune()).toHaveAttribute("aria-pressed", "false");
+    expect(tune()).toHaveAccessibleName("Tune in to Academy Radio");
   });
 
   it("reflects real playback state once play() resolves", async () => {
     render(<AcademyRadioControls />);
 
-    fireEvent.click(playPause());
+    fireEvent.click(tune());
 
-    await waitFor(() => expect(playPause()).toHaveAttribute("aria-pressed", "true"));
-    expect(playPause()).toHaveAccessibleName("Mute Academy Radio");
+    await waitFor(() => expect(tune()).toHaveAttribute("aria-pressed", "true"));
+    expect(tune()).toHaveAccessibleName("Mute Academy Radio");
     expect(getRadioSnapshot().isPlaying).toBe(true);
   });
 
@@ -151,36 +150,33 @@ describe("Academy Radio controls — what they show", () => {
     play.mockRejectedValue(new DOMException("blocked", "NotAllowedError"));
     render(<AcademyRadioControls />);
 
-    fireEvent.click(playPause());
+    fireEvent.click(tune());
 
     await waitFor(() => expect(getRadioSnapshot().status).toBe("blocked"));
-    expect(playPause()).toHaveAttribute("aria-pressed", "false");
+    expect(tune()).toHaveAttribute("aria-pressed", "false");
   });
 
   it("mutes without pausing the live station", async () => {
     render(<AcademyRadioControls />);
-    fireEvent.click(playPause());
-    await waitFor(() => expect(playPause()).toHaveAttribute("aria-pressed", "true"));
+    fireEvent.click(tune());
+    await waitFor(() => expect(tune()).toHaveAttribute("aria-pressed", "true"));
 
-    fireEvent.click(playPause());
+    fireEvent.click(tune());
 
-    expect(playPause()).toHaveAttribute("aria-pressed", "false");
+    expect(tune()).toHaveAttribute("aria-pressed", "false");
     expect(getRadioSnapshot()).toMatchObject({ status: "playing", muted: true, isAudible: false });
   });
 });
 
-describe("Academy Radio controls — mute", () => {
-  it("reflects and drives the shared mute state", () => {
+describe("Academy Radio controls — Tune In/Mute", () => {
+  it("uses one action and exposes no Radio pause control", async () => {
     render(<AcademyRadioControls />);
-
-    expect(mute()).toHaveAttribute("aria-pressed", "false");
-    expect(mute()).toHaveAccessibleName("Mute Academy Radio");
-
-    fireEvent.click(mute());
-
-    expect(mute()).toHaveAttribute("aria-pressed", "true");
-    expect(mute()).toHaveAccessibleName("Unmute Academy Radio");
+    fireEvent.click(tune());
+    await waitFor(() => expect(tune()).toHaveAccessibleName("Mute Academy Radio"));
+    fireEvent.click(tune());
+    expect(tune()).toHaveAccessibleName("Tune in to Academy Radio");
     expect(getRadioSnapshot().muted).toBe(true);
+    expect(screen.queryByLabelText(/Pause Academy Radio/i)).toBeNull();
   });
 });
 
@@ -224,9 +220,11 @@ describe("Academy Radio controls — volume", () => {
       target: { value: "0.7" },
     });
 
-    fireEvent.click(mute());
+    fireEvent.click(tune());
+    await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
+    fireEvent.click(tune());
     // Unmuting is also a request to hear it again, so let that start settle.
-    fireEvent.click(mute());
+    fireEvent.click(tune());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     expect(getRadioSnapshot().muted).toBe(false);
@@ -235,15 +233,17 @@ describe("Academy Radio controls — volume", () => {
 });
 
 describe("Academy Radio controls — desktop and mobile share one transport", () => {
-  it("a mobile mute is visible to the desktop row", () => {
+  it("a mobile Mute is visible to the desktop row", async () => {
     render(<AcademyRadioControls />);
     render(<AcademyRadioControls variant="mobile" />);
 
     fireEvent.click(screen.getByTestId("academy-radio-mobile-trigger"));
-    fireEvent.click(mute("mobile"));
+    fireEvent.click(tune());
+    await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
+    fireEvent.click(tune("mobile"));
 
     expect(getRadioSnapshot().muted).toBe(true);
-    expect(mute()).toHaveAttribute("aria-pressed", "true");
+    expect(tune()).toHaveAttribute("aria-pressed", "false");
   });
 
   it("the mobile trigger names the radio and its current status", () => {
@@ -259,10 +259,38 @@ describe("Academy Radio controls — desktop and mobile share one transport", ()
   });
 });
 
+describe("Academy Radio controls — HUD prompt", () => {
+  it("rotates in a stable local footprint and explains how to listen while off", () => {
+    vi.useFakeTimers();
+    render(<AcademyRadioControls variant="hud" />);
+    const prompt = screen.getByTestId("academy-radio-hud-prompt");
+    expect(prompt).toHaveClass("w-36", "h-8");
+    expect(prompt).toHaveTextContent("Turn on the Radio!");
+    expect(prompt).toHaveTextContent("Tune In to listen");
+    act(() => vi.advanceTimersByTime(7000));
+    expect(prompt).toHaveTextContent("See what's playing!");
+    expect(screen.queryByLabelText(/Pause Academy Radio/i)).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("holds the prompt still under reduced motion", () => {
+    mocks.reducedMotion = true;
+    vi.useFakeTimers();
+    render(<AcademyRadioControls variant="hud" />);
+    const prompt = screen.getByTestId("academy-radio-hud-prompt");
+    expect(prompt).toHaveTextContent("Turn on the Radio!");
+
+    act(() => vi.advanceTimersByTime(21_000));
+
+    expect(prompt).toHaveTextContent("Turn on the Radio!");
+    vi.useRealTimers();
+  });
+});
+
 describe("Academy Radio controls — route changes", () => {
   it("a remount does not reset the player or stack a second element", async () => {
     const first = render(<AcademyRadioControls />);
-    fireEvent.click(playPause());
+    fireEvent.click(tune());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
     const creationsWhilePlaying = audioCreations;
 
@@ -270,7 +298,7 @@ describe("Academy Radio controls — route changes", () => {
     first.unmount();
     render(<AcademyRadioControls />);
 
-    expect(playPause()).toHaveAttribute("aria-pressed", "true");
+    expect(tune()).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("academy-radio-title")).toHaveTextContent("Tidecaller");
     expect(audioCreations).toBe(creationsWhilePlaying);
     expect(play).toHaveBeenCalledTimes(1);
@@ -282,7 +310,7 @@ describe("Academy Radio controls — accessibility", () => {
     render(<AcademyRadioControls />);
     fireEvent.click(screen.getByTestId("academy-radio-title"));
 
-    for (const control of [playPause(), mute(), next()]) {
+    for (const control of [tune(), next()]) {
       expect(control.tagName).toBe("BUTTON");
       expect(control).toHaveAccessibleName();
       expect(control).not.toHaveAttribute("tabindex", "-1");
@@ -312,7 +340,7 @@ describe("Academy Radio controls — accessibility", () => {
     const live = container.querySelector('[aria-live="polite"]')!;
     expect(live).toHaveTextContent("");
 
-    fireEvent.click(playPause());
+    fireEvent.click(tune());
 
     await waitFor(() =>
       expect(live).toHaveTextContent("Academy Radio now playing: Tidecaller"),
@@ -321,7 +349,7 @@ describe("Academy Radio controls — accessibility", () => {
 
   it("animates the playing indicator only when motion is welcome", async () => {
     const { container } = render(<AcademyRadioControls />);
-    fireEvent.click(playPause());
+    fireEvent.click(tune());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
@@ -330,11 +358,11 @@ describe("Academy Radio controls — accessibility", () => {
   it("holds the indicator still under reduced motion, keeping the text state", async () => {
     mocks.reducedMotion = true;
     const { container } = render(<AcademyRadioControls />);
-    fireEvent.click(playPause());
+    fireEvent.click(tune());
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);
     // The state is still readable without any animation at all.
-    expect(playPause()).toHaveAccessibleName("Mute Academy Radio");
+    expect(tune()).toHaveAccessibleName("Mute Academy Radio");
   });
 });

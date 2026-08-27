@@ -201,12 +201,12 @@ describe("Academy Broadcast centerpiece — energy follows real playback", () =>
     const surface = screen.getByTestId("academy-broadcast-surface");
     expect(surface).toHaveAttribute("data-energized", "false");
 
-    fireEvent.click(screen.getByTestId("academy-radio-playpause-dock"));
+    fireEvent.click(screen.getByTestId("academy-radio-tune-dock"));
     await waitFor(() => expect(surface).toHaveAttribute("data-energized", "true"));
 
     // One element serves the dock, the navbar and the entrance alike.
     expect(audioCreations).toBe(1);
-    expect(screen.getByTestId("academy-radio-playpause-desktop")).toHaveAttribute(
+    expect(screen.getByTestId("academy-radio-tune-desktop")).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -216,7 +216,7 @@ describe("Academy Broadcast centerpiece — energy follows real playback", () =>
     mocks.reducedMotion = true;
     const { container } = render(<AcademyBroadcastCenterpiece />);
 
-    fireEvent.click(screen.getByTestId("academy-radio-playpause-dock"));
+    fireEvent.click(screen.getByTestId("academy-radio-tune-dock"));
     await waitFor(() => expect(getRadioSnapshot().isPlaying).toBe(true));
 
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(0);

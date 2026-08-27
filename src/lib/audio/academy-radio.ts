@@ -86,7 +86,10 @@ export const RADIO_STORAGE_KEYS = {
   playByDefault: "mogsy.audio.playRadioByDefault",
   autoMuteWhenInactive: "mogsy.audio.autoMuteWhenInactive",
   stationEpoch: "mogsy.audio.stationEpoch",
+  preferenceVersion: "mogsy.audio.radioPreferenceVersion",
 } as const;
+
+export const RADIO_PREFERENCE_VERSION = 1;
 
 /* -------------------------------------------------------------------------- */
 /* State                                                                      */
@@ -193,6 +196,18 @@ function writeStorage(key: string, value: string): void {
   }
 }
 
+/** One-time product migration. Deliberately leaves the independent station epoch alone. */
+export function migrateRadioPreferences(): boolean {
+  const stored = Number.parseInt(readStorage(RADIO_STORAGE_KEYS.preferenceVersion) ?? "0", 10);
+  if (stored >= RADIO_PREFERENCE_VERSION) return false;
+  writeStorage(RADIO_STORAGE_KEYS.playByDefault, "false");
+  writeStorage(RADIO_STORAGE_KEYS.volume, String(DEFAULT_MUSIC_VOLUME));
+  writeStorage(RADIO_STORAGE_KEYS.muted, "true");
+  writeStorage(RADIO_STORAGE_KEYS.muteReason, "manual");
+  writeStorage(RADIO_STORAGE_KEYS.preferenceVersion, String(RADIO_PREFERENCE_VERSION));
+  return true;
+}
+
 function readBoolean(key: string, fallback: boolean): boolean {
   const value = readStorage(key);
   return value === null ? fallback : value === "true";
@@ -229,6 +244,7 @@ function getState(): RadioState {
   const host = globalThis as StateHost;
   let state = host.__mogzyEntryMusic__;
   if (!state) {
+    migrateRadioPreferences();
     const storedVolume = Number.parseFloat(readStorage(RADIO_STORAGE_KEYS.volume) ?? "");
     const muted = readStorage(RADIO_STORAGE_KEYS.muted) === "true";
     state = {
@@ -362,6 +378,11 @@ interface StationPosition {
   positionSeconds: number;
   stationElapsedSeconds: number;
   trackStartedAt: number;
+  /**
+   * False while any track duration is still unknown. The offset is a placeholder
+   * in that case, not a real live position, and must never be seeked to.
+   */
+  resolved: boolean;
 }
 
 /** The single centralized wall-clock calculation for the live station. */
@@ -374,6 +395,7 @@ function getStationPosition(state: RadioState, at = Date.now()): StationPosition
       positionSeconds: 0,
       stationElapsedSeconds: elapsed,
       trackStartedAt: state.stationEpoch,
+      resolved: false,
     };
   }
 
@@ -386,11 +408,15 @@ function getStationPosition(state: RadioState, at = Date.now()): StationPosition
         positionSeconds: cyclePosition,
         stationElapsedSeconds: elapsed,
         trackStartedAt: at - cyclePosition * 1000,
+        resolved: true,
       };
     }
     cyclePosition -= durations[index];
   }
-  return { trackIndex: 0, positionSeconds: 0, stationElapsedSeconds: elapsed, trackStartedAt: at };
+  return {
+    trackIndex: 0, positionSeconds: 0, stationElapsedSeconds: elapsed, trackStartedAt: at,
+    resolved: true,
+  };
 }
 
 function reconcileNativePosition(state: RadioState, force = false): void {
@@ -402,6 +428,9 @@ function reconcileNativePosition(state: RadioState, force = false): void {
     applyTrackSources(audio, station.trackIndex);
     audio.load();
   }
+  // A placeholder offset is not a live position: holding station beats seeking
+  // every listener back to zero because one track's metadata has not landed.
+  if (!station.resolved) return;
   if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
   const expected = station.positionSeconds % audio.duration;
   if (force || !Number.isFinite(audio.currentTime) || Math.abs(audio.currentTime - expected) > RADIO_DRIFT_TOLERANCE_SECONDS) {
@@ -411,6 +440,33 @@ function reconcileNativePosition(state: RadioState, force = false): void {
       /* metadata/seekability can lag source selection */
     }
   }
+}
+
+/**
+ * Rejoin the wall-clock station without replacing the singleton. `force` seeks
+ * even when native drift is inside the tolerance, which is what returning from a
+ * sleep needs and what routine input must not do.
+ */
+function rejoinStation(force: boolean): void {
+  const state = getState();
+  const audio = state.element;
+  if (!audio) return;
+  reconcileNativePosition(state, force);
+  evaluateRadioInactivity();
+  if (
+    state.started &&
+    audio.paused &&
+    !state.muted &&
+    !state.suppressedByMode &&
+    (typeof document === "undefined" || document.visibilityState === "visible")
+  ) {
+    void startRadio({ automatic: false, fadeMs: 0 });
+  }
+}
+
+/** Returning to the tab or window after a browser/tab sleep. */
+export function reconcileRadioOnWake(): void {
+  rejoinStation(true);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -599,20 +655,31 @@ export function installRadioInactivityMonitor(): () => void {
   const onActivity = () => {
     const current = getState();
     current.lastActivityAt = Date.now();
-    reconcileNativePosition(current);
+    // A click or a keystroke is not a wake. Honour the drift tolerance so the
+    // element is not re-seeked — and audibly stuttered — on every interaction.
+    rejoinStation(false);
+    scheduleInactivityMute(current);
+  };
+  // Window focus is the only wake signal for an alt-tab between applications:
+  // the page never stops being `visible`, so `visibilitychange` never fires.
+  const onWake = () => {
+    const current = getState();
+    current.lastActivityAt = Date.now();
+    reconcileRadioOnWake();
     scheduleInactivityMute(current);
   };
   const onVisibility = () => {
     const current = getState();
-    reconcileNativePosition(current);
-    evaluateRadioInactivity();
+    reconcileRadioOnWake();
     if (document.visibilityState === "visible" && !current.muted) onActivity();
   };
-  const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "touchstart", "focus"];
+  const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "touchstart"];
   events.forEach((event) => window.addEventListener(event, onActivity, { passive: true }));
+  window.addEventListener("focus", onWake, { passive: true });
   document.addEventListener("visibilitychange", onVisibility);
   const detach = () => {
     events.forEach((event) => window.removeEventListener(event, onActivity));
+    window.removeEventListener("focus", onWake);
     document.removeEventListener("visibilitychange", onVisibility);
     clearInactivityTimer(getState());
     if (getState().detachActivity === detach) getState().detachActivity = null;
@@ -861,6 +928,16 @@ function adoptPendingPlaylist(state: RadioState): void {
   emit(state);
 }
 
+function samePlaylist(left: readonly RadioTrack[], right: readonly RadioTrack[]): boolean {
+  return left.length === right.length && left.every((track, index) => {
+    const other = right[index];
+    return Boolean(other) && track.id === other.id && track.durationMs === other.durationMs &&
+      track.relativeGain === other.relativeGain && track.sources.length === other.sources.length &&
+      track.sources.every((source, sourceIndex) => source.src === other.sources[sourceIndex]?.src &&
+        source.type === other.sources[sourceIndex]?.type);
+  });
+}
+
 /**
  * Installs live Academy Radio metadata without cutting across an audible track.
  * A sounding session defers the new station until it is silent or rebuilt.
@@ -871,6 +948,9 @@ export function adoptAcademyRadioPlaylist(next: readonly RadioTrack[]): boolean 
     next.some((track) => !track.id || !track.title || track.sources.length === 0)
   ) return false;
   const state = getState();
+  if (samePlaylist(getPlaylist(state), next) || samePlaylist(state.pendingPlaylist ?? [], next)) {
+    return true;
+  }
   state.pendingPlaylist = next;
   if (isPhysicallyAudible(state)) return false;
   adoptPendingPlaylist(state);
@@ -1043,6 +1123,8 @@ export function resetRadioForTests(): void {
       /* disabled storage */
     }
   }
+  // Test reset means "already migrated" unless a migration spec removes it explicitly.
+  writeStorage(RADIO_STORAGE_KEYS.preferenceVersion, String(RADIO_PREFERENCE_VERSION));
 }
 
 mogzyAudio.registerRadio<RadioSnapshot>({
