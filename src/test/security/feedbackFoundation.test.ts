@@ -43,17 +43,11 @@ const fb1Sql = () =>
     .join("\n");
 
 describe("FB1 migration — ordering and shape", () => {
-  it("exists and sorts after every migration currently on main", () => {
+  it("exists and is the first FB1 migration", () => {
     const files = migrationFiles();
     expect(files).toContain(FB1_MIGRATION);
-    // Nothing that is not FB1's sorts after it.
-    for (const later of files.slice(files.indexOf(FB1_MIGRATION) + 1)) {
-      expect(later).toMatch(/^20260812\d{6}_fb1_/);
-    }
-    // And it is the first of the FB1 set: the storage migration's RPC reads
-    // feedback.screenshot_path, and the hardening migration refuses to run
-    // without list_my_feedback(). Full ordering is pinned in
-    // feedbackPrivileges.test.ts.
+    // Later unrelated migrations are expected as the project evolves.
+    // The durable invariant is only that foundation begins the FB1 sequence.
     expect(files.filter(f => /_fb1_/.test(f))[0]).toBe(FB1_MIGRATION);
   });
 

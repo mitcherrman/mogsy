@@ -319,7 +319,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       supabase.from("matches").select("*").or(`winner_profile_id.eq.${profile.id},loser_profile_id.eq.${profile.id}`).order("created_at", { ascending: false }).limit(50),
       supabase.from("purchases").select("*").eq("profile_id", profile.id).order("created_at", { ascending: false }),
       supabase.from("comments").select("id, content, league_id, created_at, is_hidden").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(100),
-      supabase.from("feedback").select("id, title, category, status, created_at").eq("profile_id", profile.id).order("created_at", { ascending: false }).limit(10),
+      supabase
+        .rpc("admin_list_feedback", { _show_archived: false })
+        .eq("profile_id", profile.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
 
     const failedSections = [

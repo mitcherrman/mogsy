@@ -45,7 +45,8 @@ const hardening = () => sql(HARDENING);
 describe("ordering", () => {
   it("is the last FB1 migration, after foundation and storage", () => {
     const files = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith(".sql")).sort();
-    expect(files.slice(-3)).toEqual([FOUNDATION, STORAGE, HARDENING]);
+    const fb1Files = files.filter(f => /_fb1_/.test(f));
+    expect(fb1Files).toEqual([FOUNDATION, STORAGE, HARDENING]);
   });
 
   it("refuses to run before the safe read path exists", () => {
