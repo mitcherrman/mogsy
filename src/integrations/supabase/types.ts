@@ -3074,6 +3074,57 @@ export type Database = {
           },
         ]
       }
+      user_identity_links: {
+        Row: {
+          avatar_url: string | null
+          contact_consent: boolean
+          created_at: string
+          display_name: string | null
+          id: string
+          metadata: Json
+          provider: string
+          provider_user_id: string
+          public_on_profile: boolean
+          tag_line: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
+          verified_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metadata?: Json
+          provider: string
+          provider_user_id: string
+          public_on_profile?: boolean
+          tag_line?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+          verified_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          contact_consent?: boolean
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          metadata?: Json
+          provider?: string
+          provider_user_id?: string
+          public_on_profile?: boolean
+          tag_line?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+          verified_at?: string
+        }
+        Relationships: []
+      }
       user_invite_settings: {
         Row: {
           id: string
@@ -3418,6 +3469,20 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      admin_list_identity_links: {
+        Args: never
+        Returns: {
+          contact_consent: boolean
+          display_name: string
+          profile_id: string
+          provider: string
+          provider_user_id: string
+          public_on_profile: boolean
+          tag_line: string
+          username: string
+          verified_at: string
+        }[]
       }
       admin_list_profiles: {
         Args: never
