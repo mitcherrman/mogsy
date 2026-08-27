@@ -62,9 +62,12 @@ import type {
  *   2. Category rail  — the six subjects Leaguecraft studies, as one
  *                       full-width horizontal band across the foot of the
  *                       first viewport. It closes the lobby and opens the
- *                       workspace. An overview, not a menu — see
- *                       `QuizCategoryRail` for why it is not a door yet, and
- *                       the note at its mount for why it is not sticky yet.
+ *                       workspace, and since PRAC1 it is also Leaguecraft's
+ *                       PRACTICE CHOOSER: five of its six tiles start a
+ *                       Practice session for that subject in place. Vision has
+ *                       no content and is rendered unavailable. See
+ *                       `QuizCategoryRail`, and the note at its mount for why
+ *                       it is not sticky yet.
  *   3. Workspace      — Recent Studies (PRACTICE sessions only; the centre
  *                       scroll owns the Ranked ledger) and the Practice panel:
  *                       the sets and the Mastery journeys, reduced to
@@ -168,6 +171,8 @@ export default function LeaguecraftHub({
   sets,
   setsLoading,
   onSelectSet,
+  onSelectCategory,
+  focusCategoryId = null,
   onRefreshSets,
   history,
   historyLoading,
@@ -288,6 +293,18 @@ export default function LeaguecraftHub({
    * all still here behind it, and no practice route changed.
    */
   showPractice?: boolean;
+  /**
+   * PRAC1: start a Practice session for one rail subject.
+   *
+   * Passing it is what turns the category rail from an overview into
+   * Leaguecraft's Practice chooser. Omit it — as `/dev/lobby-preview` does —
+   * and the rail renders exactly as it did before, inert, because a host with
+   * no way to run a session must not advertise a door.
+   */
+  onSelectCategory?: (categoryId: string) => void;
+  /** PRAC1: the rail subject to hand focus back to on mount, so returning
+   *  from the Practice runner lands on the tile it was started from. */
+  focusCategoryId?: string | null;
   /**
    * FROZEN OVERRIDE for the Record's Ranked rows.
    *
@@ -568,17 +585,20 @@ export default function LeaguecraftHub({
           whole seam, and it is deliberately tighter than the gap that
           separates the composition from the workspace below it. */}
       <div className="relative z-30">
-        <QuizCategoryRail />
+        <QuizCategoryRail
+          onSelectCategory={onSelectCategory}
+          focusCategoryId={focusCategoryId}
+        />
       </div>
       </div>
 
       {/* 3 ── Practice for Ranked — WITHHELD, not deleted.
               ──────────────────────────────────────────────
-              The category rail directly above is becoming Leaguecraft's
-              practice selector. Until it opens, this panel and the rail were
-              two navigations to the same six subjects stacked on top of each
+              The category rail directly above IS Leaguecraft's practice
+              selector now (PRAC1). This panel and the rail were two
+              navigations to the same six subjects stacked on top of each
               other, and the temporary one was the louder of the two — so the
-              panel is hidden and the rail is left to inherit the job.
+              panel stays hidden and the rail has inherited the job.
 
               INTACT AND RESTORABLE, in the same shape the rest of the page's
               withheld modules take: the sets, their real question counts and

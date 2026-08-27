@@ -734,6 +734,14 @@ export const quizApi = {
   },
   questions: (quizSet: string, limit = 10) =>
     request<{ questions: QuizQuestion[] }>(`/api/quiz/questions?set=${encodeURIComponent(quizSet)}&limit=${limit}`),
+  /**
+   * The SAME Practice endpoint, addressed by `quiz_categories.name` instead of
+   * by set. Same `PRACTICE_MODE` family gate, same `is_active` predicate, same
+   * row formatter — `routes/quiz.py` branches only on which predicate it adds.
+   * Powers the lobby category rail; see `@/lib/quiz/practiceCategories`.
+   */
+  categoryQuestions: (category: string, limit = 10) =>
+    request<{ questions: QuizQuestion[] }>(`/api/quiz/questions?category=${encodeURIComponent(category)}&limit=${limit}`),
   stats: () => request<{ stats: QuizStats }>("/api/quiz/stats"),
   /** Records an attempt. Attributed by the backend to the verified JWT
    *  subject; `user_id` is ignored server-side and kept only so existing

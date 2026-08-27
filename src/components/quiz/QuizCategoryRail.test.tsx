@@ -103,4 +103,81 @@ describe("QuizCategoryRail", () => {
     fireEvent.click(within(tile).getByRole("button"));
     expect(onSelectCategory).toHaveBeenCalledWith("wave-management");
   });
+
+  // ── PRAC1: the rail is the Practice chooser ──────────────────────────────
+
+  it("opens every content-backed subject, and only those", () => {
+    const onSelectCategory = vi.fn();
+    render(<QuizCategoryRail onSelectCategory={onSelectCategory} />);
+    for (const id of APPROVED) {
+      const tile = screen
+        .getAllByTestId("quiz-category-rail-tile")
+        .find((el) => el.getAttribute("data-category") === id)!;
+      fireEvent.click(within(tile).getByRole("button"));
+    }
+    // Five doors. Vision is in the taxonomy and is not one of them.
+    expect(onSelectCategory.mock.calls.map(([id]) => id)).toEqual([
+      "objectives",
+      "wave-management",
+      "summoner-spells",
+      "itemization",
+      "abilities",
+    ]);
+  });
+
+  it("marks Vision unavailable without removing it, and never navigates from it", () => {
+    const onSelectCategory = vi.fn();
+    render(<QuizCategoryRail onSelectCategory={onSelectCategory} />);
+    const tile = screen
+      .getAllByTestId("quiz-category-rail-tile")
+      .find((el) => el.getAttribute("data-category") === "vision")!;
+    const button = within(tile).getByRole("button");
+
+    expect(tile.getAttribute("data-available")).toBe("false");
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(tile.getAttribute("title")).toContain("coming soon");
+    expect(within(tile).getAllByText("Coming soon").length).toBeGreaterThan(0);
+
+    fireEvent.click(button);
+    fireEvent.keyDown(button, { key: "Enter" });
+    expect(onSelectCategory).not.toHaveBeenCalled();
+  });
+
+  it("keeps Vision a focus stop — a keyboard reader must be able to find it", () => {
+    // `aria-disabled`, never `disabled`: a removed tab stop would hide the
+    // fact that the subject exists at all.
+    render(<QuizCategoryRail onSelectCategory={vi.fn()} />);
+    const tile = screen
+      .getAllByTestId("quiz-category-rail-tile")
+      .find((el) => el.getAttribute("data-category") === "vision")!;
+    const button = within(tile).getByRole("button") as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    button.focus();
+    expect(document.activeElement).toBe(button);
+  });
+
+  it("gives the pointer cursor only to the subjects that open something", () => {
+    render(<QuizCategoryRail onSelectCategory={vi.fn()} />);
+    for (const id of APPROVED) {
+      const tile = screen
+        .getAllByTestId("quiz-category-rail-tile")
+        .find((el) => el.getAttribute("data-category") === id)!;
+      const cls = within(tile).getByRole("button").className;
+      expect(cls.includes("cursor-pointer"), id).toBe(id !== "vision");
+    }
+  });
+
+  it("hands focus back to the tile a session was started from", () => {
+    render(<QuizCategoryRail onSelectCategory={vi.fn()} focusCategoryId="itemization" />);
+    const tile = screen
+      .getAllByTestId("quiz-category-rail-tile")
+      .find((el) => el.getAttribute("data-category") === "itemization")!;
+    expect(document.activeElement).toBe(within(tile).getByRole("button"));
+  });
+
+  it("restores no focus when the rail is inert", () => {
+    const { container } = render(<QuizCategoryRail focusCategoryId="itemization" />);
+    expect(container.querySelectorAll("button").length).toBe(0);
+    expect(document.activeElement).toBe(document.body);
+  });
 });

@@ -66,11 +66,15 @@ const HISTORY = {
 };
 
 const questionsMock = vi.fn(async () => ({ questions: [] }));
+const categoryQuestionsMock = vi.fn(async (_category?: unknown, _limit?: unknown) => ({
+  questions: [] as unknown[],
+}));
 const historyMock = vi.fn(async () => HISTORY);
 vi.mock("@/lib/quiz/api", () => ({
   quizApi: {
     sets: async () => ({ sets: SETS }),
     questions: (...args: unknown[]) => questionsMock(...(args as [])),
+    categoryQuestions: (...args: unknown[]) => categoryQuestionsMock(...(args as [])),
     getProgress: async () => ({
       rank_name: "Bronze",
       attempts: 2,
@@ -238,10 +242,45 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(0);
     expect(container.querySelector('[data-testid="practice-primary-cta"]')).toBeNull();
     expect(screen.queryByText("Practice for Ranked")).toBeNull();
-    // Hidden, never replaced: no substitute practice navigation appeared, and
-    // the rail stays the inert overview it was.
+    // Hidden because the rail INHERITED the job, not because practice went
+    // away: the panel's second navigation is gone and the rail is now the one
+    // Practice chooser on the page.
     const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
-    expect(rail.querySelectorAll("button, a, [role='button']").length).toBe(0);
+    expect(rail.querySelectorAll("a").length).toBe(0);
+    expect(rail.querySelectorAll("button").length).toBe(6);
+  });
+
+  it("makes the rail the Practice chooser — a tile starts a session in place", async () => {
+    // PRAC1. The rail is the chooser: no intermediate route, no second
+    // practice system. Pressing a subject runs the same `/quiz` runner the
+    // sets always used, fed from that subject's live question categories.
+    categoryQuestionsMock.mockClear();
+    const { container } = await renderHub();
+    const tile = container.querySelector(
+      '[data-testid="quiz-category-rail-tile"][data-category="itemization"]',
+    )!;
+    fireEvent.click(within(tile as HTMLElement).getByRole("button"));
+
+    await waitFor(() => expect(categoryQuestionsMock).toHaveBeenCalled());
+    // It asked the ITEM categories, and it never left /quiz.
+    const asked = categoryQuestionsMock.mock.calls.map((call) => call[0]);
+    expect(asked.length).toBeGreaterThan(1);
+    asked.forEach((name) => expect(String(name)).toMatch(/^Item /));
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
+  });
+
+  it("Vision navigates nowhere and starts nothing", async () => {
+    categoryQuestionsMock.mockClear();
+    const { container } = await renderHub();
+    const tile = container.querySelector(
+      '[data-testid="quiz-category-rail-tile"][data-category="vision"]',
+    )!;
+    expect(tile.getAttribute("data-available")).toBe("false");
+    fireEvent.click(within(tile as HTMLElement).getByRole("button"));
+    expect(categoryQuestionsMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
+    // The lobby is still the lobby — no runner took over the page.
+    expect(container.querySelector('[data-testid="quiz-category-rail"]')).not.toBeNull();
   });
 
   it("the Ranked hero keeps the personal records ledger + profile link", async () => {
@@ -326,10 +365,18 @@ describe("Leaguecraft hub — category rail", () => {
     expect(workspace.contains(rail)).toBe(false);
   });
 
-  it("is still an overview, not a menu", async () => {
+  it("is a menu of six in-page controls, and links to nowhere", async () => {
+    // PRAC1 inverted the old assertion here: the rail was an overview until
+    // the bank could open a subject, and it can. What must NOT change is that
+    // it stays IN PAGE — six buttons that run the local Practice runner, and
+    // no anchor that would take the player off the lobby to reach practice.
     const { container } = await renderHub();
     const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
-    expect(rail.querySelectorAll("button, a, [role='button']").length).toBe(0);
+    expect(rail.querySelectorAll("button").length).toBe(6);
+    expect(rail.querySelectorAll("a, [role='button']").length).toBe(0);
+    // Five doors, one declared-unavailable subject. No tile is silently inert.
+    expect(rail.querySelectorAll('[data-available="true"]').length).toBe(5);
+    expect(rail.querySelectorAll('[data-available="false"]').length).toBe(1);
   });
 
   // The rack and the rail are ONE first screen, and the workspace begins

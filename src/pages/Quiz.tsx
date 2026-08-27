@@ -35,6 +35,11 @@ import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
 import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackClient";
 import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
+import { QUIZ_CATEGORY_ICONS } from "@/components/quiz/QuizCategoryStrip";
+import {
+  loadPracticeCategoryQuestions,
+  PRACTICE_SESSION_SIZE,
+} from "@/lib/quiz/practiceCategories";
 import { useRankedRole } from "@/pages/quiz-ranked/useRankedRole";
 import { isRankedRole, type RankedRole } from "@/lib/ranked-public/roles";
 import { authHref } from "@/lib/auth/auth-destination";
@@ -534,6 +539,17 @@ export default function Quiz() {
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [sets, setSets] = useState<QuizSet[]>([]);
   const [currentSet, setCurrentSet] = useState<QuizSet | null>(null);
+  /**
+   * PRAC1: the rail subject a Practice session was started from, or null
+   * when the session came from a SET (or from the Daily Challenge).
+   *
+   * It is tracked beside `currentSet` rather than encoded into it because
+   * the two are re-entered differently: a set replays through
+   * `GET /api/quiz/questions?set=`, a subject through its own category
+   * loader. `currentSet` still carries the LABEL for both, which is all the
+   * results card and the funnel payload ever read off it.
+   */
+  const [currentCategoryId, setCurrentCategoryId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -723,6 +739,7 @@ export default function Quiz() {
     isDailyChallenge.current = true;
     startHistorySession("daily");
     setCurrentSet(null);
+    setCurrentCategoryId(null);
     setPhase("loading-questions");
     setScore(0);
     setSessionAnswers([]);
@@ -839,6 +856,7 @@ export default function Quiz() {
     isDailyChallenge.current = false;
     startHistorySession("standard", set.name);
     setCurrentSet(set);
+    setCurrentCategoryId(null);
     setPhase("loading-questions");
     setScore(0);
     setSessionAnswers([]);
@@ -863,6 +881,70 @@ export default function Quiz() {
     } catch (err: any) {
       setPhase("error");
       setErrorMsg(err?.message || "Failed to load questions.");
+    }
+  }, [startHistorySession, isAnonymous]);
+
+  /**
+   * PRAC1 — start a Practice session for one category-rail subject.
+   *
+   * The SAME runner the set path uses: same phase machine, same history
+   * session, same attempt recording, same results card. The only thing that
+   * differs is where the ten questions come from — a subject spans several
+   * live `quiz_categories` rows, so `loadPracticeCategoryQuestions` deals them
+   * out round-robin across that subject's categories. See
+   * `@/lib/quiz/practiceCategories`.
+   *
+   * `currentSet` is given a synthetic entry rather than a real one because no
+   * set describes these subjects (none contains `Champion Ability Cooldowns`,
+   * and "All Current Questions" is every subject at once). Its `id` is
+   * namespaced so it can never collide with a real set id, and its NAME is the
+   * subject's own — which is what the results card prints, what the funnel
+   * payload carries and what the history row records.
+   *
+   * A subject with no sources cannot get here: the rail renders it
+   * `aria-disabled` and never calls this. The guard is kept anyway so a future
+   * caller cannot start an empty session by accident.
+   */
+  const handleSelectCategory = useCallback(async (categoryId: string) => {
+    const tile = QUIZ_CATEGORY_ICONS.find((c) => c.id === categoryId);
+    if (!tile) return;
+
+    isDailyChallenge.current = false;
+    startHistorySession("standard", tile.full);
+    setCurrentSet({
+      id: `practice-category:${categoryId}`,
+      name: tile.full,
+      description: `Practice questions on ${tile.full}.`,
+      question_count: 0,
+    });
+    setCurrentCategoryId(categoryId);
+    setPhase("loading-questions");
+    setScore(0);
+    setSessionAnswers([]);
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setFillBlankValue("");
+    setAnswerResult(null);
+    setErrorMsg("");
+    try {
+      const qs = await loadPracticeCategoryQuestions(categoryId, PRACTICE_SESSION_SIZE);
+      if (qs.length === 0) {
+        setPhase("error");
+        setErrorMsg(`No practice questions available for ${tile.full} right now.`);
+        return;
+      }
+      setQuestions(qs);
+      setPhase("active");
+      if (isAnonymous) {
+        trackFunnelEvent("quiz_guest_started", {
+          quiz_mode: "standard",
+          set_id: tile.full,
+          total_questions: qs.length,
+        });
+      }
+    } catch (err) {
+      setPhase("error");
+      setErrorMsg(err instanceof Error ? err.message : "Failed to load questions.");
     }
   }, [startHistorySession, isAnonymous]);
 
@@ -1025,12 +1107,19 @@ export default function Quiz() {
   }, [currentIndex, questions.length, isAnonymous, completeHistorySession, currentSet, score]);
 
   const handlePlayAgain = useCallback(() => {
-    if (currentSet) {
+    // A subject replays through its own loader. `currentSet` holds a synthetic
+    // entry for those sessions, and feeding it back to `handleSelectSet` would
+    // query `?set=Objectives` — a set that does not exist — and dead-end on
+    // "No questions available for this set."
+    if (currentCategoryId) {
+      void handleSelectCategory(currentCategoryId);
+    } else if (currentSet) {
       handleSelectSet(currentSet);
     } else {
       isDailyChallenge.current = false;
       setPhase("sets");
       setCurrentSet(null);
+      setCurrentCategoryId(null);
       setQuestions([]);
       setScore(0);
       setCurrentIndex(0);
@@ -1038,13 +1127,14 @@ export default function Quiz() {
       setFillBlankValue("");
       setAnswerResult(null);
     }
-  }, [currentSet, handleSelectSet]);
+  }, [currentCategoryId, currentSet, handleSelectCategory, handleSelectSet]);
 
   const handleRetry = useCallback(() => {
     isDailyChallenge.current = false;
     setPhase("sets");
     setErrorMsg("");
     setCurrentSet(null);
+    setCurrentCategoryId(null);
     setQuestions([]);
     setScore(0);
     setCurrentIndex(0);
@@ -1297,6 +1387,14 @@ export default function Quiz() {
               sets={sets}
               setsLoading={setsLoading}
               onSelectSet={handleSelectSet}
+              /* PRAC1: the category rail IS the Practice chooser. A tile press
+                 starts the session here, on this page, in the runner below —
+                 there is no intermediate "choose a category" route, because the
+                 rail is that chooser. */
+              onSelectCategory={handleSelectCategory}
+              /* …and when the runner hands the page back, focus returns to the
+                 tile it was started from rather than to the top of the doc. */
+              focusCategoryId={currentCategoryId}
               onRefreshSets={handleRetry}
               history={recentHistory}
               historyLoading={historyLoading}
@@ -2107,7 +2205,7 @@ export default function Quiz() {
 
                 <div className="flex flex-wrap justify-center gap-3">
                   <Button variant="outline" onClick={() => setPhase("sets")}>
-                    Choose another set
+                    {currentCategoryId ? "Back to Leaguecraft" : "Choose another set"}
                   </Button>
                   <Button onClick={handlePlayAgain}>
                     <RotateCcw className="h-4 w-4 mr-2" />
