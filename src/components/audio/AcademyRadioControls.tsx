@@ -268,47 +268,17 @@ export default function AcademyRadioControls({
 
   if (variant === "mobile" || variant === "hud") {
     const control = (
-      <div
-        ref={containerRef}
-        className={cn("relative", variant === "mobile" && "sm:hidden", className)}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            dismissNotice();
-            setPanelOpen((open) => !open);
-          }}
-          aria-expanded={panelOpen}
-          aria-controls={panelId}
-          aria-label={`Academy Radio — ${statusLabel}`}
-          title="Academy Radio"
-          className={cn(
-            iconButton,
-            // The HUD trigger takes the same 44px target as its neighbours in
-            // the global cluster; the glyph inside stays 20px, so the control
-            // is easier to hit without getting visually heavier. It is a
-            // utility control, so a ground tint is all the hover it gets — the
-            // pop belongs to the branded marks (see @/lib/hud/chrome).
-            variant === "hud"
-              ? "h-11 w-11 rounded-full hover:bg-white/[0.07]"
-              : "h-10 w-10",
-          )}
-          data-testid={`academy-radio-${variant}-trigger`}
-        >
-          {radio.muted ? (
-            <VolumeX className="h-5 w-5" aria-hidden="true" />
-          ) : (
-            <Music className="h-5 w-5" aria-hidden="true" />
-          )}
-        </button>
+      <div className={cn(variant === "mobile" && "sm:hidden", className)}>
         {variant === "hud" && !noticeDismissed && (
-          /* A temporary nudge hanging under the control, not a fixture of the
-             bar: absolutely positioned, so it reserves no space and nothing in
-             the HUD cluster moves when it appears or goes away. Width comes
-             from the copy (`w-fit` + `whitespace-nowrap`), never from a fixed
-             box. Still aria-hidden and still not a live region — it would
-             otherwise re-read itself on every rotation, and the trigger beside
-             it already carries the real accessible name and dismisses it too. */
+          /* A temporary nudge hanging under the entire top-right HUD hub, not
+             a fixture of the bar: absolutely positioned, so it reserves no
+             space and nothing in the HUD cluster moves when it appears or goes
+             away. Width comes from the copy (`w-fit` + `whitespace-nowrap`),
+             never from a fixed box. Its right edge aligns with the hub chip,
+             and the hub itself is the positioned ancestor. Still aria-hidden
+             and still not a live region — it would otherwise re-read itself on
+             every rotation, and the trigger beside it already carries the real
+             accessible name and dismisses it too. */
           <div
             onClick={dismissNotice}
             className={cn(
@@ -323,9 +293,40 @@ export default function AcademyRadioControls({
             {noticePrompt}
           </div>
         )}
-        {panelOpen && panel(true)}
-        {nextNote}
-        <RadioLiveRegion radio={radio} />
+        <div ref={containerRef} className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              dismissNotice();
+              setPanelOpen((open) => !open);
+            }}
+            aria-expanded={panelOpen}
+            aria-controls={panelId}
+            aria-label={`Academy Radio — ${statusLabel}`}
+            title="Academy Radio"
+            className={cn(
+              iconButton,
+              // The HUD trigger takes the same 44px target as its neighbours in
+              // the global cluster; the glyph inside stays 20px, so the control
+              // is easier to hit without getting visually heavier. It is a
+              // utility control, so a ground tint is all the hover it gets — the
+              // pop belongs to the branded marks (see @/lib/hud/chrome).
+              variant === "hud"
+                ? "h-11 w-11 rounded-full hover:bg-white/[0.07]"
+                : "h-10 w-10",
+            )}
+            data-testid={`academy-radio-${variant}-trigger`}
+          >
+            {radio.muted ? (
+              <VolumeX className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Music className="h-5 w-5" aria-hidden="true" />
+            )}
+          </button>
+          {panelOpen && panel(true)}
+          {nextNote}
+          <RadioLiveRegion radio={radio} />
+        </div>
       </div>
     );
     return control;

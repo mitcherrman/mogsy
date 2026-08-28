@@ -133,7 +133,7 @@ export default function GlobalHud() {
           </span>
         </Link>
 
-        <div className={`${hudChip} flex items-center gap-1 px-1 py-0.5`}>
+        <div className={`${hudChip} relative flex items-center gap-1 px-1 py-0.5`}>
           {/* Guest conversion chip — small, quiet, and the only signup
               affordance in the chrome. AUTH1 cut it back to the two words that
               are the action ("SIGN UP") and moved the polish into CSS: a
