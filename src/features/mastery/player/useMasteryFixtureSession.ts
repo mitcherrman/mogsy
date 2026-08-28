@@ -73,11 +73,30 @@ function toResult(reveal: MasteryPlayerReveal, playerAnswer: PlayerAnswer): Mast
   };
 }
 
-export function useMasteryFixtureSession(): MasteryFixtureSession {
+/**
+ * Generic core: drives the same fixture-only flow off ANY pair of question/
+ * reveal envelope arrays, not just the default audited Ahri-vs-Syndra set.
+ * `useMasteryFixtureSession` below is a thin wrapper over this using the
+ * default fixtures, preserving its exact pre-4C1 behaviour and public API.
+ * The atomic-recall dev seam (`pages/dev/mastery/AtomicRecallPrototypePage.tsx`)
+ * uses this directly with `interactions/atomicRecallFixtures.ts` envelopes.
+ */
+export function useMasteryFixtureSessionFrom(
+  questionEnvelopes: readonly Record<string, unknown>[],
+  revealEnvelopes: readonly Record<string, unknown>[],
+): MasteryFixtureSession {
   // Parse once. If a fixture ever violates a contract this throws at mount —
   // exactly the fail-closed behaviour we want.
-  const questions = useMemo(() => playerQuestionEnvelopes().map(parseMasteryPlayerQuestion), []);
-  const reveals = useMemo(() => playerRevealEnvelopes().map(parseMasteryPlayerReveal), []);
+  const questions = useMemo(
+    () => questionEnvelopes.map(parseMasteryPlayerQuestion),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [questionEnvelopes],
+  );
+  const reveals = useMemo(
+    () => revealEnvelopes.map(parseMasteryPlayerReveal),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [revealEnvelopes],
+  );
   const totalSteps = questions.length;
 
   const [phase, setPhase] = useState<PlayerFlowPhase>("intro");
@@ -172,4 +191,11 @@ export function useMasteryFixtureSession(): MasteryFixtureSession {
     next,
     restart,
   };
+}
+
+/** Default-fixture wrapper — pre-4C1 signature and behaviour, unchanged. */
+export function useMasteryFixtureSession(): MasteryFixtureSession {
+  const questionEnvelopes = useMemo(() => playerQuestionEnvelopes(), []);
+  const revealEnvelopes = useMemo(() => playerRevealEnvelopes(), []);
+  return useMasteryFixtureSessionFrom(questionEnvelopes, revealEnvelopes);
 }

@@ -8,17 +8,19 @@
  * answer evidence.
  */
 import { parseMasteryPlayerQuestion } from "../contracts/parsers";
+import type { LegacyMasteryPlayerQuestion } from "../contracts/playerQuestion";
 import { playerQuestionEnvelopes } from "../fixtures";
+import { MasteryQuestionDispatch, MasteryRevealDispatch } from "../interactions/registry";
 import { useMasteryFixtureSession } from "./useMasteryFixtureSession";
 import { MasteryIntro } from "./MasteryIntro";
-import { MasteryQuestionView } from "./MasteryQuestionView";
-import { MasteryRevealView } from "./MasteryRevealView";
 import { MasteryCompletion } from "./MasteryCompletion";
 
 // The intro shows the first question's SAFE framing (matchup + patch) before the
 // flow starts, when `session.question` is intentionally null. Parse the step-0
-// QUESTION envelope only — never a reveal or the reviewer artifact.
-const introQuestion = parseMasteryPlayerQuestion(playerQuestionEnvelopes()[0]);
+// QUESTION envelope only — never a reveal or the reviewer artifact. This
+// fixture set is a fixed legacy_combat two-champion scenario, so state and
+// matchupIdentity are guaranteed present.
+const introQuestion = parseMasteryPlayerQuestion(playerQuestionEnvelopes()[0]) as LegacyMasteryPlayerQuestion;
 
 export function MasteryPlayerPrototype() {
   const session = useMasteryFixtureSession();
@@ -35,7 +37,7 @@ export function MasteryPlayerPrototype() {
       )}
 
       {(phase === "question" || phase === "submitting") && session.question && (
-        <MasteryQuestionView
+        <MasteryQuestionDispatch
           key={session.index}
           question={session.question}
           total={session.totalSteps}
@@ -45,7 +47,7 @@ export function MasteryPlayerPrototype() {
       )}
 
       {(phase === "reveal" || phase === "advancing") && session.question && session.reveal && (
-        <MasteryRevealView
+        <MasteryRevealDispatch
           key={`reveal-${session.index}`}
           question={session.question}
           reveal={session.reveal}

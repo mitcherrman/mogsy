@@ -141,3 +141,18 @@ export type SessionPhase = (typeof SESSION_PHASES)[number];
  * anything, only to label.
  */
 export type MasteryQuestionFamily = string;
+
+/**
+ * How a player-question payload should be rendered (Phase 4C1). This is a
+ * CLOSED set on purpose: the interaction dispatcher (`features/mastery/interactions`)
+ * must fail explicitly on a kind it does not recognise rather than silently
+ * mis-render, so it is validated as a strict enum rather than an open string like
+ * `MasteryQuestionFamily`.
+ *
+ * `legacy_combat` is every two-champion combat-state question served today
+ * (Ahri/Olaf/Jarvan). `atomic_recall` is the new stateless one-champion
+ * recall interaction (Phase 4C1). Absent on the wire defaults to
+ * `legacy_combat` so every existing served payload keeps parsing unchanged.
+ */
+export const MASTERY_INTERACTION_KINDS = ["legacy_combat", "atomic_recall"] as const;
+export type MasteryInteractionKind = (typeof MASTERY_INTERACTION_KINDS)[number];

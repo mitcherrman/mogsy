@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
+import type { LegacyMasteryPlayerQuestion } from "../contracts/playerQuestion";
 import type { PlayerAnswer } from "./useMasteryFixtureSession";
 import { MasteryNumericInput, validateNumeric } from "./MasteryNumericInput";
 import { MasteryChoiceInput, booleanOptions, type ChoiceOption } from "./MasteryBooleanInput";
@@ -22,7 +22,7 @@ export function MasteryQuestionView({
   submitting,
   onSubmit,
 }: {
-  question: MasteryPlayerQuestion;
+  question: LegacyMasteryPlayerQuestion;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;

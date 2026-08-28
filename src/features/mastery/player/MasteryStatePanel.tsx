@@ -233,15 +233,22 @@ export function MasteryStatePanel({
   state,
   heading,
 }: {
-  state: MasteryStateView;
+  /**
+   * Null for a stateless step (Phase 4C1) — the panel renders nothing rather
+   * than an empty shell. `state.championB` may independently be null for a
+   * one-champion state; when so, only `championA`'s card renders — no fake
+   * opponent panel.
+   */
+  state: MasteryStateView | null;
   heading?: string;
 }) {
+  if (!state) return null;
   return (
     <section aria-label={heading ?? "Current state"} className="space-y-2">
       {heading && <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{heading}</h3>}
       <div className="flex flex-col gap-2 sm:flex-row">
         <ChampionCard champion={state.championA} />
-        <ChampionCard champion={state.championB} />
+        {state.championB && <ChampionCard champion={state.championB} />}
       </div>
     </section>
   );

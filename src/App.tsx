@@ -238,6 +238,9 @@ const MasteryOlafProgressionPage = lazy(() => import("./pages/dev/mastery/OlafPr
 const MasteryLuxCooldownProgressionPage = lazy(() => import("./pages/dev/mastery/LuxCooldownProgressionPage"));
 const MasteryJarvanCooldownProgressionPage = lazy(() => import("./pages/dev/mastery/JarvanCooldownProgressionPage"));
 const MasteryOlafCooldownManaProgressionPage = lazy(() => import("./pages/dev/mastery/OlafCooldownManaProgressionPage"));
+// Phase 4C1 — atomic recall interaction dispatch prototype. Fixture-driven
+// only, proves the one-champion / non-combat interaction end to end.
+const MasteryAtomicRecallPrototypePage = lazy(() => import("./pages/dev/mastery/AtomicRecallPrototypePage"));
 const MasteryReviewerPage = lazy(() => import("./pages/admin/mastery/MasteryReviewerPage"));
 
 // League of Legends Glossary — public reference module. Lazy so the
@@ -567,6 +570,7 @@ const App = () => (
                   <Route path="/dev/mastery/lux-cooldown-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryLuxCooldownProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/jarvan-cooldown-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJarvanCooldownProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/olaf-cooldown-mana-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryOlafCooldownManaProgressionPage /></Suspense></ProtectedRoute>} />
+                  <Route path="/dev/mastery/atomic-recall-prototype" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAtomicRecallPrototypePage /></Suspense></ProtectedRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />

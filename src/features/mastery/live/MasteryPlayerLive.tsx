@@ -12,8 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MasteryPlayerQuestion, MasteryPlayerReveal } from "../contracts";
 import { MasteryAssetsProvider } from "./MasteryAssetsProvider";
-import { MasteryQuestionView } from "../player/MasteryQuestionView";
-import { MasteryRevealView } from "../player/MasteryRevealView";
+import { MasteryQuestionDispatch, MasteryRevealDispatch } from "../interactions/registry";
 import { humanizeFamily } from "../player/playerFormat";
 import {
   advance,
@@ -172,7 +171,7 @@ export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
           </div>
         )}
         {(s.phase === "question" || s.phase === "submitting") && s.question && (
-          <MasteryQuestionView
+          <MasteryQuestionDispatch
             key={s.question.sequenceIndex}
             question={s.question}
             total={s.question.totalSteps}
@@ -181,7 +180,7 @@ export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
           />
         )}
         {s.phase === "reveal" && s.question && s.reveal && (
-          <MasteryRevealView
+          <MasteryRevealDispatch
             key={`reveal-${s.reveal.sequenceIndex}`}
             question={s.question}
             reveal={s.reveal}

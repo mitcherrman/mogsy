@@ -10,7 +10,9 @@
 
 import {
   AnswerType,
+  MASTERY_INTERACTION_KINDS,
   MasteryContractParseError,
+  MasteryInteractionKind,
   MasteryQuestionFamily,
   bool,
   intIndex,
@@ -32,7 +34,8 @@ import {
   masterySetId,
   sessionId,
 } from "./ids";
-import { MasteryStateView, readStateView } from "./stateView";
+import { MasteryPromptSemantics, readPromptSemantics } from "./promptSemantics";
+import { MasteryStateView, readOptionalStateView } from "./stateView";
 
 export interface MasteryMatchupIdentity {
   readonly championA: string;
@@ -71,11 +74,34 @@ interface MasteryPlayerQuestionBase {
   readonly totalSteps: number;
   readonly questionFamily: MasteryQuestionFamily;
   readonly prompt: string;
-  readonly state: MasteryStateView;
+  /**
+   * Null for a stateless step (Phase 4C1 nullable-contract widening — backend
+   * `playerQuestion.state` is `None` when the step models no combat state).
+   * Every payload served today still populates it.
+   */
+  readonly state: MasteryStateView | null;
   readonly patchDisplay: string;
-  readonly matchupIdentity: MasteryMatchupIdentity;
+  /**
+   * Null when the set has no two-champion matchup identity (Phase 4C1
+   * nullable-contract widening). Every payload served today still populates it.
+   */
+  readonly matchupIdentity: MasteryMatchupIdentity | null;
   readonly isReadOnly: boolean;
   readonly hintAvailable: boolean;
+  /**
+   * How this question should be rendered (Phase 4C1). Defaults to
+   * `legacy_combat` when absent from the wire, so every existing served
+   * payload parses unchanged. The interaction dispatcher
+   * (`features/mastery/interactions/registry.tsx`) fails explicitly on a kind
+   * it does not recognise.
+   */
+  readonly interactionKind: MasteryInteractionKind;
+  /**
+   * Structured recall semantics for an `atomic_recall` question — required
+   * exactly when `interactionKind === "atomic_recall"`, and forbidden
+   * otherwise. Null for every `legacy_combat` question served today.
+   */
+  readonly promptSemantics: MasteryPromptSemantics | null;
 }
 
 export interface SingleChoicePlayerQuestion extends MasteryPlayerQuestionBase {
@@ -102,6 +128,19 @@ export type MasteryPlayerQuestion =
   | NumericPlayerQuestion
   | BooleanPlayerQuestion;
 
+/**
+ * The narrowed view every `legacy_combat` renderer (`features/mastery/player/*`)
+ * is written against: `state` and `matchupIdentity` are guaranteed present, as
+ * they always are for every question served today. The interaction dispatcher
+ * narrows to this type only after confirming `interactionKind === "legacy_combat"`
+ * and that both fields are non-null (fail-closed otherwise) — this type alias
+ * lets the legacy renderer components keep their pre-4C1 bodies unchanged.
+ */
+export type LegacyMasteryPlayerQuestion = Omit<MasteryPlayerQuestion, "state" | "matchupIdentity"> & {
+  readonly state: MasteryStateView;
+  readonly matchupIdentity: MasteryMatchupIdentity;
+};
+
 function readMatchup(value: unknown, label: string): MasteryMatchupIdentity {
   const m = rec(value, label);
   return {
@@ -111,6 +150,17 @@ function readMatchup(value: unknown, label: string): MasteryMatchupIdentity {
     championADisplay: nstr(m.champion_a_display, `${label}.champion_a_display`),
     championBDisplay: nstr(m.champion_b_display, `${label}.champion_b_display`),
   };
+}
+
+/** Null when the field is absent or explicitly null (Phase 4C1). */
+function readOptionalMatchup(value: unknown, label: string): MasteryMatchupIdentity | null {
+  if (value === null || value === undefined) return null;
+  return readMatchup(value, label);
+}
+
+function readInteractionKind(value: unknown, label: string): MasteryInteractionKind {
+  if (value === undefined || value === null) return "legacy_combat";
+  return oneOf(value, MASTERY_INTERACTION_KINDS, label);
 }
 
 function readNumericConstraints(value: unknown, label: string): NumericInputConstraints {
@@ -130,6 +180,21 @@ function readNumericConstraints(value: unknown, label: string): NumericInputCons
 }
 
 function readBase(d: Record<string, unknown>, label: string): MasteryPlayerQuestionBase {
+  const interactionKind = readInteractionKind(d.interaction_kind, `${label}.interaction_kind`);
+  const hasPromptSemantics =
+    "prompt_semantics" in d && d.prompt_semantics !== null && d.prompt_semantics !== undefined;
+  if (interactionKind === "atomic_recall" && !hasPromptSemantics) {
+    throw new MasteryContractParseError(
+      `atomic_recall requires prompt_semantics`,
+      `${label}.prompt_semantics`,
+    );
+  }
+  if (interactionKind === "legacy_combat" && hasPromptSemantics) {
+    throw new MasteryContractParseError(
+      `legacy_combat must not carry prompt_semantics`,
+      `${label}.prompt_semantics`,
+    );
+  }
   return {
     sessionId: sessionId(d.session_id, `${label}.session_id`),
     masterySetId: masterySetId(d.mastery_set_id, `${label}.mastery_set_id`),
@@ -139,11 +204,15 @@ function readBase(d: Record<string, unknown>, label: string): MasteryPlayerQuest
     totalSteps: intIndex(d.total_steps, `${label}.total_steps`),
     questionFamily: nonEmptyStr(d.question_family, `${label}.question_family`),
     prompt: nonEmptyStr(d.prompt, `${label}.prompt`),
-    state: readStateView(d.state, `${label}.state`),
+    state: readOptionalStateView(d.state, `${label}.state`),
     patchDisplay: str(d.patch_display, `${label}.patch_display`),
-    matchupIdentity: readMatchup(d.matchup_identity, `${label}.matchup_identity`),
+    matchupIdentity: readOptionalMatchup(d.matchup_identity, `${label}.matchup_identity`),
     isReadOnly: bool(d.is_read_only, `${label}.is_read_only`),
     hintAvailable: bool(d.hint_available, `${label}.hint_available`),
+    interactionKind,
+    promptSemantics: hasPromptSemantics
+      ? readPromptSemantics(d.prompt_semantics, `${label}.prompt_semantics`)
+      : null,
   };
 }
 

@@ -6,15 +6,20 @@
 import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
+import type { LegacyMasteryPlayerQuestion } from "../contracts/playerQuestion";
 import { MasteryPatchBadge } from "./MasteryPatchBadge";
 
+// This intro screen is written for the fixed two-champion teaching-scenario
+// framing (`{championA} E vs {championB} E`), so it takes the narrowed legacy
+// type. An atomic-recall set's intro is a Phase 4C follow-up concern — this
+// slice's dev seam starts an atomic-recall session straight into the question
+// phase (see `pages/dev/mastery/AtomicRecallPrototypePage.tsx`).
 export function MasteryIntro({
   firstQuestion,
   totalSteps,
   onStart,
 }: {
-  firstQuestion: MasteryPlayerQuestion;
+  firstQuestion: LegacyMasteryPlayerQuestion;
   totalSteps: number;
   onStart: () => void;
 }) {

@@ -31,7 +31,7 @@ import {
   masterySetId,
   sessionId,
 } from "./ids";
-import { MasteryStateView, readStateView } from "./stateView";
+import { MasteryStateView, readOptionalStateView } from "./stateView";
 import { MasteryTransitionView, readOptionalTransitionView } from "./transitionView";
 
 export interface MasteryCalculationStep {
@@ -70,8 +70,13 @@ export interface MasteryPlayerReveal {
   readonly correctAnswerDisplay: string | null;
   readonly explanation: string;
   readonly calculationSteps: readonly MasteryCalculationStep[];
-  readonly beforeState: MasteryStateView;
-  readonly afterState: MasteryStateView;
+  /**
+   * Null for a stateless step (Phase 4C1 nullable-contract widening — backend
+   * `resolve_states(...)` returns `{}` for a stateless artifact rather than
+   * replaying a fiction). Every reveal served today still populates it.
+   */
+  readonly beforeState: MasteryStateView | null;
+  readonly afterState: MasteryStateView | null;
   readonly appliedTransition: MasteryTransitionView | null;
   readonly proposedTransition: MasteryTransitionView | null;
   readonly sourceSummary: MasterySourceSummary;
@@ -121,8 +126,8 @@ export function readPlayerReveal(value: unknown, label = "data"): MasteryPlayerR
     correctAnswerDisplay: nstr(d.correct_answer_display, `${label}.correct_answer_display`),
     explanation: str(d.explanation, `${label}.explanation`),
     calculationSteps: steps.map((s, i) => readCalcStep(s, `${label}.calculation_steps[${i}]`)),
-    beforeState: readStateView(d.before_state, `${label}.before_state`),
-    afterState: readStateView(d.after_state, `${label}.after_state`),
+    beforeState: readOptionalStateView(d.before_state, `${label}.before_state`),
+    afterState: readOptionalStateView(d.after_state, `${label}.after_state`),
     appliedTransition: readOptionalTransitionView(d.applied_transition, `${label}.applied_transition`),
     proposedTransition: readOptionalTransitionView(d.proposed_transition, `${label}.proposed_transition`),
     sourceSummary: readSourceSummary(d.source_summary, `${label}.source_summary`),
@@ -130,3 +135,12 @@ export function readPlayerReveal(value: unknown, label = "data"): MasteryPlayerR
     completionState: readCompletion(d.completion_state, `${label}.completion_state`),
   };
 }
+
+/**
+ * The narrowed view the `legacy_combat` reveal renderer is written against —
+ * see `LegacyMasteryPlayerQuestion` in `./playerQuestion` for the rationale.
+ */
+export type LegacyMasteryPlayerReveal = Omit<MasteryPlayerReveal, "beforeState" | "afterState"> & {
+  readonly beforeState: MasteryStateView;
+  readonly afterState: MasteryStateView;
+};

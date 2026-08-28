@@ -10,6 +10,7 @@ export * from "./common";
 export * from "./ids";
 export * from "./hiddenInfoGuard";
 export * from "./stateView";
+export * from "./promptSemantics";
 export * from "./transitionView";
 export * from "./playerQuestion";
 export * from "./playerReveal";

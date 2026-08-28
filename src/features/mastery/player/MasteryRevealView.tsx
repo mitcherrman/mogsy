@@ -17,14 +17,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
-import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
-import type { MasteryPlayerReveal } from "../contracts/playerReveal";
+import type { LegacyMasteryPlayerQuestion } from "../contracts/playerQuestion";
+import type { LegacyMasteryPlayerReveal } from "../contracts/playerReveal";
 import type { PlayerAnswer } from "./useMasteryFixtureSession";
 import { MasteryStatePanel } from "./MasteryStatePanel";
 import { MasteryTransitionPanel } from "./MasteryTransitionPanel";
 import { formatNumber } from "./playerFormat";
 
-function formatAnswer(value: PlayerAnswer | string | number | boolean, question: MasteryPlayerQuestion): string {
+function formatAnswer(value: PlayerAnswer | string | number | boolean, question: LegacyMasteryPlayerQuestion): string {
   if (typeof value === "boolean") {
     if (question.answerType === "boolean" && question.answerOptions.length === 2) {
       return value ? question.answerOptions[1] : question.answerOptions[0];
@@ -42,8 +42,8 @@ export function MasteryRevealView({
   isFinal,
   onNext,
 }: {
-  question: MasteryPlayerQuestion;
-  reveal: MasteryPlayerReveal;
+  question: LegacyMasteryPlayerQuestion;
+  reveal: LegacyMasteryPlayerReveal;
   submittedAnswer: PlayerAnswer | null;
   isFinal: boolean;
   onNext: () => void;

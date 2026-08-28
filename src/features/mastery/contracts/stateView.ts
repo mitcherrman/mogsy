@@ -67,7 +67,13 @@ export interface MasteryStateView {
   readonly validationStatus: string | null;
   readonly label: string | null;
   readonly championA: MasteryChampionView;
-  readonly championB: MasteryChampionView;
+  /**
+   * Null for a one-champion / non-combat state (Phase 4C1 nullable-contract
+   * widening — backend `CanonicalMasteryState.champion_b: ChampionCanonicalState
+   * | None`). Every payload served today still populates it; this only widens
+   * what the TYPE permits so a stateless snapshot can parse.
+   */
+  readonly championB: MasteryChampionView | null;
 }
 
 function readEffect(value: unknown, label: string): MasteryActiveEffectView {
@@ -131,15 +137,27 @@ function readChampion(value: unknown, label: string): MasteryChampionView {
 
 export function readStateView(value: unknown, label = "state"): MasteryStateView {
   const s = rec(value, label);
-  if (!("champion_a" in s) || !("champion_b" in s)) {
-    throw new MasteryContractParseError(`${label} requires champion_a and champion_b`, label);
+  if (!("champion_a" in s)) {
+    throw new MasteryContractParseError(`${label} requires champion_a`, label);
   }
+  const rawB = s.champion_b;
   return {
     snapshotId: snapshotId(s.snapshot_id, `${label}.snapshot_id`),
     patchKeyDigest: nstr(s.patch_key_digest, `${label}.patch_key_digest`),
     validationStatus: nstr(s.validation_status, `${label}.validation_status`),
     label: nstr(s.label, `${label}.label`),
     championA: readChampion(s.champion_a, `${label}.champion_a`),
-    championB: readChampion(s.champion_b, `${label}.champion_b`),
+    // Absent or explicit null both mean "no second champion" (Phase 4C1).
+    championB: rawB === null || rawB === undefined ? null : readChampion(rawB, `${label}.champion_b`),
   };
+}
+
+/**
+ * Reads an entire state view, or null when the step models no state at all
+ * (backend `state_view(...)` returns `None` for a stateless step). Distinct
+ * from a present state whose `championB` is null.
+ */
+export function readOptionalStateView(value: unknown, label = "state"): MasteryStateView | null {
+  if (value === null || value === undefined) return null;
+  return readStateView(value, label);
 }
