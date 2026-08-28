@@ -11,7 +11,7 @@
  * Mastery set. No new runtime, no hardcoded set id.
  */
 import { useEffect, useState } from "react";
-import { MASTERY_API_BASE, MasteryPlayerLive } from "@/features/mastery/live";
+import { MASTERY_API_BASE, MasteryPlayerLive, startGeneratedPlaytestSession } from "@/features/mastery/live";
 import { Button } from "@/components/ui/button";
 
 interface GeneratedPlaytestSet {
@@ -64,7 +64,7 @@ export default function GeneratedPlaytestLauncherPage() {
             ← Back to generated playtest launcher
           </button>
         </div>
-        <MasteryPlayerLive masterySetId={selected} />
+        <MasteryPlayerLive masterySetId={selected} startSessionFn={startGeneratedPlaytestSession} />
       </div>
     );
   }

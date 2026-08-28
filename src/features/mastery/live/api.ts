@@ -270,6 +270,16 @@ export const startSession = (masterySetId: string, signal?: AbortSignal): Promis
   request("/api/mastery/sessions", readSessionView,
     { method: "POST", body: { mastery_set_id: masterySetId }, signal });
 
+/** Dev-only, unauthenticated session creation for the Phase 4D2 generated
+ * playtest prototypes ONLY. Backend 404s unless MASTERY_GENERATED_PLAYTEST is
+ * enabled and the id is one of the two generated prototypes — never wired to
+ * any other set. Follow-up current/answer/advance calls on the resulting
+ * session id go through the normal (unchanged) endpoints. */
+export const startGeneratedPlaytestSession = (masterySetId: string,
+                                              signal?: AbortSignal): Promise<MasterySessionView> =>
+  request("/api/mastery/dev/generated-playtest-session", readSessionView,
+    { method: "POST", body: { mastery_set_id: masterySetId }, signal });
+
 export const getCurrent = (sessionId: string, signal?: AbortSignal): Promise<MasterySessionView> =>
   request(`/api/mastery/sessions/${encodeURIComponent(sessionId)}/current`,
     readSessionView, { signal });

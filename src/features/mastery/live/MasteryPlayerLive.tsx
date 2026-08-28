@@ -24,6 +24,7 @@ import {
   submitAnswer,
   MasteryApiError,
   type MasterySessionSummary,
+  type MasterySessionView,
 } from "./api";
 
 type Answer = number | boolean | string;
@@ -57,7 +58,17 @@ function withResult(results: Record<number, StepResult>, reveal: MasteryPlayerRe
     family: reveal.questionFamily, correct: reveal.authoritativeCorrectness } };
 }
 
-export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
+export function MasteryPlayerLive({
+  masterySetId,
+  startSessionFn = startSession,
+}: {
+  masterySetId?: string;
+  /** Override for how a session gets created. Defaults to the normal
+   * authenticated `startSession`; the dev-only generated-playtest launcher
+   * passes `startGeneratedPlaytestSession` instead. Everything downstream
+   * (current/answer/advance, rendering) is unchanged either way. */
+  startSessionFn?: (masterySetId: string, signal?: AbortSignal) => Promise<MasterySessionView>;
+}) {
   const [s, setS] = useState<State>(INITIAL);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -72,7 +83,7 @@ export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
     try {
       const setId = masterySetId ?? (await listSets(signal))[0]?.masterySetId;
       if (!setId) { setS((p) => ({ ...p, phase: "error", error: "no published mastery set" })); return; }
-      const view = await startSession(setId, signal);
+      const view = await startSessionFn(setId, signal);
       const phase: Phase = view.summary ? "completed" : view.reveal ? "reveal" : "question";
       // Fail closed: a non-completed session MUST carry a question. Never render a
       // blank player by entering a question/reveal phase with a null question.
@@ -92,7 +103,7 @@ export function MasteryPlayerLive({ masterySetId }: { masterySetId?: string }) {
         phase,
       }));
     } catch (e) { fail(e); }
-  }, [masterySetId, fail]);
+  }, [masterySetId, startSessionFn, fail]);
 
   useEffect(() => {
     const ctrl = new AbortController();
