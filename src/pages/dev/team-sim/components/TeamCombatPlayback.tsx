@@ -5,8 +5,9 @@
  * Distinct from EventTracePanel (the readable chronological record of every
  * event): this is a PLAYBACK surface over the scheduler's own action rows
  * only (`scheduler/action_executed` + `scheduler/action_failed`), laid out on
- * a shared clock as two lanes (team A / team B), with HP bars and a formula
- * calculator kept in sync with the selected/playing action.
+ * a shared clock as two lanes (team A / team B), with a champion roster, HP
+ * bars, and a formula calculator kept in sync with the selected/playing
+ * action.
  *
  * Every number rendered here is read from the backend response — see
  * `lib/combat-lab/team-sim/playback.ts` for exact field provenance. Nothing
@@ -18,6 +19,11 @@
  * see playback.ts) or `"full"`. At `standard` or `summary` the two lanes and
  * HP bars still render fully (they use only scheduler/lifecycle fields), but
  * the calculator says so instead of rendering an empty table.
+ *
+ * Icons/portraits are resolved from Mogzy's existing champion asset
+ * infrastructure only (`useChampionAssets`, `lib/combat-lab/abilityIcons`) —
+ * no new asset pipeline. Every icon gracefully falls back to a neutral glyph
+ * when no real art resolves.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, RotateCcw, Swords } from "lucide-react";
@@ -38,13 +44,34 @@ import {
   shieldAbsorbed,
   type PlaybackAction,
 } from "@/lib/combat-lab/team-sim/playback";
+import {
+  useChampionAssets,
+  getChampionIcon,
+  type ChampionManifest,
+} from "@/hooks/useChampionAssets";
+import {
+  getAbilityIconUrl,
+  getChampionSquareIconUrl,
+  inferActionAbilitySlot,
+  toneForSlot,
+} from "@/lib/combat-lab/abilityIcons";
+
 const PLAYBACK_INTERVAL_MS = 700;
+
+const TONE_RING: Record<string, string> = {
+  q: "ring-amber-400/50",
+  w: "ring-sky-400/50",
+  e: "ring-emerald-400/50",
+  r: "ring-fuchsia-400/50",
+  neutral: "ring-white/10",
+};
 
 export function TeamCombatPlayback({ response }: { response: TeamSimulationResponse }) {
   const actions = useMemo(() => buildPlaybackActions(response), [response]);
   const teamAId = response.team_summaries[Object.keys(response.team_summaries)[0]]?.team_id;
   const [selectedSeq, setSelectedSeq] = useState<number | null>(actions[0]?.seq ?? null);
   const [playing, setPlaying] = useState(false);
+  const { data: manifest } = useChampionAssets();
 
   const selectedIndex = actions.findIndex((a) => a.seq === selectedSeq);
 
@@ -106,16 +133,18 @@ export function TeamCombatPlayback({ response }: { response: TeamSimulationRespo
         />
       </header>
 
+      <ChampionRoster response={response} manifest={manifest ?? null} selected={selected} />
+
       <TwoLaneTimeline
         actions={actions}
         selectedSeq={selected.seq}
         onSelect={selectBySeq}
         primaryTeamId={teamAId ?? null}
+        response={response}
+        manifest={manifest ?? null}
       />
 
-      <HpBars response={response} selected={selected} />
-
-      <CalculatorPanel action={selected} response={response} />
+      <CalculatorPanel action={selected} response={response} manifest={manifest ?? null} />
     </Card>
   );
 }
@@ -156,6 +185,123 @@ function PlaybackControls({
 }
 
 /**
+ * Champion identity strip — one chip per combatant, grouped by team, so a
+ * viewer can tell the lanes apart at a glance instead of reading runtime ids.
+ * Portrait/name/level come from `effective_builds` (authoritative build that
+ * actually ran) plus the shared champion asset manifest already used
+ * elsewhere in Mogzy (`useChampionAssets`). HP shown is the combatant's
+ * CURRENT state as of the selected action, read from the same
+ * `damage_accounting` scopes the HP bars use — never re-derived.
+ */
+function ChampionRoster({
+  response,
+  manifest,
+  selected,
+}: {
+  response: TeamSimulationResponse;
+  manifest: ChampionManifest | null;
+  selected: PlaybackAction;
+}) {
+  const teams = useMemo(() => {
+    const byTeam = new Map<string, string[]>();
+    for (const [runtimeId, summary] of Object.entries(response.combatant_summaries)) {
+      const list = byTeam.get(summary.team_id) ?? [];
+      list.push(runtimeId);
+      byTeam.set(summary.team_id, list);
+    }
+    for (const list of byTeam.values()) {
+      list.sort((a, b) => (response.combatant_summaries[a]?.slot_index ?? 0) - (response.combatant_summaries[b]?.slot_index ?? 0));
+    }
+    return Array.from(byTeam.entries());
+  }, [response]);
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-2" data-testid="champion-roster">
+      {teams.map(([teamId, runtimeIds]) => (
+        <div key={teamId} className="space-y-1">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Team {teamId}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {runtimeIds.map((runtimeId) => (
+              <RosterChip
+                key={runtimeId}
+                runtimeId={runtimeId}
+                response={response}
+                manifest={manifest}
+                active={selected.actorId === runtimeId || selected.targetId === runtimeId}
+                isDamageTick={selected.targetId === runtimeId}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RosterChip({
+  runtimeId,
+  response,
+  manifest,
+  active,
+  isDamageTick,
+}: {
+  runtimeId: string;
+  response: TeamSimulationResponse;
+  manifest: ChampionManifest | null;
+  active: boolean;
+  isDamageTick: boolean;
+}) {
+  const build = response.effective_builds[runtimeId];
+  const summary = response.combatant_summaries[runtimeId];
+  const iconUrl = getChampionIcon(manifest, build?.champion) ?? getChampionSquareIconUrl(build?.champion);
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [iconUrl]);
+
+  return (
+    <div
+      data-testid="roster-chip"
+      data-runtime-id={runtimeId}
+      className={cn(
+        "flex items-center gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
+        active ? "border-primary/60 bg-primary/10" : "border-border/50 bg-card/60",
+        !summary?.alive && "opacity-50 grayscale"
+      )}
+    >
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted ring-1 ring-inset transition-transform",
+          isDamageTick && "ring-destructive/60",
+          !isDamageTick && "ring-white/10"
+        )}
+      >
+        {iconUrl && !broken ? (
+          <img
+            src={iconUrl}
+            alt={build?.champion ?? runtimeId}
+            className="h-full w-full object-cover"
+            onError={() => setBroken(true)}
+          />
+        ) : (
+          <Swords className="h-3.5 w-3.5 text-foreground/50" />
+        )}
+      </span>
+      <span className="min-w-0 leading-tight">
+        <span className="block max-w-[7rem] truncate text-[11px] font-semibold">
+          {build?.champion ?? runtimeId}
+        </span>
+        <span className="block truncate text-[10px] tabular-nums text-muted-foreground">
+          {typeof build?.level === "number" ? `Lv ${build.level} · ` : ""}
+          {formatNumber(summary?.final_hp ?? build?.starting_hp ?? 0, 0)}/
+          {formatNumber(build?.max_hp ?? 0, 0)} HP
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/**
  * Two horizontal lanes (one per team), action blocks positioned by their
  * authoritative `time` and widened to the derived start→resolution span (see
  * `actionSpan` — never a fabricated duration field). Labeled with "action
@@ -167,11 +313,15 @@ function TwoLaneTimeline({
   selectedSeq,
   onSelect,
   primaryTeamId,
+  response,
+  manifest,
 }: {
   actions: PlaybackAction[];
   selectedSeq: number;
   onSelect: (seq: number) => void;
   primaryTeamId: string | null;
+  response: TeamSimulationResponse;
+  manifest: ChampionManifest | null;
 }) {
   const maxTime = Math.max(1, ...actions.map((a) => actionSpan(a).end));
   const teams = useMemo(() => {
@@ -187,7 +337,7 @@ function TwoLaneTimeline({
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Team {teamId}
           </div>
-          <div className="relative h-10 w-full overflow-x-auto rounded border border-border/60 bg-muted/10">
+          <div className="relative h-12 w-full overflow-x-auto rounded border border-border/60 bg-muted/10">
             <div className="relative h-full" style={{ minWidth: "100%" }}>
               {actions
                 .filter((a) => a.actorTeam === teamId)
@@ -198,6 +348,8 @@ function TwoLaneTimeline({
                     maxTime={maxTime}
                     selected={action.seq === selectedSeq}
                     onSelect={onSelect}
+                    response={response}
+                    manifest={manifest}
                   />
                 ))}
             </div>
@@ -213,19 +365,36 @@ function TimelineBlock({
   maxTime,
   selected,
   onSelect,
+  response,
+  manifest,
 }: {
   action: PlaybackAction;
   maxTime: number;
   selected: boolean;
   onSelect: (seq: number) => void;
+  response: TeamSimulationResponse;
+  manifest: ChampionManifest | null;
 }) {
   const { start, end } = actionSpan(action);
   const leftPct = (start / maxTime) * 100;
+  // Zero-duration actions still get a real (small) pixel width via minWidth
+  // below — this is a display-only clickability floor, never a fabricated
+  // duration: the title/label always show the true start/resolve times.
   const widthPct = Math.max(0.6, ((end - start) / maxTime) * 100);
+  const zeroDuration = end <= start;
 
   const title = `${action.actionId ?? "action"} — action start ${formatSeconds(
     start
   )}${end > start ? `, resolves at ${formatSeconds(end)}` : ""}${action.ok ? "" : " (failed)"}`;
+
+  const champion = action.actorId ? response.effective_builds[action.actorId]?.champion : null;
+  const slot = inferActionAbilitySlot(action.actionId, action.actionId);
+  const tone = toneForSlot(slot);
+  const abilityIconUrl = slot ? getAbilityIconUrl(champion, slot) : null;
+  const fallbackIconUrl = getChampionIcon(manifest, champion) ?? getChampionSquareIconUrl(champion);
+  const iconUrl = abilityIconUrl ?? fallbackIconUrl;
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [iconUrl]);
 
   return (
     <button
@@ -234,23 +403,38 @@ function TimelineBlock({
       aria-pressed={selected}
       data-testid="timeline-block"
       data-seq={action.seq}
+      data-zero-duration={zeroDuration || undefined}
       onClick={() => onSelect(action.seq)}
       className={cn(
-        "absolute top-0.5 flex h-9 items-center gap-1 rounded border px-1 text-left text-[10px] transition-colors",
+        "absolute top-0.5 flex h-11 items-center gap-1 rounded border px-1 text-left text-[10px] transition-colors",
         action.ok
           ? "border-border/70 bg-card/90 hover:border-primary/50"
           : "border-destructive/60 bg-destructive/10",
         selected && "border-primary bg-primary/20 ring-1 ring-primary"
       )}
-      style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "3.25rem" }}
+      style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "3.5rem" }}
     >
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded bg-background/70 ring-1 ring-inset ring-white/10">
-        <Swords className="h-3 w-3 text-foreground/60" />
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded bg-background/70 ring-1 ring-inset",
+          TONE_RING[tone] ?? TONE_RING.neutral
+        )}
+      >
+        {iconUrl && !broken ? (
+          <img
+            src={iconUrl}
+            alt={action.actionId ?? "action"}
+            className="h-full w-full object-cover"
+            onError={() => setBroken(true)}
+          />
+        ) : (
+          <Swords className="h-3 w-3 text-foreground/60" />
+        )}
       </span>
       <span className="min-w-0 flex-1 truncate">
         <span className="block truncate font-semibold">{action.actionId ?? "action"}</span>
         <span className="block truncate tabular-nums text-muted-foreground">
-          {formatSeconds(start)}
+          starts {formatSeconds(start)}
         </span>
       </span>
     </button>
@@ -258,59 +442,10 @@ function TimelineBlock({
 }
 
 /**
- * Authoritative PRIMARY-scope HP before/after for the selected action, read
- * directly from `damage_accounting` — never subtracted client-side.
- */
-function HpBars({
-  response,
-  selected,
-}: {
-  response: TeamSimulationResponse;
-  selected: PlaybackAction;
-}) {
-  const hp = primaryHp(selected);
-  const targetId = selected.targetId;
-  const maxHp = targetId ? response.effective_builds[targetId]?.max_hp ?? null : null;
-
-  return (
-    <div className="space-y-1" data-testid="hp-bars">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Target HP ({targetId ?? "—"})
-      </div>
-      {!hp ? (
-        <div className="text-[11px] text-muted-foreground">
-          This action carries no PRIMARY-scope damage accounting (no HP change to show).
-        </div>
-      ) : (
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px] tabular-nums">
-            <span>Before: {formatNumber(hp.hp_before)}</span>
-            <span>After: {formatNumber(hp.hp_after)}</span>
-          </div>
-          <div className="relative h-3 w-full overflow-hidden rounded bg-muted/30">
-            <div
-              className="absolute inset-y-0 left-0 bg-emerald-500/40"
-              style={{ width: `${maxHp ? Math.min(100, (hp.hp_before / maxHp) * 100) : 100}%` }}
-            />
-            <div
-              className="absolute inset-y-0 left-0 bg-destructive/70"
-              style={{ width: `${maxHp ? Math.min(100, (hp.hp_after / maxHp) * 100) : 0}%` }}
-            />
-          </div>
-          <div className="text-[10px] text-muted-foreground">
-            Applied HP damage: {formatNumber(hp.applied_hp_damage)}
-            {maxHp !== null ? ` · max HP ${formatNumber(maxHp)}` : ""}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
  * Click-to-inspect formula/pipeline calculator for the selected action.
  *
- * Renders, in order: formula_text + formula_bindings — CS2-2's authoritative
+ * Renders, in order: an action header (champion, action, target, applied
+ * damage), then formula_text + formula_bindings — CS2-2's authoritative
  * calculation evidence, present when the action ran through the generic
  * formula resolver and the response was fetched at `trace_detail:
  * "calculation"` (or `"full"`) — then only the damage-pipeline stages
@@ -338,9 +473,11 @@ function HpBars({
 function CalculatorPanel({
   action,
   response,
+  manifest,
 }: {
   action: PlaybackAction;
   response: TeamSimulationResponse;
+  manifest: ChampionManifest | null;
 }) {
   const hp = primaryHp(action);
   const runtimeOnly = isChampionRuntimeAction(action);
@@ -352,13 +489,23 @@ function CalculatorPanel({
   const stages = pipeEvent ? pipelineStages(pipeEvent) : [];
   const shield = pipeEvent ? shieldAbsorbed(pipeEvent) : null;
 
-  return (
-    <div className="space-y-2 rounded border border-border/60 bg-muted/5 p-2" data-testid="calculator-panel">
-      <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        <span>Calculator — {action.actionId ?? "action"} (#{action.seq})</span>
-        {!action.ok && <span className="text-destructive">action failed</span>}
-      </div>
+  const champion = action.actorId ? response.effective_builds[action.actorId]?.champion : null;
+  const slot = inferActionAbilitySlot(action.actionId, action.actionId);
+  const abilityIconUrl = slot ? getAbilityIconUrl(champion, slot) : null;
+  const headerIconUrl = abilityIconUrl ?? getChampionIcon(manifest, champion) ?? getChampionSquareIconUrl(champion);
+  const maxHp = action.targetId ? response.effective_builds[action.targetId]?.max_hp ?? null : null;
 
+  return (
+    <div className="space-y-3 rounded-lg border border-border/60 bg-muted/5 p-3" data-testid="calculator-panel">
+      {/* A. Action header — champion, action, target, applied damage. */}
+      <ActionHeader
+        action={action}
+        champion={champion}
+        iconUrl={headerIconUrl}
+        appliedDamage={hp?.applied_hp_damage ?? null}
+      />
+
+      {/* B. Formula section */}
       {!action.ok ? (
         <div className="text-[11px] text-muted-foreground">
           Rejected action — no damage was computed.
@@ -373,14 +520,14 @@ function CalculatorPanel({
         </div>
       ) : noEvidence ? (
         <div className="text-[11px] text-muted-foreground" data-testid="formula-unavailable-note">
-          Detailed formula breakdown is unavailable for this action. The damage
-          pipeline below (when present) and the applied HP change are still the
+          Formula breakdown unavailable for this action. The damage pipeline
+          below (when present) and the applied HP change are still the
           engine's authoritative numbers.
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {diagnostics?.formulaText ? (
-            <div className="rounded bg-background/60 p-1.5 font-mono text-[11px]" data-testid="formula-text">
+            <div className="rounded bg-background/60 p-2 font-mono text-[11px]" data-testid="formula-text">
               {diagnostics.formulaText}
             </div>
           ) : (
@@ -410,42 +557,162 @@ function CalculatorPanel({
         </div>
       )}
 
+      {/* C. Damage pipeline — vertical stage path, only stages present. */}
       {stages.length > 0 ? (
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Damage pipeline
-          </div>
-          <table className="w-full text-left text-[11px]" data-testid="pipeline-stages-table">
-            <tbody>
-              {stages.map((stage) => (
-                <tr key={stage.key} data-testid="pipeline-stage-row">
-                  <td className="pr-2 text-muted-foreground">{stage.label}</td>
-                  <td className="font-mono">{formatNumber(stage.value)}</td>
-                </tr>
-              ))}
-              {shield !== null ? (
-                <tr>
-                  <td className="pr-2 text-muted-foreground">Shield absorbed</td>
-                  <td className="font-mono">{formatNumber(shield)}</td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+        <DamagePipeline stages={stages} shield={shield} />
       ) : action.ok ? (
         <div className="text-[11px] text-muted-foreground">
           No pipeline-stage detail on this event (re-run at trace detail "calculation" to see it).
         </div>
       ) : null}
 
-      {hp ? (
-        <div className="flex justify-between border-t border-border/40 pt-1 text-[11px] font-medium">
-          <span>Target HP {formatNumber(hp.hp_before)} → {formatNumber(hp.hp_after)}</span>
-          <span className="tabular-nums text-destructive">
-            −{formatNumber(hp.applied_hp_damage)}
-          </span>
+      {/* D. HP result — visual conclusion. */}
+      <HpResult hp={hp} maxHp={maxHp} targetId={action.targetId} />
+    </div>
+  );
+}
+
+function ActionHeader({
+  action,
+  champion,
+  iconUrl,
+  appliedDamage,
+}: {
+  action: PlaybackAction;
+  champion: string | null | undefined;
+  iconUrl: string | null;
+  appliedDamage: number | null;
+}) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [iconUrl]);
+
+  return (
+    <div className="flex items-center justify-between gap-2" data-testid="calculator-action-header">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-background ring-1 ring-inset ring-white/10">
+          {iconUrl && !broken ? (
+            <img
+              src={iconUrl}
+              alt={action.actionId ?? "action"}
+              className="h-full w-full object-cover"
+              onError={() => setBroken(true)}
+            />
+          ) : (
+            <Swords className="h-4 w-4 text-foreground/60" />
+          )}
+        </span>
+        <div className="min-w-0 leading-tight">
+          <div className="truncate text-sm font-bold">{action.actionId ?? "action"}</div>
+          <div className="truncate text-[11px] text-muted-foreground">
+            {champion ?? action.actorId ?? "—"}
+            {action.targetId ? ` → ${action.targetId}` : ""}
+            {!action.ok && <span className="text-destructive"> · action failed</span>}
+          </div>
         </div>
-      ) : null}
+      </div>
+      {appliedDamage !== null && (
+        <div className="shrink-0 text-right">
+          <div className="text-lg font-black tabular-nums text-destructive">
+            −{formatNumber(appliedDamage)}
+          </div>
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">applied damage</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const PIPELINE_STAGE_TONE: Record<string, string> = {
+  raw_damage_before_pipeline: "border-l-muted-foreground/50",
+  target_damage_before_defenses: "border-l-muted-foreground/50",
+  target_damage_after_defenses: "border-l-amber-400/60",
+  damage_after_modifiers: "border-l-sky-400/60",
+  target_damage_after_reduction: "border-l-sky-400/60",
+  post_mitigation_damage: "border-l-destructive/70",
+};
+
+function DamagePipeline({
+  stages,
+  shield,
+}: {
+  stages: { key: string; label: string; value: number }[];
+  shield: number | null;
+}) {
+  return (
+    <div data-testid="damage-pipeline">
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Damage pipeline
+      </div>
+      <div className="space-y-1">
+        {stages.map((stage) => (
+          <div
+            key={stage.key}
+            data-testid="pipeline-stage-row"
+            className={cn(
+              "flex items-center justify-between rounded border-l-2 bg-background/50 px-2 py-1 text-[11px]",
+              PIPELINE_STAGE_TONE[stage.key] ?? "border-l-border"
+            )}
+          >
+            <span className="text-muted-foreground">{stage.label}</span>
+            <span className="font-mono font-semibold">{formatNumber(stage.value)}</span>
+          </div>
+        ))}
+        {shield !== null ? (
+          <div className="flex items-center justify-between rounded border-l-2 border-l-emerald-400/60 bg-background/50 px-2 py-1 text-[11px]">
+            <span className="text-muted-foreground">Shield absorbed</span>
+            <span className="font-mono font-semibold">{formatNumber(shield)}</span>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Authoritative PRIMARY-scope HP before/after for the selected action, read
+ * directly from `damage_accounting` — never subtracted client-side. The
+ * conclusion of the calculator: HP before → HP after, with a modest pulse on
+ * the bar for the applied change (CSS transition only).
+ */
+function HpResult({
+  hp,
+  maxHp,
+  targetId,
+}: {
+  hp: { hp_before: number; hp_after: number; applied_hp_damage: number } | null;
+  maxHp: number | null;
+  targetId: string | null;
+}) {
+  return (
+    <div className="space-y-1 border-t border-border/40 pt-2" data-testid="hp-bars">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Target HP ({targetId ?? "—"})
+      </div>
+      {!hp ? (
+        <div className="text-[11px] text-muted-foreground">
+          This action carries no PRIMARY-scope damage accounting (no HP change to show).
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted/30">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-emerald-500/40 transition-[width] duration-500"
+              style={{ width: `${maxHp ? Math.min(100, (hp.hp_before / maxHp) * 100) : 100}%` }}
+            />
+            <div
+              className="absolute inset-y-0 left-0 animate-pulse rounded-full bg-destructive/70 transition-[width] duration-500"
+              style={{ width: `${maxHp ? Math.min(100, (hp.hp_after / maxHp) * 100) : 0}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[12px] font-semibold tabular-nums">
+            <span>
+              {formatNumber(hp.hp_before)} → {formatNumber(hp.hp_after)}
+              {maxHp !== null ? <span className="font-normal text-muted-foreground"> / {formatNumber(maxHp)} max HP</span> : null}
+            </span>
+            <span className="text-destructive">−{formatNumber(hp.applied_hp_damage)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
