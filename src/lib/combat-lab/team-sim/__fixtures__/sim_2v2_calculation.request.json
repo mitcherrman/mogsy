@@ -1,0 +1,139 @@
+{
+    "scenario_id": "phase4b-2v2-calculation",
+    "team_a": {
+        "team_id": "A",
+        "combatants": [
+            {
+                "runtime_id": "A1",
+                "champion": "Ashe",
+                "level": 13,
+                "items": [
+                    "Infinity Edge",
+                    "Berserker's Greaves"
+                ],
+                "runes": [
+                    "Press the Attack"
+                ],
+                "ability_ranks": {
+                    "Q": 5,
+                    "W": 4,
+                    "E": 3,
+                    "R": 2
+                },
+                "crit_mode": "force",
+                "starting_hp": 1200.0
+            },
+            {
+                "runtime_id": "A2",
+                "champion": "Lux",
+                "level": 13,
+                "items": [
+                    "Luden's Companion"
+                ],
+                "runes": [
+                    "Electrocute"
+                ],
+                "ability_ranks": {
+                    "Q": 5,
+                    "W": 3,
+                    "E": 5,
+                    "R": 2
+                },
+                "crit_mode": "none",
+                "starting_hp": 1000.0
+            }
+        ]
+    },
+    "team_b": {
+        "team_id": "B",
+        "combatants": [
+            {
+                "runtime_id": "B1",
+                "champion": "Garen",
+                "level": 13,
+                "items": [
+                    "Sunfire Aegis"
+                ],
+                "crit_mode": "expected",
+                "starting_hp": 600.0
+            },
+            {
+                "runtime_id": "B2",
+                "champion": "Soraka",
+                "level": 13,
+                "items": [
+                    "Rylai's Crystal Scepter"
+                ],
+                "crit_mode": "none",
+                "starting_hp": 450.0
+            }
+        ]
+    },
+    "action_plans": {
+        "A1": {
+            "steps": [
+                {
+                    "type": "basic_attack"
+                }
+            ],
+            "repeat": true,
+            "on_failure": "skip"
+        },
+        "A2": {
+            "steps": [
+                {
+                    "type": "active",
+                    "slot": "Q"
+                },
+                {
+                    "type": "basic_attack"
+                },
+                {
+                    "type": "active",
+                    "slot": "E",
+                    "not_before": 3.0
+                }
+            ],
+            "repeat": true,
+            "on_failure": "skip"
+        },
+        "B1": {
+            "steps": [
+                {
+                    "type": "basic_attack"
+                }
+            ],
+            "repeat": true
+        },
+        "B2": {
+            "steps": [
+                {
+                    "type": "basic_attack"
+                }
+            ],
+            "repeat": true
+        }
+    },
+    "targeting": {
+        "A1": {
+            "policy": "fixed",
+            "priority": [
+                "B2",
+                "B1"
+            ]
+        },
+        "A2": {
+            "policy": "lowest_hp_pct"
+        },
+        "B1": "first_living",
+        "B2": {
+            "policy": "lowest_hp"
+        }
+    },
+    "limits": {
+        "max_duration": 60.0,
+        "max_events": 500,
+        "max_trace_events": 500,
+        "trace_detail": "calculation"
+    }
+}

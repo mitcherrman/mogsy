@@ -75,6 +75,7 @@ import { AssumptionsPanel } from "./components/AssumptionsPanel";
 import { CombatantEditor } from "./components/CombatantEditor";
 import { EffectiveBuildsPanel } from "./components/EffectiveBuildsPanel";
 import { EventTracePanel } from "./components/EventTracePanel";
+import { TeamCombatPlayback } from "./components/TeamCombatPlayback";
 import { FailureNotice } from "./components/FailureNotice";
 import { NumberField, SelectField } from "./components/controls";
 import {
@@ -681,6 +682,7 @@ function ResultWorkspace({
         onRefreshCatalog={onRefreshCatalog}
         refreshing={refreshing}
       />
+      <TeamCombatPlayback response={run.response} />
       <EventTracePanel response={run.response} />
       <AssumptionsPanel
         unsupportedMechanics={run.response.unsupported_mechanics}

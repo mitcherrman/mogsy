@@ -10,6 +10,11 @@
  *
  * Fights are short because the requests set `starting_hp`, a first-class
  * contract field — not because the responses were trimmed.
+ *
+ * `sim_2v2_calculation.json` was captured the same way, post CS2-2 (live
+ * production commit 6287be2): the exact `sim_2v2.request.json` scenario
+ * re-run with `limits.trace_detail: "calculation"`, which is what actually
+ * carries `formula_bindings` on the wire.
  */
 import catalogJson from "./catalog.json";
 import catalogMeta from "./catalog.meta.json";
@@ -35,6 +40,8 @@ import sim2v1 from "./sim_2v1.json";
 import sim2v1Request from "./sim_2v1.request.json";
 import sim2v2 from "./sim_2v2.json";
 import sim2v2Request from "./sim_2v2.request.json";
+import sim2v2Calculation from "./sim_2v2_calculation.json";
+import sim2v2CalculationRequest from "./sim_2v2_calculation.request.json";
 import sim2v2Truncated from "./sim_2v2_truncated.json";
 import sim3v3 from "./sim_3v3.json";
 import sim3v3Request from "./sim_3v3.request.json";
@@ -126,6 +133,15 @@ export const REAL_1V2 = sim1v2 as unknown as TeamSimulationResponse;
 export const REAL_2V1 = sim2v1 as unknown as TeamSimulationResponse;
 export const REAL_2V2 = sim2v2 as unknown as TeamSimulationResponse;
 export const REAL_2V2_TRUNCATED = sim2v2Truncated as unknown as TeamSimulationResponse;
+/**
+ * CS2-2 (live production commit 6287be2). Same scenario as REAL_2V2, at
+ * `trace_detail: "calculation"` — the level that actually carries
+ * `formula_bindings` on the wire. Lux's Q/E kernel events (`champion_ability`)
+ * carry `formula_bindings` alongside `formula_text`; this is the fixture the
+ * frontend calculator's formula-evidence rendering is asserted against.
+ */
+export const REAL_2V2_CALCULATION = sim2v2Calculation as unknown as TeamSimulationResponse;
+export const REAL_2V2_CALCULATION_REQUEST = sim2v2CalculationRequest;
 /**
  * SIM2 Phase 6A. A REAL six-champion run captured from the Phase 6A backend:
  * Ashe/Lux/Jinx vs Garen/Malphite/Ornn, three targeting policies (one of them

@@ -346,7 +346,10 @@ export function traceDetailOptions(index: CatalogIndex): {
   const published = index.traceOptions;
   const allowed = (published?.allowed ?? []).filter(
     (level): level is TraceDetail =>
-      level === "summary" || level === "standard" || level === "full"
+      level === "summary" ||
+      level === "standard" ||
+      level === "calculation" ||
+      level === "full"
   );
   if (allowed.length === 0) {
     return {

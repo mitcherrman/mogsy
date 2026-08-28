@@ -1,0 +1,3216 @@
+{
+    "contract_version": "sim2.team-simulate.v1",
+    "scenario_id": "phase4b-2v2-calculation",
+    "termination": {
+        "reason": "team_elimination",
+        "winner": "A",
+        "detail": "team A living=['A1', 'A2']; team B living=[]"
+    },
+    "duration": 5.537511616269926,
+    "event_count": 83,
+    "events": [
+        {
+            "seq": 1,
+            "time": 0.0,
+            "source": "targeting",
+            "type": "target_assigned",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "policy": "fixed",
+                "previous_target_id": null
+            }
+        },
+        {
+            "seq": 2,
+            "time": 0.0,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 0.0,
+                "executed_time": 0.0,
+                "clock_after": 0.912967010128812,
+                "plan_cursor": 0,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 114.97824631860777,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 450.0,
+                            "hp_after": 335.0217536813922,
+                            "applied_hp_damage": 114.97824631860777
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 0.0,
+                    "attack_period": 0.912967010128812,
+                    "windup": 0.2738901030386436,
+                    "next_action_ready_at": 0.912967010128812,
+                    "consumed_seconds": 0.912967010128812,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 3,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Ashe Frost Shot Basic Attack",
+                "state": "ASHE_FROST_SHOT_BASIC_ATTACK_DAMAGE",
+                "description": "Ashe basic attack using Frost Shot model. AD=171.78, frost multiplier=1.250, Q ratio=1.000, flurry hits=1.",
+                "raw_damage": 214.721875,
+                "final_damage": 114.97824631860777,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 86.75,
+                "metadata": {
+                    "ashe_attack_model": {
+                        "ad": 171.7775,
+                        "crit_chance": 25.0,
+                        "frost_multiplier": 1.25,
+                        "q_active": false,
+                        "q_total_ratio": 1.0,
+                        "flurry_hits": 1,
+                        "per_arrow_ratio": null,
+                        "on_hit_applications": 1,
+                        "frost_shot_applications": 1
+                    },
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 114.97824631860777,
+                    "effective_armor": 86.75,
+                    "post_mitigation_damage": 114.97824631860777,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 114.97824631860777,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 114.97824631860777,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 114.97824631860777,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 114.97824631860777,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 114.97824631860777,
+                    "damage_after_modifiers": 114.97824631860777,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 114.97824631860777,
+                    "sink_accepted_damage": 114.97824631860777
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 4,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "champion_state_input",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_state_input",
+                "source": "Ashe",
+                "state": "CHAMPION_ASHE_Q_ACTIVATION_STATE",
+                "description": "Ashe Q runtime state input active: Q (Use Q)",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null
+            },
+            "meta": {},
+            "repeats": {
+                "count": 3,
+                "first_seq": 4,
+                "last_seq": 35,
+                "first_time": 0.0,
+                "last_time": 1.825934020257624
+            }
+        },
+        {
+            "seq": 5,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "champion_state",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_state",
+                "source": "Ashe",
+                "state": "TARGET_FROSTED_BY_ASHE",
+                "description": "Ashe Frost Shot applied. Target is considered Frosted.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "mitigated": false,
+                "trigger": "pre_basic_attack"
+            },
+            "meta": {},
+            "repeats": {
+                "count": 3,
+                "first_seq": 5,
+                "last_seq": 36,
+                "first_time": 0.0,
+                "last_time": 1.825934020257624
+            }
+        },
+        {
+            "seq": 6,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "champion_modifier",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_modifier",
+                "source": "Ashe",
+                "state": "ASHE_FROST_SHOT_DAMAGE",
+                "description": "Ashe Frost Shot modified basic attack damage from base AD. Multiplier=1.425.",
+                "raw_damage": 171.7775,
+                "final_damage": 244.7829375,
+                "damage_type": null,
+                "metadata": {
+                    "modified_damage": 244.7829375
+                },
+                "mitigated": false,
+                "trigger": "modify_basic_attack_raw_damage"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 7,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "rune_counter",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_counter",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_ATTACK_COUNT",
+                "description": "Press the Attack count: 1/3.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 0
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 8,
+            "time": 0.0,
+            "source": "targeting",
+            "type": "target_assigned",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "policy": "lowest_hp_pct",
+                "previous_target_id": null
+            }
+        },
+        {
+            "seq": 9,
+            "time": 0.0,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "Q",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "active",
+                "scheduled_time": 0.0,
+                "executed_time": 0.0,
+                "clock_after": 0.25,
+                "plan_cursor": 0,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 166.3951190765071,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 335.0217536813922,
+                            "hp_after": 168.62663460488514,
+                            "applied_hp_damage": 166.3951190765071
+                        }
+                    }
+                },
+                "healing_accounting": null,
+                "action_time": {
+                    "kind": "cast",
+                    "started_at": 0.0,
+                    "attack_period": 0.0,
+                    "windup": 0.0,
+                    "next_action_ready_at": 0.25,
+                    "consumed_seconds": 0.25,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "cast_interval"
+                }
+            }
+        },
+        {
+            "seq": 10,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "champion_ability",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "Q",
+            "payload": {
+                "type": "champion_ability",
+                "source": "Lux Q",
+                "state": "CHAMPION_LUX_Q_CAST",
+                "description": "Lux cast Q using formula-driven damage.",
+                "raw_damage": 240.0,
+                "final_damage": 166.3951190765071,
+                "damage_type": "magic",
+                "metadata": {
+                    "formula_found": true,
+                    "formula_text": "(40 + 40 * P_Q + 0,75 * AP) * MOD_Magic",
+                    "formula_type": "damage",
+                    "target_scope": "PRIMARY",
+                    "formula_status": "ok",
+                    "formula_missing_required": [],
+                    "formula_missing_optional": [],
+                    "formula_deferred": [],
+                    "formula_unknown": [],
+                    "formula_warnings": [],
+                    "formula_error": null,
+                    "formula_bindings": {
+                        "P_Q": 5.0,
+                        "AP": 0.0,
+                        "MOD_Magic": 1.0
+                    },
+                    "state_used": {},
+                    "generic_resolution_status": "resolved",
+                    "generic_failure_reason": null,
+                    "generic_failure_detail": null,
+                    "generic_empowerment": {},
+                    "generic_rank": 5,
+                    "generic_authority": {
+                        "table": "champion_ability_formulas",
+                        "source_sheet": "champion_ability_canonical",
+                        "found": true
+                    },
+                    "raw_damage_before_pipeline": 240.0,
+                    "target_armor_or_mr_used": 44.235,
+                    "effective_magic_resist": 44.235,
+                    "post_mitigation_damage": 166.3951190765071,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 166.3951190765071,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 166.3951190765071,
+                    "target_damage_before_defenses": 166.3951190765071,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 166.3951190765071,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 166.3951190765071,
+                    "damage_after_modifiers": 166.3951190765071,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 166.3951190765071,
+                    "sink_accepted_damage": 166.3951190765071
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 11,
+            "time": 0.0,
+            "source": "targeting",
+            "type": "target_assigned",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "policy": "first_living",
+                "previous_target_id": null
+            }
+        },
+        {
+            "seq": 12,
+            "time": 0.0,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 0.0,
+                "executed_time": 0.0,
+                "clock_after": 1.1431225105828138,
+                "plan_cursor": 0,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 72.0775374531861,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 1200.0,
+                            "hp_after": 1127.922462546814,
+                            "applied_hp_damage": 72.0775374531861
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 0.0,
+                    "attack_period": 1.1431225105828138,
+                    "windup": 0.3429367531748441,
+                    "next_action_ready_at": 1.1431225105828138,
+                    "consumed_seconds": 1.1431225105828138,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 13,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 118.275,
+                "final_damage": 67.06072461302942,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 76.37,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 67.06072461302942,
+                    "effective_armor": 76.37,
+                    "post_mitigation_damage": 67.06072461302942,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 67.06072461302942,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 67.06072461302942,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 67.06072461302942,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 67.06072461302942,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 67.06072461302942,
+                    "damage_after_modifiers": 67.06072461302942,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 67.06072461302942,
+                    "sink_accepted_damage": 67.06072461302942
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 14,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "item_damage",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "item_damage",
+                "source": "Sheet Item Effects",
+                "state": "ITEM_SUNFIRE_AEGIS_MAGIC_PERCENT_DAMAGE",
+                "description": "Sunfire Aegis sheet-driven magic_percent_damage (60.3% current HP).",
+                "raw_damage": 7.236,
+                "final_damage": 5.016812840156688,
+                "damage_type": "magic",
+                "metadata": {
+                    "lifesteal_eligible": false,
+                    "omnivamp_eligible": true,
+                    "bonus_damage": 5.016812840156688,
+                    "effective_magic_resist": 44.235,
+                    "raw_damage_before_pipeline": 5.016812840156688,
+                    "post_mitigation_damage": 5.016812840156688,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 5.016812840156688,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 5.016812840156688,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 5.016812840156688,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 5.016812840156688,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 5.016812840156688,
+                    "damage_after_modifiers": 5.016812840156688,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 5.016812840156688,
+                    "sink_accepted_damage": 5.016812840156688
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 44.235
+            },
+            "meta": {}
+        },
+        {
+            "seq": 15,
+            "time": 0.0,
+            "source": "targeting",
+            "type": "target_assigned",
+            "actor_id": "B2",
+            "actor_team": "B",
+            "target_id": "A2",
+            "target_team": "A",
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "policy": "lowest_hp",
+                "previous_target_id": null
+            }
+        },
+        {
+            "seq": 16,
+            "time": 0.0,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "B2",
+            "actor_team": "B",
+            "target_id": "A2",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 0.0,
+                "executed_time": 0.0,
+                "clock_after": 1.296249787334019,
+                "plan_cursor": 0,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 46.560638417444125,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 1000.0,
+                            "hp_after": 953.4393615825559,
+                            "applied_hp_damage": 46.560638417444125
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 0.0,
+                    "attack_period": 1.296249787334019,
+                    "windup": 0.3888749362002057,
+                    "next_action_ready_at": 1.296249787334019,
+                    "consumed_seconds": 1.296249787334019,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 17,
+            "time": 0.0,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "B2",
+            "actor_team": "B",
+            "target_id": "A2",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 82.85,
+                "final_damage": 46.56063841744408,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 77.94,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 46.56063841744408,
+                    "effective_armor": 77.94,
+                    "post_mitigation_damage": 46.56063841744408,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 46.56063841744408,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 46.56063841744408,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 46.56063841744408,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 46.56063841744408,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 46.56063841744408,
+                    "damage_after_modifiers": 46.56063841744408,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 46.56063841744408,
+                    "sink_accepted_damage": 46.56063841744408
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 18,
+            "time": 0.25,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 0.25,
+                "executed_time": 0.25,
+                "clock_after": 1.393755808134963,
+                "plan_cursor": 1,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 50.018725799998265,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 168.62663460488514,
+                            "hp_after": 118.60790880488688,
+                            "applied_hp_damage": 50.018725799998265
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 0.25,
+                    "attack_period": 1.143755808134963,
+                    "windup": 0.3431267424404889,
+                    "next_action_ready_at": 1.393755808134963,
+                    "consumed_seconds": 1.143755808134963,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 19,
+            "time": 0.25,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 90.135,
+                "final_damage": 48.265060240963855,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 86.75,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 48.265060240963855,
+                    "effective_armor": 86.75,
+                    "post_mitigation_damage": 48.265060240963855,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 48.265060240963855,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 48.265060240963855,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 48.265060240963855,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 48.265060240963855,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 48.265060240963855,
+                    "damage_after_modifiers": 48.265060240963855,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 48.265060240963855,
+                    "sink_accepted_damage": 48.265060240963855
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 20,
+            "time": 0.25,
+            "source": "kernel",
+            "type": "item_damage",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "item_damage",
+                "source": "Sheet Item Effects",
+                "state": "ITEM_LUDEN'S_COMPANION_MAGIC_PERCENT_DAMAGE",
+                "description": "Luden's Companion sheet-driven magic_percent_damage (150.0% current HP).",
+                "raw_damage": 2.529399519073277,
+                "final_damage": 1.753665559034407,
+                "damage_type": "magic",
+                "metadata": {
+                    "lifesteal_eligible": false,
+                    "omnivamp_eligible": true,
+                    "bonus_damage": 1.753665559034407,
+                    "effective_magic_resist": 44.235,
+                    "raw_damage_before_pipeline": 1.753665559034407,
+                    "post_mitigation_damage": 1.753665559034407,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 1.753665559034407,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 1.753665559034407,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 1.753665559034407,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 1.753665559034407,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 1.753665559034407,
+                    "damage_after_modifiers": 1.753665559034407,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 1.753665559034407,
+                    "sink_accepted_damage": 1.753665559034407
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 44.235
+            },
+            "meta": {}
+        },
+        {
+            "seq": 21,
+            "time": 0.25,
+            "source": "kernel",
+            "type": "rune_counter",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_counter",
+                "source": "Rune Runtime",
+                "state": "RUNE_ELECTROCUTE_HIT_COUNT",
+                "description": "Electrocute hit count: 1/3.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 0
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 22,
+            "time": 0.912967010128812,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 0.912967010128812,
+                "executed_time": 0.912967010128812,
+                "clock_after": 1.825934020257624,
+                "plan_cursor": 1,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 114.97824631860777,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 118.60790880488688,
+                            "hp_after": 3.629662486279102,
+                            "applied_hp_damage": 114.97824631860777
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 0.912967010128812,
+                    "attack_period": 0.912967010128812,
+                    "windup": 0.2738901030386436,
+                    "next_action_ready_at": 1.825934020257624,
+                    "consumed_seconds": 0.912967010128812,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 23,
+            "time": 0.912967010128812,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Ashe Frost Shot Basic Attack",
+                "state": "ASHE_FROST_SHOT_BASIC_ATTACK_DAMAGE",
+                "description": "Ashe basic attack using Frost Shot model. AD=171.78, frost multiplier=1.250, Q ratio=1.000, flurry hits=1.",
+                "raw_damage": 214.721875,
+                "final_damage": 114.97824631860777,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 86.75,
+                "metadata": {
+                    "ashe_attack_model": {
+                        "ad": 171.7775,
+                        "crit_chance": 25.0,
+                        "frost_multiplier": 1.25,
+                        "q_active": false,
+                        "q_total_ratio": 1.0,
+                        "flurry_hits": 1,
+                        "per_arrow_ratio": null,
+                        "on_hit_applications": 1,
+                        "frost_shot_applications": 1
+                    },
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 114.97824631860777,
+                    "effective_armor": 86.75,
+                    "post_mitigation_damage": 114.97824631860777,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 114.97824631860777,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 114.97824631860777,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 114.97824631860777,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 114.97824631860777,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 114.97824631860777,
+                    "damage_after_modifiers": 114.97824631860777,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 114.97824631860777,
+                    "sink_accepted_damage": 114.97824631860777
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 26,
+            "time": 0.912967010128812,
+            "source": "kernel",
+            "type": "champion_modifier",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_modifier",
+                "source": "Ashe",
+                "state": "ASHE_FROST_SHOT_DAMAGE",
+                "description": "Ashe Frost Shot modified basic attack damage from base AD. Multiplier=1.425.",
+                "raw_damage": 171.7775,
+                "final_damage": 244.7829375,
+                "damage_type": null,
+                "metadata": {
+                    "modified_damage": 244.7829375
+                },
+                "mitigated": false,
+                "trigger": "modify_basic_attack_raw_damage"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 27,
+            "time": 0.912967010128812,
+            "source": "kernel",
+            "type": "rune_counter",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_counter",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_ATTACK_COUNT",
+                "description": "Press the Attack count: 2/3.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 0
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 28,
+            "time": 1.1431225105828138,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 1.1431225105828138,
+                "executed_time": 1.1431225105828138,
+                "clock_after": 2.2862450211656276,
+                "plan_cursor": 1,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 71.77620452370115,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 1127.922462546814,
+                            "hp_after": 1056.1462580231128,
+                            "applied_hp_damage": 71.77620452370115
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 1.1431225105828138,
+                    "attack_period": 1.1431225105828138,
+                    "windup": 0.3429367531748441,
+                    "next_action_ready_at": 2.2862450211656276,
+                    "consumed_seconds": 1.1431225105828138,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 29,
+            "time": 1.1431225105828138,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 118.275,
+                "final_damage": 67.06072461302942,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 76.37,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 67.06072461302942,
+                    "effective_armor": 76.37,
+                    "post_mitigation_damage": 67.06072461302942,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 67.06072461302942,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 67.06072461302942,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 67.06072461302942,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 67.06072461302942,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 67.06072461302942,
+                    "damage_after_modifiers": 67.06072461302942,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 67.06072461302942,
+                    "sink_accepted_damage": 67.06072461302942
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 30,
+            "time": 1.1431225105828138,
+            "source": "kernel",
+            "type": "item_damage",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "item_damage",
+                "source": "Sheet Item Effects",
+                "state": "ITEM_SUNFIRE_AEGIS_MAGIC_PERCENT_DAMAGE",
+                "description": "Sunfire Aegis sheet-driven magic_percent_damage (60.3% current HP).",
+                "raw_damage": 6.801372449157288,
+                "final_damage": 4.715479910671673,
+                "damage_type": "magic",
+                "metadata": {
+                    "lifesteal_eligible": false,
+                    "omnivamp_eligible": true,
+                    "bonus_damage": 4.715479910671673,
+                    "effective_magic_resist": 44.235,
+                    "raw_damage_before_pipeline": 4.715479910671673,
+                    "post_mitigation_damage": 4.715479910671673,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 4.715479910671673,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 4.715479910671673,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 4.715479910671673,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 4.715479910671673,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 4.715479910671673,
+                    "damage_after_modifiers": 4.715479910671673,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 4.715479910671673,
+                    "sink_accepted_damage": 4.715479910671673
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 44.235
+            },
+            "meta": {}
+        },
+        {
+            "seq": 31,
+            "time": 1.296249787334019,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "B2",
+            "actor_team": "B",
+            "target_id": "A2",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 1.296249787334019,
+                "executed_time": 1.296249787334019,
+                "clock_after": 2.592499574668038,
+                "plan_cursor": 1,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 46.560638417444125,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 953.4393615825559,
+                            "hp_after": 906.8787231651118,
+                            "applied_hp_damage": 46.560638417444125
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 1.296249787334019,
+                    "attack_period": 1.296249787334019,
+                    "windup": 0.3888749362002057,
+                    "next_action_ready_at": 2.592499574668038,
+                    "consumed_seconds": 1.296249787334019,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 32,
+            "time": 1.296249787334019,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "B2",
+            "actor_team": "B",
+            "target_id": "A2",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 82.85,
+                "final_damage": 46.56063841744408,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 77.94,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 46.56063841744408,
+                    "effective_armor": 77.94,
+                    "post_mitigation_damage": 46.56063841744408,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 46.56063841744408,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 46.56063841744408,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 46.56063841744408,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 46.56063841744408,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 46.56063841744408,
+                    "damage_after_modifiers": 46.56063841744408,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 46.56063841744408,
+                    "sink_accepted_damage": 46.56063841744408
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 33,
+            "time": 1.825934020257624,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 1.825934020257624,
+                "executed_time": 1.825934020257624,
+                "clock_after": 2.738901030386436,
+                "plan_cursor": 2,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 3.629662486279102,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 3.629662486279102,
+                            "hp_after": 0.0,
+                            "applied_hp_damage": 3.629662486279102
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 1.825934020257624,
+                    "attack_period": 0.912967010128812,
+                    "windup": 0.2738901030386436,
+                    "next_action_ready_at": 2.738901030386436,
+                    "consumed_seconds": 0.912967010128812,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 34,
+            "time": 1.825934020257624,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Ashe Frost Shot Basic Attack",
+                "state": "ASHE_FROST_SHOT_BASIC_ATTACK_DAMAGE",
+                "description": "Ashe basic attack using Frost Shot model. AD=171.78, frost multiplier=1.250, Q ratio=1.000, flurry hits=1.",
+                "raw_damage": 214.721875,
+                "final_damage": 124.1765060240964,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 86.75,
+                "metadata": {
+                    "ashe_attack_model": {
+                        "ad": 171.7775,
+                        "crit_chance": 25.0,
+                        "frost_multiplier": 1.25,
+                        "q_active": false,
+                        "q_total_ratio": 1.0,
+                        "flurry_hits": 1,
+                        "per_arrow_ratio": null,
+                        "on_hit_applications": 1,
+                        "frost_shot_applications": 1
+                    },
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 114.97824631860777,
+                    "effective_armor": 86.75,
+                    "post_mitigation_damage": 114.97824631860777,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 114.97824631860777,
+                    "target_damage_taken_amp_percent": 8.0,
+                    "post_amp_damage": 124.1765060240964,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 124.1765060240964,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 124.1765060240964,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 124.1765060240964,
+                    "damage_after_modifiers": 124.1765060240964,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 3.629662486279102,
+                    "sink_accepted_damage": 3.629662486279102
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 37,
+            "time": 1.825934020257624,
+            "source": "kernel",
+            "type": "champion_modifier",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_modifier",
+                "source": "Ashe",
+                "state": "ASHE_FROST_SHOT_DAMAGE",
+                "description": "Ashe Frost Shot modified basic attack damage from base AD. Multiplier=1.425.",
+                "raw_damage": 171.7775,
+                "final_damage": 244.7829375,
+                "damage_type": null,
+                "metadata": {
+                    "modified_damage": 244.7829375
+                },
+                "mitigated": false,
+                "trigger": "modify_basic_attack_raw_damage"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 38,
+            "time": 1.825934020257624,
+            "source": "kernel",
+            "type": "rune_damage",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_damage",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_DAMAGE",
+                "description": "Press the Attack third hit dealt magic adaptive damage.",
+                "raw_damage": 134.6729411764706,
+                "final_damage": 100.84014037549018,
+                "damage_type": "magic",
+                "metadata": {
+                    "effective_magic_resist": 44.235,
+                    "bonus_damage": 93.37050034767609,
+                    "raw_damage_before_pipeline": 93.37050034767609,
+                    "post_mitigation_damage": 93.37050034767609,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 93.37050034767609,
+                    "target_damage_taken_amp_percent": 8.0,
+                    "post_amp_damage": 100.84014037549018,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 100.84014037549018,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 100.84014037549018,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 100.84014037549018,
+                    "damage_after_modifiers": 100.84014037549018,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 0.0,
+                    "sink_accepted_damage": 0.0
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 44.235
+            },
+            "meta": {}
+        },
+        {
+            "seq": 39,
+            "time": 1.825934020257624,
+            "source": "kernel",
+            "type": "rune_state",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_state",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_EXPOSED",
+                "description": "Press the Attack exposed target. Target damage taken amp set to 8%.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 93.37050034767609
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 40,
+            "time": 1.825934020257624,
+            "source": "lifecycle",
+            "type": "death",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B2",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "death_time": 1.825934020257624,
+                "cause_actor_id": "A1",
+                "cause_action_id": "basic_attack",
+                "cause_action_seq": 33,
+                "self_inflicted": false,
+                "pending_actions_cancelled": true
+            }
+        },
+        {
+            "seq": 41,
+            "time": 2.2862450211656276,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 2.2862450211656276,
+                "executed_time": 2.2862450211656276,
+                "clock_after": 3.4293675317484413,
+                "plan_cursor": 2,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 71.47613136997427,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 1056.1462580231128,
+                            "hp_after": 984.6701266531385,
+                            "applied_hp_damage": 71.47613136997427
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 2.2862450211656276,
+                    "attack_period": 1.1431225105828138,
+                    "windup": 0.3429367531748441,
+                    "next_action_ready_at": 3.4293675317484413,
+                    "consumed_seconds": 1.1431225105828138,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 42,
+            "time": 2.2862450211656276,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 118.275,
+                "final_damage": 67.06072461302942,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 76.37,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 67.06072461302942,
+                    "effective_armor": 76.37,
+                    "post_mitigation_damage": 67.06072461302942,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 67.06072461302942,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 67.06072461302942,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 67.06072461302942,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 67.06072461302942,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 67.06072461302942,
+                    "damage_after_modifiers": 67.06072461302942,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 67.06072461302942,
+                    "sink_accepted_damage": 67.06072461302942
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 43,
+            "time": 2.2862450211656276,
+            "source": "kernel",
+            "type": "item_damage",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "item_damage",
+                "source": "Sheet Item Effects",
+                "state": "ITEM_SUNFIRE_AEGIS_MAGIC_PERCENT_DAMAGE",
+                "description": "Sunfire Aegis sheet-driven magic_percent_damage (60.3% current HP).",
+                "raw_damage": 6.368561935879369,
+                "final_damage": 4.415406756944825,
+                "damage_type": "magic",
+                "metadata": {
+                    "lifesteal_eligible": false,
+                    "omnivamp_eligible": true,
+                    "bonus_damage": 4.415406756944825,
+                    "effective_magic_resist": 44.235,
+                    "raw_damage_before_pipeline": 4.415406756944825,
+                    "post_mitigation_damage": 4.415406756944825,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 4.415406756944825,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 4.415406756944825,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 4.415406756944825,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 4.415406756944825,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 4.415406756944825,
+                    "damage_after_modifiers": 4.415406756944825,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 4.415406756944825,
+                    "sink_accepted_damage": 4.415406756944825
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 44.235
+            },
+            "meta": {}
+        },
+        {
+            "seq": 44,
+            "time": 2.738901030386436,
+            "source": "targeting",
+            "type": "target_changed",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "policy": "fixed",
+                "previous_target_id": "B2"
+            }
+        },
+        {
+            "seq": 45,
+            "time": 2.738901030386436,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 2.738901030386436,
+                "executed_time": 2.738901030386436,
+                "clock_after": 3.651868040515248,
+                "plan_cursor": 3,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 91.76540664130948,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 600.0,
+                            "hp_after": 508.2345933586905,
+                            "applied_hp_damage": 91.76540664130948
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 2.738901030386436,
+                    "attack_period": 0.912967010128812,
+                    "windup": 0.2738901030386436,
+                    "next_action_ready_at": 3.651868040515248,
+                    "consumed_seconds": 0.912967010128812,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 46,
+            "time": 2.738901030386436,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Ashe Frost Shot Basic Attack",
+                "state": "ASHE_FROST_SHOT_BASIC_ATTACK_DAMAGE",
+                "description": "Ashe basic attack using Frost Shot model. AD=171.78, frost multiplier=1.250, Q ratio=1.000, flurry hits=1.",
+                "raw_damage": 214.721875,
+                "final_damage": 91.76540664130945,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 133.99,
+                "metadata": {
+                    "ashe_attack_model": {
+                        "ad": 171.7775,
+                        "crit_chance": 25.0,
+                        "frost_multiplier": 1.25,
+                        "q_active": false,
+                        "q_total_ratio": 1.0,
+                        "flurry_hits": 1,
+                        "per_arrow_ratio": null,
+                        "on_hit_applications": 1,
+                        "frost_shot_applications": 1
+                    },
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 91.76540664130945,
+                    "effective_armor": 133.99,
+                    "post_mitigation_damage": 91.76540664130945,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 91.76540664130945,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 91.76540664130945,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 91.76540664130945,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 91.76540664130945,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 91.76540664130945,
+                    "damage_after_modifiers": 91.76540664130945,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 91.76540664130945,
+                    "sink_accepted_damage": 91.76540664130945
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 47,
+            "time": 2.738901030386436,
+            "source": "kernel",
+            "type": "champion_state_input",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_state_input",
+                "source": "Ashe",
+                "state": "CHAMPION_ASHE_Q_ACTIVATION_STATE",
+                "description": "Ashe Q runtime state input active: Q (Use Q)",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null
+            },
+            "meta": {},
+            "repeats": {
+                "count": 3,
+                "first_seq": 47,
+                "last_seq": 77,
+                "first_time": 2.738901030386436,
+                "last_time": 4.56483505064406
+            }
+        },
+        {
+            "seq": 48,
+            "time": 2.738901030386436,
+            "source": "kernel",
+            "type": "champion_state",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_state",
+                "source": "Ashe",
+                "state": "TARGET_FROSTED_BY_ASHE",
+                "description": "Ashe Frost Shot applied. Target is considered Frosted.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "mitigated": false,
+                "trigger": "pre_basic_attack"
+            },
+            "meta": {},
+            "repeats": {
+                "count": 3,
+                "first_seq": 48,
+                "last_seq": 78,
+                "first_time": 2.738901030386436,
+                "last_time": 4.56483505064406
+            }
+        },
+        {
+            "seq": 49,
+            "time": 2.738901030386436,
+            "source": "kernel",
+            "type": "champion_modifier",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_modifier",
+                "source": "Ashe",
+                "state": "ASHE_FROST_SHOT_DAMAGE",
+                "description": "Ashe Frost Shot modified basic attack damage from base AD. Multiplier=1.425.",
+                "raw_damage": 171.7775,
+                "final_damage": 244.7829375,
+                "damage_type": null,
+                "metadata": {
+                    "modified_damage": 244.7829375
+                },
+                "mitigated": false,
+                "trigger": "modify_basic_attack_raw_damage"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 50,
+            "time": 2.738901030386436,
+            "source": "kernel",
+            "type": "rune_counter",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_counter",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_ATTACK_COUNT",
+                "description": "Press the Attack count: 1/3.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 0
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 51,
+            "time": 2.738901030386436,
+            "source": "scheduler",
+            "type": "delay",
+            "actor_id": null,
+            "actor_team": null,
+            "target_id": null,
+            "target_team": null,
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "from_time": 2.738901030386436,
+                "to_time": 3.0,
+                "waiting_for": [
+                    "A2"
+                ]
+            }
+        },
+        {
+            "seq": 52,
+            "time": 3.0,
+            "source": "targeting",
+            "type": "target_changed",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "policy": "lowest_hp_pct",
+                "previous_target_id": "B2"
+            }
+        },
+        {
+            "seq": 53,
+            "time": 3.0,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "E",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "active",
+                "scheduled_time": 3.0,
+                "executed_time": 3.0,
+                "clock_after": 3.25,
+                "plan_cursor": 2,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 177.88518015069894,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 508.2345933586905,
+                            "hp_after": 330.3494132079916,
+                            "applied_hp_damage": 177.88518015069894
+                        }
+                    }
+                },
+                "healing_accounting": null,
+                "action_time": {
+                    "kind": "cast",
+                    "started_at": 3.0,
+                    "attack_period": 0.0,
+                    "windup": 0.0,
+                    "next_action_ready_at": 3.25,
+                    "consumed_seconds": 0.25,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "cast_interval"
+                }
+            }
+        },
+        {
+            "seq": 54,
+            "time": 3.0,
+            "source": "kernel",
+            "type": "champion_ability",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "E",
+            "payload": {
+                "type": "champion_ability",
+                "source": "Lux E",
+                "state": "CHAMPION_LUX_E_CAST",
+                "description": "Lux cast E using formula-driven damage.",
+                "raw_damage": 265.0,
+                "final_damage": 177.88518015069894,
+                "damage_type": "magic",
+                "metadata": {
+                    "formula_found": true,
+                    "formula_text": "(15 + 50 * P_E + 0,8 * AP) * MOD_Magic",
+                    "formula_type": "damage",
+                    "target_scope": "PRIMARY",
+                    "formula_status": "ok",
+                    "formula_missing_required": [],
+                    "formula_missing_optional": [],
+                    "formula_deferred": [],
+                    "formula_unknown": [],
+                    "formula_warnings": [],
+                    "formula_error": null,
+                    "formula_bindings": {
+                        "P_E": 5.0,
+                        "AP": 0.0,
+                        "MOD_Magic": 1.0
+                    },
+                    "state_used": {},
+                    "generic_resolution_status": "resolved",
+                    "generic_failure_reason": null,
+                    "generic_failure_detail": null,
+                    "generic_empowerment": {},
+                    "generic_rank": 5,
+                    "generic_authority": {
+                        "table": "champion_ability_formulas",
+                        "source_sheet": "champion_ability_canonical",
+                        "found": true
+                    },
+                    "raw_damage_before_pipeline": 265.0,
+                    "target_armor_or_mr_used": 48.972500000000004,
+                    "effective_magic_resist": 48.972500000000004,
+                    "post_mitigation_damage": 177.88518015069894,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 177.88518015069894,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 177.88518015069894,
+                    "target_damage_before_defenses": 177.88518015069894,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 177.88518015069894,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 177.88518015069894,
+                    "damage_after_modifiers": 177.88518015069894,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 177.88518015069894,
+                    "sink_accepted_damage": 177.88518015069894
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 55,
+            "time": 3.25,
+            "source": "scheduler",
+            "type": "plan_step_skipped",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": null,
+            "target_team": null,
+            "action_id": "Q",
+            "payload": null,
+            "meta": {
+                "policy": "skip",
+                "error": null,
+                "failure_reason": "ability_on_cooldown",
+                "ready_at": 10.0,
+                "cursor_after": 4
+            }
+        },
+        {
+            "seq": 56,
+            "time": 3.25,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 3.25,
+                "executed_time": 3.25,
+                "clock_after": 4.393755808134963,
+                "plan_cursor": 4,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 41.84715610477167,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 330.3494132079916,
+                            "hp_after": 288.5022571032199,
+                            "applied_hp_damage": 41.84715610477167
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 3.25,
+                    "attack_period": 1.143755808134963,
+                    "windup": 0.3431267424404889,
+                    "next_action_ready_at": 4.393755808134963,
+                    "consumed_seconds": 1.143755808134963,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 57,
+            "time": 3.25,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 90.135,
+                "final_damage": 38.52087696055387,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 133.99,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 38.52087696055387,
+                    "effective_armor": 133.99,
+                    "post_mitigation_damage": 38.52087696055387,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 38.52087696055387,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 38.52087696055387,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 38.52087696055387,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 38.52087696055387,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 38.52087696055387,
+                    "damage_after_modifiers": 38.52087696055387,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 38.52087696055387,
+                    "sink_accepted_damage": 38.52087696055387
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 58,
+            "time": 3.25,
+            "source": "kernel",
+            "type": "item_damage",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "item_damage",
+                "source": "Sheet Item Effects",
+                "state": "ITEM_LUDEN'S_COMPANION_MAGIC_PERCENT_DAMAGE",
+                "description": "Luden's Companion sheet-driven magic_percent_damage (150.0% current HP).",
+                "raw_damage": 4.955241198119873,
+                "final_damage": 3.3262791442178075,
+                "damage_type": "magic",
+                "metadata": {
+                    "lifesteal_eligible": false,
+                    "omnivamp_eligible": true,
+                    "bonus_damage": 3.3262791442178075,
+                    "effective_magic_resist": 48.972500000000004,
+                    "raw_damage_before_pipeline": 3.3262791442178075,
+                    "post_mitigation_damage": 3.3262791442178075,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 3.3262791442178075,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 3.3262791442178075,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 3.3262791442178075,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 3.3262791442178075,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 3.3262791442178075,
+                    "damage_after_modifiers": 3.3262791442178075,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 3.3262791442178075,
+                    "sink_accepted_damage": 3.3262791442178075
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 48.972500000000004
+            },
+            "meta": {}
+        },
+        {
+            "seq": 59,
+            "time": 3.25,
+            "source": "kernel",
+            "type": "rune_counter",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_counter",
+                "source": "Rune Runtime",
+                "state": "RUNE_ELECTROCUTE_HIT_COUNT",
+                "description": "Electrocute hit count: 2/3.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 0
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 60,
+            "time": 3.4293675317484413,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 3.4293675317484413,
+                "executed_time": 3.4293675317484413,
+                "clock_after": 4.572490042331255,
+                "plan_cursor": 3,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 71.17731272528954,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 984.6701266531385,
+                            "hp_after": 913.4928139278489,
+                            "applied_hp_damage": 71.17731272528954
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 3.4293675317484413,
+                    "attack_period": 1.1431225105828138,
+                    "windup": 0.3429367531748441,
+                    "next_action_ready_at": 4.572490042331255,
+                    "consumed_seconds": 1.1431225105828138,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 61,
+            "time": 3.4293675317484413,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 118.275,
+                "final_damage": 67.06072461302942,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 76.37,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 67.06072461302942,
+                    "effective_armor": 76.37,
+                    "post_mitigation_damage": 67.06072461302942,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 67.06072461302942,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 67.06072461302942,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 67.06072461302942,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 67.06072461302942,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 67.06072461302942,
+                    "damage_after_modifiers": 67.06072461302942,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 67.06072461302942,
+                    "sink_accepted_damage": 67.06072461302942
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 62,
+            "time": 3.4293675317484413,
+            "source": "kernel",
+            "type": "item_damage",
+            "actor_id": "B1",
+            "actor_team": "B",
+            "target_id": "A1",
+            "target_team": "A",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "item_damage",
+                "source": "Sheet Item Effects",
+                "state": "ITEM_SUNFIRE_AEGIS_MAGIC_PERCENT_DAMAGE",
+                "description": "Sunfire Aegis sheet-driven magic_percent_damage (60.3% current HP).",
+                "raw_damage": 5.937560863718425,
+                "final_damage": 4.116588112260148,
+                "damage_type": "magic",
+                "metadata": {
+                    "lifesteal_eligible": false,
+                    "omnivamp_eligible": true,
+                    "bonus_damage": 4.116588112260148,
+                    "effective_magic_resist": 44.235,
+                    "raw_damage_before_pipeline": 4.116588112260148,
+                    "post_mitigation_damage": 4.116588112260148,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 4.116588112260148,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 4.116588112260148,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 4.116588112260148,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 4.116588112260148,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 4.116588112260148,
+                    "damage_after_modifiers": 4.116588112260148,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 4.116588112260148,
+                    "sink_accepted_damage": 4.116588112260148
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 44.235
+            },
+            "meta": {}
+        },
+        {
+            "seq": 63,
+            "time": 3.651868040515248,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 3.651868040515248,
+                "executed_time": 3.651868040515248,
+                "clock_after": 4.56483505064406,
+                "plan_cursor": 4,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 91.76540664130945,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 288.5022571032199,
+                            "hp_after": 196.73685046191045,
+                            "applied_hp_damage": 91.76540664130945
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 3.651868040515248,
+                    "attack_period": 0.912967010128812,
+                    "windup": 0.2738901030386436,
+                    "next_action_ready_at": 4.56483505064406,
+                    "consumed_seconds": 0.912967010128812,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 64,
+            "time": 3.651868040515248,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Ashe Frost Shot Basic Attack",
+                "state": "ASHE_FROST_SHOT_BASIC_ATTACK_DAMAGE",
+                "description": "Ashe basic attack using Frost Shot model. AD=171.78, frost multiplier=1.250, Q ratio=1.000, flurry hits=1.",
+                "raw_damage": 214.721875,
+                "final_damage": 91.76540664130945,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 133.99,
+                "metadata": {
+                    "ashe_attack_model": {
+                        "ad": 171.7775,
+                        "crit_chance": 25.0,
+                        "frost_multiplier": 1.25,
+                        "q_active": false,
+                        "q_total_ratio": 1.0,
+                        "flurry_hits": 1,
+                        "per_arrow_ratio": null,
+                        "on_hit_applications": 1,
+                        "frost_shot_applications": 1
+                    },
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 91.76540664130945,
+                    "effective_armor": 133.99,
+                    "post_mitigation_damage": 91.76540664130945,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 91.76540664130945,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 91.76540664130945,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 91.76540664130945,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 91.76540664130945,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 91.76540664130945,
+                    "damage_after_modifiers": 91.76540664130945,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 91.76540664130945,
+                    "sink_accepted_damage": 91.76540664130945
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 67,
+            "time": 3.651868040515248,
+            "source": "kernel",
+            "type": "champion_modifier",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_modifier",
+                "source": "Ashe",
+                "state": "ASHE_FROST_SHOT_DAMAGE",
+                "description": "Ashe Frost Shot modified basic attack damage from base AD. Multiplier=1.425.",
+                "raw_damage": 171.7775,
+                "final_damage": 244.7829375,
+                "damage_type": null,
+                "metadata": {
+                    "modified_damage": 244.7829375
+                },
+                "mitigated": false,
+                "trigger": "modify_basic_attack_raw_damage"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 68,
+            "time": 3.651868040515248,
+            "source": "kernel",
+            "type": "rune_counter",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_counter",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_ATTACK_COUNT",
+                "description": "Press the Attack count: 2/3.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 0
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 69,
+            "time": 4.393755808134963,
+            "source": "scheduler",
+            "type": "plan_step_skipped",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": null,
+            "target_team": null,
+            "action_id": "E",
+            "payload": null,
+            "meta": {
+                "policy": "skip",
+                "error": null,
+                "failure_reason": "ability_on_cooldown",
+                "ready_at": 11.0,
+                "cursor_after": 6
+            }
+        },
+        {
+            "seq": 70,
+            "time": 4.393755808134963,
+            "source": "scheduler",
+            "type": "plan_step_skipped",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": null,
+            "target_team": null,
+            "action_id": "Q",
+            "payload": null,
+            "meta": {
+                "policy": "skip",
+                "error": null,
+                "failure_reason": "ability_on_cooldown",
+                "ready_at": 10.0,
+                "cursor_after": 7
+            }
+        },
+        {
+            "seq": 71,
+            "time": 4.393755808134963,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 4.393755808134963,
+                "executed_time": 4.393755808134963,
+                "clock_after": 5.537511616269926,
+                "plan_cursor": 7,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 168.04213273388697,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 196.73685046191045,
+                            "hp_after": 28.694717728023477,
+                            "applied_hp_damage": 168.04213273388697
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 4.393755808134963,
+                    "attack_period": 1.143755808134963,
+                    "windup": 0.3431267424404889,
+                    "next_action_ready_at": 5.537511616269926,
+                    "consumed_seconds": 1.143755808134963,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 72,
+            "time": 4.393755808134963,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Basic Attack",
+                "state": "BASIC_ATTACK_DAMAGE",
+                "description": "Basic attack damage packet.",
+                "raw_damage": 90.135,
+                "final_damage": 38.52087696055387,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 133.99,
+                "metadata": {
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 38.52087696055387,
+                    "effective_armor": 133.99,
+                    "post_mitigation_damage": 38.52087696055387,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 38.52087696055387,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 38.52087696055387,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 38.52087696055387,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 38.52087696055387,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 38.52087696055387,
+                    "damage_after_modifiers": 38.52087696055387,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 38.52087696055387,
+                    "sink_accepted_damage": 38.52087696055387
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 73,
+            "time": 4.393755808134963,
+            "source": "kernel",
+            "type": "item_damage",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "item_damage",
+                "source": "Sheet Item Effects",
+                "state": "ITEM_LUDEN'S_COMPANION_MAGIC_PERCENT_DAMAGE",
+                "description": "Luden's Companion sheet-driven magic_percent_damage (150.0% current HP).",
+                "raw_damage": 2.9510527569286564,
+                "final_damage": 1.9809379294357392,
+                "damage_type": "magic",
+                "metadata": {
+                    "lifesteal_eligible": false,
+                    "omnivamp_eligible": true,
+                    "bonus_damage": 1.9809379294357392,
+                    "effective_magic_resist": 48.972500000000004,
+                    "raw_damage_before_pipeline": 1.9809379294357392,
+                    "post_mitigation_damage": 1.9809379294357392,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 1.9809379294357392,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 1.9809379294357392,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 1.9809379294357392,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 1.9809379294357392,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 1.9809379294357392,
+                    "damage_after_modifiers": 1.9809379294357392,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 1.9809379294357392,
+                    "sink_accepted_damage": 1.9809379294357392
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 48.972500000000004
+            },
+            "meta": {}
+        },
+        {
+            "seq": 74,
+            "time": 4.393755808134963,
+            "source": "kernel",
+            "type": "rune_damage",
+            "actor_id": "A2",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_damage",
+                "source": "Rune Runtime",
+                "state": "RUNE_ELECTROCUTE_USED",
+                "description": "Electrocute procced as magic damage.",
+                "raw_damage": 190.0,
+                "final_damage": 127.54031784389737,
+                "damage_type": "magic",
+                "metadata": {
+                    "effective_magic_resist": 48.972500000000004,
+                    "bonus_damage": 127.54031784389737,
+                    "raw_damage_before_pipeline": 127.54031784389737,
+                    "post_mitigation_damage": 127.54031784389737,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 127.54031784389737,
+                    "target_damage_taken_amp_percent": 0.0,
+                    "post_amp_damage": 127.54031784389737,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 127.54031784389737,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 127.54031784389737,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 127.54031784389737,
+                    "damage_after_modifiers": 127.54031784389737,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 127.54031784389737,
+                    "sink_accepted_damage": 127.54031784389737
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 48.972500000000004
+            },
+            "meta": {}
+        },
+        {
+            "seq": 75,
+            "time": 4.56483505064406,
+            "source": "scheduler",
+            "type": "action_executed",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "ok": true,
+                "error": null,
+                "action_type": "basic_attack",
+                "scheduled_time": 4.56483505064406,
+                "executed_time": 4.56483505064406,
+                "clock_after": 5.477802060772872,
+                "plan_cursor": 5,
+                "damage_accounting": {
+                    "total_applied_hp_damage": 28.694717728023477,
+                    "by_scope": {
+                        "PRIMARY": {
+                            "hp_before": 28.694717728023477,
+                            "hp_after": 0.0,
+                            "applied_hp_damage": 28.694717728023477
+                        }
+                    }
+                },
+                "action_time": {
+                    "kind": "attack",
+                    "started_at": 4.56483505064406,
+                    "attack_period": 0.912967010128812,
+                    "windup": 0.2738901030386436,
+                    "next_action_ready_at": 5.477802060772872,
+                    "consumed_seconds": 0.912967010128812,
+                    "reset_kind": null,
+                    "cooldown_suppressed": false,
+                    "source": "attack_speed"
+                }
+            }
+        },
+        {
+            "seq": 76,
+            "time": 4.56483505064406,
+            "source": "kernel",
+            "type": "damage_packet",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "damage_packet",
+                "source": "Ashe Frost Shot Basic Attack",
+                "state": "ASHE_FROST_SHOT_BASIC_ATTACK_DAMAGE",
+                "description": "Ashe basic attack using Frost Shot model. AD=171.78, frost multiplier=1.250, Q ratio=1.000, flurry hits=1.",
+                "raw_damage": 214.721875,
+                "final_damage": 99.10663917261422,
+                "damage_type": "physical",
+                "mitigated": true,
+                "effective_armor": 133.99,
+                "metadata": {
+                    "ashe_attack_model": {
+                        "ad": 171.7775,
+                        "crit_chance": 25.0,
+                        "frost_multiplier": 1.25,
+                        "q_active": false,
+                        "q_total_ratio": 1.0,
+                        "flurry_hits": 1,
+                        "per_arrow_ratio": null,
+                        "on_hit_applications": 1,
+                        "frost_shot_applications": 1
+                    },
+                    "lifesteal_eligible": true,
+                    "omnivamp_eligible": true,
+                    "raw_damage_before_pipeline": 91.76540664130945,
+                    "effective_armor": 133.99,
+                    "post_mitigation_damage": 91.76540664130945,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 91.76540664130945,
+                    "target_damage_taken_amp_percent": 8.0,
+                    "post_amp_damage": 99.10663917261422,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 99.10663917261422,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 99.10663917261422,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 99.10663917261422,
+                    "damage_after_modifiers": 99.10663917261422,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 28.694717728023477,
+                    "sink_accepted_damage": 28.694717728023477
+                }
+            },
+            "meta": {}
+        },
+        {
+            "seq": 79,
+            "time": 4.56483505064406,
+            "source": "kernel",
+            "type": "champion_modifier",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "champion_modifier",
+                "source": "Ashe",
+                "state": "ASHE_FROST_SHOT_DAMAGE",
+                "description": "Ashe Frost Shot modified basic attack damage from base AD. Multiplier=1.425.",
+                "raw_damage": 171.7775,
+                "final_damage": 244.7829375,
+                "damage_type": null,
+                "metadata": {
+                    "modified_damage": 244.7829375
+                },
+                "mitigated": false,
+                "trigger": "modify_basic_attack_raw_damage"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 80,
+            "time": 4.56483505064406,
+            "source": "kernel",
+            "type": "rune_damage",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_damage",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_DAMAGE",
+                "description": "Press the Attack third hit dealt magic adaptive damage.",
+                "raw_damage": 134.6729411764706,
+                "final_damage": 97.6333057917322,
+                "damage_type": "magic",
+                "metadata": {
+                    "effective_magic_resist": 48.972500000000004,
+                    "bonus_damage": 90.4012090664187,
+                    "raw_damage_before_pipeline": 90.4012090664187,
+                    "post_mitigation_damage": 90.4012090664187,
+                    "attacker_outgoing_damage_amp_percent": 0.0,
+                    "post_outgoing_amp_damage": 90.4012090664187,
+                    "target_damage_taken_amp_percent": 8.0,
+                    "post_amp_damage": 97.6333057917322,
+                    "target_scope": "PRIMARY",
+                    "target_damage_before_defenses": 97.6333057917322,
+                    "target_damage_reduction_percent": 0,
+                    "target_damage_after_reduction": 97.6333057917322,
+                    "target_shield_key": "TARGET_SHIELD",
+                    "target_shield_before": 0,
+                    "target_shield_absorbed": 0,
+                    "target_shield_after": 0,
+                    "target_damage_after_defenses": 97.6333057917322,
+                    "damage_after_modifiers": 97.6333057917322,
+                    "shield_absorbed": 0,
+                    "applied_hp_damage": 0.0,
+                    "sink_accepted_damage": 0.0
+                },
+                "mitigated": true,
+                "trigger": "on_basic_attack",
+                "effective_magic_resist": 48.972500000000004
+            },
+            "meta": {}
+        },
+        {
+            "seq": 81,
+            "time": 4.56483505064406,
+            "source": "kernel",
+            "type": "rune_state",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": {
+                "type": "rune_state",
+                "source": "Rune Runtime",
+                "state": "RUNE_PTA_EXPOSED",
+                "description": "Press the Attack exposed target. Target damage taken amp set to 8%.",
+                "raw_damage": 0,
+                "final_damage": 0,
+                "damage_type": null,
+                "metadata": {
+                    "bonus_damage": 90.4012090664187
+                },
+                "mitigated": false,
+                "trigger": "on_basic_attack"
+            },
+            "meta": {}
+        },
+        {
+            "seq": 82,
+            "time": 4.56483505064406,
+            "source": "lifecycle",
+            "type": "death",
+            "actor_id": "A1",
+            "actor_team": "A",
+            "target_id": "B1",
+            "target_team": "B",
+            "action_id": "basic_attack",
+            "payload": null,
+            "meta": {
+                "death_time": 4.56483505064406,
+                "cause_actor_id": "A1",
+                "cause_action_id": "basic_attack",
+                "cause_action_seq": 75,
+                "self_inflicted": false,
+                "pending_actions_cancelled": true
+            }
+        },
+        {
+            "seq": 83,
+            "time": 5.537511616269926,
+            "source": "termination",
+            "type": "terminated",
+            "actor_id": null,
+            "actor_team": null,
+            "target_id": null,
+            "target_team": null,
+            "action_id": null,
+            "payload": null,
+            "meta": {
+                "reason": "team_elimination",
+                "winner": "A",
+                "detail": "team A living=['A1', 'A2']; team B living=[]"
+            }
+        }
+    ],
+    "effective_builds": {
+        "A1": {
+            "champion": "Ashe",
+            "level": 13,
+            "items": [
+                {
+                    "name": "Infinity Edge",
+                    "item_id": 3031
+                },
+                {
+                    "name": "Berserker's Greaves",
+                    "item_id": 3006
+                }
+            ],
+            "runes": [
+                "Press the Attack"
+            ],
+            "ability_ranks": {
+                "Q": 5,
+                "W": 4,
+                "E": 3,
+                "R": 2
+            },
+            "crit_mode": "force",
+            "starting_hp": 1200.0,
+            "starting_hp_source": "explicit",
+            "max_hp": 1715.95,
+            "data_version": {
+                "patch": null,
+                "catalog_digest": "eee1de43cf6c8c03"
+            }
+        },
+        "A2": {
+            "champion": "Lux",
+            "level": 13,
+            "items": [
+                {
+                    "name": "Luden's Companion",
+                    "item_id": 6655
+                }
+            ],
+            "runes": [
+                "Electrocute"
+            ],
+            "ability_ranks": {
+                "Q": 5,
+                "W": 3,
+                "E": 5,
+                "R": 2
+            },
+            "crit_mode": "none",
+            "starting_hp": 1000.0,
+            "starting_hp_source": "explicit",
+            "max_hp": 1664.0500000000002,
+            "data_version": {
+                "patch": null,
+                "catalog_digest": "eee1de43cf6c8c03"
+            }
+        },
+        "B1": {
+            "champion": "Garen",
+            "level": 13,
+            "items": [
+                {
+                    "name": "Sunfire Aegis",
+                    "item_id": 3068
+                }
+            ],
+            "runes": [],
+            "ability_ranks": {
+                "Q": 5,
+                "W": 5,
+                "E": 5,
+                "R": 3
+            },
+            "crit_mode": "expected",
+            "starting_hp": 600.0,
+            "starting_hp_source": "explicit",
+            "max_hp": 2113.1000000000004,
+            "data_version": {
+                "patch": null,
+                "catalog_digest": "eee1de43cf6c8c03"
+            }
+        },
+        "B2": {
+            "champion": "Soraka",
+            "level": 13,
+            "items": [
+                {
+                    "name": "Rylai's Crystal Scepter",
+                    "item_id": 3116
+                }
+            ],
+            "runes": [],
+            "ability_ranks": {
+                "Q": 5,
+                "W": 5,
+                "E": 5,
+                "R": 3
+            },
+            "crit_mode": "none",
+            "starting_hp": 450.0,
+            "starting_hp_source": "explicit",
+            "max_hp": 1968.6000000000001,
+            "data_version": {
+                "patch": null,
+                "catalog_digest": "eee1de43cf6c8c03"
+            }
+        }
+    },
+    "trace": {
+        "truncated": false,
+        "simulated_event_count": 83,
+        "returned_event_count": 75,
+        "rule": "complete",
+        "summaries_cover_full_simulation": true,
+        "detail": "calculation",
+        "compacted": true,
+        "omitted_event_count": 8,
+        "grouped_event_count": 8,
+        "response_truncated": false,
+        "retention_truncated": false,
+        "retention_limit": 500,
+        "retention_dropped_event_count": 0
+    },
+    "scheduler_steps": 30,
+    "scheduler_step_limit": 100000,
+    "team_summaries": {
+        "A": {
+            "team_id": "A",
+            "members": [
+                "A1",
+                "A2"
+            ],
+            "living": [
+                "A1",
+                "A2"
+            ],
+            "dead": [],
+            "resurrecting": [],
+            "eliminated": false,
+            "damage_dealt_total": 1050.0,
+            "damage_dealt_primary": 1050.0,
+            "damage_taken_total": 379.6284629070393,
+            "damage_taken_primary": 379.6284629070393,
+            "healing_applied": 0.0,
+            "actions_executed": 11
+        },
+        "B": {
+            "team_id": "B",
+            "members": [
+                "B1",
+                "B2"
+            ],
+            "living": [],
+            "dead": [
+                "B1",
+                "B2"
+            ],
+            "resurrecting": [],
+            "eliminated": true,
+            "damage_dealt_total": 379.6284629070393,
+            "damage_dealt_primary": 379.6284629070393,
+            "damage_taken_total": 1050.0,
+            "damage_taken_primary": 1050.0,
+            "healing_applied": 0.0,
+            "actions_executed": 6
+        }
+    },
+    "combatant_summaries": {
+        "A1": {
+            "runtime_id": "A1",
+            "team_id": "A",
+            "champion": "Ashe",
+            "slot_index": 0,
+            "alive": true,
+            "death_time": null,
+            "next_ready_time": 5.477802060772872,
+            "final_hp": 913.4928139278489,
+            "max_hp": 1715.95,
+            "damage_dealt_total": 445.8116861341371,
+            "damage_dealt_primary": 445.8116861341371,
+            "damage_taken_total": 286.50718607215106,
+            "damage_taken_primary": 286.50718607215106,
+            "scoped_pool_damage_taken": 0.0,
+            "healing_generated": 0.0,
+            "healing_applied": 0.0,
+            "actions_attempted": 6,
+            "actions_executed": 6,
+            "failures": 0,
+            "skips": 0,
+            "delays": 0,
+            "target_changes": 2,
+            "final_target_id": "B1",
+            "plan": {
+                "steps": 1,
+                "repeat": true,
+                "on_failure": "skip",
+                "cursor": 6,
+                "halted": false,
+                "exhausted": false
+            },
+            "final_cooldowns": {}
+        },
+        "A2": {
+            "runtime_id": "A2",
+            "team_id": "A",
+            "champion": "Lux",
+            "slot_index": 1,
+            "alive": true,
+            "death_time": null,
+            "next_ready_time": 5.537511616269926,
+            "final_hp": 906.8787231651118,
+            "max_hp": 1664.0500000000002,
+            "damage_dealt_total": 604.1883138658629,
+            "damage_dealt_primary": 604.1883138658629,
+            "damage_taken_total": 93.12127683488825,
+            "damage_taken_primary": 93.12127683488825,
+            "scoped_pool_damage_taken": 0.0,
+            "healing_generated": 0.0,
+            "healing_applied": 0.0,
+            "actions_attempted": 5,
+            "actions_executed": 5,
+            "failures": 0,
+            "skips": 3,
+            "delays": 1,
+            "target_changes": 2,
+            "final_target_id": "B1",
+            "plan": {
+                "steps": 3,
+                "repeat": true,
+                "on_failure": "skip",
+                "cursor": 8,
+                "halted": false,
+                "exhausted": false
+            },
+            "final_cooldowns": {
+                "COOLDOWN_LUX_E": 11.0,
+                "COOLDOWN_LUX_Q": 10.0
+            }
+        },
+        "B1": {
+            "runtime_id": "B1",
+            "team_id": "B",
+            "champion": "Garen",
+            "slot_index": 2,
+            "alive": false,
+            "death_time": 4.56483505064406,
+            "next_ready_time": 4.572490042331255,
+            "final_hp": 0.0,
+            "max_hp": 2113.1000000000004,
+            "damage_dealt_total": 286.50718607215106,
+            "damage_dealt_primary": 286.50718607215106,
+            "damage_taken_total": 600.0,
+            "damage_taken_primary": 600.0,
+            "scoped_pool_damage_taken": 0.0,
+            "healing_generated": 0.0,
+            "healing_applied": 0.0,
+            "actions_attempted": 4,
+            "actions_executed": 4,
+            "failures": 0,
+            "skips": 0,
+            "delays": 0,
+            "target_changes": 1,
+            "final_target_id": "A1",
+            "plan": {
+                "steps": 1,
+                "repeat": true,
+                "on_failure": "skip",
+                "cursor": 4,
+                "halted": false,
+                "exhausted": false
+            },
+            "final_cooldowns": {}
+        },
+        "B2": {
+            "runtime_id": "B2",
+            "team_id": "B",
+            "champion": "Soraka",
+            "slot_index": 3,
+            "alive": false,
+            "death_time": 1.825934020257624,
+            "next_ready_time": 2.592499574668038,
+            "final_hp": 0.0,
+            "max_hp": 1968.6000000000001,
+            "damage_dealt_total": 93.12127683488825,
+            "damage_dealt_primary": 93.12127683488825,
+            "damage_taken_total": 450.0,
+            "damage_taken_primary": 450.0,
+            "scoped_pool_damage_taken": 0.0,
+            "healing_generated": 0.0,
+            "healing_applied": 0.0,
+            "actions_attempted": 2,
+            "actions_executed": 2,
+            "failures": 0,
+            "skips": 0,
+            "delays": 0,
+            "target_changes": 1,
+            "final_target_id": "A2",
+            "plan": {
+                "steps": 1,
+                "repeat": true,
+                "on_failure": "skip",
+                "cursor": 2,
+                "halted": false,
+                "exhausted": false
+            },
+            "final_cooldowns": {}
+        }
+    },
+    "final_targets": {
+        "A1": "B1",
+        "A2": "B1",
+        "B1": "A1",
+        "B2": "A2"
+    },
+    "pair_ledger": {
+        "digest": "dc62fd96f4327588765a0e17c7732b882f446c0f77ac129dbffe40084bb86b55",
+        "pairs": [
+            {
+                "actor_id": "A1",
+                "target_id": "B1",
+                "keys": [
+                    "RUNE_PTA_ATTACK_COUNT",
+                    "RUNE_PTA_EXPOSED",
+                    "RUNE_PTA_EXPOSED_EXPIRES_AT",
+                    "TARGET_DAMAGE_TAKEN_AMP_PERCENT",
+                    "TARGET_DAMAGE_TAKEN_AMP_PERCENT_FROM_RUNE_PTA"
+                ]
+            },
+            {
+                "actor_id": "A1",
+                "target_id": "B2",
+                "keys": [
+                    "RUNE_PTA_ATTACK_COUNT",
+                    "RUNE_PTA_EXPOSED",
+                    "RUNE_PTA_EXPOSED_EXPIRES_AT",
+                    "TARGET_DAMAGE_TAKEN_AMP_PERCENT",
+                    "TARGET_DAMAGE_TAKEN_AMP_PERCENT_FROM_RUNE_PTA"
+                ]
+            },
+            {
+                "actor_id": "A2",
+                "target_id": "B1",
+                "keys": []
+            },
+            {
+                "actor_id": "A2",
+                "target_id": "B2",
+                "keys": []
+            },
+            {
+                "actor_id": "B1",
+                "target_id": "A1",
+                "keys": []
+            },
+            {
+                "actor_id": "B2",
+                "target_id": "A2",
+                "keys": []
+            }
+        ]
+    },
+    "scheduler_assumptions": {
+        "time_model": "next-event simulation: scenario time is an event timeline that only moves forward to the next scheduled event time and is never advanced by the cost of an action; one combatant acting does not delay any other combatant's readiness; equal scheduled times execute sequentially (never batched, single-threaded) and later actors observe all earlier mutations",
+        "ordering": "candidates sort by (eligibility_time, scenario_slot_index); slot index = position in team_a's combatant list then team_b's; eligibility_time = max(actor_ready_time, step.not_before, action_ready_time)",
+        "readiness": "per-combatant: ready at 0.0 at combat start, then at its own previous accepted action's execution time plus that action's own interval (basic attack = 1/attack_speed, active cast = 0.25 s); kernel-rejected actions consume no time",
+        "secondary_scopes": "non-PRIMARY damage scopes are scoped HP pools of the action's primary target (kernel model); attributed to that target as scoped-pool damage, never to another champion's canonical HP; cross-champion scope mapping is unsupported and fails closed at validation",
+        "expiry_events": "an idle combatant's delta-based timed-effect expiry EVENTS surface at its next action's catch-up and carry that action's execution time (Phase 2A approximation); absolute deadlines are swept at every materialization; kernel post-action tick expiries carry their action's execution time though they fire within (executed_time, clock_after]",
+        "healing_shielding": "healing uses the kernel's authoritative healing accounting blocks; shields have no equivalent authoritative accounting block in the kernel and are not separately metered (shield state appears in final owned state only)"
+    },
+    "unsupported_mechanics": [
+        "simultaneous same-timestamp resolution (equal times run sequentially in scenario slot order)",
+        "combat AI or optimal-action selection (plans and targeting are explicit caller input)",
+        "movement, positioning, or range checks",
+        "skillshot geometry, projectiles, or dodging",
+        "full crowd-control simulation (stuns/roots/displacements as time denial)",
+        "assists and takedown triggers",
+        "summons, pets, clones, minions, jungle monsters, turrets, objectives, experience, or routing",
+        "cross-champion secondary-scope attribution (scoped pools belong to the action's primary target; explicit non-empty mappings are rejected)",
+        "teams larger than 5 combatants (product cap; 1v1 through 5v5 are supported)"
+    ],
+    "warnings": []
+}

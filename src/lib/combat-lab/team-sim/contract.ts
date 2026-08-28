@@ -359,7 +359,7 @@ export type TeamSimTeamRequest = {
  * key rather than a re-render of one already bought. That is why the page
  * never re-submits on its own when the selector changes.
  */
-export type TraceDetail = "summary" | "standard" | "full";
+export type TraceDetail = "summary" | "standard" | "calculation" | "full";
 
 export type TeamSimLimitsRequest = {
   max_duration: number;
