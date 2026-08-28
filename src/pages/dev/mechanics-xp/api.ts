@@ -300,3 +300,45 @@ export function compareBreakpoints(
     body: JSON.stringify({ baseline, comparison }),
   });
 }
+
+// --- Wave-XP authority: GET /api/mechanics/xp/wave-xp-authority --------------
+// Single-call solo+duo structured rows (league_mechanics/wave_xp_authority.py).
+// All wave/XP math and breakpoint notes come from the backend; the frontend
+// only renders the returned fields.
+
+export interface WaveXpRow {
+  wave_number: number;
+  spawn_time_seconds: number;
+  spawn_time_display: string;
+  melee_count: number;
+  caster_count: number;
+  cannon_count: number;
+  is_cannon_wave: boolean;
+  solo_wave_xp: string;
+  solo_cumulative_xp: string;
+  duo_wave_xp_per_player: string;
+  duo_cumulative_xp_per_player: string;
+  solo_level_breakpoint_note: string | null;
+  duo_level_breakpoint_note: string | null;
+}
+
+export interface WaveXpAuthorityResult {
+  patch: string;
+  map: string;
+  mode: string;
+  rows: WaveXpRow[];
+  warnings: string[];
+}
+
+export function fetchWaveXpAuthority(params: {
+  patch: string;
+  startWave?: number;
+  waveCount?: number;
+}): Promise<WaveXpAuthorityResult> {
+  const search = new URLSearchParams({
+    patch: params.patch,
+    start_wave: String(params.startWave ?? 1),
+    wave_count: String(params.waveCount ?? 15),
+  });
+  return request<WaveXpAuthorityResult>(`/api/mechanics/xp/wave-xp-authority?${search}`);
+}

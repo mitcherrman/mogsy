@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import WaveBreakpointsSection from "./WaveBreakpointsSection";
+import WaveXpAuthorityTimeline from "./WaveXpAuthorityTimeline";
 import {
   MINION_TYPES,
   MinionEventInput,
@@ -392,6 +393,8 @@ export default function MechanicsXpPage() {
           </div>
         </section>
       )}
+
+      <WaveXpAuthorityTimeline />
 
       <WaveBreakpointsSection />
     </div>
