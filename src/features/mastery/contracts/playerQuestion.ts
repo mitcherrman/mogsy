@@ -34,6 +34,7 @@ import {
   masterySetId,
   sessionId,
 } from "./ids";
+import { MasteryComparisonSemantics, readComparisonSemantics } from "./comparisonSemantics";
 import { MasteryPromptSemantics, readPromptSemantics } from "./promptSemantics";
 import { MasteryStateView, readOptionalStateView } from "./stateView";
 
@@ -102,6 +103,13 @@ interface MasteryPlayerQuestionBase {
    * otherwise. Null for every `legacy_combat` question served today.
    */
   readonly promptSemantics: MasteryPromptSemantics | null;
+  /**
+   * Structured comparison semantics for a `comparison_left_right` question
+   * (Phase 4C2) — required exactly when
+   * `interactionKind === "comparison_left_right"`, and forbidden otherwise.
+   * Null for every other question served today.
+   */
+  readonly comparisonSemantics: MasteryComparisonSemantics | null;
 }
 
 export interface SingleChoicePlayerQuestion extends MasteryPlayerQuestionBase {
@@ -183,16 +191,30 @@ function readBase(d: Record<string, unknown>, label: string): MasteryPlayerQuest
   const interactionKind = readInteractionKind(d.interaction_kind, `${label}.interaction_kind`);
   const hasPromptSemantics =
     "prompt_semantics" in d && d.prompt_semantics !== null && d.prompt_semantics !== undefined;
+  const hasComparisonSemantics =
+    "comparison_semantics" in d && d.comparison_semantics !== null && d.comparison_semantics !== undefined;
   if (interactionKind === "atomic_recall" && !hasPromptSemantics) {
     throw new MasteryContractParseError(
       `atomic_recall requires prompt_semantics`,
       `${label}.prompt_semantics`,
     );
   }
-  if (interactionKind === "legacy_combat" && hasPromptSemantics) {
+  if (interactionKind !== "atomic_recall" && hasPromptSemantics) {
     throw new MasteryContractParseError(
-      `legacy_combat must not carry prompt_semantics`,
+      `${interactionKind} must not carry prompt_semantics`,
       `${label}.prompt_semantics`,
+    );
+  }
+  if (interactionKind === "comparison_left_right" && !hasComparisonSemantics) {
+    throw new MasteryContractParseError(
+      `comparison_left_right requires comparison_semantics`,
+      `${label}.comparison_semantics`,
+    );
+  }
+  if (interactionKind !== "comparison_left_right" && hasComparisonSemantics) {
+    throw new MasteryContractParseError(
+      `${interactionKind} must not carry comparison_semantics`,
+      `${label}.comparison_semantics`,
     );
   }
   return {
@@ -212,6 +234,9 @@ function readBase(d: Record<string, unknown>, label: string): MasteryPlayerQuest
     interactionKind,
     promptSemantics: hasPromptSemantics
       ? readPromptSemantics(d.prompt_semantics, `${label}.prompt_semantics`)
+      : null,
+    comparisonSemantics: hasComparisonSemantics
+      ? readComparisonSemantics(d.comparison_semantics, `${label}.comparison_semantics`)
       : null,
   };
 }

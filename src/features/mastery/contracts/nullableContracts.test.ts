@@ -124,7 +124,86 @@ describe("MasteryPlayerQuestion state/matchupIdentity nullable", () => {
 
   it("rejects an unrecognised interaction_kind", () => {
     expect(() =>
-      readPlayerQuestion(baseQuestionPayload({ interaction_kind: "comparison_left_right" })),
+      readPlayerQuestion(baseQuestionPayload({ interaction_kind: "scenario_derived" })),
+    ).toThrow(MasteryContractParseError);
+  });
+
+  it("parses state=null and matchup_identity=null on a comparison_left_right question (Phase 4C2)", () => {
+    const q = readPlayerQuestion(
+      baseQuestionPayload({
+        state: null,
+        matchup_identity: null,
+        interaction_kind: "comparison_left_right",
+        answer_type: "single_choice",
+        answer_options: ["ahri", "syndra", "tie"],
+        input_constraints: null,
+        comparison_semantics: {
+          template: "compare_ability_cooldown",
+          champion_a_display: "Ahri",
+          champion_b_display: "Syndra",
+          metric: "ability_cooldown",
+          subject_ref: "E",
+          context: { ability_rank: 3, champion_level: null, form: null },
+          unit: "seconds",
+        },
+      }),
+    );
+    expect(q.state).toBeNull();
+    expect(q.matchupIdentity).toBeNull();
+    expect(q.interactionKind).toBe("comparison_left_right");
+    expect(q.comparisonSemantics).not.toBeNull();
+    expect(q.promptSemantics).toBeNull();
+  });
+
+  it("rejects comparison_left_right without comparison_semantics (fail closed)", () => {
+    expect(() =>
+      readPlayerQuestion(
+        baseQuestionPayload({
+          state: null,
+          matchup_identity: null,
+          interaction_kind: "comparison_left_right",
+          answer_type: "single_choice",
+          answer_options: ["ahri", "syndra", "tie"],
+          input_constraints: null,
+        }),
+      ),
+    ).toThrow(MasteryContractParseError);
+  });
+
+  it("rejects legacy_combat that carries comparison_semantics (fail closed)", () => {
+    expect(() =>
+      readPlayerQuestion(
+        baseQuestionPayload({
+          state: null,
+          matchup_identity: null,
+          interaction_kind: "legacy_combat",
+          comparison_semantics: {
+            template: "compare_ability_cooldown",
+            champion_a_display: "Ahri",
+            champion_b_display: "Syndra",
+            metric: "ability_cooldown",
+          },
+        }),
+      ),
+    ).toThrow(MasteryContractParseError);
+  });
+
+  it("rejects atomic_recall that carries comparison_semantics (fail closed)", () => {
+    expect(() =>
+      readPlayerQuestion(
+        baseQuestionPayload({
+          state: null,
+          matchup_identity: null,
+          interaction_kind: "atomic_recall",
+          prompt_semantics: { template: "champion_base_stat", champion_display: "Ahri", metric: "armor" },
+          comparison_semantics: {
+            template: "compare_ability_cooldown",
+            champion_a_display: "Ahri",
+            champion_b_display: "Syndra",
+            metric: "ability_cooldown",
+          },
+        }),
+      ),
     ).toThrow(MasteryContractParseError);
   });
 });

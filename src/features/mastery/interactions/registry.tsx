@@ -35,6 +35,8 @@ import { MasteryRevealView } from "../player/MasteryRevealView";
 import type { PlayerAnswer } from "../player/useMasteryFixtureSession";
 import { AtomicRecallQuestionView } from "./AtomicRecallQuestionView";
 import { AtomicRecallRevealView } from "./AtomicRecallRevealView";
+import { ComparisonQuestionView } from "./ComparisonQuestionView";
+import { ComparisonRevealView } from "./ComparisonRevealView";
 
 export class MasteryUnsupportedInteractionError extends Error {
   readonly interactionKind: string;
@@ -97,6 +99,15 @@ export function MasteryQuestionDispatch({
           onSubmit={onSubmit}
         />
       );
+    case "comparison_left_right":
+      return (
+        <ComparisonQuestionView
+          question={question}
+          total={total}
+          submitting={submitting}
+          onSubmit={onSubmit}
+        />
+      );
     default: {
       const exhaustive: never = kind;
       throw new MasteryUnsupportedInteractionError(exhaustive as unknown as string);
@@ -135,6 +146,16 @@ export function MasteryRevealDispatch({
     case "atomic_recall":
       return (
         <AtomicRecallRevealView
+          question={question}
+          reveal={reveal}
+          submittedAnswer={submittedAnswer}
+          isFinal={isFinal}
+          onNext={onNext}
+        />
+      );
+    case "comparison_left_right":
+      return (
+        <ComparisonRevealView
           question={question}
           reveal={reveal}
           submittedAnswer={submittedAnswer}

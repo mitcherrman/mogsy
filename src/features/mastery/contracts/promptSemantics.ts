@@ -51,7 +51,12 @@ export interface MasteryPromptSemantics {
   readonly context: MasteryFactContext;
 }
 
-function readContext(value: unknown, label: string): MasteryFactContext {
+/**
+ * Exported for reuse by `comparisonSemantics.ts` (Phase 4C2) — the comparison
+ * contract shares this exact axis shape (backend `FactContext`) rather than
+ * redeclaring a parallel reader.
+ */
+export function readFactContext(value: unknown, label: string): MasteryFactContext {
   const c = rec(value, label);
   return {
     abilityRank: nnum(c.ability_rank, `${label}.ability_rank`),
@@ -70,7 +75,7 @@ export function readPromptSemantics(value: unknown, label = "prompt_semantics"):
     subjectRef: p.subject_ref === undefined ? "" : str(p.subject_ref, `${label}.subject_ref`),
     abilityName: p.ability_name === undefined ? "" : str(p.ability_name, `${label}.ability_name`),
     context: p.context === undefined ? { abilityRank: null, championLevel: null, form: null }
-      : readContext(p.context, `${label}.context`),
+      : readFactContext(p.context, `${label}.context`),
   };
 }
 

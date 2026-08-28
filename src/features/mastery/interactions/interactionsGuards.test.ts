@@ -53,11 +53,17 @@ describe("interactions package source scan", () => {
   it("never compares a submitted answer to a correct answer (no client-side grading)", () => {
     // The only legitimate reads of correctness are `reveal.authoritativeCorrectness`
     // (pass-through display) — never an equality/comparison against a submitted value.
+    // Phase 4C2 adds the comparison-specific risk: never comparing the two sides'
+    // values (`value_a`/`value_b`) or computing a winner/delta locally.
     const suspicious = [
       /submittedAnswer\s*===?\s*.*correctAnswer/,
       /correctAnswer\s*===?\s*.*submittedAnswer/,
       /playerAnswer\s*===?\s*.*correctAnswer/,
       /numeric\s*===?\s*.*correctAnswer/,
+      /value_?a\s*[<>]=?\s*value_?b/i,
+      /valueA\s*[<>]=?\s*valueB/,
+      /\bwinner\s*=(?!=)/i,
+      /\bdelta\s*=\s*[^=]*(-|Math\.abs)/i,
     ];
     for (const file of sourceFiles) {
       const src = codeOf(file);

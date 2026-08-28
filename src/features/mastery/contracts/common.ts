@@ -150,9 +150,16 @@ export type MasteryQuestionFamily = string;
  * `MasteryQuestionFamily`.
  *
  * `legacy_combat` is every two-champion combat-state question served today
- * (Ahri/Olaf/Jarvan). `atomic_recall` is the new stateless one-champion
- * recall interaction (Phase 4C1). Absent on the wire defaults to
+ * (Ahri/Olaf/Jarvan). `atomic_recall` is the stateless one-champion recall
+ * interaction (Phase 4C1). `comparison_left_right` is the stateless
+ * two-champion comparative interaction (Phase 4C2), fed by the Matchup
+ * Composer (`mastery.matchup.contract.MatchupQuestionCandidate`) via the
+ * Phase 4B `manifest_session` adapter. Absent on the wire defaults to
  * `legacy_combat` so every existing served payload keeps parsing unchanged.
  */
-export const MASTERY_INTERACTION_KINDS = ["legacy_combat", "atomic_recall"] as const;
+export const MASTERY_INTERACTION_KINDS = [
+  "legacy_combat",
+  "atomic_recall",
+  "comparison_left_right",
+] as const;
 export type MasteryInteractionKind = (typeof MASTERY_INTERACTION_KINDS)[number];
