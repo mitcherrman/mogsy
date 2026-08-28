@@ -1479,6 +1479,84 @@ export type Database = {
         }
         Relationships: []
       }
+      identity_link_attempts: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          provider: string
+          return_origin: string
+          return_path: string
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          provider: string
+          return_origin: string
+          return_path: string
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          provider?: string
+          return_origin?: string
+          return_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      identity_link_pending: {
+        Row: {
+          avatar_url: string | null
+          consumed_at: string | null
+          created_at: string
+          display_name: string | null
+          expires_at: string
+          id: string
+          provider: string
+          provider_user_id: string
+          tag_line: string | null
+          ticket_hash: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          expires_at: string
+          id?: string
+          provider: string
+          provider_user_id: string
+          tag_line?: string | null
+          ticket_hash: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          expires_at?: string
+          id?: string
+          provider?: string
+          provider_user_id?: string
+          tag_line?: string | null
+          ticket_hash?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       image_clicks: {
         Row: {
           created_at: string
@@ -3480,6 +3558,7 @@ export type Database = {
           provider_user_id: string
           public_on_profile: boolean
           tag_line: string
+          user_id: string
           username: string
           verified_at: string
         }[]
@@ -3543,6 +3622,10 @@ export type Database = {
           _profile_id: string
         }
         Returns: Json
+      }
+      attach_feedback_screenshot: {
+        Args: { _feedback_id: string; _path: string }
+        Returns: undefined
       }
       block_profile: { Args: { _target_profile_id: string }; Returns: Json }
       bot_display_name_problem: {
@@ -3649,6 +3732,29 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      identity_link_consume_attempt: {
+        Args: { p_attempt_id: string; p_provider: string }
+        Returns: {
+          out_return_origin: string
+          out_return_path: string
+          out_user_id: string
+        }[]
+      }
+      identity_link_preview: {
+        Args: { p_ticket_hash: string; p_user_id: string }
+        Returns: {
+          out_avatar_url: string
+          out_display_name: string
+          out_provider: string
+          out_tag_line: string
+          out_username: string
+        }[]
+      }
+      identity_link_purge_expired: { Args: never; Returns: undefined }
+      identity_link_redeem: {
+        Args: { p_ticket_hash: string; p_user_id: string }
+        Returns: string
       }
       increment_custom_link_visits: {
         Args: { _slug: string }
