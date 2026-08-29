@@ -1,7 +1,7 @@
 /**
  * REAL captured backend payloads from the generated Mastery playtest prototypes.
  *
- * Not hand-authored. Recorded verbatim from a live local backend running with
+ * Not hand-authored. Recorded verbatim from the reconciled backend running with
  * `MASTERY_GENERATED_PLAYTEST=1` against the canonical `lol_calc.db`, by
  * walking the exact dev HTTP flow the launcher uses:
  *
@@ -16,8 +16,11 @@
  * carried a `focus` field the real adapter did not emit. These payloads cannot
  * drift from the backend in that direction, because they came from it.
  *
- * Regenerate with `scripts/capture-mastery-playtest-payloads` steps documented
- * in docs/mastery-redesign-handoff.md.
+ * REGENERATED during the Phase 1 reconciliation onto origin/master, so the
+ * digests and session ids below are the reconciled backend's, not the
+ * pre-reconciliation branch's.
+ *
+ * Regenerate with the steps documented in docs/mastery-redesign-handoff.md.
  */
 
 export interface CapturedStep {
@@ -33,7 +36,7 @@ export interface CapturedRun {
 export const CAPTURED_CHAMPION_RUN: CapturedRun =
 {
   "session": {
-    "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+    "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
     "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
     "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
     "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -45,7 +48,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
   "steps": [
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -82,7 +85,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -112,7 +115,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -149,7 +152,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -179,7 +182,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -216,7 +219,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -246,7 +249,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -283,7 +286,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -313,7 +316,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -350,7 +353,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -380,7 +383,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -417,7 +420,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -447,7 +450,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -484,7 +487,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -514,7 +517,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -551,7 +554,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -581,7 +584,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -618,7 +621,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -648,7 +651,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -685,7 +688,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -715,7 +718,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -752,7 +755,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -782,7 +785,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -819,7 +822,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -849,7 +852,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -886,7 +889,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -916,7 +919,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -953,7 +956,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -983,7 +986,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -1020,7 +1023,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_e84aeeda514e427dbcfee3fb72b78843",
+        "session_id": "msess_1746b0c46ea14c52bf3b980a4be4e015",
         "mastery_set_id": "mset_e52652f55c82ffc51e3b9696d5331d8a5b40be24752e564d6476cd860118c889",
         "artifact_digest": "martifact_8688e10c7d57d96a2513d1298213e55c7cb640b13ff0c9d3b74ba43989dafb5e",
         "display_revision": "disprev_generated-ahri-champion.playtest.v1",
@@ -1054,7 +1057,7 @@ export const CAPTURED_CHAMPION_RUN: CapturedRun =
 export const CAPTURED_MATCHUP_RUN: CapturedRun =
 {
   "session": {
-    "session_id": "msess_82420575807444b98d01af04e8e0d399",
+    "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
     "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
     "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
     "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1066,7 +1069,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
   "steps": [
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1109,7 +1112,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1139,7 +1142,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1182,7 +1185,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1212,7 +1215,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1255,7 +1258,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1285,7 +1288,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1328,7 +1331,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1358,7 +1361,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1402,7 +1405,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         }
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1432,7 +1435,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1476,7 +1479,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         }
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1506,7 +1509,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1550,7 +1553,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         }
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1580,7 +1583,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1624,7 +1627,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         }
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1654,7 +1657,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1698,7 +1701,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         }
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1728,7 +1731,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1772,7 +1775,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         }
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1802,7 +1805,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1846,7 +1849,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         }
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1876,7 +1879,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1919,7 +1922,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1949,7 +1952,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
     },
     {
       "question": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
@@ -1992,7 +1995,7 @@ export const CAPTURED_MATCHUP_RUN: CapturedRun =
         "comparison_semantics": null
       },
       "reveal": {
-        "session_id": "msess_82420575807444b98d01af04e8e0d399",
+        "session_id": "msess_57531bc1fccd4da5b370b4d9668929d6",
         "mastery_set_id": "mset_1213cf5ab7100acf734dd43bff6dcfaa3ce465a0a2ff75c9ec95ada3ebfdf4ff",
         "artifact_digest": "martifact_672f6f91cbe35119bd26bd70e37478d4d88c969a8b2744705245fe0c3fae8d6a",
         "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
