@@ -22,7 +22,8 @@ import { championSlug } from "@/lib/league-docs/api";
  * DIRECTION AUTHORITY — the backend now serves a provenance-labeled
  * editorial direction per card (`editorial_direction` +
  * `editorial_direction_source`), resolved under the authority order
- * riot_section > riot_patch_highlights > mogzy_inferred > none. When an
+ * riot_section > riot_text_semantic > riot_patch_highlights > mogzy_inferred
+ * > none. When an
  * entity carries a non-null claim on any card, the brief uses it: the
  * highest-precedence source wins across the entity's cards and same-level
  * conflicts resolve to Adjustments. The local numeric classifier below
@@ -136,10 +137,13 @@ export function classifyCardDirection(
   return classifyChangeSet(card.changes);
 }
 
-/** Higher wins. Unknown future sources rank below every known one rather
- * than being trusted or crashing. */
+/** Higher wins, mirroring the backend authority order exactly:
+ * riot_section > riot_text_semantic > riot_patch_highlights > mogzy_inferred.
+ * Unknown future sources rank below every known one rather than being
+ * trusted or crashing. */
 const SOURCE_PRECEDENCE: Record<PatchEditorialSource, number> = {
-  riot_section: 3,
+  riot_section: 4,
+  riot_text_semantic: 3,
   riot_patch_highlights: 2,
   mogzy_inferred: 1,
 };
