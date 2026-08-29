@@ -19,6 +19,7 @@
 
 import type { SegmentMeta } from "@/lib/ranked-public/contracts";
 import { ITEM_COST_DUEL_MODULE_ID, itemCostDuelModule } from "./itemCostDuelModule";
+import { MASTERY_SLICE_MODULE_ID, masterySliceModule } from "./masterySliceModule";
 import { metaReflexModule } from "./metaReflexModule";
 import { QUIZ_MODULE_ID, quizModule } from "./quizModule";
 import type { ModuleRenderer } from "./types";
@@ -27,6 +28,8 @@ import type { ModuleRenderer } from "./types";
 const RENDERERS: Record<string, readonly ModuleRenderer[]> = {
   [QUIZ_MODULE_ID]: [quizModule],
   [ITEM_COST_DUEL_MODULE_ID]: [metaReflexModule, itemCostDuelModule],
+  // Phase 4F proof of concept — test-only, rating-ineligible format.
+  [MASTERY_SLICE_MODULE_ID]: [masterySliceModule],
 };
 
 /** Registered module ids, sorted — used by tests and diagnostics. */
@@ -59,7 +62,7 @@ export function rendererForSegment(segment: SegmentMeta | null | undefined): Mod
   return getModuleRenderer(segment.moduleId, segment.moduleVersion);
 }
 
-export { itemCostDuelModule, metaReflexModule, quizModule };
+export { itemCostDuelModule, masterySliceModule, metaReflexModule, quizModule };
 export type {
   ModuleRenderer, ModuleSegmentActions, ModuleViewportProps,
 } from "./types";

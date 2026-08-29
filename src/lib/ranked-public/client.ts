@@ -436,7 +436,11 @@ export const confirmSegmentAbility = (
  * property instead of a convention: a caller holding a card id cannot produce
  * the other branch.
  */
-export type SegmentChoice = { itemId: string } | { cardId: string };
+export type SegmentChoice =
+  | { itemId: string }
+  | { cardId: string }
+  /** `mastery_slice.v1` (Phase 4F): the Mastery step's chosen answer. */
+  | { selected: string | number | boolean };
 
 /**
  * Submit one challenge. The body carries the chosen card/item token and nothing
@@ -455,7 +459,9 @@ export const submitSegmentChallenge = (
     `${segmentBase(matchId, segmentNumber)}/challenges/${challengeIndex}`,
     readChallengeAck, {
       method: "POST",
-      body: "cardId" in choice ? { card_id: choice.cardId } : { item_id: choice.itemId },
+      body: "cardId" in choice ? { card_id: choice.cardId }
+        : "selected" in choice ? { selected: choice.selected }
+        : { item_id: choice.itemId },
       signal,
     });
 

@@ -5,6 +5,7 @@ import { publicRoundV2 } from "@/lib/ranked-public/fixtures";
 import {
   getModuleRenderer,
   itemCostDuelModule,
+  masterySliceModule,
   metaReflexModule,
   registeredModuleIds,
   rendererForSegment,
@@ -12,13 +13,17 @@ import {
 } from "./registry";
 
 describe("ranked module renderer registry", () => {
-  it("registers the quiz and Item Cost Duel renderers", () => {
-    expect(registeredModuleIds()).toEqual(["item_cost_duel", "quiz"]);
+  it("registers the quiz, Item Cost Duel and Mastery Slice renderers", () => {
+    // UPDATED IN PHASE 4F (was: item_cost_duel + quiz). mastery_slice.v1 is a
+    // Ranked-Mastery-Module proof of concept, gated by its own fail-closed
+    // flag + allowlist on the backend, exactly like Item Cost Duel.
+    expect(registeredModuleIds()).toEqual(["item_cost_duel", "mastery_slice", "quiz"]);
   });
 
   it("resolves each renderer by id", () => {
     expect(getModuleRenderer("quiz")).toBe(quizModule);
     expect(getModuleRenderer("item_cost_duel")).toBe(itemCostDuelModule);
+    expect(getModuleRenderer("mastery_slice")).toBe(masterySliceModule);
   });
 
   it("falls back to quiz when no segment discriminator is present", () => {
@@ -73,6 +78,17 @@ describe("ranked module renderer registry", () => {
     expect(quizModule.ownsSubmission).toBe(false);
     expect(itemCostDuelModule.ownsSubmission).toBe(true);
     expect(metaReflexModule.ownsSubmission).toBe(true);
+    expect(masterySliceModule.ownsSubmission).toBe(true);
+  });
+
+  it("resolves a Mastery Slice segment from a parsed payload", () => {
+    const body = publicRoundV2();
+    (body.payload as Record<string, unknown>).segment = {
+      module_id: "mastery_slice", module_version: 1,
+      challenge_count: 3, challenge_index: 0, phase: "challenges",
+    };
+    const parsed = readPublicRound(body);
+    expect(rendererForSegment(parsed.segment)).toBe(masterySliceModule);
   });
 
   // ------------------------------------------------ version dispatch (P7)

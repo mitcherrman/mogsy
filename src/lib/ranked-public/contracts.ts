@@ -200,6 +200,30 @@ export interface SegmentChallengeView {
   right: SegmentItemView;
 }
 
+// ------------------------------------------------- Mastery Slice (Phase 4F)
+
+/**
+ * One pre-reveal Mastery Slice challenge (`mastery_slice.v1`, Phase 4F proof
+ * of concept). Field names mirror the backend module's public allow-list
+ * exactly (`ranked_modules/mastery_slice.py::PUBLIC_CHALLENGE_FIELDS`) and,
+ * beneath `promptSemantics`/`comparisonSemantics`, the EXISTING Mastery
+ * `prompt_semantics`/`comparison_semantics` wire shape those interaction
+ * renderers already parse — nothing here reformats them.
+ */
+export interface MasterySliceChallengeView {
+  challengeIndex: number;
+  interactionKind: string;
+  questionFamily: string;
+  prompt: string;
+  answerType: "single_choice" | "numeric" | "boolean";
+  answerOptions: string[];
+  /** Raw backend `prompt_semantics` dict, present only for `atomic_recall`. */
+  promptSemantics: Record<string, unknown> | null;
+  /** Raw backend `comparison_semantics` dict, present only for
+   *  `comparison_left_right`. */
+  comparisonSemantics: Record<string, unknown> | null;
+}
+
 // ------------------------------------------------- Meta Reflex cards (v4)
 
 /**
@@ -324,13 +348,33 @@ export interface SettledCardReveal {
 }
 
 /**
+ * One challenge of a `mastery_slice.v1` segment (Phase 4F proof of concept).
+ *
+ * Deliberately the SAME shape `ranked_modules.mastery_slice.public_view`
+ * emits — no reformatting here. `promptSemantics`/`comparisonSemantics` are
+ * handed straight to the EXISTING Mastery interaction renderers
+ * (`features/mastery/interactions`), never re-parsed into a new structure.
+ */
+export interface MasterySliceChallengeView {
+  challengeIndex: number;
+  interactionKind: string;
+  questionFamily: string;
+  prompt: string;
+  answerType: "single_choice" | "numeric" | "boolean";
+  answerOptions: string[];
+  promptSemantics: Record<string, unknown> | null;
+  comparisonSemantics: Record<string, unknown> | null;
+}
+
+/**
  * The block's cards, discriminated by the card contract the segment's module
- * version pins. Exactly one shape is ever present: the two are never merged
- * and never fall back to one another.
+ * ID (and, for `item_cost_duel`, version) pins. Exactly one shape is ever
+ * present: none are merged and none fall back to one another.
  */
 export type SegmentBlockView =
   | { contract: "item_cost"; challenges: SegmentChallengeView[] }
-  | { contract: "meta_reflex"; cards: MetaReflexCard[] };
+  | { contract: "meta_reflex"; cards: MetaReflexCard[] }
+  | { contract: "mastery_slice"; challenges: MasterySliceChallengeView[] };
 
 /** The viewer's OWN ability state inside a multi-challenge segment. */
 export interface SegmentAbilityView {
@@ -853,10 +897,38 @@ function readMetaReflexCard(v: unknown, label: string): MetaReflexCard {
  * shape by a lucky field name, and a v4 payload cannot be silently rendered by
  * the item renderer that would then submit an `item_id` the server refuses.
  */
-function readSegmentBlock(raw: unknown, moduleVersion: number): SegmentBlockView | null {
+function readMasterySliceChallenge(v: unknown, label: string): MasterySliceChallengeView {
+  const c = rec(v, label);
+  const answerType = c.answer_type;
+  if (answerType !== "single_choice" && answerType !== "numeric" && answerType !== "boolean") {
+    throw new RankedPublicParseError(`${label}.answer_type must be a Mastery answer type`);
+  }
+  return {
+    challengeIndex: num(c.challenge_index, `${label}.challenge_index`),
+    interactionKind: str(c.interaction_kind, `${label}.interaction_kind`),
+    questionFamily: str(c.question_family, `${label}.question_family`),
+    prompt: str(c.prompt, `${label}.prompt`),
+    answerType,
+    answerOptions: strList(c.answer_options, `${label}.answer_options`),
+    promptSemantics: c.prompt_semantics === null || c.prompt_semantics === undefined
+      ? null : rec(c.prompt_semantics, `${label}.prompt_semantics`),
+    comparisonSemantics: c.comparison_semantics === null || c.comparison_semantics === undefined
+      ? null : rec(c.comparison_semantics, `${label}.comparison_semantics`),
+  };
+}
+
+function readSegmentBlock(
+  raw: unknown, moduleId: string, moduleVersion: number,
+): SegmentBlockView | null {
   if (raw === null || raw === undefined) return null;
   const block = rec(raw, "segment_state.challenges");
   const list = Array.isArray(block.challenges) ? block.challenges : [];
+  if (moduleId === "mastery_slice") {
+    return {
+      contract: "mastery_slice",
+      challenges: list.map((c, i) => readMasterySliceChallenge(c, `challenges[${i}]`)),
+    };
+  }
   if (moduleVersion >= META_REFLEX_MIXED_VERSION) {
     return {
       contract: "meta_reflex",
@@ -883,12 +955,22 @@ function readSegmentBlock(raw: unknown, moduleVersion: number): SegmentBlockView
  * is read strictly under its own contract, so a v4 segment can never surface a
  * v3-shaped choice and vice versa.
  */
-function readSubmittedChoices(raw: unknown, moduleVersion: number): (string | null)[] {
+function readSubmittedChoices(
+  raw: unknown, moduleId: string, moduleVersion: number,
+): (string | null)[] {
   const choices = Array.isArray(raw) ? raw : [];
-  const key = moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
+  const key = moduleId === "mastery_slice"
+    ? "selected"
+    : moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
   return choices.map((c) => {
     if (c === null || c === undefined) return null;
     const choice = rec(c, "own_submitted_choices[]");
+    if (key === "selected") {
+      // A Mastery Slice choice may be a string, number, or boolean; the echo
+      // is display-only, so it is stringified rather than re-typed.
+      const v = choice[key];
+      return v === null || v === undefined ? null : String(v);
+    }
     return str(choice[key], `own_submitted_choices[].${key}`);
   });
 }
@@ -973,11 +1055,12 @@ function readSegmentState(v: unknown): SegmentStateView | null {
     unavailable[k] = str(val, `unavailable_ability_ids.${k}`);
   }
   const moduleVersion = num(o.module_version, "segment_state.module_version");
+  const moduleId = str(o.module_id, "segment_state.module_id");
   const challengeBlock = o.challenges === null || o.challenges === undefined
     ? null : rec(o.challenges, "segment_state.challenges");
   return {
     segmentNumber: num(o.segment_number, "segment_state.segment_number"),
-    moduleId: str(o.module_id, "segment_state.module_id"),
+    moduleId,
     moduleVersion,
     phase: o.phase === "ability" || o.phase === "challenges" ? o.phase : null,
     challengeCount: num(o.challenge_count, "segment_state.challenge_count"),
@@ -993,7 +1076,7 @@ function readSegmentState(v: unknown): SegmentStateView | null {
     },
     opponentAbilityConfirmed: o.opponent_ability_confirmed === true,
     ownNextChallengeIndex: num(o.own_next_challenge_index, "own_next_challenge_index"),
-    ownSubmittedChoices: readSubmittedChoices(o.own_submitted_choices, moduleVersion),
+    ownSubmittedChoices: readSubmittedChoices(o.own_submitted_choices, moduleId, moduleVersion),
     ownChallengesCompleted: num(o.own_challenges_completed, "own_challenges_completed"),
     opponentChallengesCompleted: num(
       o.opponent_challenges_completed, "opponent_challenges_completed"),
@@ -1008,7 +1091,7 @@ function readSegmentState(v: unknown): SegmentStateView | null {
         bool(f, `own_timed_out_challenges[${i}]`))
       : null,
     prompt: challengeBlock ? nstr(challengeBlock.prompt, "challenges.prompt") : null,
-    block: readSegmentBlock(o.challenges, moduleVersion),
+    block: readSegmentBlock(o.challenges, moduleId, moduleVersion),
     ownCardReveals: readSettledCardReveals(
       o[SETTLED_REVEAL_KEY],
       num(o.own_next_challenge_index, "own_next_challenge_index")),
