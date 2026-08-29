@@ -43,6 +43,7 @@ import CombatSidePanel, { ConfigRow, MoreSection } from "@/components/combat-lab
 import CombatArena from "@/components/combat-lab/CombatArena";
 import CombatTimelineStrip from "@/components/combat-lab/CombatTimelineStrip";
 import AbilityButton from "@/components/combat-lab/AbilityButton";
+import CalculationInspector from "@/components/combat-lab/CalculationInspector";
 import {
   getAbilityIconUrl,
   getChampionSquareIconUrl,
@@ -3771,6 +3772,14 @@ function InteractiveSandbox({
             entries={combatTimeline as CombatTimelineEntryT[]}
             selectedId={selectedTimelineId}
             onSelect={setSelectedTimelineId}
+          />
+          <CalculationInspector
+            entry={
+              combatTimeline.find((e) => e.id === selectedTimelineId) ??
+              combatTimeline[combatTimeline.length - 1] ??
+              null
+            }
+            attackerChampion={config.champion}
           />
           <ComboSummaryPanel
             entries={combatTimeline as CombatTimelineEntryT[]}
