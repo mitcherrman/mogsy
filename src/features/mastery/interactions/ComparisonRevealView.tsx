@@ -103,8 +103,14 @@ export function ComparisonRevealView({
           <dt className="font-medium">Correct answer:</dt>
           <dd data-testid="mastery-correct-answer">
             {/* Winner/tie stated verbatim by the backend — never re-derived
-                from comparing values here. */}
-            {reveal.correctAnswerDisplay ?? formatAnswer(question, reveal.correctAnswer)}
+                from comparing values here. `labelForAnswer` is the SAME
+                positional wire-value -> button-label lookup the question view
+                used, so the reveal names the winner the way the player was
+                offered it ("Ahri", "Tie / Same") instead of echoing the raw
+                option token ("ahri"). `correctAnswerDisplay` is the backend's
+                NUMERIC display formatting and adds nothing for a champion-id
+                option, so it is deliberately not preferred here. */}
+            {formatAnswer(question, reveal.correctAnswer)}
           </dd>
         </div>
       </dl>

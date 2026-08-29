@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import type { MasteryPlayerQuestion } from "../contracts/playerQuestion";
 import type { PlayerAnswer } from "../player/useMasteryFixtureSession";
 import { MasteryNumericInput, validateNumeric } from "../player/MasteryNumericInput";
+import { MasteryChoiceInput, type ChoiceOption } from "../player/MasteryBooleanInput";
 import { MasteryChampionPortrait } from "../player/MasteryChampionPortrait";
 import { MasteryPatchBadge } from "../player/MasteryPatchBadge";
 import { MasteryProgress } from "../player/MasteryProgress";
@@ -38,14 +39,35 @@ export function AtomicRecallQuestionView({
   if (!question.promptSemantics) {
     throw new MasteryAtomicRecallContractError("atomic_recall question is missing prompt_semantics");
   }
-  // This slice's atomic recall candidates are all numeric (cooldown/cost/stat
-  // recall). A future non-numeric atomic-recall question needs its own
-  // renderer branch, not a silent fallback here.
-  if (question.answerType !== "numeric" || !question.inputConstraints) {
+  // Generated atomic recall is served as SINGLE CHOICE: the backend
+  // (mastery/choices) turns each candidate's canonical value into a clean
+  // option label plus plausible same-domain distractors, because typing
+  // `57.855000000000004` is a precision puzzle, not a recall question. The
+  // free-entry numeric branch is kept for any atomic-recall payload that still
+  // arrives that way — neither is a fallback for the other, and any OTHER
+  // answer type is still refused rather than rendered blank.
+  if (question.answerType !== "numeric" && question.answerType !== "single_choice") {
     throw new MasteryAtomicRecallContractError(
-      `unsupported answer_type "${question.answerType}" for atomic_recall (numeric only in this slice)`,
+      `unsupported answer_type "${question.answerType}" for atomic_recall`,
     );
   }
+  if (question.answerType === "numeric" && !question.inputConstraints) {
+    throw new MasteryAtomicRecallContractError(
+      "numeric atomic_recall question is missing input_constraints",
+    );
+  }
+  if (question.answerType === "single_choice" && question.answerOptions.length < 2) {
+    throw new MasteryAtomicRecallContractError(
+      `single_choice atomic_recall needs at least two options, got ${question.answerOptions.length}`,
+    );
+  }
+  // The option labels ARE the wire values here (backend-formatted numbers), so
+  // nothing is reformatted, re-rounded, sorted or re-labelled locally — doing
+  // any of that would be client-side truth.
+  const choiceOptions: ChoiceOption[] =
+    question.answerType === "single_choice"
+      ? question.answerOptions.map((o) => ({ value: o, label: o }))
+      : [];
 
   const ps = question.promptSemantics;
   const constraints = question.inputConstraints;
@@ -56,11 +78,22 @@ export function AtomicRecallQuestionView({
   }, [question.sequenceIndex]);
 
   const [numeric, setNumeric] = useState("");
+  const [choice, setChoice] = useState<string | null>(null);
   const prompt = formatRecallPrompt(ps);
 
-  const canSubmit = !submitting && validateNumeric(numeric, constraints).valid;
+  const isChoice = question.answerType === "single_choice";
+  const canSubmit = submitting
+    ? false
+    : isChoice
+      ? choice !== null
+      : !!constraints && validateNumeric(numeric, constraints).valid;
   const doSubmit = () => {
     if (submitting) return;
+    if (isChoice) {
+      if (choice !== null) onSubmit(choice);
+      return;
+    }
+    if (!constraints) return;
     const v = validateNumeric(numeric, constraints);
     if (v.valid && v.value !== null) onSubmit(v.value);
   };
@@ -96,13 +129,23 @@ export function AtomicRecallQuestionView({
         {prompt}
       </h2>
 
-      <MasteryNumericInput
-        constraints={constraints}
-        value={numeric}
-        onValueChange={setNumeric}
-        onSubmitRequested={doSubmit}
-        disabled={submitting}
-      />
+      {isChoice ? (
+        <MasteryChoiceInput
+          options={choiceOptions}
+          value={choice}
+          onSelect={setChoice}
+          disabled={submitting}
+          ariaLabel="Answer choices"
+        />
+      ) : (
+        <MasteryNumericInput
+          constraints={constraints!}
+          value={numeric}
+          onValueChange={setNumeric}
+          onSubmitRequested={doSubmit}
+          disabled={submitting}
+        />
+      )}
 
       {question.hintAvailable && (
         <p className="text-xs text-muted-foreground">A hint is available for this question.</p>

@@ -278,7 +278,11 @@ export const startSession = (masterySetId: string, signal?: AbortSignal): Promis
 export const startGeneratedPlaytestSession = (masterySetId: string,
                                               signal?: AbortSignal): Promise<MasterySessionView> =>
   request("/api/mastery/dev/generated-playtest-session", readSessionView,
-    { method: "POST", body: { mastery_set_id: masterySetId }, signal });
+    // `resume: false` is explicit, not defaulted: the dev endpoint's owner is a
+    // single shared server-side sentinel, so resuming would hand this
+    // playtester whatever session the previous one left half-finished — which
+    // is what made a fresh run appear to open on question 2.
+    { method: "POST", body: { mastery_set_id: masterySetId, resume: false }, signal });
 
 export const getCurrent = (sessionId: string, signal?: AbortSignal): Promise<MasterySessionView> =>
   request(`/api/mastery/sessions/${encodeURIComponent(sessionId)}/current`,

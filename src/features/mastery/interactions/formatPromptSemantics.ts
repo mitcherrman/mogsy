@@ -28,7 +28,12 @@ function humanizeMetric(metric: string): string {
 
 function abilityLabel(ps: MasteryPromptSemantics): string {
   const ref = `${ps.championDisplay} ${ps.subjectRef}`.trim();
-  return ps.abilityName ? `${ref} (${ps.abilityName})` : ref;
+  // The parenthetical exists to name the ability behind a slot letter
+  // ("Ahri Q (Orb of Deception)"). A generated candidate whose `ability_name`
+  // is only the slot letter again would render "Syndra Q (Q)", so the
+  // redundant half is dropped rather than shown.
+  if (!ps.abilityName || ps.abilityName === ps.subjectRef) return ref;
+  return `${ref} (${ps.abilityName})`;
 }
 
 /**
