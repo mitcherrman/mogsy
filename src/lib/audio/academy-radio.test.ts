@@ -865,6 +865,29 @@ describe("Academy Radio — live station clock", () => {
     detach();
   });
 
+  it("never seeks or restarts on ordinary interaction, even far off the live offset", async () => {
+    // Regression: in-app clicks/keys used to call rejoinStation(false), which
+    // re-seeks past the drift tolerance — every navigation restarted the track.
+    // Ordinary activity must only touch the inactivity clock.
+    const wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 20_000));
+    prepareRadio();
+    installDuration(100);
+    await playRadio();
+    const detach = installRadioInactivityMonitor();
+    // Sixty seconds off the 20s live offset: far beyond RADIO_DRIFT_TOLERANCE_SECONDS.
+    theAudio().currentTime = 80;
+    const playCalls = play.mock.calls.length;
+
+    for (const type of ["pointerdown", "keydown", "touchstart"]) {
+      window.dispatchEvent(new Event(type));
+      expect(theAudio().currentTime).toBe(80);
+    }
+    expect(play.mock.calls.length).toBe(playCalls);
+    detach();
+  });
+
 });
 
 const POLICY_TIMERS = {
