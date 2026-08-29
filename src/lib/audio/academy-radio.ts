@@ -817,11 +817,11 @@ export function installRadioInactivityMonitor(): () => void {
   const onActivity = () => {
     const current = getState();
     current.lastActivityAt = Date.now();
-    // A click or a keystroke is not a wake. Honour the drift tolerance so the
-    // element is not re-seeked — and audibly stuttered — on every interaction.
-    rejoinStation(false);
-    // Somebody is back at the keyboard: an idle mute may now be lifted, but
-    // only on the system's own terms and never a mute they asked for.
+    // A click or a keystroke is not a wake. Reconciliation (rejoinStation) is
+    // reserved for true browser/window wake events — window focus and
+    // visibilitychange back to visible — so ordinary in-app interaction and
+    // navigation never re-seek or restart the track. The inactivity clock and
+    // the gentle automatic-return path are the only things activity touches.
     scheduleAutomaticReturn(current);
     scheduleInactivityMute(current);
   };
