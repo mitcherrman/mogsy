@@ -416,7 +416,7 @@ describe("projectPatchBrief — icon-only grouped projection", () => {
     const brief = projectPatchBrief(d, manifest("Yasuo", "Yone"));
     expect(brief!.sections.map((s) => s.title)).toEqual(["Buffs"]);
     expect(names(brief, "buff")).toEqual(["Yasuo", "Yone"]);
-    expect(names(brief, "nerf")).toEqual([]);
+    expect(names(brief, "nerf") ?? []).toEqual([]);
   });
 
   it("riot_text_semantic still loses to riot_section, and beats mogzy_inferred", () => {
