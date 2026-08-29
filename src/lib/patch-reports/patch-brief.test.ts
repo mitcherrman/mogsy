@@ -4,7 +4,8 @@
  *
  * Direction authority pinned here: cards carrying the backend editorial
  * contract (editorial_direction + editorial_direction_source, authority order
- * riot_section > riot_patch_highlights > mogzy_inferred > null) group by that
+ * riot_section > riot_text_semantic > riot_patch_highlights > mogzy_inferred
+ * > null) group by that
  * contract; legacy payloads without the fields fall back to Mogzy's local
  * deterministic classifier over structured numeric fields. The legacy-shaped
  * fixtures below (no editorial fields) are that fallback's spec.
@@ -383,6 +384,67 @@ describe("projectPatchBrief — icon-only grouped projection", () => {
     const brief = projectPatchBrief(d, manifest("Corki"));
     expect(brief!.sections.map((s) => s.title)).toEqual(["Adjustments"]);
     expect(names(brief, "adjustment")).toEqual(["Corki"]);
+  });
+
+  it("riot_text_semantic outranks riot_patch_highlights for the same entity", () => {
+    // Yasuo/Yone case: the semantic read of Riot's own change text says the
+    // -10% → -5% crit-damage reduction is a BUFF (less reduction), while the
+    // older Patch Highlights grouping still says nerf. Semantic wins, and it
+    // also wins regardless of card order.
+    const d = detail([
+      card("Yasuo", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_patch_highlights",
+      }),
+      card("Yasuo", {
+        changes: [NERF],
+        editorial_direction: "buff",
+        editorial_direction_source: "riot_text_semantic",
+      }),
+      card("Yone", {
+        changes: [NERF],
+        editorial_direction: "buff",
+        editorial_direction_source: "riot_text_semantic",
+      }),
+      card("Yone", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_patch_highlights",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Yasuo", "Yone"));
+    expect(brief!.sections.map((s) => s.title)).toEqual(["Buffs"]);
+    expect(names(brief, "buff")).toEqual(["Yasuo", "Yone"]);
+    expect(names(brief, "nerf") ?? []).toEqual([]);
+  });
+
+  it("riot_text_semantic still loses to riot_section, and beats mogzy_inferred", () => {
+    const d = detail([
+      card("Ahri", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "mogzy_inferred",
+      }),
+      card("Ahri", {
+        changes: [BUFF],
+        editorial_direction: "buff",
+        editorial_direction_source: "riot_text_semantic",
+      }),
+      card("Zed", {
+        changes: [BUFF],
+        editorial_direction: "buff",
+        editorial_direction_source: "riot_text_semantic",
+      }),
+      card("Zed", {
+        changes: [NERF],
+        editorial_direction: "nerf",
+        editorial_direction_source: "riot_section",
+      }),
+    ]);
+    const brief = projectPatchBrief(d, manifest("Ahri", "Zed"));
+    expect(names(brief, "buff")).toEqual(["Ahri"]); // semantic beats inference
+    expect(names(brief, "nerf")).toEqual(["Zed"]); // riot_section beats semantic
   });
 
   it("a fix-only entity carrying an explicit null direction is still omitted", () => {

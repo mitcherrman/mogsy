@@ -13,8 +13,15 @@ export type PatchEntityType = "champion" | "item" | "rune" | "system";
 
 export type PatchEditorialDirection = "buff" | "nerf" | "adjustment";
 
+/**
+ * Backend editorial-direction provenance, in authority order:
+ * riot_section > riot_text_semantic > riot_patch_highlights > mogzy_inferred.
+ * ("none" means the backend has no claim; the payload then carries a null
+ * source rather than the literal string.)
+ */
 export type PatchEditorialSource =
   | "riot_section"
+  | "riot_text_semantic"
   | "riot_patch_highlights"
   | "mogzy_inferred";
 
