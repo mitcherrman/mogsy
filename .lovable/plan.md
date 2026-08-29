@@ -1,50 +1,53 @@
-## Broadcast Session Persistence Fix
+# Diagnosis: Yasuo/Yone still under Nerfs in the Patch Brief
 
-Goal: make the active broadcast session durable. Studio remounts, refreshes, alt-tabs, and auth/layout rechecks must not wipe the active playlist or reset playback. Only explicit Stop / Clear Session does that.
+## Verdict
 
-### Ownership (fix first)
-- `BroadcastEngine` becomes a module-level singleton in `src/lib/quiz-broadcast/engineSingleton.ts` (`getBroadcastEngine()`).
-- `useBroadcastEngine` no longer creates or destroys the engine; it only subscribes + republishes snapshots over `BroadcastChannel`. `engine.destroy()` is removed from the React cleanup path entirely.
-- Studio and Broadcast Window attach to the engine/session; neither owns it.
+The frontend is correct. The live backend payload for patch 26.17 still labels both champions as nerfs with the old provenance source, so no frontend precedence change can move them.
 
-### ActiveBroadcastSession model (`src/lib/quiz-broadcast/session.ts`)
-- Storage key `mogsy.quizBroadcast.activeSession.v1`.
-- Shape (v1):
-  - `schemaVersion: 1`, `sessionId`, `startedAt`, `updatedAt`
-  - `playlistId`, `playlistName`, `questions: QuizQuestion[]` (inline for v1)
-  - `currentIndex`, `phase`, `playing`, `questionsPlayed`, `repeatsCompleted`, `playedHistory`
-  - Timing restore: `phaseStartedAt`, `phaseDurationMs`, `phaseEndsAt`, `lastTickAt`
-  - `config` (timing + visuals + playback snapshot)
-- Forward-compat: loader normalises on read. v2 will swap `questions` for `questionRefs: { id, snapshot? }[]` resolved against a shared question cache — UI does not change because it only ever sees the in-memory `ActiveBroadcastSession` returned by `loadActiveSession()`.
-- Helpers: `loadActiveSession()`, `saveActiveSession()`, `clearActiveSession()`, `emptyActiveSession()`.
+## Evidence from the live API
 
-### Engine changes (`src/lib/quiz-broadcast/engine.ts`)
-- Add `hydrateFromSession(session)`: rebuilds playlist + runtime state. If `playing===true`, compute `remaining = phaseEndsAt - now`. If `remaining > 0`, re-enter the same phase with a custom timeout for `remaining`. Otherwise advance to the next phase normally.
-- `emit()` calls a debounced `persistSession()` writing the durable subset. Start/Stop/Pause/Resume/Clear write immediately.
-- Expose `playlist` on `EngineSnapshot` so the Studio derives `items` from the engine instead of holding its own copy.
-- New `clearSession()`: stops engine, clears playlist, calls `clearActiveSession()`, regenerates `sessionId`.
+`GET https://web-production-83e53.up.railway.app/api/patch-reports/26.17` (the URL built from `VITE_COMBAT_API_URL` in `.env`) returns HTTP 200, 44 cards, `built_at: 2026-08-27T22:28:14Z`.
 
-### Studio (`src/pages/admin/AdminQuizBroadcast.tsx`)
-- On first render of the singleton: engine auto-hydrates from `loadActiveSession()` (done inside `engineSingleton.ts`, not in the React tree).
-- Remove local `items` state + the `useEffect` that pushes `items` into the engine. `items` is now `snapshot.playlist` (engine is authority).
-- Playlist mutations (add/move/remove/shuffle/clear) call engine methods, which persist.
-- Loading a saved playlist still calls `engine.setPlaylist(...)` — that triggers persistence automatically.
+There is exactly **one** Yasuo card and **one** Yone card — no competing semantic card exists:
 
-### Broadcast Window (`src/pages/admin/QuizBroadcastView.tsx`, `src/lib/quiz-broadcast/channel.ts`)
-- `createSubscriber` first restores from `LATEST_SNAPSHOT_KEY` (existing fast path). If that's missing, synthesize a minimal snapshot from `loadActiveSession()` so the popup re-renders the current question even after a cold start.
-- Window remains passive — no engine.
+```text
+id 3178  Yasuo  section "Champions"
+  editorial_direction        = "nerf"
+  editorial_direction_source = "riot_patch_highlights"
+  numeric_direction          = "non_numeric"
+  change: Passive Critical Strike Damage Reduction  -10% -> -5%
 
-### Temporary vs durable state
-- Durable (session): playlist, currentIndex, phase, playing, questionsPlayed, repeatsCompleted, playedHistory, phase timing fields, config, sessionId, startedAt.
-- Temporary (React state only): Question Browser filters, dev-tools event log scroll, last sync timestamps, saved-playlists cache (already persisted separately under `PLAYLISTS_KEY`), React Query pool cache.
+id 3179  Yone   section "Champions"
+  editorial_direction        = "nerf"
+  editorial_direction_source = "riot_patch_highlights"
+  numeric_direction          = "non_numeric"
+  change: Passive Critical Strike Damage Reduction  -10% -> -5%
+```
 
-### Reset / Stop / Clear semantics (ControlPanel)
-- **Pause** — engine.pause(); session persists with `playing=false`. Resuming continues from the same phase/index.
-- **Stop** — engine.stop(); session persists with `phase=idle`, `playing=false`, counters reset. Active playlist + config preserved.
-- **Clear Session** (new, destructive, with confirm) — engine.clearSession(); wipes `ACTIVE_SESSION_KEY`, drops playlist, regenerates `sessionId`. Only path that loses the active playlist.
+Both cards even carry Riot context text describing the change as *"reducing his crit damage penalty"* — a buff — yet the backend's resolved `editorial_direction` is still `nerf`, sourced from `riot_patch_highlights`. `riot_text_semantic` does not appear anywhere in the 26.17 payload.
 
-### Files touched
-- Add: `src/lib/quiz-broadcast/session.ts`, `src/lib/quiz-broadcast/engineSingleton.ts`
-- Modify: `src/lib/quiz-broadcast/engine.ts`, `src/lib/quiz-broadcast/useBroadcastEngine.ts`, `src/lib/quiz-broadcast/channel.ts`, `src/lib/quiz-broadcast/types.ts` (add `playlist` to `EngineSnapshot`), `src/pages/admin/AdminQuizBroadcast.tsx`, `src/pages/admin/QuizBroadcastView.tsx`, `src/components/quiz-broadcast/ControlPanel.tsx`
+## Point-by-point
 
-No backend changes, no new dependencies.
+1. **Live response** — see above: `nerf` / `riot_patch_highlights` for both. No `riot_text_semantic` card, no second card per entity.
+2. **Runtime fields** — `usePatchBriefFeed` (`src/components/lol/broadcast/usePatchBriefFeed.ts:29-36`) fetches the same list/detail endpoints and hands `detailQuery.data` straight to `projectPatchBrief`. It receives exactly the fields above. `projectPatchBrief` honours the backend claim when present, so a single `nerf`/`riot_patch_highlights` card resolves to Nerfs. Correct behaviour for this input.
+3. **Cache/query keys** — not the cause. `["patch-reports"]` / `["patch-report", version]` with `staleTime: 60_000` (`src/lib/query-client.ts`) can only serve data the API returned; the API itself returns `nerf`. A hard refresh would show the same result.
+4. **Published bundle** — irrelevant to the symptom. The precedence change only matters when two or more claims compete for one entity; 26.17 ships one claim per entity, so old and new precedence produce identical output. (Whether the published build predates the change is worth confirming separately, but it cannot explain this symptom.)
+5. **Post-projection overrides** — none. `briefTransmission` (`usePatchBriefFeed.ts:63-73`) only wraps the brief in a transmission; it does not touch section membership or direction.
+
+## Root cause
+
+Backend classification gap, not a frontend bug: the 26.17 build (`built_at` 2026-08-27) resolved Yasuo/Yone from `riot_patch_highlights` and never produced a `riot_text_semantic` claim for the `-10% -> -5%` crit-damage-reduction change. The semantic classifier either did not run for that patch build or does not treat a decreasing negative-penalty value as a buff.
+
+Contributing signal: `numeric_direction` is `non_numeric` for both cards, so even a numeric-inference fallback would not flip them — the `-10%` / `-5%` values are not being read as numbers on the backend.
+
+## Smallest correct fix
+
+Frontend: nothing to change.
+
+Backend (Patch Reports builder), one of:
+- Emit a `riot_text_semantic` editorial claim for these cards so it outranks `riot_patch_highlights` (the frontend precedence already handles this correctly), **or**
+- Correct the `riot_patch_highlights` grouping/semantics for penalty-reduction properties so a decrease in a negative modifier resolves to `buff`.
+
+Then rebuild patch 26.17 so the payload changes; the live Patch Brief will regroup them under Buffs with no frontend deploy needed.
+
+Optional frontend hardening (only if you want it, separate from this fix): treat a decreasing "…Reduction/Penalty" property as a buff in the local numeric-inference fallback. This would not help here, because the backend supplies an explicit non-null `editorial_direction` that intentionally overrides local inference.
