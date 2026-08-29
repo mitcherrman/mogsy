@@ -162,6 +162,48 @@ export function buildPlaybackActions(response: TeamSimulationResponse): Playback
     .sort((a, b) => a.seq - b.seq);
 }
 
+/**
+ * A readable label for an authoritative action id. DISPLAY ONLY.
+ *
+ * The id itself is the action's identity on the wire and is never rewritten:
+ * this returns a string to PRINT, while every lookup, icon resolution, kernel
+ * matching and calculator query keeps using `actionId` unchanged. The raw id
+ * stays visible to an operator in the timeline block's tooltip and in the
+ * calculator's detail line.
+ *
+ * The transformation is purely lexical — underscores become spaces and tokens
+ * are title-cased, with ability-slot tokens (`q`, `q1`, `qw`, `r2`, `p`)
+ * upper-cased because "Q1" is how the game writes them and "Q1" is what the
+ * catalog's own `label` says. Nothing is dropped, reordered or inferred, so an
+ * id this function has never seen still round-trips to something the operator
+ * can match against the raw value beside it.
+ */
+export function humanizeActionId(actionId: string | null | undefined): string {
+  const raw = (actionId ?? "").trim();
+  if (!raw) return "action";
+  return raw
+    .split("_")
+    .filter(Boolean)
+    .map((token) =>
+      /^[qwerp]{1,2}\d*$/i.test(token)
+        ? token.toUpperCase()
+        : token.charAt(0).toUpperCase() + token.slice(1)
+    )
+    .join(" ");
+}
+
+/**
+ * True when the SERVER classified this action as a basic attack.
+ *
+ * Read from `meta.action_type`, never inferred from the id, and used only to
+ * decide visual weight on the timeline. No event is merged, hidden, retimed or
+ * reordered by this — a de-emphasised auto is still its own clickable block at
+ * its own authoritative instant.
+ */
+export function isBasicAttackAction(action: PlaybackAction): boolean {
+  return action.actionType === "basic_attack";
+}
+
 /** Display-only span for a lane block. Never fabricated when unavailable. */
 export function actionSpan(action: PlaybackAction): { start: number; end: number } {
   const end =

@@ -37,6 +37,8 @@ import {
   buildPlaybackActions,
   formulaDiagnostics,
   hasNoFormulaEvidence,
+  humanizeActionId,
+  isBasicAttackAction,
   isChampionRuntimeAction,
   pipelineEventFor,
   pipelineStages,
@@ -331,13 +333,13 @@ function TwoLaneTimeline({
   }, [actions, primaryTeamId]);
 
   return (
-    <div className="space-y-2" data-testid="two-lane-timeline">
+    <div className="space-y-3" data-testid="two-lane-timeline">
       {teams.map((teamId) => (
         <div key={teamId} className="space-y-1">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Team {teamId}
           </div>
-          <div className="relative h-12 w-full overflow-x-auto rounded border border-border/60 bg-muted/10">
+          <div className="relative h-14 w-full overflow-x-auto rounded border border-border/60 bg-muted/10">
             <div className="relative h-full" style={{ minWidth: "100%" }}>
               {actions
                 .filter((a) => a.actorTeam === teamId)
@@ -383,9 +385,17 @@ function TimelineBlock({
   const widthPct = Math.max(0.6, ((end - start) / maxTime) * 100);
   const zeroDuration = end <= start;
 
+  // The RAW action id leads the tooltip: the block now prints a readable
+  // label, so the operator-facing surface has to keep the authoritative
+  // identity somewhere it can be read and matched against a trace row.
+  const label = humanizeActionId(action.actionId);
   const title = `${action.actionId ?? "action"} — action start ${formatSeconds(
     start
   )}${end > start ? `, resolves at ${formatSeconds(end)}` : ""}${action.ok ? "" : " (failed)"}`;
+  // Server classification (`meta.action_type`), never inferred from the id.
+  // Drives visual weight ONLY — the block keeps its own instant, its own
+  // width and its own click target.
+  const auto = isBasicAttackAction(action);
 
   const champion = action.actorId ? response.effective_builds[action.actorId]?.champion : null;
   const slot = inferActionAbilitySlot(action.actionId, action.actionId);
@@ -406,17 +416,25 @@ function TimelineBlock({
       data-zero-duration={zeroDuration || undefined}
       onClick={() => onSelect(action.seq)}
       className={cn(
-        "absolute top-0.5 flex h-11 items-center gap-1 rounded border px-1 text-left text-[10px] transition-colors",
+        "absolute top-1 flex h-11 items-center gap-1 rounded border px-1 text-left text-[10px] transition-colors hover:opacity-100",
         action.ok
           ? "border-border/70 bg-card/90 hover:border-primary/50"
           : "border-destructive/60 bg-destructive/10",
-        selected && "border-primary bg-primary/20 ring-1 ring-primary"
+        // A repeating plan fills the lane with autos, which buries the casts
+        // that actually explain the fight. Successful autos therefore recede;
+        // a FAILED one never does, because a failure is the signal.
+        auto && action.ok && !selected && "opacity-60 border-border/40 bg-card/60",
+        selected && "border-primary bg-primary/20 ring-1 ring-primary opacity-100"
       )}
+      data-auto={auto || undefined}
       style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "3.5rem" }}
     >
       <span
         className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded bg-background/70 ring-1 ring-inset",
+          "shrink-0 items-center justify-center overflow-hidden rounded bg-background/70 ring-1 ring-inset",
+          // Autos also give back some width, so an ability's icon and label
+          // read first in a dense lane.
+          auto ? "flex h-5 w-5" : "flex h-7 w-7",
           TONE_RING[tone] ?? TONE_RING.neutral
         )}
       >
@@ -432,7 +450,9 @@ function TimelineBlock({
         )}
       </span>
       <span className="min-w-0 flex-1 truncate">
-        <span className="block truncate font-semibold">{action.actionId ?? "action"}</span>
+        <span className={cn("block truncate", auto ? "font-normal" : "font-semibold")}>
+          {label}
+        </span>
         <span className="block truncate tabular-nums text-muted-foreground">
           starts {formatSeconds(start)}
         </span>
@@ -602,7 +622,19 @@ function ActionHeader({
           )}
         </span>
         <div className="min-w-0 leading-tight">
-          <div className="truncate text-sm font-bold">{action.actionId ?? "action"}</div>
+          <div className="truncate text-sm font-bold">
+            {humanizeActionId(action.actionId)}
+          </div>
+          {/* The authoritative id, kept visible: this panel is the operator's
+              evidence surface and the readable name above is only a label. */}
+          {action.actionId ? (
+            <div
+              className="truncate font-mono text-[10px] text-muted-foreground/70"
+              data-testid="calculator-action-id"
+            >
+              {action.actionId}
+            </div>
+          ) : null}
           <div className="truncate text-[11px] text-muted-foreground">
             {champion ?? action.actorId ?? "—"}
             {action.targetId ? ` → ${action.targetId}` : ""}

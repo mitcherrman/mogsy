@@ -69,15 +69,33 @@ export function RunPanel({
         </p>
       </div>
 
-      <Button
-        type="button"
-        className="w-full"
-        disabled={isPending || blocked}
-        onClick={onRun}
-        data-testid="run-simulation"
-      >
-        {simulating ? "Simulating…" : "Run simulation"}
-      </Button>
+      {/* CS2: DEMOTED, deliberately not removed.
+          The Combo Planner's "Run scenario" is the primary action and the one
+          the normal flow uses; it asks for the calculation-level trace the
+          inspector reads. This control submits through the SAME path (one
+          `submit()` in TeamSimPage — there is no second execution path) but at
+          whatever trace level the selector below is set to, which is the only
+          way to buy a run at `summary` or `full`. Two identically-weighted
+          buttons read as two different runs, so this one is secondary, named
+          for what makes it different, and labelled as the advanced option. */}
+      <div className="space-y-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          disabled={isPending || blocked}
+          onClick={onRun}
+          data-testid="run-simulation"
+        >
+          {simulating ? "Simulating…" : "Run at selected trace detail"}
+        </Button>
+        <p className="text-[11px] text-muted-foreground">
+          Advanced. Use <span className="font-medium">Run scenario</span> in the
+          Combo Planner for the normal flow — it runs the same simulation at the
+          calculation detail the inspector needs.
+        </p>
+      </div>
 
       {isPending ? (
         <p className="text-[11px] text-muted-foreground" role="status">

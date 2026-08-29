@@ -187,3 +187,76 @@ describe("TeamCombatPlayback", () => {
     expect(playBtn).toHaveTextContent("Play");
   });
 });
+
+describe("TeamCombatPlayback — label and density (CS2 cleanup)", () => {
+  it("prints a readable action label while keeping the raw id reachable", () => {
+    renderPlayback(REAL_1V1);
+    const blocks = screen.getAllByTestId("timeline-block");
+    const auto = blocks.find((b) => b.getAttribute("data-auto") === "true");
+    expect(auto).toBeDefined();
+
+    // Humanized on the face…
+    expect(auto!).toHaveTextContent("Basic Attack");
+    expect(auto!.textContent).not.toContain("basic_attack");
+    // …and the authoritative id still readable by an operator.
+    expect(auto!.getAttribute("title")).toContain("basic_attack");
+  });
+
+  it("marks basic attacks from the SERVER's action_type, not from the id", () => {
+    renderPlayback(REAL_1V1);
+    const marked = screen
+      .getAllByTestId("timeline-block")
+      .filter((b) => b.getAttribute("data-auto") === "true").length;
+    const fromServer = REAL_1V1.events.filter(
+      (e) =>
+        e.source === "scheduler" &&
+        (e.type === "action_executed" || e.type === "action_failed") &&
+        (e.meta as Record<string, unknown> | null)?.action_type === "basic_attack"
+    ).length;
+    expect(marked).toBe(fromServer);
+  });
+
+  it("de-emphasizes autos WITHOUT removing, merging or retiming any event", () => {
+    renderPlayback(REAL_1V1);
+    const blocks = screen.getAllByTestId("timeline-block");
+    // Every scheduler action still has exactly one block of its own.
+    const schedulerActionCount = REAL_1V1.events.filter(
+      (e) => e.source === "scheduler" && (e.type === "action_executed" || e.type === "action_failed")
+    ).length;
+    expect(blocks.length).toBe(schedulerActionCount);
+    // Sequence numbers are unique and untouched — nothing was folded together.
+    const seqs = blocks.map((b) => b.getAttribute("data-seq"));
+    expect(new Set(seqs).size).toBe(seqs.length);
+
+    // The SELECTED block is deliberately exempt (selection must stay legible),
+    // so assert on an unselected auto.
+    const auto = blocks.find(
+      (b) =>
+        b.getAttribute("data-auto") === "true" &&
+        b.getAttribute("aria-pressed") !== "true"
+    )!;
+    expect(auto).toBeDefined();
+    expect(auto.className).toContain("opacity-60");
+    // Still a real click target.
+    expect(auto.tagName).toBe("BUTTON");
+  });
+
+  it("keeps a failed action at full weight even when it is an auto", () => {
+    renderPlayback(REAL_ACTION_FAILED);
+    for (const block of screen.getAllByTestId("timeline-block")) {
+      if ((block.getAttribute("title") ?? "").includes("(failed)")) {
+        expect(block.className).not.toContain("opacity-60");
+      }
+    }
+  });
+
+  it("shows the humanized name AND the raw id in the calculator header", () => {
+    renderPlayback(REAL_2V2_CALCULATION);
+    fireEvent.click(screen.getAllByTestId("timeline-block")[0]);
+    const header = screen.getByTestId("calculator-action-header");
+    const rawId = screen.getByTestId("calculator-action-id").textContent ?? "";
+    expect(rawId.length).toBeGreaterThan(0);
+    // The header's readable label is a LABEL; identity is the raw id beside it.
+    expect(header).toHaveTextContent(rawId);
+  });
+});

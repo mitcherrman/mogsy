@@ -44,6 +44,7 @@ import {
   type CatalogIndex,
 } from "@/lib/combat-lab/team-sim/catalog";
 import { TRACE_DETAIL_LABELS } from "@/lib/combat-lab/team-sim/result";
+import type { TraceDetail } from "@/lib/combat-lab/team-sim/contract";
 import {
   activeEnemiesOf,
   activeIdsForTeam,
@@ -73,6 +74,7 @@ import {
 
 import { AssumptionsPanel } from "./components/AssumptionsPanel";
 import { CombatantEditor } from "./components/CombatantEditor";
+import { ComboPlanner } from "./components/ComboPlanner";
 import { EffectiveBuildsPanel } from "./components/EffectiveBuildsPanel";
 import { EventTracePanel } from "./components/EventTracePanel";
 import { TeamCombatPlayback } from "./components/TeamCombatPlayback";
@@ -365,26 +367,68 @@ function TeamSimEditor({
     return ids;
   }, [validation.issues]);
 
-  const onRun = useCallback(() => {
-    setPrepareError(null);
-    let prepared;
-    try {
-      // Serialized exactly once, from the current draft, at the moment of the
-      // explicit click — never eagerly, and never from a memo that a rerender
-      // could resend.
-      prepared = buildSimulationRequest(draft, index);
-    } catch (error) {
-      setPrepareError(
-        error instanceof DraftNotSubmittableError
-          ? error.message
-          : "The scenario could not be prepared."
-      );
-      return;
-    }
-    // The retention the BACKEND publishes decides how long this browser may
-    // offer the request back — never a number invented here.
-    runner.run(prepared, draft, index.billing.idempotency_retention_seconds);
-  }, [draft, index, runner]);
+  /**
+   * The one submit path. `traceOverride` is the ONLY parameter, and it is a
+   * trace level rather than a flag so it can never be an event object handed
+   * in by an `onClick={submit}` — see `onRun` / `onRunCombo` below, both of
+   * which are explicit zero-argument wrappers.
+   */
+  const submit = useCallback(
+    (traceOverride: TraceDetail | null) => {
+      setPrepareError(null);
+      // A run at a different trace level is a DIFFERENT request (the backend
+      // digests the level), so the override is folded into the draft that is
+      // both serialized and stored for staleness — never applied to one and
+      // not the other.
+      const effective =
+        traceOverride && traceOverride !== draft.scheduler.traceDetail
+          ? {
+              ...draft,
+              scheduler: { ...draft.scheduler, traceDetail: traceOverride },
+            }
+          : draft;
+      let prepared;
+      try {
+        // Serialized exactly once, from the current draft, at the moment of the
+        // explicit click — never eagerly, and never from a memo that a rerender
+        // could resend.
+        prepared = buildSimulationRequest(effective, index);
+      } catch (error) {
+        setPrepareError(
+          error instanceof DraftNotSubmittableError
+            ? error.message
+            : "The scenario could not be prepared."
+        );
+        return;
+      }
+      // Keep the on-screen selector honest about what was actually sent.
+      if (effective !== draft) {
+        dispatch({ type: "setScheduler", patch: { traceDetail: traceOverride } });
+      }
+      // The retention the BACKEND publishes decides how long this browser may
+      // offer the request back — never a number invented here.
+      runner.run(prepared, effective, index.billing.idempotency_retention_seconds);
+    },
+    [draft, index, runner]
+  );
+
+  const onRun = useCallback(() => submit(null), [submit]);
+
+  /**
+   * CS2: the planner's Run. It asks for the calculation-level trace, which is
+   * what the calculator reads its formula bindings and mitigation evidence
+   * from — but only when the loaded catalog publishes that level. A deployment
+   * that does not accept it gets the draft's own level rather than a 422.
+   */
+  const comboTraceDetail: TraceDetail | null = traceOptions.allowed.includes(
+    "calculation"
+  )
+    ? "calculation"
+    : null;
+  const onRunCombo = useCallback(
+    () => submit(comboTraceDetail),
+    [submit, comboTraceDetail]
+  );
 
   return (
     <div className="space-y-4">
@@ -449,6 +493,20 @@ function TeamSimEditor({
           </p>
         ) : null}
       </Card>
+
+      {/* CS2: the product loop — plan both combos, run, then read the
+          playback and calculator below. A view over the same draft the
+          detailed editors edit, and a second entry to the SAME `onRun`. */}
+      <ComboPlanner
+        draft={draft}
+        index={index}
+        dispatch={dispatch}
+        validation={validation}
+        disabled={runner.isPending}
+        isPending={runner.isPending && runner.pendingKind !== "recovery"}
+        onRun={onRunCombo}
+        creditCost={creditCost}
+      />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_18rem_1fr]">
         <section className="min-w-0 space-y-2 lg:order-1" aria-label="Team A">
