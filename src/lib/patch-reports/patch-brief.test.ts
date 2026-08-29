@@ -4,7 +4,8 @@
  *
  * Direction authority pinned here: cards carrying the backend editorial
  * contract (editorial_direction + editorial_direction_source, authority order
- * riot_section > riot_patch_highlights > mogzy_inferred > null) group by that
+ * riot_section > riot_text_semantic > riot_patch_highlights > mogzy_inferred
+ * > null) group by that
  * contract; legacy payloads without the fields fall back to Mogzy's local
  * deterministic classifier over structured numeric fields. The legacy-shaped
  * fixtures below (no editorial fields) are that fallback's spec.
