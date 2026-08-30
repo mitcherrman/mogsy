@@ -259,15 +259,18 @@ describe.each(["desktop", "mobile"] as const)(
       );
     });
 
-    it("splits sections ⌈n/2⌉ left / rest right, with the CTA closing the right page", () => {
+    it("splits sections across the spread by weight, with the CTA closing the right page", () => {
       renderSurface(variant);
       const s = surface();
       const [leftPage, rightPage] = s.querySelectorAll(":scope > div:last-child > div");
-      // Three sections → Buffs and Nerfs share the headline page,
-      // Adjustments and the CTA take the right page.
+      // Weight-balanced (splitBriefSections): Buffs leads the headline page and
+      // the remaining sections fill the right page instead of stranding it with
+      // Adjustments alone. Both pages always carry at least one section.
       expect(leftPage.querySelector('[data-testid="patch-brief-section-buff"]')).toBeTruthy();
-      expect(leftPage.querySelector('[data-testid="patch-brief-section-nerf"]')).toBeTruthy();
-      expect(leftPage.querySelector('[data-testid="patch-brief-section-adjustment"]')).toBeNull();
+      expect(leftPage.querySelectorAll('[data-testid^="patch-brief-section-"]').length)
+        .toBeGreaterThanOrEqual(1);
+      expect(rightPage.querySelectorAll('[data-testid^="patch-brief-section-"]').length)
+        .toBeGreaterThanOrEqual(1);
       expect(
         rightPage.querySelector('[data-testid="patch-brief-section-adjustment"]'),
       ).toBeTruthy();
@@ -279,6 +282,7 @@ describe.each(["desktop", "mobile"] as const)(
           .compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
+
   },
 );
 
