@@ -377,14 +377,16 @@ const SECTION_HEADING_INK: Record<PatchBriefSection["direction"], string> = {
  * One direction group: a heading (BUFFS / NERFS / ADJUSTMENTS) above an
  * icon-only grid. Only non-empty sections ever reach this component — the
  * projection drops empty ones, so no empty heading can render.
+ *
+ * Sizing is container-relative, so the same block serves the desktop tome and
+ * the wider mobile card with no variant branching: the icon grid REFLOWS
+ * (flex-wrap) before the icons shrink, which is the stated priority.
  */
 function PatchBriefSectionBlock({
   section,
-  desktop,
   className,
 }: {
   section: PatchBriefSection;
-  desktop: boolean;
   className?: string;
 }) {
   return (
@@ -396,20 +398,18 @@ function PatchBriefSectionBlock({
         className={cn(
           "font-bold uppercase tracking-[0.22em]",
           SECTION_HEADING_INK[section.direction],
-          desktop ? "text-[7px] min-[1360px]:text-[8px] min-[1500px]:text-[9px]" : "text-[9px]",
         )}
+        style={{ fontSize: CQ.sectionHeading }}
       >
         {section.title}
       </p>
       <ul
         aria-label={`${section.title} this patch`}
-        className={cn(
-          "flex w-full flex-wrap items-center justify-center",
-          desktop ? "mt-0.5 gap-1" : "mt-1 gap-1.5",
-        )}
+        className="flex w-full flex-wrap items-center justify-center"
+        style={{ marginTop: "2px", gap: CQ.iconGap }}
       >
         {section.entries.map((entry) => (
-          <PatchBriefEntryIcon key={`${entry.entityType}:${entry.entityId}`} entry={entry} desktop={desktop} />
+          <PatchBriefEntryIcon key={`${entry.entityType}:${entry.entityId}`} entry={entry} />
         ))}
       </ul>
     </div>
@@ -422,14 +422,11 @@ function PatchBriefSectionBlock({
  * sr-only span when there is no docs route), never as visible text, a
  * `title` attribute, or a tooltip. A failed icon shows nothing (empty alt),
  * never a name.
+ *
+ * Size is the CQ ramp's most generous term (14px floor → 28px cap): icons are
+ * the content, so they are the last thing the layout gives up.
  */
-function PatchBriefEntryIcon({
-  entry,
-  desktop,
-}: {
-  entry: PatchBriefEntry;
-  desktop: boolean;
-}) {
+function PatchBriefEntryIcon({ entry }: { entry: PatchBriefEntry }) {
   const icon = (
     <img
       src={entry.iconUrl}
@@ -437,13 +434,8 @@ function PatchBriefEntryIcon({
       draggable={false}
       loading="lazy"
       decoding="async"
-      className={cn(
-        "shrink-0 rounded-[4px] border border-[#8a6d2a]/50 object-cover",
-        // Narrow desktop lanes (~76px pages at the 200px lane minimum) take
-        // 14px icons; the tiers grow with the same breakpoints the type uses.
-        // Mobile pages are wide and keep full-size icons.
-        desktop ? "h-3.5 w-3.5 min-[1360px]:h-6 min-[1360px]:w-6 min-[1500px]:h-7 min-[1500px]:w-7" : "h-7 w-7",
-      )}
+      className="shrink-0 rounded-[4px] border border-[#8a6d2a]/50 object-cover"
+      style={{ width: CQ.icon, height: CQ.icon }}
     />
   );
   return (
@@ -466,32 +458,28 @@ function PatchBriefEntryIcon({
   );
 }
 
-/** Action links restyled as ink on parchment. */
+/** Action links restyled as ink on parchment (container-relative footprint). */
 function BroadcastActionLink({
   action,
   primary = false,
-  compact = false,
 }: {
   action: { label: string; to: string };
   primary?: boolean;
-  /** Tighter footprint for the icon-brief's narrow desktop pages. */
-  compact?: boolean;
 }) {
   return (
     <Link
       to={action.to}
       className={cn(
-        "inline-flex items-center rounded-md font-semibold transition-colors",
-        compact
-          ? "min-h-[24px] px-2 py-0 text-[9px] min-[1360px]:min-h-[28px] min-[1360px]:text-[10px]"
-          : "min-h-[28px] px-2.5 py-0.5 text-[10px]",
+        "inline-flex items-center rounded-md px-2 py-0 font-semibold transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#176d93]",
         primary
           ? "bg-[#1d2b47]/10 text-[#1d2b47] hover:bg-[#1d2b47]/20"
           : "text-[#176d93] hover:text-[#0f5878]",
       )}
+      style={{ fontSize: CQ.actionText, minHeight: CQ.actionMinHeight }}
     >
       {action.label}
     </Link>
   );
 }
+
