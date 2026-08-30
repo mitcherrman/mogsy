@@ -186,9 +186,7 @@ export default function AcademyBroadcastSurface({
   const suffix = variant === "desktop" ? "" : "-mobile";
   const desktop = variant === "desktop";
   const view = feedView(feed);
-  const pages = view.brief
-    ? splitBriefSections(view.brief.sections)
-    : { left: [], right: [] };
+  const spread = view.brief ? briefSpread(view.brief.sections) : null;
 
   return (
     <section
