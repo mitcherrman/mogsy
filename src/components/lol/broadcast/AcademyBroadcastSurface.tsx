@@ -359,8 +359,6 @@ export default function AcademyBroadcastSurface({
           )}
         </div>
       </div>
-
-      </div>
     </section>
   );
 }
