@@ -170,10 +170,14 @@ describe("academy-layout: CSS strings mirror the JS formulas", () => {
     expect(TITLE_FONT_SIZE_CSS).toContain("6vw - 34px");
   });
 
-  it("centerpiece keeps the 200px floor and 380px cap around both terms", () => {
+  it("centerpiece keeps the floor/cap around the free-zone and fit terms", () => {
     expect(CENTERPIECE_WIDTH_CSS).toMatch(/^clamp\(200px,/);
-    expect(CENTERPIECE_WIDTH_CSS).toContain("100vw - 1030px");
-    expect(CENTERPIECE_WIDTH_CSS).toContain("max(250px, (100dvh - 321px) * 0.56)");
+    // Free central zone: viewport minus both book columns and both insets.
+    expect(CENTERPIECE_WIDTH_CSS).toContain("100vw + 8px");
+    expect(CENTERPIECE_WIDTH_CSS).toContain("100dvh * 0.308 + 176px");
+    expect(CENTERPIECE_WIDTH_CSS).toContain("(100vw - 1200px) * 0.5");
+    expect(CENTERPIECE_WIDTH_CSS).toContain("max(250px, (100dvh - 260px) * 0.72)");
     expect(CENTERPIECE_WIDTH_CSS).toMatch(/380px\)$/);
   });
+
 });
