@@ -241,110 +241,103 @@ export default function AcademyBroadcastSurface({
           light pages take dark-navy ink rather than the app's light-on-dark
           type. */}
       <div className="absolute inset-0">
-        {/* Left page — the headline. */}
+        {/* Left page — the headline (and the first half of the brief).
+            The parchment SAFE AREA is deliberately tighter in brief mode
+            (y 16.5–14.5% vs 15–13%): the icon grids are the tallest content
+            the page ever holds, and that extra 1.5% at each end is the margin
+            that keeps the eyebrow clear of the top ornament and the last icon
+            row clear of the painted bottom frame at every tome width. */}
         <div
           className="absolute flex flex-col items-center justify-center text-center"
-          style={{ left: "8%", width: "38%", top: "15%", bottom: "13%" }}
+          style={{
+            left: "8%",
+            width: "38%",
+            top: view.brief ? "16.5%" : "15%",
+            bottom: view.brief ? "14.5%" : "13%",
+          }}
         >
-          {/* The desktop tiers track the box-width formula in LolHub
-              (clamp(200px, 100vw−1030px, 380px)): the page region is ~95px at
-              1280 and only reaches ~144px once the cap engages, so type may
-              scale up only where the pages actually widen. */}
+          {/* Every size here is container-relative (CQ ramp above): the page
+              region is 38% of the tome, so the same rule works at a 200px
+              lane and at the 380px cap without breakpoint snapping. */}
           <p
-            className={cn(
-              "font-bold uppercase tracking-[0.26em] text-[#6b5418]",
-              desktop ? "text-[8px] min-[1500px]:text-[10px]" : "text-[9px]",
-            )}
+            className="font-bold uppercase tracking-[0.26em] text-[#6b5418]"
+            style={{ fontSize: CQ.eyebrow }}
           >
             {view.eyebrow}
           </p>
           <h2
             className={cn(
               "max-w-full text-balance font-semibold leading-snug text-[#1d2b47]",
-              view.brief && desktop ? "mt-0.5" : "mt-1.5",
-              view.brief
-                ? desktop
-                  ? "text-[9px] min-[1360px]:text-[11px] min-[1500px]:text-[13px]"
-                  : "text-[13px]"
-                : desktop
-                  ? "text-[10px] min-[1360px]:text-sm min-[1500px]:text-base"
-                  : "text-sm",
+              view.brief ? "mt-0.5" : "mt-1.5",
             )}
-            style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
+            style={{
+              fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
+              fontSize: view.brief ? CQ.headlineBrief : CQ.headlinePlain,
+            }}
           >
             {view.headline}
           </h2>
-          {/* Icon-only brief: the non-empty sections (Buffs → Nerfs →
-              Adjustments order) split across the spread — the left page takes
-              the first ⌈n/2⌉, the right page the rest plus the CTA. Purely
-              count-based and deterministic: no measuring, no rotation. */}
-          {view.brief && (
-            <div className={cn("flex w-full flex-col", desktop ? "mt-1 gap-1" : "mt-1.5 gap-1.5")}>
-              {view.brief.sections
-                .slice(0, Math.ceil(view.brief.sections.length / 2))
-                .map((section) => (
-                  <PatchBriefSectionBlock
-                    key={section.direction}
-                    section={section}
-                    desktop={desktop}
-                  />
-                ))}
+          {/* Icon-only brief, split across the spread by WEIGHT (see
+              splitBriefSections): the left page no longer packs Buffs + Nerfs
+              while Adjustments strands the right page. Deterministic — count
+              based, no measuring, no rotation. */}
+          {pages.left.length > 0 && (
+            <div
+              className="flex w-full flex-col"
+              style={{ marginTop: CQ.iconGap, gap: CQ.sectionGap }}
+            >
+              {pages.left.map((section) => (
+                <PatchBriefSectionBlock key={section.direction} section={section} />
+              ))}
             </div>
           )}
         </div>
 
-        {/* Right page — the detail. Empty for feeds with nothing to add; a
-            blank parchment page is an intentional state for an open book. */}
+        {/* Right page — the rest of the brief plus the CTA. Empty for feeds
+            with nothing to add; a blank parchment page is an intentional state
+            for an open book. */}
         <div
           className="absolute flex flex-col items-center justify-center text-center"
-          style={{ left: "54%", width: "38%", top: "15%", bottom: "13%" }}
+          style={{
+            left: "54%",
+            width: "38%",
+            top: view.brief ? "16.5%" : "15%",
+            bottom: view.brief ? "14.5%" : "13%",
+          }}
         >
-          {view.brief && view.brief.sections.length > 1 && (
-            <div className="mb-1 flex w-full flex-col gap-1.5">
-              {view.brief.sections
-                .slice(Math.ceil(view.brief.sections.length / 2))
-                .map((section) => (
-                  <PatchBriefSectionBlock
-                    key={section.direction}
-                    section={section}
-                    desktop={desktop}
-                  />
-                ))}
+          {pages.right.length > 0 && (
+            <div
+              className="flex w-full flex-col"
+              style={{ marginBottom: CQ.sectionGap, gap: CQ.sectionGap }}
+            >
+              {pages.right.map((section) => (
+                <PatchBriefSectionBlock key={section.direction} section={section} />
+              ))}
             </div>
           )}
           {view.summary && (
             <p
-              className={cn(
-                "max-w-[24ch] leading-relaxed text-[#3f4a63]",
-                desktop ? "text-[9px] min-[1360px]:text-[11px]" : "text-[11px]",
-              )}
+              className="max-w-[24ch] leading-relaxed text-[#3f4a63]"
+              style={{ fontSize: CQ.body }}
             >
               {view.summary}
             </p>
           )}
           {view.timestamp && (
             <p
-              className={cn(
-                "mt-1.5 uppercase tracking-[0.18em] text-[#176d93]",
-                desktop ? "text-[8px] min-[1360px]:text-[10px]" : "text-[9px]",
-              )}
+              className="mt-1.5 uppercase tracking-[0.18em] text-[#176d93]"
+              style={{ fontSize: CQ.meta }}
             >
               {view.timestamp}
             </p>
           )}
           {(view.primaryAction || view.secondaryAction) && (
             <div
-              className={cn(
-                "flex flex-wrap items-center justify-center gap-1.5",
-                view.brief ? "mt-1" : "mt-2",
-              )}
+              className="flex flex-wrap items-center justify-center gap-1.5"
+              style={{ marginTop: view.brief ? CQ.iconGap : "0.5rem" }}
             >
               {view.primaryAction && (
-                <BroadcastActionLink
-                  action={view.primaryAction}
-                  primary
-                  compact={Boolean(view.brief) && desktop}
-                />
+                <BroadcastActionLink action={view.primaryAction} primary />
               )}
               {view.secondaryAction && (
                 <BroadcastActionLink action={view.secondaryAction} />
@@ -365,6 +358,8 @@ export default function AcademyBroadcastSurface({
             </div>
           )}
         </div>
+      </div>
+
       </div>
     </section>
   );
