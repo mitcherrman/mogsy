@@ -3,6 +3,7 @@ import {
   buildStaticEntries,
   championDocEntries,
   leagueBlogEntries,
+  parseChampionNames,
   proYearEntries,
   renderSitemap,
 } from "./sitemap";
@@ -73,6 +74,21 @@ describe("sitemap builders", () => {
   it("champion entries slugify validated names and skip blanks", () => {
     const entries = championDocEntries(["Kai'Sa", "Dr. Mundo", "", "  "]);
     expect(entries.map((e) => e.path)).toEqual([
+      "/lol/docs/champions/kaisa",
+      "/lol/docs/champions/dr-mundo",
+    ]);
+  });
+
+  it("parses champion names from both string and object roster payload shapes, and shares the roster with the champion-page prerender script", () => {
+    const names = parseChampionNames({
+      champions: ["Ahri", { name: "Kai'Sa" }, { champion_name: "Dr. Mundo" }, ""],
+    });
+    expect(names).toEqual(["Ahri", "Kai'Sa", "Dr. Mundo"]);
+    // The sitemap's champion URLs and scripts/prerender-champions.ts's prerendered
+    // pages both derive their roster from parseChampionNames + championDocEntries's
+    // slugging — so this is the single source of truth invariant test can rely on.
+    expect(championDocEntries(names).map((e) => e.path)).toEqual([
+      "/lol/docs/champions/ahri",
       "/lol/docs/champions/kaisa",
       "/lol/docs/champions/dr-mundo",
     ]);

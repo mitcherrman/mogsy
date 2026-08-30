@@ -17,6 +17,7 @@ import {
   championDocEntries,
   itemEntries,
   leagueBlogEntries,
+  parseChampionNames,
   proYearEntries,
   renderSitemap,
   type SitemapEntry,
@@ -57,10 +58,7 @@ async function fetchChampionEntries(): Promise<SitemapEntry[]> {
     const data = await fetchJson<{
       champions?: Array<string | { name?: string; champion_name?: string }>;
     }>(`${COMBAT_API_URL}/api/meta/champions`);
-    const names = (data?.champions ?? [])
-      .map((c) => (typeof c === "string" ? c : c?.name ?? c?.champion_name ?? ""))
-      .filter(Boolean);
-    return championDocEntries(names);
+    return championDocEntries(parseChampionNames(data));
   } catch (err) {
     console.warn(
       "[sitemap] champions fetch failed — champion doc pages OMITTED:",

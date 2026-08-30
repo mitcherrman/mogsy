@@ -60,6 +60,20 @@ export function itemEntries(known: string[]): SitemapEntry[] {
   }));
 }
 
+/**
+ * Extract champion names from the /api/meta/champions payload. Shared by
+ * scripts/generate-sitemap.ts and scripts/prerender-champions.ts so the
+ * sitemap's champion URLs and the prerendered champion pages can never drift
+ * from one another — both derive their roster from this single function.
+ */
+export function parseChampionNames(data: {
+  champions?: Array<string | { name?: string; champion_name?: string }>;
+}): string[] {
+  return (data?.champions ?? [])
+    .map((c) => (typeof c === "string" ? c : c?.name ?? c?.champion_name ?? ""))
+    .filter(Boolean);
+}
+
 /** Champion doc entries from validated champion names. */
 export function championDocEntries(names: string[]): SitemapEntry[] {
   return names

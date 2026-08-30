@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "predev": "tsx scripts/generate-sitemap.ts",
-    "build": "vite build && tsx scripts/prerender-items.ts",
+    "build": "vite build && tsx scripts/prerender-items.ts && tsx scripts/prerender-champions.ts && tsx scripts/verify-champion-prerender.ts",
     "prebuild": "tsx scripts/generate-sitemap.ts",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
@@ -23,7 +23,8 @@
     "video:timestamps": "tsx scripts/render-quiz-video.ts --timestamps-only",
     "quiz:screenshots": "tsx scripts/quiz-screenshots/index.ts",
     "content-studio": "tsx scripts/content-studio/server.ts",
-    "prerender:items": "tsx scripts/prerender-items.ts"
+    "prerender:items": "tsx scripts/prerender-items.ts",
+    "prerender:champions": "tsx scripts/prerender-champions.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
