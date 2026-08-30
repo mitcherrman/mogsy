@@ -99,6 +99,71 @@ function feedView(feed: BroadcastFeed): {
   };
 }
 
+/* ------------------------------------------------------------------ sizing -- */
+
+/**
+ * RESPONSIVE MODEL — container queries, not viewport breakpoints.
+ *
+ * What decides whether this content fits is the tome's own width, which the
+ * hub computes from viewport width AND height (academy-layout.ts). Viewport
+ * media queries (the old min-[1360px] / min-[1500px] tiers) were the wrong
+ * signal: a 1366×768 laptop and a 1920×1080 desktop can hand the surface very
+ * different widths. The section declares `container-type: inline-size`, so
+ * every size below is a bounded fluid ramp in `cqw` (% of the tome's width)
+ * with a readability floor and a cap — one rule, no tier snapping, and icons
+ * stay the priority: they get the most generous ramp on the page.
+ *
+ * The floors are what the 200px-lane worst case can afford; the caps are the
+ * approved wide-desktop values.
+ */
+const CQ = {
+  eyebrow: "clamp(7px, 2.4cqw, 10px)",
+  headlineBrief: "clamp(9px, 3.5cqw, 14px)",
+  headlinePlain: "clamp(10px, 4cqw, 16px)",
+  sectionHeading: "clamp(6.5px, 2.2cqw, 9px)",
+  /** Icons: readable first — 14px floor, 28px cap, ~6.4% of the tome. */
+  icon: "clamp(14px, 6.4cqw, 28px)",
+  iconGap: "clamp(2px, 1.1cqw, 6px)",
+  sectionGap: "clamp(3px, 1.4cqw, 8px)",
+  body: "clamp(9px, 2.9cqw, 11px)",
+  meta: "clamp(8px, 2.6cqw, 10px)",
+  actionText: "clamp(8.5px, 2.7cqw, 11px)",
+  actionMinHeight: "clamp(20px, 7cqw, 28px)",
+} as const;
+
+/**
+ * Split the brief's sections across the two pages by WEIGHT, not by count.
+ *
+ * ceil(n/2) packed Buffs + Nerfs (the two biggest groups) onto the left page
+ * and stranded Adjustments alone on the right. Weight = entry count, so the
+ * spread balances for any future patch shape: a greedy walk keeps sections in
+ * their Buffs → Nerfs → Adjustments order and hands over to the right page as
+ * soon as the left page holds at least half the icons. Both pages always get
+ * at least one section when there is more than one.
+ */
+export function splitBriefSections(sections: PatchBriefSection[]): {
+  left: PatchBriefSection[];
+  right: PatchBriefSection[];
+} {
+  if (sections.length <= 1) return { left: sections, right: [] };
+  const total = sections.reduce((sum, s) => sum + s.entries.length, 0);
+  const half = total / 2;
+  let carried = 0;
+  let cut = 0;
+  for (let i = 0; i < sections.length; i++) {
+    const weight = sections[i].entries.length;
+    // Take the section while its midpoint still lands in the left half.
+    if (i > 0 && carried + weight / 2 > half) break;
+    carried += weight;
+    cut = i + 1;
+  }
+  // Never leave a page empty: the right page owns the CTA and must read as
+  // part of the same spread.
+  cut = Math.min(Math.max(cut, 1), sections.length - 1);
+  return { left: sections.slice(0, cut), right: sections.slice(cut) };
+}
+
+
 export default function AcademyBroadcastSurface({
   feed,
   energized = false,
