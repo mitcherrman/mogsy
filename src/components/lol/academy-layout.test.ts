@@ -4,11 +4,14 @@ import {
   BOOK_HEIGHT_RATIO,
   BOOK_MAX_WIDTH_CSS,
   BOOK_STACK_LIFT_CSS,
+  CENTERPIECE_OVERLAP_PX,
   CENTERPIECE_WIDTH_CSS,
   REGIME_BOUNDARY_VH,
   TITLE_FONT_SIZE_CSS,
   bookMaxWidthPx,
+  bookStackInsetPx,
   bookStackLiftPx,
+
   centerpieceHeightPx,
   centerpieceWidthPx,
   titleFontSizePx,
@@ -86,26 +89,41 @@ describe("academy-layout: short-regime fit", () => {
     }
   });
 
-  it("centerpiece stays inside its readability band on short viewports", () => {
-    for (const [vw, vh] of SHORT) {
+  it("centerpiece is substantial at every medium/short desktop size", () => {
+    // The hybrid-adaptive contract: the tome is never allowed to collapse to
+    // the old 250px medium-desktop size. Every desktop matrix entry gets at
+    // least 320px of painted book, which is what keeps the Patch Brief's icon
+    // grids readable and the pages unpacked without shrinking icons.
+    for (const [vw, vh] of MATRIX) {
       const w = centerpieceWidthPx(vw, vh);
-      expect(w).toBeGreaterThanOrEqual(200);
+      expect(w).toBeGreaterThanOrEqual(320);
       expect(w).toBeLessThanOrEqual(380);
-      // The height term never asks for less than the 250px legibility floor;
-      // only the narrow-lane WIDTH term (1024-class viewports) may go lower.
-      if (vw - 1030 >= 250) expect(w).toBeGreaterThanOrEqual(250);
     }
   });
 
-  it("short viewports leave breathing room between dock and Mogzy's band", () => {
-    // The centerpiece assembly (tome + dock) must end above the lower half
-    // of the viewport at every short matrix size, so the dock can never
-    // crowd the mascot band the way the fixed 380px width did at 930/864.
-    for (const [vw, vh] of SHORT) {
-      const assemblyBottom = 130 + centerpieceHeightPx(centerpieceWidthPx(vw, vh));
-      expect(assemblyBottom).toBeLessThanOrEqual(vh * 0.55);
+  it("the tome never eats the free central zone plus its overlap allowance", () => {
+    // It may sit at most CENTERPIECE_OVERLAP_PX over each drawn book edge —
+    // the same relationship the approved wide composition already has — so
+    // widening it can never newly bury the side navigation books.
+    for (const [vw, vh] of MATRIX) {
+      const inner = vw - 64; // container padding + both grid gaps
+      const freeZone = inner - 2 * bookMaxWidthPx(vh) - 2 * bookStackInsetPx(vw);
+      expect(centerpieceWidthPx(vw, vh)).toBeLessThanOrEqual(
+        freeZone + 2 * CENTERPIECE_OVERLAP_PX,
+      );
     }
   });
+
+  it("short viewports keep the dock clear of Mogzy's band", () => {
+    // The assembly (tome + dock) must still end in the upper two thirds of a
+    // short viewport; the budget is looser than the old 0.55 on purpose — the
+    // medium-desktop tome is deliberately larger now — but still bounded.
+    for (const [vw, vh] of SHORT) {
+      const assemblyBottom = 130 + centerpieceHeightPx(centerpieceWidthPx(vw, vh));
+      expect(assemblyBottom).toBeLessThanOrEqual(vh * 0.67);
+    }
+  });
+
 });
 
 describe("academy-layout: regime continuity (no breakpoint snap)", () => {
@@ -170,10 +188,14 @@ describe("academy-layout: CSS strings mirror the JS formulas", () => {
     expect(TITLE_FONT_SIZE_CSS).toContain("6vw - 34px");
   });
 
-  it("centerpiece keeps the 200px floor and 380px cap around both terms", () => {
+  it("centerpiece keeps the floor/cap around the free-zone and fit terms", () => {
     expect(CENTERPIECE_WIDTH_CSS).toMatch(/^clamp\(200px,/);
-    expect(CENTERPIECE_WIDTH_CSS).toContain("100vw - 1030px");
-    expect(CENTERPIECE_WIDTH_CSS).toContain("max(250px, (100dvh - 321px) * 0.56)");
+    // Free central zone: viewport minus both book columns and both insets.
+    expect(CENTERPIECE_WIDTH_CSS).toContain("100vw + 8px");
+    expect(CENTERPIECE_WIDTH_CSS).toContain("100dvh * 0.308 + 176px");
+    expect(CENTERPIECE_WIDTH_CSS).toContain("(100vw - 1200px) * 0.5");
+    expect(CENTERPIECE_WIDTH_CSS).toContain("max(250px, (100dvh - 260px) * 0.72)");
     expect(CENTERPIECE_WIDTH_CSS).toMatch(/380px\)$/);
   });
+
 });

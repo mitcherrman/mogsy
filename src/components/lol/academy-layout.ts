@@ -117,25 +117,76 @@ export function titleFontSizePx(vw: number, vh: number): number {
 /* ------------------------------------------------------------ centerpiece -- */
 
 /**
- * Broadcast centerpiece (tome + radio dock) width. The width term tracks the
- * free central zone the book grid leaves (original behaviour); the height
- * term (100dvh − 321px) × 0.56 reaches the 380px cap at h ≈ 1000 and
- * compresses the tome on short viewports so the dock stops crowding Mogzy
- * (the assembly's height ≈ 0.723 × width + 96px of dock+gap). The height
- * term never asks for less than 250px — below that the Patch Brief content
- * spills past the painted frame — while the outer 200px floor remains what
- * it always was: the last-resort minimum for the genuinely narrow ~1024px
- * lane, where the WIDTH term is the one that bottoms out.
+ * Broadcast centerpiece (tome + radio dock) width — HYBRID ADAPTIVE.
+ *
+ * The old width term was a hand-fitted line (100vw − 1030px) that had nothing
+ * to do with the space the layout actually leaves: at 1280×720 it asked for
+ * 250px while ~490px of central air was free, which is why the medium-desktop
+ * tome looked under-scaled, packed its pages and crowded the ornament.
+ *
+ * The width term now MODELS the free central zone directly. The desktop grid
+ * is [1fr | lane | 1fr] inside a padded container, each book column pushes its
+ * card outward and is then translated back inward by DESKTOP_BOOK_STACK_INSET,
+ * so the air between the two drawn book edges is:
+ *
+ *   inner − 2·bookWidth − 2·inset        (inner = 100vw − container padding
+ *                                         − column gaps; the lane term cancels)
+ *
+ * with a 12px breathing gap per side subtracted, and a bounded overlap
+ * allowance added back: the painted tome is allowed to sit up to
+ * CENTERPIECE_OVERLAP_PX over each book's inner edge, which is exactly the
+ * relationship the approved 1440–1920 composition already has. That single
+ * expression keeps the wide composition (it saturates the 380px cap at every
+ * viewport ≥ ~1280 wide) and lifts the awkward medium range toward it instead
+ * of shrinking icons.
+ *
+ * The height term still guards short laptops — the assembly's height is
+ * ≈ 0.723 × width + 96px of dock + gap — but it now reaches the cap at
+ * ~800px of viewport height rather than ~1000px, so 1280×800 and 1366×768 get
+ * a substantial tome while 720p still compresses. The 250px inner floor keeps
+ * the Patch Brief inside the painted frame; the outer 200px floor remains the
+ * last-resort minimum for genuinely narrow ~1024px lanes.
  */
-export const CENTERPIECE_WIDTH_CSS =
-  "clamp(200px, min(100vw - 1030px, max(250px, (100dvh - 321px) * 0.56)), 380px)";
+export const CENTERPIECE_OVERLAP_PX = 48;
+export const CENTERPIECE_BREATHING_PX = 12;
+/** container padding (xl:px-6) + two md grid gaps. */
+export const CENTERPIECE_CHROME_PX = 64;
+export const CENTERPIECE_MIN_PX = 200;
+export const CENTERPIECE_MAX_PX = 380;
+export const CENTERPIECE_INNER_FLOOR_PX = 250;
+export const CENTERPIECE_FIT_OFFSET_PX = 260;
+export const CENTERPIECE_FIT_SLOPE = 0.72;
 
-export function centerpieceWidthPx(vw: number, vh: number): number {
-  const heightTerm = Math.max(250, (vh - 321) * 0.56);
-  return Math.min(380, Math.max(200, Math.min(vw - 1030, heightTerm)));
+/** Net constant on the width term: overlap allowance − breathing − chrome. */
+const CENTERPIECE_WIDTH_BIAS_PX =
+  2 * CENTERPIECE_OVERLAP_PX - 2 * CENTERPIECE_BREATHING_PX - CENTERPIECE_CHROME_PX; // = 8
+
+/** Same easing as LolHub's DESKTOP_BOOK_STACK_INSET (kept in sync by name). */
+export const BOOK_STACK_INSET_CSS = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
+
+export function bookStackInsetPx(vw: number): number {
+  return Math.min(120, Math.max(0, (vw - 1200) * 0.5));
 }
 
-/** Assembly height per width (measured: surface 0.723 × w, dock+gap 96px). */
+const BOOK_WIDTH_TERM_CSS = `min(100dvh * ${BOOK_TALL_SLOPE} + ${BOOK_TALL_INTERCEPT_PX}px, (100dvh - ${BOOK_FIT_OFFSET_PX}px) * ${BOOK_FIT_SLOPE})`;
+
+export const CENTERPIECE_WIDTH_CSS = `clamp(${CENTERPIECE_MIN_PX}px, min(calc(100vw + ${CENTERPIECE_WIDTH_BIAS_PX}px - 2 * (${BOOK_WIDTH_TERM_CSS}) - 2 * (${BOOK_STACK_INSET_CSS})), max(${CENTERPIECE_INNER_FLOOR_PX}px, (100dvh - ${CENTERPIECE_FIT_OFFSET_PX}px) * ${CENTERPIECE_FIT_SLOPE})), ${CENTERPIECE_MAX_PX}px)`;
+
+export function centerpieceWidthPx(vw: number, vh: number): number {
+  const widthTerm =
+    vw + CENTERPIECE_WIDTH_BIAS_PX - 2 * bookMaxWidthPx(vh) - 2 * bookStackInsetPx(vw);
+  const heightTerm = Math.max(
+    CENTERPIECE_INNER_FLOOR_PX,
+    (vh - CENTERPIECE_FIT_OFFSET_PX) * CENTERPIECE_FIT_SLOPE,
+  );
+  return Math.min(
+    CENTERPIECE_MAX_PX,
+    Math.max(CENTERPIECE_MIN_PX, Math.min(widthTerm, heightTerm)),
+  );
+}
+
+/** Assembly height per width — measured: surface 0.723 × w, dock + gap 96px. */
 export function centerpieceHeightPx(width: number): number {
   return 0.723 * width + 96;
 }
+

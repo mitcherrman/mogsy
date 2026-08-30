@@ -99,6 +99,71 @@ function feedView(feed: BroadcastFeed): {
   };
 }
 
+/* ------------------------------------------------------------------ sizing -- */
+
+/**
+ * RESPONSIVE MODEL — container queries, not viewport breakpoints.
+ *
+ * What decides whether this content fits is the tome's own width, which the
+ * hub computes from viewport width AND height (academy-layout.ts). Viewport
+ * media queries (the old min-[1360px] / min-[1500px] tiers) were the wrong
+ * signal: a 1366×768 laptop and a 1920×1080 desktop can hand the surface very
+ * different widths. The section declares `container-type: inline-size`, so
+ * every size below is a bounded fluid ramp in `cqw` (% of the tome's width)
+ * with a readability floor and a cap — one rule, no tier snapping, and icons
+ * stay the priority: they get the most generous ramp on the page.
+ *
+ * The floors are what the 200px-lane worst case can afford; the caps are the
+ * approved wide-desktop values.
+ */
+const CQ = {
+  eyebrow: "clamp(7px, 2.4cqw, 10px)",
+  headlineBrief: "clamp(9px, 3.5cqw, 14px)",
+  headlinePlain: "clamp(10px, 4cqw, 16px)",
+  sectionHeading: "clamp(6.5px, 2.2cqw, 9px)",
+  /** Icons: readable first — 14px floor, 28px cap, ~6.4% of the tome. */
+  icon: "clamp(14px, 6.4cqw, 28px)",
+  iconGap: "clamp(2px, 1.1cqw, 6px)",
+  sectionGap: "clamp(3px, 1.4cqw, 8px)",
+  body: "clamp(9px, 2.9cqw, 11px)",
+  meta: "clamp(8px, 2.6cqw, 10px)",
+  actionText: "clamp(8.5px, 2.7cqw, 11px)",
+  actionMinHeight: "clamp(20px, 7cqw, 28px)",
+} as const;
+
+/**
+ * Split the brief's sections across the two pages by WEIGHT, not by count.
+ *
+ * ceil(n/2) packed Buffs + Nerfs (the two biggest groups) onto the left page
+ * and stranded Adjustments alone on the right. Weight = entry count, so the
+ * spread balances for any future patch shape: a greedy walk keeps sections in
+ * their Buffs → Nerfs → Adjustments order and hands over to the right page as
+ * soon as the left page holds at least half the icons. Both pages always get
+ * at least one section when there is more than one.
+ */
+export function splitBriefSections(sections: PatchBriefSection[]): {
+  left: PatchBriefSection[];
+  right: PatchBriefSection[];
+} {
+  if (sections.length <= 1) return { left: sections, right: [] };
+  const total = sections.reduce((sum, s) => sum + s.entries.length, 0);
+  const half = total / 2;
+  let carried = 0;
+  let cut = 0;
+  for (let i = 0; i < sections.length; i++) {
+    const weight = sections[i].entries.length;
+    // Take the section while its midpoint still lands in the left half.
+    if (i > 0 && carried + weight / 2 > half) break;
+    carried += weight;
+    cut = i + 1;
+  }
+  // Never leave a page empty: the right page owns the CTA and must read as
+  // part of the same spread.
+  cut = Math.min(Math.max(cut, 1), sections.length - 1);
+  return { left: sections.slice(0, cut), right: sections.slice(cut) };
+}
+
+
 export default function AcademyBroadcastSurface({
   feed,
   energized = false,
@@ -115,6 +180,9 @@ export default function AcademyBroadcastSurface({
   const suffix = variant === "desktop" ? "" : "-mobile";
   const desktop = variant === "desktop";
   const view = feedView(feed);
+  const pages = view.brief
+    ? splitBriefSections(view.brief.sections)
+    : { left: [], right: [] };
 
   return (
     <section
@@ -124,8 +192,13 @@ export default function AcademyBroadcastSurface({
       // flex-col is load-bearing: it stops the img's negative vertical margins
       // from collapsing through this box, which would silently grow it back to
       // the full canvas and misalign every page-relative overlay coordinate.
+      // container-type: inline-size makes THIS box the query container, so all
+      // page typography/icon sizing below resolves against the tome's real
+      // width instead of the viewport (see the CQ ramp above).
       className={cn("relative flex flex-col", className)}
+      style={{ containerType: "inline-size" }}
     >
+
       {/* Ambient energy behind the tome — it halos the painted silhouette
           through the PNG's transparent exterior. Pulses only while
           transmitting and only when motion is welcome; otherwise it holds a
@@ -168,110 +241,103 @@ export default function AcademyBroadcastSurface({
           light pages take dark-navy ink rather than the app's light-on-dark
           type. */}
       <div className="absolute inset-0">
-        {/* Left page — the headline. */}
+        {/* Left page — the headline (and the first half of the brief).
+            The parchment SAFE AREA is deliberately tighter in brief mode
+            (y 16.5–14.5% vs 15–13%): the icon grids are the tallest content
+            the page ever holds, and that extra 1.5% at each end is the margin
+            that keeps the eyebrow clear of the top ornament and the last icon
+            row clear of the painted bottom frame at every tome width. */}
         <div
           className="absolute flex flex-col items-center justify-center text-center"
-          style={{ left: "8%", width: "38%", top: "15%", bottom: "13%" }}
+          style={{
+            left: "8%",
+            width: "38%",
+            top: view.brief ? "16.5%" : "15%",
+            bottom: view.brief ? "14.5%" : "13%",
+          }}
         >
-          {/* The desktop tiers track the box-width formula in LolHub
-              (clamp(200px, 100vw−1030px, 380px)): the page region is ~95px at
-              1280 and only reaches ~144px once the cap engages, so type may
-              scale up only where the pages actually widen. */}
+          {/* Every size here is container-relative (CQ ramp above): the page
+              region is 38% of the tome, so the same rule works at a 200px
+              lane and at the 380px cap without breakpoint snapping. */}
           <p
-            className={cn(
-              "font-bold uppercase tracking-[0.26em] text-[#6b5418]",
-              desktop ? "text-[8px] min-[1500px]:text-[10px]" : "text-[9px]",
-            )}
+            className="font-bold uppercase tracking-[0.26em] text-[#6b5418]"
+            style={{ fontSize: CQ.eyebrow }}
           >
             {view.eyebrow}
           </p>
           <h2
             className={cn(
               "max-w-full text-balance font-semibold leading-snug text-[#1d2b47]",
-              view.brief && desktop ? "mt-0.5" : "mt-1.5",
-              view.brief
-                ? desktop
-                  ? "text-[9px] min-[1360px]:text-[11px] min-[1500px]:text-[13px]"
-                  : "text-[13px]"
-                : desktop
-                  ? "text-[10px] min-[1360px]:text-sm min-[1500px]:text-base"
-                  : "text-sm",
+              view.brief ? "mt-0.5" : "mt-1.5",
             )}
-            style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
+            style={{
+              fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
+              fontSize: view.brief ? CQ.headlineBrief : CQ.headlinePlain,
+            }}
           >
             {view.headline}
           </h2>
-          {/* Icon-only brief: the non-empty sections (Buffs → Nerfs →
-              Adjustments order) split across the spread — the left page takes
-              the first ⌈n/2⌉, the right page the rest plus the CTA. Purely
-              count-based and deterministic: no measuring, no rotation. */}
-          {view.brief && (
-            <div className={cn("flex w-full flex-col", desktop ? "mt-1 gap-1" : "mt-1.5 gap-1.5")}>
-              {view.brief.sections
-                .slice(0, Math.ceil(view.brief.sections.length / 2))
-                .map((section) => (
-                  <PatchBriefSectionBlock
-                    key={section.direction}
-                    section={section}
-                    desktop={desktop}
-                  />
-                ))}
+          {/* Icon-only brief, split across the spread by WEIGHT (see
+              splitBriefSections): the left page no longer packs Buffs + Nerfs
+              while Adjustments strands the right page. Deterministic — count
+              based, no measuring, no rotation. */}
+          {pages.left.length > 0 && (
+            <div
+              className="flex w-full flex-col"
+              style={{ marginTop: CQ.iconGap, gap: CQ.sectionGap }}
+            >
+              {pages.left.map((section) => (
+                <PatchBriefSectionBlock key={section.direction} section={section} />
+              ))}
             </div>
           )}
         </div>
 
-        {/* Right page — the detail. Empty for feeds with nothing to add; a
-            blank parchment page is an intentional state for an open book. */}
+        {/* Right page — the rest of the brief plus the CTA. Empty for feeds
+            with nothing to add; a blank parchment page is an intentional state
+            for an open book. */}
         <div
           className="absolute flex flex-col items-center justify-center text-center"
-          style={{ left: "54%", width: "38%", top: "15%", bottom: "13%" }}
+          style={{
+            left: "54%",
+            width: "38%",
+            top: view.brief ? "16.5%" : "15%",
+            bottom: view.brief ? "14.5%" : "13%",
+          }}
         >
-          {view.brief && view.brief.sections.length > 1 && (
-            <div className="mb-1 flex w-full flex-col gap-1.5">
-              {view.brief.sections
-                .slice(Math.ceil(view.brief.sections.length / 2))
-                .map((section) => (
-                  <PatchBriefSectionBlock
-                    key={section.direction}
-                    section={section}
-                    desktop={desktop}
-                  />
-                ))}
+          {pages.right.length > 0 && (
+            <div
+              className="flex w-full flex-col"
+              style={{ marginBottom: CQ.sectionGap, gap: CQ.sectionGap }}
+            >
+              {pages.right.map((section) => (
+                <PatchBriefSectionBlock key={section.direction} section={section} />
+              ))}
             </div>
           )}
           {view.summary && (
             <p
-              className={cn(
-                "max-w-[24ch] leading-relaxed text-[#3f4a63]",
-                desktop ? "text-[9px] min-[1360px]:text-[11px]" : "text-[11px]",
-              )}
+              className="max-w-[24ch] leading-relaxed text-[#3f4a63]"
+              style={{ fontSize: CQ.body }}
             >
               {view.summary}
             </p>
           )}
           {view.timestamp && (
             <p
-              className={cn(
-                "mt-1.5 uppercase tracking-[0.18em] text-[#176d93]",
-                desktop ? "text-[8px] min-[1360px]:text-[10px]" : "text-[9px]",
-              )}
+              className="mt-1.5 uppercase tracking-[0.18em] text-[#176d93]"
+              style={{ fontSize: CQ.meta }}
             >
               {view.timestamp}
             </p>
           )}
           {(view.primaryAction || view.secondaryAction) && (
             <div
-              className={cn(
-                "flex flex-wrap items-center justify-center gap-1.5",
-                view.brief ? "mt-1" : "mt-2",
-              )}
+              className="flex flex-wrap items-center justify-center gap-1.5"
+              style={{ marginTop: view.brief ? CQ.iconGap : "0.5rem" }}
             >
               {view.primaryAction && (
-                <BroadcastActionLink
-                  action={view.primaryAction}
-                  primary
-                  compact={Boolean(view.brief) && desktop}
-                />
+                <BroadcastActionLink action={view.primaryAction} primary />
               )}
               {view.secondaryAction && (
                 <BroadcastActionLink action={view.secondaryAction} />
@@ -311,14 +377,16 @@ const SECTION_HEADING_INK: Record<PatchBriefSection["direction"], string> = {
  * One direction group: a heading (BUFFS / NERFS / ADJUSTMENTS) above an
  * icon-only grid. Only non-empty sections ever reach this component — the
  * projection drops empty ones, so no empty heading can render.
+ *
+ * Sizing is container-relative, so the same block serves the desktop tome and
+ * the wider mobile card with no variant branching: the icon grid REFLOWS
+ * (flex-wrap) before the icons shrink, which is the stated priority.
  */
 function PatchBriefSectionBlock({
   section,
-  desktop,
   className,
 }: {
   section: PatchBriefSection;
-  desktop: boolean;
   className?: string;
 }) {
   return (
@@ -330,20 +398,18 @@ function PatchBriefSectionBlock({
         className={cn(
           "font-bold uppercase tracking-[0.22em]",
           SECTION_HEADING_INK[section.direction],
-          desktop ? "text-[7px] min-[1360px]:text-[8px] min-[1500px]:text-[9px]" : "text-[9px]",
         )}
+        style={{ fontSize: CQ.sectionHeading }}
       >
         {section.title}
       </p>
       <ul
         aria-label={`${section.title} this patch`}
-        className={cn(
-          "flex w-full flex-wrap items-center justify-center",
-          desktop ? "mt-0.5 gap-1" : "mt-1 gap-1.5",
-        )}
+        className="flex w-full flex-wrap items-center justify-center"
+        style={{ marginTop: "2px", gap: CQ.iconGap }}
       >
         {section.entries.map((entry) => (
-          <PatchBriefEntryIcon key={`${entry.entityType}:${entry.entityId}`} entry={entry} desktop={desktop} />
+          <PatchBriefEntryIcon key={`${entry.entityType}:${entry.entityId}`} entry={entry} />
         ))}
       </ul>
     </div>
@@ -356,14 +422,11 @@ function PatchBriefSectionBlock({
  * sr-only span when there is no docs route), never as visible text, a
  * `title` attribute, or a tooltip. A failed icon shows nothing (empty alt),
  * never a name.
+ *
+ * Size is the CQ ramp's most generous term (14px floor → 28px cap): icons are
+ * the content, so they are the last thing the layout gives up.
  */
-function PatchBriefEntryIcon({
-  entry,
-  desktop,
-}: {
-  entry: PatchBriefEntry;
-  desktop: boolean;
-}) {
+function PatchBriefEntryIcon({ entry }: { entry: PatchBriefEntry }) {
   const icon = (
     <img
       src={entry.iconUrl}
@@ -371,13 +434,8 @@ function PatchBriefEntryIcon({
       draggable={false}
       loading="lazy"
       decoding="async"
-      className={cn(
-        "shrink-0 rounded-[4px] border border-[#8a6d2a]/50 object-cover",
-        // Narrow desktop lanes (~76px pages at the 200px lane minimum) take
-        // 14px icons; the tiers grow with the same breakpoints the type uses.
-        // Mobile pages are wide and keep full-size icons.
-        desktop ? "h-3.5 w-3.5 min-[1360px]:h-6 min-[1360px]:w-6 min-[1500px]:h-7 min-[1500px]:w-7" : "h-7 w-7",
-      )}
+      className="shrink-0 rounded-[4px] border border-[#8a6d2a]/50 object-cover"
+      style={{ width: CQ.icon, height: CQ.icon }}
     />
   );
   return (
@@ -400,32 +458,28 @@ function PatchBriefEntryIcon({
   );
 }
 
-/** Action links restyled as ink on parchment. */
+/** Action links restyled as ink on parchment (container-relative footprint). */
 function BroadcastActionLink({
   action,
   primary = false,
-  compact = false,
 }: {
   action: { label: string; to: string };
   primary?: boolean;
-  /** Tighter footprint for the icon-brief's narrow desktop pages. */
-  compact?: boolean;
 }) {
   return (
     <Link
       to={action.to}
       className={cn(
-        "inline-flex items-center rounded-md font-semibold transition-colors",
-        compact
-          ? "min-h-[24px] px-2 py-0 text-[9px] min-[1360px]:min-h-[28px] min-[1360px]:text-[10px]"
-          : "min-h-[28px] px-2.5 py-0.5 text-[10px]",
+        "inline-flex items-center rounded-md px-2 py-0 font-semibold transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#176d93]",
         primary
           ? "bg-[#1d2b47]/10 text-[#1d2b47] hover:bg-[#1d2b47]/20"
           : "text-[#176d93] hover:text-[#0f5878]",
       )}
+      style={{ fontSize: CQ.actionText, minHeight: CQ.actionMinHeight }}
     >
       {action.label}
     </Link>
   );
 }
+
