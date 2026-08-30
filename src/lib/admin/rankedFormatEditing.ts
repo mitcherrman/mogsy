@@ -16,7 +16,7 @@
 // No validation lives here. Whether a value is legal is the backend's answer.
 // ---------------------------------------------------------------------------
 
-import type { RankedFormatJson, SegmentSpecJson } from "@/lib/admin/rankedFormatApi";
+import type { CatalogOption, RankedFormatJson, SegmentSpecJson } from "@/lib/admin/rankedFormatApi";
 
 /** Move a segment one place earlier. Out-of-range moves are no-ops. */
 export function moveSegmentUp(format: RankedFormatJson, index: number): RankedFormatJson {
@@ -122,6 +122,35 @@ export function toggleMultiValue(
   // same selection always serializes identically and a save produces no
   // spurious diff against the stored config.
   return allOptions.filter((option) => selected.has(option));
+}
+
+/**
+ * One-off UX clamp: when the admin picks a Mastery set that carries a
+ * `max_questions` ceiling (optional catalog metadata — not every deployment
+ * will have it), and the segment's current `challenge_count` exceeds it,
+ * pull `challenge_count` down to the ceiling.
+ *
+ * Presentational only. The backend remains the validation authority and is
+ * not consulted here; this exists so the form does not display a value the
+ * chosen set cannot support, nothing more. Deliberately NOT a generic
+ * dependent-field mechanism — this is the one field pairing that has one
+ * today, so it is named for exactly that pairing rather than generalized.
+ */
+export function clampChallengeCountForMasterySet(
+  format: RankedFormatJson,
+  index: number,
+  setOptions: CatalogOption[] | undefined,
+  selectedSetId: unknown,
+): RankedFormatJson {
+  if (typeof selectedSetId !== "string") return format;
+  const maxQuestions = setOptions?.find((option) => option.value === selectedSetId)?.max_questions;
+  if (typeof maxQuestions !== "number") return format;
+
+  const segment = format.segment_pattern[index];
+  const current = segment?.challenge_count;
+  if (typeof current !== "number" || current <= maxQuestions) return format;
+
+  return setSegmentField(format, index, "challenge_count", maxQuestions);
 }
 
 /** Whether two formats differ — the dirty check, by value not identity. */

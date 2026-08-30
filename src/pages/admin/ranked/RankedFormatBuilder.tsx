@@ -34,6 +34,7 @@ import {
 } from "@/lib/admin/rankedFormatApi";
 import {
   addSegment,
+  clampChallengeCountForMasterySet,
   formatsDiffer,
   moveSegmentDown,
   moveSegmentUp,
@@ -256,21 +257,29 @@ export default function RankedFormatBuilder() {
               )}
 
               <ol className="space-y-2" data-testid="segment-list">
-                {format.segment_pattern.map((segment, index) => (
-                  <SegmentRow
-                    key={`${segment.module_id}-${index}`}
-                    segment={segment}
-                    index={index}
-                    total={format.segment_pattern.length}
-                    module={moduleFor(segment.module_id, segment.module_version)}
-                    onMoveUp={() => edit(moveSegmentUp(format, index))}
-                    onMoveDown={() => edit(moveSegmentDown(format, index))}
-                    onRemove={() => edit(removeSegment(format, index))}
-                    onFieldChange={(key, value) =>
-                      edit(setSegmentField(format, index, key, value))
-                    }
-                  />
-                ))}
+                {format.segment_pattern.map((segment, index) => {
+                  const module = moduleFor(segment.module_id, segment.module_version);
+                  return (
+                    <SegmentRow
+                      key={`${segment.module_id}-${index}`}
+                      segment={segment}
+                      index={index}
+                      total={format.segment_pattern.length}
+                      module={module}
+                      onMoveUp={() => edit(moveSegmentUp(format, index))}
+                      onMoveDown={() => edit(moveSegmentDown(format, index))}
+                      onRemove={() => edit(removeSegment(format, index))}
+                      onFieldChange={(key, value) => {
+                        let next = setSegmentField(format, index, key, value);
+                        if (key === "module_config.mastery_set_id") {
+                          const setOptions = module?.fields.find((f) => f.key === key)?.options;
+                          next = clampChallengeCountForMasterySet(next, index, setOptions, value);
+                        }
+                        edit(next);
+                      }}
+                    />
+                  );
+                })}
               </ol>
 
               {/* ---- add ---- */}

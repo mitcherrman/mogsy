@@ -55,6 +55,11 @@ export type CatalogFieldType = "enum" | "multi_enum" | "number" | "integer" | "t
 export interface CatalogOption {
   value: string;
   label: string;
+  // Optional per-option metadata. Today only the Mastery module's
+  // `module_config.mastery_set_id` options carry it, as a soft ceiling on
+  // that set's `challenge_count` — presentational only, so it is typed
+  // optional and every reader must handle its absence.
+  max_questions?: number;
 }
 
 export interface CatalogField {
