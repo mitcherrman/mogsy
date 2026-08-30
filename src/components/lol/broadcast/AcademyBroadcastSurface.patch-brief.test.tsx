@@ -8,11 +8,13 @@
  * Visible assertions use a visibility-aware text walker, never textContent,
  * so an sr-only leak would fail the suite.
  *
- * Also pinned: the ONLY visible text is PATCH BRIEF, the patch label, the
- * section headings, and Read full report — no summaries, numbers, arrows, or
- * captions survive; empty sections are absent; the CTA targets the patch;
- * and composing the brief centerpiece still creates no audio element and no
- * toast.
+ * Also pinned: the ONLY visible text is the patch label, the section
+ * headings, and Read full report (the "PATCH BRIEF" eyebrow is gone — the
+ * spread is a mirrored Buffs-left / Nerfs-right composition whose only
+ * intentional asymmetry is the patch title above the left page); no
+ * summaries, numbers, arrows, or captions survive; empty sections are
+ * absent; the CTA targets the patch; and composing the brief centerpiece
+ * still creates no audio element and no toast.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
