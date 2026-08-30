@@ -129,38 +129,44 @@ const CQ = {
   meta: "clamp(8px, 2.6cqw, 10px)",
   actionText: "clamp(8.5px, 2.7cqw, 11px)",
   actionMinHeight: "clamp(20px, 7cqw, 28px)",
+  /**
+   * The band reserved for the patch title above BOTH pages in brief mode.
+   * Reserving the same strip on the right page (which shows no title) is
+   * what puts BUFFS and NERFS on the same eye line: generous enough for the
+   * headlineBrief ramp (≤14px at ~1.375 line-height) plus its small margin.
+   */
+  titleReserve: "clamp(14px, 5.6cqw, 22px)",
 } as const;
 
 /**
- * Split the brief's sections across the two pages by WEIGHT, not by count.
+ * Assign the brief's sections to the MIRRORED spread:
  *
- * ceil(n/2) packed Buffs + Nerfs (the two biggest groups) onto the left page
- * and stranded Adjustments alone on the right. Weight = entry count, so the
- * spread balances for any future patch shape: a greedy walk keeps sections in
- * their Buffs → Nerfs → Adjustments order and hands over to the right page as
- * soon as the left page holds at least half the icons. Both pages always get
- * at least one section when there is more than one.
+ *   LEFT  page top  ← Buffs            RIGHT page top  ← Nerfs
+ *   LEFT  page base ← the CTA          RIGHT page base ← everything else
+ *
+ * The projection always orders Buffs → Nerfs → Adjustments, so this is a
+ * role lookup, never entity- or count-specific: any future patch with the
+ * same three directions lands identically, and icon counts only affect how
+ * each grid wraps within its own page. Without a Buffs section the next
+ * section leads the left page so it never reads empty.
  */
-export function splitBriefSections(sections: PatchBriefSection[]): {
-  left: PatchBriefSection[];
-  right: PatchBriefSection[];
+export function briefSpread(sections: PatchBriefSection[]): {
+  leftTop: PatchBriefSection | null;
+  rightTop: PatchBriefSection | null;
+  rightLower: PatchBriefSection[];
 } {
-  if (sections.length <= 1) return { left: sections, right: [] };
-  const total = sections.reduce((sum, s) => sum + s.entries.length, 0);
-  const half = total / 2;
-  let carried = 0;
-  let cut = 0;
-  for (let i = 0; i < sections.length; i++) {
-    const weight = sections[i].entries.length;
-    // Take the section while its midpoint still lands in the left half.
-    if (i > 0 && carried + weight / 2 > half) break;
-    carried += weight;
-    cut = i + 1;
+  const buff = sections.find((s) => s.direction === "buff") ?? null;
+  const nerf = sections.find((s) => s.direction === "nerf") ?? null;
+  const rest = sections.filter((s) => s !== buff && s !== nerf);
+  if (buff) {
+    return {
+      leftTop: buff,
+      rightTop: nerf ?? rest[0] ?? null,
+      rightLower: nerf ? rest : rest.slice(1),
+    };
   }
-  // Never leave a page empty: the right page owns the CTA and must read as
-  // part of the same spread.
-  cut = Math.min(Math.max(cut, 1), sections.length - 1);
-  return { left: sections.slice(0, cut), right: sections.slice(cut) };
+  const [first, ...tail] = sections;
+  return { leftTop: first ?? null, rightTop: null, rightLower: tail };
 }
 
 
