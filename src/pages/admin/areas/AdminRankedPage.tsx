@@ -39,6 +39,7 @@ import {
   type RatingStatus,
 } from "@/lib/admin/adminOpsApi";
 import { ADMIN_AREAS_BY_ID, toolsForSection } from "@/lib/admin/admin-registry";
+import RankedFormatBuilder from "@/pages/admin/ranked/RankedFormatBuilder";
 import { cn } from "@/lib/utils";
 
 type Load<T> = { state: "loading" } | { state: "ok"; data: T } | { state: "error"; message: string };
@@ -186,6 +187,8 @@ export default function AdminRankedPage() {
 
       <AdminAuthGate>
         <div className="space-y-4">
+          {section.id === "format-builder" && <RankedFormatBuilder />}
+
           {section.id === "overview" && (
             <>
               <LaunchReadinessPanel nonce={nonce} onRefresh={refresh} />

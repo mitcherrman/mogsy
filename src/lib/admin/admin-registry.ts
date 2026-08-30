@@ -133,6 +133,7 @@ export const ADMIN_AREAS: AdminArea[] = [
       "The Ranked operator surface: readiness, the question bank, match and bot testing, and flag state.",
     sections: [
       { id: "overview", label: "Overview", summary: "Launch readiness, rating status and live flag state." },
+      { id: "format-builder", label: "Format Builder", summary: "The ordered module cycle for Admin Bot Ranked and Public Ranked." },
       { id: "question-bank", label: "Question Bank", summary: "Ranked Duel candidate review, validation and export." },
       { id: "matches", label: "Matches & Testing", summary: "Staff duels, test matches and bot-match administration." },
       { id: "playtests", label: "Playtests", summary: "Playtest operations home, built on existing primitives." },
