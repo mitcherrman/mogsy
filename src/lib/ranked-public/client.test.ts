@@ -192,3 +192,65 @@ describe("match_with_bot", () => {
       .rejects.toMatchObject({ code: "RANKED_BOT_NOT_AUTHORIZED", status: 403 });
   });
 });
+
+// ── the wire shape a Mastery answer travels in ────────────────────────────
+//
+// WHY THIS EXISTS. `mastery_slice.v1` answers were rejected in production with
+// a bare "Request failed". The module was right, the renderer was right and the
+// grader was right; the ROUTE SCHEMA had only ever learned `item_id`/`card_id`
+// and is `extra="forbid"`, so `{"selected": …}` was a 422 before the service
+// was reached. Nothing on either side pinned the body this call actually puts
+// on the wire, which is the one place the two contracts have to agree.
+
+describe("segment challenge submission", () => {
+  // The ack is a flat object, not a versioned envelope.
+  const ack = { status: "accepted", segment_number: 1, challenge_index: 0,
+    next_challenge_index: 1, segment_resolved: false };
+
+  it("posts a Mastery answer as `selected`, at the indexed challenge path", async () => {
+    stub(() => json(ack));
+    await api.submitSegmentChallenge("m1", 2, 0, { selected: "9" });
+    expect(calls[0].url).toMatch(
+      /\/api\/ranked\/matches\/m1\/segments\/2\/challenges\/0$/);
+    expect(calls[0].init.method).toBe("POST");
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({ selected: "9" });
+  });
+
+  it("keeps a boolean and a number a boolean and a number", async () => {
+    // The server discriminates on the JSON type: a `true` sent as `"true"`, or
+    // a `3` sent as `"3"`, changes which rule validates the answer and so
+    // whether it grades as correct.
+    stub(() => json(ack));
+    await api.submitSegmentChallenge("m1", 1, 0, { selected: true });
+    await api.submitSegmentChallenge("m1", 1, 1, { selected: 3 });
+    expect(JSON.parse(calls[0].init.body as string).selected).toBe(true);
+    expect(JSON.parse(calls[1].init.body as string).selected).toBe(3);
+  });
+
+  it("never sends a second choice spelling alongside it", async () => {
+    stub(() => json(ack));
+    await api.submitSegmentChallenge("m1", 1, 0, { selected: "9" });
+    const body = JSON.parse(calls[0].init.body as string);
+    // The server refuses a body naming two choices; the union makes sending
+    // one impossible, and this is what says so.
+    expect("item_id" in body).toBe(false);
+    expect("card_id" in body).toBe(false);
+  });
+
+  it("still spells the item-cost and card choices the way it always did", async () => {
+    stub(() => json(ack));
+    await api.submitSegmentChallenge("m1", 1, 0, { cardId: "c2:left" });
+    await api.submitSegmentChallenge("m1", 1, 1, { itemId: "Doran's Ring" });
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({ card_id: "c2:left" });
+    expect(JSON.parse(calls[1].init.body as string)).toEqual({ item_id: "Doran's Ring" });
+  });
+
+  it("carries no correctness, timing or index in the body", async () => {
+    stub(() => json(ack));
+    await api.submitSegmentChallenge("m1", 1, 4, { selected: "9" });
+    const body = JSON.parse(calls[0].init.body as string);
+    // The index is in the PATH and must equal the server's expected one.
+    expect(Object.keys(body)).toEqual(["selected"]);
+    expect(calls[0].url).toMatch(/\/challenges\/4$/);
+  });
+});

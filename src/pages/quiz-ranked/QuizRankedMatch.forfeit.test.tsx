@@ -23,11 +23,24 @@ vi.mock("@/lib/backend-auth", () => ({
 
 import { QuizRankedMatch } from "./QuizRankedMatch";
 import {
-  metaReflexSegmentMeta, metaReflexState, privatePlayerV2, publicRoundV2,
+  matchResultV1, metaReflexSegmentMeta, metaReflexState, privatePlayerV2, publicRoundV2,
 } from "@/lib/ranked-public/fixtures";
 
 let forfeitCalls: { url: string; method: string; body: unknown }[];
 let segment: boolean;
+/**
+ * Whether the fake backend has actually SETTLED the forfeit.
+ *
+ * The suite below this one deliberately leaves it false — that is the "the
+ * client invents no terminal state" case. It is switched on by the forfeit
+ * route itself in the settling suite, which is the case that was missing when
+ * the real bug shipped: every test here sent the command and then asserted
+ * against a backend that reported the match active forever, so nothing ever
+ * exercised the transition the player actually waits for.
+ */
+let settled: boolean;
+/** Whether the fake forfeit route settles the match, as the real one does. */
+let settleOnForfeit: boolean;
 
 const json = (body: unknown) => new Response(JSON.stringify(body), {
   status: 200, headers: { "Content-Type": "application/json" },
@@ -55,10 +68,13 @@ const privateBody = () => {
 beforeEach(() => {
   forfeitCalls = [];
   segment = false;
+  settled = false;
+  settleOnForfeit = false;
   vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit = {}) => {
     const u = String(url);
     if (u.endsWith("/forfeit")) {
       forfeitCalls.push({ url: u, method: init.method ?? "GET", body: init.body });
+      if (settleOnForfeit) settled = true;
       return json({ status: "complete", match_id: "m1",
         forfeited: true, already_complete: false });
     }
@@ -75,7 +91,19 @@ beforeEach(() => {
     }
     if (u.endsWith("/private")) return json(privateBody());
     if (u.includes("/presence")) return json({ status: "active", match_id: "m1", active: true });
-    if (/\/matches\/m1$/.test(u)) return json(publicBody());
+    if (u.endsWith("/result")) {
+      const body = matchResultV1("forfeit");
+      // The viewer conceded, so the viewer is not the winner.
+      (body.payload as Record<string, unknown>).winner_user_id = "userB";
+      return json(body);
+    }
+    if (/\/matches\/m1$/.test(u)) {
+      if (!settled) return json(publicBody());
+      // What the backend reports once the match row is terminal.
+      const b = publicRoundV2(true);
+      apply(b.payload as Record<string, unknown>);
+      return json(b);
+    }
     return json({});
   }) as unknown as typeof fetch);
 });
@@ -166,5 +194,59 @@ describe("the Forfeit Match control", () => {
   it("is never mounted twice", async () => {
     await mount();
     expect(screen.getAllByTestId("ranked-forfeit")).toHaveLength(1);
+  });
+});
+
+
+// ── the transition the player waits for ───────────────────────────────────
+//
+// THE GAP THIS CLOSES. Every test above sends the forfeit command against a
+// fake backend that reports the match ACTIVE forever, so none of them ever
+// asked what happens once it settles — and in production it did not settle
+// visibly: the snapshot's `match_over` came from the combat ENGINE, which an
+// explicit forfeit never completes, so the arena polled a match it had already
+// lost and never reached its terminal frame. The backend now reports the match
+// ROW's terminal, and these pin the client end of that.
+
+describe("once the backend has settled the forfeit", () => {
+  beforeEach(() => { settleOnForfeit = true; });
+
+  const forfeit = async () => {
+    await mount();
+    fireEvent.click(await screen.findByTestId("ranked-forfeit"));
+    fireEvent.click(await screen.findByTestId("ranked-forfeit-confirm-action"));
+    await waitFor(() => expect(forfeitCalls).toHaveLength(1));
+  };
+
+  it("enters the ended state with no reload and no remount", async () => {
+    await forfeit();
+    // The SAME mounted component reaches the terminal frame off its own poll.
+    await screen.findByTestId("ranked-match-over");
+  });
+
+  it("leaves the live arena rather than layering over it", async () => {
+    await forfeit();
+    await screen.findByTestId("ranked-match-over");
+    expect(screen.queryByTestId("ranked-match")).toBeNull();
+    // Gameplay controls are gone with it — including the one just pressed.
+    expect(screen.queryByTestId("ranked-forfeit")).toBeNull();
+  });
+
+  it("names the outcome using the existing end-state UI", async () => {
+    await forfeit();
+    const frame = await screen.findByTestId("ranked-match-over");
+    // The server said the opponent won, so this is a defeat by forfeit — the
+    // client reads the reason and the winner, and asserts neither itself.
+    expect(frame).toHaveTextContent(/You forfeited\./);
+  });
+
+  it("stops polling the match it has already lost", async () => {
+    await forfeit();
+    await screen.findByTestId("ranked-match-over");
+    const seen = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } })
+      .mock.calls.length;
+    await new Promise((r) => setTimeout(r, 60));
+    expect((globalThis.fetch as unknown as { mock: { calls: unknown[][] } })
+      .mock.calls.length).toBe(seen);
   });
 });

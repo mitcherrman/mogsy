@@ -6,8 +6,14 @@
 // latest save for a target IS that target's configuration, and it governs the
 // next match created on that lane.
 //
+// LAYOUT. The target selector, Add module, Save and the save state live in a
+// STICKY header, because all four are needed while looking at the list and the
+// list is the thing that scrolls. They used to sit at the bottom, which meant
+// adding a module or saving one began by scrolling past everything.
+//
 // State is deliberately small: the selected target, the loaded revision, the
-// editable format, the catalog, and load/save status. No validation mirror —
+// editable format, the catalog, load/save status, and which row is being
+// dragged. No validation mirror —
 // the backend's Ranked format schema is the authority, and its refusal is
 // rendered verbatim rather than pre-empted by a second set of rules here.
 //
@@ -33,10 +39,11 @@ import {
   type RankedFormatJson,
 } from "@/lib/admin/rankedFormatApi";
 import {
-  addSegment,
   clampChallengeCountForMasterySet,
   formatsDiffer,
+  insertSegmentAt,
   moveSegmentDown,
+  moveSegmentTo,
   moveSegmentUp,
   removeSegment,
   setSegmentField,
@@ -63,6 +70,10 @@ export default function RankedFormatBuilder() {
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
+  // Which row is mid-drag, and where a newly added module goes. `addAt` is
+  // null for "append", which is what an admin who has not chosen means.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [addAt, setAddAt] = useState<number | null>(null);
 
   // Catalog once: it describes the build, not the target.
   useEffect(() => {
@@ -92,6 +103,10 @@ export default function RankedFormatBuilder() {
     setLoading(true);
     setLoadError(null);
     setSave({ kind: "idle" });
+    // The two targets are separate configurations with separate lengths; an
+    // insertion point chosen against one is meaningless against the other.
+    setAddAt(null);
+    setDragIndex(null);
     void fetchFormatConfig(target)
       .then((view) => {
         if (cancelled) return;
@@ -140,6 +155,18 @@ export default function RankedFormatBuilder() {
     setSave({ kind: "idle" });
   };
 
+  /**
+   * Add a module at the chosen slot, and keep the chooser pointing just after
+   * it so building a cycle front-to-back is a run of clicks rather than a
+   * click-then-reorder each time.
+   */
+  const onAddModule = (defaults: RankedFormatJson["segment_pattern"][number]) => {
+    if (!format) return;
+    const at = addAt ?? format.segment_pattern.length;
+    edit(insertSegmentAt(format, defaults, at));
+    setAddAt(Math.min(at + 1, format.segment_pattern.length));
+  };
+
   const onSave = async () => {
     if (!format) return;
     setSave({ kind: "saving" });
@@ -166,7 +193,15 @@ export default function RankedFormatBuilder() {
   return (
     <AdminAuthGate>
       <div className="space-y-4" data-testid="ranked-format-builder">
-        {/* ---- target ---- */}
+        {/* ---- STICKY CONTROLS ----
+            Everything needed while reading the list: which lane is being
+            edited, adding to it, saving it, and what the last save was. All
+            four used to be somewhere the list had to be scrolled past. */}
+        <div
+          className="sticky top-0 z-20 -mx-1 space-y-2 border-b border-border
+            bg-background/95 px-1 pb-2 pt-1 backdrop-blur"
+          data-testid="builder-toolbar"
+        >
         <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Configuration target">
           {CONFIG_TARGETS.map((option) => (
             <button
@@ -209,6 +244,84 @@ export default function RankedFormatBuilder() {
             Saving this configuration affects new Public Ranked matches immediately.
           </p>
         )}
+
+        {/* ---- add + save, always reachable ---- */}
+        {format && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5" data-testid="add-module">
+              <span className="text-[11px] text-muted-foreground">
+                <Plus className="mr-0.5 inline h-3 w-3" />
+                Add module:
+              </span>
+              {catalog?.modules.map((module) => (
+                <Button
+                  key={`${module.module_id}.v${module.module_version}`}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  data-testid={`add-${module.module_id}-v${module.module_version}`}
+                  onClick={() => onAddModule(module.defaults)}
+                >
+                  {module.label}
+                </Button>
+              ))}
+              {/* WHERE it lands. Defaults to the end, which is what the
+                  previous append-only control always did. */}
+              <select
+                aria-label="Insert position for a new module"
+                data-testid="add-position"
+                className="h-7 rounded border border-border bg-background px-1 text-[11px]"
+                value={addAt ?? format.segment_pattern.length}
+                onChange={(e) => setAddAt(Number(e.target.value))}
+              >
+                {Array.from({ length: format.segment_pattern.length + 1 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {i === format.segment_pattern.length ? "at end" : `at ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {dirty && save.kind !== "saving" && (
+                <span className="text-[10px] text-muted-foreground" data-testid="dirty-label">
+                  Unsaved changes
+                </span>
+              )}
+              {save.kind === "saved" && (
+                <span
+                  role="status"
+                  data-testid="save-success"
+                  className="text-[11px] text-emerald-400"
+                >
+                  Saved as revision {save.revision}. New {TARGET_LABELS[target]} matches use
+                  it from now on.
+                </span>
+              )}
+              {save.kind === "error" && !storedConfigInvalid && (
+                <span
+                  role="alert"
+                  data-testid="save-error"
+                  className="text-[11px] text-destructive"
+                >
+                  {save.message}
+                </span>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 text-xs"
+                data-testid="save-config"
+                disabled={save.kind === "saving" || !dirty}
+                onClick={() => void onSave()}
+              >
+                {save.kind === "saving" ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        )}
+        </div>
 
         {/* ---- the stored-config-invalid state, stated plainly ---- */}
         {storedConfigInvalid && (
@@ -268,7 +381,15 @@ export default function RankedFormatBuilder() {
                       module={module}
                       onMoveUp={() => edit(moveSegmentUp(format, index))}
                       onMoveDown={() => edit(moveSegmentDown(format, index))}
+                      onMoveTo={(to) => edit(moveSegmentTo(format, index, to))}
                       onRemove={() => edit(removeSegment(format, index))}
+                      dragging={dragIndex === index}
+                      onDragStart={() => setDragIndex(index)}
+                      onDragEnd={() => setDragIndex(null)}
+                      onDropOn={() => {
+                        if (dragIndex !== null) edit(moveSegmentTo(format, dragIndex, index));
+                        setDragIndex(null);
+                      }}
                       onFieldChange={(key, value) => {
                         let next = setSegmentField(format, index, key, value);
                         if (key === "module_config.mastery_set_id") {
@@ -282,64 +403,6 @@ export default function RankedFormatBuilder() {
                 })}
               </ol>
 
-              {/* ---- add ---- */}
-              <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="add-module">
-                <span className="text-[11px] text-muted-foreground">
-                  <Plus className="mr-0.5 inline h-3 w-3" />
-                  Add module:
-                </span>
-                {catalog?.modules.map((module) => (
-                  <Button
-                    key={`${module.module_id}.v${module.module_version}`}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs"
-                    data-testid={`add-${module.module_id}-v${module.module_version}`}
-                    onClick={() => edit(addSegment(format, module.defaults))}
-                  >
-                    {module.label}
-                  </Button>
-                ))}
-              </div>
-
-              {/* ---- save ---- */}
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-8 text-xs"
-                  data-testid="save-config"
-                  disabled={save.kind === "saving" || !dirty}
-                  onClick={() => void onSave()}
-                >
-                  {save.kind === "saving" ? "Saving…" : "Save"}
-                </Button>
-                {dirty && save.kind !== "saving" && (
-                  <span className="text-[10px] text-muted-foreground" data-testid="dirty-label">
-                    Unsaved changes
-                  </span>
-                )}
-                {save.kind === "saved" && (
-                  <span
-                    role="status"
-                    data-testid="save-success"
-                    className="text-[11px] text-emerald-400"
-                  >
-                    Saved as revision {save.revision}. New {TARGET_LABELS[target]} matches use
-                    it from now on.
-                  </span>
-                )}
-                {save.kind === "error" && !storedConfigInvalid && (
-                  <span
-                    role="alert"
-                    data-testid="save-error"
-                    className="text-[11px] text-destructive"
-                  >
-                    {save.message}
-                  </span>
-                )}
-              </div>
             </>
           )}
         </AdminPanel>

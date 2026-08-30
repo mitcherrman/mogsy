@@ -30,6 +30,49 @@ export function moveSegmentDown(format: RankedFormatJson, index: number): Ranked
   return swapSegments(format, index, index + 1);
 }
 
+/**
+ * Move a segment from one position straight to another.
+ *
+ * The reason this exists rather than being spelled as N calls to
+ * `moveSegmentUp`: a newly added module lands last, and putting it in slot 1
+ * meant clicking ↑ once per module already in the pattern. That is the same
+ * edit either way, but only one of them is a usable control.
+ *
+ * A REMOVE-THEN-INSERT, deliberately, not a swap. Swapping two positions
+ * reorders exactly two rows; dragging row 5 to slot 1 must shift rows 1-4 down
+ * by one and leave their relative order intact, which is what splice does.
+ * Out-of-range and no-op moves return the format unchanged (identity, so the
+ * dirty check does not light up for a move that did not happen).
+ */
+export function moveSegmentTo(
+  format: RankedFormatJson, from: number, to: number,
+): RankedFormatJson {
+  const length = format.segment_pattern.length;
+  if (from < 0 || from >= length || to < 0 || to >= length || from === to) return format;
+  const next = [...format.segment_pattern];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return { ...format, segment_pattern: next };
+}
+
+/**
+ * Insert a new segment at a chosen position rather than only at the end.
+ *
+ * `at` is clamped rather than refused: the caller is a position control whose
+ * bounds are the list it is rendered from, so an out-of-range value is a bug
+ * in the caller, not an instruction to silently drop the admin's new module.
+ */
+export function insertSegmentAt(
+  format: RankedFormatJson, defaults: SegmentSpecJson, at: number,
+): RankedFormatJson {
+  const next = [...format.segment_pattern];
+  const index = Math.max(0, Math.min(at, next.length));
+  // Deep-cloned for the same reason `addSegment` clones: two rows added from
+  // one catalog entry must never share a module_config object.
+  next.splice(index, 0, structuredClone(defaults));
+  return { ...format, segment_pattern: next };
+}
+
 function swapSegments(format: RankedFormatJson, a: number, b: number): RankedFormatJson {
   const next = [...format.segment_pattern];
   [next[a], next[b]] = [next[b], next[a]];

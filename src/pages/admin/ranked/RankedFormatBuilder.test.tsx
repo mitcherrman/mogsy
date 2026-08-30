@@ -212,6 +212,18 @@ async function mount() {
   await screen.findByTestId("segment-list");
 }
 
+/**
+ * Open one module row's settings.
+ *
+ * Rows are COMPACT by default now — a row shows its order, what the slot is
+ * and a one-line summary, and its fields open on demand. Every assertion about
+ * a field therefore opens the row first, exactly as an admin does.
+ */
+const expand = async (index: number) => {
+  await click(screen.getByTestId(`toggle-${index}`));
+  return screen.getByTestId(`segment-row-${index}`);
+};
+
 // ── targets ────────────────────────────────────────────────────────────────
 
 describe("targets", () => {
@@ -333,7 +345,7 @@ describe("add module", () => {
     await mount();
     await click(screen.getByTestId("add-quiz-v1"));
     await click(screen.getByTestId("add-quiz-v1"));
-    await selectOption(within(screen.getByTestId("segment-row-2")).getByLabelText("Question pool"),
+    await selectOption(within(await expand(2)).getByLabelText("Question pool"),
       "hard_cooldowns",
     );
     await click(screen.getByTestId("save-config"));
@@ -349,7 +361,7 @@ describe("add module", () => {
 describe("module settings", () => {
   it("quiz settings serialize into the right places", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await selectOption(within(row).getByLabelText("Question pool"), "hard_cooldowns");
     await setValue(within(row).getByLabelText("Timer (seconds)"), "33");
     await click(screen.getByTestId("save-config"));
@@ -362,7 +374,7 @@ describe("module settings", () => {
 
   it("meta reflex families serialize as a list in catalog option order", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-1");
+    const row = await expand(1);
     // Deselect one, select another out of order.
     await click(within(row).getByTestId("option-1-item_cost"));
     await click(within(row).getByTestId("option-1-recognition:champion"));
@@ -378,8 +390,7 @@ describe("module settings", () => {
 
   it("a cleared number field serializes as null, never as zero", async () => {
     await mount();
-    await setValue(
-      within(screen.getByTestId("segment-row-0")).getByLabelText("Timer (seconds)"), "");
+    await setValue(within(await expand(0)).getByLabelText("Timer (seconds)"), "");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
     expect(mockSave.mock.calls[0][1].segment_pattern[0].timer_seconds).toBeNull();
@@ -387,7 +398,7 @@ describe("module settings", () => {
 
   it("shows what a module fixes without offering it for edit", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-1");
+    const row = await expand(1);
     expect(within(row).getByText(/challenge_count 5/)).toBeInTheDocument();
     expect(within(row).queryByLabelText(/challenge/i)).not.toBeInTheDocument();
     expect(within(row).queryByLabelText(/scoring/i)).not.toBeInTheDocument();
@@ -427,7 +438,7 @@ describe("save", () => {
 
   it("editing one field leaves every sibling field untouched", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await selectOption(within(row).getByLabelText("Question pool"), "hard_cooldowns");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
@@ -569,6 +580,9 @@ describe("surface", () => {
       }),
     );
     await mount();
+    // The row is compact until opened; the "no editor for this module" notice
+    // is part of its settings, so opening it is how an admin reaches it.
+    await expand(1);
     expect(screen.getByTestId("unsupported-module-1")).toBeInTheDocument();
 
     // ...and it survives a save byte for byte rather than being dropped.
@@ -580,5 +594,144 @@ describe("surface", () => {
       module_version: 1,
       challenge_count: 3,
     });
+  });
+});
+
+// ── the reformat: compact rows, sticky controls, direct reordering ─────────
+//
+// The builder was correct and unusable: every field of every module rendered
+// expanded, Add and Save sat below all of it, and putting a newly added module
+// in slot 1 cost one ↑ click per module already in the pattern. These pin the
+// shape that replaced it — NOT the styling, but the properties that made the
+// old one impractical.
+
+describe("builder layout", () => {
+  it("keeps the target, Add and Save together in one sticky toolbar", async () => {
+    await mount();
+    const toolbar = screen.getByTestId("builder-toolbar");
+    // All four controls live in the SAME element, which is the one that is
+    // sticky. Asserting each separately would pass with them scattered again.
+    expect(within(toolbar).getByTestId("target-admin_bot")).toBeInTheDocument();
+    expect(within(toolbar).getByTestId("target-public")).toBeInTheDocument();
+    expect(within(toolbar).getByTestId("add-module")).toBeInTheDocument();
+    expect(within(toolbar).getByTestId("save-config")).toBeInTheDocument();
+    expect(toolbar.className).toContain("sticky");
+  });
+
+  it("reaches Add and Save without passing through the module list", async () => {
+    await mount();
+    const toolbar = screen.getByTestId("builder-toolbar");
+    const list = screen.getByTestId("segment-list");
+    // The list is not an ancestor of either control: no amount of list length
+    // can put them out of reach.
+    expect(list.contains(toolbar)).toBe(false);
+    expect(toolbar.contains(screen.getByTestId("add-quiz-v1"))).toBe(true);
+    expect(toolbar.contains(screen.getByTestId("save-config"))).toBe(true);
+  });
+
+  it("shows the save state in the toolbar, not at the foot of the page", async () => {
+    await mount();
+    await click(screen.getByTestId("move-down-0"));
+    const toolbar = screen.getByTestId("builder-toolbar");
+    expect(within(toolbar).getByTestId("dirty-label")).toBeInTheDocument();
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() =>
+      expect(within(toolbar).getByTestId("save-success")).toBeInTheDocument());
+  });
+
+  it("keeps the Public warning, and adds no draft/publish step", async () => {
+    await mount();
+    await click(screen.getByTestId("target-public"));
+    await waitFor(() =>
+      expect(screen.getByTestId("public-target-warning")).toHaveTextContent(
+        "Saving this configuration affects new Public Ranked matches immediately."));
+    // Direct save remains the only path: no draft, no publish, no activate.
+    expect(screen.queryByText(/draft|publish|activate/i)).toBeNull();
+  });
+});
+
+describe("compact rows", () => {
+  it("renders a summary per row and no fields until asked", async () => {
+    await mount();
+    expect(screen.getByTestId("segment-summary-0")).toHaveTextContent(
+      "Quiz — easy_item_cost — 20s");
+    expect(screen.getByTestId("segment-summary-1")).toHaveTextContent(
+      "Meta Reflex — 5 cards — 6s/card");
+    // The thing that made the page long: every field, always.
+    expect(screen.queryByLabelText("Question pool")).toBeNull();
+    expect(screen.queryByTestId("segment-body-0")).toBeNull();
+  });
+
+  it("expands and collapses one row without touching the others", async () => {
+    await mount();
+    await click(screen.getByTestId("toggle-0"));
+    expect(screen.getByTestId("segment-body-0")).toBeInTheDocument();
+    expect(screen.queryByTestId("segment-body-1")).toBeNull();
+    expect(screen.getByTestId("toggle-0")).toHaveAttribute("aria-expanded", "true");
+
+    await click(screen.getByTestId("toggle-0"));
+    expect(screen.queryByTestId("segment-body-0")).toBeNull();
+  });
+});
+
+describe("direct reordering", () => {
+  it("moves the last module to first in ONE interaction", async () => {
+    await mount();
+    // Three rows, so a swap-only control could not do this in one step either.
+    await click(screen.getByTestId("add-quiz-v1"));
+    expect(screen.getAllByTestId(/^segment-row-/)).toHaveLength(3);
+
+    await selectOption(screen.getByTestId("position-2"), "0");
+
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    const pattern = mockSave.mock.calls[0][1].segment_pattern;
+    // The moved row leads, and the two it passed keep their relative order —
+    // a move, not a swap.
+    expect(pattern.map((s) => s.analytics_tag)).toEqual(
+      ["playtest_easy_1", "first", "block"]);
+  });
+
+  it("serializes the order exactly as shown, and changes nothing else", async () => {
+    await mount();
+    await selectOption(screen.getByTestId("position-1"), "0");
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    const pattern = mockSave.mock.calls[0][1].segment_pattern;
+    expect(pattern.map((s) => s.module_id)).toEqual(["item_cost_duel", "quiz"]);
+    // Phase 4's guarantee is untouched by the new control: the unexposed field
+    // still rides along byte for byte.
+    expect(pattern[1].pressure_seconds).toBe(4);
+  });
+
+  it("still offers the one-place arrows as a fallback", async () => {
+    await mount();
+    await click(screen.getByTestId("move-down-0"));
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    expect(mockSave.mock.calls[0][1].segment_pattern.map((s) => s.module_id))
+      .toEqual(["item_cost_duel", "quiz"]);
+  });
+});
+
+describe("add module", () => {
+  it("adds at the chosen position rather than only at the end", async () => {
+    await mount();
+    await selectOption(screen.getByTestId("add-position"), "0");
+    await click(screen.getByTestId("add-quiz-v1"));
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    const pattern = mockSave.mock.calls[0][1].segment_pattern;
+    expect(pattern.map((s) => s.analytics_tag)).toEqual(
+      ["playtest_easy_1", "first", "block"]);
+  });
+
+  it("still appends when no position is chosen", async () => {
+    await mount();
+    await click(screen.getByTestId("add-quiz-v1"));
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    expect(mockSave.mock.calls[0][1].segment_pattern.map((s) => s.analytics_tag))
+      .toEqual(["first", "block", "playtest_easy_1"]);
   });
 });

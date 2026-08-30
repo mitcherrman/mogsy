@@ -201,6 +201,18 @@ async function mount() {
   await screen.findByTestId("segment-list");
 }
 
+/**
+ * Open one module row's settings.
+ *
+ * Rows are COMPACT by default now — a row shows its order, what the slot is
+ * and a one-line summary, and its fields open on demand. Every assertion about
+ * a field therefore opens the row first, exactly as an admin does.
+ */
+const expand = async (index: number) => {
+  await click(screen.getByTestId(`toggle-${index}`));
+  return screen.getByTestId(`segment-row-${index}`);
+};
+
 describe("mastery_slice catalog entry — generic rendering", () => {
   it("appears in Add Module using only the catalog label, no bespoke code", async () => {
     await mount();
@@ -211,7 +223,7 @@ describe("mastery_slice catalog entry — generic rendering", () => {
 
   it("renders Set (enum) and Questions (integer) via the existing EnumField/NumberField", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     expect(within(row).getAllByText(/Mastery/).length).toBeGreaterThan(0);
     const setField = within(row).getByLabelText("Set");
     expect(setField.tagName).toBe("SELECT");
@@ -221,7 +233,7 @@ describe("mastery_slice catalog entry — generic rendering", () => {
 
   it("the Set dropdown offers exactly the fixture's options", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     const setField = within(row).getByLabelText("Set") as HTMLSelectElement;
     const optionTexts = Array.from(setField.options).map((o) => o.textContent);
     expect(optionTexts).toContain("Ahri — Champion Mastery");
@@ -230,10 +242,10 @@ describe("mastery_slice catalog entry — generic rendering", () => {
 
   it("does not expose challenge_count on Quiz or Meta Reflex-shaped modules", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     // Sanity: Quiz's catalog entry (added separately) has no Questions field.
     await click(screen.getByTestId("add-quiz-v1"));
-    const quizRow = screen.getByTestId("segment-row-1");
+    const quizRow = await expand(1);
     expect(within(quizRow).queryByLabelText("Questions")).not.toBeInTheDocument();
     expect(within(row).getByLabelText("Questions")).toBeInTheDocument();
   });
@@ -242,7 +254,7 @@ describe("mastery_slice catalog entry — generic rendering", () => {
 describe("mastery_slice catalog entry — writes", () => {
   it("selecting a set writes module_config.mastery_set_id", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
@@ -254,7 +266,7 @@ describe("mastery_slice catalog entry — writes", () => {
 
   it("editing Questions writes segment challenge_count, not a new key", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await setValue(within(row).getByLabelText("Questions"), "7");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
@@ -264,7 +276,7 @@ describe("mastery_slice catalog entry — writes", () => {
 
   it("never sends a duplicate question_count key", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await setValue(within(row).getByLabelText("Questions"), "6");
     await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
     await click(screen.getByTestId("save-config"));
@@ -275,7 +287,7 @@ describe("mastery_slice catalog entry — writes", () => {
 
   it("changing the set preserves unrelated segment fields (analytics_tag)", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
@@ -286,7 +298,7 @@ describe("mastery_slice catalog entry — writes", () => {
 
   it("round-trips a full save payload: load -> edit one field -> save", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await setValue(within(row).getByLabelText("Questions"), "3");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
@@ -301,7 +313,7 @@ describe("mastery_slice catalog entry — writes", () => {
 describe("mastery_slice catalog entry — challenge_count soft clamp", () => {
   it("clamps challenge_count down when it exceeds the newly selected set's max_questions", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     // Starting default is 5, within Ahri's max of 8. Switch to the matchup
     // set, whose max_questions is 4 — below the current 5.
     expect(within(row).getByLabelText("Questions")).toHaveValue(5);
@@ -311,7 +323,7 @@ describe("mastery_slice catalog entry — challenge_count soft clamp", () => {
 
   it("does not clamp when the value is already within the new set's max_questions", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await setValue(within(row).getByLabelText("Questions"), "2");
     await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
     expect(within(row).getByLabelText("Questions")).toHaveValue(2);
@@ -335,7 +347,7 @@ describe("mastery_slice catalog entry — challenge_count soft clamp", () => {
       ],
     });
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await setValue(within(row).getByLabelText("Questions"), "50");
     await selectOption(within(row).getByLabelText("Set"), "playtest.champion.ahri");
     expect(within(row).getByLabelText("Questions")).toHaveValue(50);
@@ -343,7 +355,7 @@ describe("mastery_slice catalog entry — challenge_count soft clamp", () => {
 
   it("the clamp is presentational — the clamped value, not a client-rejected one, is what saves", async () => {
     await mount();
-    const row = screen.getByTestId("segment-row-0");
+    const row = await expand(0);
     await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
@@ -352,5 +364,27 @@ describe("mastery_slice catalog entry — challenge_count soft clamp", () => {
     expect((segment.module_config as Record<string, unknown>).mastery_set_id).toBe(
       "playtest.matchup.ahri.syndra",
     );
+  });
+});
+
+// ── the compact row's one line, for a Mastery slot ─────────────────────────
+
+describe("mastery_slice — collapsed summary", () => {
+  it("names the SET and the question count without opening the row", async () => {
+    await mount();
+    // The two things an admin checks when reading a Mastery slot in a list:
+    // which set it draws from, and how many of its steps this slot uses.
+    expect(screen.getByTestId("segment-summary-0")).toHaveTextContent(
+      "Mastery — Ahri — Champion Mastery — 5 questions");
+    expect(screen.queryByLabelText("Set")).toBeNull();
+  });
+
+  it("follows the set and the count as they are edited", async () => {
+    await mount();
+    const row = await expand(0);
+    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
+    await setValue(within(row).getByLabelText("Questions"), "1");
+    expect(screen.getByTestId("segment-summary-0")).toHaveTextContent(
+      "Mastery — Ahri vs Syndra — Matchup Mastery — 1 question");
   });
 });
