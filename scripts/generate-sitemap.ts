@@ -18,6 +18,7 @@ import {
   itemEntries,
   leagueBlogEntries,
   parseChampionNames,
+  parseItemSlugs,
   proYearEntries,
   renderSitemap,
   type SitemapEntry,
@@ -88,10 +89,13 @@ async function fetchProYearEntriesFromApi(): Promise<SitemapEntry[]> {
 }
 
 async function fetchItemEntries(): Promise<SitemapEntry[]> {
-  if (!COMBAT_API_URL) return [];
+  if (!COMBAT_API_URL) {
+    console.warn("[sitemap] VITE_COMBAT_API_URL not set — item pages OMITTED.");
+    return [];
+  }
   try {
     const data = await fetchJson<{ items?: Array<{ slug?: string }> }>(`${COMBAT_API_URL}/api/items`);
-    return itemEntries((data.items ?? []).map((item) => item.slug ?? "").filter(Boolean));
+    return itemEntries(parseItemSlugs(data));
   } catch (error) {
     console.warn("[sitemap] item pages OMITTED:", error instanceof Error ? error.message : error);
     return [];

@@ -8,7 +8,6 @@
 // this module under plain tsx without tsconfig path resolution.
 import { SITE_URL } from "../site-config";
 import { isLeagueBlogPost } from "../blog/league-content";
-import { PRERENDERED_ITEM_SLUGS } from "../items/prerender-manifest";
 
 export interface SitemapEntry {
   path: string;
@@ -53,11 +52,23 @@ export function buildStaticEntries(): SitemapEntry[] {
   ];
 }
 
-export function itemEntries(known: string[]): SitemapEntry[] {
-  const available = new Set(known);
-  return PRERENDERED_ITEM_SLUGS.filter((slug) => available.has(slug)).map((slug) => ({
-    path: `/items/${slug}`, changefreq: "weekly" as const, priority: "0.7",
-  }));
+/**
+ * Extract item slugs from the /api/items index payload. Shared by
+ * scripts/generate-sitemap.ts and scripts/prerender-items.ts so the sitemap's
+ * item URLs and the prerendered item pages both derive from the backend's
+ * public-item-reference roster and can never drift from one another — the
+ * backend (validated_current + is_current_sr + shop/upgrade acquisition) is
+ * the sole authority on which items are public; nothing here re-filters it.
+ */
+export function parseItemSlugs(data: { items?: Array<{ slug?: string }> }): string[] {
+  return (data?.items ?? []).map((item) => item?.slug ?? "").filter(Boolean);
+}
+
+/** Item entries for every slug in the backend's public item roster. */
+export function itemEntries(slugs: string[]): SitemapEntry[] {
+  return slugs
+    .filter((slug) => typeof slug === "string" && slug.trim() !== "")
+    .map((slug) => ({ path: `/items/${slug}`, changefreq: "weekly" as const, priority: "0.7" }));
 }
 
 /**

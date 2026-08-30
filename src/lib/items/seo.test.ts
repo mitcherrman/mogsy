@@ -33,9 +33,9 @@ describe("item SEO", () => {
     expect(seo.canonical).toBe("https://mogzy.lol/items/imperial-mandate");
   });
 
-  it("only promotes the certified item when the API resolves it", () => {
-    expect(itemEntries(["imperial-mandate", "other-item"]).map((entry) => entry.path))
-      .toEqual(["/items/imperial-mandate"]);
+  it("publishes every slug the backend's public /api/items roster returns — no separate manifest gate", () => {
+    expect(itemEntries(["imperial-mandate", "amplifying-tome"]).map((entry) => entry.path))
+      .toEqual(["/items/imperial-mandate", "/items/amplifying-tome"]);
     expect(itemEntries([])).toEqual([]);
   });
 });

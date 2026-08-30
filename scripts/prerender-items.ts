@@ -4,8 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { loadEnv } from "vite";
 import ItemReference from "../src/components/items/ItemReference";
 import { buildItemJsonLd, buildItemSeo } from "../src/lib/items/seo";
-import { PRERENDERED_ITEM_SLUGS } from "../src/lib/items/prerender-manifest";
 import { itemIconUrl, type CanonicalItem } from "../src/lib/items/types";
+import { parseItemSlugs } from "../src/lib/seo/sitemap";
 
 const env = loadEnv("production", process.cwd(), "");
 const api = (
@@ -39,9 +39,28 @@ function documentFor(template: string, item: CanonicalItem) {
   const body = renderToStaticMarkup(ItemReference({ item, iconUrl: icon }) as never);
   return html.replace('<div id="root"></div>', `<div id="root">${body}</div>`);
 }
+/** Run `worker` over `items` with at most `limit` in flight at once. */
+async function runBounded<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  async function lane() {
+    while (next < items.length) {
+      const item = items[next++];
+      await worker(item);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
+}
+
 if (!api) throw new Error("VITE_COMBAT_API_URL is required to prerender certified item pages");
+
+const rosterResponse = await fetch(`${api}/api/items`);
+if (!rosterResponse.ok) throw new Error(`item roster fetch returned HTTP ${rosterResponse.status}`);
+const slugs = parseItemSlugs(await rosterResponse.json());
+if (slugs.length === 0) throw new Error("item roster is empty — refusing to prerender zero item pages");
+
 const template = readFileSync(resolve(dist, "index.html"), "utf8");
-for (const slug of PRERENDERED_ITEM_SLUGS) {
+
+await runBounded(slugs, 8, async (slug) => {
   const response = await fetch(`${api}/api/items/${slug}`);
   if (!response.ok) throw new Error(`${slug} API returned HTTP ${response.status}`);
   const item = (await response.json() as { item?: CanonicalItem }).item;
@@ -50,4 +69,4 @@ for (const slug of PRERENDERED_ITEM_SLUGS) {
   mkdirSync(target, { recursive: true });
   writeFileSync(resolve(target, "index.html"), documentFor(template, item));
   console.log(`[prerender] wrote items/${slug}/index.html`);
-}
+});

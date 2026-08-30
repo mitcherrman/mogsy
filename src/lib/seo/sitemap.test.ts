@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildStaticEntries,
   championDocEntries,
+  itemEntries,
   leagueBlogEntries,
   parseChampionNames,
+  parseItemSlugs,
   proYearEntries,
   renderSitemap,
 } from "./sitemap";
@@ -92,6 +94,21 @@ describe("sitemap builders", () => {
       "/lol/docs/champions/kaisa",
       "/lol/docs/champions/dr-mundo",
     ]);
+  });
+
+  it("item entries derive one-to-one from the backend's public /api/items roster, with no separate slug list to drift", () => {
+    const slugs = parseItemSlugs({
+      items: [{ slug: "imperial-mandate" }, { slug: "amplifying-tome" }, { slug: "" }, {}],
+    });
+    expect(slugs).toEqual(["imperial-mandate", "amplifying-tome"]);
+    // The backend already excludes turret/minion/elixir/distributed items from
+    // /api/items — the sitemap must publish exactly what it's given, not
+    // re-filter through a hardcoded manifest.
+    expect(itemEntries(slugs).map((e) => e.path)).toEqual([
+      "/items/imperial-mandate",
+      "/items/amplifying-tome",
+    ]);
+    expect(itemEntries(["anti-tower-socks"]).map((e) => e.path)).toEqual(["/items/anti-tower-socks"]);
   });
 
   it("pro year entries include only years with imported game rows", () => {
