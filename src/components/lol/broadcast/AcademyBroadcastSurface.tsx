@@ -180,6 +180,9 @@ export default function AcademyBroadcastSurface({
   const suffix = variant === "desktop" ? "" : "-mobile";
   const desktop = variant === "desktop";
   const view = feedView(feed);
+  const pages = view.brief
+    ? splitBriefSections(view.brief.sections)
+    : { left: [], right: [] };
 
   return (
     <section
@@ -189,8 +192,13 @@ export default function AcademyBroadcastSurface({
       // flex-col is load-bearing: it stops the img's negative vertical margins
       // from collapsing through this box, which would silently grow it back to
       // the full canvas and misalign every page-relative overlay coordinate.
+      // container-type: inline-size makes THIS box the query container, so all
+      // page typography/icon sizing below resolves against the tome's real
+      // width instead of the viewport (see the CQ ramp above).
       className={cn("relative flex flex-col", className)}
+      style={{ containerType: "inline-size" }}
     >
+
       {/* Ambient energy behind the tome — it halos the painted silhouette
           through the PNG's transparent exterior. Pulses only while
           transmitting and only when motion is welcome; otherwise it holds a
