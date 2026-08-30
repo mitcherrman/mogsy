@@ -129,38 +129,44 @@ const CQ = {
   meta: "clamp(8px, 2.6cqw, 10px)",
   actionText: "clamp(8.5px, 2.7cqw, 11px)",
   actionMinHeight: "clamp(20px, 7cqw, 28px)",
+  /**
+   * The band reserved for the patch title above BOTH pages in brief mode.
+   * Reserving the same strip on the right page (which shows no title) is
+   * what puts BUFFS and NERFS on the same eye line: generous enough for the
+   * headlineBrief ramp (≤14px at ~1.375 line-height) plus its small margin.
+   */
+  titleReserve: "clamp(14px, 5.6cqw, 22px)",
 } as const;
 
 /**
- * Split the brief's sections across the two pages by WEIGHT, not by count.
+ * Assign the brief's sections to the MIRRORED spread:
  *
- * ceil(n/2) packed Buffs + Nerfs (the two biggest groups) onto the left page
- * and stranded Adjustments alone on the right. Weight = entry count, so the
- * spread balances for any future patch shape: a greedy walk keeps sections in
- * their Buffs → Nerfs → Adjustments order and hands over to the right page as
- * soon as the left page holds at least half the icons. Both pages always get
- * at least one section when there is more than one.
+ *   LEFT  page top  ← Buffs            RIGHT page top  ← Nerfs
+ *   LEFT  page base ← the CTA          RIGHT page base ← everything else
+ *
+ * The projection always orders Buffs → Nerfs → Adjustments, so this is a
+ * role lookup, never entity- or count-specific: any future patch with the
+ * same three directions lands identically, and icon counts only affect how
+ * each grid wraps within its own page. Without a Buffs section the next
+ * section leads the left page so it never reads empty.
  */
-export function splitBriefSections(sections: PatchBriefSection[]): {
-  left: PatchBriefSection[];
-  right: PatchBriefSection[];
+export function briefSpread(sections: PatchBriefSection[]): {
+  leftTop: PatchBriefSection | null;
+  rightTop: PatchBriefSection | null;
+  rightLower: PatchBriefSection[];
 } {
-  if (sections.length <= 1) return { left: sections, right: [] };
-  const total = sections.reduce((sum, s) => sum + s.entries.length, 0);
-  const half = total / 2;
-  let carried = 0;
-  let cut = 0;
-  for (let i = 0; i < sections.length; i++) {
-    const weight = sections[i].entries.length;
-    // Take the section while its midpoint still lands in the left half.
-    if (i > 0 && carried + weight / 2 > half) break;
-    carried += weight;
-    cut = i + 1;
+  const buff = sections.find((s) => s.direction === "buff") ?? null;
+  const nerf = sections.find((s) => s.direction === "nerf") ?? null;
+  const rest = sections.filter((s) => s !== buff && s !== nerf);
+  if (buff) {
+    return {
+      leftTop: buff,
+      rightTop: nerf ?? rest[0] ?? null,
+      rightLower: nerf ? rest : rest.slice(1),
+    };
   }
-  // Never leave a page empty: the right page owns the CTA and must read as
-  // part of the same spread.
-  cut = Math.min(Math.max(cut, 1), sections.length - 1);
-  return { left: sections.slice(0, cut), right: sections.slice(cut) };
+  const [first, ...tail] = sections;
+  return { leftTop: first ?? null, rightTop: null, rightLower: tail };
 }
 
 
@@ -180,9 +186,7 @@ export default function AcademyBroadcastSurface({
   const suffix = variant === "desktop" ? "" : "-mobile";
   const desktop = variant === "desktop";
   const view = feedView(feed);
-  const pages = view.brief
-    ? splitBriefSections(view.brief.sections)
-    : { left: [], right: [] };
+  const spread = view.brief ? briefSpread(view.brief.sections) : null;
 
   return (
     <section
@@ -241,123 +245,165 @@ export default function AcademyBroadcastSurface({
           light pages take dark-navy ink rather than the app's light-on-dark
           type. */}
       <div className="absolute inset-0">
-        {/* Left page — the headline (and the first half of the brief).
-            The parchment SAFE AREA is deliberately tighter in brief mode
-            (y 16.5–14.5% vs 15–13%): the icon grids are the tallest content
-            the page ever holds, and that extra 1.5% at each end is the margin
-            that keeps the eyebrow clear of the top ornament and the last icon
-            row clear of the painted bottom frame at every tome width. */}
-        <div
-          className="absolute flex flex-col items-center justify-center text-center"
-          style={{
-            left: "8%",
-            width: "38%",
-            top: view.brief ? "16.5%" : "15%",
-            bottom: view.brief ? "14.5%" : "13%",
-          }}
-        >
-          {/* Every size here is container-relative (CQ ramp above): the page
-              region is 38% of the tome, so the same rule works at a 200px
-              lane and at the 380px cap without breakpoint snapping. */}
-          <p
-            className="font-bold uppercase tracking-[0.26em] text-[#6b5418]"
-            style={{ fontSize: CQ.eyebrow }}
-          >
-            {view.eyebrow}
-          </p>
-          <h2
-            className={cn(
-              "max-w-full text-balance font-semibold leading-snug text-[#1d2b47]",
-              view.brief ? "mt-0.5" : "mt-1.5",
-            )}
-            style={{
-              fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
-              fontSize: view.brief ? CQ.headlineBrief : CQ.headlinePlain,
-            }}
-          >
-            {view.headline}
-          </h2>
-          {/* Icon-only brief, split across the spread by WEIGHT (see
-              splitBriefSections): the left page no longer packs Buffs + Nerfs
-              while Adjustments strands the right page. Deterministic — count
-              based, no measuring, no rotation. */}
-          {pages.left.length > 0 && (
-            <div
-              className="flex w-full flex-col"
-              style={{ marginTop: CQ.iconGap, gap: CQ.sectionGap }}
+        {spread ? (
+          <>
+            {/* MIRRORED BRIEF SPREAD. The patch title is the one intentional
+                asymmetry: it floats in a band reserved above the LEFT page
+                only. Both pages pad down by the same title band, so BUFFS
+                (left top) and NERFS (right top) open on the same eye line,
+                and both pages close on the same baseline — CTA lower-left,
+                Adjustments lower-right. justify-between holds those anchors
+                no matter how many icons each grid wraps to. */}
+            <h2
+              className="absolute text-center font-semibold leading-snug text-[#1d2b47]"
+              style={{
+                left: "8%",
+                width: "38%",
+                top: "16.5%",
+                fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
+                fontSize: CQ.headlineBrief,
+              }}
             >
-              {pages.left.map((section) => (
-                <PatchBriefSectionBlock key={section.direction} section={section} />
-              ))}
-            </div>
-          )}
-        </div>
+              {view.headline}
+            </h2>
 
-        {/* Right page — the rest of the brief plus the CTA. Empty for feeds
-            with nothing to add; a blank parchment page is an intentional state
-            for an open book. */}
-        <div
-          className="absolute flex flex-col items-center justify-center text-center"
-          style={{
-            left: "54%",
-            width: "38%",
-            top: view.brief ? "16.5%" : "15%",
-            bottom: view.brief ? "14.5%" : "13%",
-          }}
-        >
-          {pages.right.length > 0 && (
+            {/* Left page — BUFFS under the title, CTA at the base. The brief
+                safe area (y 16.5–14.5%) stays tighter than the prose pages':
+                the icon grids are the tallest content the book ever holds,
+                and the extra margin keeps the title clear of the top ornament
+                and the CTA clear of the painted bottom frame. */}
             <div
-              className="flex w-full flex-col"
-              style={{ marginBottom: CQ.sectionGap, gap: CQ.sectionGap }}
+              className="absolute flex flex-col items-center justify-between text-center"
+              style={{
+                left: "8%",
+                width: "38%",
+                top: "16.5%",
+                bottom: "14.5%",
+                paddingTop: CQ.titleReserve,
+              }}
             >
-              {pages.right.map((section) => (
-                <PatchBriefSectionBlock key={section.direction} section={section} />
-              ))}
-            </div>
-          )}
-          {view.summary && (
-            <p
-              className="max-w-[24ch] leading-relaxed text-[#3f4a63]"
-              style={{ fontSize: CQ.body }}
-            >
-              {view.summary}
-            </p>
-          )}
-          {view.timestamp && (
-            <p
-              className="mt-1.5 uppercase tracking-[0.18em] text-[#176d93]"
-              style={{ fontSize: CQ.meta }}
-            >
-              {view.timestamp}
-            </p>
-          )}
-          {(view.primaryAction || view.secondaryAction) && (
-            <div
-              className="flex flex-wrap items-center justify-center gap-1.5"
-              style={{ marginTop: view.brief ? CQ.iconGap : "0.5rem" }}
-            >
-              {view.primaryAction && (
-                <BroadcastActionLink action={view.primaryAction} primary />
+              {spread.leftTop ? (
+                <PatchBriefSectionBlock section={spread.leftTop} />
+              ) : (
+                <div />
               )}
-              {view.secondaryAction && (
-                <BroadcastActionLink action={view.secondaryAction} />
-              )}
-            </div>
-          )}
-          {view.pager && (
-            <div aria-hidden className="mt-2 flex items-center gap-1.5">
-              {Array.from({ length: view.pager.count }, (_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "h-1 w-1 rounded-full",
-                    i === view.pager!.index ? "bg-[#8a6d2a]" : "bg-[#8a6d2a]/35",
+              {(view.primaryAction || view.secondaryAction) && (
+                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                  {view.primaryAction && (
+                    <BroadcastActionLink action={view.primaryAction} primary />
                   )}
-                />
-              ))}
+                  {view.secondaryAction && (
+                    <BroadcastActionLink action={view.secondaryAction} />
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* Right page — NERFS at the shared eye line, Adjustments at the
+                base, mirroring the CTA's lower-left seat. */}
+            <div
+              className="absolute flex flex-col items-center justify-between text-center"
+              style={{
+                left: "54%",
+                width: "38%",
+                top: "16.5%",
+                bottom: "14.5%",
+                paddingTop: CQ.titleReserve,
+              }}
+            >
+              {spread.rightTop ? (
+                <PatchBriefSectionBlock section={spread.rightTop} />
+              ) : (
+                <div />
+              )}
+              {spread.rightLower.length > 0 ? (
+                <div
+                  className="flex w-full flex-col"
+                  style={{ gap: CQ.sectionGap }}
+                >
+                  {spread.rightLower.map((section) => (
+                    <PatchBriefSectionBlock key={section.direction} section={section} />
+                  ))}
+                </div>
+              ) : (
+                <div />
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Prose feeds: headline page (left) and detail page (right). A
+                blank right page is an intentional state for an open book. */}
+            <div
+              className="absolute flex flex-col items-center justify-center text-center"
+              style={{ left: "8%", width: "38%", top: "15%", bottom: "13%" }}
+            >
+              {/* Every size here is container-relative (CQ ramp above): the
+                  page region is 38% of the tome, so the same rule works at a
+                  200px lane and at the 380px cap without breakpoint snapping. */}
+              <p
+                className="font-bold uppercase tracking-[0.26em] text-[#6b5418]"
+                style={{ fontSize: CQ.eyebrow }}
+              >
+                {view.eyebrow}
+              </p>
+              <h2
+                className="mt-1.5 max-w-full text-balance font-semibold leading-snug text-[#1d2b47]"
+                style={{
+                  fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
+                  fontSize: CQ.headlinePlain,
+                }}
+              >
+                {view.headline}
+              </h2>
+            </div>
+
+            <div
+              className="absolute flex flex-col items-center justify-center text-center"
+              style={{ left: "54%", width: "38%", top: "15%", bottom: "13%" }}
+            >
+              {view.summary && (
+                <p
+                  className="max-w-[24ch] leading-relaxed text-[#3f4a63]"
+                  style={{ fontSize: CQ.body }}
+                >
+                  {view.summary}
+                </p>
+              )}
+              {view.timestamp && (
+                <p
+                  className="mt-1.5 uppercase tracking-[0.18em] text-[#176d93]"
+                  style={{ fontSize: CQ.meta }}
+                >
+                  {view.timestamp}
+                </p>
+              )}
+              {(view.primaryAction || view.secondaryAction) && (
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                  {view.primaryAction && (
+                    <BroadcastActionLink action={view.primaryAction} primary />
+                  )}
+                  {view.secondaryAction && (
+                    <BroadcastActionLink action={view.secondaryAction} />
+                  )}
+                </div>
+              )}
+              {view.pager && (
+                <div aria-hidden className="mt-2 flex items-center gap-1.5">
+                  {Array.from({ length: view.pager.count }, (_, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        "h-1 w-1 rounded-full",
+                        i === view.pager!.index ? "bg-[#8a6d2a]" : "bg-[#8a6d2a]/35",
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

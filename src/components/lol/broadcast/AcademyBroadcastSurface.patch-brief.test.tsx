@@ -8,11 +8,13 @@
  * Visible assertions use a visibility-aware text walker, never textContent,
  * so an sr-only leak would fail the suite.
  *
- * Also pinned: the ONLY visible text is PATCH BRIEF, the patch label, the
- * section headings, and Read full report — no summaries, numbers, arrows, or
- * captions survive; empty sections are absent; the CTA targets the patch;
- * and composing the brief centerpiece still creates no audio element and no
- * toast.
+ * Also pinned: the ONLY visible text is the patch label, the section
+ * headings, and Read full report (the "PATCH BRIEF" eyebrow is gone — the
+ * spread is a mirrored Buffs-left / Nerfs-right composition whose only
+ * intentional asymmetry is the patch title above the left page); no
+ * summaries, numbers, arrows, or captions survive; empty sections are
+ * absent; the CTA targets the patch; and composing the brief centerpiece
+ * still creates no audio element and no toast.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -191,16 +193,19 @@ describe.each(["desktop", "mobile"] as const)(
     const suffix = variant === "desktop" ? "" : "-mobile";
     const surface = () => screen.getByTestId(`academy-broadcast-surface${suffix}`);
 
-    it("renders ONLY the approved text: PATCH BRIEF, patch label, headings, CTA", () => {
+    it("renders ONLY the approved text: patch label, headings, CTA — no PATCH BRIEF eyebrow", () => {
       renderSurface(variant);
       let text = visibleText(surface());
-      for (const allowed of ["Patch Brief", "Patch 26.14", "Buffs", "Nerfs", "Adjustments", "Read full report"]) {
+      for (const allowed of ["Patch 26.14", "Buffs", "Nerfs", "Adjustments", "Read full report"]) {
         expect(text).toContain(allowed);
         // split/join, not replaceAll: the app's TS lib target is ES2020.
         text = text.split(allowed).join("");
       }
       // Nothing else is visible: no summaries, numbers, arrows, or captions.
       expect(text.replace(/\s+/g, "")).toBe("");
+      // The eyebrow is gone entirely; the title alone names the patch.
+      expect(visibleText(surface())).not.toContain("Patch Brief");
+      expect(visibleText(surface())).not.toContain("BRIEF");
     });
 
     it("groups every qualifying entity once: buffs, nerfs, adjustments grids", () => {
@@ -259,28 +264,34 @@ describe.each(["desktop", "mobile"] as const)(
       );
     });
 
-    it("splits sections across the spread by weight, with the CTA closing the right page", () => {
+    it("mirrors the spread: Buffs lead the left page, Nerfs the right; CTA lower-left, Adjustments lower-right", () => {
       renderSurface(variant);
       const s = surface();
       const [leftPage, rightPage] = s.querySelectorAll(":scope > div:last-child > div");
-      // Weight-balanced (splitBriefSections): Buffs leads the headline page and
-      // the remaining sections fill the right page instead of stranding it with
-      // Adjustments alone. Both pages always carry at least one section.
-      expect(leftPage.querySelector('[data-testid="patch-brief-section-buff"]')).toBeTruthy();
-      expect(leftPage.querySelectorAll('[data-testid^="patch-brief-section-"]').length)
-        .toBeGreaterThanOrEqual(1);
-      expect(rightPage.querySelectorAll('[data-testid^="patch-brief-section-"]').length)
-        .toBeGreaterThanOrEqual(1);
-      expect(
-        rightPage.querySelector('[data-testid="patch-brief-section-adjustment"]'),
-      ).toBeTruthy();
+      // Left page: exactly the Buffs block at the top anchor, and the CTA
+      // beneath it at the base.
+      expect(leftPage.querySelectorAll('[data-testid^="patch-brief-section-"]')).toHaveLength(1);
+      const buffs = leftPage.querySelector('[data-testid="patch-brief-section-buff"]')!;
+      expect(buffs).toBeTruthy();
       const cta = screen.getByRole("link", { name: "Read full report" });
-      expect(rightPage.contains(cta)).toBe(true);
+      expect(leftPage.contains(cta)).toBe(true);
+      expect(rightPage.contains(cta)).toBe(false);
       expect(
-        rightPage
-          .querySelector('[data-testid="patch-brief-section-adjustment"]')!
-          .compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
+        buffs.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
+      // Right page: Nerfs at the same top anchor, Adjustments beneath at the
+      // base — the mirror of Buffs-over-CTA.
+      const nerfs = rightPage.querySelector('[data-testid="patch-brief-section-nerf"]')!;
+      const adjustments = rightPage.querySelector('[data-testid="patch-brief-section-adjustment"]')!;
+      expect(nerfs).toBeTruthy();
+      expect(adjustments).toBeTruthy();
+      expect(
+        nerfs.compareDocumentPosition(adjustments) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      // The patch title sits on the left page, above its Buffs block.
+      const title = screen.getByRole("heading", { name: "Patch 26.14" });
+      expect(leftPage.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_PRECEDING)
+        .toBeTruthy();
     });
 
   },
