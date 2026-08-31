@@ -183,7 +183,10 @@ export function briefIconSizing(spread: {
   const cqw = Math.round(((PAGE_CQW - (columns - 1) * GAP_CQW) / columns) * 10) / 10;
   // The cap tracks the ramp so a roomy grid can actually grow on a wide tome,
   // and a dense grid stays modest. The floor keeps icons legible.
-  const maxPx = Math.min(48, Math.max(20, Math.round(cqw * 2.6)));
+  // 3.8 ≈ the tome's cap width (380px) / 100, so on a full-width tome the cap
+  // does not clip the ramp: the cell math itself decides the size, which is
+  // what lets a sparse brief actually fill the parchment.
+  const maxPx = Math.min(48, Math.max(20, Math.round(cqw * 3.8)));
   const minPx = Math.min(14, maxPx);
 
   return { columns, cqw, minPx, maxPx, css: `clamp(${minPx}px, ${cqw}cqw, ${maxPx}px)` };
