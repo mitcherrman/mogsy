@@ -24,7 +24,7 @@ import type { ChampionManifest } from "@/hooks/useChampionAssets";
 import type { PatchReportCard, PatchReportDetail } from "@/lib/patch-reports/api";
 import { projectPatchBrief } from "@/lib/patch-reports/patch-brief";
 import AcademyBroadcastCenterpiece from "./AcademyBroadcastCenterpiece";
-import AcademyBroadcastSurface from "./AcademyBroadcastSurface";
+import AcademyBroadcastSurface, { briefIconSizing } from "./AcademyBroadcastSurface";
 import { briefTransmission } from "./usePatchBriefFeed";
 import { INITIAL_BROADCAST_FEED, type BroadcastFeed } from "./broadcast-content";
 import { resetRadioForTests } from "@/lib/audio/academy-radio";
@@ -264,7 +264,7 @@ describe.each(["desktop", "mobile"] as const)(
       );
     });
 
-    it("mirrors the spread: Buffs lead the left page, Nerfs the right; CTA lower-left, Adjustments lower-right", () => {
+    it("mirrors the spread: Buffs lead the left page, Nerfs the right; CTA under Buffs, Adjustments directly under Nerfs", () => {
       renderSurface(variant);
       const s = surface();
       const [leftPage, rightPage] = s.querySelectorAll(":scope > div:last-child > div");
@@ -279,8 +279,8 @@ describe.each(["desktop", "mobile"] as const)(
       expect(
         buffs.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
-      // Right page: Nerfs at the same top anchor, Adjustments beneath at the
-      // base — the mirror of Buffs-over-CTA.
+      // Right page: Nerfs at the same top anchor, Adjustments stacked
+      // directly beneath it (top-down flow, not bottom-anchored).
       const nerfs = rightPage.querySelector('[data-testid="patch-brief-section-nerf"]')!;
       const adjustments = rightPage.querySelector('[data-testid="patch-brief-section-adjustment"]')!;
       expect(nerfs).toBeTruthy();
@@ -292,6 +292,22 @@ describe.each(["desktop", "mobile"] as const)(
       const title = screen.getByRole("heading", { name: "Patch 26.14" });
       expect(leftPage.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_PRECEDING)
         .toBeTruthy();
+    });
+
+    it("draws every section at ONE shared, content-aware icon size", () => {
+      renderSurface(variant);
+      const sizes = new Set(
+        [...surface().querySelectorAll('[data-testid^="patch-brief-section-"] img')].map(
+          (img) => (img as HTMLImageElement).style.width,
+        ),
+      );
+      expect(sizes.size).toBe(1);
+      const [only] = [...sizes];
+      expect(only).toMatch(/^clamp\(\d+px, [\d.]+cqw, \d+px\)$/);
+      // Both page grids reuse it (width === height, square cells).
+      for (const img of surface().querySelectorAll('[data-testid^="patch-brief-section-"] img')) {
+        expect((img as HTMLImageElement).style.height).toBe(only);
+      }
     });
 
   },
@@ -401,5 +417,63 @@ describe("Icon-only Patch Brief centerpiece — audio and dock regressions", () 
       surface.compareDocumentPosition(dock) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(surface.contains(dock)).toBe(false);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+describe("briefIconSizing — content-aware shared icon ramp", () => {
+  const section = (direction: "buff" | "nerf" | "adjustment", n: number) =>
+    ({
+      direction,
+      title: direction,
+      entries: Array.from({ length: n }, (_, i) => ({
+        entityType: "champion",
+        entityId: `${direction}-${i}`,
+        accessibleName: `${direction} ${i}`,
+        iconUrl: "x",
+        docsHref: null,
+      })),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any;
+
+  const sizing = (buffs: number, nerfs: number, adjustments: number) =>
+    briefIconSizing({
+      leftTop: buffs ? section("buff", buffs) : null,
+      rightTop: nerfs ? section("nerf", nerfs) : null,
+      rightLower: adjustments ? [section("adjustment", adjustments)] : [],
+    });
+
+  it("gives a sparse brief bigger icons than a dense one", () => {
+    const sparse = sizing(2, 2, 1);
+    const dense = sizing(14, 12, 9);
+    expect(sparse.cqw).toBeGreaterThan(dense.cqw);
+    expect(sparse.maxPx).toBeGreaterThan(dense.maxPx);
+  });
+
+  it("is monotonic: more icons never grow the shared size", () => {
+    let previous = Infinity;
+    for (let n = 1; n <= 24; n += 1) {
+      const { cqw } = sizing(n, n, n);
+      expect(cqw).toBeLessThanOrEqual(previous);
+      previous = cqw;
+    }
+  });
+
+  it("stays within sane caps and never goes tiny", () => {
+    for (let n = 1; n <= 40; n += 1) {
+      const { columns, cqw, minPx, maxPx } = sizing(n, n, n);
+      expect(columns).toBeGreaterThanOrEqual(2);
+      expect(columns).toBeLessThanOrEqual(6);
+      expect(cqw).toBeGreaterThan(0);
+      expect(minPx).toBeGreaterThanOrEqual(14 - 0); // floor, or the cap if lower
+      expect(maxPx).toBeGreaterThanOrEqual(20);
+      expect(maxPx).toBeLessThanOrEqual(48);
+    }
+  });
+
+  it("lets the densest group decide the one shared size", () => {
+    // A big Nerfs group pulls the shared size down even with tiny Buffs.
+    expect(sizing(1, 18, 1).cqw).toBe(sizing(18, 18, 18).cqw);
   });
 });
