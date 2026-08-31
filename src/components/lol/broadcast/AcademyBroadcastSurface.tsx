@@ -240,6 +240,8 @@ export default function AcademyBroadcastSurface({
   const desktop = variant === "desktop";
   const view = feedView(feed);
   const spread = view.brief ? briefSpread(view.brief.sections) : null;
+  const iconSize = spread ? briefIconSizing(spread).css : CQ.icon;
+
 
   return (
     <section
