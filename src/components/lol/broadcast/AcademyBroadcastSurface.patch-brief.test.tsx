@@ -296,18 +296,18 @@ describe.each(["desktop", "mobile"] as const)(
 
     it("draws every section at ONE shared, content-aware icon size", () => {
       renderSurface(variant);
-      const sizes = new Set(
-        [...surface().querySelectorAll('[data-testid^="patch-brief-section-"] img')].map(
-          (img) => (img as HTMLImageElement).style.width,
-        ),
-      );
-      expect(sizes.size).toBe(1);
-      const [only] = [...sizes];
-      expect(only).toMatch(/^clamp\(\d+px, [\d.]+cqw, \d+px\)$/);
-      // Both page grids reuse it (width === height, square cells).
-      for (const img of surface().querySelectorAll('[data-testid^="patch-brief-section-"] img')) {
-        expect((img as HTMLImageElement).style.height).toBe(only);
-      }
+      // jsdom drops container units from CSSOM, so read the inline style text.
+      const styles = [
+        ...surface().querySelectorAll('[data-testid^="patch-brief-section-"] img'),
+      ].map((img) => img.getAttribute("style") ?? "");
+      expect(styles.length).toBeGreaterThan(1);
+      expect(new Set(styles).size).toBe(1);
+      // One shared ramp, square cells, expressed in container units.
+      const [only] = styles;
+      const ramp = /clamp\(\d+px, [\d.]+cqw, \d+px\)/g;
+      const found = only.match(ramp) ?? [];
+      expect(found).toHaveLength(2);
+      expect(found[0]).toBe(found[1]);
     });
 
   },
