@@ -481,9 +481,12 @@ const SECTION_HEADING_INK: Record<PatchBriefSection["direction"], string> = {
  */
 function PatchBriefSectionBlock({
   section,
+  iconSize = CQ.icon,
   className,
 }: {
   section: PatchBriefSection;
+  /** Shared content-aware icon ramp for the whole brief (briefIconSizing). */
+  iconSize?: string;
   className?: string;
 }) {
   return (
@@ -506,12 +509,17 @@ function PatchBriefSectionBlock({
         style={{ marginTop: "2px", gap: CQ.iconGap }}
       >
         {section.entries.map((entry) => (
-          <PatchBriefEntryIcon key={`${entry.entityType}:${entry.entityId}`} entry={entry} />
+          <PatchBriefEntryIcon
+            key={`${entry.entityType}:${entry.entityId}`}
+            entry={entry}
+            iconSize={iconSize}
+          />
         ))}
       </ul>
     </div>
   );
 }
+
 
 /**
  * One entity icon. THE product rule lives here: the icon is the only visible
