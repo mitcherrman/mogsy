@@ -121,7 +121,7 @@ const CQ = {
   headlineBrief: "clamp(9px, 3.5cqw, 14px)",
   headlinePlain: "clamp(10px, 4cqw, 16px)",
   sectionHeading: "clamp(6.5px, 2.2cqw, 9px)",
-  /** Icons: readable first — 14px floor, 28px cap, ~6.4% of the tome. */
+  /** Fallback icon ramp (prose feeds / no brief): readable first. */
   icon: "clamp(14px, 6.4cqw, 28px)",
   iconGap: "clamp(2px, 1.1cqw, 6px)",
   sectionGap: "clamp(3px, 1.4cqw, 8px)",
@@ -138,11 +138,63 @@ const CQ = {
   titleReserve: "clamp(14px, 5.6cqw, 22px)",
 } as const;
 
+/* --------------------------------------------------- content-aware icons -- */
+
+/** A page region is 38% of the tome's width; the icon gap eats ~1.3cqw. */
+const PAGE_CQW = 36;
+const GAP_CQW = 1.3;
+
+/**
+ * ONE shared icon size for the whole brief, derived from content density.
+ *
+ * The densest group decides it, so Buffs / Nerfs / Adjustments always draw at
+ * the same size and the spread reads intentional. Per section we ask: how many
+ * columns are needed so the icons wrap into at most `rows` rows on their page
+ * (a page carrying two stacked sections gets fewer rows each, which is the
+ * height guard). The widest column count wins; that count divides the page's
+ * usable width into the shared cell size.
+ *
+ * Fewer icons → fewer columns → bigger cells (up to the cap); more icons →
+ * more columns → the size shrinks only as far as needed, floored so icons
+ * never go tiny. Purely a formula over counts: generic for any future patch.
+ */
+export function briefIconSizing(spread: {
+  leftTop: PatchBriefSection | null;
+  rightTop: PatchBriefSection | null;
+  rightLower: PatchBriefSection[];
+}): { columns: number; cqw: number; minPx: number; maxPx: number; css: string } {
+  const pages = [
+    [spread.leftTop].filter(Boolean) as PatchBriefSection[],
+    [spread.rightTop, ...spread.rightLower].filter(Boolean) as PatchBriefSection[],
+  ];
+
+  let columns = 2;
+  for (const page of pages) {
+    // Rows the page can afford, split across the sections stacked on it.
+    const rows = Math.max(1, Math.floor(6 / Math.max(1, page.length)));
+    for (const section of page) {
+      const n = section.entries.length;
+      if (n === 0) continue;
+      columns = Math.max(columns, Math.ceil(n / rows));
+    }
+  }
+  columns = Math.min(columns, 6);
+
+  const cqw = Math.round(((PAGE_CQW - (columns - 1) * GAP_CQW) / columns) * 10) / 10;
+  // The cap tracks the ramp so a roomy grid can actually grow on a wide tome,
+  // and a dense grid stays modest. The floor keeps icons legible.
+  const maxPx = Math.min(48, Math.max(20, Math.round(cqw * 2.6)));
+  const minPx = Math.min(14, maxPx);
+
+  return { columns, cqw, minPx, maxPx, css: `clamp(${minPx}px, ${cqw}cqw, ${maxPx}px)` };
+}
+
 /**
  * Assign the brief's sections to the MIRRORED spread:
  *
  *   LEFT  page top  ← Buffs            RIGHT page top  ← Nerfs
- *   LEFT  page base ← the CTA          RIGHT page base ← everything else
+ *   LEFT  page base ← the CTA          RIGHT page       ← Adjustments, stacked
+ *                                                        directly under Nerfs
  *
  * The projection always orders Buffs → Nerfs → Adjustments, so this is a
  * role lookup, never entity- or count-specific: any future patch with the
@@ -168,6 +220,7 @@ export function briefSpread(sections: PatchBriefSection[]): {
   const [first, ...tail] = sections;
   return { leftTop: first ?? null, rightTop: null, rightLower: tail };
 }
+
 
 
 export default function AcademyBroadcastSurface({
