@@ -305,10 +305,12 @@ export default function AcademyBroadcastSurface({
             {/* MIRRORED BRIEF SPREAD. The patch title is the one intentional
                 asymmetry: it floats in a band reserved above the LEFT page
                 only. Both pages pad down by the same title band, so BUFFS
-                (left top) and NERFS (right top) open on the same eye line,
-                and both pages close on the same baseline — CTA lower-left,
-                Adjustments lower-right. justify-between holds those anchors
-                no matter how many icons each grid wraps to. */}
+                (left top) and NERFS (right top) open on the same eye line.
+                The right page then STACKS its sections top-down (Adjustments
+                reads as the next subsection under Nerfs, not a detached
+                lower-right island), while the left page keeps the CTA below
+                its Buffs block. Icon size is one shared, content-aware ramp
+                (briefIconSizing) so both pages use the parchment fully. */}
             <h2
               className="absolute text-center font-semibold leading-snug text-[#1d2b47]"
               style={{
@@ -322,25 +324,24 @@ export default function AcademyBroadcastSurface({
               {view.headline}
             </h2>
 
-            {/* Left page — BUFFS under the title, CTA at the base. The brief
+            {/* Left page — BUFFS under the title, CTA beneath it. The brief
                 safe area (y 16.5–14.5%) stays tighter than the prose pages':
                 the icon grids are the tallest content the book ever holds,
                 and the extra margin keeps the title clear of the top ornament
                 and the CTA clear of the painted bottom frame. */}
             <div
-              className="absolute flex flex-col items-center justify-between text-center"
+              className="absolute flex flex-col items-center text-center"
               style={{
                 left: "8%",
                 width: "38%",
                 top: "16.5%",
                 bottom: "14.5%",
                 paddingTop: CQ.titleReserve,
+                gap: CQ.sectionGap,
               }}
             >
-              {spread.leftTop ? (
-                <PatchBriefSectionBlock section={spread.leftTop} />
-              ) : (
-                <div />
+              {spread.leftTop && (
+                <PatchBriefSectionBlock section={spread.leftTop} iconSize={iconSize} />
               )}
               {(view.primaryAction || view.secondaryAction) && (
                 <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -354,36 +355,31 @@ export default function AcademyBroadcastSurface({
               )}
             </div>
 
-            {/* Right page — NERFS at the shared eye line, Adjustments at the
-                base, mirroring the CTA's lower-left seat. */}
+            {/* Right page — NERFS at the shared eye line, then Adjustments
+                directly beneath at a normal section gap. */}
             <div
-              className="absolute flex flex-col items-center justify-between text-center"
+              className="absolute flex flex-col items-center text-center"
               style={{
                 left: "54%",
                 width: "38%",
                 top: "16.5%",
                 bottom: "14.5%",
                 paddingTop: CQ.titleReserve,
+                gap: CQ.sectionGap,
               }}
             >
-              {spread.rightTop ? (
-                <PatchBriefSectionBlock section={spread.rightTop} />
-              ) : (
-                <div />
+              {spread.rightTop && (
+                <PatchBriefSectionBlock section={spread.rightTop} iconSize={iconSize} />
               )}
-              {spread.rightLower.length > 0 ? (
-                <div
-                  className="flex w-full flex-col"
-                  style={{ gap: CQ.sectionGap }}
-                >
-                  {spread.rightLower.map((section) => (
-                    <PatchBriefSectionBlock key={section.direction} section={section} />
-                  ))}
-                </div>
-              ) : (
-                <div />
-              )}
+              {spread.rightLower.map((section) => (
+                <PatchBriefSectionBlock
+                  key={section.direction}
+                  section={section}
+                  iconSize={iconSize}
+                />
+              ))}
             </div>
+
           </>
         ) : (
           <>
