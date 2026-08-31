@@ -531,7 +531,13 @@ function PatchBriefSectionBlock({
  * Size is the CQ ramp's most generous term (14px floor → 28px cap): icons are
  * the content, so they are the last thing the layout gives up.
  */
-function PatchBriefEntryIcon({ entry }: { entry: PatchBriefEntry }) {
+function PatchBriefEntryIcon({
+  entry,
+  iconSize = CQ.icon,
+}: {
+  entry: PatchBriefEntry;
+  iconSize?: string;
+}) {
   const icon = (
     <img
       src={entry.iconUrl}
@@ -540,7 +546,7 @@ function PatchBriefEntryIcon({ entry }: { entry: PatchBriefEntry }) {
       loading="lazy"
       decoding="async"
       className="shrink-0 rounded-[4px] border border-[#8a6d2a]/50 object-cover"
-      style={{ width: CQ.icon, height: CQ.icon }}
+      style={{ width: iconSize, height: iconSize }}
     />
   );
   return (
