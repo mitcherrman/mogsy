@@ -546,6 +546,9 @@ function PatchBriefEntryIcon({
       loading="lazy"
       decoding="async"
       className="shrink-0 rounded-[4px] border border-[#8a6d2a]/50 object-cover"
+      // Mirrored as data for tests: jsdom's CSSOM discards container-unit
+      // clamps, so the resolved ramp would be invisible to assertions.
+      data-brief-icon-size={iconSize}
       style={{ width: iconSize, height: iconSize }}
     />
   );

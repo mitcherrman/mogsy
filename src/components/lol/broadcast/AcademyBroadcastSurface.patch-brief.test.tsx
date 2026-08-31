@@ -24,7 +24,10 @@ import type { ChampionManifest } from "@/hooks/useChampionAssets";
 import type { PatchReportCard, PatchReportDetail } from "@/lib/patch-reports/api";
 import { projectPatchBrief } from "@/lib/patch-reports/patch-brief";
 import AcademyBroadcastCenterpiece from "./AcademyBroadcastCenterpiece";
-import AcademyBroadcastSurface, { briefIconSizing } from "./AcademyBroadcastSurface";
+import AcademyBroadcastSurface, {
+  briefIconSizing,
+  briefSpread,
+} from "./AcademyBroadcastSurface";
 import { briefTransmission } from "./usePatchBriefFeed";
 import { INITIAL_BROADCAST_FEED, type BroadcastFeed } from "./broadcast-content";
 import { resetRadioForTests } from "@/lib/audio/academy-radio";
@@ -183,6 +186,9 @@ const renderSurface = (variant: "desktop" | "mobile", feed: BroadcastFeed = feed
     </MemoryRouter>,
   );
 
+/** The fixture's own spread, used to assert the shared icon ramp reaches the DOM. */
+const SPREAD_FOR_FIXTURE = briefSpread(projectPatchBrief(DETAIL, MANIFEST)!.sections);
+
 afterEach(() => cleanup());
 
 /* -------------------------------------------------------------------------- */
@@ -296,18 +302,16 @@ describe.each(["desktop", "mobile"] as const)(
 
     it("draws every section at ONE shared, content-aware icon size", () => {
       renderSurface(variant);
-      // jsdom drops container units from CSSOM, so read the inline style text.
-      const styles = [
+      // The size itself is a container-unit clamp jsdom cannot resolve, so
+      // what is pinned here is that ONE size reaches every icon on both
+      // pages (the ramp's value is covered by the briefIconSizing suite).
+      const icons = [
         ...surface().querySelectorAll('[data-testid^="patch-brief-section-"] img'),
-      ].map((img) => img.getAttribute("style") ?? "");
-      expect(styles.length).toBeGreaterThan(1);
-      expect(new Set(styles).size).toBe(1);
-      // One shared ramp, square cells, expressed in container units.
-      const [only] = styles;
-      const ramp = /clamp\(\d+px, [\d.]+cqw, \d+px\)/g;
-      const found = only.match(ramp) ?? [];
-      expect(found).toHaveLength(2);
-      expect(found[0]).toBe(found[1]);
+      ] as HTMLImageElement[];
+      expect(icons.length).toBeGreaterThan(1);
+      const sizes = new Set(icons.map((img) => `${img.dataset.briefIconSize}`));
+      expect(sizes.size).toBe(1);
+      expect([...sizes][0]).toBe(briefIconSizing(SPREAD_FOR_FIXTURE).css);
     });
 
   },
