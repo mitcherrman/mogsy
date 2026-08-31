@@ -40,8 +40,10 @@ import {
 } from "@/lib/admin/rankedFormatApi";
 import {
   clampChallengeCountForMasterySet,
+  fillVisibleDefaults,
   formatsDiffer,
   insertSegmentAt,
+  normalizeSegmentConfig,
   moveSegmentDown,
   moveSegmentTo,
   moveSegmentUp,
@@ -395,6 +397,21 @@ export default function RankedFormatBuilder() {
                         if (key === "module_config.mastery_set_id") {
                           const setOptions = module?.fields.find((f) => f.key === key)?.options;
                           next = clampChallengeCountForMasterySet(next, index, setOptions, value);
+                        }
+                        if (module) {
+                          // A tagged-union switch (Mastery Champion <-> Matchup)
+                          // both reveals fields the config has never held and
+                          // strands the previous branch's keys. The backend
+                          // refuses a config carrying either problem, so
+                          // normalize at the moment of the switch rather than
+                          // letting the admin discover it as a save error.
+                          next = normalizeSegmentConfig(next, index, module.fields);
+                          next = fillVisibleDefaults(
+                            next,
+                            index,
+                            module.fields,
+                            module.defaults,
+                          );
                         }
                         edit(next);
                       }}

@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import type { CatalogField, SegmentSpecJson } from "@/lib/admin/rankedFormatApi";
-import { readSegmentField, toggleMultiValue } from "@/lib/admin/rankedFormatEditing";
+import { fieldApplies, readSegmentField, toggleMultiValue } from "@/lib/admin/rankedFormatEditing";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -177,7 +177,11 @@ export function ModuleConfigFields({
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {fields.map((field) => {
+      {/* A field whose `visible_when` does not match the segment's current
+          values belongs to the other branch of a tagged-union config (e.g.
+          Mastery's Champion fields while Matchup is selected). Rendering it
+          would invite an admin to fill in a field the backend will reject. */}
+      {fields.filter((field) => fieldApplies(field, segment)).map((field) => {
         const props = { field, segment, index, onChange };
         switch (field.type) {
           case "enum":

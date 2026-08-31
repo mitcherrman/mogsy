@@ -1,25 +1,26 @@
 // ---------------------------------------------------------------------------
-// Admin Ranked Builder — `mastery_slice.v1` catalog entry.
+// Admin Ranked Builder — `mastery_slice.v1`, on-demand Mastery (Step 3).
 //
-// The backend catalog for this module is being written concurrently in a
-// separate repo/worktree. This fixture is built from the field CONTRACT
-// documented in the Phase 5 handoff, not from a live backend response:
+// The Mastery slot no longer picks one of a tiny static list of pre-made
+// Mastery Sets. It names a Mastery TYPE plus the champion(s), and the backend
+// generates the questions from current canonical truth when the segment is
+// reached:
 //
-//   module_config.mastery_set_id  enum, required, options carry an optional
-//                                  `max_questions` alongside value/label
-//   challenge_count                top-level SegmentSpec field, exposed only
-//                                  on this module's catalog entry, label
-//                                  "Questions"
+//   module_config.mastery_mode    enum, required — "champion" | "matchup"
+//   module_config.champion_id     enum, visible_when mastery_mode=champion
+//   module_config.champion_a_id   enum, visible_when mastery_mode=matchup
+//   module_config.champion_b_id   enum, visible_when mastery_mode=matchup
+//   challenge_count               top-level SegmentSpec field, label
+//                                 "Questions" — still the SOLE source of N
 //
-// Once the backend worktree's real catalog lands this fixture should be
-// diffed against it; nothing here should need to change if the shape matches
-// what is documented above.
+// This fixture mirrors the real backend catalog entry
+// (`ranked_public/builder_catalog.py::_mastery_entry`), trimmed to a handful
+// of champions; the live one carries the whole supported roster.
 //
-// The point of this file: prove the EXISTING generic renderer
-// (ModuleConfigFields / SegmentRow / RankedFormatBuilder) needs zero new
-// code to render Mastery correctly, and prove the one bit of new behaviour
-// this phase adds — the challenge_count soft clamp when max_questions is
-// exceeded.
+// What this file proves: the generic renderer needs only ONE new generic
+// concept — `visible_when` — to render a tagged-union config, and the mode
+// switch normalizes the saved config so the backend never receives fields
+// from the branch it did not select.
 // ---------------------------------------------------------------------------
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -71,13 +72,21 @@ const mockCatalog = vi.mocked(fetchModuleCatalog);
 const mockConfig = vi.mocked(fetchFormatConfig);
 const mockSave = vi.mocked(saveFormatConfig);
 
-// --- fixture, built from the documented contract, NOT the live backend ----
+const MODE_KEY = "module_config.mastery_mode";
+
+const CHAMPIONS = [
+  { value: "darius", label: "Darius" },
+  { value: "garen", label: "Garen" },
+  { value: "jinx", label: "Jinx" },
+  { value: "kaisa", label: "Kai'Sa" },
+  { value: "zed", label: "Zed" },
+];
 
 const MASTERY_MODULE = {
   module_id: "mastery_slice",
   module_version: 1,
-  label: "Mastery",
-  description: "A block of Mastery questions drawn from one Mastery set.",
+  label: "Mastery Slice",
+  description: "Mastery questions generated on demand for a champion or a matchup.",
   defaults: {
     module_id: "mastery_slice",
     module_version: 1,
@@ -87,25 +96,45 @@ const MASTERY_MODULE = {
     full_damage: null,
     reduced_damage: null,
     ability_phase_seconds: null,
-    module_config: { mastery_set_id: "playtest.champion.ahri" },
+    module_config: { mastery_mode: "champion", champion_id: "darius" },
     analytics_tag: "playtest_mastery_1",
     scoring: "outcome",
     card_timer_seconds: null,
   },
   fields: [
     {
-      key: "module_config.mastery_set_id",
-      label: "Set",
+      key: MODE_KEY,
+      label: "Mastery type",
       type: "enum" as const,
       required: true,
       options: [
-        { value: "playtest.champion.ahri", label: "Ahri — Champion Mastery", max_questions: 8 },
-        {
-          value: "playtest.matchup.ahri.syndra",
-          label: "Ahri vs Syndra — Matchup Mastery",
-          max_questions: 4,
-        },
+        { value: "champion", label: "Champion" },
+        { value: "matchup", label: "Matchup" },
       ],
+    },
+    {
+      key: "module_config.champion_id",
+      label: "Champion",
+      type: "enum" as const,
+      required: true,
+      options: CHAMPIONS,
+      visible_when: { [MODE_KEY]: "champion" },
+    },
+    {
+      key: "module_config.champion_a_id",
+      label: "Champion A",
+      type: "enum" as const,
+      required: true,
+      options: CHAMPIONS,
+      visible_when: { [MODE_KEY]: "matchup" },
+    },
+    {
+      key: "module_config.champion_b_id",
+      label: "Champion B",
+      type: "enum" as const,
+      required: true,
+      options: CHAMPIONS,
+      visible_when: { [MODE_KEY]: "matchup" },
     },
     {
       key: "challenge_count",
@@ -144,7 +173,13 @@ const QUIZ_MODULE = {
       required: true,
       options: [{ value: "easy_item_cost", label: "easy_item_cost" }],
     },
-    { key: "timer_seconds", label: "Timer (seconds)", type: "number" as const, required: true, min: 1 },
+    {
+      key: "timer_seconds",
+      label: "Timer (seconds)",
+      type: "number" as const,
+      required: true,
+      min: 1,
+    },
   ],
 };
 
@@ -162,9 +197,7 @@ const SAVED_FORMAT: RankedFormatJson = {
   bot_eligible: true,
   rating_eligible: false,
   rollout_allowlist: [],
-  segment_pattern: [
-    { ...MASTERY_MODULE.defaults, analytics_tag: "mastery_slot_1" },
-  ],
+  segment_pattern: [{ ...MASTERY_MODULE.defaults, analytics_tag: "mastery_slot_1" }],
 };
 
 function view(over: Partial<FormatConfigView> = {}): FormatConfigView {
@@ -175,7 +208,7 @@ function view(over: Partial<FormatConfigView> = {}): FormatConfigView {
     revision: 3,
     config: structuredClone(SAVED_FORMAT),
     saved_by: "admin-1",
-    saved_at: "2026-08-29 12:00:00",
+    saved_at: "2026-08-30 12:00:00",
     fallback: null,
     fallback_unavailable: null,
     consumed_by_match_creation: true,
@@ -192,7 +225,7 @@ beforeEach(() => {
     revision: 4,
     format,
     saved_by: "admin-1",
-    saved_at: "2026-08-29 12:05:00",
+    saved_at: "2026-08-30 12:05:00",
   }));
 });
 
@@ -201,190 +234,296 @@ async function mount() {
   await screen.findByTestId("segment-list");
 }
 
-/**
- * Open one module row's settings.
- *
- * Rows are COMPACT by default now — a row shows its order, what the slot is
- * and a one-line summary, and its fields open on demand. Every assertion about
- * a field therefore opens the row first, exactly as an admin does.
- */
 const expand = async (index: number) => {
   await click(screen.getByTestId(`toggle-${index}`));
   return screen.getByTestId(`segment-row-${index}`);
 };
 
-describe("mastery_slice catalog entry — generic rendering", () => {
-  it("appears in Add Module using only the catalog label, no bespoke code", async () => {
-    await mount();
-    const add = screen.getByTestId("add-module");
-    expect(within(add).getByTestId("add-mastery_slice-v1")).toBeInTheDocument();
-    expect(within(add).getByText("Mastery")).toBeInTheDocument();
-  });
+const savedSegment = () => mockSave.mock.calls[0][1].segment_pattern[0];
+const savedConfig = () => savedSegment().module_config as Record<string, unknown>;
 
-  it("renders Set (enum) and Questions (integer) via the existing EnumField/NumberField", async () => {
+// ── (1) Champion mode renders one champion selector + Questions ────────────
+
+describe("mastery_slice — Champion mode", () => {
+  it("renders the Mastery type selector, ONE champion selector and Questions", async () => {
     await mount();
     const row = await expand(0);
-    expect(within(row).getAllByText(/Mastery/).length).toBeGreaterThan(0);
-    const setField = within(row).getByLabelText("Set");
-    expect(setField.tagName).toBe("SELECT");
-    const questionsField = within(row).getByLabelText("Questions");
-    expect(questionsField).toHaveAttribute("type", "number");
+
+    expect(within(row).getByLabelText("Mastery type")).toBeInTheDocument();
+    expect(within(row).getByLabelText("Champion").tagName).toBe("SELECT");
+    expect(within(row).getByLabelText("Questions")).toHaveAttribute("type", "number");
+
+    // The matchup branch's fields are not on screen.
+    expect(within(row).queryByLabelText("Champion A")).not.toBeInTheDocument();
+    expect(within(row).queryByLabelText("Champion B")).not.toBeInTheDocument();
   });
 
-  it("the Set dropdown offers exactly the fixture's options", async () => {
+  it("offers the roster the catalog supplied, by display name", async () => {
     await mount();
     const row = await expand(0);
-    const setField = within(row).getByLabelText("Set") as HTMLSelectElement;
-    const optionTexts = Array.from(setField.options).map((o) => o.textContent);
-    expect(optionTexts).toContain("Ahri — Champion Mastery");
-    expect(optionTexts).toContain("Ahri vs Syndra — Matchup Mastery");
+    const champion = within(row).getByLabelText("Champion") as HTMLSelectElement;
+    const labels = Array.from(champion.options).map((o) => o.textContent);
+    expect(labels).toContain("Zed");
+    expect(labels).toContain("Kai'Sa");
   });
 
-  it("does not expose challenge_count on Quiz or Meta Reflex-shaped modules", async () => {
+  it("selecting a champion writes the canonical id into module_config", async () => {
     await mount();
     const row = await expand(0);
-    // Sanity: Quiz's catalog entry (added separately) has no Questions field.
-    await click(screen.getByTestId("add-quiz-v1"));
-    const quizRow = await expand(1);
-    expect(within(quizRow).queryByLabelText("Questions")).not.toBeInTheDocument();
-    expect(within(row).getByLabelText("Questions")).toBeInTheDocument();
+    await selectOption(within(row).getByLabelText("Champion"), "zed");
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    expect(savedConfig()).toEqual({ mastery_mode: "champion", champion_id: "zed" });
   });
 });
 
-describe("mastery_slice catalog entry — writes", () => {
-  it("selecting a set writes module_config.mastery_set_id", async () => {
+// ── (2) Matchup mode renders two selectors + Questions ─────────────────────
+
+describe("mastery_slice — Matchup mode", () => {
+  it("renders TWO champion selectors and Questions, and hides the single one", async () => {
     await mount();
     const row = await expand(0);
-    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
-    await click(screen.getByTestId("save-config"));
-    await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    const segment = mockSave.mock.calls[0][1].segment_pattern[0];
-    expect((segment.module_config as Record<string, unknown>).mastery_set_id).toBe(
-      "playtest.matchup.ahri.syndra",
-    );
+    await selectOption(within(row).getByLabelText("Mastery type"), "matchup");
+
+    expect(within(row).getByLabelText("Champion A")).toBeInTheDocument();
+    expect(within(row).getByLabelText("Champion B")).toBeInTheDocument();
+    expect(within(row).getByLabelText("Questions")).toBeInTheDocument();
+    expect(within(row).queryByLabelText("Champion")).not.toBeInTheDocument();
   });
 
-  it("editing Questions writes segment challenge_count, not a new key", async () => {
+  it("writes both canonical champion ids", async () => {
     await mount();
     const row = await expand(0);
-    await setValue(within(row).getByLabelText("Questions"), "7");
+    await selectOption(within(row).getByLabelText("Mastery type"), "matchup");
+    await selectOption(within(row).getByLabelText("Champion A"), "jinx");
+    await selectOption(within(row).getByLabelText("Champion B"), "kaisa");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    const segment = mockSave.mock.calls[0][1].segment_pattern[0];
-    expect(segment.challenge_count).toBe(7);
+    expect(savedConfig()).toEqual({
+      mastery_mode: "matchup",
+      champion_a_id: "jinx",
+      champion_b_id: "kaisa",
+    });
+  });
+});
+
+// ── (3) mode switch normalizes config ──────────────────────────────────────
+
+describe("mastery_slice — mode switching normalizes the saved config", () => {
+  it("Champion -> Matchup drops champion_id and seeds both matchup fields", async () => {
+    await mount();
+    const row = await expand(0);
+    await selectOption(within(row).getByLabelText("Mastery type"), "matchup");
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+
+    const config = savedConfig();
+    expect(config).not.toHaveProperty("champion_id");
+    expect(config.mastery_mode).toBe("matchup");
+    // Both revealed fields carry a real value, never left undefined.
+    expect(typeof config.champion_a_id).toBe("string");
+    expect(typeof config.champion_b_id).toBe("string");
   });
 
-  it("never sends a duplicate question_count key", async () => {
+  it("Matchup -> Champion drops both matchup fields", async () => {
+    await mount();
+    const row = await expand(0);
+    await selectOption(within(row).getByLabelText("Mastery type"), "matchup");
+    await selectOption(within(row).getByLabelText("Champion A"), "garen");
+    await selectOption(within(row).getByLabelText("Champion B"), "darius");
+    await selectOption(within(row).getByLabelText("Mastery type"), "champion");
+    // Pick a champion other than the fixture's default, so the round trip
+    // leaves the format genuinely dirty and the save button is enabled.
+    await selectOption(within(row).getByLabelText("Champion"), "zed");
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+
+    const config = savedConfig();
+    expect(config).not.toHaveProperty("champion_a_id");
+    expect(config).not.toHaveProperty("champion_b_id");
+    expect(config).toEqual({ mastery_mode: "champion", champion_id: "zed" });
+  });
+
+  it("switching back and forth never accumulates stale keys", async () => {
+    await mount();
+    const row = await expand(0);
+    const mode = within(row).getByLabelText("Mastery type");
+    await selectOption(mode, "matchup");
+    await selectOption(mode, "champion");
+    await selectOption(mode, "matchup");
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    expect(Object.keys(savedConfig()).sort()).toEqual([
+      "champion_a_id",
+      "champion_b_id",
+      "mastery_mode",
+    ]);
+  });
+});
+
+// ── (4) question count of 1 is allowed ─────────────────────────────────────
+
+describe("mastery_slice — question count", () => {
+  it("accepts 1", async () => {
+    await mount();
+    const row = await expand(0);
+    await setValue(within(row).getByLabelText("Questions"), "1");
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    expect(savedSegment().challenge_count).toBe(1);
+  });
+
+  it("writes challenge_count, never a duplicate question_count key", async () => {
     await mount();
     const row = await expand(0);
     await setValue(within(row).getByLabelText("Questions"), "6");
-    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    const payload = JSON.stringify(mockSave.mock.calls[0][1]);
-    expect(payload).not.toContain("question_count");
+    expect(savedSegment().challenge_count).toBe(6);
+    expect(JSON.stringify(mockSave.mock.calls[0][1])).not.toContain("question_count");
   });
 
-  it("changing the set preserves unrelated segment fields (analytics_tag)", async () => {
+  it("is no longer clamped by any static per-set ceiling", async () => {
+    // On-demand Mastery publishes no max_questions; availability is resolved
+    // live by the backend at save time.
     await mount();
     const row = await expand(0);
-    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
-    await click(screen.getByTestId("save-config"));
-    await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    const segment = mockSave.mock.calls[0][1].segment_pattern[0];
-    expect(segment.analytics_tag).toBe("mastery_slot_1");
-    expect(segment.scoring).toBe("outcome");
+    await setValue(within(row).getByLabelText("Questions"), "40");
+    expect(within(row).getByLabelText("Questions")).toHaveValue(40);
   });
+});
 
-  it("round-trips a full save payload: load -> edit one field -> save", async () => {
+// ── (5)(6) saved JSON shape, and reopening a saved config ──────────────────
+
+describe("mastery_slice — save payload and reload", () => {
+  it("saves exactly the backend's schema shape for Champion Mastery", async () => {
     await mount();
     const row = await expand(0);
     await setValue(within(row).getByLabelText("Questions"), "3");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    const sent = mockSave.mock.calls[0][1];
-    expect(sent).toEqual({
+    expect(mockSave.mock.calls[0][1]).toEqual({
       ...SAVED_FORMAT,
       segment_pattern: [{ ...SAVED_FORMAT.segment_pattern[0], challenge_count: 3 }],
     });
   });
-});
 
-describe("mastery_slice catalog entry — challenge_count soft clamp", () => {
-  it("clamps challenge_count down when it exceeds the newly selected set's max_questions", async () => {
+  it("preserves unrelated segment fields through a Mastery edit", async () => {
     await mount();
     const row = await expand(0);
-    // Starting default is 5, within Ahri's max of 8. Switch to the matchup
-    // set, whose max_questions is 4 — below the current 5.
-    expect(within(row).getByLabelText("Questions")).toHaveValue(5);
-    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
-    expect(within(row).getByLabelText("Questions")).toHaveValue(4);
+    await selectOption(within(row).getByLabelText("Champion"), "zed");
+    await click(screen.getByTestId("save-config"));
+    await waitFor(() => expect(mockSave).toHaveBeenCalled());
+    expect(savedSegment().analytics_tag).toBe("mastery_slot_1");
+    expect(savedSegment().scoring).toBe("outcome");
   });
 
-  it("does not clamp when the value is already within the new set's max_questions", async () => {
+  it("reopening a saved Matchup config repopulates both selectors", async () => {
+    mockConfig.mockResolvedValue(
+      view({
+        config: {
+          ...SAVED_FORMAT,
+          segment_pattern: [
+            {
+              ...MASTERY_MODULE.defaults,
+              challenge_count: 2,
+              module_config: {
+                mastery_mode: "matchup",
+                champion_a_id: "garen",
+                champion_b_id: "darius",
+              },
+            },
+          ],
+        },
+      }),
+    );
     await mount();
     const row = await expand(0);
-    await setValue(within(row).getByLabelText("Questions"), "2");
-    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
+    expect(within(row).getByLabelText("Mastery type")).toHaveValue("matchup");
+    expect(within(row).getByLabelText("Champion A")).toHaveValue("garen");
+    expect(within(row).getByLabelText("Champion B")).toHaveValue("darius");
     expect(within(row).getByLabelText("Questions")).toHaveValue(2);
   });
 
-  it("does not clamp when the selected option carries no max_questions metadata", async () => {
-    mockCatalog.mockResolvedValue({
-      ...CATALOG,
-      modules: [
-        QUIZ_MODULE,
-        {
-          ...MASTERY_MODULE,
-          fields: [
+  it("reopening a saved Champion config repopulates its selector", async () => {
+    mockConfig.mockResolvedValue(
+      view({
+        config: {
+          ...SAVED_FORMAT,
+          segment_pattern: [
             {
-              ...MASTERY_MODULE.fields[0],
-              options: [{ value: "playtest.champion.ahri", label: "Ahri — Champion Mastery" }],
+              ...MASTERY_MODULE.defaults,
+              module_config: { mastery_mode: "champion", champion_id: "zed" },
             },
-            MASTERY_MODULE.fields[1],
           ],
         },
-      ],
-    });
+      }),
+    );
     await mount();
     const row = await expand(0);
-    await setValue(within(row).getByLabelText("Questions"), "50");
-    await selectOption(within(row).getByLabelText("Set"), "playtest.champion.ahri");
-    expect(within(row).getByLabelText("Questions")).toHaveValue(50);
+    expect(within(row).getByLabelText("Mastery type")).toHaveValue("champion");
+    expect(within(row).getByLabelText("Champion")).toHaveValue("zed");
+  });
+});
+
+// ── (7) the old static Mastery Set dropdown is gone ────────────────────────
+
+describe("mastery_slice — the static Mastery Set dropdown is gone", () => {
+  it("offers no Mastery set field and no playtest set id anywhere", async () => {
+    await mount();
+    const row = await expand(0);
+    expect(within(row).queryByLabelText("Mastery set")).not.toBeInTheDocument();
+    expect(within(row).queryByLabelText("Set")).not.toBeInTheDocument();
+    expect(row.innerHTML).not.toContain("playtest.");
+  });
+});
+
+// ── (8) the rest of the builder is untouched ───────────────────────────────
+
+describe("mastery_slice — the rest of the builder still behaves", () => {
+  it("appears in Add Module from the catalog label alone", async () => {
+    await mount();
+    const add = screen.getByTestId("add-module");
+    expect(within(add).getByTestId("add-mastery_slice-v1")).toBeInTheDocument();
   });
 
-  it("the clamp is presentational — the clamped value, not a client-rejected one, is what saves", async () => {
+  it("does not leak Questions onto a quiz-shaped module", async () => {
     await mount();
     const row = await expand(0);
-    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
+    await click(screen.getByTestId("add-quiz-v1"));
+    const quizRow = await expand(1);
+    expect(within(quizRow).queryByLabelText("Questions")).not.toBeInTheDocument();
+    expect(within(row).getByLabelText("Questions")).toBeInTheDocument();
+  });
+
+  it("a quiz segment's config is untouched by the Mastery normalization", async () => {
+    await mount();
+    await click(screen.getByTestId("add-quiz-v1"));
+    const quizRow = await expand(1);
+    await setValue(within(quizRow).getByLabelText("Timer (seconds)"), "15");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    const segment = mockSave.mock.calls[0][1].segment_pattern[0];
-    expect(segment.challenge_count).toBe(4);
-    expect((segment.module_config as Record<string, unknown>).mastery_set_id).toBe(
-      "playtest.matchup.ahri.syndra",
-    );
+    const quizSegment = mockSave.mock.calls[0][1].segment_pattern[1];
+    expect(quizSegment.module_config).toEqual({ pool: "easy_item_cost" });
+    expect(quizSegment.timer_seconds).toBe(15);
   });
 });
 
 // ── the compact row's one line, for a Mastery slot ─────────────────────────
 
 describe("mastery_slice — collapsed summary", () => {
-  it("names the SET and the question count without opening the row", async () => {
+  it("summarises the slot without opening the row", async () => {
     await mount();
-    // The two things an admin checks when reading a Mastery slot in a list:
-    // which set it draws from, and how many of its steps this slot uses.
-    expect(screen.getByTestId("segment-summary-0")).toHaveTextContent(
-      "Mastery — Ahri — Champion Mastery — 5 questions");
-    expect(screen.queryByLabelText("Set")).toBeNull();
+    const summary = screen.getByTestId("segment-summary-0");
+    expect(summary).toHaveTextContent("Mastery Slice");
+    expect(summary).toHaveTextContent("5 questions");
+    expect(screen.queryByLabelText("Champion")).toBeNull();
   });
 
-  it("follows the set and the count as they are edited", async () => {
+  it("follows the question count as it is edited", async () => {
     await mount();
     const row = await expand(0);
-    await selectOption(within(row).getByLabelText("Set"), "playtest.matchup.ahri.syndra");
     await setValue(within(row).getByLabelText("Questions"), "1");
-    expect(screen.getByTestId("segment-summary-0")).toHaveTextContent(
-      "Mastery — Ahri vs Syndra — Matchup Mastery — 1 question");
+    expect(screen.getByTestId("segment-summary-0")).toHaveTextContent("1 question");
   });
 });
