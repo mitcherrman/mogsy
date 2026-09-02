@@ -55,10 +55,13 @@ export type CatalogFieldType = "enum" | "multi_enum" | "number" | "integer" | "t
 export interface CatalogOption {
   value: string;
   label: string;
-  // Optional per-option metadata. The Mastery module's set and variant options
-  // carry it, as a soft ceiling on that option's `challenge_count` —
-  // presentational only, so it is typed optional and every reader must handle
-  // its absence. The backend schema remains the authority on the real bound.
+  // Optional per-option metadata, kept for older catalogs that still publish
+  // it. On-demand Mastery has no static ceiling to publish (availability is
+  // resolved live at save time), so nothing sends this today for the Mastery
+  // module itself — but other modules' set/variant options may still carry it
+  // as a soft ceiling on that option's `challenge_count`, presentational only.
+  // Optional and every reader must handle its absence; the backend schema
+  // remains the authority on the real bound.
   max_questions?: number;
   /** Optional per-option explanation, shown on hover. */
   help?: string;
@@ -86,6 +89,13 @@ export interface CatalogField {
    */
   depends_on?: string;
   options_by?: Record<string, CatalogOption[]>;
+  // Show this field only while every named field already holds the given
+  // value. The backend publishes it for tagged-union configs — Mastery's
+  // champion fields depend on `module_config.mastery_mode` — so the form
+  // shows only the fields the selected mode actually uses. A display rule,
+  // never a validation one: the backend independently refuses a config
+  // carrying fields from the wrong branch.
+  visible_when?: Record<string, string>;
 }
 
 /**

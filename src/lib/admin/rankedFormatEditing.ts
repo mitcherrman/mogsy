@@ -16,7 +16,12 @@
 // No validation lives here. Whether a value is legal is the backend's answer.
 // ---------------------------------------------------------------------------
 
-import type { CatalogOption, RankedFormatJson, SegmentSpecJson } from "@/lib/admin/rankedFormatApi";
+import type {
+  CatalogField,
+  CatalogOption,
+  RankedFormatJson,
+  SegmentSpecJson,
+} from "@/lib/admin/rankedFormatApi";
 
 /** Move a segment one place earlier. Out-of-range moves are no-ops. */
 export function moveSegmentUp(format: RankedFormatJson, index: number): RankedFormatJson {
@@ -178,6 +183,12 @@ export function toggleMultiValue(
  * chosen set cannot support, nothing more. Deliberately NOT a generic
  * dependent-field mechanism — this is the one field pairing that has one
  * today, so it is named for exactly that pairing rather than generalized.
+ *
+ * LEGACY: on-demand Mastery publishes no `max_questions`, because a generated
+ * set has no static ceiling — how many questions a champion can currently
+ * supply is resolved live when the format is saved. This therefore no-ops for
+ * every current catalog and is retained only for a deployment still serving
+ * the older static Mastery Set field.
  */
 export function clampChallengeCountForMasterySet(
   format: RankedFormatJson,
@@ -194,6 +205,104 @@ export function clampChallengeCountForMasterySet(
   if (typeof current !== "number" || current <= maxQuestions) return format;
 
   return setSegmentField(format, index, "challenge_count", maxQuestions);
+}
+
+/**
+ * Whether a catalog field applies given the segment's current values.
+ *
+ * `visible_when` names field keys and the values they must currently hold.
+ * A field with no `visible_when` always applies. This is the display half of
+ * the backend's tagged-union configs — the backend independently refuses a
+ * saved config carrying fields from the branch it did not select, so a bug
+ * here can hide a field but can never smuggle an invalid one past save.
+ */
+export function fieldApplies(field: CatalogField, segment: SegmentSpecJson): boolean {
+  const conditions = field.visible_when;
+  if (!conditions) return true;
+  return Object.entries(conditions).every(
+    ([key, expected]) => readSegmentField(segment, key) === expected,
+  );
+}
+
+/**
+ * Drop `module_config` keys the currently-visible fields do not claim.
+ *
+ * Switching a tagged-union config from one branch to another (Mastery
+ * Champion -> Matchup and back) would otherwise leave the previous branch's
+ * keys behind, and the backend rejects a config carrying fields from the
+ * wrong branch — so an admin who flipped the mode could no longer save at
+ * all, with nothing on screen explaining why. Normalizing on the visible
+ * field set fixes that at the moment of the switch.
+ *
+ * Only keys the catalog actually declares for this module are considered. An
+ * unrecognized key is LEFT ALONE, preserving this builder's governing
+ * invariant that it never drops config it does not understand (a field a
+ * newer backend added, say).
+ */
+export function normalizeSegmentConfig(
+  format: RankedFormatJson,
+  index: number,
+  fields: CatalogField[],
+): RankedFormatJson {
+  const segment = format.segment_pattern[index];
+  if (!segment) return format;
+  const config = (segment.module_config ?? {}) as Record<string, unknown>;
+
+  const prefix = "module_config.";
+  const declared = new Set<string>();
+  const visible = new Set<string>();
+  for (const field of fields) {
+    if (!field.key.startsWith(prefix)) continue;
+    const name = field.key.slice(prefix.length);
+    declared.add(name);
+    if (fieldApplies(field, segment)) visible.add(name);
+  }
+
+  const kept: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(config)) {
+    if (declared.has(name) && !visible.has(name)) continue;
+    kept[name] = value;
+  }
+  if (Object.keys(kept).length === Object.keys(config).length) return format;
+
+  const next = [...format.segment_pattern];
+  next[index] = { ...segment, module_config: kept };
+  return { ...format, segment_pattern: next };
+}
+
+/**
+ * Give every visible field of a segment a value, using the catalog defaults.
+ *
+ * Switching Mastery mode reveals fields the config has never held (Champion A
+ * and B). Leaving them undefined would render "Choose…" and produce a save
+ * the backend refuses for a missing required field; seeding them from the
+ * module's own defaults — or, failing that, the field's first option — means
+ * the switch always lands on something immediately saveable.
+ *
+ * Seeds only ABSENT values (`undefined`, or the empty string a select shows
+ * for "Choose…"). An explicit `null` is left alone: clearing a number field
+ * is a deliberate edit meaning "inherit the match config", and re-seeding it
+ * would silently undo what the admin just did.
+ */
+export function fillVisibleDefaults(
+  format: RankedFormatJson,
+  index: number,
+  fields: CatalogField[],
+  defaults: SegmentSpecJson | undefined,
+): RankedFormatJson {
+  let next = format;
+  for (const field of fields) {
+    const segment = next.segment_pattern[index];
+    if (!segment || !fieldApplies(field, segment)) continue;
+    const current = readSegmentField(segment, field.key);
+    if (current !== undefined && current !== "") continue;
+    const fallback = defaults ? readSegmentField(defaults, field.key) : undefined;
+    const seeded =
+      fallback !== undefined && fallback !== null ? fallback : field.options?.[0]?.value;
+    if (seeded === undefined) continue;
+    next = setSegmentField(next, index, field.key, seeded);
+  }
+  return next;
 }
 
 /** Whether two formats differ — the dirty check, by value not identity. */
