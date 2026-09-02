@@ -10,13 +10,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * `HubGuideMode` without touching the cards.
  */
 
+/**
+ * The four primary hub destinations (2026-09-02 IA cleanup). `combat-lab` is
+ * kept as the id for the destination now titled "Combat Simulation" — the
+ * route, guide id and components stay `combat-lab`; only the label changed.
+ * `stat-check`, `quiz-history` and `patch-reports` were retired as primary
+ * destinations; their routes and pages are untouched.
+ */
 export type HubGuideModeId =
   | "leaguecraft"
   | "combat-lab"
-  | "stat-check"
   | "archives"
-  | "quiz-history"
-  | "patch-reports";
+  | "pro-play";
 
 export type HubGuideMode = {
   id: HubGuideModeId;
@@ -27,9 +32,9 @@ export type HubGuideMode = {
    * Contextual glide in px, applied on a dedicated layer above the idle
    * float. Horizontal is the dominant signal (roughly ±85–100 — clearly
    * toward the hovered side, never all the way to the card); vertical is a
-   * smaller row acknowledgement (about ∓30). Bottom-row X values are pulled
-   * in slightly because those cards share Mogzy's vertical band (the top
-   * rows sit entirely above him, so they tolerate more travel). Mogzy stays
+   * smaller row acknowledgement (about ∓30). Under the four-destination
+   * quadrant both rows sit above Mogzy's own band, so both tolerate the full
+   * travel and the pairs are exact mirrors. Mogzy stays
    * anchored to the central lane: at the 200px lane minimum these values
    * overlap a book's inner edge by at most a few dozen px of mostly
    * transparent PNG margin.
@@ -49,15 +54,16 @@ export type HubGuideMode = {
    * vertical territory entirely — beside the head it sits below the dock, so
    * the old transient dock-corner overlap cannot happen at all.
    *
-   * The bottom row uses a smaller `y` (and quiz-history its shorter lean):
-   * those rows sit close to their own card titles, and the hovered title
-   * staying readable outranks lateral purity (see the collision priorities
-   * in MogzyHubGuide). The tail counter-shifts by `-x`, so it keeps pointing
+   * The bottom row uses a slightly larger `y`: it sits closer to its own
+   * card title, and the hovered title staying readable outranks lateral
+   * purity (see the collision priorities in MogzyHubGuide). The tail
+   * counter-shifts by `-x`, so it keeps pointing
    * at the head from the bubble's inner corner. Both offsets are cancelled
    * under reduced motion along with the lean — a side bubble next to a
    * mascot that never moves would read as detached.
    *
-   * `yNarrow` (optional) is the y calibrated for a 1024px-wide viewport.
+   * `yNarrow` (optional) is the y calibrated for a 1024px-wide viewport. No
+   * mode needs it under the current quadrant; kept for the visual pass.
    * When present, MogzyHubGuide interpolates linearly in vw between
    * (1024px → yNarrow) and (1440px → y), so a mode whose card title drifts
    * relative to Mogzy across the desktop range can stay attached at wide
@@ -68,6 +74,8 @@ export type HubGuideMode = {
 };
 
 export const HUB_GUIDE_MODES: Record<HubGuideModeId, HubGuideMode> = {
+  // Top row (left / right). Unchanged from the six-book calibration: with two
+  // rows per vertically-centred column the top card sits where row 1 sat.
   leaguecraft: {
     id: "leaguecraft",
     title: "Leaguecraft",
@@ -75,53 +83,31 @@ export const HUB_GUIDE_MODES: Record<HubGuideModeId, HubGuideMode> = {
     lean: { x: -95, y: -30 },
     bubble: { x: -88, y: 44 },
   },
-  "stat-check": {
-    id: "stat-check",
-    title: "Stat Check",
-    description: "Commit champions to stat lanes and win the board.",
-    lean: { x: -100, y: 0 },
-    bubble: { x: -90, y: 50 },
-  },
-  "quiz-history": {
-    id: "quiz-history",
-    title: "Quiz History",
-    description: "Look back through your past quiz results.",
-    // Shorter than its right-side twin ON PURPOSE: left cards print their
-    // title beside the inner edge (ends ~x569 at 1440), so anything past
-    // ~-62 floats Mogzy over the hovered card's own title. Right cards
-    // print titles on the outer page, so patch-reports keeps the longer run.
-    lean: { x: -62, y: 26 },
-    // The only mode with a responsive y: this card's title climbs from 46px
-    // BELOW the lean layer's top at 1440 to 14px ABOVE it at 1024, so no
-    // fixed drop can both hug Mogzy at wide widths and clear the title at
-    // narrow ones (a fixed -34 was title-safe everywhere but left the
-    // bubble floating ~28px above his hat at 1440 — visibly detached next
-    // to the other five). y=26 sits the bubble at his head like its
-    // neighbours with ~14px title clearance at 1440; yNarrow=-36 lifts it
-    // clear of the title (plus the few-px grid wobble the sign-up chrome
-    // introduces) at 1024; between and below, the vw ramp tracks the title.
-    bubble: { x: -85, y: 26, yNarrow: -36 },
-  },
   "combat-lab": {
     id: "combat-lab",
-    title: "Combat Lab",
+    title: "Combat Simulation",
     description: "Simulate fights with real champion and item math.",
     lean: { x: 95, y: -30 },
     bubble: { x: 88, y: 44 },
   },
+  // Bottom row (left / right). Two rows centre where the old rows 1 and 2 sat,
+  // so the bottom pair inherits the old middle-row calibration — a mirrored
+  // pair, symmetric by construction. No mode shares Mogzy's own vertical band
+  // any more (that was the old third row), so the `yNarrow` vw-interpolation
+  // that quiz-history needed is not required by any surviving mode.
   archives: {
     id: "archives",
     title: "Mogzy Archives",
     description: "Browse the Academy's library of League knowledge.",
+    lean: { x: -100, y: 0 },
+    bubble: { x: -90, y: 50 },
+  },
+  "pro-play": {
+    id: "pro-play",
+    title: "Pro Play",
+    description: "Test yourself on the pro scene, match by match.",
     lean: { x: 100, y: 0 },
     bubble: { x: 90, y: 50 },
-  },
-  "patch-reports": {
-    id: "patch-reports",
-    title: "Patch Reports",
-    description: "Track every gameplay change, patch by patch.",
-    lean: { x: 85, y: 26 },
-    bubble: { x: 85, y: 44 },
   },
 };
 

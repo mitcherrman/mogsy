@@ -1,0 +1,1016 @@
+# Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
+
+<!-- Revision 3 (IA cleanup, IMPLEMENTED) is at the top of this file.
+     Revisions 2 and 1 below are the audits it was built from. -->
+
+## Revision 2026-09-02 — IA cleanup IMPLEMENTED (four destinations)
+
+**Status:** SHIPPED to the branch. Proposal A (Balanced Quadrant) built.
+This was the IA cleanup pass only — **not** the visual redesign.
+
+### Final four-destination structure
+
+| Position | Destination | Route | `guideId` | Object |
+|---|---|---|---|---|
+| Top-left | Leaguecraft | `/quiz` | `leaguecraft` | `BookModeCard` (Ryze) |
+| Top-right | **Combat Simulation** | `/combat-lab` | `combat-lab` | `BookModeCard` (Akali) |
+| Bottom-left | Mogzy Archives | `/lol/docs` | `archives` | `BookModeCard` (Viktor) |
+| Bottom-right | **Pro Play** | `/lol/pro-play` | `pro-play` | `BookModeCard` (Ahri) |
+
+Centre lane unchanged: `AcademyBroadcastCenterpiece` (tome + radio dock) above,
+Mogzy below on his painted pedestal. The centerpiece remains the homepage
+Patch Report entry.
+
+### What changed
+
+1. **One registry, one source of truth.** `LEFT_DESTINATIONS` /
+   `RIGHT_DESTINATIONS` / `ALL_DESTINATIONS` / `PRO_PLAY_DESTINATION` collapsed
+   into a single row-major `HUB_DESTINATIONS` array in `LolHub.tsx`; the
+   desktop columns are derived by index parity and the mobile list walks the
+   array in order. Every entry carries a `guideId`, so a destination cannot
+   exist without Mogzy being able to describe it. No navigation framework, no
+   new abstraction layer — three derived constants replaced four hand-synced
+   ones.
+2. **Pro Play promoted.** It shipped as a standalone gold `HexPanelLink` below
+   the grid with **no guide mode at all**. It is now a full peer: a book on
+   desktop, a panel on mobile, `guideId: "pro-play"`, a `HUB_GUIDE_MODES` entry
+   with calibrated `lean`/`bubble`, an `sr-only` description node and
+   `aria-describedby`/`aria-label` like every other destination.
+   `renderProPlayPanel()` and both of its call sites were deleted.
+   `/lol/pro-play` and `/lol/pro-play/quiz` are untouched; no LIVE1 internals
+   were modified.
+3. **Combat Lab → "Combat Simulation" (display title only).** The route,
+   `guideId`, component names and every other `combat-lab` identifier are
+   unchanged, exactly as the audit recommended. The rename lives in the
+   registry entry's `title` and in `HUB_GUIDE_MODES["combat-lab"].title`
+   (which is also the card's `aria-label`).
+4. **Stat Check, Quiz History and Patch Reports removed as primary
+   destinations.** Their books, guide modes and `HubGuideModeId` members are
+   gone. **Nothing else was deleted**: routes, pages, prefetch rules, sitemap
+   entries, feedback labels and every other front door are untouched —
+   Stat Check from `Quiz.tsx`, Quiz History from the Leaguecraft workspace
+   History pane (`/quiz#history`, default-open) and the profile nav tile,
+   Patch Reports from the Broadcast centerpiece's "Read full report" CTA.
+   No replacement entry point was invented, per the audit's recommendation.
+5. **Mobile accent rule unified.** The old inline
+   `d.to === "/combat-lab" ? "gold" : "cyan"` became a `GOLD_ACCENT_ROUTES`
+   set so Pro Play keeps the gold it shipped with.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/pages/LolHub.tsx` | Registry collapse; three destinations removed; Combat Simulation title; Pro Play promoted to a book; `renderProPlayPanel` + both call sites deleted; `GOLD_ACCENT_ROUTES`; unused `HistoryIcon`/`Layers` imports dropped. |
+| `src/components/lol/hub-guide.ts` | `HubGuideModeId` → 4 ids (`pro-play` added, three removed); `HUB_GUIDE_MODES` rewritten with the quadrant calibration. |
+| `src/components/lol/MogzyHubGuide.tsx` | Comment only — the `yNarrow` doc no longer references the deleted `quiz-history` mode. |
+| `src/pages/LolHub.test.tsx` | Fixtures and assertions updated; see below. |
+| `src/components/lol/academy-layout.ts` | **Deliberately untouched** — see the calibration decisions. |
+
+### Layout / guide calibration decisions
+
+- **`academy-layout.ts` was not re-derived.** The audit flagged
+  `BOOK_FIT_SLOPE`/`BOOK_FIT_OFFSET_PX` (and `BOOK_LIFT_*`) as three-row
+  compensations that a 6→4 change invalidates. It invalidates them only in the
+  sense that they are now *conservative*: a fit slope sized for three rows
+  trivially fits two, so nothing overflows and every tested invariant
+  (`BOOK_HEIGHT_RATIO`, the min() crossover, the 200px lane minimum,
+  `CENTERPIECE_WIDTH_CSS`'s dependence on the book width term) holds unchanged.
+  Re-deriving it would grow the books ~35–45% — a **visual** change, which is
+  the next pass's call, not this one's. The freed row currently reads as
+  breathing room, which is the composition the brief asked for. `academy-layout.test.ts`
+  passes untouched.
+- **Guide offsets: mirrored pairs, no `yNarrow` needed.** Two vertically
+  centred rows land where the old rows 1 and 2 sat, so the top pair keeps the
+  old row-1 values (`lean.x ∓95`, `y −30`; `bubble.x ∓88`, `y 44`) and the
+  bottom pair inherits the old row-2 values (`lean.x ∓100`, `y 0`;
+  `bubble.x ∓90`, `y 50`). Archives keeps its own numbers and moves to the
+  **left** column, so its signs flip. No surviving mode sits in Mogzy's own
+  vertical band (that was the retired third row), so `quiz-history`'s
+  `yNarrow: −36` vw-interpolation hack is not needed by anything. The
+  `yNarrow` **mechanism** is retained in `MogzyHubGuide` (unused) because the
+  visual pass moves the cards again; it is documented as such.
+- **Reading order = DOM order = tab order:** Leaguecraft → Combat Simulation →
+  Mogzy Archives → Pro Play, at both breakpoints.
+
+### Tests and verification
+
+- `npx vitest run src/pages/LolHub.test.tsx` — **53/53 pass.**
+- Full suite `npx vitest run` — 12 files / 49 tests fail. **Identical failure
+  set on the stashed baseline** (verified by re-running those same 12 files on
+  a clean tree): admin, radio, ads-consent, quiz-workspace, e2e-identity,
+  structural-review, onboarding-gate. **Zero regressions.**
+- `npx tsc --noEmit -p tsconfig.app.json` — 11 errors, **the same 11 on the
+  baseline**. No new type errors.
+- `npx eslint` on all four changed files — clean.
+- Browser verification at 1440×900 and 375×812 against a local dev server:
+  - `/lol` renders exactly four primary destinations, in a balanced quadrant
+    around Mogzy and the tome. Desktop and mobile both coherent.
+  - Hovering Pro Play, Combat Simulation and Mogzy Archives each produces
+    Mogzy's lean, facing-turn and speech bubble with the correct copy; no
+    bubble collides with a card title.
+  - Stat Check, Quiz History and Patch Reports appear nowhere on `/lol`.
+  - Routes verified rendering: `/quiz/stat-check`, `/lol/history`,
+    `/lol/patch-reports`, `/lol/pro-play`, `/lol/pro-play/quiz`,
+    `/combat-lab`, `/lol/docs`.
+  - Global HUD, radio dock, Meta Reflex section and footer unaffected.
+- Keyboard/focus guide behaviour and `aria-describedby`/`aria-label` per mode
+  are covered by the passing test suite (focus-in/out, tab-between-cards, and
+  the per-mode description-element assertions).
+
+### Test changes
+
+`src/pages/LolHub.test.tsx`: destination fixture → 4 rows; a new
+`RETIRED_PRIMARY_DESTINATIONS` fixture with a guard that none of the three is
+linked from the hub; a new "exactly four primary destinations" test asserting
+the four `data-guide-mode` ids; a new centerpiece-still-present guard; the
+"Pro Play after the six existing destinations" test inverted into "Pro Play is
+a peer, not a trailing panel"; the `GUIDE_MODES` fixture and `LEFT_MODES`
+membership updated; `stat-check` swapped for `archives`/`combat-lab` in the
+focus/tab/click-reaction tests; the mascot facing test now hovers `pro-play`
+(Archives moved to the left column, so it no longer mirrors him).
+
+### Known issues / not regressions
+
+- The tome's painted edge clips the right end of the **Leaguecraft** card
+  title at 1440×900. **Pre-existing** — verified identical on the stashed
+  baseline. It is `CENTERPIECE_OVERLAP_PX = 48` doing what it was written to
+  do; the visual pass should resolve it when the objects are redesigned.
+- Champion splashes and the Pro Play quiz payload are blank/errored on a local
+  dev server with no backend (`ERR_CONNECTION_REFUSED` on the Railway asset and
+  data APIs). Environmental, not a code defect.
+
+### Explicitly NOT done (later passes)
+
+New book/object artwork, closed/open-book interactions, Combat Simulation and
+Pro Play custom artifacts, drop-in entrance choreography, sound effects, the
+What's New `!`, Pro/Premium promotion, community/social and feedback redesign,
+below-the-fold redesign, global search, graph changes, LIVE1 feature changes.
+`SHOW_SWIPE_GAMES` (Meta Reflex below the fold) was left alone as instructed.
+
+### Next task
+
+**Visual design of the four primary destination objects** — not more IA work.
+The structure is now correct and stable; the open question is what
+Leaguecraft, Combat Simulation, Mogzy Archives and Pro Play should *look*
+like as four differentiated objects (the audit's Proposal A risk: four
+identical books can read as "the same hub with two deleted"), and whether
+re-deriving `academy-layout.ts`'s two-row fit slope to grow them is part of
+that.
+
+---
+
+## Revision 2026-09-02 (design prep) — audit, superseded by the above
+
+**Status:** AUDIT + DESIGN PREP ONLY. No code changed, nothing committed.
+
+**Authority:** `origin/main` @ `fb21f106` ("feat(pro-play): Pro Play hub and
+quiz"), read from the clean worktree `/Users/macmoney/mogsy-wt-proplay-final`,
+which sits on that exact commit. The primary checkout `/Users/macmoney/mogsy`
+is on `cs2/phase2-combo-planner` with other sessions' uncommitted work and was
+NOT used as authority and NOT touched.
+
+---
+
+## 1. `main` state verification (Task 1)
+
+**LIVE1 / Pro Play is merged.** `fb21f106` is the tip of `origin/main`; the
+prior tip was `3aa44d60`. Every file the 2026-09-01 audit listed as
+"uncommitted" is now committed and present:
+
+| File | Status on `main` |
+|---|---|
+| `src/pages/ProPlayHub.tsx` (85 lines) | committed |
+| `src/pages/ProPlayQuiz.tsx` (188 lines) | committed |
+| `src/pages/ProPlayHub.test.tsx`, `ProPlayQuiz.test.tsx` | committed |
+| `src/lib/pro-play/api.ts` (108 lines) | committed |
+| `src/App.tsx` (+6) | committed |
+| `src/lib/route-prefetch.ts` (+6) | committed |
+| `src/pages/LolHub.tsx` (+48) | committed |
+| `src/pages/LolHub.test.tsx` (+21) | committed |
+
+Nine files, +728/−1. Nothing from the LIVE1 frontend workstream remains
+uncommitted.
+
+### Routes and components
+
+| Route | Component | Registered |
+|---|---|---|
+| `/lol/pro-play` | `ProPlayHub` | `src/App.tsx:543` (`src/App.tsx:94` lazy) |
+| `/lol/pro-play/quiz` | `ProPlayQuiz` | `src/App.tsx:544` (`src/App.tsx:95` lazy) |
+
+Prefetch registry: `src/lib/route-prefetch.ts:101-102` (lazy components),
+`:158-159` (path→prefetch rules). `/lol/pro` is untouched — that is the paid
+subscription page and a different meaning of "Pro".
+
+### ⚠️ CORRECTION — Pro Play did NOT ship as a book
+
+The 2026-09-01 audit predicted a 7th left-column book. **That is not what
+merged.** The grid stayed **six books**. Pro Play ships as a standalone
+`HexPanelLink` panel:
+
+- Definition: `PRO_PLAY_DESTINATION` — `src/pages/LolHub.tsx:146-151`. It is a
+  plain object literal, **not** a `HubDestination`: no `championName`, no
+  `splashPosition`, and **no `guideId`**.
+- Render: `renderProPlayPanel()` — `src/pages/LolHub.tsx:320-331`
+  (`accent="gold"`, `compact`), called twice:
+  - desktop `src/pages/LolHub.tsx:594` — `<div className="mt-2 hidden md:block">`, directly **under** the six-book grid;
+  - mobile `src/pages/LolHub.tsx:614` — `<div className="mt-3 md:hidden">`, **after** the six mobile panels and **before** the mobile broadcast centerpiece.
+- Rationale recorded in the commit body and in the comment at
+  `src/pages/LolHub.tsx:70-80`: measured at 1440×900, a fourth book in a column
+  runs to y=1049 against the other column's 930, because the lane holds three
+  230px books by construction.
+
+### Coupling introduced into the three files of interest
+
+| File | Coupling added |
+|---|---|
+| `src/pages/LolHub.tsx` | `Trophy` icon import; `PRO_PLAY_DESTINATION`; `renderProPlayPanel()`; two breakpoint call sites. `LEFT_DESTINATIONS`/`RIGHT_DESTINATIONS`/`ALL_DESTINATIONS` **unchanged**. |
+| `src/components/lol/hub-guide.ts` | **NONE.** `HubGuideModeId` is still the same six ids. There is no `pro-play` mode. |
+| `src/components/lol/academy-layout.ts` | **NONE.** No constant changed; the panel sits outside the book-fit model. |
+
+### Guide / hover behaviour — the real finding
+
+**Pro Play has no Mogzy guide description at all.** It carries no `guideId`, so
+it gets no `data-guide-mode` wrapper, no `activateGuide` on hover/focus, and no
+`aria-describedby` into the `sr-only` description block. The six books do; Pro
+Play does not. `src/pages/LolHub.test.tsx:187` actively asserts this:
+`expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(6)`.
+
+This is the single largest post-merge IA defect: Pro Play is being treated as a
+primary destination in the product plan while being, in the code, a
+second-class panel that Mogzy cannot talk about. **Any four-destination
+redesign must promote it to a full guide mode.**
+
+---
+
+## 2. Current primary destination map (Task 2)
+
+Seven destination objects appear on `/lol` today — six books + one gold panel.
+
+| # | Destination | Route | Object today | Defined at | Disposition |
+|---|---|---|---|---|---|
+| 1 | Leaguecraft | `/quiz` | Book (L, Ryze) | `LolHub.tsx:84-91` | **KEEP PRIMARY** |
+| 2 | Stat Check | `/quiz/stat-check` | Book (L, Twisted Fate) | `LolHub.tsx:92-99` | **REMOVE PRIMARY / PRESERVE ROUTE** |
+| 3 | Quiz History | `/lol/history` | Book (L, Zilean) | `LolHub.tsx:100-107` | **MOVE / REHOME** |
+| 4 | Combat Lab | `/combat-lab` | Book (R, Akali) | `LolHub.tsx:110-117` | **KEEP PRIMARY** (renames to Combat Simulation) |
+| 5 | Mogzy Archives | `/lol/docs` | Book (R, Viktor) | `LolHub.tsx:118-125` | **KEEP PRIMARY** |
+| 6 | Patch Reports | `/lol/patch-reports` | Book (R, Jayce) | `LolHub.tsx:126-133` | **REMOVE PRIMARY / PRESERVE ROUTE** |
+| 7 | Pro Play | `/lol/pro-play` | Gold Hex panel | `LolHub.tsx:146-151` | **PROMOTE → KEEP PRIMARY** |
+| — | Academy Broadcast (Patch Brief) | in-place | Centre-lane tome + radio dock | `AcademyBroadcastCenterpiece.tsx` | **SPECIAL EXISTING CENTERPIECE — untouched** |
+
+Net: 7 objects → 4. Three removals (Stat Check, Quiz History, Patch Reports
+book), one promotion (Pro Play from panel to first-class destination object).
+
+### Contradictions against the stated plan
+
+1. **Pro Play is not currently equal to the other three.** The plan assumes four
+   peers; the code has three-and-a-panel. Promotion is real work, not a no-op:
+   it needs a `HubGuideModeId`, a `HUB_GUIDE_MODES` entry with calibrated
+   `lean`/`bubble`, an `sr-only` description node, and a test-count update.
+2. **"Combat Simulation" does not exist by that name.** The destination is
+   `Combat Lab` → `/combat-lab` everywhere (title, `guideId: "combat-lab"`,
+   `HUB_GUIDE_MODES["combat-lab"]`, three test files). Renaming the *label* is
+   cheap; renaming the `guideId` or route is a cross-file rename and is not
+   required by this IA change. **Recommend: change the display title only.**
+3. **The 6→4 reduction breaks the layout model, not just the list.** The book
+   size formula `BOOK_FIT_SLOPE = 0.615` / `BOOK_FIT_OFFSET_PX = 212`
+   (`academy-layout.ts:54-55`) is derived from *three rows per column fitting
+   the fold*. Two rows per column changes the binding constraint, so books can
+   grow — which is an opportunity, but it invalidates the tested contract.
+4. **Meta Reflex still has a below-the-fold homepage section**
+   (`SHOW_SWIPE_GAMES = true`, `LolHub.tsx:168`), outside the "everything lives
+   inside Leaguecraft" hierarchy. Its comment block records that hiding it once
+   left the feature with no front door. **Out of scope here — do not touch it
+   as a side effect of the IA cleanup.**
+5. **Patch Reports genuinely appears twice** and only one instance is being
+   removed. The centre tome (`AcademyBroadcastCenterpiece`) has its own feed and
+   its own "Read full report" CTA into `/lol/patch-reports`, so removing the
+   *book* does not orphan the route — the centerpiece **is** its front door.
+
+---
+
+## 3. Quiz History re-home (Task 3)
+
+**Recommendation: do nothing but delete the book. Quiz History is already
+rehomed, twice, on `main`.**
+
+Every existing path to `/lol/history`:
+
+| Surface | Location | Kind |
+|---|---|---|
+| Hub book (being removed) | `LolHub.tsx:100-107` | primary destination |
+| **Leaguecraft workspace History pane** | `LeaguecraftHub.tsx:718-720` mounts `StudyHistoryLedger` | **in-product, inside Leaguecraft** |
+| **Profile stats nav tile** | `LeagueProfileStats.tsx:18` — `{ to: "/lol/history", label: "Quiz History", icon: History }` | account surface |
+| Profile "View all" link | `LeagueProfileStats.tsx:245` | account surface |
+| Missed-questions back link | `LolMissedQuestions.tsx:31` | in-flow |
+| House ad | `lib/ads/houseAds.ts:53` | promo |
+| Feedback route label | `lib/feedback/contract.ts:117` | infra |
+| Sitemap | `lib/seo/sitemap.test.ts:31` | SEO |
+
+The decisive fact: `StudyHistoryLedger.tsx` is **one component mounted twice** —
+by the `/quiz` workspace History pane and by the standalone `/lol/history` page
+(its own header comment says so, `StudyHistoryLedger.tsx:6-13`). The two
+surfaces cannot drift. And the workspace pane is **addressable and default-open**:
+`/quiz#history` (`LeaguecraftHub.tsx:341`), with
+`useState<WorkspaceMode>("history")` as the initial mode
+(`LeaguecraftHub.tsx:360`).
+
+So a user who lands on Leaguecraft — the destination that replaces the Quiz
+History book in the hierarchy — **sees their history ledger immediately, with no
+extra click and no request** (the pane is fed from a payload `/quiz` already
+holds). Friction after removing the book is effectively zero.
+
+**Therefore:** no new navigation, no new surface, no new system. Delete the book
+and the `quiz-history` guide mode; the route, the page, and both existing homes
+stay exactly as they are. If the owner wants one belt-and-braces affordance, the
+cheapest is a "Quiz History" link in the existing `MogzyIdentityMenu` panel
+footer beside Settings — but the Leaguecraft pane already discharges the
+requirement and I do not recommend adding it.
+
+---
+
+## 4. Exact IA cleanup change map (Task 4)
+
+Nothing below has been edited. This is the complete list.
+
+### 4.1 `src/pages/LolHub.tsx`
+
+| Line(s) | Change |
+|---|---|
+| `92-99` | Delete the Stat Check `HubDestination`. |
+| `100-107` | Delete the Quiz History `HubDestination`. |
+| `126-133` | Delete the Patch Reports `HubDestination`. |
+| `84-133` | `LEFT`/`RIGHT_DESTINATIONS` drop to 1 each. **Recommend collapsing both into one `HUB_DESTINATIONS` registry** and deriving side/position from the chosen layout, rather than keeping two one-element arrays. |
+| `118-125` | Mogzy Archives moves (right column of 3 no longer exists). |
+| `110-117` | Combat Lab → retitle "Combat Simulation". Keep `to`, `guideId`, `championName`. |
+| `146-151` | `PRO_PLAY_DESTINATION` gains `guideId: "pro-play"` (+ `championName`/`splashPosition` if it becomes a splash-bearing object) and folds into the registry. |
+| `320-331` | `renderProPlayPanel()` is replaced by whatever object type the chosen layout gives Pro Play; the twin desktop/mobile call sites (`594`, `614`) collapse into the normal destination loop. |
+| `135` `ALL_DESTINATIONS` | Row-major interleave assumes 2 columns; re-derive from the registry. |
+| `~640` `sr-only` block | Regenerate per surviving mode (it iterates `HUB_GUIDE_MODES`). |
+| grid `grid-cols-[1fr_minmax(200px,0.34fr)_1fr]` | Only survives in a two-column proposal (A/C); Proposal B replaces it. |
+| `DESKTOP_BOOK_STACK_INSET` (`LolHub.tsx:~317`) / `DESKTOP_BOOK_STACK_Y` | Both are 3-row-column compensations. Re-derive or delete. |
+| `accent={d.to === "/combat-lab" ? "gold" : "cyan"}` (mobile) | Pro Play is also gold today; unify the accent rule. |
+| `168` `SHOW_SWIPE_GAMES` | **Do not touch.** Out of scope. |
+
+### 4.2 `src/components/lol/hub-guide.ts`
+
+| Symbol | Change |
+|---|---|
+| `HubGuideModeId` union (`:14-20`) | Remove `"stat-check"`, `"quiz-history"`, `"patch-reports"`. **Add `"pro-play"`.** Final set: `leaguecraft`, `combat-lab`, `archives`, `pro-play`. |
+| `HUB_GUIDE_MODES` (`:69-…`) | Delete three entries; add `pro-play` with `title`/`description`. |
+| `lean` / `bubble` on all four | **Every surviving value must be recalibrated.** They are hand-tuned px offsets against today's card positions. `quiz-history`'s `yNarrow: -36` vw-interpolation disappears with it — but if a *surviving* card lands in that bottom band under the new layout, the same interpolation problem returns and `yNarrow` must be re-derived for it. Nothing fails loudly when these are wrong. |
+| `hubGuideDescriptionId`, `GUIDE_CLEAR_DELAY_MS`, `useHubGuideState` | Unchanged. |
+
+### 4.3 `src/components/lol/academy-layout.ts`
+
+| Constant | Fate |
+|---|---|
+| `BOOK_FIT_SLOPE = 0.615`, `BOOK_FIT_OFFSET_PX = 212` (`:54-55`) | **Must be re-derived.** Both encode "heading + three book rows + padding fit the fold". |
+| `BOOK_TALL_SLOPE = 0.308`, `BOOK_TALL_INTERCEPT_PX = 176` (`:52-53`) | Re-derive if books grow. |
+| `REGIME_BOUNDARY_VH = 1000` (`:36`) | The min()-crossover *model* survives; the crossover point moves. |
+| `BOOK_HEIGHT_RATIO = 0.542` (`:69`) | **Invariant — derived from the frame PNG alpha bbox.** Survives untouched unless new book art ships. |
+| `BOOK_LIFT_TALL_PX = -50`, `BOOK_LIFT_EASE = 0.7` (`:80-83`) | 3-row compensation; likely deleted. |
+| `BOOK_STACK_INSET_CSS` (`:165`) | Layout-dependent. |
+| `CENTERPIECE_*` (`:150-189`) | `CENTERPIECE_WIDTH_CSS` is a function of `BOOK_WIDTH_TERM_CSS` and `BOOK_STACK_INSET_CSS`, so **it moves whenever the books move**, even though the centerpiece itself is "untouched". This is the least obvious coupling in the change map. |
+| `TITLE_FONT_SIZE_CSS` / `titleFontSizePx` (`:106-109`) | The HUD-clearance term survives; check the 3-way `min()` still binds. |
+
+### 4.4 Routes and dependencies
+
+**No route is deleted.** `/quiz/stat-check`, `/lol/history`, `/lol/patch-reports`
+all keep their `App.tsx` entries, pages, prefetch rules, sitemap entries and
+feedback labels. Only hub links are removed. Retained front doors:
+Stat Check ← `Quiz.tsx:1466`; Quiz History ← `/quiz#history` + profile;
+Patch Reports ← the broadcast centerpiece CTA.
+
+`src/lib/route-prefetch.ts` — the hub currently warms these on hover. Removing
+the cards removes the warm path but not the rules; leave the rules alone.
+
+### 4.5 Accessibility / focus
+
+- DOM order **is** tab order. Four objects means a new, shorter tab sequence;
+  it must still read in the intended priority order at both breakpoints.
+- The `sr-only` description block is the **only** accessible channel for
+  Mogzy's copy (the guide lane is `aria-hidden`). One node per surviving mode,
+  and Pro Play gains one for the first time.
+- Each destination link keeps `aria-describedby={hubGuideDescriptionId(id)}`
+  and `aria-label = HUB_GUIDE_MODES[id].title` — both asserted by tests.
+- No `aria-live`: hover still announces nothing. Preserve that.
+- Mogzy's click-reaction stays a `div`/`img`, not a button — no cosmetic tab stop.
+- `prefers-reduced-motion` must cancel lean, bubble offset **and** any new
+  entrance choreography.
+
+### 4.6 Tests that will fail and must be updated
+
+| File | Assertion |
+|---|---|
+| `src/pages/LolHub.test.tsx:133-137` | Destination title/route table (7 rows). |
+| `:140` | "renders every hub destination as a link". |
+| `:150` | "renders each destination twice: desktop book + mobile panel". |
+| `:166-169` | Stat Check mode-selection guard — **delete with the card**. |
+| `:180-193` | "offers Pro Play once per breakpoint, after the six existing destinations" — **the premise inverts**; Pro Play becomes a peer, not a trailer. |
+| `:187` | `[data-guide-mode]` count `6` → `4`. |
+| `:196` | `["/lol/docs","/lol/history","/lol/patch-reports"]` list. |
+| `:308-314` | `GUIDE_MODES` fixture (6 → 4, `pro-play` added). |
+| `:346-361` | Directional-glide sign test — `LEFT_MODES` membership changes. |
+| `:434-444` | `aria-describedby` / `aria-label` per mode. |
+| `src/components/lol/academy-layout.test.ts` | Every re-derived constant. |
+| `src/App.startupFallbacks.test.ts:75` | **Unaffected** — routes survive. |
+| `LeaguecraftRecord.vellum.test.tsx`, `LeagueProfileStats.test.tsx:193` | **Unaffected** — the re-home targets are untouched. |
+
+---
+
+## 5. Three four-destination layout proposals (Task 5)
+
+Shared to all three: Mogzy central and hover-authoritative; the existing
+`AcademyBroadcastCenterpiece` (tome + radio dock) in the centre lane, unchanged;
+no elaborate per-object open states (Mogzy carries the explanation);
+`BOOK_HEIGHT_RATIO = 0.542` respected wherever `BookModeCard` is reused;
+reduced-motion parity.
+
+### Proposal A — **The Balanced Quadrant** (2×2, corners)
+
+- **Spatial arrangement.** Keep the existing three-column grid; each side column
+  holds **two** objects instead of three. Reading order TL Leaguecraft,
+  TR Combat Simulation, BL Mogzy Archives, BR Pro Play. Centre lane keeps
+  tome-on-top / Mogzy-below exactly as today. With one row removed, each object
+  can grow ~35–45% and the vertical breathing room roughly doubles.
+- **Objects.** Leaguecraft = `BookModeCard` (Ryze). Archives = `BookModeCard`
+  (Viktor). Combat Simulation = a **non-book apparatus** — an open Hextech
+  training rig / armillary on a stand, same footprint ratio, splash reused as a
+  backplate. Pro Play = a **broadcast object** — a framed esports monitor /
+  banner-stand, gold accent inherited from today's panel.
+- **Interaction.** Identical to today: wrapper fires `activateGuide` on
+  mouseenter/focus, `deactivateGuide` on leave/blur, 140ms grace. Objects get a
+  subtle lift + rim-light on hover, nothing more. Tap = navigate.
+- **Mogzy.** Unchanged centre lane, `bottom-[16%]`, over the painted pedestal.
+  Only the four `lean`/`bubble` pairs need retuning — and the diagonal geometry
+  is *cleaner* than today's, because no mode shares Mogzy's vertical band the
+  way `quiz-history`/`patch-reports` do. **The `yNarrow` interpolation hack can
+  probably be retired entirely.**
+- **Patch centerpiece.** Unchanged, `top-3`, centre lane.
+- **Pro promo.** The freed vertical space under the tome / above Mogzy, or a
+  slim full-width strip where the Pro Play panel sits today (`mt-2` under the
+  grid) — a slot that already exists and is already proven at both breakpoints.
+- **Entrance.** Four objects drop into their corners in a short diagonal
+  stagger (TL→BR, ~70ms apart), each with a 4–6px settle-compression and one
+  impact SFX; tome fades and Mogzy bobs in last. ~600ms total.
+- **Mobile.** Trivial — the single-column `HexPanelLink` list shortens from 7 to
+  4 and the broadcast centerpiece follows. Best mobile story of the three.
+- **`academy-layout.ts` rework.** **Moderate.** Re-derive `BOOK_FIT_*` and
+  `BOOK_TALL_*` for 2 rows; delete `BOOK_LIFT_*`; re-check `CENTERPIECE_WIDTH_CSS`
+  (it consumes the book width term). The min()-crossover model, the 200px lane
+  minimum and `BOOK_HEIGHT_RATIO` all survive. Highest reuse of tested code.
+- **Advantage.** Lowest risk, biggest immediate breathing-room win, keeps every
+  proven responsive invariant, and the diagonal symmetry finally makes the
+  left/right columns equal (today's 3/3-plus-a-panel asymmetry disappears).
+- **Risk.** Most conservative — it can read as "the same hub with two books
+  deleted". The four objects must be genuinely differentiated in art or the
+  redesign will not feel like one.
+
+### Proposal B — **The Lectern Arc** (shallow semicircle around Mogzy)
+
+- **Spatial arrangement.** Abandon columns. The four objects sit on a shallow
+  arc across the lower two-thirds of the painting, as if arranged on the library
+  floor facing the viewer, with Mogzy at the arc's focus. Outer two sit lower
+  and slightly larger (nearer); inner two sit higher and smaller (further) —
+  real perspective depth. Tome hangs above the arc's centre.
+- **Objects.** Full freedom: Leaguecraft = a book on a lectern; Archives = a
+  shelf/cabinet; Combat Simulation = a sparring dummy / arena table; Pro Play =
+  a broadcast stage with a banner. The arc is what unifies them, not the form.
+- **Interaction.** Hovering an object brings it forward (scale + z), dims the
+  other three slightly, and Mogzy **turns to face it** — the existing
+  `mogzy-facing-turn` `scaleX(±1)` generalises naturally to a 4-position arc.
+  Strongest use of the mascot of the three proposals.
+- **Mogzy.** Centre, at the arc's focal point, standing slightly forward of it.
+  `lean` becomes genuinely radial rather than hand-tuned per card.
+- **Patch centerpiece.** Above/behind the arc's centre, over Mogzy. **This is
+  the proposal's biggest tension** — the tome and the mascot compete for the
+  same centre column, which is exactly the collision `hub-guide.ts`'s bubble
+  offsets were written to avoid.
+- **Pro promo.** A banner or standee at one end of the arc — visually part of
+  the scene without being a fifth peer.
+- **Entrance.** The arc assembles outward-in or left-to-right, objects sliding
+  along the arc into place with a settle; Mogzy walks/fades into focus last.
+  The most cinematic, and the most expensive.
+- **Mobile.** Weakest. An arc cannot survive a 375px column, so mobile falls all
+  the way back to the flat `HexPanelLink` list — meaning the desktop and mobile
+  hubs share almost no visual language.
+- **`academy-layout.ts` rework.** **Heavy / near-rewrite.** Column geometry,
+  `BOOK_STACK_INSET`, the lift constants and the 3-column grid all go. Needs a
+  new radial model with its own tests. `CENTERPIECE_WIDTH_CSS` must be rebuilt
+  from scratch since its inputs vanish.
+- **Advantage.** By far the strongest art direction and the most "Academy"
+  feeling; makes Mogzy an actor rather than an ornament.
+- **Risk.** Highest. Discards the most tested code, re-opens the mascot/tome
+  collision that the current bubble calibration exists to solve, and has no
+  credible mobile story.
+
+### Proposal C — **Hero Shelf + Instrument Row** (asymmetric hierarchy)
+
+- **Spatial arrangement.** Leaguecraft is a **large hero book** occupying the
+  left third at roughly 1.5× today's book size — an honest signal that Ranked,
+  Daily and Mastery all live behind it. The right third stacks the other three
+  as a vertical row of smaller, equal objects. Centre lane unchanged.
+- **Objects.** Leaguecraft = hero `BookModeCard` (same component, larger box —
+  `BOOK_HEIGHT_RATIO` unchanged). Archives = small book. Combat Simulation =
+  small apparatus. Pro Play = small broadcast object.
+- **Interaction.** As today. The three small objects can share one hover
+  treatment; the hero gets a slightly stronger one.
+- **Mogzy.** Centre lane, but shifted marginally right of true centre to balance
+  the hero's visual weight — a change to the `bottom-[16%]` anchor's horizontal
+  partner, not to the anchor itself.
+- **Patch centerpiece.** Unchanged, centre lane, `top-3`.
+- **Pro promo.** Natural: a fourth slot appended under the right-hand row, or the
+  space beneath the hero book. The clearest promo home of the three.
+- **Entrance.** Hero book lands first with a heavier impact and a deeper
+  compression; the three small objects then drop in sequence, lighter and faster.
+  Cheap to build and reads as deliberate hierarchy. ~500ms.
+- **Mobile.** Good — the hero becomes a full-width feature card and the other
+  three stay `HexPanelLink`s beneath it, so mobile *inherits the hierarchy*
+  rather than flattening it. Better than A on expressiveness, near-equal on cost.
+- **`academy-layout.ts` rework.** **Moderate-low.** The column model survives;
+  it needs a second book-size track (hero vs standard) and a re-derived fit
+  slope for a 3-row right column against a 1-row left. `CENTERPIECE_WIDTH_CSS`'s
+  book-width term becomes asymmetric — the one genuinely fiddly part.
+- **Advantage.** The only proposal that makes the **stated hierarchy visible**:
+  Leaguecraft is not one of four equals in the product, and this says so.
+- **Risk.** Asymmetry can read as unfinished; and it structurally demotes
+  Combat Simulation, Archives and Pro Play, which contradicts the owner's
+  "four primary destinations" framing.
+
+---
+
+## 6. Recommendation (Task 6)
+
+**Proposal A — The Balanced Quadrant.**
+
+The owner's brief states four *equal* primary destinations. A is the only
+proposal whose geometry actually asserts equality (C demotes three of them; B
+asserts equality but at the cost of a near-total layout rewrite and a broken
+mobile story). A also preserves the maximum amount of tested, hard-won code:
+`BOOK_HEIGHT_RATIO`, the min()-crossover regime model, the 200px lane minimum,
+the mascot pedestal anchor and the centerpiece all survive, so the rework
+concentrates in constants that were *always* going to be re-derived by a 6→4
+change.
+
+The breathing-room objection to A is answered by arithmetic, not by layout
+novelty: removing a row frees roughly a third of the column height, and the
+brief's real complaint — a crowded feature grid — is caused by seven objects,
+not by the grid. Four objects in a quadrant is not crowded.
+
+The redesign's *identity* should then come from **art direction inside A**:
+Combat Simulation and Pro Play must be genuinely non-book objects, and the
+entrance choreography must land. That is where the effort belongs — not in
+re-deriving radial geometry.
+
+Proposal B's arc is worth keeping in the backlog as a later evolution once the
+4-destination registry exists; A does not foreclose it.
+
+---
+
+## 7. Regression risks (Task 7)
+
+1. **Silent guide mis-calibration.** Every `lean`/`bubble` value is hand-tuned
+   px against today's card positions. Moving cards invalidates all of them and
+   **nothing fails** — the bubble simply drifts off Mogzy or over a card title.
+   There is no test for visual attachment. Requires manual verification at
+   1024 / 1280 / 1440 / 1920 and at both height regimes.
+2. **`CENTERPIECE_WIDTH_CSS` moves when the books move.** It is defined in terms
+   of the book width term and the stack inset. "We didn't touch the centerpiece"
+   will be false; the tome will resize.
+3. **The `<picture>` + 1×1-GIF pattern is load-bearing.** A real `src` causes a
+   documented double download of the LCP painting. Do not "clean it up".
+4. **`BOOK_HEIGHT_RATIO = 0.542` comes from the frame PNG's alpha bbox.** New
+   book art with different transparent padding breaks every layout formula and
+   the `academy-layout.test.ts` contract. New *non-book* objects must either
+   match the ratio or get their own measured constant.
+5. **The mascot's `bottom-[16%]` anchor and the `top-[3.25rem]/-bottom-[3.25rem]`
+   counter-offset** keep Mogzy over the painting's pedestal. Any change to
+   section padding slides him off it.
+6. **Pro Play's promotion is the riskiest single edit**, because it is the one
+   change that *adds* to `HubGuideModeId` — new union member, new
+   `HUB_GUIDE_MODES` entry, new `sr-only` node, new `aria-describedby`, and four
+   test files that currently assert exactly six guide modes.
+7. **Route orphaning.** Stat Check, Quiz History and Patch Reports must keep a
+   verified front door after their cards go. All three do today
+   (`Quiz.tsx:1466`, `/quiz#history` + profile, broadcast CTA) — but this must
+   be re-checked at implementation time, because the `SHOW_SWIPE_GAMES` comment
+   records this exact mistake being made before.
+8. **Two manually-synced lists.** `LEFT/RIGHT_DESTINATIONS` and
+   `HUB_GUIDE_MODES` have no single source of truth. Collapsing them into one
+   registry as part of this work is the durable fix; not doing so guarantees the
+   next destination change repeats the drift.
+9. **Tab order is DOM order.** A 2×2 grid's DOM order and its visual order must
+   be reconciled deliberately.
+10. **Meta Reflex and the below-the-fold sections are out of scope** and must
+    not move as collateral.
+
+---
+
+## 8. Single next task (Task 8)
+
+**Once the owner picks a layout: build the unified destination registry — data
+only, no visual change.**
+
+Collapse `LEFT_DESTINATIONS`, `RIGHT_DESTINATIONS` and `HUB_GUIDE_MODES` into
+one exported registry of four entries that carries route, title, subtitle,
+object type, art reference, guide copy and guide geometry together; add
+`"pro-play"` to `HubGuideModeId` and give Pro Play its guide mode and its
+`sr-only` description; drive the existing rendering off the registry so the hub
+renders **identically to today** except that Pro Play now talks to Mogzy.
+
+Doing this first means the layout change that follows is a geometry change
+against a single source of truth, instead of a seven-way edit across two
+manually-synced lists, a test fixture and an accessibility block. It is also
+independently shippable and independently verifiable.
+
+---
+---
+
+# ARCHIVE — original audit, 2026-09-01
+
+*Superseded where it conflicts with the revision above. Its most significant
+error: it predicted Pro Play would merge as a seventh left-column book. It
+merged as a gold Hextech panel below the grid with no guide mode. Sections
+1–10 below otherwise remain accurate against `main`.*
+
+# Mogzy Hub Redesign — Current-State Audit (2026-09-01)
+
+**Status:** AUDIT ONLY. No code changed, nothing committed.
+**Authority for this audit:** working tree of `/Users/macmoney/mogsy` on branch
+`cs2/phase2-combo-planner` (HEAD `1f9740bf`). Note: `main` is at `3aa44d60`.
+The Pro Play book and `ProPlayHub`/`ProPlayQuiz` pages are **uncommitted local
+changes**, not yet on `main` — see Risks.
+
+## Objective
+
+Redesign the Mogzy main hub without inventing parallel systems or breaking the
+existing mascot, book, broadcast, radio, HUD and welcome interactions.
+
+---
+
+## 1. Homepage architecture
+
+### Routes
+
+| Route | Component | Notes |
+|---|---|---|
+| `/` | `src/pages/dev/mogzy-entry-v2/MogzyEntryV2.tsx` | `LEAGUE_ONLY_MODE` is on in prod, so the Academy **entry screen** is `/`. Renders OUTSIDE `<Layout />` (no HUD, no footer). CTA navigates to `LEAGUE_HOME_ROUTE`. |
+| `/lol` | **`src/pages/LolHub.tsx`** | **This is the hub being redesigned.** `LEAGUE_HOME_ROUTE = "/lol"` (`src/lib/site-config.ts:21`). |
+| `/welcome` | `src/pages/welcome/AcademyWelcomePage.tsx` | New-user orientation; real route, survives refresh, replayable. |
+| `/dev/legacy-entry` | `src/pages/Index.tsx` | Retired pre-Mogzy landing, inspection only. |
+| `/home` | `src/pages/Home.tsx` | Legacy Mogsy home; a `<Navigate>` stub in League-only mode. **Not the hub.** |
+
+Route table: `src/App.tsx:336-362`. `/lol` renders inside `<Layout />` and is
+listed in `isFullBleed` (`src/components/Layout.tsx`), which is what lets the
+painted library reach the viewport edges.
+
+### Supporting components used by the hub
+
+- `src/components/lol/BookModeCard.tsx` — open-book destination card.
+- `src/components/lol/HexPanelLink.tsx` — mobile/below-fold chamfered panel card.
+- `src/components/lol/MogzyHubGuide.tsx` — mascot + speech bubble.
+- `src/components/lol/hub-guide.ts` — mode metadata + `useHubGuideState`.
+- `src/components/lol/academy-layout.ts` — the whole responsive geometry system.
+- `src/components/lol/broadcast/AcademyBroadcastCenterpiece.tsx` (+ `AcademyBroadcastSurface.tsx`, `usePatchBriefFeed.ts`, `broadcast-content.ts`).
+- `src/components/audio/AcademyRadioDock.tsx`, `AcademyRadioControls.tsx`.
+- `src/components/lol/LolWelcomeIntro.tsx` — legacy first-visit tutorial popup (policy-gated, off in prod).
+- `src/components/blog/BlogPostCard.tsx`, `src/components/ads/AdSlot.tsx`, `src/components/SEOHead.tsx`.
+
+### How destinations are defined
+
+Two hardcoded arrays inside `LolHub.tsx` (~line 79):
+`LEFT_DESTINATIONS` and `RIGHT_DESTINATIONS`, of type `HubDestination`
+(`{ to, title, subtitle, Icon, championName, guideId, splashPosition }`).
+`ALL_DESTINATIONS` interleaves them row-major for the mobile list.
+Each `guideId` must exist in `HUB_GUIDE_MODES` (`hub-guide.ts`) — **the two
+files are manually kept in sync; there is no single source of truth.**
+
+### Destinations that currently appear (7)
+
+Left column: **Leaguecraft** `/quiz` · **Stat Check** `/quiz/stat-check` ·
+**Quiz History** `/lol/history` · **Pro Play** `/lol/pro-play` *(uncommitted)*
+Right column: **Combat Lab** `/combat-lab` · **Mogzy Archives** `/lol/docs` ·
+**Patch Reports** `/lol/patch-reports`
+
+Champion splashes per card: Ryze, Twisted Fate, Zilean, Azir / Akali, Viktor, Jayce
+(resolved via `useChampionAssets` + `getChampionSplash`).
+
+---
+
+## 2. Current hub visuals
+
+- **Background:** one `<picture>` with two `<source>`s —
+  `src/academy/hub/academy-library-desktop.png` and `academy-library-mobile.png`.
+  The `<img>` `src` is a **1×1 transparent GIF on purpose** (a real file there
+  double-downloads; see the comment block in `LolHub.tsx`). LCP visual:
+  `loading="eager" fetchPriority="high"`. A linear-gradient scrim sits over it.
+- **Books:** `BookModeCard` layers over one reusable transparent PNG,
+  `src/academy/hub/book-mode-frame.png` (1536×1024). Champion splash is clipped
+  into the left cover panel (`left 10.4% / top 17.6% / w 33.2% / h 59.8%`);
+  title + subtitle are **real HTML** on the right cover. Negative margins
+  reclaim the PNG's transparent padding, so **card height = width × 0.542**
+  (`BOOK_HEIGHT_RATIO`) — a constant the entire layout system depends on.
+- **Title:** `.academy-hub-title`, Cinzel, gradient `background-clip: text`
+  with inline `color`/`textShadow` overrides because `.theme-lol h1` would
+  otherwise win.
+- **Motion/CSS:** `src/index.css` — `academy-mogzy-float` (1779), `mogzy-lean-glide`
+  (1798), `mogzy-lean-bubble` (1802), `mogzy-facing-turn` (1819),
+  `mogzy-click-react` (1833), `academy-personal-line` (2078),
+  `book-title-glimmer` (2148). A `prefers-reduced-motion` block at ~2081 cancels
+  each one.
+
+**Reusable vs coupled**
+
+| Reusable | Coupled to the current presentation |
+|---|---|
+| `BookModeCard` (pure props; frame PNG geometry is self-contained) | The 3-col `grid-cols-[1fr_minmax(200px,0.34fr)_1fr]` lane composition in `LolHub.tsx` |
+| `HexPanelLink` | `DESKTOP_BOOK_STACK_INSET` / `BOOK_STACK_LIFT_CSS` translate hacks |
+| `academy-layout.ts` formulas (with tests) | Every `bubble.x/y/yNarrow` value in `hub-guide.ts` — hand-calibrated against *today's* card positions |
+| Broadcast centerpiece + radio dock | The `top-[3.25rem] -bottom-[3.25rem]` counter-offset wrapper around `MogzyHubGuide` |
+| Library background paintings | The `bottom-[16%]` mascot anchor, tuned to the painting's painted pedestal |
+
+---
+
+## 3. Mogzy mascot
+
+Implemented entirely in `src/components/lol/MogzyHubGuide.tsx`, mounted in the
+central lane of `LolHub.tsx` inside an `aria-hidden`, `pointer-events-none`
+wrapper. Asset: `public/mascot/mogzy-mascot-base-v1.png`, sized
+`w-[clamp(97px,9.7vw,167px)]`.
+
+Layer stack (deliberately separate so transforms never compete):
+1. `.academy-mogzy-float` — 6s idle bob, `absolute inset-x-0 bottom-[16%]`.
+2. `.mogzy-lean-glide` — contextual glide, `--guide-lean-x/y`, 340ms with slight overshoot.
+3. Speech bubble (sibling, `z-10`) — `--guide-bubble-x/y`.
+4. `.mogzy-facing-turn` — `scaleX(±1)`; base art faces left, so right-side cards mirror.
+5. Click-reaction div (`data-testid="mogzy-guide-react"`).
+
+- **Hover behaviour:** each book wrapper in `LolHub.tsx` fires
+  `activateGuide(d.guideId)` on `mouseenter`/`focus` and `deactivateGuide` on
+  `mouseleave`/`blur`. `useHubGuideState` (`hub-guide.ts`) applies immediately on
+  activate and clears after `GUIDE_CLEAR_DELAY_MS = 140` so moving between
+  adjacent cards never flashes idle.
+- **Dialogue:** `HUB_GUIDE_MODES[id].title` + `.description` render in a
+  parchment bubble. `lastModeRef` keeps the text while the bubble fades out.
+  Accessibility is handled separately: a `sr-only` block in `LolHub.tsx` renders
+  one `<span id={hubGuideDescriptionId(mode.id)}>` per mode, and each card link
+  points at it via `aria-describedby`. **No `aria-live`** — hover announces nothing.
+- **Click/bounce:** `handleReact` on the mascot `<img>` (`pointer-events-auto`
+  scoped to the image only). It removes `.mogzy-click-react`, forces a reflow,
+  re-adds it — so rapid repeat clicks always restart the keyframes. Self-clears
+  on `animationend`. Skipped outright under `prefers-reduced-motion`. It is a
+  plain `div`/`img`, not a button, on purpose (no cosmetic tab stop).
+- **Other state:** none. No persistence, no timers, no server reads.
+
+**"What's New" feasibility:** yes, cheaply, without a new system. The bubble is
+already a mode-driven view over `activeModeId`. A `whats-new` entry in
+`HUB_GUIDE_MODES` plus one extra `activate()` caller (a `!` badge next to the
+mascot) reuses the whole pipeline. Two real constraints: (a) `HubGuideMode`
+carries `lean`/`bubble` offsets calibrated for *card hover*, so a
+mascot-anchored mode needs `lean: {x:0,y:0}` and its own bubble placement; (b)
+the guide lives inside an `aria-hidden` subtree, so a *user-triggered*
+announcement would need its own accessible node outside that lane (the `sr-only`
+block is the existing precedent). **Not implemented.**
+
+---
+
+## 4. Patch Report (the central book) — keep as-is
+
+- **Composition:** `AcademyBroadcastCenterpiece.tsx` = broadcast surface + the
+  Academy Radio dock beneath it. Mounted absolutely at `top-3` in the central
+  lane (desktop) and again after the destination list on mobile (`variant="mobile"`).
+- **Surface:** `AcademyBroadcastSurface.tsx` over the painting
+  `public/images/lol-hub/academy-broadcast-book.png`. The painting is pure
+  chrome — all copy is live HTML over measured page rectangles.
+- **Data flow:** `usePatchBriefFeed()` → `fetchPatchReports()` (`["patch-reports"]`)
+  → `patches[0]` → `fetchPatchReport(version)` (`["patch-report", version]`) →
+  `projectPatchBrief(detail, championManifest)` → `briefTransmission()` →
+  `BroadcastFeed`. Champion icons come from `useChampionAssets`.
+  **It shares the Patch Reports page's exact query keys and cache — no second store.**
+  Fallback contract: only a genuine in-flight load shows "Receiving transmission…";
+  every error/empty case silently returns `INITIAL_BROADCAST_FEED`.
+- **It is structurally NOT a hub destination.** It is an absolutely-positioned
+  centre-lane object with its own content feed and its own CTA
+  ("Read full report" → `brief.fullReportHref`). The separate **Patch Reports**
+  *book* (`/lol/patch-reports`) is a different thing and is a destination.
+
+---
+
+## 5. Entrance / initial animations on the hub
+
+There is **no dedicated hub entrance choreography today.** What happens on load:
+
+1. `Layout`'s root has `.animate-page-fade-in` (`src/index.css:528`) — a whole-page fade.
+2. `playUiSfx("appEnter")` in a mount effect; `playUiSfx` self-suppresses on a
+   cold page load (no user gesture yet), so it only sounds on internal navigation.
+3. `trackFunnelEvent("lol_landing_viewed")`; `markHubVisited()`; anonymous
+   sign-in if there is no user.
+4. `.academy-personal-line` — a 480ms fade-in on the desktop greeting line only.
+5. Books, mascot and the tome appear with **no stagger** — the idle bob and the
+   title glimmer simply start looping.
+
+Infrastructure available for a future book/object entrance: `framer-motion`
+(^12.34.3, already a dependency and used by `AcademyBroadcastSurface`), the
+`useRevealSequence`/`cadence.ts` slot controller from the welcome page, and the
+existing CSS keyframe + `prefers-reduced-motion` conventions in `index.css`.
+
+---
+
+## 6. Welcome Orientation (`/welcome`)
+
+`src/pages/welcome/` — the richest animation asset in the codebase:
+
+| File | Role |
+|---|---|
+| `AcademyWelcomePage.tsx` | Page/orchestrator |
+| `AcademyTome.tsx` | The book stage; **the page-turn implementation** |
+| `useRevealSequence.ts` + `cadence.ts` | Slot/step controller: one `{chapter, step}` position and a timer. Copy blocks land as slots; the illustration is a separate channel keyed off `artRevealed` |
+| `ChapterPlate.tsx`, `InkText.tsx`, `FinaleSpread.tsx` | Chapter views, ink-in text, finale |
+| `tomeChrome.ts`, `tomeGeometry.test.ts` | Control-row height **reservation** so the tome never moves between chapters |
+| `useSceneReady.ts`, `usePrefersReducedMotion.ts`, `tomeAudio.ts`, `sceneAssets.ts` | Readiness gate, motion pref, audio, asset preload |
+| `RegistrationForm.tsx` | Inline account creation (HI1-C5) |
+
+**Book-opening / page-turn mechanics:** the turning leaf is a real sheet staged
+over the right page. Its **front face carries the outgoing chapter's writing and
+its back face is blank parchment**, and both faces are **cut from the spread
+painting's own pixels** (`--tome-paper` positioned into the box x 50–92%,
+y 13–88% of the tome) — so at rest the leaf is invisible against the page
+beneath it. One CSS animation rotates it across the spine under a moving
+fold-light with a cast shadow; the page removes it on a timer. Entirely
+presentational and `aria-hidden`.
+
+Asset: `src/academy/welcome/academy-book-spread.png` — a **downscaled derivative
+of the same `academy-broadcast-book.png` painting the hub already uses** (the
+2.6 MB public original was not an acceptable first-visit cost).
+
+**Reuse verdict (do not extract yet):** the leaf technique, `useRevealSequence`,
+`cadence.ts` and the `tomeChrome` reservation pattern are all directly
+applicable to a hub book-entrance. The tome's own sizing (`--tome-chrome`,
+aspect 1.381) is specific to a single centred full-screen book and does not
+transfer to a 7-book grid.
+
+---
+
+## 7. Existing global UI — all in the shell, none owned by the hub
+
+Everything below is mounted by `src/components/Layout.tsx`, i.e. **global, not
+homepage**. A hub redesign does not need to rebuild any of it.
+
+| Surface | Where |
+|---|---|
+| Top-left home (Mogzy hat) | `src/components/hud/GlobalHud.tsx` → `Link` to `LEAGUE_HOME_ROUTE`, `data-testid="hud-home"` |
+| Guest "Sign up" chip | `GlobalHud.tsx`, `data-testid="hud-signup-chip"`; only when `isGuestUser(user)` |
+| Top-right radio/player | `src/components/audio/AcademyRadioControls.tsx` (`variant="hud"`), inside `GlobalHud`'s right chip cluster. Transport: `src/lib/audio/academy-radio.ts`; controller `AcademyRadioController` is mounted in `App.tsx` above the router |
+| Profile / notifications / settings / sign out | **One component:** `src/components/hud/MogzyIdentityMenu.tsx` — portrait button opens a panel with the notification inbox (Supabase realtime on `notifications`), plus a pinned footer with Settings (`/settings`) and Sign out |
+| Bottom-left Community/Friends | `src/components/FloatingFriendsButton.tsx`, `fixed bottom-6 left-6 z-40`. Suppressed only on Stat Check surfaces (`showFriendsDrawer`); visible at every width. Realtime via `useSocialSync()` in Layout |
+| Footer (About/Feedback/Privacy/Terms/Security/Contact) | `src/components/Footer.tsx` — sitewide, self-hides on gameplay routes (`/quiz`, `/admin`, etc.). **It does render on `/lol`.** |
+| Other | `HextechAmbience` (LoL section only), `TutorialTipPopup`, `Toaster`/`Sonner` |
+
+HUD order is fixed and DOM order **is** tab order: signup chip → radio → identity menu.
+
+The second, larger radio surface — `AcademyRadioDock` — is *not* global; it is
+part of the hub's broadcast centerpiece.
+
+---
+
+## 8. Below the fold (`/lol`)
+
+Inside `<div className="max-w-7xl mx-auto px-4 py-6">` at the end of `LolHub.tsx`:
+
+1. `<AdSlot placement="lol_hub_mid" />`
+2. **Meta Reflex** section (`SHOW_SWIPE_GAMES = true`,
+   `data-testid="lol-hub-meta-reflex-section"`) — header with `META_REFLEX_NAME`/
+   `_TAGLINE`, "Stats" and "All games" links, then 4 compact `HexPanelLink` cards
+   built from `LEAGUE_SWIPE_GAMES` (`src/lib/league-swipe/api.ts`) with a local
+   slug→icon map. Titles/descriptions come from the shared catalog.
+3. **News & Blog** — `useBlogList({ limit: 24, tag: "League of Legends" })`,
+   `BlogPostCard` grid, "All posts" → `/blog`. Hidden entirely when empty.
+4. Then the global `<Footer />` (About / Feedback / Privacy / Terms / Security / Contact).
+
+**There is no About/help/community/social content on the homepage itself** —
+only the global footer's six links.
+
+---
+
+## 9. Responsive / mobile
+
+Two genuinely different layouts, split at Tailwind `md` (768px):
+
+- **Desktop (`md+`):** `section` is `-mt-[var(--app-header-h)] min-h-[100dvh]`,
+  full-bleed painting, 3-column grid `[1fr_minmax(200px,0.34fr)_1fr]`. Book
+  columns are pushed outward (`mr-auto`/`ml-auto`), translated by
+  `DESKTOP_BOOK_STACK_INSET` (`clamp(0px, (100vw-1200px)*0.5, 120px)`) and
+  `BOOK_STACK_LIFT_CSS`. Centre lane holds the tome (pinned `top-3`) and Mogzy.
+- **Mobile (`<md`):** background swaps to `academy-library-mobile.png`; the books
+  are replaced by a single-column `HexPanelLink` list in `ALL_DESTINATIONS` order
+  (row-major: Leaguecraft, Combat Lab, Stat Check, Archives, History, Patch,
+  Pro Play), with the broadcast centerpiece (`variant="mobile"`) **after** them.
+  Extra mobile-only sub-lines ("Welcome back, Summoner"); the randomized
+  personal line is desktop-only. **No mascot on mobile at all.**
+- **Tablet:** there is no tablet layout. 768px flips straight to the desktop
+  composition; `academy-layout.ts` explicitly accepts that below ~860px width
+  the title may brush the HUD cluster.
+
+**A redesign must preserve (all covered by `academy-layout.test.ts`):**
+`REGIME_BOUNDARY_VH = 1000` min()-crossover model (tall = width-driven,
+short = height-fit, no breakpoint snap); `BOOK_HEIGHT_RATIO = 0.542`;
+the 200px central-lane minimum; the title's three-way `min()` including the
+HUD-clearance term; the `-mt-[var(--app-header-h)]` / padding-transfer trick
+that keeps the painted pedestal's crop fixed across regimes.
+
+---
+
+## 10. Reusable design infrastructure
+
+- **Shared components:** `BookModeCard`, `HexPanelLink`, `HexZipperCard`,
+  `HexTrainingHero`, `SEOHead`, `AdSlot`, `BlogPostCard`, `AcademyRadioDock`/
+  `Controls`, `MogzyIdentityMenu`, the whole `src/components/ui` shadcn set.
+- **Animation:** `framer-motion` ^12.34.3; hand-written keyframes in
+  `src/index.css` with a matching `prefers-reduced-motion` block;
+  `useRevealSequence`/`cadence.ts`; `usePrefersReducedMotion`; `remotion` (video
+  export only — not for UI).
+- **Audio:** `src/lib/ui-sfx.ts` (`playUiSfx` — `appEnter`, `sectionOpen`,
+  `navClick`, `primaryAction`; cold-load gesture guard built in),
+  `src/lib/audio/academy-radio.ts`, `play-sfx.ts`, `mode-soundtrack.ts`,
+  `audio-studio-runtime.ts`, `src/pages/welcome/tomeAudio.ts`.
+- **Book assets:** `src/academy/hub/book-mode-frame.png` (destination card),
+  `public/images/lol-hub/academy-broadcast-book.png` (centre tome, 1536×1024,
+  2.6 MB), `src/academy/welcome/academy-book-spread.png` (downscaled derivative).
+- **Academy visual assets:** `src/academy/hub/academy-library-{desktop,mobile}.png`,
+  `academy-skyline.png`, `leaguecraft-studies.png`, `mogzy-archives.png`,
+  `meta-reflex.png`, `ranked.png`, `src/academy/welcome/*`,
+  `public/mascot/mogzy-mascot-base-v1.png`, `public/mascot/mogzy-hat.png`.
+  **Note `mogzy-archives.png` and `leaguecraft-studies.png` already exist and are
+  not used by the hub** — they were authored for destination art.
+- **Responsive primitives:** `academy-layout.ts` (+ its test), the
+  `--app-header-h` / `--app-viewport-h` tokens, `isFullBleed` in `Layout`,
+  `[container-type:inline-size]` + `cqw` units inside `BookModeCard`.
+
+---
+
+## Risks & coupling
+
+1. **Uncommitted work is in the audited state.** Pro Play (`ProPlayHub.tsx`,
+   `ProPlayQuiz.tsx`, `src/lib/pro-play/`, the `pro-play` guide mode and the
+   4th left-column book) exists only in the working tree of
+   `cs2/phase2-combo-planner`. A redesign started from `main` will not see it.
+2. **`hub-guide.ts` bubble geometry is hand-calibrated to the current grid.**
+   Every `lean`/`bubble.x`/`bubble.y`/`yNarrow` value (especially `quiz-history`'s
+   vw-interpolated `yNarrow: -36`) was tuned against today's card title positions.
+   Moving or resizing cards silently invalidates all of it — nothing fails loudly.
+3. **Two manually-synced destination lists.** `LEFT/RIGHT_DESTINATIONS` in
+   `LolHub.tsx` and `HUB_GUIDE_MODES` in `hub-guide.ts`. Adding or removing a
+   destination requires both.
+4. **`BOOK_HEIGHT_RATIO = 0.542` is derived from the frame PNG's alpha bbox.**
+   A new book art asset with different padding breaks every layout formula and
+   the `academy-layout.test.ts` contract.
+5. **The mascot's `bottom-[16%]` anchor and the `3.25rem` counter-offset wrapper**
+   exist to keep Mogzy over the painting's pedestal while the stack above him
+   moved. Any change to section padding moves him off his pedestal.
+6. **The `<picture>` + 1×1-GIF pattern is load-bearing** (a real `src` causes a
+   documented double download). Do not "clean it up".
+7. **The hub does not own the HUD, radio controls, notifications, settings,
+   sign-out, friends drawer or footer.** Adding homepage versions of any of
+   these creates the parallel systems this audit exists to prevent.
+8. **Column asymmetry is deliberate.** Pro Play was added to the left column
+   (4/3) specifically to avoid restructuring the grid.
+
+## Contradictions with the stated product assumptions
+
+- **Stat Check is still a primary hub destination** (`/quiz/stat-check`, left
+  column, Twisted Fate splash) — it must be removed from the hub AND from
+  `HUB_GUIDE_MODES`. `Quiz.tsx:1466` also links to it, so it keeps a home.
+- **Quiz History is a primary destination today** (`/lol/history`), but is not on
+  the planned four. It needs a home inside Leaguecraft or it loses its front door
+  — exactly the failure documented in the `SHOW_SWIPE_GAMES` comment.
+- **LIVE1/Pro Play already exists as a hub book** but as *uncommitted* work.
+- **"Graphs under Mogzy Archives" has nothing to place yet** — the only graph
+  route is `/dev/graph1`, and `/lol/docs` (Archives) does not link to it.
+- **Meta Reflex has a below-the-fold section on the homepage**, which sits
+  outside the "Ranked/Daily/Mastery live inside Leaguecraft" hierarchy. Its
+  header comment records that hiding it once left the feature with no front door.
+- **Patch Reports appears twice**: as the central tome interaction AND as a
+  destination book. The plan keeps the central interaction; the book's fate is
+  undecided.
+- **Mogzy Pro/Premium has no hub presence at all** today.
+- **The homepage has no community/social/about area** — only the global footer.
+
+## Recommended next design decision (not implemented)
+
+**Decide what the destination set's data model is before touching any pixels.**
+Specifically: collapse `LEFT_DESTINATIONS`/`RIGHT_DESTINATIONS`/`HUB_GUIDE_MODES`
+into one destination registry, and decide the **4-destination geometry** — four
+books cannot inherit the current 4/3 two-column composition, and that single
+choice (2×2? a single arc? one hero + three?) determines whether
+`academy-layout.ts`'s three-row fit slope, the 200px centre lane, the mascot
+anchor and every `hub-guide.ts` offset survive or are recalibrated. Everything
+else (entrance animation, "What's New", Pro promotion, below-the-fold community
+area) is additive once that is settled.
+
+## Next task
+
+Design (not build) the 4-destination hub geometry and the destination registry
+shape. Explicitly answer: where Stat Check, Quiz History, Patch Reports (book)
+and Meta Reflex go; whether the centre lane keeps the tome + radio + Mogzy stack;
+and what `academy-layout.ts` must be re-derived from.

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, History as HistoryIcon, Layers, Trophy } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, Trophy } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -70,17 +70,22 @@ type HubDestination = {
   splashPosition?: string;
 };
 
-// Approved academy IA — six destinations, book columns read left/right per row:
-//   Leaguecraft | Combat Lab / Stat Check | Mogzy Archives / Quiz History | Patch Reports
-// The grid stays SIX books. Pro Play (added 2026-09-01) is a primary
-// destination but deliberately NOT a seventh book: measured at 1440x900, a
-// fourth book in a column runs to y=1049 against the other column's 930 —
-// visibly asymmetric and past the viewport, because the lane holds three
-// 230px books by construction. It gets its own full-width panel below the
-// grid instead, in the same Hextech language the mobile panels already use,
-// which leaves the centre lane, the Mogzy calibration and all six books
-// untouched.
-const LEFT_DESTINATIONS: HubDestination[] = [
+// Approved academy IA — FOUR primary destinations in a balanced quadrant:
+//
+//   Leaguecraft (TL) | Combat Simulation (TR)
+//   Mogzy Archives (BL) | Pro Play (BR)
+//
+// One registry, row-major, is the single source of truth: the desktop columns
+// derive from index parity (even → left, odd → right), the mobile list walks
+// it in order, and every entry carries the `guideId` that keys
+// HUB_GUIDE_MODES, so a destination cannot exist without Mogzy being able to
+// describe it. Stat Check, Quiz History and Patch Reports were retired from
+// the primary hub on 2026-09-02 (IA cleanup); their routes, pages and other
+// front doors are untouched — Stat Check from Quiz.tsx, Quiz History from the
+// Leaguecraft workspace History pane and the profile, Patch Reports from the
+// Academy Broadcast centerpiece below. Pro Play was promoted from the
+// standalone gold panel it shipped as into a full peer destination.
+const HUB_DESTINATIONS: HubDestination[] = [
   {
     to: "/quiz",
     title: "Leaguecraft",
@@ -91,28 +96,10 @@ const LEFT_DESTINATIONS: HubDestination[] = [
     splashPosition: "95% center",
   },
   {
-    to: "/quiz/stat-check",
-    title: "Stat Check",
-    guideId: "stat-check",
-    subtitle: "Build. Compare. Outplay.",
-    Icon: Layers,
-    championName: "Twisted Fate",
-    splashPosition: "95% center",
-  },
-  {
-    to: "/lol/history",
-    title: "Quiz History",
-    guideId: "quiz-history",
-    subtitle: "Review your past results.",
-    Icon: HistoryIcon,
-    championName: "Zilean",
-    splashPosition: "70% center",
-  },
-];
-const RIGHT_DESTINATIONS: HubDestination[] = [
-  {
+    // Route id, guide id and component names stay `combat-lab` on purpose —
+    // only the user-facing title reads "Combat Simulation".
     to: "/combat-lab",
-    title: "Combat Lab",
+    title: "Combat Simulation",
     guideId: "combat-lab",
     subtitle: "Practice. Analyze. Dominate.",
     Icon: Swords,
@@ -129,31 +116,25 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
     splashPosition: "44% center",
   },
   {
-    to: "/lol/patch-reports",
-    title: "Patch Reports",
-    guideId: "patch-reports",
-    subtitle: "Track every gameplay change.",
-    Icon: Newspaper,
-    championName: "Jayce",
-    splashPosition: "98% center",
+    // Professional-play content — NOT /lol/pro, the subscription page.
+    to: "/lol/pro-play",
+    title: "Pro Play",
+    guideId: "pro-play",
+    subtitle: "Quiz yourself on the pro scene.",
+    Icon: Trophy,
+    championName: "Ahri",
+    splashPosition: "60% center",
   },
 ];
-// Mobile list order follows the desktop grid row-major (by priority), not
-// column-major: Leaguecraft, Combat Lab, Stat Check, Archives, History, Patch.
-/** Pro Play — professional-play content (NOT /lol/pro, the subscription
- *  page). Rendered as its own panel at both breakpoints; see the grid note
- *  above for why it is not a book. */
-const PRO_PLAY_DESTINATION = {
-  to: "/lol/pro-play",
-  title: "Pro Play",
-  subtitle: "Quiz yourself on the pro scene.",
-  Icon: Trophy,
-};
 
-const ALL_DESTINATIONS = LEFT_DESTINATIONS.flatMap((d, i) => {
-  const right = RIGHT_DESTINATIONS[i];
-  return right ? [d, right] : [d];
-});
+/** Desktop columns: row-major registry → two vertical pairs. */
+const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
+const RIGHT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 1);
+/** Mobile list order = registry order (desktop reading order). */
+const ALL_DESTINATIONS = HUB_DESTINATIONS;
+/** Mobile panels that keep the gold accent (Combat Simulation kept its own;
+ *  Pro Play inherits the gold its standalone panel shipped with). */
+const GOLD_ACCENT_ROUTES = new Set(["/combat-lab", "/lol/pro-play"]);
 
 // Personalized academy lines. One is picked at random per hub entry and stays
 // fixed for the whole visit (see academyLineIndex below).
@@ -314,21 +295,6 @@ export default function LolHub() {
   // central lane, where the Academy Radio console now lives — at 1280 the
   // fixed 120px put book edges 34px into the lane, under the console.
   const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
-
-  /** Pro Play's panel. One definition, rendered once per breakpoint (the
-   *  desktop copy sits under the book grid, the mobile copy after the
-   *  destination list) so the two placements cannot drift apart. */
-  const renderProPlayPanel = () => (
-    <HexPanelLink
-      to={PRO_PLAY_DESTINATION.to}
-      title={PRO_PLAY_DESTINATION.title}
-      description={PRO_PLAY_DESTINATION.subtitle}
-      Icon={PRO_PLAY_DESTINATION.Icon}
-      accent="gold"
-      compact
-      onClick={() => onDestinationClick(PRO_PLAY_DESTINATION.to)}
-    />
-  );
 
   const renderBook = (d: HubDestination, side: "left" | "right") => (
     // Book size. BookModeCard reclaims ALL of the frame PNG's transparent
@@ -510,7 +476,7 @@ export default function LolHub() {
             ))}
           </div>
 
-          {/* Desktop: six open books flanking Mogzy's central lane */}
+          {/* Desktop: four books in a balanced quadrant around Mogzy's central lane */}
           <div className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3">
             <div
               className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
@@ -585,15 +551,6 @@ export default function LolHub() {
             </div>
           </div>
 
-          {/* Pro Play — DESKTOP: its own panel directly under the six books,
-              so it reads as a primary destination without joining the grid.
-              The mobile copy is rendered after the destination list instead
-              (see below) — placing it here would put it above Leaguecraft
-              and re-order the established mobile IA. */}
-          <div className="mt-2 hidden md:block">
-            {renderProPlayPanel()}
-          </div>
-
           {/* Mobile fallback — clipped Hextech panels (unchanged presentation) */}
           <div className="mt-5 grid grid-cols-1 gap-3 md:hidden">
             {ALL_DESTINATIONS.map((d) => (
@@ -603,18 +560,14 @@ export default function LolHub() {
                 title={d.title}
                 description={d.subtitle}
                 Icon={d.Icon}
-                accent={d.to === "/combat-lab" ? "gold" : "cyan"}
+                accent={GOLD_ACCENT_ROUTES.has(d.to) ? "gold" : "cyan"}
                 onClick={() => onDestinationClick(d.to)}
               />
             ))}
           </div>
 
-          {/* Pro Play — MOBILE, after the six destinations so the existing
-              primary navigation keeps the top of the list. */}
-          <div className="mt-3 md:hidden">{renderProPlayPanel()}</div>
-
           {/* Mobile Academy Broadcast — the stacked magic-book card with the
-              radio dock beneath it, after the six destinations so primary
+              radio dock beneath it, after the four destinations so primary
               navigation keeps the top of the list. */}
           <div className="mt-4 md:hidden">
             <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
