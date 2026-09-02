@@ -203,6 +203,16 @@ export interface SegmentChallengeView {
 // ------------------------------------------------- Mastery Slice (Phase 4F)
 
 /**
+ * The module id whose segments carry Mastery questions rather than cards.
+ *
+ * Named once because THREE readers dispatch on it — the live block, the
+ * settlement transcript and the post-match review — and each of them reads a
+ * different wire key that Meta Reflex also uses. A literal in three places is
+ * how two of them would eventually disagree.
+ */
+export const MASTERY_SLICE_MODULE_ID = "mastery_slice";
+
+/**
  * One pre-reveal Mastery Slice challenge (`mastery_slice.v1`, Phase 4F proof
  * of concept). Field names mirror the backend module's public allow-list
  * exactly (`ranked_modules/mastery_slice.py::PUBLIC_CHALLENGE_FIELDS`) and,
@@ -923,7 +933,7 @@ function readSegmentBlock(
   if (raw === null || raw === undefined) return null;
   const block = rec(raw, "segment_state.challenges");
   const list = Array.isArray(block.challenges) ? block.challenges : [];
-  if (moduleId === "mastery_slice") {
+  if (moduleId === MASTERY_SLICE_MODULE_ID) {
     return {
       contract: "mastery_slice",
       challenges: list.map((c, i) => readMasterySliceChallenge(c, `challenges[${i}]`)),
@@ -959,7 +969,7 @@ function readSubmittedChoices(
   raw: unknown, moduleId: string, moduleVersion: number,
 ): (string | null)[] {
   const choices = Array.isArray(raw) ? raw : [];
-  const key = moduleId === "mastery_slice"
+  const key = moduleId === MASTERY_SLICE_MODULE_ID
     ? "selected"
     : moduleVersion >= META_REFLEX_MIXED_VERSION ? "card_id" : "item_id";
   return choices.map((c) => {
@@ -1217,12 +1227,31 @@ export interface SegmentRevealPlayer {
   damageDealt: number | null;
 }
 
+/**
+ * One settled `mastery_slice` challenge: the answer and the worked
+ * explanation, both terminal data every participant may see once the segment
+ * has resolved.
+ *
+ * A DISTINCT shape from `SegmentRevealChallenge` for the same reason the
+ * review shapes are distinct: a Meta Reflex transcript settles a left/right
+ * card, a Mastery one settles an answered question. They share the wire key
+ * `challenges` and nothing beneath it, so the reader below dispatches on the
+ * settled MODULE ID rather than on which fields happen to be present.
+ */
+export interface SegmentRevealMasteryChallenge {
+  challengeIndex: number;
+  correctAnswer: string | number | boolean | null;
+  explanation: string | null;
+}
+
 export interface SegmentRevealView {
   moduleId: string;
   /** Which card contract this transcript was settled under. */
   moduleVersion: number;
   challengeCount: number;
   challenges: SegmentRevealChallenge[];
+  /** Present only on a `mastery_slice` settlement; empty on every other. */
+  masteryChallenges: SegmentRevealMasteryChallenge[];
   players: Record<string, SegmentRevealPlayer>;
   /** Already-public display metadata, keyed by item id. Empty for v4, whose
    * cards carry their own labels. */
@@ -1277,13 +1306,35 @@ export function readSegmentReveal(payload: unknown): SegmentRevealView | null {
   }
   // Pre-v4 rows predate the field; they are all v1 by construction.
   const moduleVersion = typeof o.module_version === "number" ? o.module_version : 1;
+  // Which transcript contract this settlement speaks is decided by the module
+  // that settled it — never by a field probe. A Mastery slice settles answered
+  // QUESTIONS, and offering those to the card reader would fail on a missing
+  // `left_item_id` and take the whole post-segment beat down with it.
+  const moduleId = str(o.module_id, "segment_reveal.module_id");
+  const isMastery = moduleId === MASTERY_SLICE_MODULE_ID;
   return {
-    moduleId: str(o.module_id, "segment_reveal.module_id"),
+    moduleId,
     moduleVersion,
     challengeCount: num(o.challenge_count, "segment_reveal.challenge_count"),
-    challenges: challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
+    challenges: isMastery
+      ? []
+      : challenges.map((c, i) => readRevealChallenge(c, i, moduleVersion)),
+    masteryChallenges: isMastery
+      ? challenges.map((c, i) => readRevealMasteryChallenge(c, i))
+      : [],
     players,
     items,
+  };
+}
+
+function readRevealMasteryChallenge(raw: unknown,
+                                    i: number): SegmentRevealMasteryChallenge {
+  const ch = rec(raw, `segment_reveal.challenges[${i}]`);
+  return {
+    challengeIndex: num(ch.challenge_index, `challenges[${i}].challenge_index`),
+    correctAnswer: reviewMasteryAnswer(
+      ch.correct_answer, `challenges[${i}].correct_answer`),
+    explanation: nstr(ch.explanation, `challenges[${i}].explanation`),
   };
 }
 
@@ -1691,9 +1742,40 @@ export interface ReviewSubmission {
   challengeCount: number | null;
 }
 
+/**
+ * One reviewed challenge of a `mastery_slice` segment.
+ *
+ * A DISTINCT shape from `ReviewChallenge`, not a widening of it: a Meta Reflex
+ * challenge is a left/right recognition pair whose label IS its answer, and a
+ * Mastery challenge is a prompt with answer options. They share a wire key
+ * (`challenges`) and nothing else, so they are read under the round's `kind`
+ * and land in separate fields — exactly the discipline `SegmentBlockView`
+ * already uses for the live segment.
+ *
+ * Reveal-only fields (`correctAnswer`, `explanation`) are null until the round
+ * resolved, enforced below by the same inverse guard the rest of this reader
+ * applies: an unrevealed round carrying an answer is a backend regression and
+ * fails at this boundary rather than printing the answer to a question the
+ * viewer can be asked again.
+ */
+export interface ReviewMasteryChallenge {
+  challengeIndex: number;
+  prompt: string;
+  interactionKind: string;
+  questionFamily: string | null;
+  answerType: "single_choice" | "numeric" | "boolean";
+  answerOptions: string[];
+  promptSemantics: Record<string, unknown> | null;
+  comparisonSemantics: Record<string, unknown> | null;
+  correctAnswer: string | number | boolean | null;
+  explanation: string | null;
+  viewerAnswer: string | number | boolean | null;
+  isCorrect: boolean | null;
+}
+
 export interface ReviewRound {
   roundNumber: number;
-  kind: "quiz" | "meta_reflex";
+  kind: "quiz" | "meta_reflex" | "mastery_slice";
   moduleId: string;
   category: string | null;
   canonicalQuestionRef: string | null;
@@ -1715,6 +1797,8 @@ export interface ReviewRound {
   topic: TimelineTopic | null;
   question: ReviewQuestion | null;
   challenges: ReviewChallenge[] | null;
+  /** Present only on a `mastery_slice` round; null on every other kind. */
+  masteryChallenges: ReviewMasteryChallenge[] | null;
   viewerSubmission: ReviewSubmission;
 }
 
@@ -1779,6 +1863,55 @@ function reviewChallenge(raw: unknown, label: string): ReviewChallenge {
   };
 }
 
+/** A Mastery answer as it appears on the wire: string, number or boolean. */
+function reviewMasteryAnswer(v: unknown, label: string):
+    string | number | boolean | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+    return v;
+  }
+  throw new RankedPublicParseError(`${label} must be a string, number or boolean`);
+}
+
+function reviewMasteryChallenge(raw: unknown, label: string,
+                                revealed: boolean): ReviewMasteryChallenge {
+  const c = rec(raw, label);
+  const answerType = c.answer_type;
+  if (answerType !== "single_choice" && answerType !== "numeric"
+      && answerType !== "boolean") {
+    throw new RankedPublicParseError(
+      `${label}.answer_type must be a Mastery answer type`);
+  }
+  const correctAnswer = reviewMasteryAnswer(
+    c.correct_answer, `${label}.correct_answer`);
+  const explanation = nstr(c.explanation, `${label}.explanation`);
+  // The inverse guard, same as the quiz round above: an unresolved round must
+  // not carry the answer, because the source Mastery set can be served again.
+  if (!revealed && (correctAnswer !== null || explanation !== null)) {
+    throw new RankedPublicParseError(
+      `${label} is not revealed but carried a correct answer`);
+  }
+  return {
+    challengeIndex: num(c.challenge_index, `${label}.challenge_index`),
+    prompt: str(c.prompt, `${label}.prompt`),
+    // An empty interaction kind is legitimate and means "the prompt is prose"
+    // — the renderer's business, not the parser's, so it is carried verbatim.
+    interactionKind: nstr(c.interaction_kind, `${label}.interaction_kind`) ?? "",
+    questionFamily: nstr(c.question_family, `${label}.question_family`),
+    answerType,
+    answerOptions: strList(c.answer_options, `${label}.answer_options`),
+    promptSemantics: c.prompt_semantics === null || c.prompt_semantics === undefined
+      ? null : rec(c.prompt_semantics, `${label}.prompt_semantics`),
+    comparisonSemantics:
+      c.comparison_semantics === null || c.comparison_semantics === undefined
+        ? null : rec(c.comparison_semantics, `${label}.comparison_semantics`),
+    correctAnswer,
+    explanation,
+    viewerAnswer: reviewMasteryAnswer(c.viewer_answer, `${label}.viewer_answer`),
+    isCorrect: nbool(c.is_correct, `${label}.is_correct`),
+  };
+}
+
 /**
  * Post-match review (`ranked_duel.match_review.v1`).
  *
@@ -1798,7 +1931,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
     const label = `rounds[${i}]`;
     const r = rec(raw, label);
     const kind = str(r.kind, `${label}.kind`);
-    if (kind !== "quiz" && kind !== "meta_reflex") {
+    if (kind !== "quiz" && kind !== "meta_reflex" && kind !== "mastery_slice") {
       throw new RankedPublicParseError(`${label}.kind is unknown: ${kind}`);
     }
     const revealed = bool(r.revealed, `${label}.revealed`);
@@ -1828,13 +1961,23 @@ export function readMatchReview(body: unknown): MatchReviewView {
       };
     }
 
+    // The two multi-challenge kinds share the wire key `challenges` and
+    // nothing else, so which reader runs is decided by the round's own kind —
+    // never by which fields happen to be present, which is how a Mastery
+    // challenge would end up coerced into a card shape it has no sides for.
     let challenges: ReviewChallenge[] | null = null;
+    let masteryChallenges: ReviewMasteryChallenge[] | null = null;
     if (Array.isArray(r.challenges)) {
-      challenges = r.challenges.map((c, j) =>
-        reviewChallenge(c, `${label}.challenges[${j}]`));
-      if (!revealed && challenges.some((c) => c.correctSide !== null)) {
-        throw new RankedPublicParseError(
-          `${label} is not revealed but named a correct card`);
+      if (kind === "mastery_slice") {
+        masteryChallenges = r.challenges.map((c, j) =>
+          reviewMasteryChallenge(c, `${label}.challenges[${j}]`, revealed));
+      } else {
+        challenges = r.challenges.map((c, j) =>
+          reviewChallenge(c, `${label}.challenges[${j}]`));
+        if (!revealed && challenges.some((c) => c.correctSide !== null)) {
+          throw new RankedPublicParseError(
+            `${label} is not revealed but named a correct card`);
+        }
       }
     }
 
@@ -1851,6 +1994,7 @@ export function readMatchReview(body: unknown): MatchReviewView {
       topic: readTimelineTopic((r as Record<string, unknown>).topic),
       question,
       challenges,
+      masteryChallenges,
       viewerSubmission: {
         answerIndex: nnum(sub.answer_index, `${label}.viewer_submission.answer_index`),
         isCorrect: nbool(sub.is_correct, `${label}.viewer_submission.is_correct`),

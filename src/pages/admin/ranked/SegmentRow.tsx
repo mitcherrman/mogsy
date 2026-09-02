@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import type { CatalogModule, SegmentSpecJson } from "@/lib/admin/rankedFormatApi";
 import { summarizeSegment } from "@/lib/admin/rankedSegmentSummary";
 import { cn } from "@/lib/utils";
+import { GenerationPolicyPanel } from "./GenerationPolicyPanel";
 import { ModuleConfigFields } from "./ModuleConfigFields";
 
 export function SegmentRow({
@@ -161,12 +162,22 @@ export function SegmentRow({
             </p>
           )}
           {catalogModule ? (
-            <ModuleConfigFields
-              fields={catalogModule.fields}
-              segment={segment}
-              index={index}
-              onChange={onFieldChange}
-            />
+            <>
+              <ModuleConfigFields
+                fields={catalogModule.fields}
+                segment={segment}
+                index={index}
+                onChange={onFieldChange}
+              />
+              {/* Renders only for a module that DECLARES runtime-generation
+                  capabilities, and only once its set is chosen. A module
+                  without them is unchanged. */}
+              <GenerationPolicyPanel
+                segment={segment}
+                capabilities={catalogModule.mastery_sets}
+                index={index}
+              />
+            </>
           ) : (
             <p
               className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-200"

@@ -43,7 +43,7 @@ function settlement(
   return {
     reveal: {
       moduleId: "item_cost_duel", moduleVersion: 4, challengeCount: 5,
-      challenges: [], items: {},
+      challenges: [], masteryChallenges: [], items: {},
       players: {
         userA: revealPlayer(you),
         userB: revealPlayer({

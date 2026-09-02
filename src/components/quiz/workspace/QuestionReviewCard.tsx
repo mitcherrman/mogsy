@@ -294,6 +294,135 @@ function CardSide({
   );
 }
 
+/**
+ * One `mastery_slice` segment, reviewed.
+ *
+ * The SAME five things every other review body states — where am I, what was
+ * asked, what did I pick, what was right, and why — repeated once per
+ * challenge, because a slice is several questions answered in one segment
+ * rather than one question or a block of recognition cards.
+ *
+ * It reuses this file's existing option list, tones and `AnswerLine` rather
+ * than introducing a Mastery look inside the ledger, and it reads ONLY the
+ * frozen round: nothing here re-resolves a Mastery set, so a later change to
+ * generation policy, serving policy or canonical data cannot rewrite what a
+ * played match shows.
+ *
+ * Generic over the challenge contract — there is no champion, item or damage
+ * type in it, and it prints whatever the frozen challenges hold.
+ */
+function MasterySliceBody({ round }: { round: ReviewRound }) {
+  const challenges = round.masteryChallenges ?? [];
+  const sub = round.viewerSubmission;
+  return (
+    <>
+      {sub.correctCount !== null && sub.challengeCount !== null && (
+        <p className="text-[11.5px]" style={{ color: LEAGUECRAFT_INK.body }}>
+          <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+            {sub.correctCount}
+          </span>{" "}
+          of{" "}
+          <span className="font-semibold tabular-nums" style={{ color: LEAGUECRAFT_INK.strong }}>
+            {sub.challengeCount}
+          </span>{" "}
+          right.
+        </p>
+      )}
+      <ul className="space-y-2.5" data-testid="review-mastery-challenges">
+        {challenges.map((challenge) => {
+          const chosen = challenge.viewerAnswer;
+          const correct = challenge.correctAnswer;
+          return (
+            <li
+              key={challenge.challengeIndex}
+              className="space-y-1"
+              data-review-mastery-challenge={challenge.challengeIndex}
+            >
+              <p
+                className="text-[12px] leading-relaxed"
+                style={{ color: LEAGUECRAFT_INK.strong }}
+              >
+                {challenge.prompt}
+              </p>
+
+              {challenge.answerOptions.length > 0 && (
+                <ul className="space-y-1">
+                  {challenge.answerOptions.map((opt, i) => {
+                    const isCorrect = correct !== null && String(correct) === opt;
+                    const isChosen = chosen !== null && String(chosen) === opt;
+                    const tone = isCorrect ? TONE.correct : isChosen ? TONE.incorrect : TONE.idle;
+                    const Icon = isCorrect ? Check : isChosen ? X : Minus;
+                    return (
+                      <li
+                        key={i}
+                        data-review-option={i}
+                        data-option-state={isCorrect ? "correct" : isChosen ? "chosen" : "idle"}
+                        className="flex items-start gap-1.5 rounded border px-1.5 py-1 text-[11.5px]"
+                        style={{ borderColor: tone.edge, background: tone.fill, color: tone.ink }}
+                      >
+                        <Icon className="mt-[3px] h-3 w-3 shrink-0" aria-hidden="true" />
+                        <span className="min-w-0 flex-1 break-words">{opt}</span>
+                        {isChosen && (
+                          <span className="shrink-0 text-[8.5px] font-bold uppercase tracking-[0.14em] opacity-80">
+                            yours
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <div className="space-y-0.5">
+                <AnswerLine
+                  testId={`review-mastery-your-answer-${challenge.challengeIndex}`}
+                  label="Your answer"
+                  value={chosen === null ? "Not answered" : String(chosen)}
+                  ink={
+                    chosen === null ? LEAGUECRAFT_INK.faint
+                      : challenge.isCorrect ? TONE.correct.ink : TONE.incorrect.ink
+                  }
+                />
+                {round.revealed && correct !== null ? (
+                  <AnswerLine
+                    testId={`review-mastery-correct-answer-${challenge.challengeIndex}`}
+                    label="Correct answer"
+                    value={String(correct)}
+                    ink={TONE.correct.ink}
+                  />
+                ) : (
+                  <p
+                    className="text-[11px]"
+                    data-testid={`review-mastery-unresolved-${challenge.challengeIndex}`}
+                    style={{ color: LEAGUECRAFT_INK.faint }}
+                  >
+                    This round was never played out, so its answer stays sealed.
+                  </p>
+                )}
+              </div>
+
+              {challenge.explanation && (
+                <div
+                  className="space-y-0.5"
+                  data-testid={`review-mastery-explanation-${challenge.challengeIndex}`}
+                >
+                  <SectionLabel>Explanation</SectionLabel>
+                  <p
+                    className="text-[11.5px] leading-relaxed"
+                    style={{ color: LEAGUECRAFT_INK.body }}
+                  >
+                    {challenge.explanation}
+                  </p>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
 function MetaReflexBody({ round }: { round: ReviewRound }) {
   const cards = round.challenges ?? [];
   const sub = round.viewerSubmission;
@@ -338,9 +467,11 @@ export default function QuestionReviewCard({
   const subject =
     round.kind === "meta_reflex"
       ? "Meta Reflex"
-      : round.category
-        ? prettyCategory(round.category)
-        : icon.label;
+      : round.kind === "mastery_slice"
+        ? "Mastery"
+        : round.category
+          ? prettyCategory(round.category)
+          : icon.label;
 
   return (
     <div className="space-y-2" data-testid="question-review-card" data-outcome={outcome}>
@@ -366,6 +497,8 @@ export default function QuestionReviewCard({
 
       {round.kind === "meta_reflex" ? (
         <MetaReflexBody round={round} />
+      ) : round.kind === "mastery_slice" ? (
+        <MasterySliceBody round={round} />
       ) : (
         <QuizBody round={round} />
       )}

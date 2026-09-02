@@ -89,6 +89,7 @@ function quizRound(n: number, over: Partial<ReviewRound> = {}): ReviewRound {
       explanation: null,
     },
     challenges: null,
+    masteryChallenges: null,
     viewerSubmission: {
       answerIndex: 0, isCorrect: true,
       correctCount: null, answeredCount: null, challengeCount: null,

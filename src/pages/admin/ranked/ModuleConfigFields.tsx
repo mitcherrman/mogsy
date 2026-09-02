@@ -9,9 +9,22 @@
 // It also holds no validation rules. The only checks are the ones needed to
 // keep the form usable (a required text field flagged as empty), never a
 // second opinion on what the backend will accept.
+//
+// DEPENDENT OPTIONS
+// A field may declare `depends_on` — another field in the same segment whose
+// value chooses this one's options, carried in `options_by`. That is still the
+// backend describing the form: this file resolves the parent's value and looks
+// the options up, and knows nothing about which fields those are.
+//
+// A parent value with no entry in `options_by` means the capability does not
+// exist for that selection, and the control is NOT RENDERED. An absent
+// capability must read as an absent control rather than as an empty one — an
+// empty multi-select invites an admin to conclude the options failed to load.
 // ---------------------------------------------------------------------------
 
-import type { CatalogField, SegmentSpecJson } from "@/lib/admin/rankedFormatApi";
+import type {
+  CatalogField, CatalogOption, SegmentSpecJson,
+} from "@/lib/admin/rankedFormatApi";
 import { readSegmentField, toggleMultiValue } from "@/lib/admin/rankedFormatEditing";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -74,12 +87,32 @@ function EnumField({ field, segment, index, onChange }: FieldProps) {
   );
 }
 
+/**
+ * The options a field offers RIGHT NOW, or null when it offers none because
+ * the selection it depends on has no capability for it.
+ *
+ * Null and `[]` are deliberately different: `[]` is a field that genuinely has
+ * an empty option list, and null is a field that should not appear.
+ */
+export function resolveFieldOptions(
+  field: CatalogField, segment: SegmentSpecJson,
+): CatalogOption[] | null {
+  if (!field.depends_on) return field.options ?? [];
+  const parent = readSegmentField(segment, field.depends_on);
+  if (typeof parent !== "string") return null;
+  return field.options_by?.[parent] ?? null;
+}
+
 function MultiEnumField({ field, segment, index, onChange }: FieldProps) {
   const raw = readSegmentField(segment, field.key);
   const selected = new Set(Array.isArray(raw) ? (raw as string[]) : []);
-  const options = field.options ?? [];
+  const options = resolveFieldOptions(field, segment);
+  if (options === null) return null;
   const allValues = options.map((o) => o.value);
-  const tooFew = (field.min_items ?? 0) > selected.size;
+  // A dependent, optional field is empty by design until an admin picks
+  // something, and "leave it empty for all of them" is a legitimate saved
+  // value — so the min-items hint only applies once a choice has been made.
+  const tooFew = selected.size > 0 && (field.min_items ?? 0) > selected.size;
 
   return (
     <FieldShell field={field} index={index}>
@@ -90,6 +123,8 @@ function MultiEnumField({ field, segment, index, onChange }: FieldProps) {
       >
         {options.map((option) => {
           const on = selected.has(option.value);
+          const detail = option.max_questions !== undefined
+            ? `${option.label} (${option.max_questions})` : option.label;
           return (
             <button
               key={option.value}
@@ -106,8 +141,9 @@ function MultiEnumField({ field, segment, index, onChange }: FieldProps) {
                   ? "border-primary/50 bg-primary/15 text-foreground"
                   : "border-transparent bg-muted/40 text-muted-foreground hover:bg-muted",
               )}
+              title={option.help ?? undefined}
             >
-              {option.label}
+              {detail}
             </button>
           );
         })}

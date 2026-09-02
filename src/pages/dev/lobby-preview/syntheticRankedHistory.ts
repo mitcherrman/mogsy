@@ -487,6 +487,7 @@ function metaReflexRound(roundNumber: number, viewerSides: (("left" | "right") |
     },
     question: null,
     challenges,
+    masteryChallenges: null,
     viewerSubmission: {
       answerIndex: null, isCorrect: null,
       correctCount: correct, answeredCount: answered, challengeCount: challenges.length,
@@ -529,6 +530,7 @@ function quizRound(roundNumber: number, spec: RoundSpec): ReviewRound {
       explanation: revealed ? q.explanation : null,
     },
     challenges: null,
+    masteryChallenges: null,
     viewerSubmission: {
       answerIndex: spec.answer,
       isCorrect: revealed && spec.answer !== null ? spec.answer === q.correctIndex : null,

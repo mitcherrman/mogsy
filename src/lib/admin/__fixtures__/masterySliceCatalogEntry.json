@@ -1,0 +1,275 @@
+{
+  "module_id": "mastery_slice",
+  "module_version": 1,
+  "label": "Mastery Slice",
+  "description": "A slice of a generated Mastery set's leading ordered steps, answered head-to-head exactly as the standalone Mastery player would.",
+  "defaults": {
+    "module_id": "mastery_slice",
+    "module_version": 1,
+    "challenge_count": 3,
+    "timer_seconds": null,
+    "pressure_seconds": null,
+    "full_damage": null,
+    "reduced_damage": null,
+    "ability_phase_seconds": null,
+    "module_config": {
+      "mastery_set_id": "playtest.champion.ahri"
+    },
+    "analytics_tag": null,
+    "scoring": "outcome",
+    "card_timer_seconds": null
+  },
+  "fields": [
+    {
+      "key": "module_config.mastery_set_id",
+      "label": "Mastery set",
+      "type": "enum",
+      "required": true,
+      "options": [
+        {
+          "value": "chain.jarvan.physical_penetration",
+          "label": "Jarvan IV Q \u2014 Physical Penetration",
+          "max_questions": 2
+        },
+        {
+          "value": "playtest.champion.ahri",
+          "label": "Ahri \u2014 Champion Mastery",
+          "max_questions": 15
+        },
+        {
+          "value": "playtest.matchup.ahri.syndra",
+          "label": "Ahri vs Syndra \u2014 Matchup Mastery",
+          "max_questions": 13
+        }
+      ],
+      "help": "Which generated Mastery set this slot draws its ordered steps from. Each option's max_questions is how many steps that set actually has."
+    },
+    {
+      "key": "challenge_count",
+      "label": "Questions",
+      "type": "integer",
+      "required": true,
+      "min": 2,
+      "help": "How many of the chosen set's leading ordered steps to generate. Must not exceed that set's max_questions, and never fewer than 2 \u2014 a one-question slice is not servable."
+    },
+    {
+      "key": "module_config.allowed_variants",
+      "label": "Scenario variants",
+      "type": "multi_enum",
+      "required": false,
+      "depends_on": "module_config.mastery_set_id",
+      "options_by": {
+        "chain.jarvan.physical_penetration": [
+          {
+            "value": "lethality",
+            "label": "Flat lethality",
+            "help": "Serrated Dirk \u2014 flat Armor reduction.",
+            "max_questions": 1
+          },
+          {
+            "value": "percent_pen",
+            "label": "Percent armor penetration",
+            "help": "Lord Dominik's Regards \u2014 percent Armor reduction.",
+            "max_questions": 1
+          }
+        ],
+        "playtest.champion.ahri": [
+          {
+            "value": "fundamentals",
+            "label": "Fundamentals",
+            "help": "Opening recall on Ahri's core abilities.",
+            "max_questions": 4
+          },
+          {
+            "value": "abilities",
+            "label": "Abilities",
+            "help": "The rest of the kit's cooldowns and costs.",
+            "max_questions": 4
+          },
+          {
+            "value": "progression",
+            "label": "Progression",
+            "help": "Level scaling and per-level stats.",
+            "max_questions": 5
+          },
+          {
+            "value": "reinforcement",
+            "label": "Reinforcement",
+            "help": "Repeat recall on the earlier material.",
+            "max_questions": 2
+          }
+        ],
+        "playtest.matchup.ahri.syndra": [
+          {
+            "value": "fundamentals",
+            "label": "Fundamentals",
+            "help": "Opening recall across both kits.",
+            "max_questions": 2
+          },
+          {
+            "value": "atomic_recall",
+            "label": "Recall",
+            "help": "Single-value recall on each champion.",
+            "max_questions": 2
+          },
+          {
+            "value": "comparisons",
+            "label": "Comparisons",
+            "help": "Which of the two is higher, on cooldowns.",
+            "max_questions": 3
+          },
+          {
+            "value": "harder_comparisons",
+            "label": "Harder comparisons",
+            "help": "The same shape on base stats.",
+            "max_questions": 4
+          },
+          {
+            "value": "reinforcement",
+            "label": "Reinforcement",
+            "help": "Repeat recall on the earlier material.",
+            "max_questions": 2
+          }
+        ]
+      },
+      "min_items": 1,
+      "help": "Which of the set's scenarios generation may draw from. Leave empty for all of them, which is also what a slot saved before this control existed means."
+    }
+  ],
+  "mastery_sets": [
+    {
+      "set_id": "chain.jarvan.physical_penetration",
+      "display_name": "Jarvan IV Q \u2014 Physical Penetration",
+      "description": "Two certified questions on Jarvan IV's Q against Olaf, one per penetration scenario.",
+      "display_revision": "disprev_chain-jarvan-physical-penetration.v1",
+      "max_questions": 2,
+      "variants": [
+        {
+          "variant_id": "lethality",
+          "label": "Flat lethality",
+          "description": "Serrated Dirk \u2014 flat Armor reduction.",
+          "max_questions": 1
+        },
+        {
+          "variant_id": "percent_pen",
+          "label": "Percent armor penetration",
+          "description": "Lord Dominik's Regards \u2014 percent Armor reduction.",
+          "max_questions": 1
+        }
+      ],
+      "supports_variant_weighting": false,
+      "supports_difficulty": false,
+      "readiness": {
+        "state": "ready",
+        "detail": "",
+        "available_steps": 2,
+        "available_variants": {
+          "lethality": 1,
+          "percent_pen": 1
+        }
+      }
+    },
+    {
+      "set_id": "playtest.champion.ahri",
+      "display_name": "Ahri \u2014 Champion Mastery",
+      "description": "Ahri's own kit: cooldowns, costs and level scaling, in the curriculum order the manifest sequences them.",
+      "display_revision": "disprev_generated-ahri-champion.playtest.v1",
+      "max_questions": 15,
+      "variants": [
+        {
+          "variant_id": "fundamentals",
+          "label": "Fundamentals",
+          "description": "Opening recall on Ahri's core abilities.",
+          "max_questions": 4
+        },
+        {
+          "variant_id": "abilities",
+          "label": "Abilities",
+          "description": "The rest of the kit's cooldowns and costs.",
+          "max_questions": 4
+        },
+        {
+          "variant_id": "progression",
+          "label": "Progression",
+          "description": "Level scaling and per-level stats.",
+          "max_questions": 5
+        },
+        {
+          "variant_id": "reinforcement",
+          "label": "Reinforcement",
+          "description": "Repeat recall on the earlier material.",
+          "max_questions": 2
+        }
+      ],
+      "supports_variant_weighting": false,
+      "supports_difficulty": false,
+      "readiness": {
+        "state": "ready",
+        "detail": "",
+        "available_steps": 15,
+        "available_variants": {
+          "fundamentals": 4,
+          "abilities": 4,
+          "progression": 5,
+          "reinforcement": 2
+        }
+      }
+    },
+    {
+      "set_id": "playtest.matchup.ahri.syndra",
+      "display_name": "Ahri vs Syndra \u2014 Matchup Mastery",
+      "description": "The Ahri/Syndra lane: recall on both kits, then side-by-side comparisons between them.",
+      "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
+      "max_questions": 13,
+      "variants": [
+        {
+          "variant_id": "fundamentals",
+          "label": "Fundamentals",
+          "description": "Opening recall across both kits.",
+          "max_questions": 2
+        },
+        {
+          "variant_id": "atomic_recall",
+          "label": "Recall",
+          "description": "Single-value recall on each champion.",
+          "max_questions": 2
+        },
+        {
+          "variant_id": "comparisons",
+          "label": "Comparisons",
+          "description": "Which of the two is higher, on cooldowns.",
+          "max_questions": 3
+        },
+        {
+          "variant_id": "harder_comparisons",
+          "label": "Harder comparisons",
+          "description": "The same shape on base stats.",
+          "max_questions": 4
+        },
+        {
+          "variant_id": "reinforcement",
+          "label": "Reinforcement",
+          "description": "Repeat recall on the earlier material.",
+          "max_questions": 2
+        }
+      ],
+      "supports_variant_weighting": false,
+      "supports_difficulty": false,
+      "readiness": {
+        "state": "ready",
+        "detail": "",
+        "available_steps": 13,
+        "available_variants": {
+          "fundamentals": 2,
+          "atomic_recall": 2,
+          "comparisons": 3,
+          "harder_comparisons": 4,
+          "reinforcement": 2
+        }
+      }
+    }
+  ],
+  "fixed": {
+    "min_challenge_count": 2
+  }
+}

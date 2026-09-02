@@ -180,7 +180,9 @@ export function questionIconLabel(
   const subject =
     round.kind === "meta_reflex"
       ? "Meta Reflex"
-      : resolveQuestionIcon(round.iconHint).label;
+      : round.kind === "mastery_slice"
+        ? "Mastery"
+        : resolveQuestionIcon(round.iconHint).label;
   const outcome = questionOutcome(round);
   const state =
     outcome === "correct" ? "correct"
@@ -195,17 +197,23 @@ export type QuestionOutcome = "correct" | "incorrect" | "unanswered";
 /**
  * How the viewer did, as ONE value the timeline can tint by.
  *
- * A Meta Reflex block is five cards, not one answer, so it is `correct` only
- * on a clean sweep — anything less is `incorrect`, and a block with nothing
+ * A multi-challenge round is several answers, not one, so it is `correct` only
+ * on a clean sweep — anything less is `incorrect`, and a round with nothing
  * answered is `unanswered`. Collapsing 3-of-5 to "correct" would make the
  * timeline lie in the reader's favour, which is the one direction a study
  * record must never round.
+ *
+ * Which rule applies is decided by the SHAPE of the submission, not by a list
+ * of module kinds: a counted round reports `challengeCount` and no single
+ * `isCorrect`, and a one-answer round reports the reverse. A Meta Reflex block
+ * and a Mastery slice are both the former, and so is any future counted
+ * module, with no change here.
  */
 export function questionOutcome(round: ReviewRound): QuestionOutcome {
   if (!round.revealed) return "unanswered";
   const sub = round.viewerSubmission;
-  if (round.kind === "meta_reflex") {
-    const total = sub.challengeCount ?? 0;
+  if (sub.challengeCount !== null && sub.isCorrect === null) {
+    const total = sub.challengeCount;
     if (!sub.answeredCount) return "unanswered";
     return (sub.correctCount ?? 0) === total && total > 0 ? "correct" : "incorrect";
   }
