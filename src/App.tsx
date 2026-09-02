@@ -91,6 +91,8 @@ const ProRosterTeamProfile = R.ProRosterTeamProfile.Component;
 const LolHistory = R.LolHistory.Component;
 const LolMissedQuestions = R.LolMissedQuestions.Component;
 const LolPro = R.LolPro.Component;
+const ProPlayHub = R.ProPlayHub.Component;
+const ProPlayQuiz = R.ProPlayQuiz.Component;
 const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
@@ -536,6 +538,10 @@ const App = () => (
                   <Route path="/lol/history" element={<Suspense fallback={<RouteFallback />}><LolHistory /></Suspense>} />
                   <Route path="/lol/missed-questions" element={<Suspense fallback={<RouteFallback />}><LolMissedQuestions /></Suspense>} />
                   <Route path="/lol/pro" element={<Suspense fallback={<RouteFallback />}><LolPro /></Suspense>} />
+                  {/* Pro Play — professional-play content. Distinct from
+                      /lol/pro above, which is the subscription page. */}
+                  <Route path="/lol/pro-play" element={<Suspense fallback={<RouteFallback />}><ProPlayHub /></Suspense>} />
+                  <Route path="/lol/pro-play/quiz" element={<Suspense fallback={<RouteFallback />}><ProPlayQuiz /></Suspense>} />
                   <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
                   <Route path="/lol/patch-reports" element={<Suspense fallback={<RouteFallback />}><PatchReports /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />

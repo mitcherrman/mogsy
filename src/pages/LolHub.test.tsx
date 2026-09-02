@@ -177,6 +177,27 @@ describe("LolHub — navigation structure", () => {
   // false: the Leaguecraft entry point it referred to was never built, so the
   // feature had no front door anywhere. Both surfaces now exist and are
   // complementary; see Quiz.tsx §2d for the Leaguecraft half.
+  it("offers Pro Play once per breakpoint, after the six existing destinations", () => {
+    // Pro Play is a primary destination but NOT a seventh book: the grid
+    // holds three 230px books per column by construction, and a fourth ran
+    // past the viewport and broke the columns' symmetry. It gets its own
+    // panel at each breakpoint instead — desktop under the grid, mobile
+    // after the six panels so the established order is unchanged.
+    const { container } = renderHub();
+    expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(6);
+    const proPlay = container.querySelectorAll('a[href="/lol/pro-play"]');
+    expect(proPlay).toHaveLength(2); // one desktop copy, one mobile copy
+    const hrefs = [...container.querySelectorAll("a[href]")].map((a) =>
+      a.getAttribute("href"),
+    );
+    // Every pre-existing destination still comes before Pro Play's mobile copy.
+    const lastProPlay = hrefs.lastIndexOf("/lol/pro-play");
+    for (const existing of ["/quiz", "/combat-lab", "/quiz/stat-check",
+                            "/lol/docs", "/lol/history", "/lol/patch-reports"]) {
+      expect(hrefs.lastIndexOf(existing)).toBeLessThan(lastProPlay);
+    }
+  });
+
   it("shows the Meta Reflex subsection with all four game cards", () => {
     renderHub();
     expect(screen.getByTestId("lol-hub-meta-reflex-section")).toBeTruthy();

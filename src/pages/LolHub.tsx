@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, History as HistoryIcon, Layers } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, History as HistoryIcon, Layers, Trophy } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -72,6 +72,14 @@ type HubDestination = {
 
 // Approved academy IA — six destinations, book columns read left/right per row:
 //   Leaguecraft | Combat Lab / Stat Check | Mogzy Archives / Quiz History | Patch Reports
+// The grid stays SIX books. Pro Play (added 2026-09-01) is a primary
+// destination but deliberately NOT a seventh book: measured at 1440x900, a
+// fourth book in a column runs to y=1049 against the other column's 930 —
+// visibly asymmetric and past the viewport, because the lane holds three
+// 230px books by construction. It gets its own full-width panel below the
+// grid instead, in the same Hextech language the mobile panels already use,
+// which leaves the centre lane, the Mogzy calibration and all six books
+// untouched.
 const LEFT_DESTINATIONS: HubDestination[] = [
   {
     to: "/quiz",
@@ -132,6 +140,16 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
 ];
 // Mobile list order follows the desktop grid row-major (by priority), not
 // column-major: Leaguecraft, Combat Lab, Stat Check, Archives, History, Patch.
+/** Pro Play — professional-play content (NOT /lol/pro, the subscription
+ *  page). Rendered as its own panel at both breakpoints; see the grid note
+ *  above for why it is not a book. */
+const PRO_PLAY_DESTINATION = {
+  to: "/lol/pro-play",
+  title: "Pro Play",
+  subtitle: "Quiz yourself on the pro scene.",
+  Icon: Trophy,
+};
+
 const ALL_DESTINATIONS = LEFT_DESTINATIONS.flatMap((d, i) => {
   const right = RIGHT_DESTINATIONS[i];
   return right ? [d, right] : [d];
@@ -296,6 +314,21 @@ export default function LolHub() {
   // central lane, where the Academy Radio console now lives — at 1280 the
   // fixed 120px put book edges 34px into the lane, under the console.
   const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
+
+  /** Pro Play's panel. One definition, rendered once per breakpoint (the
+   *  desktop copy sits under the book grid, the mobile copy after the
+   *  destination list) so the two placements cannot drift apart. */
+  const renderProPlayPanel = () => (
+    <HexPanelLink
+      to={PRO_PLAY_DESTINATION.to}
+      title={PRO_PLAY_DESTINATION.title}
+      description={PRO_PLAY_DESTINATION.subtitle}
+      Icon={PRO_PLAY_DESTINATION.Icon}
+      accent="gold"
+      compact
+      onClick={() => onDestinationClick(PRO_PLAY_DESTINATION.to)}
+    />
+  );
 
   const renderBook = (d: HubDestination, side: "left" | "right") => (
     // Book size. BookModeCard reclaims ALL of the frame PNG's transparent
@@ -552,6 +585,15 @@ export default function LolHub() {
             </div>
           </div>
 
+          {/* Pro Play — DESKTOP: its own panel directly under the six books,
+              so it reads as a primary destination without joining the grid.
+              The mobile copy is rendered after the destination list instead
+              (see below) — placing it here would put it above Leaguecraft
+              and re-order the established mobile IA. */}
+          <div className="mt-2 hidden md:block">
+            {renderProPlayPanel()}
+          </div>
+
           {/* Mobile fallback — clipped Hextech panels (unchanged presentation) */}
           <div className="mt-5 grid grid-cols-1 gap-3 md:hidden">
             {ALL_DESTINATIONS.map((d) => (
@@ -566,6 +608,10 @@ export default function LolHub() {
               />
             ))}
           </div>
+
+          {/* Pro Play — MOBILE, after the six destinations so the existing
+              primary navigation keeps the top of the list. */}
+          <div className="mt-3 md:hidden">{renderProPlayPanel()}</div>
 
           {/* Mobile Academy Broadcast — the stacked magic-book card with the
               radio dock beneath it, after the six destinations so primary
