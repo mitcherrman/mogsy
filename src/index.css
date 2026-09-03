@@ -7676,9 +7676,18 @@ html.high-contrast * { text-shadow: none !important; }
     repeating-linear-gradient(
       90deg,
       transparent 0 15.4cqw,
-      rgba(0, 0, 0, 0.42) 15.4cqw 15.9cqw,
-      rgba(214, 178, 128, 0.07) 15.9cqw 16.2cqw,
-      transparent 16.2cqw 32cqw
+      rgba(0, 0, 0, 0.5) 15.4cqw 16cqw,
+      rgba(214, 178, 128, 0.085) 16cqw 16.3cqw,
+      transparent 16.3cqw 32cqw
+    ),
+    /* alternating plank tone. Period is TWO seams, so neighbouring boards
+       differ slightly in value the way milled stock out of the same tree
+       does. ±2% is the whole effect — any more and the backing turns into
+       stripes competing with the volumes. */
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 240, 214, 0.022) 0 16cqw,
+      rgba(0, 0, 0, 0.055) 16cqw 32cqw
     ),
     /* grain, running with the planks */
     repeating-linear-gradient(
@@ -7698,7 +7707,14 @@ html.high-contrast * { text-shadow: none !important; }
     ),
     /* body, lit from the left like every other piece */
     linear-gradient(96deg, #402d1c 0%, #372516 34%, #2c1d11 68%, #1e1408 100%);
-  box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.34);
+  /* Ambient occlusion around the whole case, so it sits IN the room instead
+     of on top of the painting. Zero offset and a wide spread on purpose —
+     an offset shadow here would read as a UI card lifted off the page, which
+     is the exact opposite of what the shelf is for. */
+  box-shadow:
+    inset 0 0 26px rgba(0, 0, 0, 0.34),
+    0 0 30px 8px rgba(2, 5, 10, 0.4),
+    0 14px 44px 6px rgba(2, 5, 10, 0.42);
 }
 
 /* ---- uprights ------------------------------------------------------------ */
@@ -7727,24 +7743,47 @@ html.high-contrast * { text-shadow: none !important; }
       rgba(0, 0, 0, 0) 76%,
       rgba(0, 0, 0, 0.5) 100%
     ),
-    /* Front face, then a HARD corner into the side face. The smooth ramp this
-       replaces read as a shaded strip; a beam needs a visible arris, and the
-       discontinuity at 74% is what supplies it. */
+    /* FRONT FACE ONLY. The side plane is a real element (::after) rather than
+       the tail of this gradient: a beam's arris is a hard edge between two
+       differently-lit surfaces, and giving the side its own box is what lets
+       it carry its own arris highlight instead of fading into a ramp. */
     linear-gradient(
       90deg,
       #2a1b0c 0%,
       var(--shelf-lit) 12%,
-      #543c25 34%,
-      var(--shelf-face) 62%,
-      #3f2b1a 74%,
-      /* — corner — */ #211508 74%,
-      var(--shelf-dark) 100%
+      #543c25 36%,
+      var(--shelf-face) 68%,
+      #3f2b1a 100%
     );
   box-shadow:
     /* lit near arris and the dark far arris — the two edges that say "solid" */
     inset 1px 0 0 rgba(226, 196, 140, 0.14),
     inset -1px 0 0 rgba(0, 0, 0, 0.55),
     0 10px 22px rgba(3, 6, 12, 0.55);
+}
+
+/* Side plane of the beam — the face turned away from the light. */
+.academy-hub-shelf-post::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 74%;
+  background-image: linear-gradient(90deg, #2b1c0d 0%, #1d1309 60%, var(--shelf-dark) 100%);
+  /* the arris: one lit pixel on the corner the front face meets */
+  box-shadow: inset 1px 0 0 rgba(226, 196, 140, 0.12);
+}
+
+/* The beam's own shadow, thrown onto the backing behind it. Light comes from
+   the left everywhere in this scene, so it falls to the right of both posts —
+   which is also what reads as the post standing PROUD of the backing rather
+   than being inlaid into it. */
+.academy-hub-shelf-post::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 70%;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.44) 0%, transparent 100%);
 }
 
 .academy-hub-shelf-post--left {
@@ -7780,15 +7819,21 @@ html.high-contrast * { text-shadow: none !important; }
        board reads as a bar; the chamfer is what makes it read as milled. */
     linear-gradient(
       180deg,
-      #553c25 0%,
-      #4b3420 26%,
-      var(--shelf-face) 27%,
-      var(--shelf-mid) 62%,
-      var(--shelf-deep) 90%,
+      #5d422a 0%,
+      #4e3722 22%,
+      /* — chamfer breaks into the face — */ var(--shelf-face) 23%,
+      var(--shelf-mid) 58%,
+      /* — a shallow step above the underside, so the profile is milled
+           rather than square-cut — */ #3d2a19 72%,
+      #2f1f11 73%,
+      var(--shelf-deep) 92%,
       var(--shelf-dark) 100%
     );
   box-shadow:
     inset 0 -1px 0 rgba(0, 0, 0, 0.65),
+    /* the board's ENDS turning away — joinery where it crosses the uprights */
+    inset 7px 0 9px -7px rgba(0, 0, 0, 0.62),
+    inset -7px 0 9px -7px rgba(0, 0, 0, 0.62),
     0 12px 20px rgba(3, 6, 12, 0.52);
 }
 
@@ -7844,6 +7889,8 @@ html.high-contrast * { text-shadow: none !important; }
   box-shadow:
     inset 0 -1px 0 rgba(0, 0, 0, 0.7),
     inset 0 -6px 0 -5px rgba(0, 0, 0, 0.5),
-    inset 0 -8px 0 -7px rgba(214, 178, 128, 0.07),
+    inset 0 -8px 0 -7px rgba(214, 178, 128, 0.075),
+    inset 8px 0 11px -8px rgba(0, 0, 0, 0.65),
+    inset -8px 0 11px -8px rgba(0, 0, 0, 0.65),
     0 18px 26px rgba(3, 6, 12, 0.6);
 }

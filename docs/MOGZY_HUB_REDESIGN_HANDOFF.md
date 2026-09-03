@@ -1,8 +1,92 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 10 (both shelves, darker wood, head-on books) is at the top of
-     this file. Revision 9 restored the backing; 8 was the material pass; 7
-     built the shelf; 6 rejected the mirrored shell. -->
+<!-- Revision 11 (final shelf polish) is at the top of this file. Revision 10
+     shelved both columns and went head-on; 9 restored the backing; 8 was the
+     material pass; 7 built the shelf; 6 rejected the mirrored shell. -->
+
+## Revision 2026-09-03f — final shelf polish · STATIC DESIGN LOCKED
+
+**Status:** LOCKED. CSS-only pass on four named items; no geometry, no
+component, no test changed. **No new asset** — `src/index.css` is the entire
+diff outside the handoff.
+
+### 1. Uprights — the side plane is now a real element
+
+The beam's side was the tail of one `90deg` gradient, which is why it still
+read as a shaded strip. It is now `::after` at `inset: 0 0 0 74%` with its own
+`linear-gradient(90deg, #2b1c0d, #1d1309 60%, var(--shelf-dark))` and its own
+`inset 1px 0 0 rgba(226,196,140,.12)` arris. An arris is a hard edge between
+two differently-lit surfaces, and only a real box can carry one. The post's
+own gradient shortened to the front face alone.
+
+`::before` adds the beam's cast shadow onto the backing —
+`linear-gradient(90deg, rgba(0,0,0,.44), transparent)` at `left: 100%`, width
+70%. It falls right on both posts because the whole scene is lit from the
+left, and it is what reads as the post standing PROUD of the backing rather
+than inlaid into it.
+
+### 2. Backing — alternating plank tone
+
+Seams strengthened (joint `.42 → .5`, lit arris `rgba(214,178,128,.07) → .085`)
+and a second `repeating-linear-gradient` alternates plank value on a TWO-seam
+period: `rgba(255,240,214,.022)` against `rgba(0,0,0,.055)`. About ±2%, which
+is the whole effect — neighbouring boards differ the way milled stock out of
+one tree does, without turning the backing into stripes that compete with the
+volumes.
+
+### 3. Board front edges — stepped profile and end joinery
+
+The face gradient gains a shallow step above the underside (`#3d2a19` 72% →
+`#2f1f11` 73%) under the existing chamfer break at 23%, so the profile is
+milled rather than square-cut. Both boards also gain end shading —
+`inset ±7px 0 9px -7px rgba(0,0,0,.62)` (base `±8px 0 11px -8px` at `.65`) —
+which darkens each board where it crosses an upright: the ends turning away,
+which is the joinery cue.
+
+### 4. Perimeter ambient shadow
+
+On the backing: `0 0 30px 8px rgba(2,5,10,.4)` plus
+`0 14px 44px 6px rgba(2,5,10,.42)`. Wide spread, near-zero offset on purpose —
+an offset shadow would read as a UI card lifted off the page, which is the
+exact opposite of what the shelf is for. It seats the case in the room and
+leaves the books' own contact shadows untouched.
+
+### Verification
+
+- **No coordinate moved.** Books 237×355 at (144,118), (144,480), (1059,118),
+  (1059,480), computed transform `matrix(1, 0, 0, 1, 0, 0)` — head-on, no
+  angling returned. Shelves on those two boxes; backing 298×730 at (113,111);
+  posts 17px at x 113/395; upper board 346×15 at (90,467). Boards stay put on
+  hover, so the contact shadows still belong to the shelf.
+- All four routes navigate. 112 tests passed · ESLint clean · `tsc` failing-file
+  set identical to baseline · no new console errors.
+
+### Do the shelves read more dimensional?
+
+Yes, on the uprights especially — the separate side plane with its own arris
+is the one change that clearly lands, and the cast shadow onto the backing is
+second. The board and backing changes are real but subtle at hub scale; they
+are visible in a close crop and near-invisible at 1440 width, which is the
+right side of the line for furniture that is meant to be quiet.
+
+### Remaining static visual issues (carried, none introduced)
+
+1. `CENTERPIECE_MAX_PX = 380` caps the tome while the volumes reach 297×445 at
+   1920×1080, and the heavier side furniture makes the centre read lighter.
+2. The backing is largely occluded by head-on books, so the planking and the
+   new alternation mostly read in the strips beside each volume.
+3. `BookModeCard` is dead code; the frame PNG is still 2.42 MB.
+
+### Next workstream
+
+**Static shelf/book design is LOCKED.** Next is entrance choreography and
+sound — not started.
+
+---
+
+<!-- Revision 10 (both shelves, darker wood, head-on books).
+     Revision 9 restored the backing; 8 was the material pass; 7 built the
+     shelf; 6 rejected the mirrored shell. -->
 
 ## Revision 2026-09-03e — both shelves, darker wood, all four books head-on
 
