@@ -871,26 +871,39 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
     }
   });
 
-  it("mirrors the inward turn: left column positive, right column negative", () => {
+  it("presents every volume HEAD-ON — no resting rotation anywhere", () => {
     const { container } = renderHub();
-    const rot = (href: string) => {
-      const el = container.querySelector<HTMLAnchorElement>(`a.academy-hub-book[href="${href}"]`)!;
-      return {
-        rest: parseFloat(el.style.getPropertyValue("--hub-book-rotate-y")),
-        hover: parseFloat(el.style.getPropertyValue("--hub-book-rotate-y-hover")),
-      };
-    };
-    const left = [rot("/quiz"), rot("/lol/docs")];
-    const right = [rot("/combat-lab"), rot("/lol/pro-play")];
-    for (const r of left) expect(r.rest).toBeGreaterThan(0);
-    for (const r of right) expect(r.rest).toBeLessThan(0);
-    // Exact negations, so the quadrant reads as one room.
-    expect(right[0].rest).toBe(-left[0].rest);
-    expect(right[0].hover).toBe(-left[0].hover);
-    // Hover comes TOWARD the viewer without ever squaring up.
-    for (const r of [...left, ...right]) {
-      expect(Math.abs(r.hover)).toBeLessThan(Math.abs(r.rest));
-      expect(Math.abs(r.hover)).toBeGreaterThan(0);
+    // The shelves explain where the books are, so the inward turn the volumes
+    // used to carry (+/-11deg, halved on hover) is gone. Any inline transform
+    // or rotation custom property here would be a regression to that.
+    for (const link of volumes(container)) {
+      for (const prop of [
+        "--hub-book-rotate-y",
+        "--hub-book-rotate-y-hover",
+        "--hub-book-rotate-z",
+      ]) {
+        expect(link.style.getPropertyValue(prop)).toBe("");
+      }
+      expect(link.style.transform).toBe("");
+      expect(link.querySelector<HTMLElement>(".academy-hub-book-body")!.style.transform).toBe("");
+    }
+  });
+
+  it("gives both columns a shelf, and the volumes sit in front of it", () => {
+    const { container } = renderHub();
+    const shelves = container.querySelectorAll(".academy-hub-shelf");
+    expect(shelves).toHaveLength(2);
+    for (const shelf of shelves) {
+      // Decorative only: it must never take a click, a focus stop or an
+      // announcement away from a destination link.
+      expect(shelf.getAttribute("aria-hidden")).toBe("true");
+      expect(shelf.className).toContain("pointer-events-none");
+      expect(shelf.className).toContain("z-0");
+      // Each shelf is a sibling of the pair it stands behind.
+      expect(shelf.parentElement!.querySelectorAll("a.academy-hub-book")).toHaveLength(2);
+    }
+    for (const link of volumes(container)) {
+      expect(link.parentElement!.className).toContain("z-10");
     }
   });
 

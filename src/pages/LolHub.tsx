@@ -140,31 +140,6 @@ const HUB_DESTINATIONS: HubDestination[] = [
   },
 ];
 
-/**
- * Inward perspective for the closed Academy volumes.
- *
- * Every book is angled on its shelf to face Mogzy at the centre of the hub.
- * Positive `rotateY` turns a LEFT-hand book's cover toward the centre — its
- * outer (left) edge comes forward, its inner (right) edge recedes — so the
- * right column takes the exact negation and the quadrant reads as one room
- * rather than four cards.
- *
- * 11° (up from the prototype's approved-but-subtle 8°) is where the spine and
- * the cover's thickness read as real depth from normal viewing distance while
- * the champion art still loses under 2% of its apparent width. Hover eases to
- * 5.5° — half the rest angle — which brings the volume toward the viewer
- * without ever squaring it up; a book that snapped flat would read as a UI
- * card, not as a book.
- *
- * The roll alternates by row so the shelf is not machine-set: the top pair
- * leans very slightly one way, the bottom pair the other. Both angles are
- * zeroed below 1024px and the hover turn is cancelled under
- * prefers-reduced-motion — see `.academy-hub-book-body` in index.css.
- */
-const CLOSED_BOOK_ROTATE_Y = 11;
-const CLOSED_BOOK_ROTATE_Y_HOVER = 5.5;
-const CLOSED_BOOK_ROTATE_Z = 0.8;
-
 /** Desktop columns: row-major registry → two vertical pairs. */
 const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
 const RIGHT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 1);
@@ -347,36 +322,66 @@ export default function LolHub() {
   // bubbles up from the Link inside the book) drive Mogzy's contextual guide;
   // click/navigation semantics stay on the Link itself.
   //
-  // `row` only selects the roll direction, so the shelf alternates instead of
-  // every volume leaning identically. `side` mirrors the inward turn.
-  const renderBook = (d: HubDestination, side: "left" | "right", row: number) => {
-    const inward = side === "left" ? 1 : -1;
-    return (
+  // Every volume is presented HEAD-ON: the shelves explain where the books
+  // are, so none of them needs to be turned toward Mogzy any more.
+  const renderBook = (d: HubDestination, side: "left" | "right") => (
+    <div
+      key={d.to}
+      data-guide-mode={d.guideId}
+      onMouseEnter={() => activateGuide(d.guideId)}
+      onMouseLeave={deactivateGuide}
+      onFocus={() => activateGuide(d.guideId)}
+      onBlur={deactivateGuide}
+      className={`relative z-10 w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
+      style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
+    >
+      <AcademyHubBook
+        to={d.to}
+        title={d.title}
+        coverTitle={d.coverTitle}
+        splashUrl={getChampionSplash(championAssets, d.championName)}
+        splashPosition={d.splashPosition}
+        describedBy={hubGuideDescriptionId(d.guideId)}
+        onClick={() => onDestinationClick(d.to)}
+      />
+    </div>
+  );
+
+  // One shelved column. The inner wrapper exists purely to give the shelf a
+  // box to overlay: it shrink-wraps the pair (its max-width is the books', its
+  // height is the stack's), so AcademyHubShelf needs no coordinates of its own
+  // and the book positions are unchanged by its presence. The shelf paints at
+  // z-0 behind the volumes, which renderBook raises to z-10.
+  //
+  // Both columns render the SAME shelf, unmirrored: the case is symmetrical
+  // and lit from the left like every other object in the painting, so the two
+  // sides read as a matching pair of display units without any counter-turn.
+  const renderShelvedColumn = (
+    destinations: HubDestination[],
+    side: "left" | "right",
+    inset: string,
+  ) => (
+    <div
+      className="flex min-h-0 flex-col justify-center"
+      style={{ transform: `translate(${inset}, ${DESKTOP_BOOK_STACK_Y})` }}
+    >
       <div
-        key={d.to}
-        data-guide-mode={d.guideId}
-        onMouseEnter={() => activateGuide(d.guideId)}
-        onMouseLeave={deactivateGuide}
-        onFocus={() => activateGuide(d.guideId)}
-        onBlur={deactivateGuide}
-        className={`relative z-10 w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
+        // `w-full` is load-bearing, not decoration. Without a DEFINITE width
+        // this wrapper shrinks to fit, and its children are `w-full` against
+        // it — a circular reference that collapses the whole stack to the
+        // width of the title text. width:100% capped by max-width makes the
+        // used width definite, and the auto margin then parks it at the
+        // column's outer edge.
+        className={`relative w-full flex flex-col gap-y-[clamp(2px,0.8vh,12px)] ${
+          side === "left" ? "mr-auto" : "ml-auto"
+        }`}
         style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
       >
-        <AcademyHubBook
-          to={d.to}
-          title={d.title}
-          coverTitle={d.coverTitle}
-          splashUrl={getChampionSplash(championAssets, d.championName)}
-          splashPosition={d.splashPosition}
-          rotateY={inward * CLOSED_BOOK_ROTATE_Y}
-          rotateYHover={inward * CLOSED_BOOK_ROTATE_Y_HOVER}
-          rotateZ={inward * (row === 0 ? -CLOSED_BOOK_ROTATE_Z : CLOSED_BOOK_ROTATE_Z)}
-          describedBy={hubGuideDescriptionId(d.guideId)}
-          onClick={() => onDestinationClick(d.to)}
-        />
+        <AcademyHubShelf />
+        {destinations.map((d) => renderBook(d, side))}
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <div>
@@ -520,28 +525,11 @@ export default function LolHub() {
 
           {/* Desktop: four books in a balanced quadrant around Mogzy's central lane */}
           <div className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3">
-            <div
-              className="flex min-h-0 flex-col justify-center"
-              style={{
-                transform: `translate(calc(${DESKTOP_BOOK_STACK_INSET}), ${DESKTOP_BOOK_STACK_Y})`,
-              }}
-            >
-              {/* SHELF PROTOTYPE (2026-09-03) — left column only, so the owner
-                  can A/B a grounded pair against the right column's floating
-                  one in the real hub. The inner wrapper exists purely to give
-                  the shelf a box to overlay: it shrink-wraps the two volumes
-                  (its max-width is theirs, and its height is the stack's), so
-                  AcademyHubShelf needs no coordinates of its own and the book
-                  positions are unchanged. The shelf paints at z-0 behind the
-                  volumes, which renderBook raises to z-10. */}
-              <div
-                className="relative flex flex-col gap-y-[clamp(2px,0.8vh,12px)]"
-                style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
-              >
-                <AcademyHubShelf />
-                {LEFT_DESTINATIONS.map((d, row) => renderBook(d, "left", row))}
-              </div>
-            </div>
+            {renderShelvedColumn(
+              LEFT_DESTINATIONS,
+              "left",
+              `calc(${DESKTOP_BOOK_STACK_INSET})`,
+            )}
 
             {/* Central lane — the Academy Broadcast centerpiece (magic-book
                 surface with the radio dock at its base) sits in the upper
@@ -597,14 +585,11 @@ export default function LolHub() {
               </div>
             </div>
 
-            <div
-              className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
-              style={{
-                transform: `translate(calc(-1 * (${DESKTOP_BOOK_STACK_INSET})), ${DESKTOP_BOOK_STACK_Y})`,
-              }}
-            >
-              {RIGHT_DESTINATIONS.map((d, row) => renderBook(d, "right", row))}
-            </div>
+            {renderShelvedColumn(
+              RIGHT_DESTINATIONS,
+              "right",
+              `calc(-1 * (${DESKTOP_BOOK_STACK_INSET}))`,
+            )}
           </div>
 
           {/* Mobile fallback — clipped Hextech panels (unchanged presentation) */}

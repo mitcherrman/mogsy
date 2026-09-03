@@ -1,6 +1,113 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 9 (backing restored as planking) is at the top of this file.
+<!-- Revision 10 (both shelves, darker wood, head-on books) is at the top of
+     this file. Revision 9 restored the backing; 8 was the material pass; 7
+     built the shelf; 6 rejected the mirrored shell. -->
+
+## Revision 2026-09-03e — both shelves, darker wood, all four books head-on
+
+**Status:** COMPOSITION LOCKED, AWAITING OWNER REVIEW.
+
+Three approved changes land together, and they are related: once a volume
+stands between two uprights on a board, it no longer needs to be turned in
+space to explain where it is. The shelves took over that job, so the books
+went flat.
+
+### 1. Both columns are shelved
+
+`renderShelvedColumn()` replaces the two hand-written column blocks; both
+sides render the SAME `AcademyHubShelf`, **unmirrored**. The case is
+symmetrical and lit from the left like every other object in the painting, so
+the two sides read as a matching pair with no counter-turn — and the mirroring
+mistake of Revision 5 is not repeated on the furniture.
+
+### 2. All four books are head-on
+
+Every rotation is gone: `rotateY`, `rotateYHover` and `rotateZ` are deleted
+from `AcademyHubBook`'s props, the `CLOSED_BOOK_ROTATE_*` constants are
+deleted from `LolHub`, and `perspective`, `transform-style`, the three
+`--hub-book-rotate-*` custom properties and the `<1024px` flattening media
+query are all deleted from the CSS. Confirmed in the browser: every volume's
+computed transform is `matrix(1, 0, 0, 1, 0, 0)` at rest — exact identity, no
+residual angle. A test asserts no rotation custom property and no inline
+transform survives on any of the four.
+
+### 3. Hover simplified to a lift
+
+`translateY(-10px)` plus the gold light response, and nothing else. Measured
+on all four: `matrix(1, 0, 0, 1, 0, -10)`, gold present, correct Mogzy bubble.
+Under `prefers-reduced-motion` the lift is `0` and the light response stays.
+
+### 4. Shelf darkened and refined
+
+| Token | Was | Now |
+|---|---|---|
+| `--shelf-lit` | `#856140` | `#6b4c30` |
+| `--shelf-face` | `#5b422a` | `#452f1d` |
+| `--shelf-mid` | `#4a3420` | `#372516` |
+| `--shelf-deep` | `#2a1c10` | `#1f1409` |
+| `--shelf-dark` | `#1c1209` | `#150d06` |
+| Backing body | `96deg #574029→#31210f` | `96deg #402d1c, #372516, #2c1d11, #1e1408` |
+| Board top plane | `#967048 → #6a4d2f` | `#7d5b39 → #543b23` |
+
+Roughly one and a half values down — dark walnut, still unmistakably warm, and
+nowhere near the near-black panel that failed in Revision 7 (the darkest
+member is `#150d06`, used only at arrises).
+
+Refinements, all carpentry rather than ornament:
+- **Boards get a chamfer.** The front face is no longer a flat ramp: a lighter
+  band to 26%, then a hard step into the face. A square-cut board reads as a
+  bar; the chamfer is what makes it read as milled.
+- **The base reads as two members.** Height `×1.5 → ×1.7`, plus a plinth
+  reveal — an `inset 0 -6px 0 -5px` dark line with an `inset 0 -8px 0 -7px`
+  lit arris under it. Cheapest joinery cue there is.
+- **Crisper plank seams** on the backing: joint `rgba(0,0,0,.34) → .42`, lit
+  arris `rgba(255,234,198,.055) → rgba(214,178,128,.07)`.
+- Uprights keep Revision 9's hard corner at 74%, re-valued into the darker ramp.
+
+### One real bug, found and fixed during this pass
+
+Factoring the two columns into `renderShelvedColumn` first collapsed **all
+four books to the width of their title text.** The wrapper had an indefinite
+width while its children were `w-full` against it — a circular reference that
+resolves to max-content. `self-start`/`self-end` did not fix it (align-self
+does not make a width definite); `w-full` alongside the `max-width` cap does,
+and the auto margin then parks the wrapper at the column's outer edge. Worth
+recording because the failure mode is silent and total.
+
+### Verification
+
+- **No coordinate changed.** Books 237×355 at (144,118), (144,480),
+  (1059,118), (1059,480); shelves exactly on those two boxes. Identical to
+  every revision since the four-book conversion.
+- All four routes navigate. All four hovers and the guide bubbles are correct.
+  The upper board stays at y=467 at rest and on hover, so the contact shadow
+  still belongs to the shelf.
+- 112 tests passed · ESLint clean · `tsc` failing-file set identical to
+  baseline · no new console errors.
+- Centre untouched: Patch Report, radio dock, Mogzy and his pedestal are
+  unchanged, as are crops (Ryze 78% · Akali 36% · Viktor 34% · Ahri 56%),
+  titles, sizes, routes, guide copy and the mobile panel list.
+
+### Remaining visual issues
+
+1. **`CENTERPIECE_MAX_PX = 380` still caps the tome** while the volumes reach
+   297×445 at 1920×1080. Carried forward from Revision 5; now that the sides
+   are heavier furniture, the centre reads lighter than before.
+2. **The backing is largely occluded.** With head-on books there is less of it
+   visible than when the volumes were turned, so the planking mostly reads at
+   the strips beside each book. Not wrong, but the material is doing less work
+   than it did at ±11°.
+3. `BookModeCard` is still dead code, and the frame PNG is still 2.42 MB.
+
+### Next decision
+
+Owner review of the locked composition. Entrance choreography and sound remain
+unstarted, as does the mobile book treatment.
+
+---
+
+<!-- Revision 9 (backing restored as planking).
      Revision 8 was the material pass; revision 7 built the shelf; revision 6
      rejected the mirrored shell. -->
 

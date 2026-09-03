@@ -8,8 +8,11 @@ import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
  *
  * All four primary destinations render through this one component; the
  * open-book `BookModeCard` no longer appears on the hub. Only the champion
- * splash, the cover title and the rotation angles differ per destination —
- * the shell is shared and is always drawn in its native orientation.
+ * splash and the cover title differ per destination — the shell is shared,
+ * always drawn in its native orientation, and every volume is presented
+ * HEAD-ON. The inward rotation the books used to carry was there to explain
+ * their placement around Mogzy; the shelves do that now, so it is gone and
+ * all four are square to the viewer.
  *
  * Nothing is baked into the artwork. The book is assembled as layers so the
  * splash, the title and the shell can each be tuned independently and the
@@ -71,14 +74,6 @@ const TITLE_PANEL = {
 } as const;
 
 type Props = {
-  /** Resting inward rotation about Y, in degrees. Positive turns a LEFT-hand
-   *  book's cover toward the centre of the hub (its right edge recedes). */
-  rotateY?: number;
-  /** Rotation about Y while hovered/focused — the book comes toward the
-   *  viewer, so this is normally a smaller magnitude than `rotateY`. */
-  rotateYHover?: number;
-  /** Slight roll, in degrees, so the volume never reads machine-perfect. */
-  rotateZ?: number;
   to: string;
   /** Accessible name. Must stay the registry/guide title (asserted by tests). */
   title: string;
@@ -110,9 +105,6 @@ export default function AcademyHubBook({
   coverTitle,
   splashUrl,
   splashPosition = "60% center",
-  rotateY = 0,
-  rotateYHover = 0,
-  rotateZ = 0,
   describedBy,
   onClick,
 }: Props) {
@@ -130,27 +122,11 @@ export default function AcademyHubBook({
       aria-describedby={describedBy}
       onClick={onClick}
       className="academy-hub-book group relative block w-full select-none focus-visible:outline-none [container-type:inline-size]"
-      style={
-        {
-          // Declared on the LINK so the media / reduced-motion overrides in
-          // index.css can zero them on `.academy-hub-book-body` itself — a
-          // custom property set on the element beats one inherited from its
-          // parent, so those rules win with no `!important`.
-          "--hub-book-rotate-y": `${rotateY}deg`,
-          "--hub-book-rotate-y-hover": `${rotateYHover}deg`,
-          "--hub-book-rotate-z": `${rotateZ}deg`,
-        } as React.CSSProperties
-      }
     >
       {/*
-        The transformed object. Everything inside — splash, shell, title —
-        rides this one transform, so the book turns as a physical volume
-        rather than as a stack of independently-skewed layers.
-
-        `--hub-book-rotate-y` faces the book inward toward Mogzy at the
-        centre of the hub (positive = the left-hand book's right edge
-        recedes). It is set by the call site per quadrant and zeroed under
-        narrow viewports and prefers-reduced-motion in index.css.
+        The assembled volume. Everything inside — splash, shell, title —
+        rides this one element, so the hover lift moves the book as one
+        object rather than as a stack of independently-moving layers.
       */}
       <div
         className="academy-hub-book-body relative"
