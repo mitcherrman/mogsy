@@ -4,12 +4,12 @@ import closedBookFrame from "@/assets/academy-book-frame.png";
 import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
 
 /**
- * Closed Academy volume — the new /lol hub destination object.
+ * Closed Academy volume — the /lol hub destination object.
  *
- * PROTOTYPE SCOPE (2026-09-02): only Leaguecraft renders through this
- * component. The other three destinations still use the open-book
- * `BookModeCard`, so the hub is deliberately a mixed prototype until the
- * owner approves this treatment.
+ * All four primary destinations render through this one component; the
+ * open-book `BookModeCard` no longer appears on the hub. Only the champion
+ * splash, the cover title and the rotation angles differ per destination —
+ * the shell is shared and is always drawn in its native orientation.
  *
  * Nothing is baked into the artwork. The book is assembled as layers so the
  * splash, the title and the shell can each be tuned independently and the
@@ -38,22 +38,20 @@ import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
  */
 
 /**
- * Transparent art window and leather title panel, as % of the PNG canvas.
+ * Transparent art window, as % of the PNG canvas (alpha-measured).
  *
- * The shell art puts the spine on the LEFT, so a right-hand book is drawn
- * mirrored (`scaleX(-1)` on the shell image alone) to put its spine on the
- * OUTER edge — otherwise all four spines point the same way and the quadrant
- * reads as four copies of one card instead of two facing shelves. Mirroring
- * the shell moves the window and the panel with it, so each box carries both
- * x positions: mirrored left = 100 − left − width. Only the SHELL flips; the
- * splash and the title are never mirrored.
+ * EVERY book uses the shell in its NATIVE orientation, spine on the left.
+ * A right-column shell drawn with `scaleX(-1)` — to put both columns' spines
+ * on the outer edge — was tried and rejected on 2026-09-03: reflected
+ * physical artwork reads as wrong artwork, which costs more than bilateral
+ * symmetry buys. The books still face inward, but through the CSS perspective
+ * alone. So there is exactly one set of coordinates here.
  */
 const ART_WINDOW = {
+  left: "16.60%",
   top: "7.88%",
   width: "73.44%", // 90.04 − 16.60
   height: "55.60%", // 63.48 −  7.88
-  left: "16.60%",
-  mirroredLeft: "9.96%", // 100 − 16.60 − 73.44
 } as const;
 
 /**
@@ -66,18 +64,11 @@ const ART_WINDOW = {
  * optically centred on the leather rather than on the PNG.
  */
 const TITLE_PANEL = {
+  left: "17.5%",
   top: "67%",
   width: "71%",
   height: "22%",
-  left: "17.5%",
-  mirroredLeft: "11.5%", // 100 − 17.5 − 71
 } as const;
-
-/** Strips the mirror bookkeeping back to a plain CSS box. */
-const box = (
-  b: { top: string; width: string; height: string; left: string; mirroredLeft: string },
-  mirrored: boolean,
-) => ({ top: b.top, width: b.width, height: b.height, left: mirrored ? b.mirroredLeft : b.left });
 
 type Props = {
   /** Resting inward rotation about Y, in degrees. Positive turns a LEFT-hand
@@ -88,11 +79,6 @@ type Props = {
   rotateYHover?: number;
   /** Slight roll, in degrees, so the volume never reads machine-perfect. */
   rotateZ?: number;
-  /**
-   * Draw the shell mirrored, putting its spine on the right. Set for the
-   * right-hand column so both shelves face the centre.
-   */
-  mirrored?: boolean;
   to: string;
   /** Accessible name. Must stay the registry/guide title (asserted by tests). */
   title: string;
@@ -127,7 +113,6 @@ export default function AcademyHubBook({
   rotateY = 0,
   rotateYHover = 0,
   rotateZ = 0,
-  mirrored = false,
   describedBy,
   onClick,
 }: Props) {
@@ -174,7 +159,7 @@ export default function AcademyHubBook({
         {/* 1 — champion splash, filling the frame's transparent art window.
                Sits UNDER the shell so the gold trim overlaps its edges and
                the art reads as inlaid into the cover. */}
-        <div className="absolute overflow-hidden" style={box(ART_WINDOW, mirrored)}>
+        <div className="absolute overflow-hidden" style={ART_WINDOW}>
           {hasImage && (
             <img
               src={splashUrl ?? undefined}
@@ -207,13 +192,12 @@ export default function AcademyHubBook({
           aria-hidden
           draggable={false}
           className="absolute inset-0 h-full w-full"
-          style={mirrored ? { transform: "scaleX(-1)" } : undefined}
         />
 
         {/* 3 — destination title, real HTML on the leather panel. */}
         <div
           className="absolute flex flex-col items-center justify-center text-center"
-          style={box(TITLE_PANEL, mirrored)}
+          style={TITLE_PANEL}
         >
           <h3
             className="academy-hub-book-title book-title-glimmer bg-clip-text font-medium uppercase leading-[1.14] tracking-[0.1em] text-transparent"
@@ -241,7 +225,7 @@ export default function AcademyHubBook({
         <div
           className="pointer-events-none absolute opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
           style={{
-            ...box(ART_WINDOW, mirrored),
+            ...ART_WINDOW,
             boxShadow:
               "inset 0 0 0 1px rgba(226,196,120,0.55), inset 0 0 22px rgba(226,196,120,0.22)",
           }}

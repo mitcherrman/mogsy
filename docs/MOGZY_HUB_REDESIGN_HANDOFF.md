@@ -1,8 +1,73 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 5 (all four destinations converted) is at the top of this file.
-     Revision 4 is the Leaguecraft prototype the owner approved; revision 3 is
-     the IA cleanup; revisions 2 and 1 are the audits that produced it. -->
+<!-- Revision 6 (mirrored shell rejected) is at the top of this file.
+     Revision 5 is the four-book conversion; revision 4 is the Leaguecraft
+     prototype the owner approved; revision 3 is the IA cleanup; revisions 2
+     and 1 are the audits that produced it. -->
+
+## Revision 2026-09-03 — mirrored right-column shell REJECTED
+
+**Status:** CORRECTION APPLIED. Owner approved the complete four-book design,
+size, crops, positioning and inward perspective, with one defect to fix.
+
+**The experiment.** Revision 5 drew the right column's shell with
+`scaleX(-1)`, so both columns' spines sat on the outer edge and the quadrant
+read as two bilaterally symmetrical shelves. The window and title panel each
+carried a second, mirrored x (`100 − left − width`) to move with it.
+
+**Why it was rejected.** The shell art is not symmetrical: its leather grain,
+gold ornament highlights and spine banding are lit from one side. Reflected,
+that lighting runs against the painted library behind it and the artwork reads
+as *wrong artwork* — which costs more than bilateral binding symmetry buys.
+
+**What is now true.** All four books draw
+`src/assets/academy-book-frame.png` in its NATIVE orientation, spine on the
+left, including the right column. The books still face inward toward Mogzy —
+that comes from the CSS perspective alone, which is unchanged: **left column
+`rotateY` +11°, right column −11°, hover/focus ±5.5°.** The right-hand books
+therefore have their spine on the inner edge, and that is intentional; the
+bindings are deliberately NOT bilaterally symmetrical.
+
+**Removed cleanly, no dead code:** the `mirrored` prop, the shell's inline
+`scaleX(-1)`, both `mirroredLeft` coordinates, and the `box()` helper that
+selected between them. `ART_WINDOW` and `TITLE_PANEL` are back to one set of
+coordinates each, and all four books derive window and title placement from
+the same native frame geometry. Verified in the browser: the shell `<img>`
+computes `transform: none` on all four. No test existed whose purpose was the
+reflected shell, so none was removed — `LolHub.test.tsx`'s "mirrors the inward
+turn" case is about the rotateY negation, which stays, and the mascot facing
+tests are about Mogzy's own `scaleX(±1)`.
+
+Also corrected here: `AcademyHubBook`'s header docstring still described the
+component as the Leaguecraft-only prototype, two revisions after that stopped
+being true.
+
+**Nothing else changed.** Sizes, positions, the 2×2 composition, champion art,
+crops (Ryze 78% · Akali 36% · Viktor 34% · Ahri 56%), titles and their
+placement, ±0.8° row roll, `perspective: 1400px`, the `translateY(-10px)` lift,
+the Mogzy guide, the Patch Report, the radio, the centre composition, the
+desktop sizing formula and the mobile treatment are all untouched. This was
+deliberately a single-variable change so the owner can judge it in isolation.
+
+**Verification.** 111 tests passed · ESLint clean · all four routes navigate ·
+computed rest rotations `[+11, +11, −11, −11]` with shell transform `none` ·
+Pro Play hover and Combat Simulation keyboard focus both give −5.5°, −10px lift,
+the gold response and the correct Mogzy bubble · console errors are the three
+pre-existing classes only (the `fetchPriority` warning plus a 403 and a 404),
+no new ones · mobile 375×812 differs from the previous capture only by a
+164×5px antialiasing band.
+
+**Screenshots.** 1440×900 default · 1920×1080 default · 1440×900 Pro Play
+hover · 1440×900 Combat Simulation focus · a cropped before/after of the
+Combat Simulation book showing the reflected vs native shell.
+
+**Next decision.** Owner visual approval of the complete four-book hub with
+native shells. The remaining visual issues from Revision 5 all still stand
+(centerpiece cap at 1920, `BookModeCard` dead code, the 2.42 MB frame,
+faces sitting high in the window). Entrance choreography and sound remain
+unstarted.
+
+---
 
 ## Revision 2026-09-02d — ALL FOUR destinations are closed Academy volumes
 

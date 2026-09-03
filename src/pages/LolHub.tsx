@@ -336,7 +336,6 @@ export default function LolHub() {
   // fixed 120px put book edges 34px into the lane, under the console.
   const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
 
-
   // Book size and placement. AcademyHubBook's layout box IS the frame PNG's
   // canvas, so the card's height is its width × 1.5 with no margin
   // arithmetic. The width is whatever two portrait rows can spend against the
@@ -371,7 +370,6 @@ export default function LolHub() {
           rotateY={inward * CLOSED_BOOK_ROTATE_Y}
           rotateYHover={inward * CLOSED_BOOK_ROTATE_Y_HOVER}
           rotateZ={inward * (row === 0 ? -CLOSED_BOOK_ROTATE_Z : CLOSED_BOOK_ROTATE_Z)}
-          mirrored={side === "right"}
           describedBy={hubGuideDescriptionId(d.guideId)}
           onClick={() => onDestinationClick(d.to)}
         />
