@@ -17,7 +17,8 @@ import LeaguecraftWorkspace, {
   type WorkspaceMode,
 } from "@/components/quiz/workspace/LeaguecraftWorkspace";
 import StudyHistoryLedger from "@/components/quiz/workspace/StudyHistoryLedger";
-import MissedQuestionsReview from "@/components/quiz/workspace/MissedQuestionsReview";
+import ReviewPane from "@/components/quiz/workspace/ReviewPane";
+import type { QuestionLibraryState } from "@/components/quiz/workspace/useQuestionLibrary";
 import { SectionHeading } from "@/components/quiz/workspace/primitives";
 import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
 import { authHref } from "@/lib/auth/auth-destination";
@@ -181,6 +182,7 @@ export default function LeaguecraftHub({
   rankedHistoryPreview,
   rankedReviewPreview,
   reviewState,
+  ownedQuestionsPreview,
   rankedRole = null,
   onSelectRankedRole,
   roleSelectDisabled = false,
@@ -327,6 +329,12 @@ export default function LeaguecraftHub({
    * pane loads the real bank the moment a reader opens Review.
    */
   reviewState?: MissedQuestionsState;
+  /**
+   * PT1.2: a pre-resolved OWNED collection for a host that must not fetch.
+   * `/dev/lobby-preview` is again the only caller; `Quiz.tsx` passes nothing
+   * and REVIEW reads the real collection when a reader opens it.
+   */
+  ownedQuestionsPreview?: QuestionLibraryState;
 }) {
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
   const secondarySets = sets.filter((s) => s.id !== primarySet?.id);
@@ -709,7 +717,7 @@ export default function LeaguecraftHub({
         <SectionHeading
           icon={Library}
           title="Leaguecraft Record"
-          hint="What I have studied, and what I got wrong."
+          hint="What I have studied, and the questions I own."
         />
         <LeaguecraftWorkspace
           className="mt-1.5"
@@ -728,13 +736,26 @@ export default function LeaguecraftHub({
                  fixture set when a preview host supplied one. */
               rankedEntries={rankedHistoryPreview ?? matchHistory}
               rankedReviews={rankedReviewPreview}
+              /* PT1.2: lets each question card carry its lifetime ownership.
+                 One read for the whole record, and only for a real account —
+                 the collection endpoint refuses a guest/anonymous session. */
+              ownsCollection={hasAccount && signedIn}
               signInHref={authHref("/quiz#history")}
             />
           }
-          /* Mounted only while Review is the open pane — the missed-question
-             bank is Pro-gated and must not be read on every lobby load by a
-             reader who never opens it. */
-          review={<MissedQuestionsReview enabled={workspaceMode === "review"} state={reviewState} />}
+          /* Mounted only while Review is the open pane. Neither source is
+             read on an ordinary lobby load: the missed bank is Pro-gated, and
+             the collection needs a real account — `hasAccount` lets OWNED say
+             so locally instead of spending a request to be told 403. */
+          review={
+            <ReviewPane
+              enabled={workspaceMode === "review"}
+              hasAccount={hasAccount && signedIn}
+              signInHref={authHref("/quiz#review")}
+              missedState={reviewState}
+              ownedState={ownedQuestionsPreview}
+            />
+          }
         />
       </section>
 

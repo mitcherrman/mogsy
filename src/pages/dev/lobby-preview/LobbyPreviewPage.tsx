@@ -24,6 +24,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
 import type { MissedQuestionsState } from "@/components/quiz/workspace/useMissedQuestions";
+import type { QuestionLibraryState } from "@/components/quiz/workspace/useQuestionLibrary";
 import {
   LOBBY_PREVIEW_STATES,
   PREVIEW_SETS,
@@ -73,6 +74,24 @@ export default function LobbyPreviewPage() {
       retry: noop,
     }),
     [state.missedQuestions],
+  );
+
+  /** REVIEW's OWNED collection, resolved for the same reason: opening the
+   *  Owned tab on a demo screen must not fire a real account read. */
+  const owned: QuestionLibraryState = useMemo(
+    () => ({
+      summary: state.questionLibrary.summary,
+      entries: [...state.questionLibrary.entries],
+      pagination: null,
+      loading: false,
+      loadingMore: false,
+      error: null,
+      needsAccount: false,
+      hasMore: false,
+      loadMore: noop,
+      retry: noop,
+    }),
+    [state.questionLibrary],
   );
 
   return (
@@ -139,6 +158,7 @@ export default function LobbyPreviewPage() {
           historyLoading={false}
           historyError={null}
           reviewState={review}
+          ownedQuestionsPreview={owned}
           /* FROZEN OVERRIDE, and only for the account that has duels. Ranked
              history IS wired into the real record now (B1); this replaces it
              with a fixed set so the visual pass is deterministic and this page

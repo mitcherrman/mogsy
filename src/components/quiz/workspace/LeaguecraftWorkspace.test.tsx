@@ -105,7 +105,18 @@ function renderHub(
   );
 }
 
-const openReview = () => fireEvent.click(screen.getByTestId("workspace-tab-review"));
+/**
+ * Open the missed-question bank.
+ *
+ * PT1.2 folded permanent question ownership into REVIEW, so REVIEW is now two
+ * sources (OWNED / MISSED) and opens on OWNED — the one every signed-in
+ * player can use. The bank these tests are about is one chip further in.
+ * Everything they assert about it is unchanged.
+ */
+const openReview = () => {
+  fireEvent.click(screen.getByTestId("workspace-tab-review"));
+  fireEvent.click(screen.getByTestId("review-source-missed"));
+};
 
 beforeEach(() => {
   getMissedQuestions.mockReset();
@@ -557,6 +568,10 @@ describe("MALT — the workspace is addressable", () => {
         container.querySelector('[data-testid="leaguecraft-workspace"]')!.getAttribute("data-mode"),
       ).toBe("review"),
     );
+    // PT1.2: REVIEW opens on OWNED — the Free source — so arriving at
+    // `#review` no longer reads the Pro-gated bank. It is one chip away.
+    expect(getMissedQuestions).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("review-source-missed"));
     await waitFor(() => expect(getMissedQuestions).toHaveBeenCalled());
     // …and it takes the reader there rather than leaving them on the lobby
     // wondering what changed four screens down.

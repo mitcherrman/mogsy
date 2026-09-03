@@ -46,6 +46,10 @@ import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { LedgerRow, WorkspaceNote } from "@/components/quiz/workspace/primitives";
 import RankedMatchRow, { relativeMatchAge } from "@/components/quiz/workspace/RankedMatchRow";
 import { useMatchReviews } from "@/components/quiz/workspace/useMatchReviews";
+import {
+  OwnedQuestionIndexProvider,
+  useOwnedQuestionIndex,
+} from "@/components/quiz/workspace/ownedQuestionIndex";
 import type { QuizHistoryEntry, QuizHistoryResponse } from "@/lib/quiz/api";
 import type {
   MatchHistoryEntryView,
@@ -131,6 +135,7 @@ export default function StudyHistoryLedger({
   onStartPractice,
   rankedEntries,
   rankedReviews,
+  ownsCollection = false,
   signInHref,
   className = "",
 }: {
@@ -173,6 +178,16 @@ export default function StudyHistoryLedger({
    * standalone page omits it and shows its own retryable message, which is
    * the right reading there because that page guarantees a guest token first.
    */
+  /**
+   * PT1.2: may this host read the caller's permanent collection, so the
+   * question cards can carry their lifetime ownership record?
+   *
+   * False for a guest/anonymous session and for a frozen host that must not
+   * fetch — in both cases the cards simply print no ownership line. It is ONE
+   * request for the whole record, never one per card; see
+   * `ownedQuestionIndex.tsx` for why an incomplete index shows nothing.
+   */
+  ownsCollection?: boolean;
   signInHref?: string;
   className?: string;
 }) {
@@ -206,6 +221,11 @@ export default function StudyHistoryLedger({
     [rankedEntries, rankedReviews],
   );
   const reviews = useMatchReviews(reviewIds);
+  /* PT1.2: one read of the collection for the whole record, so a question
+     card can state its lifetime ownership. Only asked for when there are
+     Ranked rows to annotate and the host says a real account is present. */
+  const ownership = useOwnedQuestionIndex(
+    ownsCollection && !rankedReviews && (rankedEntries?.length ?? 0) > 0);
 
   const timeline = useMemo(() => {
     const study = studyRows.map((entry) => ({
@@ -321,6 +341,10 @@ export default function StudyHistoryLedger({
   const bestAccuracy = accuracies.length ? Math.round(Math.max(...accuracies)) : null;
 
   return (
+    /* The ownership index covers every question card inside the record, so it
+       is provided once around the whole ledger rather than threaded through
+       four levels of row/timeline/popover props. */
+    <OwnedQuestionIndexProvider value={ownership}>
     <div className={className} data-testid="study-history">
       {/* The scope line. It is ABOVE the rows on purpose: a reader has to know
           what window they are looking at before they read it, not after. */}
@@ -503,5 +527,6 @@ export default function StudyHistoryLedger({
         </div>
       )}
     </div>
+    </OwnedQuestionIndexProvider>
   );
 }

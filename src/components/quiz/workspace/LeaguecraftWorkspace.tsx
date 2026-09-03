@@ -72,7 +72,10 @@ const MODE_META: Record<
   review: {
     label: "Review",
     icon: BookX,
-    hint: "The questions you got wrong, with the answers.",
+    // PT1.2 gave REVIEW two sources (OWNED / MISSED), each with its own line
+    // inside the pane. This one names the pane's JOB rather than restating
+    // either source, so the two hints do not read as a contradiction.
+    hint: "The questions you own, and the ones you got wrong.",
   },
 };
 

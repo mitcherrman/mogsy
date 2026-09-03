@@ -49,12 +49,16 @@ import type {
 import type {
   MatchHistoryEntryView,
   MatchReviewView,
+  QuestionLibraryEntryView,
+  QuestionLibrarySummaryView,
   RankedProgressionView,
   ReviewQuestion,
   ReviewRound,
 } from "@/lib/ranked-public/contracts";
 import type { RankedRole } from "@/lib/ranked-public/roles";
 import {
+  SYNTHETIC_MATCH_SPECS,
+  SYNTHETIC_QUESTION_BANK,
   SYNTHETIC_RANKED_HISTORY,
   SYNTHETIC_RANKED_REVIEWS,
 } from "@/pages/dev/lobby-preview/syntheticRankedHistory";
@@ -268,6 +272,104 @@ export const TIMMY_MATCH_HISTORY: readonly MatchHistoryEntryView[] = Object.free
 export const TIMMY_RANKED_RECORD_PREVIEW = SYNTHETIC_RANKED_HISTORY;
 export const TIMMY_MATCH_REVIEWS = SYNTHETIC_RANKED_REVIEWS;
 
+/**
+ * PT1.2 — Timmy's Personal Question Library, DERIVED from the same synthetic
+ * matches his record and reviews are derived from.
+ *
+ * Nothing is authored here. A question enters the collection exactly the way
+ * the real backend admits one: the round was SUBMITTED (`answer` is not
+ * null — an unanswered round records no discovery), the counters are the
+ * number of those submissions and how many were right, and `firstSeenAt` is
+ * the oldest match the question appeared in. Meta Reflex rounds are skipped
+ * because they carry no canonical ref, which is also true in production.
+ *
+ * Consequence worth keeping: this fixture cannot show a collection Timmy's
+ * demo matches did not actually produce.
+ */
+function deriveLibrary() {
+  type Acc = {
+    ref: string; prompt: string; category: string;
+    answered: number; correct: number; firstDaysAgo: number; lastDaysAgo: number;
+    firstMatchId: string; firstRoundNumber: number;
+  };
+  const byRef = new Map<string, Acc>();
+  for (const match of SYNTHETIC_MATCH_SPECS) {
+    match.rounds.forEach((round, i) => {
+      if (round === "meta-reflex") return;
+      if (round.answer === null) return; // never submitted -> never discovered
+      const q = SYNTHETIC_QUESTION_BANK[round.q];
+      if (!q) return;
+      const ref = `ranked:${q.id}`;
+      const existing = byRef.get(ref);
+      const correct = round.answer === q.correctIndex ? 1 : 0;
+      if (!existing) {
+        byRef.set(ref, {
+          ref, prompt: q.prompt, category: q.category,
+          answered: 1, correct,
+          firstDaysAgo: match.daysAgo, lastDaysAgo: match.daysAgo,
+          firstMatchId: match.id, firstRoundNumber: i + 1,
+        });
+        return;
+      }
+      existing.answered += 1;
+      existing.correct += correct;
+      // MATCHES runs newest-first, so a later iteration is always older.
+      if (match.daysAgo > existing.firstDaysAgo) {
+        existing.firstDaysAgo = match.daysAgo;
+        existing.firstMatchId = match.id;
+        existing.firstRoundNumber = i + 1;
+      }
+      if (match.daysAgo < existing.lastDaysAgo) existing.lastDaysAgo = match.daysAgo;
+    });
+  }
+  const iso = (daysAgo: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(20, 0, 0, 0);
+    return d.toISOString();
+  };
+  const entries: QuestionLibraryEntryView[] = [...byRef.values()]
+    // The API's one ordering: most recently encountered first.
+    .sort((a, b) => a.lastDaysAgo - b.lastDaysAgo || a.ref.localeCompare(b.ref))
+    .map((a) => ({
+      canonicalQuestionRef: a.ref,
+      firstSeenAt: iso(a.firstDaysAgo),
+      lastSeenAt: iso(a.lastDaysAgo),
+      timesAnswered: a.answered,
+      timesCorrect: a.correct,
+      accuracy: a.answered ? a.correct / a.answered : null,
+      firstMatchId: a.firstMatchId,
+      firstRoundNumber: a.firstRoundNumber,
+      metadataStatus: "resolved",
+      metadataSource: "frozen_round",
+      question: { prompt: a.prompt, category: a.category },
+    }));
+  const totalAnswered = entries.reduce((n, e) => n + e.timesAnswered, 0);
+  const totalCorrect = entries.reduce((n, e) => n + e.timesCorrect, 0);
+  return {
+    summary: {
+      uniqueDiscovered: entries.length,
+      totalAnswered,
+      totalCorrect,
+      accuracy: totalAnswered ? totalCorrect / totalAnswered : null,
+    } satisfies QuestionLibrarySummaryView,
+    entries,
+  };
+}
+
+const TIMMY_LIBRARY = deriveLibrary();
+
+export const TIMMY_QUESTION_LIBRARY: LobbyPreviewLibrary = Object.freeze({
+  summary: TIMMY_LIBRARY.summary,
+  entries: Object.freeze(TIMMY_LIBRARY.entries) as readonly QuestionLibraryEntryView[],
+});
+
+/** A new account owns nothing. The empty Library has to stay the real one. */
+export const NEWCOMER_QUESTION_LIBRARY: LobbyPreviewLibrary = Object.freeze({
+  summary: { uniqueDiscovered: 0, totalAnswered: 0, totalCorrect: 0, accuracy: null },
+  entries: Object.freeze([]) as readonly QuestionLibraryEntryView[],
+});
+
 
 /**
  * Representative Role Mastery scores — DEMO ONLY, and the clearest example of
@@ -445,6 +547,12 @@ export const NEWCOMER_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze(
     "Upgrade to Mogsy Pro to review every question you missed and practice your weak spots.",
 });
 
+/** A frozen collection page: the two halves `OwnedQuestionsPane` reads. */
+export interface LobbyPreviewLibrary {
+  summary: QuestionLibrarySummaryView;
+  entries: readonly QuestionLibraryEntryView[];
+}
+
 /** Everything one preview state needs, in the shape the hub's props expect. */
 export interface LobbyPreviewState {
   label: string;
@@ -458,6 +566,8 @@ export interface LobbyPreviewState {
   history: QuizHistoryResponse;
   /** The Review pane's bank — see `TIMMY_MISSED_QUESTIONS`. */
   missedQuestions: MissedQuestionsResponse;
+  /** REVIEW's OWNED collection — see `TIMMY_QUESTION_LIBRARY`. */
+  questionLibrary: LobbyPreviewLibrary;
   /** DEMO ONLY — see `TIMMY_ROLE_MASTERY`. Null for the newcomer state, which
    *  must render exactly what a real new account renders. */
   demoRoleMastery: Partial<Record<RankedRole, DemoRoleMastery>> | null;
@@ -475,6 +585,7 @@ export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState
     matchHistory: TIMMY_MATCH_HISTORY,
     history: TIMMY_QUIZ_HISTORY,
     missedQuestions: TIMMY_MISSED_QUESTIONS,
+    questionLibrary: TIMMY_QUESTION_LIBRARY,
     demoRoleMastery: TIMMY_ROLE_MASTERY,
   },
   newcomer: {
@@ -488,6 +599,7 @@ export const LOBBY_PREVIEW_STATES: Record<LobbyPreviewProfile, LobbyPreviewState
     matchHistory: [],
     history: NEWCOMER_QUIZ_HISTORY,
     missedQuestions: NEWCOMER_MISSED_QUESTIONS,
+    questionLibrary: NEWCOMER_QUESTION_LIBRARY,
     demoRoleMastery: null,
   },
 };

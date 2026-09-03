@@ -2096,3 +2096,165 @@ export function readMatchReview(body: unknown): MatchReviewView {
     rounds,
   };
 }
+
+// ------------------------------------------- permanent question library (PT1.2)
+
+/**
+ * One permanently discovered question, as the collection index describes it.
+ *
+ * The backend keeps identity, counters and provenance and NOTHING else, then
+ * resolves the human-readable half at read time — either from the round the
+ * player actually saw (`metadataSource: "frozen_round"`) or from the bank
+ * Ranked is serving today. A ref the bank no longer carries is still an
+ * ENTRY: the counters are the player's own history and stay true, so
+ * `metadataStatus` goes `"unavailable"` and `question` is null rather than
+ * the row vanishing from their collection.
+ */
+export interface QuestionLibraryEntryView {
+  canonicalQuestionRef: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  timesAnswered: number;
+  timesCorrect: number;
+  /** Decimal fraction, or null when nothing has been answered — "no data" and
+   *  "answered everything wrong" are different facts (backend semantics). */
+  accuracy: number | null;
+  /** Nullable by design: a discovery outlives the match it came from. */
+  firstMatchId: string | null;
+  firstRoundNumber: number | null;
+  metadataStatus: "resolved" | "unavailable";
+  metadataSource: string;
+  question: { prompt: string; category: string | null } | null;
+}
+
+export interface QuestionLibrarySummaryView {
+  /** Distinct questions permanently owned. */
+  uniqueDiscovered: number;
+  /** Completed Ranked encounters summed across every discovered question —
+   *  NOT the number of questions. */
+  totalAnswered: number;
+  totalCorrect: number;
+  accuracy: number | null;
+}
+
+export interface QuestionLibraryPageView {
+  limit: number;
+  offset: number;
+  count: number;
+  totalCount: number;
+  hasMore: boolean;
+  order: string;
+}
+
+export interface QuestionLibraryView {
+  schemaVersion: string;
+  serverTime: string;
+  /** `"ranked_discoveries"` today. The payload states its own scope so a
+   *  client cannot mistake it for the whole (future) library. */
+  scope: string;
+  /** False until a Base Library exists (PT1.3). The UI must not imply
+   *  default questions are already owned while this is false. */
+  includesDefaultLibrary: boolean;
+  summary: QuestionLibrarySummaryView;
+  entries: QuestionLibraryEntryView[];
+  pagination: QuestionLibraryPageView;
+}
+
+/** Fields that would make this a playable/answerable surface rather than a
+ *  collection index. The backend allow-lists `prompt`/`category` and runs its
+ *  own pre-reveal walk; this is the client half of the same guarantee, so a
+ *  future widening of the entry shape fails loudly here instead of quietly
+ *  rendering an answer. */
+const LIBRARY_FORBIDDEN_KEYS = [
+  "correct_index", "correctIndex", "correct_answer", "correctAnswer",
+  "options", "answers", "explanation", "question_explanation_json",
+  "calculation_steps", "distractors",
+] as const;
+
+function assertLibrarySafe(value: Record<string, unknown>, label: string): void {
+  for (const key of LIBRARY_FORBIDDEN_KEYS) {
+    if (key in value) {
+      throw new RankedPublicParseError(`${label} leaked answer-bearing field "${key}"`);
+    }
+  }
+}
+
+/**
+ * The caller's permanent Ranked question collection
+ * (`ranked_duel.question_library.v1`).
+ *
+ * Read-only and answer-free by contract. Parsing rejects any entry that
+ * carries answer-bearing data, so a leak is a hard failure rather than
+ * something the presentation layer is trusted to omit.
+ */
+export function readQuestionLibrary(body: unknown): QuestionLibraryView {
+  const env = envelope(body, "question_library", "ranked_duel.question_library.v1");
+  const p = env.payload;
+  assertNoCorrectness(p, "question_library");
+  assertLibrarySafe(p, "question_library");
+
+  const s = rec(p.summary, "summary");
+  const pg = rec(p.pagination, "pagination");
+  if (!Array.isArray(p.entries)) {
+    throw new RankedPublicParseError("entries must be an array");
+  }
+
+  const entries = p.entries.map((rawEntry, i) => {
+    const label = `entries[${i}]`;
+    const e = rec(rawEntry, label);
+    assertNoCorrectness(e, label);
+    assertLibrarySafe(e, label);
+
+    const status = str(e.metadata_status, `${label}.metadata_status`);
+    if (status !== "resolved" && status !== "unavailable") {
+      throw new RankedPublicParseError(`${label}.metadata_status is invalid`);
+    }
+
+    let question: QuestionLibraryEntryView["question"] = null;
+    if (e.question !== null && e.question !== undefined) {
+      const q = rec(e.question, `${label}.question`);
+      assertNoCorrectness(q, `${label}.question`);
+      assertLibrarySafe(q, `${label}.question`);
+      question = {
+        prompt: str(q.prompt, `${label}.question.prompt`),
+        category: nstr(q.category, `${label}.question.category`),
+      };
+    }
+
+    return {
+      canonicalQuestionRef: str(e.canonical_question_ref, `${label}.canonical_question_ref`),
+      firstSeenAt: str(e.first_seen_at, `${label}.first_seen_at`),
+      lastSeenAt: str(e.last_seen_at, `${label}.last_seen_at`),
+      timesAnswered: num(e.times_answered, `${label}.times_answered`),
+      timesCorrect: num(e.times_correct, `${label}.times_correct`),
+      accuracy: nnum(e.accuracy, `${label}.accuracy`),
+      firstMatchId: nstr(e.first_match_id, `${label}.first_match_id`),
+      firstRoundNumber: nnum(e.first_round_number, `${label}.first_round_number`),
+      metadataStatus: status,
+      metadataSource: str(e.metadata_source, `${label}.metadata_source`),
+      question,
+    } satisfies QuestionLibraryEntryView;
+  });
+
+  return {
+    schemaVersion: env.schemaVersion,
+    serverTime: env.serverTime,
+    scope: str(p.scope, "scope"),
+    includesDefaultLibrary: bool(p.includes_default_library, "includes_default_library"),
+    summary: {
+      uniqueDiscovered: num(s.unique_discovered, "summary.unique_discovered"),
+      totalAnswered: num(s.total_answered, "summary.total_answered"),
+      totalCorrect: num(s.total_correct, "summary.total_correct"),
+      accuracy: nnum(s.accuracy, "summary.accuracy"),
+    },
+    entries,
+    pagination: {
+      limit: num(pg.limit, "pagination.limit"),
+      offset: num(pg.offset, "pagination.offset"),
+      count: num(pg.count, "pagination.count"),
+      totalCount: num(pg.total_count, "pagination.total_count"),
+      hasMore: bool(pg.has_more, "pagination.has_more"),
+      order: str(pg.order, "pagination.order"),
+    },
+  };
+}

@@ -15,6 +15,7 @@ import {
   readMatchHistory,
   readMatchReview,
   readMatchResult,
+  readQuestionLibrary,
   readPrivatePlayer,
   readPublicRound,
   readQueueStatus,
@@ -29,6 +30,7 @@ import {
   PrivatePlayerView,
   PublicRoundView,
   QueueStatusView,
+  QuestionLibraryView,
   RankedProgressionView,
   RankedRoleView,
   ResumeView,
@@ -492,3 +494,28 @@ export const getMatchHistory = (limit?: number, signal?: AbortSignal): Promise<M
 export const getMatchReview = (matchId: string, signal?: AbortSignal): Promise<MatchReviewView> =>
   request(`/api/ranked/matches/${encodeURIComponent(matchId)}/review`,
     readMatchReview, { signal });
+
+/**
+ * PT1.2 — the caller's PERMANENT Ranked question collection.
+ *
+ * Account-bound exactly like `/history`: no user id is sent and there is no
+ * parameter that could name another account. A guest gets 401 and a Supabase
+ * ANONYMOUS session gets 403 `ACCOUNT_REQUIRED` — the collection is permanent
+ * account state, so it needs a real account to belong to.
+ *
+ * Read-only. Nothing here creates or mutates a discovery; discovery is a
+ * server-derived consequence of submitting a Ranked round and has no
+ * client-facing endpoint by design. `limit`/`offset` are clamped server-side
+ * (default 25, max 100), so an out-of-range page degrades to a valid one
+ * rather than erroring.
+ */
+export const getQuestionLibrary = (
+  opts: { limit?: number; offset?: number } = {}, signal?: AbortSignal,
+): Promise<QuestionLibraryView> => {
+  const params = new URLSearchParams();
+  if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+  if (opts.offset !== undefined) params.set("offset", String(opts.offset));
+  const query = params.toString();
+  return request(`/api/ranked/question-library${query ? `?${query}` : ""}`,
+    readQuestionLibrary, { signal });
+};

@@ -49,6 +49,7 @@ import {
   resolveQuestionIcon,
 } from "@/components/quiz/workspace/questionIcons";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { useQuestionOwnership } from "@/components/quiz/workspace/ownedQuestionIndex";
 import type { ReviewChallenge, ReviewRound } from "@/lib/ranked-public/contracts";
 
 /** The three marks, printed rather than lit — the row's own palette. */
@@ -459,6 +460,47 @@ function MetaReflexBody({ round }: { round: ReviewRound }) {
   );
 }
 
+/**
+ * PT1.2 — the lifetime line: what this question is to the account, as opposed
+ * to what happened in this one match.
+ *
+ * The card above it is already complete without this; ownership is a footnote
+ * on it, not a section of it. So it is one quiet line under the hairline, and
+ * it renders NOTHING at all when the question is not in the collection or the
+ * index could not be completed (see `ownedQuestionIndex.tsx`) — the absence of
+ * a line must never be readable as "you do not own this".
+ *
+ * `accuracy: null` is the endpoint's "nothing answered" and prints as an em
+ * dash, never 0%.
+ */
+function OwnershipFootnote({ canonicalQuestionRef }: { canonicalQuestionRef: string | null }) {
+  const owned = useQuestionOwnership(canonicalQuestionRef);
+  if (!owned) return null;
+  const seen = owned.timesAnswered;
+  const accuracy = owned.accuracy === null ? "—" : `${Math.round(owned.accuracy * 100)}%`;
+  const since = new Date(
+    /Z|[+-]\d{2}:\d{2}$/.test(owned.firstSeenAt)
+      ? owned.firstSeenAt
+      : `${owned.firstSeenAt.replace(" ", "T")}Z`,
+  );
+  const sinceLabel = Number.isNaN(since.getTime())
+    ? null
+    : since.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return (
+    <p
+      className="text-[10px] leading-relaxed"
+      style={{ color: LEAGUECRAFT_INK.faint }}
+      data-testid="review-ownership"
+    >
+      In your collection{sinceLabel ? ` since ${sinceLabel}` : ""} · answered{" "}
+      <span className="font-semibold tabular-nums">{seen}</span>{" "}
+      {seen === 1 ? "time" : "times"} ·{" "}
+      <span className="font-semibold tabular-nums">{owned.timesCorrect}</span> correct (
+      <span className="tabular-nums">{accuracy}</span>)
+    </p>
+  );
+}
+
 export default function QuestionReviewCard({
   round, position, total,
 }: { round: ReviewRound; position: number; total: number }) {
@@ -502,6 +544,8 @@ export default function QuestionReviewCard({
       ) : (
         <QuizBody round={round} />
       )}
+
+      <OwnershipFootnote canonicalQuestionRef={round.canonicalQuestionRef} />
     </div>
   );
 }
