@@ -287,3 +287,39 @@ describe("mastery_slice renderer — the reveal hold", () => {
     expect(screen.getByTestId("mastery-submit-button")).toBeTruthy();
   });
 });
+
+// ------------------------------------------------------- rollout safety
+
+describe("mastery_slice renderer — rollout safety", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("never pauses for a segment the server budgeted no window for", () => {
+    // Phase A/B: the backend has shipped but the reveal is not activated. The
+    // client must not hold, because no deadline was extended and no response
+    // time was compensated for a pause it would be taking.
+    renderModule(parse(segmentStateWire({
+      own_next_challenge_index: 1,
+      own_challenges_completed: 1,
+      own_submitted_choices: [{ selected: "12" }, null, null],
+      // Reveals present but NO window — the backend couples these, so this is
+      // a payload it will not produce; the client refuses to pause on it
+      // anyway rather than trusting that coupling from the other side.
+      own_challenge_reveals: [revealWire(0)],
+    })));
+    expect(shownIndex()).toBe("1");
+    expect(screen.queryByTestId("mastery-inline-reveal")).toBeNull();
+    expect(screen.getByTestId("mastery-submit-button")).toBeTruthy();
+  });
+
+  it("treats a zero window as disabled, not as an instant reveal", () => {
+    renderModule(parse(segmentStateWire({
+      own_next_challenge_index: 1,
+      own_challenges_completed: 1,
+      reveal_window_ms: 0,
+      own_challenge_reveals: [revealWire(0)],
+    })));
+    expect(shownIndex()).toBe("1");
+    expect(screen.queryByTestId("mastery-inline-reveal")).toBeNull();
+  });
+});

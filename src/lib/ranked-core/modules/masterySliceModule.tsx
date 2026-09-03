@@ -286,7 +286,15 @@ function MasterySliceChallengePhase({ state, actions }: {
   // completion. It only ever moves forward, so a poll that re-delivers the same
   // state cannot re-open a reveal the player has already watched.
   const [dismissed, setDismissed] = useState(-1);
-  const settled = state.ownChallengeReveals;
+  // THE COMPETITIVE-SAFETY GATE. A hold is only ever entered when the server
+  // states a reveal window for THIS segment, because that window is also what
+  // bought the player the time to sit through it — the backend extends the
+  // block deadline and stops the response clock by exactly that number. So a
+  // segment that budgeted nothing is never paused for, even if reveals somehow
+  // arrived beside it. The backend couples the two at the source; this refuses
+  // to pause on the strength of reveals alone rather than trusting that.
+  const windowMs = state.revealWindowMs;
+  const settled = windowMs && windowMs > 0 ? state.ownChallengeReveals : [];
   const latest: MasteryChallengeReveal | null =
     settled.length > 0 ? settled[settled.length - 1] : null;
   const holding = latest !== null && latest.challengeIndex > dismissed
@@ -307,7 +315,7 @@ function MasterySliceChallengePhase({ state, actions }: {
   useRevealAutoAdvance(
     holding ? holding.challengeIndex : null,
     () => setDismissed(holding ? holding.challengeIndex : -1),
-    revealDurationMs(state.revealWindowMs),
+    revealDurationMs(windowMs),
   );
 
   const revealed = holding ? challenges[holding.challengeIndex] ?? null : null;
