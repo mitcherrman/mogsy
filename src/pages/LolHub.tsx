@@ -6,7 +6,6 @@ import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import AdSlot from "@/components/ads/AdSlot";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
-import BookModeCard from "@/components/lol/BookModeCard";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import HexPanelLink from "@/components/lol/HexPanelLink";
 import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets";
@@ -43,8 +42,6 @@ import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed"
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
 import {
-  BOOK_MAX_WIDTH_CSS,
-  BOOK_STACK_LIFT_CSS,
   CENTERPIECE_WIDTH_CSS,
   CLOSED_BOOK_MAX_WIDTH_CSS,
   TITLE_FONT_SIZE_CSS,
@@ -65,30 +62,20 @@ type HubDestination = {
   /** Stable id into HUB_GUIDE_MODES — drives Mogzy's contextual reaction. */
   guideId: HubGuideModeId;
   /**
-   * object-position for the splash crop inside the left book cover. The panel
-   * crops horizontally only (see BookModeCard), so the X value frames the
-   * champion's face; each value is tuned per splash.
-   */
-  splashPosition?: string;
-  /**
-   * Which destination object renders this entry. `"closed-book"` is the new
-   * closed Academy volume (`AcademyHubBook`); everything without it keeps the
-   * open-book `BookModeCard`. PROTOTYPE (2026-09-02): Leaguecraft only, so the
-   * hub is deliberately mixed until the owner approves the treatment.
-   */
-  object?: "closed-book";
-  /**
-   * Title set on the closed volume's leather panel — words stack as lines.
+   * Title set on the closed volume's leather panel; lines split on "\n".
    * Distinct from `title`, which stays the accessible name and the guide
-   * title ("Leaguecraft"). Ignored by the open-book card.
+   * title, so "Combat Simulation" sets as COMBAT / SIMULATION while its
+   * aria-label stays one string.
    */
   coverTitle?: string;
   /**
-   * Splash crop inside the closed volume's portrait art window. The window is
-   * taller than the open book's cover panel, so it frames the champion
-   * differently and needs its own value.
+   * `object-position` for the splash inside the volume's PORTRAIT art window.
+   * The window (0.88:1) is far taller than a splash (≈1.70:1), so `cover`
+   * shows the splash's full height and crops horizontally only: the X value
+   * frames the champion and the Y value is close to inert. Tuned per champion
+   * — these are NOT the open card's old landscape-panel values.
    */
-  coverSplashPosition?: string;
+  splashPosition?: string;
 };
 
 // Approved academy IA — FOUR primary destinations in a balanced quadrant:
@@ -114,13 +101,8 @@ const HUB_DESTINATIONS: HubDestination[] = [
     subtitle: "Study. Practice. Ascend.",
     Icon: BrainCircuit,
     championName: "Ryze",
-    splashPosition: "95% center",
-    // Closed-volume prototype. The subtitle stays in the registry because the
-    // mobile HexPanelLink still uses it; the closed cover deliberately does
-    // NOT print it — Mogzy already narrates the destination.
-    object: "closed-book",
-    coverTitle: "Leaguecraft Studies",
-    coverSplashPosition: "78% center",
+    coverTitle: "Leaguecraft\nStudies",
+    splashPosition: "78% center",
   },
   {
     // Route id, guide id and component names stay `combat-lab` on purpose —
@@ -131,7 +113,8 @@ const HUB_DESTINATIONS: HubDestination[] = [
     subtitle: "Practice. Analyze. Dominate.",
     Icon: Swords,
     championName: "Akali",
-    splashPosition: "44% center",
+    coverTitle: "Combat\nSimulation",
+    splashPosition: "36% center",
   },
   {
     to: "/lol/docs",
@@ -140,7 +123,8 @@ const HUB_DESTINATIONS: HubDestination[] = [
     subtitle: "Explore League knowledge.",
     Icon: FileText,
     championName: "Viktor",
-    splashPosition: "44% center",
+    coverTitle: "Mogzy\nArchives",
+    splashPosition: "34% center",
   },
   {
     // Professional-play content — NOT /lol/pro, the subscription page.
@@ -150,32 +134,35 @@ const HUB_DESTINATIONS: HubDestination[] = [
     subtitle: "Quiz yourself on the pro scene.",
     Icon: Trophy,
     championName: "Ahri",
-    splashPosition: "60% center",
+    coverTitle: "Pro Play",
+    splashPosition: "56% center",
   },
 ];
 
 /**
- * Inward perspective for the closed Academy volumes (PROTOTYPE — Leaguecraft).
+ * Inward perspective for the closed Academy volumes.
  *
- * The book should read as a physical volume angled on the library shelf to
- * face Mogzy at the centre of the hub. Positive `rotateY` turns a LEFT-hand
- * book's cover toward the centre: its outer (left) edge comes forward and its
- * inner (right) edge recedes. A right-hand book takes the mirrored sign, so
- * the same pair of numbers serves both columns when the treatment spreads.
+ * Every book is angled on its shelf to face Mogzy at the centre of the hub.
+ * Positive `rotateY` turns a LEFT-hand book's cover toward the centre — its
+ * outer (left) edge comes forward, its inner (right) edge recedes — so the
+ * right column takes the exact negation and the quadrant reads as one room
+ * rather than four cards.
  *
- * 8° at a 1400px perspective is enough for the spine and the cover's
- * thickness to read as depth while the champion art loses only ~1% of its
- * apparent width, so the crop still frames the same composition. Hover eases
- * to 4°, bringing the volume toward the viewer without ever squaring it up —
- * a book that snapped flat would read as a UI card, not as a book.
+ * 11° (up from the prototype's approved-but-subtle 8°) is where the spine and
+ * the cover's thickness read as real depth from normal viewing distance while
+ * the champion art still loses under 2% of its apparent width. Hover eases to
+ * 5.5° — half the rest angle — which brings the volume toward the viewer
+ * without ever squaring it up; a book that snapped flat would read as a UI
+ * card, not as a book.
  *
- * A hair of roll keeps the shelf from looking machine-set. Both angles are
+ * The roll alternates by row so the shelf is not machine-set: the top pair
+ * leans very slightly one way, the bottom pair the other. Both angles are
  * zeroed below 1024px and the hover turn is cancelled under
  * prefers-reduced-motion — see `.academy-hub-book-body` in index.css.
  */
-const CLOSED_BOOK_ROTATE_Y = 8;
-const CLOSED_BOOK_ROTATE_Y_HOVER = 4;
-const CLOSED_BOOK_ROTATE_Z = -0.8;
+const CLOSED_BOOK_ROTATE_Y = 11;
+const CLOSED_BOOK_ROTATE_Y_HOVER = 5.5;
+const CLOSED_BOOK_ROTATE_Z = 0.8;
 
 /** Desktop columns: row-major registry → two vertical pairs. */
 const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
@@ -334,10 +321,13 @@ export default function LolHub() {
     }
   };
 
-  // Vertical bias of both book columns. Was a fixed −50px tuned at 1080; now
-  // eases to 0 on short viewports (see academy-layout.ts) so the columns can
-  // never rise into the title band when the fold leaves them no slack above.
-  const DESKTOP_BOOK_STACK_Y = BOOK_STACK_LIFT_CSS;
+  // Vertical bias of both book columns. The old −50px lift (eased to 0 on
+  // short viewports) existed to open the pedestal under THREE short open-book
+  // rows that left slack above them. Two portrait volumes spend the fold
+  // almost exactly, so any negative lift now pushes row one into the title
+  // band at every height — the columns simply centre. BOOK_STACK_LIFT_CSS is
+  // left exported and tested for the open card; the hub no longer applies it.
+  const DESKTOP_BOOK_STACK_Y = "0px";
 
   // How far each book column is pulled back toward the center from its outer
   // edge. At wide viewports this is the original 120px composition; below
@@ -347,65 +337,47 @@ export default function LolHub() {
   const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
 
 
-  const renderBook = (d: HubDestination, side: "left" | "right") => (
-    // Book size. BookModeCard reclaims ALL of the frame PNG's transparent
-    // padding, so the card box IS the drawn book: height = width × 0.542, and
-    // width = the drawn book's width.
-    //
-    // The size is height-aware with two regimes (academy-layout.ts): at
-    // heights ≥ ~1000px the original shallow slope binds (0.308 × 100dvh +
-    // 176px — 1080 keeps its approved 509px books), below that a steeper
-    // fit slope takes over so heading + three rows + padding always fit the
-    // fold — the old "third row runs past the fold" trade predated the MALT
-    // title/HUD and is retired. The min() with 100% keeps the book inside
-    // its grid column so it can never clip.
-    //
-    // Each column is pushed OUTWARD (mr-auto / ml-auto) instead of centred, so
-    // the books sit near the viewport edges and the central Mogzy lane opens up.
-    // Hover/focus (focus bubbles up from the Link inside BookModeCard) drive
-    // Mogzy's contextual guide. Purely additive: click/navigation semantics
-    // stay on the Link itself.
-    <div
-      key={d.to}
-      data-guide-mode={d.guideId}
-      onMouseEnter={() => activateGuide(d.guideId)}
-      onMouseLeave={deactivateGuide}
-      onFocus={() => activateGuide(d.guideId)}
-      onBlur={deactivateGuide}
-      className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
-      style={{
-        maxWidth:
-          d.object === "closed-book" ? CLOSED_BOOK_MAX_WIDTH_CSS : BOOK_MAX_WIDTH_CSS,
-      }}
-    >
-      {d.object === "closed-book" ? (
+  // Book size and placement. AcademyHubBook's layout box IS the frame PNG's
+  // canvas, so the card's height is its width × 1.5 with no margin
+  // arithmetic. The width is whatever two portrait rows can spend against the
+  // fold — see CLOSED_BOOK_MAX_WIDTH_CSS in academy-layout.ts.
+  //
+  // Each column is pushed OUTWARD (mr-auto / ml-auto) so the volumes sit near
+  // the viewport edges and the central Mogzy lane opens up. Hover/focus (focus
+  // bubbles up from the Link inside the book) drive Mogzy's contextual guide;
+  // click/navigation semantics stay on the Link itself.
+  //
+  // `row` only selects the roll direction, so the shelf alternates instead of
+  // every volume leaning identically. `side` mirrors the inward turn.
+  const renderBook = (d: HubDestination, side: "left" | "right", row: number) => {
+    const inward = side === "left" ? 1 : -1;
+    return (
+      <div
+        key={d.to}
+        data-guide-mode={d.guideId}
+        onMouseEnter={() => activateGuide(d.guideId)}
+        onMouseLeave={deactivateGuide}
+        onFocus={() => activateGuide(d.guideId)}
+        onBlur={deactivateGuide}
+        className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
+        style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
+      >
         <AcademyHubBook
           to={d.to}
           title={d.title}
           coverTitle={d.coverTitle}
           splashUrl={getChampionSplash(championAssets, d.championName)}
-          splashPosition={d.coverSplashPosition ?? d.splashPosition}
-          rotateY={side === "left" ? CLOSED_BOOK_ROTATE_Y : -CLOSED_BOOK_ROTATE_Y}
-          rotateYHover={
-            side === "left" ? CLOSED_BOOK_ROTATE_Y_HOVER : -CLOSED_BOOK_ROTATE_Y_HOVER
-          }
-          rotateZ={side === "left" ? CLOSED_BOOK_ROTATE_Z : -CLOSED_BOOK_ROTATE_Z}
-          describedBy={hubGuideDescriptionId(d.guideId)}
-          onClick={() => onDestinationClick(d.to)}
-        />
-      ) : (
-        <BookModeCard
-          to={d.to}
-          title={d.title}
-          subtitle={d.subtitle}
-          splashUrl={getChampionSplash(championAssets, d.championName)}
           splashPosition={d.splashPosition}
+          rotateY={inward * CLOSED_BOOK_ROTATE_Y}
+          rotateYHover={inward * CLOSED_BOOK_ROTATE_Y_HOVER}
+          rotateZ={inward * (row === 0 ? -CLOSED_BOOK_ROTATE_Z : CLOSED_BOOK_ROTATE_Z)}
+          mirrored={side === "right"}
           describedBy={hubGuideDescriptionId(d.guideId)}
           onClick={() => onDestinationClick(d.to)}
         />
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -555,7 +527,7 @@ export default function LolHub() {
                 transform: `translate(calc(${DESKTOP_BOOK_STACK_INSET}), ${DESKTOP_BOOK_STACK_Y})`,
               }}
             >
-              {LEFT_DESTINATIONS.map((d) => renderBook(d, "left"))}
+              {LEFT_DESTINATIONS.map((d, row) => renderBook(d, "left", row))}
             </div>
 
             {/* Central lane — the Academy Broadcast centerpiece (magic-book
@@ -618,7 +590,7 @@ export default function LolHub() {
                 transform: `translate(calc(-1 * (${DESKTOP_BOOK_STACK_INSET})), ${DESKTOP_BOOK_STACK_Y})`,
               }}
             >
-              {RIGHT_DESTINATIONS.map((d) => renderBook(d, "right"))}
+              {RIGHT_DESTINATIONS.map((d, row) => renderBook(d, "right", row))}
             </div>
           </div>
 

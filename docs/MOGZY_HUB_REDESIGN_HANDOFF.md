@@ -1,12 +1,185 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 4 (Leaguecraft closed-book visual prototype) is at the top of
-     this file. Revision 3 is the IA cleanup it was built on; revisions 2 and
-     1 below are the audits that produced it. -->
+<!-- Revision 5 (all four destinations converted) is at the top of this file.
+     Revision 4 is the Leaguecraft prototype the owner approved; revision 3 is
+     the IA cleanup; revisions 2 and 1 are the audits that produced it. -->
 
-## Revision 2026-09-02c — Leaguecraft closed-book visual prototype
+## Revision 2026-09-02d — ALL FOUR destinations are closed Academy volumes
 
-**Status:** BUILT AND COMMITTED, AWAITING OWNER VISUAL APPROVAL.
+**Status:** BUILT AND COMMITTED, AWAITING OWNER VISUAL APPROVAL OF THE
+COMPLETE FOUR-BOOK HUB.
+Branch `hub/leaguecraft-closed-book`, on top of `a22534af` (the approved
+Leaguecraft prototype, Revision 4 below).
+
+The owner approved the prototype direction and its size, and asked for a
+slightly stronger inward turn. `/lol` now renders Leaguecraft, Combat
+Simulation, Mogzy Archives and Pro Play as one shared closed-volume design.
+`BookModeCard` no longer renders anywhere on the hub.
+
+### Final four-book geometry
+
+Sizing moved off the prototype's "fraction of the open book" model, which only
+had to spend the single row the 6→4 IA cleanup freed. With four portrait
+volumes the binding constraint is simply the fold:
+
+```
+2 × (w × 1.5) + gap  ≤  100dvh − headerBottom − bottomPad
+→ w ≤ (100dvh − 190px) / 3          capped at 360px
+```
+
+`CLOSED_BOOK_FIT_OFFSET_PX = 190` collects the header at its ceiling (118px:
+pt 8 + two title lines at 1.12 line-height of the capped 2.4rem title + the
+personal line's mt 4 + 20), the section's `pb-14` (56px), one 12px gap and 4px
+of slack. Taken at the title's ceiling, so it is conservative at every height
+rather than only at the matrix entries. The 360px cap is a composition limit,
+not a fit limit.
+
+| Viewport | Volume | Column top | Column bottom | Slack above `pb-14` |
+|---|---|---|---|---|
+| 1366×768 | 193 × 289 | y 111 | y 696 | 16px |
+| 1440×900 | **237 × 355** | y 118 | y 835 | 9px |
+| 1920×1080 | **297 × 445** | y 123 | y 1021 | 3px |
+
+**On size.** Four portrait volumes in two rows cannot hold the one-book
+prototype's 288px width at 1440×900 — two 431px books plus a gap is 874px
+against ~737px of usable lane. 237px is the largest that fits the fold, and it
+is still far taller (355px) than any open book the hub has ever shown (229px at
+the same viewport). This is geometry, not a stylistic reduction.
+
+The `-50px` column lift (`BOOK_STACK_LIFT_CSS`) is no longer applied: it
+existed to open the pedestal under three SHORT open-book rows that left slack
+above them. Two portrait volumes spend the fold almost exactly, so any negative
+lift now pushes row one into the title band. The constant stays exported and
+tested for the open card; the hub passes `0px`. Nothing else in
+`academy-layout.ts` was re-derived — the open-book constants and
+`CENTERPIECE_WIDTH_CSS` are untouched, and every volume stays narrower than the
+open width term so the tome is unmoved.
+
+### Perspective and hover — final values
+
+| Value | Setting |
+|---|---|
+| `perspective` | `1400px` on the link |
+| Resting `rotateY` | **+11°** left column · **−11°** right column (exact negation) |
+| Hover/focus `rotateY` | **+5.5° / −5.5°** — half the rest angle, toward the viewer |
+| `rotateZ` | **±0.8°**, alternating by row so the shelf is not machine-set: Leaguecraft −0.8, Archives +0.8, Combat Simulation +0.8, Pro Play −0.8 |
+| Hover/focus lift | `translateY(-10px)` |
+| Hover/focus light | gold rim inside the art window + a gold drop-shadow |
+| Transition | `380ms cubic-bezier(.22,.61,.36,1)` transform, 380ms filter |
+
+Up from the prototype's 8°/4°. Verified by computed style: `[11, 11, −11, −11]`
+at 1440×900 and 1920×1080, flattened to 2D at 1023×800, and under
+`prefers-reduced-motion` the resting ±11° stays while the hover turn, the lift
+and every transition are cancelled.
+
+**Shell mirroring — this is what stops it reading as four copies of one card.**
+The frame art puts the spine on the LEFT. Drawn unmirrored, all four spines
+point the same way and the right column's spines face Mogzy. The right column
+now draws the shell with `scaleX(-1)` so its spines sit on the OUTER edge and
+the two shelves face each other. Only the SHELL flips: the art window and the
+title panel carry a second, mirrored x (`100 − left − width`) and the splash and
+title are never mirrored.
+
+### Champion crops (portrait window, 0.88:1 against ≈1.70:1 splashes)
+
+`object-fit: cover` shows each splash's full height and crops horizontally, so
+the X value frames the champion and Y is close to inert. Source assets are
+untouched.
+
+| Destination | Champion | `object-position` | Why |
+|---|---|---|---|
+| Leaguecraft | Ryze | **78% center** | unchanged — owner-approved |
+| Combat Simulation | Akali | **36% center** | centres her torso and kama; her mask stays in frame |
+| Mogzy Archives | Viktor | **34% center** | centres the figure and keeps the glowing blade |
+| Pro Play | Ahri | **56% center** | her face and the orb both read |
+
+The registry's single `splashPosition` now means the PORTRAIT window; the open
+card's old landscape values are gone with the card.
+
+### Titles
+
+All four are HTML on the leather, split on `"\n"` (never on spaces) so the
+registry controls the setting exactly: LEAGUECRAFT / STUDIES, COMBAT /
+SIMULATION, MOGZY / ARCHIVES, and PRO PLAY on one line. One shared type ramp,
+`clamp(0.68rem, 8cqw, 2rem)` Cinzel at 0.1em tracking — 157px of text in a
+166px panel at 1440×900, 197 in 208 at 1920×1080. No cover carries descriptive
+copy; a test asserts the registry subtitles never reach a cover.
+
+### Guide offsets — no recalibration was needed
+
+All four `lean`/`bubble` pairs were checked visually at 1440×900 with each book
+hovered. Mogzy leans to the correct side every time, each bubble carries the
+right destination copy, and no bubble collides with a book, the radio dock or
+the tome. `hub-guide.ts` is **unchanged** — the mirrored pairs the IA cleanup
+calibrated still land, because the volumes moved outward and the bubbles sit
+inboard of them.
+
+### Files changed (on top of `a22534af`)
+
+| File | Change |
+|---|---|
+| `src/components/lol/AcademyHubBook.tsx` | `mirrored` prop (shell `scaleX(-1)` + mirrored window/panel x); titles split on `"\n"`; title ramp 7.6→8cqw |
+| `src/components/lol/academy-layout.ts` | closed-book sizing replaced by the two-portrait-row fold model (`CLOSED_BOOK_FIT_OFFSET_PX`, `CLOSED_BOOK_FIT_DIVISOR`, `CLOSED_BOOK_MAX_PX`); open-book constants untouched |
+| `src/components/lol/academy-layout.test.ts` | closed-book block rewritten for the four-book contract |
+| `src/pages/LolHub.tsx` | all four registry entries carry `coverTitle` + portrait `splashPosition`; `object` flag and the `BookModeCard` branch removed; rotation constants 8→11 / 4→5.5; `mirrored` and per-row roll; column lift → `0px` |
+| `src/pages/LolHub.test.tsx` | prototype block rewritten for four volumes |
+
+### Verification
+
+- `LolHub.test.tsx` + `academy-layout.test.ts`: **111 passed**. ESLint clean on
+  all five files. `tsc --noEmit` failing-file set identical to baseline.
+- Routes: all four navigate correctly (`/quiz`, `/combat-lab`, `/lol/docs`,
+  `/lol/pro-play`). DOM/tab order unchanged: leaguecraft → archives →
+  combat-lab → pro-play, each with its registry `aria-label`.
+- Keyboard focus on each book: ±5.5° turn, −10px lift, gold response. Hover
+  matches.
+- Centre intact: Patch Brief renders with its "Read full report" CTA, the radio
+  dock is present and unmoved, Mogzy's reaction target still mounts.
+- Mobile 375×812: the four `HexPanelLink` panels and the broadcast centerpiece
+  are unchanged from the approved prototype capture.
+- **Asset cost measured, not assumed.** Four `<img>` elements, ONE URL, and the
+  browser transfers the frame **once**: total 2,420,160 bytes across two
+  `PerformanceResourceTiming` entries (the 2.42 MB image + a 730-byte Vite
+  module request). Four books do NOT mean ~9.7 MB. No optimisation is needed to
+  unblock this pass.
+
+### Screenshots
+
+1440×900 default · 1440×900 hover ×4 (Leaguecraft, Combat Simulation, Archives,
+Pro Play) · 1440×900 focus · 1920×1080 default · 375×812 mobile.
+
+### Remaining visual issues
+
+1. **The centerpiece now looks small against the volumes at 1920×1080.**
+   `CENTERPIECE_MAX_PX = 380` caps the tome while the books grew to 297×445.
+   Nothing regressed — the tome is pixel-unmoved — but the balance is worth an
+   explicit decision. Deliberately not changed: re-deriving the centerpiece was
+   out of scope and it is the one surface the brief said to preserve.
+2. **`BookModeCard` now has zero consumers.** The hub was its only caller. Left
+   in place rather than deleted, because the mobile book treatment is still an
+   open decision and it is the obvious starting point. Flagging it so it does
+   not rot unnoticed.
+3. **The frame PNG is still 2.42 MB.** Per the measurement above this is one
+   download, not four, so it is no longer urgent — but a 768×1152 derivative
+   would still cut ~2 MB off the hub's LCP path whenever the look is final.
+4. **Every champion's face sits high in the window.** Splash art composes faces
+   in the upper third and `object-position`'s Y is inert against a
+   full-height crop, so this is uniform across all four rather than a per-book
+   flaw. It reads as a consistent house style; changing it means scaling the
+   splash inside the window, which the owner declined for Ryze.
+
+### Next decision
+
+Owner visual approval of the complete four-book hub. Not yet started, and
+deliberately so: entrance/drop choreography, impact sounds, destination-specific
+shell colours or emblems, and the mobile book treatment are all still unbuilt.
+
+---
+
+## Revision 2026-09-02c — Leaguecraft closed-book visual prototype (APPROVED)
+
+**Status:** APPROVED by the owner; superseded by Revision 5 above, which
+extends this treatment to all four destinations. Committed as `a22534af`.
 Branch `hub/leaguecraft-closed-book` (worktree
 `/Users/macmoney/mogsy-wt-hub-book`), on top of `33b5dd5f` — the IA cleanup
 described in Revision 3 below.

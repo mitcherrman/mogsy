@@ -194,41 +194,54 @@ export function centerpieceHeightPx(width: number): number {
 /* ------------------------------------------------- closed Academy volume -- */
 
 /**
- * Closed destination book (`AcademyHubBook`) — PROTOTYPE, Leaguecraft only.
+ * Closed Academy volume (`AcademyHubBook`) — now ALL FOUR hub destinations.
  *
- * The closed volume is portrait (height = width × 1.5, the frame PNG's
- * 1024×1536 canvas) where the open `BookModeCard` is landscape (× 0.542), so
- * it cannot reuse `BOOK_MAX_WIDTH_CSS` directly: at the open book's width it
- * would stand 2.8× as tall as an open row and blow straight through the fold.
+ * The prototype sized one closed book as a fraction of the open book's width
+ * term, because it only had to spend the single row the 6→4 IA cleanup freed.
+ * With four portrait volumes that model is gone: the quadrant is two portrait
+ * rows per column, and the binding constraint is simply the fold.
  *
- * It is instead sized as a FRACTION of the open book's width term, which
- * already encodes both height regimes — so the closed book inherits the
- * min() crossover for free and needs no second regime model of its own.
+ *   2 × (w × 1.5)  +  gap  ≤  100dvh − headerBottom − bottomPad
+ *   →  w  ≤  (100dvh − CLOSED_BOOK_FIT_OFFSET_PX) / 3
  *
- * The fraction comes from the slack the IA cleanup left behind. Both fit
- * slopes were derived for THREE book rows per column; the quadrant only has
- * two, so roughly one row of height is free. Spending exactly that row on the
- * closed book gives, per column:
+ * CLOSED_BOOK_FIT_OFFSET_PX = 190 collects the three fixed costs above the
+ * books: the desktop header at its ceiling (pt 8 + two title lines at 1.12
+ * line-height of the capped 2.4rem title + the personal line's mt 4 + 20 =
+ * 118px), the section's pb-14 (56px), and one 12px inter-book gap, plus 4px
+ * of slack. It is taken at the title's CEILING rather than per-viewport, so
+ * the term is conservative at every height instead of only at the matrix
+ * entries — the title only ever gets smaller than 2.4rem.
  *
- *   1.5·wClosed + gap + 0.542·wOpen  ≤  3·(0.542·wOpen) + 2·gap
- *   →  wClosed ≤ 0.723·wOpen + gap/1.5
+ * The 360px cap is a composition limit, not a fit limit: past it the volumes
+ * start eating the central lane on very tall viewports for no legibility gain.
  *
- * CLOSED_BOOK_WIDTH_FRACTION sits just inside that ceiling, leaving the gap
- * term as headroom. At 1440×900 that is a 288 × 431px volume beside 423 ×
- * 229px open books; at 1920×1080, 346 × 519 beside 509 × 276.
+ * NOTE ON SIZE. Four portrait volumes at two rows CANNOT hold the one-book
+ * prototype's 288px width at 1440×900 — two 431px books plus a gap is 874px
+ * against ~737px of usable lane. The ~237px this term yields is the largest
+ * that fits the fold, not a stylistic reduction, and it is still far taller
+ * (355px) than any open book the hub has ever shown (229px at the same size).
  *
- * Being NARROWER than an open book, the closed volume also cannot crowd the
- * central lane: CENTERPIECE_WIDTH_CSS models the free zone from the open book
- * width term, so it stays conservative and the tome is unaffected.
+ * The OPEN-book constants below are deliberately left in place: `BookModeCard`
+ * is still the mobile/below-fold card and `CENTERPIECE_WIDTH_CSS` models the
+ * free central zone from the open width term. Because every closed volume is
+ * narrower than that term, the centerpiece stays conservative and needs no
+ * re-derivation — the tome is unmoved by this change.
  */
-export const CLOSED_BOOK_WIDTH_FRACTION = 0.68;
+export const CLOSED_BOOK_FIT_OFFSET_PX = 190;
+/** Two portrait rows: each book may take a third of what the fold leaves. */
+export const CLOSED_BOOK_FIT_DIVISOR = 3;
+export const CLOSED_BOOK_MAX_PX = 360;
 
 /** Card height per width — AcademyHubBook's canvas aspect (1536 / 1024). */
 export const CLOSED_BOOK_HEIGHT_RATIO = 1.5;
 
-export const CLOSED_BOOK_MAX_WIDTH_CSS = `min(100%, calc((${BOOK_WIDTH_TERM_CSS}) * ${CLOSED_BOOK_WIDTH_FRACTION}))`;
+export const CLOSED_BOOK_MAX_WIDTH_CSS = `min(100%, calc((100dvh - ${CLOSED_BOOK_FIT_OFFSET_PX}px) / ${CLOSED_BOOK_FIT_DIVISOR}), ${CLOSED_BOOK_MAX_PX}px)`;
 
 /** JS twin of CLOSED_BOOK_MAX_WIDTH_CSS. */
 export function closedBookMaxWidthPx(vh: number, columnWidth = Infinity): number {
-  return Math.min(columnWidth, bookMaxWidthPx(vh) * CLOSED_BOOK_WIDTH_FRACTION);
+  return Math.min(
+    columnWidth,
+    (vh - CLOSED_BOOK_FIT_OFFSET_PX) / CLOSED_BOOK_FIT_DIVISOR,
+    CLOSED_BOOK_MAX_PX,
+  );
 }

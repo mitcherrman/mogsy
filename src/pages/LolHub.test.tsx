@@ -801,78 +801,105 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
 });
 
 /**
- * Closed Academy volume — the Leaguecraft visual prototype (2026-09-02).
+ * Closed Academy volumes — the approved four-book quadrant (2026-09-02d).
  *
- * The hub is deliberately MIXED while the owner reviews the treatment:
- * Leaguecraft renders `AcademyHubBook`, the other three keep the open-book
- * `BookModeCard`. These tests pin what the prototype must not break — the
- * route, the accessible name, the guide wiring and the mixed state itself —
- * so a later conversion pass has to update them on purpose.
+ * All four primary destinations render `AcademyHubBook`. These tests pin what
+ * the conversion must not break — routes, accessible names, guide wiring, the
+ * cover-title setting and the mirrored inward perspective.
  */
-describe("LolHub — closed Academy volume prototype (Leaguecraft)", () => {
-  const closedBook = (container: HTMLElement) =>
-    container.querySelector<HTMLAnchorElement>("a.academy-hub-book");
+describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
+  const volumes = (container: HTMLElement) =>
+    [...container.querySelectorAll<HTMLAnchorElement>("a.academy-hub-book")];
 
-  it("renders Leaguecraft as the closed volume and nothing else", () => {
+  it("renders all four destinations as closed volumes and no open cards", () => {
     const { container } = renderHub();
-    const closed = container.querySelectorAll("a.academy-hub-book");
-    expect(closed).toHaveLength(1);
-    expect(closed[0].getAttribute("href")).toBe("/quiz");
-    // The other three desktop destinations still use the open-book card.
-    expect(container.querySelectorAll("a.book-mode-card")).toHaveLength(3);
-  });
-
-  it("keeps the destination's route, accessible name and guide description", () => {
-    const { container } = renderHub();
-    const link = closedBook(container)!;
-    expect(link.getAttribute("href")).toBe("/quiz");
-    // aria-label stays the REGISTRY title, not the cover's two-line setting.
-    expect(link.getAttribute("aria-label")).toBe(HUB_GUIDE_MODES.leaguecraft.title);
-    const describedBy = link.getAttribute("aria-describedby")!;
-    expect(document.getElementById(describedBy)?.textContent).toBe(
-      HUB_GUIDE_MODES.leaguecraft.description,
-    );
-  });
-
-  it("prints the cover title as separate lines, never baked into the art", () => {
-    const { container } = renderHub();
-    const heading = closedBook(container)!.querySelector(".academy-hub-book-title")!;
-    expect([...heading.querySelectorAll("span")].map((s) => s.textContent)).toEqual([
-      "Leaguecraft",
-      "Studies",
+    expect(volumes(container).map((a) => a.getAttribute("href"))).toEqual([
+      "/quiz",
+      "/lol/docs",
+      "/combat-lab",
+      "/lol/pro-play",
     ]);
-    // The registry subtitle belongs to the mobile panel; Mogzy narrates the
-    // destination, so the cover must not repeat it.
-    expect(heading.textContent).not.toContain("Study. Practice. Ascend.");
+    expect(container.querySelectorAll("a.book-mode-card")).toHaveLength(0);
   });
 
-  it("still drives Mogzy's contextual guide on hover and focus", () => {
+  it("keeps every route, accessible name and guide description", () => {
     const { container } = renderHub();
-    const wrapper = container.querySelector('[data-guide-mode="leaguecraft"]')!;
-    expect(wrapper.contains(closedBook(container))).toBe(true);
-    fireEvent.mouseEnter(wrapper);
-    expect(screen.getAllByText(HUB_GUIDE_MODES.leaguecraft.description).length).toBeGreaterThan(0);
-    fireEvent.mouseLeave(wrapper);
-    fireEvent.focus(wrapper);
-    expect(screen.getAllByText(HUB_GUIDE_MODES.leaguecraft.description).length).toBeGreaterThan(0);
+    for (const link of volumes(container)) {
+      const id = link.closest("[data-guide-mode]")!.getAttribute("data-guide-mode") as HubGuideModeId;
+      // aria-label stays the REGISTRY title, never the cover's line setting.
+      expect(link.getAttribute("aria-label")).toBe(HUB_GUIDE_MODES[id].title);
+      const describedBy = link.getAttribute("aria-describedby")!;
+      expect(document.getElementById(describedBy)?.textContent).toBe(
+        HUB_GUIDE_MODES[id].description,
+      );
+    }
   });
 
-  it("faces inward: the left-hand column takes a positive resting rotation", () => {
+  it("prints cover titles as split lines, never baked into the art", () => {
     const { container } = renderHub();
-    const link = closedBook(container)!;
-    // Declared on the LINK so index.css can zero them on the body itself.
-    const rest = link.style.getPropertyValue("--hub-book-rotate-y");
-    const hover = link.style.getPropertyValue("--hub-book-rotate-y-hover");
-    expect(parseFloat(rest)).toBeGreaterThan(0);
-    // Hover eases the book TOWARD the viewer without ever squaring it up.
-    expect(parseFloat(hover)).toBeGreaterThan(0);
-    expect(parseFloat(hover)).toBeLessThan(parseFloat(rest));
+    const lines = (href: string) =>
+      [
+        ...container
+          .querySelector(`a.academy-hub-book[href="${href}"] .academy-hub-book-title`)!
+          .querySelectorAll("span"),
+      ].map((s) => s.textContent);
+    expect(lines("/quiz")).toEqual(["Leaguecraft", "Studies"]);
+    expect(lines("/combat-lab")).toEqual(["Combat", "Simulation"]);
+    expect(lines("/lol/docs")).toEqual(["Mogzy", "Archives"]);
+    // Split is on "\n", never on spaces, so this stays one line.
+    expect(lines("/lol/pro-play")).toEqual(["Pro Play"]);
   });
 
-  it("the mobile panel list is untouched by the prototype", () => {
+  it("no cover carries the registry subtitle — Mogzy narrates instead", () => {
     const { container } = renderHub();
-    // Leaguecraft still appears twice overall (desktop volume + mobile panel).
-    expect(container.querySelectorAll('a[href="/quiz"]')).toHaveLength(2);
-    expect(container.querySelector('a.academy-hub-book[href="/quiz"]')).not.toBeNull();
+    for (const link of volumes(container)) {
+      expect(link.textContent).not.toMatch(/Study\.|Practice\.|Explore League|Quiz yourself/);
+    }
+  });
+
+  it("still drives Mogzy's guide from every book, on hover and on focus", () => {
+    const { container } = renderHub();
+    for (const id of Object.keys(HUB_GUIDE_MODES) as HubGuideModeId[]) {
+      const wrapper = container.querySelector(`[data-guide-mode="${id}"]`)!;
+      expect(wrapper.querySelector("a.academy-hub-book")).not.toBeNull();
+      fireEvent.mouseEnter(wrapper);
+      expect(screen.getAllByText(HUB_GUIDE_MODES[id].description).length).toBeGreaterThan(0);
+      fireEvent.mouseLeave(wrapper);
+      fireEvent.focus(wrapper);
+      expect(screen.getAllByText(HUB_GUIDE_MODES[id].description).length).toBeGreaterThan(0);
+      fireEvent.blur(wrapper);
+    }
+  });
+
+  it("mirrors the inward turn: left column positive, right column negative", () => {
+    const { container } = renderHub();
+    const rot = (href: string) => {
+      const el = container.querySelector<HTMLAnchorElement>(`a.academy-hub-book[href="${href}"]`)!;
+      return {
+        rest: parseFloat(el.style.getPropertyValue("--hub-book-rotate-y")),
+        hover: parseFloat(el.style.getPropertyValue("--hub-book-rotate-y-hover")),
+      };
+    };
+    const left = [rot("/quiz"), rot("/lol/docs")];
+    const right = [rot("/combat-lab"), rot("/lol/pro-play")];
+    for (const r of left) expect(r.rest).toBeGreaterThan(0);
+    for (const r of right) expect(r.rest).toBeLessThan(0);
+    // Exact negations, so the quadrant reads as one room.
+    expect(right[0].rest).toBe(-left[0].rest);
+    expect(right[0].hover).toBe(-left[0].hover);
+    // Hover comes TOWARD the viewer without ever squaring up.
+    for (const r of [...left, ...right]) {
+      expect(Math.abs(r.hover)).toBeLessThan(Math.abs(r.rest));
+      expect(Math.abs(r.hover)).toBeGreaterThan(0);
+    }
+  });
+
+  it("the mobile panel list is untouched by the conversion", () => {
+    const { container } = renderHub();
+    // Every destination still appears twice: desktop volume + mobile panel.
+    for (const href of ["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]) {
+      expect(container.querySelectorAll(`a[href="${href}"]`)).toHaveLength(2);
+      expect(container.querySelector(`a.academy-hub-book[href="${href}"]`)).not.toBeNull();
+    }
   });
 });

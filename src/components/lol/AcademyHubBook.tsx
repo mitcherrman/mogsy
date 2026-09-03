@@ -37,12 +37,23 @@ import { CLOSED_BOOK_HEIGHT_RATIO } from "@/components/lol/academy-layout";
  * 65/35 art-to-leather, which is the approved proportion.
  */
 
-/** Transparent art window, as % of the PNG canvas (alpha-measured). */
+/**
+ * Transparent art window and leather title panel, as % of the PNG canvas.
+ *
+ * The shell art puts the spine on the LEFT, so a right-hand book is drawn
+ * mirrored (`scaleX(-1)` on the shell image alone) to put its spine on the
+ * OUTER edge — otherwise all four spines point the same way and the quadrant
+ * reads as four copies of one card instead of two facing shelves. Mirroring
+ * the shell moves the window and the panel with it, so each box carries both
+ * x positions: mirrored left = 100 − left − width. Only the SHELL flips; the
+ * splash and the title are never mirrored.
+ */
 const ART_WINDOW = {
-  left: "16.60%",
   top: "7.88%",
   width: "73.44%", // 90.04 − 16.60
   height: "55.60%", // 63.48 −  7.88
+  left: "16.60%",
+  mirroredLeft: "9.96%", // 100 − 16.60 − 73.44
 } as const;
 
 /**
@@ -55,11 +66,18 @@ const ART_WINDOW = {
  * optically centred on the leather rather than on the PNG.
  */
 const TITLE_PANEL = {
-  left: "17.5%",
   top: "67%",
   width: "71%",
   height: "22%",
+  left: "17.5%",
+  mirroredLeft: "11.5%", // 100 − 17.5 − 71
 } as const;
+
+/** Strips the mirror bookkeeping back to a plain CSS box. */
+const box = (
+  b: { top: string; width: string; height: string; left: string; mirroredLeft: string },
+  mirrored: boolean,
+) => ({ top: b.top, width: b.width, height: b.height, left: mirrored ? b.mirroredLeft : b.left });
 
 type Props = {
   /** Resting inward rotation about Y, in degrees. Positive turns a LEFT-hand
@@ -70,13 +88,20 @@ type Props = {
   rotateYHover?: number;
   /** Slight roll, in degrees, so the volume never reads machine-perfect. */
   rotateZ?: number;
+  /**
+   * Draw the shell mirrored, putting its spine on the right. Set for the
+   * right-hand column so both shelves face the centre.
+   */
+  mirrored?: boolean;
   to: string;
   /** Accessible name. Must stay the registry/guide title (asserted by tests). */
   title: string;
   /**
    * Text rendered as real HTML on the leather panel — never baked into the
-   * art. Whitespace-separated words stack as lines, so "Leaguecraft Studies"
-   * sets as LEAGUECRAFT / STUDIES. Defaults to `title`.
+   * art. Lines are split on "\n" and never on spaces, so the registry
+   * controls the setting exactly: "Leaguecraft\nStudies" stacks as
+   * LEAGUECRAFT / STUDIES while "Pro Play" stays on one line. Defaults to
+   * `title`.
    */
   coverTitle?: string;
   /** Resolved champion splash URL; falls back to bare leather if absent. */
@@ -102,12 +127,16 @@ export default function AcademyHubBook({
   rotateY = 0,
   rotateYHover = 0,
   rotateZ = 0,
+  mirrored = false,
   describedBy,
   onClick,
 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
   const hasImage = !!splashUrl && !imgFailed;
-  const lines = (coverTitle ?? title).split(/\s+/).filter(Boolean);
+  const lines = (coverTitle ?? title)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   return (
     <Link
@@ -145,7 +174,7 @@ export default function AcademyHubBook({
         {/* 1 — champion splash, filling the frame's transparent art window.
                Sits UNDER the shell so the gold trim overlaps its edges and
                the art reads as inlaid into the cover. */}
-        <div className="absolute overflow-hidden" style={ART_WINDOW}>
+        <div className="absolute overflow-hidden" style={box(ART_WINDOW, mirrored)}>
           {hasImage && (
             <img
               src={splashUrl ?? undefined}
@@ -178,12 +207,13 @@ export default function AcademyHubBook({
           aria-hidden
           draggable={false}
           className="absolute inset-0 h-full w-full"
+          style={mirrored ? { transform: "scaleX(-1)" } : undefined}
         />
 
         {/* 3 — destination title, real HTML on the leather panel. */}
         <div
           className="absolute flex flex-col items-center justify-center text-center"
-          style={TITLE_PANEL}
+          style={box(TITLE_PANEL, mirrored)}
         >
           <h3
             className="academy-hub-book-title book-title-glimmer bg-clip-text font-medium uppercase leading-[1.14] tracking-[0.1em] text-transparent"
@@ -191,7 +221,7 @@ export default function AcademyHubBook({
               // Sized so the longest word ("LEAGUECRAFT" — 11 Cinzel caps at
               // 0.1em tracking, ≈ 8.6 em of advance) clears the panel's inner
               // rails at every book width instead of crowding the gold.
-              fontSize: "clamp(0.68rem, 7.6cqw, 2rem)",
+              fontSize: "clamp(0.68rem, 8cqw, 2rem)",
               fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
               WebkitBackgroundClip: "text",
               color: "transparent",
@@ -211,7 +241,7 @@ export default function AcademyHubBook({
         <div
           className="pointer-events-none absolute opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100"
           style={{
-            ...ART_WINDOW,
+            ...box(ART_WINDOW, mirrored),
             boxShadow:
               "inset 0 0 0 1px rgba(226,196,120,0.55), inset 0 0 22px rgba(226,196,120,0.22)",
           }}
