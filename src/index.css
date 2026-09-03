@@ -7607,3 +7607,125 @@ html.high-contrast * { text-shadow: none !important; }
     --hub-book-lift: 0px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Academy shelf — the wooden support behind a pair of /lol hub volumes.
+
+   PROTOTYPE (2026-09-03): left column only. Coded geometry, no texture asset:
+   the point of this pass is silhouette, scale and placement.
+
+   Every thickness is in `cqw` against the shelf's own container, which is the
+   two-book box — so `1cqw` is 1% of the BOOK WIDTH and the whole structure
+   scales with the volumes through the fold-driven sizing formula, with no
+   breakpoints of its own.
+
+   The palette is deliberately quieter than the books: warm walnut, restrained
+   bevels, no carving, no gold filigree, no glow. The books are the ornate
+   objects; the furniture they stand on should be believable, not decorative.
+   --------------------------------------------------------------------------- */
+
+.academy-hub-shelf {
+  /* Upright thickness, board thickness, and how far the case sits outside the
+     book edges.
+
+     These are wide on purpose. The first pass tucked the structure tight to
+     the volumes and it read as "books in a dark box", not as furniture: the
+     books are angled 11deg, so the near edge covers a close upright entirely,
+     and the 7px inter-book gap swallows a thin board. The case has to clear
+     the volumes by enough that the uprights and the board ENDS are what carry
+     the read, rather than the sliver between the books. */
+  --shelf-post: 7cqw;
+  --shelf-slab: 6.5cqw;
+  --shelf-out: 13cqw;
+  /* Overhang of the uprights past the top and bottom of the book stack. */
+  --shelf-rise: 7cqw;
+  /* How far each board protrudes past the uprights. */
+  --shelf-lip: 3cqw;
+}
+
+/* Shadowed interior of the case. Sits inside the uprights and stops short of
+   the stack's edges, so it never reads as a flat rectangle behind the art. */
+.academy-hub-shelf-back {
+  position: absolute;
+  left: calc(var(--shelf-out) * -1);
+  right: calc(var(--shelf-out) * -1);
+  top: calc(var(--shelf-rise) * -0.4);
+  bottom: calc(var(--shelf-rise) * -0.4);
+  background: linear-gradient(180deg, #241809 0%, #1a1207 55%, #130d06 100%);
+  box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.5);
+}
+
+/* Uprights. The gradient is a cylinder read: lit edge, body, shaded far side —
+   the same left-hand light the painted library and the book shells use. */
+.academy-hub-shelf-post {
+  position: absolute;
+  top: calc(var(--shelf-rise) * -1);
+  bottom: calc(var(--shelf-rise) * -1);
+  width: var(--shelf-post);
+  background: linear-gradient(
+    90deg,
+    #2b1c10 0%,
+    #5a4128 26%,
+    #6b4e30 44%,
+    #452f1c 78%,
+    #23160c 100%
+  );
+  box-shadow: 0 10px 22px rgba(3, 6, 12, 0.55);
+}
+
+.academy-hub-shelf-post--left {
+  left: calc(var(--shelf-out) * -1);
+}
+
+.academy-hub-shelf-post--right {
+  right: calc(var(--shelf-out) * -1);
+}
+
+/* Ledge. The top highlight is the lit front edge, the body is the board's
+   face, and the bottom band is the shadow it throws down the case. The slab
+   overhangs the uprights slightly, as a real shelf board does. */
+.academy-hub-shelf-slab {
+  position: absolute;
+  left: calc((var(--shelf-out) + var(--shelf-post) + var(--shelf-lip)) * -1);
+  right: calc((var(--shelf-out) + var(--shelf-post) + var(--shelf-lip)) * -1);
+  bottom: calc(var(--shelf-slab) * -0.62);
+  height: var(--shelf-slab);
+  border-radius: 1px;
+  background: linear-gradient(
+    180deg,
+    #7a5a39 0%,
+    #63482c 16%,
+    #4a3420 62%,
+    #2a1c10 100%
+  );
+  box-shadow:
+    0 1px 0 rgba(214, 180, 128, 0.16) inset,
+    0 12px 20px rgba(3, 6, 12, 0.5);
+}
+
+/* The base board carries the whole case, so it is thicker and throws more. */
+.academy-hub-shelf-slab--base {
+  height: calc(var(--shelf-slab) * 1.5);
+  bottom: calc(var(--shelf-slab) * -1);
+  box-shadow:
+    0 1px 0 rgba(214, 180, 128, 0.16) inset,
+    0 18px 26px rgba(3, 6, 12, 0.58);
+}
+
+/* Contact shadow: the volume standing on the board. Painted on the slab
+   rather than on the book, so it stays put while the book lifts on hover. */
+.academy-hub-shelf-slab::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: calc(var(--shelf-slab) * -0.55);
+  height: calc(var(--shelf-slab) * 0.8);
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    rgba(2, 5, 10, 0.62) 0%,
+    rgba(2, 5, 10, 0.28) 52%,
+    transparent 78%
+  );
+  filter: blur(2px);
+}

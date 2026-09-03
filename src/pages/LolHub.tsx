@@ -7,6 +7,7 @@ import BlogPostCard from "@/components/blog/BlogPostCard";
 import AdSlot from "@/components/ads/AdSlot";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
+import AcademyHubShelf from "@/components/lol/AcademyHubShelf";
 import HexPanelLink from "@/components/lol/HexPanelLink";
 import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets";
 import { supabase } from "@/integrations/supabase/client";
@@ -358,7 +359,7 @@ export default function LolHub() {
         onMouseLeave={deactivateGuide}
         onFocus={() => activateGuide(d.guideId)}
         onBlur={deactivateGuide}
-        className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
+        className={`relative z-10 w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
         style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
       >
         <AcademyHubBook
@@ -520,12 +521,26 @@ export default function LolHub() {
           {/* Desktop: four books in a balanced quadrant around Mogzy's central lane */}
           <div className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3">
             <div
-              className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
+              className="flex min-h-0 flex-col justify-center"
               style={{
                 transform: `translate(calc(${DESKTOP_BOOK_STACK_INSET}), ${DESKTOP_BOOK_STACK_Y})`,
               }}
             >
-              {LEFT_DESTINATIONS.map((d, row) => renderBook(d, "left", row))}
+              {/* SHELF PROTOTYPE (2026-09-03) — left column only, so the owner
+                  can A/B a grounded pair against the right column's floating
+                  one in the real hub. The inner wrapper exists purely to give
+                  the shelf a box to overlay: it shrink-wraps the two volumes
+                  (its max-width is theirs, and its height is the stack's), so
+                  AcademyHubShelf needs no coordinates of its own and the book
+                  positions are unchanged. The shelf paints at z-0 behind the
+                  volumes, which renderBook raises to z-10. */}
+              <div
+                className="relative flex flex-col gap-y-[clamp(2px,0.8vh,12px)]"
+                style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
+              >
+                <AcademyHubShelf />
+                {LEFT_DESTINATIONS.map((d, row) => renderBook(d, "left", row))}
+              </div>
             </div>
 
             {/* Central lane — the Academy Broadcast centerpiece (magic-book

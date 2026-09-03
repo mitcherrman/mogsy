@@ -1,6 +1,117 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 6 (mirrored shell rejected) is at the top of this file.
+<!-- Revision 7 (left shelf prototype) is at the top of this file.
+     Revision 6 rejected the mirrored shell. -->
+
+## Revision 2026-09-03b — LEFT shelf structure prototype
+
+**Status:** PROTOTYPE BUILT, AWAITING OWNER VISUAL APPROVAL.
+**Left column only, deliberately** — the right pair still floats, so the hub
+itself is the A/B: grounded left vs floating right.
+
+The problem being solved is that four closed volumes read as UI objects over
+the painted library. This gives the left pair furniture to stand on. Coded
+geometry, no art asset: CSS gradients and shadows only, so silhouette, scale
+and placement can be judged before anyone commits to a wood texture.
+
+### Structure
+
+`src/components/lol/AcademyHubShelf.tsx` — a shadowed back panel, two
+uprights, an upper board and a thicker base board.
+
+It has **no coordinates of its own.** It is an absolutely-positioned overlay
+on the same box as the two books, and it mirrors the book stack with two
+`flex-1` rows under the same gap, each hanging its board at its own bottom
+edge. Row heights therefore track the volumes exactly at every viewport with
+nothing to keep in sync by hand. Every thickness is in `cqw` against that box
+— 1cqw is 1% of the BOOK WIDTH — so the case scales with the volumes through
+the fold-driven sizing formula and needs no breakpoints.
+
+| Token | Value | = at 1440×900 |
+|---|---|---|
+| `--shelf-post` | `7cqw` | 17px upright |
+| `--shelf-slab` | `6.5cqw` | 15px board (base ×1.5 = 23px) |
+| `--shelf-out` | `13cqw` | 31px clear of each book edge |
+| `--shelf-rise` | `7cqw` | 17px of upright above and below the stack |
+| `--shelf-lip` | `3cqw` | 7px of board past each upright |
+
+### Measured geometry
+
+| | 1440×900 | 1920×1080 |
+|---|---|---|
+| Uprights | 17px wide, x 113 and 395, y 101→851 | 21px, x 105 and 458, y 102→1042 |
+| Upper board | 346 × 15 at (90, 467) | 433 × 19 at (76, 560) |
+| Base board | 346 × 23 at (90, 828) | 433 × 29 at (76, 1012) |
+| Back panel | 298 × 730 at (113, 111) | 374 × 915 at (105, 114) |
+
+### Colours
+
+Uprights `linear-gradient(90deg, #2b1c10, #5a4128 26%, #6b4e30 44%, #452f1c
+78%, #23160c)` with `0 10px 22px rgba(3,6,12,.55)` — a cylinder read lit from
+the left, matching the painting and the book shells. Boards
+`linear-gradient(180deg, #7a5a39, #63482c 16%, #4a3420 62%, #2a1c10)` with a
+`rgba(214,180,128,.16)` inset top highlight for the lit front edge and
+`0 12px 20px` (base `0 18px 26px`) of throw. Back panel
+`linear-gradient(180deg, #241809, #1a1207 55%, #130d06)` plus
+`inset 0 0 46px rgba(0,0,0,.5)`. A blurred radial contact shadow sits on each
+board, painted on the board rather than the book so it stays put while the
+volume lifts on hover. No carving, no filigree, no gems, no glow, no gold
+accent proved necessary.
+
+### First pass was too tight — one retune, then stopped
+
+The initial values (`--shelf-out: 6.5cqw`, `--shelf-post: 5.5cqw`) tucked the
+case against the volumes and it read as "books in a dark box", not furniture:
+the books are angled 11°, so the near edge covers a close upright entirely,
+and the 7px inter-book gap swallows a thin board. The case has to clear the
+volumes by enough that the **uprights and the board ENDS** carry the read
+rather than the sliver between the books. One retune fixed it; polishing
+stopped there per the brief.
+
+### Verification
+
+- **No book coordinate moved.** Both columns measure exactly as they did
+  before the shelf: 237×355 at (144,118) and (144,480) left, (1059,·) right at
+  1440×900; 297×445 at 1920×1080.
+- **Z-order as specified:** shelf `z-index: 0`, books raised to `z-index: 10`.
+  The shelf is `aria-hidden="true"` with `pointer-events: none`, and
+  `elementFromPoint` over an upright returns the grid container, never the
+  shelf — it cannot take a click, a focus stop or an announcement.
+- Hover and focus unaffected: Leaguecraft and Archives both give +5.5°, −10px
+  lift and the correct Mogzy bubble; keyboard focus reaches `/lol/docs` and
+  clicking it navigates.
+- 111 tests passed · ESLint clean · console errors are the three pre-existing
+  classes only, none new.
+
+### Layout notes / issues introduced
+
+1. **The back panel is the weakest element.** It reads as a flat dark
+   rectangle over the painted library rather than as a recess, most visible in
+   the band above Leaguecraft. If the structure is approved this is the first
+   thing to fix — most likely by dropping it and letting the uprights and
+   boards carry the case alone.
+2. **The uprights are flat bars, not posts.** No side face, so no real depth.
+   Expected from a geometry-first pass; a side-face gradient or a texture is
+   the follow-up.
+3. **The base board overhangs the fold by 7px** at 1440×900 (bottom 851 against
+   the section's 844 padding edge). It is inside the section's own bottom
+   padding, so nothing clips or scrolls, but it is the tightest spot.
+4. **The uprights start 6px above the header's baseline** (y 101 vs header
+   bottom 107). No visual collision — the header text is centred and the case
+   is far left — but there is no slack left there.
+5. The volumes' own drop shadows still fall on the library rather than on the
+   boards, so the contact is not fully sold. Left alone: fixing it means
+   touching the book component, which this pass had no mandate to do.
+
+### Next decision
+
+Owner visual approval of the left shelf before duplicating it to the right.
+Not done and deliberately so: no right-side shelf, no wood texture asset, no
+entrance animation, no sound.
+
+---
+
+<!-- Revision 6 (mirrored shell rejected).
      Revision 5 is the four-book conversion; revision 4 is the Leaguecraft
      prototype the owner approved; revision 3 is the IA cleanup; revisions 2
      and 1 are the audits that produced it. -->
