@@ -7894,3 +7894,73 @@ html.high-contrast * { text-shadow: none !important; }
     inset -8px 0 11px -8px rgba(0, 0, 0, 0.65),
     0 18px 26px rgba(3, 6, 12, 0.6);
 }
+
+/* ---------------------------------------------------------------------------
+   /lol hub entrance — the volumes being shelved.
+
+   ONLY THE BOOKS MOVE. The library, the shelves, the header, the centerpiece
+   and Mogzy are the room; they are simply present. The shelves in particular
+   are environmental structure and get no motion of their own — a case that
+   flew in would read as a UI panel, which is the one thing the whole shelf
+   workstream was built to stop being.
+
+   Timing lives in LolHub.tsx (`--hub-book-delay` per volume). This file owns
+   the shape of the landing:
+
+     0%    26px above the board, invisible
+     40%   fully faded in, still falling — the fade finishes BEFORE the
+           impact, so the book is a solid object when it lands rather than a
+           ghost resolving on contact
+     55%   contact. 3px below rest with scaleY(0.978): the volume compressing
+           into the board, not the board moving
+     72%   3px of rebound, very slightly stretched
+     100%  the exact approved resting state — translate 0, scale 1
+
+   The overshoot is 3px on a 355px book. That is deliberately near the edge of
+   perceptible: it should read as weight, and anything a viewer can actually
+   measure reads as a bouncing UI card instead.
+   --------------------------------------------------------------------------- */
+
+@keyframes academy-hub-book-land {
+  0% {
+    opacity: 0;
+    transform: translateY(-26px) scaleY(1);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-9px) scaleY(1);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translateY(3px) scaleY(0.978);
+  }
+
+  72% {
+    transform: translateY(-3px) scaleY(1.008);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+[data-hub-entrance="true"] .academy-hub-book-body {
+  /* `backwards` holds frame 0 through the stagger delay, so a book that has
+     not arrived yet is invisible and lifted rather than sitting in its final
+     place waiting for its turn. */
+  animation: academy-hub-book-land 660ms cubic-bezier(0.34, 0.02, 0.3, 1) backwards;
+  animation-delay: var(--hub-book-delay, 0ms);
+  transform-origin: 50% 100%;
+}
+
+/* Reduced motion: the final state, immediately. No drop, no stagger, no
+   delayed usability — and LolHub cancels the impact sounds on the same
+   preference, since four thuds with nothing moving is worse than silence. */
+@media (prefers-reduced-motion: reduce) {
+  [data-hub-entrance="true"] .academy-hub-book-body {
+    animation: none;
+  }
+}

@@ -71,7 +71,8 @@ export type PlaySfxCue =
   | "queueStart"
   | "opponentFound"
   | "error"
-  | "buttonPress";
+  | "buttonPress"
+  | "bookLand";
 
 export const PLAY_SFX_CUES: readonly PlaySfxCue[] = [
   "scrollOpen",
@@ -83,6 +84,7 @@ export const PLAY_SFX_CUES: readonly PlaySfxCue[] = [
   "opponentFound",
   "error",
   "buttonPress",
+  "bookLand",
 ];
 
 /**
@@ -111,6 +113,10 @@ const MIN_REPLAY_MS: Record<PlaySfxCue, number> = {
   opponentFound: 400,
   error: 300,
   buttonPress: 40,
+  /* The hub entrance sounds four of these inside ~300ms, and the two books in
+     a pair are deliberately only 75ms apart. Anything above that would eat
+     half the sequence and turn a placed shelf into two thuds. */
+  bookLand: 40,
 };
 
 let ctx: AudioContext | null = null;
@@ -369,6 +375,26 @@ const RENDER: Record<PlaySfxCue, (c: AudioContext, t: number) => void> = {
     noise(c, t, { dur: 0.12, peak: 0.03, from: 420, to: 240, q: 1.3, attack: 0.1 });
     tone(c, t, { dur: 0.16, peak: 0.07, freq: 311.1, type: "triangle" });
     tone(c, t, { at: 0.13, dur: 0.26, peak: 0.06, freq: 233.1, type: "triangle" });
+  },
+
+  /**
+   * A heavy bound volume set down on a wooden shelf.
+   *
+   * Three parts, in the order a real one arrives: the board taking the weight
+   * (a dull knock sweeping DOWN into the low-mids, with a body tone under it
+   * that drops nearly an octave), a brief mid ring off the boards, and then
+   * the quiet high rustle of leather and paper settling a beat later. The
+   * downward sweeps are what make it read as mass rather than as a click.
+   *
+   * Peak 0.075 puts it between modeConfirm and queueStart: substantial,
+   * because it is the hub's arrival, but under the opponent bell, because
+   * four of them sound in a row and nothing here should ring on.
+   */
+  bookLand(c, t) {
+    noise(c, t, { dur: 0.075, peak: 0.075, from: 340, to: 120, q: 1.1, attack: 0.06 });
+    tone(c, t, { dur: 0.16, peak: 0.055, freq: 104, slideTo: 64, type: "triangle" });
+    tone(c, t, { at: 0.012, dur: 0.1, peak: 0.028, freq: 208, slideTo: 150 });
+    noise(c, t, { at: 0.07, dur: 0.14, peak: 0.022, from: 1500, to: 700, q: 0.9, attack: 0.3 });
   },
 };
 

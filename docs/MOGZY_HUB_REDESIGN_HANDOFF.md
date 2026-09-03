@@ -1,8 +1,182 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 11 (final shelf polish) is at the top of this file. Revision 10
-     shelved both columns and went head-on; 9 restored the backing; 8 was the
-     material pass; 7 built the shelf; 6 rejected the mirrored shell. -->
+<!-- Revision 12 (entrance + loading stabilization) is at the top of this
+     file. Revision 11 was the final shelf polish; 10 shelved both columns and
+     went head-on; 9 restored the backing; 8 was the material pass; 7 built the
+     shelf; 6 rejected the mirrored shell. -->
+
+## Revision 2026-09-03g — hub entrance + Patch Report loading stabilization
+
+**Status:** BUILT. Static design untouched; this is entrance and load polish.
+
+### 1. The Patch Report jump — measured cause
+
+The tome `<img>` carried a definite CSS width (`w-[130.2%]`) and **no
+`width`/`height` attributes and no `aspect-ratio`**, so until the PNG's
+intrinsic size arrived its height was **0**. `AcademyBroadcastSurface` is
+`flex flex-col`, so the whole centerpiece collapsed with it — while the patch
+content, sized in `cqw` (which depends only on WIDTH, known at first paint),
+rendered at full size inside a zero-height box.
+
+Measured on a held-image frame (the PNG stalled by a route intercept):
+
+| Box | Before tome load | After |
+|---|---|---|
+| surface | 362 × **0** | 362 × 262 |
+| overlay | 362 × **0** | 362 × 262 |
+| tome img | 471 × **0** | 471 × 314 |
+| radio dock | y = **127** | y = **389** |
+| first patch icon | y = **155** | y = **199** |
+
+So sixteen naked champion icons floated over the library, then the dock jumped
+**262px** and the icons **44px**. That is the reported defect, exactly.
+
+### 2. The fix
+
+`width={1536} height={1024}` on the tome img (plus `h-auto`). The UA derives
+`aspect-ratio: 3 / 2` from the attributes, the height is known at first paint,
+and nothing moves. **Re-measured: every box is now byte-identical before and
+after the image loads** — surface 362×262, dock y=389, first icon y=199 in
+both frames.
+
+### 3. Reveal gating
+
+`AcademyBroadcastSurface` holds `chromeReady` and fades the whole composed
+tome in over 260ms. Readiness is `onLoad` **or** a ref-callback `img.complete`
+check (a cached image can be complete before React attaches the handler, which
+would otherwise strand the centerpiece invisible), **or** `onError` — a
+missing painting shows content over nothing rather than nothing at all. This
+is not fighting layout shift (geometry is already reserved); it only stops
+live patch content sitting briefly on bare library. No skeleton, no
+full-page loading screen.
+
+### 4. Entrance timing (measured, not nominal)
+
+Only the books move. Library, header, shelves, centerpiece and Mogzy are the
+room and are simply present — the shelves get no motion at all, since a case
+that flew in would read as the UI panel the whole shelf workstream exists to
+stop being.
+
+| Book | delay | appears | impact | settled |
+|---|---|---|---|---|
+| Leaguecraft (UL) | 380ms | 446ms | 793ms | 1046ms |
+| Combat Simulation (UR) | 455ms | 526ms | 859ms | 1126ms |
+| Mogzy Archives (LL) | 600ms | 672ms | 1006ms | 1259ms |
+| Pro Play (LR) | 675ms | 739ms | 1086ms | 1339ms |
+
+Within-pair offset 75ms; **pair-to-pair 213ms measured** (brief asked
+150–220ms); total ≈1.4s. `BOOK_ENTRANCE_MS = 660`,
+`BOOK_ROW_DELAY_MS = [380, 600]`, `BOOK_PAIR_OFFSET_MS = 75`,
+`BOOK_IMPACT_FRACTION = 0.55`.
+
+### 5. Landing motion
+
+`@keyframes academy-hub-book-land`: 0% −26px and invisible → 40% opaque, still
+falling (the fade finishes BEFORE contact, so a solid object lands rather than
+a ghost resolving on impact) → 55% **+3px, scaleY(0.978)** contact → 72% −3px
+rebound → 100% the exact approved resting state. `animation-fill-mode:
+backwards` holds frame 0 through the stagger, so a book awaiting its turn is
+lifted and invisible rather than sitting in its final place. No rotateY, no
+perspective, no opening, no scaling beyond the 2.2% compression. Measured
+overshoot exactly 3px, min scaleY 0.978.
+
+### 6. Sound
+
+A **`bookLand` cue added to the existing engine** (`src/lib/audio/play-sfx.ts`)
+— no parallel system and no audio asset: that engine synthesises everything
+from two primitives. Three parts in the order a real one arrives: a dull knock
+sweeping 340→120Hz with a body tone dropping 104→64Hz, a brief mid ring off
+the boards, then quiet leather/paper at 1500→700Hz a beat later. Peak 0.075 —
+between `modeConfirm` and `queueStart`. `MIN_REPLAY_MS` 40ms so the 75ms
+within-pair gap sounds twice.
+
+Gated by the app's ONE sound store: `play_book_land` in `SoundSettings`
+(defaults true, gets an AdminSounds row) plus the global `mogsy-sounds-muted`.
+
+**Verified by counting Web Audio voices:** 16 with a gesture (4 books × 4
+voices — exactly one impact each), **0 muted**, **0 under reduced motion**,
+**0 with no gesture**.
+
+**Honest limitation.** The engine refuses to sound before the browser has seen
+a user gesture, which is correct autoplay behaviour and pre-existing. A *direct*
+fresh load of `/lol` therefore animates silently. The real path — the entry
+screen at `/`, whose CTA navigates to `/lol` — carries a gesture, so it sounds.
+A gesture must also land *after* the audio module has evaluated: a click at
+150ms produced 0 voices, at 500ms produced 16.
+
+### 7. Repeat-navigation policy
+
+A **module-level `hubEntranceConsumed` flag**, no storage. A page load resets
+it, so a fresh visit or a refresh gets the sequence; SPA navigation does not,
+so clicking Home from anywhere puts the hub up instantly. A sessionStorage key
+would have been slower, more fragile, and would have killed the entrance on a
+genuine reload — the one time it is most wanted. Verified: first visit
+`data-hub-entrance="true"`, after navigating away and back `"false"` with an
+identity transform.
+
+**One real bug fixed here.** The flag was first claimed inside a `useState`
+initializer. That is not StrictMode-safe and was measurably wrong: the double
+render made the second pass see its own first pass's claim and hand the very
+first visitor `false`, killing the entrance exactly when it should run. The
+initializer now only READS; an effect does the claim.
+
+### 8. Reduced motion
+
+CSS cancels the animation (`animation: none`) and the impact timers are never
+scheduled — four thuds with nothing moving is worse than silence. Verified:
+transform identity, opacity 1, `animationName: none` immediately on mount, and
+0 voices. Interaction and focus are never delayed.
+
+### 9. Layout shift
+
+`PerformanceObserver` over a fresh load: **CLS 0.0043**, from exactly two
+entries. Neither is the hub composition:
+
+- **0.0043 at ~1s** — the two `<h1>` title `<span>`s reflowing when **Cinzel**
+  swaps in. A webfont shift in the header, not the books, shelves or
+  centerpiece. Fixing it means `font-display` or a preload change that is
+  app-wide typography, out of scope for this pass; recorded as the one
+  remaining shift.
+- **0.00002** — the radio's own dropdown, on interaction.
+
+**The main composition contributes zero measurable shift**, and the
+centerpiece's own boxes are provably identical before and after image load.
+
+### Files changed
+
+`src/components/lol/broadcast/AcademyBroadcastSurface.tsx` (reservation +
+reveal gate) · `src/pages/LolHub.tsx` (entrance state, delays, impact
+scheduling) · `src/index.css` (landing keyframes + reduced-motion) ·
+`src/lib/audio/play-sfx.ts` (the cue) · `src/lib/audio/usePlaySfx.ts` (gate
+map) · `src/hooks/useSoundSettings.tsx` (setting + label) ·
+`src/lib/audio/play-sfx.test.ts` (cue count 9 → 10).
+
+### Verification
+
+311 tests passed across the hub, broadcast and audio suites · ESLint 0 errors
+(2 pre-existing `react-refresh` warnings on the surface, which already exported
+`briefSpread`/`briefIconSizing` at baseline) · `tsc` failing-file set identical
+to baseline · console errors are the three pre-existing classes only. After the
+entrance: all four hovers give `translateY(-10px)` with the right Mogzy bubble,
+all four routes navigate, Patch Brief and radio both render.
+
+### Remaining loading issue
+
+The Cinzel font swap above. Also unchanged from earlier revisions:
+`CENTERPIECE_MAX_PX` caps the tome at 1920, `BookModeCard` is dead code, and
+the book frame PNG is 2.42 MB.
+
+### Next
+
+Not started, deliberately: persistent glows, floating/bobbing, Pro promotion,
+What's New, below-the-fold redesign.
+
+---
+
+<!-- Revision 11 (final shelf polish).
+     Revision 10 shelved both columns and went head-on; 9 restored the backing;
+     8 was the material pass; 7 built the shelf; 6 rejected the mirrored
+     shell. -->
 
 ## Revision 2026-09-03f — final shelf polish · STATIC DESIGN LOCKED
 

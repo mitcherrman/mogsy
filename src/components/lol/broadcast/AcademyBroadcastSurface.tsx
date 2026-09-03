@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
 
@@ -42,6 +43,23 @@ import type { BroadcastFeed, BroadcastTransmission } from "./broadcast-content";
 type Variant = "desktop" | "mobile";
 
 const BOOK_SRC = "/images/lol-hub/academy-broadcast-book.png";
+
+/**
+ * The painting's intrinsic pixels, declared so the browser can RESERVE the
+ * tome's height before a single byte of it arrives.
+ *
+ * This is load-bearing, not metadata. The img carries a definite CSS width
+ * (`w-[130.2%]`) and no intrinsic ratio, so before load its height was 0 —
+ * and because this section is `flex flex-col`, the whole centerpiece
+ * collapsed with it. Measured on the pre-load frame: the surface and the
+ * absolute overlay were 362×0, the radio dock sat at y=127 instead of y=389,
+ * and the sixteen patch icons — sized in `cqw`, which depends only on WIDTH
+ * and so resolved immediately — rendered at full size inside a zero-height
+ * box, floating over the library until the PNG landed and shoved them 44px
+ * down. With the attributes present the UA derives `aspect-ratio: 3 / 2`,
+ * the height is known at first paint, and nothing moves.
+ */
+const BOOK_INTRINSIC = { width: 1536, height: 1024 } as const;
 
 /**
  * One flat view over every feed state, so the two page regions render from a
@@ -239,6 +257,20 @@ export default function AcademyBroadcastSurface({
   className?: string;
 }) {
   const reducedMotion = useReducedMotion() === true;
+  /**
+   * Reveal gate. The geometry above is already reserved, so this is NOT
+   * fighting layout shift — it exists so the composed tome appears as one
+   * object instead of live patch content briefly sitting on bare library.
+   * A ref callback rather than `onLoad` alone: a cached image can already be
+   * `complete` before React attaches the handler, and that must not strand
+   * the centerpiece invisible. `onError` opens the gate too — a missing
+   * painting shows the content over nothing, which is far better than
+   * showing nothing at all.
+   */
+  const [chromeReady, setChromeReady] = useState(false);
+  const bookRef = useCallback((el: HTMLImageElement | null) => {
+    if (el?.complete) setChromeReady(true);
+  }, []);
   const suffix = variant === "desktop" ? "" : "-mobile";
   const desktop = variant === "desktop";
   const view = feedView(feed);
@@ -257,7 +289,16 @@ export default function AcademyBroadcastSurface({
       // container-type: inline-size makes THIS box the query container, so all
       // page typography/icon sizing below resolves against the tome's real
       // width instead of the viewport (see the CQ ramp above).
-      className={cn("relative flex flex-col", className)}
+      data-chrome-ready={chromeReady ? "true" : "false"}
+      className={cn(
+        "relative flex flex-col",
+        // The whole assembled tome — painting, ink and icons — fades in
+        // together. Geometry is reserved either way, so this only ever
+        // changes what is PAINTED, never where anything sits.
+        "transition-opacity duration-[260ms] ease-out motion-reduce:transition-none",
+        chromeReady ? "opacity-100" : "opacity-0",
+        className,
+      )}
       style={{ containerType: "inline-size" }}
     >
 
@@ -283,13 +324,18 @@ export default function AcademyBroadcastSurface({
           negative margins reclaim the canvas's transparent padding (see the
           derivation above) so the section box IS the drawn book. */}
       <img
+        ref={bookRef}
         src={BOOK_SRC}
         alt=""
         aria-hidden
         draggable={false}
         decoding="async"
+        width={BOOK_INTRINSIC.width}
+        height={BOOK_INTRINSIC.height}
+        onLoad={() => setChromeReady(true)}
+        onError={() => setChromeReady(true)}
         data-testid={`academy-broadcast-book${suffix}`}
-        className="pointer-events-none relative block w-[130.2%] max-w-none select-none ml-[-15.1%] mt-[-5.3%] mb-[-9.11%]"
+        className="pointer-events-none relative block h-auto w-[130.2%] max-w-none select-none ml-[-15.1%] mt-[-5.3%] mb-[-9.11%]"
         style={{
           filter: energized
             ? "drop-shadow(0 10px 22px rgba(0,0,0,0.55)) drop-shadow(0 0 16px rgba(10,200,255,0.28))"

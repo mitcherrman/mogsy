@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, Trophy } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
@@ -30,6 +30,7 @@ import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { LEAGUE_SWIPE_GAMES } from "@/lib/league-swipe/api";
 import {
   META_REFLEX_NAME,
@@ -139,6 +140,52 @@ const HUB_DESTINATIONS: HubDestination[] = [
     splashPosition: "56% center",
   },
 ];
+
+/**
+ * Hub entrance choreography — the volumes being shelved.
+ *
+ * The library, the shelves, the header and Mogzy are the ROOM: they are
+ * simply there. Only the four books arrive, in a paired stagger — the upper
+ * pair, then the lower — so the hub reads as being assembled rather than as
+ * four cards fading in together.
+ *
+ * Timing, per book: delay = ROW_DELAY[row] + (right column ? PAIR_OFFSET_MS).
+ *
+ *   upper-left   380ms      lower-left   600ms
+ *   upper-right  455ms      lower-right  675ms
+ *
+ * The 75ms within-pair offset stops two books hitting on the same frame,
+ * which reads as one loud thud rather than two hands working; the 220ms
+ * between pairs is long enough to hear as a second beat and short enough that
+ * nothing feels withheld. The last volume settles at 675 + 660 = ~1.34s.
+ *
+ * IMPACT_FRACTION is where in the animation the book actually touches its
+ * board — the descent is the first 55%, and the overshoot/rebound after it is
+ * the shelf absorbing the weight. The sound is scheduled against that, not
+ * against the start, or every thud would arrive while the book is still in
+ * the air.
+ */
+const BOOK_ENTRANCE_MS = 660;
+const BOOK_ROW_DELAY_MS = [380, 600];
+const BOOK_PAIR_OFFSET_MS = 75;
+const BOOK_IMPACT_FRACTION = 0.55;
+
+const bookEntranceDelayMs = (side: "left" | "right", row: number) =>
+  (BOOK_ROW_DELAY_MS[row] ?? BOOK_ROW_DELAY_MS[BOOK_ROW_DELAY_MS.length - 1]) +
+  (side === "right" ? BOOK_PAIR_OFFSET_MS : 0);
+
+/**
+ * Has the entrance already run in THIS page session?
+ *
+ * Module scope, deliberately, and no storage of any kind. A page load resets
+ * it, so a fresh visit or a refresh gets the full sequence; SPA navigation
+ * does not, so clicking Home from anywhere in the app puts the hub up
+ * instantly. That is exactly the wanted policy — "fresh visit yes, immediate
+ * repeat no" — and a sessionStorage key would have been a slower, more
+ * fragile way to say the same thing while ALSO killing the entrance on a
+ * genuine reload, which is the one time it is most wanted.
+ */
+let hubEntranceConsumed = false;
 
 /** Desktop columns: row-major registry → two vertical pairs. */
 const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
@@ -290,6 +337,49 @@ export default function LolHub() {
   const { activeModeId, activate: activateGuide, deactivate: deactivateGuide } =
     useHubGuideState();
 
+  // Decide during the FIRST render, not in an effect: an effect runs after
+  // paint, so the books would already be sitting in their final places for a
+  // frame before the animation class arrived and yanked them back into the
+  // air.
+  //
+  // The initializer only READS the module flag — claiming it here as a side
+  // effect is not StrictMode-safe, and was measurably wrong: the double
+  // render made the second pass see its own first pass's claim and hand the
+  // very first visitor `false`, killing the entrance exactly when it should
+  // run. The claim belongs in an effect, which is idempotent under the same
+  // double invocation.
+  const [runEntrance] = useState(() => !hubEntranceConsumed);
+  useEffect(() => {
+    hubEntranceConsumed = true;
+  }, []);
+
+  // One impact per volume, scheduled at the moment it touches its board.
+  // usePlaySfx is the app's single SFX gate — per-cue admin setting plus the
+  // global mute — so nothing here needs its own preference, and the engine
+  // stays silent until the browser has seen a user gesture. On a genuinely
+  // fresh load that means the sequence is silent, which is correct: sounding
+  // it would require defeating autoplay policy.
+  const sfx = usePlaySfx();
+  const sfxRef = useRef(sfx);
+  sfxRef.current = sfx;
+  useEffect(() => {
+    if (!runEntrance) return;
+    if (typeof window === "undefined") return;
+    // Motion preference read at schedule time, not through a hook: the
+    // animation itself is cancelled in CSS, and four thuds with nothing
+    // moving would be worse than silence.
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const timers = (["left", "right"] as const).flatMap((side) =>
+      [0, 1].map((row) =>
+        window.setTimeout(
+          () => sfxRef.current.play("bookLand"),
+          bookEntranceDelayMs(side, row) + BOOK_ENTRANCE_MS * BOOK_IMPACT_FRACTION,
+        ),
+      ),
+    );
+    return () => timers.forEach(window.clearTimeout);
+  }, [runEntrance]);
+
   const onDestinationClick = (to: string) => {
     playUiSfx("sectionOpen");
     if (to === "/quiz") {
@@ -324,7 +414,7 @@ export default function LolHub() {
   //
   // Every volume is presented HEAD-ON: the shelves explain where the books
   // are, so none of them needs to be turned toward Mogzy any more.
-  const renderBook = (d: HubDestination, side: "left" | "right") => (
+  const renderBook = (d: HubDestination, side: "left" | "right", row: number) => (
     <div
       key={d.to}
       data-guide-mode={d.guideId}
@@ -333,7 +423,12 @@ export default function LolHub() {
       onFocus={() => activateGuide(d.guideId)}
       onBlur={deactivateGuide}
       className={`relative z-10 w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
-      style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
+      style={{
+        maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS,
+        // Read by the entrance keyframes in index.css. Harmless when the
+        // sequence is not running — nothing consumes it.
+        ["--hub-book-delay" as string]: `${bookEntranceDelayMs(side, row)}ms`,
+      }}
     >
       <AcademyHubBook
         to={d.to}
@@ -378,7 +473,7 @@ export default function LolHub() {
         style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
       >
         <AcademyHubShelf />
-        {destinations.map((d) => renderBook(d, side))}
+        {destinations.map((d, row) => renderBook(d, side, row))}
       </div>
     </div>
   );
@@ -524,7 +619,10 @@ export default function LolHub() {
           </div>
 
           {/* Desktop: four books in a balanced quadrant around Mogzy's central lane */}
-          <div className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3">
+          <div
+            data-hub-entrance={runEntrance ? "true" : "false"}
+            className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3"
+          >
             {renderShelvedColumn(
               LEFT_DESTINATIONS,
               "left",
