@@ -79,8 +79,18 @@ describe("the mastery_slice frontend names no content", () => {
     expect(source).toContain("comparison_left_right");
     expect(source).toContain("atomic_recall");
     // And it decides nothing about correctness — that is the server's.
-    expect(source).not.toContain("isCorrect");
-    expect(source).not.toContain("correctAnswer");
+    //
+    // Per-question reveal made this file READ the server's graded verdict
+    // (`reveal.isCorrect` / `reveal.correctAnswer`), so a name ban no longer
+    // expresses the rule. The rule was never "do not mention correctness"; it
+    // was "do not DERIVE it". So the fields may be passed through, and the
+    // derivation patterns that would constitute a second grader are banned
+    // instead: no comparison of a player answer against a correct one, and no
+    // correctness assignment from anything but the server's own field.
+    expect(source).toContain("reveal.isCorrect");
+    expect(source).not.toMatch(/playerAnswer\s*===\s*/);
+    expect(source).not.toMatch(/===\s*reveal\.correctAnswer/);
+    expect(source).not.toMatch(/correct:(?!\s*reveal\.isCorrect)/);
   });
 
   it("computes no answer anywhere in the admin preview path", () => {

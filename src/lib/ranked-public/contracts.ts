@@ -381,6 +381,24 @@ export interface MasterySliceChallengeView {
  * ID (and, for `item_cost_duel`, version) pins. Exactly one shape is ever
  * present: none are merged and none fall back to one another.
  */
+/**
+ * One ALREADY-ANSWERED modern Mastery challenge, described by the server.
+ *
+ * A sibling of `SettledCardReveal`, not a reuse of it: Meta Reflex's per-card
+ * reveal speaks a left/right card vocabulary Mastery has no equivalent of, and
+ * the two arrive under different keys gated by different invariants. The
+ * server states every field here; nothing is graded, rounded or compared
+ * client-side.
+ */
+export interface MasteryChallengeReveal {
+  challengeIndex: number;
+  isCorrect: boolean;
+  playerAnswer: string | null;
+  correctAnswer: string | null;
+  explanation: string | null;
+  answerOptions: string[];
+}
+
 export type SegmentBlockView =
   | { contract: "item_cost"; challenges: SegmentChallengeView[] }
   | { contract: "meta_reflex"; cards: MetaReflexCard[] }
@@ -444,6 +462,20 @@ export interface SegmentStateView {
    * before the first card settles.
    */
   ownCardReveals: SettledCardReveal[];
+  /**
+   * Modern Mastery per-question reveals for challenges THIS viewer has already
+   * answered, oldest first. Empty on every module that does not publish them
+   * and on every segment frozen before the field existed, so a new client
+   * against an old backend simply never reveals early — it never breaks.
+   */
+  ownChallengeReveals: MasteryChallengeReveal[];
+  /**
+   * The server's frozen mandatory reveal interval for this segment, in ms, or
+   * null when the segment inserts none. The client pauses for exactly this,
+   * because it is the number the backend's deadline compensation and
+   * response-time arithmetic were computed against.
+   */
+  revealWindowMs: number | null;
 }
 
 /** Public round: neutral, pre-reveal. Players satisfy PublicCombatantSource. */
@@ -811,6 +843,13 @@ const _FORBIDDEN_SEGMENT_KEYS: ReadonlySet<string> = new Set([
  */
 const SETTLED_REVEAL_KEY = "own_card_reveals";
 
+/**
+ * The modern-Mastery sibling carve-out. Lifted out of the pre-reveal walk for
+ * exactly the reason above — an exemption inside the walk would blind it to
+ * the same answer fields appearing anywhere else in the payload.
+ */
+const CHALLENGE_REVEAL_KEY = "own_challenge_reveals";
+
 function assertSegmentIsPreRevealSafe(node: unknown, depth = 0): void {
   if (depth > 12 || node === null || typeof node !== "object") return;
   if (Array.isArray(node)) {
@@ -1048,6 +1087,41 @@ function readSettledCardReveals(v: unknown, activeIndex: number): SettledCardRev
   });
 }
 
+/**
+ * Per-question Mastery reveals, re-checked against the viewer's own active
+ * index — the same invariant the backend asserts at its transport boundary.
+ *
+ * The reader REFUSES a payload that discloses a challenge the viewer can still
+ * answer rather than filtering it away, so a contract breach is loud.
+ */
+function readChallengeReveals(v: unknown, activeIndex: number): MasteryChallengeReveal[] {
+  if (v === null || v === undefined) return [];
+  if (!Array.isArray(v)) {
+    throw new RankedPublicParseError("own_challenge_reveals must be an array");
+  }
+  return v.map((entry, i) => {
+    const label = `own_challenge_reveals[${i}]`;
+    const o = rec(entry, label);
+    const challengeIndex = num(o.challenge_index, `${label}.challenge_index`);
+    if (challengeIndex >= activeIndex) {
+      throw new RankedPublicParseError(
+        `${label} discloses challenge ${challengeIndex} while the viewer may `
+        + `still answer challenge ${activeIndex}`);
+    }
+    const asText = (raw: unknown): string | null =>
+      raw === null || raw === undefined ? null : String(raw);
+    return {
+      challengeIndex,
+      isCorrect: o.is_correct === true,
+      playerAnswer: asText(o.player_answer),
+      correctAnswer: asText(o.correct_answer),
+      explanation: asText(o.explanation),
+      answerOptions: Array.isArray(o.answer_options)
+        ? o.answer_options.map((opt) => String(opt)) : [],
+    };
+  });
+}
+
 function readSegmentState(v: unknown): SegmentStateView | null {
   if (v === null || v === undefined) return null;
   const o = rec(v, "segment_state");
@@ -1056,6 +1130,7 @@ function readSegmentState(v: unknown): SegmentStateView | null {
   // checked on its own terms below. See SETTLED_REVEAL_KEY.
   const preReveal: Record<string, unknown> = { ...o };
   delete preReveal[SETTLED_REVEAL_KEY];
+  delete preReveal[CHALLENGE_REVEAL_KEY];
   assertSegmentIsPreRevealSafe(preReveal);
   const ability = rec(o.own_ability, "segment_state.own_ability");
   const unavailable: Record<string, string> = {};
@@ -1105,6 +1180,13 @@ function readSegmentState(v: unknown): SegmentStateView | null {
     ownCardReveals: readSettledCardReveals(
       o[SETTLED_REVEAL_KEY],
       num(o.own_next_challenge_index, "own_next_challenge_index")),
+    // Both new fields are OPTIONAL on the wire: an old backend sends neither,
+    // and this reader must keep working against it, so absence reads as "no
+    // reveals, no window" rather than as a parse failure.
+    ownChallengeReveals: readChallengeReveals(
+      o[CHALLENGE_REVEAL_KEY],
+      num(o.own_next_challenge_index, "own_next_challenge_index")),
+    revealWindowMs: nnum(o.reveal_window_ms, "reveal_window_ms"),
   };
 }
 

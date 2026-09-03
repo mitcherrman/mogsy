@@ -43,12 +43,19 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { MasteryQuestionDispatch } from "@/features/mastery/interactions/registry";
+import {
+  revealDurationMs,
+  useRevealAutoAdvance,
+  type MasteryQuestionReveal,
+} from "@/features/mastery/interactions/revealState";
+import { MasteryInlineReveal } from "@/features/mastery/interactions/MasteryInlineReveal";
 import type { MasteryPlayerQuestion } from "@/features/mastery/contracts/playerQuestion";
 import { readComparisonSemantics } from "@/features/mastery/contracts/comparisonSemantics";
 import { readPromptSemantics } from "@/features/mastery/contracts/promptSemantics";
 import type { PlayerAnswer } from "@/features/mastery/player/useMasteryFixtureSession";
 import type { AnswerOptionView, QuestionView } from "@/lib/ranked-core/viewTypes";
 import type {
+  MasteryChallengeReveal,
   MasterySliceChallengeView,
   PublicRoundView,
   SegmentStateView,
@@ -163,10 +170,35 @@ export function questionViewForChallenge(
   };
 }
 
-function ProseChallenge({ challenge, submitting, onSubmit }: {
+/**
+ * The server's per-challenge reveal, in the shape the shared Mastery renderers
+ * take. A straight field mapping: correctness, the winning/correct value and
+ * the explanation are all stated by the backend and passed through unchanged.
+ *
+ * A comparison's correct value is a champion id, and the delegated renderers
+ * already map an option value back to the label the player was offered — so
+ * `answerLabel` is left null for a comparison and the tinted green option
+ * carries the answer, rather than this file learning a champion lookup.
+ */
+function toQuestionReveal(
+  reveal: MasteryChallengeReveal,
+  challenge: MasterySliceChallengeView,
+): MasteryQuestionReveal {
+  const isComparison = challenge.interactionKind === "comparison_left_right";
+  return {
+    correct: reveal.isCorrect,
+    correctValue: reveal.correctAnswer,
+    selectedValue: reveal.playerAnswer,
+    answerLabel: isComparison ? null : reveal.correctAnswer,
+    explanation: reveal.explanation,
+  };
+}
+
+function ProseChallenge({ challenge, submitting, onSubmit, reveal = null }: {
   challenge: MasterySliceChallengeView;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
+  reveal?: MasteryQuestionReveal | null;
 }) {
   const question = useMemo(() => questionViewForChallenge(challenge), [challenge]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
@@ -178,18 +210,28 @@ function ProseChallenge({ challenge, submitting, onSubmit }: {
   const selectedLabel = selectedOptionId === null
     ? null
     : challenge.answerOptions[Number(selectedOptionId)] ?? null;
+  const revealing = reveal !== null;
+  // During a reveal the surface shows the player's OWN submitted option, taken
+  // from the server payload rather than from local state so a reload lands on
+  // the same picture.
+  const shownOptionId = revealing
+    ? (() => {
+      const i = challenge.answerOptions.indexOf(reveal.selectedValue ?? "");
+      return i >= 0 ? String(i) : selectedOptionId;
+    })()
+    : selectedOptionId;
 
   return (
     <div className="space-y-3" data-testid="mastery-slice-prose-challenge">
       <InteractiveScenarioSurface
         question={question}
-        selectedOptionId={selectedOptionId}
+        selectedOptionId={shownOptionId}
         permissions={{
-          canSelectAnswer: !submitting,
-          canChangeAnswer: !submitting,
+          canSelectAnswer: !submitting && !revealing,
+          canChangeAnswer: !submitting && !revealing,
           canSelectAbility: false,
           canReviewSubmission: false,
-          canConfirmSubmission: !submitting && selectedOptionId !== null,
+          canConfirmSubmission: !submitting && !revealing && selectedOptionId !== null,
           canAdvance: false,
         }}
         onSelectOption={(option) => setSelectedOptionId(option.id)}
@@ -202,15 +244,23 @@ function ProseChallenge({ challenge, submitting, onSubmit }: {
         // settlement, which the arena beat renders — never this viewport.
         reveal={null}
       />
-      <Button
-        type="button"
-        className="w-full"
-        data-testid="mastery-slice-submit"
-        disabled={submitting || selectedLabel === null}
-        onClick={() => { if (selectedLabel !== null) onSubmit(selectedLabel); }}
-      >
-        {submitting ? "Locking in…" : "Lock in answer"}
-      </Button>
+      {revealing ? (
+        <MasteryInlineReveal
+          correct={reveal.correct}
+          answerLabel={reveal.answerLabel}
+          explanation={reveal.explanation}
+        />
+      ) : (
+        <Button
+          type="button"
+          className="w-full"
+          data-testid="mastery-slice-submit"
+          disabled={submitting || selectedLabel === null}
+          onClick={() => { if (selectedLabel !== null) onSubmit(selectedLabel); }}
+        >
+          {submitting ? "Locking in…" : "Lock in answer"}
+        </Button>
+      )}
     </div>
   );
 }
@@ -219,14 +269,56 @@ function MasterySliceChallengePhase({ state, actions }: {
   state: SegmentStateView;
   actions: ModuleViewportProps["actions"];
 }) {
-  const index = state.ownNextChallengeIndex;
   const challenges: MasterySliceChallengeView[] =
     state.block?.contract === "mastery_slice" ? state.block.challenges : [];
-  const current = challenges[index];
-  const [pending, setPending] = useState<number | null>(null);
-  useEffect(() => { setPending((p) => (p !== null && p !== index ? null : p)); }, [index]);
+  const serverIndex = state.ownNextChallengeIndex;
 
-  if (state.ownFinished || !current) {
+  // ---- the reveal hold -----------------------------------------------------
+  //
+  // The server has ALREADY moved this viewer to the next challenge the instant
+  // their answer was accepted — that is what stops their competitive clock. The
+  // reveal is therefore a purely local hold in front of a position the server
+  // has already decided, which is why it can never desynchronise anything: no
+  // index is incremented here, no answer is resubmitted, and letting the hold
+  // lapse simply renders what the server was already saying.
+  //
+  // `dismissed` is the highest challenge index whose reveal has been shown to
+  // completion. It only ever moves forward, so a poll that re-delivers the same
+  // state cannot re-open a reveal the player has already watched.
+  const [dismissed, setDismissed] = useState(-1);
+  const settled = state.ownChallengeReveals;
+  const latest: MasteryChallengeReveal | null =
+    settled.length > 0 ? settled[settled.length - 1] : null;
+  const holding = latest !== null && latest.challengeIndex > dismissed
+    ? latest : null;
+
+  // ONE timer, keyed on the held challenge's own index — so a duplicate poll,
+  // a re-render, or a second state update cannot stack a second advance, and a
+  // timer armed for an earlier challenge can never dismiss a later reveal.
+  //
+  // RELOAD/RESUME: the reveal is re-derived from persisted rows on every poll,
+  // so a reload mid-reveal simply finds the same `holding` and arms the timer
+  // fresh on mount. The remaining milliseconds are deliberately NOT
+  // reconstructed: there is no persisted reveal-start to reconstruct them from,
+  // and showing the full window again is the simplest behaviour that cannot
+  // affect scoring — the server subtracts exactly one window from the next
+  // challenge's response time regardless of how long the client actually
+  // paused, and no answer or advance is re-submitted.
+  useRevealAutoAdvance(
+    holding ? holding.challengeIndex : null,
+    () => setDismissed(holding ? holding.challengeIndex : -1),
+    revealDurationMs(state.revealWindowMs),
+  );
+
+  const revealed = holding ? challenges[holding.challengeIndex] ?? null : null;
+  const current = revealed ?? challenges[serverIndex];
+
+  const [pending, setPending] = useState<number | null>(null);
+  useEffect(() => {
+    setPending((p) => (p !== null && p !== serverIndex ? null : p));
+  }, [serverIndex]);
+
+  if ((state.ownFinished && !revealed) || !current) {
     return (
       <div className="space-y-2" data-testid="mastery-slice-waiting">
         <h4 className="font-semibold">Mastery Slice complete</h4>
@@ -241,30 +333,39 @@ function MasterySliceChallengePhase({ state, actions }: {
 
   const submitting = actions.busy || pending !== null;
   const onSubmit = (answer: PlayerAnswer) => {
-    setPending(index);
-    actions.submitChallenge(index, { selected: answer });
+    setPending(serverIndex);
+    actions.submitChallenge(serverIndex, { selected: answer });
   };
   const path = renderPathFor(current);
+  const reveal = holding && revealed ? toQuestionReveal(holding, revealed) : null;
 
   return (
+    // `data-challenge-index` names which challenge is actually on screen — the
+    // answered one during its reveal hold, the server's next one otherwise.
     <div className="space-y-3" data-testid="mastery-slice-challenge-phase"
-         data-render-path={path}>
+         data-render-path={path}
+         data-challenge-index={current.challengeIndex}
+         data-revealing={reveal ? "true" : undefined}>
       <p className="text-xs text-muted-foreground" data-testid="mastery-slice-opponent-progress">
         Opponent: {state.opponentChallengesCompleted} of {state.challengeCount} done
         {state.opponentFinished ? " — finished" : ""}
       </p>
       {path === "prose" ? (
         <ProseChallenge
+          key={current.challengeIndex}
           challenge={current}
           submitting={submitting}
           onSubmit={onSubmit}
+          reveal={reveal}
         />
       ) : (
         <MasteryQuestionDispatch
+          key={current.challengeIndex}
           question={toPlayerQuestion(current, state.challengeCount, path)}
           total={state.challengeCount}
           submitting={submitting}
           onSubmit={onSubmit}
+          reveal={reveal}
         />
       )}
     </div>
