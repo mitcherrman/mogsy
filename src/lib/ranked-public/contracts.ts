@@ -2258,3 +2258,118 @@ export function readQuestionLibrary(body: unknown): QuestionLibraryView {
     },
   };
 }
+
+// -------------------------------------- post-match discovery reveal (PT1.3)
+
+/**
+ * One question this account NEWLY discovered in the match just finished.
+ *
+ * Narrower than a collection entry on purpose: the reveal names the question
+ * and the round that produced it, and carries no counters — a question
+ * discovered THIS match has been answered exactly once, by definition. The
+ * `unavailable` case is still an ENTRY, never an omission, for the same reason
+ * it is in the collection: the discovery is permanent and counting it is the
+ * honest thing to do even when nothing can currently describe it.
+ */
+export interface MatchDiscoveryEntryView {
+  canonicalQuestionRef: string;
+  firstSeenAt: string;
+  /** The round of THIS match that produced it. Nullable by design. */
+  firstRoundNumber: number | null;
+  metadataStatus: "resolved" | "unavailable";
+  metadataSource: string;
+  question: { prompt: string; category: string | null } | null;
+}
+
+/**
+ * `ranked_duel.match_discoveries.v1` — the data behind the post-match
+ * ceremony.
+ *
+ * "Newly discovered" is the SERVER's answer, taken from the discovery row's
+ * own immutable first-match provenance. The client never derives ownership:
+ * answered, encountered, correct and newly discovered are four different
+ * facts and only the backend knows which is which.
+ */
+export interface MatchDiscoveriesView {
+  schemaVersion: string;
+  serverTime: string;
+  matchId: string;
+  /** `"ranked_discoveries"`. The payload states its own scope. */
+  scope: string;
+  /** False until a Base Library exists — a separate workstream. */
+  includesDefaultLibrary: boolean;
+  newDiscoveries: MatchDiscoveryEntryView[];
+  /** The TRUE count, which may exceed `newDiscoveries.length` if the server
+   *  ever capped the rows. Headline copy and the growth arithmetic use this. */
+  newCount: number;
+  /** Distinct questions owned AFTER this match, over the whole collection. */
+  collectionTotal: number;
+  /** Server-derived `collectionTotal - newCount`, so the client renders growth
+   *  it was told rather than growth it inferred. */
+  collectionTotalBefore: number;
+  truncated: boolean;
+}
+
+/**
+ * The caller's newly discovered questions for one finished match.
+ *
+ * Answer-free by contract, enforced with the SAME guard the collection uses —
+ * a celebration that leaked the correct answer to a question still in the bank
+ * would be worse than no celebration, so a leak is a hard parse failure rather
+ * than something the presentation layer is trusted to omit.
+ */
+export function readMatchDiscoveries(body: unknown): MatchDiscoveriesView {
+  const env = envelope(body, "match_discoveries", "ranked_duel.match_discoveries.v1");
+  const p = env.payload;
+  assertNoCorrectness(p, "match_discoveries");
+  assertLibrarySafe(p, "match_discoveries");
+
+  if (!Array.isArray(p.new_discoveries)) {
+    throw new RankedPublicParseError("new_discoveries must be an array");
+  }
+
+  const newDiscoveries = p.new_discoveries.map((rawEntry, i) => {
+    const label = `new_discoveries[${i}]`;
+    const e = rec(rawEntry, label);
+    assertNoCorrectness(e, label);
+    assertLibrarySafe(e, label);
+
+    const status = str(e.metadata_status, `${label}.metadata_status`);
+    if (status !== "resolved" && status !== "unavailable") {
+      throw new RankedPublicParseError(`${label}.metadata_status is invalid`);
+    }
+
+    let question: MatchDiscoveryEntryView["question"] = null;
+    if (e.question !== null && e.question !== undefined) {
+      const q = rec(e.question, `${label}.question`);
+      assertNoCorrectness(q, `${label}.question`);
+      assertLibrarySafe(q, `${label}.question`);
+      question = {
+        prompt: str(q.prompt, `${label}.question.prompt`),
+        category: nstr(q.category, `${label}.question.category`),
+      };
+    }
+
+    return {
+      canonicalQuestionRef: str(e.canonical_question_ref, `${label}.canonical_question_ref`),
+      firstSeenAt: str(e.first_seen_at, `${label}.first_seen_at`),
+      firstRoundNumber: nnum(e.first_round_number, `${label}.first_round_number`),
+      metadataStatus: status,
+      metadataSource: str(e.metadata_source, `${label}.metadata_source`),
+      question,
+    } satisfies MatchDiscoveryEntryView;
+  });
+
+  return {
+    schemaVersion: env.schemaVersion,
+    serverTime: env.serverTime,
+    matchId: str(p.match_id, "match_id"),
+    scope: str(p.scope, "scope"),
+    includesDefaultLibrary: bool(p.includes_default_library, "includes_default_library"),
+    newDiscoveries,
+    newCount: num(p.new_count, "new_count"),
+    collectionTotal: num(p.collection_total, "collection_total"),
+    collectionTotalBefore: num(p.collection_total_before, "collection_total_before"),
+    truncated: bool(p.truncated, "truncated"),
+  };
+}

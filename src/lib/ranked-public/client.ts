@@ -12,6 +12,7 @@
 import { getBackendAuthHeaders } from "@/lib/backend-auth";
 import {
   readHeartbeat,
+  readMatchDiscoveries,
   readMatchHistory,
   readMatchReview,
   readMatchResult,
@@ -24,6 +25,7 @@ import {
   readResolvedEnvelope,
   readResume,
   HeartbeatView,
+  MatchDiscoveriesView,
   MatchHistoryView,
   MatchReviewView,
   MatchResultView,
@@ -519,3 +521,20 @@ export const getQuestionLibrary = (
   return request(`/api/ranked/question-library${query ? `?${query}` : ""}`,
     readQuestionLibrary, { signal });
 };
+
+/**
+ * PT1.3 — what the caller NEWLY discovered in one finished match.
+ *
+ * The post-match ceremony's whole data source. Gated on the server exactly
+ * like `getMatchReview`: 403 for a match the caller did not play, 409 while it
+ * is still running — so a live match cannot produce a premature reveal.
+ *
+ * Read-only, and FREE: discovery is written by the submit transaction, this
+ * call cannot create or mutate ownership however often it runs, and no
+ * entitlement is consulted on either side of it.
+ */
+export const getMatchDiscoveries = (
+  matchId: string, signal?: AbortSignal,
+): Promise<MatchDiscoveriesView> =>
+  request(`/api/ranked/matches/${encodeURIComponent(matchId)}/discoveries`,
+    readMatchDiscoveries, { signal });

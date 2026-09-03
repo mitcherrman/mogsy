@@ -16,6 +16,7 @@ import { AbilityTray } from "@/components/ranked-arena/AbilityTray";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import { DiscoveryReveal } from "@/components/ranked-arena/DiscoveryReveal";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
@@ -848,6 +849,36 @@ function MascotBench() {
   );
 }
 
+// PT1.3 — the post-match discovery ceremony, in the frame's existing summary
+// slot. A FIXTURE shaped exactly like the backend's own payload, so the layout
+// QA judges the real component rather than a stand-in.
+const DISCOVERY_FIXTURE = {
+  schemaVersion: "ranked_duel.match_discoveries.v1",
+  serverTime: "2026-09-03T12:00:05Z",
+  matchId: "rkb_demo",
+  scope: "ranked_discoveries",
+  includesDefaultLibrary: false,
+  newDiscoveries: [
+    { canonicalQuestionRef: "ranked:v2-030", firstSeenAt: "2026-09-03T12:00:00Z",
+      firstRoundNumber: 1, metadataStatus: "resolved" as const,
+      metadataSource: "frozen_round",
+      question: { prompt: "What is Flash's base cooldown at level 1?",
+        category: "Summoner Spells" } },
+    { canonicalQuestionRef: "ranked:v2-031", firstSeenAt: "2026-09-03T12:01:00Z",
+      firstRoundNumber: 3, metadataStatus: "resolved" as const,
+      metadataSource: "frozen_round",
+      question: { prompt: "How much gold is a Doran's Shield plus two Health Potions?",
+        category: "Item Costs" } },
+    { canonicalQuestionRef: "ranked:retired", firstSeenAt: "2026-09-03T12:02:00Z",
+      firstRoundNumber: 5, metadataStatus: "unavailable" as const,
+      metadataSource: "current_serving_bank", question: null },
+  ],
+  newCount: 3,
+  collectionTotal: 423,
+  collectionTotalBefore: 420,
+  truncated: false,
+};
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -934,6 +965,16 @@ const STATES: InspectorState[] = [
   { key: "draw", label: "Match over — draw",
     render: () => <MatchOverFrame result="draw" player={player({ hp: 0 })} opponent={opponent({ hp: 0 })}
       subheading="No contest — both players left."
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+  { key: "discovery-reveal", label: "Match over — new questions discovered",
+    render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
+      summary={<DiscoveryReveal view={DISCOVERY_FIXTURE} onReview={() => {}} />}
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+  { key: "discovery-none", label: "Match over — no new discoveries",
+    render: () => <MatchOverFrame result="defeat" player={player({ hp: 0 })} opponent={opponent({ hp: 30 })}
+      summary={<DiscoveryReveal onReview={() => {}}
+        view={{ ...DISCOVERY_FIXTURE, newDiscoveries: [], newCount: 0,
+          collectionTotalBefore: 423 }} />}
       primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
 
   // --- full arena composition (layout QA) ---

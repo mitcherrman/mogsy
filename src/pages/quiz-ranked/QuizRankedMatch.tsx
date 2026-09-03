@@ -10,6 +10,9 @@ import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
+import {
+  DiscoveryReveal, discoveryRevealHasContent,
+} from "@/components/ranked-arena/DiscoveryReveal";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { RoundResultBeat } from "@/components/ranked-arena/RoundResultBeat";
@@ -31,6 +34,7 @@ import {
   EMPTY_OBSERVED_ROUND_KINDS, observeRoundKinds, projectRoundTimeline,
   type ObservedRoundKinds,
 } from "./roundTimeline";
+import { useMatchDiscoveries } from "./useMatchDiscoveries";
 import { useRankedMatch } from "./useRankedMatch";
 import { useRankedAudioBoundary } from "@/components/audio/useRankedAudioBoundary";
 
@@ -61,6 +65,15 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     && m.phase !== "fatal"
     && m.contractError === null;
   useRankedAudioBoundary(matchId, modeSoundtrackActive);
+  /**
+   * PT1.3 — the permanent questions this match added to the player's
+   * collection. Called at the TOP of the component (hooks cannot live behind
+   * the early returns below) and gated to the terminal phase, so a live match
+   * never spends the request. One read, never polled: the discoveries were
+   * committed with the submissions that caused them, so a settled match's
+   * answer is final.
+   */
+  const discoveries = useMatchDiscoveries(matchId, m.phase === "match_over");
   const [tick, setTick] = useState(0);
   const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
   /**
@@ -332,8 +345,19 @@ export function QuizRankedMatch({ matchId, viewerUserId }:
     // containment, which is exactly the nested scrollbar 1.5 removed.
     return (
       <div className="ranked-shell flex flex-col gap-4" data-testid="ranked-match-over">
+        {/* PT1.3 rides the frame's EXISTING summary slot, so the outcome, the
+            combatant panels and any progression this match carried are all
+            read first and the reward follows them. The slot is left undefined
+            — and the frame renders no summary block, and therefore no stray
+            flex gap — whenever there is nothing honest to say. The CTA goes to
+            `/quiz#review`, which opens REVIEW on OWNED already (PT1.2); there
+            is no second collection surface and no Library route. */}
         <MatchOverFrame result={result} player={combatants.player} opponent={combatants.opponent}
           subheading={subheading} progressionEnabled={progressionEnabled}
+          summary={discoveryRevealHasContent(discoveries.view)
+            ? (<DiscoveryReveal view={discoveries.view}
+                onReview={() => { window.location.assign("/quiz#review"); }} />)
+            : undefined}
           primaryAction={{ label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } }} />
         {m.lastResolved && (
           <RevealPanel settlement={m.lastResolved} viewerSlot="p1"
