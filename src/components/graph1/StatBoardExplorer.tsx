@@ -34,6 +34,17 @@ import {
 } from "@/graph1/snapshotContract";
 import StatBoard from "./StatBoard";
 
+/**
+ * Reader-facing nouns per ranked entity type. The board is shared by the
+ * champion stat snapshots and the Phase-E ratio boards, and the latter rank
+ * teams and players.
+ */
+const ENTITY_NOUNS: Record<string, { one: string; many: string; column: string }> = {
+  champion: { one: "champion", many: "champions", column: "Champion" },
+  team: { one: "team", many: "teams", column: "Team" },
+  player: { one: "player", many: "players", column: "Player" },
+};
+
 export interface StatBoardState {
   pointId?: string;
   order: Graph1SnapshotOrder;
@@ -102,13 +113,22 @@ export default function StatBoardExplorer({
     [rows, dataset.entities, query],
   );
 
+  /**
+   * What this board ranks.
+   *
+   * Read from the payload's declared `rankedEntityType`, because a Phase-E
+   * ratio board reuses this contract to rank TEAMS or PLAYERS. Defaults to the
+   * champion wording every stat board had, so nothing pre-Phase-E moves.
+   */
+  const noun = ENTITY_NOUNS[dataset.definition.rankedEntityType] ?? ENTITY_NOUNS.champion;
+
   const coverage = dataset.coverage;
   const ranked = coverage.eligibleChampionCount ?? dataset.rows.length;
   const excluded = coverage.excludedChampionCount ?? 0;
 
   const subtitle = [
     dataset.definition.scope.label,
-    `${ranked} champions ranked`,
+    `${ranked} ${ranked === 1 ? noun.one : noun.many} ranked`,
     hasLevels ? snapshotPointLabel(dataset, pointId) : null,
   ]
     .filter(Boolean)
@@ -116,7 +136,7 @@ export default function StatBoardExplorer({
 
   const footnote =
     `Source: ${coverage.source}` +
-    (excluded > 0 ? ` · ${excluded} champion(s) excluded with accounting` : "");
+    (excluded > 0 ? ` · ${excluded} ${noun.one}(s) excluded with accounting` : "");
 
   return (
     <div className="space-y-4">
@@ -177,11 +197,11 @@ export default function StatBoardExplorer({
             semantics this board does not have, while the snapshot payload
             already ships every champion it can match. */}
         <label className="flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-          Find champion
+          Find {noun.one}
           <input
             type="search"
-            aria-label="Find champion"
-            placeholder="Search champion…"
+            aria-label={`Find ${noun.one}`}
+            placeholder={`Search ${noun.one}…`}
             value={query}
             onChange={(e) => onStateChange({ ...state, find: e.target.value })}
             className="w-40 rounded border border-border bg-background px-2 py-1 text-xs normal-case tracking-normal text-foreground"
@@ -192,16 +212,17 @@ export default function StatBoardExplorer({
       {query.trim().length >= MIN_FIND_QUERY && (
         <p role="status" className="text-xs text-muted-foreground">
           {found.missed
-            ? `No champion on this board matches “${query.trim()}”.`
+            ? `No ${noun.one} on this board matches “${query.trim()}”.`
             : found.matches.size === 1
               ? `${dataset.entities[found.best!]?.displayName} is rank ${
                   rows.find((r) => r.entityId === found.best)?.rank
                 } of ${rows.length}.`
-              : `${found.matches.size} champions match “${query.trim()}”.`}
+              : `${found.matches.size} ${noun.many} match “${query.trim()}”.`}
         </p>
       )}
 
       <StatBoard
+        entityLabel={noun.column}
         title={statBoardTitle(dataset, options, rows.length)}
         subtitle={subtitle}
         rows={rows}

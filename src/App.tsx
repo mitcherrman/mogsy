@@ -93,6 +93,7 @@ const LolMissedQuestions = R.LolMissedQuestions.Component;
 const LolPro = R.LolPro.Component;
 const ProPlayHub = R.ProPlayHub.Component;
 const ProPlayQuiz = R.ProPlayQuiz.Component;
+const ProPlayGraphs = R.ProPlayGraphs.Component;
 const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
@@ -542,6 +543,9 @@ const App = () => (
                       /lol/pro above, which is the subscription page. */}
                   <Route path="/lol/pro-play" element={<Suspense fallback={<RouteFallback />}><ProPlayHub /></Suspense>} />
                   <Route path="/lol/pro-play/quiz" element={<Suspense fallback={<RouteFallback />}><ProPlayQuiz /></Suspense>} />
+                  {/* GRAPH1 as a product surface. /dev/graph1 stays as the
+                      operator route: fixed races, stat families, ?api=. */}
+                  <Route path="/lol/pro-play/graphs" element={<Suspense fallback={<RouteFallback />}><ProPlayGraphs /></Suspense>} />
                   <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
                   <Route path="/lol/patch-reports" element={<Suspense fallback={<RouteFallback />}><PatchReports /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />

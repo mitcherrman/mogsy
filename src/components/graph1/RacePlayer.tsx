@@ -76,6 +76,16 @@ export interface RacePlayerProps {
    * family key such as `player-champions:Faker` stays intact.
    */
   datasetKey?: string;
+  /**
+   * Render the client-side filter panel (year / region / league).
+   *
+   * On the operator page these are the only scoping there is, so they default
+   * ON. The product page passes `false`: since Phase E its scope controls are
+   * SERVER-side predicates, and a second set of filters that can only narrow
+   * what was already downloaded would duplicate the backend's eligibility
+   * logic and quietly disagree with it.
+   */
+  showFilters?: boolean;
 }
 
 export default function RacePlayer({
@@ -83,6 +93,7 @@ export default function RacePlayer({
   state: controlledState,
   onStateChange,
   datasetKey,
+  showFilters = true,
 }: RacePlayerProps) {
   const hints = resolveDisplayHints(dataset);
   const controls = dataset.definition.controls;
@@ -275,6 +286,7 @@ export default function RacePlayer({
       />
 
       <div className="space-y-2">
+        {showFilters && (
         <RaceFilters
           specs={controls?.filters}
           facets={facets}
@@ -283,6 +295,7 @@ export default function RacePlayer({
           matchedCount={visible.events.length}
           totalCount={dataset.events.length}
         />
+        )}
         <RaceDisplayToggles
           toggles={toggles}
           defaults={toggleDefaults}

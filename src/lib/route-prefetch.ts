@@ -100,6 +100,7 @@ export const Routes = {
   LolPro: lazyWithRetry(() => import("@/pages/LolPro")),
   ProPlayHub: lazyWithRetry(() => import("@/pages/ProPlayHub")),
   ProPlayQuiz: lazyWithRetry(() => import("@/pages/ProPlayQuiz")),
+  ProPlayGraphs: lazyWithRetry(() => import("@/pages/lol/ProPlayGraphs")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
   AdminQuizBroadcast: lazyWithRetry(() => import("@/pages/admin/AdminQuizBroadcast")),
@@ -155,8 +156,12 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/lol/pro", keys: ["LolPro"] },
   // Pro Play (professional-play content) — unrelated to /lol/pro above,
   // which is the subscription page.
-  { test: (p) => p === "/lol/pro-play", keys: ["ProPlayHub", "ProPlayQuiz"] },
+  {
+    test: (p) => p === "/lol/pro-play",
+    keys: ["ProPlayHub", "ProPlayQuiz", "ProPlayGraphs"],
+  },
   { test: (p) => p === "/lol/pro-play/quiz", keys: ["ProPlayQuiz"] },
+  { test: (p) => p === "/lol/pro-play/graphs", keys: ["ProPlayGraphs"] },
   { test: (p) => p === "/leaderboard" || p.startsWith("/leaderboard/"), keys: ["Leaderboard"] },
   { test: (p) => p.startsWith("/leagues/"), keys: ["Leagues"] },
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },
