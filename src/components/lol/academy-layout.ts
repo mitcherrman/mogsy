@@ -190,3 +190,45 @@ export function centerpieceHeightPx(width: number): number {
   return 0.723 * width + 96;
 }
 
+
+/* ------------------------------------------------- closed Academy volume -- */
+
+/**
+ * Closed destination book (`AcademyHubBook`) — PROTOTYPE, Leaguecraft only.
+ *
+ * The closed volume is portrait (height = width × 1.5, the frame PNG's
+ * 1024×1536 canvas) where the open `BookModeCard` is landscape (× 0.542), so
+ * it cannot reuse `BOOK_MAX_WIDTH_CSS` directly: at the open book's width it
+ * would stand 2.8× as tall as an open row and blow straight through the fold.
+ *
+ * It is instead sized as a FRACTION of the open book's width term, which
+ * already encodes both height regimes — so the closed book inherits the
+ * min() crossover for free and needs no second regime model of its own.
+ *
+ * The fraction comes from the slack the IA cleanup left behind. Both fit
+ * slopes were derived for THREE book rows per column; the quadrant only has
+ * two, so roughly one row of height is free. Spending exactly that row on the
+ * closed book gives, per column:
+ *
+ *   1.5·wClosed + gap + 0.542·wOpen  ≤  3·(0.542·wOpen) + 2·gap
+ *   →  wClosed ≤ 0.723·wOpen + gap/1.5
+ *
+ * CLOSED_BOOK_WIDTH_FRACTION sits just inside that ceiling, leaving the gap
+ * term as headroom. At 1440×900 that is a 288 × 431px volume beside 423 ×
+ * 229px open books; at 1920×1080, 346 × 519 beside 509 × 276.
+ *
+ * Being NARROWER than an open book, the closed volume also cannot crowd the
+ * central lane: CENTERPIECE_WIDTH_CSS models the free zone from the open book
+ * width term, so it stays conservative and the tome is unaffected.
+ */
+export const CLOSED_BOOK_WIDTH_FRACTION = 0.68;
+
+/** Card height per width — AcademyHubBook's canvas aspect (1536 / 1024). */
+export const CLOSED_BOOK_HEIGHT_RATIO = 1.5;
+
+export const CLOSED_BOOK_MAX_WIDTH_CSS = `min(100%, calc((${BOOK_WIDTH_TERM_CSS}) * ${CLOSED_BOOK_WIDTH_FRACTION}))`;
+
+/** JS twin of CLOSED_BOOK_MAX_WIDTH_CSS. */
+export function closedBookMaxWidthPx(vh: number, columnWidth = Infinity): number {
+  return Math.min(columnWidth, bookMaxWidthPx(vh) * CLOSED_BOOK_WIDTH_FRACTION);
+}

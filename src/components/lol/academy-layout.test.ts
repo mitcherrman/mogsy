@@ -5,12 +5,16 @@ import {
   BOOK_MAX_WIDTH_CSS,
   BOOK_STACK_LIFT_CSS,
   CENTERPIECE_OVERLAP_PX,
+  CLOSED_BOOK_HEIGHT_RATIO,
+  CLOSED_BOOK_MAX_WIDTH_CSS,
+  CLOSED_BOOK_WIDTH_FRACTION,
   CENTERPIECE_WIDTH_CSS,
   REGIME_BOUNDARY_VH,
   TITLE_FONT_SIZE_CSS,
   bookMaxWidthPx,
   bookStackInsetPx,
   bookStackLiftPx,
+  closedBookMaxWidthPx,
 
   centerpieceHeightPx,
   centerpieceWidthPx,
@@ -198,4 +202,64 @@ describe("academy-layout: CSS strings mirror the JS formulas", () => {
     expect(CENTERPIECE_WIDTH_CSS).toMatch(/380px\)$/);
   });
 
+});
+
+describe("academy-layout: closed Academy volume (AcademyHubBook prototype)", () => {
+  it.each(MATRIX)(
+    "%i×%i — the closed volume plus its open partner fit the three-row budget",
+    (_vw, vh) => {
+      // The quadrant runs two rows per column where both fit slopes were
+      // derived for three, so the closed book may spend exactly the freed row
+      // and no more. Budget and column are measured with the SAME gap ceiling
+      // (the gap clamp's 12px top) so the comparison is apples to apples.
+      const gap = 12;
+      const openH = bookMaxWidthPx(vh) * BOOK_HEIGHT_RATIO;
+      const closedH = closedBookMaxWidthPx(vh) * CLOSED_BOOK_HEIGHT_RATIO;
+      const threeRowBudget = 3 * openH + 2 * gap;
+      expect(closedH + gap + openH).toBeLessThanOrEqual(threeRowBudget);
+    },
+  );
+
+  it.each(MATRIX)("%i×%i — the closed volume is narrower than an open book", (_vw, vh) => {
+    // Load-bearing: CENTERPIECE_WIDTH_CSS models the free central zone from
+    // the OPEN book's width term. A closed volume that stayed inside that
+    // width cannot crowd the tome, so the centerpiece needs no re-derivation
+    // while the prototype is mixed.
+    expect(closedBookMaxWidthPx(vh)).toBeLessThan(bookMaxWidthPx(vh));
+  });
+
+  it.each(MATRIX)("%i×%i — the closed volume still reads as substantial", (_vw, vh) => {
+    // Taller than an open book row by a clear margin, or the redesign has no
+    // physical presence; and never so tall that it outgrows the whole budget.
+    const openH = bookMaxWidthPx(vh) * BOOK_HEIGHT_RATIO;
+    const closedH = closedBookMaxWidthPx(vh) * CLOSED_BOOK_HEIGHT_RATIO;
+    expect(closedH).toBeGreaterThan(1.5 * openH);
+    expect(closedBookMaxWidthPx(vh)).toBeGreaterThanOrEqual(200);
+  });
+
+  it("inherits the open book's min() crossover instead of modelling its own", () => {
+    // A pure fraction of the open term: no second regime model, so the closed
+    // book cannot drift out of step with the tall/short handover.
+    for (const vh of [1440, 1080, REGIME_BOUNDARY_VH, 900, 768]) {
+      expect(closedBookMaxWidthPx(vh)).toBeCloseTo(
+        bookMaxWidthPx(vh) * CLOSED_BOOK_WIDTH_FRACTION,
+        6,
+      );
+    }
+  });
+
+  it("the column cap still binds when the grid column is the narrower one", () => {
+    expect(closedBookMaxWidthPx(1080, 180)).toBe(180);
+  });
+
+  it("CSS string mirrors the JS formula", () => {
+    expect(CLOSED_BOOK_MAX_WIDTH_CSS).toMatch(/^min\(100%,/);
+    expect(CLOSED_BOOK_MAX_WIDTH_CSS).toContain("100dvh * 0.308 + 176px");
+    expect(CLOSED_BOOK_MAX_WIDTH_CSS).toContain("(100dvh - 212px) * 0.615");
+    expect(CLOSED_BOOK_MAX_WIDTH_CSS).toContain(`* ${CLOSED_BOOK_WIDTH_FRACTION}`);
+  });
+
+  it("the height ratio is the frame PNG's own canvas aspect", () => {
+    expect(CLOSED_BOOK_HEIGHT_RATIO).toBeCloseTo(1536 / 1024, 6);
+  });
 });

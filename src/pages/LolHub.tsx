@@ -7,6 +7,7 @@ import BlogPostCard from "@/components/blog/BlogPostCard";
 import AdSlot from "@/components/ads/AdSlot";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import BookModeCard from "@/components/lol/BookModeCard";
+import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import HexPanelLink from "@/components/lol/HexPanelLink";
 import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +46,7 @@ import {
   BOOK_MAX_WIDTH_CSS,
   BOOK_STACK_LIFT_CSS,
   CENTERPIECE_WIDTH_CSS,
+  CLOSED_BOOK_MAX_WIDTH_CSS,
   TITLE_FONT_SIZE_CSS,
 } from "@/components/lol/academy-layout";
 
@@ -68,6 +70,25 @@ type HubDestination = {
    * champion's face; each value is tuned per splash.
    */
   splashPosition?: string;
+  /**
+   * Which destination object renders this entry. `"closed-book"` is the new
+   * closed Academy volume (`AcademyHubBook`); everything without it keeps the
+   * open-book `BookModeCard`. PROTOTYPE (2026-09-02): Leaguecraft only, so the
+   * hub is deliberately mixed until the owner approves the treatment.
+   */
+  object?: "closed-book";
+  /**
+   * Title set on the closed volume's leather panel — words stack as lines.
+   * Distinct from `title`, which stays the accessible name and the guide
+   * title ("Leaguecraft"). Ignored by the open-book card.
+   */
+  coverTitle?: string;
+  /**
+   * Splash crop inside the closed volume's portrait art window. The window is
+   * taller than the open book's cover panel, so it frames the champion
+   * differently and needs its own value.
+   */
+  coverSplashPosition?: string;
 };
 
 // Approved academy IA — FOUR primary destinations in a balanced quadrant:
@@ -94,6 +115,12 @@ const HUB_DESTINATIONS: HubDestination[] = [
     Icon: BrainCircuit,
     championName: "Ryze",
     splashPosition: "95% center",
+    // Closed-volume prototype. The subtitle stays in the registry because the
+    // mobile HexPanelLink still uses it; the closed cover deliberately does
+    // NOT print it — Mogzy already narrates the destination.
+    object: "closed-book",
+    coverTitle: "Leaguecraft Studies",
+    coverSplashPosition: "78% center",
   },
   {
     // Route id, guide id and component names stay `combat-lab` on purpose —
@@ -126,6 +153,29 @@ const HUB_DESTINATIONS: HubDestination[] = [
     splashPosition: "60% center",
   },
 ];
+
+/**
+ * Inward perspective for the closed Academy volumes (PROTOTYPE — Leaguecraft).
+ *
+ * The book should read as a physical volume angled on the library shelf to
+ * face Mogzy at the centre of the hub. Positive `rotateY` turns a LEFT-hand
+ * book's cover toward the centre: its outer (left) edge comes forward and its
+ * inner (right) edge recedes. A right-hand book takes the mirrored sign, so
+ * the same pair of numbers serves both columns when the treatment spreads.
+ *
+ * 8° at a 1400px perspective is enough for the spine and the cover's
+ * thickness to read as depth while the champion art loses only ~1% of its
+ * apparent width, so the crop still frames the same composition. Hover eases
+ * to 4°, bringing the volume toward the viewer without ever squaring it up —
+ * a book that snapped flat would read as a UI card, not as a book.
+ *
+ * A hair of roll keeps the shelf from looking machine-set. Both angles are
+ * zeroed below 1024px and the hover turn is cancelled under
+ * prefers-reduced-motion — see `.academy-hub-book-body` in index.css.
+ */
+const CLOSED_BOOK_ROTATE_Y = 8;
+const CLOSED_BOOK_ROTATE_Y_HOVER = 4;
+const CLOSED_BOOK_ROTATE_Z = -0.8;
 
 /** Desktop columns: row-major registry → two vertical pairs. */
 const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
@@ -296,6 +346,7 @@ export default function LolHub() {
   // fixed 120px put book edges 34px into the lane, under the console.
   const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
 
+
   const renderBook = (d: HubDestination, side: "left" | "right") => (
     // Book size. BookModeCard reclaims ALL of the frame PNG's transparent
     // padding, so the card box IS the drawn book: height = width × 0.542, and
@@ -322,17 +373,37 @@ export default function LolHub() {
       onFocus={() => activateGuide(d.guideId)}
       onBlur={deactivateGuide}
       className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
-      style={{ maxWidth: BOOK_MAX_WIDTH_CSS }}
+      style={{
+        maxWidth:
+          d.object === "closed-book" ? CLOSED_BOOK_MAX_WIDTH_CSS : BOOK_MAX_WIDTH_CSS,
+      }}
     >
-      <BookModeCard
-        to={d.to}
-        title={d.title}
-        subtitle={d.subtitle}
-        splashUrl={getChampionSplash(championAssets, d.championName)}
-        splashPosition={d.splashPosition}
-        describedBy={hubGuideDescriptionId(d.guideId)}
-        onClick={() => onDestinationClick(d.to)}
-      />
+      {d.object === "closed-book" ? (
+        <AcademyHubBook
+          to={d.to}
+          title={d.title}
+          coverTitle={d.coverTitle}
+          splashUrl={getChampionSplash(championAssets, d.championName)}
+          splashPosition={d.coverSplashPosition ?? d.splashPosition}
+          rotateY={side === "left" ? CLOSED_BOOK_ROTATE_Y : -CLOSED_BOOK_ROTATE_Y}
+          rotateYHover={
+            side === "left" ? CLOSED_BOOK_ROTATE_Y_HOVER : -CLOSED_BOOK_ROTATE_Y_HOVER
+          }
+          rotateZ={side === "left" ? CLOSED_BOOK_ROTATE_Z : -CLOSED_BOOK_ROTATE_Z}
+          describedBy={hubGuideDescriptionId(d.guideId)}
+          onClick={() => onDestinationClick(d.to)}
+        />
+      ) : (
+        <BookModeCard
+          to={d.to}
+          title={d.title}
+          subtitle={d.subtitle}
+          splashUrl={getChampionSplash(championAssets, d.championName)}
+          splashPosition={d.splashPosition}
+          describedBy={hubGuideDescriptionId(d.guideId)}
+          onClick={() => onDestinationClick(d.to)}
+        />
+      )}
     </div>
   );
 

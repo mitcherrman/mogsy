@@ -1,7 +1,195 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 3 (IA cleanup, IMPLEMENTED) is at the top of this file.
-     Revisions 2 and 1 below are the audits it was built from. -->
+<!-- Revision 4 (Leaguecraft closed-book visual prototype) is at the top of
+     this file. Revision 3 is the IA cleanup it was built on; revisions 2 and
+     1 below are the audits that produced it. -->
+
+## Revision 2026-09-02c — Leaguecraft closed-book visual prototype
+
+**Status:** BUILT AND COMMITTED, AWAITING OWNER VISUAL APPROVAL.
+Branch `hub/leaguecraft-closed-book` (worktree
+`/Users/macmoney/mogsy-wt-hub-book`), on top of `33b5dd5f` — the IA cleanup
+described in Revision 3 below.
+
+`/lol` now renders **Leaguecraft only** as a closed Academy volume. Combat
+Simulation, Mogzy Archives and Pro Play still render the open-book
+`BookModeCard`. **The hub is deliberately a mixed prototype** — that is the
+approved scope, not an oversight.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/assets/academy-book-frame.png` | **NEW** — the owner-supplied shell, copied byte-for-byte from `public/assets/`. 1024×1536 RGBA, 2.42 MB. The original is untouched. |
+| `src/components/lol/AcademyHubBook.tsx` | **NEW** (229 lines) — the layered closed volume. |
+| `src/components/lol/academy-layout.ts` | **Additive only.** `CLOSED_BOOK_WIDTH_FRACTION`, `CLOSED_BOOK_HEIGHT_RATIO`, `CLOSED_BOOK_MAX_WIDTH_CSS`, `closedBookMaxWidthPx()`. **No existing constant was touched or re-derived.** |
+| `src/components/lol/academy-layout.test.ts` | +25 tests for the closed-book geometry contract. |
+| `src/pages/LolHub.tsx` | `HubDestination` gains `object` / `coverTitle` / `coverSplashPosition`; Leaguecraft's registry entry sets them; `renderBook` branches on `object`; three rotation constants. |
+| `src/pages/LolHub.test.tsx` | +6 tests pinning the prototype's route, accessible name, guide wiring, cover-title split and the mixed state itself. |
+| `src/index.css` | `.academy-hub-book` / `.academy-hub-book-body` — the transform, the hover/focus response, the <1024px flattening and the reduced-motion rule. |
+
+### Layering — nothing is baked into the artwork
+
+```
+AcademyHubBook (Link — route, aria-label, aria-describedby, focus)
+ └─ .academy-hub-book-body   ← ONE transform for the whole volume
+     ├─ champion splash       (object-fit: cover into the alpha window)
+     ├─ transparent shell PNG (leather, gold, spine, thickness)
+     ├─ HTML title            (real text on the leather panel)
+     └─ interaction layer     (gold rim + focus ring)
+```
+
+### Measured frame geometry — flood-filled from the PNG's own alpha channel
+
+| Region | Fraction of the 1024×1536 canvas |
+|---|---|
+| Drawn book (alpha ≥ 200) | x 1.07–98.54%, y 1.04–97.27% |
+| Transparent art window | x 16.60–90.04%, y 7.88–63.48% |
+| Title panel (inside the gold rails) | x 17.5–88.5%, y 67–89% |
+
+The drawn book covers 97.5% × 96.2% of the canvas, so — unlike `BookModeCard`,
+which reclaims a large transparent border with negative margins — **the layout
+box IS the canvas** and card height = width × 1.5 exactly, with no margin
+arithmetic. The art window is 57.8% of the book's height and the leather below
+it 35.1%; counting the gold framing around the window as part of the art
+region, the cover reads at roughly **65/35 art-to-leather**, the approved
+proportion.
+
+The title panel is centred on the **cover** (x ≈ 53%), not on the canvas — the
+spine eats the left 13%, so canvas-centring would sit the title visibly left.
+
+### Sizing — why `academy-layout.ts` did not need re-deriving
+
+Both fit slopes were derived for **three** book rows per column. The quadrant
+has two, so about one row of height is free. The closed volume is sized as a
+pure fraction of the open book's width term
+(`CLOSED_BOOK_WIDTH_FRACTION = 0.68`), spending exactly that freed row:
+
+```
+1.5·wClosed + gap + 0.542·wOpen  ≤  3·(0.542·wOpen) + 2·gap
+→ wClosed ≤ 0.723·wOpen + gap/1.5
+```
+
+Because it is a fraction of the existing term, the closed book **inherits the
+min() tall/short crossover for free** and models no second regime of its own.
+
+| Viewport | Open book | Closed volume |
+|---|---|---|
+| 1440×900 | 423 × 229 px | **288 × 431 px** |
+| 1920×1080 | 509 × 276 px | **346 × 519 px** |
+
+**The closed volume is NARROWER than an open book, and that is load-bearing.**
+`CENTERPIECE_WIDTH_CSS` models the free central zone from the *open* book's
+width term, so a narrower object cannot crowd the tome — the centerpiece needs
+no re-derivation while the hub is mixed. It also *reduces* the known
+centerpiece overlap: at 1440×900 the open Leaguecraft book's right edge sat at
+x = 567 against the tome's left edge at x = 540 (27px of overlap); the closed
+volume ends at x = 431, clearing it by 109px. Both facts are pinned by tests.
+
+### Perspective and hover — the values as built
+
+| Value | Setting |
+|---|---|
+| `perspective` | `1400px` on the link |
+| Resting `rotateY` | **+8°** (left column; a right-hand book takes −8°) |
+| Hover/focus `rotateY` | **+4°** — toward the viewer, never square |
+| `rotateZ` | **−0.8°** |
+| Hover/focus lift | `translateY(-10px)` |
+| Hover/focus light | gold rim inside the art window + a gold drop-shadow |
+| Transition | `380ms cubic-bezier(.22,.61,.36,1)` transform, `380ms` filter |
+
+Positive `rotateY` turns a LEFT-hand book's cover toward the centre: its outer
+edge comes forward and its inner edge recedes, so the volume faces Mogzy. Both
+angles are **zeroed below 1024px**, and the hover turn plus the lift are
+**cancelled under `prefers-reduced-motion`** — the resting angle stays, because
+a static camera choice is composition, not motion. Verified by probing computed
+styles at 1440×900, 1920×1080, 1023×800, 820×1180, reduced-motion and 375×812.
+
+The three custom properties are declared on the **link**, so the media and
+reduced-motion rules re-declare them on `.academy-hub-book-body` itself and win
+over inheritance with no `!important`.
+
+### Champion art
+
+Ryze, reused unchanged from the existing hub registry.
+`coverSplashPosition: "78% center"` — the portrait window (0.88:1) against a
+landscape splash (1.70:1) shows the splash's full height and 51.9% of its
+width, which puts Ryze's face near the window's centre and keeps the glowing
+rune hand in frame. The open-book card's own `"95% center"` is untouched and
+still drives the mobile panel and every other surface.
+
+### Verification
+
+- `LolHub.test.tsx` 59 passed · `academy-layout.test.ts` 50 passed. ESLint
+  clean on every changed file.
+- `tsc --noEmit`: the failing-file set is identical to the pre-change baseline
+  (8 pre-existing files, none of them touched here).
+- Full `vitest run`: the failing-file set matches `33b5dd5f`'s once
+  `VITE_COMBAT_API_URL` is equalised. The baseline worktree carries a
+  `.env.local` pointing the combat API at a dead `127.0.0.1:8010`; the five
+  champion-asset/combat-API suites that diverged all pass here under that same
+  value. **No test regressed.**
+- Live: `/lol` renders; the volume navigates to `/quiz`; Combat Simulation,
+  Mogzy Archives and Pro Play still navigate; Mogzy leans and speaks the
+  Leaguecraft line on hover and on keyboard focus; DOM/tab order is unchanged
+  (leaguecraft → archives → combat-lab → pro-play); the Patch Brief centerpiece
+  and Mogzy's pedestal are pixel-unchanged against `33b5dd5f`; no new console
+  errors (the only recurring warning is the pre-existing `fetchPriority` one on
+  the LCP `<picture>`).
+- Screenshots: 1440×900 rest/hover/focus, 1920×1080, 820×1180, 375×812.
+
+### Does not match expectations — read before approving
+
+1. **The asset is 2.42 MB and the hub now downloads two book frames.**
+   `book-mode-frame.png` (2.48 MB) is still needed by the other three
+   destinations, so the prototype hub carries ≈4.9 MB of book art. The repo
+   baseline already accepted a 2.48 MB frame, so this is consistent rather than
+   novel — but the closed volume renders at most 346px wide, so a 1024px source
+   is ~3× oversampled even at 2× DPR. **A downscaled derivative was
+   deliberately NOT made**: it would change the pixels under visual review, and
+   `academy-welcome`'s own downscale sets the precedent for doing it as a
+   separate, deliberate pass. Recommend a 768×1152 derivative (plus WebP) once
+   the look is approved. The original stays untouched either way.
+2. **The quadrant is now vertically asymmetric.** The left column runs 668px
+   against the right column's 470px at 1440×900, and the right column sits
+   ~15px higher than before because `items-center` re-centres it in the taller
+   row. This is inherent to a mixed prototype and resolves when the other three
+   convert. `academy-layout.ts` was deliberately not touched to paper over it.
+3. **The art window's top ~15% is dark.** `object-fit: cover` on a landscape
+   splash in a portrait window shows the splash's full height, including its
+   empty upper third; `object-position`'s Y is inert here, so no per-champion
+   value fixes it. If it reads as dead space at approval, the fix is a slight
+   scale-up of the splash inside the window — one line, deliberately not made
+   before approval.
+4. **Mobile does not use the closed volume at all.** Below `md` the hub renders
+   `HexPanelLink` panels exactly as before; the volume is desktop/tablet only,
+   and nothing on mobile changed. Whether the closed book should reach mobile
+   is a separate decision about the mobile hub, not about this treatment.
+
+### The next decision is the owner's, and it is NOT "convert the rest"
+
+**Approve, adjust or reject the Leaguecraft treatment first.** Conversion of
+the other three was explicitly held back and should stay held back until the
+look is signed off, because each of them inherits these same angles,
+proportions and title geometry.
+
+Concrete questions for that review:
+
+1. Is +8° / +4° the right amount of turn, or should it be stronger?
+2. Is the 65/35 art-to-leather split right, or should the champion window grow?
+3. Is the Ryze crop the intended composition?
+4. Should the cover carry a subtitle or an emblem, or is the title alone right
+   now that Mogzy narrates the destination?
+5. Is `CLOSED_BOOK_WIDTH_FRACTION = 0.68` the composition you want — should the
+   volume be larger or smaller relative to the open books?
+
+Once approved, the follow-on work in order: (a) the downscaled asset
+derivative; (b) convert the remaining three, with a mirrored −8° on the right
+column, which the component and the layout constants already support; (c) only
+then revisit `academy-layout.ts`'s fit slopes, since a fully-closed quadrant
+changes the binding constraint again.
+
+---
 
 ## Revision 2026-09-02 — IA cleanup IMPLEMENTED (four destinations)
 

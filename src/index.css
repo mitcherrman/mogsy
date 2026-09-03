@@ -7532,3 +7532,78 @@ html.high-contrast * { text-shadow: none !important; }
     max-height: min(16rem, 26vh) !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Closed Academy volume — the /lol hub destination book (AcademyHubBook).
+
+   PROTOTYPE (2026-09-02): Leaguecraft only. The other three destinations are
+   still open-book `BookModeCard`s.
+
+   The whole assembled book — champion splash, transparent shell and the HTML
+   title on the leather — is ONE transformed object, so it turns as a physical
+   volume instead of as a stack of independently-skewed layers. The rotation
+   faces the book inward toward Mogzy at the centre of the hub; the call site
+   supplies the angles per quadrant through the three custom properties, which
+   are declared on the link. Both overrides below re-declare them on
+   `.academy-hub-book-body` itself, and an element's own custom-property
+   declaration beats the one it would inherit from its parent — so neither
+   needs `!important`.
+   --------------------------------------------------------------------------- */
+
+.academy-hub-book {
+  perspective: 1400px;
+}
+
+.academy-hub-book-body {
+  /* `--hub-book-rotate-y-active` is unset at rest, so the angle falls through
+     to `--hub-book-rotate-y`. Hover sets the active angle rather than
+     rewriting the resting one, which keeps the resting value available to the
+     reduced-motion override below. Transitioning `transform` works through
+     var() because it is the resolved transform that changes, not the custom
+     property itself. */
+  transform: rotateY(var(--hub-book-rotate-y-active, var(--hub-book-rotate-y, 0deg)))
+    rotateZ(var(--hub-book-rotate-z, 0deg)) translateY(var(--hub-book-lift, 0px));
+  transform-style: preserve-3d;
+  transition:
+    transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 380ms ease-out;
+  /* Contact shadow: the volume sits ON the library shelf rather than floating
+     over the painting. Sized against the book, not the card box. */
+  filter: drop-shadow(0 16px 24px rgba(2, 6, 14, 0.55));
+}
+
+/* Restrained physical response — Mogzy carries the explanation, so the book
+   lifts slightly and turns a little toward the viewer, and the gold catches
+   the light. No opening, no scaling, no popup. */
+.academy-hub-book:hover .academy-hub-book-body,
+.academy-hub-book:focus-visible .academy-hub-book-body {
+  --hub-book-rotate-y-active: var(--hub-book-rotate-y-hover, 0deg);
+  --hub-book-lift: -10px;
+  filter: drop-shadow(0 26px 34px rgba(2, 6, 14, 0.6))
+    drop-shadow(0 0 16px rgba(226, 196, 120, 0.26));
+}
+
+/* Below the desktop composition the lane is too narrow for the angle to read
+   as depth — it just compresses the champion art — so the book faces front. */
+@media (max-width: 1023px) {
+  .academy-hub-book-body {
+    --hub-book-rotate-y: 0deg;
+    --hub-book-rotate-y-hover: 0deg;
+    --hub-book-rotate-z: 0deg;
+  }
+}
+
+/* Reduced motion cancels the MOVEMENT, not the composition: the resting
+   inward angle is a static camera choice and stays. The hover turn, the lift
+   and every transition go. */
+@media (prefers-reduced-motion: reduce) {
+  .academy-hub-book-body {
+    transition: none;
+  }
+
+  .academy-hub-book:hover .academy-hub-book-body,
+  .academy-hub-book:focus-visible .academy-hub-book-body {
+    --hub-book-rotate-y-active: var(--hub-book-rotate-y, 0deg);
+    --hub-book-lift: 0px;
+  }
+}
