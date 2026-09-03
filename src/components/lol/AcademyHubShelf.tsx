@@ -13,10 +13,12 @@
  * shadow lives on the board's top plane so it stays on the shelf when a
  * volume lifts on hover.
  *
- * There is no back panel. The first pass had one and it read as a flat dark
- * rectangle over the painted library rather than as a recess; the owner
- * preferred the open case, so the library shows between and behind the
- * volumes and the uprights and boards carry the structure alone.
+ * The backing is real wood, not a recess. The first attempt at one was a
+ * near-black panel behind the volumes and it read as a hole punched in the
+ * painting; removing it left the case open, which read as brown bars around
+ * books. The version here is medium walnut planking at the same warmth as the
+ * boards, so the backing, the uprights and the boards read as ONE piece of
+ * furniture — which is the whole point of the structure.
  *
  * Layering (see the z-order in LolHub): the shelf paints BEHIND the books and
  * is `aria-hidden` + `pointer-events-none`, so it can never take a click, a
@@ -38,6 +40,11 @@ export default function AcademyHubShelf() {
       aria-hidden
       className="academy-hub-shelf pointer-events-none absolute inset-0 z-0 flex flex-col gap-y-[clamp(2px,0.8vh,12px)] [container-type:inline-size]"
     >
+      {/* Planked backing. Spans post-edge to post-edge so it visually ties the
+          two uprights together, and paints first so everything else sits on
+          top of it. */}
+      <div className="academy-hub-shelf-back" />
+
       {/* The two uprights. They flank the books and overhang the stack top
           and bottom, which is what makes the pair read as ONE piece of
           furniture instead of two separate ledges. */}

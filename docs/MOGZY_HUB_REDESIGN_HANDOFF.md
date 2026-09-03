@@ -1,6 +1,86 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 8 (shelf material pass) is at the top of this file.
+<!-- Revision 9 (backing restored as planking) is at the top of this file.
+     Revision 8 was the material pass; revision 7 built the shelf; revision 6
+     rejected the mirrored shell. -->
+
+## Revision 2026-09-03d — backing restored as walnut planking
+
+**Status:** BUILT, AWAITING OWNER VISUAL APPROVAL. Still LEFT COLUMN ONLY.
+
+Revision 8 deleted the back panel. That was the wrong call for the owner's
+preference: the open case read as brown bars around books rather than as
+furniture. The backing is restored — but **not** the version that was removed.
+
+### Why the first backing failed, and what changed
+
+The original was `#1b1209 → #0e0904` under `inset 0 0 42px rgba(0,0,0,.62)` —
+a near-black rectangle, which read as a hole punched in the painting. The
+diagnosis was wrong the first time: the problem was never that a panel
+existed, it was that the panel was not made of anything. The fix is **actual
+wood**, not less panel.
+
+| | Removed version | Restored version |
+|---|---|---|
+| Body | `#1b1209 → #0e0904` | `linear-gradient(96deg, #574029, #4c3722 34%, #3f2c1a 68%, #31210f)` |
+| Inset | `0 0 42px rgba(0,0,0,.62)` | `0 0 26px rgba(0,0,0,.34)` |
+| Structure | none — a flat field | vertical plank seams every `16cqw`: a `rgba(0,0,0,.34)` joint with a `rgba(255,234,198,.055)` lit arris on its near side |
+| Grain | none | `0deg` hairlines at 3–3.5%, running with the planks |
+| Shading | none | `180deg` falloff to `rgba(0,0,0,.34)` at the head and foot |
+
+It is one value darker than the boards, so the boards still read in front of
+it, and it spans post-edge to post-edge so it visually ties the two uprights
+together. It paints FIRST, before the uprights and boards, so the boards' own
+cast shadows now land on it — which is what actually fuses the three parts
+into one built object rather than three overlapping shapes.
+
+### Uprights — side face added
+
+Taken up as optional in the brief, because Revision 8 flagged the uprights as
+the weaker half. The smooth `90deg` ramp is replaced by a **hard corner**: the
+front face runs to 74%, then a discontinuity into the side face
+(`#513a24` → `#2c1d10` at the same stop). A beam needs a visible arris; a
+smooth ramp reads as a shaded strip no matter how many stops it has. No caps,
+no carving, no ornament — the gradient is the whole change.
+
+### Boards — unchanged
+
+The three-plane read from Revision 8 is preserved exactly: lit top plane
+(`::after`, inset `0.7cqw`), front face, ambient crease (`::before`), dark
+underside inset, cast shadow. Placement untouched. The contact shadow still
+lives on the board's top plane, so a lifting volume does not drag it along.
+
+### Verification
+
+- **No coordinate changed anywhere.** Measured against Revision 8: books
+  237×355 at (144,118) and (144,480) left, (1059,·) right; backing 298×730 at
+  (113,111); uprights 17px at x 113/395, y 101→851; boards 346×15 at (90,467)
+  and 346×23 at (90,828). Identical at rest AND on hover.
+- Books still read clearly in front: the backing is darker than the boards and
+  far darker than the volumes' navy-and-gold, and it is mostly occluded by
+  them — only the strips beside each book show planking.
+- Guide, hover, focus and routes unaffected — this is CSS on an `aria-hidden`,
+  `pointer-events: none` layer. Leaguecraft hover still speaks its line and
+  still navigates to `/quiz`.
+- 111 tests passed · ESLint clean · no new console errors.
+
+### Does it read as a shelf?
+
+Yes. The three-way crop makes the progression legible: (1) the dark box reads
+as a hole, (2) the open case reads as bars, (3) the planked backing reads as a
+wooden display unit holding two ornate books. The plank seams are the specific
+thing that does it — they give the eye carpentry to hold on to where a flat
+field gave it nothing.
+
+### Next decision
+
+Owner visual approval, then duplicate the case to the right column. Nothing
+else from the earlier revisions has moved: no entrance animation, no sound, no
+right-side shelf.
+
+---
+
+<!-- Revision 8 (shelf material pass).
      Revision 7 built the shelf; revision 6 rejected the mirrored shell. -->
 
 ## Revision 2026-09-03c — left shelf material + depth pass

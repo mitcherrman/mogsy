@@ -7676,6 +7676,57 @@ html.high-contrast * { text-shadow: none !important; }
   background-blend-mode: overlay, normal;
 }
 
+/* ---- backing ------------------------------------------------------------- */
+
+/* Planked back of the case.
+ *
+ * The first attempt at this was #1b1209 → #0e0904 under a 46px black inset:
+ * a near-black rectangle, which read as a hole punched in the painting rather
+ * than as furniture. The fix is not less panel, it is ACTUAL WOOD — the same
+ * walnut warmth as the boards, one value darker so the boards still read in
+ * front of it, with vertical plank seams so the eye gets carpentry to hold on
+ * to instead of a flat field.
+ *
+ * It spans post-edge to post-edge and paints before the uprights and boards,
+ * so the case reads as one built object: the boards' own cast shadows now
+ * land ON the backing, which is what fuses the three parts together.
+ */
+.academy-hub-shelf-back {
+  position: absolute;
+  left: calc(var(--shelf-out) * -1);
+  right: calc(var(--shelf-out) * -1);
+  top: calc(var(--shelf-rise) * -0.4);
+  bottom: calc(var(--shelf-rise) * -0.4);
+  background-image:
+    /* plank seams — a dark joint with a lit arris on its near side */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 15.4cqw,
+      rgba(0, 0, 0, 0.34) 15.4cqw 15.9cqw,
+      rgba(255, 234, 198, 0.055) 15.9cqw 16.2cqw,
+      transparent 16.2cqw 32cqw
+    ),
+    /* grain, running with the planks */
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 236, 204, 0.03) 0 1px,
+      transparent 1px 6px,
+      rgba(0, 0, 0, 0.035) 6px 7px,
+      transparent 7px 16px
+    ),
+    /* modest vertical shading — the case is darker at its head and foot */
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.34) 0%,
+      rgba(0, 0, 0, 0) 13%,
+      rgba(0, 0, 0, 0) 85%,
+      rgba(0, 0, 0, 0.34) 100%
+    ),
+    /* body, lit from the left like every other piece */
+    linear-gradient(96deg, #574029 0%, #4c3722 34%, #3f2c1a 68%, #31210f 100%);
+  box-shadow: inset 0 0 26px rgba(0, 0, 0, 0.34);
+}
+
 /* ---- uprights ------------------------------------------------------------ */
 
 /* The body gradient is a cylinder read: a lit near edge, the face turning
@@ -7702,13 +7753,17 @@ html.high-contrast * { text-shadow: none !important; }
       rgba(0, 0, 0, 0) 76%,
       rgba(0, 0, 0, 0.5) 100%
     ),
+    /* Front face, then a HARD corner into the side face. The smooth ramp this
+       replaces read as a shaded strip; a beam needs a visible arris, and the
+       discontinuity at 74% is what supplies it. */
     linear-gradient(
       90deg,
-      #33220f 0%,
-      var(--shelf-lit) 16%,
-      #6b4e30 38%,
+      #35230f 0%,
+      var(--shelf-lit) 12%,
+      #6b4e30 34%,
       var(--shelf-face) 62%,
-      #35230f 88%,
+      #513a24 74%,
+      /* — corner — */ #2c1d10 74%,
       var(--shelf-dark) 100%
     );
   box-shadow:
