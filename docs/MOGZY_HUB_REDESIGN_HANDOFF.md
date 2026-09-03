@@ -1,6 +1,91 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 7 (left shelf prototype) is at the top of this file.
+<!-- Revision 8 (shelf material pass) is at the top of this file.
+     Revision 7 built the shelf; revision 6 rejected the mirrored shell. -->
+
+## Revision 2026-09-03c — left shelf material + depth pass
+
+**Status:** BUILT, AWAITING OWNER VISUAL APPROVAL. Still LEFT COLUMN ONLY —
+not duplicated to the right.
+
+Geometry pass approved; this changes only how the wood reads. **No token, no
+dimension and no coordinate moved.** `--shelf-post`, `--shelf-slab`,
+`--shelf-out`, `--shelf-rise` and `--shelf-lip` are untouched, and both
+volumes measure exactly as before: 237×355 at (144,118) and (144,480); boards
+346×15 at (90,467) and 346×23 at (90,828); uprights 17px at x 113/395.
+
+### The back panel is gone
+
+Removed, not restored. It read as a flat dark rectangle over the painted
+library rather than as a recess. The case is now open — the library shows
+between and behind the volumes and the uprights and boards carry the
+structure alone.
+
+### Three ideas do all the work
+
+1. **Every board is a solid with three planes**, not a rectangle with a
+   gradient. `::after` is the lit TOP PLANE — the surface the volume actually
+   stands on — inset `0.7cqw` from the front face on both sides, and that
+   inset is what reads as depth rather than as a highlight stripe. The element
+   itself is the FRONT FACE. `::before` is a thin ambient-occlusion crease
+   where the two planes meet, which is the cheapest possible "these are two
+   surfaces". `inset 0 -1px 0 rgba(0,0,0,.6)` is the dark UNDERSIDE, and the
+   outer `0 12px 20px` (base `0 18px 26px`) is the cast shadow.
+2. **Grain runs along the length of each piece** — `90deg` hairlines on the
+   boards, `0deg` on the uprights — as `repeating-linear-gradient` layers at
+   4–5% contrast with deliberately irregular stop spacing (even stops read as
+   corduroy). Real boards are cut with the grain, and getting that direction
+   wrong is most of what makes CSS wood look like plastic.
+   **No texture asset was added** — CSS did it cleanly.
+3. **The contact shadow lives on the board's top plane**, composited as a
+   `radial-gradient` background layer on `::after`, not on the book.
+
+### Uprights
+
+The 90deg body gradient is a cylinder read — lit near arris, face turning
+away, shaded far side — and a new 180deg overlay adds ambient falloff, since
+a post in a room is dimmer at its ends than at eye height. That alone is most
+of what stopped it reading as a flat bar. Two 1px insets give it its arrises:
+`inset 1px 0 0 rgba(226,196,140,.14)` lit, `inset -1px 0 0 rgba(0,0,0,.55)`
+dark. No caps, no carving, no motifs.
+
+### Palette (new `--shelf-*` ramp)
+
+`--shelf-lit #856140` · `--shelf-face #5b422a` · `--shelf-mid #4a3420` ·
+`--shelf-deep #2a1c10` · `--shelf-dark #1c1209`. Top plane
+`linear-gradient(180deg, #967048, var(--shelf-lit) 40%, #6a4d2f)` with an
+`inset 0 1px 0 rgba(232,205,152,.2)` front arris. No gold accent proved
+necessary.
+
+### Verification
+
+- **Contact shadow stays on the shelf.** Measured at rest and on hover: the
+  upper board is at y=467 in BOTH states while the Leaguecraft body rises
+  117→108. The shadow does not travel with the lifting volume.
+- No coordinates changed; no book, upright or board moved by a pixel.
+- 111 tests passed · ESLint clean · console errors are the three pre-existing
+  classes only, none new.
+- Hover, focus, routes and the Mogzy guide are untouched by this pass — it is
+  CSS on an `aria-hidden`, `pointer-events: none` layer at `z-0`.
+
+### Honest read
+
+The boards clearly gained thickness — the lit top plane against the darker
+face is the biggest single improvement, and the base board now reads as
+carrying the case. The uprights improved less: the ambient falloff and the
+arrises help, but with no side face they are still closer to flat than the
+boards are. If more is wanted there, a real side-face element (a second
+narrow div at the post's dark edge) is the next honest step rather than more
+gradient stops. Stopping here per the brief — one disciplined pass.
+
+### Next decision
+
+Owner visual approval of the left shelf material before duplicating the case
+to the right column.
+
+---
+
+<!-- Revision 7 (left shelf prototype).
      Revision 6 rejected the mirrored shell. -->
 
 ## Revision 2026-09-03b — LEFT shelf structure prototype

@@ -7611,17 +7611,34 @@ html.high-contrast * { text-shadow: none !important; }
 /* ---------------------------------------------------------------------------
    Academy shelf — the wooden support behind a pair of /lol hub volumes.
 
-   PROTOTYPE (2026-09-03): left column only. Coded geometry, no texture asset:
-   the point of this pass is silhouette, scale and placement.
+   PROTOTYPE (2026-09-03): left column only.
 
    Every thickness is in `cqw` against the shelf's own container, which is the
    two-book box — so `1cqw` is 1% of the BOOK WIDTH and the whole structure
    scales with the volumes through the fold-driven sizing formula, with no
    breakpoints of its own.
 
-   The palette is deliberately quieter than the books: warm walnut, restrained
-   bevels, no carving, no gold filigree, no glow. The books are the ornate
-   objects; the furniture they stand on should be believable, not decorative.
+   MATERIAL PASS (2026-09-03b). The geometry is unchanged and approved; this
+   is only about the wood reading as wood. Three ideas do all the work:
+
+     1. Every board is a SOLID with three planes — a lit top surface, the
+        front face, and a dark underside — instead of one rectangle with a
+        gradient. Boards are seen slightly from above at this camera, so the
+        top plane is a thin band inset from the front edge: that inset is what
+        reads as depth rather than as a highlight stripe.
+     2. Grain runs ALONG each piece — lengthwise on the boards, vertical on
+        the uprights — as hairline repeating gradients at very low contrast.
+        Real boards are cut with the grain, and getting that direction wrong
+        is what makes CSS wood look like plastic. No texture asset was needed.
+     3. The contact shadow lives on the board's TOP PLANE, not on the book.
+        So when a volume lifts on hover the shadow stays put on the shelf
+        instead of travelling with it like a painted blob.
+
+   There is deliberately no back panel: the painted library shows between and
+   behind the volumes, which the owner preferred to a wooden backing.
+
+   The palette stays quieter than the books — warm walnut, restrained bevels,
+   no carving, no filigree, no glow. The books are the ornate objects.
    --------------------------------------------------------------------------- */
 
 .academy-hub-shelf {
@@ -7641,36 +7658,64 @@ html.high-contrast * { text-shadow: none !important; }
   --shelf-rise: 7cqw;
   /* How far each board protrudes past the uprights. */
   --shelf-lip: 3cqw;
+
+  /* Walnut ramp, lit from the left like the painting and the book shells. */
+  --shelf-lit: #856140;
+  --shelf-face: #5b422a;
+  --shelf-mid: #4a3420;
+  --shelf-deep: #2a1c10;
+  --shelf-dark: #1c1209;
 }
 
-/* Shadowed interior of the case. Sits inside the uprights and stops short of
-   the stack's edges, so it never reads as a flat rectangle behind the art. */
-.academy-hub-shelf-back {
-  position: absolute;
-  left: calc(var(--shelf-out) * -1);
-  right: calc(var(--shelf-out) * -1);
-  top: calc(var(--shelf-rise) * -0.4);
-  bottom: calc(var(--shelf-rise) * -0.4);
-  background: linear-gradient(180deg, #241809 0%, #1a1207 55%, #130d06 100%);
-  box-shadow: inset 0 0 46px rgba(0, 0, 0, 0.5);
+/* Hairline grain. Irregular stop spacing on purpose — even stops read as
+   corduroy. Used as a background LAYER over each piece's own body gradient,
+   rotated per piece so it always runs along the length of the wood. */
+.academy-hub-shelf-post,
+.academy-hub-shelf-slab,
+.academy-hub-shelf-slab::after {
+  background-blend-mode: overlay, normal;
 }
 
-/* Uprights. The gradient is a cylinder read: lit edge, body, shaded far side —
-   the same left-hand light the painted library and the book shells use. */
+/* ---- uprights ------------------------------------------------------------ */
+
+/* The body gradient is a cylinder read: a lit near edge, the face turning
+   away, then the shaded far side. The vertical gradient on top of it is
+   ambient falloff — a post in a room is dimmer at its ends than at eye
+   height, and that alone stops it reading as a flat bar. */
 .academy-hub-shelf-post {
   position: absolute;
   top: calc(var(--shelf-rise) * -1);
   bottom: calc(var(--shelf-rise) * -1);
   width: var(--shelf-post);
-  background: linear-gradient(
-    90deg,
-    #2b1c10 0%,
-    #5a4128 26%,
-    #6b4e30 44%,
-    #452f1c 78%,
-    #23160c 100%
-  );
-  box-shadow: 0 10px 22px rgba(3, 6, 12, 0.55);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 236, 204, 0.05) 0 1px,
+      transparent 1px 5px,
+      rgba(0, 0, 0, 0.05) 5px 6px,
+      transparent 6px 13px
+    ),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0) 18%,
+      rgba(0, 0, 0, 0) 76%,
+      rgba(0, 0, 0, 0.5) 100%
+    ),
+    linear-gradient(
+      90deg,
+      #33220f 0%,
+      var(--shelf-lit) 16%,
+      #6b4e30 38%,
+      var(--shelf-face) 62%,
+      #35230f 88%,
+      var(--shelf-dark) 100%
+    );
+  box-shadow:
+    /* lit near arris and the dark far arris — the two edges that say "solid" */
+    inset 1px 0 0 rgba(226, 196, 140, 0.14),
+    inset -1px 0 0 rgba(0, 0, 0, 0.55),
+    0 10px 22px rgba(3, 6, 12, 0.55);
 }
 
 .academy-hub-shelf-post--left {
@@ -7681,9 +7726,11 @@ html.high-contrast * { text-shadow: none !important; }
   right: calc(var(--shelf-out) * -1);
 }
 
-/* Ledge. The top highlight is the lit front edge, the body is the board's
-   face, and the bottom band is the shadow it throws down the case. The slab
-   overhangs the uprights slightly, as a real shelf board does. */
+/* ---- boards -------------------------------------------------------------- */
+
+/* The element is the board's FRONT FACE. Its top plane is ::after and its
+   cast shadow is the outer box-shadow; the inset at the bottom is the dark
+   underside where the face turns away from the room. */
 .academy-hub-shelf-slab {
   position: absolute;
   left: calc((var(--shelf-out) + var(--shelf-post) + var(--shelf-lip)) * -1);
@@ -7691,16 +7738,67 @@ html.high-contrast * { text-shadow: none !important; }
   bottom: calc(var(--shelf-slab) * -0.62);
   height: var(--shelf-slab);
   border-radius: 1px;
-  background: linear-gradient(
-    180deg,
-    #7a5a39 0%,
-    #63482c 16%,
-    #4a3420 62%,
-    #2a1c10 100%
-  );
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 236, 204, 0.045) 0 1px,
+      transparent 1px 6px,
+      rgba(0, 0, 0, 0.045) 6px 7px,
+      transparent 7px 17px
+    ),
+    linear-gradient(
+      180deg,
+      var(--shelf-face) 0%,
+      var(--shelf-mid) 46%,
+      var(--shelf-deep) 88%,
+      var(--shelf-dark) 100%
+    );
   box-shadow:
-    0 1px 0 rgba(214, 180, 128, 0.16) inset,
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
     0 12px 20px rgba(3, 6, 12, 0.5);
+}
+
+/* Top plane — the surface the volume actually stands on. Inset from the front
+   face on both sides so the board reads as a solid seen slightly from above
+   rather than as a highlight stripe, and it carries the CONTACT SHADOW as a
+   second background layer. Keeping the shadow here rather than on the book is
+   what lets the volume lift on hover while its shadow stays on the shelf. */
+.academy-hub-shelf-slab::after {
+  content: "";
+  position: absolute;
+  left: 0.7cqw;
+  right: 0.7cqw;
+  top: calc(var(--shelf-slab) * -0.34);
+  height: calc(var(--shelf-slab) * 0.42);
+  border-radius: 1px 1px 0 0;
+  background-image:
+    radial-gradient(
+      ellipse 42% 150% at 50% 100%,
+      rgba(2, 5, 10, 0.72) 0%,
+      rgba(2, 5, 10, 0.34) 46%,
+      transparent 74%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 238, 208, 0.05) 0 1px,
+      transparent 1px 7px,
+      rgba(0, 0, 0, 0.04) 7px 8px,
+      transparent 8px 19px
+    ),
+    linear-gradient(180deg, #967048 0%, var(--shelf-lit) 40%, #6a4d2f 100%);
+  box-shadow: inset 0 1px 0 rgba(232, 205, 152, 0.2);
+}
+
+/* Ambient occlusion in the crease where the top plane meets the front face —
+   a thin dark line, which is the cheapest possible "these are two planes". */
+.academy-hub-shelf-slab::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(var(--shelf-slab) * 0.22);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, transparent 100%);
 }
 
 /* The base board carries the whole case, so it is thicker and throws more. */
@@ -7708,24 +7806,6 @@ html.high-contrast * { text-shadow: none !important; }
   height: calc(var(--shelf-slab) * 1.5);
   bottom: calc(var(--shelf-slab) * -1);
   box-shadow:
-    0 1px 0 rgba(214, 180, 128, 0.16) inset,
+    inset 0 -1px 0 rgba(0, 0, 0, 0.65),
     0 18px 26px rgba(3, 6, 12, 0.58);
-}
-
-/* Contact shadow: the volume standing on the board. Painted on the slab
-   rather than on the book, so it stays put while the book lifts on hover. */
-.academy-hub-shelf-slab::before {
-  content: "";
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  top: calc(var(--shelf-slab) * -0.55);
-  height: calc(var(--shelf-slab) * 0.8);
-  background: radial-gradient(
-    ellipse at 50% 100%,
-    rgba(2, 5, 10, 0.62) 0%,
-    rgba(2, 5, 10, 0.28) 52%,
-    transparent 78%
-  );
-  filter: blur(2px);
 }

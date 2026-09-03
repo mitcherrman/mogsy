@@ -7,8 +7,16 @@
  *
  * The books read as four objects hanging in the painted library; this gives
  * the left pair something to stand on. It is coded geometry, not an art
- * asset: CSS gradients and shadows only, so silhouette, scale and placement
- * can be judged before anyone commits to a wood texture.
+ * asset: CSS gradients and shadows only — no wood texture file proved
+ * necessary. Each board is a solid with a lit top plane, a front face and a
+ * dark underside; grain runs along the length of every piece; and the contact
+ * shadow lives on the board's top plane so it stays on the shelf when a
+ * volume lifts on hover.
+ *
+ * There is no back panel. The first pass had one and it read as a flat dark
+ * rectangle over the painted library rather than as a recess; the owner
+ * preferred the open case, so the library shows between and behind the
+ * volumes and the uprights and boards carry the structure alone.
  *
  * Layering (see the z-order in LolHub): the shelf paints BEHIND the books and
  * is `aria-hidden` + `pointer-events-none`, so it can never take a click, a
@@ -30,11 +38,6 @@ export default function AcademyHubShelf() {
       aria-hidden
       className="academy-hub-shelf pointer-events-none absolute inset-0 z-0 flex flex-col gap-y-[clamp(2px,0.8vh,12px)] [container-type:inline-size]"
     >
-      {/* Shadowed recess behind the volumes — reads as the inside of the
-          case. Kept inside the posts so the painted library still shows
-          between the shelf and the viewport edge. */}
-      <div className="academy-hub-shelf-back" />
-
       {/* The two uprights. They flank the books and overhang the stack top
           and bottom, which is what makes the pair read as ONE piece of
           furniture instead of two separate ledges. */}
