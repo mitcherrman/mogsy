@@ -13,6 +13,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { MasteryPlayerQuestion, MasteryPlayerReveal } from "../contracts";
 import { MasteryAssetsProvider } from "./MasteryAssetsProvider";
 import { MasteryQuestionDispatch, MasteryRevealDispatch } from "../interactions/registry";
+import { toQuestionReveal } from "../interactions/toQuestionReveal";
+import { useRevealAutoAdvance } from "../interactions/revealState";
 import { humanizeFamily } from "../player/playerFormat";
 import {
   advance,
@@ -50,6 +52,19 @@ const INITIAL: State = {
   phase: "loading", sessionId: null, question: null, reveal: null,
   submittedAnswer: null, summary: null, error: null, conflict: false, results: {},
 };
+
+/**
+ * Which interaction kinds run the MODERN per-question reveal.
+ *
+ * `legacy_combat` is excluded deliberately: it has combat before/after state to
+ * show and keeps its existing separate reveal screen with its manual Next
+ * button, pending its own audit. Everything else — atomic recall, comparison,
+ * and any future modern kind added to the dispatcher — reveals in place and
+ * advances itself.
+ */
+function isModernInteraction(question: MasteryPlayerQuestion | null): boolean {
+  return question !== null && question.interactionKind !== "legacy_combat";
+}
 
 /** Record a revealed step's backend-authoritative outcome for the review. */
 function withResult(results: Record<number, StepResult>, reveal: MasteryPlayerReveal | null) {
@@ -157,6 +172,25 @@ export function MasteryPlayerLive({
     } catch (e) { fail(e); }
   }, [s.sessionId, s.reveal, fail]);
 
+  // AUTO-ADVANCE. One timer per reveal, armed on the reveal's own sequence
+  // index. A `null` key disarms it, which is how every non-reveal phase and
+  // every legacy-combat reveal (which keeps its Next button) is spelled — so
+  // a duplicate poll, a re-render or a resync can never schedule a second
+  // advance, and a timer armed for an older question is dropped rather than
+  // advancing a newer one.
+  //
+  // A RELOAD landing directly in the persisted reveal phase is the same case:
+  // `boot()` restores `phase: "reveal"` from the server, the key becomes that
+  // step's index, and the timer arms on mount. The answer is never resubmitted
+  // — only `advance` is called, which is the same idempotent action the manual
+  // Next button called.
+  const modernReveal = s.phase === "reveal" && isModernInteraction(s.question)
+    ? s.reveal : null;
+  useRevealAutoAdvance(
+    modernReveal ? modernReveal.sequenceIndex : null,
+    onNext,
+  );
+
   const restart = () => { const c = new AbortController(); abortRef.current = c; boot(c.signal); };
 
   let body: JSX.Element;
@@ -181,16 +215,23 @@ export function MasteryPlayerLive({
             This step was already answered — showing the recorded result.
           </div>
         )}
-        {(s.phase === "question" || s.phase === "submitting") && s.question && (
+        {(s.phase === "question" || s.phase === "submitting"
+          || (s.phase === "reveal" && modernReveal)) && s.question && (
           <MasteryQuestionDispatch
             key={s.question.sequenceIndex}
             question={s.question}
             total={s.question.totalSteps}
             submitting={s.phase === "submitting"}
             onSubmit={onSubmit}
+            // The question stays mounted through its own reveal — same
+            // component, same layout, now locked and coloured. There is no
+            // separate reveal screen and no Next button on this path.
+            reveal={modernReveal && s.question
+              ? toQuestionReveal(s.question, modernReveal, s.submittedAnswer)
+              : null}
           />
         )}
-        {s.phase === "reveal" && s.question && s.reveal && (
+        {s.phase === "reveal" && s.question && s.reveal && !modernReveal && (
           <MasteryRevealDispatch
             key={`reveal-${s.reveal.sequenceIndex}`}
             question={s.question}

@@ -37,6 +37,7 @@ import { AtomicRecallQuestionView } from "./AtomicRecallQuestionView";
 import { AtomicRecallRevealView } from "./AtomicRecallRevealView";
 import { ComparisonQuestionView } from "./ComparisonQuestionView";
 import { ComparisonRevealView } from "./ComparisonRevealView";
+import type { MasteryQuestionReveal } from "./revealState";
 
 export class MasteryUnsupportedInteractionError extends Error {
   readonly interactionKind: string;
@@ -70,6 +71,17 @@ export interface MasteryQuestionDispatchProps {
   readonly total: number;
   readonly submitting: boolean;
   readonly onSubmit: (answer: PlayerAnswer) => void;
+  /**
+   * In-place reveal for a MODERN interaction (`atomic_recall` /
+   * `comparison_left_right`): the question stays mounted and renders its own
+   * graded state rather than being swapped for a separate reveal screen.
+   *
+   * `legacy_combat` ignores it entirely and keeps its existing two-screen
+   * question -> `MasteryRevealView` flow, which this task deliberately does
+   * not touch — that path has its own combat before/after state to show and is
+   * scheduled for a separate audit.
+   */
+  readonly reveal?: MasteryQuestionReveal | null;
 }
 
 /** Dispatches the question screen by `question.interactionKind`. */
@@ -78,6 +90,7 @@ export function MasteryQuestionDispatch({
   total,
   submitting,
   onSubmit,
+  reveal = null,
 }: MasteryQuestionDispatchProps) {
   const kind: MasteryInteractionKind = question.interactionKind;
   switch (kind) {
@@ -97,6 +110,7 @@ export function MasteryQuestionDispatch({
           total={total}
           submitting={submitting}
           onSubmit={onSubmit}
+          reveal={reveal}
         />
       );
     case "comparison_left_right":
@@ -106,6 +120,7 @@ export function MasteryQuestionDispatch({
           total={total}
           submitting={submitting}
           onSubmit={onSubmit}
+          reveal={reveal}
         />
       );
     default: {

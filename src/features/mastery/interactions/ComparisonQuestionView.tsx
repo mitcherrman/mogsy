@@ -25,6 +25,8 @@ import { MasteryChampionPortrait } from "../player/MasteryChampionPortrait";
 import { MasteryPatchBadge } from "../player/MasteryPatchBadge";
 import { MasteryProgress } from "../player/MasteryProgress";
 import { formatComparisonPrompt } from "./formatComparisonSemantics";
+import { MasteryInlineReveal } from "./MasteryInlineReveal";
+import type { MasteryQuestionReveal } from "./revealState";
 
 export class MasteryComparisonContractError extends Error {
   constructor(message: string) {
@@ -41,11 +43,14 @@ export function ComparisonQuestionView({
   total,
   submitting,
   onSubmit,
+  reveal = null,
 }: {
   question: MasteryPlayerQuestion;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
+  /** In-place reveal for THIS comparison — see `AtomicRecallQuestionView`. */
+  reveal?: MasteryQuestionReveal | null;
 }) {
   if (!question.comparisonSemantics) {
     throw new MasteryComparisonContractError(
@@ -135,23 +140,34 @@ export function ComparisonQuestionView({
         value={choice}
         onSelect={setChoice}
         disabled={submitting}
+        reveal={reveal}
         ariaLabel="Comparison choices"
       />
 
-      {question.hintAvailable && (
+      {question.hintAvailable && reveal === null && (
         <p className="text-xs text-muted-foreground">A hint is available for this question.</p>
       )}
 
-      <div className="flex items-center gap-3">
-        <Button onClick={doSubmit} disabled={!canSubmit} data-testid="mastery-submit-button">
-          Submit answer
-        </Button>
-        {submitting && (
-          <span role="status" aria-live="polite" className="text-sm text-muted-foreground">
-            Submitting your answer…
-          </span>
-        )}
-      </div>
+      {reveal !== null ? (
+        // The winner and, where the backend's frozen explanation states them,
+        // both underlying values — passed through, never recomputed.
+        <MasteryInlineReveal
+          correct={reveal.correct}
+          answerLabel={reveal.answerLabel}
+          explanation={reveal.explanation}
+        />
+      ) : (
+        <div className="flex items-center gap-3">
+          <Button onClick={doSubmit} disabled={!canSubmit} data-testid="mastery-submit-button">
+            Submit answer
+          </Button>
+          {submitting && (
+            <span role="status" aria-live="polite" className="text-sm text-muted-foreground">
+              Submitting your answer…
+            </span>
+          )}
+        </div>
+      )}
     </section>
   );
 }

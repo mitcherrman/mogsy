@@ -58,6 +58,21 @@ describe("MasteryQuestionDispatch", () => {
     expect(screen.queryByTestId("mastery-atomic-recall-question")).toBeNull();
   });
 
+  it("ignores the modern `reveal` prop entirely for legacy_combat", () => {
+    // Legacy combat keeps its two-screen flow and its manual Next button; the
+    // per-question reveal is a modern-path feature and this path is scheduled
+    // for a separate audit, so passing the prop must change nothing here.
+    render(
+      <MasteryQuestionDispatch
+        question={legacyQuestion} total={6} submitting={false} onSubmit={vi.fn()}
+        reveal={{ correct: true, correctValue: "1", selectedValue: "1",
+                  answerLabel: "1", explanation: "x" }}
+      />,
+    );
+    expect(screen.getByTestId("mastery-matchup-header")).toBeTruthy();
+    expect(screen.queryByTestId("mastery-inline-reveal")).toBeNull();
+  });
+
   it("fails explicitly on an unsupported/future interaction kind", () => {
     const future = { ...recallQuestion, interactionKind: "scenario_derived" } as unknown as MasteryPlayerQuestion;
     expect(() =>

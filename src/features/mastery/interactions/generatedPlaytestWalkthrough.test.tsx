@@ -23,6 +23,7 @@ import {
   CAPTURED_MATCHUP_RUN,
   type CapturedRun,
 } from "./capturedPlaytestPayloads";
+import { MASTERY_REVEAL_DURATION_MS } from "./revealState";
 
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({}),
@@ -125,12 +126,36 @@ async function answerCurrentStep(run: CapturedRun, index: number) {
   await click("mastery-submit-button");
 }
 
+/**
+ * Wait out the in-place reveal and let it advance ITSELF.
+ *
+ * There is no Next button on the modern path any more, so the walkthrough
+ * advances the clock rather than clicking: this is the flow the player
+ * actually gets, driven the way they experience it.
+ */
+async function autoAdvance() {
+  await act(async () => {
+    vi.advanceTimersByTime(MASTERY_REVEAL_DURATION_MS);
+  });
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+/** The in-place reveal for the question currently on screen. */
+async function currentReveal() {
+  return screen.findByTestId("mastery-inline-reveal");
+}
+
 beforeEach(() => {
   vi.unstubAllGlobals();
+  vi.useFakeTimers({ shouldAdvanceTime: true });
 });
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -180,13 +205,22 @@ describe("Ahri Champion Mastery — generated playtest", () => {
 
       await answerCurrentStep(CAPTURED_CHAMPION_RUN, i);
 
-      const reveal = await screen.findByTestId("mastery-atomic-recall-reveal");
-      expect(within(reveal).getByTestId("mastery-correctness"))
-        .toHaveAttribute("data-correct", "true");
-      expect(within(reveal).getByTestId("mastery-explanation").textContent)
+      // The QUESTION is still on screen — the reveal happens in place.
+      expect(screen.getByTestId("mastery-atomic-recall-question")).toBeTruthy();
+      const reveal = await currentReveal();
+      expect(reveal).toHaveAttribute("data-correct", "true");
+      expect(within(reveal).getByTestId("mastery-reveal-explanation").textContent)
         .toBe(String(CAPTURED_CHAMPION_RUN.steps[i].reveal.explanation));
+      // No manual Next exists on this path.
+      expect(screen.queryByTestId("mastery-next-button")).toBeNull();
+      // The chosen (correct) option is outlined green and the group is locked.
+      const chosen = String(CAPTURED_CHAMPION_RUN.steps[i].reveal.correct_answer);
+      expect(screen.getByTestId(`mastery-choice-row-${chosen}`))
+        .toHaveAttribute("data-tone", "correct");
+      expect(screen.getByTestId("mastery-choice-input"))
+        .toHaveAttribute("data-revealing", "true");
 
-      await click("mastery-next-button");
+      await autoAdvance();
       await waitFor(() => expect(backend.currentIndex()).toBe(i + 1));
     }
     expect(backend.currentIndex()).toBe(5);
@@ -204,17 +238,17 @@ describe("Ahri Champion Mastery — generated playtest", () => {
     for (let i = 0; i <= roundedIndex; i += 1) {
       await screen.findByTestId("mastery-atomic-recall-question");
       await answerCurrentStep(CAPTURED_CHAMPION_RUN, i);
-      const reveal = await screen.findByTestId("mastery-atomic-recall-reveal");
+      const reveal = await currentReveal();
       if (i === roundedIndex) {
-        const text = within(reveal).getByTestId("mastery-explanation").textContent ?? "";
+        const text = within(reveal).getByTestId("mastery-reveal-explanation").textContent ?? "";
         expect(text).toMatch(/\d+\.\d+/);          // the canonical decimal
         expect(text).toContain("rounds to");        // and it says so
         // The graded/displayed answer is the clean whole number.
-        expect(within(reveal).getByTestId("mastery-correct-answer").textContent?.trim())
+        expect(within(reveal).getByTestId("mastery-reveal-answer").textContent?.trim())
           .toBe(String(CAPTURED_CHAMPION_RUN.steps[i].reveal.correct_answer));
         break;
       }
-      await click("mastery-next-button");
+      await autoAdvance();
     }
   });
 
@@ -233,8 +267,8 @@ describe("Ahri Champion Mastery — generated playtest", () => {
     for (let i = 0; i < CAPTURED_CHAMPION_RUN.steps.length; i += 1) {
       await screen.findByTestId("mastery-atomic-recall-question");
       await answerCurrentStep(CAPTURED_CHAMPION_RUN, i);
-      const reveal = await screen.findByTestId("mastery-atomic-recall-reveal");
-      await click("mastery-next-button");
+      await currentReveal();
+      await autoAdvance();
     }
     await screen.findByTestId("mastery-player-completion");
   }, 30000);
@@ -287,18 +321,18 @@ describe("Ahri vs Syndra Matchup Mastery — generated playtest", () => {
 
       await answerCurrentStep(CAPTURED_MATCHUP_RUN, i);
 
-      const revealTestid = kind === "comparison_left_right"
-        ? "mastery-comparison-reveal"
-        : "mastery-atomic-recall-reveal";
-      const reveal = await screen.findByTestId(revealTestid);
-      expect(within(reveal).getByTestId("mastery-correctness"))
-        .toHaveAttribute("data-correct", "true");
-      expect(within(reveal).getByTestId("mastery-explanation").textContent)
+      // The question stays on screen through its own reveal, whichever
+      // modern interaction it is.
+      expect(screen.getByTestId(testid)).toBeTruthy();
+      const reveal = await currentReveal();
+      expect(reveal).toHaveAttribute("data-correct", "true");
+      expect(within(reveal).getByTestId("mastery-reveal-explanation").textContent)
         .toBe(String(step.reveal.explanation));
+      expect(screen.queryByTestId("mastery-next-button")).toBeNull();
       if (kind === "comparison_left_right") {
         seenWinners.add(String(step.reveal.correct_answer));
       }
-      await click("mastery-next-button");
+      await autoAdvance();
     }
 
     await screen.findByTestId("mastery-player-completion");

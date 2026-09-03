@@ -17,6 +17,8 @@ import { MasteryChampionPortrait } from "../player/MasteryChampionPortrait";
 import { MasteryPatchBadge } from "../player/MasteryPatchBadge";
 import { MasteryProgress } from "../player/MasteryProgress";
 import { formatRecallPrompt } from "./formatPromptSemantics";
+import { MasteryInlineReveal } from "./MasteryInlineReveal";
+import type { MasteryQuestionReveal } from "./revealState";
 
 export class MasteryAtomicRecallContractError extends Error {
   constructor(message: string) {
@@ -30,11 +32,20 @@ export function AtomicRecallQuestionView({
   total,
   submitting,
   onSubmit,
+  reveal = null,
 }: {
   question: MasteryPlayerQuestion;
   total: number;
   submitting: boolean;
   onSubmit: (answer: PlayerAnswer) => void;
+  /**
+   * In-place reveal for THIS question, once the server has graded it. The
+   * question stays on screen; the input locks, the options take their green /
+   * red / muted tones, and the factual line appears beneath them. `null` (the
+   * default) is the ordinary answerable state, so every existing caller is
+   * unchanged.
+   */
+  reveal?: MasteryQuestionReveal | null;
 }) {
   if (!question.promptSemantics) {
     throw new MasteryAtomicRecallContractError("atomic_recall question is missing prompt_semantics");
@@ -77,6 +88,7 @@ export function AtomicRecallQuestionView({
     headingRef.current?.focus();
   }, [question.sequenceIndex]);
 
+  const revealing = reveal !== null;
   const [numeric, setNumeric] = useState("");
   const [choice, setChoice] = useState<string | null>(null);
   const prompt = formatRecallPrompt(ps);
@@ -135,32 +147,43 @@ export function AtomicRecallQuestionView({
           value={choice}
           onSelect={setChoice}
           disabled={submitting}
+          reveal={reveal}
           ariaLabel="Answer choices"
         />
       ) : (
         <MasteryNumericInput
           constraints={constraints!}
-          value={numeric}
+          value={revealing ? String(reveal.selectedValue ?? numeric) : numeric}
           onValueChange={setNumeric}
           onSubmitRequested={doSubmit}
-          disabled={submitting}
+          disabled={submitting || revealing}
         />
       )}
 
-      {question.hintAvailable && (
+      {question.hintAvailable && !revealing && (
         <p className="text-xs text-muted-foreground">A hint is available for this question.</p>
       )}
 
-      <div className="flex items-center gap-3">
-        <Button onClick={doSubmit} disabled={!canSubmit} data-testid="mastery-submit-button">
-          Submit answer
-        </Button>
-        {submitting && (
-          <span role="status" aria-live="polite" className="text-sm text-muted-foreground">
-            Submitting your answer…
-          </span>
-        )}
-      </div>
+      {revealing ? (
+        // The reveal replaces the submit control, not the question: there is
+        // no Next button because advancing is automatic.
+        <MasteryInlineReveal
+          correct={reveal.correct}
+          answerLabel={reveal.answerLabel}
+          explanation={reveal.explanation}
+        />
+      ) : (
+        <div className="flex items-center gap-3">
+          <Button onClick={doSubmit} disabled={!canSubmit} data-testid="mastery-submit-button">
+            Submit answer
+          </Button>
+          {submitting && (
+            <span role="status" aria-live="polite" className="text-sm text-muted-foreground">
+              Submitting your answer…
+            </span>
+          )}
+        </div>
+      )}
     </section>
   );
 }
