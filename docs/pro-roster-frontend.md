@@ -25,11 +25,13 @@ neighbouring chunks on hover/idle.
 
 ### `/lol/pro` is a different thing and must stay that way
 
-- **`/lol/pro`** — the **paid** Mogzy Pro subscription/product page (`LolPro`).
+- **`/lol/premium`** — the **paid** Mogzy Premium subscription/product page
+  (`LolPremium`). Renamed from `/lol/pro` on 2026-09-04; `/lol/pro` and `/pro`
+  are redirects. See `docs/naming-premium-vs-pro-play.md`.
 - **`/lol/docs/pro/**`** — **public** esports data and documentation.
 
 `App.proRosterRoutes.test.ts` pins this: it asserts `/lol/pro` still renders
-`LolPro`, that no roster route lives under `/lol/pro`, and that no roster route
+`LolPremium`, that no roster route lives under `/lol/premium`, and that no roster route
 is wrapped in `ProtectedRoute`/`AdminRoute`.
 
 ---

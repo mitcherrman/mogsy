@@ -117,6 +117,6 @@ describe("LolHistory", () => {
     await waitFor(() =>
       expect(screen.getByText(/Free accounts save your last 10 results/)).toBeTruthy(),
     );
-    expect(screen.getByRole("link", { name: /Unlock Full History/ }).getAttribute("href")).toBe("/lol/pro");
+    expect(screen.getByRole("link", { name: /Unlock Full History/ }).getAttribute("href")).toBe("/lol/premium");
   });
 });

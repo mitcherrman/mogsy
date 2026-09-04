@@ -6,7 +6,7 @@
  * testable. `AdSlot` builds the context from real product state and route.
  *
  * Commercial rules (see docs/advertising.md):
- *  - Pro users never see third-party ads (fail-closed while entitlement is
+ *  - Premium users never see third-party ads (fail-closed while entitlement is
  *    unresolved for a signed-in user).
  *  - Active quiz questions and active Ranked gameplay are always ad-free.
  *  - Auth, checkout/billing, admin, developer, policy, and broadcast-studio
@@ -19,7 +19,7 @@
 import { AD_PLACEMENTS, isKnownPlacement, type AdPlacement } from "./placements";
 import type { AdsConfig } from "./config";
 
-/** Pro entitlement as exposed by SitewideThemeContext.proStatus. */
+/** Premium entitlement as exposed by SitewideThemeContext.proStatus. */
 export type ProStatus = "unknown" | "pro" | "free";
 
 export interface AdPolicyContext {
@@ -85,7 +85,8 @@ export function classifyBlockedRoute(route: string): RouteCategory {
     starts("/auth") ||
     starts("/reset-password") ||
     starts("/shop") ||
-    starts("/lol/pro") || // Pro checkout/upsell
+    starts("/lol/premium") || // Premium checkout/upsell
+    starts("/lol/pro") || // legacy Premium URL; redirects, but never ad-bearing
     starts("/settings") // account management
   ) {
     return "auth_or_checkout";
@@ -118,15 +119,15 @@ export function resolveAdPolicy(ctx: AdPolicyContext): AdPolicyDecision {
   const blocked = classifyBlockedRoute(ctx.route);
   if (blocked) return { kind: "suppressed", reason: blocked };
 
-  // Fail-closed entitlement: a signed-in user with unresolved Pro status
-  // sees nothing, so Pro users never get an ad flash while loading.
+  // Fail-closed entitlement: a signed-in user with unresolved Premium status
+  // sees nothing, so Premium users never get an ad flash while loading.
   if (ctx.isSignedIn && ctx.proStatus === "unknown") {
     return { kind: "suppressed", reason: "entitlement_loading" };
   }
 
   const isPro = ctx.proStatus === "pro";
 
-  // Third-party: never for Pro, requires flag + placement + explicit consent.
+  // Third-party: never for Premium, requires flag + placement + explicit consent.
   if (
     !isPro &&
     config.thirdPartyAdsEnabled &&
@@ -137,7 +138,7 @@ export function resolveAdPolicy(ctx: AdPolicyContext): AdPolicyDecision {
   }
 
   // House promotions: internal product recommendations only. Suppressed for
-  // Pro by default (per-creative overrides are decided at render time via
+  // Premium by default (per-creative overrides are decided at render time via
   // `showToPro`; the policy layer only grants house *eligibility*).
   if (config.houseAdsEnabled && meta.allowHouse) {
     return { kind: "house" };

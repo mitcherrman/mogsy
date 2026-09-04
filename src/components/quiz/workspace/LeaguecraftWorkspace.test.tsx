@@ -74,7 +74,7 @@ const LOCKED_BANK: MissedQuestionsResponse = {
   ok: true,
   is_pro: false,
   locked: true,
-  upsell_message: "Upgrade to Mogsy Pro to review every question you missed.",
+  upsell_message: "Upgrade to Mogzy Premium to review every question you missed.",
   results: [],
 };
 
@@ -292,7 +292,7 @@ describe("MALT — History", () => {
     );
     expect(
       within(screen.getByTestId("study-history-upsell")).getByRole("link").getAttribute("href"),
-    ).toBe("/lol/pro");
+    ).toBe("/lol/premium");
   });
 
   it("says so when the backend could not resolve entitlement at all", () => {
@@ -468,7 +468,7 @@ describe("MALT — Review", () => {
     expect(screen.getByText(/Your answer: Sunfire Aegis/)).toBeTruthy();
     expect(screen.getByText(/Correct answer: Infinity Edge/)).toBeTruthy();
     expect(screen.getByText("Infinity Edge uses B.F. Sword.")).toBeTruthy();
-    expect(screen.queryByText(/Upgrade to Mogsy Pro/)).toBeNull();
+    expect(screen.queryByText(/Upgrade to Mogzy Premium/)).toBeNull();
   });
 
   it("keeps the Free paywall exactly as it was, with no content leaked", async () => {
@@ -477,8 +477,8 @@ describe("MALT — Review", () => {
     openReview();
     await waitFor(() => expect(screen.getByTestId("missed-questions-locked")).toBeTruthy());
     expect(
-      screen.getByRole("link", { name: /Upgrade to Mogsy Pro/ }).getAttribute("href"),
-    ).toBe("/lol/pro");
+      screen.getByRole("link", { name: /Upgrade to Mogzy Premium/ }).getAttribute("href"),
+    ).toBe("/lol/premium");
     expect(screen.queryByTestId("missed-question")).toBeNull();
     expect(screen.getByTestId("missed-questions-locked").textContent).toContain(
       "Free players can review missed questions on each quiz’s results screen.",
@@ -490,7 +490,7 @@ describe("MALT — Review", () => {
     renderHub();
     openReview();
     await waitFor(() => expect(screen.getByTestId("missed-questions-error")).toBeTruthy());
-    expect(screen.queryByText(/Upgrade to Mogsy Pro/)).toBeNull();
+    expect(screen.queryByText(/Upgrade to Mogzy Premium/)).toBeNull();
   });
 
   it("pages the bank rather than capping it", async () => {

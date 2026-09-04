@@ -483,7 +483,7 @@ export default function AdminDemo() {
           </div>
           <div className="flex items-center gap-1.5 col-span-2">
             <Switch checked={card.isPro} onCheckedChange={v => setCard(prev => ({ ...prev, isPro: v }))} />
-            <Label className="text-xs">Pro Badge</Label>
+            <Label className="text-xs">Premium Badge</Label>
           </div>
         </div>
       )}

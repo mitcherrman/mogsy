@@ -66,11 +66,12 @@ describe("ProPlayHub", () => {
   });
 
   it("is not the subscription page", () => {
-    // /lol/pro is the paid-plan upsell; this area must never link there or
+    // /lol/premium is the paid-plan upsell; this area must never link there or
     // borrow its language.
     renderHub();
     expect(screen.queryByText(/subscribe|upgrade|per month/i)).toBeNull();
     for (const link of screen.getAllByRole("link")) {
+      expect(link.getAttribute("href")).not.toBe("/lol/premium");
       expect(link.getAttribute("href")).not.toBe("/lol/pro");
     }
   });

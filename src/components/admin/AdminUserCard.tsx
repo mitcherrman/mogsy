@@ -75,7 +75,7 @@ export function AdminUserCard({ profile, onFriendshipCompleted, botActions }: Pr
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="truncate text-sm font-semibold text-foreground">{name}</span>
-            {profile.isPro && <Tag tone="primary">Pro</Tag>}
+            {profile.isPro && <Tag tone="primary">Premium</Tag>}
             {profile.isBot && <Tag testId={`tag-bot-${profile.id}`}>Bot</Tag>}
             {profile.isBot && (
               <Tag

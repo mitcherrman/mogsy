@@ -244,7 +244,7 @@ export default function AdminCustomLinks() {
                 </div>
                 <div className="flex items-center gap-2 pt-5">
                   <Switch checked={form.grant_pro} onCheckedChange={v => setForm(f => ({ ...f, grant_pro: v }))} />
-                  <Label className="text-xs">Grant Pro</Label>
+                  <Label className="text-xs">Grant Premium</Label>
                 </div>
               </div>
 
@@ -295,7 +295,7 @@ export default function AdminCustomLinks() {
                           {link.recommended_categories.length > 0 && <><span className="text-muted-foreground">Categories:</span><span>{link.recommended_categories.join(", ")}</span></>}
                           {link.recommended_league_ids.length > 0 && <><span className="text-muted-foreground">Featured Leagues:</span><span>{link.recommended_league_ids.length} leagues</span></>}
                           {link.grant_diamonds > 0 && <><span className="text-muted-foreground">Diamonds:</span><span>{link.grant_diamonds}</span></>}
-                          {link.grant_pro && <><span className="text-muted-foreground">Pro:</span><span className="text-primary font-bold">Yes</span></>}
+                          {link.grant_pro && <><span className="text-muted-foreground">Premium:</span><span className="text-primary font-bold">Yes</span></>}
                           <span className="text-muted-foreground">Theme:</span><span>{link.default_theme}</span>
                           <span className="text-muted-foreground">Animation:</span><span>{link.default_swipe_animation}</span>
                         </div>

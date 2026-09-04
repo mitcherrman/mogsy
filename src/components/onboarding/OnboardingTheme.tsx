@@ -58,7 +58,7 @@ export default function OnboardingTheme({ chosenTheme, setChosenTheme, onFinish,
         Pick <span className="font-bold text-primary">1 premium theme</span> to try for free.
       </p>
       <p className="text-muted-foreground text-xs mb-6 flex items-center gap-1">
-        <Crown className="h-3 w-3 text-yellow-500" /> Pro users unlock all themes
+        <Crown className="h-3 w-3 text-yellow-500" /> Premium users unlock all themes
       </p>
 
       <div className="flex flex-wrap justify-center gap-4 mb-8">

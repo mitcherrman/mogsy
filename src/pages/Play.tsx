@@ -736,7 +736,7 @@ export default function Play() {
                     >
                       <span>{anim.icon}</span>
                       <span className="flex-1 text-xs">{anim.name}</span>
-                      {isProOnly && !isPro && <span className="text-[8px] bg-muted rounded px-1 py-0.5 font-bold">PRO</span>}
+                      {isProOnly && !isPro && <span className="text-[8px] bg-muted rounded px-1 py-0.5 font-bold">PREMIUM</span>}
                       {selected && <span className="text-primary text-xs">✓</span>}
                     </button>
                   );

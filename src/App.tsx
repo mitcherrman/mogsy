@@ -14,6 +14,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import RequireRankedTutorial from "./components/RequireRankedTutorial";
 import AdminRoute from "./components/AdminRoute";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
+import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
+import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import TeamSimErrorBoundary from "@/components/combat-lab/TeamSimErrorBoundary";
@@ -90,7 +92,7 @@ const ProRosterTeams = R.ProRosterTeams.Component;
 const ProRosterTeamProfile = R.ProRosterTeamProfile.Component;
 const LolHistory = R.LolHistory.Component;
 const LolMissedQuestions = R.LolMissedQuestions.Component;
-const LolPro = R.LolPro.Component;
+const LolPremium = R.LolPremium.Component;
 const ProPlayHub = R.ProPlayHub.Component;
 const ProPlayQuiz = R.ProPlayQuiz.Component;
 const ProPlayGraphs = R.ProPlayGraphs.Component;
@@ -539,7 +541,7 @@ const App = () => (
                   <Route path="/lol/docs/pro/years/:year" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProYear /></Suspense>} />
                   <Route path="/lol/docs/pro/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProChampionIndex /></Suspense>} />
                   <Route path="/lol/docs/pro/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsProChampionDetail /></Suspense>} />
-                  {/* Public roster wiki. Distinct from the paid /lol/pro product page below. */}
+                  {/* Public roster wiki. Distinct from the paid /lol/premium product page below. */}
                   <Route path="/lol/docs/pro/rosters" element={<Suspense fallback={<RouteFallback />}><ProRosterLanding /></Suspense>} />
                   <Route path="/lol/docs/pro/players" element={<Suspense fallback={<RouteFallback />}><ProRosterPlayers /></Suspense>} />
                   <Route path="/lol/docs/pro/players/:lpPage" element={<Suspense fallback={<RouteFallback />}><ProRosterPlayerProfile /></Suspense>} />
@@ -548,9 +550,16 @@ const App = () => (
                   <Route path="/lol/dev-changelog" element={<Suspense fallback={<RouteFallback />}><LolDevChangelog /></Suspense>} />
                   <Route path="/lol/history" element={<Suspense fallback={<RouteFallback />}><LolHistory /></Suspense>} />
                   <Route path="/lol/missed-questions" element={<Suspense fallback={<RouteFallback />}><LolMissedQuestions /></Suspense>} />
-                  <Route path="/lol/pro" element={<Suspense fallback={<RouteFallback />}><LolPro /></Suspense>} />
+                  {/* Mogzy Premium — the paid subscription. Renamed from
+                      /lol/pro so "Pro" means Pro Play and nothing else; the
+                      old URL and the /pro shorthand redirect here, query
+                      string intact, so Stripe returns still land. */}
+                  <Route path="/lol/premium" element={<Suspense fallback={<RouteFallback />}><LolPremium /></Suspense>} />
+                  {LEGACY_PREMIUM_ROUTES.map((path) => (
+                    <Route key={path} path={path} element={<LegacyPremiumRedirect />} />
+                  ))}
                   {/* Pro Play — professional-play content. Distinct from
-                      /lol/pro above, which is the subscription page. */}
+                      /lol/premium above, which is the subscription page. */}
                   <Route path="/lol/pro-play" element={<Suspense fallback={<RouteFallback />}><ProPlayHub /></Suspense>} />
                   <Route path="/lol/pro-play/quiz" element={<Suspense fallback={<RouteFallback />}><ProPlayQuiz /></Suspense>} />
                   {/* GRAPH1 as a product surface. /dev/graph1 stays as the

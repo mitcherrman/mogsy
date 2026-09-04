@@ -206,7 +206,7 @@ describe("the two sources stay independent", () => {
   it("a Free account sees the MISSED paywall but keeps OWNED", async () => {
     getMissedQuestions.mockResolvedValue({
       ok: true, is_pro: false, locked: true, results: [],
-      upsell_message: "Upgrade to Mogsy Pro to review every question you missed.",
+      upsell_message: "Upgrade to Mogzy Premium to review every question you missed.",
     });
     renderHub();
     fireEvent.click(screen.getByTestId("workspace-tab-review"));

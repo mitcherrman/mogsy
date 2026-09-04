@@ -141,7 +141,7 @@ export default function AdminThemes() {
         <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
           <div>
             <Label className="text-sm font-medium">Sitewide Theme Application</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Allow themes to override the entire app appearance (Pro feature)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Allow themes to override the entire app appearance (Premium feature)</p>
           </div>
           <Switch
             checked={config.sitewide_enabled}
@@ -174,7 +174,7 @@ export default function AdminThemes() {
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-sm font-medium">Availability</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">Click to cycle: Free → Pro → Disabled</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Click to cycle: Free → Premium → Disabled</p>
             </div>
             <button
               onClick={() => cycleThemeStatus("cycle")}
@@ -184,7 +184,7 @@ export default function AdminThemes() {
                 "bg-destructive/20 text-destructive"
               }`}
             >
-              {cycleStatus === "free" ? "Everyone" : cycleStatus === "pro" ? "Pro Only" : "Hidden"}
+              {cycleStatus === "free" ? "Everyone" : cycleStatus === "pro" ? "Premium Only" : "Hidden"}
             </button>
           </div>
 
@@ -225,7 +225,7 @@ export default function AdminThemes() {
       {/* Theme availability grid */}
       <div className="space-y-3">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Theme Availability</h4>
-        <p className="text-xs text-muted-foreground">Click a theme to cycle: <span className="text-green-500 font-semibold">Free</span> → <span className="text-yellow-500 font-semibold">Pro Only</span> → <span className="text-destructive font-semibold">Disabled</span></p>
+        <p className="text-xs text-muted-foreground">Click a theme to cycle: <span className="text-green-500 font-semibold">Free</span> → <span className="text-yellow-500 font-semibold">Premium Only</span> → <span className="text-destructive font-semibold">Disabled</span></p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {nonDefaultThemes.map((theme) => {
             const status = getThemeStatus(theme.id);
@@ -255,7 +255,7 @@ export default function AdminThemes() {
                 <span className={`text-[10px] font-semibold uppercase tracking-wider ${
                   status === "free" ? "text-green-500" : status === "pro" ? "text-yellow-500" : "text-destructive"
                 }`}>
-                  {status === "free" ? "Everyone" : status === "pro" ? "Pro Only" : "Hidden"}
+                  {status === "free" ? "Everyone" : status === "pro" ? "Premium Only" : "Hidden"}
                 </span>
               </button>
             );
@@ -320,7 +320,7 @@ export default function AdminThemes() {
           </div>
           <div>
             <p className="text-lg font-bold text-yellow-500">{config.pro_themes.length}</p>
-            <p className="text-[10px] text-muted-foreground">Pro Themes</p>
+            <p className="text-[10px] text-muted-foreground">Premium Themes</p>
           </div>
           <div>
             <p className="text-lg font-bold text-destructive">{config.disabled_themes.length}</p>

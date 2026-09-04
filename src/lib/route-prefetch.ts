@@ -97,7 +97,7 @@ export const Routes = {
   ProRosterTeamProfile: lazyWithRetry(() => import("@/pages/lol-docs/pro-roster/ProRosterTeamProfile")),
   LolHistory: lazyWithRetry(() => import("@/pages/LolHistory")),
   LolMissedQuestions: lazyWithRetry(() => import("@/pages/LolMissedQuestions")),
-  LolPro: lazyWithRetry(() => import("@/pages/LolPro")),
+  LolPremium: lazyWithRetry(() => import("@/pages/LolPremium")),
   ProPlayHub: lazyWithRetry(() => import("@/pages/ProPlayHub")),
   ProPlayQuiz: lazyWithRetry(() => import("@/pages/ProPlayQuiz")),
   ProPlayGraphs: lazyWithRetry(() => import("@/pages/lol/ProPlayGraphs")),
@@ -151,10 +151,12 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p === "/lol/docs/pro/champions", keys: ["LeagueDocsProChampionIndex", "LeagueDocsProChampionDetail"] },
   { test: (p) => p.startsWith("/lol/docs/pro/champions/"), keys: ["LeagueDocsProChampionDetail", "LeagueDocsProChampionIndex"] },
   { test: (p) => p === "/lol/dev-changelog", keys: ["LolDevChangelog"] },
-  { test: (p) => p === "/lol/history", keys: ["LolHistory", "LolMissedQuestions", "LolPro"] },
-  { test: (p) => p === "/lol/missed-questions", keys: ["LolMissedQuestions", "LolPro"] },
-  { test: (p) => p === "/lol/pro", keys: ["LolPro"] },
-  // Pro Play (professional-play content) — unrelated to /lol/pro above,
+  { test: (p) => p === "/lol/history", keys: ["LolHistory", "LolMissedQuestions", "LolPremium"] },
+  { test: (p) => p === "/lol/missed-questions", keys: ["LolMissedQuestions", "LolPremium"] },
+  // The subscription page. /lol/pro is its legacy URL and redirects here,
+  // so warming the same chunk keeps the hop free of a white flash.
+  { test: (p) => p === "/lol/premium" || p === "/lol/pro" || p === "/pro", keys: ["LolPremium"] },
+  // Pro Play (professional-play content) — unrelated to /lol/premium above,
   // which is the subscription page.
   {
     test: (p) => p === "/lol/pro-play",

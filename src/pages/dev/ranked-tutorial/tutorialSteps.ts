@@ -347,14 +347,16 @@ export const STEPS: Record<TutorialStepId, TutorialStepDefinition> = {
     permittedEvents: ["SIMULATE_DISCONNECT", "CONTINUE", "RESTART"],
     allowBack: true,
   },
+  // The step id keeps its `pro` spelling: it is the machine's STEP_ORDER key,
+  // asserted by the tutorial machine tests. Only the wording is Premium.
   ads_pro_explanation: {
     id: "ads_pro_explanation",
-    label: "Ads & Pro",
-    title: "Ads and Pro",
+    label: "Ads & Premium",
+    title: "Ads and Premium",
     body:
-      "Free players may see ads around Ranked, but ads will not cover active timed questions. Pro removes ads. This panel is informational and does not display a live ad.",
+      "Free players may see ads around Ranked, but ads will not cover active timed questions. Premium removes ads. This panel is informational and does not display a live ad.",
     announcement:
-      "Ads and Pro. Free players may see ads around Ranked but not over active timed questions; Pro removes ads. Informational only.",
+      "Ads and Premium. Free players may see ads around Ranked but not over active timed questions; Premium removes ads. Informational only.",
     timerMode: "paused",
     permittedEvents: NAV,
     allowBack: true,

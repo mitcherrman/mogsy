@@ -241,7 +241,7 @@ function ResultRow({
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
           {player.isPro && (
-            <span className="text-[10px] font-bold uppercase tracking-wide text-primary">Pro</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-primary">Premium</span>
           )}
         </span>
       </button>

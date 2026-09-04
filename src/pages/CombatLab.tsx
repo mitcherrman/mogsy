@@ -861,11 +861,11 @@ export default function CombatLab() {
             {creditStatus.is_pro ? (
               <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#c9a84c]/40 bg-[#c9a84c]/10 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wider text-[#f0d78c]">
                 <Crown className="h-3.5 w-3.5" />
-                Pro: unlimited
+                Premium: unlimited
               </span>
             ) : creditStatus.unlimited ? (
-              /* Not Pro, but the global token requirement is switched off.
-                 Deliberately no crown and no "Pro" wording — a global policy is
+              /* Not Premium, but the global token requirement is switched off.
+                 Deliberately no crown and no "Premium" wording — a global policy is
                  not an entitlement, and must not read as one. */
               <span
                 className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] uppercase tracking-wider text-muted-foreground"
@@ -3252,12 +3252,12 @@ function InteractiveSandbox({
             <Lock className="h-7 w-7 text-[#c9a84c]" />
             <p className="max-w-md text-sm">
               {creditsGate.upsell_message ||
-                "You’ve used today’s free Combat Lab simulations. Upgrade to Mogsy Pro for unlimited Combat Lab usage."}
+                "You’ve used today’s free Combat Lab simulations. Upgrade to Mogzy Premium for unlimited Combat Lab usage."}
             </p>
             <div className="flex flex-col items-center gap-2 sm:flex-row">
               <Button asChild className="border-0 font-semibold text-[#0a1428] hover:opacity-90"
                       style={{ background: "linear-gradient(90deg, #c9a84c, #a8862f)" }}>
-                <Link to="/lol/pro">Upgrade to Mogsy Pro</Link>
+                <Link to="/lol/premium">Upgrade to Mogzy Premium</Link>
               </Button>
               <span className="text-xs text-muted-foreground">
                 Or come back tomorrow — free simulations reset daily.

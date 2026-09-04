@@ -34,7 +34,7 @@ interface Profile {
   age: number | null;
   location: string | null;
   status_message: string | null;
-  /** PT1.4: Stripe-derived entitlement only. Not the effective Pro answer. */
+  /** PT1.4: Stripe-derived entitlement only. Not the effective Premium answer. */
   is_pro: boolean | null;
   pro_grant_kind: string | null;
   pro_grant_expires_at: string | null;
@@ -478,7 +478,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     loadAuthInfo(selectedUser.user_id);
   };
 
-  // PT1.4 — grant/revoke a non-Stripe Pro entitlement. Writes only the
+  // PT1.4 — grant/revoke a non-Stripe Premium entitlement. Writes only the
   // pro_grant_* columns, through an admin-gated SECURITY DEFINER RPC that
   // records who granted it and when. Stripe state is never touched.
   const [grantKind, setGrantKind] = useState("playtest");
@@ -501,8 +501,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       _reason: kind === null ? null : (grantReason.trim() || null),
     });
     setGrantSaving(false);
-    if (error) { toast.error(error.message || "Failed to update Pro grant"); return; }
-    toast.success(kind === null ? "Pro grant revoked" : "Pro grant saved");
+    if (error) { toast.error(error.message || "Failed to update Premium grant"); return; }
+    toast.success(kind === null ? "Premium grant revoked" : "Premium grant saved");
     setSelectedUser({
       ...selectedUser,
       pro_grant_kind: kind,
@@ -780,7 +780,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>}
             {isSelectedMod && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30"><ShieldCheck className="h-3 w-3 mr-1" /> Mod</Badge>}
             {isSelectedDemo && <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30"><Film className="h-3 w-3 mr-1" /> Demo</Badge>}
-            {isEffectivePro(selectedUser) && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
+            {isEffectivePro(selectedUser) && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Premium</Badge>}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
           </div>
@@ -819,7 +819,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <p><span className="text-muted-foreground">Created:</span> {formatDate(selectedUser.created_at)}</p>
                 <p><span className="text-muted-foreground">Last seen:</span> {formatDate(selectedUser.last_seen_at)}</p>
                 <p><span className="text-muted-foreground">Type:</span> {selectedUser.is_bot ? "Bot" : selectedUser.is_anonymous ? "Anonymous" : "Standard"}</p>
-                <p><span className="text-muted-foreground">Pro:</span> {isEffectivePro(selectedUser) ? "Yes" : "No"} <span className="text-muted-foreground">({describeProSource(selectedUser)})</span></p>
+                <p><span className="text-muted-foreground">Premium:</span> {isEffectivePro(selectedUser) ? "Yes" : "No"} <span className="text-muted-foreground">({describeProSource(selectedUser)})</span></p>
                 <p><span className="text-muted-foreground">Roles:</span> {selectedRoles.length ? selectedRoles.join(", ") : "User"}</p>
               </div>
             </div>
@@ -899,14 +899,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   <Button onClick={saveUser} disabled={saving || !hasChanges} size="sm">{saving ? "Saving…" : "Save Profile Changes"}</Button>
                 </div>
 
-                {/* PT1.4 — manual / playtester Pro grant. Independent of Stripe:
+                {/* PT1.4 — manual / playtester Premium grant. Independent of Stripe:
                     granting here never touches a subscription, and Stripe sync
                     never revokes what is granted here. */}
                 <div className="space-y-2 border-t border-border pt-3">
-                  <h5 className="text-xs font-bold">Pro entitlement</h5>
+                  <h5 className="text-xs font-bold">Premium entitlement</h5>
                   <p className="text-[11px] text-muted-foreground">
                     Stripe subscription: <strong>{selectedUser.is_pro ? "active" : "none"}</strong> (managed by Stripe, not editable here).
-                    {" "}Effective Pro: <strong>{isEffectivePro(selectedUser) ? "yes" : "no"}</strong> — {describeProSource(selectedUser)}.
+                    {" "}Effective Premium: <strong>{isEffectivePro(selectedUser) ? "yes" : "no"}</strong> — {describeProSource(selectedUser)}.
                   </p>
                   <div className="flex flex-wrap items-end gap-2">
                     <div className="space-y-1">
@@ -925,7 +925,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                       <Input className="w-56" value={grantReason} placeholder="Founding playtester" onChange={(e) => setGrantReason(e.target.value)} />
                     </div>
                     <Button size="sm" disabled={grantSaving} onClick={() => setProGrant(grantKind)}>
-                      {grantSaving ? "Saving…" : selectedUser.pro_grant_kind ? "Update grant" : "Grant Pro"}
+                      {grantSaving ? "Saving…" : selectedUser.pro_grant_kind ? "Update grant" : "Grant Premium"}
                     </Button>
                     {selectedUser.pro_grant_kind && (
                       <Button size="sm" variant="destructive" disabled={grantSaving} onClick={() => setProGrant(null)}>
@@ -1447,7 +1447,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
           <SelectContent>
             <SelectItem value="signed_up">Signed Up</SelectItem>
             <SelectItem value="all">All Users</SelectItem>
-            <SelectItem value="pro">Pro Only</SelectItem>
+            <SelectItem value="pro">Premium Only</SelectItem>
             <SelectItem value="free">Free Only</SelectItem>
             <SelectItem value="ads_on">Ads On</SelectItem>
             <SelectItem value="ads_off">Ads Off</SelectItem>

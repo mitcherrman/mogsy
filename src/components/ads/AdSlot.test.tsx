@@ -88,11 +88,14 @@ describe("AdSlot", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("does not show the Pro upsell house creative to Pro users", () => {
+  it("does not show the Premium upsell house creative to Premium users", () => {
     mocks.proStatus = "pro";
     mount();
-    expect(screen.queryByText(/Upgrade to Pro/i)).not.toBeInTheDocument();
-    // Pro still gets an ordinary product recommendation on this surface.
+    expect(screen.queryByText(/Upgrade to Premium/i)).not.toBeInTheDocument();
+    // Guard the retired wording too, so this cannot pass vacuously if the
+    // creative ever regresses to the old copy.
+    expect(screen.queryByText(/Upgrade to Pro\b/i)).not.toBeInTheDocument();
+    // Premium still gets an ordinary product recommendation on this surface.
     expect(screen.getByText("From Mogzy")).toBeInTheDocument();
   });
 

@@ -54,7 +54,7 @@ export default function ProCinematicAd({ onClose, onSubscribe }: ProCinematicAdP
           >
             <Crown className="h-8 w-8 text-primary" />
           </motion.div>
-          <h2 className="text-2xl font-extrabold text-foreground mb-1">Mogsy Pro</h2>
+          <h2 className="text-2xl font-extrabold text-foreground mb-1">Mogzy Premium</h2>
           <p className="text-sm text-muted-foreground">Unlock the full experience</p>
         </div>
 

@@ -17,7 +17,7 @@ export async function exportAdminCSV() {
   add("User Summary", ["Metric", "Value"], [
     ["Total Users", String(users.length)],
     ["Total Bots", String(bots.length)],
-    ["Pro Users", String(users.filter(u => isEffectivePro(u)).length)],  // PT1.4: Stripe OR valid grant
+    ["Premium Users", String(users.filter(u => isEffectivePro(u)).length)],  // PT1.4: Stripe OR valid grant
     ["Anonymous Users", String(users.filter(u => u.is_anonymous).length)],
     ["Onboarding Completed", String(users.filter(u => u.onboarding_completed).length)],
     ["Active (24h)", String(users.filter(u => u.last_seen_at && Date.now() - new Date(u.last_seen_at).getTime() < 86400000).length)],

@@ -694,17 +694,17 @@ export default function AdminAds() {
                       <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
                         <Type className="h-2.5 w-2.5" /> Custom CTA Text
                       </Label>
-                      <Input placeholder="e.g. 'Upgrade to Pro to remove ads'" value={config.cta_text}
+                      <Input placeholder="e.g. 'Upgrade to Premium to remove ads'" value={config.cta_text}
                         onChange={(e) => setSettings(s => ({ ...s, placements: { ...s.placements, [key]: { ...s.placements[key], cta_text: e.target.value } } }))}
                         onBlur={() => save(settings)} className="h-7 text-xs"
                       />
                     </div>
 
-                    {/* Pro Exempt + A/B */}
+                    {/* Premium Exempt + A/B */}
                     <div className="flex items-center gap-6">
                       <div className="flex items-center gap-2">
                         <Switch checked={config.pro_exempt} onCheckedChange={(v) => updatePlacement(key, { pro_exempt: v })} disabled={saving} />
-                        <Label className="text-[10px]">Pro exempt</Label>
+                        <Label className="text-[10px]">Premium exempt</Label>
                       </div>
                       <div className="flex items-center gap-2">
                         <Label className="text-[10px] text-muted-foreground">A/B:</Label>
@@ -786,7 +786,7 @@ export default function AdminAds() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{p.display_name}</p>
                   <div className="flex items-center gap-2">
-                    {p.is_pro && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Pro</Badge>}
+                    {p.is_pro && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Premium</Badge>}
                     <span className="text-[10px] text-muted-foreground">Ads: {(p.ads_enabled ?? true) ? "On" : "Off"}</span>
                   </div>
                 </div>

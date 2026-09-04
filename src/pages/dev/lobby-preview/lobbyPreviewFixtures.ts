@@ -535,7 +535,7 @@ export const TIMMY_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze({
   locked: true,
   results: [],
   upsell_message:
-    "Upgrade to Mogsy Pro to review every question you missed and practice your weak spots.",
+    "Upgrade to Mogzy Premium to review every question you missed and practice your weak spots.",
 });
 
 export const NEWCOMER_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze({
@@ -544,7 +544,7 @@ export const NEWCOMER_MISSED_QUESTIONS: MissedQuestionsResponse = Object.freeze(
   locked: true,
   results: [],
   upsell_message:
-    "Upgrade to Mogsy Pro to review every question you missed and practice your weak spots.",
+    "Upgrade to Mogzy Premium to review every question you missed and practice your weak spots.",
 });
 
 /** A frozen collection page: the two halves `OwnedQuestionsPane` reads. */

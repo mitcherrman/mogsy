@@ -419,7 +419,7 @@ export default function AdminPushNotifications() {
             </div>
             <p className="text-[10px] text-muted-foreground">
               Every notification is delivered to all signed-in users. League, category and
-              Pro-only targeting are not implemented — rows sent that way reached nobody, so
+              Premium-only targeting are not implemented — rows sent that way reached nobody, so
               the controls were removed rather than left to report false delivery.
             </p>
           </Section>

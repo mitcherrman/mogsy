@@ -11,7 +11,7 @@ import HexPanelLink from "@/components/lol/HexPanelLink";
  * no placeholder "coming soon" tiles, because an empty promise is worse than a
  * short page.
  *
- * NOT to be confused with /lol/pro, which is the paid-subscription page. This
+ * NOT to be confused with /lol/premium, which is the paid-subscription page. This
  * area is professional-play content and lives at /lol/pro-play.
  */
 

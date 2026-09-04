@@ -103,7 +103,7 @@ export default function SwipeAd({ onClose, isPro, adsenseSlot, adsenseClientId, 
           )}
 
           <p className="text-[10px] text-muted-foreground mt-4">
-            Remove ads with <span className="text-primary font-medium">Mogsy Pro</span>
+            Remove ads with <span className="text-primary font-medium">Mogzy Premium</span>
           </p>
         </motion.div>
       </motion.div>

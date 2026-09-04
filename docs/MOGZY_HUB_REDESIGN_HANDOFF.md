@@ -1426,7 +1426,7 @@ uncommitted.
 | `/lol/pro-play/quiz` | `ProPlayQuiz` | `src/App.tsx:544` (`src/App.tsx:95` lazy) |
 
 Prefetch registry: `src/lib/route-prefetch.ts:101-102` (lazy components),
-`:158-159` (path→prefetch rules). `/lol/pro` is untouched — that is the paid
+`:158-159` (path→prefetch rules). `/lol/premium` is untouched — that is the paid
 subscription page and a different meaning of "Pro".
 
 ### ⚠️ CORRECTION — Pro Play did NOT ship as a book
@@ -2220,7 +2220,7 @@ that keeps the painted pedestal's crop fixed across regimes.
 - **Patch Reports appears twice**: as the central tome interaction AND as a
   destination book. The plan keeps the central interaction; the book's fate is
   undecided.
-- **Mogzy Pro/Premium has no hub presence at all** today.
+- **Mogzy Premium has no hub presence at all** today.
 - **The homepage has no community/social/about area** — only the global footer.
 
 ## Recommended next design decision (not implemented)

@@ -305,7 +305,7 @@ const CLASSIFIED = [
   "src/lib/pro/checkout.ts",                        // (d) comment
   "src/lib/quiz/api.ts",                            // (b) backend entitlement type
   "src/pages/CombatLab.tsx",                        // (b) backend credit status
-  "src/pages/LolPro.tsx",                           // (b) backend entitlement + comment
+  "src/pages/LolPremium.tsx",                       // (b) backend entitlement + comment
   "src/pages/Play.tsx",                             // (a) self read
   "src/pages/Shop.tsx",                             // (a) self read
   "src/pages/Swipe.tsx",                            // (a) self read + (c) card badges

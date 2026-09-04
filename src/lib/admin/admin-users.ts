@@ -141,7 +141,7 @@ export function toDirectoryProfile(row: Record<string, unknown>): AdminDirectory
     profileFrame: str(row.profile_frame),
     createdAt: str(row.created_at),
     lastSeenAt: str(row.last_seen_at),
-    // PT1.4: effective Pro, so a comped playtester shows as Pro in admin tooling.
+    // PT1.4: effective Premium, so a comped playtester shows as Premium in admin tooling.
     isPro: isEffectivePro(row as Record<string, unknown>),
     isBot: bool(row.is_bot),
     isDisabled: bool(row.is_disabled),
@@ -193,7 +193,9 @@ export const DIRECTORY_FILTER_LABELS: Record<DirectoryFilter, string> = {
   anonymous: "Anonymous",
   bots: "Bots",
   "disabled-bots": "Disabled bots",
-  pro: "Pro",
+  // The filter KEY keeps its `pro` spelling — it mirrors the Stripe
+  // entitlement column on `profiles`. Only the label is user-facing.
+  pro: "Premium",
   admins: "Admins",
   "discord-contact": "Discord contact OK",
 };

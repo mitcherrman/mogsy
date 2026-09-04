@@ -56,10 +56,10 @@ const CONTROLS: {
     field: "combatSimTokens",
     settingKey: POLICY_KEYS.combatSimTokensRequiredForNonPro,
     label: "Combat Sim Token Requirement",
-    description: "Require non-Pro users to use Combat Sim tokens.",
+    description: "Require non-Premium users to use Combat Sim tokens.",
     warnWhen: "off",
     warning:
-      "Non-Pro users get unlimited Combat Sim runs and are not charged tokens. Existing balances and history are preserved, and turning this back on resumes metering from each user's real balance. Pro is unaffected either way.",
+      "Non-Premium users get unlimited Combat Sim runs and are not charged tokens. Existing balances and history are preserved, and turning this back on resumes metering from each user's real balance. Premium is unaffected either way.",
   },
   {
     field: "tutorialAutoPopup",

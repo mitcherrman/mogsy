@@ -59,7 +59,8 @@ describe("AdminPushNotifications — only real delivery capabilities", () => {
     expect(screen.getByTestId("target-audience-all")).toBeTruthy();
     expect(screen.queryByText("Specific Leagues")).toBeNull();
     expect(screen.queryByText("By Category")).toBeNull();
-    expect(screen.queryByText("Pro Only")).toBeNull();
+    expect(screen.queryByText("Premium Only")).toBeNull();
+    expect(screen.queryByText("Pro Only")).toBeNull(); // retired wording
   });
 
   it("offers no scheduling or recurrence controls", async () => {

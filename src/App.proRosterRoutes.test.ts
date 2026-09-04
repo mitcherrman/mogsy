@@ -7,8 +7,8 @@
  * declaration IS the contract.
  *
  * The load-bearing guarantee here is the split between the PAID product page
- * at /lol/pro and the PUBLIC documentation at /lol/docs/pro/*. Repointing or
- * renaming either one is exactly the regression worth catching.
+ * at /lol/premium and the PUBLIC documentation at /lol/docs/pro/*. Repointing
+ * or renaming either one is exactly the regression worth catching.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -63,20 +63,20 @@ describe("public roster route registration", () => {
   });
 });
 
-describe("paid /lol/pro is untouched", () => {
+describe("paid /lol/premium is untouched", () => {
   it("still renders the paid product page, not a roster page", () => {
-    const line = routeLine("/lol/pro");
-    expect(line).toContain("<LolPro />");
+    const line = routeLine("/lol/premium");
+    expect(line).toContain("<LolPremium />");
     expect(line).not.toContain("ProRoster");
   });
 
-  it("keeps the public wiki under /lol/docs/pro, never under /lol/pro", () => {
+  it("keeps the public wiki under /lol/docs/pro, never under /lol/premium", () => {
     for (const [path] of ROSTER_ROUTES) {
       expect(path.startsWith("/lol/docs/pro/")).toBe(true);
     }
-    expect(appSource).not.toContain('path="/lol/pro/players"');
-    expect(appSource).not.toContain('path="/lol/pro/teams"');
-    expect(appSource).not.toContain('path="/lol/pro/rosters"');
+    expect(appSource).not.toContain('path="/lol/premium/players"');
+    expect(appSource).not.toContain('path="/lol/premium/teams"');
+    expect(appSource).not.toContain('path="/lol/premium/rosters"');
   });
 
   it("does not disturb the pre-existing Pro Data routes", () => {

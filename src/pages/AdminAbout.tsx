@@ -88,13 +88,13 @@ const sections: Section[] = [
           <Row k="/home" v="Main dashboard. Navigation hub, friends strip, blog highlight strip, recent matchups." />
           <Row k="/auth" v="Sign-up, login, Google OAuth, anonymous → real account linking, confirm-password." />
           <Row k="/play" v="Discovery hub. Collections, Compete, EloCheck, Multiplayer. Five desktop layouts (Bubbles/Pills/Grid/List/Tiles) persisted to localStorage. Play↔Swipe hub-mode toggle." />
-          <Row k="/profile" v="Own profile. Avatar, Aura, tier badge, favorites, top comments, photo circles, Pro cosmetics." />
+          <Row k="/profile" v="Own profile. Avatar, Aura, tier badge, favorites, top comments, photo circles, Premium cosmetics." />
           <Row k="/swipe" v="SwipeHub — browse user leagues to join." />
           <Row k="/swipe-game" v="Core swipe session (user leagues). Gesture engine, preload, comments, ads, animations." />
           <Row k="/swipe/preset/:leagueId" v="Swipe session scoped to a Preset (Collection) league." />
           <Row k="/leagues/:type" v="Directory of leagues filtered by type (preset / user / etc.)." />
           <Row k="/leaderboard/:leagueId" v="Global, league, and personal leaderboards. Tier badges, Compete eligibility filter." />
-          <Row k="/shop" v="Pro subscription, Diamond packs, power-ups, gifting, gift redemption, cinematic Pro ad." />
+          <Row k="/shop" v="Premium subscription, Diamond packs, power-ups, gifting, gift redemption, cinematic Premium ad." />
           <Row k="/elo-check" v="Public Aura lookup tool for any profile." />
           <Row k="/swipe-leagues" v="Focused subset of leagues available for swiping." />
           <Row k="/user/:profileId" v="Public profile. Friend actions, report, favorites, top comments, photo circles." />
@@ -160,7 +160,7 @@ const sections: Section[] = [
         <P><Tag>SwipeComments</Tag> opens in a bottom drawer — create, like, report per matchup pair. Commenter identity resolved via the <Tag>public_profiles</Tag> view.</P>
 
         <H>Ad injection</H>
-        <P>Every N swipes (default 10) <Tag>useAdSystem("swipe")</Tag> fires. Types: <Tag>popup</Tag> (full-screen <Tag>SwipeAd</Tag>), <Tag>in_swipe</Tag> (<Tag>SwipeAdCard</Tag>), or AdSense inline. Pro users see none; admins/mods always see for QA.</P>
+        <P>Every N swipes (default 10) <Tag>useAdSystem("swipe")</Tag> fires. Types: <Tag>popup</Tag> (full-screen <Tag>SwipeAd</Tag>), <Tag>in_swipe</Tag> (<Tag>SwipeAdCard</Tag>), or AdSense inline. Premium users see none; admins/mods always see for QA.</P>
 
         <H>Animations</H>
         <P>On vote, <Tag>CardAnimationRouter</Tag> dispatches the chosen exit animation. Each animation has a paired sound effect. <Tag>SwipeAnimationPicker</Tag> lets users choose; admins gate availability via <Tag>AdminCardAnimations</Tag>.</P>
@@ -220,11 +220,11 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
   {
     id: "shop",
     title: "8. Shop & Monetization",
-    keywords: "shop monetization pro subscription 9.99 diamond currency power up boost elo shield reveal rewind gift cinematic stripe",
+    keywords: "shop monetization premium pro subscription 9.99 diamond currency power up boost elo shield reveal rewind gift cinematic stripe",
     body: (
       <>
         <div className="rounded-lg border border-border bg-card/40 p-4 space-y-1 mb-3">
-          <Row k="Mogsy Pro" v="$9.99/mo or annual. Ad-free, exclusive themes + cosmetics, Pro badge, premium animations." />
+          <Row k="Mogzy Premium" v="$9.99/mo or annual. Ad-free, exclusive themes + cosmetics, Premium badge, premium animations." />
           <Row k="Diamond packs" v="One-time Stripe IAP. Various 💎 amounts." />
           <Row k="Exposure Boost" v="50 💎 — 2× visibility in swipe queues for 24h." />
           <Row k="ELO Shield" v="30 💎 — protects from next 3 Elo losses." />
@@ -232,9 +232,9 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
           <Row k="Rewind" v="15 💎 — undo last vote." />
         </div>
         <H>Gifting</H>
-        <P>Pro subs and Diamond packs can be gifted. Redemption via <Tag>redeem-gift</Tag> + <Tag>verify-gift</Tag> edge functions.</P>
-        <H>Cinematic Pro Ad</H>
-        <P><Tag>ProCinematicAd</Tag> — full-screen branded marketing experience shown to non-Pro users in Shop.</P>
+        <P>Premium subs and Diamond packs can be gifted. Redemption via <Tag>redeem-gift</Tag> + <Tag>verify-gift</Tag> edge functions.</P>
+        <H>Cinematic Premium Ad</H>
+        <P><Tag>ProCinematicAd</Tag> — full-screen branded marketing experience shown to non-Premium users in Shop.</P>
         <H>Sound</H>
         <P><Tag>useShopSound</Tag> plays distinct Web Audio tones for purchases, diamond taps, and power-up activations.</P>
       </>
@@ -247,12 +247,12 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
     body: (
       <UL>
         <li><strong>Own (<Tag>/profile</Tag>) vs Public (<Tag>/user/:id</Tag>)</strong> — same shape, different edit permissions.</li>
-        <li><strong>Avatar</strong> — uploaded photo, circular crop, Pro-unlockable rings.</li>
+        <li><strong>Avatar</strong> — uploaded photo, circular crop, Premium-unlockable rings.</li>
         <li><strong>Aura + tier</strong> — prominent, clickable to EloCheck breakdown.</li>
         <li><strong>Favorites</strong> — <Tag>ProfileFavoriteCards</Tag>, auto (top voted) or manual via <Tag>FavoritesEditor</Tag>.</li>
         <li><strong>Photo circles</strong> — <Tag>ProfilePhotoCircles</Tag> row of trophies / achievements / custom uploads.</li>
         <li><strong>Top comments</strong> — <Tag>ProfileTopComments</Tag> — highest-liked surfaced.</li>
-        <li><strong>Pro cosmetics</strong> — themes, animated borders, background overlays, accent colors via <Tag>src/lib/profile-themes.ts</Tag>.</li>
+        <li><strong>Premium cosmetics</strong> — themes, animated borders, background overlays, accent colors via <Tag>src/lib/profile-themes.ts</Tag>.</li>
         <li><strong>public_profiles view</strong> — safe DB view exposing only non-sensitive fields for public lookups (respects RLS).</li>
         <li><strong>Friend actions</strong> — send/cancel request, block, report via <Tag>FriendActionMenu</Tag>.</li>
       </UL>
@@ -295,11 +295,11 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
     keywords: "themes light dark pro sitewide profile floating switcher fts overlay",
     body: (
       <UL>
-        <li><strong>Light / Dark / Pro</strong> — Pro themes unlocked by subscription.</li>
+        <li><strong>Light / Dark / Premium</strong> — Premium themes unlocked by subscription.</li>
         <li><strong>Sitewide theme</strong> — global CSS variables via <Tag>useSitewideTheme</Tag>; configurable by master_admin in <Tag>AdminThemes</Tag>.</li>
         <li><strong>Profile theming</strong> — per-profile display theme affecting public profile background/cards (<Tag>src/lib/profile-themes.ts</Tag>).</li>
         <li><strong>Floating switcher (FTS)</strong> — persistent FAB on every page; anchors above bottom nav on mobile; cross-tab sync via custom events.</li>
-        <li><strong>ThemeOverlay</strong> — animated background effects (particles, gradients) for Pro themes.</li>
+        <li><strong>ThemeOverlay</strong> — animated background effects (particles, gradients) for Premium themes.</li>
       </UL>
     ),
   },
@@ -342,7 +342,7 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
           <Row k="Feedback" v="Read user-submitted feedback." />
           <Row k="Mod Config" v="Define moderator permissions + visibility scope." />
           <Row k="Directory" v="Browse all public profiles; bulk operations." />
-          <Row k="Themes *" v="Edit global sitewide theme + Pro theme definitions." />
+          <Row k="Themes *" v="Edit global sitewide theme + Premium theme definitions." />
           <Row k="Ranks *" v="Configure percentile tier thresholds (Iron → Diamond)." />
           <Row k="Onboarding *" v="Edit onboarding step content + category options." />
           <Row k="Settings *" v="Global feature flags + config values." />
@@ -420,7 +420,7 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
           <Row k="shop" v="Inside the Shop page." />
           <Row k="popup" v="Cross-page popup placement." />
         </div>
-        <P>Each placement supports Custom uploads, AdSense (Google), or Hybrid sources. Modes: <Tag>popup</Tag>, <Tag>in_swipe</Tag>, <Tag>both</Tag>, <Tag>off</Tag>. Per-placement frequency, cooldown, max-per-session, A/B variant. Admins can disable ads for individual users. Pro users are exempt; admins/mods always see ads for QA.</P>
+        <P>Each placement supports Custom uploads, AdSense (Google), or Hybrid sources. Modes: <Tag>popup</Tag>, <Tag>in_swipe</Tag>, <Tag>both</Tag>, <Tag>off</Tag>. Per-placement frequency, cooldown, max-per-session, A/B variant. Admins can disable ads for individual users. Premium users are exempt; admins/mods always see ads for QA.</P>
         <P>Engagement tracking: image-click analytics during matchups feed <Tag>AdminAdAnalytics</Tag>. AdSense publisher details live in <Tag>tech/advertising/adsense-config</Tag>.</P>
       </>
     ),
@@ -436,11 +436,11 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
           <Row k="admin-get-emails" v="Retrieves user emails for admin export (restricted)." />
           <Row k="admin-user-actions" v="Executes privileged user operations server-side (ban, role grant)." />
           <Row k="check-subscription" v="Verifies active Stripe subscription; returns subscription_end." />
-          <Row k="create-checkout" v="Stripe Checkout session for Pro / Diamond packs." />
+          <Row k="create-checkout" v="Stripe Checkout session for Premium / Diamond packs." />
           <Row k="customer-portal" v="Stripe Customer Portal session for sub management." />
           <Row k="populate-preset-images" v="Batch-fills preset league item image URLs from a source." />
           <Row k="purge-anonymous-users" v="Cleans up stale anonymous accounts that never converted." />
-          <Row k="redeem-gift" v="Validates + applies a gifted Pro/Diamond pack to recipient." />
+          <Row k="redeem-gift" v="Validates + applies a gifted Premium/Diamond pack to recipient." />
           <Row k="snapshot-global-elo" v="Hourly point-in-time snapshot of all global Elo for stability + history." />
           <Row k="verify-gift" v="Validates a gift code before redemption." />
         </div>

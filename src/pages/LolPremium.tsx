@@ -41,14 +41,14 @@ const FREE_FEATURES = [
   "Share your quiz results",
 ];
 
-type ProFeature = {
+type PremiumFeature = {
   title: string;
   description: string;
   Icon: React.ElementType;
   comingSoon?: boolean;
 };
 
-const PRO_FEATURES: ProFeature[] = [
+const PREMIUM_FEATURES: PremiumFeature[] = [
   {
     title: "Full Quiz History",
     description: "Every result you've ever posted, not just the last 10.",
@@ -98,14 +98,14 @@ const PRO_FEATURES: ProFeature[] = [
 ];
 
 /** This page's route — where auth must return a user it interrupted here. */
-const LOL_PRO_ROUTE = "/lol/pro";
+const LOL_PREMIUM_ROUTE = "/lol/premium";
 
-export default function LolPro() {
+export default function LolPremium() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isAnonymous = !user || user.is_anonymous === true;
-  const [isPro, setIsPro] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const checkoutAvailable = isLolProCheckoutAvailable();
   const showSuccess = searchParams.get("success") === "true";
@@ -120,13 +120,13 @@ export default function LolPro() {
     quizApi
       .getEntitlement()
       .then((res) => {
-        if (!cancelled) setIsPro(!!res.is_pro);
+        if (!cancelled) setIsPremium(!!res.is_pro);
       })
       .catch(() => {
         // PT1.4 fallback: the canonical entitlement resolver, never a raw
         // profiles.is_pro read (that is the Stripe half only).
         fetchProEntitlement().then((entitlement) => {
-          if (!cancelled && entitlement) setIsPro(entitlement.effectivePro);
+          if (!cancelled && entitlement) setIsPremium(entitlement.effectivePro);
         });
       });
     return () => { cancelled = true; };
@@ -134,14 +134,14 @@ export default function LolPro() {
 
   const handleUpgrade = async () => {
     if (!checkoutAvailable) {
-      toast.info("Mogzy Pro checkout is coming soon.");
+      toast.info("Mogzy Premium checkout is coming soon.");
       return;
     }
     if (isAnonymous) {
       toast.info("Create a free account first — your guest progress comes with you.");
-      // Return to Pro after signup: this interruption exists only because the
-      // user pressed Checkout HERE.
-      navigate(authHref(LOL_PRO_ROUTE, { mode: "signup" }));
+      // Return to Premium after signup: this interruption exists only because
+      // the user pressed Checkout HERE.
+      navigate(authHref(LOL_PREMIUM_ROUTE, { mode: "signup" }));
       return;
     }
     setCheckingOut(true);
@@ -157,8 +157,8 @@ export default function LolPro() {
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <SEOHead
-        title="Mogzy Pro — Practice Smarter at League"
-        description="Track your full quiz history, review missed questions, train weak spots, and unlock Matchup Cards with Mogzy Pro."
+        title="Mogzy Premium — Practice Smarter at League"
+        description="Track your full quiz history, review missed questions, train weak spots, and unlock Matchup Cards with Mogzy Premium."
       />
 
       <div className="mb-8 flex items-center gap-3">
@@ -166,15 +166,15 @@ export default function LolPro() {
           <Link to="/lol"><ArrowLeft className="h-5 w-5" /></Link>
         </Button>
         <Crown className="h-6 w-6" style={{ color: GOLD }} />
-        <h1 className="text-2xl font-bold">Mogzy Pro</h1>
+        <h1 className="text-2xl font-bold">Mogzy Premium</h1>
       </div>
 
-      {showSuccess && !isPro && (
+      {showSuccess && !isPremium && (
         <div className="mb-6 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm">
-          Thanks for upgrading — your Pro status may take a moment to activate.
+          Thanks for upgrading — your Premium status may take a moment to activate.
         </div>
       )}
-      {showCanceled && !isPro && (
+      {showCanceled && !isPremium && (
         <div className="mb-6 rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
           Checkout canceled. You can keep playing free.
         </div>
@@ -192,16 +192,16 @@ export default function LolPro() {
           Track your progress. Review your mistakes. Practice smarter.
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-[#c8d4e6]">
-          Mogzy Pro helps serious League players practice smarter. Track your full quiz
+          Mogzy Premium helps serious League players practice smarter. Track your full quiz
           history, review missed questions, train weak spots, and unlock Matchup Cards
           by completing curated quiz sets.
         </p>
 
-        {isPro ? (
+        {isPremium ? (
           <div className="mt-6 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 font-semibold"
                style={{ borderColor: `${GOLD}80`, color: "#f0d78c" }}>
             <Sparkles className="h-4 w-4" />
-            You’re Pro — everything below is unlocked.
+            You’re Premium — everything below is unlocked.
           </div>
         ) : (
           <>
@@ -220,7 +220,7 @@ export default function LolPro() {
                 style={{ background: `linear-gradient(90deg, ${GOLD}, #a8862f)` }}
               >
                 <Crown className="mr-2 h-4 w-4" />
-                {checkingOut ? "Opening checkout…" : "Upgrade to Mogzy Pro"}
+                {checkingOut ? "Opening checkout…" : "Upgrade to Mogzy Premium"}
               </Button>
               <Button asChild size="lg" variant="ghost" className="text-[#c8d4e6] hover:text-white">
                 <Link to="/quiz">Keep playing free</Link>
@@ -228,17 +228,17 @@ export default function LolPro() {
             </div>
             {!checkoutAvailable && (
               <p className="mt-3 text-xs" style={{ color: GOLD }}>
-                Mogzy Pro checkout is coming soon.
+                Mogzy Premium checkout is coming soon.
               </p>
             )}
           </>
         )}
       </div>
 
-      {/* Pro features */}
-      <h3 className="mb-4 text-lg font-semibold">What Pro unlocks</h3>
+      {/* Premium features */}
+      <h3 className="mb-4 text-lg font-semibold">What Premium unlocks</h3>
       <div className="mb-10 grid gap-3 sm:grid-cols-2">
-        {PRO_FEATURES.map((f) => (
+        {PREMIUM_FEATURES.map((f) => (
           <Card key={f.title} className="border-primary/20">
             <CardContent className="flex items-start gap-3 py-4">
               <f.Icon className="mt-0.5 h-5 w-5 shrink-0" style={{ color: GOLD }} />
@@ -273,7 +273,7 @@ export default function LolPro() {
         </CardContent>
       </Card>
 
-      {!isPro && (
+      {!isPremium && (
         <p className="mt-8 text-center text-xs text-muted-foreground">
           Subscriptions are handled securely by Stripe. Cancel anytime.
         </p>

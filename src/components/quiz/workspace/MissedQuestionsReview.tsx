@@ -3,7 +3,7 @@
  *
  * Rendered once, mounted twice: by the workspace's Review pane on `/quiz` and
  * by the standalone `/lol/missed-questions` page. Every state the bank has —
- * loading, Pro content, the truthful Pro empty state, the Free paywall, a
+ * loading, Premium content, the truthful Premium empty state, the Free paywall, a
  * session failure and a backend failure — belongs to this component, so the
  * two surfaces cannot disagree about a player's entitlement.
  *
@@ -11,7 +11,7 @@
  * ──────────────────────────
  * The question, the answer the player gave, the correct answer, the
  * explanation, the category and difficulty, when it was missed, the page size
- * and `Load more`, and the Free/Pro states with the existing upsell copy.
+ * and `Load more`, and the Free/Premium states with the existing upsell copy.
  * Monetisation is untouched in this phase.
  *
  * WHAT IS REMOVED, AND WHY
@@ -105,7 +105,7 @@ export default function MissedQuestionsReview({
   state: injected,
   className = "",
 }: {
-  /** False while the pane is closed, so the Pro-gated endpoint is only read
+  /** False while the pane is closed, so the Premium-gated endpoint is only read
    *  by a reader who actually opened Review. */
   enabled?: boolean;
   /**
@@ -152,10 +152,10 @@ export default function MissedQuestionsReview({
         <Lock className="h-7 w-7" style={{ color: LEAGUECRAFT_INK.brass }} aria-hidden="true" />
         <p className="max-w-md text-[12.5px] text-foreground/85">
           {data.upsell_message ||
-            "Upgrade to Mogsy Pro to review every question you missed and practice your weak spots."}
+            "Upgrade to Mogzy Premium to review every question you missed and practice your weak spots."}
         </p>
         <Button asChild size="sm">
-          <Link to="/lol/pro">Upgrade to Mogsy Pro</Link>
+          <Link to="/lol/premium">Upgrade to Mogzy Premium</Link>
         </Button>
         <WorkspaceNote>
           Free players can review missed questions on each quiz’s results screen.

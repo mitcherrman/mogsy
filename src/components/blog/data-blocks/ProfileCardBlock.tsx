@@ -12,7 +12,7 @@ export default function ProfileCardBlock({ profileId }: { profileId?: string }) 
       <UserAvatar src={profile.avatar_url} name={profile.display_name ?? ""} size="lg" />
       <div className="min-w-0">
         <div className="text-lg font-bold truncate">{profile.display_name ?? "Anonymous"}</div>
-        {profile.is_pro && <div className="text-xs font-semibold blog-accent">PRO</div>}
+        {profile.is_pro && <div className="text-xs font-semibold blog-accent">PREMIUM</div>}
       </div>
     </Link>
   );

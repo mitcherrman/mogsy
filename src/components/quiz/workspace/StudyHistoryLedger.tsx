@@ -423,7 +423,7 @@ export default function StudyHistoryLedger({
         )}
         {entitlementUnknown && (
           <WorkspaceNote testId="study-history-entitlement-unknown">
-            Pro status could not be confirmed — showing the Free window.
+            Premium status could not be confirmed — showing the Free window.
           </WorkspaceNote>
         )}
       </div>
@@ -513,7 +513,7 @@ export default function StudyHistoryLedger({
         >
           <p className="min-w-0 flex-1 text-[11px]" style={{ color: LEAGUECRAFT_INK.body }}>
             {history?.upsell_message ||
-              `Free accounts save your last ${history?.free_limit ?? 10} results. Upgrade to Mogsy Pro to unlock your full quiz history.`}
+              `Free accounts save your last ${history?.free_limit ?? 10} results. Upgrade to Mogzy Premium to unlock your full quiz history.`}
           </p>
           <Button
             asChild
@@ -522,7 +522,7 @@ export default function StudyHistoryLedger({
             className="h-7 text-[11px]"
             style={{ borderColor: "rgba(96,68,28,0.45)", color: LEAGUECRAFT_INK.brass }}
           >
-            <Link to="/lol/pro">Unlock Full History</Link>
+            <Link to="/lol/premium">Unlock Full History</Link>
           </Button>
         </div>
       )}

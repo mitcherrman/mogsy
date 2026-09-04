@@ -91,7 +91,7 @@ export default function AdminProfileDirectory() {
                   {p.display_name || "Unnamed"}
                 </span>
                 {p.is_pro && (
-                  <span className="text-[9px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded">PRO</span>
+                  <span className="text-[9px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded">PREMIUM</span>
                 )}
                 {p.is_bot && (
                   <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1 py-0.5 rounded">BOT</span>

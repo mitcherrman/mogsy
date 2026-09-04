@@ -61,7 +61,7 @@ export default function Privacy() {
         <Bullets
           items={[
             "Supabase — hosts our database and authentication; account and gameplay data described above is stored there",
-            "Stripe — processes payments for Pro subscriptions and purchases; we never see or store full card numbers",
+            "Stripe — processes payments for Premium subscriptions and purchases; we never see or store full card numbers",
             "Google AdSense — may serve advertising to eligible free users (see Advertising below)",
           ]}
         />
@@ -101,7 +101,7 @@ export default function Privacy() {
           Advertising is currently limited: third-party Google advertising
           remains disabled until a consent-management platform is in place and
           the site is approved to serve ads. When enabled, ads may be shown to
-          eligible free users after consent; subscribers to {SITE_NAME} Pro do
+          eligible free users after consent; subscribers to {SITE_NAME} Premium do
           not receive third-party advertising.
         </p>
         <p>

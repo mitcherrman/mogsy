@@ -274,7 +274,7 @@ export default function CommunityUsersTab({
                         ? "Guest"
                         : "Registered"}
                     {p.roles.length > 0 && ` · ${p.roles.map((r) => r.replace("_", " ")).join(", ")}`}
-                    {p.isPro && " · Pro"}
+                    {p.isPro && " · Premium"}
                   </span>
                 </span>
               </button>

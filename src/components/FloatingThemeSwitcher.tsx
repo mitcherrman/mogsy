@@ -198,7 +198,7 @@ export default function FloatingThemeSwitcher() {
                       >
                         <span className="text-xs font-medium text-popover-foreground">
                           {theme.label}
-                          {pro && <span className="ml-1 text-[hsl(45,100%,55%)]">PRO</span>}
+                          {pro && <span className="ml-1 text-[hsl(45,100%,55%)]">PREMIUM</span>}
                         </span>
                       </motion.div>
                     )}

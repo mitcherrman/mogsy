@@ -2,7 +2,7 @@
  * Minimal internal house promotions.
  *
  * These are ordinary product recommendations, not paid ads, and are never
- * styled to imitate an external advertisement. Pro users only see creatives
+ * styled to imitate an external advertisement. Premium users only see creatives
  * with `showToPro: true` (never the "remove ads" upsell).
  */
 
@@ -20,10 +20,10 @@ export interface HouseAdCreative {
 
 const PRO_UPSELL: HouseAdCreative = {
   id: "pro-upgrade",
-  title: "Go ad-free with Mogzy Pro",
+  title: "Go ad-free with Mogzy Premium",
   body: "Support the project and remove third-party ads everywhere.",
-  ctaText: "Upgrade to Pro",
-  to: "/lol/pro",
+  ctaText: "Upgrade to Premium",
+  to: "/lol/premium",
   showToPro: false,
 };
 

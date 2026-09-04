@@ -206,7 +206,7 @@ export const ADMIN_DIRECTORY_ITEMS: AdminDirectoryItem[] = [
     id: "platform-policies",
     title: "Platform Policies",
     description:
-      "Global switches: the Combat Sim token requirement for non-Pro users, the tutorial popup and requirement, the global navbar, and public bot labels.",
+      "Global switches: the Combat Sim token requirement for non-Premium users, the tutorial popup and requirement, the global navbar, and public bot labels.",
     path: "/admin/platform-policies",
     category: "Site Operations",
     status: "Production",

@@ -236,7 +236,7 @@ export default function AdminCardAnimations() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-bold text-foreground text-sm">{anim.name}</h4>
-                    {cfg.pro_only && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">PRO</Badge>}
+                    {cfg.pro_only && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">PREMIUM</Badge>}
                     {!cfg.enabled && <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-destructive">OFF</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{anim.description}</p>
@@ -251,7 +251,7 @@ export default function AdminCardAnimations() {
                     <Switch checked={cfg.enabled} onCheckedChange={() => toggleEnabled(anim.id)} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">Pro only</span>
+                    <span className="text-[10px] text-muted-foreground">Premium only</span>
                     <Switch checked={cfg.pro_only} onCheckedChange={() => toggleProOnly(anim.id)} />
                   </div>
                 </div>
@@ -330,7 +330,7 @@ function CustomAnimCard({
           <div className="flex items-center gap-2 flex-wrap">
             <h4 className="font-bold text-foreground text-sm">{anim.name}</h4>
             <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-primary/20 text-primary">CUSTOM</Badge>
-            {anim.pro_only && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">PRO</Badge>}
+            {anim.pro_only && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">PREMIUM</Badge>}
             {!anim.is_enabled && <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-destructive">OFF</Badge>}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{anim.description}</p>
@@ -594,7 +594,7 @@ function AnimationCreatorDialog({
           {/* Settings */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Pro Only</span>
+              <span className="text-xs text-muted-foreground">Premium Only</span>
               <Switch checked={proOnly} onCheckedChange={setProOnly} />
             </div>
             <div className="flex items-center gap-2">

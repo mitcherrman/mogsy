@@ -1,17 +1,17 @@
 /**
- * Mogzy Pro page banner: Pro comes from the backend entitlement endpoint
+ * Mogzy Premium page banner: Premium comes from the backend entitlement endpoint
  * (the same interpretation that gates history and the missed bank), with
  * the client-side entitlement resolver as a fallback only when the lookup
  * is unavailable.
  *
- * PT1.4: that fallback is the `my_pro_entitlement` RPC — effective Pro,
+ * PT1.4: that fallback is the `my_pro_entitlement` RPC — effective Premium,
  * Stripe OR a valid manual grant — not a raw `profiles.is_pro` read, which
  * would report a comped playtester as Free.
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import LolPro from "./LolPro";
+import LolPremium from "./LolPremium";
 
 const getEntitlement = vi.fn();
 const entitlementRpc = vi.fn();
@@ -38,7 +38,7 @@ vi.mock("@/lib/pro/checkout", () => ({
 function renderPage() {
   return render(
     <MemoryRouter>
-      <LolPro />
+      <LolPremium />
     </MemoryRouter>,
   );
 }
@@ -49,14 +49,14 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("LolPro entitlement banner", () => {
-  it("shows You're Pro from the backend entitlement", async () => {
+describe("LolPremium entitlement banner", () => {
+  it("shows You're Premium from the backend entitlement", async () => {
     getEntitlement.mockResolvedValue({
       ok: true, user_id: "user-1", is_pro: true, pro_lookup_configured: true,
     });
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/You’re Pro — everything below is unlocked/)).toBeTruthy(),
+      expect(screen.getByText(/You’re Premium — everything below is unlocked/)).toBeTruthy(),
     );
     expect(entitlementRpc).not.toHaveBeenCalled();
   });
@@ -67,8 +67,8 @@ describe("LolPro entitlement banner", () => {
     });
     renderPage();
     await waitFor(() => expect(getEntitlement).toHaveBeenCalled());
-    expect(screen.queryByText(/You’re Pro/)).toBeNull();
-    expect(screen.getAllByText(/Upgrade to Mogzy Pro/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/You’re Premium/)).toBeNull();
+    expect(screen.getAllByText(/Upgrade to Mogzy Premium/).length).toBeGreaterThan(0);
   });
 
   it("falls back to the entitlement resolver when the lookup is unavailable", async () => {
@@ -76,7 +76,7 @@ describe("LolPro entitlement banner", () => {
     entitlementRpc.mockResolvedValue({ data: [{ effective_pro: true }], error: null });
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/You’re Pro — everything below is unlocked/)).toBeTruthy(),
+      expect(screen.getByText(/You’re Premium — everything below is unlocked/)).toBeTruthy(),
     );
     expect(entitlementRpc).toHaveBeenCalledWith("my_pro_entitlement");
   });
@@ -90,7 +90,7 @@ describe("LolPro entitlement banner", () => {
     });
     renderPage();
     await waitFor(() =>
-      expect(screen.getByText(/You’re Pro — everything below is unlocked/)).toBeTruthy(),
+      expect(screen.getByText(/You’re Premium — everything below is unlocked/)).toBeTruthy(),
     );
   });
 });

@@ -83,7 +83,7 @@ navigated to a bare `/auth` with no `returnTo` at all:
 | Arena score card | `components/combat-battles/ArenaScoreCard.tsx:20` | → hub |
 | Admin gate (×3) | `components/admin/AdminAuthGate.tsx` | Operator → public hub |
 | Admin pages (×7) | `pages/Admin*.tsx`, `Moderator.tsx`, `admin/AdminBlog.tsx` | → hub |
-| Pro checkout | `pages/LolPro.tsx:141` | → hub |
+| Premium checkout | `pages/LolPremium.tsx` | → hub |
 | Invite / custom link | `pages/CustomLink.tsx:145` | → hub |
 
 A second, subtler override: `computePostConversionDestination()` returned the

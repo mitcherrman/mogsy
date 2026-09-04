@@ -995,7 +995,7 @@ export default function Profile() {
                   <div className="flex items-center gap-2">
                     <Crown className="h-5 w-5 text-primary" />
                     <h3 className="font-bold text-sm text-foreground">Frame</h3>
-                    {!isPro && <span className="text-[8px] uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded-full font-bold">Pro</span>}
+                    {!isPro && <span className="text-[8px] uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded-full font-bold">Premium</span>}
                   </div>
                   {isPro ? (
                     <div className="grid grid-cols-2 gap-2">
@@ -1034,7 +1034,7 @@ export default function Profile() {
                       <div className="w-12 h-12 mx-auto rounded-full bg-secondary ring-4 ring-primary/30" />
                       <p className="text-[10px] text-muted-foreground">Unlock premium frames</p>
                       <Button type="button" variant="outline" size="sm" className="w-full text-xs" onClick={() => navigate("/shop")}>
-                        <Crown className="h-3 w-3 mr-1" /> Go Pro
+                        <Crown className="h-3 w-3 mr-1" /> Go Premium
                       </Button>
                     </div>
                   )}

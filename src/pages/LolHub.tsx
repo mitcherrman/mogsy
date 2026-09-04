@@ -129,7 +129,7 @@ const HUB_DESTINATIONS: HubDestination[] = [
     splashPosition: "34% center",
   },
   {
-    // Professional-play content — NOT /lol/pro, the subscription page.
+    // Professional-play content — NOT /lol/premium, the subscription page.
     to: "/lol/pro-play",
     title: "Pro Play",
     guideId: "pro-play",

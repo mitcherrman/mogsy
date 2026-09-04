@@ -174,14 +174,14 @@ them itself).
 1. `global_disabled` — `VITE_ADS_ENABLED` is not `true` (emergency kill switch).
 2. `unknown_placement` — id not in the registry.
 3. `active_quiz` / `active_ranked_match` / `ranked_recovery` — live gameplay is always ad-free.
-4. Blocked routes: `admin` (`/admin*`, `/moderator`, `/quiz/admin`, `/secret-room`), `developer_route` (`/dev/*`, diagnostics pages, `/broadcast/*`), `auth_or_checkout` (`/auth`, `/reset-password`, `/shop`, `/lol/pro`, `/settings`), `policy_route` (`/privacy`, `/terms`, `/security`, `/contact`, `/feedback`).
+4. Blocked routes: `admin` (`/admin*`, `/moderator`, `/quiz/admin`, `/secret-room`), `developer_route` (`/dev/*`, diagnostics pages, `/broadcast/*`), `auth_or_checkout` (`/auth`, `/reset-password`, `/shop`, `/lol/premium`, plus the legacy `/lol/pro`, `/settings`), `policy_route` (`/privacy`, `/terms`, `/security`, `/contact`, `/feedback`).
 5. `entitlement_loading` — signed-in user whose Pro status hasn't resolved. **Fail-closed**: Pro users never see an ad flash while loading.
 6. Then, in order: third-party (requires known-free + flag + placement allowance + **granted consent**), house, dev placeholder, else suppressed (`pro` / `consent` / `nothing_to_render`).
 
 ### Pro behavior
 
 - Third-party ads: **always suppressed** for Pro (and while entitlement is unresolved).
-- House promotions: shown to Pro only when the creative is an ordinary product recommendation (`showToPro: true`). The "Upgrade to Pro / remove ads" upsell is never shown to Pro. House promos never imitate external ads (labeled "From Mogzy", internal links only).
+- House promotions: shown to Premium only when the creative is an ordinary product recommendation (`showToPro: true` — the flag keeps its `Pro` spelling, see `docs/naming-premium-vs-pro-play.md`). The "Upgrade to Premium / remove ads" upsell is never shown to Premium. House promos never imitate external ads (labeled "From Mogzy", internal links only).
 
 Pro status comes from the existing `SitewideThemeContext` (`proStatus: "unknown" | "pro" | "free"`, backed by `profiles.is_pro`). There is no second entitlement system.
 

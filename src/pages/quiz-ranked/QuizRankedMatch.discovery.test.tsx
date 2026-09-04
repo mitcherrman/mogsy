@@ -222,6 +222,8 @@ describe("the ceremony and the rest of Ranked", () => {
     const urls = calls.map((c) => String(c[0]));
     expect(urls.some((u) => u.includes("entitlement"))).toBe(false);
     expect(urls.some((u) => u.includes("subscription"))).toBe(false);
-    expect(screen.queryByText(/upgrade|go pro|unlock with pro/i)).toBeNull();
+    expect(
+      screen.queryByText(/upgrade|go premium|unlock with premium|go pro|unlock with pro/i),
+    ).toBeNull();
   });
 });

@@ -68,9 +68,19 @@ describe("sitemap builders", () => {
     expect(dynamic).toEqual([]);
   });
 
-  it("keeps the paid /lol/pro product route out of the sitemap", () => {
+  it("keeps the paid /lol/premium product route out of the sitemap", () => {
     const paths = buildStaticEntries().map((e) => e.path);
-    expect(paths.filter((p) => p === "/lol/pro" || p.startsWith("/lol/pro/"))).toEqual([]);
+    expect(
+      paths.filter(
+        (p) =>
+          p === "/lol/premium" ||
+          p.startsWith("/lol/premium/") ||
+          // ...and its legacy URLs, which only redirect.
+          p === "/lol/pro" ||
+          p.startsWith("/lol/pro/") ||
+          p === "/pro",
+      ),
+    ).toEqual([]);
   });
 
   it("champion entries slugify validated names and skip blanks", () => {

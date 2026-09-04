@@ -250,7 +250,7 @@ export default function Shop() {
       if (error || !data?.success) {
         toast({ title: "Could not redeem", description: data?.reason || error?.message || "Invalid code", variant: "destructive" });
       } else {
-        toast({ title: "🎁 Gift redeemed!", description: data.gift_type === "diamonds" ? `+${data.diamond_amount} 💎 added.` : "Mogsy Pro is now active!" });
+        toast({ title: "🎁 Gift redeemed!", description: data.gift_type === "diamonds" ? `+${data.diamond_amount} 💎 added.` : "Mogzy Premium is now active!" });
         setRedeemCode("");
         await loadProfile();
         await checkSubscription();
@@ -425,7 +425,7 @@ export default function Shop() {
                 {shopAdConfig.type === "pro" ? <Crown className="h-5 w-5 text-primary" /> : <Diamond className="h-5 w-5 text-primary" />}
               </motion.div>
               <div>
-                <p className="text-sm font-bold text-foreground">{shopAdConfig.headline || "Upgrade to Pro!"}</p>
+                <p className="text-sm font-bold text-foreground">{shopAdConfig.headline || "Upgrade to Premium!"}</p>
                 <p className="text-xs text-muted-foreground">{shopAdConfig.subtext || "Unlock themes, animations, and more."}</p>
               </div>
               <ExternalLink className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
@@ -543,7 +543,7 @@ export default function Shop() {
           </div>
         </motion.section>
 
-        {/* 3. Mogsy Pro (bottom) */}
+        {/* 3. Mogzy Premium (bottom) */}
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 sm:mb-10">
           <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-primary/30 bg-gradient-to-br from-card via-card to-primary/5 p-4 sm:p-8">
             <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
@@ -558,7 +558,7 @@ export default function Shop() {
                   <Crown className="h-4 w-4 sm:h-6 sm:w-6 text-primary" />
                 </motion.div>
                 <div>
-                  <h2 className="text-lg sm:text-2xl font-extrabold text-foreground">Mogsy Pro</h2>
+                  <h2 className="text-lg sm:text-2xl font-extrabold text-foreground">Mogzy Premium</h2>
                   <p className="text-muted-foreground text-xs sm:text-sm">
                     From ${PRO_MONTHLY_PRICE}/mo · 7-day free trial
                   </p>
@@ -605,7 +605,7 @@ export default function Shop() {
                 </motion.div>
               )}
 
-              {/* Billing interval toggle (hidden if already Pro) */}
+              {/* Billing interval toggle (hidden if already Premium) */}
               {!profile?.is_pro && (
                 <div
                   className="inline-flex items-center rounded-full border border-border bg-card p-0.5 mb-3"
@@ -637,7 +637,7 @@ export default function Shop() {
               {profile?.is_pro ? (
                 <div className="space-y-1.5 sm:space-y-2">
                   <p className="text-xs sm:text-sm text-primary font-medium">
-                    ✨ You're a Pro member!
+                    ✨ You're a Premium member!
                     {subscriptionEnd && (
                       <span className="text-muted-foreground ml-1 sm:ml-2">
                         {isTrial ? "Trial ends" : "Renews"}: {new Date(subscriptionEnd).toLocaleDateString()}
@@ -662,13 +662,13 @@ export default function Shop() {
                         handleStripeCheckout(priceId, "subscription", extras);
                       }}
                       disabled={purchasing === STRIPE_PRO_PRICE_ID || purchasing === STRIPE_PRO_ANNUAL_PRICE_ID}
-                      aria-label={billingInterval === "year" ? `Start Mogsy Pro yearly for ${PRO_ANNUAL_PRICE} dollars` : `Start Mogsy Pro monthly free trial`}
+                      aria-label={billingInterval === "year" ? `Start Mogzy Premium yearly for ${PRO_ANNUAL_PRICE} dollars` : `Start Mogzy Premium monthly free trial`}
                     >
                       <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       {(purchasing === STRIPE_PRO_PRICE_ID || purchasing === STRIPE_PRO_ANNUAL_PRICE_ID)
                         ? "Opening checkout…"
                         : billingInterval === "year"
-                          ? `Get Pro Yearly — $${PRO_ANNUAL_PRICE}/yr`
+                          ? `Get Premium Yearly — $${PRO_ANNUAL_PRICE}/yr`
                           : `Start Free Trial — $${PRO_MONTHLY_PRICE}/mo`}
                       <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </Button>
@@ -678,10 +678,10 @@ export default function Shop() {
                     size="sm"
                     className="h-9 text-xs sm:h-12 sm:text-sm gap-1.5"
                     onClick={() => setShowProAd(true)}
-                    aria-label="Preview Pro features"
+                    aria-label="Preview Premium features"
                   >
                     <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Preview Pro
+                    Preview Premium
                   </Button>
                 </div>
               )}
@@ -696,15 +696,17 @@ export default function Shop() {
               <Gift className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-accent" /> Send a Gift
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-              Give Pro or a diamond pack to a friend. They'll get a redemption code to claim it.
+              Give Premium or a diamond pack to a friend. They'll get a redemption code to claim it.
             </p>
 
             <fieldset className="mb-3">
               <legend className="text-xs font-bold text-muted-foreground mb-1.5">Gift type</legend>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: "pro_monthly", label: "Pro · 1 mo", sub: `$${PRO_MONTHLY_PRICE}` },
-                  { id: "pro_annual", label: "Pro · 1 yr", sub: `$${PRO_ANNUAL_PRICE}` },
+                  // The ids are the persisted `gifts.gift_type` values and keep
+                  // the `pro_` spelling; only the labels became Premium.
+                  { id: "pro_monthly", label: "Premium · 1 mo", sub: `$${PRO_MONTHLY_PRICE}` },
+                  { id: "pro_annual", label: "Premium · 1 yr", sub: `$${PRO_ANNUAL_PRICE}` },
                   { id: "diamonds", label: "Diamonds", sub: "Pick pack" },
                 ].map((opt) => (
                   <button
@@ -847,7 +849,7 @@ export default function Shop() {
         )}
       </AnimatePresence>
 
-      {/* Pro Cinematic Ad */}
+      {/* Premium Cinematic Ad */}
       <AnimatePresence>
         {showProAd && <ProCinematicAd onClose={() => setShowProAd(false)} onSubscribe={() => { setShowProAd(false); handleStripeCheckout(STRIPE_PRO_PRICE_ID, "subscription"); }} />}
       </AnimatePresence>
