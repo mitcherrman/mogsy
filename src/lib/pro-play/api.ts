@@ -26,6 +26,9 @@ export type ProPlayQuestion = {
   question_text: string;
   choices: string[];
   presentation: Record<string, unknown>;
+  /** The Step 1 presentation contract. Absent on a pre-Step-1 backend, so
+   *  every consumer must treat it as optional. See lib/pro-play/contract.ts. */
+  context?: unknown;
 };
 
 export type ProPlaySessionState = {
@@ -42,6 +45,9 @@ export type ProPlayAnswerResult = {
   correct_answer: string;
   explanation: string;
   reveal: Record<string, unknown>;
+  /** Structured reveal evidence (Step 1). Optional for the same reason
+   *  `question.context` is. */
+  evidence?: unknown;
 };
 
 export type ProPlayTurn = {

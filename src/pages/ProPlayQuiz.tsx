@@ -5,6 +5,9 @@ import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
+import ProPlayEvidence from "@/components/pro-play/ProPlayEvidence";
+import ProPlayQuestionCard from "@/components/pro-play/ProPlayQuestionCard";
+import { asEvidence, asQuestionContext } from "@/lib/pro-play/contract";
 import {
   answerProPlayQuestion,
   startProPlayQuiz,
@@ -89,6 +92,11 @@ export default function ProPlayQuiz() {
   }, [pendingNext]);
 
   const finished = !!session?.complete && !result;
+  // Narrowed at the render boundary, once, so nothing downstream re-parses an
+  // `unknown` blob. Both are null on a backend that predates the presentation
+  // contract, which is exactly the fallback path below.
+  const context = asQuestionContext(question?.context);
+  const evidence = result ? asEvidence(result.evidence) : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -149,14 +157,11 @@ export default function ProPlayQuiz() {
             </div>
           </div>
         ) : question ? (
-          <div>
-            <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
-              {question.topic}
-            </p>
-            <h2 data-pro-play-question className="mb-5 text-lg font-medium">
-              {question.question_text}
-            </h2>
-
+          <ProPlayQuestionCard
+            topic={question.topic}
+            questionText={question.question_text}
+            context={context}
+          >
             <QuizAnswerOptions
               choices={question.choices}
               selectedAnswer={selected}
@@ -173,12 +178,16 @@ export default function ProPlayQuiz() {
                     explanation: result.explanation,
                   }}
                 />
+                {/* Reveal-only, and gated on `result` twice over: the blob
+                    itself only exists on an answered turn, and this branch
+                    only runs once one has been graded. */}
+                {evidence ? <ProPlayEvidence evidence={evidence} className="mt-4" /> : null}
                 <Button className="mt-4" onClick={onNext} disabled={busy}>
                   {session?.complete ? "See results" : "Next"}
                 </Button>
               </div>
             ) : null}
-          </div>
+          </ProPlayQuestionCard>
         ) : (
           <p className="text-sm text-muted-foreground">Loading Pro Play questions…</p>
         )}
