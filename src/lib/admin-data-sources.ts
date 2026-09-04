@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro } from "@/lib/pro/entitlement";
 
 export interface DataSourceResult {
   labels: string[];
@@ -76,9 +77,9 @@ const sources: DataSourceDef[] = [
     category: "Users",
     description: "Distribution of pro and free users",
     fetch: async () => {
-      const { data } = await supabase.from("profiles").select("is_pro").eq("is_bot", false);
+      const { data } = await supabase.from("profiles").select("is_pro, pro_grant_kind, pro_grant_expires_at").eq("is_bot", false);
       const rows = data || [];
-      const pro = rows.filter(r => r.is_pro).length;
+      const pro = rows.filter(r => isEffectivePro(r)).length;  // PT1.4: Stripe OR valid grant
       return { labels: ["Pro", "Free"], datasets: [{ label: "Users", values: [pro, rows.length - pro] }] };
     },
   },

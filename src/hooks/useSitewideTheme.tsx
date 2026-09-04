@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchProEntitlement } from "@/lib/pro/entitlement";
 import { useAuth } from "@/hooks/useAuth";
 import { getThemeById, profileThemes, ProfileTheme } from "@/lib/profile-themes";
 import { isLolSectionPath } from "@/lib/startup-shell";
@@ -108,20 +109,23 @@ export function SitewideThemeProvider({ children }: { children: ReactNode }) {
       return;
     }
     setProStatus("unknown");
-    supabase
-      .from("profiles")
-      .select("custom_theme, is_pro")
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setIsPro(data.is_pro ?? false);
-          setProStatus(data.is_pro ? "pro" : "free");
-          const stored = localStorage.getItem("mogsy-chosen-free-theme");
-          if (stored) setChosenFreeTheme(stored);
-        }
-        // On error/missing profile, stay "unknown" — ads fail closed.
-      });
+    // PT1.4: entitlement comes from the canonical resolver, not profiles.is_pro
+    // (which is the Stripe-derived half only and would report a comped
+    // playtester as Free). custom_theme is still a plain profile read.
+    Promise.all([
+      fetchProEntitlement(),
+      supabase.from("profiles").select("custom_theme").eq("user_id", user.id).single(),
+    ]).then(([entitlement, { data }]) => {
+      if (data) {
+        const stored = localStorage.getItem("mogsy-chosen-free-theme");
+        if (stored) setChosenFreeTheme(stored);
+      }
+      // A null entitlement is *unknown* — stay unresolved so ads fail closed.
+      if (entitlement) {
+        setIsPro(entitlement.effectivePro);
+        setProStatus(entitlement.effectivePro ? "pro" : "free");
+      }
+    });
   }, [user, authLoading]);
 
   const isCycling = themeId === "cycle";

@@ -1,8 +1,12 @@
 /**
- * Mogzy Pro page banner: is_pro now comes from the backend entitlement
- * endpoint (the same interpretation that gates history and the missed
- * bank), with the client-side profile read as a fallback only when the
- * lookup is unavailable.
+ * Mogzy Pro page banner: Pro comes from the backend entitlement endpoint
+ * (the same interpretation that gates history and the missed bank), with
+ * the client-side entitlement resolver as a fallback only when the lookup
+ * is unavailable.
+ *
+ * PT1.4: that fallback is the `my_pro_entitlement` RPC — effective Pro,
+ * Stripe OR a valid manual grant — not a raw `profiles.is_pro` read, which
+ * would report a comped playtester as Free.
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -10,19 +14,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LolPro from "./LolPro";
 
 const getEntitlement = vi.fn();
-const profileSelect = vi.fn();
+const entitlementRpc = vi.fn();
 
 vi.mock("@/lib/quiz/api", () => ({
   quizApi: { getEntitlement: (...args: unknown[]) => getEntitlement(...args) },
 }));
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: () => ({
-      select: () => ({
-        eq: () => ({ maybeSingle: () => profileSelect() }),
-      }),
-    }),
-  },
+  supabase: { rpc: (...args: unknown[]) => entitlementRpc(...args) },
 }));
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -47,7 +45,7 @@ function renderPage() {
 
 beforeEach(() => {
   getEntitlement.mockReset();
-  profileSelect.mockReset();
+  entitlementRpc.mockReset();
 });
 afterEach(cleanup);
 
@@ -60,7 +58,7 @@ describe("LolPro entitlement banner", () => {
     await waitFor(() =>
       expect(screen.getByText(/You’re Pro — everything below is unlocked/)).toBeTruthy(),
     );
-    expect(profileSelect).not.toHaveBeenCalled();
+    expect(entitlementRpc).not.toHaveBeenCalled();
   });
 
   it("shows pricing when the backend says Free", async () => {
@@ -73,13 +71,26 @@ describe("LolPro entitlement banner", () => {
     expect(screen.getAllByText(/Upgrade to Mogzy Pro/).length).toBeGreaterThan(0);
   });
 
-  it("falls back to the profile read when the lookup is unavailable", async () => {
+  it("falls back to the entitlement resolver when the lookup is unavailable", async () => {
     getEntitlement.mockRejectedValue(new Error("Quiz API 503: Entitlement lookup failed"));
-    profileSelect.mockResolvedValue({ data: { is_pro: true } });
+    entitlementRpc.mockResolvedValue({ data: [{ effective_pro: true }], error: null });
     renderPage();
     await waitFor(() =>
       expect(screen.getByText(/You’re Pro — everything below is unlocked/)).toBeTruthy(),
     );
-    expect(profileSelect).toHaveBeenCalled();
+    expect(entitlementRpc).toHaveBeenCalledWith("my_pro_entitlement");
+  });
+
+  it("the fallback honours a grant-only entitlement, not the Stripe flag", async () => {
+    getEntitlement.mockRejectedValue(new Error("Quiz API 503: Entitlement lookup failed"));
+    // A comped playtester: no Stripe subscription, valid manual grant.
+    entitlementRpc.mockResolvedValue({
+      data: [{ effective_pro: true, stripe_pro: false, grant_kind: "playtest" }],
+      error: null,
+    });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(/You’re Pro — everything below is unlocked/)).toBeTruthy(),
+    );
   });
 });

@@ -20,6 +20,7 @@
 // ---------------------------------------------------------------------------
 
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro } from "@/lib/pro/entitlement";
 import { usernameMessage } from "@/lib/identity/username";
 
 export const ADMIN_USERS_PATH = "/admin/users";
@@ -140,7 +141,8 @@ export function toDirectoryProfile(row: Record<string, unknown>): AdminDirectory
     profileFrame: str(row.profile_frame),
     createdAt: str(row.created_at),
     lastSeenAt: str(row.last_seen_at),
-    isPro: bool(row.is_pro),
+    // PT1.4: effective Pro, so a comped playtester shows as Pro in admin tooling.
+    isPro: isEffectivePro(row as Record<string, unknown>),
     isBot: bool(row.is_bot),
     isDisabled: bool(row.is_disabled),
     isAnonymous: bool(row.is_anonymous),

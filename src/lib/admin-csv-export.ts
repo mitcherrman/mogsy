@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro } from "@/lib/pro/entitlement";
 
 export async function exportAdminCSV() {
   const sections: string[] = [];
@@ -10,13 +11,13 @@ export async function exportAdminCSV() {
   };
 
   // Users
-  const { data: profiles } = await supabase.from("profiles").select("id, display_name, created_at, is_pro, is_bot, is_anonymous, location, custom_theme, swipe_animation, onboarding_completed, last_seen_at, diamonds, boost_credits, elo_shields, reveals, rewinds, age, profile_frame");
+  const { data: profiles } = await supabase.from("profiles").select("id, display_name, created_at, is_pro, pro_grant_kind, pro_grant_expires_at, is_bot, is_anonymous, location, custom_theme, swipe_animation, onboarding_completed, last_seen_at, diamonds, boost_credits, elo_shields, reveals, rewinds, age, profile_frame");
   const users = (profiles || []).filter(p => !p.is_bot);
   const bots = (profiles || []).filter(p => p.is_bot);
   add("User Summary", ["Metric", "Value"], [
     ["Total Users", String(users.length)],
     ["Total Bots", String(bots.length)],
-    ["Pro Users", String(users.filter(u => u.is_pro).length)],
+    ["Pro Users", String(users.filter(u => isEffectivePro(u)).length)],  // PT1.4: Stripe OR valid grant
     ["Anonymous Users", String(users.filter(u => u.is_anonymous).length)],
     ["Onboarding Completed", String(users.filter(u => u.onboarding_completed).length)],
     ["Active (24h)", String(users.filter(u => u.last_seen_at && Date.now() - new Date(u.last_seen_at).getTime() < 86400000).length)],

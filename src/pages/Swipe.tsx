@@ -14,6 +14,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
 import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro } from "@/lib/pro/entitlement";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
@@ -144,7 +145,7 @@ export default function Swipe() {
     if (user) {
       const { data: myProfile } = await supabase
         .from("profiles")
-        .select("id, is_pro, rewinds, elo_shields, reveals")
+        .select("id, is_pro, pro_grant_kind, pro_grant_expires_at, rewinds, elo_shields, reveals")
         .eq("user_id", user.id)
         .single();
       if (myProfile) {
@@ -155,7 +156,7 @@ export default function Swipe() {
           .from("user_roles").select("role").eq("user_id", user.id);
         const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
         setIsStaffQa(isStaff);
-        setIsPro(!!myProfile.is_pro);
+        setIsPro(isEffectivePro(myProfile));  // PT1.4: Stripe OR valid grant
         setMyRewinds(myProfile.rewinds || 0);
         setMyShields(myProfile.elo_shields || 0);
         setMyReveals(myProfile.reveals || 0);

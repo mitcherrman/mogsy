@@ -2833,6 +2833,11 @@ export type Database = {
           location: string | null
           onboarding_completed: boolean | null
           preferred_categories: string[] | null
+          pro_grant_expires_at: string | null
+          pro_grant_granted_at: string | null
+          pro_grant_granted_by: string | null
+          pro_grant_kind: string | null
+          pro_grant_reason: string | null
           profile_frame: string | null
           ranked_tutorial_completed_at: string | null
           ranked_tutorial_version: number | null
@@ -2869,6 +2874,11 @@ export type Database = {
           location?: string | null
           onboarding_completed?: boolean | null
           preferred_categories?: string[] | null
+          pro_grant_expires_at?: string | null
+          pro_grant_granted_at?: string | null
+          pro_grant_granted_by?: string | null
+          pro_grant_kind?: string | null
+          pro_grant_reason?: string | null
           profile_frame?: string | null
           ranked_tutorial_completed_at?: string | null
           ranked_tutorial_version?: number | null
@@ -2905,6 +2915,11 @@ export type Database = {
           location?: string | null
           onboarding_completed?: boolean | null
           preferred_categories?: string[] | null
+          pro_grant_expires_at?: string | null
+          pro_grant_granted_at?: string | null
+          pro_grant_granted_by?: string | null
+          pro_grant_kind?: string | null
+          pro_grant_reason?: string | null
           profile_frame?: string | null
           ranked_tutorial_completed_at?: string | null
           ranked_tutorial_version?: number | null
@@ -3590,6 +3605,11 @@ export type Database = {
           location: string | null
           onboarding_completed: boolean | null
           preferred_categories: string[] | null
+          pro_grant_expires_at: string | null
+          pro_grant_granted_at: string | null
+          pro_grant_granted_by: string | null
+          pro_grant_kind: string | null
+          pro_grant_reason: string | null
           profile_frame: string | null
           ranked_tutorial_completed_at: string | null
           ranked_tutorial_version: number | null
@@ -3772,6 +3792,31 @@ export type Database = {
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
       is_master_admin: { Args: { _user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
+      admin_set_pro_grant: {
+        Args: {
+          _user_id: string
+          _kind?: string | null
+          _expires_at?: string | null
+          _reason?: string | null
+        }
+        Returns: {
+          effective_pro: boolean
+          stripe_pro: boolean
+          grant_kind: string | null
+          grant_expires_at: string | null
+          grant_reason: string | null
+        }[]
+      }
+      my_pro_entitlement: {
+        Args: Record<string, never>
+        Returns: {
+          effective_pro: boolean
+          stripe_pro: boolean
+          grant_kind: string | null
+          grant_expires_at: string | null
+          grant_reason: string | null
+        }[]
+      }
       is_reserved_display_name: { Args: { _name: string }; Returns: boolean }
       join_multiplayer_game: {
         Args: {

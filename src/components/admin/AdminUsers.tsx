@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro, describeProSource } from "@/lib/pro/entitlement";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,12 @@ interface Profile {
   age: number | null;
   location: string | null;
   status_message: string | null;
+  /** PT1.4: Stripe-derived entitlement only. Not the effective Pro answer. */
   is_pro: boolean | null;
+  pro_grant_kind: string | null;
+  pro_grant_expires_at: string | null;
+  pro_grant_reason: string | null;
+  pro_grant_granted_at: string | null;
   is_bot: boolean | null;
   is_anonymous: boolean | null;
   diamonds: number | null;
@@ -247,8 +253,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     // Apply filter (excluding anonymous which is handled above)
     const roles = userRoles;
     switch (filterMode) {
-      case "pro": list = list.filter(p => p.is_pro); break;
-      case "free": list = list.filter(p => !p.is_pro); break;
+      case "pro": list = list.filter(p => isEffectivePro(p)); break;
+      case "free": list = list.filter(p => !isEffectivePro(p)); break;
       case "signed_up": break; // already filtered above
       case "anonymous": break; // already filtered above
       case "ads_on": list = list.filter(p => (p.ads_enabled ?? true) === true); break;
@@ -293,7 +299,6 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     setNewNoteText("");
     const formData = {
       display_name: profile.display_name,
-      is_pro: profile.is_pro,
       diamonds: profile.diamonds,
       elo_shields: profile.elo_shields,
       reveals: profile.reveals,
@@ -473,6 +478,42 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
     loadAuthInfo(selectedUser.user_id);
   };
 
+  // PT1.4 — grant/revoke a non-Stripe Pro entitlement. Writes only the
+  // pro_grant_* columns, through an admin-gated SECURITY DEFINER RPC that
+  // records who granted it and when. Stripe state is never touched.
+  const [grantKind, setGrantKind] = useState("playtest");
+  const [grantDays, setGrantDays] = useState("");
+  const [grantReason, setGrantReason] = useState("");
+  const [grantSaving, setGrantSaving] = useState(false);
+
+  const setProGrant = async (kind: string | null) => {
+    if (!selectedUser) return;
+    const days = grantDays.trim() === "" ? null : Number(grantDays);
+    if (days !== null && (!Number.isFinite(days) || days <= 0)) {
+      toast.error("Expiry must be a positive number of days, or blank for never");
+      return;
+    }
+    setGrantSaving(true);
+    const { error } = await (supabase as any).rpc("admin_set_pro_grant", {
+      _user_id: selectedUser.user_id,
+      _kind: kind,
+      _expires_at: days === null ? null : new Date(Date.now() + days * 86400000).toISOString(),
+      _reason: kind === null ? null : (grantReason.trim() || null),
+    });
+    setGrantSaving(false);
+    if (error) { toast.error(error.message || "Failed to update Pro grant"); return; }
+    toast.success(kind === null ? "Pro grant revoked" : "Pro grant saved");
+    setSelectedUser({
+      ...selectedUser,
+      pro_grant_kind: kind,
+      pro_grant_expires_at: kind === null || days === null
+        ? null
+        : new Date(Date.now() + days * 86400000).toISOString(),
+      pro_grant_reason: kind === null ? null : (grantReason.trim() || null),
+    });
+    fetchProfiles();
+  };
+
   const saveUser = async () => {
     if (!selectedUser) return;
     setSaving(true);
@@ -480,7 +521,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       .from("profiles")
       .update({
         display_name: editForm.display_name,
-        is_pro: editForm.is_pro,
+        // PT1.4: is_pro is Stripe-owned and is deliberately NOT writable here.
+        // A comped/playtester entitlement is a grant — see setProGrant below.
         diamonds: editForm.diamonds,
         elo_shields: editForm.elo_shields,
         reveals: editForm.reveals,
@@ -552,7 +594,15 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       age: p.age,
       location: p.location,
       status_message: p.status_message,
-      is_pro: p.is_pro,
+      // PT1.4: is_pro is deliberately NOT restored. It is Stripe-derived cache,
+      // and restoring it here would be an admin-controlled write to Stripe-owned
+      // state (delete + restore could manufacture a subscription). The next
+      // check-subscription / webhook run repopulates it from Stripe.
+      // The manual grant IS restored, or an undeleted playtester comes back Free.
+      pro_grant_kind: p.pro_grant_kind,
+      pro_grant_expires_at: p.pro_grant_expires_at,
+      pro_grant_reason: p.pro_grant_reason,
+      pro_grant_granted_at: p.pro_grant_granted_at,
       is_bot: p.is_bot,
       diamonds: p.diamonds,
       elo_shields: p.elo_shields,
@@ -730,7 +780,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>}
             {isSelectedMod && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30"><ShieldCheck className="h-3 w-3 mr-1" /> Mod</Badge>}
             {isSelectedDemo && <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30"><Film className="h-3 w-3 mr-1" /> Demo</Badge>}
-            {selectedUser.is_pro && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
+            {isEffectivePro(selectedUser) && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Pro</Badge>}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
           </div>
@@ -769,7 +819,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <p><span className="text-muted-foreground">Created:</span> {formatDate(selectedUser.created_at)}</p>
                 <p><span className="text-muted-foreground">Last seen:</span> {formatDate(selectedUser.last_seen_at)}</p>
                 <p><span className="text-muted-foreground">Type:</span> {selectedUser.is_bot ? "Bot" : selectedUser.is_anonymous ? "Anonymous" : "Standard"}</p>
-                <p><span className="text-muted-foreground">Pro:</span> {selectedUser.is_pro ? "Yes" : "No"}</p>
+                <p><span className="text-muted-foreground">Pro:</span> {isEffectivePro(selectedUser) ? "Yes" : "No"} <span className="text-muted-foreground">({describeProSource(selectedUser)})</span></p>
                 <p><span className="text-muted-foreground">Roles:</span> {selectedRoles.length ? selectedRoles.join(", ") : "User"}</p>
               </div>
             </div>
@@ -845,9 +895,44 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-5">
-                  <label className="flex items-center gap-2 text-xs"><Switch checked={editForm.is_pro ?? false} onCheckedChange={(c) => setEditForm((f) => ({ ...f, is_pro: c }))} /> Pro Status</label>
                   <label className="flex items-center gap-2 text-xs"><Switch checked={editForm.ads_enabled ?? true} onCheckedChange={(c) => setEditForm((f) => ({ ...f, ads_enabled: c }))} /> Ads Enabled</label>
                   <Button onClick={saveUser} disabled={saving || !hasChanges} size="sm">{saving ? "Saving…" : "Save Profile Changes"}</Button>
+                </div>
+
+                {/* PT1.4 — manual / playtester Pro grant. Independent of Stripe:
+                    granting here never touches a subscription, and Stripe sync
+                    never revokes what is granted here. */}
+                <div className="space-y-2 border-t border-border pt-3">
+                  <h5 className="text-xs font-bold">Pro entitlement</h5>
+                  <p className="text-[11px] text-muted-foreground">
+                    Stripe subscription: <strong>{selectedUser.is_pro ? "active" : "none"}</strong> (managed by Stripe, not editable here).
+                    {" "}Effective Pro: <strong>{isEffectivePro(selectedUser) ? "yes" : "no"}</strong> — {describeProSource(selectedUser)}.
+                  </p>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Grant kind</Label>
+                      <Select value={grantKind} onValueChange={setGrantKind}>
+                        <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                        <SelectContent>{["playtest", "manual", "promo"].map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Expires in (days, blank = never)</Label>
+                      <Input className="w-44" value={grantDays} placeholder="e.g. 90" onChange={(e) => setGrantDays(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px]">Reason</Label>
+                      <Input className="w-56" value={grantReason} placeholder="Founding playtester" onChange={(e) => setGrantReason(e.target.value)} />
+                    </div>
+                    <Button size="sm" disabled={grantSaving} onClick={() => setProGrant(grantKind)}>
+                      {grantSaving ? "Saving…" : selectedUser.pro_grant_kind ? "Update grant" : "Grant Pro"}
+                    </Button>
+                    {selectedUser.pro_grant_kind && (
+                      <Button size="sm" variant="destructive" disabled={grantSaving} onClick={() => setProGrant(null)}>
+                        Revoke grant
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {isMasterAdmin && !isSelectedMaster && (
@@ -1464,7 +1549,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {p.is_pro && <Crown className="h-4 w-4 text-primary" />}
+                  {isEffectivePro(p) && <Crown className="h-4 w-4 text-primary" />}
                   <Diamond className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">{p.diamonds ?? 0}</span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />

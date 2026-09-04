@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchProEntitlement } from "@/lib/pro/entitlement";
 import { quizApi } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -123,14 +123,11 @@ export default function LolPro() {
         if (!cancelled) setIsPro(!!res.is_pro);
       })
       .catch(() => {
-        supabase
-          .from("profiles")
-          .select("is_pro")
-          .eq("user_id", user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            if (!cancelled) setIsPro(!!data?.is_pro);
-          });
+        // PT1.4 fallback: the canonical entitlement resolver, never a raw
+        // profiles.is_pro read (that is the Stripe half only).
+        fetchProEntitlement().then((entitlement) => {
+          if (!cancelled && entitlement) setIsPro(entitlement.effectivePro);
+        });
       });
     return () => { cancelled = true; };
   }, [authLoading, user]);

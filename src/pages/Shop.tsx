@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro } from "@/lib/pro/entitlement";
 import SEOHead from "@/components/SEOHead";
 import { useToast } from "@/hooks/use-toast";
 import { useShopSound } from "@/hooks/useShopSound";
@@ -156,7 +157,7 @@ export default function Shop() {
     if (!user) return;
     const { data } = await supabase
       .from("profiles")
-      .select("id, is_pro, boost_credits, elo_shields, reveals, rewinds, diamonds")
+      .select("id, is_pro, pro_grant_kind, pro_grant_expires_at, boost_credits, elo_shields, reveals, rewinds, diamonds")
       .eq("user_id", user.id)
       .single();
     if (data) setProfile(data as ProfileData);

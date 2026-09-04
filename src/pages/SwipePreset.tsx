@@ -21,6 +21,7 @@ import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro } from "@/lib/pro/entitlement";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
@@ -297,7 +298,7 @@ export default function SwipePreset() {
 
     if (user) {
       const { data: profile } = await supabase
-        .from("profiles").select("id, is_pro, rewinds, elo_shields, reveals").eq("user_id", user.id).single();
+        .from("profiles").select("id, is_pro, pro_grant_kind, pro_grant_expires_at, rewinds, elo_shields, reveals").eq("user_id", user.id).single();
       if (profile) {
         // Staff QA is an explicit override in the ad gate now — we no longer
         // falsify isPro for admins/moderators.
@@ -305,7 +306,7 @@ export default function SwipePreset() {
           .from("user_roles").select("role").eq("user_id", user.id);
         const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
         setIsStaffQa(isStaff);
-        if (profile.is_pro) setIsPro(true);
+        if (isEffectivePro(profile)) setIsPro(true);  // PT1.4: Stripe OR valid grant
         setMyProfileId(profile.id);
         setMyRewinds(profile.rewinds ?? 0);
         setMyShields(profile.elo_shields ?? 0);

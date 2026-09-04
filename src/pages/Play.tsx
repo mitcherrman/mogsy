@@ -6,6 +6,7 @@ import { ArrowLeft, Shuffle, Zap, Users, LayoutGrid, Sparkles, Globe, Circle, Re
 import { Button } from "@/components/ui/button";
 import SEOHead from "@/components/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
+import { isEffectivePro } from "@/lib/pro/entitlement";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { useCardAnimation } from "@/hooks/useCardAnimation";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
@@ -65,8 +66,10 @@ export default function Play() {
 
   useEffect(() => {
     if (user) {
-      supabase.from("profiles").select("is_pro").eq("user_id", user.id).single()
-        .then(({ data }) => { if (data?.is_pro) setIsPro(true); });
+      // PT1.4: effective Pro = Stripe subscription OR a valid manual grant.
+      // Reading is_pro alone would show a comped playtester as Free.
+      supabase.from("profiles").select("is_pro, pro_grant_kind, pro_grant_expires_at").eq("user_id", user.id).single()
+        .then(({ data }) => { if (isEffectivePro(data)) setIsPro(true); });
     }
     supabase.from("app_settings").select("value").eq("key", "card_animations").single()
       .then(({ data }) => { if (data?.value) setAnimConfig(data.value as any); });
