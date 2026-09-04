@@ -1,7 +1,61 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 12 (entrance + loading stabilization) is at the top of this
-     file. Revision 11 was the final shelf polish; 10 shelved both columns and
+<!-- Revision 13 (merged to main) is at the top of this file. Revision 12 was
+     the entrance + loading stabilization. -->
+
+## Revision 2026-09-03h — MERGED TO `main`
+
+**Status:** the hub workstream is on `main` for live review.
+
+| | |
+|---|---|
+| Previous `origin/main` | `d96708ab` — feat(pt1): reveal the questions a Ranked match added to your collection |
+| Hub branch tip | `1a2e117c` — feat(hub): entrance choreography and Patch Report loading stabilization |
+| Merge base | `fb21f106` |
+| Merge commit | `f35d8db1` (first parent `d96708ab`, second `1a2e117c`) |
+
+**`main` had advanced 9 commits** since the branch point — all Ranked, Mastery
+and question-library work (43 files). **Zero file overlap** with the hub's 16,
+so the merge was conflict-free and nothing needed resolving. No unrelated
+working-tree state from any other checkout was included: the merge was made on
+a detached HEAD at `origin/main` in the hub worktree, whose tree was clean, and
+the only stash present (`auth1-wip-stash-before-cs2`) belongs to another
+workstream and was left untouched.
+
+### Verification on the MERGED tree
+
+- 311 tests passed across the hub, `lol`, broadcast and audio suites.
+- ESLint 0 errors (the 2 pre-existing `react-refresh` warnings on the
+  broadcast surface remain).
+- `tsc --noEmit` failing-file set **identical** to the pre-merge baseline.
+- `/lol` renders the complete hub: four volumes, both shelves, centerpiece,
+  radio and Mogzy.
+- All four routes navigate: `/quiz`, `/lol/docs`, `/combat-lab`,
+  `/lol/pro-play`.
+- **Patch Report stabilization intact** — re-measured with the tome PNG held
+  by a route intercept, the surface (362×262), dock and first icon (y=199) are
+  byte-identical before and after image load.
+- Entrance runs on the first hub visit, paired stagger preserved: Leaguecraft
+  and Combat Simulation impact at 943/1010ms, Archives and Pro Play at
+  1156/1238ms — 67ms within a pair, 213ms between pairs, 3px overshoot each.
+  Absolute times sit ~150ms later than on the branch alone because the merged
+  bundle is larger to parse; the offsets are unchanged.
+- Repeat SPA navigation skips it: `data-hub-entrance="false"`, identity
+  transform.
+- Reduced motion: identity transform, opacity 1, `animationName: none`.
+- Console errors are the three pre-existing classes only.
+
+### Deployment
+
+**A push to `main` does not by itself publish mogzy.lol** — the frontend is a
+Lovable project and the live site updates on a Lovable **publish**, which is a
+manual step in that dashboard. Pushing `main` makes the work available to
+Lovable and to anyone building from the repo; the owner still has to publish
+to see it on the live domain.
+
+---
+
+<!-- Revision 12 (entrance + loading stabilization). Revision 11 was the final shelf polish; 10 shelved both columns and
      went head-on; 9 restored the backing; 8 was the material pass; 7 built the
      shelf; 6 rejected the mirrored shell. -->
 
