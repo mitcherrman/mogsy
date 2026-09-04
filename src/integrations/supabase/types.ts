@@ -3632,6 +3632,21 @@ export type Database = {
         Args: { _approved: boolean; _notification_id: string }
         Returns: string
       }
+      admin_set_pro_grant: {
+        Args: {
+          _expires_at?: string
+          _kind?: string
+          _reason?: string
+          _user_id: string
+        }
+        Returns: {
+          effective_pro: boolean
+          grant_expires_at: string
+          grant_kind: string
+          grant_reason: string
+          stripe_pro: boolean
+        }[]
+      }
       admin_unread_notification_count: { Args: never; Returns: number }
       admin_update_bot_profile: {
         Args: {
@@ -3642,6 +3657,15 @@ export type Database = {
           _profile_id: string
         }
         Returns: Json
+      }
+      apply_pro_grant: {
+        Args: {
+          _expires_at: string
+          _kind: string
+          _profile_id: string
+          _reason: string
+        }
+        Returns: boolean
       }
       attach_feedback_screenshot: {
         Args: { _feedback_id: string; _path: string }
@@ -3792,31 +3816,6 @@ export type Database = {
       is_league_creator: { Args: { _league_id: string }; Returns: boolean }
       is_master_admin: { Args: { _user_id: string }; Returns: boolean }
       is_profile_owner: { Args: { _profile_id: string }; Returns: boolean }
-      admin_set_pro_grant: {
-        Args: {
-          _user_id: string
-          _kind?: string | null
-          _expires_at?: string | null
-          _reason?: string | null
-        }
-        Returns: {
-          effective_pro: boolean
-          stripe_pro: boolean
-          grant_kind: string | null
-          grant_expires_at: string | null
-          grant_reason: string | null
-        }[]
-      }
-      my_pro_entitlement: {
-        Args: Record<string, never>
-        Returns: {
-          effective_pro: boolean
-          stripe_pro: boolean
-          grant_kind: string | null
-          grant_expires_at: string | null
-          grant_reason: string | null
-        }[]
-      }
       is_reserved_display_name: { Args: { _name: string }; Returns: boolean }
       join_multiplayer_game: {
         Args: {
@@ -3856,8 +3855,30 @@ export type Database = {
           updated_at: string
         }[]
       }
+      my_pro_entitlement: {
+        Args: never
+        Returns: {
+          effective_pro: boolean
+          grant_expires_at: string
+          grant_kind: string
+          grant_reason: string
+          stripe_pro: boolean
+        }[]
+      }
       normalize_display_name: { Args: { _name: string }; Returns: string }
       pair_lock_key: { Args: { _a: string; _b: string }; Returns: number }
+      pro_entitlement_is_effective: {
+        Args: {
+          _grant_expires_at: string
+          _grant_kind: string
+          _stripe_pro: boolean
+        }
+        Returns: boolean
+      }
+      pro_grant_is_valid: {
+        Args: { _expires_at: string; _kind: string }
+        Returns: boolean
+      }
       purchase_powerup: {
         Args: {
           _diamond_cost: number
@@ -4013,12 +4034,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4042,11 +4063,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4067,11 +4088,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4092,11 +4113,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4109,11 +4130,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
