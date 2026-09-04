@@ -1,7 +1,13 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Brain, BarChart3 } from "lucide-react";
+import { ArrowLeft, Trophy, Brain, BarChart3, Radio } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import HexPanelLink from "@/components/lol/HexPanelLink";
+import {
+  PRO_PLAY_GRAPHS_ROUTE,
+  PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_QUIZ_ROUTE,
+  PRO_PLAY_ROUTE,
+} from "@/lib/pro-play/routes";
 
 /**
  * Pro Play hub — the landing page behind the academy hub's Pro Play book.
@@ -15,9 +21,16 @@ import HexPanelLink from "@/components/lol/HexPanelLink";
  * area is professional-play content and lives at /lol/pro-play.
  */
 
-export const PRO_PLAY_ROUTE = "/lol/pro-play";
-export const PRO_PLAY_QUIZ_ROUTE = "/lol/pro-play/quiz";
-export const PRO_PLAY_GRAPHS_ROUTE = "/lol/pro-play/graphs";
+// Route identity lives in `@/lib/pro-play/routes` so the router can import it
+// without pulling this page into the main bundle. Re-exported here because
+// this module was their original home and several call sites import from it.
+export {
+  LEGACY_ESPORTS_LIVE_ROUTE,
+  PRO_PLAY_GRAPHS_ROUTE,
+  PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_QUIZ_ROUTE,
+  PRO_PLAY_ROUTE,
+} from "@/lib/pro-play/routes";
 
 type ProPlayModule = {
   to: string;
@@ -27,6 +40,17 @@ type ProPlayModule = {
 };
 
 const MODULES: ProPlayModule[] = [
+  {
+    to: PRO_PLAY_LIVE_ROUTE,
+    title: "Live & Recent Matches",
+    // "Live &" is earned: the ingestion poller runs continuously and the page
+    // shows a live scoreboard when a supported competition is playing. It is
+    // NOT a promise that something is always on — most of the time the page
+    // opens on games that just finished, which is why recency is named too.
+    description:
+      "Scoreboards, players, objectives and gold from pro games in progress — and the ones that just finished.",
+    Icon: Radio,
+  },
   {
     to: PRO_PLAY_QUIZ_ROUTE,
     title: "Pro Play Quiz",
@@ -47,7 +71,7 @@ export default function ProPlayHub() {
     <div className="min-h-screen bg-background">
       <SEOHead
         title="Pro Play | Mogzy"
-        description="Professional League of Legends play — quizzes and data graphs drawn from real pro match history."
+        description="Professional League of Legends play — live and recent match scoreboards, quizzes and data graphs drawn from real pro match history."
         path={PRO_PLAY_ROUTE}
       />
       <div className="mx-auto w-full max-w-3xl px-4 py-8">

@@ -18,6 +18,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { TEAM_SIM_DEV_ROUTE, TEAM_SIM_ROUTE } from "@/lib/combat-lab/team-sim/featureGate";
+import {
+  LEGACY_ESPORTS_LIVE_ROUTE,
+  PRO_PLAY_LIVE_ROUTE,
+} from "@/lib/pro-play/routes";
 import { ADMIN_TOOLS, legacyRouteMap } from "./admin-registry";
 
 const appSource = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
@@ -34,6 +38,8 @@ const appSource = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
 const PATH_CONSTANTS: Record<string, string> = {
   TEAM_SIM_ROUTE,
   TEAM_SIM_DEV_ROUTE,
+  PRO_PLAY_LIVE_ROUTE,
+  LEGACY_ESPORTS_LIVE_ROUTE,
 };
 
 function declaredPaths(source: string): Set<string> {

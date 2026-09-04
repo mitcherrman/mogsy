@@ -8,6 +8,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 import ProPlayHub, {
   PRO_PLAY_GRAPHS_ROUTE,
+  PRO_PLAY_LIVE_ROUTE,
   PRO_PLAY_QUIZ_ROUTE,
   PRO_PLAY_ROUTE,
 } from "./ProPlayHub";
@@ -39,6 +40,22 @@ describe("ProPlayHub", () => {
     expect(link.getAttribute("href")).toBe(PRO_PLAY_GRAPHS_ROUTE);
   });
 
+  it("offers Live & Recent Matches, pointing at the match-centre route", () => {
+    // The LIVE1 match centre existed at /esports/live for months, linked from
+    // nowhere. This tile is the entire reason anyone will find it.
+    renderHub();
+    const link = screen.getByRole("link", { name: /Live & Recent Matches/i });
+    expect(link.getAttribute("href")).toBe(PRO_PLAY_LIVE_ROUTE);
+  });
+
+  it("does not promise that a game is always live", () => {
+    // The poller runs continuously but most of the day nothing is playing.
+    // The tile must read as "live when there is live", not as a guarantee.
+    renderHub();
+    const tile = screen.getByRole("link", { name: /Live & Recent Matches/i });
+    expect(tile.textContent).toMatch(/just finished/i);
+  });
+
   it("keeps the quiz intact alongside the new module", () => {
     // Adding a capability must never cost the one that was already here.
     renderHub();
@@ -54,14 +71,15 @@ describe("ProPlayHub", () => {
 
   it("does not advertise modules that are not built yet", () => {
     renderHub();
-    // Every tile is a module that exists. A "coming soon" tile for live
-    // matches / trends / records would be a promise the hub cannot keep.
+    // Every tile is a module that exists. Live matches earned its tile by
+    // being built and served; a "coming soon" tile for trends / records
+    // would still be a promise the hub cannot keep.
     expect(screen.queryByText(/coming soon/i)).toBeNull();
     const modules = screen.getAllByRole("link").filter((a) =>
       a.getAttribute("href")?.startsWith(PRO_PLAY_ROUTE + "/"),
     );
     expect(modules.map((a) => a.getAttribute("href")).sort()).toEqual(
-      [PRO_PLAY_GRAPHS_ROUTE, PRO_PLAY_QUIZ_ROUTE].sort(),
+      [PRO_PLAY_GRAPHS_ROUTE, PRO_PLAY_LIVE_ROUTE, PRO_PLAY_QUIZ_ROUTE].sort(),
     );
   });
 

@@ -1,5 +1,10 @@
 /**
- * /esports/live — the production live esports viewer (LIVE1 Phase 4A).
+ * /lol/pro-play/live — the production live esports viewer (LIVE1 Phase 4A),
+ * and the "what is on now / what just happened" side of Pro Play.
+ *
+ * It shipped at `/esports/live` before Pro Play had a hub, reachable only by
+ * typing the URL; that path now redirects here. The page itself is unchanged
+ * apart from the shell, which places it inside the Pro Play area.
  *
  * Polling is deliberate rather than uniform. The bounded feed is cheap and
  * decides what is on, so it polls fastest; per-game reads follow the game's
@@ -7,8 +12,12 @@
  * numbers never change again.
  */
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Radio, RefreshCw, WifiOff } from "lucide-react";
+
+import SEOHead from "@/components/SEOHead";
+import { PRO_PLAY_LIVE_ROUTE, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -221,8 +230,10 @@ export default function EsportsLivePage() {
       {selected && (
         <>
           <header className="mb-3">
+            {/* h2, not h1: the shell already titles the page, and two h1s
+                would leave a screen reader without a document heading. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <h1 className="text-lg font-bold sm:text-xl">{matchTitle(selected)}</h1>
+              <h2 className="text-lg font-bold sm:text-xl">{matchTitle(selected)}</h2>
               <StatusPill freshness={selected.freshness} />
             </div>
             <MatchContext game={selected} />
@@ -391,14 +402,41 @@ function IngestionPausedNote() {
   );
 }
 
+/**
+ * The page chrome, shared by every state so a failing feed still reads as a
+ * Pro Play page with a way out of it. The gold trophy tile and the "Back to
+ * Pro Play" link are the same two elements the quiz and graphs pages carry —
+ * they are what make three separate surfaces read as one area.
+ */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-4 sm:py-6">
-      <div className="mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Esports
-        </p>
-        <h1 className="text-xl font-bold sm:text-2xl">Live matches</h1>
+      <SEOHead
+        title="Live & Recent Pro Matches | Mogzy"
+        description="Live and recently finished professional League of Legends games — scoreboards, players, objectives and gold."
+        path={PRO_PLAY_LIVE_ROUTE}
+      />
+      <Link
+        to={PRO_PLAY_ROUTE}
+        className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back to Pro Play
+      </Link>
+
+      <div className="mb-4 flex items-center gap-3">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/10"
+          aria-hidden="true"
+        >
+          <Radio className="h-4 w-4 text-[#c9a84c]" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Pro Play
+          </p>
+          <h1 className="text-xl font-bold sm:text-2xl">Live &amp; Recent Matches</h1>
+        </div>
       </div>
       {children}
     </main>

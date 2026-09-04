@@ -1149,14 +1149,17 @@ export const ADMIN_TOOLS: AdminTool[] = [
   },
   {
     id: "esports-live",
-    title: "Esports Live Feed",
-    description: "The LIVE1 production live esports viewer — the only surface for LIVE1 operations.",
+    title: "Live & Recent Matches",
+    description:
+      "The LIVE1 production match centre — now the live/recent destination of Pro Play, at /lol/pro-play/live.",
     area: "game-data",
     section: "esports",
     kind: "route",
-    path: "/esports/live",
+    path: "/lol/pro-play/live",
     oldLocation: "/esports/live — a product page, absent from the admin directory",
     disposition: "KEEP",
+    // /esports/live is where the match centre shipped and is still linked from
+    // the outside; it redirects to the Pro Play route rather than 404ing.
     legacyRoutes: ["/esports/live"],
     dangerLevel: "none",
     status: "Public",

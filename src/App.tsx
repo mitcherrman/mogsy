@@ -16,6 +16,10 @@ import AdminRoute from "./components/AdminRoute";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
 import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
 import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
+import {
+  LEGACY_ESPORTS_LIVE_ROUTE,
+  PRO_PLAY_LIVE_ROUTE,
+} from "@/lib/pro-play/routes";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import TeamSimErrorBoundary from "@/components/combat-lab/TeamSimErrorBoundary";
@@ -565,6 +569,10 @@ const App = () => (
                   {/* GRAPH1 as a product surface. /dev/graph1 stays as the
                       operator route: fixed races, stat families, ?api=. */}
                   <Route path="/lol/pro-play/graphs" element={<Suspense fallback={<RouteFallback />}><ProPlayGraphs /></Suspense>} />
+                  {/* LIVE1 match centre. It shipped at /esports/live (below,
+                      now a redirect) before Pro Play had a hub; this is its
+                      canonical URL. Same component, one page. */}
+                  <Route path={PRO_PLAY_LIVE_ROUTE} element={<Suspense fallback={<RouteFallback />}><EsportsLivePage /></Suspense>} />
                   <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
                   <Route path="/lol/patch-reports" element={<Suspense fallback={<RouteFallback />}><PatchReports /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />
@@ -591,7 +599,7 @@ const App = () => (
                       how the feature stays reachable for internal work while
                       the public flag is off. */}
                   <Route path={TEAM_SIM_DEV_ROUTE} element={teamSimElement} />
-                  <Route path="/esports/live" element={<Suspense fallback={<RouteFallback />}><EsportsLivePage /></Suspense>} />
+                  <Route path={LEGACY_ESPORTS_LIVE_ROUTE} element={<Navigate to={PRO_PLAY_LIVE_ROUTE} replace />} />
                   <Route path="/quiz/mastery" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneysPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/mastery/:masterySetId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneyPlayerPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/ahri-vs-syndra" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAhriVsSyndraPage /></Suspense></ProtectedRoute>} />
