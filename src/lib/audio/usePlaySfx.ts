@@ -54,6 +54,7 @@ export const PLAY_SFX_SETTING_KEY: Record<PlaySfxCue, keyof SoundSettings> = {
   error: "play_error",
   buttonPress: "play_button_press",
   bookLand: "play_book_land",
+  bookRuffle: "play_book_ruffle",
 };
 
 export interface PlaySfx {

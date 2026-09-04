@@ -124,13 +124,14 @@ afterEach(() => {
 
 describe("the cue registry", () => {
   it("is the same cues everywhere — no cue can sound with no way to turn it off", () => {
-    // Nine moments, plus the one FALLBACK that describes a control rather
-    // than a moment. An eleventh is a change to this file and to the app's
+    // Ten moments, plus the one FALLBACK that describes a control rather
+    // than a moment. A twelfth is a change to this file and to the app's
     // sound settings, never something a component can decide for itself.
-    expect(PLAY_SFX_CUES).toHaveLength(10);
+    expect(PLAY_SFX_CUES).toHaveLength(11);
     expect([...PLAY_SFX_CUES].sort()).toEqual([
-      "bookLand", "buttonPress", "error", "mascotReact", "modeConfirm",
-      "opponentFound", "queueStart", "roleStep", "scrollClose", "scrollOpen",
+      "bookLand", "bookRuffle", "buttonPress", "error", "mascotReact",
+      "modeConfirm", "opponentFound", "queueStart", "roleStep", "scrollClose",
+      "scrollOpen",
     ]);
     for (const cue of PLAY_SFX_CUES) {
       const key = PLAY_SFX_SETTING_KEY[cue];

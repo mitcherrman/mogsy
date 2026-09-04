@@ -36,6 +36,8 @@ export interface SoundSettings {
   play_button_press: boolean;
   /* The /lol hub entrance: one per volume as it settles onto its shelf. */
   play_book_land: boolean;
+  /* The /lol hub: pages flicking as a destination volume is opened. */
+  play_book_ruffle: boolean;
 }
 
 export const SOUND_DEFAULTS: SoundSettings = {
@@ -64,6 +66,7 @@ export const SOUND_DEFAULTS: SoundSettings = {
   play_error: true,
   play_button_press: true,
   play_book_land: true,
+  play_book_ruffle: true,
 };
 
 export const SOUND_LABELS: Record<keyof SoundSettings, { label: string; group: string; description: string }> = {
@@ -92,6 +95,7 @@ export const SOUND_LABELS: Record<keyof SoundSettings, { label: string; group: s
   play_error: { label: "Match Entry Refused", group: "Match Entry", description: "Restrained negative cue when a role write or queue entry is refused" },
   play_button_press: { label: "Button Press", group: "Match Entry", description: "Quiet wooden knock for the record's ordinary controls — Back, Cancel, roster rows, the signup action" },
   play_book_land: { label: "Book Landing", group: "Academy Hub", description: "Heavy bound volume settling onto its shelf — one per book during the hub entrance" },
+  play_book_ruffle: { label: "Book Page Ruffle", group: "Academy Hub", description: "Short page flick when a hub destination volume is opened" },
 };
 
 // Singleton cache so all hooks share one fetch

@@ -1,6 +1,112 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 13 (merged to main) is at the top of this file. Revision 12 was
+<!-- Revision 14 (live-review tuning) is at the top of this file.
+     Revision 13 recorded the merge to main. -->
+
+## Revision 2026-09-04 — live-review tuning: shelves inward, audio
+
+**Status:** targeted production tuning after the owner reviewed the deployed
+hub. Three changes only; no visual redesign.
+
+### 1. Both columns pulled inward on wide screens
+
+The existing `DESKTOP_BOOK_STACK_INSET` saturates at 120px by 1440, so every
+wider viewport kept the columns pinned to the outside walls while the free
+centre grew without limit. Measured gap from a book's inner edge to the tome:
+158px at 1440, **329px at 1920**, **586px at 2560**.
+
+A second term spends that excess, starting at ZERO at 1440:
+
+```
+DESKTOP_BOOK_PULL_IN = clamp(0px, (100vw - 1440px) * 0.36, 260px)
+```
+
+| Viewport | Books before | Books after | Inward | Gap before → after |
+|---|---|---|---|---|
+| 1366×768 | 107–300 | 107–300 | **0** | 200 → 200 |
+| 1440×900 | 144–381 | 144–381 | **0** | 158 → 158 |
+| 1920×1080 | 144–441 | **317–613** | **173px** | 329 → **157** |
+| 2560×1440 | 144–504 | **404–764** | **260px** | 586 → 326 |
+
+1366 and 1440 are bit-identical to the deployed build, as the review asked;
+1920 now sits at the same 157px gap that 1440 already had, so the whole
+desktop range reads with one density. The shelf unit moves whole — backing,
+posts, boards, books, contact shadows — and left/right stay mirrored.
+
+**Why a separate term and not a bigger cap on the existing inset.**
+`academy-layout`'s `CENTERPIECE_WIDTH_CSS` subtracts twice
+`BOOK_STACK_INSET_CSS` when it models the free central zone, so widening the
+shared value would have **shrunk the Patch Report from its approved 380px to
+271px at 1920**. The centerpiece is approved as it stands, so the pull is a
+column-only transform and the tome's width term is untouched. Verified: the
+tome measures 770–1150 at 1920 before and after, and 1090–1470 at 2560.
+
+Guide bubbles re-checked at the new geometry: hovering Leaguecraft at 1920
+puts the bubble at 781–948 against a book ending at 613 and a board ending at
+682 — 99px of clearance. `hub-guide.ts` still needs no recalibration.
+
+### 2. `bookLand` made materially louder
+
+Inaudible on the live site at its original 0.075 peak. Every voice scaled by
+**1.6**, per voice so the envelopes keep their shape:
+
+| Voice | Was | Now |
+|---|---|---|
+| impact knock (noise 340→120Hz) | 0.075 | **0.120** |
+| body tone (104→64Hz) | 0.055 | **0.088** |
+| board ring (208→150Hz) | 0.028 | **0.045** |
+| leather/paper settle | 0.022 | **0.035** |
+
+**Gain-staged, not clipped:** the four peaks sum to 0.288 at worst and are
+staggered besides, nowhere near the destination ceiling. This makes `bookLand`
+the loudest cue in the set, just past the opponent bell — a deliberate
+reordering, recorded in the engine's hierarchy comment, on the grounds that it
+is a physical impact rather than a notification and fires exactly four times on
+arrival and never again.
+
+### 3. New `bookRuffle` cue on activation
+
+Pages flicking as a volume is opened: three short bright noise bursts in the
+paper band with falling peaks and irregular spacing, over the cover's leather.
+Peak 0.055, ~230ms. Deliberately the **opposite shape** to the landing — that
+is one low event sweeping down into the mids, this is several high ones — so
+the two can never be confused despite both being "a book".
+
+Wired on `onDestinationClick`, so it covers all four destinations and both
+pointer and keyboard activation. New `play_book_ruffle` setting with an
+AdminSounds row; same global mute.
+
+**No navigation delay was needed, and none was added.** The AudioContext is a
+module singleton that survives an SPA route change and the scheduled nodes keep
+sounding on the next page — measured: navigation reached `/lol/pro-play`
+**13ms** after the cue, and the context read `running` afterwards.
+
+### Audio verification (Web Audio voices counted, not listened to)
+
+`bookLand` is 2 buffer sources + 2 oscillators; `bookRuffle` is 4 buffer
+sources + 0 oscillators — so the two are distinguishable in the counts.
+
+- Entrance: **8 buffer sources + 8 oscillators = exactly 4 landings**, peaks
+  read back as `0.12 / 0.088 / 0.045 / 0.035`.
+- Click: **+4 buffer / +0 oscillator** — exactly one ruffle, no landing.
+- Keyboard Enter on a focused book: **+4 buffer / +0 oscillator**, navigated
+  to `/combat-lab` — identical to pointer.
+- Muted: **0 / 0** for both.
+
+**Known limitation, unchanged and pre-existing:** the engine will not sound
+before the browser has seen a gesture, and its `once` listener is registered
+when the audio module evaluates — so the gesture must land after that. On this
+build a click at 500ms and at 700ms produced no landings; at 850ms all four
+sounded. A direct cold load of `/lol` therefore still animates silently.
+
+### Verification
+
+311 tests passed (hub, `lol`, audio) · ESLint 0 errors · `tsc` failing-file
+set identical to baseline.
+
+---
+
+<!-- Revision 13 (merged to main). Revision 12 was
      the entrance + loading stabilization. -->
 
 ## Revision 2026-09-03h — MERGED TO `main`

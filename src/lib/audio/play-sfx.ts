@@ -72,7 +72,8 @@ export type PlaySfxCue =
   | "opponentFound"
   | "error"
   | "buttonPress"
-  | "bookLand";
+  | "bookLand"
+  | "bookRuffle";
 
 export const PLAY_SFX_CUES: readonly PlaySfxCue[] = [
   "scrollOpen",
@@ -85,6 +86,7 @@ export const PLAY_SFX_CUES: readonly PlaySfxCue[] = [
   "error",
   "buttonPress",
   "bookLand",
+  "bookRuffle",
 ];
 
 /**
@@ -117,6 +119,10 @@ const MIN_REPLAY_MS: Record<PlaySfxCue, number> = {
      a pair are deliberately only 75ms apart. Anything above that would eat
      half the sequence and turn a placed shelf into two thuds. */
   bookLand: 40,
+  /* One activation, one ruffle. Long enough to absorb a double-fired click
+     handler, short enough that a user who genuinely picks a second book after
+     changing their mind still hears it. */
+  bookRuffle: 220,
 };
 
 let ctx: AudioContext | null = null;
@@ -268,7 +274,9 @@ function tone(c: AudioContext, t0: number, v: ToneVoice): void {
  *   error           clear      0.070  ~0.40s
  *   modeConfirm     medium     0.085  ~0.38s
  *   queueStart      medium     0.090  ~0.52s
- *   opponentFound   strongest  0.115  ~0.90s
+ *   opponentFound   strong     0.115  ~0.90s
+ *   bookRuffle      quiet-med  0.055  ~0.23s   (hub, on activation)
+ *   bookLand        strongest  0.120  ~0.21s   (hub, four on arrival)
  *
  * The mascot is deliberately well under both matchmaking cues: it is a toy,
  * and a toy that shouts over the thing saying a duel has started is a defect.
@@ -386,15 +394,42 @@ const RENDER: Record<PlaySfxCue, (c: AudioContext, t: number) => void> = {
    * the quiet high rustle of leather and paper settling a beat later. The
    * downward sweeps are what make it read as mass rather than as a click.
    *
-   * Peak 0.075 puts it between modeConfirm and queueStart: substantial,
-   * because it is the hub's arrival, but under the opponent bell, because
-   * four of them sound in a row and nothing here should ring on.
+   * LEVEL (live review, 2026-09-04). This was pitched at 0.075 — between
+   * modeConfirm and queueStart — and on the deployed hub it simply could not
+   * be heard over the room. Every voice is scaled by 1.6, which lands the
+   * knock at 0.12 and makes this the loudest cue in the set, just past the
+   * opponent bell. That is a deliberate reordering, not an oversight: this is
+   * a physical impact rather than a notification, it fires exactly four times
+   * on arrival and never again, and the owner tuned it against the live site.
+   *
+   * GAIN-STAGED, NOT CLIPPED. The scaling is applied per voice so the
+   * envelope shape is untouched; the four peaks sum to 0.288 at worst and are
+   * staggered besides, so nothing approaches the destination's ceiling.
    */
   bookLand(c, t) {
-    noise(c, t, { dur: 0.075, peak: 0.075, from: 340, to: 120, q: 1.1, attack: 0.06 });
-    tone(c, t, { dur: 0.16, peak: 0.055, freq: 104, slideTo: 64, type: "triangle" });
-    tone(c, t, { at: 0.012, dur: 0.1, peak: 0.028, freq: 208, slideTo: 150 });
-    noise(c, t, { at: 0.07, dur: 0.14, peak: 0.022, from: 1500, to: 700, q: 0.9, attack: 0.3 });
+    noise(c, t, { dur: 0.075, peak: 0.12, from: 340, to: 120, q: 1.1, attack: 0.06 });
+    tone(c, t, { dur: 0.16, peak: 0.088, freq: 104, slideTo: 64, type: "triangle" });
+    tone(c, t, { at: 0.012, dur: 0.1, peak: 0.045, freq: 208, slideTo: 150 });
+    noise(c, t, { at: 0.07, dur: 0.14, peak: 0.035, from: 1500, to: 700, q: 0.9, attack: 0.3 });
+  },
+
+  /**
+   * A volume being opened: three page flicks and the cover's leather under
+   * them, ~230ms end to end.
+   *
+   * Deliberately the OPPOSITE SHAPE to bookLand, so the two can never be
+   * confused even though both are "a book". The landing is one low event that
+   * sweeps DOWN into the mids; this is several short bright events up in the
+   * paper band, each sweeping down only a little, with irregular spacing and
+   * falling peaks so it reads as pages losing momentum rather than as a
+   * rhythm. Peak 0.055 keeps it well under the landing — selecting is a
+   * lighter act than arriving.
+   */
+  bookRuffle(c, t) {
+    noise(c, t, { dur: 0.075, peak: 0.055, from: 2600, to: 1500, q: 0.9, attack: 0.12 });
+    noise(c, t, { at: 0.065, dur: 0.08, peak: 0.05, from: 3100, to: 1700, q: 0.9, attack: 0.1 });
+    noise(c, t, { at: 0.142, dur: 0.09, peak: 0.04, from: 2400, to: 1300, q: 0.9, attack: 0.14 });
+    noise(c, t, { at: 0.05, dur: 0.16, peak: 0.024, from: 700, to: 380, q: 1.1, attack: 0.3 });
   },
 };
 

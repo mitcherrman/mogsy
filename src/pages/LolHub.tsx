@@ -381,6 +381,14 @@ export default function LolHub() {
   }, [runEntrance]);
 
   const onDestinationClick = (to: string) => {
+    // Pages flicking as the volume is opened. Fires on pointer AND keyboard
+    // activation, because it hangs off the Link's own onClick — React routes
+    // an Enter press on an anchor through the same handler. No delay before
+    // navigating: this is an SPA route change, the AudioContext is a module
+    // singleton that survives it, and the already-scheduled Web Audio nodes
+    // keep sounding on the next page (verified by counting voices across the
+    // transition). Holding navigation for audio would be the wrong trade.
+    sfxRef.current.play("bookRuffle");
     playUiSfx("sectionOpen");
     if (to === "/quiz") {
       trackFunnelEvent("lol_start_quiz_clicked", { cta: "hub_book" });
@@ -401,6 +409,26 @@ export default function LolHub() {
   // central lane, where the Academy Radio console now lives — at 1280 the
   // fixed 120px put book edges 34px into the lane, under the console.
   const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
+
+  // WIDE-SCREEN PULL (live review, 2026-09-04). The inset above saturates at
+  // 120px by 1440, so every viewport past it kept the columns pinned to the
+  // outside walls while the free centre grew without limit: measured, the gap
+  // between a book's inner edge and the tome ran 158px at 1440 but 329px at
+  // 1920 and 586px at 2560. This second term spends that excess.
+  //
+  // It starts at ZERO at 1440 and only opens up beyond it, so 1366 and 1440 —
+  // already compact and approved — are bit-identical to before. 0.36 of each
+  // excess pixel gives ~173px per column at 1920, inside the 150–200px the
+  // review asked for; the 260px cap keeps ultra-wide from over-tightening.
+  //
+  // DELIBERATELY SEPARATE from DESKTOP_BOOK_STACK_INSET rather than a bigger
+  // cap on it. academy-layout's CENTERPIECE_WIDTH_CSS subtracts twice that
+  // inset when it models the free central zone, so widening the shared value
+  // would SHRINK the Patch Report — at 1920 from its approved 380px to 271px.
+  // The centerpiece is approved as it stands, so the pull is a column-only
+  // move and the tome's width term is left exactly as it was.
+  const DESKTOP_BOOK_PULL_IN = "clamp(0px, (100vw - 1440px) * 0.36, 260px)";
+  const DESKTOP_COLUMN_INWARD = `calc(${DESKTOP_BOOK_STACK_INSET} + ${DESKTOP_BOOK_PULL_IN})`;
 
   // Book size and placement. AcademyHubBook's layout box IS the frame PNG's
   // canvas, so the card's height is its width × 1.5 with no margin
@@ -623,11 +651,7 @@ export default function LolHub() {
             data-hub-entrance={runEntrance ? "true" : "false"}
             className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3"
           >
-            {renderShelvedColumn(
-              LEFT_DESTINATIONS,
-              "left",
-              `calc(${DESKTOP_BOOK_STACK_INSET})`,
-            )}
+            {renderShelvedColumn(LEFT_DESTINATIONS, "left", DESKTOP_COLUMN_INWARD)}
 
             {/* Central lane — the Academy Broadcast centerpiece (magic-book
                 surface with the radio dock at its base) sits in the upper
@@ -686,7 +710,7 @@ export default function LolHub() {
             {renderShelvedColumn(
               RIGHT_DESTINATIONS,
               "right",
-              `calc(-1 * (${DESKTOP_BOOK_STACK_INSET}))`,
+              `calc(-1 * (${DESKTOP_COLUMN_INWARD}))`,
             )}
           </div>
 
