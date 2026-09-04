@@ -141,9 +141,19 @@ export interface Graph1DisplayHints {
 export type Graph1MetricId =
   | "cumulative_games"
   | "cumulative_wins"
+  /** Phase D: cumulative BANS. A different event set, not a different view of
+   * the games race — which is why a ban graph declares no wins metric at all
+   * (a win with a banned champion is undefined). Monotone, so it races. */
+  | "cumulative_bans"
   /** Phase 4A: a calculated champion stat accumulated as integer display
    * units over a level progression (monotone, so it races like a count). */
-  | "champion_stat_value";
+  | "champion_stat_value"
+  /** Phase E RATIO metrics. These ride on `ranked-snapshot` BOARDS, never on
+   * a race: a ratio falls as often as it rises, so bars would shrink and rank
+   * order would churn mid-race. */
+  | "win_rate"
+  | "share"
+  | "ban_rate";
 
 /** How to print accumulated integer units as a stat value: show
  * `value / scale` with `decimals` decimals. Absent on count metrics, whose

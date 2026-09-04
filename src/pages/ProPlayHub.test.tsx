@@ -1,12 +1,16 @@
 /**
  * Pro Play hub — the landing page the academy hub's Pro Play book opens.
- * V1 is one card; this pins that the area identifies itself, offers the quiz,
+ * This pins that the area identifies itself, offers every module it has built,
  * and can get back to the academy.
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
-import ProPlayHub, { PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_ROUTE } from "./ProPlayHub";
+import ProPlayHub, {
+  PRO_PLAY_GRAPHS_ROUTE,
+  PRO_PLAY_QUIZ_ROUTE,
+  PRO_PLAY_ROUTE,
+} from "./ProPlayHub";
 
 afterEach(cleanup);
 
@@ -29,6 +33,18 @@ describe("ProPlayHub", () => {
     expect(link.getAttribute("href")).toBe(PRO_PLAY_QUIZ_ROUTE);
   });
 
+  it("offers Explore Pro Data, pointing at the graphs route", () => {
+    renderHub();
+    const link = screen.getByRole("link", { name: /Explore Pro Data/i });
+    expect(link.getAttribute("href")).toBe(PRO_PLAY_GRAPHS_ROUTE);
+  });
+
+  it("keeps the quiz intact alongside the new module", () => {
+    // Adding a capability must never cost the one that was already here.
+    renderHub();
+    expect(screen.getByRole("link", { name: /Pro Play Quiz/i })).toBeTruthy();
+  });
+
   it("keeps a way back to the academy hub", () => {
     renderHub();
     expect(
@@ -38,12 +54,15 @@ describe("ProPlayHub", () => {
 
   it("does not advertise modules that are not built yet", () => {
     renderHub();
-    // One card in v1. A "coming soon" tile for live matches / trends / records
-    // would be a promise the hub cannot keep.
+    // Every tile is a module that exists. A "coming soon" tile for live
+    // matches / trends / records would be a promise the hub cannot keep.
     expect(screen.queryByText(/coming soon/i)).toBeNull();
-    expect(screen.getAllByRole("link").filter((a) =>
+    const modules = screen.getAllByRole("link").filter((a) =>
       a.getAttribute("href")?.startsWith(PRO_PLAY_ROUTE + "/"),
-    )).toHaveLength(1);
+    );
+    expect(modules.map((a) => a.getAttribute("href")).sort()).toEqual(
+      [PRO_PLAY_GRAPHS_ROUTE, PRO_PLAY_QUIZ_ROUTE].sort(),
+    );
   });
 
   it("is not the subscription page", () => {

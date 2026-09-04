@@ -283,7 +283,13 @@ export function statBoardTitle(
       : "";
   if (isAllRows(rowCount)) {
     const count = renderedCount ?? dataset.rows.length;
-    return `All ${count} Champions — ${direction} ${stat}${at}`;
+    // A Phase-E ratio board reuses this contract to rank teams and players;
+    // calling those "Champions" is wrong on screen.
+    const plural =
+      { champion: "Champions", team: "Teams", player: "Players" }[
+        dataset.definition.rankedEntityType
+      ] ?? "Champions";
+    return `All ${count} ${plural} — ${direction} ${stat}${at}`;
   }
   return `Top ${rowCount} ${direction} ${stat}${at}`;
 }

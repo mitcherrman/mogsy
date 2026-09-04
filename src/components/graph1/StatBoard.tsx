@@ -138,6 +138,12 @@ export interface StatBoardProps {
   highlightedIds?: ReadonlySet<string>;
   /** the single match to scroll into view */
   scrollToId?: string | null;
+  /**
+   * Caption for the entity column, e.g. "Team". Defaults to "Champion", which
+   * is what every stat board is — but a Phase-E ratio board ranks teams or
+   * players, and calling those champions is simply wrong on screen.
+   */
+  entityLabel?: string;
 }
 
 export default function StatBoard({
@@ -150,6 +156,7 @@ export default function StatBoard({
   imageComponent = NativeLazyImg,
   highlightedIds,
   scrollToId,
+  entityLabel = "Champion",
 }: StatBoardProps) {
   return (
     <section
@@ -171,7 +178,7 @@ export default function StatBoard({
         </span>
         <span className="w-10 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-          Champion
+          {entityLabel}
         </span>
         <span className="w-16 shrink-0 text-right text-[10px] uppercase tracking-wide text-muted-foreground sm:w-20">
           {unit}
