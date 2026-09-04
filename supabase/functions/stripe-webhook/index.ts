@@ -4,6 +4,11 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 // Stripe webhook — keeps profiles.is_pro in sync without relying on the
 // user revisiting the Shop page (check-subscription remains as a backstop).
+//
+// PT1.4: is_pro is the STRIPE-DERIVED half of entitlement only. This function
+// may say "no paid Stripe entitlement"; it may NOT conclude "therefore not Pro".
+// Manual/playtester/promo/gift grants live in profiles.pro_grant_* and are never
+// written here. Effective Pro = public.pro_entitlement_is_effective(...).
 // Events handled: checkout.session.completed, customer.subscription.created,
 // customer.subscription.updated, customer.subscription.deleted.
 

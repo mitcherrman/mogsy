@@ -9,8 +9,10 @@ const corsHeaders = {
 /**
  * redeem-gift: signed-in recipient claims a gift.
  * - Diamonds gifts: handled by SQL function redeem_gift_code (adds to balance).
- * - Pro gifts (monthly/annual): we additionally extend the recipient's is_pro flag
- *   and bump active_boost_until / Pro expiry via the profiles table (server-side).
+ * - Pro gifts (monthly/annual): PT1.4 — recorded as a non-Stripe entitlement
+ *   grant (profiles.pro_grant_kind = 'gift' with a real expiry), written
+ *   server-side with the service role. Never touches is_pro, which is
+ *   Stripe-owned and force-synced from Stripe subscription state.
  */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -64,10 +66,30 @@ serve(async (req) => {
     // For Pro gifts, grant Pro server-side (bypass premium-field trigger via service role)
     if (result.gift_type === "pro_monthly" || result.gift_type === "pro_annual") {
       const days = result.gift_type === "pro_annual" ? 365 : 30;
-      const { data: prof } = await admin.from("profiles").select("id").eq("user_id", user.id).single();
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("id, pro_grant_kind, pro_grant_expires_at")
+        .eq("user_id", user.id)
+        .single();
       if (prof) {
-        // Set is_pro true; the user becomes Pro. Pro renewal is manual/honor-based for gifted period.
-        await admin.from("profiles").update({ is_pro: true }).eq("id", prof.id);
+        // PT1.4: a gift is a NON-Stripe entitlement source, so it writes the
+        // pro_grant_* columns and never is_pro (which is now Stripe-owned and
+        // would be force-synced away by check-subscription / stripe-webhook).
+        // The gifted period is a real expiry instead of an honour-based flag,
+        // and stacks onto any still-valid grant rather than truncating it.
+        const now = Date.now();
+        const existingMs = prof.pro_grant_expires_at ? Date.parse(prof.pro_grant_expires_at) : null;
+        const hasUnexpiringGrant = prof.pro_grant_kind != null && prof.pro_grant_expires_at == null;
+        if (!hasUnexpiringGrant) {
+          // An unexpiring grant already outlasts anything a gift could add.
+          const base = existingMs != null && existingMs > now ? existingMs : now;
+          await admin.from("profiles").update({
+            pro_grant_kind: "gift",
+            pro_grant_expires_at: new Date(base + days * 86400000).toISOString(),
+            pro_grant_reason: `Redeemed ${result.gift_type} gift`,
+            pro_grant_granted_at: new Date().toISOString(),
+          }).eq("id", prof.id);
+        }
         // Record a purchases row so admins can see the gifted Pro period
         await admin.from("purchases").insert({
           profile_id: prof.id,

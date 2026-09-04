@@ -84,7 +84,12 @@ serve(async (req) => {
       interval = sub.items.data[0]?.price?.recurring?.interval ?? null;
     }
 
-    // Always sync pro status to profiles table — revoke when no active sub
+    // PT1.4: is_pro is the STRIPE-DERIVED half of entitlement and nothing else.
+    // Force-syncing it to Stripe state (including revoking it) is correct and
+    // deliberate. It is NOT the effective Pro answer: a manual/playtester/promo
+    // grant lives in profiles.pro_grant_* and is untouched here, so this sync
+    // can no longer revoke a comped entitlement. Effective Pro is composed by
+    // public.pro_entitlement_is_effective / public.my_pro_entitlement().
     const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, is_pro")
