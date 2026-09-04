@@ -237,6 +237,44 @@ describe("LolHub — navigation structure", () => {
     expect(swipeHrefs).toEqual([]);
   });
 
+  it("opens the lower page with the Mogzy Premium module, above Community", () => {
+    const { container } = renderHub();
+    const premium = screen.getByTestId("hub-premium-panel");
+    expect(within(premium).getByRole("heading", { name: "Mogzy Premium" })).toBeTruthy();
+    expect(screen.getByTestId("hub-premium-cta").getAttribute("href")).toBe("/lol/premium");
+
+    // Hierarchy: Premium → Community → Feedback/About. The lower page is a flat
+    // flow of siblings, so DOM order IS the reading order.
+    const order = ["hub-premium-panel", "hub-community-section", "hub-utility-section"].map(
+      (id) => Array.from(container.querySelectorAll("[data-testid]")).indexOf(
+        container.querySelector(`[data-testid="${id}"]`)!,
+      ),
+    );
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(order.every((i) => i >= 0)).toBe(true);
+  });
+
+  it("keeps Premium out of the four primary destination books", () => {
+    const { container } = renderHub();
+    // It is a promotion module in the commons, not a fifth volume: the guide-
+    // bearing books are still exactly the four destinations, and the single
+    // Premium link on the page lives inside the panel.
+    expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(4);
+    expect(container.querySelector('[data-guide-mode] a[href="/lol/premium"]')).toBeNull();
+    const premiumLinks = Array.from(container.querySelectorAll('a[href="/lol/premium"]'));
+    expect(premiumLinks).toHaveLength(1);
+    expect(premiumLinks[0].closest('[data-testid="hub-premium-panel"]')).toBeTruthy();
+  });
+
+  it("introduces no subscription 'Pro' wording on the hub — Pro Play keeps the word", () => {
+    const { container } = renderHub();
+    const text = container.textContent ?? "";
+    expect(text).toContain("Pro Play");
+    for (const banned of ["Mogzy Pro", "Mogsy Pro", "Upgrade to Pro", "Pro subscription", "Go Pro"]) {
+      expect(text).not.toContain(banned);
+    }
+  });
+
   it("opens the lower page with the Academy community section", () => {
     renderHub();
     const community = screen.getByTestId("hub-community-section");

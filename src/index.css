@@ -545,6 +545,41 @@
   }
 }
 
+/* Mogzy Premium hub panel — one restrained gold pass across the panel on
+   hover/focus, and nothing else. The hero above owns this page's theatrical
+   motion, so this is a single 620ms sweep at 10% alpha: enough to read as a
+   response, far short of a glow effect. The panel itself only changes its
+   border colour; the CTA carries the lift. */
+.hub-premium-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background-image: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(240, 215, 140, 0.1) 50%,
+    transparent 62%
+  );
+  background-size: 260% 100%;
+  background-position: 130% 0;
+}
+.hub-premium-panel:hover::after,
+.hub-premium-panel:focus-within::after {
+  opacity: 1;
+  background-position: -30% 0;
+  transition:
+    background-position 620ms ease-out,
+    opacity 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-premium-panel::after {
+    display: none;
+  }
+}
+
 /* LoLdle-style display lettering for h1/h2 headers inside the theme */
 .theme-lol h1,
 .theme-lol h2 {

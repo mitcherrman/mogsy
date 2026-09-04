@@ -31,6 +31,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
+import HubPremiumPanel from "@/components/lol/HubPremiumPanel";
 import HubCommunitySection from "@/components/lol/HubCommunitySection";
 import HubUtilitySection from "@/components/lol/HubUtilitySection";
 import { playUiSfx } from "@/lib/ui-sfx";
@@ -722,12 +723,21 @@ export default function LolHub() {
           (Quiz.tsx §2d); it simply no longer competes with the hub's own
           navigation two screens below it.
 
-          Order is deliberate and a future Pro promotion module drops in ABOVE
-          the community section without moving anything else. */}
-      <div className="max-w-7xl mx-auto px-4 pt-10 pb-6 md:pt-14">
-        <AdSlot placement="lol_hub_mid" />
+          Order is deliberate: Premium → Community → Feedback/About → legal.
 
-        <div className="mt-8 flex flex-col gap-4">
+          Top padding is small on purpose. The fade band above ends at this
+          container's first pixel, so the old pt-10/pt-14 plus an mt-8 left 88px
+          of empty dark field at 1440 between the dissolved painting and the
+          first thing to read. The seam should read "hero fades → Premium
+          begins", so the two are now pt-4/md:pt-5 + mt-3 (28px mobile, 32px
+          desktop). The ad slot carries its OWN bottom margin instead of the
+          stack carrying it, because AdSlot renders null when suppressed — which
+          is the usual case, and always the case for a Premium member. */}
+      <div className="max-w-7xl mx-auto px-4 pt-4 pb-6 md:pt-5">
+        <AdSlot placement="lol_hub_mid" className="mb-6" />
+
+        <div className="mt-3 flex flex-col gap-4">
+          <HubPremiumPanel />
           <HubCommunitySection />
           <HubUtilitySection />
         </div>

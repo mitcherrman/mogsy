@@ -1,7 +1,226 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 15 (below-the-fold rework) is at the top of this file.
-     Revision 14 was the live-review tuning. -->
+<!-- Revision 16 (Mogzy Premium promotion module) is at the top of this file.
+     Revision 15 was the below-the-fold rework; 14 the live-review tuning. -->
+
+## Revision 2026-09-04c — Mogzy Premium promotion module
+
+**Status:** complete on branch `hub/premium-module` (worktree
+`/Users/macmoney/mogsy-wt-hub-premium`). **The above-the-fold hub is
+byte-untouched** — no book, shelf, tome, mascot or hero-composition file was
+edited; the only `LolHub.tsx` change above the seam is none at all, and the
+hero section's own measured height is unchanged at every viewport (900px at
+1440×900, 1080 at 1920×1080, 891 at 390×844 — identical to the pre-change run).
+
+### Branch note — this builds on the below-fold rework, not bare `main`
+
+The lower-page structure this task describes (Community → Feedback → About →
+legal footer) exists only in Revision 15, which is the single unpushed commit
+`5f90d635` on `hub/below-fold`. `origin/main` `92b6d9d7` still carries the OLD
+lower page (Meta Reflex + News/Blog + full footer). Revision 15 cherry-picked
+onto `origin/main` **cleanly** (both `LolHub.tsx` and this file auto-merged),
+so `hub/premium-module` is:
+
+    origin/main 92b6d9d7  →  [rev 15 below-fold]  →  [rev 16 Premium]
+
+Merging Premium therefore lands the below-the-fold rework with it. That is
+deliberate: Premium's whole placement contract is "above `HubCommunitySection`",
+and Revision 15 §6 reserved exactly that slot.
+
+### Placement
+
+Page flow is now, top to bottom:
+
+1. Academy hero (four volumes + the Patch Report tome) — unchanged
+2. the alpha-ramp transition — unchanged
+3. **Mogzy Premium**
+4. Join the Academy (community)
+5. Help improve Mogzy / About the Academy
+6. News & Blog (when League posts exist)
+7. legal-only footer
+
+Premium is **not** a fifth volume and not inside the four primary destinations.
+`LolHub.test.tsx` guards both halves: the guide-bearing book count is still
+exactly 4, no `[data-guide-mode]` subtree contains a `/lol/premium` link, and
+the page's single `/lol/premium` anchor is inside the panel.
+
+### The transition gap, closed
+
+Revision 15 left the container at `pt-10 md:pt-14` plus an `mt-8` on the
+section stack. Measured at 1440×900: the hero ends at y=900 and the first thing
+to read began at **y=988 — an 88px empty dark field** between the dissolved
+painting and any content, which is the "hero fades → empty field → content"
+the review flagged.
+
+| | Before | After |
+|---|---|---|
+| Container top padding | `pt-10 md:pt-14` (40 / 56px) | `pt-4 md:pt-5` (16 / 20px) |
+| Stack top margin | `mt-8` (32px) | `mt-3` (12px) |
+| Seam → first content @1440 | **88px** (to Community) | **32px** (to Premium) |
+| Seam → first content @390 | 88px | **28px** |
+
+The ad slot's spacing moved onto the ad itself (`className="mb-6"`) rather than
+onto the stack, because `AdSlot` returns `null` when the placement is
+suppressed — which is the usual case today and *always* the case for a Premium
+member. Leaving the margin on the stack would have re-opened the gap for
+exactly the users the panel is talking to.
+
+Nothing else moved: the hero composition, the fade band (90/130px) and the
+`.academy-hero-fade` mask are all untouched.
+
+### The panel — `src/components/lol/HubPremiumPanel.tsx`
+
+A wide horizontal feature panel, 218px tall at ≥1024 and stacking on mobile.
+
+| Element | Treatment |
+|---|---|
+| Base | `radial-gradient` warm gold at 14% from the crest's corner over a `#0a1120 → #060a12 → #090b13` near-black navy |
+| Border | `#c9a84c/30`, → `/55` on hover (measured `rgba(201,168,76,0.3)` → `rgba(201,168,76,0.55)`) |
+| Ornament | one 1px gold hairline along the top edge. That is the whole decorative budget. |
+| Crest | 56/64px ring + inner ring + the same lucide `Crown` that marks Premium on `/lol/premium` |
+| Heading | `Mogzy Premium`, 24/28px — an `h2`, so it inherits the Academy's Cinzel display face |
+| Pillars | three icon+label items, one line each. Not a feature list. |
+| CTA | the same gold plate geometry as the Community Discord CTA (52px, `#e0c273 → #b08c30`), 212×52 at every breakpoint |
+
+It is stronger than Community (gold border vs `/20`, a crest, a live gold CTA,
+a larger heading and a lit base) while Community keeps its full section, its
+heading, its plate and its channel row. Hierarchy reads **Premium → Community →
+Feedback/About → Legal**, verified in the 1440 lower-section capture.
+
+### Copy is bounded by what `/lol/premium` actually claims
+
+An audit of `LolPremium.tsx` found **two** Premium features live — Full Quiz
+History and the Missed Question Bank. The other six (Advanced Category Stats,
+Custom Practice Filters, Unlimited Combat Lab, Unlimited Saves & Exports,
+Curated Learning Journeys, Earned Matchup Cards) all carry a **Coming soon**
+badge. So the panel names the two that exist and summarises the rest as tools
+that "land":
+
+> **Unlock the Full Academy** · **Mogzy Premium**
+> Go deeper with the Academy: keep every result you've ever posted, review
+> every question you've missed, and unlock the advanced tools as they land.
+> ⟲ Your full quiz history · ▤ Every question you've missed · ✦ Advanced tools as they land
+
+A test asserts the six coming-soon feature names never appear here.
+
+### No price on the hub — deliberate, and audited
+
+`LOL_PRO_MONTHLY_PRICE` is **$4.99/month**, but `isLolProCheckoutAvailable()`
+returns false wherever `VITE_STRIPE_LOL_PRO_MONTHLY_PRICE_ID` is unset — which
+is every environment today, so **the subscription cannot currently be bought**
+(consistent with the PT1.6 access audit). Printing "Plans from $X" on the
+homepage would advertise a number with no checkout behind it. `/lol/premium`
+owns pricing *and* states the coming-soon status in the same view, so the panel
+routes there instead. A test asserts no `$`, `/month` or `monthly` string.
+
+Nothing about pricing, Stripe, entitlements or checkout was changed.
+
+### Subscription-state behaviour — implemented, at zero cost
+
+`useSitewideTheme().proStatus` is **already resolved for this page** by the
+app-wide `SitewideThemeProvider`; `AdSlot`, mounted in this very section, reads
+it. So the member variant needed no new hook, fetch, context or entitlement
+plumbing — which is what "keep it generic rather than creating architecture"
+asked for.
+
+| `proStatus` | Eyebrow | Body | CTA | `data-premium-state` |
+|---|---|---|---|---|
+| `"pro"` | ✓ Premium Active | "Your membership is active — …" | **View Premium** | `member` |
+| `"free"` | Unlock the Full Academy | promotional | **Explore Premium** | `promo` |
+| `"unknown"` | Unlock the Full Academy | promotional | **Explore Premium** | `promo` |
+
+Both variants use identical panel geometry, so the resolve causes no layout
+shift. `"unknown"` renders the promotional variant on purpose: `AdSlot` fails
+*closed* on unknown because showing an ad to a member is a product error, but
+this is a promo module and not a gate — the worst case is a member seeing the
+wrong eyebrow for a moment, versus holding the module blank for everyone.
+There is no Stripe customer portal in the app, so the member CTA is **View
+Premium**, not "Manage Premium" — it points at a page that exists.
+
+**No `Pro` wording for the subscription was introduced.** The only `Pro` in the
+rendered `/lol` text is `Pro Play`, the Academy volume. Two tests assert this —
+one on the panel, one on the whole hub — against `Mogzy Pro`, `Mogsy Pro`,
+`Upgrade to Pro`, `Pro subscription` and `Go Pro`. Pro Play itself is untouched.
+
+### Interaction — restrained, and it opts out
+
+- Panel border `#c9a84c/30 → /55` over 300ms.
+- One gold light sweep across the panel on `:hover` / `:focus-within` —
+  `linear-gradient(105deg, …, rgba(240,215,140,0.10), …)` swept over 620ms,
+  once, at 10% alpha. `.hub-premium-panel::after` in `index.css`.
+- CTA lifts 2px and carries an explicit `focus-visible` gold ring (the UA
+  default ring is hard to read on a gold-on-near-black plate).
+- No particles, no entrance animation, no sound, no autoplay. The hero owns
+  this page's theatrical motion.
+- **`prefers-reduced-motion: reduce`** — verified in a reduced-motion browser
+  context: the sweep's `::after` computes to `display: none` and the CTA's
+  `transition-property` to `none`.
+
+### Files changed
+
+| File | |
+|---|---|
+| `src/components/lol/HubPremiumPanel.tsx` | **new** — the panel |
+| `src/components/lol/HubPremiumPanel.test.tsx` | **new** — 6 tests |
+| `src/pages/LolHub.tsx` | M — import, panel above `HubCommunitySection`, transition spacing, ad-slot margin |
+| `src/pages/LolHub.test.tsx` | M — 3 new tests (placement/order, not-a-fifth-book, no subscription `Pro`) |
+| `src/index.css` | M — `.hub-premium-panel` sweep + reduced-motion opt-out |
+| `docs/MOGZY_HUB_REDESIGN_HANDOFF.md` | M — this revision |
+
+### Verification
+
+- **Full vitest:** 43 tests failing across **12 files** — the *same 12 files* as
+  the pre-change baseline measured on this exact tree (`AdminUsers.phase1`,
+  `AcademyRadioControls`, `LeaguecraftWorkspace`, `adminCredentials`,
+  `admin-registry`, `ads/consent`, `e2e/identity`, `quiz-broadcast/engine`,
+  `Quiz.rankedRole`, `StructuralReview`, `LobbyPreviewPage`,
+  `onboarding-gate`). None is a file this change touches, and the count matches
+  the Revision 15 baseline exactly. Totals move only by what was added:
+
+  | | Baseline (this tree, pre-change) | After |
+  |---|---|---|
+  | Test files | 12 failed / 545 passed (557) | 12 failed / **546** passed (558) |
+  | Tests | 43 failed / 8370 passed / 7 skipped (8420) | 43 failed / **8379** passed / 7 skipped (8429) |
+
+  → exactly +1 file and +9 tests, which is `HubPremiumPanel.test.tsx` (6) plus
+  the three added to `LolHub.test.tsx`.
+- **`LolHub.test.tsx` + `HubPremiumPanel.test.tsx`:** 72/72 pass (66 + 6).
+- **ESLint:** 0 problems on all four changed/added source files.
+- **`tsc --noEmit -p tsconfig.app.json`:** the same 8 pre-existing failing files
+  as baseline; none of them is mine.
+- **Console:** `/lol` emits the identical three baseline lines at every
+  viewport — the React `fetchPriority` casing warning, a Supabase 404 and a
+  403. **Zero new errors, zero page errors.**
+- **CTA:** clicking it navigates to `/lol/premium`, whose `h1` is
+  "Mogzy Premium". No page errors on arrival.
+- **Lower sections:** Community (Discord pending plate + "on the way" note),
+  Feedback (Give Feedback / Report a Bug), About (About Mogzy / Contact) and
+  the legal-only footer all still render, unmoved and unchanged.
+- **Responsive:** 360×740, 390×844, 768×1024, 1024×768, 1366×768, 1440×900,
+  1920×1080 — **zero horizontal overflow** at every one; the CTA is 212×52
+  (≥44px) at every one; body copy stays at 14px on mobile.
+
+Screenshots (Playwright, per `playwright-not-vite-preview-for-visual-freeze`):
+`1440x900-transition-premium`, `1440x900-lower`, `1440x900-full`,
+`1920x1080-transition-premium`, `1920x1080-lower`, `1920x1080-full`,
+`390x844-transition-premium`, `390x844-lower`, `390x844-full`,
+`390-premium-panel`, `1440-premium-hover`, `1440-premium-focus`,
+`1440-premium-member`.
+
+### Not done, deliberately (still open hub tasks)
+
+- The Mogzy `!` / What's New interaction — **explicitly out of scope here; do
+  not start it automatically**
+- Global Search
+- Community social URLs (`VITE_COMMUNITY_*`) — still owner action, no code needed
+- Help/FAQ page (no route exists)
+- Admin Ads editor
+- Contextual feedback inside Leaguecraft / Combat Sim
+- Persistent glows, floating/bobbing, the mobile book treatment
+- `BookModeCard` is still dead code
+- A 768×1152 hero frame derivative
+
+---
 
 ## Revision 2026-09-04b — below-the-fold rework
 
