@@ -12,11 +12,13 @@ import { describe, expect, it } from "vitest";
 import type { LiveCompetition, LiveGameSummary } from "@/lib/live-esports/api";
 import {
   competitionLine,
+  gameClock,
   matchDate,
   matchDateShort,
   matchDateTitle,
   matchInstant,
   matchLine,
+  patchLabel,
   scopeLabel,
   seriesContext,
   stageLabel,
@@ -324,5 +326,69 @@ describe("match line", () => {
 
   it("is empty for an absent game", () => {
     expect(matchLine(null)).toEqual([]);
+  });
+});
+
+
+/* ── what we do NOT know ─────────────────────────────────────────────────── */
+
+describe("gameClock", () => {
+  const span = (first: string | null, latest: string | null) =>
+    ({
+      first_frame_ts: first,
+      freshness: { source_frame_ts: latest },
+    }) as unknown as LiveGameSummary;
+
+  it("reports the elapsed span between the first and latest stored frame", () => {
+    expect(gameClock(span("2026-09-04T17:00:00Z", "2026-09-04T17:38:28Z"))).toBe("38:28");
+  });
+
+  it("says nothing when the store holds a single frame", () => {
+    // The common production shape: a finished game whose only telemetry is
+    // the poller's last capture. "0:00" would claim the game lasted no time.
+    expect(gameClock(span("2026-09-04T17:45:50.080Z", "2026-09-04T17:45:50.080Z"))).toBeNull();
+  });
+
+  it("says nothing when either end of the span is missing", () => {
+    expect(gameClock(span(null, "2026-09-04T17:38:28Z"))).toBeNull();
+    expect(gameClock(span("2026-09-04T17:00:00Z", null))).toBeNull();
+  });
+
+  it("keeps a completed match line usable without a clock", () => {
+    const g = game({
+      first_frame_ts: "2026-09-04T17:45:50.080Z",
+      freshness: { ...game().freshness, source_frame_ts: "2026-09-04T17:45:50.080Z" },
+    });
+    const kinds = matchLine(g).map((p) => p.kind);
+    expect(kinds).not.toContain("clock");
+    expect(kinds).toContain("date");
+  });
+});
+
+describe("patchLabel", () => {
+  it("reduces the upstream game version to the patch a reader knows", () => {
+    expect(patchLabel("16.17.810.4348")).toBe("16.17");
+  });
+
+  it("leaves an already-short patch alone", () => {
+    expect(patchLabel("16.15")).toBe("16.15");
+  });
+
+  it("shows an unrecognisable version verbatim rather than truncating it", () => {
+    // Better a long true string than a short invented one.
+    expect(patchLabel("preseason")).toBe("preseason");
+    expect(patchLabel("v16.17")).toBe("v16.17");
+  });
+
+  it("is silent when there is no patch", () => {
+    expect(patchLabel(null)).toBeNull();
+    expect(patchLabel("")).toBeNull();
+  });
+
+  it("keeps the full version available as the segment tooltip", () => {
+    const g = game({ patch_version: "16.17.810.4348" });
+    const patch = matchLine(g).find((p) => p.kind === "patch");
+    expect(patch?.text).toBe("Patch 16.17");
+    expect(patch?.title).toBe("16.17.810.4348");
   });
 });

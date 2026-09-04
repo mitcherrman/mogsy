@@ -550,3 +550,55 @@ describe("emptyInsightReason", () => {
     expect(emptyInsightReason(null)).toBeNull();
   });
 });
+
+/* ── a game with no timeline to time against ─────────────────────────────── */
+
+describe("single-frame games", () => {
+  /**
+   * The dominant production shape: a finished game whose only telemetry is
+   * the live poller's last successful capture. Every `t` in the payload is 0
+   * because there is exactly one frame, so any timing rendered from it would
+   * place the whole match at second zero.
+   */
+  const singleFrame = () =>
+    payload({
+      coverage: {
+        gold_samples: 1,
+        first_frame_ts: "2026-09-04T17:45:50.080Z",
+        last_frame_ts: "2026-09-04T17:45:50.080Z",
+        elapsed_seconds: 0,
+        events: 0,
+      },
+      gold: {
+        current_lead: { diff: 14034, side: "blue", gold: 14034, even: false, t: 0, frame_ts: "x" },
+        largest_lead: {
+          blue: { gold: 14034, t: 0, frame_ts: "x", meaningful: true },
+          red: null,
+        },
+        biggest_swing: null,
+        momentum: [],
+        lead_changes: [],
+      },
+    });
+
+  it("still reports the largest lead — the size is a fact", () => {
+    const row = insightRows(singleFrame(), GAME).find((r) => r.key === "largest");
+    expect(row?.value).toMatch(/14\.0k/);
+  });
+
+  it("does not claim the largest lead happened at 0:00", () => {
+    const row = insightRows(singleFrame(), GAME).find((r) => r.key === "largest");
+    expect(row?.detail ?? "").not.toMatch(/0:00/);
+    expect(row?.title).toMatch(/single stored frame/i);
+  });
+
+  it("keeps the timing when the game does have a span", () => {
+    // The guard must not silence real timings on backfilled games.
+    const row = insightRows(payload(), GAME).find((r) => r.key === "largest");
+    expect(row?.detail).toMatch(/at \d+:\d\d/);
+  });
+
+  it("tells no story it cannot time", () => {
+    expect(buildStory(singleFrame(), GAME).join(" ")).not.toMatch(/0:00/);
+  });
+});

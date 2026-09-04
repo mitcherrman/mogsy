@@ -65,7 +65,16 @@ export function agoLabel(seconds: number | null | undefined): string | null {
   return `${Math.round(seconds / 3600)}h ago`;
 }
 
-/** Elapsed game time from the stored frame clock, never wall-clock. */
+/**
+ * Elapsed game time from the stored frame clock, never wall-clock.
+ *
+ * A zero span is SILENCE, not "0:00". Most finished games in the store hold a
+ * single telemetry frame — the live poller's last successful capture — because
+ * only the leagues the daily backfill covers get a walked timeline. For those,
+ * `first_frame_ts` and the latest frame are the same instant, and a literal
+ * "0:00" would tell the reader a 30-minute game lasted no time at all. We know
+ * the game's final state; we do not know its duration, so we say nothing.
+ */
 export function gameClock(game: LiveGameSummary | null | undefined): string | null {
   const start = game?.first_frame_ts;
   const latest = game?.freshness?.source_frame_ts;
@@ -73,7 +82,9 @@ export function gameClock(game: LiveGameSummary | null | undefined): string | nu
   const a = Date.parse(start);
   const b = Date.parse(latest);
   if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null;
-  return clock(Math.floor((b - a) / 1000));
+  const seconds = Math.floor((b - a) / 1000);
+  if (seconds <= 0) return null;
+  return clock(seconds);
 }
 
 export function clock(totalSeconds: number): string {
@@ -255,6 +266,22 @@ export function competitionLine(g: LiveGameSummary | null | undefined): string[]
   return parts;
 }
 
+/**
+ * "16.17.810.4348" → "16.17". Upstream sends the full game version; the patch
+ * a reader knows is its first two components, which is Riot's own convention.
+ * Anything that does not look like a version (no two leading numeric parts) is
+ * shown verbatim rather than truncated into something wrong — and the full
+ * string stays available as the segment's tooltip.
+ */
+export function patchLabel(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const parts = raw.split(".");
+  if (parts.length < 2) return raw;
+  const [major, minor] = parts;
+  if (!/^\d+$/.test(major) || !/^\d+$/.test(minor)) return raw;
+  return `${major}.${minor}`;
+}
+
 export type MatchLinePart = {
   kind: "date" | "series" | "clock" | "patch";
   text: string;
@@ -275,7 +302,8 @@ export function matchLine(g: LiveGameSummary | null | undefined): MatchLinePart[
   if (series) parts.push({ kind: "series", text: series, title: SERIES_SCORE_TITLE });
   const cl = gameClock(g);
   if (cl) parts.push({ kind: "clock", text: cl, title: "Elapsed game time" });
-  if (g.patch_version) parts.push({ kind: "patch", text: `Patch ${g.patch_version}` });
+  const patch = patchLabel(g.patch_version);
+  if (patch) parts.push({ kind: "patch", text: `Patch ${patch}`, title: g.patch_version ?? undefined });
   return parts;
 }
 

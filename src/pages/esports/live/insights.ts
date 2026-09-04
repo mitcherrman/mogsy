@@ -229,6 +229,13 @@ export function insightRows(
   if (topPeak) {
     const other = topPeak.side === "blue" ? redPeak : bluePeak;
     const otherSide = topPeak.side === "blue" ? "red" : "blue";
+    // A peak can only be TIMED against a span. Most finished games in the
+    // store hold one frame, so every `t` is 0 and "at 0:00" would place a
+    // 30-minute game's biggest lead at the opening whistle. The lead itself
+    // is still a fact; only its timestamp is unknowable, so the timing drops
+    // and the size stays.
+    const timed = (data.coverage?.elapsed_seconds ?? 0) > 0;
+    const at = (t: number) => `at ${clock(t)}`;
     rows.push({
       key: "largest",
       label: "Largest lead",
@@ -237,10 +244,15 @@ export function insightRows(
       // Both sides only appear when BOTH held a lead worth naming; a game
       // one team led wire to wire says so by having nothing to add.
       detail: other
-        ? `at ${clock(topPeak.peak.t)} · ${goldFor(game, otherSide, other.gold)} at ${clock(other.t)}`
-        : `at ${clock(topPeak.peak.t)}`,
-      title:
-        "The largest team gold difference reached at any stored frame, timed from the first frame of the game.",
+        ? timed
+          ? `${at(topPeak.peak.t)} · ${goldFor(game, otherSide, other.gold)} ${at(other.t)}`
+          : goldFor(game, otherSide, other.gold)
+        : timed
+          ? at(topPeak.peak.t)
+          : undefined,
+      title: timed
+        ? "The largest team gold difference reached at any stored frame, timed from the first frame of the game."
+        : "The largest team gold difference reached at any stored frame. This game has a single stored frame, so the moment it happened is not known.",
     });
   }
 
