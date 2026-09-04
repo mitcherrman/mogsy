@@ -1,5 +1,14 @@
 # GRAPH1 Phase F — Explore Pro Data (frontend)
 
+> **Status: merged, NOT published.** `f5c60be1` is on `origin/main`
+> (fast-forward from `d96708ab`, 2026-09-03). The site is a separate step:
+> mogzy.lol publishes through Lovable (Share → Publish) and **a git push does
+> not trigger it**. Verified after the push — `/lol/pro-play/graphs` still
+> renders the 404 page live, and no deployed bundle contains "Explore Pro
+> Data". Everything below was verified locally against the LIVE production
+> backend; none of it has been verified on the live site, because the live
+> site does not have it yet.
+
 The product surface for GRAPH1. Backend Phases 0–E shipped the four canonical
 families, bans, server-side scopes and ratio boards; Phase F is the first phase
 to touch `~/mogsy`, and it changed **discovery, selection, URL state and query
