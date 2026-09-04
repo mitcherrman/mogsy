@@ -7532,3 +7532,435 @@ html.high-contrast * { text-shadow: none !important; }
     max-height: min(16rem, 26vh) !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Closed Academy volume — the /lol hub destination book (AcademyHubBook).
+
+   HEAD-ON (2026-09-03e). The books used to be turned inward at ±11deg so that
+   they read as physical objects arranged around Mogzy. The shelves now do
+   that job — a volume standing between two uprights on a board needs no
+   perspective to explain where it is — so every rotation is gone and all four
+   are presented identically, square to the viewer, like display volumes
+   mounted on a shelf.
+
+   What remains is a lift. Mogzy carries the explanation, so hover and focus
+   only raise the volume off its board and let the gold catch the light: no
+   turn, no perspective, no opening, no scaling, no popup.
+   --------------------------------------------------------------------------- */
+
+.academy-hub-book-body {
+  transform: translateY(var(--hub-book-lift, 0px));
+  transition:
+    transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 380ms ease-out;
+  /* The volume's own drop shadow. The shelf paints a separate contact shadow
+     on its board, which stays put while this one rises. */
+  filter: drop-shadow(0 16px 24px rgba(2, 6, 14, 0.55));
+}
+
+.academy-hub-book:hover .academy-hub-book-body,
+.academy-hub-book:focus-visible .academy-hub-book-body {
+  --hub-book-lift: -10px;
+  filter: drop-shadow(0 26px 34px rgba(2, 6, 14, 0.6))
+    drop-shadow(0 0 16px rgba(226, 196, 120, 0.26));
+}
+
+/* Reduced motion keeps the light response and drops the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .academy-hub-book-body {
+    transition: none;
+  }
+
+  .academy-hub-book:hover .academy-hub-book-body,
+  .academy-hub-book:focus-visible .academy-hub-book-body {
+    --hub-book-lift: 0px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Academy shelf — the wooden support behind a pair of /lol hub volumes.
+
+   PROTOTYPE (2026-09-03): left column only.
+
+   Every thickness is in `cqw` against the shelf's own container, which is the
+   two-book box — so `1cqw` is 1% of the BOOK WIDTH and the whole structure
+   scales with the volumes through the fold-driven sizing formula, with no
+   breakpoints of its own.
+
+   MATERIAL PASS (2026-09-03b). The geometry is unchanged and approved; this
+   is only about the wood reading as wood. Three ideas do all the work:
+
+     1. Every board is a SOLID with three planes — a lit top surface, the
+        front face, and a dark underside — instead of one rectangle with a
+        gradient. Boards are seen slightly from above at this camera, so the
+        top plane is a thin band inset from the front edge: that inset is what
+        reads as depth rather than as a highlight stripe.
+     2. Grain runs ALONG each piece — lengthwise on the boards, vertical on
+        the uprights — as hairline repeating gradients at very low contrast.
+        Real boards are cut with the grain, and getting that direction wrong
+        is what makes CSS wood look like plastic. No texture asset was needed.
+     3. The contact shadow lives on the board's TOP PLANE, not on the book.
+        So when a volume lifts on hover the shadow stays put on the shelf
+        instead of travelling with it like a painted blob.
+
+   There is deliberately no back panel: the painted library shows between and
+   behind the volumes, which the owner preferred to a wooden backing.
+
+   The palette stays quieter than the books — warm walnut, restrained bevels,
+   no carving, no filigree, no glow. The books are the ornate objects.
+   --------------------------------------------------------------------------- */
+
+.academy-hub-shelf {
+  /* Upright thickness, board thickness, and how far the case sits outside the
+     book edges.
+
+     These are wide on purpose. The first pass tucked the structure tight to
+     the volumes and it read as "books in a dark box", not as furniture: the
+     books are angled 11deg, so the near edge covers a close upright entirely,
+     and the 7px inter-book gap swallows a thin board. The case has to clear
+     the volumes by enough that the uprights and the board ENDS are what carry
+     the read, rather than the sliver between the books. */
+  --shelf-post: 7cqw;
+  --shelf-slab: 6.5cqw;
+  --shelf-out: 13cqw;
+  /* Overhang of the uprights past the top and bottom of the book stack. */
+  --shelf-rise: 7cqw;
+  /* How far each board protrudes past the uprights. */
+  --shelf-lip: 3cqw;
+
+  /* Dark-walnut ramp, lit from the left like the painting and the book
+     shells. Taken down roughly one and a half values from the medium walnut
+     it started at: the case is the stage, and a darker stage is what lets the
+     navy-and-gold volumes carry the eye. Still unmistakably warm wood — the
+     darkest member here is #150d06, nowhere near the near-black panel that
+     failed in Revision 7. */
+  --shelf-lit: #6b4c30;
+  --shelf-face: #452f1d;
+  --shelf-mid: #372516;
+  --shelf-deep: #1f1409;
+  --shelf-dark: #150d06;
+}
+
+/* Hairline grain. Irregular stop spacing on purpose — even stops read as
+   corduroy. Used as a background LAYER over each piece's own body gradient,
+   rotated per piece so it always runs along the length of the wood. */
+.academy-hub-shelf-post,
+.academy-hub-shelf-slab,
+.academy-hub-shelf-slab::after {
+  background-blend-mode: overlay, normal;
+}
+
+/* ---- backing ------------------------------------------------------------- */
+
+/* Planked back of the case.
+ *
+ * The first attempt at this was #1b1209 → #0e0904 under a 46px black inset:
+ * a near-black rectangle, which read as a hole punched in the painting rather
+ * than as furniture. The fix is not less panel, it is ACTUAL WOOD — the same
+ * walnut warmth as the boards, one value darker so the boards still read in
+ * front of it, with vertical plank seams so the eye gets carpentry to hold on
+ * to instead of a flat field.
+ *
+ * It spans post-edge to post-edge and paints before the uprights and boards,
+ * so the case reads as one built object: the boards' own cast shadows now
+ * land ON the backing, which is what fuses the three parts together.
+ */
+.academy-hub-shelf-back {
+  position: absolute;
+  left: calc(var(--shelf-out) * -1);
+  right: calc(var(--shelf-out) * -1);
+  top: calc(var(--shelf-rise) * -0.4);
+  bottom: calc(var(--shelf-rise) * -0.4);
+  background-image:
+    /* plank seams — a dark joint with a lit arris on its near side */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 15.4cqw,
+      rgba(0, 0, 0, 0.5) 15.4cqw 16cqw,
+      rgba(214, 178, 128, 0.085) 16cqw 16.3cqw,
+      transparent 16.3cqw 32cqw
+    ),
+    /* alternating plank tone. Period is TWO seams, so neighbouring boards
+       differ slightly in value the way milled stock out of the same tree
+       does. ±2% is the whole effect — any more and the backing turns into
+       stripes competing with the volumes. */
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 240, 214, 0.022) 0 16cqw,
+      rgba(0, 0, 0, 0.055) 16cqw 32cqw
+    ),
+    /* grain, running with the planks */
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 236, 204, 0.03) 0 1px,
+      transparent 1px 6px,
+      rgba(0, 0, 0, 0.035) 6px 7px,
+      transparent 7px 16px
+    ),
+    /* modest vertical shading — the case is darker at its head and foot */
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.34) 0%,
+      rgba(0, 0, 0, 0) 13%,
+      rgba(0, 0, 0, 0) 85%,
+      rgba(0, 0, 0, 0.34) 100%
+    ),
+    /* body, lit from the left like every other piece */
+    linear-gradient(96deg, #402d1c 0%, #372516 34%, #2c1d11 68%, #1e1408 100%);
+  /* Ambient occlusion around the whole case, so it sits IN the room instead
+     of on top of the painting. Zero offset and a wide spread on purpose —
+     an offset shadow here would read as a UI card lifted off the page, which
+     is the exact opposite of what the shelf is for. */
+  box-shadow:
+    inset 0 0 26px rgba(0, 0, 0, 0.34),
+    0 0 30px 8px rgba(2, 5, 10, 0.4),
+    0 14px 44px 6px rgba(2, 5, 10, 0.42);
+}
+
+/* ---- uprights ------------------------------------------------------------ */
+
+/* The body gradient is a cylinder read: a lit near edge, the face turning
+   away, then the shaded far side. The vertical gradient on top of it is
+   ambient falloff — a post in a room is dimmer at its ends than at eye
+   height, and that alone stops it reading as a flat bar. */
+.academy-hub-shelf-post {
+  position: absolute;
+  top: calc(var(--shelf-rise) * -1);
+  bottom: calc(var(--shelf-rise) * -1);
+  width: var(--shelf-post);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 236, 204, 0.05) 0 1px,
+      transparent 1px 5px,
+      rgba(0, 0, 0, 0.05) 5px 6px,
+      transparent 6px 13px
+    ),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0) 18%,
+      rgba(0, 0, 0, 0) 76%,
+      rgba(0, 0, 0, 0.5) 100%
+    ),
+    /* FRONT FACE ONLY. The side plane is a real element (::after) rather than
+       the tail of this gradient: a beam's arris is a hard edge between two
+       differently-lit surfaces, and giving the side its own box is what lets
+       it carry its own arris highlight instead of fading into a ramp. */
+    linear-gradient(
+      90deg,
+      #2a1b0c 0%,
+      var(--shelf-lit) 12%,
+      #543c25 36%,
+      var(--shelf-face) 68%,
+      #3f2b1a 100%
+    );
+  box-shadow:
+    /* lit near arris and the dark far arris — the two edges that say "solid" */
+    inset 1px 0 0 rgba(226, 196, 140, 0.14),
+    inset -1px 0 0 rgba(0, 0, 0, 0.55),
+    0 10px 22px rgba(3, 6, 12, 0.55);
+}
+
+/* Side plane of the beam — the face turned away from the light. */
+.academy-hub-shelf-post::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 74%;
+  background-image: linear-gradient(90deg, #2b1c0d 0%, #1d1309 60%, var(--shelf-dark) 100%);
+  /* the arris: one lit pixel on the corner the front face meets */
+  box-shadow: inset 1px 0 0 rgba(226, 196, 140, 0.12);
+}
+
+/* The beam's own shadow, thrown onto the backing behind it. Light comes from
+   the left everywhere in this scene, so it falls to the right of both posts —
+   which is also what reads as the post standing PROUD of the backing rather
+   than being inlaid into it. */
+.academy-hub-shelf-post::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: 70%;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.44) 0%, transparent 100%);
+}
+
+.academy-hub-shelf-post--left {
+  left: calc(var(--shelf-out) * -1);
+}
+
+.academy-hub-shelf-post--right {
+  right: calc(var(--shelf-out) * -1);
+}
+
+/* ---- boards -------------------------------------------------------------- */
+
+/* The element is the board's FRONT FACE. Its top plane is ::after and its
+   cast shadow is the outer box-shadow; the inset at the bottom is the dark
+   underside where the face turns away from the room. */
+.academy-hub-shelf-slab {
+  position: absolute;
+  left: calc((var(--shelf-out) + var(--shelf-post) + var(--shelf-lip)) * -1);
+  right: calc((var(--shelf-out) + var(--shelf-post) + var(--shelf-lip)) * -1);
+  bottom: calc(var(--shelf-slab) * -0.62);
+  height: var(--shelf-slab);
+  border-radius: 1px;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 236, 204, 0.045) 0 1px,
+      transparent 1px 6px,
+      rgba(0, 0, 0, 0.045) 6px 7px,
+      transparent 7px 17px
+    ),
+    /* Front face with a CHAMFER: a lighter band catching the light off the
+       eased top arris, then a hard step into the face proper. A square-cut
+       board reads as a bar; the chamfer is what makes it read as milled. */
+    linear-gradient(
+      180deg,
+      #5d422a 0%,
+      #4e3722 22%,
+      /* — chamfer breaks into the face — */ var(--shelf-face) 23%,
+      var(--shelf-mid) 58%,
+      /* — a shallow step above the underside, so the profile is milled
+           rather than square-cut — */ #3d2a19 72%,
+      #2f1f11 73%,
+      var(--shelf-deep) 92%,
+      var(--shelf-dark) 100%
+    );
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.65),
+    /* the board's ENDS turning away — joinery where it crosses the uprights */
+    inset 7px 0 9px -7px rgba(0, 0, 0, 0.62),
+    inset -7px 0 9px -7px rgba(0, 0, 0, 0.62),
+    0 12px 20px rgba(3, 6, 12, 0.52);
+}
+
+/* Top plane — the surface the volume actually stands on. Inset from the front
+   face on both sides so the board reads as a solid seen slightly from above
+   rather than as a highlight stripe, and it carries the CONTACT SHADOW as a
+   second background layer. Keeping the shadow here rather than on the book is
+   what lets the volume lift on hover while its shadow stays on the shelf. */
+.academy-hub-shelf-slab::after {
+  content: "";
+  position: absolute;
+  left: 0.7cqw;
+  right: 0.7cqw;
+  top: calc(var(--shelf-slab) * -0.34);
+  height: calc(var(--shelf-slab) * 0.42);
+  border-radius: 1px 1px 0 0;
+  background-image:
+    radial-gradient(
+      ellipse 42% 150% at 50% 100%,
+      rgba(2, 5, 10, 0.72) 0%,
+      rgba(2, 5, 10, 0.34) 46%,
+      transparent 74%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 238, 208, 0.05) 0 1px,
+      transparent 1px 7px,
+      rgba(0, 0, 0, 0.04) 7px 8px,
+      transparent 8px 19px
+    ),
+    linear-gradient(180deg, #7d5b39 0%, var(--shelf-lit) 40%, #543b23 100%);
+  box-shadow: inset 0 1px 0 rgba(226, 196, 140, 0.18);
+}
+
+/* Ambient occlusion in the crease where the top plane meets the front face —
+   a thin dark line, which is the cheapest possible "these are two planes". */
+.academy-hub-shelf-slab::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(var(--shelf-slab) * 0.22);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, transparent 100%);
+}
+
+/* The base carries the whole case, so it is thicker, throws more, and reads
+   as two members rather than one: the second inset line near its foot is a
+   plinth reveal, the cheapest joinery cue there is. */
+.academy-hub-shelf-slab--base {
+  height: calc(var(--shelf-slab) * 1.7);
+  bottom: calc(var(--shelf-slab) * -1);
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.7),
+    inset 0 -6px 0 -5px rgba(0, 0, 0, 0.5),
+    inset 0 -8px 0 -7px rgba(214, 178, 128, 0.075),
+    inset 8px 0 11px -8px rgba(0, 0, 0, 0.65),
+    inset -8px 0 11px -8px rgba(0, 0, 0, 0.65),
+    0 18px 26px rgba(3, 6, 12, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+   /lol hub entrance — the volumes being shelved.
+
+   ONLY THE BOOKS MOVE. The library, the shelves, the header, the centerpiece
+   and Mogzy are the room; they are simply present. The shelves in particular
+   are environmental structure and get no motion of their own — a case that
+   flew in would read as a UI panel, which is the one thing the whole shelf
+   workstream was built to stop being.
+
+   Timing lives in LolHub.tsx (`--hub-book-delay` per volume). This file owns
+   the shape of the landing:
+
+     0%    26px above the board, invisible
+     40%   fully faded in, still falling — the fade finishes BEFORE the
+           impact, so the book is a solid object when it lands rather than a
+           ghost resolving on contact
+     55%   contact. 3px below rest with scaleY(0.978): the volume compressing
+           into the board, not the board moving
+     72%   3px of rebound, very slightly stretched
+     100%  the exact approved resting state — translate 0, scale 1
+
+   The overshoot is 3px on a 355px book. That is deliberately near the edge of
+   perceptible: it should read as weight, and anything a viewer can actually
+   measure reads as a bouncing UI card instead.
+   --------------------------------------------------------------------------- */
+
+@keyframes academy-hub-book-land {
+  0% {
+    opacity: 0;
+    transform: translateY(-26px) scaleY(1);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-9px) scaleY(1);
+  }
+
+  55% {
+    opacity: 1;
+    transform: translateY(3px) scaleY(0.978);
+  }
+
+  72% {
+    transform: translateY(-3px) scaleY(1.008);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+[data-hub-entrance="true"] .academy-hub-book-body {
+  /* `backwards` holds frame 0 through the stagger delay, so a book that has
+     not arrived yet is invisible and lifted rather than sitting in its final
+     place waiting for its turn. */
+  animation: academy-hub-book-land 660ms cubic-bezier(0.34, 0.02, 0.3, 1) backwards;
+  animation-delay: var(--hub-book-delay, 0ms);
+  transform-origin: 50% 100%;
+}
+
+/* Reduced motion: the final state, immediately. No drop, no stagger, no
+   delayed usability — and LolHub cancels the impact sounds on the same
+   preference, since four thuds with nothing moving is worse than silence. */
+@media (prefers-reduced-motion: reduce) {
+  [data-hub-entrance="true"] .academy-hub-book-body {
+    animation: none;
+  }
+}

@@ -53,6 +53,7 @@ export const PLAY_SFX_SETTING_KEY: Record<PlaySfxCue, keyof SoundSettings> = {
   opponentFound: "play_opponent_found",
   error: "play_error",
   buttonPress: "play_button_press",
+  bookLand: "play_book_land",
 };
 
 export interface PlaySfx {

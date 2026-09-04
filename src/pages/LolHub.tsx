@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, History as HistoryIcon, Layers, Trophy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, Trophy } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
 import AdSlot from "@/components/ads/AdSlot";
 import { useBlogList } from "@/hooks/blog/useBlogPosts";
-import BookModeCard from "@/components/lol/BookModeCard";
+import AcademyHubBook from "@/components/lol/AcademyHubBook";
+import AcademyHubShelf from "@/components/lol/AcademyHubShelf";
 import HexPanelLink from "@/components/lol/HexPanelLink";
 import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,7 @@ import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
+import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import { LEAGUE_SWIPE_GAMES } from "@/lib/league-swipe/api";
 import {
   META_REFLEX_NAME,
@@ -42,9 +44,8 @@ import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed"
 import academyLibraryDesktop from "@/academy/hub/academy-library-desktop.png";
 import academyLibraryMobile from "@/academy/hub/academy-library-mobile.png";
 import {
-  BOOK_MAX_WIDTH_CSS,
-  BOOK_STACK_LIFT_CSS,
   CENTERPIECE_WIDTH_CSS,
+  CLOSED_BOOK_MAX_WIDTH_CSS,
   TITLE_FONT_SIZE_CSS,
 } from "@/components/lol/academy-layout";
 
@@ -63,24 +64,38 @@ type HubDestination = {
   /** Stable id into HUB_GUIDE_MODES — drives Mogzy's contextual reaction. */
   guideId: HubGuideModeId;
   /**
-   * object-position for the splash crop inside the left book cover. The panel
-   * crops horizontally only (see BookModeCard), so the X value frames the
-   * champion's face; each value is tuned per splash.
+   * Title set on the closed volume's leather panel; lines split on "\n".
+   * Distinct from `title`, which stays the accessible name and the guide
+   * title, so "Combat Simulation" sets as COMBAT / SIMULATION while its
+   * aria-label stays one string.
+   */
+  coverTitle?: string;
+  /**
+   * `object-position` for the splash inside the volume's PORTRAIT art window.
+   * The window (0.88:1) is far taller than a splash (≈1.70:1), so `cover`
+   * shows the splash's full height and crops horizontally only: the X value
+   * frames the champion and the Y value is close to inert. Tuned per champion
+   * — these are NOT the open card's old landscape-panel values.
    */
   splashPosition?: string;
 };
 
-// Approved academy IA — six destinations, book columns read left/right per row:
-//   Leaguecraft | Combat Lab / Stat Check | Mogzy Archives / Quiz History | Patch Reports
-// The grid stays SIX books. Pro Play (added 2026-09-01) is a primary
-// destination but deliberately NOT a seventh book: measured at 1440x900, a
-// fourth book in a column runs to y=1049 against the other column's 930 —
-// visibly asymmetric and past the viewport, because the lane holds three
-// 230px books by construction. It gets its own full-width panel below the
-// grid instead, in the same Hextech language the mobile panels already use,
-// which leaves the centre lane, the Mogzy calibration and all six books
-// untouched.
-const LEFT_DESTINATIONS: HubDestination[] = [
+// Approved academy IA — FOUR primary destinations in a balanced quadrant:
+//
+//   Leaguecraft (TL) | Combat Simulation (TR)
+//   Mogzy Archives (BL) | Pro Play (BR)
+//
+// One registry, row-major, is the single source of truth: the desktop columns
+// derive from index parity (even → left, odd → right), the mobile list walks
+// it in order, and every entry carries the `guideId` that keys
+// HUB_GUIDE_MODES, so a destination cannot exist without Mogzy being able to
+// describe it. Stat Check, Quiz History and Patch Reports were retired from
+// the primary hub on 2026-09-02 (IA cleanup); their routes, pages and other
+// front doors are untouched — Stat Check from Quiz.tsx, Quiz History from the
+// Leaguecraft workspace History pane and the profile, Patch Reports from the
+// Academy Broadcast centerpiece below. Pro Play was promoted from the
+// standalone gold panel it shipped as into a full peer destination.
+const HUB_DESTINATIONS: HubDestination[] = [
   {
     to: "/quiz",
     title: "Leaguecraft",
@@ -88,36 +103,20 @@ const LEFT_DESTINATIONS: HubDestination[] = [
     subtitle: "Study. Practice. Ascend.",
     Icon: BrainCircuit,
     championName: "Ryze",
-    splashPosition: "95% center",
+    coverTitle: "Leaguecraft\nStudies",
+    splashPosition: "78% center",
   },
   {
-    to: "/quiz/stat-check",
-    title: "Stat Check",
-    guideId: "stat-check",
-    subtitle: "Build. Compare. Outplay.",
-    Icon: Layers,
-    championName: "Twisted Fate",
-    splashPosition: "95% center",
-  },
-  {
-    to: "/lol/history",
-    title: "Quiz History",
-    guideId: "quiz-history",
-    subtitle: "Review your past results.",
-    Icon: HistoryIcon,
-    championName: "Zilean",
-    splashPosition: "70% center",
-  },
-];
-const RIGHT_DESTINATIONS: HubDestination[] = [
-  {
+    // Route id, guide id and component names stay `combat-lab` on purpose —
+    // only the user-facing title reads "Combat Simulation".
     to: "/combat-lab",
-    title: "Combat Lab",
+    title: "Combat Simulation",
     guideId: "combat-lab",
     subtitle: "Practice. Analyze. Dominate.",
     Icon: Swords,
     championName: "Akali",
-    splashPosition: "44% center",
+    coverTitle: "Combat\nSimulation",
+    splashPosition: "36% center",
   },
   {
     to: "/lol/docs",
@@ -126,34 +125,76 @@ const RIGHT_DESTINATIONS: HubDestination[] = [
     subtitle: "Explore League knowledge.",
     Icon: FileText,
     championName: "Viktor",
-    splashPosition: "44% center",
+    coverTitle: "Mogzy\nArchives",
+    splashPosition: "34% center",
   },
   {
-    to: "/lol/patch-reports",
-    title: "Patch Reports",
-    guideId: "patch-reports",
-    subtitle: "Track every gameplay change.",
-    Icon: Newspaper,
-    championName: "Jayce",
-    splashPosition: "98% center",
+    // Professional-play content — NOT /lol/pro, the subscription page.
+    to: "/lol/pro-play",
+    title: "Pro Play",
+    guideId: "pro-play",
+    subtitle: "Quiz yourself on the pro scene.",
+    Icon: Trophy,
+    championName: "Ahri",
+    coverTitle: "Pro Play",
+    splashPosition: "56% center",
   },
 ];
-// Mobile list order follows the desktop grid row-major (by priority), not
-// column-major: Leaguecraft, Combat Lab, Stat Check, Archives, History, Patch.
-/** Pro Play — professional-play content (NOT /lol/pro, the subscription
- *  page). Rendered as its own panel at both breakpoints; see the grid note
- *  above for why it is not a book. */
-const PRO_PLAY_DESTINATION = {
-  to: "/lol/pro-play",
-  title: "Pro Play",
-  subtitle: "Quiz yourself on the pro scene.",
-  Icon: Trophy,
-};
 
-const ALL_DESTINATIONS = LEFT_DESTINATIONS.flatMap((d, i) => {
-  const right = RIGHT_DESTINATIONS[i];
-  return right ? [d, right] : [d];
-});
+/**
+ * Hub entrance choreography — the volumes being shelved.
+ *
+ * The library, the shelves, the header and Mogzy are the ROOM: they are
+ * simply there. Only the four books arrive, in a paired stagger — the upper
+ * pair, then the lower — so the hub reads as being assembled rather than as
+ * four cards fading in together.
+ *
+ * Timing, per book: delay = ROW_DELAY[row] + (right column ? PAIR_OFFSET_MS).
+ *
+ *   upper-left   380ms      lower-left   600ms
+ *   upper-right  455ms      lower-right  675ms
+ *
+ * The 75ms within-pair offset stops two books hitting on the same frame,
+ * which reads as one loud thud rather than two hands working; the 220ms
+ * between pairs is long enough to hear as a second beat and short enough that
+ * nothing feels withheld. The last volume settles at 675 + 660 = ~1.34s.
+ *
+ * IMPACT_FRACTION is where in the animation the book actually touches its
+ * board — the descent is the first 55%, and the overshoot/rebound after it is
+ * the shelf absorbing the weight. The sound is scheduled against that, not
+ * against the start, or every thud would arrive while the book is still in
+ * the air.
+ */
+const BOOK_ENTRANCE_MS = 660;
+const BOOK_ROW_DELAY_MS = [380, 600];
+const BOOK_PAIR_OFFSET_MS = 75;
+const BOOK_IMPACT_FRACTION = 0.55;
+
+const bookEntranceDelayMs = (side: "left" | "right", row: number) =>
+  (BOOK_ROW_DELAY_MS[row] ?? BOOK_ROW_DELAY_MS[BOOK_ROW_DELAY_MS.length - 1]) +
+  (side === "right" ? BOOK_PAIR_OFFSET_MS : 0);
+
+/**
+ * Has the entrance already run in THIS page session?
+ *
+ * Module scope, deliberately, and no storage of any kind. A page load resets
+ * it, so a fresh visit or a refresh gets the full sequence; SPA navigation
+ * does not, so clicking Home from anywhere in the app puts the hub up
+ * instantly. That is exactly the wanted policy — "fresh visit yes, immediate
+ * repeat no" — and a sessionStorage key would have been a slower, more
+ * fragile way to say the same thing while ALSO killing the entrance on a
+ * genuine reload, which is the one time it is most wanted.
+ */
+let hubEntranceConsumed = false;
+
+/** Desktop columns: row-major registry → two vertical pairs. */
+const LEFT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 0);
+const RIGHT_DESTINATIONS = HUB_DESTINATIONS.filter((_, i) => i % 2 === 1);
+/** Mobile list order = registry order (desktop reading order). */
+const ALL_DESTINATIONS = HUB_DESTINATIONS;
+/** Mobile panels that keep the gold accent (Combat Simulation kept its own;
+ *  Pro Play inherits the gold its standalone panel shipped with). */
+const GOLD_ACCENT_ROUTES = new Set(["/combat-lab", "/lol/pro-play"]);
 
 // Personalized academy lines. One is picked at random per hub entry and stays
 // fixed for the whole visit (see academyLineIndex below).
@@ -296,6 +337,49 @@ export default function LolHub() {
   const { activeModeId, activate: activateGuide, deactivate: deactivateGuide } =
     useHubGuideState();
 
+  // Decide during the FIRST render, not in an effect: an effect runs after
+  // paint, so the books would already be sitting in their final places for a
+  // frame before the animation class arrived and yanked them back into the
+  // air.
+  //
+  // The initializer only READS the module flag — claiming it here as a side
+  // effect is not StrictMode-safe, and was measurably wrong: the double
+  // render made the second pass see its own first pass's claim and hand the
+  // very first visitor `false`, killing the entrance exactly when it should
+  // run. The claim belongs in an effect, which is idempotent under the same
+  // double invocation.
+  const [runEntrance] = useState(() => !hubEntranceConsumed);
+  useEffect(() => {
+    hubEntranceConsumed = true;
+  }, []);
+
+  // One impact per volume, scheduled at the moment it touches its board.
+  // usePlaySfx is the app's single SFX gate — per-cue admin setting plus the
+  // global mute — so nothing here needs its own preference, and the engine
+  // stays silent until the browser has seen a user gesture. On a genuinely
+  // fresh load that means the sequence is silent, which is correct: sounding
+  // it would require defeating autoplay policy.
+  const sfx = usePlaySfx();
+  const sfxRef = useRef(sfx);
+  sfxRef.current = sfx;
+  useEffect(() => {
+    if (!runEntrance) return;
+    if (typeof window === "undefined") return;
+    // Motion preference read at schedule time, not through a hook: the
+    // animation itself is cancelled in CSS, and four thuds with nothing
+    // moving would be worse than silence.
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const timers = (["left", "right"] as const).flatMap((side) =>
+      [0, 1].map((row) =>
+        window.setTimeout(
+          () => sfxRef.current.play("bookLand"),
+          bookEntranceDelayMs(side, row) + BOOK_ENTRANCE_MS * BOOK_IMPACT_FRACTION,
+        ),
+      ),
+    );
+    return () => timers.forEach(window.clearTimeout);
+  }, [runEntrance]);
+
   const onDestinationClick = (to: string) => {
     playUiSfx("sectionOpen");
     if (to === "/quiz") {
@@ -303,10 +387,13 @@ export default function LolHub() {
     }
   };
 
-  // Vertical bias of both book columns. Was a fixed −50px tuned at 1080; now
-  // eases to 0 on short viewports (see academy-layout.ts) so the columns can
-  // never rise into the title band when the fold leaves them no slack above.
-  const DESKTOP_BOOK_STACK_Y = BOOK_STACK_LIFT_CSS;
+  // Vertical bias of both book columns. The old −50px lift (eased to 0 on
+  // short viewports) existed to open the pedestal under THREE short open-book
+  // rows that left slack above them. Two portrait volumes spend the fold
+  // almost exactly, so any negative lift now pushes row one into the title
+  // band at every height — the columns simply centre. BOOK_STACK_LIFT_CSS is
+  // left exported and tested for the open card; the hub no longer applies it.
+  const DESKTOP_BOOK_STACK_Y = "0px";
 
   // How far each book column is pulled back toward the center from its outer
   // edge. At wide viewports this is the original 120px composition; below
@@ -315,39 +402,19 @@ export default function LolHub() {
   // fixed 120px put book edges 34px into the lane, under the console.
   const DESKTOP_BOOK_STACK_INSET = "clamp(0px, (100vw - 1200px) * 0.5, 120px)";
 
-  /** Pro Play's panel. One definition, rendered once per breakpoint (the
-   *  desktop copy sits under the book grid, the mobile copy after the
-   *  destination list) so the two placements cannot drift apart. */
-  const renderProPlayPanel = () => (
-    <HexPanelLink
-      to={PRO_PLAY_DESTINATION.to}
-      title={PRO_PLAY_DESTINATION.title}
-      description={PRO_PLAY_DESTINATION.subtitle}
-      Icon={PRO_PLAY_DESTINATION.Icon}
-      accent="gold"
-      compact
-      onClick={() => onDestinationClick(PRO_PLAY_DESTINATION.to)}
-    />
-  );
-
-  const renderBook = (d: HubDestination, side: "left" | "right") => (
-    // Book size. BookModeCard reclaims ALL of the frame PNG's transparent
-    // padding, so the card box IS the drawn book: height = width × 0.542, and
-    // width = the drawn book's width.
-    //
-    // The size is height-aware with two regimes (academy-layout.ts): at
-    // heights ≥ ~1000px the original shallow slope binds (0.308 × 100dvh +
-    // 176px — 1080 keeps its approved 509px books), below that a steeper
-    // fit slope takes over so heading + three rows + padding always fit the
-    // fold — the old "third row runs past the fold" trade predated the MALT
-    // title/HUD and is retired. The min() with 100% keeps the book inside
-    // its grid column so it can never clip.
-    //
-    // Each column is pushed OUTWARD (mr-auto / ml-auto) instead of centred, so
-    // the books sit near the viewport edges and the central Mogzy lane opens up.
-    // Hover/focus (focus bubbles up from the Link inside BookModeCard) drive
-    // Mogzy's contextual guide. Purely additive: click/navigation semantics
-    // stay on the Link itself.
+  // Book size and placement. AcademyHubBook's layout box IS the frame PNG's
+  // canvas, so the card's height is its width × 1.5 with no margin
+  // arithmetic. The width is whatever two portrait rows can spend against the
+  // fold — see CLOSED_BOOK_MAX_WIDTH_CSS in academy-layout.ts.
+  //
+  // Each column is pushed OUTWARD (mr-auto / ml-auto) so the volumes sit near
+  // the viewport edges and the central Mogzy lane opens up. Hover/focus (focus
+  // bubbles up from the Link inside the book) drive Mogzy's contextual guide;
+  // click/navigation semantics stay on the Link itself.
+  //
+  // Every volume is presented HEAD-ON: the shelves explain where the books
+  // are, so none of them needs to be turned toward Mogzy any more.
+  const renderBook = (d: HubDestination, side: "left" | "right", row: number) => (
     <div
       key={d.to}
       data-guide-mode={d.guideId}
@@ -355,18 +422,59 @@ export default function LolHub() {
       onMouseLeave={deactivateGuide}
       onFocus={() => activateGuide(d.guideId)}
       onBlur={deactivateGuide}
-      className={`w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
-      style={{ maxWidth: BOOK_MAX_WIDTH_CSS }}
+      className={`relative z-10 w-full ${side === "left" ? "mr-auto" : "ml-auto"}`}
+      style={{
+        maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS,
+        // Read by the entrance keyframes in index.css. Harmless when the
+        // sequence is not running — nothing consumes it.
+        ["--hub-book-delay" as string]: `${bookEntranceDelayMs(side, row)}ms`,
+      }}
     >
-      <BookModeCard
+      <AcademyHubBook
         to={d.to}
         title={d.title}
-        subtitle={d.subtitle}
+        coverTitle={d.coverTitle}
         splashUrl={getChampionSplash(championAssets, d.championName)}
         splashPosition={d.splashPosition}
         describedBy={hubGuideDescriptionId(d.guideId)}
         onClick={() => onDestinationClick(d.to)}
       />
+    </div>
+  );
+
+  // One shelved column. The inner wrapper exists purely to give the shelf a
+  // box to overlay: it shrink-wraps the pair (its max-width is the books', its
+  // height is the stack's), so AcademyHubShelf needs no coordinates of its own
+  // and the book positions are unchanged by its presence. The shelf paints at
+  // z-0 behind the volumes, which renderBook raises to z-10.
+  //
+  // Both columns render the SAME shelf, unmirrored: the case is symmetrical
+  // and lit from the left like every other object in the painting, so the two
+  // sides read as a matching pair of display units without any counter-turn.
+  const renderShelvedColumn = (
+    destinations: HubDestination[],
+    side: "left" | "right",
+    inset: string,
+  ) => (
+    <div
+      className="flex min-h-0 flex-col justify-center"
+      style={{ transform: `translate(${inset}, ${DESKTOP_BOOK_STACK_Y})` }}
+    >
+      <div
+        // `w-full` is load-bearing, not decoration. Without a DEFINITE width
+        // this wrapper shrinks to fit, and its children are `w-full` against
+        // it — a circular reference that collapses the whole stack to the
+        // width of the title text. width:100% capped by max-width makes the
+        // used width definite, and the auto margin then parks it at the
+        // column's outer edge.
+        className={`relative w-full flex flex-col gap-y-[clamp(2px,0.8vh,12px)] ${
+          side === "left" ? "mr-auto" : "ml-auto"
+        }`}
+        style={{ maxWidth: CLOSED_BOOK_MAX_WIDTH_CSS }}
+      >
+        <AcademyHubShelf />
+        {destinations.map((d, row) => renderBook(d, side, row))}
+      </div>
     </div>
   );
 
@@ -510,16 +618,16 @@ export default function LolHub() {
             ))}
           </div>
 
-          {/* Desktop: six open books flanking Mogzy's central lane */}
-          <div className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3">
-            <div
-              className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
-              style={{
-                transform: `translate(calc(${DESKTOP_BOOK_STACK_INSET}), ${DESKTOP_BOOK_STACK_Y})`,
-              }}
-            >
-              {LEFT_DESTINATIONS.map((d) => renderBook(d, "left"))}
-            </div>
+          {/* Desktop: four books in a balanced quadrant around Mogzy's central lane */}
+          <div
+            data-hub-entrance={runEntrance ? "true" : "false"}
+            className="mt-0.5 hidden min-h-0 flex-1 md:grid grid-cols-[1fr_minmax(200px,0.34fr)_1fr] items-center gap-x-2 lg:gap-x-3"
+          >
+            {renderShelvedColumn(
+              LEFT_DESTINATIONS,
+              "left",
+              `calc(${DESKTOP_BOOK_STACK_INSET})`,
+            )}
 
             {/* Central lane — the Academy Broadcast centerpiece (magic-book
                 surface with the radio dock at its base) sits in the upper
@@ -575,23 +683,11 @@ export default function LolHub() {
               </div>
             </div>
 
-            <div
-              className="flex min-h-0 flex-col justify-center gap-y-[clamp(2px,0.8vh,12px)]"
-              style={{
-                transform: `translate(calc(-1 * (${DESKTOP_BOOK_STACK_INSET})), ${DESKTOP_BOOK_STACK_Y})`,
-              }}
-            >
-              {RIGHT_DESTINATIONS.map((d) => renderBook(d, "right"))}
-            </div>
-          </div>
-
-          {/* Pro Play — DESKTOP: its own panel directly under the six books,
-              so it reads as a primary destination without joining the grid.
-              The mobile copy is rendered after the destination list instead
-              (see below) — placing it here would put it above Leaguecraft
-              and re-order the established mobile IA. */}
-          <div className="mt-2 hidden md:block">
-            {renderProPlayPanel()}
+            {renderShelvedColumn(
+              RIGHT_DESTINATIONS,
+              "right",
+              `calc(-1 * (${DESKTOP_BOOK_STACK_INSET}))`,
+            )}
           </div>
 
           {/* Mobile fallback — clipped Hextech panels (unchanged presentation) */}
@@ -603,18 +699,14 @@ export default function LolHub() {
                 title={d.title}
                 description={d.subtitle}
                 Icon={d.Icon}
-                accent={d.to === "/combat-lab" ? "gold" : "cyan"}
+                accent={GOLD_ACCENT_ROUTES.has(d.to) ? "gold" : "cyan"}
                 onClick={() => onDestinationClick(d.to)}
               />
             ))}
           </div>
 
-          {/* Pro Play — MOBILE, after the six destinations so the existing
-              primary navigation keeps the top of the list. */}
-          <div className="mt-3 md:hidden">{renderProPlayPanel()}</div>
-
           {/* Mobile Academy Broadcast — the stacked magic-book card with the
-              radio dock beneath it, after the six destinations so primary
+              radio dock beneath it, after the four destinations so primary
               navigation keeps the top of the list. */}
           <div className="mt-4 md:hidden">
             <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />

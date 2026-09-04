@@ -124,13 +124,13 @@ afterEach(() => {
 
 describe("the cue registry", () => {
   it("is the same cues everywhere — no cue can sound with no way to turn it off", () => {
-    // Eight moments, plus the one FALLBACK that describes a control rather
-    // than a moment. A tenth is a change to this file and to the app's sound
-    // settings, never something a component can decide for itself.
-    expect(PLAY_SFX_CUES).toHaveLength(9);
+    // Nine moments, plus the one FALLBACK that describes a control rather
+    // than a moment. An eleventh is a change to this file and to the app's
+    // sound settings, never something a component can decide for itself.
+    expect(PLAY_SFX_CUES).toHaveLength(10);
     expect([...PLAY_SFX_CUES].sort()).toEqual([
-      "buttonPress", "error", "mascotReact", "modeConfirm", "opponentFound",
-      "queueStart", "roleStep", "scrollClose", "scrollOpen",
+      "bookLand", "buttonPress", "error", "mascotReact", "modeConfirm",
+      "opponentFound", "queueStart", "roleStep", "scrollClose", "scrollOpen",
     ]);
     for (const cue of PLAY_SFX_CUES) {
       const key = PLAY_SFX_SETTING_KEY[cue];
@@ -250,7 +250,7 @@ describe("the engine", () => {
     expect(audio.started).toBeGreaterThan(0);
   });
 
-  it("renders every one of the eight — none is a silent stub", async () => {
+  it("renders every one of them — none is a silent stub", async () => {
     const { engine, cues, audio } = await freshEngine();
     grantUserGesture();
     for (const cue of cues) {

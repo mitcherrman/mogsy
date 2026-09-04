@@ -5,12 +5,17 @@ import {
   BOOK_MAX_WIDTH_CSS,
   BOOK_STACK_LIFT_CSS,
   CENTERPIECE_OVERLAP_PX,
+  CLOSED_BOOK_FIT_OFFSET_PX,
+  CLOSED_BOOK_HEIGHT_RATIO,
+  CLOSED_BOOK_MAX_PX,
+  CLOSED_BOOK_MAX_WIDTH_CSS,
   CENTERPIECE_WIDTH_CSS,
   REGIME_BOUNDARY_VH,
   TITLE_FONT_SIZE_CSS,
   bookMaxWidthPx,
   bookStackInsetPx,
   bookStackLiftPx,
+  closedBookMaxWidthPx,
 
   centerpieceHeightPx,
   centerpieceWidthPx,
@@ -198,4 +203,65 @@ describe("academy-layout: CSS strings mirror the JS formulas", () => {
     expect(CENTERPIECE_WIDTH_CSS).toMatch(/380px\)$/);
   });
 
+});
+
+describe("academy-layout: closed Academy volumes (four-book quadrant)", () => {
+  /** Desktop header cost at the title's ceiling — the offset's own model. */
+  const headerBottomPx = (vw: number, vh: number) =>
+    8 + 2 * 1.12 * titleFontSizePx(vw, vh) + 4 + 20;
+  const BOTTOM_PAD_PX = 56; // pb-14
+  const GAP_PX = 12; // gap clamp ceiling
+
+  it.each(MATRIX)("%i×%i — two portrait volumes plus a gap fit the fold", (vw, vh) => {
+    const h = closedBookMaxWidthPx(vh) * CLOSED_BOOK_HEIGHT_RATIO;
+    expect(2 * h + GAP_PX + headerBottomPx(vw, vh) + BOTTOM_PAD_PX).toBeLessThanOrEqual(vh);
+  });
+
+  it.each(MATRIX)("%i×%i — the volume still reads as substantial", (_vw, vh) => {
+    // Far taller than any open book the hub ever showed at the same viewport;
+    // the fold, not taste, is what caps it.
+    const openH = bookMaxWidthPx(vh) * BOOK_HEIGHT_RATIO;
+    expect(closedBookMaxWidthPx(vh) * CLOSED_BOOK_HEIGHT_RATIO).toBeGreaterThan(1.4 * openH);
+  });
+
+  it.each(MATRIX)("%i×%i — the volume cannot crowd the centerpiece", (_vw, vh) => {
+    // CENTERPIECE_WIDTH_CSS models the free central zone from the OPEN book's
+    // width term. Staying inside it is what lets the tome go unre-derived.
+    expect(closedBookMaxWidthPx(vh)).toBeLessThan(bookMaxWidthPx(vh));
+  });
+
+  it("grows monotonically with height and saturates at the composition cap", () => {
+    let prev = 0;
+    for (let vh = 600; vh <= 1600; vh += 10) {
+      const w = closedBookMaxWidthPx(vh);
+      expect(w).toBeGreaterThanOrEqual(prev);
+      expect(w).toBeLessThanOrEqual(CLOSED_BOOK_MAX_PX);
+      prev = w;
+    }
+    expect(closedBookMaxWidthPx(2000)).toBe(CLOSED_BOOK_MAX_PX);
+  });
+
+  it("the column cap still binds when the grid column is the narrower one", () => {
+    expect(closedBookMaxWidthPx(1080, 180)).toBe(180);
+  });
+
+  it("CSS string mirrors the JS formula", () => {
+    expect(CLOSED_BOOK_MAX_WIDTH_CSS).toMatch(/^min\(100%,/);
+    expect(CLOSED_BOOK_MAX_WIDTH_CSS).toContain(`(100dvh - ${CLOSED_BOOK_FIT_OFFSET_PX}px) / 3`);
+    expect(CLOSED_BOOK_MAX_WIDTH_CSS).toContain(`${CLOSED_BOOK_MAX_PX}px)`);
+  });
+
+  it("the height ratio is the frame PNG's own canvas aspect", () => {
+    expect(CLOSED_BOOK_HEIGHT_RATIO).toBeCloseTo(1536 / 1024, 6);
+  });
+
+  it("the fit offset is conservative at every matrix entry", () => {
+    // It is taken at the title's CEILING, so the real header is never taller
+    // than the offset's header term at any viewport in the matrix.
+    for (const [vw, vh] of MATRIX) {
+      expect(headerBottomPx(vw, vh) + BOTTOM_PAD_PX + GAP_PX).toBeLessThanOrEqual(
+        CLOSED_BOOK_FIT_OFFSET_PX,
+      );
+    }
+  });
 });

@@ -53,10 +53,13 @@ export default function MogzyHubGuide({
 
   // Vertical drop. Plain px unless the mode declares a narrow-desktop value,
   // in which case it interpolates linearly in vw through the two calibration
-  // points (1024px viewport → yNarrow, 1440px → y): quiz-history's card
-  // title drifts ~60px relative to Mogzy across that range, and the ramp
-  // keeps the bubble attached at wide widths while lifting it exactly as
-  // fast as the title closes in. Below 1024 the line continues (bounded) so
+  // points (1024px viewport → yNarrow, 1440px → y), for a mode whose card
+  // title drifts relative to Mogzy across that range: the ramp keeps the
+  // bubble attached at wide widths while lifting it exactly as fast as the
+  // title closes in. No mode declares yNarrow under the four-destination
+  // quadrant (it was the old bottom row's fix); the mechanism is retained
+  // because the coming visual pass moves cards again. Below 1024 the line
+  // continues (bounded) so
   // the narrow-md squeeze degrades toward title-safety, above 1440 it holds
   // the wide value.
   const bubbleY = activeMode?.bubble?.y ?? 0;

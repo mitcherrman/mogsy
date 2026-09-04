@@ -127,11 +127,17 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+// The four primary destinations, in reading order (TL, TR, BL, BR).
 const HUB_DESTINATIONS = [
   { title: "Leaguecraft", to: "/quiz" },
-  { title: "Combat Lab", to: "/combat-lab" },
-  { title: "Stat Check", to: "/quiz/stat-check" },
+  { title: "Combat Simulation", to: "/combat-lab" },
   { title: "Mogzy Archives", to: "/lol/docs" },
+  { title: "Pro Play", to: "/lol/pro-play" },
+];
+
+/** Retired from the primary hub (2026-09-02) — routes and pages preserved. */
+const RETIRED_PRIMARY_DESTINATIONS = [
+  { title: "Stat Check", to: "/quiz/stat-check" },
   { title: "Quiz History", to: "/lol/history" },
   { title: "Patch Reports", to: "/lol/patch-reports" },
 ];
@@ -163,39 +169,48 @@ describe("LolHub — navigation structure", () => {
     expect(screen.queryByRole("link", { name: /League Docs/ })).toBeNull();
   });
 
-  it("sends Stat Check to the mode-selection screen, never straight into a mode", () => {
-    renderHub();
-    const links = screen
-      .getAllByRole("link", { name: /Stat Check/ })
-      .map((l) => l.getAttribute("href"));
-    expect(links.length).toBeGreaterThanOrEqual(1);
-    for (const href of links) expect(href).toBe("/quiz/stat-check");
+  it("renders exactly four primary destinations and nothing else", () => {
+    const { container } = renderHub();
+    // Desktop books are the guide-bearing objects: one per destination.
+    expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(4);
+    const guideIds = [...container.querySelectorAll("[data-guide-mode]")].map((el) =>
+      el.getAttribute("data-guide-mode"),
+    );
+    expect(new Set(guideIds)).toEqual(
+      new Set(["leaguecraft", "combat-lab", "archives", "pro-play"]),
+    );
   });
 
-  // This test previously asserted the OPPOSITE — that the subsection stayed
-  // hidden "while Meta Reflex lives inside Leaguecraft". That premise was
-  // false: the Leaguecraft entry point it referred to was never built, so the
-  // feature had no front door anywhere. Both surfaces now exist and are
-  // complementary; see Quiz.tsx §2d for the Leaguecraft half.
-  it("offers Pro Play once per breakpoint, after the six existing destinations", () => {
-    // Pro Play is a primary destination but NOT a seventh book: the grid
-    // holds three 230px books per column by construction, and a fourth ran
-    // past the viewport and broke the columns' symmetry. It gets its own
-    // panel at each breakpoint instead — desktop under the grid, mobile
-    // after the six panels so the established order is unchanged.
+  it("no longer links Stat Check, Quiz History or Patch Reports from the hub", () => {
+    // The routes still exist (App.startupFallbacks.test.ts guards them) and
+    // each keeps its own front door — Quiz.tsx, the Leaguecraft workspace
+    // History pane / profile, and the Broadcast centerpiece respectively.
+    // Only the primary hub destinations were removed.
     const { container } = renderHub();
-    expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(6);
-    const proPlay = container.querySelectorAll('a[href="/lol/pro-play"]');
-    expect(proPlay).toHaveLength(2); // one desktop copy, one mobile copy
-    const hrefs = [...container.querySelectorAll("a[href]")].map((a) =>
-      a.getAttribute("href"),
-    );
-    // Every pre-existing destination still comes before Pro Play's mobile copy.
-    const lastProPlay = hrefs.lastIndexOf("/lol/pro-play");
-    for (const existing of ["/quiz", "/combat-lab", "/quiz/stat-check",
-                            "/lol/docs", "/lol/history", "/lol/patch-reports"]) {
-      expect(hrefs.lastIndexOf(existing)).toBeLessThan(lastProPlay);
+    for (const d of RETIRED_PRIMARY_DESTINATIONS) {
+      expect(
+        container.querySelectorAll(`a[href="${d.to}"]`),
+        `${d.title} must not be a primary hub destination`,
+      ).toHaveLength(0);
     }
+  });
+
+  it("keeps the Broadcast centerpiece as the homepage Patch Report entry", () => {
+    renderHub();
+    // Desktop + mobile centerpiece; the tome, not a book, is the front door.
+    expect(screen.getAllByTestId("academy-broadcast-centerpiece").length)
+      .toBeGreaterThanOrEqual(1);
+  });
+
+  it("treats Pro Play as a peer destination, not a trailing panel", () => {
+    // Pro Play shipped as a standalone gold panel below the book grid with no
+    // guide mode at all. The IA cleanup promoted it into the quadrant: it is
+    // now a book at each breakpoint like its three peers, and Mogzy can
+    // describe it.
+    const { container } = renderHub();
+    const proPlay = container.querySelectorAll('a[href="/lol/pro-play"]');
+    expect(proPlay).toHaveLength(2); // desktop book + mobile panel
+    expect(container.querySelector('[data-guide-mode="pro-play"]')).toBeTruthy();
   });
 
   it("shows the Meta Reflex subsection with all four game cards", () => {
@@ -307,11 +322,9 @@ describe("LolHub — Academy Broadcast centerpiece", () => {
 describe("LolHub — Mogzy contextual guide", () => {
   const GUIDE_MODES: { guideId: HubGuideModeId; to: string }[] = [
     { guideId: "leaguecraft", to: "/quiz" },
-    { guideId: "stat-check", to: "/quiz/stat-check" },
-    { guideId: "quiz-history", to: "/lol/history" },
     { guideId: "combat-lab", to: "/combat-lab" },
     { guideId: "archives", to: "/lol/docs" },
-    { guideId: "patch-reports", to: "/lol/patch-reports" },
+    { guideId: "pro-play", to: "/lol/pro-play" },
   ];
 
   const card = (container: HTMLElement, id: HubGuideModeId) => {
@@ -344,13 +357,13 @@ describe("LolHub — Mogzy contextual guide", () => {
   });
 
   it("every hub destination participates with a bounded, directional glide", () => {
-    // Config coverage: six cards, six guide entries. Horizontal is the
+    // Config coverage: four cards, four guide entries. Horizontal is the
     // dominant signal but stays bounded — Mogzy glides toward the hovered
     // side without leaving his central stage (see hub-guide.ts for the
     // measured lane clearances behind the 110/40 caps).
     const { container } = renderHub();
     expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(GUIDE_MODES.length);
-    const LEFT_MODES: HubGuideModeId[] = ["leaguecraft", "stat-check", "quiz-history"];
+    const LEFT_MODES: HubGuideModeId[] = ["leaguecraft", "archives"];
     for (const { guideId } of GUIDE_MODES) {
       const mode = HUB_GUIDE_MODES[guideId];
       expect(mode.title.length).toBeGreaterThan(0);
@@ -363,9 +376,7 @@ describe("LolHub — Mogzy contextual guide", () => {
       // offset (past his ~70px half-width so it reads as "next to him",
       // bounded so it stays attached rather than making a second journey),
       // pointing the same way as the lean, plus a bounded vertical trim —
-      // usually a drop from hat-height to head-height, but quiz-history
-      // rises instead (its title sits at head height at narrow desktop; the
-      // hovered title outranks lateral purity). Past ±~60 the bubble either
+      // a drop from hat-height to head-height. Past ±~60 the bubble either
       // detaches upward or runs into the bottom row's own card titles.
       const bubble = mode.bubble ?? { x: 0, y: 0 };
       expect(Math.abs(bubble.x)).toBeGreaterThanOrEqual(50);
@@ -393,7 +404,7 @@ describe("LolHub — Mogzy contextual guide", () => {
     const b = bubble();
     expect(b.getAttribute("data-visible")).toBe("true");
     expect(b.getAttribute("data-active-mode")).toBe("combat-lab");
-    expect(b.textContent).toContain("Combat Lab");
+    expect(b.textContent).toContain("Combat Simulation");
   });
 
   it("leaving the cards returns Mogzy to idle after the grace delay", async () => {
@@ -408,11 +419,11 @@ describe("LolHub — Mogzy contextual guide", () => {
 
   it("keyboard focus on a card link activates the guide; blur clears it", async () => {
     const { container } = renderHub();
-    const link = within(card(container, "stat-check")).getByRole("link");
+    const link = within(card(container, "archives")).getByRole("link");
     fireEvent.focusIn(link);
     const b = bubble();
     expect(b.getAttribute("data-visible")).toBe("true");
-    expect(b.getAttribute("data-active-mode")).toBe("stat-check");
+    expect(b.getAttribute("data-active-mode")).toBe("archives");
     fireEvent.focusOut(link);
     await waitFor(() => expect(bubble().getAttribute("data-visible")).toBe("false"));
   });
@@ -420,13 +431,13 @@ describe("LolHub — Mogzy contextual guide", () => {
   it("tabbing from one card to the next keeps the bubble up (no collapse between steps)", () => {
     const { container } = renderHub();
     const first = within(card(container, "leaguecraft")).getByRole("link");
-    const second = within(card(container, "stat-check")).getByRole("link");
+    const second = within(card(container, "combat-lab")).getByRole("link");
     fireEvent.focusIn(first);
     fireEvent.focusOut(first);
     fireEvent.focusIn(second);
     const b = bubble();
     expect(b.getAttribute("data-visible")).toBe("true");
-    expect(b.getAttribute("data-active-mode")).toBe("stat-check");
+    expect(b.getAttribute("data-active-mode")).toBe("combat-lab");
   });
 
   it("each desktop card link is described (aria-describedby) by its mode's guide text", () => {
@@ -679,9 +690,11 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
 
   it("returns to the normal orientation once the cards go idle", async () => {
     const { container } = renderHub();
-    fireEvent.mouseOver(card(container, "archives"));
+    // Archives moved to the LEFT column in the quadrant; pro-play is the
+    // right-hand card that mirrors Mogzy.
+    fireEvent.mouseOver(card(container, "pro-play"));
     expect(facing(container).getAttribute("data-facing")).toBe("right");
-    fireEvent.mouseOut(card(container, "archives"));
+    fireEvent.mouseOut(card(container, "pro-play"));
     await waitFor(() =>
       expect(facing(container).getAttribute("data-facing")).toBe("left"),
     );
@@ -721,16 +734,16 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
 
   it("clicking while a card is active leaves that card's state intact", () => {
     const { container } = renderHub();
-    fireEvent.mouseOver(card(container, "stat-check"));
+    fireEvent.mouseOver(card(container, "archives"));
     fireEvent.click(mascot(container));
     const bubble = screen.getByTestId("mogzy-guide-bubble");
     expect(bubble.getAttribute("data-visible")).toBe("true");
-    expect(bubble.getAttribute("data-active-mode")).toBe("stat-check");
+    expect(bubble.getAttribute("data-active-mode")).toBe("archives");
     expect(facing(container).getAttribute("data-facing")).toBe("left");
     // The lean layer is untouched by the reaction — the hop composes on top.
     const lean = container.querySelector<HTMLElement>('[data-testid="mogzy-guide-lean"]')!;
     expect(lean.style.getPropertyValue("--guide-lean-x")).toContain(
-      String(HUB_GUIDE_MODES["stat-check"].lean.x),
+      String(HUB_GUIDE_MODES["archives"].lean.x),
     );
   });
 
@@ -783,6 +796,123 @@ describe("LolHub — Mogzy mascot animation prototype", () => {
       expect(react(container).className).not.toContain("mogzy-click-react");
     } finally {
       window.matchMedia = original;
+    }
+  });
+});
+
+/**
+ * Closed Academy volumes — the approved four-book quadrant (2026-09-02d).
+ *
+ * All four primary destinations render `AcademyHubBook`. These tests pin what
+ * the conversion must not break — routes, accessible names, guide wiring, the
+ * cover-title setting and the mirrored inward perspective.
+ */
+describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
+  const volumes = (container: HTMLElement) =>
+    [...container.querySelectorAll<HTMLAnchorElement>("a.academy-hub-book")];
+
+  it("renders all four destinations as closed volumes and no open cards", () => {
+    const { container } = renderHub();
+    expect(volumes(container).map((a) => a.getAttribute("href"))).toEqual([
+      "/quiz",
+      "/lol/docs",
+      "/combat-lab",
+      "/lol/pro-play",
+    ]);
+    expect(container.querySelectorAll("a.book-mode-card")).toHaveLength(0);
+  });
+
+  it("keeps every route, accessible name and guide description", () => {
+    const { container } = renderHub();
+    for (const link of volumes(container)) {
+      const id = link.closest("[data-guide-mode]")!.getAttribute("data-guide-mode") as HubGuideModeId;
+      // aria-label stays the REGISTRY title, never the cover's line setting.
+      expect(link.getAttribute("aria-label")).toBe(HUB_GUIDE_MODES[id].title);
+      const describedBy = link.getAttribute("aria-describedby")!;
+      expect(document.getElementById(describedBy)?.textContent).toBe(
+        HUB_GUIDE_MODES[id].description,
+      );
+    }
+  });
+
+  it("prints cover titles as split lines, never baked into the art", () => {
+    const { container } = renderHub();
+    const lines = (href: string) =>
+      [
+        ...container
+          .querySelector(`a.academy-hub-book[href="${href}"] .academy-hub-book-title`)!
+          .querySelectorAll("span"),
+      ].map((s) => s.textContent);
+    expect(lines("/quiz")).toEqual(["Leaguecraft", "Studies"]);
+    expect(lines("/combat-lab")).toEqual(["Combat", "Simulation"]);
+    expect(lines("/lol/docs")).toEqual(["Mogzy", "Archives"]);
+    // Split is on "\n", never on spaces, so this stays one line.
+    expect(lines("/lol/pro-play")).toEqual(["Pro Play"]);
+  });
+
+  it("no cover carries the registry subtitle — Mogzy narrates instead", () => {
+    const { container } = renderHub();
+    for (const link of volumes(container)) {
+      expect(link.textContent).not.toMatch(/Study\.|Practice\.|Explore League|Quiz yourself/);
+    }
+  });
+
+  it("still drives Mogzy's guide from every book, on hover and on focus", () => {
+    const { container } = renderHub();
+    for (const id of Object.keys(HUB_GUIDE_MODES) as HubGuideModeId[]) {
+      const wrapper = container.querySelector(`[data-guide-mode="${id}"]`)!;
+      expect(wrapper.querySelector("a.academy-hub-book")).not.toBeNull();
+      fireEvent.mouseEnter(wrapper);
+      expect(screen.getAllByText(HUB_GUIDE_MODES[id].description).length).toBeGreaterThan(0);
+      fireEvent.mouseLeave(wrapper);
+      fireEvent.focus(wrapper);
+      expect(screen.getAllByText(HUB_GUIDE_MODES[id].description).length).toBeGreaterThan(0);
+      fireEvent.blur(wrapper);
+    }
+  });
+
+  it("presents every volume HEAD-ON — no resting rotation anywhere", () => {
+    const { container } = renderHub();
+    // The shelves explain where the books are, so the inward turn the volumes
+    // used to carry (+/-11deg, halved on hover) is gone. Any inline transform
+    // or rotation custom property here would be a regression to that.
+    for (const link of volumes(container)) {
+      for (const prop of [
+        "--hub-book-rotate-y",
+        "--hub-book-rotate-y-hover",
+        "--hub-book-rotate-z",
+      ]) {
+        expect(link.style.getPropertyValue(prop)).toBe("");
+      }
+      expect(link.style.transform).toBe("");
+      expect(link.querySelector<HTMLElement>(".academy-hub-book-body")!.style.transform).toBe("");
+    }
+  });
+
+  it("gives both columns a shelf, and the volumes sit in front of it", () => {
+    const { container } = renderHub();
+    const shelves = container.querySelectorAll(".academy-hub-shelf");
+    expect(shelves).toHaveLength(2);
+    for (const shelf of shelves) {
+      // Decorative only: it must never take a click, a focus stop or an
+      // announcement away from a destination link.
+      expect(shelf.getAttribute("aria-hidden")).toBe("true");
+      expect(shelf.className).toContain("pointer-events-none");
+      expect(shelf.className).toContain("z-0");
+      // Each shelf is a sibling of the pair it stands behind.
+      expect(shelf.parentElement!.querySelectorAll("a.academy-hub-book")).toHaveLength(2);
+    }
+    for (const link of volumes(container)) {
+      expect(link.parentElement!.className).toContain("z-10");
+    }
+  });
+
+  it("the mobile panel list is untouched by the conversion", () => {
+    const { container } = renderHub();
+    // Every destination still appears twice: desktop volume + mobile panel.
+    for (const href of ["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]) {
+      expect(container.querySelectorAll(`a[href="${href}"]`)).toHaveLength(2);
+      expect(container.querySelector(`a.academy-hub-book[href="${href}"]`)).not.toBeNull();
     }
   });
 });
