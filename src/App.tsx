@@ -262,6 +262,11 @@ const PatchReports = lazy(() => import("./pages/lol/PatchReports"));
 // (MECH1 Phase 5B1: respawn calculator + wave timeline).
 const MechanicsExplorerPage = lazy(() => import("./pages/lol/mechanics/MechanicsExplorerPage"));
 
+// Mechanics Reference — the Archives shelf over the canonical mechanics study
+// tables (/api/mechanics/tables). One component serves the shelf, a category
+// and a single table.
+const MechanicsReferencePage = lazy(() => import("./pages/lol-docs/mechanics/MechanicsReferencePage"));
+
 // The client itself lives in @/lib/query-client so non-component code (the
 // HUD's sign-out) can clear the same cache the provider serves.
 import { queryClient } from "@/lib/query-client";
@@ -522,6 +527,11 @@ const App = () => (
                   <Route path="/lol/tier-list" element={<Suspense fallback={<RouteFallback />}><LolTierList /></Suspense>} />
                   <Route path="/lol/mechanics" element={<Suspense fallback={<RouteFallback />}><MechanicsExplorerPage /></Suspense>} />
                   <Route path="/lol/docs" element={<Suspense fallback={<RouteFallback />}><LeagueDocsLanding /></Suspense>} />
+                  {/* Mechanics Reference. Three depths, one component, so a
+                      deep link to a single table restores the same shell. */}
+                  <Route path="/lol/docs/mechanics" element={<Suspense fallback={<RouteFallback />}><MechanicsReferencePage /></Suspense>} />
+                  <Route path="/lol/docs/mechanics/:categorySlug" element={<Suspense fallback={<RouteFallback />}><MechanicsReferencePage /></Suspense>} />
+                  <Route path="/lol/docs/mechanics/:categorySlug/:tableSlug" element={<Suspense fallback={<RouteFallback />}><MechanicsReferencePage /></Suspense>} />
                   <Route path="/lol/docs/champions" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionIndex /></Suspense>} />
                   <Route path="/lol/docs/champions/:slug" element={<Suspense fallback={<RouteFallback />}><LeagueDocsChampionDetail /></Suspense>} />
                   <Route path="/items/:slug" element={<Suspense fallback={<RouteFallback />}><ItemDetail /></Suspense>} />

@@ -28,6 +28,10 @@ export function buildStaticEntries(): SitemapEntry[] {
     { path: "/lol/tier-list", changefreq: "weekly", priority: "0.8" },
     { path: "/lol/docs", changefreq: "weekly", priority: "0.8" },
     { path: "/lol/docs/champions", changefreq: "weekly", priority: "0.7" },
+    // Mechanics Reference shelf. The per-category and per-table routes are
+    // deliberately NOT enumerated — they are served from one backend index
+    // that this generator does not read, and the shelf links to all of them.
+    { path: "/lol/docs/mechanics", changefreq: "weekly", priority: "0.7" },
     { path: "/lol/docs/pro", changefreq: "weekly", priority: "0.7" },
     { path: "/lol/docs/pro/champions", changefreq: "weekly", priority: "0.6" },
     // Roster wiki: the three static directory routes only. Individual player

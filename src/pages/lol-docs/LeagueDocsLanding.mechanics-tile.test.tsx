@@ -16,16 +16,29 @@ vi.mock("@/hooks/useChampionAssets", () => ({
   getChampionIcon: () => null,
 }));
 
-describe("League Docs landing — Mechanics tile", () => {
-  it("links the Mechanics category to /lol/mechanics", () => {
+describe("League Docs landing — Mechanics tiles", () => {
+  it("links the Mechanics Explorer category to /lol/mechanics", () => {
     render(
       <MemoryRouter>
         <LeagueDocsLanding />
       </MemoryRouter>,
     );
-    const tile = screen.getByRole("link", { name: /Mechanics/ });
+    // Matched by its own title now that a second mechanics tile (the study
+    // tables) sits beside it — a bare /Mechanics/ would match both.
+    const tile = screen.getByRole("link", { name: /Mechanics Explorer/ });
     expect(tile).toHaveAttribute("href", "/lol/mechanics");
     // It is a live tile now, not a greyed "Soon" placeholder.
+    expect(tile).not.toHaveTextContent(/Soon/);
+  });
+
+  it("links the Mechanics Tables category to the Archives mechanics reference", () => {
+    render(
+      <MemoryRouter>
+        <LeagueDocsLanding />
+      </MemoryRouter>,
+    );
+    const tile = screen.getByRole("link", { name: /Mechanics Tables/ });
+    expect(tile).toHaveAttribute("href", "/lol/docs/mechanics");
     expect(tile).not.toHaveTextContent(/Soon/);
   });
 });

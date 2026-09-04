@@ -9,6 +9,7 @@ import {
   Scale,
   ScrollText,
   Search as SearchIcon,
+  Table2,
   ShieldCheck,
   Swords,
   Trophy,
@@ -49,10 +50,19 @@ const CATEGORIES: Category[] = [
     Icon: Swords,
   },
   {
-    title: "Mechanics",
+    // Two mechanics entrances on purpose: the Explorer answers a question for
+    // the inputs you give it, the Tables let you read the whole sheet. Same
+    // canonical authority behind both.
+    title: "Mechanics Explorer",
     description: "Interactive death-timer and minion-wave tools, straight from Mogzy's canonical mechanics engine.",
     Icon: BookOpen,
     to: "/lol/mechanics",
+  },
+  {
+    title: "Mechanics Tables",
+    description: "Every certified environment value as a study table: waves, minion stats, jungle timers, structures, respawn rules and takedown gold.",
+    Icon: Table2,
+    to: "/lol/docs/mechanics",
   },
   {
     title: "Pro Data",
