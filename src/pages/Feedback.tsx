@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ENTRY_INTENT_LABELS,
   FEEDBACK_CATEGORIES,
+  FEEDBACK_ENTRY_INTENTS,
   FEEDBACK_STATUS_PUBLIC_LABELS,
   type FeedbackCategory,
   type FeedbackEntryIntent,
@@ -77,7 +78,17 @@ export default function Feedback() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [view, setView] = useState<View>({ kind: "choose" });
+  // `?intent=bug` opens that door directly, so a surface elsewhere in the app
+  // can offer "Report a Bug" as a real destination instead of dropping the user
+  // on the chooser to pick it again. Anything unrecognised falls back to the
+  // chooser. Read in a lazy initializer: this decides the INITIAL view only and
+  // must never yank the user back after they navigate within the page.
+  const [view, setView] = useState<View>(() => {
+    const requested = new URLSearchParams(location.search).get("intent");
+    return requested && (FEEDBACK_ENTRY_INTENTS as readonly string[]).includes(requested)
+      ? { kind: "form", intent: requested as FeedbackEntryIntent }
+      : { kind: "choose" };
+  });
   const [submitting, setSubmitting] = useState(false);
   const [submissions, setSubmissions] = useState<MyFeedbackRow[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);

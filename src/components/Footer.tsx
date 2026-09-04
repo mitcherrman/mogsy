@@ -14,6 +14,10 @@ const links = [
   { to: "/contact", label: "Contact", icon: Mail },
 ];
 
+/** The trust/compliance subset. Nothing is dropped from the app — these are the
+ *  destinations no other surface carries. */
+const LEGAL_ONLY = new Set(["/privacy", "/terms", "/security"]);
+
 /**
  * Sitewide footer rendered inside Layout. Hidden on immersive gameplay routes
  * where the bottom mobile navbar overlaps and the swipe surface needs the
@@ -33,6 +37,15 @@ export default function Footer() {
     pathname.startsWith("/admin");
   if (hidden) return null;
 
+  // The /lol hub grew its own community + About/Feedback/Contact band directly
+  // above this footer, so repeating those four here would be the same links
+  // twice within one screen. On that ONE route the footer narrows to the legal
+  // set and its copy, which is what the brief means by a compact conventional
+  // footer subordinate to the sections above it. Every other page is unchanged,
+  // and no destination becomes unreachable.
+  const legalOnly = pathname === "/lol";
+  const visibleLinks = legalOnly ? links.filter((l) => LEGAL_ONLY.has(l.to)) : links;
+
   const year = new Date().getFullYear();
 
   return (
@@ -47,8 +60,17 @@ export default function Footer() {
                 : "Community-driven ranking games, quizzes, and competitions for gamers everywhere."}
             </p>
           </div>
-          <nav aria-label="Footer" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 text-sm">
-            {links.map(({ to, label, icon: Icon }) => (
+          <nav
+            aria-label="Footer"
+            data-testid="site-footer-nav"
+            data-variant={legalOnly ? "legal-only" : "full"}
+            className={
+              legalOnly
+                ? "grid grid-cols-2 sm:grid-cols-3 gap-x-6 text-sm"
+                : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 text-sm"
+            }
+          >
+            {visibleLinks.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}

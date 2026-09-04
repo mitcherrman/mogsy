@@ -213,25 +213,68 @@ describe("LolHub — navigation structure", () => {
     expect(container.querySelector('[data-guide-mode="pro-play"]')).toBeTruthy();
   });
 
-  it("shows the Meta Reflex subsection with all four game cards", () => {
-    renderHub();
-    expect(screen.getByTestId("lol-hub-meta-reflex-section")).toBeTruthy();
-    for (const game of ["Favorite Champion", "Most Annoying Champion", "Stat Duel", "Item Cost Duel"]) {
-      expect(screen.getByRole("link", { name: new RegExp(game) })).toBeTruthy();
+  it("no longer carries the Meta Reflex subsection or any of its duels", () => {
+    // Removed from the HOMEPAGE only. The feature keeps its own front doors at
+    // /league-swipe and inside Leaguecraft; this asserts the hub stopped
+    // competing with its own navigation, not that anything was deleted.
+    const { container } = renderHub();
+    expect(screen.queryByTestId("lol-hub-meta-reflex-section")).toBeNull();
+    expect(container.textContent).not.toMatch(/Meta Reflex|League Swipe|Two options\. One tap\./);
+    for (const game of [
+      "Favorite Champion",
+      "Most Annoying Champion",
+      "Base HP Duel",
+      "Base AD Duel",
+      "Base Armor Duel",
+      "Stat Duel",
+      "Item Cost Duel",
+    ]) {
+      expect(container.textContent).not.toMatch(new RegExp(game));
     }
-    // "All games" and "Stats" both point into the preserved public URLs.
-    const hrefs = screen
-      .getAllByRole("link")
-      .map((l) => l.getAttribute("href"))
-      .filter((h): h is string => !!h?.startsWith("/league-swipe"));
-    expect(hrefs).toContain("/league-swipe");
-    expect(hrefs).toContain("/league-swipe/stats");
+    const swipeHrefs = Array.from(container.querySelectorAll("a[href]"))
+      .map((l) => l.getAttribute("href")!)
+      .filter((h) => h.startsWith("/league-swipe"));
+    expect(swipeHrefs).toEqual([]);
   });
 
-  it("brands the subsection Meta Reflex and never the retired name", () => {
+  it("opens the lower page with the Academy community section", () => {
+    renderHub();
+    const community = screen.getByTestId("hub-community-section");
+    expect(within(community).getByText("Join the Academy")).toBeTruthy();
+    // No Mogzy-owned social URL is configured in this repo, so the section must
+    // render the pending state and NOT a link to nowhere.
+    expect(screen.queryByTestId("hub-community-discord")).toBeNull();
+    expect(screen.getByTestId("hub-community-discord-pending")).toBeTruthy();
+    for (const id of ["youtube", "tiktok", "instagram", "x"]) {
+      expect(screen.queryByTestId(`hub-community-${id}`)).toBeNull();
+    }
+  });
+
+  it("routes the lower utility band only at destinations that exist", () => {
+    renderHub();
+    expect(screen.getByTestId("hub-utility-section")).toBeTruthy();
+    expect(screen.getByTestId("hub-feedback-give").getAttribute("href")).toBe("/feedback");
+    expect(screen.getByTestId("hub-feedback-bug").getAttribute("href")).toBe(
+      "/feedback?intent=bug",
+    );
+    const utility = screen.getByTestId("hub-about-block");
+    expect(within(utility).getByRole("link", { name: /About Mogzy/ }).getAttribute("href")).toBe(
+      "/about",
+    );
+    expect(within(utility).getByRole("link", { name: /Contact/ }).getAttribute("href")).toBe(
+      "/contact",
+    );
+  });
+
+  it("fades the painted library into the lower page instead of cutting it off", () => {
     const { container } = renderHub();
-    expect(screen.getByText("Meta Reflex")).toBeTruthy();
-    expect(container.textContent).not.toMatch(/League Swipe/);
+    // Both the painting and its readability scrim carry the ramp; masking only
+    // the painting would leave the scrim as a dark band over the page below.
+    const faded = container.querySelectorAll(".academy-hero-fade");
+    expect(faded).toHaveLength(2);
+    expect(
+      container.querySelector('[data-testid="academy-library-background"]')?.className,
+    ).toMatch(/academy-hero-fade/);
   });
 
   it("does not render the old hero mode selector", () => {

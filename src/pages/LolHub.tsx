@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Zap, Heart, Brain, Coins, Trophy } from "lucide-react";
+import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Trophy } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import BlogPostCard from "@/components/blog/BlogPostCard";
@@ -31,13 +31,8 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
-import { LEAGUE_SWIPE_GAMES } from "@/lib/league-swipe/api";
-import {
-  META_REFLEX_NAME,
-  META_REFLEX_ROUTE,
-  META_REFLEX_STATS_ROUTE,
-  META_REFLEX_TAGLINE,
-} from "@/lib/league-swipe/branding";
+import HubCommunitySection from "@/components/lol/HubCommunitySection";
+import HubUtilitySection from "@/components/lol/HubUtilitySection";
 import { playUiSfx } from "@/lib/ui-sfx";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
@@ -205,31 +200,6 @@ const ACADEMY_LINES: ((name: string) => string)[] = [
 ];
 /** Fallback address for anonymous users and profiles with no display name. */
 const ACADEMY_FALLBACK_NAME = "Summoner";
-
-// Meta Reflex games (internally League Swipe; see /league-swipe).
-//
-// This subsection was hidden on 2026-07-29 on the stated basis that Meta Reflex
-// "now lives inside Leaguecraft" — but that Leaguecraft entry point was never
-// actually built, so the feature ended up with no front door at all. The entry
-// now exists (Quiz.tsx §2d), and the owner has confirmed the two surfaces are
-// complementary, not exclusive: Meta Reflex is a full standalone experience AND
-// is reachable from Leaguecraft.
-const SHOW_SWIPE_GAMES = true;
-
-/** Icon per game slug. The only hub-specific fact — titles and descriptions
- *  come from the shared catalog so the hub cannot drift from the game pages. */
-const SWIPE_GAME_ICONS: Record<string, typeof Heart> = {
-  "favorite-champion": Heart,
-  "most-annoying-champion": Flame,
-  "higher-base-stat": Brain,
-  "item-cost-duel": Coins,
-};
-const SWIPE_GAME_CARDS = LEAGUE_SWIPE_GAMES.map((g) => ({
-  slug: g.slug,
-  title: g.title,
-  description: g.description,
-  Icon: SWIPE_GAME_ICONS[g.slug] ?? Zap,
-}));
 
 export default function LolHub() {
   const { user } = useAuth();
@@ -565,12 +535,12 @@ export default function LolHub() {
             loading="eager"
             fetchPriority="high"
             decoding="async"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top md:[object-position:center_72%]"
+            className="academy-hero-fade pointer-events-none absolute inset-0 h-full w-full object-cover object-top md:[object-position:center_72%]"
           />
         </picture>
         {/* Readability scrim — kept light so the painting stays visible */}
         <div
-          className="pointer-events-none absolute inset-0"
+          className="academy-hero-fade pointer-events-none absolute inset-0"
           style={{
             background:
               "linear-gradient(to bottom, rgba(4,7,15,0.55) 0%, rgba(4,7,15,0.15) 22%, rgba(4,7,15,0.05) 55%, rgba(4,7,15,0.45) 100%)",
@@ -738,57 +708,29 @@ export default function LolHub() {
         </div>
       </section>
 
-      {/* ================= Below the fold ================= */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <AdSlot placement="lol_hub_mid" className="mt-2" />
+      {/* ================= Below the fold =================
+          The Academy commons: a quieter secondary area that the hero fades
+          INTO rather than stops at. The transition itself is owned by the
+          section above (`academy-hero-fade` ramps the painting's alpha to zero
+          over its last band, so the page background shows through and the two
+          cannot mismatch); this container's job is the breathing room on the
+          other side of the seam, hence the large top padding.
 
-        {/* Meta Reflex games — the standalone surface, alongside the
-            Leaguecraft entry in Quiz.tsx §2d rather than instead of it. */}
-        {SHOW_SWIPE_GAMES && (
-          <div className="mt-8" data-testid="lol-hub-meta-reflex-section">
-            <div className="flex items-end justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2 text-[#c9a84c]">
-                  <Zap className="h-4 w-4" />
-                  <span className="text-[10px] uppercase tracking-widest font-bold">
-                    {META_REFLEX_NAME}
-                  </span>
-                </div>
-                <h2 className="text-lg md:text-xl font-bold text-foreground">
-                  {META_REFLEX_TAGLINE}
-                </h2>
-              </div>
-              <div className="flex items-center gap-4">
-                <Link
-                  to={META_REFLEX_STATS_ROUTE}
-                  className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
-                >
-                  Stats <ArrowRight className="h-3 w-3" />
-                </Link>
-                <Link
-                  to={META_REFLEX_ROUTE}
-                  className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
-                >
-                  All games <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-2.5">
-              {SWIPE_GAME_CARDS.map((g) => (
-                <HexPanelLink
-                  key={g.slug}
-                  to={`/league-swipe/${g.slug}`}
-                  title={g.title}
-                  description={g.description}
-                  Icon={g.Icon}
-                  accent="gold"
-                  compact
-                  onClick={() => playUiSfx("sectionOpen")}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+          Meta Reflex used to open this area with seven duel cards. It was
+          removed from the homepage on 2026-09-04 — the feature is untouched and
+          keeps its own front doors at /league-swipe and inside Leaguecraft
+          (Quiz.tsx §2d); it simply no longer competes with the hub's own
+          navigation two screens below it.
+
+          Order is deliberate and a future Pro promotion module drops in ABOVE
+          the community section without moving anything else. */}
+      <div className="max-w-7xl mx-auto px-4 pt-10 pb-6 md:pt-14">
+        <AdSlot placement="lol_hub_mid" />
+
+        <div className="mt-8 flex flex-col gap-4">
+          <HubCommunitySection />
+          <HubUtilitySection />
+        </div>
 
         {/* News / Blog — hidden entirely when there are no League posts */}
         {(isLoading || posts.length > 0) && (

@@ -502,6 +502,49 @@
     0 4px 18px -8px hsl(215 80% 2% / 0.7);
 }
 
+/* ── Academy hub: the seam between the painted library and the lower page ──
+   The hero used to stop dead — a lit blue floor meeting a near-black page on a
+   hard horizontal edge. This ramps the ALPHA of the painting (and of its
+   readability scrim) to zero across the section's last band, so the page's own
+   background is what shows through.
+
+   Masking alpha rather than painting a fade DOWN to a colour is the whole
+   point: `.theme-lol body` carries two fixed-attachment radial gradients, so
+   the colour immediately below the seam changes as the page scrolls. Any
+   opaque fade colour would be right at one scroll position and visibly wrong at
+   the others; an alpha ramp cannot mismatch.
+
+   The band is weighted hard to the bottom on purpose. Mogzy and the four
+   volumes sit above it untouched — at 1440x900 the ramp is still fully opaque
+   past Mogzy's book stack — and only the empty floor and the pedestal's base
+   dissolve, which reads as the room receding into shadow. */
+.academy-hero-fade {
+  --academy-hero-fade-band: 90px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--academy-hero-fade-band)),
+    rgba(0, 0, 0, 0.85) calc(100% - var(--academy-hero-fade-band) * 0.69),
+    rgba(0, 0, 0, 0.55) calc(100% - var(--academy-hero-fade-band) * 0.42),
+    rgba(0, 0, 0, 0.22) calc(100% - var(--academy-hero-fade-band) * 0.19),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(100% - var(--academy-hero-fade-band)),
+    rgba(0, 0, 0, 0.85) calc(100% - var(--academy-hero-fade-band) * 0.69),
+    rgba(0, 0, 0, 0.55) calc(100% - var(--academy-hero-fade-band) * 0.42),
+    rgba(0, 0, 0, 0.22) calc(100% - var(--academy-hero-fade-band) * 0.19),
+    transparent 100%
+  );
+}
+@media (min-width: 768px) {
+  .academy-hero-fade {
+    --academy-hero-fade-band: 130px;
+  }
+}
+
 /* LoLdle-style display lettering for h1/h2 headers inside the theme */
 .theme-lol h1,
 .theme-lol h2 {

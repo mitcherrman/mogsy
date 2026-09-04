@@ -1,7 +1,186 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 14 (live-review tuning) is at the top of this file.
-     Revision 13 recorded the merge to main. -->
+<!-- Revision 15 (below-the-fold rework) is at the top of this file.
+     Revision 14 was the live-review tuning. -->
+
+## Revision 2026-09-04b — below-the-fold rework
+
+**Status:** complete on branch `hub/below-fold` (worktree
+`/Users/macmoney/mogsy-wt-below-fold`), branched from `origin/main` `d0917a8d`.
+**Above-the-fold hub untouched** apart from the bottom-edge fade described
+below — that was the explicit constraint and it is verified by pixel diff.
+
+### What the lower page was, and is now
+
+| | Before | After |
+|---|---|---|
+| Hero → page | hard horizontal cut at the painting's edge | alpha ramp; the painting dissolves into the page background |
+| First section | Meta Reflex — 7 duel cards + Stats / All games | Join the Academy (community) |
+| Second | News & Blog | Help improve Mogzy + About the Academy |
+| Third | global footer (6 links) | News & Blog, then a legal-only footer |
+| Document height @1440×900 | 1558px | 1814px |
+
+### 1. Meta Reflex removed from the homepage — the feature is intact
+
+Deleted from `LolHub.tsx`: `SHOW_SWIPE_GAMES`, `SWIPE_GAME_ICONS`,
+`SWIPE_GAME_CARDS`, the `LEAGUE_SWIPE_GAMES` and `META_REFLEX_*` imports, the
+four now-unused lucide icons (`Zap`, `Heart`, `Brain`, `Coins`) and the whole
+`lol-hub-meta-reflex-section` block — Favorite Champion, Most Annoying
+Champion, Base HP / AD / Armor Duel, Stat Duel, Item Cost Duel, plus the Stats
+and All games links.
+
+**Nothing under it was touched.** `src/lib/league-swipe/` (branding, api,
+catalog) is unchanged and every other consumer still reads it —
+`LeagueSwipeHub`, `LeagueSwipeGame`, `LeaguePublicProfile`, `HexTrainingHero`
+and the Leaguecraft entry at `Quiz.tsx` §2d. Verified live after the change:
+`/league-swipe` (h1 "Meta Reflex"), `/league-swipe/stats` and
+`/league-swipe/favorite-champion` all render.
+
+### 2. The transition: an ALPHA ramp, not a fade to a colour
+
+New `.academy-hero-fade` in `index.css`, applied to two elements — the
+`<picture>`'s `<img>` **and** the readability scrim. Both, because masking only
+the painting leaves the scrim behind as a dark veil over the page below.
+
+The band is 90px on mobile, 130px from `md` up, weighted hard to the bottom
+(`1 → 0.85 → 0.55 → 0.22 → 0`), so Mogzy and the four volumes sit entirely
+above the ramp and only the empty floor and the pedestal's base dissolve.
+
+**Why alpha and not a gradient down to a colour.** `.theme-lol body` carries
+two `background-attachment: fixed` radial gradients, so the colour immediately
+below the seam *changes as the page scrolls* — the red bottom radial alone
+lifts it to roughly `rgb(28,15,21)` near the viewport floor against
+`rgb(6,10,20)` elsewhere. Any opaque fade colour would be correct at one scroll
+position and visibly wrong at every other. An alpha ramp cannot mismatch,
+because the page's own background is what shows through.
+
+The hero background PNG was **not** modified.
+
+### 3. Community — `HubCommunitySection`, and the URLs that do not exist
+
+New `src/lib/community/links.ts` resolves five channels from the environment
+and **fails closed**: a value that is not an absolute `https:` URL (empty,
+`TODO`, a bare handle, `http:`, `javascript:`) reads as "not open yet", never
+as a link.
+
+**An audit of the whole repository on 2026-09-04 found no Mogzy-owned social
+URL of any kind.** Not in `site-config.ts`, not in `.env`/`.env.example`, not
+in `index.html`. Every hit for discord/tiktok/instagram/x/youtube in `src/`
+belongs to *user* profile socials (`social-validators.ts`, `ProfileCard`,
+`Profile`) or to the Discord **OAuth identity** link in
+`settings/AccountConnections.tsx` — which is account verification, not a
+community invite. So all five are missing:
+
+| Channel | Env var to set | Status |
+|---|---|---|
+| Discord | `VITE_COMMUNITY_DISCORD_URL` | **missing** — renders as "Discord — opening soon" |
+| YouTube | `VITE_COMMUNITY_YOUTUBE_URL` | **missing** — omitted |
+| TikTok | `VITE_COMMUNITY_TIKTOK_URL` | **missing** — omitted |
+| Instagram | `VITE_COMMUNITY_INSTAGRAM_URL` | **missing** — omitted |
+| X | `VITE_COMMUNITY_X_URL` | **missing** — omitted |
+
+**Owner action:** set the vars and redeploy. No code change is needed — the
+Discord plate becomes the gold primary CTA and each secondary channel appears
+as soon as its var holds an https URL.
+
+Discord keeps the strongest visual weight either way (52px plate, gold gradient
+when live, dashed outline when pending); the rest are 44px icon+text pills.
+
+### 4. Feedback + About — `HubUtilitySection`
+
+Every action points at a route that already exists. Nothing new on the backend.
+
+- **Give Feedback** → `/feedback` (the Feedback Center)
+- **Report a Bug** → `/feedback?intent=bug`
+- **About Mogzy** → `/about`
+- **Contact** → `/contact`
+
+`Feedback.tsx` gained a 6-line lazy initializer that reads `?intent=` and opens
+that door directly, validated against `FEEDBACK_ENTRY_INTENTS`; anything
+unrecognised falls through to the existing chooser. It sets the INITIAL view
+only, so it cannot yank the user back after they navigate inside the page.
+
+**Help / FAQ is deliberately absent — no such route exists in the app** (there
+is no `/help` or `/faq`, and `/about` carries no FAQ section). It was left out
+rather than pointed at a placeholder.
+
+### 5. Legal footer — narrowed on `/lol` only
+
+The global `Footer` is rendered sitewide by `Layout`, so it was **not**
+redesigned. On the single path `/lol` it now filters to the trust set —
+Privacy Policy, Terms of Service, Security — because the new band directly
+above it already carries About, Feedback and Contact, and repeating them would
+be the same four links twice within one screen. Copyright and the Riot
+disclaimer are unchanged. Every other page renders the full six. No
+destination became unreachable.
+
+### 6. Pro promotion left room, not a placeholder
+
+The lower container is a plain flow of siblings with the community section
+first. A Pro module drops in above `<HubCommunitySection />` without moving or
+re-deriving anything. No blank space is reserved.
+
+### Files changed
+
+| File | |
+|---|---|
+| `src/pages/LolHub.tsx` | M — Meta Reflex block + imports removed, fade class, lower section rebuilt |
+| `src/index.css` | M — `.academy-hero-fade` |
+| `src/components/Footer.tsx` | M — legal-only variant on `/lol` |
+| `src/pages/Feedback.tsx` | M — `?intent=` deep link |
+| `src/pages/LolHub.test.tsx` | M — Meta Reflex tests replaced by removal + new-section tests |
+| `src/components/lol/HubCommunitySection.tsx` | **new** |
+| `src/components/lol/HubUtilitySection.tsx` | **new** |
+| `src/lib/community/links.ts` | **new** |
+| `src/lib/community/links.test.ts` | **new** |
+
+### Verification
+
+- **Full vitest:** 12 files / 43 tests failing — **identical to the failure set
+  on a clean `origin/main` `d0917a8d`**, confirmed by running the one file not
+  in the previously recorded baseline
+  (`dev/lobby-preview/LobbyPreviewPage.test.tsx`) in a detached baseline
+  worktree, where it fails too. 8224 passed.
+- **`LolHub.test.tsx`:** 63/63 pass, including the four new cases.
+- **ESLint:** 0 errors on all nine changed files.
+- **`tsc --noEmit -p tsconfig.app.json`:** failing-file set identical to
+  baseline (the same 8 pre-existing files); none of them are mine.
+- **Routes:** `/lol`, `/league-swipe`, `/league-swipe/stats`,
+  `/league-swipe/favorite-champion`, `/feedback`, `/feedback?intent=bug`,
+  `/about`, `/contact`, `/privacy`, `/terms`, `/security` — all render, no 404s.
+  `?intent=bug` verified to skip the chooser and open the bug form.
+- **Console:** the `/lol` console output is byte-identical to baseline — one
+  React `fetchPriority` casing warning, one Supabase `funnel_events` 404 and
+  one `stat-check/invites` 403, all present on `origin/main` too. **Zero new
+  errors.**
+- **Above-the-fold regression, measured.** A 1440×900 pixel diff against a
+  baseline server (`Math.random` pinned so the academy line matches) shows 4,385
+  pixels differing above y=770, max channel delta 90, all between y=582–734.
+  **A control diff of the current build against ITSELF gives 10,936 differing
+  pixels there, max delta 242** — the mascot idle animation and live patch
+  content. The change is therefore *below the run-to-run noise floor* above the
+  fold. Below y=770 the control differs by 567 pixels and the real diff by
+  73,149: the fade band, which is the whole intended change.
+- **Responsive:** 390/768/1024/1280/1440/1920 — every hub CTA is ≥44×44px, zero
+  horizontal overflow, nothing clipped.
+
+Screenshots captured (Playwright, not the Browser pane, per
+`playwright-not-vite-preview-for-visual-freeze`): 1440×900 transition + lower +
+full, 1920×1080 same, 390×844 same.
+
+### Not done, deliberately (still open hub tasks)
+
+- Mogzy Pro promotion module
+- The Mogzy `!` / What's New interaction
+- Global Search
+- Contextual feedback inside Leaguecraft / Combat Sim
+- Persistent glows, floating/bobbing, the mobile book treatment
+- `BookModeCard` is still dead code
+- A 768×1152 hero frame derivative
+
+---
+
+<!-- Revision 14 (live-review tuning). Revision 13 recorded the merge to main. -->
 
 ## Revision 2026-09-04 — live-review tuning: shelves inward, audio
 
