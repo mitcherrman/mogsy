@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl, type DailyChallengeQuestion } from "@/lib/quiz/api";
+import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
@@ -28,7 +28,6 @@ import {
 } from "@/lib/league-swipe/branding";
 import QuizKnowledgeCard from "@/components/quiz/QuizKnowledgeCard";
 import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
-import QuizDailyChallengeCard from "@/components/quiz/QuizDailyChallengeCard";
 // Daily Score Attack hub entry: shown instead of the legacy Daily card only
 // when the backend reports the new mode enabled (server feature flag).
 import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
@@ -51,11 +50,9 @@ import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import AdSlot from "@/components/ads/AdSlot";
 import {
-  getDailyChallenge,
   getRankedState,
   recordRecentXpGain,
   getRecentXpGain,
-  type DailyChallengeState,
   type RankedState,
 } from "@/lib/quiz/featured-mock";
 import { useAuth } from "@/hooks/useAuth";
@@ -91,8 +88,6 @@ type QuizPhase = "sets" | "loading-questions" | "active" | "result" | "error";
 type HubModuleFlags = {
   /** Daily Score Attack ("Time Trial") card — lives at /quiz/daily. */
   timeTrial: boolean;
-  /** Legacy Daily Challenge card, the fallback for the same slot. */
-  dailyChallenge: boolean;
   /** Standalone Stat Check entry — lives at /quiz/stat-check. */
   statCheck: boolean;
   /** Standalone Meta Reflex entry — lives at its own public /league-swipe URL. */
@@ -122,7 +117,6 @@ type HubModuleFlags = {
 
 const HUB_MODULES: HubModuleFlags = {
   timeTrial: false,
-  dailyChallenge: false,
   statCheck: false,
   metaReflex: false,
   knowledgeBreakdown: false,
@@ -606,13 +600,7 @@ export default function Quiz() {
     }
   }, []);
 
-  // Daily challenge — initialised from localStorage for instant render, then synced from backend.
-  // null = unknown/disabled -> legacy Daily card stays primary. Populated
-  // only from the server /today projection; never from local date math.
   const [scoreAttackToday, setScoreAttackToday] = useState<DsaToday | null>(null);
-  const [dailyChallenge, setDailyChallenge] = useState<DailyChallengeState>(() =>
-    getDailyChallenge(),
-  );
   // DC2's own answer for today — the authority for the match record's Daily
   // clause. One read, no polling; unknown renders the ordinary clause.
   const dailyStatus = useDailyChallengeStatus();
@@ -626,8 +614,6 @@ export default function Quiz() {
   const [showNudge, setShowNudge] = useState(false);
   const [anonActionCount, setAnonActionCount] = useState(() => getAnonymousActionCount());
 
-  // True while the user is playing the daily challenge (vs a normal quiz set).
-  const isDailyChallenge = useRef(false);
   // Backend history session for the current quiz run. Best-effort: created in
   // the background on quiz start; null means play proceeds untracked.
   const sessionIdRef = useRef<number | null>(null);
@@ -653,8 +639,6 @@ export default function Quiz() {
       quizApi.completeSession(sessionId).catch(() => {});
     }
   }, []);
-  // Bonus XP earned on daily challenge completion — captured from the last submit response.
-  const dailyBonusXpEarned = useRef(0);
   // The theme blurb map mirrors the backend theme names.
   const THEME_BLURBS: Record<string, string> = {
     "Champion Cooldowns": "Memorize the timing windows that win trades.",
@@ -708,71 +692,6 @@ export default function Quiz() {
     }
   }, [userId]);
 
-  const applyDailyChallengeResponse = useCallback(
-    (data: Awaited<ReturnType<typeof quizApi.getDailyChallenge>>) => {
-      if (!data.ok || !data.challenge) return;
-      const theme = data.challenge.theme;
-      setDailyChallenge({
-        date: data.challenge.challenge_date,
-        answered: data.progress?.answered_count ?? data.answered_count ?? 0,
-        correct: data.progress?.correct_count ?? 0,
-        target: data.challenge.question_count,
-        xpBonus: data.challenge.xp_bonus,
-        dailyStreak: data.progress?.daily_streak ?? data.daily_streak ?? 0,
-        lastCompletedDate: data.progress?.completed ? data.challenge.challenge_date : null,
-        completed: data.progress?.completed ?? data.completed ?? false,
-        remaining: data.questions_remaining ?? Math.max(0, data.challenge.question_count - (data.progress?.answered_count ?? 0)),
-        themeTitle: theme,
-        themeBlurb: THEME_BLURBS[theme] ?? "Sharpen your League of Legends knowledge.",
-      });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
-
-  const loadDailyChallenge = useCallback(async () => {
-    try {
-      const data = await quizApi.getDailyChallenge(userId);
-      applyDailyChallengeResponse(data);
-    } catch {
-      // Keep localStorage state on network failure.
-    }
-  }, [userId, applyDailyChallengeResponse]);
-
-  const handlePlayDailyChallenge = useCallback(async () => {
-    isDailyChallenge.current = true;
-    startHistorySession("daily");
-    setCurrentSet(null);
-    setCurrentCategoryId(null);
-    setPhase("loading-questions");
-    setScore(0);
-    setSessionAnswers([]);
-    setCurrentIndex(0);
-    setSelectedAnswer(null);
-    setFillBlankValue("");
-    setAnswerResult(null);
-    setErrorMsg("");
-    try {
-      const data = await quizApi.getDailyChallenge(userId);
-      applyDailyChallengeResponse(data);
-      if (!data.ok || !data.questions) throw new Error(data.error || "Could not load daily challenge.");
-      // Only show unanswered questions.
-      const remaining = (data.questions as DailyChallengeQuestion[]).filter((q) => !q.answered);
-      if (remaining.length === 0) {
-        setPhase("sets");
-        return;
-      }
-      setQuestions(remaining as QuizQuestion[]);
-      setPhase("active");
-      if (isAnonymous) {
-        trackFunnelEvent("quiz_guest_started", { quiz_mode: "daily_challenge", total_questions: remaining.length });
-      }
-    } catch (err: any) {
-      setPhase("error");
-      setErrorMsg(err?.message || "Failed to load daily challenge.");
-    }
-  }, [userId, applyDailyChallengeResponse, startHistorySession, isAnonymous]);
-
   useEffect(() => {
     setProgressLoading(true);
     loadProgress();
@@ -787,11 +706,6 @@ export default function Quiz() {
     setAchievementsLoading(true);
     loadAchievements();
   }, [loadAchievements]);
-
-  // Sync daily challenge state from backend on mount.
-  useEffect(() => {
-    loadDailyChallenge();
-  }, [loadDailyChallenge]);
 
   useEffect(() => {
     setHistoryLoading(true);
@@ -857,7 +771,6 @@ export default function Quiz() {
   }, []);
 
   const handleSelectSet = useCallback(async (set: QuizSet) => {
-    isDailyChallenge.current = false;
     startHistorySession("standard", set.name);
     setCurrentSet(set);
     setCurrentCategoryId(null);
@@ -913,7 +826,6 @@ export default function Quiz() {
     const tile = QUIZ_CATEGORY_ICONS.find((c) => c.id === categoryId);
     if (!tile) return;
 
-    isDailyChallenge.current = false;
     startHistorySession("standard", tile.full);
     setCurrentSet({
       id: `practice-category:${categoryId}`,
@@ -987,42 +899,16 @@ export default function Quiz() {
     if (!currentQuestion || answerResult) return;
     setSelectedAnswer(choice);
     try {
-      let result: QuizAnswerResult;
-      if (isDailyChallenge.current) {
-        const dcResult = await quizApi.submitDailyChallengeAnswer({
-          user_id: userId,
-          question_id: currentQuestion.id,
-          selected_answer: choice,
-          session_id: sessionIdRef.current ?? undefined,
-        });
-        result = dcResult;
-        // Update daily challenge state from the backend response.
-        if (dcResult.daily_progress) {
-          setDailyChallenge((prev) => ({
-            ...prev,
-            answered: dcResult.daily_progress!.answered_count,
-            correct: dcResult.daily_progress!.correct_count,
-            completed: dcResult.daily_progress!.completed,
-            dailyStreak: dcResult.daily_progress!.daily_streak,
-            remaining: Math.max(0, prev.target - dcResult.daily_progress!.answered_count),
-            lastCompletedDate: dcResult.daily_progress!.completed ? prev.date : prev.lastCompletedDate,
-          }));
-        }
-        if (dcResult.daily_bonus_xp_earned && dcResult.daily_bonus_xp_earned > 0) {
-          dailyBonusXpEarned.current = dcResult.daily_bonus_xp_earned;
-        }
-      } else {
-        result = await quizApi.submitAnswer({
-          user_id: userId,
-          question_id: currentQuestion.id,
-          selected_answer: choice,
-          session_id: sessionIdRef.current ?? undefined,
-        });
-      }
+      const result: QuizAnswerResult = await quizApi.submitAnswer({
+        user_id: userId,
+        question_id: currentQuestion.id,
+        selected_answer: choice,
+        session_id: sessionIdRef.current ?? undefined,
+      });
       setAnswerResult(result);
       if (result.is_correct) setScore((s) => s + 1);
       trackFunnelEvent("quiz_question_answered", {
-        quiz_mode: isDailyChallenge.current ? "daily_challenge" : "standard",
+        quiz_mode: "standard",
         question_index: currentIndex,
         is_correct: !!result.is_correct,
       });
@@ -1090,7 +976,7 @@ export default function Quiz() {
       completeHistorySession();
       setPhase("result");
       const completionPayload = {
-        quiz_mode: isDailyChallenge.current ? "daily_challenge" : "standard",
+        quiz_mode: "standard",
         set_id: currentSet?.name ?? null,
         correct_count: score,
         total_questions: questions.length,
@@ -1120,7 +1006,6 @@ export default function Quiz() {
     } else if (currentSet) {
       handleSelectSet(currentSet);
     } else {
-      isDailyChallenge.current = false;
       setPhase("sets");
       setCurrentSet(null);
       setCurrentCategoryId(null);
@@ -1134,7 +1019,6 @@ export default function Quiz() {
   }, [currentCategoryId, currentSet, handleSelectCategory, handleSelectSet]);
 
   const handleRetry = useCallback(() => {
-    isDailyChallenge.current = false;
     setPhase("sets");
     setErrorMsg("");
     setCurrentSet(null);
@@ -1384,24 +1268,14 @@ export default function Quiz() {
                  account-bound discovery when it arrives without one. */
               onEnterMatch={(matchId) =>
                 navigate("/quiz/ranked", { state: { matchId } })}
-              /*
-               * DC1 Phase 5 — the PLAY record now opens the DC2 arena.
-               *
-               * The legacy in-page Daily flow below (`handlePlayDailyChallenge`,
-               * `isDailyChallenge`, the daily branches of the question view) is left
-               * exactly where it is and simply stops being reachable from here:
-               * the new surface is not certified in production yet, and
-               * deleting the old one in the same phase that replaces it would
-               * leave nothing to fall back to. Retiring it is its own change.
-               */
+              /* The Daily Challenge is DC2 and nothing else. The legacy
+                 five-question in-page flow that used to answer this press is
+                 gone from this file entirely — see the handoff. */
               onPlayDailyChallenge={() => navigate("/quiz/daily-challenge")}
               playModes={playModeVisibility(appSettings.policy)}
-              /*
-               * ARENA1 Step 5 §19 — the record's Daily clause reads DC2, the
-               * service the button beside it opens. `dailyChallenge` below is
-               * the LEGACY payload and still drives the legacy in-page flow;
-               * it is no longer what the new entry believes about today.
-               */
+              /* ARENA1 Step 5 §19 — the record's Daily clause reads DC2, the
+                 same service the button beside it opens. There is no longer a
+                 legacy payload for it to disagree with. */
               dailyChallenge={dailyStatus}
               playScrollOpenOnMount={openPlayOnMount}
               sets={sets}
@@ -1457,25 +1331,20 @@ export default function Quiz() {
                 components and data all remain live today.
                 ───────────────────────────────────────────────────────────── */}
 
-            {/* Time Trial / Daily Challenge — playable at /quiz/daily. */}
-            {(HUB_MODULES.timeTrial || HUB_MODULES.dailyChallenge) && (
+            {/* Time Trial — playable at /quiz/daily.
+                The legacy Daily Challenge card used to be this slot's fallback
+                and is gone: the Daily is DC2 now, and it is entered from the
+                match-entry record, not from a hub card. */}
+            {HUB_MODULES.timeTrial && scoreAttackToday && (
               <div
                 className="mt-3 grid grid-cols-1 items-stretch gap-3 md:grid-cols-2"
                 data-testid="hub-daily-history-row"
               >
-                {scoreAttackToday && HUB_MODULES.timeTrial ? (
-                  <QuizScoreAttackCard
-                    today={scoreAttackToday}
-                    hasAccount={!isAnonymous}
-                    onPlay={() => trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
-                  />
-                ) : (
-                  <QuizDailyChallengeCard
-                    state={dailyChallenge}
-                    disabled={setsLoading}
-                    onPlay={handlePlayDailyChallenge}
-                  />
-                )}
+                <QuizScoreAttackCard
+                  today={scoreAttackToday}
+                  hasAccount={!isAnonymous}
+                  onPlay={() => trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
+                />
               </div>
             )}
 
@@ -2166,25 +2035,7 @@ export default function Quiz() {
         )}
 
         {/* Final results */}
-        {phase === "result" && isDailyChallenge.current && (
-          <div className="space-y-4">
-            <DailyChallengeResult
-            score={dailyChallenge.correct}
-            total={dailyChallenge.target}
-            dailyChallenge={dailyChallenge}
-            bonusXp={dailyBonusXpEarned.current}
-            answers={sessionAnswers}
-            onDone={() => {
-              isDailyChallenge.current = false;
-              dailyBonusXpEarned.current = 0;
-              setPhase("sets");
-            }}
-            />
-            <AdSlot placement="daily_challenge_results" isActiveQuizQuestion={phase !== "result"} />
-          </div>
-        )}
-
-        {phase === "result" && !isDailyChallenge.current && (
+        {phase === "result" && (
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -2304,118 +2155,6 @@ export default function Quiz() {
   );
 }
 
-/* ───────────────────── Daily challenge result ───────────────────── */
-
-function DailyChallengeResult({
-  score,
-  total,
-  dailyChallenge,
-  bonusXp,
-  answers,
-  onDone,
-}: {
-  score: number;
-  total: number;
-  dailyChallenge: DailyChallengeState;
-  bonusXp: number;
-  answers: SessionAnswer[];
-  onDone: () => void;
-}) {
-  const accuracy = total > 0 ? Math.round((score / total) * 100) : 0;
-  const isCompleted = dailyChallenge.completed;
-  const streak = dailyChallenge.dailyStreak;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.35 }}
-      className="space-y-4"
-    >
-      <Card
-        className="relative overflow-hidden border-[#c9a84c]/40 bg-gradient-to-br from-[#1a1530]/90 via-[#0a1428]/90 to-[#0a0a1a]/90 backdrop-blur-sm text-center"
-        style={{
-          boxShadow: "0 0 0 1px rgba(201,168,76,0.18) inset, 0 0 28px rgba(80,170,220,0.15), 0 8px 28px rgba(0,0,0,0.55)",
-        }}
-      >
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#c9a84c] to-transparent opacity-80" />
-        <CardHeader className="pb-2">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#c9a84c]/80 mb-1">
-            Daily Challenge · Complete
-          </div>
-          <CardTitle className="text-xl md:text-2xl font-bold text-[#f5e9c8]">
-            {isCompleted ? "Challenge Complete!" : "Session Over"}
-          </CardTitle>
-          <CardDescription className="text-sm text-[#c9a84c]/70">
-            {dailyChallenge.themeTitle}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5 pb-6">
-          {/* Score */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="text-5xl font-extrabold text-[#f0d78c]">
-              {score}
-              <span className="text-xl font-medium text-[#c9a84c]/60"> / {total}</span>
-            </div>
-            <Badge
-              variant="outline"
-              className={`text-xs border-[#c9a84c]/40 ${
-                accuracy === 100
-                  ? "bg-emerald-500/20 text-emerald-300"
-                  : accuracy >= 60
-                  ? "bg-[#c9a84c]/15 text-[#f0d78c]"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {accuracy === 100 ? "Perfect" : accuracy >= 60 ? "Good effort" : "Keep practicing"}
-            </Badge>
-          </div>
-
-          {/* Stats row */}
-          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-2xl font-bold text-orange-300 inline-flex items-center gap-1">
-                <Flame className="h-5 w-5" />{streak}
-              </span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">day streak</span>
-            </div>
-            {bonusXp > 0 && (
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-2xl font-bold text-[#f0d78c] inline-flex items-center gap-1">
-                  <Sparkles className="h-5 w-5" />+{bonusXp}
-                </span>
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">bonus XP</span>
-              </div>
-            )}
-            <div className="flex flex-col items-center gap-0.5">
-              <span className="text-2xl font-bold text-[#f5e9c8]">{accuracy}%</span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">accuracy</span>
-            </div>
-          </div>
-
-          {/* Streak message */}
-          {isCompleted && (
-            <p className="text-sm text-muted-foreground">
-              {streak > 1
-                ? `${streak}-day streak — come back tomorrow to keep it alive.`
-                : "Come back tomorrow to start a streak!"}
-            </p>
-          )}
-
-          <Button
-            onClick={onDone}
-            className="w-full bg-gradient-to-r from-[#c9a84c] to-[#a8862f] font-bold text-[#1a1530] hover:from-[#d4b35c] hover:to-[#b8923f]"
-          >
-            Back to Quiz
-          </Button>
-        </CardContent>
-      </Card>
-
-      <SessionBreakdown answers={answers} />
-      <SessionReviewList answers={answers} />
-    </motion.div>
-  );
-}
 
 /* ───────────────────── Session breakdown helpers ───────────────────── */
 

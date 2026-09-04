@@ -142,44 +142,10 @@ export type QuizAchievementsResponse = {
 // QuizLeaderboardEntry removed with getLeaderboard: it typed the response of
 // /api/quiz/leaderboard, which the backend does not serve.
 
-export type DailyChallengeQuestion = QuizQuestion & {
-  position?: number;
-  answered?: boolean;
-};
+// The legacy five-question Daily's request/response types went with its
+// client above. DC2 declares its own, parsed rather than cast, in
+// `src/lib/daily-challenge/contracts.ts`.
 
-export type DailyChallengeUserProgress = {
-  answered_count: number;
-  correct_count: number;
-  completed: boolean;
-  bonus_awarded: boolean;
-  daily_streak: number;
-};
-
-export type DailyChallengeGetResponse = {
-  ok: boolean;
-  challenge?: {
-    challenge_date: string;
-    theme: string;
-    xp_bonus: number;
-    question_count: number;
-  };
-  questions?: DailyChallengeQuestion[];
-  progress?: DailyChallengeUserProgress;
-  answered_count?: number;
-  questions_remaining?: number;
-  completed?: boolean;
-  daily_streak?: number;
-  error?: string;
-};
-
-export type DailyChallengeSubmitPayload = {
-  user_id?: string;
-  question_id: number | string;
-  selected_answer: string;
-  challenge_date?: string;
-  time_taken_ms?: number;
-  session_id?: number;
-};
 
 export type QuizHistoryEntry = {
   session_id: number;
@@ -237,11 +203,6 @@ export type EntitlementResponse = {
   user_id: string;
   is_pro: boolean;
   pro_lookup_configured: boolean;
-};
-
-export type DailyChallengeSubmitResult = QuizAnswerResult & {
-  daily_progress?: DailyChallengeUserProgress;
-  daily_bonus_xp_earned?: number;
 };
 
 // QuizOverride removed with listOverrides/setOverrideActive: it typed the
@@ -759,20 +720,15 @@ export const quizApi = {
   /** Achievements for a user (unlocked + locked). Pass `"anonymous"` for guest. */
   getAchievements: (userId: string) =>
     request<QuizAchievementsResponse>(`/api/quiz/achievements/${encodeURIComponent(userId)}`),
-  /** Fetch today's daily challenge state + questions.
-   *  `userId` is retained for call-site compatibility and is no longer sent:
-   *  the backend derives identity from the JWT (guests share "anonymous",
-   *  which is exactly what this used to pass for them). */
-  getDailyChallenge: (_userId: string, challengeDate?: string) =>
-    request<DailyChallengeGetResponse>(
-      `/api/quiz/daily-challenge${challengeDate ? `?challenge_date=${encodeURIComponent(challengeDate)}` : ""}`,
-    ),
-  /** Submit an answer for a daily challenge question. */
-  submitDailyChallengeAnswer: (payload: DailyChallengeSubmitPayload) =>
-    authedRequest<DailyChallengeSubmitResult>("/api/quiz/daily-challenge/submit", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+  /* THE LEGACY DAILY CLIENT IS GONE.
+     `GET /api/quiz/daily-challenge` and its `/submit` are the five-question
+     in-page Daily this app no longer has. The Daily Challenge is DC2
+     (`src/lib/daily-challenge/client.ts`, `/api/daily-challenge/*`), and its
+     entry is the match-entry record. Both backend routes stay registered and
+     serve their own history; nothing in this frontend calls them, and a new
+     caller here would be reviving a retired mode rather than reusing a helper.
+     The GET also MATERIALISES the day server-side, so calling it speculatively
+     writes rows for a product that is no longer played. */
   /** Start a quiz session for history tracking. Failures must not block play. */
   startSession: (payload: { mode?: string; category?: string; difficulty?: string; quiz_set_id?: string }) =>
     authedRequest<{ ok: boolean; session_id?: number }>("/api/quiz/sessions", {

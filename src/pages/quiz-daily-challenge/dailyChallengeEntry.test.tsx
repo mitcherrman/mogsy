@@ -19,11 +19,27 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { dailyStatusFrom, liveStreak, UNKNOWN_DAILY_STATUS } from "@/lib/daily-challenge/status";
 import { readHistory, readToday } from "@/lib/daily-challenge/contracts";
 import { DATE, rawToday, rawTodayRun } from "./testFixtures";
+
+/** Source with comments stripped — a mention in prose is not a call. */
+function codeOnly(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
+/** Every .ts/.tsx under `dir`. */
+function sourceFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) { out.push(...sourceFiles(full)); continue; }
+    if (/\.tsx?$/.test(entry)) out.push(full);
+  }
+  return out;
+}
 
 const APP = readFileSync(resolve(__dirname, "../../App.tsx"), "utf8");
 const QUIZ = readFileSync(resolve(__dirname, "../Quiz.tsx"), "utf8");
@@ -58,12 +74,38 @@ describe("the PLAY handoff", () => {
     expect(QUIZ).not.toContain("onPlayDailyChallenge={() => void handlePlayDailyChallenge()}");
   });
 
-  it("keeps the legacy Daily code in place rather than deleting it", () => {
-    // Step 5 replaces the entry and the AUTHORITY, not the implementation: the
-    // new surface is not certified in production yet, and removing the old one
-    // in the same change would leave nothing to fall back to.
-    expect(QUIZ).toContain("handlePlayDailyChallenge");
-    expect(QUIZ).toContain("getDailyChallenge");
+  /**
+   * THE LEGACY FIVE-QUESTION DAILY IS GONE FROM THE FRONTEND.
+   *
+   * Step 5 replaced the entry and the AUTHORITY but deliberately left the old
+   * implementation in place, because the new surface was not certified in
+   * production yet. It is now — DC2 shipped, and the route flip was smoke
+   * tested live — so the fallback has been removed rather than left as a
+   * second, differently-scored Daily that a stray prop could reach.
+   *
+   * The BACKEND routes are untouched and still serve their own history; the
+   * assertion is that nothing in this app can call them.
+   */
+  it("no longer carries the legacy in-page Daily at all", () => {
+    for (const gone of ["handlePlayDailyChallenge", "isDailyChallenge",
+                        "DailyChallengeResult", "QuizDailyChallengeCard",
+                        "dailyBonusXpEarned"]) {
+      expect(QUIZ, `${gone} should be gone from Quiz.tsx`).not.toContain(gone);
+    }
+  });
+
+  it("has no client for the legacy Daily endpoints anywhere in the app", () => {
+    // The GET also MATERIALISES the day server-side, so a speculative call
+    // writes rows for a mode nobody plays. The only Daily client is DC2's.
+    const files = sourceFiles(resolve(process.cwd(), "src"));
+    const offenders = files.filter((f) => {
+      if (f.endsWith("dailyChallengeEntry.test.tsx")) return false;
+      const src = codeOnly(readFileSync(f, "utf8"));
+      return /["'`]\/api\/quiz\/daily-challenge/.test(src)
+        || /\bquizApi\.getDailyChallenge\b/.test(src)
+        || /\bquizApi\.submitDailyChallengeAnswer\b/.test(src);
+    }).map((f) => f.replace(resolve(process.cwd()) + "/", ""));
+    expect(offenders, "the legacy Daily endpoint is reachable again").toEqual([]);
   });
 
   /**
@@ -76,9 +118,6 @@ describe("the PLAY handoff", () => {
   it("hands the record DC2's status, not the legacy payload", () => {
     expect(QUIZ).toContain("useDailyChallengeStatus");
     expect(QUIZ).toContain("dailyChallenge={dailyStatus}");
-    // The legacy state survives, and only where the legacy flow uses it: the
-    // in-page Daily's own completion screen. It no longer reaches the lobby.
-    expect(QUIZ).toContain("<DailyChallengeResult");
     const hub = QUIZ.slice(QUIZ.indexOf("<LeaguecraftHub"));
     expect(hub.slice(0, hub.indexOf("/>"))).not.toContain("{dailyChallenge}");
   });

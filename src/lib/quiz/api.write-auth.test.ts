@@ -50,8 +50,6 @@ const WRITES: Array<[string, () => Promise<unknown>]> = [
     quizApi.submitAnswer({ question_id: 1, selected_answer: "yes" })],
   ["POST /api/quiz/sessions", () =>
     quizApi.startSession({ mode: "standard" })],
-  ["POST /api/quiz/daily-challenge/submit", () =>
-    quizApi.submitDailyChallengeAnswer({ question_id: 1, selected_answer: "yes" })],
   ["POST /api/quiz/sessions/:id/complete", () =>
     quizApi.completeSession(7)],
 ];
@@ -91,13 +89,12 @@ describe("write attribution", () => {
 });
 
 describe("read paths", () => {
-  it("daily-challenge GET no longer sends a client user_id", async () => {
-    fetchMock.mockReturnValue(ok({ ok: true, questions: [] }));
-    await quizApi.getDailyChallenge("anonymous", "2026-07-30");
-    const [url] = fetchMock.mock.calls[0];
-    expect(url).not.toContain("user_id");
-    expect(url).toContain("challenge_date=2026-07-30");
-  });
+  /* The legacy Daily's two calls used to be covered here — the authed
+     `/submit` above and this GET. Both clients are gone: the mode they served
+     is retired and the Daily is DC2. The endpoints themselves are untouched
+     on the backend; what is asserted now is that this client cannot reach
+     them at all — see `noLegacyDailyClient` in
+     `src/pages/quiz-daily-challenge/dailyChallengeEntry.test.tsx`. */
 
   it("does not force a session for reads — guests must not be blocked", async () => {
     fetchMock.mockReturnValue(ok({ total_xp: 0 }));
