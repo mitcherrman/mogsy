@@ -31,9 +31,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: mocks.authUser, loading: false }),
 }));
-vi.mock("@/hooks/blog/useBlogPosts", () => ({
-  useBlogList: () => ({ data: [], isLoading: false }),
-}));
 vi.mock("@/hooks/useChampionAssets", () => ({
   useChampionAssets: () => ({ data: null }),
   getChampionCutout: () => null,
@@ -264,6 +261,27 @@ describe("LolHub — navigation structure", () => {
     const premiumLinks = Array.from(container.querySelectorAll('a[href="/lol/premium"]'));
     expect(premiumLinks).toHaveLength(1);
     expect(premiumLinks[0].closest('[data-testid="hub-premium-panel"]')).toBeTruthy();
+  });
+
+  it("no longer carries the legacy News & Blog grid — the Patch Report owns updates", () => {
+    // Removed from the HOMEPAGE only, 2026-09-04. /blog and /blog/:slug still
+    // exist (App.startupFallbacks.test.ts guards the routes), BlogIndex,
+    // BlogPost, BlogPostCard, useBlogList and the site-wide HomeBlogStrip are
+    // untouched. LolHub simply stopped mounting a second content feed two
+    // screens below the Patch Report tome that already owns updates here.
+    const { container } = renderHub();
+    expect(container.textContent).not.toMatch(/News & Blog|Latest LoL Stories|All posts/);
+    expect(container.querySelectorAll('a[href="/blog"]')).toHaveLength(0);
+    expect(container.querySelectorAll('a[href^="/blog/"]')).toHaveLength(0);
+  });
+
+  it("ends the lower page at the utility band — nothing follows it but the footer", () => {
+    const { container } = renderHub();
+    const stack = container.querySelector('[data-testid="hub-utility-section"]')!.parentElement!;
+    const ids = Array.from(stack.children).map((c) => (c as HTMLElement).dataset.testid);
+    expect(ids).toEqual(["hub-premium-panel", "hub-community-section", "hub-utility-section"]);
+    // The utility band is the last thing the page's own container renders.
+    expect(stack.parentElement!.lastElementChild).toBe(stack);
   });
 
   it("introduces no subscription 'Pro' wording on the hub — Pro Play keeps the word", () => {

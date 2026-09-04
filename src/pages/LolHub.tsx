@@ -1,11 +1,9 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { Swords, Flame, Newspaper, ArrowRight, BrainCircuit, FileText, Trophy } from "lucide-react";
+import { Swords, Flame, BrainCircuit, FileText, Trophy } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
-import BlogPostCard from "@/components/blog/BlogPostCard";
 import AdSlot from "@/components/ads/AdSlot";
-import { useBlogList } from "@/hooks/blog/useBlogPosts";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyHubShelf from "@/components/lol/AcademyHubShelf";
 import HexPanelLink from "@/components/lol/HexPanelLink";
@@ -45,7 +43,6 @@ import {
   TITLE_FONT_SIZE_CSS,
 } from "@/components/lol/academy-layout";
 
-const LOL_TAG = "League of Legends";
 
 /** Inert 1×1 GIF: the <picture> fallback that must never cost a request. */
 const TRANSPARENT_PIXEL =
@@ -204,7 +201,6 @@ const ACADEMY_FALLBACK_NAME = "Summoner";
 
 export default function LolHub() {
   const { user } = useAuth();
-  const { data: posts = [], isLoading } = useBlogList({ limit: 24, tag: LOL_TAG });
   const { data: championAssets } = useChampionAssets();
   // One Patch Brief feed serves the desktop and mobile centerpieces alike.
   const broadcastFeed = usePatchBriefFeed();
@@ -724,6 +720,12 @@ export default function LolHub() {
           navigation two screens below it.
 
           Order is deliberate: Premium → Community → Feedback/About → legal.
+          The legacy News & Blog grid was removed from the HOMEPAGE on
+          2026-09-04 — /blog, /blog/:slug, BlogIndex, BlogPost, BlogPostCard,
+          useBlogList and the site-wide HomeBlogStrip are all untouched. The
+          Patch Report tome in the hero already owns updates on this page, so a
+          second content feed two screens below it was the old lower page
+          talking over the new one.
 
           Top padding is small on purpose. The fade band above ends at this
           container's first pixel, so the old pt-10/pt-14 plus an mt-8 left 88px
@@ -741,37 +743,6 @@ export default function LolHub() {
           <HubCommunitySection />
           <HubUtilitySection />
         </div>
-
-        {/* News / Blog — hidden entirely when there are no League posts */}
-        {(isLoading || posts.length > 0) && (
-        <div className="mt-8">
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <div className="flex items-center gap-2 text-[#c9a84c]">
-                <Newspaper className="h-4 w-4" />
-                <span className="text-[10px] uppercase tracking-widest font-bold">News & Blog</span>
-              </div>
-              <h2 className="text-lg md:text-xl font-bold text-foreground">Latest LoL Stories</h2>
-            </div>
-            <Link
-              to="/blog"
-              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 py-2 -my-2"
-            >
-              All posts <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          {isLoading ? (
-            <div className="py-10 text-center text-muted-foreground text-sm">Loading…</div>
-          ) : (
-            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {posts.map((p) => (
-                <BlogPostCard key={p.id} post={p} size="sm" />
-              ))}
-            </div>
-          )}
-        </div>
-        )}
       </div>
     </div>
   );

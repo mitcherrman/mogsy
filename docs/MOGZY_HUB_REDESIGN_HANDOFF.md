@@ -36,8 +36,10 @@ Page flow is now, top to bottom:
 3. **Mogzy Premium**
 4. Join the Academy (community)
 5. Help improve Mogzy / About the Academy
-6. News & Blog (when League posts exist)
-7. legal-only footer
+6. legal-only footer
+
+(The News & Blog grid that sat at position 6 was removed in the same
+revision — see *IA cleanup* below.)
 
 Premium is **not** a fifth volume and not inside the four primary destinations.
 `LolHub.test.tsx` guards both halves: the guide-bearing book count is still
@@ -156,35 +158,97 @@ one on the panel, one on the whole hub — against `Mogzy Pro`, `Mogsy Pro`,
   context: the sweep's `::after` computes to `display: none` and the CTA's
   `transition-property` to `none`.
 
+### IA cleanup — the legacy News & Blog grid is off the homepage
+
+**What it was.** Exactly the legacy homepage News/Blog block carried over from
+the pre-redesign `/lol` lower page, and nothing more: a `useBlogList({ limit:
+24, tag: "League of Legends" })` query rendering up to 24 `BlogPostCard`s in a
+1→5 column grid under a "News & Blog / Latest LoL Stories" header, plus an
+"All posts →" link to `/blog`. Not a Patch Report surface, not a LIVE1 feed,
+not a changelog — the same generic blog strip the rest of the site has.
+
+**Why it went.** The Patch Report tome in the centre of the hero already owns
+updates and content on this page. A second, weaker content feed two screens
+below it was the old lower page talking over the new one, and it sat *after*
+the utility band, so the page ended on a low-value grid instead of on the
+commons.
+
+**Nothing underneath was deleted.** `/blog` and `/blog/:slug` still route
+(verified: `/blog` renders, h1 "Stories from Mogsy", zero page errors), and
+`BlogIndex`, `BlogPost`, `BlogPostCard`, `useBlogList` and the site-wide
+`HomeBlogStrip` are all untouched. Only `LolHub.tsx` stopped mounting the
+block; its five now-unused symbols went with it (`BlogPostCard`, `useBlogList`,
+`Newspaper`, `ArrowRight`, `LOL_TAG`) and ESLint is clean.
+
+**No visual delta in this environment** — the block was already conditional on
+`isLoading || posts.length > 0`, and no League-tagged posts exist here, so the
+document height is unchanged at every viewport (1992 / 2172 / 2658). The change
+is structural: it removes the section's ability to reappear on the hub the
+moment a League-tagged post is published.
+
+Two tests guard it: no `News & Blog` / `Latest LoL Stories` / `All posts` text
+and zero `/blog*` anchors on `/lol`; and the lower stack's children are exactly
+`[premium, community, utility]` with the stack as its container's last child.
+
+### Open item for PT1 — the Premium price is inconsistent, and unowned
+
+**Not touched in this task. Recorded here so it is not lost.** Two different
+approved monthly prices for the same product exist in the repo right now:
+
+| Source | Price | Status |
+|---|---|---|
+| `src/lib/pro/checkout.ts` → `LOL_PRO_MONTHLY_PRICE` (on `main`) | **$4.99/mo** | hardcoded in the frontend; rendered verbatim by `/lol/premium` |
+| PT1.5 `supabase/functions/_shared/offer-catalog.ts`, `standard_monthly` | **$9.99/mo** — "exactly the approved $9.99/month" | **not on `main`** (commit `07153353`, branch `pt1/phase5-offer-identity`) |
+
+PT1.5's whole point is that the *server* owns the offer→Stripe-Price mapping
+and the client only names an offer id, so once it merges the frontend constant
+stops being authority — but until then `/lol/premium` is the only thing a
+customer reads, and it says $4.99. Neither figure is currently chargeable:
+`isLolProCheckoutAvailable()` is false wherever
+`VITE_STRIPE_LOL_PRO_MONTHLY_PRICE_ID` is unset, which is every environment.
+
+**Cleanup task (PT1, not hub):** decide the launch price, land PT1.5 so the
+catalog is authority, and make `/lol/premium` read the resolved offer rather
+than a hardcoded constant. This is an independent reason the hub module prints
+no price, on top of the unbuyable-checkout one above.
+
 ### Files changed
 
 | File | |
 |---|---|
 | `src/components/lol/HubPremiumPanel.tsx` | **new** — the panel |
 | `src/components/lol/HubPremiumPanel.test.tsx` | **new** — 6 tests |
-| `src/pages/LolHub.tsx` | M — import, panel above `HubCommunitySection`, transition spacing, ad-slot margin |
-| `src/pages/LolHub.test.tsx` | M — 3 new tests (placement/order, not-a-fifth-book, no subscription `Pro`) |
+| `src/pages/LolHub.tsx` | M — import, panel above `HubCommunitySection`, transition spacing, ad-slot margin; legacy News & Blog block + its 5 now-unused symbols removed |
+| `src/pages/LolHub.test.tsx` | M — 5 new tests (placement/order, not-a-fifth-book, no subscription `Pro`, News removed, stack ends the page); `useBlogPosts` mock dropped |
 | `src/index.css` | M — `.hub-premium-panel` sweep + reduced-motion opt-out |
 | `docs/MOGZY_HUB_REDESIGN_HANDOFF.md` | M — this revision |
 
 ### Verification
 
-- **Full vitest:** 43 tests failing across **12 files** — the *same 12 files* as
-  the pre-change baseline measured on this exact tree (`AdminUsers.phase1`,
+- **Rebased onto `origin/main` `c5facfbb`** (the ARENA1 chain + DC1 Phase 5
+  landed upstream mid-task; 8 commits). Clean rebase, no conflicts — the only
+  file both sides touched was `src/index.css`, which auto-merged.
+- **Full vitest, run SERIALLY on both sides** (a first attempt ran the two
+  suites concurrently and produced a 22-file / 62-test "baseline" against a
+  21-file / 69-test branch — pure CPU contention in the timing-sensitive
+  CombatLab / StatCheck / RankedTutorial / QuizRanked suites, and not
+  reproducible either way once run alone). Run one at a time the sets are
+  **byte-identical**:
+
+  | | `origin/main` `c5facfbb` | `hub/premium-module` |
+  |---|---|---|
+  | Test files | **12** failed / 557 passed (569) | **12** failed / 559 passed (571) |
+  | Tests | **43** failed / 8612 passed / 7 skipped (8662) | **43** failed / 8630 passed / 7 skipped (8680) |
+
+  Same 12 files, same 43 tests, in the same per-file counts: `AdminUsers.phase1`,
   `AcademyRadioControls`, `LeaguecraftWorkspace`, `adminCredentials`,
   `admin-registry`, `ads/consent`, `e2e/identity`, `quiz-broadcast/engine`,
-  `Quiz.rankedRole`, `StructuralReview`, `LobbyPreviewPage`,
-  `onboarding-gate`). None is a file this change touches, and the count matches
-  the Revision 15 baseline exactly. Totals move only by what was added:
-
-  | | Baseline (this tree, pre-change) | After |
-  |---|---|---|
-  | Test files | 12 failed / 545 passed (557) | 12 failed / **546** passed (558) |
-  | Tests | 43 failed / 8370 passed / 7 skipped (8420) | 43 failed / **8379** passed / 7 skipped (8429) |
-
-  → exactly +1 file and +9 tests, which is `HubPremiumPanel.test.tsx` (6) plus
-  the three added to `LolHub.test.tsx`.
-- **`LolHub.test.tsx` + `HubPremiumPanel.test.tsx`:** 72/72 pass (66 + 6).
+  `Quiz.rankedRole`, `StructuralReview`, `LobbyPreviewPage`, `onboarding-gate`.
+  None is a file this branch touches. The delta is +2 files / +18 tests, all
+  passing, and fully accounted for: `HubPremiumPanel.test.tsx` (6) and 5 added
+  to `LolHub.test.tsx` from this revision, plus `lib/community/links.test.ts`
+  and the section tests from Revision 15.
+- **`LolHub.test.tsx` + `HubPremiumPanel.test.tsx`:** 74/74 pass (68 + 6).
 - **ESLint:** 0 problems on all four changed/added source files.
 - **`tsc --noEmit -p tsconfig.app.json`:** the same 8 pre-existing failing files
   as baseline; none of them is mine.
@@ -193,6 +257,10 @@ one on the panel, one on the whole hub — against `Mogzy Pro`, `Mogsy Pro`,
   403. **Zero new errors, zero page errors.**
 - **CTA:** clicking it navigates to `/lol/premium`, whose `h1` is
   "Mogzy Premium". No page errors on arrival.
+- **Routes after the News removal:** `/blog` (h1 "Stories from Mogsy"),
+  `/lol/pro-play` (h1 "Pro Play") and `/lol/premium` (h1 "Mogzy Premium") all
+  render with zero page errors. Meta Reflex stays absent; Pro Play still has its
+  two hub anchors and the four guide-bearing books are still four.
 - **Lower sections:** Community (Discord pending plate + "on the way" note),
   Feedback (Give Feedback / Report a Bug), About (About Mogzy / Contact) and
   the legal-only footer all still render, unmoved and unchanged.
