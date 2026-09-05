@@ -67,10 +67,16 @@ export default function QuizScoreAttackCard({ today, hasAccount, onPlay }: Props
       <p className="text-sm" data-testid="score-attack-status">
         {statusLine}
       </p>
+      {/* The transition note from the days when the five-question legacy Daily
+          and this mode shared one per-day reward lock. `legacy_completed_today`
+          is the LEGACY flag; that mode's frontend has since been retired, and
+          today's Daily Challenge is DC2 — a different product with a different
+          route — so the note no longer names one. The lock itself is real and
+          still enforced server-side, which is why the note stays. */}
       {today.legacy_completed_today && !terminal && (
         <p className="text-xs text-muted-foreground" data-testid="score-attack-transition-note">
-          You already finished today's Daily Challenge — this run still counts for
-          score, but the daily bonus and streak were already earned.
+          Today's daily bonus and streak were already earned — this run still
+          counts for score.
         </p>
       )}
       <Button asChild className="min-h-11 w-full font-semibold" data-testid="score-attack-cta">

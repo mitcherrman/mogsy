@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
+import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Target, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { quizApi, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl } from "@/lib/quiz/api";
+import { quizApi, categoryLabel, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl } from "@/lib/quiz/api";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
@@ -115,15 +115,36 @@ type HubModuleFlags = {
   practicePanel: boolean;
 };
 
+/**
+ * PT1.7A — FREE LEARNING SURFACE RESTORATION.
+ *
+ * Three of these were flipped on, and each was already finished, already
+ * Free, already deployed and merely unlinked:
+ *
+ *   timeTrial          `/quiz/daily` is a production route, the backend flag
+ *                      is ON, and the mode awards XP and advances the daily
+ *                      streak. It had no link anywhere in the product.
+ *   knowledgeBreakdown per-category accuracy over the player's OWN record.
+ *                      This page is its only host, so the flag was the only
+ *                      route back to it.
+ *   practicePanel      the five curated sets. Withheld on the grounds that
+ *                      they duplicated the category rail; measured against
+ *                      the live bank they do not — see the study row in
+ *                      `LeaguecraftHub`.
+ *
+ * `legacyPracticeGrid` stays withheld on purpose: it is the SAME five sets in
+ * the pre-redesign five-card presentation, so restoring it would put the same
+ * navigation on the page twice. The packs came back; their old grid did not.
+ */
 const HUB_MODULES: HubModuleFlags = {
-  timeTrial: false,
+  timeTrial: true,
   statCheck: false,
   metaReflex: false,
-  knowledgeBreakdown: false,
+  knowledgeBreakdown: true,
   achievements: false,
   legacyPracticeGrid: false,
   masteryJourney: true,
-  practicePanel: false,
+  practicePanel: true,
 };
 
 /**
@@ -996,6 +1017,56 @@ export default function Quiz() {
     }
   }, [currentIndex, questions.length, isAnonymous, completeHistorySession, currentSet, score]);
 
+  /**
+   * PT1.7A — REMEDIATION, BOUNDED TO THE SESSION THAT JUST ENDED.
+   *
+   * "Practise the ones you missed" replays the questions from THIS run, from
+   * the answers already in memory. It calls no endpoint, reads no bank and
+   * asks the server for nothing it has not already served.
+   *
+   * WHY THAT IS THE WHOLE FEATURE, AND NOT A SMALLER MISSED BANK.
+   * The persistent missed library (`GET /api/quiz/missed-questions`, the
+   * Record's REVIEW › MISSED source) is a different capability and keeps its
+   * gate untouched: it is every wrong answer you have ever given, across
+   * sessions, searchable whenever you want it. This is the last ten minutes,
+   * offered once, on the screen that already lists them. Free gets the loop;
+   * the library stays what it was.
+   *
+   * WHAT IT DOES NOT TOUCH. No ownership is granted — Practice has never
+   * granted OWNED, which is Ranked's `ranked_question_discoveries` ledger and
+   * nothing else. The replayed answers post to the same attempt endpoint any
+   * other Practice answer does, so a question answered right the second time
+   * counts exactly as much as it would have in a fresh session, and the
+   * original wrong attempt stays in the record where it belongs.
+   *
+   * The questions are re-rendered from the SAME answer-safe rows the runner
+   * was served; the revealed correct answer and explanation live on the
+   * session-answer record and are deliberately not carried into the replay.
+   */
+  const missedQuestions = useMemo(
+    () => sessionAnswers.filter((a) => !a.isCorrect).map((a) => a.question),
+    [sessionAnswers],
+  );
+
+  const handlePracticeMissed = useCallback(() => {
+    if (missedQuestions.length === 0) return;
+    // A replay is its own study session in the record, named for what it is.
+    startHistorySession("practice_missed", currentSet?.name);
+    setQuestions(missedQuestions);
+    setScore(0);
+    setSessionAnswers([]);
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setFillBlankValue("");
+    setAnswerResult(null);
+    setErrorMsg("");
+    setPhase("active");
+    trackFunnelEvent("practice_missed_started", {
+      set_id: currentSet?.name ?? null,
+      total_questions: missedQuestions.length,
+    });
+  }, [missedQuestions, currentSet, startHistorySession]);
+
   const handlePlayAgain = useCallback(() => {
     // A subject replays through its own loader. `currentSet` holds a synthetic
     // entry for those sessions, and feeding it back to `handleSelectSet` would
@@ -1294,6 +1365,22 @@ export default function Quiz() {
               historyLoading={historyLoading}
               historyError={historyError}
               showPractice={HUB_MODULES.practicePanel}
+              /* PT1.7A: the mode is entered from the study row above the
+                 record, not from a card under it. The host keeps the
+                 availability probe and the funnel event; the hub only places
+                 the column. `scoreAttackToday` is null whenever the backend
+                 reports the mode disabled or unreachable, so a dark backend
+                 renders no entry rather than a dead one. */
+              timeTrial={
+                HUB_MODULES.timeTrial && scoreAttackToday ? (
+                  <QuizScoreAttackCard
+                    today={scoreAttackToday}
+                    hasAccount={!isAnonymous}
+                    onPlay={() =>
+                      trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
+                  />
+                ) : null
+              }
               /* The lobby shows the UNSAVED choice; the account is written at
                  PLAY. See `pendingRankedRole`. */
               rankedRole={effectiveRankedRole}
@@ -1331,22 +1418,11 @@ export default function Quiz() {
                 components and data all remain live today.
                 ───────────────────────────────────────────────────────────── */}
 
-            {/* Time Trial — playable at /quiz/daily.
-                The legacy Daily Challenge card used to be this slot's fallback
-                and is gone: the Daily is DC2 now, and it is entered from the
-                match-entry record, not from a hub card. */}
-            {HUB_MODULES.timeTrial && scoreAttackToday && (
-              <div
-                className="mt-3 grid grid-cols-1 items-stretch gap-3 md:grid-cols-2"
-                data-testid="hub-daily-history-row"
-              >
-                <QuizScoreAttackCard
-                  today={scoreAttackToday}
-                  hasAccount={!isAnonymous}
-                  onPlay={() => trackFunnelEvent("dsa_official_cta_clicked", { from: "quiz_hub" })}
-                />
-              </div>
-            )}
+            {/* Time Trial USED to sit here, in a two-column row whose second
+                occupant no longer exists. It moved INTO the composition (the
+                study row beside the practice packs) rather than staying a
+                card appended under the record — see the `timeTrial` slot
+                above. `HUB_MODULES.timeTrial` is still the one switch. */}
 
             {/* Stat Check — the card game entrance, live at /quiz/stat-check. */}
             {HUB_MODULES.statCheck && (
@@ -1435,11 +1511,16 @@ export default function Quiz() {
                     loading={categoriesLoading}
                     error={categoriesError}
                     hideHeader
-                    totalCategoriesAvailable={Object.keys(CATEGORY_STYLE_MAP).length}
-                    totalQuestionsAvailable={sets.reduce(
-                      (sum, s) => sum + (s.question_count || 0),
-                      0,
-                    )}
+                    /* The two catalog tiles are NOT passed, and that is a
+                       correctness fix. They used to be derived here from
+                       things that do not mean what they were labelled:
+                       `CATEGORY_STYLE_MAP` is this file's badge-style lookup
+                       (8 entries) standing in for a live bank of ~37
+                       categories, and the set sum double-counted, because
+                       `All Current Questions` overlaps the other four sets.
+                       Nothing on this page carries the real totals, so the
+                       card opens without them rather than with two invented
+                       figures. */
                     newCategories={[
                       "Item Exact Stats",
                       "Item Components",
@@ -2078,7 +2159,23 @@ export default function Quiz() {
                   <Button variant="outline" onClick={() => setPhase("sets")}>
                     {currentCategoryId ? "Back to Leaguecraft" : "Choose another set"}
                   </Button>
-                  <Button onClick={handlePlayAgain}>
+                  {/* PT1.7A: the remediation loop, offered only when there is
+                      something to remediate. It leads the row on a run that
+                      went badly, because working the misses is the better
+                      next move than another random ten. */}
+                  {missedQuestions.length > 0 && (
+                    <Button
+                      onClick={handlePracticeMissed}
+                      data-testid="practice-missed-cta"
+                    >
+                      <Target className="h-4 w-4 mr-2" />
+                      Practise the {missedQuestions.length} you missed
+                    </Button>
+                  )}
+                  <Button
+                    variant={missedQuestions.length > 0 ? "outline" : "default"}
+                    onClick={handlePlayAgain}
+                  >
                     <RotateCcw className="h-4 w-4 mr-2" />
                     Play again
                   </Button>
@@ -2177,14 +2274,15 @@ function QuizModeCard({
     qCount >= 40 ? { label: "Medium", stars: 2 } :
     { label: "Easy", stars: 1 };
   // Try to match a category stat by fuzzy name overlap to compute mastery %.
+  // Through `categoryLabel` for the same reason `QuizKnowledgeCard` uses it:
+  // the progress endpoint serves `category_name`, so matching on `c.category`
+  // alone never matched anything and mastery was always null here.
   const match = (() => {
     const lc = set.name.toLowerCase();
-    return categoryStats.find(
-      (c) =>
-        c.category &&
-        (lc.includes(c.category.toLowerCase()) ||
-          c.category.toLowerCase().includes(lc)),
-    );
+    return categoryStats.find((c) => {
+      const name = categoryLabel(c).toLowerCase();
+      return name !== "uncategorized" && (lc.includes(name) || name.includes(lc));
+    });
   })();
   const mastery = match ? Math.max(0, Math.min(100, Math.round(Number(match.accuracy ?? 0)))) : null;
   const attempts = match?.attempts ?? 0;

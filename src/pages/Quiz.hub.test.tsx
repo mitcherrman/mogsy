@@ -232,21 +232,39 @@ describe("Leaguecraft hub — hierarchy", () => {
     expect(container.querySelectorAll('[data-testid="leaguecraft-workspace"]').length).toBe(1);
   });
 
-  it("withholds the Practice for Ranked panel without touching practice itself", async () => {
-    // The category rail above is becoming the practice selector; until it
-    // opens, the panel was a second navigation to the same six subjects.
+  it("shows the curated Practice Packs beside the rail, without duplicating it", async () => {
+    // PT1.7A. The packs were withheld on the grounds that they and the rail
+    // were "two navigations to the same six subjects". They are not: the five
+    // sets reach Champion Basics, Runes and Game Fundamentals, which no rail
+    // tile resolves to. So both are on the page — and the panel's ONE real
+    // duplicate, a primary button that opened the very set its first chip
+    // opens, is what went away instead.
     const { container } = await renderHub();
-    expect(container.querySelector('[data-testid="hub-practice-section"]')).toBeNull();
-    expect(container.querySelector('[data-testid="practice-tiles"]')).toBeNull();
-    expect(container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(0);
+    expect(container.querySelector('[data-testid="hub-practice-section"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="practice-tiles"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-testid="practice-tile"]').length).toBe(SETS.length);
     expect(container.querySelector('[data-testid="practice-primary-cta"]')).toBeNull();
-    expect(screen.queryByText("Practice for Ranked")).toBeNull();
-    // Hidden because the rail INHERITED the job, not because practice went
-    // away: the panel's second navigation is gone and the rail is now the one
-    // Practice chooser on the page.
+    expect(screen.getByText("Practice Packs")).toBeTruthy();
+    // The rail is untouched: still six in-page controls, still no links.
     const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
     expect(rail.querySelectorAll("a").length).toBe(0);
     expect(rail.querySelectorAll("button").length).toBe(6);
+  });
+
+  it("a pack chip starts the SAME runner the rail does — one Practice system", async () => {
+    // The whole point of restoring the packs is that they are another way
+    // into the existing runner, never a second one. A chip press must call
+    // `GET /api/quiz/questions?set=…` on this page and navigate nowhere.
+    questionsMock.mockClear();
+    const { container } = await renderHub();
+    const chips = [...container.querySelectorAll('[data-testid="practice-tile"]')];
+    const champions = chips.find((c) => c.textContent?.includes("Champion Basics"))!;
+    expect(champions).toBeTruthy();
+    fireEvent.click(champions);
+    await waitFor(() =>
+      expect(questionsMock).toHaveBeenCalledWith("Champion Basics", 10),
+    );
+    expect(screen.getByTestId("location").textContent).toBe("/quiz");
   });
 
   it("makes the rail the Practice chooser — a tile starts a session in place", async () => {
@@ -514,18 +532,32 @@ describe("Leaguecraft hub — Mastery", () => {
 });
 
 describe("Leaguecraft hub — modes withheld from this page", () => {
-  it("does not surface Time Trial, Daily, Stat Check, Knowledge Breakdown or Achievements", async () => {
+  it("still withholds Stat Check, Meta Reflex and Achievements", async () => {
+    // PT1.7A surfaced the three FINISHED Free modules (Time Trial, Knowledge
+    // Breakdown, the practice packs) and moved nothing else. Stat Check and
+    // Meta Reflex keep their own public routes; Achievements is rendered on
+    // /profile and /quiz/diagnostics, so this page is not its only host.
     const { container } = await renderHub();
-    expect(container.querySelector('[data-testid="hub-score-attack-card"]')).toBeNull();
-    expect(screen.queryByText("Daily Challenge")).toBeNull();
     expect(container.querySelector('[data-testid="hub-stat-check-link"]')).toBeNull();
-    expect(screen.queryByText("Knowledge Breakdown")).toBeNull();
+    expect(container.querySelector('[data-testid="hub-meta-reflex-link"]')).toBeNull();
     expect(screen.queryByText("Achievements")).toBeNull();
+    // The pre-redesign five-card practice grid stays withheld too: it is the
+    // same five sets the restored packs already carry, in a louder shape.
+    expect(container.querySelector('[data-testid="hub-legacy-practice-grid"]')).toBeNull();
     // …and the page is not simply empty in their place: the Ranked-first loop
     // is fully present.
     expect(container.querySelector('[data-testid="ranked-hero"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="quiz-category-rail"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="hub-record-section"]')).not.toBeNull();
+  });
+
+  it("surfaces Knowledge Breakdown on the page that is its only host", async () => {
+    // It is finished, Free and self-scoped, and this page is its only route
+    // back — see HUB_MODULES. It stays FREE: no entitlement read, no gate,
+    // no upsell anywhere on it.
+    const { container } = await renderHub();
+    expect(screen.getByText("Knowledge Breakdown")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/Premium|Upgrade|Pro\b/);
   });
 
   it("keeps the diagnostics entry available for testing", async () => {

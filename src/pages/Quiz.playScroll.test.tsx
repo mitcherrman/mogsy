@@ -395,12 +395,16 @@ describe("a finished Daily Challenge hands the player to Practice", () => {
     }
   });
 
-  it("leaves the withheld Practice panel withheld", async () => {
+  it("hands the page to the runner rather than back to the lobby", async () => {
+    // Starting practice from the record leaves the "sets" phase entirely, so
+    // the whole lobby composition — packs included — is unmounted while the
+    // session runs. (PT1.7A restored the packs; this assertion is about the
+    // PHASE, not about the panel's flag, and would hold either way.)
     await openRecordOnAFinishedDay();
     fireEvent.click(screen.getByTestId("play-mode-daily-action"));
     await waitFor(() => expect(screen.queryByTestId("play-scroll")).toBeNull());
-    // Starting practice must not resurrect the panel as a side effect.
     expect(screen.queryByTestId("hub-practice-section")).toBeNull();
     expect(screen.queryByTestId("practice-tiles")).toBeNull();
+    expect(screen.queryByTestId("hub-ranked-section")).toBeNull();
   });
 });

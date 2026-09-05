@@ -1,14 +1,22 @@
 /**
- * Daily-mode entries on the Leaguecraft hub.
+ * Time Trial's entry on the Leaguecraft hub — PT1.7A.
  *
- * The Ranked-first redesign withholds BOTH daily surfaces from /quiz — the
- * Daily Score Attack ("Time Trial") card and the legacy Daily Challenge card
- * it replaces — because neither serves the play → review → practice → play
- * loop the page is built around. Nothing was deleted: the availability probe
- * still runs (so the funnel keeps reporting which mode the backend serves),
- * Time Trial is still playable at /quiz/daily, and both cards still exist and
- * are covered by their own component tests. Flip HUB_MODULES.timeTrial /
- * .dailyChallenge in Quiz.tsx to bring either card back to the hub.
+ * The Ranked-first redesign withheld this card from /quiz while the mode
+ * itself stayed deployed, backend-enabled, XP- and streak-integrated and
+ * playable at /quiz/daily with no link to it anywhere in the product. PT1.7A
+ * restores the entry (HUB_MODULES.timeTrial) and moves it INTO the
+ * composition — the study row beside the practice packs — instead of leaving
+ * it as a card appended under the record.
+ *
+ * What these tests fence:
+ *   - the card is on the hub when the backend serves the mode,
+ *   - it is NOT on the hub when the backend says disabled or is unreachable,
+ *     and the funnel still reports which of those happened,
+ *   - the entry is Free: no account is required to reach /quiz/daily, and no
+ *     entitlement copy appears on or around it.
+ *
+ * Scoring, generation, the frozen pool, the one-run-a-day rule and the streak
+ * are the mode's own and are untouched here — see its own suites.
  */
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -97,46 +105,74 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("Leaguecraft hub — daily modes withheld", () => {
-  it("still probes daily-mode availability and reports an unavailable backend", async () => {
+describe("Leaguecraft hub — Time Trial entry", () => {
+  it("keeps the card off the hub when the backend is unreachable, and says so", async () => {
     todayMock.mockRejectedValue(new Error("FEATURE_DISABLED"));
     await renderHub();
     expect(todayMock).toHaveBeenCalled();
     await waitFor(() =>
       expect(trackMock).toHaveBeenCalledWith("dsa_legacy_fallback", { reason: "unavailable" }),
     );
-    expect(screen.queryByText("Daily Challenge")).not.toBeInTheDocument();
     expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("hub-time-trial-section")).not.toBeInTheDocument();
   });
 
-  it("still reports a disabled backend flag", async () => {
+  it("keeps the card off the hub when the backend flag is off", async () => {
     todayMock.mockResolvedValue({ ...todayFixture, enabled: false });
     await renderHub();
     await waitFor(() =>
       expect(trackMock).toHaveBeenCalledWith("dsa_legacy_fallback", { reason: "disabled" }),
     );
     expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("hub-time-trial-section")).not.toBeInTheDocument();
   });
 
-  it("keeps the Time Trial card off the hub even when the backend enables it", async () => {
+  it("surfaces the card, with today's real shape, when the backend enables it", async () => {
     todayMock.mockResolvedValue({ ...todayFixture, daily_streak: 2 });
     await renderHub();
-    expect(screen.queryByTestId("hub-score-attack-card")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("score-attack-cta")).not.toBeInTheDocument();
-    expect(screen.queryByText("Daily Challenge")).not.toBeInTheDocument();
-    // The Ranked-first loop occupies the space the daily pair used to hold.
-    expect(screen.getByTestId("hub-ranked-section")).toBeInTheDocument();
-    // The Practice panel is withheld; the Leaguecraft Record is what fills
-    // the lower half of the lobby now.
-    expect(screen.getByTestId("hub-record-section")).toBeInTheDocument();
+    const card = await screen.findByTestId("hub-score-attack-card");
+    expect(card).toBeInTheDocument();
+    // The card is a pure projection of the server payload — this asserts it
+    // is WIRED, not that the numbers are these numbers.
+    expect(card.textContent).toContain(String(todayFixture.question_count));
+    expect(card.textContent).toContain(String(todayFixture.run_duration_seconds));
+    expect(screen.getByTestId("score-attack-streak").textContent).toContain("2 day");
+    // …and it goes to the production route, not the dev host.
+    // `asChild` puts the testid on the anchor itself.
+    expect(screen.getByTestId("score-attack-cta").getAttribute("href")).toBe("/quiz/daily");
   });
 
-  it("does not surface a terminal official run on the hub either", async () => {
+  it("puts the entry in the study row, above the record — not under it", async () => {
+    todayMock.mockResolvedValue({ ...todayFixture });
+    const { container } = await renderHub();
+    const section = await screen.findByTestId("hub-time-trial-section");
+    expect(section.querySelector('[data-testid="hub-score-attack-card"]')).not.toBeNull();
+    const record = container.querySelector('[data-testid="hub-record-section"]')!;
+    const rail = container.querySelector('[data-testid="quiz-category-rail"]')!;
+    const follows = (a: Element, b: Element) =>
+      a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(follows(rail, section)).toBeTruthy();
+    expect(follows(section, record)).toBeTruthy();
+  });
+
+  it("surfaces a terminal official run's own status line", async () => {
     todayMock.mockResolvedValue({
       ...todayFixture,
       official_run: { run_id: "r", status: "completed", score: 5150, completed_at: "x" },
     });
     await renderHub();
-    expect(screen.queryByTestId("score-attack-status")).not.toBeInTheDocument();
+    const status = await screen.findByTestId("score-attack-status");
+    expect(status.textContent).toContain("5,150");
+  });
+
+  it("is FREE — no entitlement gate, and a guest still reaches the route", async () => {
+    todayMock.mockResolvedValue({ ...todayFixture });
+    const { container } = await renderHub();
+    const section = await screen.findByTestId("hub-time-trial-section");
+    // Only the mode's OWN account rule appears (the official run needs a real
+    // account; practice does not). No Premium copy, no upsell, no lock.
+    expect(section.textContent).not.toMatch(/Premium|Upgrade|Unlock|locked/i);
+    expect(container.querySelector('[data-testid="hub-time-trial-section"] a')
+      ?.getAttribute("href")).toBe("/quiz/daily");
   });
 });

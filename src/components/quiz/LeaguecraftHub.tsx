@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, HelpCircle, Library, RotateCcw, ScrollText } from "lucide-react";
@@ -180,6 +180,7 @@ export default function LeaguecraftHub({
   historyLoading,
   historyError,
   showPractice = false,
+  timeTrial,
   rankedHistoryPreview,
   rankedReviewPreview,
   reviewState,
@@ -297,6 +298,19 @@ export default function LeaguecraftHub({
    * all still here behind it, and no practice route changed.
    */
   showPractice?: boolean;
+  /**
+   * PT1.7A — the Time Trial entry, as a SLOT rather than a component.
+   *
+   * The host owns the mode's availability probe and its analytics, so it
+   * passes the finished card down; the hub only decides where a study entry
+   * sits. Omit it and the row collapses to whatever else it holds, exactly as
+   * it did before the mode was surfaced.
+   *
+   * It shares the study row with the practice packs because that row was
+   * always a PAIR — the withheld half is where Recent Studies used to sit —
+   * and because a mode entry belongs above the record, not under it.
+   */
+  timeTrial?: ReactNode;
   /**
    * PRAC1: start a Practice session for one rail subject.
    *
@@ -602,41 +616,50 @@ export default function LeaguecraftHub({
       </div>
       </div>
 
-      {/* 3 ── Practice for Ranked — WITHHELD, not deleted.
-              ──────────────────────────────────────────────
-              The category rail directly above IS Leaguecraft's practice
-              selector now (PRAC1). This panel and the rail were two
-              navigations to the same six subjects stacked on top of each
-              other, and the temporary one was the louder of the two — so the
-              panel stays hidden and the rail has inherited the job.
+      {/* 3 ── THE STUDY ROW — curated packs, and today's Time Trial.
+              ──────────────────────────────────────────────────────
+              One row, up to two occupants, both host-controlled. It is the
+              row the lobby always had; PT1.7A gave it back its second half.
 
-              INTACT AND RESTORABLE, in the same shape the rest of the page's
-              withheld modules take: the sets, their real question counts and
-              the start action are all still here, and `HUB_MODULES.practicePanel`
-              in `Quiz.tsx` is the one switch. The ROUTES and the question sets
-              are untouched — nothing about practice stopped working, it simply
-              stopped having a second doorway on this page.
+              THE PACKS ARE NOT THE RAIL, AND THAT IS WHY THEY ARE BACK.
+              This panel was withheld on the stated grounds that it and the
+              category rail were "two navigations to the same six subjects".
+              Measured against the live bank, they are not the same subjects
+              at all: the five sets reach `Champion Attack Types`,
+              `Champion Base Stats`, `Champion Resources`, `Runes` and
+              `Game Fundamentals`, and NO rail tile resolves to any of them —
+              `Champion Basics` alone is ~520 live questions with no other
+              door. The rail reaches abilities, waves, objectives, summoners
+              and the item family; the packs reach the rest. They are
+              complementary, so both are shown, and the panel's own duplicate
+              (a primary button that opened the very set its first chip
+              opens) is what went away instead. See PT1.7A in the handoff.
 
-              Recent Studies used to share this row. It is gone rather than
-              hidden: it was a three-row preview of the very same payload the
-              Leaguecraft Record's History ledger now prints in full, and two
-              renderings of one record is the duplication this pass exists to
-              remove. Everything it did that the ledger did not — the session
-              summary, the practice call to action on an empty record, the
-              sign-in state — moved into the ledger. */}
-      {showPractice && (
+              TIME TRIAL sits beside them rather than under the record: it is
+              a way to SPEND a session, so it belongs with the other things
+              you can start, above the place you go to read what happened.
+              `HUB_MODULES.timeTrial` in `Quiz.tsx` is still the one switch,
+              and the host still supplies the card.
+
+              Recent Studies used to hold this row's second half. It is gone
+              rather than hidden: it was a three-row preview of the very same
+              payload the Leaguecraft Record's History ledger now prints in
+              full, and two renderings of one record is the duplication that
+              pass existed to remove. */}
+      {(showPractice || timeTrial) && (
         <div
           data-testid="hub-workspace"
           className="mt-3 grid grid-cols-1 gap-3 pt-1 lg:grid-cols-12"
         >
+          {showPractice && (
           <section
-            className="flex flex-col lg:col-span-7"
+            className={timeTrial ? "flex flex-col lg:col-span-7" : "flex flex-col lg:col-span-12"}
             data-testid="hub-practice-section"
           >
             <SectionHeading
               icon={ScrollText}
-              title="Practice for Ranked"
-              hint="Sharpen the knowledge used in Ranked."
+              title="Practice Packs"
+              hint="Curated sets the six subjects above do not cover."
             />
             <LobbyPanel className="mt-1.5 gap-2">
               {setsLoading ? (
@@ -657,20 +680,16 @@ export default function LeaguecraftHub({
                 </div>
               ) : (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-2">
-                  {primarySet && (
-                    <Button
-                      onClick={() => onSelectSet(primarySet)}
-                      data-testid="practice-primary-cta"
-                      variant="ghost"
-                      className="h-8 w-full justify-between border border-[#c9a84c]/30 px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#e2c877] hover:bg-[#c9a84c]/12 hover:text-[#f0d78c]"
-                    >
-                      Practice Questions
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                  {/* The remaining sets as one-line chips: still every set, still
-                      the same start action, at a fraction of the old grid's
-                      visual weight. */}
+                  {/* Every set as a one-line chip, at a fraction of the old
+                      grid's visual weight.
+
+                      THE PRIMARY BUTTON IS GONE, and only the button: it
+                      opened `All Current Questions`, which is the first chip
+                      directly beneath it, so the panel led with a duplicate
+                      of its own first row. The catalog-wide set keeps two
+                      other doors that were built for it — the match-entry
+                      record's Practice footer and the empty record's one
+                      action — and both call the same `onSelectSet`. */}
                   <div className="flex flex-col gap-1" data-testid="practice-tiles">
                     {primarySet && <PracticeTile set={primarySet} onSelect={() => onSelectSet(primarySet)} />}
                     {secondarySets.map((set) => (
@@ -681,6 +700,18 @@ export default function LeaguecraftHub({
               )}
             </LobbyPanel>
           </section>
+          )}
+
+          {/* The host's Time Trial card, unchanged. The hub adds the column
+              and nothing else — no copy, no state, no probe of its own. */}
+          {timeTrial && (
+            <section
+              className={showPractice ? "flex flex-col lg:col-span-5" : "flex flex-col lg:col-span-12"}
+              data-testid="hub-time-trial-section"
+            >
+              {timeTrial}
+            </section>
+          )}
         </div>
       )}
 

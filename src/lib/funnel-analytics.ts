@@ -9,6 +9,10 @@ export type FunnelEventName =
   | "quiz_guest_started"
   | "quiz_question_answered"
   | "quiz_completed"
+  // PT1.7A — the bounded Free remediation loop on the Practice results screen
+  // ("practise the ones you just missed"). Payload is the set name and a
+  // count; no question id, no answer, ever.
+  | "practice_missed_started"
   | "quiz_results_viewed"
   | "quiz_signup_gate_shown"
   | "quiz_signup_clicked"

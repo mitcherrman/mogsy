@@ -3,7 +3,7 @@ import { BookOpen, TrendingUp, TrendingDown, Layers, HelpCircle, Sparkles, Compa
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { QuizCategoryStat } from "@/lib/quiz/api";
+import { categoryLabel, type QuizCategoryStat } from "@/lib/quiz/api";
 
 function EmptyStat({
   icon: Icon,
@@ -25,6 +25,17 @@ function EmptyStat({
   );
 }
 
+/**
+ * One category's row.
+ *
+ * THE LABEL GOES THROUGH `categoryLabel`, and that is a correctness fix, not
+ * a tidy-up. This card's only data source is `GET /api/quiz/categories/{id}`,
+ * which serves `category_name`; the row read `stat.category`, a field that
+ * payload does not carry. Every row therefore rendered a BLANK name — and,
+ * because the name was also the React key, every row shared the key
+ * `undefined`. The shared helper already tolerates both field spellings and
+ * is what the public profile has always used.
+ */
 function CategoryRow({
   stat,
   progressColor = "bg-primary",
@@ -36,7 +47,7 @@ function CategoryRow({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium truncate">{stat.category}</span>
+        <span className="text-sm font-medium truncate">{categoryLabel(stat)}</span>
         <span className="text-[11px] tabular-nums text-muted-foreground shrink-0">
           {stat.attempts ?? 0} attempt{(stat.attempts ?? 0) !== 1 ? "s" : ""}
         </span>
@@ -107,26 +118,34 @@ export default function QuizKnowledgeCard({
 
           {!hasData && !error && (
             <div className="space-y-3">
+              {/* THE CATALOG TILES ARE OPT-IN, and the hub no longer opts in.
+                  Both figures were derived rather than served: "Categories"
+                  counted the frontend's own badge-style map (8) against a live
+                  bank of ~37, and "Questions" summed the five quiz sets, which
+                  OVERLAP — `All Current Questions` contains most of what the
+                  other four contain, so the sum double-counted them. A card
+                  about how much you know must not open with two invented
+                  numbers, so the caller stopped passing them and they render
+                  only when a caller has a real source. */}
+              {(typeof totalCategoriesAvailable === "number" ||
+                typeof totalQuestionsAvailable === "number") && (
               <div className="grid grid-cols-2 gap-2">
-                <EmptyStat
-                  icon={Layers}
-                  label="Categories"
-                  value={
-                    typeof totalCategoriesAvailable === "number"
-                      ? totalCategoriesAvailable.toLocaleString()
-                      : "—"
-                  }
-                />
-                <EmptyStat
-                  icon={HelpCircle}
-                  label="Questions"
-                  value={
-                    typeof totalQuestionsAvailable === "number"
-                      ? totalQuestionsAvailable.toLocaleString()
-                      : "—"
-                  }
-                />
+                {typeof totalCategoriesAvailable === "number" && (
+                  <EmptyStat
+                    icon={Layers}
+                    label="Categories"
+                    value={totalCategoriesAvailable.toLocaleString()}
+                  />
+                )}
+                {typeof totalQuestionsAvailable === "number" && (
+                  <EmptyStat
+                    icon={HelpCircle}
+                    label="Questions"
+                    value={totalQuestionsAvailable.toLocaleString()}
+                  />
+                )}
               </div>
+              )}
               {newCategories && newCategories.length > 0 && (
                 <div className="rounded-md border border-[#c9a84c]/30 bg-[#c9a84c]/5 p-3">
                   <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#c9a84c]/90">
@@ -164,6 +183,23 @@ export default function QuizKnowledgeCard({
 
           {hasData && (
             <>
+              {/* WHAT THIS COUNTS, said plainly.
+                  `quiz_category_progress` — this card's only source — is
+                  written by exactly one path: the attempt submit the Practice
+                  runner uses. Ranked keeps its own discovery ledger, Time
+                  Trial writes the shared attempt table but not these
+                  counters, and Mastery and the Daily Challenge write neither.
+                  A breakdown that silently means "your practice" while
+                  reading as "everything you know" is the misleading half of
+                  exposing this surface, so it says which it is. */}
+              <p
+                className="text-[11px] text-muted-foreground/80"
+                data-testid="knowledge-scope-note"
+              >
+                Counts your Practice answers. Ranked, Time Trial and Mastery
+                keep their own records.
+              </p>
+
               {/* Top Categories */}
               <div className="space-y-3">
                 <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -172,7 +208,7 @@ export default function QuizKnowledgeCard({
                 </div>
                 <div className="space-y-3">
                   {topCategories.map((stat) => (
-                    <CategoryRow key={stat.category} stat={stat} />
+                    <CategoryRow key={categoryLabel(stat)} stat={stat} />
                   ))}
                 </div>
               </div>
@@ -186,7 +222,7 @@ export default function QuizKnowledgeCard({
                   </div>
                   <div className="space-y-3">
                     {weakestCategories.map((stat) => (
-                      <CategoryRow key={stat.category} stat={stat} />
+                      <CategoryRow key={categoryLabel(stat)} stat={stat} />
                     ))}
                   </div>
                 </div>
