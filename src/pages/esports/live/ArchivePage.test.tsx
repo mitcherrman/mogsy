@@ -401,6 +401,36 @@ describe("pagination", () => {
     );
   });
 
+  it("disables Previous on a cold load of a shared deep page", async () => {
+    // There is no reverse cursor and no in-app history to walk back through:
+    // `navigate(-1)` here would have taken the reader off the site entirely.
+    installBackend([body([game()], { next_cursor: "Y3Vyc29yLTI" })]);
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?cursor=Y3Vyc29yLTE`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    expect(
+      screen.getByRole("button", { name: /previous/i }).hasAttribute("disabled"),
+    ).toBe(true);
+  });
+
+  it("walks back to the page it actually came from", async () => {
+    installBackend([
+      body([game({ game_id: "p1" })], { next_cursor: "Y3Vyc29yLTE" }),
+      body([game({ game_id: "p2", teams: { blue: { name: "T1", code: "T1", esports_team_id: "t1", series_wins: 0, kills: 1 }, red: { name: "Dplus KIA", code: "DK", esports_team_id: "dk", series_wins: 0, kills: 2 } } })], { next_cursor: null }),
+      body([game({ game_id: "p1" })], { next_cursor: "Y3Vyc29yLTE" }),
+    ]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    fireEvent.click(screen.getByRole("button", { name: /next/i }));
+    await screen.findByRole("button", { name: /T1 vs DK/i });
+    // Previous is only offered once there is a page to go back TO.
+    const prev = screen.getByRole("button", { name: /previous/i });
+    expect(prev.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(prev);
+    await waitFor(() =>
+      expect(screen.getByTestId("loc").textContent).toBe(PRO_PLAY_LIVE_ARCHIVE_ROUTE),
+    );
+  });
+
   it("offers no Next on the last page", async () => {
     installBackend([body([game()], { next_cursor: null })]);
     renderArchive();

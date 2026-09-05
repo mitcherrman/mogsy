@@ -11,7 +11,7 @@
  * with. There is deliberately no archive-specific renderer to drift.
  */
 import { useCallback, useMemo } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -71,7 +71,19 @@ const ANY = "__any__";
 
 export default function ArchivePage() {
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  /* Keyset pagination has no reverse cursor, so "previous" has to be
+   * remembered rather than computed. The cursors already visited ride in the
+   * history entry, which means Back and the Previous button agree, and a
+   * refresh keeps the trail.
+   *
+   * On a COLD load of a shared page-3 link the trail is empty, and Previous is
+   * correctly disabled — the alternative, `navigate(-1)`, would have walked the
+   * reader off the site entirely, because the entry before that link is
+   * whatever page they came from. */
+  const trail = (location.state as { trail?: (string | null)[] } | null)?.trail ?? [];
 
   // Filters and the page cursor both live in the URL: a filtered archive view
   // is then a shareable link and survives a refresh, and the browser's own
@@ -100,7 +112,7 @@ export default function ArchivePage() {
       // Any filter change resets to the first page. Carrying a cursor across a
       // filter change would resume from a row that may not be in the new
       // result set at all.
-      setParams(filtersToParams(next), { replace: false });
+      setParams(filtersToParams(next), { replace: false, state: { trail: [] } });
     },
     [setParams],
   );
@@ -110,14 +122,21 @@ export default function ArchivePage() {
     [filters, setFilters],
   );
 
-  const goToPage = useCallback(
-    (nextCursor: string | null) => {
+  const goNext = useCallback(
+    (nextCursor: string) => {
       const p = filtersToParams(filters);
-      if (nextCursor) p.set("cursor", nextCursor);
-      setParams(p, { replace: false });
+      p.set("cursor", nextCursor);
+      setParams(p, { replace: false, state: { trail: [...trail, cursor] } });
     },
-    [filters, setParams],
+    [filters, setParams, trail, cursor],
   );
+
+  const goPrevious = useCallback(() => {
+    const previous = trail[trail.length - 1] ?? null;
+    const p = filtersToParams(filters);
+    if (previous) p.set("cursor", previous);
+    setParams(p, { replace: false, state: { trail: trail.slice(0, -1) } });
+  }, [filters, setParams, trail]);
 
   const open = useCallback(
     (gameId: string) => navigate(proPlayLiveGameUrl(gameId)),
@@ -366,11 +385,8 @@ export default function ArchivePage() {
           <Button
             variant="outline"
             size="sm"
-            // Keyset pagination has no "previous cursor"; the browser's own
-            // history is the back-stack, and every page is a real URL, so this
-            // is honest rather than a synthesised reverse query.
-            disabled={!cursor}
-            onClick={() => navigate(-1)}
+            disabled={trail.length === 0}
+            onClick={goPrevious}
           >
             <ChevronLeft className="mr-1 h-4 w-4" />
             Previous
@@ -379,7 +395,7 @@ export default function ArchivePage() {
             variant="outline"
             size="sm"
             disabled={!page.data?.next_cursor}
-            onClick={() => goToPage(page.data?.next_cursor ?? null)}
+            onClick={() => goNext(page.data?.next_cursor as string)}
           >
             Next
             <ChevronRight className="ml-1 h-4 w-4" />
