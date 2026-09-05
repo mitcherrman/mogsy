@@ -16,6 +16,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import ArchivePage from "./ArchivePage";
+import { FEATURED_POOL } from "./archive";
 import {
   PRO_PLAY_LIVE_ARCHIVE_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
@@ -34,6 +35,7 @@ beforeAll(() => {
 
 /** Open a Select and choose an option by its visible label. */
 async function choose(triggerLabel: string | RegExp, optionLabel: RegExp) {
+  if (!screen.queryByLabelText(triggerLabel)) await openFilters();
   fireEvent.keyDown(screen.getByLabelText(triggerLabel), { key: "Enter" });
   const option = await screen.findByRole("option", { name: optionLabel });
   fireEvent.click(option);
@@ -98,8 +100,26 @@ const FACETS = {
   depth_thresholds: { full_timeline_min_frames: 20 },
 };
 
-/** Scripted `/api/live-esports/history*`; records every URL it was asked for. */
-function installBackend(pages: Record<string, unknown>[] | null, opts: { total?: number } = {}) {
+/**
+ * Scripted `/api/live-esports/history*`; records every URL it was asked for.
+ *
+ * The featured strip's request is answered from its own fixture rather than
+ * from the page queue. It is a different question — "the newest full-timeline
+ * games" — and letting it consume a scripted page would make every pagination
+ * assertion depend on how many other queries the page happened to fire.
+ */
+function isFeaturedRequest(path: string): boolean {
+  return (
+    path.includes("depth=full") &&
+    path.includes("status=final") &&
+    path.includes(`limit=${FEATURED_POOL}`)
+  );
+}
+
+function installBackend(
+  pages: Record<string, unknown>[] | null,
+  opts: { featured?: unknown[] } = {},
+) {
   const urls: string[] = [];
   let call = 0;
   const fetchMock = vi.fn(async (url: string) => {
@@ -110,6 +130,7 @@ function installBackend(pages: Record<string, unknown>[] | null, opts: { total?:
     if (path.includes("/history/filters")) return ok(FACETS);
     if (path.includes("/history")) {
       if (pages === null) throw new Error("network down");
+      if (isFeaturedRequest(path)) return ok(body(opts.featured ?? []));
       const idx = Math.min(call++, pages.length - 1);
       return ok(pages[idx]);
     }
@@ -117,6 +138,15 @@ function installBackend(pages: Record<string, unknown>[] | null, opts: { total?:
   });
   vi.stubGlobal("fetch", fetchMock);
   return { fetchMock, urls };
+}
+
+/** The rail is collapsed until asked for; every select lives behind this. */
+async function openFilters() {
+  // Idempotent: the disclosure starts OPEN whenever the URL already carries a
+  // filter, and clicking it then would close the thing the caller wants.
+  if (screen.queryByLabelText("League")) return;
+  fireEvent.click(screen.getByRole("button", { name: /all filters/i }));
+  await screen.findByLabelText("League");
 }
 
 function body(games: unknown[], over: Record<string, unknown> = {}) {
@@ -137,7 +167,13 @@ function body(games: unknown[], over: Record<string, unknown> = {}) {
 
 function LocationProbe() {
   const loc = useLocation();
-  return <div data-testid="loc">{`${loc.pathname}${loc.search}`}</div>;
+  const state = (loc.state as { archive?: string } | null)?.archive ?? "";
+  return (
+    <>
+      <div data-testid="loc">{`${loc.pathname}${loc.search}`}</div>
+      <div data-testid="state">{state}</div>
+    </>
+  );
 }
 
 function renderArchive(initial = PRO_PLAY_LIVE_ARCHIVE_ROUTE) {
@@ -181,17 +217,20 @@ describe("the archive route", () => {
     expect(screen.getAllByText("Pro Play").length).toBe(2);
   });
 
-  it("renders a match row with teams, competition, patch and date", async () => {
+  it("renders a match with teams, competition, patch and date", async () => {
     installBackend([body([game()])]);
     renderArchive();
-    const row = await screen.findByRole("button", { name: /G2 vs FNC/i });
-    const cell = within(row);
-    expect(cell.getByText(/LEC/)).toBeTruthy();
-    expect(cell.getByText(/Summer 2026/)).toBeTruthy();
-    expect(cell.getByText(/Playoffs · Finals/)).toBeTruthy();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    // Competition, patch and date belong to the SERIES, so they are stated
+    // once in its header rather than repeated on every game inside it.
+    const block = within(screen.getByTestId("series-115548681803406242"));
+    expect(block.getByText(/LEC/)).toBeTruthy();
+    expect(block.getByText(/Summer 2026/)).toBeTruthy();
+    expect(block.getByText(/Playoffs · Finals/)).toBeTruthy();
     // The four-part upstream version is shown as the patch a reader knows.
-    expect(cell.getByText("Patch 16.17")).toBeTruthy();
-    expect(cell.getByText(/Bo5 · G3/)).toBeTruthy();
+    expect(block.getByText("Patch 16.17")).toBeTruthy();
+    expect(block.getByText(/Bo5/)).toBeTruthy();
+    expect(block.getByText(/Game 3/)).toBeTruthy();
   });
 
   it("reports the total, not just the page", async () => {
@@ -248,9 +287,12 @@ describe("telemetry richness", () => {
       ]),
     ]);
     renderArchive();
-    expect(await screen.findByText("Full timeline")).toBeTruthy();
+    // Wait for the list itself: "Full timeline" is also a quick-filter chip,
+    // and matching that would assert before a single row had rendered.
+    await screen.findByRole("button", { name: /GEN vs KT/i });
     expect(screen.getByText("Final snapshot")).toBeTruthy();
     expect(screen.getByText("No telemetry")).toBeTruthy();
+    expect(screen.getAllByText("Full timeline").length).toBeGreaterThan(1);
   });
 
   it("explains what a thin game will actually render, rather than implying a chart", async () => {
@@ -300,6 +342,7 @@ describe("filters", () => {
     installBackend([body([game()])]);
     renderArchive();
     await screen.findByRole("button", { name: /G2 vs FNC/i });
+    await openFilters();
     fireEvent.keyDown(screen.getByLabelText("League"), { key: "Enter" });
     expect(await screen.findByRole("option", { name: /LCK \(93\)/ })).toBeTruthy();
     expect(screen.getByRole("option", { name: /LEC \(53\)/ })).toBeTruthy();
@@ -318,6 +361,7 @@ describe("filters", () => {
     installBackend([body([game()]), body([game()])]);
     renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?league=lec`);
     await screen.findByRole("button", { name: /G2 vs FNC/i });
+    await openFilters();
     fireEvent.keyDown(screen.getByLabelText("Tournament"), { key: "Enter" });
     expect(await screen.findByRole("option", { name: /Summer 2026 \(53\)/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Split 3 2026/ })).toBeNull();
@@ -359,17 +403,23 @@ describe("filters", () => {
     installBackend([body([game()]), body([game()])]);
     renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?league=lec&team=g2`);
     await screen.findByRole("button", { name: /G2 vs FNC/i });
-    fireEvent.click(screen.getByRole("button", { name: /clear filters \(2\)/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /clear filters \(2\)/i })[0]);
     await waitFor(() =>
       expect(screen.getByTestId("loc").textContent).toBe(PRO_PLAY_LIVE_ARCHIVE_ROUTE),
     );
   });
 
-  it("disables Clear when nothing is filtered", async () => {
+  it("offers no way to clear, and no scope chips, when nothing is filtered", async () => {
     installBackend([body([game()])]);
     renderArchive();
     await screen.findByRole("button", { name: /G2 vs FNC/i });
-    expect(screen.getByRole("button", { name: /^clear filters$/i }).hasAttribute("disabled")).toBe(true);
+    // Nothing is narrowing the archive, so the shortcut is absent rather than
+    // present-but-dead — and the rail's own Clear stays disabled inside it.
+    expect(screen.queryByRole("button", { name: /clear filters \(/i })).toBeNull();
+    await openFilters();
+    expect(
+      screen.getByRole("button", { name: /^clear filters$/i }).hasAttribute("disabled"),
+    ).toBe(true);
   });
 });
 
@@ -471,6 +521,19 @@ describe("opening an archived match", () => {
     );
   });
 
+  it("carries the archive's own URL over so the viewer can come back to it", async () => {
+    installBackend([body([game()])]);
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?league=lec&cursor=Y3Vyc29yLTE`);
+    fireEvent.click(await screen.findByRole("button", { name: /G2 vs FNC/i }));
+    await waitFor(() => expect(screen.getByText("match centre")).toBeTruthy());
+    // The filters do NOT go into the viewer's URL — a shared ?game= link is
+    // about the match, not about a stranger's filter set.
+    expect(screen.getByTestId("loc").textContent).not.toContain("league=lec");
+    expect(screen.getByTestId("state").textContent).toBe(
+      `${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?league=lec&cursor=Y3Vyc29yLTE`,
+    );
+  });
+
   it("makes the whole row the target, and reaches it from the keyboard", async () => {
     installBackend([body([game()])]);
     renderArchive();
@@ -490,26 +553,471 @@ describe("mobile structure", () => {
     installBackend([body([game()])]);
     const { container } = renderArchive();
     await screen.findByRole("button", { name: /G2 vs FNC/i });
+    await openFilters();
     const grid = container.querySelector('[class*="grid-cols-1"]');
     expect(grid?.className).toContain("sm:grid-cols-2");
-    // Nothing may assert a width the 375px viewport cannot honour.
-    expect(container.querySelectorAll('[class*="w-["]').length).toBe(0);
-    expect(container.querySelectorAll('[class*="min-w-["]').length).toBe(0);
+    // Nothing may assert a width the 375px viewport cannot honour. A `max-w-`
+    // ceiling is not one: it caps a chip on a wide screen and does nothing at
+    // 375px, which is the opposite of the failure this guards against.
+    const fixedWidths = Array.from(container.querySelectorAll("*")).filter((el) =>
+      /(?:^|\s)(?:min-)?w-\[/.test(el.className?.toString?.() ?? ""),
+    );
+    expect(fixedWidths).toEqual([]);
   });
 
   it("stacks a row's identity above its metadata on a narrow screen", async () => {
     installBackend([body([game()])]);
     renderArchive();
     const row = await screen.findByRole("button", { name: /G2 vs FNC/i });
-    const layout = row.querySelector("div");
-    expect(layout?.className).toContain("flex-col");
-    expect(layout?.className).toContain("sm:flex-row");
+    expect(row.className).toContain("flex-col");
+    expect(row.className).toContain("sm:flex-row");
   });
 
-  it("truncates a long competition line rather than widening the row", async () => {
+  it("stacks the series header the same way", async () => {
     installBackend([body([game()])]);
     renderArchive();
-    const row = await screen.findByRole("button", { name: /G2 vs FNC/i });
-    expect(row.querySelector('[class*="truncate"]')).toBeTruthy();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    const header = screen.getByTestId("series-115548681803406242").firstElementChild;
+    expect(header?.className).toContain("flex-col");
+    expect(header?.className).toContain("sm:flex-row");
+  });
+
+  it("truncates a long competition line rather than widening the block", async () => {
+    installBackend([body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    const block = screen.getByTestId("series-115548681803406242");
+    expect(block.querySelector('[class*="truncate"]')).toBeTruthy();
+  });
+
+  it("scrolls the quick-filter strip sideways instead of stacking it", async () => {
+    installBackend([body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    const strip = screen.getByRole("list", { name: /quick filters/i });
+    expect(strip.parentElement?.className).toContain("overflow-x-auto");
+    // Wrapping is what happens from sm up; below it the strip is one line.
+    expect(strip.className).toContain("sm:flex-wrap");
+  });
+});
+
+/* ── series grouping ──────────────────────────────────────────────────────── */
+
+/** Two games of one match, in the order the backend serves them. */
+function seriesPage() {
+  return body([
+    game({
+      game_id: "g4",
+      game_number: 4,
+      winner: "blue",
+      teams: {
+        blue: { name: "G2 Esports", code: "G2", esports_team_id: "g2", series_wins: 2, kills: 21 },
+        red: { name: "Fnatic", code: "FNC", esports_team_id: "fnc", series_wins: 1, kills: 4 },
+      },
+    }),
+    game({
+      game_id: "g3",
+      game_number: 3,
+      winner: "red",
+      teams: {
+        blue: { name: "G2 Esports", code: "G2", esports_team_id: "g2", series_wins: 2, kills: 8 },
+        red: { name: "Fnatic", code: "FNC", esports_team_id: "fnc", series_wins: 0, kills: 15 },
+      },
+    }),
+  ]);
+}
+
+describe("series grouping", () => {
+  it("states the competition, patch and date once for the whole series", async () => {
+    installBackend([seriesPage()]);
+    renderArchive();
+    await screen.findByRole("button", { name: /Game 4/i });
+    const block = within(screen.getByTestId("series-g4"));
+    // Four rows used to repeat all three; the header carries them now.
+    expect(block.getAllByText("Patch 16.17").length).toBe(1);
+    expect(block.getAllByText(/Summer 2026/).length).toBe(1);
+    expect(block.getAllByText(/Aug 30, 2026/).length).toBe(1);
+    expect(block.getByText(/2 games/)).toBeTruthy();
+  });
+
+  it("numbers the games inside the series", async () => {
+    installBackend([seriesPage()]);
+    renderArchive();
+    expect(await screen.findByRole("button", { name: /Game 4/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Game 3/i })).toBeTruthy();
+  });
+
+  it("derives the series score from the frozen score plus this game's winner", async () => {
+    installBackend([seriesPage()]);
+    renderArchive();
+    await screen.findByRole("button", { name: /Game 4/i });
+    // 2–1 entering game 4, G2 won it: 3–1 ends a Bo5.
+    expect(within(screen.getByTestId("series-g4")).getByText("3–1")).toBeTruthy();
+  });
+
+  it("claims no series score while the match could still have gone on", async () => {
+    installBackend([
+      body([
+        game({
+          game_id: "g2",
+          game_number: 2,
+          winner: "red",
+          teams: {
+            blue: { name: "G2 Esports", code: "G2", esports_team_id: "g2", series_wins: 1, kills: 9 },
+            red: { name: "Fnatic", code: "FNC", esports_team_id: "fnc", series_wins: 0, kills: 19 },
+          },
+        }),
+      ]),
+    ]);
+    renderArchive();
+    await screen.findByRole("button", { name: /Game 2/i });
+    const block = within(screen.getByTestId("series-g2"));
+    expect(block.queryByText("1–1")).toBeNull();
+    // The header falls back to a plain "vs" — the same one every game row
+    // already uses — rather than printing a score the store cannot prove.
+    expect(block.getAllByText("vs").length).toBe(2);
+  });
+
+  it("says a game that was never played was never played", async () => {
+    // Riot creates every slot of a best-of up front; production holds 16 such
+    // rows, and three of them lead the unfiltered archive.
+    installBackend([
+      body([
+        game({
+          game_id: "unplayed",
+          final: false,
+          availability: "scheduled",
+          winner: null,
+          patch_version: null,
+          telemetry: { frame_count: 0, event_count: 0, depth: "none", has_timeline: false },
+        }),
+      ]),
+    ]);
+    renderArchive();
+    expect(await screen.findByText("Not played")).toBeTruthy();
+    expect(screen.queryByText("No telemetry")).toBeNull();
+  });
+});
+
+/* ── full-timeline discovery ──────────────────────────────────────────────── */
+
+describe("Full timeline discovery", () => {
+  it("offers the rich games as a chip, without opening a single control", async () => {
+    const { urls } = installBackend([body([game()]), body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    const chip = screen.getByRole("button", { name: /^Full timeline$/i });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(chip);
+    await waitFor(() => expect(screen.getByTestId("loc").textContent).toContain("depth=full"));
+    expect(urls.some((u) => u.includes("depth=full") && u.includes("limit=24"))).toBe(true);
+  });
+
+  it("shows the chip as on when the URL already asks for full timelines", async () => {
+    installBackend([body([game()])]);
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?depth=full`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    expect(
+      screen.getByRole("button", { name: /^Full timeline$/i }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("turns the chip back off without touching anything else", async () => {
+    installBackend([body([game()]), body([game()])]);
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?depth=full&team=g2`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    fireEvent.click(screen.getByRole("button", { name: /^Full timeline$/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId("loc").textContent).not.toContain("depth=full"),
+    );
+    expect(screen.getByTestId("loc").textContent).toContain("team=g2");
+  });
+
+  it("never hides sparse games by default", async () => {
+    const { urls } = installBackend([body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    const asked = urls.find((u) => u.includes("limit=24")) ?? "";
+    expect(asked).not.toContain("depth=");
+  });
+
+  it("hardcodes no league in the strip", async () => {
+    installBackend([body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    // LCK/LEC/LCP are here only because the FACETS fixture says they are the
+    // biggest; swap the fixture and the chips change with it.
+    const strip = within(screen.getByRole("list", { name: /quick filters/i }));
+    expect(strip.getByRole("button", { name: /LCK/ })).toBeTruthy();
+    expect(strip.getByRole("button", { name: /LCP/ })).toBeTruthy();
+    expect(strip.queryByRole("button", { name: /Worlds/i })).toBeNull();
+  });
+
+  it("filters to a league from the strip and puts it in the URL", async () => {
+    const { urls } = installBackend([body([game()]), body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    fireEvent.click(
+      within(screen.getByRole("list", { name: /quick filters/i })).getByRole("button", {
+        name: /LCK/,
+      }),
+    );
+    await waitFor(() => expect(urls.some((u) => u.includes("league=lck"))).toBe(true));
+    expect(screen.getByTestId("loc").textContent).toContain("league=lck");
+  });
+});
+
+/* ── featured ─────────────────────────────────────────────────────────────── */
+
+describe("the featured strip", () => {
+  const FEATURED = [
+    game({
+      game_id: "feat-1",
+      match_id: "feat-m1",
+      game_number: 4,
+      winner: "blue",
+      teams: {
+        blue: { name: "G2 Esports", code: "G2", esports_team_id: "g2", series_wins: 2, kills: 21 },
+        red: { name: "Fnatic", code: "FNC", esports_team_id: "fnc", series_wins: 1, kills: 4 },
+      },
+    }),
+  ];
+
+  it("asks one bounded question for it, and never the catalogue", async () => {
+    const { urls } = installBackend([body([game()])], { featured: FEATURED });
+    renderArchive();
+    await screen.findByText(/start here/i);
+    const asked = urls.filter((u) => u.includes(`limit=${FEATURED_POOL}`));
+    expect(asked.length).toBe(1);
+    expect(asked[0]).toContain("depth=full");
+    expect(asked[0]).toContain("status=final");
+    expect(urls.some((u) => /\/live-esports\/games(\?|$)/.test(u))).toBe(false);
+  });
+
+  it("says why a match is there, and shows the score that earned it", async () => {
+    installBackend([body([game()])], { featured: FEATURED });
+    renderArchive();
+    expect(await screen.findByText("Series decider")).toBeTruthy();
+    const card = screen.getByRole("button", { name: /Series decider/i });
+    expect(within(card).getByText("3–1")).toBeTruthy();
+  });
+
+  it("opens the match in the same viewer every other row uses", async () => {
+    installBackend([body([game()])], { featured: FEATURED });
+    renderArchive();
+    fireEvent.click(await screen.findByRole("button", { name: /Series decider/i }));
+    await waitFor(() => expect(screen.getByText("match centre")).toBeTruthy());
+    expect(screen.getByTestId("loc").textContent).toBe(`${PRO_PLAY_LIVE_ROUTE}?game=feat-1`);
+  });
+
+  it("is not asked for at all once the reader is browsing something", async () => {
+    const { urls } = installBackend([body([game()])], { featured: FEATURED });
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?league=lec`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    expect(screen.queryByText(/start here/i)).toBeNull();
+    expect(urls.some((u) => u.includes(`limit=${FEATURED_POOL}`))).toBe(false);
+  });
+
+  it("is not asked for on a deeper page either", async () => {
+    const { urls } = installBackend([body([game()])], { featured: FEATURED });
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?cursor=Y3Vyc29yLTE`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    expect(urls.some((u) => u.includes(`limit=${FEATURED_POOL}`))).toBe(false);
+  });
+
+  it("renders nothing rather than an empty shelf when no game qualifies", async () => {
+    installBackend([body([game()])], { featured: [] });
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    expect(screen.queryByText(/start here/i)).toBeNull();
+  });
+});
+
+/* ── browsing from a row ──────────────────────────────────────────────────── */
+
+describe("team browsing", () => {
+  it("narrows to a team from its name in a row, by exact id", async () => {
+    const { urls } = installBackend([body([game()]), body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    fireEvent.click(screen.getByRole("button", { name: /Show every stored G2 Esports game/i }));
+    // Ids, never names: "T1" and "SK Telecom T1" are separate upstream.
+    await waitFor(() => expect(urls.some((u) => u.includes("team=g2"))).toBe(true));
+    expect(screen.getByTestId("loc").textContent).toContain("team=g2");
+  });
+
+  it("shows the team scope in words, with a way out of it", async () => {
+    installBackend([body([game()]), body([game()])]);
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?team=g2`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    // The rail may never be opened, so the scope has to be visible outside it.
+    expect(screen.getByText("G2 Esports")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Remove Team filter/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId("loc").textContent).toBe(PRO_PLAY_LIVE_ARCHIVE_ROUTE),
+    );
+  });
+
+  it("lets the same name drop the scope it set", async () => {
+    installBackend([body([game()]), body([game()])]);
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?team=g2`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    fireEvent.click(screen.getByRole("button", { name: /Stop filtering by G2 Esports/i }));
+    await waitFor(() =>
+      expect(screen.getByTestId("loc").textContent).toBe(PRO_PLAY_LIVE_ARCHIVE_ROUTE),
+    );
+  });
+
+  it("leaves a team the store cannot identify as plain text, not a dead control", async () => {
+    installBackend([
+      body([
+        game({
+          teams: {
+            blue: { name: "TBD", code: null, esports_team_id: null, series_wins: null, kills: null },
+            red: { name: "Fnatic", code: "FNC", esports_team_id: "fnc", series_wins: null, kills: null },
+          },
+        }),
+      ]),
+    ]);
+    renderArchive();
+    await screen.findByRole("button", { name: /TBD vs FNC/i });
+    expect(screen.queryByRole("button", { name: /Show every stored TBD game/i })).toBeNull();
+  });
+});
+
+describe("tournament browsing", () => {
+  it("narrows to a tournament from the competition line", async () => {
+    const { urls } = installBackend([body([game()]), body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    fireEvent.click(screen.getByRole("button", { name: /Show every stored Summer 2026 game/i }));
+    await waitFor(() => expect(urls.some((u) => u.includes("tournament=115548681802226458"))).toBe(true));
+    // A tournament belongs to exactly one league, so its league comes with it.
+    expect(screen.getByTestId("loc").textContent).toContain("league=lec");
+  });
+
+  it("narrows to a league from the competition line", async () => {
+    const { urls } = installBackend([body([game()]), body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    fireEvent.click(screen.getByRole("button", { name: /Show every stored LEC game/i }));
+    await waitFor(() => expect(urls.some((u) => u.includes("league=lec"))).toBe(true));
+    expect(screen.getByTestId("loc").textContent).not.toContain("tournament=");
+  });
+
+  it("composes a league and a tournament scope with a team one", async () => {
+    installBackend([body([game()]), body([game()])]);
+    renderArchive(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?league=lec&tournament=t-lec&team=g2`);
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    for (const name of [/Remove League filter/i, /Remove Tournament filter/i, /Remove Team filter/i]) {
+      expect(screen.getByRole("button", { name })).toBeTruthy();
+    }
+  });
+});
+
+describe("a game with no final result", () => {
+  it("says the record is not final, and never claims the match is live", async () => {
+    // `availability: "live"` is the upstream label, not evidence: production
+    // has carried rows stuck at it for weeks after the match ended.
+    installBackend([
+      body([game({ final: false, availability: "live", winner: null })]),
+    ]);
+    renderArchive();
+    expect(await screen.findByText("Not final")).toBeTruthy();
+    expect(screen.queryByText(/^live$/i)).toBeNull();
+    // It is still a real recording, so what the viewer can render is shown.
+    expect(screen.getAllByText("Full timeline").length).toBeGreaterThan(1);
+  });
+
+  it("says nothing of the sort about a finished game", async () => {
+    installBackend([body([game()])]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    expect(screen.queryByText("Not final")).toBeNull();
+  });
+});
+
+describe("a match that has only just started", () => {
+  it("says the record is not final, and does not also say No telemetry", async () => {
+    installBackend([
+      body([
+        game({
+          final: false,
+          availability: "live_waiting_for_stats",
+          winner: null,
+          telemetry: { frame_count: 0, event_count: 0, depth: "none", has_timeline: false },
+        }),
+      ]),
+    ]);
+    renderArchive();
+    expect(await screen.findByText("Not final")).toBeTruthy();
+    // The depth labels are promises about a finished game; "No telemetry was
+    // stored for this game" is the wrong tense for one in progress.
+    expect(screen.queryByText("No telemetry")).toBeNull();
+  });
+
+  it("still says what a running game has actually recorded so far", async () => {
+    installBackend([body([game({ final: false, availability: "live", winner: null })])]);
+    renderArchive();
+    expect(await screen.findByText("Not final")).toBeTruthy();
+    expect(screen.getAllByText("Full timeline").length).toBeGreaterThan(1);
+  });
+});
+
+describe("hoisted metadata", () => {
+  it("prints the date once even when there is no patch to hoist with it", async () => {
+    // An unfinished game carries no patch, and tying the two together made
+    // the header and the row both print the date.
+    installBackend([
+      body([game({ final: false, availability: "live", winner: null, patch_version: null })]),
+    ]);
+    renderArchive();
+    await screen.findByRole("button", { name: /G2 vs FNC/i });
+    const block = within(screen.getByTestId("series-115548681803406242"));
+    expect(block.getAllByText("Aug 30, 2026").length).toBe(1);
+  });
+
+  it("leaves a patch on the game it belongs to when the series disagrees", async () => {
+    installBackend([
+      body([
+        game({ game_id: "g2", game_number: 2, patch_version: "16.17.810.4348" }),
+        game({ game_id: "g1", game_number: 1, patch_version: "16.16.700.1000" }),
+      ]),
+    ]);
+    renderArchive();
+    await screen.findByRole("button", { name: /Game 2/i });
+    const block = within(screen.getByTestId("series-g2"));
+    expect(block.getByText("Patch 16.17")).toBeTruthy();
+    expect(block.getByText("Patch 16.16")).toBeTruthy();
+  });
+});
+
+describe("a match id that appears twice on one page", () => {
+  it("renders both runs as their own blocks, with no key collision", async () => {
+    // Production does this: a scheduled game 3 sits at the top of the archive
+    // while its own games 1 and 2 sit three weeks further down.
+    const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+    installBackend([
+      body([
+        game({ game_id: "later", game_number: 3, final: false, availability: "scheduled" }),
+        game({
+          game_id: "other",
+          match_id: "m-other",
+          teams: {
+            blue: { name: "T1", code: "T1", esports_team_id: "t1", series_wins: 0, kills: 1 },
+            red: { name: "Dplus KIA", code: "DK", esports_team_id: "dk", series_wins: 0, kills: 2 },
+          },
+        }),
+        game({ game_id: "earlier", game_number: 2 }),
+      ]),
+    ]);
+    renderArchive();
+    await screen.findByRole("button", { name: /T1 vs DK/i });
+    expect(screen.getByTestId("series-later")).toBeTruthy();
+    expect(screen.getByTestId("series-earlier")).toBeTruthy();
+    expect(
+      warn.mock.calls.some((c) => String(c[0]).includes("same key")),
+    ).toBe(false);
+    warn.mockRestore();
   });
 });
