@@ -325,6 +325,27 @@ describe("PT1.8 — what the pane says about itself", () => {
     expect(container.querySelectorAll("img").length).toBe(0);
   });
 
+  it("prints an untouched category as absent, not as nought per cent", async () => {
+    api.trends.mockResolvedValue(
+      REPORT({
+        categories: [
+          {
+            category: "Runes", attempts: 0, correct: 0, accuracy: 0,
+            previous_attempts: 24, previous_accuracy: 95.83, delta_points: null,
+            direction: "insufficient", eligible: false, is_weak: false,
+            is_recurring_weak: false,
+          },
+        ],
+      }),
+    );
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-categories")).toBeTruthy());
+    const row = screen.getAllByTestId("trends-category-row")[0].textContent ?? "";
+    expect(row).toMatch(/nothing this window/i);
+    expect(row).toMatch(/was 95\.8%/);
+    expect(row).not.toMatch(/\b0%/);
+  });
+
   it("plots VOLUME, and leaves a quiet day empty rather than at zero per cent", async () => {
     const { container } = render(<PerformanceTrendsPane />);
     await waitFor(() => expect(screen.getByTestId("trends-sparkline")).toBeTruthy());

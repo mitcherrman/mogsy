@@ -173,7 +173,14 @@ function CategoryLine({
           {entry.category}
         </span>
         <span className="flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums">
-          <span style={{ color: LEAGUECRAFT_INK.strong }}>{pct(entry.accuracy)}</span>
+          {/* A category with no answers this window has no accuracy — the
+              server sends 0.0 because that is what an empty ratio is, not
+              because the reader got everything wrong. It is here at all for
+              its `was`, which is what "you have not touched this since" is
+              made of, so print the figure as absent rather than as nought. */}
+          <span style={{ color: LEAGUECRAFT_INK.strong }}>
+            {entry.attempts === 0 ? "—" : pct(entry.accuracy)}
+          </span>
           <Icon className="h-3 w-3" aria-hidden style={{ color: directionColour(entry.direction) }} />
           <span style={{ color: directionColour(entry.direction) }}>
             {entry.delta_points == null
@@ -186,7 +193,9 @@ function CategoryLine({
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="text-[10px]" style={{ color: LEAGUECRAFT_INK.faint }}>
-          {entry.attempts} answer{entry.attempts === 1 ? "" : "s"}
+          {entry.attempts === 0
+            ? "Nothing this window"
+            : `${entry.attempts} answer${entry.attempts === 1 ? "" : "s"}`}
           {entry.previous_accuracy != null && ` · was ${pct(entry.previous_accuracy)}`}
           {entry.direction === "insufficient" && entry.previous_accuracy == null &&
             " · nothing to compare yet"}
