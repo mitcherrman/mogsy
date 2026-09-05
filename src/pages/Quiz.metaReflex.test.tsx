@@ -69,7 +69,6 @@ vi.mock("@/lib/quiz/api", () => ({
     }),
     getCategories: async () => ({ categories: [] }),
     getAchievements: async () => ({ achievements: [] }),
-    getDailyChallenge: async () => ({ ok: false }),
     getHistory: async () => ({ ok: true, results: [], total_count: 0, is_pro: false, limited: false, free_limit: 10, upsell_message: null }),
     startSession: async () => ({ ok: false }),
     completeSession: async () => ({}),

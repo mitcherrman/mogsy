@@ -84,7 +84,6 @@ vi.mock("@/lib/quiz/api", () => ({
     }),
     getCategories: async () => ({ categories: [] }),
     getAchievements: async () => ({ achievements: [] }),
-    getDailyChallenge: async () => ({ ok: false }),
     getHistory: () => historyMock(),
     startSession: async () => ({ ok: false }),
     completeSession: async () => ({}),

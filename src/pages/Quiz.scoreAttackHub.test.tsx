@@ -63,7 +63,6 @@ vi.mock("@/lib/quiz/api", () => ({
     getProgress: async () => ({ rank_name: "Bronze", attempts: 2, current_streak: 3, best_streak: 7, accuracy: 71 }),
     getCategories: async () => ({ categories: [] }),
     getAchievements: async () => ({ achievements: [] }),
-    getDailyChallenge: async () => ({ ok: false }),
     getHistory: async () => ({ ok: false }),
     startSession: async () => ({ ok: false }),
     completeSession: async () => ({}),

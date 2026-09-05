@@ -75,15 +75,6 @@ vi.mock("@/hooks/useFriends", () => ({
 }));
 
 /**
- * What `quizApi.getDailyChallenge` answers with.
- *
- * Mutable so one test can hand the host a real day's set and watch what the
- * host does with it. Everything else in this file wants the "no daily"
- * answer, which is the default.
- */
-let dailyResponse: () => unknown = () => ({ ok: false });
-
-/**
  * WHAT DC2 SAYS ABOUT TODAY (ARENA1 Step 5 §19).
  *
  * The match record's Daily clause reads the Daily Challenge service now, not
@@ -92,8 +83,8 @@ let dailyResponse: () => unknown = () => ({ ok: false });
  * opens DC2 — so a day the legacy endpoint calls finished and DC2 does not
  * would either refuse a playable day or open a finished one.
  *
- * The legacy response stays mocked because the legacy in-page flow still reads
- * it; it simply no longer decides anything the record draws.
+ * The legacy in-page flow and its client are gone, so DC2 is not merely the
+ * clause's authority — it is the only Daily the frontend has.
  */
 let dcStatus: DailyStatusView = { ...UNKNOWN_DAILY_STATUS };
 vi.mock("@/lib/daily-challenge/useDailyChallengeStatus", () => ({
@@ -114,7 +105,6 @@ vi.mock("@/lib/quiz/api", () => ({
     getProgress: async () => ({ rank_name: "Bronze", attempts: 2, accuracy: 71 }),
     getCategories: async () => ({ categories: [] }),
     getAchievements: async () => ({ achievements: [] }),
-    getDailyChallenge: async () => dailyResponse(),
     getHistory: async () => ({ ok: true, results: [], total_count: 0, is_pro: false, limited: false, free_limit: 10, upsell_message: null }),
     startSession: async () => ({ ok: false }),
     completeSession: async () => ({}),
@@ -149,7 +139,6 @@ async function renderLobby(entry: unknown = "/quiz") {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  dailyResponse = () => ({ ok: false });
   dcStatus = { ...UNKNOWN_DAILY_STATUS };
 });
 afterEach(cleanup);
@@ -255,21 +244,6 @@ describe("arriving from the retired /quiz/ranked menu", () => {
  */
 describe("Daily Challenge hands off to the Daily Challenge route", () => {
   it("closes the record and navigates to the Daily Challenge arena", async () => {
-    dailyResponse = () => ({
-      ok: true,
-      questions: [
-        {
-          id: 901,
-          category: "Monsters",
-          question_text: "Which epic monster grants Hand of Baron?",
-          format: "multiple_choice",
-          choices: ["Baron Nashor", "Drake", "Herald", "Krug"],
-          answered: false,
-        },
-      ],
-      answered: 0, target: 5, daily_streak: 4,
-    });
-
     const { container } = await renderLobby();
     fireEvent.click(screen.getByTestId("ranked-play-gem"));
     await waitFor(() => expect(screen.getByTestId("play-scroll")).toBeTruthy());
@@ -294,8 +268,8 @@ describe("Daily Challenge hands off to the Daily Challenge route", () => {
   it("does not depend on the legacy Daily endpoint answering", async () => {
     // The old handoff loaded the day's questions before it could show
     // anything, so a failing legacy read stranded the player on a dead lobby.
-    // The new one is a navigation: the arena reads its own transport.
-    dailyResponse = () => ({ ok: false, error: "legacy daily is down" });
+    // The new one is a navigation and the arena reads its own transport — and
+    // since the legacy client was retired there is no such read left to fail.
 
     await renderLobby();
     fireEvent.click(screen.getByTestId("ranked-play-gem"));
@@ -317,26 +291,18 @@ describe("Daily Challenge hands off to the Daily Challenge route", () => {
  */
 describe("a finished Daily Challenge hands the player to Practice", () => {
   /** Today's set, answered out. The page reads this on mount. */
-  const COMPLETED_DAY = () => ({
-    ok: true,
-    challenge: {
-      challenge_date: "2026-08-21", question_count: 5,
-      xp_bonus: 250, theme: "Item Knowledge",
-    },
-    progress: { answered_count: 5, correct_count: 4, daily_streak: 4, completed: true },
-    questions_remaining: 0,
-    questions: [],
-  });
-
   /**
-   * The two services disagreeing is not hypothetical: they are different
-   * products. The legacy Daily is one attempt per question over 5 questions;
-   * DC2 is 11–15 cards with retry-until-correct and a timed block. A player
-   * who finished the legacy set has not necessarily played today's Daily
-   * Challenge at all — and the clause opens the Daily Challenge.
+   * DC2 IS THE ONLY VOICE NOW.
+   *
+   * This used to guard against the two services disagreeing — the legacy Daily
+   * was one attempt per question over five, DC2 is 11–15 cards with
+   * retry-until-correct and a timed block, so a player who finished the legacy
+   * set had not necessarily played the Daily Challenge at all. The legacy
+   * client has since been retired, so there is nothing left to disagree with
+   * and the clause has exactly one authority. What is still worth pinning is
+   * that it reads that authority and offers the day accordingly.
    */
-  it("offers the day when DC2 says it is unplayed, whatever the legacy set says", async () => {
-    dailyResponse = COMPLETED_DAY;
+  it("offers the day when DC2 says it is unplayed", async () => {
     dcStatus = {
       known: true, completed: false, resumable: false,
       resolved: 0, total: 12, streak: 4, theme: "Item Knowledge",
@@ -350,8 +316,7 @@ describe("a finished Daily Challenge hands the player to Practice", () => {
   });
 
   async function openRecordOnAFinishedDay() {
-    dailyResponse = COMPLETED_DAY;
-    // The clause's actual authority.
+    // The clause's only authority.
     dcStatus = {
       known: true, completed: true, resumable: false,
       resolved: 12, total: 12, streak: 4, theme: "Item Knowledge",
