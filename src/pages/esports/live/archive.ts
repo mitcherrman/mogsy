@@ -312,12 +312,17 @@ export const FEATURED_LIMIT = 3;
 /**
  * How many full-timeline games the strip is chosen from.
  *
- * One bounded request (`?depth=full&status=final&limit=12`, 11.7 KB measured
- * against production), not a scan. Twelve is enough to hold three or four
- * complete series at the top of the store, which is what the league spread
- * below needs to have anything to choose between.
+ * One bounded request (`?status=final&depth=full&limit=16`, **15.6 KB raw /
+ * 1.6 KB gzip** measured against production), not a scan.
+ *
+ * Sixteen, not twelve: the pool is games and the picks are series, so a run of
+ * best-of-fives fills it with three or four matches. At twelve, one league
+ * finishing a fresh series pushed a decider out of the window and the strip
+ * fell back to a game 1 — observed live. Sixteen holds four to five series,
+ * which is what the one-per-league rule below needs to have something to
+ * choose between.
  */
-export const FEATURED_POOL = 12;
+export const FEATURED_POOL = 16;
 
 export const FEATURED_FILTERS: ArchiveFilters = {
   ...EMPTY_FILTERS,
