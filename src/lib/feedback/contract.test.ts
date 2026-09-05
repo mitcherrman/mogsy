@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
@@ -20,10 +20,32 @@ import {
  * constraints reject is a value the form must never offer.
  */
 
+const MIGRATIONS_DIR = join(process.cwd(), "supabase", "migrations");
+
 const MIGRATION = readFileSync(
-  join(process.cwd(), "supabase", "migrations", "20260812120000_fb1_feedback_foundation.sql"),
+  join(MIGRATIONS_DIR, "20260812120000_fb1_feedback_foundation.sql"),
   "utf8",
 );
+
+/**
+ * The category list is seeded, not CHECK-constrained, so the authority is the
+ * LAST migration that writes app_settings.feedback_config -> categories. FB1
+ * seeded it; a later migration may re-seed it (Time Trial). Reading the newest
+ * seed is what keeps this assertion honest as the taxonomy grows, without
+ * editing an already-applied migration.
+ */
+function latestSeededCategories(): string[] {
+  const seeds: Array<[string, string]> = [];
+  for (const file of readdirSync(MIGRATIONS_DIR).sort()) {
+    if (!file.endsWith(".sql")) continue;
+    const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
+    if (!sql.includes("'{categories}'")) continue;
+    const seeded = sql.match(/'(\["General".*?\])'::jsonb/);
+    if (seeded) seeds.push([file, seeded[1]]);
+  }
+  expect(seeds.length, "no migration seeds feedback_config categories").toBeGreaterThan(0);
+  return JSON.parse(seeds[seeds.length - 1][1]);
+}
 
 /** The value list inside a named CHECK constraint, e.g. ('bug', 'feature'). */
 function checkValues(constraint: string): string[] {
@@ -54,10 +76,8 @@ describe("feedback contract mirrors the database CHECK constraints", () => {
     );
   });
 
-  it("categories match the taxonomy seeded into app_settings.feedback_config", () => {
-    const seeded = MIGRATION.match(/'(\["General".*?\])'::jsonb/);
-    expect(seeded).not.toBeNull();
-    expect(JSON.parse(seeded![1])).toEqual([...FEEDBACK_CATEGORIES]);
+  it("categories match the newest taxonomy seeded into app_settings.feedback_config", () => {
+    expect(latestSeededCategories()).toEqual([...FEEDBACK_CATEGORIES]);
   });
 });
 
@@ -93,7 +113,8 @@ describe("entry intent to type mapping", () => {
 
 describe("categoryForRoute", () => {
   it("resolves each Academy mode to its product area", () => {
-    expect(categoryForRoute("/quiz/daily")).toBe("Daily Challenge");
+    expect(categoryForRoute("/quiz/daily-challenge")).toBe("Daily Challenge");
+    expect(categoryForRoute("/quiz/daily")).toBe("Time Trial");
     expect(categoryForRoute("/quiz/ranked")).toBe("Ranked");
     expect(categoryForRoute("/quiz/stat-check")).toBe("Stat Check");
     expect(categoryForRoute("/quiz/mastery")).toBe("Mastery");
@@ -106,6 +127,38 @@ describe("categoryForRoute", () => {
     // /quiz/ranked must not be swallowed by the /quiz -> Leaguecraft entry.
     expect(categoryForRoute("/quiz")).toBe("Leaguecraft");
     expect(categoryForRoute("/quiz/ranked/anything")).toBe("Ranked");
+  });
+
+  it("keeps Daily Challenge and Time Trial apart", () => {
+    // The two daily surfaces share a prefix. /quiz/daily-challenge is DC2;
+    // /quiz/daily is the Time Trial score attack. Neither may swallow the
+    // other, at the route root or any deeper path.
+    expect(categoryForRoute("/quiz/daily-challenge")).toBe("Daily Challenge");
+    expect(categoryForRoute("/quiz/daily-challenge/anything")).toBe("Daily Challenge");
+    expect(categoryForRoute("/quiz/daily")).toBe("Time Trial");
+    expect(categoryForRoute("/quiz/daily/anything")).toBe("Time Trial");
+    // No route resolves to the old, merged meaning.
+    expect(categoryForRoute("/quiz/daily")).not.toBe("Daily Challenge");
+  });
+
+  it("leaves every other product area exactly where FB1 put it", () => {
+    for (const [path, category] of [
+      ["/quiz", "Leaguecraft"],
+      ["/quiz/ranked", "Ranked"],
+      ["/quiz/stat-check", "Stat Check"],
+      ["/quiz/mastery", "Mastery"],
+      ["/combat-lab", "Combat Lab"],
+      ["/lol/patch-reports", "Patch Reports"],
+      ["/lol/history", "Quiz History"],
+      ["/lol/missed-questions", "Quiz History"],
+      ["/lol/docs", "Mogzy Archives"],
+      ["/profile", "Account & Profile"],
+      ["/settings", "Account & Profile"],
+      ["/auth", "Account & Profile"],
+      ["/", "General"],
+    ] as const) {
+      expect(categoryForRoute(path)).toBe(category);
+    }
   });
 
   it("falls back to General for unknown and root routes", () => {

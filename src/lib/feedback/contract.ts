@@ -81,6 +81,10 @@ export const FEEDBACK_REPRODUCIBILITY_LABELS: Record<FeedbackReproducibility, st
  *                    Ranked bug; the viewport is captured automatically.
  *   "Mechanics Explorer" — /lol/mechanics is not on main yet (MECH1 5B1).
  *
+ * "Daily Challenge" and "Time Trial" are two products, not one: /quiz/daily-challenge
+ * is DC2's graded 11-15 card run, /quiz/daily is the 30-question timed score
+ * attack. They were one category while /quiz/daily was the only daily surface.
+ *
  * The database seeds this same list into app_settings.feedback_config, which
  * stays the runtime authority so the owner can edit it without a deploy.
  */
@@ -88,6 +92,7 @@ export const FEEDBACK_CATEGORIES = [
   "General",
   "Leaguecraft",
   "Daily Challenge",
+  "Time Trial",
   "Ranked",
   "Stat Check",
   "Combat Lab",
@@ -107,7 +112,12 @@ export type FeedbackCategory = (typeof FEEDBACK_CATEGORIES)[number];
  * a problem" button has to be injected into an active mode's surface.
  */
 export const ROUTE_CATEGORY_PREFIXES: ReadonlyArray<readonly [string, FeedbackCategory]> = [
-  ["/quiz/daily", "Daily Challenge"],
+  // Both entries are spelled out. Longest-prefix matching would already send
+  // /quiz/daily-challenge to Daily Challenge, but that is a property of
+  // categoryForRoute, not of this table — an explicit row means reordering or
+  // reimplementing the resolver can never silently refile DC2 reports.
+  ["/quiz/daily", "Time Trial"],
+  ["/quiz/daily-challenge", "Daily Challenge"],
   ["/quiz/ranked", "Ranked"],
   ["/quiz/stat-check", "Stat Check"],
   ["/quiz/mastery", "Mastery"],
