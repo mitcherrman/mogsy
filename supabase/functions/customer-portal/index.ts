@@ -31,10 +31,21 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated");
 
+    // The Stripe customer is derived from the AUTHENTICATED user's own email,
+    // server side. No customer id is ever accepted from the client, so a caller
+    // cannot open someone else's billing portal by asking for their id.
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     if (customers.data.length === 0) {
-      return new Response(JSON.stringify({ error: "No Stripe customer found. Subscribe to Pro first!" }), {
+      // A comped / playtest-granted Premium account has entitlement but no
+      // Stripe customer, and that is not an error — there is genuinely nothing
+      // to manage. 200 with a code so the caller can say so plainly instead of
+      // showing a failure. supabase-js collapses every non-2xx into a generic
+      // error, which would read as "something broke".
+      return new Response(JSON.stringify({
+        error: "This account has no Stripe billing to manage.",
+        code: "NO_STRIPE_CUSTOMER",
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -61,7 +72,9 @@ serve(async (req) => {
       : "https://mogzy.lol";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customers.data[0].id,
-      return_url: `${origin}/shop`,
+      // /shop is unreachable under LEAGUE_ONLY_MODE, so returning there
+      // bounced the buyer to /lol. /lol/premium is where they started.
+      return_url: `${origin}/lol/premium`,
     });
 
     return new Response(JSON.stringify({ url: portalSession.url }), {

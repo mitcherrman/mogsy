@@ -14,17 +14,19 @@ import {
   GraduationCap,
   Layers,
   Sparkles,
+  CreditCard,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { fetchProEntitlement } from "@/lib/pro/entitlement";
+import { fetchProEntitlement, formatGrantExpiry, type ProEntitlement } from "@/lib/pro/entitlement";
 import { quizApi } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   startLolProCheckout,
+  openBillingPortal,
   fetchOfferAvailability,
   isOfferPurchasable,
   formatOfferPrice,
@@ -118,6 +120,12 @@ export default function LolPremium() {
   const [searchParams] = useSearchParams();
   const isAnonymous = !user || user.is_anonymous === true;
   const [isPremium, setIsPremium] = useState(false);
+  // ADMIN1A/PT1.4 provenance for the SIGNED-IN caller, used only to decide what
+  // a member is offered: a paid subscriber gets the Stripe billing portal, a
+  // comped account is told plainly that there is no billing to manage. Null
+  // while unresolved, which renders neither action.
+  const [provenance, setProvenance] = useState<ProEntitlement | null>(null);
+  const [openingPortal, setOpeningPortal] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
   // PT1.5: /lol/premium sells the same approved offers as the Shop. The price
@@ -163,6 +171,27 @@ export default function LolPremium() {
       });
     return () => { cancelled = true; };
   }, [authLoading, user]);
+
+  // Only members need provenance, so this costs a Free user nothing. The RPC is
+  // self-scoped (`my_pro_entitlement` resolves auth.uid() itself), so it can
+  // only ever answer for the caller.
+  useEffect(() => {
+    if (!isPremium) { setProvenance(null); return; }
+    let cancelled = false;
+    fetchProEntitlement().then((e) => { if (!cancelled) setProvenance(e); });
+    return () => { cancelled = true; };
+  }, [isPremium]);
+
+  const handleManageBilling = async () => {
+    setOpeningPortal(true);
+    try {
+      await openBillingPortal();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Billing portal could not be opened.");
+    } finally {
+      setOpeningPortal(false);
+    }
+  };
 
   const handleUpgrade = async () => {
     if (!offerPurchasable) {
@@ -234,10 +263,49 @@ export default function LolPremium() {
         </p>
 
         {isPremium ? (
-          <div className="mt-6 inline-flex items-center gap-2 rounded-full border px-5 py-2.5 font-semibold"
-               style={{ borderColor: `${GOLD}80`, color: "#f0d78c" }}>
-            <Sparkles className="h-4 w-4" />
-            You’re Premium — everything below is unlocked.
+          <div data-testid="premium-membership" className="mt-6 flex flex-col items-center gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border px-5 py-2.5 font-semibold"
+                 style={{ borderColor: `${GOLD}80`, color: "#f0d78c" }}>
+              <Sparkles className="h-4 w-4" />
+              You’re Premium — everything below is unlocked.
+            </div>
+
+            {/* Your membership. Which action a member gets is decided by WHERE
+                the entitlement came from, never by the fact that they have it:
+                a comped account has no Stripe customer, and sending it to the
+                billing portal would be a dead end dressed as a feature. */}
+            {provenance?.stripePro && (
+              <>
+                <p className="text-xs text-[#c8d4e6]/80" data-testid="premium-source-line">
+                  Billed through Stripe.
+                  {provenance.grantKind && (
+                    <> You also hold a {provenance.grantKind} grant on this account.</>
+                  )}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="premium-manage-billing"
+                  onClick={handleManageBilling}
+                  disabled={openingPortal}
+                  className="border-[#c9a84c80] bg-transparent text-[#f0d78c] hover:bg-[#c9a84c1a] hover:text-[#f5e9c8]"
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  {openingPortal ? "Opening billing…" : "Manage billing"}
+                </Button>
+              </>
+            )}
+
+            {provenance && !provenance.stripePro && provenance.grantKind && (
+              <p className="text-xs text-[#c8d4e6]/80" data-testid="premium-grant-line">
+                Complimentary Premium ({provenance.grantKind}
+                {formatGrantExpiry(provenance.grantExpiresAt)
+                  ? `, ${formatGrantExpiry(provenance.grantExpiresAt)}`
+                  : ", no expiry"}
+                ). There is no subscription or payment method on this account, so
+                there is nothing to manage — and nothing to cancel.
+              </p>
+            )}
           </div>
         ) : (
           <>

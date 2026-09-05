@@ -154,3 +154,29 @@ export async function startLolProCheckout(
     cancelPath: LOL_PRO_CANCEL_PATH,
   });
 }
+
+/**
+ * Open the Stripe billing portal for the signed-in account.
+ *
+ * The client sends NOTHING: `customer-portal` derives the Stripe customer from
+ * the authenticated user's own email, server side, so no caller can reach
+ * another account's billing. Callers should only offer this to an account that
+ * actually has Stripe billing (`ProEntitlement.stripePro`) — a comped account
+ * has entitlement but no customer, and the function answers `NO_STRIPE_CUSTOMER`
+ * rather than opening a portal.
+ *
+ * Throws with a readable message so callers can toast.
+ */
+export async function openBillingPortal(): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("customer-portal");
+  if (error) throw error;
+  if (data?.code === "NO_STRIPE_CUSTOMER") {
+    throw new Error("This account has no Stripe billing to manage.");
+  }
+  if (data?.error) throw new Error(data.error);
+  if (!data?.url) throw new Error("Billing portal could not be opened.");
+  const win = window.open(data.url, "_blank", "noopener,noreferrer");
+  if (!win || win.closed || typeof win.closed === "undefined") {
+    window.location.href = data.url;
+  }
+}
