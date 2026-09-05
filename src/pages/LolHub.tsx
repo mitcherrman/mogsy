@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { Swords, Flame, BrainCircuit, FileText, Trophy } from "lucide-react";
+import { Swords, Flame, BrainCircuit, FileText, Trophy, ChevronDown } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
-import AdSlot from "@/components/ads/AdSlot";
 import AcademyHubBook from "@/components/lol/AcademyHubBook";
 import AcademyHubShelf from "@/components/lol/AcademyHubShelf";
 import HexPanelLink from "@/components/lol/HexPanelLink";
@@ -29,9 +28,7 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
-import HubPremiumPanel from "@/components/lol/HubPremiumPanel";
-import HubCommunitySection from "@/components/lol/HubCommunitySection";
-import HubUtilitySection from "@/components/lol/HubUtilitySection";
+import AcademyCommons from "@/components/lol/AcademyCommons";
 import { playUiSfx } from "@/lib/ui-sfx";
 import AcademyBroadcastCenterpiece from "@/components/lol/broadcast/AcademyBroadcastCenterpiece";
 import { usePatchBriefFeed } from "@/components/lol/broadcast/usePatchBriefFeed";
@@ -199,6 +196,69 @@ const ACADEMY_LINES: ((name: string) => string)[] = [
 /** Fallback address for anonymous users and profiles with no display name. */
 const ACADEMY_FALLBACK_NAME = "Summoner";
 
+/**
+ * The class that arms the two-screen scroll snap. It goes on `html` because
+ * that is the propagation root the viewport takes its scrolling from (body
+ * carries `overflow-y: auto`, html keeps the UA default) — see the long note
+ * beside the snap media query in index.css. It is added on mount and removed on
+ * unmount, so snapping exists on `/lol` and nowhere else in the app.
+ */
+const HUB_SNAP_CLASS = "hub-two-screen";
+
+/**
+ * Set on `html` while the Commons owns most of the viewport. Its only job is
+ * to let the Commons quiet the sitewide Hextech ambience over the illustrated
+ * room — a LOCAL visual override on `/lol`, not a change to the ambience
+ * layer, which is untouched on Screen 1 and on every other `/lol` route. The
+ * class is removed on unmount with the snap class.
+ */
+const HUB_COMMONS_VIEW_CLASS = "hub-commons-in-view";
+
+/**
+ * The gate the contextual navigation hints obey, character-for-character the
+ * snap gate declared in index.css. Both hints ("Explore the Academy ↓" and
+ * "Back to the Hall ↑") are only ever DELAYED where the page actually snaps;
+ * on a phone, a short laptop, deep page zoom or the large-text setting the
+ * CSS never hides them and this observer keeps its hands off them.
+ */
+const HUB_SNAP_MEDIA = "(min-width: 1024px) and (min-height: 780px)";
+
+/** How long a screen must sit settled before its hint is offered. */
+const HUB_HINT_DELAY_MS = 1700;
+/** How long the scroll must be quiet before the screen counts as settled. */
+const HUB_SCROLL_IDLE_MS = 140;
+/** A screen is parked when its top edge is this close to the viewport top. */
+const HUB_SETTLE_TOLERANCE_PX = 18;
+
+type HubScreen = "hall" | "commons";
+
+/**
+ * True when EITHER motion preference is set: the OS-level media query or the
+ * app's own accessibility setting (`html.reduce-motion`, toggled from
+ * Settings). Both must suppress the page's smooth scrolling.
+ */
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true ||
+    document.documentElement.classList.contains("reduce-motion")
+  );
+}
+
+/**
+ * Move between the two screens. Plain `scrollIntoView` — no wheel interception,
+ * no scroll hijacking — with the smooth request dropped to an instant jump
+ * under reduced motion. CSS snapping then holds whichever screen this lands on.
+ */
+function hubScrollTo(screen: "hall" | "commons") {
+  const el = document.querySelector<HTMLElement>(`[data-hub-screen="${screen}"]`);
+  if (!el) return;
+  el.scrollIntoView({
+    behavior: prefersReducedMotion() ? "auto" : "smooth",
+    block: "start",
+  });
+}
+
 export default function LolHub() {
   const { user } = useAuth();
   const { data: championAssets } = useChampionAssets();
@@ -208,6 +268,21 @@ export default function LolHub() {
   // during render and the line never changes while the user stays on the hub.
   const [academyLineIndex] = useState(() => Math.floor(Math.random() * ACADEMY_LINES.length));
   const [displayName, setDisplayName] = useState<string | null>(null);
+  /**
+   * Which screen's navigation hint is currently offered, or null while the
+   * page is moving / before the settle delay has elapsed. Never gates
+   * EXISTENCE — both controls are always rendered and always focusable; this
+   * only adds `is-revealed`, and the rule that hides them at all lives inside
+   * the snap gate in index.css.
+   */
+  const [settledHint, setSettledHint] = useState<HubScreen | null>(null);
+  /**
+   * The last value handed to `setSettledHint`. A scroll fires dozens of
+   * events per gesture and every one of them withdraws the hint, so the
+   * observer below dedupes against this ref rather than calling `setState`
+   * over and over and leaning on React's bail-out to absorb it.
+   */
+  const settledHintRef = useRef<HubScreen | null>(null);
 
   const isAnonymous = !user || user.is_anonymous === true;
   // First-visit tutorial onboarding. Authoritative source is the profile's
@@ -264,6 +339,113 @@ export default function LolHub() {
       supabase.auth.signInAnonymously();
     }
   }, [user]);
+
+  // Arm the two-screen snap for as long as the hub is mounted, and disarm it on
+  // the way out so no other route inherits it. The class only ENABLES the media
+  // query in index.css; every responsive and accessibility fallback is decided
+  // there, in CSS, not here.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add(HUB_SNAP_CLASS);
+    return () => root.classList.remove(HUB_SNAP_CLASS);
+  }, []);
+
+  // ---- contextual navigation hints + the Commons' ambience override -------
+  //
+  // Deliberately NOT a wheel interceptor and NOT a snap-event listener (there
+  // isn't a cross-browser one). The page already owns two facts we can read
+  // cheaply: where the document is scrolled to, and whether it is still
+  // moving. A screen counts as SETTLED when the scroll has been quiet for
+  // `HUB_SCROLL_IDLE_MS` and that screen's top edge is parked at the top of
+  // the viewport; its hint is then offered after `HUB_HINT_DELAY_MS`, so the
+  // way onward is something the room offers a reader who has stopped to look
+  // rather than a permanent chrome element.
+  //
+  // Any scroll at all withdraws both hints on the same frame, which is what
+  // makes them read as contextual: nothing is on screen while the reader is
+  // between rooms.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const root = document.documentElement;
+    const gate = window.matchMedia(HUB_SNAP_MEDIA);
+    let idleTimer = 0;
+    let revealTimer = 0;
+    let frame = 0;
+
+    const clearTimers = () => {
+      window.clearTimeout(idleTimer);
+      window.clearTimeout(revealTimer);
+    };
+
+    const applyHint = (next: HubScreen | null) => {
+      if (settledHintRef.current === next) return;
+      settledHintRef.current = next;
+      setSettledHint(next);
+    };
+
+    /** The screen currently parked at the top of the viewport, if any. */
+    const settledScreen = (): HubScreen | null => {
+      const screens = document.querySelectorAll<HTMLElement>("[data-hub-screen]");
+      for (const el of Array.from(screens)) {
+        if (Math.abs(el.getBoundingClientRect().top) <= HUB_SETTLE_TOLERANCE_PX) {
+          return (el.dataset.hubScreen as HubScreen | undefined) ?? null;
+        }
+      }
+      return null;
+    };
+
+    /* The illustrated Commons owns the view once it holds more than half of
+       it. Ambience is faded from that point rather than from the snap, so it
+       is already gone by the time the room has arrived. */
+    const syncAmbience = () => {
+      const commons = document.querySelector<HTMLElement>('[data-hub-screen="commons"]');
+      const inRoom = !!commons && commons.getBoundingClientRect().top < window.innerHeight * 0.5;
+      root.classList.toggle(HUB_COMMONS_VIEW_CLASS, inRoom);
+    };
+
+    /* Snapping is off outside the gate and under large text, and so are the
+       delayed hints: the CSS shows both controls outright there. */
+    const armed = () => gate.matches && !root.classList.contains("large-text");
+
+    const schedule = () => {
+      clearTimers();
+      if (!armed()) {
+        applyHint(null);
+        return;
+      }
+      idleTimer = window.setTimeout(() => {
+        const screen = settledScreen();
+        if (!screen) return;
+        revealTimer = window.setTimeout(() => applyHint(screen), HUB_HINT_DELAY_MS);
+      }, HUB_SCROLL_IDLE_MS);
+    };
+
+    const onScrollOrResize = () => {
+      applyHint(null);
+      if (!frame) {
+        frame = window.requestAnimationFrame(() => {
+          frame = 0;
+          syncAmbience();
+        });
+      }
+      schedule();
+    };
+
+    syncAmbience();
+    schedule();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    gate.addEventListener?.("change", schedule);
+
+    return () => {
+      clearTimers();
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      gate.removeEventListener?.("change", schedule);
+      root.classList.remove(HUB_COMMONS_VIEW_CLASS);
+    };
+  }, []);
 
   // Funnel: landing view, once per mount.
   useEffect(() => {
@@ -508,7 +690,15 @@ export default function LolHub() {
           one full-width exception, the sign-up strip, handles its own
           clearance) — and the reclaimed room surfaces as the gap between the
           radio dock and Mogzy; see the inner container's pt/pb comment. */}
-      <section className="relative w-full md:-mt-[var(--app-header-h)] md:min-h-[100dvh] md:flex md:flex-col overflow-hidden">
+      {/* SCREEN 1 of two. `data-hub-screen` is the ONLY thing this pass added to
+          the hero: it is what the snap rule in index.css and `hubScrollTo`
+          address. Geometry, background art, books, shelves, centerpiece, radio
+          and Mogzy are all exactly as approved. */}
+      <section
+        data-hub-screen="hall"
+        data-testid="academy-hall"
+        className="relative w-full md:-mt-[var(--app-header-h)] md:min-h-[100dvh] md:flex md:flex-col overflow-hidden"
+      >
         {/* Full-bleed library background. One <picture> rather than two <img>
             elements hidden by CSS: the browser resolves the media query itself
             and fetches exactly one file, so phones never pull the desktop
@@ -703,47 +893,67 @@ export default function LolHub() {
             <AcademyBroadcastCenterpiece variant="mobile" feed={broadcastFeed} />
           </div>
         </div>
+
+        {/* THE THRESHOLD. A restrained way down to the Commons, and the reason
+            this page needs no scroll hijacking: it is a semantic button that
+            calls `scrollIntoView`, so it works from the keyboard, respects
+            reduced motion and leaves the URL alone.
+
+            Deliberately not a CTA plate — gilt small-caps over a hairline, no
+            fill, no border, sitting on the painted floor below Mogzy's
+            pedestal. It must lose every contest with the mascot and the four
+            volumes, and only be found by someone looking for a way onward.
+
+            Desktop only: the hero is 100dvh from `md` up, which is what makes a
+            bottom-anchored affordance mean anything. On phones the page is an
+            ordinary tall document and the mobile Broadcast card already sits at
+            the foot of the hero, so a "scroll down" hint there would be noise
+            over content. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 hidden justify-center md:flex">
+          <button
+            type="button"
+            onClick={() => hubScrollTo("commons")}
+            data-testid="hall-descend"
+            data-hub-hint="hall"
+            className={`academy-hall-descend academy-hub-hint pointer-events-auto group flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-[2px] px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70 ${
+              settledHint === "hall" ? "is-revealed" : ""
+            }`}
+          >
+            <span className="academy-hall-descend-rule h-px w-24" aria-hidden />
+            <span className="text-[10px] font-bold uppercase tracking-[0.34em]">
+              Explore the Academy
+            </span>
+            <ChevronDown className="academy-hall-descend-chevron h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
       </section>
 
-      {/* ================= Below the fold =================
-          The Academy commons: a quieter secondary area that the hero fades
-          INTO rather than stops at. The transition itself is owned by the
-          section above (`academy-hero-fade` ramps the painting's alpha to zero
-          over its last band, so the page background shows through and the two
-          cannot mismatch); this container's job is the breathing room on the
-          other side of the seam, hence the large top padding.
+      {/* ================= SCREEN 2 — the Academy Commons =================
+          The below-the-fold page is no longer a stack of cards under a fading
+          painting: it is a second full-viewport room, and everything about how
+          it is composed lives in AcademyCommons.
 
-          Meta Reflex used to open this area with seven duel cards. It was
-          removed from the homepage on 2026-09-04 — the feature is untouched and
-          keeps its own front doors at /league-swipe and inside Leaguecraft
-          (Quiz.tsx §2d); it simply no longer competes with the hub's own
-          navigation two screens below it.
+          THE SEAM. The hero's `academy-hero-fade` mask still ramps the
+          painting's alpha to zero over its last band, so the Hall dissolves
+          rather than stopping at a hard edge — but it now dissolves straight
+          into the Commons' own wall, which begins at the hero's last pixel.
+          The old arrangement put ~88px of empty page background between the
+          two, and that dead band is what made the lower page read as a
+          different website. There is no padding between the screens at all
+          now; the fade lands on the ceiling beam.
 
-          Order is deliberate: Premium → Community → Feedback/About → legal.
-          The legacy News & Blog grid was removed from the HOMEPAGE on
-          2026-09-04 — /blog, /blog/:slug, BlogIndex, BlogPost, BlogPostCard,
-          useBlogList and the site-wide HomeBlogStrip are all untouched. The
-          Patch Report tome in the hero already owns updates on this page, so a
-          second content feed two screens below it was the old lower page
-          talking over the new one.
+          Order is unchanged and deliberate: Premium → Community →
+          Feedback/About → legal. The legal set moved INTO the room's plinth
+          and the sitewide Footer self-hides on `/lol` (see Footer.tsx), so
+          nothing floats below the scene and no destination was lost.
 
-          Top padding is small on purpose. The fade band above ends at this
-          container's first pixel, so the old pt-10/pt-14 plus an mt-8 left 88px
-          of empty dark field at 1440 between the dissolved painting and the
-          first thing to read. The seam should read "hero fades → Premium
-          begins", so the two are now pt-4/md:pt-5 + mt-3 (28px mobile, 32px
-          desktop). The ad slot carries its OWN bottom margin instead of the
-          stack carrying it, because AdSlot renders null when suppressed — which
-          is the usual case, and always the case for a Premium member. */}
-      <div className="max-w-7xl mx-auto px-4 pt-4 pb-6 md:pt-5">
-        <AdSlot placement="lol_hub_mid" className="mb-6" />
-
-        <div className="mt-3 flex flex-col gap-4">
-          <HubPremiumPanel />
-          <HubCommunitySection />
-          <HubUtilitySection />
-        </div>
-      </div>
+          Meta Reflex and the legacy News & Blog grid were removed from this
+          area on 2026-09-04 and stay removed; their own front doors
+          (/league-swipe, /blog) are untouched. */}
+      <AcademyCommons
+        onBackToHall={() => hubScrollTo("hall")}
+        navHintRevealed={settledHint === "commons"}
+      />
     </div>
   );
 }
