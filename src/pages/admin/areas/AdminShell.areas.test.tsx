@@ -121,6 +121,9 @@ function renderAdmin(path: string) {
           <Route path="blog/:id" element={<div data-testid="stub-blog-editor" />} />
           <Route path="combat-battles" element={<div data-testid="stub-battles" />} />
           <Route path="legacy-dashboard" element={<div data-testid="stub-legacy" />} />
+          {/* ADMIN1A registered /admin/users, which was a live master-gated
+              route the registry had never listed — so the rail went blank on it. */}
+          <Route path="users" element={<div data-testid="stub-user-directory" />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -187,6 +190,7 @@ describe("1 · every top-level area renders", () => {
       ["/admin/blog/abc-123", "studio"],
       ["/admin/combat-battles", "simulation"],
       ["/admin/legacy-dashboard", "overview"],
+      ["/admin/users", "people"],
     ];
     for (const [path, areaId] of owned) {
       cleanup();

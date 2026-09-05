@@ -390,9 +390,9 @@ export const ADMIN_TOOLS: AdminTool[] = [
   // =========================================================================
   {
     id: "people-users",
-    title: "Users",
+    title: "User Accounts",
     description:
-      "Account inspection, profile detail, admin notes, per-user feedback, and the Account Actions menu. Admin Users Phase 1, unchanged.",
+      "The account management surface: email, profile detail, admin notes, per-user feedback, the Premium / Entitlement section, and the Account Actions menu.",
     area: "people",
     section: "users",
     kind: "panel",
@@ -421,6 +421,26 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization: "AdminRoute (admin, master_admin) — unchanged.",
     notes:
       'Merged under Users as a secondary view rather than a peer tab. Ends the "Directory" naming collision with the tool index.',
+  },
+  {
+    id: "people-user-directory",
+    title: "User Directory (identity)",
+    description:
+      "Master-admin directory of accounts: newest first, filters (including Premium and Discord contact consent), verified Discord/Riot identities, and Add to My Friends. Observation and friend linking only — no email, no entitlement control, no deletion.",
+    area: "people",
+    section: "users",
+    kind: "route",
+    path: "/admin/users",
+    oldLocation: "ADM2 /admin/users — a live route that this registry never listed",
+    disposition: "KEEP",
+    dangerLevel: "caution",
+    warning: "Add to My Friends writes a real accepted friendship on your own profile.",
+    status: "Production",
+    requiredRole: "master_admin",
+    authorization:
+      "AdminRoute roles={[\"master_admin\"]} + AdminAuthGate + admin_list_profiles / admin_list_identity_links RLS — unchanged by ADMIN1A, which only registered the path.",
+    notes:
+      "ADMIN1A registered it so the shell can highlight People and All Tools can list it. It remains a SECOND directory alongside User Accounts; consolidating the two is ADMIN1B.",
   },
   {
     id: "people-invites",

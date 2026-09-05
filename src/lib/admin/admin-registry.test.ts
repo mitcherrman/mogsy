@@ -234,3 +234,45 @@ describe("admin registry — helpers", () => {
     expect(searchAdminTools("zzzz-no-such-tool").length).toBe(0);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// ADMIN1A — /admin/users registration.
+//
+// The route was live and master-gated but absent from this registry entirely
+// (it survived only in the superseded admin-directory). Consequence: it did not
+// appear in All Tools, and because the shell resolves the active area from
+// registry tool paths, visiting it highlighted no area at all.
+// ---------------------------------------------------------------------------
+
+describe("the master-admin user directory is a registered destination", () => {
+  const tool = ADMIN_TOOLS.find((t) => t.path === "/admin/users");
+
+  it("is registered under People › Users as a route", () => {
+    expect(tool, "/admin/users is not in ADMIN_TOOLS").toBeTruthy();
+    expect(tool!.area).toBe("people");
+    expect(tool!.section).toBe("users");
+    expect(tool!.kind).toBe("route");
+  });
+
+  it("records the master-admin gate it already enforces, without changing it", () => {
+    // Descriptive only — AdminRoute roles={["master_admin"]} is the real gate.
+    expect(tool!.requiredRole).toBe("master_admin");
+    expect(tool!.authorization).toMatch(/master_admin/);
+  });
+
+  it("is searchable in All Tools", () => {
+    const hits = searchAdminTools("user directory").map((t) => t.id);
+    expect(hits).toContain(tool!.id);
+  });
+
+  it("does not duplicate the account-management surface", () => {
+    // Two distinct destinations with two distinct purposes. Consolidating them
+    // is ADMIN1B; making them tellable apart is ADMIN1A.
+    const accounts = ADMIN_TOOLS.filter((t) => t.path === "/admin/people?section=users");
+    expect(accounts.length).toBeGreaterThan(0);
+    expect(ADMIN_TOOLS.filter((t) => t.path === "/admin/users")).toHaveLength(1);
+    const titles = new Set([tool!.title, ...accounts.map((t) => t.title)]);
+    expect(titles.size).toBe(1 + accounts.length);
+  });
+});

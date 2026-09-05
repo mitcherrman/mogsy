@@ -1,7 +1,12 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { isEffectivePro, describeProSource } from "@/lib/pro/entitlement";
+import {
+  isEffectivePro,
+  describePremiumProvenance,
+  describeGrant,
+  formatGrantExpiry,
+} from "@/lib/pro/entitlement";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,6 +45,7 @@ interface Profile {
   pro_grant_expires_at: string | null;
   pro_grant_reason: string | null;
   pro_grant_granted_at: string | null;
+  pro_grant_granted_by: string | null;
   is_bot: boolean | null;
   is_anonymous: boolean | null;
   diamonds: number | null;
@@ -170,7 +176,19 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   // Only show user/compete leagues for the "Add to league" dropdown
   const userLeagues = useMemo(() => allLeagues.filter(l => l.type === "user"), [allLeagues]);
 
-  const fetchProfiles = useCallback(async () => {
+  /**
+   * ADMIN1A — resolved Premium provenance for the selected account.
+   *
+   * `stripeVerified` is deliberately NOT passed: `check-subscription` is
+   * self-scoped, so an admin holds no Stripe evidence about another account.
+   * A bare `is_pro = true` therefore resolves to "Legacy Premium", which is the
+   * honest reading — Admin must never assert a subscription it cannot see.
+   */
+  const premium = useMemo(() => describePremiumProvenance(selectedUser), [selectedUser]);
+
+  // Returns the enriched rows so a mutation can re-read its subject from the
+  // server rather than optimistically patching what it hoped it wrote.
+  const fetchProfiles = useCallback(async (): Promise<Profile[] | null> => {
     setLoading(true);
     setProfilesError(false);
     const [profilesResult, notesResult] = await Promise.all([
@@ -190,7 +208,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       setProfiles([]);
       setProfilesError(true);
       setLoading(false);
-      return;
+      return null;
     }
     if (notesError) setProfilesError(true);
     const notesMap = new Map((notesData || []).map((n: any) => [n.profile_id, n.notes]));
@@ -227,6 +245,7 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       }
       setUserRoles(map);
     }
+    return enriched as Profile[];
   }, []);
 
   useEffect(() => {
@@ -485,7 +504,30 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
   const [grantDays, setGrantDays] = useState("");
   const [grantReason, setGrantReason] = useState("");
   const [grantSaving, setGrantSaving] = useState(false);
+  // The last grant failure, shown in the panel itself. A toast is dismissible
+  // and transient; a failed entitlement write must stay visible next to the
+  // control that produced it.
+  const [grantError, setGrantError] = useState<string | null>(null);
+  /** The absolute date the typed "expires in N days" resolves to. */
+  const resolvedExpiryLabel = useMemo(() => {
+    const raw = grantDays.trim();
+    if (raw === "") return "Never expires";
+    const days = Number(raw);
+    if (!Number.isFinite(days) || days <= 0) return "Enter a positive number of days";
+    return `Expires ${formatGrantExpiry(new Date(Date.now() + days * 86400000).toISOString())}`;
+  }, [grantDays]);
 
+  /**
+   * ADMIN1A — write, then RE-READ the account from the server.
+   *
+   * The previous version optimistically patched `selectedUser` with what it
+   * had asked for. That is exactly how COMBAT1 went wrong: the owner clicked
+   * Grant Premium on an account that was already legacy `is_pro = true`, the
+   * screen still said Premium, and nothing revealed that `pro_grant_kind` was
+   * still null. Success is now proved by canonical server state — and if the
+   * server did not come back holding the kind that was requested, that is
+   * reported as a failure, not painted as a success.
+   */
   const setProGrant = async (kind: string | null) => {
     if (!selectedUser) return;
     const days = grantDays.trim() === "" ? null : Number(grantDays);
@@ -494,24 +536,42 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       return;
     }
     setGrantSaving(true);
+    setGrantError(null);
     const { error } = await (supabase as any).rpc("admin_set_pro_grant", {
       _user_id: selectedUser.user_id,
       _kind: kind,
       _expires_at: days === null ? null : new Date(Date.now() + days * 86400000).toISOString(),
       _reason: kind === null ? null : (grantReason.trim() || null),
     });
+    if (error) {
+      setGrantSaving(false);
+      const message = error.message || "Failed to update Premium grant";
+      setGrantError(message);
+      toast.error(message);
+      return;
+    }
+
+    // Canonical re-read. Nothing about the selected user is patched locally.
+    const rows = await fetchProfiles();
     setGrantSaving(false);
-    if (error) { toast.error(error.message || "Failed to update Premium grant"); return; }
-    toast.success(kind === null ? "Premium grant revoked" : "Premium grant saved");
-    setSelectedUser({
-      ...selectedUser,
-      pro_grant_kind: kind,
-      pro_grant_expires_at: kind === null || days === null
-        ? null
-        : new Date(Date.now() + days * 86400000).toISOString(),
-      pro_grant_reason: kind === null ? null : (grantReason.trim() || null),
-    });
-    fetchProfiles();
+    const fresh = rows?.find((p) => p.id === selectedUser.id) ?? null;
+    if (!fresh) {
+      const message =
+        "The grant was written, but this account could not be re-read to confirm it. Refresh before relying on it.";
+      setGrantError(message);
+      toast.error(message);
+      return;
+    }
+    setSelectedUser(fresh);
+    if ((fresh.pro_grant_kind ?? null) !== kind) {
+      const message = kind === null
+        ? `Revoke did not take effect — the grant is still ${fresh.pro_grant_kind}.`
+        : `The server did not record a ${kind} grant (grant kind is now ${fresh.pro_grant_kind ?? "none"}).`;
+      setGrantError(message);
+      toast.error(message);
+      return;
+    }
+    toast.success(kind === null ? "Premium grant revoked" : `Premium grant saved — source is now ${kind}`);
   };
 
   const saveUser = async () => {
@@ -780,7 +840,11 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
             {isSelectedAdmin && <Badge variant="secondary"><Shield className="h-3 w-3 mr-1" /> Admin</Badge>}
             {isSelectedMod && <Badge variant="secondary" className="bg-blue-500/10 text-blue-500 border-blue-500/30"><ShieldCheck className="h-3 w-3 mr-1" /> Mod</Badge>}
             {isSelectedDemo && <Badge variant="secondary" className="bg-accent/20 text-accent-foreground border-accent/30"><Film className="h-3 w-3 mr-1" /> Demo</Badge>}
-            {isEffectivePro(selectedUser) && <Badge variant="secondary"><Crown className="h-3 w-3 mr-1" /> Premium</Badge>}
+            {premium.effectivePremium && (
+              <Badge variant="secondary" data-testid="detail-premium-badge" data-premium-source={premium.source}>
+                <Crown className="h-3 w-3 mr-1" /> Premium · {premium.sourceLabel}
+              </Badge>
+            )}
             {selectedUser.is_anonymous && <Badge variant="outline" className="text-muted-foreground"><User className="h-3 w-3 mr-1" /> Anonymous</Badge>}
             {selectedUser.is_flagged_underage && <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" /> Underage</Badge>}
           </div>
@@ -819,7 +883,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                 <p><span className="text-muted-foreground">Created:</span> {formatDate(selectedUser.created_at)}</p>
                 <p><span className="text-muted-foreground">Last seen:</span> {formatDate(selectedUser.last_seen_at)}</p>
                 <p><span className="text-muted-foreground">Type:</span> {selectedUser.is_bot ? "Bot" : selectedUser.is_anonymous ? "Anonymous" : "Standard"}</p>
-                <p><span className="text-muted-foreground">Premium:</span> {isEffectivePro(selectedUser) ? "Yes" : "No"} <span className="text-muted-foreground">({describeProSource(selectedUser)})</span></p>
+                <p data-testid="overview-premium">
+                  <span className="text-muted-foreground">Premium:</span> {premium.effectivePremium ? "Yes" : "No"}
+                  {" "}<span className="text-muted-foreground">· Source:</span>{" "}
+                  <span data-premium-source={premium.source}>{premium.sourceLabel}</span>
+                  {premium.grant.present && (
+                    <span className="text-muted-foreground"> ({describeGrant(premium.grant)})</span>
+                  )}
+                </p>
                 <p><span className="text-muted-foreground">Roles:</span> {selectedRoles.length ? selectedRoles.join(", ") : "User"}</p>
               </div>
             </div>
@@ -862,6 +933,143 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
               </div>
             )}
 
+            {/* ---------------------------------------------------------------
+                ADMIN1A — Premium / Entitlement.
+
+                Top level, outside the "Account Actions" collapsible, with no
+                unrelated field in the same container. Entitlement semantics are
+                unchanged: this consumes `admin_set_pro_grant` and the PT1.4
+                composition rule exactly as they are.
+
+                The two sources are rendered as INDEPENDENT rows plus a resolved
+                verdict, never as one badge, so an empty grant row is visible AS
+                empty. That is the structural fix for the COMBAT1 misread.
+            --------------------------------------------------------------- */}
+            <section
+              data-testid="premium-entitlement-section"
+              className="rounded-xl border border-primary/30 bg-card p-4 space-y-3"
+            >
+              <div className="flex items-center gap-2">
+                <Crown className="h-4 w-4 text-primary" />
+                <h4 className="font-bold text-sm text-foreground">Premium / Entitlement</h4>
+              </div>
+
+              <div className="flex items-baseline gap-2">
+                <span className="text-xs text-muted-foreground">Effective Premium</span>
+                <strong data-testid="effective-premium" className="text-sm">
+                  {premium.effectivePremium ? "YES" : "NO"}
+                </strong>
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="text-xs text-muted-foreground">Source</span>
+                <strong data-testid="premium-source" data-premium-source={premium.source} className="text-sm">
+                  {premium.sourceLabel}
+                </strong>
+              </div>
+
+              <dl className="space-y-1.5 text-xs">
+                <div className="flex flex-wrap gap-x-2 rounded-md bg-secondary/40 px-2 py-1.5">
+                  <dt className="text-muted-foreground w-40">Stripe subscription</dt>
+                  <dd data-testid="premium-stripe-row" className="font-medium">
+                    {premium.stripe.label}
+                    <span className="ml-1 font-normal text-muted-foreground">
+                      (managed by Stripe — not editable here)
+                    </span>
+                  </dd>
+                </div>
+                <div className="flex flex-wrap gap-x-2 rounded-md bg-secondary/40 px-2 py-1.5">
+                  <dt className="text-muted-foreground w-40">Admin grant</dt>
+                  <dd data-testid="premium-grant-row" className="font-medium">
+                    {premium.grant.present ? (
+                      <>
+                        {describeGrant(premium.grant)}
+                        {premium.grant.reason && (
+                          <span className="font-normal"> · “{premium.grant.reason}”</span>
+                        )}
+                        {(premium.grant.grantedBy || premium.grant.grantedAt) && (
+                          <span className="block font-normal text-muted-foreground">
+                            granted by {premium.grant.grantedBy || "unknown"}
+                            {premium.grant.grantedAt
+                              ? ` · ${new Date(premium.grant.grantedAt).toLocaleString()}`
+                              : ""}
+                          </span>
+                        )}
+                        {premium.grant.kind === "gift" && (
+                          <span className="block font-normal text-muted-foreground">
+                            Written by redeem-gift. Not editable here.
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">None — no grant on this account</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+
+              {premium.caution && (
+                <p
+                  role="note"
+                  data-testid="premium-legacy-caution"
+                  className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-2 text-[11px] text-amber-600 dark:text-amber-400"
+                >
+                  <AlertTriangle className="mr-1 inline h-3 w-3" />
+                  {premium.caution}
+                </p>
+              )}
+
+              {grantError && (
+                <p role="alert" data-testid="premium-grant-error" className="rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+                  {grantError}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Grant kind</Label>
+                  <Select value={grantKind} onValueChange={setGrantKind}>
+                    <SelectTrigger className="w-36" aria-label="Grant kind"><SelectValue /></SelectTrigger>
+                    <SelectContent>{["playtest", "manual", "promo"].map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Expires in (days, blank = never)</Label>
+                  <Input className="w-44" value={grantDays} placeholder="e.g. 90" onChange={(e) => setGrantDays(e.target.value)} />
+                  <p data-testid="premium-grant-expiry-preview" className="text-[10px] text-muted-foreground">{resolvedExpiryLabel}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px]">Reason</Label>
+                  <Input className="w-56" value={grantReason} placeholder="Founding playtester" onChange={(e) => setGrantReason(e.target.value)} />
+                </div>
+                <Button size="sm" data-testid="premium-grant-submit" disabled={grantSaving} onClick={() => setProGrant(grantKind)}>
+                  {grantSaving ? "Saving…" : selectedUser.pro_grant_kind ? "Update grant" : "Grant Premium"}
+                </Button>
+                {selectedUser.pro_grant_kind && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="destructive" data-testid="premium-grant-revoke" disabled={grantSaving}>
+                        Revoke grant
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Revoke the admin grant?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This clears the grant columns only. It does not touch Stripe.
+                          {premium.stripe.flagged
+                            ? " This account also carries a Stripe-derived is_pro flag, so it stays Premium after the revoke."
+                            : ""}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction data-testid="premium-grant-revoke-confirm" onClick={() => setProGrant(null)}>Revoke grant</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </section>
+
             {/* Account-changing controls remain on this page, but are closed by default. */}
             <Collapsible open={accountActionsOpen} onOpenChange={setAccountActionsOpen}>
               <CollapsibleTrigger asChild>
@@ -899,42 +1107,8 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   <Button onClick={saveUser} disabled={saving || !hasChanges} size="sm">{saving ? "Saving…" : "Save Profile Changes"}</Button>
                 </div>
 
-                {/* PT1.4 — manual / playtester Premium grant. Independent of Stripe:
-                    granting here never touches a subscription, and Stripe sync
-                    never revokes what is granted here. */}
-                <div className="space-y-2 border-t border-border pt-3">
-                  <h5 className="text-xs font-bold">Premium entitlement</h5>
-                  <p className="text-[11px] text-muted-foreground">
-                    Stripe subscription: <strong>{selectedUser.is_pro ? "active" : "none"}</strong> (managed by Stripe, not editable here).
-                    {" "}Effective Premium: <strong>{isEffectivePro(selectedUser) ? "yes" : "no"}</strong> — {describeProSource(selectedUser)}.
-                  </p>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Grant kind</Label>
-                      <Select value={grantKind} onValueChange={setGrantKind}>
-                        <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                        <SelectContent>{["playtest", "manual", "promo"].map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Expires in (days, blank = never)</Label>
-                      <Input className="w-44" value={grantDays} placeholder="e.g. 90" onChange={(e) => setGrantDays(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px]">Reason</Label>
-                      <Input className="w-56" value={grantReason} placeholder="Founding playtester" onChange={(e) => setGrantReason(e.target.value)} />
-                    </div>
-                    <Button size="sm" disabled={grantSaving} onClick={() => setProGrant(grantKind)}>
-                      {grantSaving ? "Saving…" : selectedUser.pro_grant_kind ? "Update grant" : "Grant Premium"}
-                    </Button>
-                    {selectedUser.pro_grant_kind && (
-                      <Button size="sm" variant="destructive" disabled={grantSaving} onClick={() => setProGrant(null)}>
-                        Revoke grant
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
+                {/* ADMIN1A: the Premium grant no longer lives in this legacy economy
+                    editor. It has its own section above, outside this collapsible. */}
                 {isMasterAdmin && !isSelectedMaster && (
                   <div className="space-y-2 border-t border-border pt-3">
                     <h5 className="text-xs font-bold">Role and access changes</h5>
@@ -1549,7 +1723,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {isEffectivePro(p) && <Crown className="h-4 w-4 text-primary" />}
+                  {isEffectivePro(p) && (
+                    <Crown
+                      className="h-4 w-4 text-primary"
+                      aria-label={`Premium — ${describePremiumProvenance(p).sourceLabel}`}
+                    >
+                      <title>{`Premium — ${describePremiumProvenance(p).sourceLabel}`}</title>
+                    </Crown>
+                  )}
                   <Diamond className="h-3 w-3 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">{p.diamonds ?? 0}</span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
