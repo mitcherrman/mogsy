@@ -956,7 +956,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     id: "team-sim",
     title: "Team Simulator",
     description:
-      "The SIM2 team-combat editor. Always-registered internal alias; the public route is flag-gated.",
+      "The SIM2 team-combat editor. Development-only internal alias; the public route is flag-gated.",
     area: "simulation",
     section: "team-sim",
     kind: "route",
@@ -965,11 +965,11 @@ export const ADMIN_TOOLS: AdminTool[] = [
     disposition: "MOVE",
     legacyRoutes: ["/dev/combat-lab/team-sim"],
     dangerLevel: "caution",
-    warning: "Runs real simulations; the backend requires a verified account and may spend credits.",
+    warning: "Runs real simulations; the backend requires a verified Premium account and may spend credits.",
     status: "Internal",
     authorization:
-      "UNCHANGED — no route gate; the BACKEND requires a verified account. Feature-preview access is unchanged.",
-    notes: "Gains its first navigation entry. Same lazy module as the flag-gated public route.",
+      "COMBAT1 — the /dev alias is registered only in development builds and 404s in production; the public route stays flag-gated. The BACKEND is authoritative: verified account, then operational readiness, then Mogzy Premium.",
+    notes: "Same lazy module as the flag-gated public route. In production the public route is the only path.",
   },
   {
     id: "team-sim-health",

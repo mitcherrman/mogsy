@@ -24,6 +24,7 @@ import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
 import TeamSimErrorBoundary from "@/components/combat-lab/TeamSimErrorBoundary";
 import {
+  isTeamSimDevRouteEnabled,
   isTeamSimPublicRouteEnabled,
   TEAM_SIM_DEV_ROUTE,
   TEAM_SIM_ROUTE,
@@ -599,10 +600,21 @@ const App = () => (
                   <Route path="/dev/graph1" element={<Suspense fallback={<RouteFallback />}><Graph1RacePage /></Suspense>} />
                   <Route path="/dev/mechanics/xp" element={<Suspense fallback={<RouteFallback />}><MechanicsXpPage /></Suspense>} />
                   {/* The internal alias. Same element as the promoted route,
-                      always registered, never linked from navigation — this is
-                      how the feature stays reachable for internal work while
-                      the public flag is off. */}
-                  <Route path={TEAM_SIM_DEV_ROUTE} element={teamSimElement} />
+                      never linked from navigation — this is how the feature
+                      stays reachable for internal work while the public flag
+                      is off.
+
+                      COMBAT1 made it DEVELOPMENT-ONLY. It used to be
+                      unconditional, which meant production shipped a second,
+                      unflagged path to the billable team simulator that any
+                      anonymous visitor could reach directly — a bypass around
+                      the controlled promotion the public flag performs.
+                      `import.meta.env.DEV` is the literal `false` in a
+                      production build, so this whole branch is
+                      dead-code-eliminated there and the path 404s. */}
+                  {isTeamSimDevRouteEnabled() ? (
+                    <Route path={TEAM_SIM_DEV_ROUTE} element={teamSimElement} />
+                  ) : null}
                   <Route path={LEGACY_ESPORTS_LIVE_ROUTE} element={<Navigate to={PRO_PLAY_LIVE_ROUTE} replace />} />
                   <Route path="/quiz/mastery" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneysPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/mastery/:masterySetId" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryJourneyPlayerPage /></Suspense></ProtectedRoute>} />

@@ -69,11 +69,51 @@ describe("team-sim route map", () => {
     );
   });
 
-  it("keeps the internal alias unconditional and unflagged", () => {
+  it("registers the internal alias only in development builds", () => {
+    // COMBAT1. The alias used to be UNCONDITIONAL, and COMBAT0 measured what
+    // that meant in production: /combat-lab/team-sim 404s with the public flag
+    // off while /dev/combat-lab/team-sim rendered the whole 5v5 editor to any
+    // anonymous visitor, with an enabled Run button. Harmless only because the
+    // backend refused every execution — and about to stop being harmless the
+    // moment TEAM_SIM_ENABLED is turned on.
+    //
+    // `import.meta.env.DEV` is the literal `false` in a production build, so
+    // this branch is dead-code-eliminated there and the path 404s. Asserted on
+    // the ROUTE MAP rather than on a rendered app, because the guarantee is a
+    // property of what gets registered.
     const alias = appCode.match(
       /<Route path=\{TEAM_SIM_DEV_ROUTE\} element=\{teamSimElement\} \/>/g
     );
     expect(alias).toHaveLength(1);
+    expect(appCode).toMatch(
+      /isTeamSimDevRouteEnabled\(\)\s*\?\s*\(\s*<Route path=\{TEAM_SIM_DEV_ROUTE\}/
+    );
+  });
+
+  it("leaves production with no unconditional team-sim route at all", () => {
+    // Both paths must sit behind a gate. Stated as one assertion because the
+    // hole COMBAT0 found was exactly "one of the two forgot".
+    for (const constant of ["TEAM_SIM_ROUTE", "TEAM_SIM_DEV_ROUTE"]) {
+      const declaration = new RegExp(
+        `(isTeamSimPublicRouteEnabled|isTeamSimDevRouteEnabled)\\(\\)\\s*\\?\\s*\\(\\s*<Route path=\\{${constant}\\}`
+      );
+      expect(appCode, `${constant} must be registered behind a gate`).toMatch(
+        declaration
+      );
+    }
+  });
+
+  it("gates the dev alias on the build mode, not on the public flag", () => {
+    // Two independent switches, deliberately. Tying the alias to
+    // VITE_TEAM_SIM_ENABLED would mean turning the public feature ON also
+    // re-opened the unflagged bypass — the opposite of what COMBAT1 closes.
+    const gate = readFileSync(
+      resolve(process.cwd(), "src/lib/combat-lab/team-sim/featureGate.ts"),
+      "utf8"
+    );
+    const fn = gate.slice(gate.indexOf("export function isTeamSimDevRouteEnabled"));
+    expect(fn).toMatch(/import\.meta\.env\?\.DEV === true/);
+    expect(fn).not.toMatch(/VITE_TEAM_SIM_ENABLED/);
   });
 
   it("leaves the production Combat Lab routes exactly as they were", () => {

@@ -31,6 +31,21 @@ export type TeamSimErrorKind =
   | "auth_required"
   | "account_required"
   | "insufficient_credits"
+  /**
+   * COMBAT1: a verified account without Mogzy Premium. Shares status 402 with
+   * `insufficient_credits` and is told apart by the backend's stable code,
+   * because the two need opposite UI: one is "upgrade", the other is "wait
+   * until tomorrow". A proven refusal — the gate runs before the body is read,
+   * before pricing, before the credit gate and before any ledger reservation.
+   */
+  | "premium_required"
+  /**
+   * COMBAT1: the Premium entitlement authority could not be reached. Its own
+   * kind, deliberately NOT `premium_required`: showing a paying subscriber an
+   * upsell for something they already own is worse than showing an outage. A
+   * proven refusal, like the other endpoint-owned 503 codes.
+   */
+  | "entitlement_unavailable"
   | "request_too_large"
   | "invalid_request"
   | "rate_limited"
@@ -83,6 +98,12 @@ const KIND_BY_CODE: Record<number, Record<string, TeamSimErrorKind>> = {
     idempotency_key_required: "idempotency_key_rejected",
     idempotency_key_invalid: "idempotency_key_rejected",
   },
+  // COMBAT1. 402 defaults to `insufficient_credits` by status, so this entry
+  // is what keeps a Premium refusal from being rendered as an empty daily
+  // balance — and from offering a "come back tomorrow" that would never help.
+  402: {
+    premium_required: "premium_required",
+  },
   // Phase 4E. A 404 on the recovery endpoint is the ONE answer it gives for
   // "unknown, not yours, malformed, or expired" — the client must not try to
   // tell those apart either, so there is a single kind for all of them.
@@ -108,6 +129,10 @@ const KIND_BY_CODE: Record<number, Record<string, TeamSimErrorKind>> = {
     // will change the answer until the deployment is reconfigured, so "retry
     // shortly" would be wrong.
     team_simulation_unavailable: "feature_unavailable",
+    // COMBAT1. An entitlement OUTAGE, which is neither a paywall nor a
+    // deployment being switched off: waiting genuinely may help here, and it
+    // must never render as an upsell.
+    entitlement_unavailable: "entitlement_unavailable",
   },
 };
 
@@ -128,6 +153,14 @@ const KIND_BY_CODE: Record<number, Record<string, TeamSimErrorKind>> = {
 const PROVEN_REFUSAL_CODES: ReadonlySet<string> = new Set([
   "idempotency_unavailable",
   "team_simulation_unavailable",
+  // COMBAT1. The entitlement gate is a dependency that runs before the body is
+  // read, before pricing, before the credit gate and before any reservation —
+  // the same position the Phase 5A gate holds — so a refusal from it proves
+  // nothing ran and nothing was charged. Without this entry it would inherit
+  // the 5xx default of certainty "unknown" and the UI would warn about an
+  // uncertain charge, and offer a recovery control, for a request the backend
+  // can prove never started.
+  "entitlement_unavailable",
 ]);
 
 /** Anything the API layer throws for a failed simulation or catalog call. */
@@ -209,10 +242,22 @@ export function normalizeErrorBody(body: unknown): {
 }
 
 const DEFAULT_MESSAGE: Record<TeamSimErrorKind, string> = {
+  // NOTE: these two are fallbacks only. The backend sends its own message for
+  // 401/403, and `errorFromResponse` prefers it — so the sentence that names
+  // BOTH gates for a signed-out visitor lives in the UI (see
+  // PREMIUM_SIGN_IN_HINT and FailureNotice), not here, where a server-supplied
+  // message would silently replace it.
   auth_required: "Sign in with a verified account to run team simulations.",
   account_required:
     "A signed-in account is required — guest and anonymous sessions cannot run team simulations.",
   insufficient_credits: "You have no Combat Lab credits left today.",
+  // States the charge outcome, which this kind is entitled to do because the
+  // refusal precedes every step that could spend a credit — and points at what
+  // Free still has, so the message is not a dead end.
+  premium_required:
+    "Team Combat is a Mogzy Premium feature. Nothing ran and nothing was charged. The 1v1 Combat Lab stays free and unlimited.",
+  entitlement_unavailable:
+    "Your Mogzy Premium membership could not be confirmed right now. Nothing ran and nothing was charged — this is a temporary problem checking your membership, not a change to it.",
   request_too_large: "The scenario is too large for this endpoint.",
   invalid_request: "The scenario was rejected before the simulation ran.",
   rate_limited: "Too many team simulations. Wait a moment before running another.",
@@ -449,3 +494,60 @@ export const SERVER_RECOVERY_STALE_HINT =
   "This one never finished and was not charged. Run the scenario again to produce a result.";
 export const SERVER_RECOVERY_PENDING_HINT =
   "Still running on the server. Checking never starts a second simulation.";
+
+
+/* ─────────────────────── COMBAT1 Premium surface ─────────────────────── */
+
+/**
+ * Where a Premium refusal sends the user.
+ *
+ * Read from the shared route constant rather than written out, so the page
+ * cannot drift from the rest of the app — and so the `/pro` spelling, which is
+ * the Pro Play esports family and NOT the subscription, can never appear here.
+ * The backend also returns this path as `detail.upgrade_path`; the client
+ * prefers its own constant and treats the server field as corroboration, so a
+ * response cannot redirect a user somewhere the app did not choose.
+ */
+export { PREMIUM_ROUTE } from "@/lib/premium-routes";
+
+export const PREMIUM_REQUIRED_TITLE = "Mogzy Premium required";
+export const PREMIUM_REQUIRED_CTA_LABEL = "See Mogzy Premium";
+
+/**
+ * The one sentence that says what Free still gets. It is here because the
+ * worst version of a paywall is one that reads as a capability being taken
+ * away: unlimited 1v1 is a COMBAT1 product contract, not a consolation.
+ */
+export const PREMIUM_REQUIRED_FREE_NOTE =
+  "The 1v1 Combat Lab is free and unlimited — Team Combat (2v2 through 5v5, and every shape on this page) is the Premium capability.";
+
+/**
+ * Shown alongside a 401/403, so a signed-out visitor learns about BOTH gates at
+ * once instead of signing in, running again, and only then meeting a second
+ * requirement. The backend still enforces them in order (identity, then
+ * Premium); the copy states both because the user's next action depends on
+ * both.
+ *
+ * It lives here rather than in DEFAULT_MESSAGE because the backend sends its
+ * own message for those statuses and `errorFromResponse` prefers it — a
+ * fallback would be silently replaced in exactly the case that matters.
+ */
+export const PREMIUM_SIGN_IN_HINT =
+  "Team Combat runs against your account and is a Mogzy Premium feature, so sign in with a real account first. The 1v1 Combat Lab is free and unlimited without signing in.";
+
+/** The kinds PREMIUM_SIGN_IN_HINT belongs to. */
+export function needsAccountBeforePremium(error: TeamSimError | null): boolean {
+  return error?.kind === "auth_required" || error?.kind === "account_required";
+}
+
+/**
+ * Whether this failure should offer the Premium call to action.
+ *
+ * Exactly one kind qualifies. An operationally unavailable service must NEVER
+ * be turned into an upsell (COMBAT1 Part E): the user cannot buy their way
+ * past a closed deployment, and charging someone for a feature that is switched
+ * off would be the worst outcome this page can produce.
+ */
+export function isPremiumRequired(error: TeamSimError | null): boolean {
+  return error?.kind === "premium_required";
+}

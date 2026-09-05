@@ -848,7 +848,13 @@ export default function CombatLab() {
             className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary transition-colors hover:border-primary hover:bg-primary/20"
           >
             <Users className="h-3.5 w-3.5" aria-hidden="true" />
-            Team simulator (1v1–2v2)
+            {/* COMBAT1: the label states the shape range the endpoint actually
+                supports (it has been 1v1–5v5 since Phase 6B) and that Team
+                Combat is Premium, so a Free user learns that HERE rather than
+                by composing a ten-slot scenario and being refused at submit.
+                The link stays open to everyone: the surface is browsable, the
+                backend is authoritative. */}
+            Team Combat (up to 5v5) · Premium
           </Link>
         )}
         {/* Remaining simulations, hard right on desktop. `basis-full` keeps it

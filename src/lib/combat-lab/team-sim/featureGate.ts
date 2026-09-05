@@ -53,10 +53,44 @@ export function isTeamSimPublicRouteEnabled(): boolean {
 export const TEAM_SIM_ROUTE = "/combat-lab/team-sim";
 
 /**
- * The internal path, kept for this phase. Same component, same module — an
- * alias, not a copy — so the two surfaces cannot drift apart.
+ * The internal path. Same component, same module — an alias, not a copy — so
+ * the two surfaces cannot drift apart.
  */
 export const TEAM_SIM_DEV_ROUTE = "/dev/combat-lab/team-sim";
+
+/**
+ * COMBAT1: whether the internal `/dev` alias is registered at all.
+ *
+ * Until COMBAT1 this route was UNCONDITIONAL, and COMBAT0 measured the
+ * consequence in production: with `VITE_TEAM_SIM_ENABLED` absent, the promoted
+ * `/combat-lab/team-sim` path 404s while `/dev/combat-lab/team-sim` rendered
+ * the complete 5v5 editor to any anonymous visitor, with a live catalog and an
+ * enabled Run button. That was harmless only because the BACKEND refused every
+ * execution. The moment `TEAM_SIM_ENABLED` is turned on it would have become a
+ * live, billable, Premium-intended feature reachable without the public flag,
+ * without navigation, and outside the controlled promotion the public flag
+ * exists to perform.
+ *
+ * The fix is the smallest one that closes it without a second implementation
+ * or a new auth framework: the alias is a DEVELOPMENT convenience, so it is
+ * registered only in development builds. Vite replaces `import.meta.env.DEV`
+ * with the literal `false` in any production build, so the route is
+ * dead-code-eliminated there and the path 404s like any other unknown route.
+ * Locally (`vite dev`) nothing changes at all.
+ *
+ * This is a *route-topology* decision, not a security boundary — the backend
+ * gates (operational readiness, verified account, Premium entitlement) are what
+ * protect the money, exactly as documented above. What this removes is the
+ * unconditional BYPASS: in production there is now one team-sim path, and it is
+ * the flag-controlled public one.
+ *
+ * The optional chain matches `isTeamSimPublicRouteEnabled` above: the Remotion
+ * export bundle has no `import.meta.env`, and reading through it unguarded
+ * throws there.
+ */
+export function isTeamSimDevRouteEnabled(): boolean {
+  return import.meta.env?.DEV === true;
+}
 
 /** Where the feature's own back-link and its error fallback return to. */
 export const COMBAT_LAB_ROUTE = "/combat-lab";

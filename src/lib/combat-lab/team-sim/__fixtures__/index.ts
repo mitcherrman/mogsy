@@ -20,6 +20,7 @@ import catalogJson from "./catalog.json";
 import catalogMeta from "./catalog.meta.json";
 import err401Meta from "./err_401_auth_required.meta.json";
 import err402Meta from "./err_402_insufficient_credits.meta.json";
+import err402PremiumMeta from "./err_402_premium_required.meta.json";
 import err403Meta from "./err_403_account_required.meta.json";
 import err413Meta from "./err_413_request_too_large.meta.json";
 import err422ItemMeta from "./err_422_unsupported_item.meta.json";
@@ -32,6 +33,7 @@ import err409ConflictMeta from "./err_409_idempotency_conflict.meta.json";
 import err409InProgressMeta from "./err_409_idempotency_in_progress.meta.json";
 import err503Meta from "./err_503_idempotency_unavailable.meta.json";
 import err503UnreadableMeta from "./err_503_idempotency_result_unreadable.meta.json";
+import err503EntitlementMeta from "./err_503_entitlement_unavailable.meta.json";
 import sim1v1 from "./sim_1v1.json";
 import sim1v1Request from "./sim_1v1.request.json";
 import sim1v2 from "./sim_1v2.json";
@@ -52,6 +54,7 @@ import sim5v5Request from "./sim_5v5.request.json";
 import simActionFailed from "./sim_1v1_action_failed.json";
 import err401 from "./err_401_auth_required.json";
 import err402 from "./err_402_insufficient_credits.json";
+import err402Premium from "./err_402_premium_required.json";
 import err403 from "./err_403_account_required.json";
 import err413 from "./err_413_request_too_large.json";
 import err422Item from "./err_422_unsupported_item.json";
@@ -64,6 +67,7 @@ import err409Conflict from "./err_409_idempotency_conflict.json";
 import err409InProgress from "./err_409_idempotency_in_progress.json";
 import err503 from "./err_503_idempotency_unavailable.json";
 import err503Unreadable from "./err_503_idempotency_result_unreadable.json";
+import err503Entitlement from "./err_503_entitlement_unavailable.json";
 import sim1v1First from "./sim_1v1_first.json";
 import sim1v1FirstMeta from "./sim_1v1_first.meta.json";
 import sim1v1Replayed from "./sim_1v1_replayed.json";
@@ -213,6 +217,10 @@ export const REAL_ERRORS = {
   500: err500,
   503: err503,
   "503_unreadable": err503Unreadable,
+  // COMBAT1, captured the same way: driven through the real route with a
+  // verified Free identity, and with the entitlement authority raising.
+  "402_premium": err402Premium,
+  "503_entitlement": err503Entitlement,
 } as const;
 
 /**
@@ -235,4 +243,6 @@ export const REAL_ERROR_META = {
   500: err500Meta,
   503: err503Meta,
   "503_unreadable": err503UnreadableMeta,
+  "402_premium": err402PremiumMeta,
+  "503_entitlement": err503EntitlementMeta,
 } as const;

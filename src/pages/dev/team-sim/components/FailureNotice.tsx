@@ -14,12 +14,19 @@
  * its own, and starting a NEW simulation is still the ordinary Run control.
  */
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { CombatLabCreditStatus } from "@/lib/combat-lab/api";
 import {
+  isPremiumRequired,
   isRecoverable,
+  needsAccountBeforePremium,
+  PREMIUM_SIGN_IN_HINT,
+  PREMIUM_REQUIRED_CTA_LABEL,
+  PREMIUM_REQUIRED_FREE_NOTE,
+  PREMIUM_ROUTE,
   RECOVERY_ACTION_HINT,
   RECOVERY_ACTION_LABEL,
   UNCERTAIN_STATUS_WARNING,
@@ -33,6 +40,8 @@ const TITLES: Record<string, string> = {
   auth_required: "Sign-in required",
   account_required: "Account required",
   insufficient_credits: "Out of Combat Lab credits",
+  premium_required: "Mogzy Premium required",
+  entitlement_unavailable: "Membership check unavailable",
   request_too_large: "Scenario too large",
   invalid_request: "Scenario rejected",
   rate_limited: "Rate limited",
@@ -146,6 +155,43 @@ export function FailureNotice({
           The balance shown above was re-read from the server.
         </p>
       )}
+
+      {/* COMBAT1: a signed-out or guest visitor is told about both gates at
+          once — identity AND Premium — because signing in and running again
+          would otherwise reveal the second one only on the next refusal. No
+          CTA here: the next step is signing in, not buying. */}
+      {needsAccountBeforePremium(error) ? (
+        <p
+          className="text-[11px] text-muted-foreground"
+          data-testid="premium-sign-in-hint"
+        >
+          {PREMIUM_SIGN_IN_HINT}
+        </p>
+      ) : null}
+
+      {/* COMBAT1: the ONE upsell on this page, and only for the one kind that
+          means "you could buy this". `feature_unavailable` and
+          `entitlement_unavailable` are deliberately excluded — an operational
+          failure must not be turned into a sales opportunity, and a member
+          whose membership merely could not be READ must not be sold what they
+          already own. */}
+      {isPremiumRequired(error) ? (
+        <div className="space-y-1" data-testid="premium-required">
+          <Button
+            asChild
+            type="button"
+            size="sm"
+            className="h-7 px-2 text-[11px]"
+          >
+            <Link to={PREMIUM_ROUTE} data-testid="premium-cta">
+              {PREMIUM_REQUIRED_CTA_LABEL}
+            </Link>
+          </Button>
+          <p className="text-[11px] text-muted-foreground">
+            {PREMIUM_REQUIRED_FREE_NOTE}
+          </p>
+        </div>
+      ) : null}
 
       {canRecover ? (
         <div className="space-y-1">
