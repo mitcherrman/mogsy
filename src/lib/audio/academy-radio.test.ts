@@ -785,7 +785,10 @@ describe("Academy Radio — live station clock", () => {
     expect(getRadioSnapshot().stationEpoch).toBe(Number(epoch));
   });
 
-  it("reconciles a browser-suspended singleton on visibility/focus without restarting at zero", async () => {
+  it("resumes a browser-suspended singleton on wake from its own position, not the station clock", async () => {
+    // Regression: the wake used to force-seek to the wall-clock offset (37s
+    // here), which is the audible restart/jump on every tab return. The song
+    // resumes from exactly where the browser froze it.
     let wallClock = 1_800_000_000_000;
     vi.spyOn(Date, "now").mockImplementation(() => wallClock);
     localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 20_000));
@@ -794,6 +797,7 @@ describe("Academy Radio — live station clock", () => {
     await playRadio();
     const singleton = theAudio();
     play.mockClear();
+    load.mockClear();
     paused = true;
     wallClock += 17_000;
 
@@ -801,11 +805,15 @@ describe("Academy Radio — live station clock", () => {
     await Promise.resolve();
 
     expect(theAudio()).toBe(singleton);
-    expect(theAudio().currentTime).toBeCloseTo(37, 5);
+    expect(theAudio().currentTime).toBeCloseTo(20, 5);
     expect(play).toHaveBeenCalledTimes(1);
+    expect(load).not.toHaveBeenCalled();
   });
 
-  it("crosses a hidden track boundary and rejoins the correct live offset", async () => {
+  it("never hops tracks or re-seeks on a wake, even across a wall-clock track boundary", async () => {
+    // The wall-clock station says track two is live after six hidden seconds,
+    // but the wake must not touch the transport: the track that was actually
+    // playing keeps playing from its own position.
     let wallClock = 1_800_000_000_000;
     vi.spyOn(Date, "now").mockImplementation(() => wallClock);
     localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock - 9_000));
@@ -818,13 +826,15 @@ describe("Academy Radio — live station clock", () => {
     Object.defineProperty(theAudio(), "currentTime", { configurable: true, writable: true, value: 9 });
     await playRadio();
     paused = true;
+    play.mockClear();
     load.mockClear();
     wallClock += 6_000;
 
     reconcileRadioOnWake();
 
-    expect(getRadioSnapshot()).toMatchObject({ trackId: "two", trackIndex: 1 });
-    expect(load).toHaveBeenCalledTimes(1);
+    expect(getRadioSnapshot()).toMatchObject({ trackId: "one", trackIndex: 0 });
+    expect(theAudio().currentTime).toBe(9);
+    expect(load).not.toHaveBeenCalled();
   });
 
   it("holds station rather than resetting to zero while a track duration is unknown", async () => {
@@ -1049,7 +1059,10 @@ describe("Academy Radio — presence", () => {
     detach();
   });
 
-  it("keeps the logical station running while hidden and rejoins the live offset", async () => {
+  it("keeps the song's own position across a hidden/visible round trip — no jump to the wall clock", async () => {
+    // Regression: returning used to force-seek to the live station offset (90s
+    // here), restarting the song the visitor was actually hearing. The station
+    // clock stays as metadata; the native transport is the truth on return.
     let wallClock = 1_800_000_000_000;
     vi.spyOn(Date, "now").mockImplementation(() => wallClock);
     localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock));
@@ -1057,6 +1070,10 @@ describe("Academy Radio — presence", () => {
     const detach = installRadioInactivityMonitor();
     installDuration(600);
     await playRadio();
+    // Mid-song, deliberately NOT the wall-clock offset, so a seek is observable.
+    theAudio().currentTime = 45;
+    play.mockClear();
+    load.mockClear();
 
     setVisibility("hidden");
     expect(getRadioSnapshot().stationElapsedSeconds).toBeCloseTo(0, 5);
@@ -1065,11 +1082,36 @@ describe("Academy Radio — presence", () => {
     setVisibility("visible");
     vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS);
 
-    // The station is wall-clock, not playback: ninety seconds passed while it
-    // was silent, and coming back rejoins there rather than where it left off.
     expect(getRadioSnapshot().stationElapsedSeconds).toBeCloseTo(90, 5);
-    expect(theAudio().currentTime).toBeCloseTo(90, 5);
+    expect(theAudio().currentTime).toBe(45);
+    expect(play).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
     expect(getRadioSnapshot().muted).toBe(false);
+    detach();
+  });
+
+  it("never seeks or restarts on blur/focus returns either", async () => {
+    // Alt-tabbing between applications fires blur/focus with no visibility
+    // change — that path must honour the same no-seek contract.
+    const wallClock = 1_800_000_000_000;
+    vi.spyOn(Date, "now").mockReturnValue(wallClock);
+    localStorage.setItem(RADIO_STORAGE_KEYS.stationEpoch, String(wallClock));
+    prepareRadio();
+    const detach = installRadioInactivityMonitor();
+    installDuration(600);
+    await playRadio();
+    theAudio().currentTime = 45;
+    play.mockClear();
+    load.mockClear();
+
+    window.dispatchEvent(new Event("blur"));
+    window.dispatchEvent(new Event("focus"));
+    vi.advanceTimersByTime(RADIO_RETURN_GRACE_MS * 4);
+
+    expect(theAudio().currentTime).toBe(45);
+    expect(play).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+    expect(getRadioSnapshot().isAudible).toBe(true);
     detach();
   });
 
