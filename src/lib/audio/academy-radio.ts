@@ -516,17 +516,23 @@ function reconcileNativePosition(state: RadioState, force = false): void {
 }
 
 /**
- * Rejoin the wall-clock station without replacing the singleton. `force` seeks
- * even when native drift is inside the tolerance, which is what returning from a
- * sleep needs and what routine input must not do.
+ * Returning to the tab or window after a browser/tab sleep.
+ *
+ * A wake is not a re-tune. The singleton element kept its own transport through
+ * the hidden/blurred mute, so the song the visitor left is still the song
+ * playing — and if the browser suspended playback, it resumes from exactly
+ * where it stopped. Seeking the playhead to the wall-clock station position
+ * here was the audible "restart/jump" on every return; the station clock still
+ * exists as metadata, but it never steers the native transport on a wake. The
+ * only things a wake may do are re-check the inactivity policy and restart a
+ * transport the browser itself paused.
  */
-function rejoinStation(force: boolean): void {
+export function reconcileRadioOnWake(): void {
   const state = getState();
   const audio = state.element;
-  if (!audio) return;
-  reconcileNativePosition(state, force);
   evaluateRadioInactivity();
   if (
+    audio &&
     state.started &&
     audio.paused &&
     !state.muted &&
@@ -535,11 +541,6 @@ function rejoinStation(force: boolean): void {
   ) {
     void startRadio({ automatic: false, fadeMs: 0 });
   }
-}
-
-/** Returning to the tab or window after a browser/tab sleep. */
-export function reconcileRadioOnWake(): void {
-  rejoinStation(true);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -766,10 +767,17 @@ function scheduleAutomaticReturn(state: RadioState): void {
       // full-volume surprise the fade exists to avoid.
       cancelFade(current);
       audio.volume = 0;
-      reconcileNativePosition(current, true);
     }
     applyMuted(current, false, null);
-    void startRadio({ automatic: false, fadeMs: RADIO_RETURN_FADE_MS });
+    if (audio && !audio.paused) {
+      // The transport never stopped — it only went silent. Coming back fades
+      // the running song back in exactly where it is; nothing here may seek,
+      // reload, or restart it.
+      setStatus(current, "playing");
+      fadeIn(audio, current, RADIO_RETURN_FADE_MS);
+    } else {
+      void startRadio({ automatic: false, fadeMs: RADIO_RETURN_FADE_MS });
+    }
   }, RADIO_RETURN_GRACE_MS);
 }
 
@@ -885,7 +893,10 @@ async function playAndFade(
     // had so it does not dip back to nothing.
     if (!state.started) audio.volume = 0;
     audio.muted = state.muted || state.suppressedByMode;
-    reconcileNativePosition(state, true);
+    // The wall-clock station tunes the very first join only. Once the visitor
+    // is listening, the native transport owns the playhead: a resume (wake,
+    // automatic return, Mode handing the floor back) must never re-seek it.
+    if (!state.started) reconcileNativePosition(state, true);
     setStatus(state, "loading");
     await audio.play();
     state.started = true;
