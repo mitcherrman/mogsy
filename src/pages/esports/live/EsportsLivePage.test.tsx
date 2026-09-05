@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import EsportsLivePage from "./EsportsLivePage";
 import {
   LEGACY_ESPORTS_LIVE_ROUTE,
+  PRO_PLAY_LIVE_ARCHIVE_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
   PRO_PLAY_ROUTE,
 } from "@/lib/pro-play/routes";
@@ -427,5 +428,127 @@ describe("the pre-Pro-Play URL", () => {
         screen.getByRole("heading", { level: 1, name: /Live & Recent Matches/i }),
       ).toBeTruthy(),
     );
+  });
+});
+
+/**
+ * Archive integration: the match centre is the ONE viewer, so an archived game
+ * has to render here rather than in a second renderer. `?game=<id>` is how it
+ * arrives — from an archive row, a shared link, or a refresh.
+ */
+describe("opening an archived game in this viewer", () => {
+  /** A game that is in the store but NOT in the bounded live/recent feed. */
+  const ARCHIVED_ID = "116769742220520950";
+
+  function renderAt(path: string) {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+    return render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path={PRO_PLAY_LIVE_ROUTE} element={<EsportsLivePage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it("offers a way into the archive from the live page", async () => {
+    installBackend({ recent: [summary()] });
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /Browse archive/i })).toBeTruthy(),
+    );
+    expect(
+      screen.getByRole("link", { name: /Browse archive/i }).getAttribute("href"),
+    ).toBe(PRO_PLAY_LIVE_ARCHIVE_ROUTE);
+  });
+
+  it("offers the archive even when nothing is live or recent", async () => {
+    // The empty feed is the NORMAL state for most of the day, and it is
+    // exactly when the archive is the most useful thing on the page.
+    installBackend({ live: [], recent: [] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/No matches right now/i)).toBeTruthy());
+    expect(screen.getByRole("link", { name: /Browse the archive/i })).toBeTruthy();
+  });
+
+  it("renders a deep-linked game that the feed does not contain", async () => {
+    // The feed is empty; the game exists only in the store. Before this, the
+    // page's auto-follow reset the selection to `selectable[0]` — null — and
+    // the deep link rendered "No matches right now".
+    const fetchMock = installBackend({ live: [], recent: [] });
+    fetchMock.mockImplementation(async (url: string) => {
+      const path = String(url);
+      const ok = (b: unknown) =>
+        ({ ok: true, status: 200, json: async () => b }) as unknown as Response;
+      if (path.includes("/live-esports/live")) {
+        return ok({
+          enabled: true, generated_at: "2026-09-05T08:00:00.000Z",
+          live: [], recent: [], limits: { live: 12, recent: 6 },
+        });
+      }
+      if (path.includes("/players")) return ok(PLAYERS);
+      if (path.includes("/gold")) return ok(GOLD);
+      if (path.includes("/insights")) return ok({ coverage: {}, gold: {}, objectives: [], players: {} });
+      if (path.includes(`/live-esports/games/${ARCHIVED_ID}`)) {
+        return ok({ ...DETAIL, game: { ...DETAIL.game, game_id: ARCHIVED_ID } });
+      }
+      return ok({});
+    });
+    renderAt(`${PRO_PLAY_LIVE_ROUTE}?game=${ARCHIVED_ID}`);
+    await waitFor(() =>
+      expect(screen.queryByText(/No matches right now/i)).toBeNull(),
+    );
+    // The scoreboard the live page renders for everything else.
+    await waitFor(() => expect(screen.getByText(/Players/i)).toBeTruthy());
+    expect(fetchMock.mock.calls.some(([u]) =>
+      String(u).includes(`/live-esports/games/${ARCHIVED_ID}`))).toBe(true);
+  });
+
+  it("says so plainly when a deep link names a game that does not exist", async () => {
+    const fetchMock = installBackend({ live: [], recent: [] });
+    fetchMock.mockImplementation(async (url: string) => {
+      const path = String(url);
+      const ok = (b: unknown) =>
+        ({ ok: true, status: 200, json: async () => b }) as unknown as Response;
+      if (path.includes("/live-esports/live")) {
+        return ok({
+          enabled: true, generated_at: "2026-09-05T08:00:00.000Z",
+          live: [], recent: [], limits: { live: 12, recent: 6 },
+        });
+      }
+      if (path.includes("/live-esports/games/")) throw new Error("404");
+      return ok({});
+    });
+    renderAt(`${PRO_PLAY_LIVE_ROUTE}?game=does-not-exist`);
+    await waitFor(() =>
+      expect(screen.getByText(/Couldn't load that match/i)).toBeTruthy(),
+    );
+    expect(screen.getByRole("link", { name: /Browse the archive/i })).toBeTruthy();
+  });
+
+  it("does not let the live feed steal a game someone explicitly opened", async () => {
+    // A live game arriving must not replace what the reader chose to look at.
+    installBackend({ live: [summary({ game_id: "live-one" })], recent: [] });
+    renderAt(`${PRO_PLAY_LIVE_ROUTE}?game=116996464901571353`);
+    await waitFor(() => expect(screen.getByText(/Players/i)).toBeTruthy());
+    // The pinned id is what the per-game reads asked for.
+    const asked = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map(([u]) => String(u))
+      .filter((u) => u.includes("/players"));
+    expect(asked.every((u) => u.includes("116996464901571353"))).toBe(true);
+  });
+
+  it("still follows the action when nobody has pinned anything", async () => {
+    installBackend({ live: [summary({ game_id: "the-live-one" })], recent: [] });
+    renderPage();
+    await waitFor(() => expect(screen.getByText(/Players/i)).toBeTruthy());
+    const asked = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map(([u]) => String(u))
+      .filter((u) => u.includes("/players"));
+    expect(asked.some((u) => u.includes("the-live-one"))).toBe(true);
   });
 });

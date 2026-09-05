@@ -378,3 +378,111 @@ export type MatchInsightsResponse = {
 export function fetchGameInsights(gameId: string): Promise<MatchInsightsResponse> {
   return getJson(`/api/live-esports/games/${encodeURIComponent(gameId)}/insights`);
 }
+
+/* ── Archive browsing (`/history`) ───────────────────────────────────────────
+ * The third listing shape, and both existing ones are wrong for browsing:
+ * `/live` is bounded to what is on now plus a six-game tail, so 750+ stored
+ * games cannot be reached from the viewer, and `/games` serves the whole
+ * catalogue as one 958 KB payload that must never face a reader.
+ *
+ * Rows are compact by construction — no frames, no events, no player rows. The
+ * match centre fetches all of that only when a game is actually opened.
+ */
+
+/** Deterministic, from the number of frames the store holds for the game.
+ *  `full` ⇒ a real timeline; `final_snapshot` ⇒ one frame, so the gold chart
+ *  and objective timeline will be empty however the row is labelled. */
+export type TelemetryDepth = "none" | "final_snapshot" | "partial" | "full";
+
+export type ArchiveTelemetry = {
+  frame_count: number;
+  event_count: number;
+  depth: TelemetryDepth;
+  has_timeline: boolean;
+};
+
+export type ArchiveTeam = {
+  name: string | null;
+  code: string | null;
+  esports_team_id: string | null;
+  series_wins: number | null;
+  kills: number | null;
+};
+
+export type ArchiveGame = {
+  game_id: string;
+  match_id: string | null;
+  scheduled_start: string | null;
+  /** The value the ordering and the cursor actually used. */
+  sort_ts: string | null;
+  league: LiveCompetition["league"];
+  tournament: LiveCompetition["tournament"];
+  stage: LiveCompetition["stage"];
+  best_of: number | null;
+  game_number: number | null;
+  teams: { blue: ArchiveTeam; red: ArchiveTeam };
+  patch_version: string | null;
+  availability: string;
+  final: boolean;
+  /** Never claimed for a game that is not final, and never inferred from
+   *  kills — the backend returns null rather than guess. */
+  winner: "blue" | "red" | null;
+  telemetry: ArchiveTelemetry;
+};
+
+export type ArchiveFilters = {
+  league?: string | null;
+  tournament?: string | null;
+  team?: string | null;
+  date_from?: string | null;
+  date_to?: string | null;
+  status?: "final" | "unfinished" | null;
+  depth?: "full" | null;
+};
+
+export type ArchiveResponse = {
+  enabled: boolean;
+  generated_at: string;
+  games: ArchiveGame[];
+  /** Absent on the last page. Opaque — pass it back verbatim. */
+  next_cursor: string | null;
+  total: number;
+  limit: number;
+  filters: Required<ArchiveFilters>;
+};
+
+export type ArchiveFacets = {
+  enabled: boolean;
+  generated_at: string;
+  leagues: { slug: string; name: string; games: number }[];
+  /** `league_slug` disambiguates the five separate "Summer 2026" tournaments. */
+  tournaments: { id: string; name: string | null; league_slug: string | null; games: number }[];
+  teams: { id: string; name: string | null; code: string | null; games: number }[];
+  date_range: { from: string | null; to: string | null };
+  depth_thresholds: { full_timeline_min_frames: number };
+};
+
+export function archiveQueryString(
+  filters: ArchiveFilters,
+  opts: { cursor?: string | null; limit?: number } = {},
+): string {
+  const q = new URLSearchParams();
+  // Only real values are sent, so an untouched filter never narrows the query
+  // and the URL stays readable enough to share.
+  for (const [k, v] of Object.entries(filters)) if (v) q.set(k, String(v));
+  if (opts.limit) q.set("limit", String(opts.limit));
+  if (opts.cursor) q.set("cursor", opts.cursor);
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+export function fetchArchive(
+  filters: ArchiveFilters,
+  opts: { cursor?: string | null; limit?: number } = {},
+): Promise<ArchiveResponse> {
+  return getJson(`/api/live-esports/history${archiveQueryString(filters, opts)}`);
+}
+
+export function fetchArchiveFacets(): Promise<ArchiveFacets> {
+  return getJson("/api/live-esports/history/filters");
+}

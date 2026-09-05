@@ -12,12 +12,17 @@
  * numbers never change again.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, Radio, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Library, Radio, RefreshCw, WifiOff } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
-import { PRO_PLAY_LIVE_ROUTE, PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
+import {
+  PRO_PLAY_LIVE_ARCHIVE_ROUTE,
+  PRO_PLAY_LIVE_GAME_PARAM,
+  PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_ROUTE,
+} from "@/lib/pro-play/routes";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -58,7 +63,27 @@ const GOLD_POLL_MS = 30_000;
 const INSIGHTS_POLL_MS = 30_000;
 
 export default function EsportsLivePage() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /* Selection has two sources and they are not the same thing.
+   *
+   * `?game=` is an EXPLICIT choice — an archive row, a shared link, a reload —
+   * and it may name a game far too old to be in the bounded feed. `autoId` is
+   * the page following the action on its own when nobody has chosen. Keeping
+   * them apart is what lets a deep link survive: the auto-follow effect below
+   * only ever manages `autoId`, so it can no longer yank an archived game out
+   * from under the reader for the crime of not being in `live`+`recent`.
+   */
+  const [params, setParams] = useSearchParams();
+  const pinnedId = params.get(PRO_PLAY_LIVE_GAME_PARAM);
+  const [autoId, setAutoId] = useState<string | null>(null);
+  const selectedId = pinnedId ?? autoId;
+
+  // Picking a match writes the URL, so what someone is looking at is always
+  // the thing they can copy out of the address bar.
+  const select = (gameId: string) => {
+    const next = new URLSearchParams(params);
+    next.set(PRO_PLAY_LIVE_GAME_PARAM, gameId);
+    setParams(next, { replace: true });
+  };
 
   const feed = useQuery({
     queryKey: ["live-esports", "feed"],
@@ -75,26 +100,41 @@ export default function EsportsLivePage() {
   const selectable = useMemo<LiveGameSummary[]>(() => [...live, ...recent], [live, recent]);
 
   // Follow the action by default, but never yank a game out from under
-  // someone who explicitly picked one.
+  // someone who explicitly picked one — including one that is not in the feed
+  // at all, which every archived game is.
   useEffect(() => {
-    if (selectedId && selectable.some((g) => g.game_id === selectedId)) return;
-    setSelectedId(selectable[0]?.game_id ?? null);
-  }, [selectable, selectedId]);
+    if (pinnedId) return;
+    if (autoId && selectable.some((g) => g.game_id === autoId)) return;
+    setAutoId(selectable[0]?.game_id ?? null);
+  }, [selectable, autoId, pinnedId]);
 
-  const selected = selectable.find((g) => g.game_id === selectedId) ?? null;
+  const detail = useQuery({
+    queryKey: ["live-esports", "game", selectedId],
+    queryFn: () => fetchLiveGame(selectedId as string),
+    enabled: !!selectedId,
+    // The cadence reads the response rather than the page's `selected`, which
+    // this query may itself be the source of when the game came from the
+    // archive. The rule is unchanged: a finished game is immutable, so it is
+    // fetched once and never polled again.
+    refetchInterval: (query) =>
+      query.state.data?.game?.availability === "finished"
+        ? FINAL_POLL_MS
+        : LIVE_DETAIL_POLL_MS,
+  });
+  const detailGame = detail.data?.game ?? null;
+
+  // An archived game is not in the feed, so its summary comes from its own
+  // detail read — the SAME `_game_summary` shape the feed serves, which is why
+  // no second fetch and no second renderer are needed for it.
+  const selected =
+    selectable.find((g) => g.game_id === selectedId) ??
+    (detailGame && detailGame.game_id === selectedId ? detailGame : null);
   const isFinal = selected?.availability === "finished";
   const detailInterval = selected
     ? isFinal
       ? FINAL_POLL_MS
       : LIVE_DETAIL_POLL_MS
     : (false as const);
-
-  const detail = useQuery({
-    queryKey: ["live-esports", "game", selectedId],
-    queryFn: () => fetchLiveGame(selectedId as string),
-    enabled: !!selectedId,
-    refetchInterval: detailInterval,
-  });
 
   const players = useQuery({
     queryKey: ["live-esports", "players", selectedId],
@@ -168,7 +208,10 @@ export default function EsportsLivePage() {
 
   const ingestionOff = feed.data?.enabled === false;
 
-  if (selectable.length === 0) {
+  // Nothing live, nothing recent AND nobody asked for a specific game. A
+  // pinned archived game is none of those, so it must not be swallowed here:
+  // an empty feed is the NORMAL state for a deep link into the archive.
+  if (selectable.length === 0 && !pinnedId) {
     return (
       <Shell>
         {ingestionOff && <IngestionPausedNote />}
@@ -177,7 +220,37 @@ export default function EsportsLivePage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Live games appear here automatically while a supported competition is playing.
           </p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link to={PRO_PLAY_LIVE_ARCHIVE_ROUTE}>
+              <Library className="mr-2 h-4 w-4" aria-hidden="true" />
+              Browse the archive
+            </Link>
+          </Button>
         </Card>
+      </Shell>
+    );
+  }
+
+  // A pinned game that is not in the feed is an archived one; its own detail
+  // read supplies the summary, so the only state left to show is that read
+  // failing or still in flight.
+  const pinnedMissing = !!pinnedId && !selected;
+  if (pinnedMissing && detail.isError) {
+    return (
+      <Shell>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Couldn't load that match</AlertTitle>
+          <AlertDescription className="flex flex-col gap-2">
+            <span>
+              No stored game has the id in this link. It may have been removed, or the
+              link may be wrong.
+            </span>
+            <Button asChild size="sm" variant="outline" className="w-fit">
+              <Link to={PRO_PLAY_LIVE_ARCHIVE_ROUTE}>Browse the archive</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
       </Shell>
     );
   }
@@ -203,12 +276,18 @@ export default function EsportsLivePage() {
 
       {/* selector — horizontally scrollable on mobile, wraps on desktop */}
       <div className="-mx-1 mb-4 flex snap-x gap-2 overflow-x-auto px-1 pb-1">
+        {/* An archived game is not in the feed, so it would otherwise be the
+            one match on the page with no card. The rail always shows what is
+            selected. */}
+        {selected && !selectable.some((g) => g.game_id === selected.game_id) && (
+          <MatchCard game={selected} selected onSelect={() => select(selected.game_id)} />
+        )}
         {live.map((g) => (
           <MatchCard
             key={g.game_id}
             game={g}
             selected={g.game_id === selectedId}
-            onSelect={() => setSelectedId(g.game_id)}
+            onSelect={() => select(g.game_id)}
           />
         ))}
         {recent.map((g) => (
@@ -216,15 +295,34 @@ export default function EsportsLivePage() {
             key={g.game_id}
             game={g}
             selected={g.game_id === selectedId}
-            onSelect={() => setSelectedId(g.game_id)}
+            onSelect={() => select(g.game_id)}
           />
         ))}
       </div>
 
-      {live.length === 0 && (
-        <p className="mb-3 text-xs text-muted-foreground">
-          Nothing is live at the moment — showing the most recent games.
-        </p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        {live.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Nothing is live at the moment — showing the most recent games.
+          </p>
+        ) : (
+          <span />
+        )}
+        {/* The one way into the rest of the catalogue. The live page stays a
+            live page: this is a link, not a second list bolted onto it. */}
+        <Button asChild variant="outline" size="sm" className="shrink-0">
+          <Link to={PRO_PLAY_LIVE_ARCHIVE_ROUTE}>
+            <Library className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+            Browse archive
+          </Link>
+        </Button>
+      </div>
+
+      {pinnedMissing && (
+        <div className="mb-3 space-y-2">
+          <Skeleton className="h-16 w-full" />
+          <LoadingBoard />
+        </div>
       )}
 
       {selected && (

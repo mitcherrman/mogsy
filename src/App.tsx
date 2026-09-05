@@ -18,6 +18,7 @@ import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
 import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
 import {
   LEGACY_ESPORTS_LIVE_ROUTE,
+  PRO_PLAY_LIVE_ARCHIVE_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
 } from "@/lib/pro-play/routes";
 import Layout from "./components/Layout";
@@ -204,6 +205,9 @@ const TeamSimPage = lazy(() => import("./pages/dev/team-sim/TeamSimPage"));
 
 // LIVE1 production viewer — the user-facing live esports scoreboard.
 const EsportsLivePage = lazy(() => import("./pages/esports/live/EsportsLivePage"));
+// The archive is its own lazy chunk: the live page must not pay for filter
+// controls and a facet list that most of its visitors never open.
+const EsportsArchivePage = lazy(() => import("./pages/esports/live/ArchivePage"));
 
 // Dev-only entrance concept — visual iteration on the Mogzy entry screen.
 // Purely presentational, no app state, not linked from any navigation.
@@ -578,6 +582,10 @@ const App = () => (
                       now a redirect) before Pro Play had a hub; this is its
                       canonical URL. Same component, one page. */}
                   <Route path={PRO_PLAY_LIVE_ROUTE} element={<Suspense fallback={<RouteFallback />}><EsportsLivePage /></Suspense>} />
+                  {/* Browsing the stored catalogue. A child of the match
+                      centre because it feeds it: a row here opens at
+                      `PRO_PLAY_LIVE_ROUTE?game=<id>`, in the same viewer. */}
+                  <Route path={PRO_PLAY_LIVE_ARCHIVE_ROUTE} element={<Suspense fallback={<RouteFallback />}><EsportsArchivePage /></Suspense>} />
                   <Route path="/lol/glossary" element={<Suspense fallback={<RouteFallback />}><LolGlossary /></Suspense>} />
                   <Route path="/lol/patch-reports" element={<Suspense fallback={<RouteFallback />}><PatchReports /></Suspense>} />
                   <Route path="/about" element={<Suspense fallback={<RouteFallback />}><About /></Suspense>} />

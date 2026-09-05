@@ -26,3 +26,26 @@ export const PRO_PLAY_LIVE_ROUTE = "/lol/pro-play/live";
 
 /** The pre-Pro-Play URL for the match centre, kept as a redirect. */
 export const LEGACY_ESPORTS_LIVE_ROUTE = "/esports/live";
+
+/**
+ * Browsing the stored match catalogue — the archive. A child of the match
+ * centre because that is what it feeds: picking a game here opens it in the
+ * viewer at `PRO_PLAY_LIVE_ROUTE`, not in a second renderer.
+ *
+ * The backend calls this data `history`, not `archive`: over there `archive`
+ * already means the verified .jsonl.gz artifacts and the `live_archives`
+ * ledger. Reader-facing word here, operator-facing word there, on purpose.
+ */
+export const PRO_PLAY_LIVE_ARCHIVE_ROUTE = "/lol/pro-play/live/archive";
+
+/**
+ * Deep link to one stored game in the match centre: `?game=<id>`. The viewer
+ * pins whatever this names — including a game far too old to appear in the
+ * live feed — so an archive row, a shared URL and a refresh all land on the
+ * same match.
+ */
+export const PRO_PLAY_LIVE_GAME_PARAM = "game";
+
+export function proPlayLiveGameUrl(gameId: string): string {
+  return `${PRO_PLAY_LIVE_ROUTE}?${PRO_PLAY_LIVE_GAME_PARAM}=${encodeURIComponent(gameId)}`;
+}
