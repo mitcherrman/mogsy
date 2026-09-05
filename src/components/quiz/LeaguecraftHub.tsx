@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronRight, HelpCircle, Library, RotateCcw, ScrollText } from "lucide-react";
@@ -812,7 +812,18 @@ export default function LeaguecraftHub({
           /* Mounted only while Trends is the open pane, for the same reason
              Review is: its reads are account-bound and nobody who has not
              opened the pane should spend a request on them. */
-          trends={trends ?? null}
+          trends={
+            trends && isValidElement(trends)
+              ? cloneElement(trends as React.ReactElement<{
+                  hasAccount?: boolean; signInHref?: string;
+                }>, {
+                  /* Same answer Review already gets. A guest is told to sign
+                     in rather than being sent to the server to be refused. */
+                  hasAccount: hasAccount && signedIn,
+                  signInHref: authHref("/quiz#trends"),
+                })
+              : (trends ?? null)
+          }
         />
       </section>
 

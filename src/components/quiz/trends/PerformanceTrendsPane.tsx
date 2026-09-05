@@ -214,6 +214,8 @@ function CategoryLine({
 
 export default function PerformanceTrendsPane({
   open = true,
+  hasAccount = true,
+  signInHref = "/auth",
   onPractiseWeakness,
 }: {
   /**
@@ -229,9 +231,20 @@ export default function PerformanceTrendsPane({
    * second session runner and no second filter UI — the handoff is a preset
    * on the panel that already knows how to run one.
    */
+  /**
+   * Whether the reader has a real account. A GUEST is not a Free subscriber —
+   * they have no record to read at all — and the backend says so with
+   * `403 ACCOUNT_REQUIRED`, which reaches the client as a failed request and
+   * would otherwise render as "unavailable right now, try again". Found live
+   * on mogzy.lol: every signed-out visitor who opened the tab was told a
+   * permanent, actionable state was a transient fault. Answering it locally
+   * also spends no request being refused.
+   */
+  hasAccount?: boolean;
+  signInHref?: string;
   onPractiseWeakness?: (preset: TrendsPracticePreset) => void;
 }) {
-  const state = usePerformanceTrends(open);
+  const state = usePerformanceTrends(open && hasAccount);
   const [switching, setSwitching] = useState(false);
 
   const report = state.report;
@@ -241,6 +254,21 @@ export default function PerformanceTrendsPane({
   );
 
   if (!open) return null;
+
+  if (!hasAccount) {
+    return (
+      <div data-testid="trends-signed-out" className="space-y-2 py-3">
+        <LedgerTitle>Performance Trends</LedgerTitle>
+        <WorkspaceNote>
+          Your trends are read from your own record, so they need an account.
+          Sign in to see how your Practice &amp; Time Trial results are moving.
+        </WorkspaceNote>
+        <Button asChild size="sm" variant="outline" className="mt-1">
+          <a href={signInHref} data-testid="trends-sign-in">Sign in</a>
+        </Button>
+      </div>
+    );
+  }
 
   if (state.loading && !report && !state.capability) {
     return (

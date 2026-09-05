@@ -146,6 +146,20 @@ describe("PT1.8 — what the pane draws for whom", () => {
     await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
   });
 
+  /* Found live on mogzy.lol: a guest opening the tab was told "unavailable
+     right now — this is not a subscription problem", because the backend's
+     403 ACCOUNT_REQUIRED reaches the client as a failed request. A guest has
+     no record to read; that is permanent and actionable, not a fault. */
+  it("asks a guest to sign in, and spends no request being refused", () => {
+    render(<PerformanceTrendsPane hasAccount={false} signInHref="/auth?x=1" />);
+    expect(screen.getByTestId("trends-signed-out")).toBeTruthy();
+    expect(screen.getByTestId("trends-sign-in").getAttribute("href")).toBe("/auth?x=1");
+    expect(screen.queryByTestId("trends-error")).toBeNull();
+    expect(screen.queryByTestId("trends-locked")).toBeNull();
+    expect(api.capability).not.toHaveBeenCalled();
+    expect(api.trends).not.toHaveBeenCalled();
+  });
+
   it("reads nothing at all while the pane is closed", () => {
     render(<PerformanceTrendsPane open={false} />);
     expect(api.capability).not.toHaveBeenCalled();
