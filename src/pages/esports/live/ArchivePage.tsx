@@ -83,7 +83,13 @@ export default function ArchivePage() {
    * correctly disabled — the alternative, `navigate(-1)`, would have walked the
    * reader off the site entirely, because the entry before that link is
    * whatever page they came from. */
-  const trail = (location.state as { trail?: (string | null)[] } | null)?.trail ?? [];
+  // Memoised for the reason `EsportsLivePage` documents on its own feed
+  // arrays: a bare `?? []` allocates a fresh array every render, which defeats
+  // the memo on both callbacks below.
+  const trail = useMemo<(string | null)[]>(
+    () => (location.state as { trail?: (string | null)[] } | null)?.trail ?? [],
+    [location.state],
+  );
 
   // Filters and the page cursor both live in the URL: a filtered archive view
   // is then a shareable link and survives a refresh, and the browser's own
