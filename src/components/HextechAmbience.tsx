@@ -10,7 +10,11 @@ function HextechAmbience() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-[5] overflow-hidden"
+      /* The class is a CSS hook and nothing else: `/lol`'s Academy Commons
+         quiets this layer over its illustrated room (see
+         `html.hub-commons-in-view` in index.css). Behaviour here is
+         unchanged. */
+      className="hextech-ambience-layer pointer-events-none fixed inset-0 z-[5] overflow-hidden"
     >
       {/* Deep navy vignette + arcane horizon wisps */}
       <div

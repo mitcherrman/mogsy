@@ -87,30 +87,30 @@ export default function HubPremiumPanel() {
           seal and title sit at the head, the engraved register in the body and
           the CTA at the foot, which is how a real plaque is laid out. Left as a
           plain gap stack it clumped everything against the title band. */}
-      <div className="relative flex flex-1 flex-col justify-between gap-4 px-5 py-5 sm:px-7 sm:py-6 lg:gap-5">
-        <div className="flex items-start gap-4">
+      <div className="academy-commons-plaque-body relative flex flex-1 flex-col justify-between gap-4 px-5 py-5 sm:px-7 sm:py-6 lg:gap-5">
+        <div className="academy-commons-plaque-head flex items-start gap-4">
           {/* Seal — the same Crown that marks Premium on /lol/premium, struck
               into a gilt ring rather than floated in a glow. */}
           <span
             aria-hidden
-            className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#c9a84c]/50 bg-[#0a121f] shadow-[inset_0_1px_0_rgba(232,205,152,0.25)] sm:h-12 sm:w-12"
+            className="academy-commons-plaque-seal mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#c9a84c]/50 bg-[#0a121f] shadow-[inset_0_1px_0_rgba(232,205,152,0.25)] sm:h-12 sm:w-12"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#c9a84c]/25 sm:h-9 sm:w-9">
+            <span className="academy-commons-plaque-seal-ring flex h-8 w-8 items-center justify-center rounded-full border border-[#c9a84c]/25 sm:h-9 sm:w-9">
               <Crown className="h-4 w-4 text-[#e8cd98] sm:h-5 sm:w-5" />
             </span>
           </span>
 
-          <div className="min-w-0">
+          <div className="academy-commons-plaque-headings min-w-0">
             <h2
               id="hub-premium-heading"
-              className="text-[1.6rem] font-medium leading-tight text-[#f0e2bd] sm:text-[1.9rem]"
+              className="academy-commons-plaque-title text-[1.6rem] font-medium leading-tight text-[#f0e2bd] sm:text-[1.9rem]"
               style={{
                 fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif',
               }}
             >
               Mogzy Premium
             </h2>
-            <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-[#c3cfe2]/80 sm:text-sm">
+            <p className="academy-commons-plaque-blurb mt-2 max-w-xl text-[13.5px] leading-relaxed text-[#c3cfe2]/80 sm:text-sm">
               {isMember
                 ? "Your membership is active — your full quiz history and missed-question bank are unlocked, and new Premium tools arrive here as they land."
                 : "Go deeper with the Academy: keep every result you’ve ever posted, review every question you’ve missed, and unlock the advanced tools as they land."}
@@ -120,12 +120,12 @@ export default function HubPremiumPanel() {
 
         {/* The inscribed register. The gilt rule above it stands in for the
             engraved line a real plaque carries under its title. */}
-        <div>
+        <div className="academy-commons-plaque-register">
           <span
             aria-hidden
-            className="block h-px w-full bg-gradient-to-r from-[#c9a84c]/40 via-[#c9a84c]/20 to-transparent"
+            className="academy-commons-plaque-rule block h-px w-full bg-gradient-to-r from-[#c9a84c]/40 via-[#c9a84c]/20 to-transparent"
           />
-          <ul className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-7 sm:gap-y-2">
+          <ul className="academy-commons-plaque-pillars mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-x-7 sm:gap-y-2">
             {PILLARS.map(({ Icon, label }) => (
               <li key={label} className="flex items-center gap-2 text-[13px] text-[#cbd6e6]/75">
                 <Icon className="h-3.5 w-3.5 shrink-0 text-[#c9a84c]" aria-hidden />
@@ -142,7 +142,7 @@ export default function HubPremiumPanel() {
         <Link
           to={PREMIUM_ROUTE}
           data-testid="hub-premium-cta"
-          className="mt-auto inline-flex min-h-[52px] w-full items-center justify-center gap-2 self-start rounded-[3px] bg-gradient-to-b from-[#e0c273] to-[#b08c30] px-7 py-3 text-[15px] font-bold text-[#160f02] shadow-[0_1px_0_hsl(42_90%_78%)_inset] transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#070b14] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:w-auto sm:px-9"
+          className="academy-commons-plaque-cta mt-auto inline-flex min-h-[52px] w-full items-center justify-center gap-2 self-start rounded-[3px] bg-gradient-to-b from-[#e0c273] to-[#b08c30] px-7 py-3 text-[15px] font-bold text-[#160f02] shadow-[0_1px_0_hsl(42_90%_78%)_inset] transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f0d78c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#070b14] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:w-auto sm:px-9"
         >
           {isMember ? "View Premium" : "Explore Premium"}
           <ArrowRight className="h-4 w-4 opacity-75" aria-hidden />

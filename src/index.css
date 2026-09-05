@@ -8410,81 +8410,49 @@ html.high-contrast * { text-shadow: none !important; }
   --commons-parchment: #ded0ac;
 }
 
-/* The wall. A deep navy library wall, panelled, lit from two high sconces, its
-   floor end darkening so the plinth reads as sitting ON something.
+/* ---- the backdrop --------------------------------------------------------
+   Two pointer-inert layers under everything.
 
-   The panelling is not decoration — it is the difference between a wall and a
-   background colour. A first pass at a single hairline every 112px was too
-   faint to survive the sconce light and the room read as an empty navy field
-   with furniture floating in it. What is here now is a real (if very quiet)
-   architecture: a moulding under the ceiling beam, then recessed wall panels
-   set out on a 240px rhythm, each with a lit left return and a shaded right
-   one. Contrast stays under 4% throughout, so it is felt rather than seen and
-   never competes with the plaque. All gradients, no image. */
+   `-wall` is the ground: a deep navy that the painting is laid over, and the
+   only thing visible in the strip either side of it on a viewport wider than
+   the artwork (stage mode over-scales a blurred copy of the painting into that
+   strip — see the stage block below).
+
+   `-art` is the approved Commons painting. It is a BACKGROUND, never an <img>:
+   it can therefore never contribute layout height, and the scrim it carries in
+   flow mode is a second layer on the same element rather than a third box.
+
+   The first version of this room was drawn entirely in CSS — a panelled wall,
+   two sconces and a ceiling beam. All of it is gone: the painting supplies the
+   architecture now, and keeping a coded wall behind an illustrated one would
+   only have fought it. */
 .academy-commons-wall {
   position: absolute;
   inset: 0;
-  background-image:
-    /* sconces */
-    radial-gradient(76% 52% at 17% -6%, rgba(201, 168, 76, 0.13), transparent 64%),
-    radial-gradient(76% 52% at 83% -6%, rgba(201, 168, 76, 0.1), transparent 64%),
-    /* the floor gathering shadow under the furniture */
-    radial-gradient(120% 66% at 50% 116%, rgba(0, 0, 0, 0.6), transparent 62%),
-    /* moulding: a lit rail with its shadow, just under the ceiling beam */
-    linear-gradient(
-      180deg,
-      transparent 0 26px,
-      rgba(232, 205, 152, 0.075) 26px 27px,
-      rgba(0, 0, 0, 0.34) 27px 31px,
-      transparent 31px
-    ),
-    /* recessed panels on a 240px rhythm */
-    repeating-linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.16) 0 3px,
-      rgba(255, 246, 220, 0.028) 3px 5px,
-      transparent 5px 235px,
-      rgba(0, 0, 0, 0.2) 235px 240px
-    ),
-    linear-gradient(180deg, #060b16 0%, #0a1523 38%, #091220 74%, #05080f 100%);
+  background-image: linear-gradient(180deg, #060b16 0%, #0a1523 38%, #091220 74%, #05080f 100%);
 }
 
-/* ---- the ceiling beam ----------------------------------------------------
-   The room's lintel: a walnut beam across the top with a lit upper plane, a
-   dark front face and a gilt hairline where it meets the wall. It is what
-   makes the Commons read as an interior rather than as a page section. */
-.academy-commons-lintel {
+/* FLOW MODE placement (phones, short laptops, deep page zoom, large text).
+   The desktop composition is deliberately NOT forced here: the mounting zones
+   cannot survive a 375px-wide crop, so the painting stops being a stage and
+   becomes a backdrop — covered, centred, and pushed back under a scrim so the
+   coded plaque, board and slips keep every bit of their own contrast. Stage
+   mode overrides all three of these declarations. */
+.academy-commons-art {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
   background-image:
     linear-gradient(
       180deg,
-      var(--shelf-lit) 0%,
-      var(--shelf-face) 22%,
-      var(--shelf-mid) 62%,
-      var(--shelf-deep) 100%
+      rgba(4, 8, 17, 0.86) 0%,
+      rgba(5, 10, 20, 0.7) 34%,
+      rgba(5, 10, 20, 0.72) 62%,
+      rgba(3, 6, 13, 0.9) 100%
     ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.05) 0 2px,
-      transparent 2px 9px
-    );
-  background-blend-mode: overlay, normal;
-  box-shadow:
-    inset 0 1px 0 rgba(214, 178, 118, 0.32),
-    0 6px 18px -8px rgba(0, 0, 0, 0.9);
-}
-.academy-commons-lintel::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(201, 168, 76, 0.5) 22%,
-    rgba(201, 168, 76, 0.5) 78%,
-    transparent
-  );
+    var(--commons-art, none);
+  background-size: auto, cover;
+  background-position: center, center 34%;
 }
 
 /* ---- the membership plaque (Mogzy Premium) -------------------------------
@@ -8650,4 +8618,474 @@ html.high-contrast * { text-shadow: none !important; }
 .academy-commons-inscription-link:hover,
 .academy-commons-inscription-link:focus-visible {
   color: #f6e6bb;
+}
+
+/* ============================================================================
+   THE ACADEMY COMMONS — STAGE MODE
+   ============================================================================
+   Screen 2 stops being a stack of coded panels and becomes the approved
+   Commons painting with live HTML mounted into the surfaces the painting
+   already contains.
+
+   ## The one idea
+
+   Every mount is positioned in fractions of the ARTWORK, and the artwork's own
+   placement on screen is computed from the same custom properties. `cover` is
+   done by hand rather than by the `cover` keyword precisely so those numbers
+   are readable by both:
+
+     --commons-img-w / -h   the painting's rendered size
+     --commons-img-x / -y   its top-left, relative to the section's padding box
+     --u                    one pixel of the 1672x941 original, at that size
+
+   A mount at `--mx: .27` therefore lands on the same brushstroke at 1440x900
+   as at 1920x1080, because both the panel and the paint are placed from
+   `--commons-img-*`. That is the whole reason this is not a `background-size:
+   cover` plus four hand-tuned percentage boxes, which drift apart the moment
+   the window changes shape.
+
+   Type scales with `--u` too, so the room reads as one object rather than as
+   fixed-size widgets on a zooming photograph. `--u` has a floor: at the
+   smallest gated viewport the honest scale is 0.83, which would put body copy
+   under 12px, so it is clamped and the panels fill their frames a touch more
+   tightly instead.
+
+   ## Fit policy
+
+     * Narrower than 16:9 — the painting is fitted to the HEIGHT and the sides
+       are cropped. What goes first is the reading table on the left and the
+       globe on the right, which is exactly the right sacrifice: no mount lives
+       outside 0.26-0.83.
+     * Up to 2.03:1 — fitted to the WIDTH, cropping at most 6.1% off the top
+       and bottom. Every mount sits inside 0.085-0.920 and survives that; the
+       1.14 cap and those two numbers are one decision, so moving either
+       without the other is what would put the room title or the last line of
+       the legal inscription off a 21:9 screen.
+     * Wider than 2.03:1 (ultrawide) — the painting stops growing rather than
+       eating the plinth, and the strip either side is filled with an
+       over-scaled blurred copy of itself.
+
+   ## Frames are not doubled
+
+   Inside this block the plaque's walnut mount, the noticeboard's planking, the
+   parchment of all three notices, their brass pins and the plinth's capping
+   board are all switched OFF. The painting has them. Everything that carries
+   MEANING — every heading, every line of copy, every link and both CTAs —
+   stays live HTML, and nothing is baked into the image.
+
+   ## The gate
+   Identical to the scroll-snap gate, deliberately: the composition is designed
+   to fit one viewport, and the same viewports that can hold it are the ones
+   that snap. Outside it the room falls back to flow mode, which is the layout
+   that shipped on 2026-09-04 with the painting behind it as a backdrop.
+   -------------------------------------------------------------------------- */
+
+@media (min-width: 1024px) and (min-height: 780px) {
+  html.hub-two-screen:not(.large-text) .academy-commons {
+    /* Hand-rolled cover. `clamp()` is what caps the vertical crop on an
+       ultrawide window; on everything narrower the first term wins and the
+       painting is simply height-fitted. */
+    --commons-img-h: clamp(100svh, calc(100vw * 941 / 1672), calc(100svh * 1.14));
+    --commons-img-w: calc(var(--commons-img-h) * 1672 / 941);
+    --commons-img-x: calc((100vw - var(--commons-img-w)) / 2);
+    --commons-img-y: calc((100svh - var(--commons-img-h)) / 2);
+    /* One pixel of the original artwork, at the size it is being drawn.
+       `100vw` includes the classic scrollbar on Windows, which shifts this by
+       ~7px — harmlessly, because the paint is placed from the same value and
+       the two shift together. */
+    --u: max(0.86px, calc(var(--commons-img-w) / 1672));
+
+    display: block;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  /* The painting, placed to the pixel the mounts are placed from. */
+  html.hub-two-screen:not(.large-text) .academy-commons-art {
+    background-image: var(--commons-art, none);
+    background-size: var(--commons-img-w) var(--commons-img-h);
+    background-position: var(--commons-img-x) var(--commons-img-y);
+  }
+  /* Pillarbox fill for windows wider than the painting. Invisible at every
+     aspect the painting itself covers, which is all of them up to ~2.1:1. */
+  html.hub-two-screen:not(.large-text) .academy-commons-wall {
+    background-image: var(--commons-art, none);
+    background-size: cover;
+    background-position: center;
+    filter: blur(34px) brightness(0.5) saturate(0.8);
+    transform: scale(1.1);
+  }
+
+  /* The room's flow containers stop existing so their children can be placed
+     against the section itself. `display: contents` keeps the DOM — and
+     therefore the reading order — exactly as it is in flow mode. */
+  html.hub-two-screen:not(.large-text) .academy-commons-room,
+  html.hub-two-screen:not(.large-text) .academy-commons-mounts {
+    display: contents;
+  }
+
+  /* ---- the mounts --------------------------------------------------------
+     `--mx/--my/--mw/--mh` are fractions of the artwork, measured off the
+     approved file. Keep them together: they are the alignment contract. */
+  html.hub-two-screen:not(.large-text) .academy-commons > .academy-commons-plinth,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-crest,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-plaque,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-board,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-mount-utility {
+    position: absolute;
+    left: calc(var(--commons-img-x) + var(--commons-img-w) * var(--mx));
+    top: calc(var(--commons-img-y) + var(--commons-img-h) * var(--my));
+    width: calc(var(--commons-img-w) * var(--mw));
+    height: calc(var(--commons-img-h) * var(--mh));
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    max-height: none;
+    min-height: 0;
+    z-index: 10;
+  }
+
+  /* The bare arch above the membership frame — the one wide stretch of empty
+     wall in the composition, and the only place a title can hang without
+     covering paint that is doing work. */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-crest {
+    --mx: 0.300;
+    --my: 0.085;
+    --mw: 0.180;
+    --mh: 0.093;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: calc(7 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-room-title {
+    font-size: calc(12 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-crest-rule .academy-hall-descend-rule {
+    width: calc(70 * var(--u));
+  }
+
+  /* ---- Mogzy Premium → the gilt-framed navy panel, left ------------------ */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-plaque {
+    --mx: 0.2700;
+    --my: 0.2150;
+    --mw: 0.2140;
+    --mh: 0.5150;
+    display: flex;
+    flex-direction: column;
+    /* Clears the painted laurel medallion, which the seal is struck into. */
+    padding-top: calc(112 * var(--u));
+    /* The painting IS the frame. */
+    background-image: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+  /* The seal leaves the flow and drops into the medallion's empty ring. The
+     offset is the medallion's centre (0.2715 of the artwork) expressed inside
+     this mount's own box, so it tracks the frame at every size. */
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-seal {
+    position: absolute;
+    left: 50%;
+    top: calc((0.2715 - 0.2150) / 0.5150 * 100%);
+    transform: translate(-50%, -50%);
+    margin: 0;
+    width: calc(46 * var(--u));
+    height: calc(46 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-seal-ring {
+    width: calc(37 * var(--u));
+    height: calc(37 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-seal svg {
+    width: calc(19 * var(--u));
+    height: calc(19 * var(--u));
+  }
+  /* The brass title band is gone with the mount board; the eyebrow is cut
+     straight into the painted field instead. */
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-band {
+    background-image: none;
+    box-shadow: none;
+    padding: 0;
+    justify-content: center;
+    font-size: calc(10.5 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-band .academy-commons-engraved {
+    color: rgba(233, 208, 148, 0.9);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    font-size: calc(10.5 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-body {
+    /* The seal is placed against the PLAQUE — i.e. against the painted frame —
+       so nothing between it and the frame may be a containing block. This div
+       carries `relative` for stacking in flow mode and must give it up here. */
+    position: static;
+    padding: 0;
+    gap: calc(15 * var(--u));
+    justify-content: center;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-head {
+    display: block;
+    text-align: center;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-title {
+    font-size: calc(30 * var(--u));
+    line-height: 1.14;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-blurb {
+    margin-top: calc(11 * var(--u));
+    max-width: none;
+    font-size: calc(14.5 * var(--u));
+    line-height: 1.55;
+  }
+  /* Symmetrical under a symmetrical frame — the flow-mode rule fades one way
+     only, which reads as a left-aligned card. */
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-rule {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgba(201, 168, 76, 0.4) 24%,
+      rgba(201, 168, 76, 0.4) 76%,
+      transparent
+    );
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-pillars {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    width: fit-content;
+    margin-inline: auto;
+    margin-top: calc(12 * var(--u));
+    gap: calc(8 * var(--u));
+    font-size: calc(13.5 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plaque-cta {
+    width: auto;
+    align-self: center;
+    margin-top: calc(16 * var(--u));
+    /* The 44px floor is absolute: it is a tap target, not a proportion. */
+    min-height: max(44px, calc(46 * var(--u)));
+    padding: calc(10 * var(--u)) calc(30 * var(--u));
+    font-size: calc(14.5 * var(--u));
+  }
+
+  /* ---- Join the Academy → the parchment noticeboard, right ---------------
+     The painted sheet is in perspective: its horizontal axis rises 1.7deg to
+     the right. The whole mount is turned onto that axis so the type lies on
+     the paper rather than across it, and the bill's own half-degree tilt —
+     which existed to stop a coded rectangle reading as a rectangle inside a
+     rectangle — is dropped, because there is no coded rectangle left. */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-board {
+    --mx: 0.5840;
+    --my: 0.2520;
+    --mw: 0.2440;
+    --mh: 0.2440;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transform: rotate(-1.7deg);
+    background-image: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill {
+    padding: 0;
+    transform: none;
+    background-image: none;
+    box-shadow: none;
+  }
+  /* The painting has real brass pins in all six places. */
+  html.hub-two-screen:not(.large-text) .academy-commons-pin {
+    display: none;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill-eyebrow {
+    font-size: calc(10.5 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill-title {
+    margin-top: calc(3 * var(--u));
+    font-size: calc(24 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill-blurb {
+    margin-top: calc(7 * var(--u));
+    max-width: none;
+    font-size: calc(13.5 * var(--u));
+    line-height: 1.5;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill-actions {
+    padding-top: calc(13 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill-cta {
+    min-height: max(44px, calc(44 * var(--u)));
+    padding: calc(8 * var(--u)) calc(17 * var(--u));
+    font-size: calc(14 * var(--u));
+    gap: calc(9 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill-cta svg {
+    width: calc(17 * var(--u));
+    height: calc(17 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bill-footnote {
+    margin-top: calc(9 * var(--u));
+    font-size: calc(11.5 * var(--u));
+  }
+
+  /* ---- Feedback + About → the two small pinned slips --------------------- */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-mount-utility {
+    --mx: 0.5540;
+    --my: 0.5970;
+    --mw: 0.2495;
+    --mh: 0.1600;
+  }
+  /* Column ratio and gutter are the painted sheets', not a design grid's. */
+  html.hub-two-screen:not(.large-text) .academy-commons-slips {
+    display: grid;
+    grid-template-columns: 172fr 190fr;
+    gap: calc(55 * var(--u));
+    height: 100%;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-slip {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Clear of the painted pin rows at the top and bottom of each sheet. */
+    padding: calc(17 * var(--u)) calc(13 * var(--u)) calc(12 * var(--u));
+    transform: none;
+    background-image: none;
+    box-shadow: none;
+  }
+  /* Two 44px targets and a heading is all a sheet this size will hold. The
+     supporting sentence and the "Feedback" eyebrow are the two pieces that
+     say nothing the heading and the link labels do not already say. */
+  html.hub-two-screen:not(.large-text) .academy-commons-slip-blurb,
+  html.hub-two-screen:not(.large-text) [data-testid="hub-feedback-block"] .academy-commons-slip-eyebrow {
+    display: none;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-slip-row {
+    display: block;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-slip-eyebrow {
+    font-size: calc(10 * var(--u));
+  }
+  /* One line. A sheet this size holds a heading and two 44px targets; a
+     heading that wraps costs it one of the targets' clearance from the
+     painted pin rows. */
+  html.hub-two-screen:not(.large-text) .academy-commons-slip-title {
+    font-size: calc(12.8 * var(--u));
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-slip-actions {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    margin-top: calc(8 * var(--u));
+    gap: calc(5 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-slip-action {
+    min-height: max(44px, calc(30 * var(--u)));
+    padding: calc(4 * var(--u)) calc(10 * var(--u));
+    font-size: calc(12.5 * var(--u));
+    justify-content: flex-start;
+  }
+
+  /* ---- the legal inscription → the wooden plinth -------------------------
+     Set between the reading table on the left and the side table on the right:
+     the one stretch of the painted rail that no furniture stands in front of,
+     so no line of legal copy is ever laid over a candle. */
+  html.hub-two-screen:not(.large-text) .academy-commons > .academy-commons-plinth {
+    /* Measured, not guessed: below the rail's lit capping edge (which crosses
+       the painting at 0.799) and inside the run of panelling no furniture
+       stands in front of (0.208-0.788). The band is near-black there, so the
+       inscription needs no scrim of its own. */
+    --mx: 0.2320;
+    --my: 0.8120;
+    --mw: 0.5540;
+    --mh: 0.1080;
+    background-image: none;
+    box-shadow: none;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plinth-inner {
+    max-width: none;
+    height: 100%;
+    justify-content: center;
+    gap: calc(7 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plinth-inner a,
+  html.hub-two-screen:not(.large-text) .academy-commons-plinth-inner > div > span {
+    font-size: calc(11 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-disclaimer {
+    max-width: none;
+    font-size: calc(11 * var(--u));
+    line-height: 1.4;
+    /* The painted rail is near-black under this band, so the inscription can
+       carry its full weight rather than the flow-mode fade. */
+    opacity: 0.9;
+  }
+
+  /* ---- delayed contextual navigation ------------------------------------
+     "Explore the Academy" and "Back to the Hall" are withheld until the reader
+     has actually settled in a room (LolHub measures that and adds
+     `is-revealed`; see the settle observer there). They are hidden ONLY inside
+     this gate — where the page snaps and the hint therefore means something —
+     and they never leave the tab order: focusing one reveals it, so a keyboard
+     reader is never sent at an invisible control. */
+  /* The destination state owns the timing, which is why these two durations
+     differ: arriving is a 560ms rise, leaving is a 200ms withdrawal. A hint
+     that faded out as slowly as it faded in stayed on screen through the first
+     half of the gesture, which is the opposite of "hidden while scrolling". */
+  html.hub-two-screen:not(.large-text) .academy-hub-hint {
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 200ms ease, transform 200ms ease;
+  }
+  html.hub-two-screen:not(.large-text) .academy-hub-hint.is-revealed,
+  html.hub-two-screen:not(.large-text) .academy-hub-hint:focus-visible {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition: opacity 560ms ease, transform 560ms ease;
+  }
+  /* Appearance, never travel, under either motion preference — the OS media
+     query and the app's own accessibility setting alike. Both selectors have
+     to name `.is-revealed` explicitly: it is the state that carries the 560ms
+     rise, and a rule that does not out-specify it silently leaves the long
+     fade in place for exactly the readers who asked for less. */
+  @media (prefers-reduced-motion: reduce) {
+    html.hub-two-screen:not(.large-text) .academy-hub-hint,
+    html.hub-two-screen:not(.large-text) .academy-hub-hint.is-revealed,
+    html.hub-two-screen:not(.large-text) .academy-hub-hint:focus-visible {
+      transform: none;
+      transition: opacity 160ms linear;
+    }
+  }
+  html.reduce-motion.hub-two-screen:not(.large-text) .academy-hub-hint,
+  html.reduce-motion.hub-two-screen:not(.large-text) .academy-hub-hint.is-revealed,
+  html.reduce-motion.hub-two-screen:not(.large-text) .academy-hub-hint:focus-visible {
+    transform: none;
+    transition: opacity 160ms linear;
+  }
+}
+
+/* The sitewide Hextech ambience — drifting runes, mist and corner brackets —
+   is a client-chrome layer, and it reads as litter over an illustrated room:
+   the runes drift across the painted frames and the gold corner brackets fight
+   the painted gilt. It is faded out while the Commons owns the view and
+   returns the moment the reader goes back up.
+
+   Local override by construction: `hub-commons-in-view` is set by LolHub
+   alone, only while the hub is mounted, and it is removed on unmount — Screen
+   1 and every other `/lol` route are untouched. */
+.hextech-ambience-layer {
+  transition: opacity 420ms ease;
+}
+html.hub-commons-in-view .hextech-ambience-layer {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hextech-ambience-layer { transition: opacity 120ms linear; }
 }

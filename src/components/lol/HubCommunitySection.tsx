@@ -95,33 +95,33 @@ export default function HubCommunitySection() {
           The rotation is what stops it reading as a rectangle inside a
           rectangle; it is under half a degree, so no line of type is measurably
           off the horizontal. */}
-      <div className="academy-commons-notice relative flex flex-col rounded-[2px] px-5 py-5 [transform:rotate(-0.45deg)] sm:px-6">
+      <div className="academy-commons-notice academy-commons-bill relative flex flex-col rounded-[2px] px-5 py-5 [transform:rotate(-0.45deg)] sm:px-6">
         <Pin className="left-4 top-2.5" />
         <Pin className="right-4 top-2.5" />
 
-        <span className="academy-commons-notice-soft text-[10px] font-bold uppercase tracking-[0.28em]">
+        <span className="academy-commons-notice-soft academy-commons-bill-eyebrow text-[10px] font-bold uppercase tracking-[0.28em]">
           Notice Board
         </span>
         <h2
           id="hub-community-heading"
-          className="academy-commons-notice-ink mt-1 text-[1.35rem] font-medium leading-tight sm:text-2xl"
+          className="academy-commons-notice-ink academy-commons-bill-title mt-1 text-[1.35rem] font-medium leading-tight sm:text-2xl"
           style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
         >
           Join the Academy
         </h2>
-        <p className="academy-commons-notice-soft mt-2 max-w-sm text-[13px] leading-relaxed">
+        <p className="academy-commons-notice-soft academy-commons-bill-blurb mt-2 max-w-sm text-[13px] leading-relaxed">
           Talk patches, compare runs, and hear about what’s coming to Mogzy
           before anyone else.
         </p>
 
-        <div className="pt-5">
+        <div className="academy-commons-bill-actions pt-5">
           {discord.url ? (
             <a
               href={discord.url}
               target="_blank"
               rel="noopener noreferrer"
               data-testid="hub-community-discord"
-              className="group inline-flex min-h-[52px] items-center gap-3 rounded-[3px] bg-gradient-to-b from-[#e0c273] to-[#b08c30] px-5 py-3 text-[15px] font-bold text-[#160f02] shadow-[0_1px_0_hsl(42_90%_78%)_inset] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              className="academy-commons-bill-cta group inline-flex min-h-[52px] items-center gap-3 rounded-[3px] bg-gradient-to-b from-[#e0c273] to-[#b08c30] px-5 py-3 text-[15px] font-bold text-[#160f02] shadow-[0_1px_0_hsl(42_90%_78%)_inset] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <DiscordMark className="h-5 w-5" />
               Join the Discord
@@ -133,7 +133,7 @@ export default function HubCommunitySection() {
                somewhere to go. */
             <div
               data-testid="hub-community-discord-pending"
-              className="inline-flex min-h-[52px] items-center gap-3 rounded-[2px] border border-dashed border-[#7a6230]/55 bg-[#d3c19a]/40 px-5 py-3 text-[15px] font-semibold text-[#4a3d24]"
+              className="academy-commons-bill-cta inline-flex min-h-[52px] items-center gap-3 rounded-[2px] border border-dashed border-[#7a6230]/55 bg-[#d3c19a]/40 px-5 py-3 text-[15px] font-semibold text-[#4a3d24]"
             >
               <DiscordMark className="h-5 w-5 text-[#7a6230]" />
               Discord — opening soon
@@ -147,7 +147,7 @@ export default function HubCommunitySection() {
               ))}
             </div>
           ) : (
-            <p className="academy-commons-notice-soft mt-3 text-[11.5px] leading-snug">
+            <p className="academy-commons-notice-soft academy-commons-bill-footnote mt-3 text-[11.5px] leading-snug">
               YouTube, TikTok, Instagram and X are on the way.
             </p>
           )}

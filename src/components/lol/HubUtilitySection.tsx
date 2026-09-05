@@ -35,7 +35,7 @@ function Slip({
   return (
     <div
       {...rest}
-      className={`academy-commons-notice relative rounded-[2px] px-5 py-3.5 ${className ?? ""}`}
+      className={`academy-commons-notice academy-commons-slip relative rounded-[2px] px-5 py-3.5 ${className ?? ""}`}
     >
       <span
         aria-hidden
@@ -48,13 +48,13 @@ function Slip({
 
 /** Ink-on-paper action, the parchment counterpart of a secondary button. */
 const SLIP_ACTION =
-  "inline-flex min-h-[44px] items-center gap-2 rounded-[2px] border border-[#7a6230]/45 bg-[#e6d9b6]/45 px-3.5 py-1.5 text-[13px] font-semibold text-[#2c2417] transition-colors hover:bg-[#f0e5c8]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230]";
+  "academy-commons-slip-action inline-flex min-h-[44px] items-center gap-2 rounded-[2px] border border-[#7a6230]/45 bg-[#e6d9b6]/45 px-3.5 py-1.5 text-[13px] font-semibold text-[#2c2417] transition-colors hover:bg-[#f0e5c8]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230]";
 
 export default function HubUtilitySection() {
   return (
     <section
       data-testid="hub-utility-section"
-      className="grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
+      className="academy-commons-slips grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
     >
       {/* Feedback — the louder slip of the pair. */}
       <Slip
@@ -62,23 +62,23 @@ export default function HubUtilitySection() {
         aria-labelledby="hub-feedback-heading"
         className="[transform:rotate(0.3deg)]"
       >
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="min-w-0">
-            <span className="academy-commons-notice-soft text-[10px] font-bold uppercase tracking-[0.28em]">
+        <div className="academy-commons-slip-row flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="academy-commons-slip-headings min-w-0">
+            <span className="academy-commons-notice-soft academy-commons-slip-eyebrow text-[10px] font-bold uppercase tracking-[0.28em]">
               Feedback
             </span>
             <h2
               id="hub-feedback-heading"
-              className="academy-commons-notice-ink text-[1.05rem] font-semibold leading-tight"
+              className="academy-commons-notice-ink academy-commons-slip-title text-[1.05rem] font-semibold leading-tight"
               style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
             >
               Help improve Mogzy
             </h2>
-            <p className="academy-commons-notice-soft mt-0.5 text-[12.5px] leading-snug">
+            <p className="academy-commons-notice-soft academy-commons-slip-blurb mt-0.5 text-[12.5px] leading-snug">
               Found something wrong? Have an idea? Tell us.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="academy-commons-slip-actions flex flex-wrap gap-2">
             <Link to="/feedback" data-testid="hub-feedback-give" className={SLIP_ACTION}>
               <MessageSquarePlus className="h-3.5 w-3.5 text-[#7a6230]" aria-hidden />
               Give Feedback
@@ -104,7 +104,7 @@ export default function HubUtilitySection() {
         >
           About the Academy
         </h2>
-        <nav aria-label="About and help" className="mt-1.5 flex flex-wrap gap-2">
+        <nav aria-label="About and help" className="academy-commons-slip-actions mt-1.5 flex flex-wrap gap-2">
           {UTILITIES.map(({ to, label, Icon }) => (
             <Link key={to} to={to} className={SLIP_ACTION}>
               <Icon className="h-3.5 w-3.5 shrink-0 text-[#7a6230]" aria-hidden />

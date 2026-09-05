@@ -206,6 +206,33 @@ const ACADEMY_FALLBACK_NAME = "Summoner";
 const HUB_SNAP_CLASS = "hub-two-screen";
 
 /**
+ * Set on `html` while the Commons owns most of the viewport. Its only job is
+ * to let the Commons quiet the sitewide Hextech ambience over the illustrated
+ * room — a LOCAL visual override on `/lol`, not a change to the ambience
+ * layer, which is untouched on Screen 1 and on every other `/lol` route. The
+ * class is removed on unmount with the snap class.
+ */
+const HUB_COMMONS_VIEW_CLASS = "hub-commons-in-view";
+
+/**
+ * The gate the contextual navigation hints obey, character-for-character the
+ * snap gate declared in index.css. Both hints ("Explore the Academy ↓" and
+ * "Back to the Hall ↑") are only ever DELAYED where the page actually snaps;
+ * on a phone, a short laptop, deep page zoom or the large-text setting the
+ * CSS never hides them and this observer keeps its hands off them.
+ */
+const HUB_SNAP_MEDIA = "(min-width: 1024px) and (min-height: 780px)";
+
+/** How long a screen must sit settled before its hint is offered. */
+const HUB_HINT_DELAY_MS = 1700;
+/** How long the scroll must be quiet before the screen counts as settled. */
+const HUB_SCROLL_IDLE_MS = 140;
+/** A screen is parked when its top edge is this close to the viewport top. */
+const HUB_SETTLE_TOLERANCE_PX = 18;
+
+type HubScreen = "hall" | "commons";
+
+/**
  * True when EITHER motion preference is set: the OS-level media query or the
  * app's own accessibility setting (`html.reduce-motion`, toggled from
  * Settings). Both must suppress the page's smooth scrolling.
@@ -241,6 +268,21 @@ export default function LolHub() {
   // during render and the line never changes while the user stays on the hub.
   const [academyLineIndex] = useState(() => Math.floor(Math.random() * ACADEMY_LINES.length));
   const [displayName, setDisplayName] = useState<string | null>(null);
+  /**
+   * Which screen's navigation hint is currently offered, or null while the
+   * page is moving / before the settle delay has elapsed. Never gates
+   * EXISTENCE — both controls are always rendered and always focusable; this
+   * only adds `is-revealed`, and the rule that hides them at all lives inside
+   * the snap gate in index.css.
+   */
+  const [settledHint, setSettledHint] = useState<HubScreen | null>(null);
+  /**
+   * The last value handed to `setSettledHint`. A scroll fires dozens of
+   * events per gesture and every one of them withdraws the hint, so the
+   * observer below dedupes against this ref rather than calling `setState`
+   * over and over and leaning on React's bail-out to absorb it.
+   */
+  const settledHintRef = useRef<HubScreen | null>(null);
 
   const isAnonymous = !user || user.is_anonymous === true;
   // First-visit tutorial onboarding. Authoritative source is the profile's
@@ -306,6 +348,103 @@ export default function LolHub() {
     const root = document.documentElement;
     root.classList.add(HUB_SNAP_CLASS);
     return () => root.classList.remove(HUB_SNAP_CLASS);
+  }, []);
+
+  // ---- contextual navigation hints + the Commons' ambience override -------
+  //
+  // Deliberately NOT a wheel interceptor and NOT a snap-event listener (there
+  // isn't a cross-browser one). The page already owns two facts we can read
+  // cheaply: where the document is scrolled to, and whether it is still
+  // moving. A screen counts as SETTLED when the scroll has been quiet for
+  // `HUB_SCROLL_IDLE_MS` and that screen's top edge is parked at the top of
+  // the viewport; its hint is then offered after `HUB_HINT_DELAY_MS`, so the
+  // way onward is something the room offers a reader who has stopped to look
+  // rather than a permanent chrome element.
+  //
+  // Any scroll at all withdraws both hints on the same frame, which is what
+  // makes them read as contextual: nothing is on screen while the reader is
+  // between rooms.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const root = document.documentElement;
+    const gate = window.matchMedia(HUB_SNAP_MEDIA);
+    let idleTimer = 0;
+    let revealTimer = 0;
+    let frame = 0;
+
+    const clearTimers = () => {
+      window.clearTimeout(idleTimer);
+      window.clearTimeout(revealTimer);
+    };
+
+    const applyHint = (next: HubScreen | null) => {
+      if (settledHintRef.current === next) return;
+      settledHintRef.current = next;
+      setSettledHint(next);
+    };
+
+    /** The screen currently parked at the top of the viewport, if any. */
+    const settledScreen = (): HubScreen | null => {
+      const screens = document.querySelectorAll<HTMLElement>("[data-hub-screen]");
+      for (const el of Array.from(screens)) {
+        if (Math.abs(el.getBoundingClientRect().top) <= HUB_SETTLE_TOLERANCE_PX) {
+          return (el.dataset.hubScreen as HubScreen | undefined) ?? null;
+        }
+      }
+      return null;
+    };
+
+    /* The illustrated Commons owns the view once it holds more than half of
+       it. Ambience is faded from that point rather than from the snap, so it
+       is already gone by the time the room has arrived. */
+    const syncAmbience = () => {
+      const commons = document.querySelector<HTMLElement>('[data-hub-screen="commons"]');
+      const inRoom = !!commons && commons.getBoundingClientRect().top < window.innerHeight * 0.5;
+      root.classList.toggle(HUB_COMMONS_VIEW_CLASS, inRoom);
+    };
+
+    /* Snapping is off outside the gate and under large text, and so are the
+       delayed hints: the CSS shows both controls outright there. */
+    const armed = () => gate.matches && !root.classList.contains("large-text");
+
+    const schedule = () => {
+      clearTimers();
+      if (!armed()) {
+        applyHint(null);
+        return;
+      }
+      idleTimer = window.setTimeout(() => {
+        const screen = settledScreen();
+        if (!screen) return;
+        revealTimer = window.setTimeout(() => applyHint(screen), HUB_HINT_DELAY_MS);
+      }, HUB_SCROLL_IDLE_MS);
+    };
+
+    const onScrollOrResize = () => {
+      applyHint(null);
+      if (!frame) {
+        frame = window.requestAnimationFrame(() => {
+          frame = 0;
+          syncAmbience();
+        });
+      }
+      schedule();
+    };
+
+    syncAmbience();
+    schedule();
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    gate.addEventListener?.("change", schedule);
+
+    return () => {
+      clearTimers();
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScrollOrResize);
+      window.removeEventListener("resize", onScrollOrResize);
+      gate.removeEventListener?.("change", schedule);
+      root.classList.remove(HUB_COMMONS_VIEW_CLASS);
+    };
   }, []);
 
   // Funnel: landing view, once per mount.
@@ -775,7 +914,10 @@ export default function LolHub() {
             type="button"
             onClick={() => hubScrollTo("commons")}
             data-testid="hall-descend"
-            className="academy-hall-descend pointer-events-auto group flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-[2px] px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70"
+            data-hub-hint="hall"
+            className={`academy-hall-descend academy-hub-hint pointer-events-auto group flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-[2px] px-4 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70 ${
+              settledHint === "hall" ? "is-revealed" : ""
+            }`}
           >
             <span className="academy-hall-descend-rule h-px w-24" aria-hidden />
             <span className="text-[10px] font-bold uppercase tracking-[0.34em]">
@@ -808,7 +950,10 @@ export default function LolHub() {
           Meta Reflex and the legacy News & Blog grid were removed from this
           area on 2026-09-04 and stay removed; their own front doors
           (/league-swipe, /blog) are untouched. */}
-      <AcademyCommons onBackToHall={() => hubScrollTo("hall")} />
+      <AcademyCommons
+        onBackToHall={() => hubScrollTo("hall")}
+        navHintRevealed={settledHint === "commons"}
+      />
     </div>
   );
 }

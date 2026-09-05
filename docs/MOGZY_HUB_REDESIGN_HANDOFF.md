@@ -1,8 +1,308 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 17 (the two-screen Academy) is at the top of this file.
-     Revision 16 was the Mogzy Premium promotion module; 15 the below-the-fold
-     rework; 14 the live-review tuning. -->
+<!-- Revision 18 (the painted Commons) is at the top of this file.
+     Revision 17 was the two-screen Academy; 16 the Mogzy Premium promotion
+     module; 15 the below-the-fold rework; 14 the live-review tuning. -->
+
+## Revision 2026-09-05 — THE PAINTED COMMONS (approved background integration)
+
+**Status:** complete on branch `hub/two-screen-academy`, worktree
+`/Users/macmoney/mogsy-wt-hub2screen`, rebased onto `origin/main` @ `e1bec908`.
+Committed, **not pushed and not merged** — stopped for the visual review the
+brief asked for. What's New has not been started.
+
+Screen 2 is no longer a stack of coded panels over a CSS wall. The approved
+Commons artwork is the room, and every live panel is mounted into a surface the
+painting already contains. Screen 1, the snap architecture and every route,
+entitlement and interaction below are untouched.
+
+---
+
+### 1. The asset
+
+| | |
+|---|---|
+| Source | `~/Downloads/Mogzy-classroom-bottom-half.png` (owner's file, **not modified**) |
+| Repo path | `src/academy/hub/academy-commons-desktop.png` |
+| Verified | byte-identical copy — `sha256 f26c5a4b…ce585e` on both |
+| Size | 1672 × 941 (16:9), 2.02 MB PNG |
+
+`src/academy/hub/` rather than `src/assets/`: it is where the hall's own
+paintings live (`academy-library-desktop.png`, `-mobile.png`), and 2 MB is the
+house size for them. It is **imported**, not referenced by a `/assets/` URL like
+the Ranked art — so the bundler content-hashes it and a missing file breaks the
+build. `AcademyCommons` hands the resolved URL to CSS as `--commons-art`, which
+keeps every rule that consumes it in `index.css`.
+
+---
+
+### 2. Alignment strategy — the one idea
+
+`background-size: cover` plus four hand-tuned percentage boxes drift apart the
+moment the window changes shape. Instead, **the mounts and the paint are placed
+from the same four custom properties**, so they cannot drift:
+
+```
+--commons-img-h : clamp(100svh, 100vw * 941/1672, 100svh * 1.14)
+--commons-img-w : --commons-img-h * 1672/941
+--commons-img-x : (100vw - --commons-img-w) / 2
+--commons-img-y : (100svh - --commons-img-h) / 2
+--u             : max(0.86px, --commons-img-w / 1672)   ← one artwork pixel
+```
+
+A mount declares `--mx/--my/--mw/--mh` as **fractions of the artwork** and is
+placed with `left: calc(var(--commons-img-x) + var(--commons-img-w) * var(--mx))`.
+Type is sized in `--u`, so the room scales as one object rather than as
+fixed-size widgets on a zooming photograph.
+
+**Measured, not eyeballed.** The mount rectangles were taken off the file by
+flood-filling the parchment surfaces and by profiling the plinth's brightness,
+not by reading a grid overlay:
+
+| Mount | Painted surface | `--mx` | `--my` | `--mw` | `--mh` |
+|---|---|---|---|---|---|
+| Room title + "Back to the Hall" | the bare arch above the frame | 0.300 | 0.085 | 0.180 | 0.093 |
+| Mogzy Premium | the large gilt-framed navy panel | 0.2700 | 0.2150 | 0.2140 | 0.5150 |
+| Join the Academy | the large parchment noticeboard | 0.5840 | 0.2520 | 0.2440 | 0.2440 |
+| Feedback + About | the two small pinned slips | 0.5540 | 0.5970 | 0.2495 | 0.1600 |
+| Legal inscription | the wooden plinth | 0.2320 | 0.8120 | 0.5540 | 0.1080 |
+
+Verified by probing the live DOM at both target sizes: **every mount reports the
+same artwork fractions at 1440×900 and at 1920×1080**, to four decimal places.
+
+Three measurements that a grid overlay got wrong and pixel analysis fixed:
+
+* **The plinth.** The rail's lit capping edge crosses the painting at y 0.799
+  and the first guess put the Riot disclaimer straight through it. The dark,
+  flat run is y 0.813–0.929; horizontally, furniture bounds it to x 0.208–0.788
+  (the reading table on the left, the side table on the right). The band is
+  near-black there, so the inscription needs **no scrim of its own**.
+* **The noticeboard is in perspective**, not square: its horizontal axis rises
+  1.7° to the right. The mount is turned onto that axis so the type lies on the
+  paper instead of across it.
+* **The seal.** The gilt frame's laurel medallion is an empty ring at
+  (0.3765, 0.2715). The Premium panel's existing Crown seal is struck into it —
+  it leaves the flow and is placed against the *frame*. This is why
+  `.academy-commons-plaque-body` has to give up its `position: relative` in
+  stage mode: it would otherwise be the seal's containing block, and the seal
+  landed 109px low, on top of the title.
+
+---
+
+### 3. Responsive positioning
+
+Cover is computed by hand precisely so the crop policy is a decision rather
+than a side effect:
+
+| Viewport shape | Behaviour |
+|---|---|
+| Narrower than 16:9 (incl. 1440×900) | fitted to the **height**; the sides crop. What goes is the reading table and the globe — no mount lives outside x 0.208–0.845. |
+| 16:9 (1920×1080) | exact; nothing cropped. |
+| Up to 2.03:1 | fitted to the **width**; at most 6.1% crops off the top and bottom. Every mount sits inside y 0.085–0.920 and survives it. |
+| Wider than 2.03:1 (21:9) | the painting stops growing rather than eating the plinth; the strip either side is filled with an over-scaled blurred copy of itself (`.academy-commons-wall`). |
+
+**The `1.14` cap and the 0.085 / 0.920 mount bounds are one decision.** Moving
+either without the other is exactly what puts the room title or the last line of
+the legal inscription off a 21:9 screen — it did, at 1.18, before the cap moved.
+
+`--u`'s `0.86px` floor is the other half of the same argument at the small end:
+at the smallest gated viewport (1024×780) the honest scale is 0.83, which puts
+body copy under 12px. It is clamped, and the panels fill their frames a touch
+more tightly instead.
+
+**Below the gate the composition is not forced.** `@media (min-width:1024px) and
+(min-height:780px)` on `html.hub-two-screen:not(.large-text)` — character-for-
+character the scroll-snap gate. Outside it (phones, short laptops, deep page
+zoom, the large-text setting) the artwork drops back to a scrimmed `cover`
+backdrop, the panels keep their own coded chrome, and the room is an ordinary
+scrolling document. Readability over framing, as the brief asks.
+
+The flow-mode room also gained `padding-top: calc(var(--app-header-h) + 1rem)`.
+The Commons opts out of the shell's header padding, and without it the "Back to
+the Hall" control — the first thing in that column — sat underneath the floating
+HUD on a phone.
+
+---
+
+### 4. No doubled frames
+
+Inside the stage gate the coded chrome the painting already supplies is switched
+**off**: the plaque's walnut mount and navy field, the noticeboard's planking,
+the parchment of all three notices, their six brass pins, and the plinth's
+capping board. Nothing is removed from the DOM — every one is a CSS override, so
+flow mode still has all of it.
+
+Everything that carries **meaning** stays live HTML. Nothing is baked into the
+image: every heading, both CTAs, all four utility links, the three legal links,
+the copyright line and the Riot disclaimer are text. Two pieces of supporting
+copy are hidden in stage mode only, because a painted slip holds a heading and
+two 44px targets and no more: the Feedback slip's descriptive sentence, and its
+"Feedback" eyebrow (its `<h2>` and both link labels already say it). Both are
+present in flow mode and in the DOM.
+
+**The 44px tap target is absolute, not proportional.** Every CTA and slip action
+is `min-height: max(44px, calc(N * var(--u)))`, so scaling the room down never
+scales an interactive target below the floor.
+
+The one deletion: `.academy-commons-lintel` (the coded ceiling beam) and its 38
+lines of CSS. The painting has the architecture; a coded wall behind an
+illustrated one only fought it. `.academy-commons-wall`'s panelling, sconces and
+moulding went with it — the element survives as the navy ground and the
+ultrawide blur-fill.
+
+---
+
+### 5. Delayed contextual navigation
+
+Both hints are withheld until the reader has actually settled in a room:
+
+* **Settled** = the scroll has been quiet for 140ms *and* a screen's top edge is
+  parked within 18px of the viewport top.
+* The hint is then offered after **1700ms**.
+* **Any** scroll withdraws both immediately.
+
+No wheel interception and no snap-event listener (there is no cross-browser
+one). `LolHub`'s observer reads `getBoundingClientRect()` on `[data-hub-screen]`
+and debounces `scroll`/`resize` — the two facts the page already owns.
+
+Timings are asymmetric on purpose, and the **destination** state owns them:
+arriving is a 560ms rise, leaving is a 200ms withdrawal. A hint that faded out
+as slowly as it faded in stayed on screen through the first half of the gesture,
+which is the opposite of "hidden while scrolling".
+
+Three things this deliberately does **not** do:
+
+* It never gates **existence**. Both controls are always rendered and always in
+  the tab order; `:focus-visible` reveals them, so a keyboard reader is never
+  sent at an invisible control.
+* It only hides them **inside the snap gate**. On a phone, a short laptop, deep
+  page zoom or large text, the CSS never hides them at all and the observer
+  keeps its hands off — verified at 390×844, 1280×720 and with `.large-text`.
+* Under either motion preference (the OS media query **and** the app's own
+  `html.reduce-motion`) it is appearance with no travel: `transform: none`,
+  160ms. Both selectors have to name `.is-revealed` explicitly — it is the state
+  carrying the 560ms rise, and a rule that does not out-specify it silently
+  leaves the long fade in place for exactly the readers who asked for less.
+  That regression happened once during this pass and is the reason the selector
+  list looks redundant.
+
+State updates are deduped through a ref: a scroll fires dozens of events per
+gesture and each one withdraws the hint, so `setState` is only called when the
+value actually changes.
+
+---
+
+### 6. Ambience decision — faded, for the Commons only
+
+`HextechAmbience` is disabled over Screen 2. Drifting runes crossed the painted
+frames and its gold corner brackets fought the painted gilt; it reads as litter
+over an illustrated room.
+
+It is a **local visual override, not an ambience rewrite**. `LolHub` sets
+`html.hub-commons-in-view` when the Commons holds more than half the viewport
+and removes it on unmount; `index.css` fades the layer to `opacity: 0` on that
+class. The component itself gained one thing — a `hextech-ambience-layer` class
+as the CSS hook. Screen 1 and every other `/lol` route are untouched, and the
+ambience returns the moment the reader goes back up (verified: `1` → `0` → `1`).
+
+---
+
+### 7. Files changed
+
+| File | Change |
+|---|---|
+| `src/academy/hub/academy-commons-desktop.png` | **new** — the approved artwork, byte-identical to the owner's file |
+| `src/components/lol/AcademyCommons.tsx` | the room rebuilt as a stage; the coded lintel replaced by a crest in the painted arch; asset wired as `--commons-art`; `navHintRevealed` prop |
+| `src/pages/LolHub.tsx` | the settle observer (hint delay + ambience class); `is-revealed` on the hall's descend control |
+| `src/index.css` | `.academy-commons-art`; wall reduced to ground + blur-fill; the whole stage block; hint transitions; ambience fade; `-lintel` deleted |
+| `src/components/lol/HubPremiumPanel.tsx` | stable class hooks only — no logic, no copy, no route |
+| `src/components/lol/HubCommunitySection.tsx` | stable class hooks only |
+| `src/components/lol/HubUtilitySection.tsx` | stable class hooks only |
+| `src/components/HextechAmbience.tsx` | one class as a CSS hook; behaviour unchanged |
+
+**Not touched:** every route, `PREMIUM_ROUTE`, the entitlement read, the
+community link resolution and its fail-closed behaviour, `AdSlot`, the four
+books, the shelves, the Patch Report centerpiece, Mogzy, the radio, the snap
+gate, Pro Play, `Footer`'s `/lol` self-hide.
+
+---
+
+### 8. Verification
+
+Screenshots (outside the repo): `/Users/macmoney/mogzy-hub-commons-shots/`
+
+| File | What it shows |
+|---|---|
+| `commons-1440x900.png` | Screen 2, primary target |
+| `commons-1920x1080.png` | Screen 2, second target — mounts identical to 4 dp |
+| `hall-1440x900.png`, `hall-1920x1080.png` | Screen 1, unchanged |
+| `hall-1440x900-hint-withheld.png` | Screen 1 shortly after mount — no hint |
+| `hall-1440x900-hint-revealed.png` | the same frame after the 1.7s settle |
+| `transition-1440x900-mid-scroll.png` | a real mid-gesture frame at `scrollY 116`, both rooms half in view, both hints withdrawn |
+| `commons-390x844-mobile.png`, `-bottom.png` | flow mode: top of the room, and the legal band |
+| `commons-1280x720-short.png` | below the gate — flow mode, hints not hidden |
+| `commons-gate-min-1024x780.png` | the smallest gated viewport |
+| `commons-ultrawide-2560x1080.png` | 21:9 — pillarbox blur-fill, title and plinth both intact |
+| `commons-1440x900-large-text.png` | `.large-text` — flow mode, hints not hidden |
+
+Behaviour, measured in Chrome via Playwright (the Browser pane renders with
+`visibilityState: "hidden"`, which skips mount animations):
+
+| Check | Result |
+|---|---|
+| Screen 1 unchanged | ✔ |
+| Scroll snap unchanged | ✔ `y mandatory` inside the gate, `none` at 390×844 |
+| Premium / Community / Feedback+About / legal on their mounts | ✔ at both targets |
+| CTA → `/lol/premium`; member and non-member variants | ✔ (6/6 `HubPremiumPanel` tests) |
+| Feedback, Report a Bug, About, Contact, Privacy/Terms/Security | ✔ |
+| Pro Play | untouched |
+| Horizontal overflow | none at 390, 1024, 1280, 1440, 1920, 2560 |
+| Hint delay / withdrawal / re-settle | ✔ `0 → 1` after 1.7s; `1 → 0` within ~700ms of a scroll; revealed again on re-settle |
+| Hints outside the gate | visible, never hidden — 390×844, 1280×720, `.large-text` |
+| Reduced motion | `transform: none`, `transition: 0.16s` |
+| Ambience | `1` (hall) → `0` (commons) → `1` (back) |
+| New console errors | none, at every viewport |
+
+The seam frame was driven with CDP `Input.synthesizeScrollGesture`, not
+`mouse.wheel`: an unphased wheel event makes Chrome re-snap on every tick and
+mandatory snapping then measures as a trap it is not.
+
+**Tests.** `npx vitest run`, serially (running two suites at once on this
+machine fabricates failures):
+
+| | Baseline (`hub/two-screen-academy` before this pass) | After |
+|---|---|---|
+| Test files | **12 failed** / 562 passed | **12 failed** / 565 passed |
+| Tests | **43 failed** / 8676 passed / 7 skipped | **43 failed** / 8679 passed / 7 skipped |
+
+The failing **set** is byte-identical — same 12 files, same 43 test names — and
+is the repo's standing baseline, unrelated to the hub. Three tests were added to
+`LolHub.test.tsx` (78 in the file, up from 75): the artwork must reach CSS as
+`--commons-art` from a bundled import and never as an `<img>`; the seven class
+hooks the painted mounts are positioned by must exist; and both navigation
+hints must be a class on an always-rendered, always-focusable button rather
+than a conditional render.
+
+Lint: clean on all changed files. Typecheck: no new errors (the repo's
+pre-existing `tsc` failures are all in unrelated files).
+
+---
+
+### 9. Known constraints
+
+* **A live ad in `lol_hub_mid` would land over the painted room.** `AdSlot`
+  returns null and reserves no space in every environment today; if a provider
+  ever fills it, the stage composition has to be revisited with it. This is the
+  same caveat the 2026-09-04 room carried, now with a picture behind it.
+* **The 1024×780 corner is the tight one.** `--u`'s floor means the panels run
+  about 4% larger than their frames there; everything still fits, and it is the
+  smallest viewport the gate admits.
+* **`--u`, the `1.14` cap and the mount bounds are one system.** Changing any
+  one of them without re-checking the other two is how the composition breaks
+  quietly at an untested aspect ratio.
+
+---
+
 
 ## Revision 2026-09-04d — THE TWO-SCREEN ACADEMY
 

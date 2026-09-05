@@ -1186,3 +1186,69 @@ describe("LolHub — the two-screen Academy", () => {
     }
   });
 });
+
+/**
+ * The painted Commons (2026-09-05). The composition itself is geometry and was
+ * measured in a real Chromium — jsdom has no layout, so asserting mount
+ * alignment here would only assert the stub. What IS a contract, and what this
+ * block guards, is everything the composition depends on that jsdom can see:
+ *
+ *  - the artwork reaches CSS as `--commons-art` on the section, from a bundled
+ *    import, and is never an <img> that could contribute layout height;
+ *  - the class hooks the stage block keys off still exist on the panels;
+ *  - the delayed hints are a CLASS, never a conditional render — both controls
+ *    stay in the DOM and in the tab order at all times, which is the whole
+ *    reason a keyboard reader is not stranded by a hint that has not appeared.
+ */
+describe("LolHub — the painted Academy Commons", () => {
+  it("hands the approved artwork to CSS as a custom property, not as an <img>", () => {
+    const { container } = renderHub();
+    const commons = container.querySelector<HTMLElement>('[data-testid="academy-commons"]')!;
+    // Vite resolves the import to a URL; in the test environment that is the
+    // module path. What matters is that a url() reaches CSS from a real
+    // bundled asset rather than a hand-written /assets/ string.
+    expect(commons.style.getPropertyValue("--commons-art")).toMatch(
+      /^url\(.*academy-commons-desktop\.png.*\)$/,
+    );
+    // The painting is a background on a pointer-inert layer. An <img> here
+    // would contribute height and break the one-viewport room.
+    expect(commons.querySelector(".academy-commons-art")).not.toBeNull();
+    expect(commons.querySelectorAll("img")).toHaveLength(0);
+  });
+
+  it("keeps the class hooks the painted mounts are positioned by", () => {
+    // These are not cosmetic class names: index.css positions each panel onto
+    // its painted surface through them, so losing one silently drops a panel
+    // back into the top-left corner of the room.
+    const { container } = renderHub();
+    for (const hook of [
+      ".academy-commons-art",
+      ".academy-commons-crest",
+      ".academy-commons-plaque",
+      ".academy-commons-plaque-seal",
+      ".academy-commons-board",
+      ".academy-commons-mount-utility",
+      ".academy-commons-plinth",
+    ]) {
+      expect(container.querySelector(hook)).not.toBeNull();
+    }
+  });
+
+  it("offers both navigation hints as a class, never as a conditional render", () => {
+    const { container } = renderHub();
+    const hints = ["hall-descend", "commons-back-to-hall"].map((id) =>
+      screen.getByTestId(id),
+    );
+    for (const hint of hints) {
+      // Present, focusable and clickable from the first paint. Only the
+      // `is-revealed` class — added once a screen has been settled for the
+      // hint delay, and only where the page snaps — is withheld.
+      expect(hint.className).toMatch(/academy-hub-hint/);
+      expect(hint.className).not.toMatch(/is-revealed/);
+      expect(hint.tagName).toBe("BUTTON");
+      expect(hint.hasAttribute("disabled")).toBe(false);
+      expect(hint.getAttribute("aria-hidden")).toBeNull();
+    }
+    expect(container.querySelectorAll(".academy-hub-hint")).toHaveLength(2);
+  });
+});
