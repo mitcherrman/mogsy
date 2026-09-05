@@ -14,18 +14,26 @@ const links = [
   { to: "/contact", label: "Contact", icon: Mail },
 ];
 
-/** The trust/compliance subset. Nothing is dropped from the app — these are the
- *  destinations no other surface carries. */
-const LEGAL_ONLY = new Set(["/privacy", "/terms", "/security"]);
-
 /**
  * Sitewide footer rendered inside Layout. Hidden on immersive gameplay routes
  * where the bottom mobile navbar overlaps and the swipe surface needs the
- * full viewport. All trust/compliance pages remain reachable via direct URL.
+ * full viewport, and on `/lol`, which carries its own. All trust/compliance
+ * pages remain reachable via direct URL.
  */
 export default function Footer() {
   const { pathname } = useLocation();
   const hidden =
+    // `/lol` is TWO composed full-viewport Academy rooms, and a conventional
+    // footer under the second one is exactly the "floating below the scene"
+    // the two-screen redesign removed. Privacy, Terms, Security, the copyright
+    // line and the Riot disclaimer are inscribed into the Commons' plinth
+    // instead, at this file's own wording — see AcademyCommons.tsx. Nothing
+    // became unreachable, and every other route is unchanged.
+    //
+    // Before this, `/lol` rendered a legal-only variant of this footer. That
+    // narrowing is gone with it; `data-variant` on the nav below is therefore
+    // always "full" now, and the /lol case is simply not rendered.
+    pathname === "/lol" ||
     pathname.startsWith("/swipe-game") ||
     pathname.startsWith("/swipe/preset") ||
     pathname.startsWith("/multiplayer/game") ||
@@ -36,15 +44,6 @@ export default function Footer() {
     pathname.startsWith("/dev/ranked-shell-probe") ||
     pathname.startsWith("/admin");
   if (hidden) return null;
-
-  // The /lol hub grew its own community + About/Feedback/Contact band directly
-  // above this footer, so repeating those four here would be the same links
-  // twice within one screen. On that ONE route the footer narrows to the legal
-  // set and its copy, which is what the brief means by a compact conventional
-  // footer subordinate to the sections above it. Every other page is unchanged,
-  // and no destination becomes unreachable.
-  const legalOnly = pathname === "/lol";
-  const visibleLinks = legalOnly ? links.filter((l) => LEGAL_ONLY.has(l.to)) : links;
 
   const year = new Date().getFullYear();
 
@@ -63,14 +62,10 @@ export default function Footer() {
           <nav
             aria-label="Footer"
             data-testid="site-footer-nav"
-            data-variant={legalOnly ? "legal-only" : "full"}
-            className={
-              legalOnly
-                ? "grid grid-cols-2 sm:grid-cols-3 gap-x-6 text-sm"
-                : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 text-sm"
-            }
+            data-variant="full"
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 text-sm"
           >
-            {visibleLinks.map(({ to, label, icon: Icon }) => (
+            {links.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}

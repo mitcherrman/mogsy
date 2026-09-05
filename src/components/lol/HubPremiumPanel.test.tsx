@@ -39,7 +39,8 @@ describe("HubPremiumPanel", () => {
     const panel = screen.getByTestId("hub-premium-panel");
     expect(panel.dataset.premiumState).toBe("promo");
     expect(screen.getByRole("heading", { name: "Mogzy Premium" })).toBeTruthy();
-    expect(screen.getByText("Unlock the Full Academy")).toBeTruthy();
+    // The eyebrow now reads off the plaque's brass title band.
+    expect(screen.getByText("Academy Membership")).toBeTruthy();
     const cta = screen.getByTestId("hub-premium-cta");
     expect(cta.textContent).toContain("Explore Premium");
     expect(cta.getAttribute("href")).toBe("/lol/premium");
@@ -55,8 +56,8 @@ describe("HubPremiumPanel", () => {
     renderPanel("pro");
     const panel = screen.getByTestId("hub-premium-panel");
     expect(panel.dataset.premiumState).toBe("member");
-    expect(screen.getByText("Premium Active")).toBeTruthy();
-    expect(screen.queryByText("Unlock the Full Academy")).toBeNull();
+    expect(screen.getByText("Member in good standing")).toBeTruthy();
+    expect(screen.queryByText("Academy Membership")).toBeNull();
     const cta = screen.getByTestId("hub-premium-cta");
     expect(cta.textContent).toContain("View Premium");
     expect(cta.textContent).not.toContain("Explore");

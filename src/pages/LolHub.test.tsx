@@ -275,13 +275,51 @@ describe("LolHub — navigation structure", () => {
     expect(container.querySelectorAll('a[href^="/blog/"]')).toHaveLength(0);
   });
 
-  it("ends the lower page at the utility band — nothing follows it but the footer", () => {
+  it("ends the Commons at the legal plinth, with the utility band above it", () => {
+    // The lower page is a composed room now, not a flat stack: Premium and
+    // Community share a row, the slips sit under them and the plinth closes the
+    // room. What must hold is the READING ORDER and the fact that the legal
+    // inscription is the last thing on the page — the sitewide footer no longer
+    // renders on /lol, so if the plinth ever stopped being last, the trust
+    // links would be the thing that went missing.
     const { container } = renderHub();
-    const stack = container.querySelector('[data-testid="hub-utility-section"]')!.parentElement!;
-    const ids = Array.from(stack.children).map((c) => (c as HTMLElement).dataset.testid);
-    expect(ids).toEqual(["hub-premium-panel", "hub-community-section", "hub-utility-section"]);
-    // The utility band is the last thing the page's own container renders.
-    expect(stack.parentElement!.lastElementChild).toBe(stack);
+    const order = [
+      "hub-premium-panel",
+      "hub-community-section",
+      "hub-utility-section",
+      "commons-legal-nav",
+    ].map((id) => {
+      const el = container.querySelector(`[data-testid="${id}"]`);
+      expect(el).toBeTruthy();
+      return Array.from(container.querySelectorAll("[data-testid]")).indexOf(el!);
+    });
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+
+    const commons = container.querySelector('[data-testid="academy-commons"]')!;
+    expect(commons.lastElementChild!.className).toMatch(/academy-commons-plinth/);
+    // The Commons itself is the last thing the page renders.
+    expect(commons.parentElement!.lastElementChild).toBe(commons);
+  });
+
+  it("inscribes the legal set into the plinth, at the sitewide wording", () => {
+    // These three are the destinations no other surface on /lol carries. They
+    // used to come from the sitewide Footer's legal-only variant on this route;
+    // that variant is gone, so the plinth is now solely responsible for them.
+    renderHub();
+    const legal = screen.getByTestId("commons-legal-nav");
+    expect(
+      Array.from(legal.querySelectorAll("a")).map((a) => a.getAttribute("href")),
+    ).toEqual(["/privacy", "/terms", "/security"]);
+
+    const commons = screen.getByTestId("academy-commons");
+    expect(commons.textContent).toMatch(/All rights reserved/);
+    expect(commons.textContent).toMatch(/unofficial fan project/);
+    expect(commons.textContent).toMatch(
+      /isn't endorsed by Riot Games and doesn't reflect the views or opinions/,
+    );
+    expect(commons.textContent).toMatch(
+      /trademarks or registered trademarks of Riot Games, Inc\./,
+    );
   });
 
   it("introduces no subscription 'Pro' wording on the hub — Pro Play keeps the word", () => {
@@ -1012,6 +1050,139 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
     for (const href of ["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]) {
       expect(container.querySelectorAll(`a[href="${href}"]`)).toHaveLength(2);
       expect(container.querySelector(`a.academy-hub-book[href="${href}"]`)).not.toBeNull();
+    }
+  });
+});
+
+/**
+ * The two-screen Academy: `/lol` is the Academy Hall and the Academy Commons,
+ * one viewport each, joined by CSS scroll snapping the document owns.
+ *
+ * What is testable in jsdom is the CONTRACT — the two screen markers, the class
+ * that arms snapping and its lifecycle, and the two navigation controls. The
+ * snap behaviour itself is a browser layout concern and was measured in a real
+ * Chromium instead (the numbers are recorded beside the media query in
+ * index.css); jsdom has no layout, so asserting it here would only assert the
+ * stub.
+ */
+describe("LolHub — the two-screen Academy", () => {
+  it("renders exactly two screens, hall before commons", () => {
+    const { container } = renderHub();
+    const screens = Array.from(container.querySelectorAll("[data-hub-screen]"));
+    expect(screens.map((s) => (s as HTMLElement).dataset.hubScreen)).toEqual([
+      "hall",
+      "commons",
+    ]);
+    // Siblings under the page root: neither screen may be nested in the other,
+    // or the document could not snap between them.
+    expect(screens[0].parentElement).toBe(screens[1].parentElement);
+  });
+
+  it("arms document scroll snapping for the hub's lifetime and disarms it on unmount", () => {
+    // The class goes on `html` because that is the propagation root the
+    // viewport takes its scrolling from. Every responsive and accessibility
+    // fallback is decided in CSS from there; this is only the switch.
+    expect(document.documentElement.classList.contains("hub-two-screen")).toBe(false);
+    const { unmount } = renderHub();
+    expect(document.documentElement.classList.contains("hub-two-screen")).toBe(true);
+    unmount();
+    // No other route may inherit snapping.
+    expect(document.documentElement.classList.contains("hub-two-screen")).toBe(false);
+  });
+
+  it("moves between the screens from semantic buttons, in both directions", () => {
+    const calls: Array<{ el: string | undefined; opts: ScrollIntoViewOptions }> = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (arg?: unknown) {
+      calls.push({
+        el: (this as HTMLElement).dataset?.hubScreen,
+        opts: arg as ScrollIntoViewOptions,
+      });
+    };
+    try {
+      renderHub();
+
+      const descend = screen.getByTestId("hall-descend");
+      expect(descend.tagName).toBe("BUTTON");
+      expect(descend.textContent).toContain("Explore the Academy");
+      fireEvent.click(descend);
+      expect(calls.at(-1)).toEqual({
+        el: "commons",
+        opts: { behavior: "smooth", block: "start" },
+      });
+
+      const back = screen.getByTestId("commons-back-to-hall");
+      expect(back.tagName).toBe("BUTTON");
+      expect(back.textContent).toContain("Back to the Hall");
+      fireEvent.click(back);
+      expect(calls.at(-1)).toEqual({
+        el: "hall",
+        opts: { behavior: "smooth", block: "start" },
+      });
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it("drops the smooth request to an instant jump under either motion preference", () => {
+    const calls: ScrollIntoViewOptions[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (arg?: unknown) {
+      calls.push(arg as ScrollIntoViewOptions);
+    };
+    const originalMM = window.matchMedia;
+    try {
+      // 1. the OS-level preference
+      window.matchMedia = ((q: string) =>
+        ({
+          matches: q.includes("prefers-reduced-motion"),
+          media: q,
+          addEventListener() {},
+          removeEventListener() {},
+          addListener() {},
+          removeListener() {},
+          onchange: null,
+          dispatchEvent: () => false,
+        }) as unknown as MediaQueryList) as typeof window.matchMedia;
+      renderHub();
+      fireEvent.click(screen.getByTestId("hall-descend"));
+      expect(calls.at(-1)?.behavior).toBe("auto");
+      cleanup();
+
+      // 2. the app's own accessibility setting, which no media query can see
+      window.matchMedia = originalMM;
+      document.documentElement.classList.add("reduce-motion");
+      renderHub();
+      fireEvent.click(screen.getByTestId("hall-descend"));
+      expect(calls.at(-1)?.behavior).toBe("auto");
+    } finally {
+      document.documentElement.classList.remove("reduce-motion");
+      window.matchMedia = originalMM;
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it("leaves the approved hall exactly as it was", () => {
+    // The hero is out of scope for this redesign. Marking it as screen 1 must
+    // not have cost it a book, the shelves, the Patch Report centerpiece, the
+    // radio dock or Mogzy.
+    const { container } = renderHub();
+    const hall = container.querySelector('[data-hub-screen="hall"]')!;
+    expect(hall.querySelectorAll("a.academy-hub-book")).toHaveLength(4);
+    expect(hall.querySelectorAll(".academy-hub-shelf")).toHaveLength(2);
+    expect(hall.querySelector('[data-testid="academy-broadcast-centerpiece"]')).not.toBeNull();
+    expect(hall.querySelector('[data-testid="academy-library-background"]')).not.toBeNull();
+    // The descend affordance is the ONLY interactive thing this pass added to
+    // the hall, and it is not a destination.
+    expect(hall.querySelector('[data-hub-screen="hall"] a[href="/lol/premium"]')).toBeNull();
+  });
+
+  it("keeps the Commons' own navigation out of the destination books", () => {
+    const { container } = renderHub();
+    // Four guide-bearing volumes, still. Neither new control is one.
+    expect(container.querySelectorAll("[data-guide-mode]")).toHaveLength(4);
+    for (const id of ["hall-descend", "commons-back-to-hall"]) {
+      expect(screen.getByTestId(id).closest("[data-guide-mode]")).toBeNull();
     }
   });
 });

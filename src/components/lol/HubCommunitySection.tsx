@@ -1,15 +1,19 @@
 /**
- * "Join the Academy" — the hub's below-the-fold community area.
+ * "Join the Academy" — the Commons' **noticeboard**.
  *
- * The loudest thing on the lower page, but deliberately quieter than the
- * painted library above it: flat navy plates, one gold accent, no illustration.
+ * Second in the room's hierarchy, under the membership plaque: a walnut
+ * planked board with a parchment bill pinned to it. Quieter than the plaque by
+ * construction — the bill carries ink on paper, not gilt, and the board's own
+ * wood is the same `--shelf-*` walnut as the hall's shelving.
  *
  * Destinations come from `@/lib/community/links`, which resolves them from the
- * environment and fails closed. None are configured today, so the honest render
- * is a Discord headline in a "not open yet" state plus a line saying so — not a
- * dead link and not a fake invite.
+ * environment and fails closed. **None are configured today**, so the honest
+ * render is a Discord headline in a "not open yet" state plus a line saying so
+ * — not a dead link and not a fake invite. Solving the Discord/social
+ * configuration is explicitly out of scope for the two-screen redesign; this
+ * component's behaviour is unchanged from 2026-09-04 and only its surface moved.
  */
-import { Youtube, Instagram, Twitter, Users, ArrowUpRight } from "lucide-react";
+import { Youtube, Instagram, Twitter, ArrowUpRight } from "lucide-react";
 import {
   COMMUNITY_CHANNELS,
   secondaryCommunityChannels,
@@ -44,6 +48,16 @@ const CHANNEL_MARKS: Record<CommunityChannelId, (p: { className?: string }) => J
   x: (p) => <Twitter {...p} aria-hidden />,
 };
 
+/** A brass pin. Decorative only — the notice is held to the board by these. */
+function Pin({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`academy-commons-pin absolute h-2.5 w-2.5 rounded-full ${className ?? ""}`}
+    />
+  );
+}
+
 function SecondaryChannel({ channel }: { channel: CommunityChannel }) {
   const Mark = CHANNEL_MARKS[channel.id];
   if (!channel.url) return null;
@@ -53,9 +67,9 @@ function SecondaryChannel({ channel }: { channel: CommunityChannel }) {
       target="_blank"
       rel="noopener noreferrer"
       data-testid={`hub-community-${channel.id}`}
-      className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-[#c9a84c]/20 bg-[#0b1220]/70 px-3.5 py-2 text-sm font-medium text-foreground/85 transition-colors hover:border-[#c9a84c]/45 hover:text-foreground"
+      className="inline-flex min-h-[44px] items-center gap-2 rounded-[2px] border border-[#6d5a33]/50 bg-[#e6d9b6]/45 px-3 py-1.5 text-[13px] font-semibold text-[#2c2417] transition-colors hover:bg-[#efe4c6]/70"
     >
-      <Mark className="h-4 w-4 text-[#c9a84c]" />
+      <Mark className="h-3.5 w-3.5 text-[#7a6230]" />
       {channel.label}
     </a>
   );
@@ -70,66 +84,74 @@ export default function HubCommunitySection() {
     <section
       data-testid="hub-community-section"
       aria-labelledby="hub-community-heading"
-      className="rounded-lg border border-[#c9a84c]/20 bg-[#080d18]/80 px-5 py-7 sm:px-7 sm:py-8"
+      className="academy-commons-board relative flex min-w-0 flex-col justify-center rounded-[3px] border-4 border-solid p-4 sm:p-5"
     >
-      <div className="flex items-center gap-2 text-[#c9a84c]">
-        <Users className="h-4 w-4" aria-hidden />
-        <span className="text-[10px] font-bold uppercase tracking-widest">Community</span>
-      </div>
-      <h2
-        id="hub-community-heading"
-        className="mt-1.5 text-xl font-bold text-foreground sm:text-2xl"
-      >
-        Join the Academy
-      </h2>
-      <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-        Talk patches, compare runs, and hear about what’s coming to Mogzy before
-        anyone else.
-      </p>
+      {/* The pinned bill. Deliberately NOT stretched to the board: a sheet that
+          fills its board is just a card with a brown outline, and stretching it
+          opened a large void down the middle. Auto-height and centred, it
+          leaves real planking showing all round — which is the whole reason the
+          board is here.
 
-      {/* Real channels sit opposite the Discord plate; the "on the way" note
-          does not — pushed to the far edge of a wide row it reads as stranded
-          rather than as a pair with the plate it belongs to. */}
-      <div
-        className={`mt-6 flex flex-col gap-5 lg:flex-row lg:items-center ${
-          openSecondary.length > 0 ? "lg:justify-between" : "lg:gap-6"
-        }`}
-      >
-        {discord.url ? (
-          <a
-            href={discord.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-testid="hub-community-discord"
-            className="group inline-flex min-h-[52px] items-center gap-3 self-start rounded-md bg-gradient-to-b from-[#e0c273] to-[#b08c30] px-6 py-3.5 text-base font-bold text-[#160f02] shadow-[0_1px_0_hsl(42_90%_78%)_inset] transition-transform hover:-translate-y-0.5"
-          >
-            <DiscordMark className="h-5 w-5" />
-            Join the Discord
-            <ArrowUpRight className="h-4 w-4 opacity-70" aria-hidden />
-          </a>
-        ) : (
-          /* No invite exists yet. A disabled plate keeps the hierarchy the
-             design calls for without pretending there is somewhere to go. */
-          <div
-            data-testid="hub-community-discord-pending"
-            className="inline-flex min-h-[52px] items-center gap-3 self-start rounded-md border border-dashed border-[#c9a84c]/35 bg-[#0b1220]/60 px-6 py-3.5 text-base font-semibold text-muted-foreground"
-          >
-            <DiscordMark className="h-5 w-5 text-[#c9a84c]/70" />
-            Discord — opening soon
-          </div>
-        )}
+          The rotation is what stops it reading as a rectangle inside a
+          rectangle; it is under half a degree, so no line of type is measurably
+          off the horizontal. */}
+      <div className="academy-commons-notice relative flex flex-col rounded-[2px] px-5 py-5 [transform:rotate(-0.45deg)] sm:px-6">
+        <Pin className="left-4 top-2.5" />
+        <Pin className="right-4 top-2.5" />
 
-        {openSecondary.length > 0 ? (
-          <div className="flex flex-wrap gap-2.5">
-            {openSecondary.map((channel) => (
-              <SecondaryChannel key={channel.id} channel={channel} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground/70">
-            YouTube, TikTok, Instagram and X are on the way.
-          </p>
-        )}
+        <span className="academy-commons-notice-soft text-[10px] font-bold uppercase tracking-[0.28em]">
+          Notice Board
+        </span>
+        <h2
+          id="hub-community-heading"
+          className="academy-commons-notice-ink mt-1 text-[1.35rem] font-medium leading-tight sm:text-2xl"
+          style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
+        >
+          Join the Academy
+        </h2>
+        <p className="academy-commons-notice-soft mt-2 max-w-sm text-[13px] leading-relaxed">
+          Talk patches, compare runs, and hear about what’s coming to Mogzy
+          before anyone else.
+        </p>
+
+        <div className="pt-5">
+          {discord.url ? (
+            <a
+              href={discord.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="hub-community-discord"
+              className="group inline-flex min-h-[52px] items-center gap-3 rounded-[3px] bg-gradient-to-b from-[#e0c273] to-[#b08c30] px-5 py-3 text-[15px] font-bold text-[#160f02] shadow-[0_1px_0_hsl(42_90%_78%)_inset] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            >
+              <DiscordMark className="h-5 w-5" />
+              Join the Discord
+              <ArrowUpRight className="h-4 w-4 opacity-70" aria-hidden />
+            </a>
+          ) : (
+            /* No invite exists yet. A struck-through entry on the bill keeps
+               the hierarchy the design calls for without pretending there is
+               somewhere to go. */
+            <div
+              data-testid="hub-community-discord-pending"
+              className="inline-flex min-h-[52px] items-center gap-3 rounded-[2px] border border-dashed border-[#7a6230]/55 bg-[#d3c19a]/40 px-5 py-3 text-[15px] font-semibold text-[#4a3d24]"
+            >
+              <DiscordMark className="h-5 w-5 text-[#7a6230]" />
+              Discord — opening soon
+            </div>
+          )}
+
+          {openSecondary.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {openSecondary.map((channel) => (
+                <SecondaryChannel key={channel.id} channel={channel} />
+              ))}
+            </div>
+          ) : (
+            <p className="academy-commons-notice-soft mt-3 text-[11.5px] leading-snug">
+              YouTube, TikTok, Instagram and X are on the way.
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );

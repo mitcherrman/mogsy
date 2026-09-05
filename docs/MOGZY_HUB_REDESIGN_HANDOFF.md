@@ -1,7 +1,249 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 16 (Mogzy Premium promotion module) is at the top of this file.
-     Revision 15 was the below-the-fold rework; 14 the live-review tuning. -->
+<!-- Revision 17 (the two-screen Academy) is at the top of this file.
+     Revision 16 was the Mogzy Premium promotion module; 15 the below-the-fold
+     rework; 14 the live-review tuning. -->
+
+## Revision 2026-09-04d — THE TWO-SCREEN ACADEMY
+
+**Status:** complete on branch `hub/two-screen-academy`, worktree
+`/Users/macmoney/mogsy-wt-hub2screen`, based on `origin/main` @ `e35ecc81`.
+Committed, **not pushed and not merged** — this is the visual review the brief
+asked to stop at. What's New has not been started.
+
+**The above-the-fold hub is untouched as approved.** The four painted volumes,
+the shelves, the Patch Report centerpiece, Mogzy, the radio dock, the book
+entrance choreography and the hero composition are all exactly as they shipped.
+`LolHub.tsx`'s hero section gained exactly two things: a `data-hub-screen="hall"`
+attribute, and a small "Explore the Academy ↓" control absolutely positioned on
+the painted floor below Mogzy's pedestal. The hero's measured height is
+unchanged at every viewport (900 at 1440×900, 1080 at 1920×1080, 891 at
+390×844 — identical to the pre-change run), and the background art was not
+altered.
+
+---
+
+### 1. The two-screen architecture
+
+`/lol` is now two deliberate full-viewport rooms that are siblings under the page
+root — never nested, so no second scroll container exists anywhere:
+
+| | Screen | Element | Height |
+|---|---|---|---|
+| 1 | **Academy Hall** | `[data-hub-screen="hall"]` — the existing hero | `md:min-h-[100dvh]` (unchanged) |
+| 2 | **Academy Commons** | `[data-hub-screen="commons"]` — new `AcademyCommons` | `min-height: 100svh` inside the snap gate, natural otherwise |
+
+Measured document height: **1800px at 1440×900 and 2160px at 1920×1080** —
+exactly two viewports, with no third screen and no residue.
+
+The old lower page was 1092px of cards *plus* a sitewide footer, i.e. 1.2
+viewports of stack that clipped mid-footer at the fold.
+
+### 2. Scroll snapping — what was chosen and why
+
+**`scroll-snap-type: y mandatory`, declared on `html`, gated by media query.**
+
+*Why `html`:* `body` carries `overflow-y: auto` while `html` keeps the UA default
+`overflow: visible`, so the browser propagates body's overflow to the viewport
+(that propagation is load-bearing — it is what stops Radix's scroll-lock nudging
+every centred layout sideways). Snap therefore has to be declared on the
+propagation root. **No new scroll container was introduced**, and the document is
+still the app's only vertical scrollbar.
+
+*Why `mandatory` and not `proximity` — measured, not assumed.* Driving the real
+page at 1440×900 with genuine phased scroll gestures via Chrome's
+`Input.synthesizeScrollGesture` (Playwright's own `mouse.wheel` sends unphased
+events and gives a badly misleading answer — it made `mandatory` look like a
+trap that it is not):
+
+| gesture | `mandatory` | `proximity` |
+|---|---|---|
+| 150px | settles at 0 | settles at 0 |
+| 300px | settles at 0 | **strands at 301** |
+| 450px | settles at **900** | **strands at 450** |
+| 600px | settles at **900** | **strands at 597** |
+
+`proximity` parks the reader half in each room — precisely the half-in-half-out
+"ordinary website" feel this redesign exists to remove. `mandatory` never
+strands: every gesture resolves to one room or the other, with the threshold
+around half a viewport, so a deliberate push crosses and a nudge falls back.
+That is the "noticeable soft lock, not a hostile scroll trap" the brief asked
+for. `scroll-snap-stop` is left at its default `normal`, so a fast flick or a
+Page Down passes straight through.
+
+Keyboard was measured on the same page: **Page Down → 900, End → 900**.
+Snapping costs keyboard users nothing.
+
+### 3. Responsive and accessibility fallback
+
+Mandatory snapping becomes hostile the moment a screen outgrows the viewport, so
+it is only armed where the Commons is *measured* to fit:
+
+```css
+@media (min-width: 1024px) and (min-height: 780px) {
+  html.hub-two-screen:not(.large-text) { scroll-snap-type: y mandatory; }
+}
+```
+
+| condition | snapping | Commons height | verified |
+|---|---|---|---|
+| 1440×900, 1920×1080 | **on** | exactly 100svh | docH = 2×viewport, no h-overflow |
+| 390×844 (phone) | **off** | 1197px, natural | scrolls normally, nothing clipped |
+| 1280×620 (short laptop) | **off** | 704px, natural | scrolls normally, nothing clipped |
+| page zoom ≥150% | **off** | natural | the CSS viewport falls under 780px, so the height gate catches it with no extra code |
+| `html.large-text` setting | **off** | natural | verified live: `y mandatory` → `none` when the class is added |
+
+The Commons is sized with `min-height`, **never `height`**, so it can only grow —
+nothing is ever clipped at any size. As belt and braces the plinth carries
+`scroll-snap-align: end`, so if the Commons ever did outgrow the viewport inside
+the gate (a future ad unit rendering into `lol_hub_mid`, a long translation) the
+bottom of the room is still a snap position and the overflow stays reachable.
+
+The class is added on mount and removed on unmount — verified that `/about` has
+neither the class nor any snapping, and keeps its full sitewide footer.
+
+**Reduced motion.** Snapping is kept: it is not motion the page starts on its
+own, it is the settle of a scroll the reader began, and browsers perform it
+instantly rather than smoothly under the preference. What *is* suppressed is the
+page's own smooth scrolling — both controls fall back to an instant jump, under
+the OS media query **and** under the app's own `html.reduce-motion` setting
+(which no media query can see). Verified live: the scroll was complete within
+120ms under both, and the chevron's drift animation computes to `none`.
+
+### 4. The seam
+
+The hero's `academy-hero-fade` mask still ramps the painting's alpha to zero over
+its last band, but it now dissolves straight into the Commons' own ceiling beam,
+which begins at the hero's last pixel. The previous arrangement left ~88px of
+empty page background between the two — that dead band is what made the lower
+page read as a different website. There is now **no padding between the screens
+at all**.
+
+### 5. The Commons — lower-room visual composition
+
+A quieter room in the same building. **No background artwork was created**; the
+entire room is CSS gradients, and every wooden surface consumes the `--shelf-*`
+walnut ramp already declared for the hall's shelving (that selector now reads
+`.academy-hub-shelf, .academy-commons`, so the ramp is still declared exactly
+once and the two rooms are literally the same wood).
+
+Structure, top to bottom:
+
+1. **Ceiling beam** (`.academy-commons-lintel`) — walnut with a lit upper plane
+   and a gilt hairline where it meets the wall. Carries the "↑ Back to the Hall"
+   control, centred because the shell floats the HUD in the top-*right* corner
+   and the Mogzy home control in the top-*left*; the centre is the only part of
+   that band never under a fixed control at any width.
+2. **Navy library wall** (`.academy-commons-wall`) — lit from two high sconces,
+   with a moulding under the beam and recessed panels on a 240px rhythm (all
+   under 4% contrast: felt, not seen). A first pass at a single hairline every
+   112px was too faint to survive the sconce light and the room read as an empty
+   navy field with furniture floating in it.
+3. **Membership plaque** (Premium, primary) — a walnut mount, a brass title band
+   engraved "ACADEMY MEMBERSHIP" / "MEMBER IN GOOD STANDING", a navy field, an
+   engraved register and the gold CTA plate. Deliberately not a fifth volume and
+   not a pricing card. The navy-and-gilt field is the same pairing the four
+   painted volumes use, which is what ties the rooms together.
+4. **Noticeboard** (Community) — walnut planking with a parchment bill pinned to
+   it by two brass pins, rotated 0.45°. The bill is auto-height and centred, not
+   stretched: a sheet that fills its board is just a card with a brown outline.
+5. **Two pinned slips** (Feedback, About/Contact) — the same parchment, smaller,
+   one pin each, rotated the other way. Visually subordinate to both objects
+   above them.
+6. **Plinth** (`.academy-commons-plinth`) — the room's skirting, a capping board
+   over a darker face with the legal set cut into it. **Not a footer floating
+   below the scene.**
+
+The room is capped at `max-w-[76rem]`, leaving ~110px of panelled wall down each
+side at 1440 and much more at 1920 — that cap is what makes it read as a room you
+are standing in. The furniture row is `flex-1` capped at `21rem`; the surplus
+above that goes back to the room as air, which is what a taller room looks like.
+
+Three sizing values were arrived at by looking rather than by arithmetic, and the
+rejected states are recorded in the code comments so they are not re-tried: the
+full-width room (furniture floated), the 34rem furniture cap (a ~250px void down
+the middle of each object), and the bright parchment (the paper out-shouted the
+gilt CTA and inverted the hierarchy).
+
+### 6. The legal set moved into the room
+
+`Footer` now **self-hides on `/lol`** entirely. Privacy, Terms, Security, the
+copyright line and the Riot disclaimer are inscribed into the plinth at the
+footer's own verbatim wording. The route's previous "legal-only" footer variant
+is gone with it, and `data-variant` on the sitewide nav is therefore always
+`"full"` now.
+
+Verified by clicking each link on the live page: `/privacy` → "Privacy Policy",
+`/terms` → "Terms of Service", `/security` → "Security at Mogzy",
+`/lol/premium` → "Mogzy Premium". All four resolve, none 404, and all four
+*destination* pages still render the sitewide footer — only `/lol` hides it.
+
+### 7. Files changed
+
+| File | Change |
+|---|---|
+| `src/components/lol/AcademyCommons.tsx` | **new** — the whole Screen 2 room: wall, beam, back-control, chamber grid, plinth |
+| `src/pages/LolHub.tsx` | `data-hub-screen` on the hero; `hubScrollTo` + `prefersReducedMotion` helpers; the snap-class effect; the descend affordance; the below-fold block replaced by `<AcademyCommons>` |
+| `src/components/lol/HubPremiumPanel.tsx` | re-skinned as the membership plaque. **No logic touched** — same entitlement read, same two states, same copy bounds, same route |
+| `src/components/lol/HubCommunitySection.tsx` | re-skinned as the pinned noticeboard. Fail-closed behaviour unchanged; no social URL invented |
+| `src/components/lol/HubUtilitySection.tsx` | re-skinned as two pinned slips. Same routes, same actions |
+| `src/components/Footer.tsx` | self-hides on `/lol`; the legal-only variant removed |
+| `src/index.css` | the snap contract + `.academy-commons-*` + `.academy-hall-descend`; `--shelf-*` ramp shared with `.academy-commons` |
+| `src/pages/LolHub.test.tsx` | structural test rewritten for the plinth; new legal-inscription test; new "two-screen Academy" describe (7 tests) |
+| `src/components/lol/HubPremiumPanel.test.tsx` | the two eyebrow assertions follow the brass band's wording |
+
+### 8. Tests, lint, typecheck
+
+* **Full vitest suite: 12 files / 43 tests failing — byte-identical to the
+  untouched base.** The 12th file (`LobbyPreviewPage.test.tsx`, one test) is
+  drift on `main` since the 2026-09-03 baseline of 11/42, and was confirmed
+  failing in a pristine `--detach` worktree at `e35ecc81` with no changes
+  applied. 8654 passing, 163 unhandled errors — the documented Supabase
+  `storage.getItem` noise, unchanged.
+* **Hub tests: 110/110 passing**, up from a 103/103 baseline (+7 new).
+* **ESLint on all nine changed files: clean, exit 0.**
+* **`tsc --noEmit -p tsconfig.app.json`: the same 8 pre-existing error files,
+  none of them touched here.**
+* **Console: the same 3 messages as the baseline** at every viewport (the
+  `fetchPriority` React warning, one 403, one 404). No new runtime errors.
+* **No horizontal overflow** at 1440, 1920, 1280×620 or 390×844.
+* Every interactive control is ≥44px tall on touch: descend 44 (desktop-only),
+  back-to-hall 44, Premium CTA 52, Discord plate 52, slip actions 45.
+  *(An intermediate pass shrank three of these below 44 and the tap-target test
+  caught it — restored.)*
+
+### 9. Screenshots
+
+Not committed — the repo has no precedent for binaries in `docs/`. Captured with
+Playwright at `/Users/macmoney/mogzy-hub-2screen-shots/`:
+
+| File | What it shows |
+|---|---|
+| `FINAL-1-screen1-1440x900.png` | The Hall, with the new affordance on the painted floor |
+| `FINAL-2-screen2-1440x900.png` | The Commons, snapped, at the primary target |
+| `FINAL-3-screen2-1920x1080.png` | The Commons at the second target |
+| `FINAL-4-mobile-transition.png` | The mobile seam — snap relaxed, natural scroll |
+| `v6-seam-1440.png` | The seam with snapping disabled: hall dissolving into the beam |
+| `BEFORE-lower-page-1440x900.png` | The old lower page, for comparison |
+
+### 10. Remaining polish (deliberately not done)
+
+* **`HextechAmbience` still drifts particles over the Commons.** It is mounted by
+  the shell for the whole `/lol` section, not by this page, so removing or
+  scoping it touches every `/lol` route and belongs in its own change. It mildly
+  undercuts the "quiet room" reading.
+* **The Commons' lower band is emptier than its upper band** at 1080. It reads as
+  floor (the wall's floor-shadow gradient lands there), but a second small
+  object on that side would balance it if the owner wants one.
+* **Community is still fail-closed** — no Discord or social URL exists in this
+  repo, so the board renders "opening soon" as before. Out of scope by the brief.
+* **The `lol_hub_mid` ad slot renders null today.** If a provider ever fills it,
+  the Commons grows past one viewport and the snap gate has to be revisited with
+  it; the plinth's `scroll-snap-align: end` keeps it merely imperfect rather than
+  broken in the meantime.
+* **What's New has not been started**, as instructed.
+
+---
 
 ## Revision 2026-09-04c — Mogzy Premium promotion module
 

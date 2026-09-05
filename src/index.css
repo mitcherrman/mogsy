@@ -7896,7 +7896,12 @@ html.high-contrast * { text-shadow: none !important; }
    no carving, no filigree, no glow. The books are the ornate objects.
    --------------------------------------------------------------------------- */
 
-.academy-hub-shelf {
+/* `.academy-commons` (Screen 2 of the hub) shares this selector on purpose:
+   the Commons is built from the SAME walnut as the hall's shelving, and the
+   ramp below is the one place those five values are declared. Only the wood
+   ramp is consumed there — the geometry tokens above it are shelf-only. */
+.academy-hub-shelf,
+.academy-commons {
   /* Upright thickness, board thickness, and how far the case sits outside the
      book edges.
 
@@ -8249,4 +8254,400 @@ html.high-contrast * { text-shadow: none !important; }
   [data-hub-entrance="true"] .academy-hub-book-body {
     animation: none;
   }
+}
+
+/* ============================================================================
+   THE TWO-SCREEN ACADEMY — `/lol` as two deliberate full-viewport rooms
+   ============================================================================
+
+   Screen 1 is the Academy Hall (the painted library hero, approved and
+   untouched). Screen 2 is the Academy Commons: the membership plaque, the
+   noticeboard, the pinned notices and the legal plinth, composed as ONE room
+   in ONE viewport rather than a stack of cards over a website footer.
+
+   ---------------------------------------------------------------------------
+   1. SCROLL SNAPPING — why the document, why mandatory, why gated
+   ---------------------------------------------------------------------------
+
+   THE SCROLL CONTAINER IS THE VIEWPORT, and nothing new was introduced.
+   `body` carries `overflow-y: auto` and `html` keeps the UA default
+   `overflow: visible`, so the browser propagates body's overflow to the
+   viewport (see the long note beside the `body` rule at the top of this file —
+   that propagation is what keeps Radix's scroll-lock from nudging the page).
+   Snap therefore has to be declared on the element the viewport takes its
+   scrolling from, which is the propagation ROOT: `html`. A wrapper with its
+   own `overflow: auto` would have produced exactly the nested-scroll trap the
+   Ranked stage was rebuilt to remove (see Layout.tsx), so there is no second
+   scroll container anywhere on this page.
+
+   `mandatory`, NOT `proximity` — and that was measured, not assumed. Driving
+   the real page at 1440x900 with genuine phased scroll gestures (Chrome's
+   `Input.synthesizeScrollGesture`, which carries the begin/update/end phases a
+   trackpad or wheel actually sends — Playwright's own `mouse.wheel` does not,
+   and synthesising unphased events gives a badly misleading answer):
+
+       gesture   mandatory        proximity
+       150px     settles at 0     settles at 0
+       300px     settles at 0     STRANDS at 301
+       450px     settles at 900   STRANDS at 450
+       600px     settles at 900   STRANDS at 597
+
+   `proximity` leaves the reader parked half in each room, which is exactly the
+   half-in-half-out "ordinary website" feel this redesign exists to remove.
+   `mandatory` never strands: every gesture resolves to one room or the other,
+   and the threshold sits around half a viewport — a deliberate push crosses,
+   a nudge falls back. That is the "noticeable soft lock" the brief asks for.
+
+   Keyboard was measured on the same page: Page Down and End both land the
+   Commons at 900, so snapping costs keyboard users nothing.
+
+   Mandatory is safe HERE and would not be safe in general: the document holds
+   exactly two snap positions, the second one IS the maximum scroll offset, and
+   neither screen can hide content between them. `scroll-snap-stop` is left at
+   its default `normal`, so a fast flick or a Page Down still passes straight
+   through — a soft lock, never a trap.
+
+   THE GATE. Mandatory snapping becomes hostile the moment a screen grows
+   taller than the viewport, because the overflow then sits between two snap
+   positions and the browser pulls the reader back off it. Rather than guess,
+   snapping only turns on where the Commons is measured to fit:
+
+     • `min-width: 1024px`  — phones and tablets scroll naturally, always.
+     • `min-height: 780px`  — short laptops, and ANY page zoom deep enough to
+       shrink the CSS viewport past it, scroll naturally. At 150% zoom on a
+       1440x900 display the viewport is 960x600 and snapping is simply off.
+     • `:not(.large-text)`  — the app's large-text accessibility setting scales
+       type without shrinking the viewport, so no media query can see it. It is
+       excluded by hand.
+
+   Outside the gate, `[data-hub-screen="commons"]` keeps its natural height and
+   the page is an ordinary scrolling document. Nothing is ever clipped: the
+   Commons is sized with `min-height`, never `height`.
+
+   BELT AND BRACES. The plinth carries `scroll-snap-align: end`. If the Commons
+   ever does outgrow the viewport inside the gate — a future ad unit rendering
+   into `lol_hub_mid`, a translation running long — the bottom of the room is
+   still a snap position, so the overflow stays reachable instead of becoming a
+   band the reader is bounced off.
+
+   REDUCED MOTION. Snapping is kept. It is not an animation the page starts on
+   its own; it is the settle of a scroll the reader themselves began, and
+   browsers already perform that settle instantly rather than smoothly under
+   `prefers-reduced-motion: reduce`. What IS suppressed is the page's own
+   smooth scrolling: both navigation controls fall back to an instant jump
+   (see `hubScrollTo` in LolHub.tsx), under the media query and under the app's
+   own `html.reduce-motion` setting alike.
+   ---------------------------------------------------------------------------- */
+
+@media (min-width: 1024px) and (min-height: 780px) {
+  html.hub-two-screen:not(.large-text) {
+    scroll-snap-type: y mandatory;
+  }
+  html.hub-two-screen:not(.large-text) [data-hub-screen] {
+    scroll-snap-align: start;
+    /* Default. Stated so it is clear this is a soft lock and not a trap: a
+       fast flick may cross both screens in one gesture. */
+    scroll-snap-stop: normal;
+  }
+  html.hub-two-screen:not(.large-text) [data-hub-screen="commons"] {
+    min-height: 100svh;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-plinth {
+    scroll-snap-align: end;
+  }
+}
+
+/* The Hall's downward affordance. Restrained by construction: gilt small-caps
+   over a hairline, no plate, no fill — it must not compete with Mogzy or the
+   four volumes. The chevron is the only moving part, a 3px drift that stops
+   entirely under reduced motion. */
+.academy-hall-descend {
+  color: rgba(214, 190, 130, 0.78);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  transition: color 220ms ease;
+}
+.academy-hall-descend:hover,
+.academy-hall-descend:focus-visible {
+  color: #f0dda6;
+}
+.academy-hall-descend-rule {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 168, 76, 0.55),
+    transparent
+  );
+}
+.academy-hall-descend-chevron {
+  animation: academy-descend-drift 2600ms ease-in-out infinite;
+}
+@keyframes academy-descend-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .academy-hall-descend-chevron { animation: none; }
+}
+
+/* ============================================================================
+   THE ACADEMY COMMONS — Screen 2
+   ============================================================================
+   A quieter room in the same building. Everything below is CSS: no background
+   artwork was generated, and the only image reference in the whole room is the
+   `--shelf-*` walnut ramp it borrows from the hall's shelving, so the two
+   rooms are unmistakably built from the same wood.
+   ---------------------------------------------------------------------------- */
+
+.academy-commons {
+  /* Ink for text written on the room's parchment surfaces. Same values as the
+     Ranked folio's `--ranked-ink`, which is the app's measured ink-on-vellum
+     pair; re-declared rather than imported because `.ranked-academy` is a route
+     scope and this is a different room. */
+  --commons-ink: #2c2417;
+  --commons-ink-soft: rgba(58, 46, 26, 0.82);
+  --commons-gilt: #c9a84c;
+  --commons-gilt-bright: #e8cd98;
+  --commons-parchment: #ded0ac;
+}
+
+/* The wall. A deep navy library wall, panelled, lit from two high sconces, its
+   floor end darkening so the plinth reads as sitting ON something.
+
+   The panelling is not decoration — it is the difference between a wall and a
+   background colour. A first pass at a single hairline every 112px was too
+   faint to survive the sconce light and the room read as an empty navy field
+   with furniture floating in it. What is here now is a real (if very quiet)
+   architecture: a moulding under the ceiling beam, then recessed wall panels
+   set out on a 240px rhythm, each with a lit left return and a shaded right
+   one. Contrast stays under 4% throughout, so it is felt rather than seen and
+   never competes with the plaque. All gradients, no image. */
+.academy-commons-wall {
+  position: absolute;
+  inset: 0;
+  background-image:
+    /* sconces */
+    radial-gradient(76% 52% at 17% -6%, rgba(201, 168, 76, 0.13), transparent 64%),
+    radial-gradient(76% 52% at 83% -6%, rgba(201, 168, 76, 0.1), transparent 64%),
+    /* the floor gathering shadow under the furniture */
+    radial-gradient(120% 66% at 50% 116%, rgba(0, 0, 0, 0.6), transparent 62%),
+    /* moulding: a lit rail with its shadow, just under the ceiling beam */
+    linear-gradient(
+      180deg,
+      transparent 0 26px,
+      rgba(232, 205, 152, 0.075) 26px 27px,
+      rgba(0, 0, 0, 0.34) 27px 31px,
+      transparent 31px
+    ),
+    /* recessed panels on a 240px rhythm */
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.16) 0 3px,
+      rgba(255, 246, 220, 0.028) 3px 5px,
+      transparent 5px 235px,
+      rgba(0, 0, 0, 0.2) 235px 240px
+    ),
+    linear-gradient(180deg, #060b16 0%, #0a1523 38%, #091220 74%, #05080f 100%);
+}
+
+/* ---- the ceiling beam ----------------------------------------------------
+   The room's lintel: a walnut beam across the top with a lit upper plane, a
+   dark front face and a gilt hairline where it meets the wall. It is what
+   makes the Commons read as an interior rather than as a page section. */
+.academy-commons-lintel {
+  background-image:
+    linear-gradient(
+      180deg,
+      var(--shelf-lit) 0%,
+      var(--shelf-face) 22%,
+      var(--shelf-mid) 62%,
+      var(--shelf-deep) 100%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.05) 0 2px,
+      transparent 2px 9px
+    );
+  background-blend-mode: overlay, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(214, 178, 118, 0.32),
+    0 6px 18px -8px rgba(0, 0, 0, 0.9);
+}
+.academy-commons-lintel::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201, 168, 76, 0.5) 22%,
+    rgba(201, 168, 76, 0.5) 78%,
+    transparent
+  );
+}
+
+/* ---- the membership plaque (Mogzy Premium) -------------------------------
+   Deliberately NOT a fifth volume and NOT a pricing card: a navy field in a
+   walnut mount with a brass title band, i.e. the plaque a members' room hangs
+   by its door. The navy-and-gilt field is the same pairing the four painted
+   volumes use, which is what ties the two rooms together. */
+.academy-commons-plaque {
+  background-image:
+    radial-gradient(96% 120% at 4% 0%, rgba(201, 168, 76, 0.14), transparent 58%),
+    linear-gradient(162deg, #0b1626 0%, #070d18 58%, #090c15 100%);
+  border-color: var(--shelf-mid);
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 168, 76, 0.28),
+    inset 0 1px 0 rgba(214, 178, 118, 0.16),
+    0 24px 44px -28px rgba(0, 0, 0, 0.95);
+}
+/* Brass title band across the head of the plaque. */
+.academy-commons-plaque-band {
+  background-image: linear-gradient(
+    180deg,
+    #e2c886 0%,
+    #c6a55f 38%,
+    #a4813a 78%,
+    #8c6c2c 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 214, 0.55),
+    inset 0 -1px 0 rgba(60, 42, 10, 0.45),
+    0 3px 10px -5px rgba(0, 0, 0, 0.8);
+}
+/* Engraved, not printed: a dark face with a light lower edge. */
+.academy-commons-engraved {
+  color: #2a2008;
+  text-shadow: 0 1px 0 rgba(255, 246, 214, 0.45);
+}
+/* One restrained gold pass across the plaque on hover/focus — the same 620ms
+   sweep the previous panel used, kept because the hall above still owns this
+   page's theatrical motion. */
+.academy-commons-plaque::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background-image: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(240, 215, 140, 0.09) 50%,
+    transparent 60%
+  );
+  background-size: 260% 100%;
+  background-position: 130% 0;
+}
+.academy-commons-plaque:hover::after,
+.academy-commons-plaque:focus-within::after {
+  opacity: 1;
+  background-position: -30% 0;
+  transition: background-position 620ms ease-out, opacity 160ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .academy-commons-plaque::after { display: none; }
+}
+
+/* ---- parchment notices ---------------------------------------------------
+   The noticeboard's pinned bill and the two smaller slips below it. Pure
+   gradient parchment — the app's vellum PNG is 2.3MB and this room is not
+   worth an LCP regression. The sheet is warm, lit from its top-left, and
+   shaded along its bottom edge so it reads as paper on a board. */
+.academy-commons-notice {
+  color: var(--commons-ink);
+  /* Aged, not fresh. The first pass ran this a full value brighter and the
+     paper became the loudest thing in the room — it out-shouted the gilt CTA
+     on the plaque, which inverted the hierarchy the brief sets out. These
+     values are dropped and desaturated until the gold plate is unambiguously
+     the brightest object on the screen, while the ink stays around 7:1 on the
+     sheet's own mid-tone. */
+  background-image:
+    radial-gradient(88% 62% at 26% 4%, rgba(255, 250, 232, 0.34), transparent 58%),
+    radial-gradient(92% 58% at 74% 104%, rgba(84, 66, 34, 0.3), transparent 60%),
+    linear-gradient(174deg, #d7c9a6 0%, #c4b48e 48%, #ad9d78 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 248, 226, 0.28),
+    inset 0 -14px 26px -20px rgba(74, 58, 28, 0.55),
+    0 14px 26px -18px rgba(0, 0, 0, 0.85);
+}
+.academy-commons-notice-ink { color: var(--commons-ink); }
+.academy-commons-notice-soft { color: var(--commons-ink-soft); }
+/* Brass pin. Two on the wide bill, one on each slip. */
+.academy-commons-pin {
+  background-image: radial-gradient(
+    circle at 34% 30%,
+    #f4e3ac 0%,
+    #cfae64 44%,
+    #8a6a2c 100%
+  );
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    inset 0 -1px 1px rgba(60, 42, 10, 0.5);
+}
+/* The board the notices are pinned to: dark walnut planking in a heavier
+   frame, the one piece of real furniture on this side of the room. */
+.academy-commons-board {
+  background-image:
+    linear-gradient(
+      100deg,
+      rgba(255, 236, 200, 0.05) 0%,
+      transparent 38%,
+      rgba(0, 0, 0, 0.22) 100%
+    ),
+    /* Plank seams. Wide enough apart that the board reads as boards at the
+       ~24px of wood the notice leaves showing on each side, rather than as a
+       texture swatch. */
+    repeating-linear-gradient(
+      180deg,
+      var(--shelf-face) 0 42px,
+      var(--shelf-deep) 42px 44px,
+      var(--shelf-mid) 44px 86px,
+      var(--shelf-dark) 86px 88px
+    );
+  border-color: var(--shelf-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(214, 178, 118, 0.2),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 22px 40px -26px rgba(0, 0, 0, 0.95);
+}
+
+/* ---- the plinth ----------------------------------------------------------
+   The legal band is not a footer floating under the scene: it is the room's
+   skirting. A capping board with a lit top plane over a darker face, and the
+   inscription cut into the face. */
+.academy-commons-plinth {
+  background-image:
+    linear-gradient(
+      180deg,
+      var(--shelf-lit) 0px,
+      var(--shelf-face) 5px,
+      var(--shelf-mid) 7px,
+      var(--shelf-deep) 46%,
+      var(--shelf-dark) 100%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.045) 0 3px,
+      transparent 3px 11px
+    );
+  background-blend-mode: overlay, normal;
+  box-shadow:
+    inset 0 1px 0 rgba(222, 188, 130, 0.34),
+    0 -10px 26px -14px rgba(0, 0, 0, 0.9);
+}
+/* Inscription ink, cut rather than printed: a pale face over a dark shadow. */
+.academy-commons-inscription {
+  color: rgba(226, 210, 176, 0.72);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+.academy-commons-inscription-link {
+  color: rgba(233, 208, 148, 0.92);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+  transition: color 180ms ease;
+}
+.academy-commons-inscription-link:hover,
+.academy-commons-inscription-link:focus-visible {
+  color: #f6e6bb;
 }
