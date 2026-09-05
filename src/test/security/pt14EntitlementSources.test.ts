@@ -302,7 +302,9 @@ const CLASSIFIED = [
   "src/lib/combat-lab/team-sim/contract.ts",        // (b) backend contract type
   "src/lib/community/discovery.ts",                 // (c) discovery card badge
   "src/lib/league-profiles.ts",                     // (c) league profile badge
-  "src/lib/pro/checkout.ts",                        // (d) comment
+  // PT1.5 removed src/lib/pro/checkout.ts from this list: it no longer mentions
+  // is_pro at all — the League Pro price and its is_pro comment are gone, and
+  // the module only starts a checkout for a server-resolved offer.
   "src/lib/quiz/api.ts",                            // (b) backend entitlement type
   "src/pages/CombatLab.tsx",                        // (b) backend credit status
   "src/pages/LolPremium.tsx",                       // (b) backend entitlement + comment

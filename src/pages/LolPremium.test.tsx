@@ -29,11 +29,26 @@ vi.mock("@/hooks/useAuth", () => ({
     session: null,
   }),
 }));
-vi.mock("@/lib/pro/checkout", () => ({
-  startLolProCheckout: vi.fn(),
-  isLolProCheckoutAvailable: () => false,
-  LOL_PRO_MONTHLY_PRICE: 5,
-}));
+// PT1.5: the page no longer knows a price — it renders the offer the server
+// catalog defines. Only the network half is mocked; the pure offer helpers are
+// re-exported from the real module so the rendered price is the real one.
+vi.mock("@/lib/pro/checkout", async () => {
+  const offers = await vi.importActual<typeof import("@/lib/pro/offers")>("@/lib/pro/offers");
+  return {
+    startLolProCheckout: vi.fn(),
+    fetchPricingMode: vi.fn().mockResolvedValue("standard"),
+    // Availability is a server answer. `available: null` is the UNKNOWN case,
+    // which the page must treat as purchasable — the default these banner
+    // tests want, since they assert on the ordinary upgrade CTA.
+    fetchOfferAvailability: vi.fn().mockResolvedValue({ mode: "standard", available: null }),
+    isOfferPurchasable: (id: string, a: { available: string[] | null }) =>
+      a.available === null || a.available.includes(id),
+    formatOfferPrice: offers.formatOfferPrice,
+    offerForInterval: offers.offerForInterval,
+    LOL_PRO_SUCCESS_PATH: "/lol/premium?success=true",
+    LOL_PRO_CANCEL_PATH: "/lol/premium?canceled=true",
+  };
+});
 
 function renderPage() {
   return render(

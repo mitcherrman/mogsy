@@ -9,6 +9,13 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 // may say "no paid Stripe entitlement"; it may NOT conclude "therefore not Pro".
 // Manual/playtester/promo/gift grants live in profiles.pro_grant_* and are never
 // written here. Effective Pro = public.pro_entitlement_is_effective(...).
+// PT1.5: this function is ALSO the recorder of commercial state — which offer
+// produced the subscription, and what Stripe currently bills. Both go through
+// public.record_pro_commercial_state, where the acquisition offer is WRITE-ONCE:
+// reconciliation updates the billing half and can never rewrite the cohort a
+// customer was acquired in. That function writes neither is_pro nor
+// pro_grant_*, so recording commercial identity cannot alter entitlement.
+//
 // Events handled: checkout.session.completed, customer.subscription.created,
 // customer.subscription.updated, customer.subscription.deleted.
 
@@ -85,6 +92,48 @@ async function syncProStatus(supabase: ReturnType<typeof adminClient>, userId: s
   }
 }
 
+/**
+ * Persist the commercial facts of a Stripe subscription.
+ *
+ * The offer id is read from Stripe's own metadata (written at checkout by
+ * create-checkout), so Stripe carries the acquisition identity for the life of
+ * the subscription. Subscriptions created before PT1.5 carry no offer metadata:
+ * their acquisition offer stays NULL — honestly unknown, never guessed.
+ *
+ * Idempotent by construction: the SQL writer converges billing state and
+ * refuses to overwrite an acquisition offer that is already set, so Stripe
+ * retries and out-of-order events are safe.
+ */
+async function recordCommercialState(
+  supabase: ReturnType<typeof adminClient>,
+  userId: string,
+  subscription: Stripe.Subscription
+) {
+  const item = subscription.items?.data?.[0];
+  const customerId = typeof subscription.customer === "string"
+    ? subscription.customer
+    : subscription.customer?.id ?? null;
+  const { error } = await supabase.rpc("record_pro_commercial_state", {
+    _user_id: userId,
+    _offer_id: subscription.metadata?.mogzy_offer ?? null,
+    _stripe_customer_id: customerId,
+    _stripe_subscription_id: subscription.id,
+    _stripe_price_id: item?.price?.id ?? null,
+    _billing_interval: item?.price?.recurring?.interval ?? null,
+    _subscription_status: subscription.status ?? null,
+    _current_period_end: subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null,
+  });
+  if (error) {
+    // Commercial bookkeeping must never wedge the entitlement sync that runs
+    // alongside it: a failure here is logged, not thrown, so Stripe is not made
+    // to retry an event whose is_pro half already succeeded. The next
+    // subscription event or a check-subscription reconciliation repairs it.
+    console.error("record_pro_commercial_state failed", { userId, subscriptionId: subscription.id, error });
+  }
+}
+
 serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -128,6 +177,16 @@ serve(async (req) => {
           break;
         }
         await syncProStatus(supabase, userId, true);
+        // PT1.5: the session carries the offer, but the Subscription object is
+        // where the price, interval and period live — and where the offer
+        // metadata was also written, so it stays available on later events.
+        const subscriptionId = typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id;
+        if (subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          await recordCommercialState(supabase, userId, subscription);
+        }
         break;
       }
       case "customer.subscription.created":
@@ -142,6 +201,10 @@ serve(async (req) => {
         const isPro = event.type !== "customer.subscription.deleted" &&
           ["active", "trialing"].includes(subscription.status);
         await syncProStatus(supabase, userId, isPro);
+        // PT1.5: reconcile the billing half on every lifecycle event —
+        // renewal, upgrade, downgrade, cancellation. The acquisition offer is
+        // write-once in SQL, so none of these can rewrite commercial history.
+        await recordCommercialState(supabase, userId, subscription);
         break;
       }
       default:

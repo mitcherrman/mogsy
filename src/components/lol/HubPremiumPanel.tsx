@@ -20,12 +20,12 @@
  * are summarised as tools that "land", never as a definitive feature list.
  *
  * ### No price
- * `LOL_PRO_MONTHLY_PRICE` is $4.99, but `isLolProCheckoutAvailable()` is false
- * wherever `VITE_STRIPE_LOL_PRO_MONTHLY_PRICE_ID` is unset — which is every
- * environment today, so the subscription cannot actually be bought. Printing a
- * price on the homepage would advertise a number with no checkout behind it.
- * `/lol/premium` owns pricing and states the coming-soon status in the same
- * view; this panel routes there instead.
+ * PT1.5 moved pricing off the client entirely: the price list lives in the
+ * server offer catalog and what is purchasable right now is a server answer
+ * (`fetchOfferAvailability`). This panel could not print a trustworthy price
+ * without making that round trip, and a number with no checkout behind it is
+ * worse than no number. `/lol/premium` owns pricing AND states availability in
+ * the same view; this panel routes there instead.
  *
  * ### Subscription state costs nothing extra
  * `useSitewideTheme().proStatus` is already resolved for this page by the

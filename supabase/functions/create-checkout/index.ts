@@ -2,11 +2,66 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { resolveGiftByPriceId } from "../_shared/gift-catalog.ts";
+import {
+  MOGZY_OFFER_IDS,
+  foundingAccessCodeMatches,
+  getOffer,
+  isOfferConfigured,
+  offerAllowedInMode,
+  readPricingMode,
+  winbackCouponId,
+} from "../_shared/offer-catalog.ts";
+
+// PT1.5 — checkout authority.
+//
+// SUBSCRIPTIONS are bought by OFFER ID, never by Price ID. The client asks for
+// an approved Mogzy offer ("launch_annual"); this function maps it to a Stripe
+// Price through the server-owned catalog. A browser therefore cannot
+// manufacture a cheaper or privileged subscription by sending an arbitrary
+// `price_...`, cannot buy a launch price outside the launch window, and cannot
+// assert Founding Playtester identity for itself.
+//
+// ONE-TIME PAYMENTS (diamond packs, gifts) still take a Price ID, but it is now
+// checked against the server-owned gift catalog, so no arbitrary Stripe Price
+// reaches Stripe from any path in this function.
+//
+// COUPONS are server-selected. The win-back discount is applied because THIS
+// function established the caller is a lapsed customer, not because the client
+// asked for it.
+//
+// Commercial identity travels with the purchase: the chosen offer id is written
+// into both the Checkout Session metadata and the Subscription metadata, so
+// Stripe itself carries the acquisition offer for the life of the subscription.
+// stripe-webhook persists it via public.record_pro_commercial_state.
+//
+// Entitlement is NOT this function's business. Pro access is PT1.4's:
+// profiles.is_pro (Stripe-derived) OR a valid profiles.pro_grant_*.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const json = (body: unknown, status: number) =>
+  new Response(JSON.stringify(body), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status,
+  });
+
+/**
+ * A well-formed request for something there is nothing to sell: the offer is
+ * not configured, not sellable in the current pricing mode, or private and
+ * unlocked by no valid access code.
+ *
+ * Returned as HTTP 200 with a code — the house pattern customer-portal already
+ * uses — because supabase-js's `functions.invoke` collapses every non-2xx into
+ * a generic error and the buyer would otherwise see "something went wrong"
+ * instead of "this plan isn't available yet". It is still a refusal: no
+ * Checkout Session is created. All three refusals return the SAME code, so
+ * probing cannot distinguish an unconfigured offer from a rejected access code.
+ */
+const notAvailable = () =>
+  json({ error: "This offer is not available", code: "OFFER_NOT_AVAILABLE" }, 200);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -19,14 +74,48 @@ serve(async (req) => {
   );
 
   try {
+    const body = await req.json().catch(() => ({}));
+
+    // ---- Availability probe (no auth, no Stripe call, no session) ----------
+    // PT1.5B. The browser cannot see edge-function secrets, so without this it
+    // could only discover that an offer is unsellable by pressing Buy. That is
+    // truthful but late: the page would render a live-looking $99.99 button for
+    // an annual price that does not exist yet.
+    //
+    // The answer is deliberately "what can be bought RIGHT NOW", derived from
+    // the same three rules checkout itself applies: public visibility, allowed
+    // in the current pricing mode, and a configured Stripe Price. It therefore
+    // leaks nothing a buyer would not see on the page anyway:
+    //   * `founding_playtester` is private and NEVER appears, configured or not;
+    //   * launch offers report unavailable outside launch mode even when their
+    //     prices exist, so the probe cannot reveal a pre-staged launch;
+    //   * no Stripe Price ID, coupon or secret is ever returned.
+    if (body?.action === "offer_availability") {
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      const { data: modeRow } = await adminClient
+        .from("app_settings").select("value").eq("key", "pro_pricing").maybeSingle();
+      const pricingMode = readPricingMode(modeRow?.value);
+      const available = MOGZY_OFFER_IDS.filter((id) => {
+        const def = getOffer(id);
+        return !!def
+          && def.visibility === "public"
+          && offerAllowedInMode(def, pricingMode)
+          && isOfferConfigured(def);
+      });
+      return json({ mode: pricingMode, available }, 200);
+    }
+
     const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const body = await req.json();
-    const { priceId, mode, quantity, couponId, gift, successPath, cancelPath } = body;
+    const { offer, offerAccessCode, priceId, mode, quantity, gift, successPath, cancelPath } = body;
 
     // Optional caller-provided return paths. Internal paths only: must start
     // with a single "/" (no protocol-relative "//host" or backslash tricks),
@@ -41,18 +130,22 @@ serve(async (req) => {
     const safeSuccessPath = sanitizePath(successPath) || "/shop?success=true";
     const safeCancelPath = sanitizePath(cancelPath) || "/shop?canceled=true";
 
-    // Input validation
-    if (!priceId || typeof priceId !== 'string' || !priceId.startsWith('price_')) {
-      return new Response(JSON.stringify({ error: "Invalid priceId" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
-      });
+    if (mode && !["payment", "subscription"].includes(mode)) {
+      return json({ error: "Invalid mode" }, 400);
     }
-    if (mode && !['payment', 'subscription'].includes(mode)) {
-      return new Response(JSON.stringify({ error: "Invalid mode" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
-      });
+    // A subscription is identified by an offer, a one-time purchase by a
+    // catalog Price ID. `offer` implies subscription mode.
+    const isSubscription = offer !== undefined || mode === "subscription";
+
+    if (isSubscription && !offer) {
+      // The pre-PT1.5 shape (a raw subscription Price ID) is refused outright
+      // rather than honoured, so no deployed client can keep bypassing the
+      // offer catalog.
+      return json({ error: "A Mogzy offer is required to start a subscription", code: "OFFER_REQUIRED" }, 400);
     }
-    const safeQuantity = Math.min(Math.max(Math.floor(Number(quantity) || 1), 1), 99);
+    if (!isSubscription && (!priceId || typeof priceId !== "string" || !priceId.startsWith("price_"))) {
+      return json({ error: "Invalid priceId" }, 400);
+    }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -88,8 +181,6 @@ serve(async (req) => {
     const sessionConfig: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: priceId, quantity: safeQuantity }],
-      mode: mode || "payment",
       success_url: `${origin}${safeSuccessPath}`,
       cancel_url: `${origin}${safeCancelPath}`,
       // Lets the stripe-webhook function map events back to the Supabase user
@@ -97,37 +188,92 @@ serve(async (req) => {
       metadata: { supabase_user_id: user.id },
     };
 
-    // Add 7-day free trial for subscriptions
-    if (mode === "subscription" && !gift) {
-      sessionConfig.subscription_data = {
-        trial_period_days: 7,
-        metadata: { supabase_user_id: user.id },
-      };
-    }
+    if (isSubscription) {
+      // ---- Server-authoritative offer resolution ---------------------------
+      const definition = getOffer(offer);
+      if (!definition) {
+        return json({ error: "Unknown offer", code: "UNKNOWN_OFFER" }, 400);
+      }
 
-    // Apply optional discount (win-back / promo offers)
-    if (couponId && typeof couponId === "string" && /^[a-zA-Z0-9_-]{3,40}$/.test(couponId)) {
-      sessionConfig.discounts = [{ coupon: couponId }];
+      // The private Founding Playtester offer needs a server-verified access
+      // code. The secret lives in an edge-function env var, so a client can
+      // present a code but can never assert founder identity itself. With no
+      // secret configured the offer is unreachable.
+      if (definition.visibility === "private" && !foundingAccessCodeMatches(offerAccessCode)) {
+        return notAvailable();
+      }
+
+      // Launch prices are sellable only while the site is in launch mode, so
+      // replaying "launch_annual" after the window closes buys nothing.
+      const adminClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      const { data: pricingRow } = await adminClient
+        .from("app_settings").select("value").eq("key", "pro_pricing").maybeSingle();
+      const pricingMode = readPricingMode(pricingRow?.value);
+      if (!offerAllowedInMode(definition, pricingMode)) {
+        return notAvailable();
+      }
+
+      // Fail closed: an offer with no Stripe Price configured is not sellable.
+      if (!isOfferConfigured(definition)) {
+        return notAvailable();
+      }
+
+      sessionConfig.mode = "subscription";
+      sessionConfig.line_items = [{ price: definition.priceId, quantity: 1 }];
+      // Commercial identity travels with the purchase, in Stripe itself.
+      sessionConfig.metadata.mogzy_offer = definition.id;
+      sessionConfig.subscription_data = {
+        metadata: { supabase_user_id: user.id, mogzy_offer: definition.id },
+      };
+      if (definition.trialDays > 0) {
+        sessionConfig.subscription_data.trial_period_days = definition.trialDays;
+      }
+
+      // ---- Server-selected discounts --------------------------------------
+      // An offer-level coupon (the Founding Playtester first-year discount)
+      // wins; otherwise a lapsed customer gets the win-back coupon. Neither is
+      // client-controllable: the client sends no coupon field at all.
+      let coupon = definition.couponId;
+      if (!coupon && customerId && definition.interval === "month") {
+        const past = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 1 });
+        const hasActive = past.data.some((s) => ["active", "trialing"].includes(s.status));
+        if (past.data.length > 0 && !hasActive) coupon = winbackCouponId();
+      }
+      if (coupon) {
+        sessionConfig.discounts = [{ coupon }];
+      } else {
+        sessionConfig.allow_promotion_codes = true;
+      }
     } else {
+      // ---- One-time payment: allowlisted Price IDs only --------------------
+      // Every legitimate one-time price (five diamond packs, two gift-Pro
+      // prices) is in the server-owned gift catalog, so this closes the last
+      // path by which an arbitrary Price ID could reach Stripe.
+      if (!resolveGiftByPriceId(priceId)) {
+        return json({ error: "Unknown priceId", code: "UNKNOWN_PRICE" }, 400);
+      }
+      const safeQuantity = Math.min(Math.max(Math.floor(Number(quantity) || 1), 1), 99);
+      sessionConfig.mode = "payment";
+      sessionConfig.line_items = [{ price: priceId, quantity: safeQuantity }];
       sessionConfig.allow_promotion_codes = true;
     }
 
     // Gift flow: create a gift row and embed gift id in metadata
-    if (gift && typeof gift === "object") {
+    if (gift && typeof gift === "object" && !isSubscription) {
       const recipientEmail = String(gift.recipient_email || "").trim().toLowerCase();
       if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
-        return new Response(JSON.stringify({ error: "Invalid recipient email" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
-        });
+        return json({ error: "Invalid recipient email" }, 400);
       }
       // Resolve gift type and diamond amount from the server-owned Price ID
       // catalog. The client-supplied `gift.gift_type` and `gift.diamond_amount`
       // are DISCARDED here — the priceId is the only trusted identifier.
       const catalogEntry = resolveGiftByPriceId(priceId);
       if (!catalogEntry) {
-        return new Response(JSON.stringify({ error: "Unknown gift priceId" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400,
-        });
+        return json({ error: "Unknown gift priceId" }, 400);
       }
       const giftType = catalogEntry.giftType;
       const canonicalDiamondAmount = catalogEntry.diamondAmount;
@@ -147,13 +293,13 @@ serve(async (req) => {
       }).select("id, redeem_code").single();
       if (giftErr || !giftRow) {
         console.error("gift insert error", giftErr);
-        return new Response(JSON.stringify({ error: "Could not create gift" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500,
-        });
+        return json({ error: "Could not create gift" }, 500);
       }
-      sessionConfig.mode = giftType === "diamonds" ? "payment" : "payment";
+      sessionConfig.mode = "payment";
       // Gift Pro subscriptions are sold as a one-time payment for the period;
-      // recipient gets is_pro extended by 30/365 days when they redeem.
+      // the recipient gets a pro_grant_* entitlement of 30/365 days when they
+      // redeem (PT1.4). A gift is not an acquisition offer: the recipient never
+      // chose a commercial offer, so no pro_offer is recorded for them.
       sessionConfig.line_items = [{ price: priceId, quantity: 1 }];
       sessionConfig.metadata = {
         supabase_user_id: user.id,
@@ -184,15 +330,9 @@ serve(async (req) => {
       } catch (e) { console.error("gift session_id update failed", e); }
     }
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    return json({ url: session.url }, 200);
   } catch (error) {
     console.error('create-checkout error:', error);
-    return new Response(JSON.stringify({ error: 'An internal error occurred' }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    return json({ error: 'An internal error occurred' }, 500);
   }
 });

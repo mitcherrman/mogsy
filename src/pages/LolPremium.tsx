@@ -25,9 +25,15 @@ import { quizApi } from "@/lib/quiz/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
   startLolProCheckout,
-  isLolProCheckoutAvailable,
-  LOL_PRO_MONTHLY_PRICE,
+  fetchOfferAvailability,
+  isOfferPurchasable,
+  formatOfferPrice,
+  offerForInterval,
+  type BillingInterval,
+  type OfferAvailability,
+  type PricingMode,
 } from "@/lib/pro/checkout";
+import { annualSavingsPct, STANDARD_OFFERS } from "@/lib/pro/offers";
 
 const GOLD = "#c9a84c";
 
@@ -113,9 +119,29 @@ export default function LolPremium() {
   const isAnonymous = !user || user.is_anonymous === true;
   const [isPremium, setIsPremium] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
-  const checkoutAvailable = isLolProCheckoutAvailable();
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>("month");
+  // PT1.5: /lol/premium sells the same approved offers as the Shop. The price
+  // list and what is actually purchasable both come from the server, which is
+  // the same authority create-checkout applies — so the page cannot advertise a
+  // plan the checkout would refuse. `available: null` means "not known yet or
+  // not answerable": the buyer is allowed to try and the server refuses
+  // honestly, which is better than disabling a checkout that in fact works.
+  const [availability, setAvailability] = useState<OfferAvailability>({
+    mode: "standard",
+    available: null,
+  });
+  const pricingMode: PricingMode = availability.mode;
+  const offer = offerForInterval(billingInterval, pricingMode);
+  const offerPurchasable = isOfferPurchasable(offer.id, availability);
+  const standardOffer = STANDARD_OFFERS[billingInterval];
   const showSuccess = searchParams.get("success") === "true";
   const showCanceled = searchParams.get("canceled") === "true";
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchOfferAvailability().then((a) => { if (!cancelled) setAvailability(a); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (authLoading || !user || user.is_anonymous) return;
@@ -139,8 +165,10 @@ export default function LolPremium() {
   }, [authLoading, user]);
 
   const handleUpgrade = async () => {
-    if (!checkoutAvailable) {
-      toast.info("Mogzy Premium checkout is coming soon.");
+    if (!offerPurchasable) {
+      // Reached only if the state changed between render and click; the button
+      // is disabled for this case. Same wording the server refusal produces.
+      toast.info("This plan isn’t available yet — check back shortly.");
       return;
     }
     if (isAnonymous) {
@@ -152,8 +180,10 @@ export default function LolPremium() {
     }
     setCheckingOut(true);
     try {
-      await startLolProCheckout();
+      await startLolProCheckout(billingInterval, pricingMode);
     } catch (err) {
+      // startProCheckout has already turned a server refusal into a readable
+      // message; anything else is a transport failure.
       toast.error(err instanceof Error ? err.message : "Checkout could not be started.");
     } finally {
       setCheckingOut(false);
@@ -211,17 +241,49 @@ export default function LolPremium() {
           </div>
         ) : (
           <>
-            <p className="mt-6 text-3xl font-bold text-[#f5e9c8]">
-              ${LOL_PRO_MONTHLY_PRICE}
-              <span className="text-base font-normal text-[#c8d4e6]">/month</span>
+            {/* PT1.5: interval choice over the SAME Mogzy Premium. A launch price is
+                a discount off the standard price, never a different product. */}
+            <div
+              className="mt-6 inline-flex items-center rounded-full border p-0.5"
+              style={{ borderColor: `${GOLD}4d` }}
+              role="tablist"
+              aria-label="Billing period"
+            >
+              {(["month", "year"] as const).map((iv) => (
+                <button
+                  key={iv}
+                  role="tab"
+                  aria-selected={billingInterval === iv}
+                  onClick={() => setBillingInterval(iv)}
+                  className="rounded-full px-4 py-1.5 text-xs font-bold transition-colors sm:text-sm"
+                  style={billingInterval === iv
+                    ? { background: GOLD, color: "#0a1428" }
+                    : { color: "#c8d4e6" }}
+                >
+                  {iv === "month" ? "Monthly" : `Yearly · save ${annualSavingsPct(pricingMode)}%`}
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-4 text-3xl font-bold text-[#f5e9c8]">
+              {formatOfferPrice(offer.priceCents)}
+              <span className="text-base font-normal text-[#c8d4e6]">
+                {billingInterval === "year" ? "/year" : "/month"}
+              </span>
             </p>
-            <p className="mt-1 text-xs text-[#c8d4e6]/70">Annual plan coming soon.</p>
+            {pricingMode === "launch" && (
+              <p className="mt-1 text-xs text-[#c8d4e6]/70">
+                Launch offer — normally{" "}
+                <span className="line-through">{formatOfferPrice(standardOffer.priceCents)}</span>
+                {billingInterval === "year" ? "/year" : "/month"}. Same Mogzy Premium.
+              </p>
+            )}
 
             <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button
                 size="lg"
                 onClick={handleUpgrade}
-                disabled={checkingOut || authLoading}
+                disabled={checkingOut || authLoading || !offerPurchasable}
                 className="border-0 font-semibold text-[#0a1428] hover:opacity-90"
                 style={{ background: `linear-gradient(90deg, ${GOLD}, #a8862f)` }}
               >
@@ -232,9 +294,14 @@ export default function LolPremium() {
                 <Link to="/quiz">Keep playing free</Link>
               </Button>
             </div>
-            {!checkoutAvailable && (
-              <p className="mt-3 text-xs" style={{ color: GOLD }}>
-                Mogzy Premium checkout is coming soon.
+            {!offerPurchasable && (
+              // Truthful, and specific about WHICH plan: when only one interval
+              // has a configured Stripe Price, saying "checkout is coming soon"
+              // would be wrong about the other one.
+              <p className="mt-3 text-xs" style={{ color: GOLD }} role="status">
+                {isOfferPurchasable(offerForInterval(billingInterval === "year" ? "month" : "year", pricingMode).id, availability)
+                  ? `${billingInterval === "year" ? "Yearly" : "Monthly"} billing isn’t available yet — ${billingInterval === "year" ? "monthly" : "yearly"} is.`
+                  : "Mogzy Premium checkout isn’t open yet."}
               </p>
             )}
           </>

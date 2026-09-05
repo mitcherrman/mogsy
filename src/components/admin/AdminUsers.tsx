@@ -46,6 +46,17 @@ interface Profile {
   pro_grant_reason: string | null;
   pro_grant_granted_at: string | null;
   pro_grant_granted_by: string | null;
+  /** PT1.5: WRITE-ONCE acquisition identity. Commercial, never entitlement. */
+  pro_offer: string | null;
+  pro_offer_acquired_at: string | null;
+  pro_offer_price_id: string | null;
+  /** PT1.5: current Stripe billing state, reconciled from Stripe. */
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_price_id: string | null;
+  stripe_billing_interval: string | null;
+  stripe_subscription_status: string | null;
+  stripe_current_period_end: string | null;
   is_bot: boolean | null;
   is_anonymous: boolean | null;
   diamonds: number | null;
@@ -663,6 +674,14 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
       pro_grant_expires_at: p.pro_grant_expires_at,
       pro_grant_reason: p.pro_grant_reason,
       pro_grant_granted_at: p.pro_grant_granted_at,
+      // PT1.5: acquisition identity is durable commercial history — restoring a
+      // user must not erase which offer they were acquired on. It grants no
+      // access on its own. The stripe_* billing columns are deliberately NOT
+      // restored: they are Stripe's to state, and check-subscription /
+      // stripe-webhook repopulate them.
+      pro_offer: p.pro_offer,
+      pro_offer_acquired_at: p.pro_offer_acquired_at,
+      pro_offer_price_id: p.pro_offer_price_id,
       is_bot: p.is_bot,
       diamonds: p.diamonds,
       elo_shields: p.elo_shields,
@@ -1004,6 +1023,45 @@ export default function AdminUsers({ isMasterAdmin }: { isMasterAdmin: boolean }
                     )}
                   </dd>
                 </div>
+                {/* PT1.5 — what this customer BOUGHT. A third INDEPENDENT row,
+                    for the same reason ADMIN1A split the other two: commercial
+                    identity is not entitlement, every offer grants the same
+                    Premium, and nothing here decides access.
+
+                    Rendered only when there is something to show. The PT1.5
+                    migration is not applied in production yet, so these columns
+                    do not exist and `admin_list_profiles()` (SELECT *) returns
+                    no such keys — printing "none recorded" against every
+                    account would report absent bookkeeping as a fact about the
+                    customer. */}
+                {(selectedUser.pro_offer ||
+                  selectedUser.stripe_subscription_status ||
+                  selectedUser.stripe_customer_id) && (
+                  <div className="flex flex-wrap gap-x-2 rounded-md bg-secondary/40 px-2 py-1.5">
+                    <dt className="text-muted-foreground w-40">Commercial offer</dt>
+                    <dd data-testid="premium-commercial-row" className="font-medium">
+                      {selectedUser.pro_offer ?? "none recorded"}
+                      {selectedUser.pro_offer_acquired_at && (
+                        <span className="font-normal">
+                          {" "}— acquired {new Date(selectedUser.pro_offer_acquired_at).toLocaleDateString()}
+                        </span>
+                      )}
+                      <span className="block font-normal text-muted-foreground">
+                        Billing now: {selectedUser.stripe_subscription_status ?? "no subscription"}
+                        {selectedUser.stripe_billing_interval && <>, per {selectedUser.stripe_billing_interval}</>}
+                        {selectedUser.stripe_price_id && <> on {selectedUser.stripe_price_id}</>}
+                        {selectedUser.stripe_current_period_end && (
+                          <> — renews {new Date(selectedUser.stripe_current_period_end).toLocaleDateString()}</>
+                        )}
+                        {selectedUser.pro_offer_price_id &&
+                          selectedUser.stripe_price_id &&
+                          selectedUser.pro_offer_price_id !== selectedUser.stripe_price_id && (
+                            <> (acquired on {selectedUser.pro_offer_price_id})</>
+                          )}
+                      </span>
+                    </dd>
+                  </div>
+                )}
               </dl>
 
               {premium.caution && (

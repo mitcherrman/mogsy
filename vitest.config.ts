@@ -16,6 +16,11 @@ export default defineConfig({
       // supabase/functions tests are Deno-native (Deno.test, https:// imports)
       // and are not runnable under vitest.
       "supabase/functions/identity-link/**/*.{test,spec}.ts",
+      // PT1.5's offer catalog is likewise pure TypeScript (its Deno.env reads
+      // are optional-chained), and it is the checkout allowlist, so it is unit
+      // tested here. Named explicitly: its sibling gift-catalog.test.ts is
+      // Deno-native and must not be picked up.
+      "supabase/functions/_shared/offer-catalog.test.ts",
     ],
   },
   resolve: {

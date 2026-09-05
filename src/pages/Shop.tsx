@@ -7,6 +7,14 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { isEffectivePro } from "@/lib/pro/entitlement";
+import {
+  annualSavingsPct,
+  formatOfferPrice,
+  offerForInterval,
+  STANDARD_OFFERS,
+  type PricingMode,
+} from "@/lib/pro/offers";
+import { fetchPricingMode, startProCheckout } from "@/lib/pro/checkout";
 import SEOHead from "@/components/SEOHead";
 import { useToast } from "@/hooks/use-toast";
 import { useShopSound } from "@/hooks/useShopSound";
@@ -31,21 +39,23 @@ const proFeatures = [
   "Priority in swipe queues",
 ];
 
-// Price IDs are env-driven so test mode can use its own prices
-// (set VITE_STRIPE_* in .env.local); fallbacks are the live IDs.
-const STRIPE_PRO_PRICE_ID =
-  import.meta.env.VITE_STRIPE_PRO_MONTHLY_PRICE_ID || "price_1T3Ua6D9NqEQUIGhfXFmV6V6";
-const STRIPE_PRO_ANNUAL_PRICE_ID =
-  import.meta.env.VITE_STRIPE_PRO_ANNUAL_PRICE_ID || "price_1TZRqtD9NqEQUIGhXUSpw5DI";
+// PT1.5: Mogzy Premium SUBSCRIPTION prices are no longer named here. The Shop asks
+// to buy an OFFER (@/lib/pro/offers) and the server maps it to a Stripe Price,
+// so no subscription Price ID and no coupon ships in the browser bundle. The
+// win-back discount is likewise decided server-side from Stripe history.
+//
+// The gift Price IDs below are ONE-TIME payment prices for gifting Pro to
+// someone else. They are a different product from a subscription offer, they
+// are already allowlisted server-side by _shared/gift-catalog.ts, and PT1.5's
+// approved commercial structure does not cover them — so they are unchanged.
 const STRIPE_GIFT_PRO_MONTHLY_PRICE_ID =
   import.meta.env.VITE_STRIPE_GIFT_PRO_MONTHLY_PRICE_ID || "price_1TZS2yD9NqEQUIGhP9HWjgy1";
 const STRIPE_GIFT_PRO_ANNUAL_PRICE_ID =
   import.meta.env.VITE_STRIPE_GIFT_PRO_ANNUAL_PRICE_ID || "price_1TZS92D9NqEQUIGhCx5fczRp";
-const WINBACK_COUPON_ID = import.meta.env.VITE_STRIPE_WINBACK_COUPON_ID || "sCkrnnuL"; // 30% off 3 months
 
-const PRO_MONTHLY_PRICE = 9.99;
-const PRO_ANNUAL_PRICE = 83.99;
-const PRO_ANNUAL_SAVINGS_PCT = Math.round((1 - PRO_ANNUAL_PRICE / (PRO_MONTHLY_PRICE * 12)) * 100); // 30%
+/** Display amounts of the gift Stripe prices above. */
+const GIFT_PRO_MONTHLY_PRICE = 9.99;
+const GIFT_PRO_ANNUAL_PRICE = 83.99;
 
 const diamondPacks = [
   { id: "pack_50", amount: 50, price: 0.99, stripePriceId: import.meta.env.VITE_STRIPE_PACK_50_PRICE_ID || "price_1T3UbgD9NqEQUIGhYrBcRg9p", tag: null },
@@ -102,6 +112,10 @@ export default function Shop() {
   const [shopAdConfig, setShopAdConfig] = useState<{ enabled: boolean; type: string; headline: string; subtext: string } | null>(null);
   const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
   const [wasCustomer, setWasCustomer] = useState(false);
+  // Which price list the site is selling right now. Read from the same
+  // app_settings row create-checkout uses as authority, so what the Shop shows
+  // and what the server will sell can never disagree. Defaults to full price.
+  const [pricingMode, setPricingMode] = useState<PricingMode>("standard");
   const [giftType, setGiftType] = useState<"pro_monthly" | "pro_annual" | "diamonds">("pro_monthly");
   const [giftDiamondPackId, setGiftDiamondPackId] = useState(diamondPacks[2].id);
   const [giftRecipient, setGiftRecipient] = useState("");
@@ -124,6 +138,10 @@ export default function Shop() {
       setProfile(null);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    fetchPricingMode().then(setPricingMode);
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -197,7 +215,17 @@ export default function Shop() {
     }
   };
 
-  const handleStripeCheckout = async (priceId: string, mode: "payment" | "subscription", extras?: { couponId?: string; gift?: any }) => {
+  // PT1.4: Pro is stripe_pro OR a valid non-Stripe grant. Reading profile.is_pro
+  // raw reports a comped playtester as Free, which is the bug PT1.4 fixed — the
+  // grant columns are selected above precisely so this resolves correctly.
+  const effectivePro = isEffectivePro(profile);
+
+  /** The offer the interval toggle is currently pointing at. */
+  const selectedOffer = offerForInterval(billingInterval, pricingMode);
+  /** The undiscounted price of the same interval, shown struck through when a launch offer is live. */
+  const standardOffer = STANDARD_OFFERS[billingInterval];
+
+  const handleStripeCheckout = async (priceId: string, mode: "payment", extras?: { gift?: any }) => {
     setPurchasing(priceId);
     if (mode === "payment") {
       playDiamondTap();
@@ -218,6 +246,27 @@ export default function Shop() {
       }
     } catch (err: any) {
       toast({ title: "Checkout error", description: err.message || "Something went wrong", variant: "destructive" });
+    }
+    setPurchasing(null);
+  };
+
+  // PT1.5: subscribing sends an OFFER ID and nothing else — no Price ID, no
+  // coupon, no founder claim. The server resolves the price, applies any
+  // discount it decides the buyer is owed, and stamps the offer onto the Stripe
+  // subscription so acquisition identity is recorded at the source.
+  const handleProSubscribe = async () => {
+    const offer = offerForInterval(billingInterval, pricingMode);
+    setPurchasing(offer.id);
+    try {
+      await startProCheckout(offer.id);
+    } catch (err: any) {
+      // startProCheckout has already turned a server refusal into a readable
+      // message; anything else is a transport failure.
+      toast({
+        title: "Checkout error",
+        description: err?.message || "Checkout could not be started.",
+        variant: "destructive",
+      });
     }
     setPurchasing(null);
   };
@@ -403,7 +452,7 @@ export default function Shop() {
         )}
 
         {/* Configurable Shop Ad Banner */}
-        {shopAdConfig?.enabled && !profile?.is_pro && (
+        {shopAdConfig?.enabled && !effectivePro && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -560,10 +609,10 @@ export default function Shop() {
                 <div>
                   <h2 className="text-lg sm:text-2xl font-extrabold text-foreground">Mogzy Premium</h2>
                   <p className="text-muted-foreground text-xs sm:text-sm">
-                    From ${PRO_MONTHLY_PRICE}/mo · 7-day free trial
+                    From {formatOfferPrice(offerForInterval("month", pricingMode).priceCents)}/mo · 7-day free trial
                   </p>
                 </div>
-                {profile?.is_pro && (
+                {effectivePro && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -590,7 +639,7 @@ export default function Shop() {
               </ul>
 
               {/* Win-back banner for lapsed subscribers */}
-              {!profile?.is_pro && wasCustomer && (
+              {!effectivePro && wasCustomer && (
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -605,8 +654,33 @@ export default function Shop() {
                 </motion.div>
               )}
 
+              {/* PT1.5 launch offer — a discount off the normal price for the SAME
+                  Mogzy Premium, never a separate tier. Shown only while the site is
+                  in launch pricing mode, which create-checkout enforces too. */}
+              {!effectivePro && pricingMode === "launch" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-3 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 flex items-center gap-2"
+                  role="status"
+                >
+                  <Tag className="h-4 w-4 text-primary shrink-0" />
+                  <p className="text-xs sm:text-sm text-foreground">
+                    <span className="font-bold">Launch offer</span> — same Mogzy Premium,{" "}
+                    <span className="font-bold text-primary">
+                      {formatOfferPrice(selectedOffer.priceCents)}
+                    </span>{" "}
+                    instead of{" "}
+                    <span className="line-through text-muted-foreground">
+                      {formatOfferPrice(standardOffer.priceCents)}
+                    </span>
+                    {billingInterval === "year" ? "/year" : "/month"}.
+                  </p>
+                </motion.div>
+              )}
+
               {/* Billing interval toggle (hidden if already Premium) */}
-              {!profile?.is_pro && (
+              {!effectivePro && (
                 <div
                   className="inline-flex items-center rounded-full border border-border bg-card p-0.5 mb-3"
                   role="tablist"
@@ -628,13 +702,13 @@ export default function Shop() {
                   >
                     Yearly
                     <span className="text-[9px] sm:text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded-full bg-accent text-accent-foreground">
-                      Save {PRO_ANNUAL_SAVINGS_PCT}%
+                      Save {annualSavingsPct(pricingMode)}%
                     </span>
                   </button>
                 </div>
               )}
 
-              {profile?.is_pro ? (
+              {effectivePro ? (
                 <div className="space-y-1.5 sm:space-y-2">
                   <p className="text-xs sm:text-sm text-primary font-medium">
                     ✨ You're a Premium member!
@@ -656,20 +730,18 @@ export default function Shop() {
                       variant="hero"
                       size="lg"
                       className="w-full sm:w-auto gap-1.5 sm:gap-2 h-9 text-xs sm:h-12 sm:text-base"
-                      onClick={() => {
-                        const priceId = billingInterval === "year" ? STRIPE_PRO_ANNUAL_PRICE_ID : STRIPE_PRO_PRICE_ID;
-                        const extras = wasCustomer && billingInterval === "month" ? { couponId: WINBACK_COUPON_ID } : undefined;
-                        handleStripeCheckout(priceId, "subscription", extras);
-                      }}
-                      disabled={purchasing === STRIPE_PRO_PRICE_ID || purchasing === STRIPE_PRO_ANNUAL_PRICE_ID}
-                      aria-label={billingInterval === "year" ? `Start Mogzy Premium yearly for ${PRO_ANNUAL_PRICE} dollars` : `Start Mogzy Premium monthly free trial`}
+                      onClick={handleProSubscribe}
+                      disabled={purchasing === selectedOffer.id}
+                      aria-label={billingInterval === "year"
+                        ? `Start Mogzy Premium yearly for ${formatOfferPrice(selectedOffer.priceCents)}`
+                        : `Start Mogzy Premium monthly free trial`}
                     >
                       <Crown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      {(purchasing === STRIPE_PRO_PRICE_ID || purchasing === STRIPE_PRO_ANNUAL_PRICE_ID)
+                      {purchasing === selectedOffer.id
                         ? "Opening checkout…"
                         : billingInterval === "year"
-                          ? `Get Premium Yearly — $${PRO_ANNUAL_PRICE}/yr`
-                          : `Start Free Trial — $${PRO_MONTHLY_PRICE}/mo`}
+                          ? `Get Premium Yearly — ${formatOfferPrice(selectedOffer.priceCents)}/yr`
+                          : `Start Free Trial — ${formatOfferPrice(selectedOffer.priceCents)}/mo`}
                       <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     </Button>
                   </motion.div>
@@ -703,10 +775,8 @@ export default function Shop() {
               <legend className="text-xs font-bold text-muted-foreground mb-1.5">Gift type</legend>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  // The ids are the persisted `gifts.gift_type` values and keep
-                  // the `pro_` spelling; only the labels became Premium.
-                  { id: "pro_monthly", label: "Premium · 1 mo", sub: `$${PRO_MONTHLY_PRICE}` },
-                  { id: "pro_annual", label: "Premium · 1 yr", sub: `$${PRO_ANNUAL_PRICE}` },
+                  { id: "pro_monthly", label: "Premium · 1 mo", sub: `$${GIFT_PRO_MONTHLY_PRICE}` },
+                  { id: "pro_annual", label: "Premium · 1 yr", sub: `$${GIFT_PRO_ANNUAL_PRICE}` },
                   { id: "diamonds", label: "Diamonds", sub: "Pick pack" },
                 ].map((opt) => (
                   <button
@@ -851,7 +921,7 @@ export default function Shop() {
 
       {/* Premium Cinematic Ad */}
       <AnimatePresence>
-        {showProAd && <ProCinematicAd onClose={() => setShowProAd(false)} onSubscribe={() => { setShowProAd(false); handleStripeCheckout(STRIPE_PRO_PRICE_ID, "subscription"); }} />}
+        {showProAd && <ProCinematicAd onClose={() => setShowProAd(false)} onSubscribe={() => { setShowProAd(false); handleProSubscribe(); }} />}
       </AnimatePresence>
 
       {/* Gift purchased — show code modal */}

@@ -84,6 +84,35 @@ serve(async (req) => {
       interval = sub.items.data[0]?.price?.recurring?.interval ?? null;
     }
 
+    // PT1.5: reconcile the COMMERCIAL half. This is the backstop for a webhook
+    // that was missed or that predates PT1.5. The acquisition offer is
+    // write-once in SQL, so a reconciliation run updates what Stripe currently
+    // bills and can never rewrite the offer a customer was acquired on. The
+    // offer id is read from Stripe's own subscription metadata; a legacy
+    // subscription carries none and its acquisition offer stays NULL.
+    if (hasActiveSub) {
+      const sub = allSubs[0];
+      const { error: commercialError } = await supabaseClient.rpc("record_pro_commercial_state", {
+        _user_id: user.id,
+        _offer_id: sub.metadata?.mogzy_offer ?? null,
+        _stripe_customer_id: customerId,
+        _stripe_subscription_id: sub.id,
+        _stripe_price_id: sub.items.data[0]?.price?.id ?? null,
+        _billing_interval: interval,
+        _subscription_status: sub.status ?? null,
+        _current_period_end: subscriptionEnd,
+      });
+      // Never let commercial bookkeeping break a Pro status check.
+      if (commercialError) console.error("record_pro_commercial_state failed", commercialError);
+    } else if (customerId) {
+      const { error: commercialError } = await supabaseClient.rpc("record_pro_commercial_state", {
+        _user_id: user.id,
+        _stripe_customer_id: customerId,
+        _subscription_status: wasCustomer ? "canceled" : null,
+      });
+      if (commercialError) console.error("record_pro_commercial_state failed", commercialError);
+    }
+
     // PT1.4: is_pro is the STRIPE-DERIVED half of entitlement and nothing else.
     // Force-syncing it to Stripe state (including revoking it) is correct and
     // deliberate. It is NOT the effective Pro answer: a manual/playtester/promo
