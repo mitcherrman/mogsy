@@ -472,7 +472,7 @@ describe("opening an archived game in this viewer", () => {
     installBackend({ live: [], recent: [] });
     renderPage();
     await waitFor(() => expect(screen.getByText(/No matches right now/i)).toBeTruthy());
-    expect(screen.getByRole("link", { name: /Browse the archive/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Browse archive/i })).toBeTruthy();
   });
 
   it("renders a deep-linked game that the feed does not contain", async () => {
@@ -527,7 +527,7 @@ describe("opening an archived game in this viewer", () => {
     await waitFor(() =>
       expect(screen.getByText(/Couldn't load that match/i)).toBeTruthy(),
     );
-    expect(screen.getByRole("link", { name: /Browse the archive/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Browse archive/i })).toBeTruthy();
   });
 
   it("does not let the live feed steal a game someone explicitly opened", async () => {

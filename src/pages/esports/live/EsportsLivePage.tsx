@@ -12,7 +12,7 @@
  * numbers never change again.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, Library, Radio, RefreshCw, WifiOff } from "lucide-react";
 
@@ -62,6 +62,32 @@ const GOLD_POLL_MS = 30_000;
 /** Insights re-scan the same frames as the gold chart; share its cadence. */
 const INSIGHTS_POLL_MS = 30_000;
 
+/**
+ * Where "Browse archive" should go.
+ *
+ * A reader who arrived from the archive expects to land back on the page they
+ * left — their league, their team, their page 3 — not at the top of an
+ * unfiltered catalogue. The archive hands its own URL over in history state
+ * when it opens a match, and this reads it back.
+ *
+ * State is not trusted blindly. It survives Back and Forward but it is also
+ * whatever the previous entry happened to write, so anything that is not a
+ * path under the archive route is ignored and the plain route is used. The
+ * fallback is the normal case, not an error: a shared `?game=` link, a reload
+ * or a visit from the hub all arrive with no state at all.
+ */
+function useArchiveReturn(): { to: string; label: string } {
+  const location = useLocation();
+  const from = (location.state as { archive?: unknown } | null)?.archive;
+  const valid =
+    typeof from === "string" &&
+    (from === PRO_PLAY_LIVE_ARCHIVE_ROUTE ||
+      from.startsWith(`${PRO_PLAY_LIVE_ARCHIVE_ROUTE}?`));
+  return valid
+    ? { to: from as string, label: "Back to archive" }
+    : { to: PRO_PLAY_LIVE_ARCHIVE_ROUTE, label: "Browse archive" };
+}
+
 export default function EsportsLivePage() {
   /* Selection has two sources and they are not the same thing.
    *
@@ -73,6 +99,7 @@ export default function EsportsLivePage() {
    * from under the reader for the crime of not being in `live`+`recent`.
    */
   const [params, setParams] = useSearchParams();
+  const archiveLink = useArchiveReturn();
   const pinnedId = params.get(PRO_PLAY_LIVE_GAME_PARAM);
   const [autoId, setAutoId] = useState<string | null>(null);
   const selectedId = pinnedId ?? autoId;
@@ -221,9 +248,9 @@ export default function EsportsLivePage() {
             Live games appear here automatically while a supported competition is playing.
           </p>
           <Button asChild variant="outline" className="mt-4">
-            <Link to={PRO_PLAY_LIVE_ARCHIVE_ROUTE}>
+            <Link to={archiveLink.to}>
               <Library className="mr-2 h-4 w-4" aria-hidden="true" />
-              Browse the archive
+              {archiveLink.label}
             </Link>
           </Button>
         </Card>
@@ -247,7 +274,7 @@ export default function EsportsLivePage() {
               link may be wrong.
             </span>
             <Button asChild size="sm" variant="outline" className="w-fit">
-              <Link to={PRO_PLAY_LIVE_ARCHIVE_ROUTE}>Browse the archive</Link>
+              <Link to={archiveLink.to}>{archiveLink.label}</Link>
             </Button>
           </AlertDescription>
         </Alert>
@@ -311,9 +338,9 @@ export default function EsportsLivePage() {
         {/* The one way into the rest of the catalogue. The live page stays a
             live page: this is a link, not a second list bolted onto it. */}
         <Button asChild variant="outline" size="sm" className="shrink-0">
-          <Link to={PRO_PLAY_LIVE_ARCHIVE_ROUTE}>
+          <Link to={archiveLink.to}>
             <Library className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
-            Browse archive
+            {archiveLink.label}
           </Link>
         </Button>
       </div>
