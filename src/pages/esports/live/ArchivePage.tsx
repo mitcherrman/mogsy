@@ -91,9 +91,9 @@ export default function ArchivePage() {
     [location.state],
   );
 
-  // Filters and the page cursor both live in the URL: a filtered archive view
-  // is then a shareable link and survives a refresh, and the browser's own
-  // Back button steps through pages without any history bookkeeping here.
+  // Filters and the page cursor both live in the URL, so a filtered archive
+  // view is a shareable link and survives a refresh, and every page is a real
+  // history entry the browser's Back button already steps through.
   const filters = useMemo(() => filtersFromParams(params), [params]);
   const cursor = params.get("cursor");
 
