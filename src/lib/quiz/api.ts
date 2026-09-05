@@ -268,7 +268,7 @@ export class QuizAuthRequiredError extends Error {
  * throw rather than send a request that would be silently misattributed under
  * the legacy fallback (or 401 under enforcement).
  */
-async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
+export async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await ensureBackendAuthToken();
   if (!token) throw new QuizAuthRequiredError(path);
   return request<T>(path, {

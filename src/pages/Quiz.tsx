@@ -31,6 +31,7 @@ import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 // Daily Score Attack hub entry: shown instead of the legacy Daily card only
 // when the backend reports the new mode enabled (server feature flag).
 import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
+import PracticeBuilderPanel from "@/components/quiz/builder/PracticeBuilderPanel";
 import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackClient";
 import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
@@ -1067,6 +1068,36 @@ export default function Quiz() {
     });
   }, [missedQuestions, currentSet, startHistorySession]);
 
+  /**
+   * PT1.7B — run a session the Builder assembled.
+   *
+   * Identical in shape to `handlePracticeMissed`: an explicit, already
+   * answer-safe question list goes straight into the runner. The Builder is a
+   * SELECTOR, not an engine — every answer still posts to
+   * `POST /api/quiz/attempts` and is graded there, and nothing about ownership,
+   * XP or achievements behaves differently because the list was custom.
+   */
+  const handleBuiltSession = useCallback((built: QuizQuestion[], label: string) => {
+    if (built.length === 0) return;
+    startHistorySession("practice_builder", label);
+    setCurrentSet({
+      id: `practice-builder:${label}`,
+      name: label,
+      description: "A practice set you built.",
+      question_count: built.length,
+    });
+    setCurrentCategoryId(null);
+    setQuestions(built);
+    setScore(0);
+    setSessionAnswers([]);
+    setCurrentIndex(0);
+    setSelectedAnswer(null);
+    setFillBlankValue("");
+    setAnswerResult(null);
+    setErrorMsg("");
+    setPhase("active");
+  }, [startHistorySession]);
+
   const handlePlayAgain = useCallback(() => {
     // A subject replays through its own loader. `currentSet` holds a synthetic
     // entry for those sessions, and feeding it back to `handleSelectSet` would
@@ -1371,6 +1402,15 @@ export default function Quiz() {
                  the column. `scoreAttackToday` is null whenever the backend
                  reports the mode disabled or unreachable, so a dark backend
                  renders no entry rather than a dead one. */
+              /* PT1.7B: the Builder sits with the other ways to start a
+                 session. It draws its own paywall from the server's capability
+                 answer, so the hub neither knows nor decides who may see it. */
+              builder={
+                <PracticeBuilderPanel
+                  open={phase === "sets"}
+                  onStartSession={handleBuiltSession}
+                />
+              }
               timeTrial={
                 HUB_MODULES.timeTrial && scoreAttackToday ? (
                   <QuizScoreAttackCard

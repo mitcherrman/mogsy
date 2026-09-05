@@ -60,16 +60,22 @@ const PREMIUM_FEATURES: PremiumFeature[] = [
     Icon: BookX,
   },
   {
-    title: "Advanced Category Stats",
-    description: "See your accuracy by champions, items, abilities, and more.",
+    // PT1.7B. This entry used to read "Advanced Category Stats — see your
+    // accuracy by champions, items, abilities, and more". PT1.7A made
+    // per-category accuracy FREE (Knowledge Breakdown on /quiz), so the old
+    // bullet promised to withdraw a capability players already have. What
+    // Premium actually adds is acting on those numbers.
+    title: "Weakness Targeting",
+    description: "Turn your weakest categories into a practice set, on demand.",
     Icon: BarChart3,
-    comingSoon: true,
   },
   {
     title: "Custom Practice Filters",
-    description: "Build practice sets by category, difficulty, champion, or item.",
+    // Champion and item are NOT claimed: the bank does not record which
+    // champion a question is about in a way the Builder can safely read, so
+    // the copy names the filters that exist.
+    description: "Build practice sets by category, subject, difficulty and length — and save them.",
     Icon: SlidersHorizontal,
-    comingSoon: true,
   },
   {
     title: "Unlimited Combat Lab",

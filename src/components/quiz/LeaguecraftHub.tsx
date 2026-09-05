@@ -181,6 +181,7 @@ export default function LeaguecraftHub({
   historyError,
   showPractice = false,
   timeTrial,
+  builder,
   rankedHistoryPreview,
   rankedReviewPreview,
   reviewState,
@@ -311,6 +312,13 @@ export default function LeaguecraftHub({
    * and because a mode entry belongs above the record, not under it.
    */
   timeTrial?: ReactNode;
+  /**
+   * PT1.7B — the Premium Practice Builder, as a slot for the same reason the
+   * Time Trial card is one: the hub places it and knows nothing else about it.
+   * The panel resolves its own capability from the server and draws its own
+   * paywall, so there is no entitlement logic anywhere in this file.
+   */
+  builder?: ReactNode;
   /**
    * PRAC1: start a Practice session for one rail subject.
    *
@@ -699,6 +707,10 @@ export default function LeaguecraftHub({
                 </motion.div>
               )}
             </LobbyPanel>
+            {/* The Builder lives beneath the curated packs: the packs are what
+                Mogzy chose, this is what you choose. One column, read top to
+                bottom, rather than a competing band elsewhere on the page. */}
+            {builder && <div className="mt-3">{builder}</div>}
           </section>
           )}
 

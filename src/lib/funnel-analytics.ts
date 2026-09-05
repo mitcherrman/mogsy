@@ -13,6 +13,18 @@ export type FunnelEventName =
   // ("practise the ones you just missed"). Payload is the set name and a
   // count; no question id, no answer, ever.
   | "practice_missed_started"
+  // PT1.7B — the Premium Practice Builder. Payloads carry the SHAPE of a
+  // request (pool, filter field name, counts, refusal reason) and never a
+  // question id, a category's contents or an answer.
+  | "practice_builder_opened"
+  | "practice_builder_pool_selected"
+  | "practice_builder_filters_changed"
+  | "practice_builder_build_attempted"
+  | "practice_builder_build_succeeded"
+  | "practice_builder_insufficient_pool"
+  | "practice_builder_entitlement_refused"
+  | "practice_builder_set_created"
+  | "practice_builder_set_run"
   | "quiz_results_viewed"
   | "quiz_signup_gate_shown"
   | "quiz_signup_clicked"

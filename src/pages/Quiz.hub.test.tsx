@@ -553,11 +553,38 @@ describe("Leaguecraft hub — modes withheld from this page", () => {
 
   it("surfaces Knowledge Breakdown on the page that is its only host", async () => {
     // It is finished, Free and self-scoped, and this page is its only route
-    // back — see HUB_MODULES. It stays FREE: no entitlement read, no gate,
-    // no upsell anywhere on it.
+    // back — see HUB_MODULES. It stays FREE: no entitlement read, no gate and
+    // no upsell ON IT.
+    //
+    // Scoped to the module rather than to the whole page, and that narrowing
+    // is the point rather than a weakening: since PT1.7B the lobby also hosts
+    // the Practice Builder, which legitimately carries a Premium paywall. The
+    // claim worth fencing was always "this card is Free", not "no word on this
+    // page mentions Premium" — and the page-wide version would now pass only
+    // for as long as nothing paid ever shared the lobby.
     const { container } = await renderHub();
-    expect(screen.getByText("Knowledge Breakdown")).toBeTruthy();
-    expect(container.textContent).not.toMatch(/Premium|Upgrade|Pro\b/);
+    const heading = screen.getByText("Knowledge Breakdown");
+    expect(heading).toBeTruthy();
+    const module = heading.closest("[data-state], div");
+    expect(module).not.toBeNull();
+    expect(module!.textContent).not.toMatch(/Premium|Upgrade|Pro\b/);
+  });
+
+  it("keeps the Builder's paywall out of the Free modules around it", async () => {
+    // The converse of the test above: the Builder may say Premium, and nothing
+    // else on the lobby may start doing so because it is nearby.
+    const { container } = await renderHub();
+    for (const testid of ["hub-practice-section", "quiz-category-rail",
+                          "hub-record-section"]) {
+      const region = container.querySelector(`[data-testid="${testid}"]`);
+      if (!region) continue;
+      // The Builder is rendered INSIDE the practice section, so exclude it
+      // before asserting on that section's own copy.
+      const clone = region.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('[data-testid^="practice-builder"]')
+        .forEach((node) => node.remove());
+      expect(clone.textContent).not.toMatch(/Upgrade to Mogzy Premium/);
+    }
   });
 
   it("keeps the diagnostics entry available for testing", async () => {
