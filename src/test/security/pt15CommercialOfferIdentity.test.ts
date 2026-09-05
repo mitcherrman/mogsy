@@ -399,10 +399,25 @@ describe("create-checkout — the availability probe tells the truth and leaks n
     expect(probe).not.toContain("checkout.sessions.create");
   });
 
-  it("treats an unknown answer as purchasable, so a working checkout is never hidden", () => {
-    expect(clientCheckout).toContain(
-      "return availability.available === null || availability.available.includes(offerId);"
+  it("fails SAFE on an unknown answer: only offers that need no config are sellable", () => {
+    // The static bundle can ship before create-checkout knows the availability
+    // action — that happened on the 2026-09-05 publish, and an "unknown means
+    // purchasable" fallback put a live $99.99 button under a price that does
+    // not exist. Unknown now falls back to the offers with a server-side price
+    // fallback, which is standard_monthly and nothing else.
+    expect(clientCheckout).toContain("return OFFERS_SELLABLE_WITHOUT_CONFIG.includes(offerId);");
+    const offersMod = readFileSync(join(SRC, "lib/pro/offers.ts"), "utf8");
+    expect(offersMod).toMatch(
+      /OFFERS_SELLABLE_WITHOUT_CONFIG: readonly MogzyOfferId\[\] = \[\s*"standard_monthly",\s*\]/
     );
+  });
+
+  it("keeps that fallback list honest: only standard_monthly has an in-code price", () => {
+    // The server catalog is the reason the list is what it is.
+    expect(offerCatalog).toContain('env("STRIPE_PRICE_STANDARD_MONTHLY", LIVE_STANDARD_MONTHLY_PRICE_ID)');
+    for (const id of ["STANDARD_ANNUAL", "LAUNCH_MONTHLY", "LAUNCH_ANNUAL", "FOUNDING_PLAYTESTER"]) {
+      expect(offerCatalog).toContain(`env("STRIPE_PRICE_${id}")`);
+    }
   });
 
   it("falls back to standard pricing, never to the discount, when the probe fails", () => {

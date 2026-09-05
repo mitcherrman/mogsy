@@ -24,6 +24,7 @@ import {
   describeCheckoutError,
   formatOfferPrice,
   offerForInterval,
+  OFFERS_SELLABLE_WITHOUT_CONFIG,
   type BillingInterval,
   type MogzyOfferId,
   type OfferPresentation,
@@ -59,11 +60,11 @@ export async function fetchPricingMode(): Promise<PricingMode> {
  * What the site can actually sell right now, answered by the server.
  *
  * `available` is null when the answer is UNKNOWN — the function is not
- * deployed, the network failed, the shape was unexpected. Callers must treat
- * unknown as "let the buyer try": the server is still the authority and
- * refuses honestly, whereas a disabled button on an unknown answer would hide
- * a working checkout. `mode` falls back to `standard` (full price) the same way
- * `fetchPricingMode` does — never an accidental discount.
+ * deployed, the network failed, the shape was unexpected. Unknown does NOT mean
+ * "offer everything": it falls back to `OFFERS_SELLABLE_WITHOUT_CONFIG`, the
+ * offers that need no Stripe configuration to work. `mode` falls back to
+ * `standard` (full price) the same way `fetchPricingMode` does — never an
+ * accidental discount.
  */
 export interface OfferAvailability {
   mode: PricingMode;
@@ -95,13 +96,20 @@ export async function fetchOfferAvailability(): Promise<OfferAvailability> {
 
 /**
  * Is this offer purchasable, as far as the site currently knows?
- * Unknown (`available === null`) reads as purchasable — see OfferAvailability.
+ *
+ * With no server answer, only the offers that need no configuration qualify.
+ * That keeps the page honest during a deploy window — the static bundle can
+ * ship before `create-checkout` knows the availability action — instead of
+ * showing a live button for an annual price that does not exist.
  */
 export function isOfferPurchasable(
   offerId: MogzyOfferId,
   availability: OfferAvailability
 ): boolean {
-  return availability.available === null || availability.available.includes(offerId);
+  if (availability.available === null) {
+    return OFFERS_SELLABLE_WITHOUT_CONFIG.includes(offerId);
+  }
+  return availability.available.includes(offerId);
 }
 
 export interface StartCheckoutOptions {

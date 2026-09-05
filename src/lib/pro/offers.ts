@@ -78,6 +78,27 @@ export const STANDARD_OFFERS: Record<BillingInterval, OfferPresentation> = {
   year: PRO_OFFERS.standard_annual,
 };
 
+/**
+ * What may be offered when the server cannot be asked whether an offer is
+ * sellable — the probe failed, or `create-checkout` is mid-deploy and does not
+ * yet know the action.
+ *
+ * This is deliberately NOT "everything". `standard_monthly` is the only offer
+ * with a server-side in-code price fallback: it is the price Mogzy already
+ * sells, so it is purchasable with no configuration at all. Every other offer
+ * is env-only and FAILS CLOSED — asserted by
+ * `supabase/functions/_shared/offer-catalog.test.ts`. Treating unknown as
+ * "all purchasable" would put a live-looking button under an annual price that
+ * has never existed, which is the exact false promise this page must not make.
+ *
+ * The cost of being wrong this way is small and recoverable: a genuinely
+ * configured annual offer reads as unavailable until the probe succeeds. The
+ * cost of the other error is a buyer pressing Buy on a plan we cannot sell.
+ */
+export const OFFERS_SELLABLE_WITHOUT_CONFIG: readonly MogzyOfferId[] = [
+  "standard_monthly",
+] as const;
+
 /** Format cents the way Mogzy prices read: $9.99, $99.99. */
 export function formatOfferPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
