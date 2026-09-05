@@ -69,7 +69,7 @@ const PREMIUM_FEATURES: PremiumFeature[] = [
     // Practice + Time Trial. Nothing here promises a figure the product
     // cannot derive from the attempt log it already keeps.
     title: "Performance Trends",
-    description: "See how your accuracy and study volume have moved over 7, 30 or 90 days, and which weak spots keep coming back.",
+    description: "See how your Practice & Time Trial accuracy and study volume have moved over 7, 30 or 90 days, and which weak spots keep coming back.",
     Icon: LineChart,
   },
   {

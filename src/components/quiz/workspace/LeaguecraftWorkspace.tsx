@@ -93,7 +93,12 @@ const MODE_META: Record<
     // Names the QUESTION, not the tier. The pane itself says what a reader
     // without Premium gets and what stays theirs; a tab that advertised a
     // paywall would put the price above the product.
-    hint: "How your accuracy and study volume are moving.",
+    //
+    // IT ALSO NAMES THE RECORD. This hint is on screen above the PAYWALL as
+    // well as above the pane, and the paywall has no room for the pane's scope
+    // note — so an unscoped "your accuracy" would read, to a player whose
+    // study is mostly Ranked, as a promise about every mode.
+    hint: "How your Practice & Time Trial results are moving.",
   },
 };
 

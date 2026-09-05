@@ -280,9 +280,9 @@ export default function PerformanceTrendsPane({
       <div data-testid="trends-locked" className="space-y-2 py-3">
         <LedgerTitle>Performance Trends</LedgerTitle>
         <WorkspaceNote>
-          See how your accuracy and your study volume have moved over the last 7,
-          30 or 90 days, which categories are improving or slipping, and which
-          weak spots keep coming back. Mogzy Premium.
+          See how your Practice &amp; Time Trial accuracy and study volume have
+          moved over the last 7, 30 or 90 days, which categories are improving
+          or slipping, and which weak spots keep coming back. Mogzy Premium.
         </WorkspaceNote>
         {/* The record itself is never what is gated, and a reader deciding
             whether to pay is owed that plainly rather than being left to

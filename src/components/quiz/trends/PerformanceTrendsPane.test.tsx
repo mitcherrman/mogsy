@@ -118,6 +118,18 @@ describe("PT1.8 — what the pane draws for whom", () => {
     expect(screen.getByTestId("trends-free-note").textContent).toMatch(/stay free/i);
   });
 
+  /* The paywall is the ONE Trends surface that cannot show the scope note, so
+     its own sentence has to carry the scope. Without this, a player whose study
+     is mostly Ranked reads "your accuracy" as a promise about every mode and
+     buys a reading of a record that does not contain their play. */
+  it("names the record it reads, on the paywall itself", async () => {
+    api.capability.mockResolvedValue({ ok: true, capability: FREE });
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-locked")).toBeTruthy());
+    const copy = screen.getByTestId("trends-locked").textContent ?? "";
+    expect(copy).toMatch(/practice\s*&\s*time trial/i);
+  });
+
   it("A FAILED REQUEST IS NOT A PAYWALL", async () => {
     api.capability.mockRejectedValue(new Error("503 Entitlement lookup failed"));
     render(<PerformanceTrendsPane />);
