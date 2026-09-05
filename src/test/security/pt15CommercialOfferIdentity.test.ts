@@ -408,16 +408,18 @@ describe("create-checkout — the availability probe tells the truth and leaks n
     expect(clientCheckout).toContain("return OFFERS_SELLABLE_WITHOUT_CONFIG.includes(offerId);");
     const offersMod = readFileSync(join(SRC, "lib/pro/offers.ts"), "utf8");
     expect(offersMod).toMatch(
-      /OFFERS_SELLABLE_WITHOUT_CONFIG: readonly MogzyOfferId\[\] = \[\s*"standard_monthly",\s*\]/
+      /OFFERS_SELLABLE_WITHOUT_CONFIG: readonly MogzyOfferId\[\] = \[\] as const/
     );
   });
 
-  it("keeps that fallback list honest: only standard_monthly has an in-code price", () => {
-    // The server catalog is the reason the list is what it is.
-    expect(offerCatalog).toContain('env("STRIPE_PRICE_STANDARD_MONTHLY", LIVE_STANDARD_MONTHLY_PRICE_ID)');
-    for (const id of ["STANDARD_ANNUAL", "LAUNCH_MONTHLY", "LAUNCH_ANNUAL", "FOUNDING_PLAYTESTER"]) {
+  it("keeps that empty list honest: NO offer has an in-code price any more", () => {
+    // The list is empty precisely because every offer is env-only. If a
+    // hardcoded price is ever reintroduced, this pair must be revisited
+    // together — that is what this test is here to force.
+    for (const id of ["STANDARD_MONTHLY", "STANDARD_ANNUAL", "LAUNCH_MONTHLY", "LAUNCH_ANNUAL", "FOUNDING_PLAYTESTER"]) {
       expect(offerCatalog).toContain(`env("STRIPE_PRICE_${id}")`);
     }
+    expect(code(offerCatalog)).not.toMatch(/price_[A-Za-z0-9]/);
   });
 
   it("falls back to standard pricing, never to the discount, when the probe fails", () => {

@@ -28,12 +28,11 @@
 // CONFIGURATION
 // -------------
 // Price and coupon IDs come from edge-function secrets so each environment
-// (live / test) points at its own Stripe objects. Only `standard_monthly` has
-// a hardcoded fallback: it is the price Mogzy already sells today, at exactly
-// the approved $9.99/month, so existing checkout keeps working with no config.
-// EVERY other offer is env-only and FAILS CLOSED — an unconfigured offer is
-// not purchasable, which is what keeps the private Founding Playtester offer
-// off the public site until its terms are approved and configured.
+// (live / test) points at its own Stripe objects. EVERY offer is env-only and
+// FAILS CLOSED — an unconfigured offer is not purchasable. That is what keeps
+// the private Founding Playtester offer off the public site until its terms are
+// approved, and it is also what stops a sandbox object from ever being sold
+// against the live account (see the note above `buildOfferCatalog`).
 
 export type MogzyOfferId =
   | "standard_monthly"
@@ -88,15 +87,24 @@ function env(name: string, fallback = ""): string {
   return typeof v === "string" && v.length > 0 ? v : fallback;
 }
 
-/**
- * The live $9.99/month Stripe price Mogzy already sells from /shop. It is the
- * fallback for `standard_monthly` ONLY, so deploying PT1.5 cannot break the
- * one subscription offer that works today. The historical $83.99/year price
- * (price_1TZRqtD9NqEQUIGhXUSpw5DI) is deliberately NOT a fallback for any
- * offer: $83.99 is not an approved price, so annual stays unsellable until a
- * real Standard/Launch annual price is configured.
- */
-const LIVE_STANDARD_MONTHLY_PRICE_ID = "price_1T3Ua6D9NqEQUIGhfXFmV6V6";
+// NO PRICE ID IS HARDCODED IN THIS FILE, AND NONE MAY BE ADDED.
+//
+// PT1.5 originally carried one: `price_1T3Ua6D9NqEQUIGhfXFmV6V6` as a fallback
+// for `standard_monthly`, on the belief that it was the live $9.99/month price
+// and that keeping it meant a PT1.5 deploy could not break the one offer that
+// already worked. Stripe discovery on 2026-09-05 showed that belief was wrong:
+// that id, the $83.99/year id, the win-back coupon `sCkrnnuL` and the whole
+// legacy subscription catalog live in a Stripe SANDBOX. The connected LIVE
+// account (Bearsummarizer, acct_1RvibQReFlQCqkjO) has an EMPTY catalog.
+//
+// A sandbox id sent to the live account does not degrade gracefully — it is
+// simply not a price that account owns. Worse, the fallback made the offer
+// report as CONFIGURED, so `isOfferConfigured()` said true and the availability
+// probe listed `standard_monthly` as sellable. The page would have offered a
+// live Buy button for a price that cannot be charged.
+//
+// Every offer is now env-only and fails closed. An offer is sellable only when
+// a trusted production secret names a real Price in the LIVE account.
 
 export function buildOfferCatalog(): Map<MogzyOfferId, OfferDefinition> {
   const defs: OfferDefinition[] = [
@@ -104,7 +112,7 @@ export function buildOfferCatalog(): Map<MogzyOfferId, OfferDefinition> {
       id: "standard_monthly",
       family: "standard",
       interval: "month",
-      priceId: env("STRIPE_PRICE_STANDARD_MONTHLY", LIVE_STANDARD_MONTHLY_PRICE_ID),
+      priceId: env("STRIPE_PRICE_STANDARD_MONTHLY"),
       couponId: "",
       trialDays: 7,
       visibility: "public",
@@ -241,9 +249,17 @@ export function foundingAccessCodeMatches(supplied: unknown): boolean {
   return diff === 0;
 }
 
-/** The win-back coupon. Server-selected only — never accepted from a client. */
+/**
+ * The win-back coupon. Server-selected only — never accepted from a client.
+ *
+ * No fallback, for the same reason as the prices: the historical `sCkrnnuL`
+ * coupon is a SANDBOX object and does not exist in the live account. Unset
+ * means no win-back discount is applied, which is a correct and safe outcome —
+ * the lapsed customer simply pays list price. `create-checkout` only applies a
+ * coupon when this returns a non-empty string.
+ */
 export function winbackCouponId(): string {
-  return env("STRIPE_COUPON_WINBACK", "sCkrnnuL");
+  return env("STRIPE_COUPON_WINBACK");
 }
 
 /** Test hook: swap or reset the cached catalog. */

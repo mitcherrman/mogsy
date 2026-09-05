@@ -44,7 +44,7 @@ vi.mock("@/lib/pro/checkout", async () => {
     fetchOfferAvailability: vi.fn().mockResolvedValue({ mode: "standard", available: null }),
     openBillingPortal: (...args: unknown[]) => openBillingPortal(...args),
     isOfferPurchasable: (id: string, a: { available: string[] | null }) =>
-      a.available === null ? id === "standard_monthly" : a.available.includes(id),
+      a.available === null ? false : a.available.includes(id),
     formatOfferPrice: offers.formatOfferPrice,
     offerForInterval: offers.offerForInterval,
     LOL_PRO_SUCCESS_PATH: "/lol/premium?success=true",

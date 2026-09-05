@@ -1,6 +1,8 @@
 // PT1.5 — the server-owned offer catalog is the checkout allowlist. These run
 // under vitest (see vitest.config.ts): the module is pure TypeScript with no
 // Deno-only imports, and its Deno.env reads are optional-chained.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildOfferCatalog,
@@ -104,17 +106,24 @@ describe("client and server catalogs describe the same offers", () => {
 });
 
 describe("configuration fails closed", () => {
-  it("sells standard monthly out of the box at the live $9.99 price", () => {
-    withEnv({}, () => {
-      const offer = getOffer("standard_monthly")!;
-      expect(offer.priceId).toBe("price_1T3Ua6D9NqEQUIGhfXFmV6V6");
-      expect(isOfferConfigured(offer)).toBe(true);
-    });
+  it("hardcodes NO Stripe Price ID — every offer is env-only", () => {
+    // The historical ids in this repo (the $9.99/mo and $83.99/yr prices, the
+    // sCkrnnuL coupon, the whole legacy subscription catalog) belong to a
+    // Stripe SANDBOX. The connected LIVE account has an empty catalog. A sandbox id
+    // reaching the live account is not a price that account owns, and a
+    // fallback made the offer report as CONFIGURED — a live Buy button for a
+    // price that cannot be charged.
+    const source = readFileSync(
+      join(process.cwd(), "supabase/functions/_shared/offer-catalog.ts"), "utf8");
+    const code = source.replace(/\/\/[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(code).not.toMatch(/price_[A-Za-z0-9]/);
+    expect(code).not.toContain("sCkrnnuL");
   });
 
-  it("leaves every other offer unpurchasable until its price is configured", () => {
+  it("leaves EVERY offer unpurchasable until its price is configured", () => {
     withEnv({}, () => {
-      for (const id of ["standard_annual", "launch_monthly", "launch_annual", "founding_playtester"] as const) {
+      for (const id of MOGZY_OFFER_IDS) {
+        expect(getOffer(id)!.priceId).toBe("");
         expect(isOfferConfigured(getOffer(id))).toBe(false);
       }
     });
@@ -210,9 +219,11 @@ describe("Founding Playtester is private and gated by a server secret", () => {
 });
 
 describe("coupons are server-owned", () => {
-  it("has a win-back coupon that no offer carries by default", () => {
+  it("applies no win-back coupon until one is configured", () => {
     withEnv({}, () => {
-      expect(winbackCouponId()).toBe("sCkrnnuL");
+      // Unset is safe: the lapsed customer simply pays list price.
+      // create-checkout only applies a coupon for a non-empty string.
+      expect(winbackCouponId()).toBe("");
       for (const id of MOGZY_OFFER_IDS) expect(getOffer(id)!.couponId).toBe("");
     });
   });
