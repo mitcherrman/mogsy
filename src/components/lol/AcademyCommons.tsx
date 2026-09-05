@@ -21,7 +21,7 @@
  *   | Mogzy Premium        | the large gilt-framed navy panel, left     |
  *   | Join the Academy     | the large parchment noticeboard, right     |
  *   | Feedback + About     | the two small pinned parchments below it   |
- *   | Legal inscription    | the wooden plinth along the bottom         |
+ *   | Legal inscription    | a walnut rail on the panelling, bottom     |
  *
  *   Coordinates are fractions of the ARTWORK, not of the viewport, and the
  *   artwork's own placement is computed from the same custom properties — so
@@ -45,7 +45,10 @@
  * `Footer` self-hides on `/lol` (see the note there). Privacy, Terms,
  * Security, the copyright line and the Riot disclaimer are inscribed into the
  * plinth instead, at the same wording, so nothing floats below the scene and
- * nothing became unreachable.
+ * nothing became unreachable. The plinth is the one mount that keeps coded
+ * joinery in stage mode — the painting has no board there to inherit — so it
+ * is drawn as a walnut rail fixed to the panelling. Deliberately the quietest
+ * object in the room.
  */
 import { Link } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
@@ -54,6 +57,7 @@ import HubPremiumPanel from "@/components/lol/HubPremiumPanel";
 import HubCommunitySection from "@/components/lol/HubCommunitySection";
 import HubUtilitySection from "@/components/lol/HubUtilitySection";
 import { SITE_NAME } from "@/lib/site-config";
+import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
 import commonsArt from "@/academy/hub/academy-commons-desktop.png";
 
 /**
@@ -93,7 +97,18 @@ export default function AcademyCommons({
       /* The approved Commons painting, handed to CSS as a custom property so
          the bundler owns the URL (content-hashed, and a missing file fails the
          build) while every rule that consumes it stays in index.css. */
-      style={{ "--commons-art": `url(${commonsArt})` } as React.CSSProperties}
+      style={
+        {
+          "--commons-art": `url(${commonsArt})`,
+          /* Mogzy is a BACKGROUND on an aria-hidden div, not an <img>. Two
+             reasons, both load-bearing: a 2.2MB decorative <img> is fetched
+             even when it is `display:none`, so every phone would pay for a
+             character it never sees; and a background can never contribute
+             layout height, which is what keeps him out of flow mode entirely.
+             The URL comes from the canonical pose registry, not a string. */
+          "--commons-mogzy": `url(${MOGZY_MASCOT_ASSETS.base})`,
+        } as React.CSSProperties
+      }
     >
       {/* Backdrop. In flow mode this is the room's navy ground; in stage mode
           it also carries the blurred, over-scaled copy of the artwork that
@@ -103,6 +118,27 @@ export default function AcademyCommons({
           background layers, pointer-inert — never an <img>, so it can never
           contribute layout height. */}
       <div className="academy-commons-art pointer-events-none" aria-hidden />
+
+      {/* ---- Mogzy, and the desk that stands in front of him --------------
+          An environmental character, not a guide: no state, no interaction,
+          no motion, nothing in the tab order or the accessibility tree. He
+          exists only inside stage mode, and only on viewports wide enough
+          that the side crop does not reach him — see the aspect gate on
+          `.academy-commons-mogzy` in index.css.
+
+          He is a ghost with a wispy tail and no feet, so he cannot stand on
+          anything. What grounds him instead is a real occlusion: `-desk` is a
+          SECOND copy of the painting, laid at exactly the same size and
+          position and clipped to everything below the reading table's front
+          arris. It therefore paints pixels identical to the layer underneath
+          it — a seam is impossible by construction — and the painted desk
+          edge cuts his tail the way the candles and books would if he were
+          part of the artwork. No new asset, and nothing is baked into the
+          image.
+
+          DOM order is the paint order: art → Mogzy → desk → live panels. */}
+      <div className="academy-commons-mogzy pointer-events-none" aria-hidden />
+      <div className="academy-commons-desk pointer-events-none" aria-hidden />
 
       {/* ---- the room ----------------------------------------------------
           Flow mode: a centred content column that grows with its contents.
@@ -177,10 +213,18 @@ export default function AcademyCommons({
       </div>
 
       {/* ---- the plinth --------------------------------------------------
-          In stage mode this lands on the painted wooden rail that runs along
-          the foot of the room, between the reading table on the left and the
-          side table on the right — the one stretch of the rail no furniture
-          stands in front of, so the inscription is never set over a candle.
+          In stage mode this lands on the painted panelling that runs along the
+          foot of the room, between the reading table on the left and the side
+          table on the right — the one stretch of it no furniture stands in
+          front of, so the inscription is never set over a candle.
+
+          This is the ONE mount that keeps its coded joinery in stage mode.
+          Every other panel drops its frame because the painting already has
+          one; the painting gives this band no board, so without it the legal
+          set read as a web footer laid over the cabinetry. `-plinth` is the
+          mount box, `-plinth-inner` is the walnut rail drawn into it — sized
+          by its content and centred, so it never fills the whole band. See
+          "the legal inscription → the walnut rail" in index.css.
 
           `scroll-snap-align: end` is set on this element in index.css: it is
           the belt-and-braces that keeps the bottom of the room reachable if

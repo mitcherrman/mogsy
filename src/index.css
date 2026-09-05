@@ -8426,6 +8426,16 @@ html.high-contrast * { text-shadow: none !important; }
    two sconces and a ceiling beam. All of it is gone: the painting supplies the
    architecture now, and keeping a coded wall behind an illustrated one would
    only have fought it. */
+/* Mogzy and the desk re-plate exist ONLY in the Commons' stage mode, and only
+   above the aspect gate — see the block in the stage section. Off by default,
+   so flow mode, phones and large text keep the layout that shipped without
+   him, and the pose file is never fetched there: he is a background, and a
+   background on a `display: none` element is not loaded. */
+.academy-commons-mogzy,
+.academy-commons-desk {
+  display: none;
+}
+
 .academy-commons-wall {
   position: absolute;
   inset: 0;
@@ -8668,10 +8678,15 @@ html.high-contrast * { text-shadow: none !important; }
    ## Frames are not doubled
 
    Inside this block the plaque's walnut mount, the noticeboard's planking, the
-   parchment of all three notices, their brass pins and the plinth's capping
-   board are all switched OFF. The painting has them. Everything that carries
-   MEANING — every heading, every line of copy, every link and both CTAs —
-   stays live HTML, and nothing is baked into the image.
+   parchment of all three notices and their brass pins are all switched OFF.
+   The painting has them. Everything that carries MEANING — every heading,
+   every line of copy, every link and both CTAs — stays live HTML, and nothing
+   is baked into the image.
+
+   The legal rail is the ONE exception, and it is the exception that proves the
+   rule: the painting gives it a panelled band to be fixed to, but no board. So
+   it keeps its coded joinery while every other mount sheds it. See the rail's
+   own note at the foot of this block.
 
    ## The gate
    Identical to the scroll-snap gate, deliberately: the composition is designed
@@ -8700,11 +8715,183 @@ html.high-contrast * { text-shadow: none !important; }
     overflow: hidden;
   }
 
-  /* The painting, placed to the pixel the mounts are placed from. */
-  html.hub-two-screen:not(.large-text) .academy-commons-art {
-    background-image: var(--commons-art, none);
-    background-size: var(--commons-img-w) var(--commons-img-h);
-    background-position: var(--commons-img-x) var(--commons-img-y);
+  /* ---- the painting, and its grade --------------------------------------
+     The painting is placed to the pixel the mounts are placed from, and it
+     carries the room's whole art-direction pass as extra background layers on
+     the same element. Nothing is baked into the file and no DOM was added.
+
+     ## Why the treatment is declared TWICE
+
+     `.academy-commons-desk` re-plates raw artwork over everything below the
+     reading table's front arris so it can occlude Mogzy. A grade applied only
+     here would therefore be wiped across the full width below y 0.7566, with a
+     hard seam along the clip. So both layers share one treatment, through
+     `--commons-treat-*`. Change one of those custom properties and both layers
+     move together; write a value into only one rule and you have re-opened the
+     seam.
+
+     That ordering is also what protects the mascot. He sits BETWEEN the two
+     treated layers (art → Mogzy → desk), so the vignette, the masks and the
+     grain all pass behind him: his approved grade is the only thing lighting
+     him, and every live mount is above all of it at z-index 10. No treatment
+     ever lands on live text.
+
+     ## The masks are in ARTWORK space, the grain is not
+
+     Each mask layer is sized and positioned exactly like the painting, so a
+     percentage inside its gradient IS an artwork fraction and the mask stays on
+     its prop under any crop. Grain is the one deliberate exception: it is a
+     property of the lens, not of the room, so it tiles in screen space at a
+     fixed pixel size — scaling it with the painting would turn film grain into
+     a painted texture.
+
+     ## What is being quieted, and why
+
+     The architecture is strong; a handful of peripheral props are not, and they
+     are what invite the inspection that reveals the render. Measured off the
+     file: the side table's understructure (0.78-0.95 x, 0.80-0.96 y) has legs
+     that do not share a perspective and an unresolved mass behind them, led
+     into by a bright gilt edge at y 0.89; the foreground chair and drape
+     (0.00-0.22, 0.78-1.00) is blobby; the stacked books behind the globe
+     (0.86-0.97, 0.65-0.78) are mush. None of them need to be read, so none of
+     them need to be lit.
+
+     Protected by construction, not by hope: the castle window, every candle,
+     the Premium frame, the Community board and all three painted parchments sit
+     outside every mask. Mask 3 is narrow (rx 8% at x 0.91) precisely so it
+     cannot reach the About parchment's right edge at x 0.805. */
+  html.hub-two-screen:not(.large-text) .academy-commons {
+    /* A little chroma off the top, a touch of value compression, and a real
+       but small drop in level. Deliberately small: the target is a frame that
+       looks finished, not one that looks filtered.
+
+       `contrast()` pulls toward mid grey, which on a room this dark is a LIFT
+       — at 0.96 it adds ~5 levels to every black before brightness gets a say,
+       which is why the compression is barely there at all.
+
+       The level is 0.985 and not lower for a readability reason, not a taste
+       one. The Community and utility notices are LIVE TEXT set on PAINTED
+       parchment, so every point taken off the painting is taken off their page
+       too — and measured on the finished pixels, that paper is ALREADY under
+       AA for the soft ink before this pass touches it. A global dim is
+       therefore the one tool here that cannot be spent freely: at 0.94 it cost
+       the board's darkest paper 6% of its contrast, at 0.985 it costs 1%.
+
+       The quieting is done instead by the vignette and the masks below, which
+       are shaped to fall entirely outside every parchment — the board sits at
+       r 0.51 of the vignette, inside its transparent zone — so they can be as
+       strong as the composition wants without touching a single line of text.
+       If this room ever needs to be darker, spend it there and not here. */
+    --commons-treat-filter: saturate(0.9) contrast(0.99) brightness(0.985);
+
+    /* 1 — grain. Screen space, fine, non-directional, and below every mount.
+
+       It is OPAQUE and centred on mid grey, and it is composited with
+       `overlay` (see `background-blend-mode` below). That pairing is the whole
+       trick: under overlay a mid-grey pixel leaves the backdrop exactly as it
+       was, so only the noise's deviation from grey survives and the layer adds
+       texture without adding light. A partially transparent grey noise field
+       blended `normal` — the obvious first attempt — is not grain at all: it
+       is a grey veil, and over a room this dark it lifted every black in the
+       painting and read as haze.
+
+       `feColorMatrix` flattens the turbulence to grey; the transfer functions
+       squeeze RGB into 0.44-0.56 around mid grey and force alpha to 1.
+       `stitchTiles` keeps the 180px tile from showing its seams.
+
+       `color-interpolation-filters='sRGB'` is NOT optional. SVG filters default
+       to linearRGB, where 0.5 is sRGB 0.74 — so the "neutral" grey came out
+       far brighter than the backdrop and overlay lifted the entire room by 29%.
+       Measured, not guessed: mean screen luma 47.7 before, 61.7 after, and
+       toggling this one layer accounted for all 14 of it. */
+    --commons-treat-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.12' intercept='0.44'/%3E%3CfeFuncG type='linear' slope='0.12' intercept='0.44'/%3E%3CfeFuncB type='linear' slope='0.12' intercept='0.44'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+
+    /* 2 — the four selective masks, in artwork fractions. */
+    --commons-treat-masks:
+      /* the side table's understructure, bottom right */
+      radial-gradient(
+        ellipse 11% 13% at 84% 88%,
+        rgba(4, 7, 14, 0.52) 0%,
+        rgba(4, 7, 14, 0.25) 52%,
+        rgba(4, 7, 14, 0) 78%
+      ),
+      /* the foreground chair and its drape, bottom left. Centred at 11%, not
+         at the artwork's edge: 1440x900 crops the left 5% away, so a mask on
+         the edge spends most of itself off-screen and measured -7.6% on the
+         region it was supposed to quiet. */
+      radial-gradient(
+        ellipse 12% 13% at 11% 92%,
+        rgba(4, 7, 14, 0.44) 0%,
+        rgba(4, 7, 14, 0.21) 54%,
+        rgba(4, 7, 14, 0) 80%
+      ),
+      /* the stacked books behind the globe — narrow, to clear the parchment */
+      radial-gradient(
+        ellipse 8% 12% at 91% 71%,
+        rgba(4, 7, 14, 0.34) 0%,
+        rgba(4, 7, 14, 0.16) 52%,
+        rgba(4, 7, 14, 0) 78%
+      ),
+      /* the blurred library shelves at the far left. Short and low on purpose:
+         at ry 26% centred on 52% it reached y 0.26 and took 12.6% off the
+         castle window and 10.3% off the wall sconce, both of which are
+         protected. It now starts below both. */
+      radial-gradient(
+        ellipse 5% 14% at 0% 63%,
+        rgba(4, 7, 14, 0.25) 0%,
+        rgba(4, 7, 14, 0.11) 56%,
+        rgba(4, 7, 14, 0) 82%
+      );
+
+    /* 3 — edge falloff. Off-centre upward, because the composition's weight is
+       low: the corners that need quieting are the bottom two. Dark navy and
+       never black — the deepest stop is 0.40 over paint that is already near
+       black, so it reads as the room falling away, not as a burnt corner. The
+       deepest stop is 0.50, and it lands on paint whose own luma is 14-19.
+
+       `farthest-corner` rather than explicit radii, and this is the whole
+       reason: written as `118% 116%` the ellipse is so much larger than the box
+       that the real corners land at only 60% of the ramp, where the alpha is
+       0.04. The vignette measured as a 0.04-luma change over the screen — it
+       was, for practical purposes, not there. */
+    --commons-treat-vignette: radial-gradient(
+      farthest-corner at 50% 42%,
+      rgba(4, 7, 14, 0) 0%,
+      rgba(4, 7, 14, 0) 54%,
+      rgba(4, 7, 14, 0.15) 78%,
+      rgba(4, 7, 14, 0.5) 100%
+    );
+  }
+
+  html.hub-two-screen:not(.large-text) .academy-commons-art,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-desk {
+    background-image:
+      var(--commons-treat-grain),
+      var(--commons-treat-vignette),
+      var(--commons-treat-masks),
+      var(--commons-art, none);
+    background-size:
+      200px 200px,
+      var(--commons-img-w) var(--commons-img-h),
+      var(--commons-img-w) var(--commons-img-h),
+      var(--commons-img-w) var(--commons-img-h),
+      var(--commons-img-w) var(--commons-img-h),
+      var(--commons-img-w) var(--commons-img-h),
+      var(--commons-img-w) var(--commons-img-h);
+    background-position:
+      0 0,
+      var(--commons-img-x) var(--commons-img-y),
+      var(--commons-img-x) var(--commons-img-y),
+      var(--commons-img-x) var(--commons-img-y),
+      var(--commons-img-x) var(--commons-img-y),
+      var(--commons-img-x) var(--commons-img-y),
+      var(--commons-img-x) var(--commons-img-y);
+    background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+    /* Only the grain blends. Everything below it is ordinary alpha compositing
+       — the vignette and the masks are meant to subtract light, and they do it
+       by being dark navy, not by a blend mode. */
+    background-blend-mode: overlay, normal, normal, normal, normal, normal, normal;
+    filter: var(--commons-treat-filter);
   }
   /* Pillarbox fill for windows wider than the painting. Invisible at every
      aspect the painting itself covers, which is all of them up to ~2.1:1. */
@@ -8714,6 +8901,103 @@ html.high-contrast * { text-shadow: none !important; }
     background-position: center;
     filter: blur(34px) brightness(0.5) saturate(0.8);
     transform: scale(1.1);
+  }
+
+  /* ---- Mogzy, and the desk in front of him -------------------------------
+     An environmental character. He is hidden by default and only exists here,
+     so flow mode, phones and large text never see him and never fetch him.
+
+     ## Why he is where he is
+     The reading table is the only pocket in the lower left he can occupy. The
+     desk top is crowded and every object on it is doing work: the book stack
+     ends at x 0.105, the quill and inkwell run 0.108-0.145, the short candle
+     starts at 0.172 and the tall one at 0.198 — and the candles are the room's
+     light source, so covering a flame is not available. Premium's live content
+     starts at 0.270. That leaves the front-left of the table, and he is sized
+     to clear the short candle by 0.012 of the artwork.
+
+     ## He is placed by his CONTENT, not by his box
+     The pose file is 1024x1536 but the character only occupies x 41-959,
+     y 103-1216 of it — the bottom fifth of the canvas is empty. Mounting the
+     box would therefore sit him a fifth of his own height too high. These four
+     numbers are back-solved so the CONTENT lands at x 0.068-0.160,
+     y 0.5769-0.775; change the pose file and they must be re-solved.
+
+     ## The aspect gate
+     0.068 is his left content edge, and the side crop reaches it at an aspect
+     of 1.538 — so below 20/13 he would be sliced by the frame rather than
+     framed by it, and he is withheld instead. This is the same trade the fit
+     policy above makes for the reading table itself.
+
+     ## Grounding
+     A ghost with a wispy tail cannot stand on anything, so what seats him is
+     the occlusion below plus one soft pool of ambient shadow behind his mass.
+     No glow, no outline, no drop shadow ringing his silhouette. */
+  @media (min-aspect-ratio: 20/13) {
+    html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-mogzy {
+      --mx: 0.0639;
+      --my: 0.5585;
+      --mw: 0.1026;
+      --mh: 0.2735;
+      position: absolute;
+      left: calc(var(--commons-img-x) + var(--commons-img-w) * var(--mx));
+      top: calc(var(--commons-img-y) + var(--commons-img-h) * var(--my));
+      width: calc(var(--commons-img-w) * var(--mw));
+      height: calc(var(--commons-img-h) * var(--mh));
+      display: block;
+      background-image: var(--commons-mogzy, none);
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      background-position: center;
+      /* Seated in the room's light, not lit by its own sun. The pose file is
+         product art: fully lit, high-chroma, white specular highlights — and
+         the Commons is a low-key candlelit room where the brightest things in
+         frame are two flames and the Premium exhibit. Ungraded he pulled ahead
+         of the noticeboard in the reading order, which is the one thing an
+         environmental character must not do. Brightness and chroma only: no
+         hue shift, no blur (he is at the reading table's depth, and the table
+         is sharp), and the asset itself is untouched. */
+      filter: brightness(0.74) saturate(0.82);
+      z-index: 1;
+    }
+    /* The ambient pool he sits in. Centred on his mass and a little below it,
+       under the artwork's own light — it is what stops a flat cut-out reading
+       as a sticker, and it is deliberately too soft to have an edge. */
+    html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-mogzy::before {
+      content: "";
+      position: absolute;
+      left: -18%;
+      right: -18%;
+      top: 26%;
+      bottom: -6%;
+      background-image: radial-gradient(
+        ellipse 46% 42% at 50% 66%,
+        rgba(2, 5, 11, 0.5) 0%,
+        rgba(2, 5, 11, 0.28) 44%,
+        rgba(2, 5, 11, 0) 74%
+      );
+    }
+
+    /* The reading table, re-plated over him. It shares EVERY background and
+       filter declaration with `.academy-commons-art` — they are written once,
+       against both selectors, up in the grade block — on an element with the
+       same box, so the two rasterise identically and the only thing this layer
+       can do is decide what is in front of what. Do not give it a background
+       of its own here: this rule is later in the file and would win, and the
+       treatment would stop below the clip with a seam along it.
+
+       The clip is the desk's front arris, measured off a brightness profile of
+       the painting: the lit top plane begins at y 0.7481, the arris crests at
+       0.7566. */
+    html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-desk {
+      position: absolute;
+      inset: 0;
+      display: block;
+      clip-path: inset(
+        calc(var(--commons-img-y) + var(--commons-img-h) * 0.7566) 0 0 0
+      );
+      z-index: 2;
+    }
   }
 
   /* The room's flow containers stop existing so their children can be placed
@@ -8991,27 +9275,137 @@ html.high-contrast * { text-shadow: none !important; }
     justify-content: flex-start;
   }
 
-  /* ---- the legal inscription → the wooden plinth -------------------------
+  /* ---- the legal inscription → the walnut rail ---------------------------
      Set between the reading table on the left and the side table on the right:
      the one stretch of the painted rail that no furniture stands in front of,
-     so no line of legal copy is ever laid over a candle. */
+     so no line of legal copy is ever laid over a candle.
+
+     The mount box is the ALIGNMENT contract and is unchanged. What changed on
+     2026-09-05 is what is drawn inside it: the inscription used to be set flat
+     onto the paint, with the coded chrome switched off like every other panel
+     in this block — and unlike every other panel, it had no painted frame of
+     its own to inherit, so it read as a web footer laid over the cabinetry.
+
+     So this one mount keeps its coded geometry: a milled walnut rail fixed to
+     the panelling, in the same wood as the hall's shelving. It is deliberately
+     the quietest object in the room — a lit top plane, a chamfered face, a
+     darker underside, one hairline of gilt along the arris and a soft pool of
+     contact shadow where it meets the paint. No plate, no border, no glow.
+
+     The rail is sized by its CONTENT and centred in the mount, rather than
+     filling it. The painted panel run is 10.8% of the artwork tall and the
+     inscription needs about two thirds of that; a slab drawn to the full box
+     would bury the painted panel mouldings either side of it and read as a
+     bar. Centring also means the rail cannot grow into the carpet if the
+     disclaimer ever wraps to a third line. */
   html.hub-two-screen:not(.large-text) .academy-commons > .academy-commons-plinth {
     /* Measured, not guessed: below the rail's lit capping edge (which crosses
        the painting at 0.799) and inside the run of panelling no furniture
-       stands in front of (0.208-0.788). The band is near-black there, so the
-       inscription needs no scrim of its own. */
+       stands in front of (0.208-0.788). */
     --mx: 0.2320;
     --my: 0.8120;
     --mw: 0.5540;
     --mh: 0.1080;
+    /* The mount is now a frame for the rail, not the rail itself. */
+    display: flex;
+    align-items: center;
     background-image: none;
     box-shadow: none;
   }
+
+  /* The board. Its palette is pinned to the paint it is fixed to: the panelled
+     band averages rgb(24,14,12) and the lit capping rail above it rgb(119,81,46),
+     so the face sits between the two and the arris stops just short of the
+     painted rail's highlight — the room's own light comes from above and in
+     front, and a foreground board that out-shone the architecture behind it
+     would be the "card pasted onto the artwork" this pass removes. */
   html.hub-two-screen:not(.large-text) .academy-commons-plinth-inner {
+    position: relative;
     max-width: none;
-    height: 100%;
+    height: auto;
     justify-content: center;
     gap: calc(7 * var(--u));
+    /* Room for the top plane above the first line, and a little more below
+       than above so the type sits on the face rather than in its middle. */
+    padding: calc(12 * var(--u)) calc(22 * var(--u)) calc(11 * var(--u));
+    background-image:
+      /* THE ENDS. The board does not stop at a vertical line — a hard end is
+         the single thing that made the first version of this rail read as a
+         card laid on the paint rather than as joinery let into it. Both ends
+         fall away into the panelling instead, over about 26 artwork pixels,
+         and the top plane below carries the same falloff so the two go dark
+         together. */
+      linear-gradient(
+        90deg,
+        rgba(8, 5, 3, 0.94) 0,
+        rgba(8, 5, 3, 0.6) calc(7 * var(--u)),
+        rgba(8, 5, 3, 0) calc(27 * var(--u)),
+        rgba(8, 5, 3, 0) calc(100% - 27 * var(--u)),
+        rgba(8, 5, 3, 0.6) calc(100% - 7 * var(--u)),
+        rgba(8, 5, 3, 0.94) 100%
+      ),
+      /* Grain. Barely there — at this size it is a texture, not a stripe. */
+      repeating-linear-gradient(
+        90deg,
+        rgba(255, 236, 204, 0.026) 0 1px,
+        transparent 1px 7px,
+        rgba(0, 0, 0, 0.05) 7px 8px,
+        transparent 8px 21px
+      ),
+      /* The front face, with the shelving's chamfer profile: a lighter band
+         off the eased top arris, a hard step into the face, then a shallow
+         step above the underside so the board reads as milled and not as a
+         rectangle of colour.
+
+         The whole ramp is pitched DARK on purpose. The panelled band behind it
+         averages rgb(24,14,12), and a face at the hall's own `--shelf-face`
+         stood a good four times off it — legible, but the loudest thing in the
+         bottom third of a room where this is meant to be the quietest object.
+         What separates the planes here is the lit arris and the dark underside,
+         not overall brightness. */
+      linear-gradient(
+        180deg,
+        #6a4b2f 0,
+        #46301c calc(1.5 * var(--u)),
+        /* — chamfer breaks into the face — */ #33220f calc(3 * var(--u)),
+        #2b1c0d 45%,
+        /* — shallow step above the underside — */ #20150a 76%,
+        #150d06 92%,
+        #0d0803 100%
+      );
+    box-shadow:
+      inset 0 -1px 0 rgba(0, 0, 0, 0.72),
+      /* contact shadow, thrown down the panelling the board is fixed to */
+      0 calc(4 * var(--u)) calc(10 * var(--u)) calc(-5 * var(--u)) rgba(0, 0, 0, 0.72),
+      0 calc(12 * var(--u)) calc(24 * var(--u)) calc(-13 * var(--u)) rgba(0, 0, 0, 0.9);
+  }
+  /* The top plane — the sliver of the board's upper surface the room's light
+     actually reaches, and the only gilt in the object: one warm hairline along
+     the arris. Inset from the front face on both sides so the rail reads as a
+     solid seen slightly from above rather than as a highlight stripe, exactly
+     as the hall's shelf slabs are built. It is pitched just under the painted
+     capping rail above it (which the artwork lights to rgb(119,81,46)), so the
+     eye still reads the architecture as the brighter of the two. */
+  html.hub-two-screen:not(.large-text) .academy-commons-plinth-inner::before {
+    content: "";
+    position: absolute;
+    left: calc(2 * var(--u));
+    right: calc(2 * var(--u));
+    top: 0;
+    height: calc(2.2 * var(--u));
+    background-image:
+      linear-gradient(
+        90deg,
+        rgba(8, 5, 3, 0.96) 0,
+        rgba(8, 5, 3, 0.6) calc(7 * var(--u)),
+        rgba(8, 5, 3, 0) calc(27 * var(--u)),
+        rgba(8, 5, 3, 0) calc(100% - 27 * var(--u)),
+        rgba(8, 5, 3, 0.6) calc(100% - 7 * var(--u)),
+        rgba(8, 5, 3, 0.96) 100%
+      ),
+      linear-gradient(180deg, #6c4d2f 0%, #573c23 48%, #382716 100%);
+    box-shadow: inset 0 1px 0 rgba(222, 188, 130, 0.2);
+    pointer-events: none;
   }
   html.hub-two-screen:not(.large-text) .academy-commons-plinth-inner a,
   html.hub-two-screen:not(.large-text) .academy-commons-plinth-inner > div > span {
@@ -9021,8 +9415,8 @@ html.high-contrast * { text-shadow: none !important; }
     max-width: none;
     font-size: calc(11 * var(--u));
     line-height: 1.4;
-    /* The painted rail is near-black under this band, so the inscription can
-       carry its full weight rather than the flow-mode fade. */
+    /* The rail's face is warmer and lighter than the paint it replaced, so the
+       inscription can carry its full weight rather than the flow-mode fade. */
     opacity: 0.9;
   }
 

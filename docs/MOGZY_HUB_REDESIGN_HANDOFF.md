@@ -1,8 +1,291 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 18 (the painted Commons) is at the top of this file.
-     Revision 17 was the two-screen Academy; 16 the Mogzy Premium promotion
-     module; 15 the below-the-fold rework; 14 the live-review tuning. -->
+<!-- Revision 19 (Commons visual polish, COMPLETE/APPROVED) is at the top of
+     this file. Revision 18 was the painted Commons; 17 the two-screen Academy;
+     16 the Mogzy Premium promotion module; 15 the below-the-fold rework. -->
+
+## Revision 2026-09-05 — COMMONS VISUAL POLISH — **COMPLETE / APPROVED**
+
+**Status:** the Academy Commons visual-polish workstream is finished and signed
+off by the owner. Four passes — legal rail, environmental Mogzy, background
+treatment, seam audit — each reviewed and approved in turn. Branch
+`hub/two-screen-academy`, worktree `/Users/macmoney/mogsy-wt-hub2screen`, based
+on `origin/main` @ `e1bec908`. **Pushed, not merged.** What's New, search,
+Help/FAQ and community URLs remain untouched and out of scope.
+
+Everything in Revisions 17–18 stands. This revision records what was added on
+top and what was deliberately NOT changed.
+
+---
+
+### 1. What shipped in this workstream
+
+| Pass | Result |
+|---|---|
+| **Legal walnut rail** | The legal set stops being a web footer laid over the paint |
+| **Commons Mogzy** | A static environmental character at the reading table, occluded by the desk |
+| **Background treatment** | Grade + vignette + grain + four selective de-emphasis masks |
+| **Seam audit** | Concluded **NO CHANGE**; the transition ships exactly as it was |
+
+Two files: `src/index.css` (stage block only) and
+`src/components/lol/AcademyCommons.tsx` (one import, one custom property, two
+`aria-hidden` divs, doc comments). No new component, no new asset, no new
+React state, no route, no backend, no Supabase.
+
+---
+
+### 2. The legal rail — the one mount that keeps coded joinery
+
+Every other stage mount sheds its coded frame because the painting already has
+one. The panelled band at y 0.812–0.920 has **no board**, so switching the
+chrome off there (`background-image: none; box-shadow: none`) is what produced
+the floating-footer read.
+
+* `.academy-commons-plinth` keeps the measured mount box **unchanged**
+  (`0.2320 / 0.8120 / 0.5540 / 0.1080`) and becomes a flex frame.
+* `.academy-commons-plinth-inner` is the board: lit arris → chamfer → walnut
+  face → shallow step → dark underside, one gilt hairline, contact shadow, and a
+  `::before` top plane. **Sized by its content and centred** — 0.0821 of artwork
+  height, not the full 0.108, so the painted panel mouldings still read either
+  side of it, and a third disclaimer line grows into the band rather than into
+  the carpet.
+
+Two things decided the result, and both were wrong on the first attempt:
+**hard vertical ends** are what make a board read as a pasted card, so both ends
+now fall away into the panelling over ~27 artwork px (face and top plane
+together); and the ramp is pitched far darker than `--shelf-face`, which stood
+~4× off paint that averages `rgb(24,14,12)`. The planes are separated by the lit
+arris and the dark underside, not by overall brightness.
+
+---
+
+### 3. Mogzy in the Commons — environmental, not a guide
+
+No state, no interaction, no motion, `aria-hidden`, `pointer-events: none`,
+nothing in the tab order. `MogzyHubGuide` is **not** reused.
+
+**Placed by his content box, never his canvas.** `mogzy-mascot-base-v1.png` is
+1024×1536 but the character occupies only x 41–959, y 103–1216 — the bottom
+fifth of the file is empty. The mount is back-solved so the CONTENT lands where
+it should. Swap the pose file and these must be re-solved.
+
+| | `--mx` | `--my` | `--mw` | `--mh` |
+|---|---|---|---|---|
+| `.academy-commons-mogzy` | 0.0639 | 0.5585 | 0.1026 | 0.2735 |
+
+Content lands at x 0.068–0.160, y 0.5769–0.775 — 10.2% of viewport width at
+1440×900, clearing the short candle by 0.012 of the artwork and Premium's live
+content (x 0.270) by a wide margin.
+
+**The occlusion technique.** `.academy-commons-desk` is a **second copy of
+`.academy-commons-art`** — identical `background-size`/`position`/`filter` on an
+element with the identical box — clipped with
+`clip-path: inset(calc(imgY + imgH * 0.7566) 0 0 0)` and painted at z-index 2
+over Mogzy at z-index 1. Because both layers rasterise from the same custom
+properties on the same box, **a seam is impossible by construction**. 0.7566 is
+the reading table's front arris, measured off a brightness profile of the file
+(the lit top plane begins at 0.7481). He is a ghost with no feet, so nothing
+grounds him except this occlusion plus one soft ambient pool.
+
+> **Do not** attempt this by positioning a small element at an artwork offset and
+> compensating with a negative `background-position`. The element's own box
+> rounds to device pixels and the background offset does not, so the copy lands
+> up to half a pixel off and ghosts.
+
+**Grade.** `filter: brightness(0.74) saturate(0.82)` on the mount — the asset is
+untouched. Product art is lit for a white page; ungraded he pulled ahead of the
+noticeboard in the reading order, which is the one thing an environmental
+character must not do. 0.64 loses the blue identity; 0.82 is still too hot.
+
+**Aspect gate, not a width gate.** `@media (min-aspect-ratio: 20/13)` (1.538) is
+exactly where the side crop reaches his left content edge (0.068); below it he is
+withheld rather than sliced. Being a CSS **background** rather than an `<img>`,
+the 2.2 MB file is never fetched where he is hidden — a `display:none` `<img>`
+still downloads.
+
+---
+
+### 4. Background treatment — where it lives, and why it is declared twice
+
+The treatment rides the `background-image` stack of **both** artwork layers,
+written once against both selectors. This is forced, not stylistic: the desk
+re-plates raw artwork below y 0.7566, so grading only `.academy-commons-art`
+is wiped across the full width with a seam along the clip. The upside is the
+z-order it produces for free —
+
+```
+wall → art + treatment → Mogzy (z1) → desk + identical treatment (z2) → live mounts (z10)
+```
+
+— so Mogzy sits *between* the two treated layers and is never dimmed or grained,
+and **no treatment ever lands on live text**.
+
+* **Grade:** `saturate(0.9) contrast(0.99) brightness(0.985)`.
+* **Vignette:** `radial-gradient(farthest-corner at 50% 42%, …)`, transparent to
+  54%, 0.15 at 78%, 0.50 at the corners. Dark navy, never black.
+* **Grain:** inline SVG `feTurbulence`, 180px tile, **screen space**, opaque
+  mid-grey composited with `background-blend-mode: overlay`.
+* **Masks (artwork space, peak alpha):** side table `11%×13% at 84% 88%` @ 0.52
+  · foreground chair `12%×13% at 11% 92%` @ 0.44 · globe shelf `8%×12% at 91%
+  71%` @ 0.34 · far-left shelves `5%×14% at 0% 63%` @ 0.25.
+
+Masks take the artwork's own `background-size`/`position`, so a `%` inside each
+gradient **is** an artwork fraction and each stays on its prop under any crop.
+Grain is the deliberate exception: it is a property of the lens, so it tiles in
+screen space; scaling it with the painting would make it a painted texture.
+
+**Three traps, each found by measuring rather than looking:**
+
+1. **SVG filters default to `linearRGB`**, where 0.5 is sRGB 0.74. The "neutral"
+   grain blew the room **+29% brighter** under `overlay` (mean screen luma
+   47.7 → 61.7). `color-interpolation-filters='sRGB'` on the `<filter>` is
+   mandatory. A translucent grey noise blended `normal` is worse still (+117):
+   that is a veil, not grain.
+2. **`radial-gradient(118% 116% …)` sizes the RADII**, so the real corners landed
+   at ~60% of the ramp where the alpha was 0.04 — the vignette measured as a
+   0.04-luma change and was, in practice, absent. `farthest-corner` fixes it.
+3. **A global dim is the one tool that cannot be spent freely.** The Community
+   and utility notices are live text on PAINTED parchment, so every point off the
+   painting is off their page — and that paper is *already* under AA for
+   `--commons-ink-soft` before any pass touches it. `brightness(0.94)` cost the
+   board's darkest paper 6% of its contrast; 0.985 costs ~1%. `contrast(<1)`
+   also pulls toward mid grey, which on a room this dark is a **lift**. All the
+   quieting is done by the vignette and masks, which are shaped to fall outside
+   every parchment (the board sits at r 0.51 of the vignette, inside its
+   transparent zone). **If this room ever needs to be darker, spend it there.**
+
+Measured effect at 1440×900 (same to within 0.5% at 1920×1080 and 2560×1080):
+
+| | Δ |
+|---|---|
+| Side table understructure | **−25.0%** |
+| Globe shelf books | −17.9% |
+| Bottom-right corner | −15.7% |
+| Foreground chair / drape | −10.3% |
+| Castle / window | −6.7% |
+| Community board | −1.4% |
+| Utility slips | −0.9% |
+| Candles | −0.8% |
+| Premium panel | +1.1% |
+| Mogzy body | −0.3% |
+| **Legal rail** | **0.00%** |
+| Whole screen | **−1.3%** |
+
+---
+
+### 5. Seam audit — concluded NO CHANGE
+
+The Hall → Commons transition was audited and **no code was written**. Preserve
+the current ambience timing and transition behaviour.
+
+There is a measurable step at the section boundary — up to −45% luma with a +29
+R−B colour-temperature swing — but it is **neither room**. It is the sitewide
+Hextech mist (`rgba(92,189,217,0.18)`, fixed, `z-[5]`) showing through the hole
+that `.academy-hero-fade` opens in the Hall's last 130px; `main` is `z-20`, so
+that hole is the only place the mist is visible, and the opaque Commons cuts it
+dead. Hiding the mist collapses the step to **+0.39**. The Commons grading
+neither caused nor solved it (−15.32 before, −15.34 after).
+
+It is also **self-limiting**. `syncAmbience` sets `hub-commons-in-view` the
+moment the Commons top crosses `innerHeight * 0.5`, and after that the step is
+**+4.24** — the Commons is slightly *brighter* than the band above, which reads
+continuous. The bad window is the ~135px before the midpoint, traversed in
+~150ms of a snapped gesture, and the seam is **off-screen at both resting
+positions**.
+
+**No CSS-only intervention exists that does not touch a frozen surface.** A
+Commons-side top falloff is visible at rest, because the settled Commons' top
+edge *is* viewport 0. An overlap changes section geometry and therefore snap. A
+crossfade needs scroll-driven opacity. Dimming the mist changes the Hall at rest.
+
+*Option left on the table, deliberately not taken:* changing `0.5` to `~0.8` in
+`syncAmbience` (`LolHub.tsx`) holds the step inside ±4 for the whole travel and
+changes nothing at either resting position — but it makes the sitewide ambience
+leave while the Hall still fills 80% of the view, which is Screen-1
+choreography.
+
+---
+
+### 6. Responsive, snap and fallback — preserved
+
+* Snap unchanged: `y mandatory` on `html`, screens `start`, the plinth `end`,
+  gated `(min-width:1024px) and (min-height:780px)` and `:not(.large-text)`.
+* Contextual hints unchanged: 560ms rise / 200ms withdrawal, 160ms opacity-only
+  under either motion preference, always in the tab order.
+* Reduced motion: Mogzy and the rail carry **zero** animation and zero
+  transition in both preference states.
+* Flow mode (short-height, mobile): Mogzy and the desk are `display: none`; the
+  background treatment is stage-gated. Verified **0 pixels changed** at 1280×720
+  and 390×844 across the whole workstream.
+* Zero horizontal overflow at 1024×780, 1280×720, 1440×900, 1512×982, 1920×1080,
+  2560×1080 and 390×844.
+
+---
+
+### 7. Verification performed
+
+| Check | Result |
+|---|---|
+| Mount fractions (crest/plaque/board/utility/plinth/rail/mogzy) | **identical** at 1024×780, 1440×900, 1512×982, 1920×1080, 2560×1080 |
+| Art ↔ desk layer parity (background stack + filter) | **true** in every stage case |
+| **Screen 1 unchanged** | every changed pixel is the randomised `ACADEMY_LINES` tagline; **0 elsewhere** at 1440×900, 1920×1080, 1280×720; 0 changed at 390×844 |
+| Flow / mobile unchanged | 0 pixels at 1280×720 and 390×844 |
+| Horizontal overflow | none at any tested viewport |
+| Snap / hints / reduced motion | unchanged, verified without the animation freeze |
+| Decorative layers | `aria-hidden`, `pointer-events: none`, 0 focusables inside |
+| Legal links | `/privacy`, `/terms`, `/security` present and keyboard-reachable at every viewport, focus ring visible |
+| Page errors | 0 across all viewports |
+| Tests | `LolHub.test.tsx` + `MogzyMascot.test.tsx` — **86/86** |
+| Lint | `eslint src/components/lol/AcademyCommons.tsx` clean |
+| Build | `vite build` clean |
+
+---
+
+### 8. Known non-blocking caveats
+
+* **Painted-parchment contrast is below AA for the soft ink, and predates this
+  work.** Measured on finished pixels the Community board's paper gives 2.98:1
+  for `--commons-ink-soft` *before* any pass in this workstream; the treatment
+  moves it to 2.89:1. Worth a separate accessibility pass — do not fix it with a
+  global brightness change, which is what section 4 explains.
+* **`tsc --noEmit -p tsconfig.app.json` reports errors in 8 files.** All
+  pre-existing and unrelated (admin, quiz workspace, combat-lab, community,
+  feedback); none in the files this workstream touches.
+* **Full frontend vitest has a standing baseline of failures** and
+  `--poolOptions.forks.singleFork` dies on `Timeout calling "onTaskUpdate"` after
+  ~14 of 574 files. For a CSS-dominant change the honest verification is the
+  build plus the tests that name the components.
+* **Two measurement contaminants** in any pixel diff of this page: the friends
+  FAB renders inconsistently between runs, and `ACADEMY_LINES` randomises the
+  Hall tagline per entry. Mask both out.
+* **Mogzy is withheld below aspect 1.538**, so the gate-minimum stage viewport
+  (1024×780) shows the Commons without him. Deliberate — the alternative is a
+  mascot sliced by the frame edge.
+
+---
+
+### 9. Merge state — one known conflict, comment-only
+
+Branch is **3 commits ahead** of the merge-base `e1bec908`; `origin/main` has
+moved **16 commits** ahead of it, touching 47 files.
+
+`git merge-tree --write-tree origin/main HEAD` reports **exactly one conflict**:
+`src/components/lol/HubPremiumPanel.tsx`. It is confined to the `### No price`
+paragraph of that file's header comment — **no code, no class names, no
+structure**, so the Commons stage mounting is unaffected either way.
+
+* **Theirs (main):** PT1.5 rewrote it — pricing moved off the client into the
+  server offer catalog, purchasability is `fetchOfferAvailability`.
+* **Ours:** the paragraph is unchanged from the base except its last sentence,
+  where "this panel routes there instead" became "this **plaque** routes there
+  instead" when the component was reinterpreted as the Commons plaque.
+
+**Resolution when merging:** take main's PT1.5 wording wholesale and change its
+final "this panel" to "this plaque". Nothing else in the file conflicts.
+
+Re-fetch `origin/main` before merging: it moves often.
+
+---
 
 ## Revision 2026-09-05 — THE PAINTED COMMONS (approved background integration)
 
