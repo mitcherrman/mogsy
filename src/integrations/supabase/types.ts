@@ -2838,9 +2838,6 @@ export type Database = {
           pro_grant_granted_by: string | null
           pro_grant_kind: string | null
           pro_grant_reason: string | null
-          pro_offer: string | null
-          pro_offer_acquired_at: string | null
-          pro_offer_price_id: string | null
           profile_frame: string | null
           ranked_tutorial_completed_at: string | null
           ranked_tutorial_version: number | null
@@ -2848,12 +2845,6 @@ export type Database = {
           rewinds: number | null
           socials: Json | null
           status_message: string | null
-          stripe_billing_interval: string | null
-          stripe_current_period_end: string | null
-          stripe_customer_id: string | null
-          stripe_price_id: string | null
-          stripe_subscription_id: string | null
-          stripe_subscription_status: string | null
           swipe_animation: string | null
           updated_at: string
           user_id: string
@@ -2888,9 +2879,6 @@ export type Database = {
           pro_grant_granted_by?: string | null
           pro_grant_kind?: string | null
           pro_grant_reason?: string | null
-          pro_offer?: string | null
-          pro_offer_acquired_at?: string | null
-          pro_offer_price_id?: string | null
           profile_frame?: string | null
           ranked_tutorial_completed_at?: string | null
           ranked_tutorial_version?: number | null
@@ -2898,12 +2886,6 @@ export type Database = {
           rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
-          stripe_billing_interval?: string | null
-          stripe_current_period_end?: string | null
-          stripe_customer_id?: string | null
-          stripe_price_id?: string | null
-          stripe_subscription_id?: string | null
-          stripe_subscription_status?: string | null
           swipe_animation?: string | null
           updated_at?: string
           user_id: string
@@ -2938,9 +2920,6 @@ export type Database = {
           pro_grant_granted_by?: string | null
           pro_grant_kind?: string | null
           pro_grant_reason?: string | null
-          pro_offer?: string | null
-          pro_offer_acquired_at?: string | null
-          pro_offer_price_id?: string | null
           profile_frame?: string | null
           ranked_tutorial_completed_at?: string | null
           ranked_tutorial_version?: number | null
@@ -2948,12 +2927,6 @@ export type Database = {
           rewinds?: number | null
           socials?: Json | null
           status_message?: string | null
-          stripe_billing_interval?: string | null
-          stripe_current_period_end?: string | null
-          stripe_customer_id?: string | null
-          stripe_price_id?: string | null
-          stripe_subscription_id?: string | null
-          stripe_subscription_status?: string | null
           swipe_animation?: string | null
           updated_at?: string
           user_id?: string
@@ -3637,9 +3610,6 @@ export type Database = {
           pro_grant_granted_by: string | null
           pro_grant_kind: string | null
           pro_grant_reason: string | null
-          pro_offer: string | null
-          pro_offer_acquired_at: string | null
-          pro_offer_price_id: string | null
           profile_frame: string | null
           ranked_tutorial_completed_at: string | null
           ranked_tutorial_version: number | null
@@ -3647,12 +3617,6 @@ export type Database = {
           rewinds: number | null
           socials: Json | null
           status_message: string | null
-          stripe_billing_interval: string | null
-          stripe_current_period_end: string | null
-          stripe_customer_id: string | null
-          stripe_price_id: string | null
-          stripe_subscription_id: string | null
-          stripe_subscription_status: string | null
           swipe_animation: string | null
           updated_at: string
           user_id: string
@@ -3949,26 +3913,6 @@ export type Database = {
           _winner_profile_id: string
         }
         Returns: Json
-      }
-      record_pro_commercial_state: {
-        Args: {
-          _billing_interval?: string
-          _current_period_end?: string
-          _offer_id?: string
-          _stripe_customer_id?: string
-          _stripe_price_id?: string
-          _stripe_subscription_id?: string
-          _subscription_status?: string
-          _user_id: string
-        }
-        Returns: {
-          pro_offer: string
-          pro_offer_acquired_at: string
-          pro_offer_price_id: string
-          stripe_billing_interval: string
-          stripe_price_id: string
-          stripe_subscription_status: string
-        }[]
       }
       record_league_swipe_result: {
         Args: {
