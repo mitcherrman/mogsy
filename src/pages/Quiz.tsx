@@ -31,7 +31,8 @@ import QuizAchievementsCard from "@/components/quiz/QuizAchievementsCard";
 // Daily Score Attack hub entry: shown instead of the legacy Daily card only
 // when the backend reports the new mode enabled (server feature flag).
 import QuizScoreAttackCard from "@/components/quiz/QuizScoreAttackCard";
-import PracticeBuilderPanel from "@/components/quiz/builder/PracticeBuilderPanel";
+import PracticeBuilderPanel, { type BuilderPreset } from "@/components/quiz/builder/PracticeBuilderPanel";
+import PerformanceTrendsPane, { type TrendsPracticePreset } from "@/components/quiz/trends/PerformanceTrendsPane";
 import { fetchToday as fetchScoreAttackToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackClient";
 import type { DsaToday } from "@/pages/dev/daily-score-attack/dailyScoreAttackTypes";
 import LeaguecraftHub from "@/components/quiz/LeaguecraftHub";
@@ -1069,6 +1070,33 @@ export default function Quiz() {
   }, [missedQuestions, currentSet, startHistorySession]);
 
   /**
+   * PT1.8 — the Trends → Builder handoff, held here because this page hosts
+   * BOTH surfaces: the workspace's Trends pane and the lobby's Practice
+   * Builder are siblings on one screen, so "practise this" is a preset
+   * travelling between them rather than a navigation.
+   *
+   * The nonce is what makes pressing the same weak category twice work: the
+   * configuration is identical and the reader still asked again.
+   */
+  const [builderPreset, setBuilderPreset] = useState<BuilderPreset | null>(null);
+  const builderAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  const handlePractiseWeakness = useCallback((preset: TrendsPracticePreset) => {
+    setBuilderPreset({
+      pool: preset.pool,
+      category: preset.category,
+      nonce: Date.now(),
+    });
+  }, []);
+
+  /* The Builder is ABOVE the record on this page, so adopting a preset has to
+     bring the reader back up to it — otherwise the configuration changes off
+     screen and the click looks like it did nothing. */
+  const handlePresetApplied = useCallback(() => {
+    builderAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  /**
    * PT1.7B — run a session the Builder assembled.
    *
    * Identical in shape to `handlePracticeMissed`: an explicit, already
@@ -1406,11 +1434,24 @@ export default function Quiz() {
                  session. It draws its own paywall from the server's capability
                  answer, so the hub neither knows nor decides who may see it. */
               builder={
-                <PracticeBuilderPanel
-                  open={phase === "sets"}
-                  onStartSession={handleBuiltSession}
-                />
+                <div ref={builderAnchorRef}>
+                  <PracticeBuilderPanel
+                    open={phase === "sets"}
+                    onStartSession={handleBuiltSession}
+                    /* PT1.8: a weak category handed down from the Trends pane
+                       below. The panel applies it through its own `setConfig`,
+                       so there is one configuration path and one set of pool
+                       rules, not two. */
+                    preset={builderPreset}
+                    onPresetApplied={handlePresetApplied}
+                  />
+                </div>
               }
+              /* PT1.8 — the workspace's third pane. Passed as a node for the
+                 same reason `builder` is: the hub places it and the pane
+                 itself draws the paywall from the server's answer, so no hub
+                 flag and no client-side tier check decides who sees what. */
+              trends={<PerformanceTrendsPane onPractiseWeakness={handlePractiseWeakness} />}
               timeTrial={
                 HUB_MODULES.timeTrial && scoreAttackToday ? (
                   <QuizScoreAttackCard

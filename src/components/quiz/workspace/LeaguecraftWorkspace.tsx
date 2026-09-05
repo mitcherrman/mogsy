@@ -2,10 +2,12 @@
  * MALT Phase A — the Leaguecraft HISTORY / REVIEW workspace.
  *
  * The lower half of `/quiz`, underneath the approved ceremonial first screen
- * and its category rail. Two questions, one surface:
+ * and its category rail. Three questions, one surface:
  *
  *   HISTORY  what have I studied?      — the account's quiz-session record
  *   REVIEW   what did I get wrong?     — the missed-question bank
+ *   TRENDS   am I getting better?      — PT1.8's longitudinal reading of the
+ *                                        same attempt record (Premium)
  *
  * SUBORDINATE BY CONSTRUCTION
  * ───────────────────────────
@@ -22,8 +24,12 @@
  * vignette off the text, which is what lets this surface reuse the approved
  * parchment ink rather than mint a palette of its own.
  *
- * THE SHELL IS THE POINT, NOT THE TWO TABS IN IT
- * ──────────────────────────────────────────────
+ * THE SHELL IS THE POINT, NOT THE TABS IN IT
+ * ──────────────────────────────────────────
+ * PT1.8 is the first proof of that: TRENDS arrived as one entry in the mode
+ * list and one body passed down. The strip, the deep-link scheme, the roving
+ * selection and the scroll target were not touched.
+ *
  * Phase A ships one pane per mode, but the mode list is DATA. History is
  * scheduled to gain Practice / Daily / Ranked streams once the DSA
  * reconciliation and a Ranked history read model exist; Review is scheduled
@@ -40,17 +46,21 @@
  * Presentation only. History reads the payload the page already holds; Review
  * mounts its own gated loader, and only once it is actually opened.
  */
-import { BookX, History as HistoryIcon } from "lucide-react";
+import { BookX, History as HistoryIcon, LineChart } from "lucide-react";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 
 /** Which top-level question the workspace is answering. Also the URL hash. */
-export type WorkspaceMode = "history" | "review";
+export type WorkspaceMode = "history" | "review" | "trends";
 
-export const WORKSPACE_MODES: readonly WorkspaceMode[] = ["history", "review"] as const;
+export const WORKSPACE_MODES: readonly WorkspaceMode[] = [
+  "history",
+  "review",
+  "trends",
+] as const;
 
-/** `/quiz#history` and `/quiz#review`. One scheme, so a link from anywhere in
- *  the product can open the workspace on the pane it means. */
+/** `/quiz#history`, `/quiz#review` and `/quiz#trends`. One scheme, so a link
+ *  from anywhere in the product can open the workspace on the pane it means. */
 export function parseWorkspaceHash(hash: string | null | undefined): WorkspaceMode | null {
   const raw = (hash ?? "").replace(/^#/, "").toLowerCase();
   return (WORKSPACE_MODES as readonly string[]).includes(raw) ? (raw as WorkspaceMode) : null;
@@ -77,6 +87,14 @@ const MODE_META: Record<
     // either source, so the two hints do not read as a contradiction.
     hint: "The questions you own, and the ones you got wrong.",
   },
+  trends: {
+    label: "Trends",
+    icon: LineChart,
+    // Names the QUESTION, not the tier. The pane itself says what a reader
+    // without Premium gets and what stays theirs; a tab that advertised a
+    // paywall would put the price above the product.
+    hint: "How your accuracy and study volume are moving.",
+  },
 };
 
 export default function LeaguecraftWorkspace({
@@ -84,6 +102,7 @@ export default function LeaguecraftWorkspace({
   onModeChange,
   history,
   review,
+  trends,
   className = "",
 }: {
   mode: WorkspaceMode;
@@ -94,6 +113,9 @@ export default function LeaguecraftWorkspace({
   /** The Review pane's body. Mounted only while Review is the open mode, so
    *  its Pro-gated endpoint is never read by a reader who did not ask. */
   review: React.ReactNode;
+  /** The Trends pane's body. Same rule as Review: its account-bound reads
+   *  happen only once a reader has opened the pane. */
+  trends: React.ReactNode;
   className?: string;
 }) {
   const meta = MODE_META[mode];
@@ -171,7 +193,7 @@ export default function LeaguecraftWorkspace({
           data-testid={`workspace-panel-${mode}`}
           className="min-h-[9rem] pt-1"
         >
-          {mode === "history" ? history : review}
+          {mode === "history" ? history : mode === "review" ? review : trends}
         </div>
       </LobbyPanel>
     </div>

@@ -25,6 +25,12 @@ export type FunnelEventName =
   | "practice_builder_entitlement_refused"
   | "practice_builder_set_created"
   | "practice_builder_set_run"
+  // PT1.8 — Premium personal analytics. Payloads carry the SHAPE of a reading
+  // (window length, a category NAME the reader already sees on screen) and
+  // never a question id, an attempt or an answer.
+  | "trends_opened"
+  | "trends_window_changed"
+  | "trends_practice_weakness_clicked"
   | "quiz_results_viewed"
   | "quiz_signup_gate_shown"
   | "quiz_signup_clicked"

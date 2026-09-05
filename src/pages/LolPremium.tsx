@@ -8,6 +8,7 @@ import {
   History,
   BookX,
   BarChart3,
+  LineChart,
   SlidersHorizontal,
   Swords,
   Save,
@@ -61,6 +62,15 @@ const PREMIUM_FEATURES: PremiumFeature[] = [
     title: "Full Quiz History",
     description: "Every result you've ever posted, not just the last 10.",
     Icon: History,
+  },
+  {
+    // PT1.8. Named for the QUESTION it answers, and scoped honestly: the
+    // windows are the three the server offers, and the record it reads is
+    // Practice + Time Trial. Nothing here promises a figure the product
+    // cannot derive from the attempt log it already keeps.
+    title: "Performance Trends",
+    description: "See how your accuracy and study volume have moved over 7, 30 or 90 days, and which weak spots keep coming back.",
+    Icon: LineChart,
   },
   {
     title: "Missed Question Bank",

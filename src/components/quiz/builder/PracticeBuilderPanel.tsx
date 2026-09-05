@@ -16,13 +16,20 @@
  * slot needs no branch here: such a reader simply arrives with `can_build`
  * true and a shorter `allowed_pools`, and the panel already renders that.
  *
+ * PT1.8 HANDS IT A PRESET; IT DOES NOT HAND PT1.8 A SECOND BUILDER.
+ * The Trends pane's "practise this" is a `preset` on this panel, applied
+ * through the SAME `setConfig` a reader's own click goes through, so the
+ * preview, the pool rules, the Pro Play opt-in mirror and the build path are
+ * one code path with one behaviour. A weakness handoff that assembled its own
+ * request would be a second builder with a second set of rules to keep true.
+ *
  * FILTERS THE PRODUCT DOES NOT HAVE ARE STATED, NOT HIDDEN.
  * `quiz_questions` carries no champion or item column — that information lives
  * only in the answer-bearing metadata this API never projects — so champion and
  * matchup targeting are named as absent rather than shipped as empty controls
  * that would look broken.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, SlidersHorizontal, Sparkles, Target, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,23 +52,57 @@ const POOL_HINTS: Record<BuilderPool, string> = {
   weak: "The categories your recent results say you are weakest at.",
 };
 
+/** A configuration handed in from elsewhere on the page. `nonce` is what makes
+ *  pressing the same weak category twice apply twice: the values may be
+ *  identical, and the reader still asked for it again. */
+export type BuilderPreset = {
+  pool?: BuilderPool;
+  category?: string | null;
+  nonce: number;
+};
+
 export default function PracticeBuilderPanel({
   open,
   onStartSession,
+  preset,
+  onPresetApplied,
 }: {
   open: boolean;
   /** Hand the built list to the host's existing Practice runner. */
   onStartSession: (questions: QuizQuestion[], label: string) => void;
+  /** PT1.8: a configuration to adopt, e.g. from a recurring weak category. */
+  preset?: BuilderPreset | null;
+  /** Fired once a preset has been adopted, so the host can scroll here. */
+  onPresetApplied?: () => void;
 }) {
   const state = usePracticeBuilder(open);
   const [building, setBuilding] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [sets, setSets] = useState<SavedSet[]>([]);
+  const appliedPreset = useRef<number | null>(null);
 
   useEffect(() => setSets(state.sets), [state.sets]);
   useEffect(() => {
     if (open) trackFunnelEvent("practice_builder_opened", {});
   }, [open]);
+
+  /* PT1.8's handoff. It applies ONLY once the server has said this caller may
+     build: a preset that landed on a Free panel would silently rewrite a
+     configuration nobody can run, and the paywall below would then be showing
+     someone else's choice back to them. */
+  useEffect(() => {
+    if (!preset || !open) return;
+    if (!state.capability?.can_build) return;
+    if (appliedPreset.current === preset.nonce) return;
+    appliedPreset.current = preset.nonce;
+    state.setConfig({
+      pool: preset.pool ?? "weak",
+      ...(preset.category !== undefined ? { category: preset.category } : {}),
+    });
+    onPresetApplied?.();
+    // `state` is recreated each render; the nonce is the real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preset?.nonce, open, state.capability?.can_build]);
 
   if (!open) return null;
 

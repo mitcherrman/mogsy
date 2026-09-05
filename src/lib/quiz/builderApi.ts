@@ -37,6 +37,12 @@ export type BuilderCapability = {
   allowed_pools: BuilderPool[];
   max_length: number;
   allowed_lengths: number[];
+  /** PT1.8 widened the server's capability object to cover personal
+   *  analytics too. The Builder ignores these, but they are declared because
+   *  the payload is one object from one resolver — a type that pretended
+   *  otherwise would make the two surfaces look like two entitlements. */
+  can_view_trends: boolean;
+  trend_windows: number[];
   reason: string;
 };
 

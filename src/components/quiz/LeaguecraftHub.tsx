@@ -184,6 +184,7 @@ export default function LeaguecraftHub({
   builder,
   rankedHistoryPreview,
   rankedReviewPreview,
+  trends,
   reviewState,
   ownedQuestionsPreview,
   rankedRole = null,
@@ -359,6 +360,13 @@ export default function LeaguecraftHub({
    * and REVIEW reads the real collection when a reader opens it.
    */
   ownedQuestionsPreview?: QuestionLibraryState;
+  /**
+   * PT1.8 — the Performance Trends pane's body, supplied by the host exactly
+   * as `builder` is. The hub neither knows nor decides who may see it: the
+   * pane draws its own paywall from the server's capability answer, and the
+   * workspace mounts it only while its tab is the open one.
+   */
+  trends?: React.ReactNode;
 }) {
   const primarySet = sets.find((s) => s.name === PRIMARY_PRACTICE_SET) ?? sets[0] ?? null;
   const secondarySets = sets.filter((s) => s.id !== primarySet?.id);
@@ -801,6 +809,10 @@ export default function LeaguecraftHub({
               ownedState={ownedQuestionsPreview}
             />
           }
+          /* Mounted only while Trends is the open pane, for the same reason
+             Review is: its reads are account-bound and nobody who has not
+             opened the pane should spend a request on them. */
+          trends={trends ?? null}
         />
       </section>
 
