@@ -797,6 +797,7 @@ describe("Academy Radio — live station clock", () => {
     await playRadio();
     const singleton = theAudio();
     play.mockClear();
+    load.mockClear();
     paused = true;
     wallClock += 17_000;
 
