@@ -174,6 +174,11 @@ export const ADMIN_AREAS: AdminArea[] = [
     description: "What Mogzy publishes: blog, broadcast, video, social captures and graphics.",
     sections: [
       { id: "blog", label: "Blog", summary: "Public blog authoring and publication." },
+      {
+        id: "academy-updates",
+        label: "Academy Updates",
+        summary: "The /lol Hall's announcements: write, publish, and the master switch.",
+      },
       { id: "broadcast", label: "Broadcast", summary: "The live broadcast control room and its capture surfaces." },
       { id: "video-social", label: "Video & Social", summary: "Video export commands, render harness, content studio." },
       { id: "graphics", label: "Graphics", summary: "Stat-graphic and race-video explorers." },
@@ -1299,6 +1304,29 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     authorization: "AdminRoute — unchanged.",
     notes: "Reached from the list and from the in-context edit link on a published post, which stays.",
+  },
+  {
+    id: "academy-updates",
+    title: "Academy Updates",
+    description:
+      "Write, publish and withdraw the announcements shown on the Academy Hall, and turn the whole surface on or off. Database-backed — no deploy.",
+    area: "studio",
+    section: "academy-updates",
+    kind: "route",
+    path: "/admin/academy-updates",
+    // Genuinely new in WHATSNEW2, not a relocation: before this the updates and
+    // the switch lived in src/lib/lol/academy-updates.ts and had no admin
+    // surface at all.
+    oldLocation: "src/lib/lol/academy-updates.ts (source constants, no UI)",
+    disposition: "KEEP",
+    dangerLevel: "mutates-production",
+    warning:
+      "Publishes and unpublishes announcements shown to every visitor on /lol, and controls whether the surface appears at all.",
+    status: "Production",
+    authorization:
+      "AdminRoute (layout) + AdminAuthGate; enforced by RLS — has_role(auth.uid(),'admin') on public.academy_updates and public.app_settings.",
+    notes:
+      "The master switch is one app_settings row (academy_updates_enabled), read by the Hall through the shared platform-policy contract. Its control lives here rather than on /admin/platform-policies so the switch sits beside the updates it governs.",
   },
   {
     id: "broadcast-studio",

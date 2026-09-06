@@ -26,6 +26,10 @@ const mocks = vi.hoisted(() => ({
   settingsLoading: false,
   autoPopupEnabled: true,
   completionRequiredForNewUsers: true,
+  // WHATSNEW2's master switch. OFF is production, so every pre-existing
+  // expectation in this file — including the "renders nothing" ones — holds
+  // unchanged.
+  academyUpdatesEnabled: false,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -45,6 +49,13 @@ vi.mock("@/components/lol/broadcast/usePatchBriefFeed", async () => {
   >("@/components/lol/broadcast/broadcast-content");
   return { usePatchBriefFeed: () => INITIAL_BROADCAST_FEED };
 });
+// The Academy Updates database boundary. The Hall must be able to render with
+// the feature both off and on without a Supabase client, and "off makes no
+// query" is itself an assertion below.
+const academyStore = vi.hoisted(() => ({ listPublishedUpdates: vi.fn() }));
+vi.mock("@/lib/lol/academy-updates-store", () => ({
+  listPublishedUpdates: academyStore.listPublishedUpdates,
+}));
 vi.mock("@/components/ads/AdSlot", () => ({
   default: ({ placement }: { placement: string }) => <div data-testid={`ad-${placement}`} />,
 }));
@@ -53,20 +64,29 @@ vi.mock("@/components/lol/LolWelcomeIntro", () => ({
     <div data-testid="lol-welcome-popup" data-dismissible={String(!!dismissible)} />
   ),
 }));
-vi.mock("@/hooks/useAppSettings", () => ({
-  useAppSettings: () => ({
-    loading: mocks.settingsLoading,
-    settings: {
-      policy: {
-        combatSim: { tokensRequiredForNonPro: true },
-        tutorial: {
-          autoPopupEnabled: mocks.autoPopupEnabled,
-          completionRequiredForNewUsers: mocks.completionRequiredForNewUsers,
+// Built from the real defaults rather than hand-listed, so a policy field added
+// later cannot leave this mock returning a half-shaped object — which is
+// exactly how a partial mock here broke every test in this file once.
+vi.mock("@/hooks/useAppSettings", async () => {
+  const { DEFAULT_PLATFORM_POLICY } = await vi.importActual<
+    typeof import("@/lib/platform-policy/policy")
+  >("@/lib/platform-policy/policy");
+  return {
+    useAppSettings: () => ({
+      loading: mocks.settingsLoading,
+      settings: {
+        policy: {
+          ...DEFAULT_PLATFORM_POLICY,
+          tutorial: {
+            autoPopupEnabled: mocks.autoPopupEnabled,
+            completionRequiredForNewUsers: mocks.completionRequiredForNewUsers,
+          },
+          academy: { updatesEnabled: mocks.academyUpdatesEnabled },
         },
       },
-    },
-  }),
-}));
+    }),
+  };
+});
 vi.mock("@/hooks/useRankedTutorialStatus", () => ({
   useRankedTutorialStatus: () => ({
     loading: mocks.tutorial.loading,
@@ -116,6 +136,9 @@ beforeEach(() => {
   mocks.settingsLoading = false;
   mocks.autoPopupEnabled = true;
   mocks.completionRequiredForNewUsers = true;
+  mocks.academyUpdatesEnabled = false;
+  academyStore.listPublishedUpdates.mockReset();
+  academyStore.listPublishedUpdates.mockResolvedValue([]);
   try {
     sessionStorage.clear();
   } catch {
@@ -1254,11 +1277,15 @@ describe("LolHub — the painted Academy Commons", () => {
 });
 
 /**
- * WHATSNEW1 — Academy Updates is built but dormant. These assertions are the
- * production contract: with the master switch off the Hall must be byte-for-
- * byte what it was before the feature existed.
+ * Academy Updates — off in production. These assertions are the production
+ * contract: with the master switch off the Hall must be byte-for-byte what it
+ * was before the feature existed.
+ *
+ * WHATSNEW2 moved the switch from a source constant into `app_settings`, so
+ * "off" is now a value the mocked policy carries rather than a compiled-in
+ * `false`. The assertions themselves are unchanged, which is the point.
  */
-describe("Academy Updates (WHATSNEW1) — dormant in production", () => {
+describe("Academy Updates — off in production", () => {
   it("puts no updates affordance anywhere in the Hall", () => {
     renderHub();
     expect(screen.queryByTestId("academy-updates-mark")).toBeNull();
@@ -1292,5 +1319,62 @@ describe("Academy Updates (WHATSNEW1) — dormant in production", () => {
     const guide = screen.getByTestId("mogzy-guide-lean");
     const lane = guide.closest("[aria-hidden]")!.parentElement!;
     expect(lane.children).toHaveLength(2); // the centerpiece, and the guide
+  });
+
+  it("queries the updates table not once while the switch is off", () => {
+    // "Off" must be free, not merely invisible: a disabled feature that still
+    // costs the Hall a round trip on every load is not disabled enough.
+    renderHub();
+    expect(academyStore.listPublishedUpdates).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The switched-on path, end to end through the Hall: the policy row says on,
+ * the table returns a published notice, and the mark appears where WHATSNEW1
+ * put it. This is the wiring WHATSNEW2 added, and nothing else about the Hall
+ * moves with it.
+ */
+describe("Academy Updates — on, with a published notice", () => {
+  const NOTICE = {
+    id: "row-1",
+    date: "2026-09-05",
+    title: "Ranked is open",
+    body: "You can now queue for a ranked match.",
+    published: true,
+  };
+
+  it("mounts the mark once the switch is on and the read returns a notice", async () => {
+    mocks.academyUpdatesEnabled = true;
+    academyStore.listPublishedUpdates.mockResolvedValue([NOTICE]);
+    renderHub();
+    await waitFor(() =>
+      expect(screen.getAllByTestId("academy-updates-mark").length).toBeGreaterThan(0),
+    );
+    expect(academyStore.listPublishedUpdates).toHaveBeenCalled();
+  });
+
+  it("still renders nothing when the switch is on but the read comes back empty", async () => {
+    // Fails closed. Covers an empty table, an RLS refusal and a network error
+    // alike, because the store resolves all three to an empty list.
+    mocks.academyUpdatesEnabled = true;
+    academyStore.listPublishedUpdates.mockResolvedValue([]);
+    const { container } = renderHub();
+    await waitFor(() => expect(academyStore.listPublishedUpdates).toHaveBeenCalled());
+    expect(container.querySelectorAll("[data-testid^='academy-updates']")).toHaveLength(0);
+  });
+
+  it("leaves the guide's aria-hidden lane untouched when it does appear", async () => {
+    // The mark is a focusable, labelled button; it must never end up inside the
+    // decorative subtree the Hall marks aria-hidden.
+    mocks.academyUpdatesEnabled = true;
+    academyStore.listPublishedUpdates.mockResolvedValue([NOTICE]);
+    renderHub();
+    await waitFor(() =>
+      expect(screen.getAllByTestId("academy-updates-mark").length).toBeGreaterThan(0),
+    );
+    const guide = screen.getByTestId("mogzy-guide-lean");
+    const hiddenLane = guide.closest("[aria-hidden]")!;
+    expect(hiddenLane.querySelector("[data-testid='academy-updates-mark']")).toBeNull();
   });
 });

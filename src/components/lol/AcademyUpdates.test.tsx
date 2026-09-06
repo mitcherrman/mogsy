@@ -1,18 +1,17 @@
 /**
- * WHATSNEW1 — Academy Updates.
+ * Academy Updates — the Hall surface.
  *
- * The dormant contract comes first: the whole point of shipping this disabled
- * is that the Hall must render exactly as it does today, so "nothing at all"
- * is the behaviour with the most tests on it.
+ * The dormant contract comes first: the Hall must render exactly as it does
+ * with the feature off, so "nothing at all" is the behaviour with the most
+ * tests on it. WHATSNEW2 changed only where the two inputs come from, so every
+ * presentation test below is WHATSNEW1's, unchanged — which is the point.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AcademyUpdates from "./AcademyUpdates";
 import {
-  ACADEMY_UPDATES,
-  ACADEMY_UPDATES_ENABLED,
   getPublishedUpdates,
   isAcademyUpdatesActive,
   resolveUpdateCta,
@@ -20,6 +19,14 @@ import {
 } from "@/lib/lol/academy-updates";
 import { hasUnseenUpdate, readSeenUpdateId } from "@/lib/lol/academy-updates-seen";
 import { installLocalStorageStub } from "@/test/localStorageStub";
+
+// The database boundary. Its own contract — "every failure resolves to an empty
+// list" — is tested in academy-updates-store.test.ts; here it is a seam, so the
+// component's fetch path can be driven without a Supabase client.
+const store = vi.hoisted(() => ({ listPublishedUpdates: vi.fn() }));
+vi.mock("@/lib/lol/academy-updates-store", () => ({
+  listPublishedUpdates: store.listPublishedUpdates,
+}));
 
 const resetLocalStorage = installLocalStorageStub();
 
@@ -56,22 +63,89 @@ function renderUpdates(props: Parameters<typeof AcademyUpdates>[0] = {}) {
   );
 }
 
-beforeEach(() => resetLocalStorage());
+beforeEach(() => {
+  resetLocalStorage();
+  store.listPublishedUpdates.mockReset();
+  store.listPublishedUpdates.mockResolvedValue([]);
+});
 afterEach(() => cleanup());
 
-describe("the shipped default", () => {
-  it("ships with the master switch off", () => {
-    expect(ACADEMY_UPDATES_ENABLED).toBe(false);
-  });
-
-  it("has no published entries authored, so it is inert twice over", () => {
-    expect(getPublishedUpdates(ACADEMY_UPDATES)).toEqual([]);
-    expect(isAcademyUpdatesActive(ACADEMY_UPDATES, true)).toBe(false);
-  });
-
-  it("renders nothing whatsoever with the real module authority", () => {
+describe("the default mount", () => {
+  it("renders nothing when told nothing", () => {
+    // A mount that says neither "enabled" nor "here are the notices" is the
+    // fail-closed case, and it must be silent.
     const { container } = renderUpdates();
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("holds no update list of its own: the module exports none", async () => {
+    // WHATSNEW2's whole purpose. Two production authorities — an array in
+    // source and a table in Supabase — is the failure being removed, so the
+    // absence of the array is asserted, not merely assumed.
+    const module = await import("@/lib/lol/academy-updates");
+    expect("ACADEMY_UPDATES" in module).toBe(false);
+    expect("ACADEMY_UPDATES_ENABLED" in module).toBe(false);
+  });
+
+  it("fails closed on an empty list whatever the switch says", () => {
+    expect(isAcademyUpdatesActive([], true)).toBe(false);
+    expect(getPublishedUpdates([])).toEqual([]);
+  });
+});
+
+describe("reading from the database", () => {
+  it("makes no query at all while the feature is off", () => {
+    renderUpdates({ enabled: false });
+    expect(store.listPublishedUpdates).not.toHaveBeenCalled();
+  });
+
+  it("fetches published updates once the switch is on, and renders them", async () => {
+    store.listPublishedUpdates.mockResolvedValue([NEWEST]);
+    renderUpdates({ enabled: true });
+    await waitFor(() => expect(screen.getByTestId("academy-updates-mark")).toBeInTheDocument());
+    expect(store.listPublishedUpdates).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId("academy-updates-mark"));
+    expect(screen.getByText(NEWEST.title)).toBeInTheDocument();
+  });
+
+  it("keeps the database order, newest first", async () => {
+    store.listPublishedUpdates.mockResolvedValue([NEWEST, OLDER]);
+    renderUpdates({ enabled: true });
+    await waitFor(() => expect(screen.getByTestId("academy-updates-mark")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("academy-updates-mark"));
+    expect(
+      screen.getAllByTestId("academy-update-entry").map((el) => el.getAttribute("data-update-id")),
+    ).toEqual([NEWEST.id, OLDER.id]);
+  });
+
+  it("renders nothing when the read comes back empty — a failed read included", async () => {
+    // The store converts every failure into an empty list, so this one case
+    // covers a network error, an RLS refusal and an unapplied migration alike.
+    store.listPublishedUpdates.mockResolvedValue([]);
+    const { container } = renderUpdates({ enabled: true });
+    await waitFor(() => expect(store.listPublishedUpdates).toHaveBeenCalled());
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows nothing while the query is still in flight", async () => {
+    let release: (v: AcademyUpdate[]) => void = () => {};
+    store.listPublishedUpdates.mockReturnValue(
+      new Promise<AcademyUpdate[]>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { container } = renderUpdates({ enabled: true });
+    // Not a spinner, not a placeholder, not an empty panel: the Hall must be
+    // undisturbed until there is genuinely something to say.
+    expect(container).toBeEmptyDOMElement();
+    release([NEWEST]);
+    await waitFor(() => expect(screen.getByTestId("academy-updates-mark")).toBeInTheDocument());
+  });
+
+  it("never queries when the caller supplies its own notices", () => {
+    renderUpdates({ enabled: true, updates: [NEWEST] });
+    expect(screen.getByTestId("academy-updates-mark")).toBeInTheDocument();
+    expect(store.listPublishedUpdates).not.toHaveBeenCalled();
   });
 });
 

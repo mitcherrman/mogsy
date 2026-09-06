@@ -152,6 +152,10 @@ const AdminArenaPage = lazy(() => import("./pages/admin/areas/AdminArenaPage"));
 // Admin Platform Policies — global Combat Sim token + tutorial switches.
 const AdminPlatformPolicies = lazy(() => import("./pages/admin/AdminPlatformPolicies"));
 
+// WHATSNEW2 — the owner's Academy Updates desk: write, publish, withdraw, and
+// the surface's master switch. Database-backed; no code edit publishes a notice.
+const AdminAcademyUpdates = lazy(() => import("./pages/admin/AdminAcademyUpdates"));
+
 // ADM2 Phase A — master-admin user and bot directory.
 const AdminUserDirectory = lazy(() => import("./pages/admin/AdminUserDirectory"));
 
@@ -455,6 +459,7 @@ const App = () => (
                     <Route path="about" element={<Suspense fallback={<RouteFallback />}><AdminAbout /></Suspense>} />
                     <Route path="diagnostics" element={<Suspense fallback={<RouteFallback />}><AdminDiagnostics /></Suspense>} />
                     <Route path="platform-policies" element={<Suspense fallback={<RouteFallback />}><AdminPlatformPolicies /></Suspense>} />
+                    <Route path="academy-updates" element={<Suspense fallback={<RouteFallback />}><AdminAcademyUpdates /></Suspense>} />
                     <Route path="quiz-broadcast" element={<Suspense fallback={<RouteFallback />}><AdminQuizBroadcast /></Suspense>} />
                     <Route path="quiz-video-export" element={<Suspense fallback={<RouteFallback />}><AdminVideoExport /></Suspense>} />
                     <Route path="combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesAdmin /></Suspense>} />

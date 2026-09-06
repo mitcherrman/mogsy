@@ -877,8 +877,12 @@ export default function LolHub() {
                   The positioning layer therefore lives INSIDE the component,
                   not here: an empty div left behind at this level is exactly
                   the "hidden region" the dormant contract forbids.
-                  See src/lib/lol/academy-updates.ts. */}
-              <AcademyUpdates />
+                  See src/lib/lol/academy-updates.ts.
+
+                  WHATSNEW2: the switch comes from the policy object this page
+                  already fetched for the tutorial gate, so the feature costs
+                  the Hall no request of its own while it is off. */}
+              <AcademyUpdates enabled={settings.policy.academy.updatesEnabled} />
             </div>
 
             {renderShelvedColumn(
@@ -909,7 +913,7 @@ export default function LolHub() {
               Placed after the four destinations so primary navigation keeps
               the top of the list, and it renders nothing at all while the
               feature is disabled. */}
-          <AcademyUpdates variant="mobile" />
+          <AcademyUpdates variant="mobile" enabled={settings.policy.academy.updatesEnabled} />
 
           {/* Mobile Academy Broadcast — the stacked magic-book card with the
               radio dock beneath it, after the four destinations so primary
