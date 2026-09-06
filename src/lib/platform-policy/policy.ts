@@ -26,6 +26,10 @@ export const POLICY_KEYS = {
   playModeRankedVisible: "play_mode_ranked_visible",
   playModeDailyChallengeVisible: "play_mode_daily_challenge_visible",
   playModeInviteVisible: "play_mode_invite_visible",
+  // WHATSNEW2 — the /lol Hall's Academy Updates surface. This row REPLACED the
+  // `ACADEMY_UPDATES_ENABLED` source constant WHATSNEW1 shipped: it is the only
+  // production control, and it is changed from Admin, not from a commit.
+  academyUpdatesEnabled: "academy_updates_enabled",
 } as const;
 
 export interface PlatformPolicy {
@@ -91,6 +95,27 @@ export interface PlatformPolicy {
       invite: boolean;
     };
   };
+  /**
+   * WHATSNEW2 — the /lol Hall's owner-authored news channel.
+   *
+   * `updatesEnabled` is the MASTER SWITCH and nothing else: it says whether the
+   * Hall may show the Academy Updates mark at all. It is not a promise that
+   * anything is there to read. The surface additionally requires at least one
+   * PUBLISHED row in `public.academy_updates`, so "on with an empty table"
+   * renders exactly what "off" renders — nothing.
+   *
+   * It lives here, in the policy contract read from `app_settings`, for one
+   * concrete reason: LolHub already calls `useAppSettings()`, so the Hall
+   * learns the switch's state from a request it was making anyway. A separate
+   * settings read would add a round trip and a visible flash to a surface whose
+   * whole design brief is that it must not disturb the room.
+   *
+   * Its control is on /admin/academy-updates, beside the updates it governs —
+   * NOT on /admin/platform-policies. One switch, one home.
+   */
+  academy: {
+    updatesEnabled: boolean;
+  };
 }
 
 /**
@@ -120,6 +145,11 @@ export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
   // navbar is: an unreadable settings table must not silently empty the one
   // menu the lobby's primary action opens.
   play: { modes: { ranked: true, dailyChallenge: true, invite: true } },
+  // WHATSNEW2 defaults OFF, and that is what reproduces production: the feature
+  // has never been enabled. Like `showBotLabels`, false INTRODUCES no path — it
+  // is the state the Hall has always been in — so an unreadable settings table
+  // correctly means "no announcements", never a surface appearing by accident.
+  academy: { updatesEnabled: false },
 };
 
 export interface AppSettingRow {
@@ -148,6 +178,7 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
     navigation: { ...DEFAULT_PLATFORM_POLICY.navigation },
     community: { ...DEFAULT_PLATFORM_POLICY.community },
     play: { modes: { ...DEFAULT_PLATFORM_POLICY.play.modes } },
+    academy: { ...DEFAULT_PLATFORM_POLICY.academy },
   };
   if (!rows) return policy;
 
@@ -184,6 +215,10 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
       case POLICY_KEYS.playModeInviteVisible:
         policy.play.modes.invite = readEnabled(
           row.value, DEFAULT_PLATFORM_POLICY.play.modes.invite);
+        break;
+      case POLICY_KEYS.academyUpdatesEnabled:
+        policy.academy.updatesEnabled = readEnabled(
+          row.value, DEFAULT_PLATFORM_POLICY.academy.updatesEnabled);
         break;
     }
   }

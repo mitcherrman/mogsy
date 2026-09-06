@@ -9,10 +9,11 @@ import {
 const KEY = POLICY_KEYS;
 
 describe("defaults reproduce current production behaviour", () => {
-  it("is all-on, except bot labels", () => {
-    // showBotLabels is the one key defaulting FALSE, and that is what
-    // reproduces production: there is no user-facing bot label today, so the
-    // toggle introduces the "on" path rather than suppressing an existing one.
+  it("is all-on, except bot labels and Academy Updates", () => {
+    // The two FALSE defaults are the two keys that INTRODUCE a path rather than
+    // suppressing an existing one — there is no user-facing bot label today,
+    // and the Hall has never shown an announcement — so in both cases false is
+    // what reproduces production and cannot be a regression.
     expect(DEFAULT_PLATFORM_POLICY).toEqual({
       combatSim: { tokensRequiredForNonPro: true },
       tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
@@ -21,11 +22,61 @@ describe("defaults reproduce current production behaviour", () => {
       // PLAY1: all three match-entry options visible, which is the intended
       // presentation of the Ranked lobby's PLAY scroll.
       play: { modes: { ranked: true, dailyChallenge: true, invite: true } },
+      // WHATSNEW2: off, so an unreadable settings table never makes an
+      // announcement surface appear by accident.
+      academy: { updatesEnabled: false },
     });
   });
 
   it("defaults the navbar to visible, so navigation is never lost by default", () => {
     expect(DEFAULT_PLATFORM_POLICY.navigation.globalNavbarVisible).toBe(true);
+  });
+
+  it("defaults Academy Updates off, which is the state the Hall has always been in", () => {
+    expect(DEFAULT_PLATFORM_POLICY.academy.updatesEnabled).toBe(false);
+  });
+});
+
+describe("the Academy Updates master switch", () => {
+  const rows = (value: unknown) => [{ key: POLICY_KEYS.academyUpdatesEnabled, value }];
+
+  it("maps to the app_settings key the migration seeds", () => {
+    expect(POLICY_KEYS.academyUpdatesEnabled).toBe("academy_updates_enabled");
+  });
+
+  it("parses an explicit true", () => {
+    expect(parsePlatformPolicy(rows({ enabled: true })).academy.updatesEnabled).toBe(true);
+  });
+
+  it("parses an explicit false", () => {
+    expect(parsePlatformPolicy(rows({ enabled: false })).academy.updatesEnabled).toBe(false);
+  });
+
+  for (const [label, value] of [
+    ["a missing row", undefined],
+    ["a null value", null],
+    ["a bare boolean", true],
+    ["a string", "true"],
+    ["an array", [true]],
+    ["a missing enabled field", {}],
+    ["a non-boolean enabled field", { enabled: "yes" }],
+  ] as [string, unknown][]) {
+    it(`stays off on ${label}`, () => {
+      const parsed =
+        value === undefined ? parsePlatformPolicy([]) : parsePlatformPolicy(rows(value));
+      expect(parsed.academy.updatesEnabled).toBe(false);
+    });
+  }
+
+  it("leaves every other policy field untouched when it is on", () => {
+    // The switch governs one surface. It must not become a lever on anything
+    // else by sharing a parse path with them.
+    const parsed = parsePlatformPolicy(rows({ enabled: true }));
+    expect(parsed.combatSim).toEqual(DEFAULT_PLATFORM_POLICY.combatSim);
+    expect(parsed.tutorial).toEqual(DEFAULT_PLATFORM_POLICY.tutorial);
+    expect(parsed.navigation).toEqual(DEFAULT_PLATFORM_POLICY.navigation);
+    expect(parsed.community).toEqual(DEFAULT_PLATFORM_POLICY.community);
+    expect(parsed.play).toEqual(DEFAULT_PLATFORM_POLICY.play);
   });
 });
 

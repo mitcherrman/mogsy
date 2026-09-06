@@ -1,9 +1,513 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 20 (WHATSNEW1 — Academy Updates, BUILT AND DORMANT) is at the
-     top of this file. Revision 19 was the Commons visual polish; 18 the
-     painted Commons; 17 the two-screen Academy; 16 the Mogzy Premium
-     promotion module; 15 the below-the-fold rework. -->
+<!-- Revision 21 (WHATSNEW2 — Academy Updates become admin-managed) is at the
+     top of this file. Revision 20 was WHATSNEW1, which built the surface;
+     19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
+     Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
+     rework. -->
+
+## Revision 2026-09-06 — WHATSNEW2 / ACADEMY UPDATES, ADMIN-MANAGED — **MIGRATION APPLIED, LIVE-VERIFIED, STILL OFF**
+
+**Status:** complete on branch `whatsnew2`, worktree
+`/Users/macmoney/mogsy-wt-whatsnew2`, based on `origin/main` @ `d979bf47`.
+**The migration is APPLIED to the production database (2026-09-06) and every
+RLS rule has been exercised against it. The feature is still OFF and there are
+zero announcements.** The live run found and fixed one real defect — see §13.
+
+> **OWNERSHIP, from 2026-09-06.** All further **Lovable, Supabase dashboard, SQL
+> editor, live-database, migration-application, live-RLS and deployment work for
+> WHATSNEW2 is owned by ChatGPT.** This document's live sections (§13, and the
+> live state in §15) are a record of work already completed and independently
+> re-verified by the owner — they are not a standing licence for anyone else to
+> operate the database. Anything left to do against live infrastructure belongs
+> to that owner, not to this branch. What
+changed is only *where the switch and the notices live*. Nothing in Revisions
+15–20 was touched: the four books, Patch Report, the radio, the Hall shelves,
+the background crop, the entrance choreography, Mogzy's position and size, the
+Commons, scroll snap, the scroll hints, Premium, Pro Play, community links and
+the global footer are all unchanged, and the mark, the parchment notice and the
+seen-state behaviour are byte-identical to what WHATSNEW1 approved.
+
+### 1. Objective
+
+WHATSNEW1 made `src/lib/lol/academy-updates.ts` the authority: the master
+switch was a constant and the announcements were an array, both compiled into
+the build. Publishing an announcement therefore meant editing source, and
+turning the feature on meant a deploy.
+
+WHATSNEW2 moves both into the database, so the owner's whole workflow is:
+
+> Admin → Studio → Academy Updates → write → publish → turn the switch on
+
+Every one of those takes effect on a visitor's **next page load**. No commit,
+no deploy, no Lovable publish.
+
+### 2. Storage authority
+
+Two stores, both of which already existed. **No new settings system, no new
+admin gate, no backend API, no CMS framework.**
+
+| What | Where | Why there |
+|---|---|---|
+| Master switch | one row in `public.app_settings`, key `academy_updates_enabled`, value `{"enabled": bool}` | Mogzy's one global-settings store. It is parsed by the existing pure contract `src/lib/platform-policy/policy.ts`, which means `LolHub` gets the switch out of the `useAppSettings()` call it was **already making** — no extra request, no loading flash. |
+| The announcements | new table `public.academy_updates` | Modelled column-for-column on the conventions `public.blog_posts` established: published-rows-are-public RLS, an admin FOR ALL policy, and the shared `update_updated_at_column()` trigger. |
+
+```sql
+CREATE TABLE public.academy_updates (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title        text NOT NULL DEFAULT '',
+  body         text NOT NULL DEFAULT '',
+  publish_date date NOT NULL DEFAULT CURRENT_DATE,
+  published    boolean NOT NULL DEFAULT false,
+  cta_label    text,
+  cta_href     text,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+```
+
+Three deliberate choices worth recording:
+
+- **`published` is a boolean, not a status enum.** It maps 1:1 onto the
+  `published` field WHATSNEW1's selectors already read, so those selectors and
+  their tests survive untouched — and it leaves no room for the `scheduled`
+  state that was explicitly out of scope.
+- **`publish_date` is a `date`, not a `timestamptz`.** It is written by hand,
+  sorted on, and rendered as "5 September 2026". It is a calendar date, not an
+  instant, and a timestamptz would drag a timezone into a value that has none.
+- **`id` is a server-generated uuid that is never rewritten.** See §7 — this is
+  the whole reason a correction is not an announcement.
+
+Nothing else was added. No slug, no author, no tags, no view counter.
+
+### 3. Security model
+
+`supabase/migrations/20260906120000_whatsnew2_academy_updates.sql`:
+
+```sql
+-- a visitor: published rows, and nothing else
+CREATE POLICY ... FOR SELECT USING (published = true);
+-- an admin: every row, drafts included
+CREATE POLICY ... FOR SELECT USING (public.has_role(auth.uid(),'admin'::app_role));
+-- an admin: create / edit / publish / unpublish / delete
+CREATE POLICY ... FOR ALL
+  USING      (public.has_role(auth.uid(),'admin'::app_role))
+  WITH CHECK (public.has_role(auth.uid(),'admin'::app_role));
+```
+
+**The draft guarantee is Postgres's, not the client's.** A draft's title and
+body are never sent to a non-admin session, so the promise does not depend on
+the frontend remembering to filter. `listPublishedUpdates()` does add
+`.eq("published", true)`, but that narrows a permission the caller already
+lacks — delete the line and a visitor still sees only published rows.
+
+`has_role(uid,'admin')` already returns true for `master_admin` (migration
+`20260223120918`), so this one predicate covers both roles and the owner cannot
+be locked out by holding the higher role and not the lower one.
+
+**Both admin policies are scoped `TO authenticated`, and that is load-bearing.**
+EXECUTE on `public.has_role` is granted to `authenticated` but **not** to
+`anon`. An admin policy left at the default `TO PUBLIC` lands in the anon role's
+policy set, so an anonymous visitor's read of *published* rows fails with
+`42501 permission denied for function has_role` — the public surface breaks on a
+policy that was only ever meant for admins. `public.blog_posts` already does
+this live (its policies are `TO authenticated` even though its migration file
+does not say so), which is why the shape could not be copied from source and had
+to be measured. Two tests pin it, in both directions: the admin policies must
+carry `TO authenticated`, and the public read policy must **not**. `AdminRoute`
+and `AdminAuthGate` remain client-side chrome; they stop the UI advertising a
+destination the viewer cannot use, and they are not the boundary.
+
+The switch rides the `app_settings` policies that were already there: public
+SELECT, admin-only INSERT/UPDATE, with `updated_by` stamped by the existing
+`stamp_app_settings_audit` trigger from the verified session rather than the
+client. **No service-role key anywhere in the frontend** — asserted by a test.
+
+Only two rows' worth of information is exposed to the public: published
+announcements, and the one boolean saying whether the surface is on. The
+existing public read of `app_settings` is unchanged; no unrelated setting was
+widened.
+
+### 4. Admin route and IA
+
+`/admin/academy-updates` — a child of the `/admin` layout route, so it inherits
+that route's gate and carries **no `AdminRoute` of its own** (per the Admin
+reorganization: re-adding one inside the shell is the pattern that was removed).
+
+Listed in `src/lib/admin/admin-registry.ts` as tool `academy-updates` under
+**Studio**, in a new `academy-updates` section beside Blog. Registered
+`dangerLevel: "mutates-production"`, because publishing changes what every
+visitor sees. `admin-registry.routes.test.ts` parses `App.tsx` and fails if the
+registry and the router ever disagree.
+
+### 5. Authoring workflow
+
+The page is one screen. Top to bottom:
+
+1. **Status band.** `Status: ON|OFF`, then a sentence stating the *conclusion* —
+   what a visitor can see right now — then the published and draft counts. The
+   conclusion is separate from the switch on purpose: **"on with nothing
+   published" shows exactly as much as "off"**, and an owner reading only the
+   switch would draw the wrong inference. Both of those states print their own
+   sentence.
+2. **The switch**, labelled "Show on /lol".
+3. **New update** → an inline editor: title, date, body, optional button label
+   and link, a Save button, and a live preview.
+4. **The list** — `Status | Date | Title | Actions`, newest first, drafts and
+   published visually distinct (a filled green chip vs a dashed outline).
+   Actions are edit, publish/unpublish, delete.
+
+**No rich text**, by decision: the Hall renders the body as plain text, so
+anything richer would be a promise the surface does not keep.
+
+**The preview mounts the real `AcademyUpdates` component**, not a copy of it —
+so there is nothing to keep in step and it cannot drift. It uses the `mobile`
+variant, because that one is an ordinary block in the flow while the `hall`
+variant positions itself against Mogzy, who is not on an admin page. That is
+the *only* reason the component gained a prop: `mobileWrapperClassName`, which
+exists to drop the `md:hidden` the Hall needs and the admin page does not. The
+Hall passes nothing and is unaffected.
+
+Writing rules the page enforces:
+
+- Title and body are required. A blank notice cannot be saved, and cannot be
+  published even if a row somehow already exists blank — a draft is allowed to
+  be empty, a published notice is not.
+- Creating always produces a **draft**. Publishing is a separate act on a row
+  that already exists and can be read back, so nothing reaches the Hall on the
+  same click that created it.
+- Editing never touches `published`, and publishing never touches content.
+- The CTA is validated against the *same rule the renderer applies*, by asking
+  `resolveUpdateCta` about a probe entry — one rule, so the form and the
+  renderer cannot drift. An in-app route (`/…`) or an absolute `https://` URL
+  is accepted; anything else, `javascript:` and bare `http:` included, is
+  refused. Both fields blank is valid and means "no button"; one filled and the
+  other blank is refused.
+
+### 6. Master-switch workflow
+
+Turning **ON** is confirmed, and the confirmation states the real consequence,
+including the awkward case: *"Nothing is published yet, so visitors will still
+see nothing until you publish an update."* Turning **OFF** is not confirmed —
+it withdraws a surface, which is always the safe direction and is instantly
+reversible.
+
+Ordinary editing is never confirmed. Only deletion is, being permanent.
+
+Neither the switch nor any row write is **optimistic**: the page re-reads and
+displays the server's answer, never its own assumption. A refused write leaves
+the displayed state exactly as it was and prints the refusal, so the status
+line can never claim a feature is live when Postgres said no.
+
+### 7. Seen state — audited, and deliberately unchanged
+
+Still `lol:academy-updates:seen_id` in localStorage, still one id, still
+browser-local. **Not migrated to Supabase or to account state.**
+
+The audit the brief asked for, and its conclusion:
+
+- **Editing an old notice does NOT re-announce it.** The `id` is a uuid
+  generated once by the database and never rewritten, and the seen check is
+  `stored !== newestPublishedId`. A correction to a title, body, date or CTA
+  leaves the id alone, so a browser that had read it still has. Moving from
+  hand-written `YYYY-MM-DD-slug` ids to uuids preserves this exactly.
+- **Publishing something new DOES re-announce.** New row, new id, newest id
+  changes, the mark lights up. Intended.
+- **Two pre-existing quirks are preserved rather than "fixed".** Unpublishing
+  the newest notice makes an older one newest, which re-nudges everyone; and
+  back-dating an old notice above the current newest does the same. Both were
+  WHATSNEW1's semantics — flipping `published` in the array did the same thing —
+  both need a deliberate admin action, and changing either would be a
+  redesign of an approved surface. They are recorded here, not altered.
+
+### 8. Public read behaviour
+
+`LolHub` passes the switch down; `AcademyUpdates` fetches only when it reads
+true. So **with the feature off the Hall makes no query on this feature's
+behalf at all** — off is free, not merely invisible.
+
+The Hall mounts the feature twice (the desktop mark and the mobile row), which
+initially produced two identical requests per enabled load. `listPublishedUpdates`
+now coalesces concurrent callers onto one in-flight promise, cleared the moment
+it settles. That is request coalescing, **not caching**: a later visit still
+reads fresh rows, and a failed read is never remembered as an answer.
+
+Rows are validated, not trusted. A row without a string `id`, or whose
+`published` is not a boolean, is dropped — the id is the seen-state key and
+`published` is the draft guarantee restated, so a row that cannot answer either
+question is not a row to render. A half-written CTA (one field only) is dropped
+rather than rendered as a dead button.
+
+### 9. Failure behaviour
+
+**Fail closed, in every direction, onto the same nothing.** The switch off, the
+published list empty, the query rejected by RLS, the network down, the
+migration not yet applied, the payload malformed — all render identically: no
+mark, no panel, no empty wrapper, no layout shift, no spinner. The Hall is
+never blocked waiting: the read is fired from an effect and the surface simply
+stays absent until there is genuinely something to say.
+
+An unreadable `app_settings` leaves the policy on its fail-closed default of
+`false`, so an outage can never make an announcement surface appear.
+
+The admin page is the one place that *does* report failure, because an admin
+looking at an empty list needs to know whether it means "nothing written yet"
+or "the read failed" — those demand opposite responses.
+
+### 10. Migration from WHATSNEW1
+
+The migration inserts **zero announcements** and seeds the switch **off**.
+
+WHATSNEW1's two entries were labelled in their own source comment as "clearly
+marked examples for development and tests — not production copy", so they were
+not carried over even as drafts: throwaway text one click from being published
+is not a state worth creating. They survive as fixtures inside the test files,
+which is where they belonged.
+
+`ON CONFLICT (key) DO NOTHING` makes a re-run a no-op and, critically, never
+resets a value the owner has already changed in Admin.
+
+`src/lib/lol/academy-updates.ts` keeps the type, the ordering rule, the
+fail-closed activation rule and the CTA validators. It **no longer exports
+`ACADEMY_UPDATES` or `ACADEMY_UPDATES_ENABLED`**, and a test asserts their
+absence. Two production authorities is the failure this workstream existed to
+remove: an owner editing an array in source while the database said something
+else would have had no way to tell which one visitors were reading.
+
+### 11. Files
+
+| File | Change |
+|---|---|
+| `supabase/migrations/20260906120000_whatsnew2_academy_updates.sql` | **New.** The table, its RLS, its trigger, and the switch's seed row. |
+| `src/lib/lol/academy-updates-store.ts` | **New.** Every Supabase call this feature makes, in one file. |
+| `src/pages/admin/AdminAcademyUpdates.tsx` | **New.** The owner's desk. |
+| `src/lib/lol/academy-updates.ts` | Lost the update list and the enabled constant; kept types and selectors; gained `validateCtaHref` and `NO_ACADEMY_UPDATES`. |
+| `src/lib/platform-policy/policy.ts` | Added `POLICY_KEYS.academyUpdatesEnabled` and `policy.academy.updatesEnabled`, default `false`. |
+| `src/components/lol/AcademyUpdates.tsx` | Fetches published rows when enabled; `enabled` is now passed in; added `mobileWrapperClassName` for the admin preview. **No presentation change.** |
+| `src/pages/LolHub.tsx` | Two lines: each mount now passes `enabled={settings.policy.academy.updatesEnabled}`. |
+| `src/App.tsx` | One lazy import and one route, `academy-updates`, inside the `/admin` layout route. |
+| `src/lib/admin/admin-registry.ts` | One Studio section and one tool entry. |
+| `src/lib/lol/academy-updates-seen.ts` | **Untouched.** |
+| `src/index.css` | **Untouched.** |
+
+### 12. Tests — 475 passing across 19 files
+
+New: `academy-updates-store.test.ts` (28), `AdminAcademyUpdates.test.tsx` (38),
+`AdminAcademyUpdates.route.test.tsx` (9), `src/test/security/whatsnew2AcademyUpdates.test.ts` (19).
+Extended: `AcademyUpdates.test.tsx` 24 → 30, `LolHub.test.tsx` 81 → 85,
+`policy.test.ts` 36 → 48.
+
+Coverage by the brief's checklist: feature off → nothing; on with nothing
+published → nothing; drafts never render; published render; newest first; a
+failed fetch → nothing and the Hall unaffected; seen/unseen lifecycle
+preserved; internal, external and rejected CTAs. Admin: non-admin refused
+(signed-out, and signed-in without a role), admin and master_admin admitted, no
+flash while the check is in flight, create/edit/publish/unpublish/delete,
+validation, malformed CTA rejected, and the status line accurate in all four
+switch × content combinations. Database: the migration's policies parsed and
+asserted — one public SELECT that is `published = true` and carries no `OR`,
+every write policy admin-gated, the FOR ALL policy carrying both `USING` and
+`WITH CHECK`, the switch seeded off with `ON CONFLICT DO NOTHING`, and no
+announcement seeded at all.
+
+> The RLS tests are contract tests over the migration SQL. They are no longer
+> the only evidence: §13 records the same rules executed against the real
+> database with a real anonymous context and the real owner admin account.
+
+`tsc` reports 11 errors, all in the documented pre-existing baseline and none
+in a file this work touched. `eslint` is clean on every touched file.
+`vite build` succeeds.
+
+### 13. Live Supabase verification — migration applied 2026-09-06
+
+**Applied by hand in the Lovable Cloud SQL editor**, connected as `postgres`,
+wrapped in `BEGIN; … COMMIT;`, per `docs/fb1-feedback-rollout.md` and
+`docs/community-m2-m3-rollout.md`. The CLI was **not** used and the project was
+**not** linked: repo and remote ledger have ~117 drifted versions and a
+`db push` would replay them. Recorded afterwards as
+`supabase_migrations.schema_migrations` version `20260906120000`, name
+`whatsnew2_academy_updates`, created_by `sql-editor@whatsnew2`.
+
+Read-only preflight first, which confirmed every dependency the migration
+assumes actually exists live: `has_role(uuid,app_role)`,
+`update_updated_at_column()`, `stamp_app_settings_audit()`, `app_settings`,
+pgcrypto, PostgreSQL 17.6, connected as `postgres`, `academy_updates` absent and
+the switch row absent.
+
+#### 13.1 The defect the live run found
+
+The migration as first written created its two admin policies at the default
+`TO PUBLIC`. Against the real database that broke the **public** read:
+
+```
+anon (apikey only) → GET /academy_updates?published=eq.true
+  → 401 {"code":"42501","message":"permission denied for function has_role"}
+```
+
+The cause and the fix are in §3. Two details are worth keeping:
+
+* **`blog_posts` — the pattern this feature was modelled on — does not have the
+  bug, and its migration file cannot tell you why.** Live, its admin policies
+  carry `polroles = {16481}` (`authenticated`); mine carried `{0}` (PUBLIC).
+  That divergence exists only in the database, so no amount of reading the repo
+  would have surfaced it.
+* **An in-session `SET LOCAL ROLE anon` is NOT a faithful simulation** of a
+  PostgREST anon request. `blog_posts` fails that way too while succeeding over
+  REST, so it produces false positives. Only REST results were trusted here.
+
+The **existing** migration file was corrected rather than a second migration
+being added, so one file continues to describe the live database; the two
+corrective `DROP POLICY` / `CREATE POLICY` statements were then re-run live
+(idempotent by construction). Final live `polroles`: admin policies
+`authenticated`, public read `PUBLIC`.
+
+#### 13.2 Live RLS results
+
+Anonymous context (publishable key, no session), against a **real draft row and
+a real published row** created by the owner account — not against an empty
+table, which made the first UPDATE/DELETE attempts vacuous:
+
+| Check | Result |
+|---|---|
+| SELECT published rows | `[] → 200`, and the published row once it existed |
+| SELECT the draft (unfiltered) | `[]` — invisible |
+| SELECT the draft **by its exact id** | `[]` — invisible |
+| INSERT | `401` — `new row violates row-level security policy` |
+| UPDATE the real row | 0 rows affected; row verified **unchanged** afterwards |
+| DELETE the real row | 0 rows deleted; row verified **still present** afterwards |
+| PATCH the switch | `401` |
+| Unrelated `app_settings` reads | `200` — the existing public contract is untouched |
+
+Owner admin context (`mlmitchaman@gmail.com`, admin confirmed through the same
+`has_role` RPC `AdminRoute` uses), driven **in-page on mogzy.lol so the session
+token never left the browser**: create draft (`201`, `published:false` on
+create), read all including drafts, edit title/body/date/CTA (`200`,
+`updated_at` trigger fired), publish, unpublish, delete, and toggle the switch
+both ways (`updated_by` stamped by the trigger from the verified session).
+
+#### 13.3 Public end-to-end, against the live database
+
+Local WHATSNEW2 build, real production Supabase, ordinary **anonymous** visitor
+session — which is what a real visitor is, since `require_auth` is
+`{"enabled": false}` and the app signs everyone in anonymously.
+
+*Desktop, 1440×900:* the red `!` appears; disc **28×28**; hit target **44×44**;
+glyph `rgb(182, 58, 53)` at **17px**; the panel opens carrying the **database**
+row (entry `data-update-id` is the row's uuid); the CTA renders as an in-app
+link to `/lol/ranked`; seen-state flips on open — `aria-label` goes
+"Academy Updates — new" → "Academy Updates", the glyph drops to `rgb(58,44,18)`,
+and `lol:academy-updates:seen_id` stores **the database uuid**, which is the
+seen-state contract working on real ids. No horizontal overflow.
+
+*Mobile, 390×844:* the labelled row appears with a 44px hit height and opens the
+same database content. No horizontal overflow.
+
+*Request count:* **exactly one** `academy_updates` request despite both mounts —
+coalescing confirmed live.
+
+*Geometry:* the mark's measured centre is `793.1, 634.9` where WHATSNEW1
+recorded `800.6, 634.9`. **Not a regression.** This environment renders a 15px
+classic scrollbar, so the content centre is 712.5 rather than 720; Mogzy's own
+centre measures 712.5 and the mark sits **80.6px to his right** — the identical
+offset WHATSNEW1 recorded. The y coordinate is unchanged to the decimal.
+
+*Admin route gate, live:* an anonymous session navigating to
+`/admin/academy-updates` is refused and redirected to `/`; the page never
+mounts, no status band, no editor.
+
+#### 13.4 Fail-closed states, all three on the real database
+
+| State | Result |
+|---|---|
+| A — switch **OFF** + a published update | zero Academy Updates DOM nodes; central lane child count 2; all 35 book links intact |
+| B — switch **ON** + zero published updates | zero Academy Updates DOM nodes; lane child count 2 |
+| C — switch **ON** + a published update | mark, panel and CTA render from the database |
+
+#### 13.5 What was NOT verified, and why
+
+**The admin page was not driven through `AdminAuthGate` while authenticated.**
+The gate needs an admin Supabase session on the origin serving the WHATSNEW2
+build, which is `localhost`; that origin holds only an anonymous session, and
+signing in requires entering a password, which I will not do. Production cannot
+substitute, because `/admin/academy-updates` is not deployed there yet.
+
+What *is* covered instead: the gate provably refuses a non-admin live (§13.2);
+every database operation the page performs was executed against the real
+database with the real owner admin account and behaved exactly as the page
+expects; and the page's own 38 tests cover its states. The remaining gap is
+purely "a human clicking the real buttons behind the real gate", and it is
+cheapest to close after deploy, on mogzy.lol, where the owner is already signed
+in.
+
+#### 13.6 Two incidental findings
+
+* The Lovable Cloud SQL editor had a **leftover "MOGZY USER RESET" script** in
+  its buffer, building `doomed_users` / `doomed_profiles` from `auth.users` and
+  keeping only the owner's id. It was cleared, **not run**. Anyone opening that
+  editor and pressing Run would have executed it.
+* Lovable's own project view currently reports **"Build unsuccessful / Preview
+  is out of date"**, unrelated to this work.
+
+#### 13.7 Structural proof from the earlier pass, still valid
+
+Dormancy was proved structurally rather than by pixel diffing (two captures of
+`origin/main` against itself differ by 0.5–5.6% of pixels, because grain and
+gradients rasterise nondeterministically and champion art loads off the
+network): full rendered markup plus the measured box of all 422 elements plus
+`scrollHeight`, compared against `origin/main` at 1440×900, 1920×1080, 1440×768
+and 390×844 — identical at every viewport.
+
+### 14. Deployment requirements
+
+1. ~~**Apply the migration.**~~ **DONE 2026-09-06**, and recorded in the ledger.
+   The live database is the corrected `TO authenticated` shape.
+2. **Merge and publish** the frontend. Until then production is inert: the
+   deployed WHATSNEW1 build reads a compiled-in `false`, so the database switch
+   has no effect there whatsoever — which is exactly why the switch could safely
+   be toggled on and off during this verification.
+3. **Regenerate `src/integrations/supabase/types.ts`** — the table now exists, so
+   this is the first moment regeneration produces correct output. The single
+   documented cast in `academy-updates-store.ts` then becomes redundant and can
+   be deleted without touching a caller.
+4. **Deployed-admin smoke check — the one verification still outstanding.** After
+   merge and publish, sign in as an admin on mogzy.lol and walk
+   `/admin/academy-updates` once behind the real `AdminAuthGate`: confirm it
+   appears under Studio in the admin navigation, that STATUS reads **OFF** with
+   0 published, then create a draft, edit it, confirm the preview renders the
+   real notice, publish it, confirm the Published chip, and delete it again.
+   This is the gap §13.5 records and the only WHATSNEW2 check that a local
+   environment cannot close.
+5. **The owner turns it on.** A product decision, not a deployment step, and
+   nothing here presumes it.
+
+Steps 2 and 3 are ordinary frontend release work. Steps 1 and 4 touch live
+infrastructure and are **ChatGPT's**, per the ownership note at the top.
+
+### 15. Current final state
+
+**Production database, verified after cleanup — and independently re-verified by
+the owner on 2026-09-06, who confirmed every line below:**
+
+* `public.academy_updates` — exists, RLS enabled, **0 rows**
+* `academy_updates_enabled` — **`{"enabled": false}`**
+* policies — admin ×2 `TO authenticated`, public read `TO PUBLIC`
+* ledger — `20260906120000 / whatsnew2_academy_updates` recorded
+* anonymous read — `[] 200`; the public Hall renders **zero** Academy Updates UI
+
+The temporary verification announcement was deleted; no test copy remains and
+the feature is off. Frontend: 475 tests passing across 19 files, eslint clean on
+every touched file, `vite build` succeeds, `tsc` unchanged at the documented
+11-error baseline with nothing in a touched file. The migration file matches the
+live database.
+
+### 16. Next task
+
+None claimed. WHATSNEW2 is closed. The stop conditions hold: no analytics, no
+scheduled publishing, no notifications, no image uploads, no rich text, no
+generated announcements, no git integration, no WHATSNEW1 redesign, no other
+hub feature touched.
+
+---
 
 ## Revision 2026-09-05 — WHATSNEW1 / ACADEMY UPDATES — **BUILT, SHIPPED DORMANT**
 

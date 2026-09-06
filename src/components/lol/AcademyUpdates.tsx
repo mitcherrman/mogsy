@@ -2,15 +2,15 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Link } from "react-router-dom";
 
 import {
-  ACADEMY_UPDATES,
-  ACADEMY_UPDATES_ENABLED,
   ACADEMY_UPDATES_VISIBLE,
+  NO_ACADEMY_UPDATES,
   getPublishedUpdates,
   isAcademyUpdatesActive,
   resolveUpdateCta,
   type AcademyUpdate,
 } from "@/lib/lol/academy-updates";
 import { hasUnseenUpdate, markUpdatesSeen } from "@/lib/lol/academy-updates-seen";
+import { listPublishedUpdates } from "@/lib/lol/academy-updates-store";
 
 /**
  * Academy Updates — the Hall's "What's New" affordance (WHATSNEW1).
@@ -36,6 +36,27 @@ import { hasUnseenUpdate, markUpdatesSeen } from "@/lib/lol/academy-updates-seen
  * is off — or on with zero published entries — this returns `null` before any
  * hook does anything observable, so the Hall renders byte-identically to
  * production: no mark, no panel, no invisible hit region, no layout shift.
+ *
+ * WHERE THE CONTENT COMES FROM (WHATSNEW2)
+ * ----------------------------------------
+ * The notices are rows in `public.academy_updates` and the master switch is a
+ * row in `public.app_settings`. NOTHING about the presentation above changed
+ * when that moved out of source code — the same mark, the same parchment
+ * notice, the same geometry, the same seen-state — only where the two inputs
+ * are read from.
+ *
+ * The switch is PASSED IN by LolHub rather than read here, because LolHub
+ * already holds it: `useAppSettings()` fetches the whole policy object for the
+ * tutorial gate, and reading it again here would put a second identical
+ * `app_settings` request on every Hall load — including loads where the feature
+ * is off. And the notices are fetched only AFTER that switch reads true, so
+ * with the feature off the Hall makes NO query on this feature's behalf at all.
+ * "Off" is free, not merely invisible.
+ *
+ * Every failure path lands on the same empty list — a rejected read, an
+ * unapplied migration, a malformed row — and an empty list renders exactly what
+ * "off" renders. Academy Updates is optional secondary content; it may cost
+ * itself, never the Hall.
  */
 
 /** Parchment fill, borrowed from the guide's speech bubble so the two notices
@@ -119,19 +140,63 @@ function UpdateEntry({ update, first }: { update: AcademyUpdate; first: boolean 
 
 export default function AcademyUpdates({
   variant = "hall",
-  updates = ACADEMY_UPDATES,
-  enabled = ACADEMY_UPDATES_ENABLED,
+  updates,
+  enabled,
+  mobileWrapperClassName = "mt-4 md:hidden",
 }: {
   /** `hall` anchors the mark to desktop Mogzy; `mobile` is an inline row. */
   variant?: "hall" | "mobile";
-  /** Injectable for tests; production always uses the module authority. */
+  /**
+   * Injected notices, for tests and the admin preview. Production omits this
+   * and the component fetches published rows itself.
+   */
   updates?: readonly AcademyUpdate[];
+  /**
+   * The master switch. LolHub passes
+   * `settings.policy.academy.updatesEnabled`; the admin preview passes `true`,
+   * because its job is to show the owner what a notice WILL look like whatever
+   * the live switch says.
+   *
+   * It defaults to FALSE so that a mount which says nothing renders nothing.
+   * That also covers the moment before settings resolve — LolHub's policy
+   * object starts on its fail-closed defaults, so there is no window in which a
+   * disabled feature flashes a mark.
+   */
   enabled?: boolean;
+  /**
+   * Overrides the mobile variant's wrapper classes. It exists for ONE caller:
+   * the admin preview, which mounts this component on a desktop-width admin
+   * page and would otherwise get nothing, because the default wrapper carries
+   * `md:hidden` — correct in the Hall, where the desktop mark is a separate
+   * mount, and wrong anywhere else. The Hall passes nothing and is unaffected.
+   */
+  mobileWrapperClassName?: string;
 }) {
-  const active = isAcademyUpdatesActive(updates, enabled);
+  const injected = updates !== undefined;
+  const switchOn = enabled === true;
+
+  const [fetched, setFetched] = useState<readonly AcademyUpdate[]>(NO_ACADEMY_UPDATES);
+
+  useEffect(() => {
+    // No query while the feature is off, and none when the caller supplied its
+    // own notices. The read is fire-and-forget against a store that already
+    // resolves every failure to an empty list, so there is nothing to catch
+    // here and nothing that can reject.
+    if (injected || !switchOn) return;
+    let live = true;
+    void listPublishedUpdates().then((rows) => {
+      if (live) setFetched(rows);
+    });
+    return () => {
+      live = false;
+    };
+  }, [injected, switchOn]);
+
+  const source = injected ? updates! : fetched;
+  const active = isAcademyUpdatesActive(source, switchOn);
   const published = useMemo(
-    () => (active ? getPublishedUpdates(updates) : []),
-    [active, updates],
+    () => (active ? getPublishedUpdates(source) : []),
+    [active, source],
   );
   const newestId = published[0]?.id ?? null;
 
@@ -345,7 +410,7 @@ export default function AcademyUpdates({
 
   if (variant === "mobile") {
     return (
-      <div data-testid="academy-updates-mobile" className="mt-4 md:hidden">
+      <div data-testid="academy-updates-mobile" className={mobileWrapperClassName}>
         {markButton}
         {open && panel}
       </div>
