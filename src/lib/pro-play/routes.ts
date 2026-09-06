@@ -49,3 +49,33 @@ export const PRO_PLAY_LIVE_GAME_PARAM = "game";
 export function proPlayLiveGameUrl(gameId: string): string {
   return `${PRO_PLAY_LIVE_ROUTE}?${PRO_PLAY_LIVE_GAME_PARAM}=${encodeURIComponent(gameId)}`;
 }
+
+/**
+ * The Pro Play research surface: global search over players, teams and
+ * champions, and the three profiles it resolves to.
+ *
+ * Admin-gated for now, which is why the hub carries no tile for it — a public
+ * tile would send ordinary readers to a 403. It is deliberately NOT the same
+ * thing as `/lol/docs/pro/...`: those pages are the DECLARED roster (wiki
+ * history, aliases, lineups as announced), while these are DEMONSTRATED
+ * performance drawn from the match corpus. The two disagree often and on
+ * purpose. Research pages link out to the docs pages for roster history;
+ * the docs pages must never link back here while this is admin-only.
+ */
+export const PRO_PLAY_SEARCH_ROUTE = "/lol/pro-play/search";
+
+/** Profile routes take the canonical entity key, URL-encoded. */
+export const PRO_PLAY_PLAYER_ROUTE = "/lol/pro-play/player/:key";
+export const PRO_PLAY_TEAM_ROUTE = "/lol/pro-play/team/:key";
+export const PRO_PLAY_CHAMPION_ROUTE = "/lol/pro-play/champion/:key";
+
+/** The three profile kinds, as they appear in the URL. */
+export type ProPlayEntityKind = "player" | "team" | "champion";
+
+/**
+ * Link to one research profile. The key is canonical and may contain spaces
+ * and dots ("Gen.G", "Invictus Gaming"), so it is always encoded.
+ */
+export function proPlayProfileUrl(kind: ProPlayEntityKind, key: string): string {
+  return `/lol/pro-play/${kind}/${encodeURIComponent(key)}`;
+}

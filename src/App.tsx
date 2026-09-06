@@ -18,8 +18,12 @@ import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
 import { LEGACY_PREMIUM_ROUTES } from "@/lib/premium-routes";
 import {
   LEGACY_ESPORTS_LIVE_ROUTE,
+  PRO_PLAY_CHAMPION_ROUTE,
   PRO_PLAY_LIVE_ARCHIVE_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_PLAYER_ROUTE,
+  PRO_PLAY_SEARCH_ROUTE,
+  PRO_PLAY_TEAM_ROUTE,
 } from "@/lib/pro-play/routes";
 import Layout from "./components/Layout";
 import NotFound from "./pages/NotFound";
@@ -102,6 +106,10 @@ const LolPremium = R.LolPremium.Component;
 const ProPlayHub = R.ProPlayHub.Component;
 const ProPlayQuiz = R.ProPlayQuiz.Component;
 const ProPlayGraphs = R.ProPlayGraphs.Component;
+const ProPlaySearch = R.ProPlaySearch.Component;
+const ProPlayPlayerProfile = R.ProPlayPlayerProfile.Component;
+const ProPlayTeamProfile = R.ProPlayTeamProfile.Component;
+const ProPlayChampionProfile = R.ProPlayChampionProfile.Component;
 const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
@@ -590,6 +598,15 @@ const App = () => (
                   {/* GRAPH1 as a product surface. /dev/graph1 stays as the
                       operator route: fixed races, stat families, ?api=. */}
                   <Route path="/lol/pro-play/graphs" element={<Suspense fallback={<RouteFallback />}><ProPlayGraphs /></Suspense>} />
+                  {/* Pro Play research: global search and the three profiles.
+                      Admin-gated at the page (AdminAuthGate), which is why the
+                      hub above carries no tile for them — a public tile would
+                      lead ordinary readers to a 403. Demonstrated performance,
+                      as opposed to the declared roster at /lol/docs/pro/... */}
+                  <Route path={PRO_PLAY_SEARCH_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlaySearch /></Suspense>} />
+                  <Route path={PRO_PLAY_PLAYER_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayPlayerProfile /></Suspense>} />
+                  <Route path={PRO_PLAY_TEAM_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTeamProfile /></Suspense>} />
+                  <Route path={PRO_PLAY_CHAMPION_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayChampionProfile /></Suspense>} />
                   {/* LIVE1 match centre. It shipped at /esports/live (below,
                       now a redirect) before Pro Play had a hub; this is its
                       canonical URL. Same component, one page. */}

@@ -101,6 +101,10 @@ export const Routes = {
   ProPlayHub: lazyWithRetry(() => import("@/pages/ProPlayHub")),
   ProPlayQuiz: lazyWithRetry(() => import("@/pages/ProPlayQuiz")),
   ProPlayGraphs: lazyWithRetry(() => import("@/pages/lol/ProPlayGraphs")),
+  ProPlaySearch: lazyWithRetry(() => import("@/pages/pro-play/ProPlaySearch")),
+  ProPlayPlayerProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayPlayerProfile")),
+  ProPlayTeamProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayTeamProfile")),
+  ProPlayChampionProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayChampionProfile")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
   AdminQuizBroadcast: lazyWithRetry(() => import("@/pages/admin/AdminQuizBroadcast")),
@@ -164,6 +168,17 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   },
   { test: (p) => p === "/lol/pro-play/quiz", keys: ["ProPlayQuiz"] },
   { test: (p) => p === "/lol/pro-play/graphs", keys: ["ProPlayGraphs"] },
+  // Research. Deliberately NOT prefetched from the hub above: the hub has no
+  // search tile (the surface is admin-gated), so every public visitor would
+  // pay for a bundle they cannot open. Search pulls the profiles instead,
+  // because reaching a profile is the whole point of running a search.
+  {
+    test: (p) => p === "/lol/pro-play/search",
+    keys: ["ProPlaySearch", "ProPlayPlayerProfile", "ProPlayTeamProfile", "ProPlayChampionProfile"],
+  },
+  { test: (p) => p.startsWith("/lol/pro-play/player/"), keys: ["ProPlayPlayerProfile", "ProPlayTeamProfile"] },
+  { test: (p) => p.startsWith("/lol/pro-play/team/"), keys: ["ProPlayTeamProfile", "ProPlayPlayerProfile"] },
+  { test: (p) => p.startsWith("/lol/pro-play/champion/"), keys: ["ProPlayChampionProfile"] },
   { test: (p) => p === "/leaderboard" || p.startsWith("/leaderboard/"), keys: ["Leaderboard"] },
   { test: (p) => p.startsWith("/leagues/"), keys: ["Leagues"] },
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },

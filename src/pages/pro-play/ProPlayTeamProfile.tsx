@@ -1,0 +1,274 @@
+// ---------------------------------------------------------------------------
+// /lol/pro-play/team/:key — team record, champion usage and demonstrated roster.
+//
+// WORKS FOR ANY TEAM. Worlds focus status is a block on the page, never a
+// condition of the page existing.
+//
+// A PARTIAL ROSTER RENDERS AS PARTIAL. The backend names the roles it could
+// not fill and this page prints them. It never pads a lineup from the declared
+// registry to make five, and it never breaks a timeshare tie into a starter.
+//
+// NOT A DUPLICATE OF /lol/docs/pro/teams/:lpPage — see the player profile's
+// header for the full split. In one line: that page lists DECLARED membership
+// history with sources, this one shows the DEMONSTRATED roster and record.
+// The roster table here even labels the difference per player, in the
+// "Declared" column.
+// ---------------------------------------------------------------------------
+
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { AlertTriangle } from "lucide-react";
+import SEOHead from "@/components/SEOHead";
+import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
+import { Badge } from "@/components/ui/badge";
+import {
+  ChampionPoolTable,
+  EmptyRow,
+  ErrorBlock,
+  LoadingBlock,
+  Note,
+  Panel,
+  ProfileHeader,
+  ResearchBreadcrumb,
+  ResearchPage,
+  ScopeGrid,
+  ScopeTabs,
+  TableScroll,
+} from "@/components/pro-play/ResearchShell";
+import { teamRoute } from "@/lib/league-docs/roster-api";
+import {
+  fetchTeamProfile,
+  formatDate,
+  formatRate,
+  ResearchApiError,
+  type Roster,
+  type TeamProfile,
+} from "@/lib/pro-play/researchApi";
+
+function RosterPanel({ roster, note, error }: { roster: Roster | null; note: string; error: string | null }) {
+  if (error) {
+    return (
+      <Panel title="Roster">
+        <ErrorBlock message="The roster registry could not be read." hint={error} />
+      </Panel>
+    );
+  }
+  if (!roster) {
+    return (
+      <Panel title="Roster">
+        <EmptyRow label="No roster available for this scope." />
+      </Panel>
+    );
+  }
+  const c = roster.completeness;
+  const missing = c.roles_missing ?? [];
+  return (
+    <Panel title={`Roster — ${roster.scope_label}`} note={note}>
+      <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="roster-completeness">
+        <Badge variant={c.state === "complete" ? "secondary" : "outline"} className="text-[10px] uppercase">
+          {c.state}
+        </Badge>
+        <span className="text-xs text-muted-foreground">
+          {roster.players.length} of 5 roles demonstrated · {roster.team_games_in_scope} team games
+        </span>
+      </div>
+      {missing.length ? (
+        <div
+          className="mb-3 flex items-start gap-2 rounded-md border border-border bg-muted/30 p-3 text-xs"
+          data-testid="roster-gap"
+        >
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            No player demonstrated for {missing.join(", ")} in this scope. The
+            lineup shown is incomplete; it has not been filled in from declared
+            memberships.
+          </p>
+        </div>
+      ) : null}
+      {roster.players.length ? (
+        <TableScroll>
+          <table className="w-full min-w-[560px] text-sm" data-testid="roster-table">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Role</th>
+                <th className="py-2 pr-3 font-medium">Player</th>
+                <th className="py-2 pr-3 text-right font-medium">Games</th>
+                <th className="py-2 pr-3 text-right font-medium">Share</th>
+                <th className="py-2 pr-3 text-right font-medium">Last played</th>
+                <th className="py-2 text-right font-medium">Declared</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roster.players.map((p) => (
+                <tr key={p.player_lp_page} className="border-b border-border/50 last:border-0">
+                  <td className="py-1.5 pr-3 text-muted-foreground">{p.role ?? "—"}</td>
+                  <td className="py-1.5 pr-3">
+                    <Link
+                      to={`/lol/pro-play/player/${encodeURIComponent(p.player_lp_page)}`}
+                      className="hover:underline"
+                    >
+                      {p.display_name}
+                    </Link>
+                  </td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">{p.games}</td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums">
+                    {formatRate(p.share_of_team_games)}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
+                    {formatDate(p.last_played_at)}
+                  </td>
+                  <td className="py-1.5 text-right text-xs text-muted-foreground">
+                    {p.declared_member ? "yes" : "no"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
+      ) : (
+        <EmptyRow label="No players demonstrated for this team in this scope." />
+      )}
+      <Note>
+        “Declared: no” means the roster registry does not list an open
+        membership for this player. It is a gap in the registry, not a doubt
+        about the games — Faker is missing from T1's declared memberships and
+        played every one of their 2026 games.
+      </Note>
+    </Panel>
+  );
+}
+
+function Body({ teamKey }: { teamKey: string }) {
+  const [profile, setProfile] = useState<TeamProfile | null>(null);
+  const [error, setError] = useState<{ message: string; hint?: string } | null>(null);
+  const [scope, setScope] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setProfile(null);
+    setError(null);
+    fetchTeamProfile(teamKey, controller.signal)
+      .then((p) => {
+        setProfile(p);
+        setScope(p.comparison.scope_order[0] ?? null);
+      })
+      .catch((err) => {
+        if ((err as Error)?.name === "AbortError") return;
+        const notFound = err instanceof ResearchApiError && err.status === 404;
+        setError({
+          message: (err as Error).message,
+          hint: notFound
+            ? "This team page exists in the registry but has no canonical professional games under the current competition filter."
+            : undefined,
+        });
+      });
+    return () => controller.abort();
+  }, [teamKey]);
+
+  if (error) {
+    return (
+      <ResearchPage>
+        <ResearchBreadcrumb trail={[{ label: teamKey }]} />
+        <ErrorBlock message={error.message} hint={error.hint} />
+      </ResearchPage>
+    );
+  }
+  if (!profile || !scope) {
+    return (
+      <ResearchPage>
+        <LoadingBlock />
+      </ResearchPage>
+    );
+  }
+
+  const active = profile.comparison.scopes[scope];
+  const identity = profile.identity as Record<string, string | boolean | null>;
+  const meta: string[] = [];
+  if (identity.short) meta.push(String(identity.short));
+  if (identity.region) meta.push(String(identity.region));
+  if (identity.is_disbanded) meta.push("disbanded");
+  if (identity.renamed_to) meta.push(`renamed to ${identity.renamed_to}`);
+
+  return (
+    <ResearchPage>
+      <ResearchBreadcrumb trail={[{ label: profile.entity.display_name }]} />
+      <ProfileHeader
+        title={profile.entity.display_name}
+        subtitle={profile.entity.key !== profile.entity.display_name ? profile.entity.key : undefined}
+        focus={profile.worlds_focus}
+        meta={
+          <>
+            {meta.map((m) => (
+              <Badge key={m} variant="outline" className="text-[10px]">
+                {m}
+              </Badge>
+            ))}
+            {/* See the player profile: declared roster history lives in the
+                public wiki, demonstrated performance lives here. One-way,
+                because this page is gated and that one is not. */}
+            <Link
+              to={teamRoute(profile.entity.key)}
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Roster history &amp; aliases (League Docs) &rarr;
+            </Link>
+          </>
+        }
+      />
+
+      <Panel title="The four scopes">
+        <ScopeGrid comparison={profile.comparison} />
+      </Panel>
+
+      <RosterPanel roster={profile.roster} note={profile.roster_note} error={profile.roster_error} />
+
+      <Panel title="Champion usage">
+        <ScopeTabs comparison={profile.comparison} active={scope} onSelect={setScope} />
+        {active.participation === "did_not_participate" ? (
+          <EmptyRow
+            label={`${profile.entity.display_name} did not participate in ${active.scope.label}.`}
+          />
+        ) : (
+          <ChampionPoolTable
+            rows={active.stats?.top_champions ?? []}
+            emptyLabel={`Present in ${active.scope.label}, with no champions recorded.`}
+          />
+        )}
+      </Panel>
+
+      <Panel title="Competitions in scope">
+        {active.tournaments_in_scope.length ? (
+          <ul className="flex flex-wrap gap-1.5">
+            {active.tournaments_in_scope.map((t) => (
+              <li key={t}>
+                <Badge variant="secondary" className="text-[10px] font-normal">
+                  {t}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyRow label={`No competitions recorded in ${active.scope.label}.`} />
+        )}
+      </Panel>
+    </ResearchPage>
+  );
+}
+
+export default function ProPlayTeamProfile() {
+  const { key = "" } = useParams();
+  const decoded = decodeURIComponent(key);
+  return (
+    <>
+      <SEOHead
+        title={`${decoded} — Pro Play Research | Mogzy`}
+        description={`Professional record, roster and champion usage for ${decoded}.`}
+        path={`/lol/pro-play/team/${key}`}
+        noindex
+      />
+      <AdminAuthGate>
+        <Body teamKey={decoded} />
+      </AdminAuthGate>
+    </>
+  );
+}
