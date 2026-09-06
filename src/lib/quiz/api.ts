@@ -373,6 +373,22 @@ export type ReviewQuestion = {
   reviewed_by?: string | null;
   created_at?: string | null;
   metadata?: Record<string, unknown>;
+  /**
+   * CANONICAL SAFE PRE-ANSWER PREMISE, projected by the BACKEND
+   * (`quiz.premise_projection.build_presentation`) from this row's own
+   * metadata through its family's premise contract.
+   *
+   * This — never `metadata` — is the source a player-facing surface may draw
+   * a scenario from. `metadata` stays complete on this row because Admin
+   * Review is an operator surface and needs the whole blob (solution fields
+   * included); that is exactly why it must not feed a preview.
+   *
+   * ABSENT, not empty, when the family (or the row's form within it) declares
+   * no safe premise — the `wave` form of `minion_xp_level_breakpoint` is the
+   * deliberate reference case. Absent means "no scenario premise exists yet",
+   * and the correct response is no scenario, never a reconstruction.
+   */
+  presentation?: Record<string, unknown> | null;
   pack_keys?: string[];
   packs?: ReviewQuestionPack[];
 };

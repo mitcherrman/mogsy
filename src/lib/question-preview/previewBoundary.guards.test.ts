@@ -31,6 +31,7 @@ const PREVIEW_CLIENT = "lib/question-preview/questionPreviewApi.ts";
 /** Every other file in the preview subtree, plus its host component. */
 const PREVIEW_CONSUMERS = [
   "lib/question-preview/rankedPreviewAdapter.ts",
+  "lib/question-preview/storedQuestionPreviewSource.ts",
   "lib/question-preview/useExactRankedQuestion.ts",
   "lib/question-preview/usePreviewInteractionState.ts",
   "lib/question-preview/previewViewport.ts",

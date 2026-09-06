@@ -33,6 +33,10 @@ import { upsertPlaylist } from "@/lib/quiz-broadcast/storage";
 import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
 import { getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
 import { QuestionPreviewPanel } from "@/components/question-preview/QuestionPreviewPanel";
+import {
+  storedCorrectOptionIndex,
+  storedQuestionPreviewPayload,
+} from "@/lib/question-preview/storedQuestionPreviewSource";
 
 // ---------------------------------------------------------------------------
 // Admin key (shared with Knowledge Admin — backend uses one KNOWLEDGE_ADMIN_KEY
@@ -544,6 +548,7 @@ function DetailPanel({
   const queryClient = useQueryClient();
   const [note, setNote] = useState("");
   const [noteEditing, setNoteEditing] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["review-question", questionId],
@@ -556,6 +561,11 @@ function DetailPanel({
   const { data: champManifest } = useChampionAssets();
 
   const q = data?.question;
+
+  // A preview belongs to ONE question. Navigating collapses it rather than
+  // carrying an open panel onto the next row, where it would briefly show the
+  // previous question's surface.
+  useEffect(() => setPreviewing(false), [questionId]);
 
   // Sync note textarea when question loads or navigates
   useEffect(() => {
@@ -607,6 +617,10 @@ function DetailPanel({
   }
 
   const correctValue = q.correct_answer?.value ?? "";
+  // Shape only — see storedQuestionPreviewSource. Null for a row that is not a
+  // previewable multiple-choice question, which hides the affordance entirely
+  // rather than offering a preview that would render nothing.
+  const previewPayload = storedQuestionPreviewPayload(q);
   const assetBase = q.metadata as Record<string, unknown>;
   const assets = (assetBase?.assets as Record<string, unknown>) ?? {};
   const subject = (assets?.subject as Record<string, unknown>) ?? {};
@@ -863,6 +877,48 @@ function DetailPanel({
             Correct: <span className="font-medium text-emerald-400">{correctValue || "—"}</span>
           </p>
         </div>
+
+        {/* ------------------------------------------------------------------
+            PLAYER PREVIEW (CON1 Step 1B).
+
+            The SAME production surface a Ranked candidate previews through,
+            reached the same way: the row's envelope goes through
+            `adaptCandidatePreview` -> `scenarioSourceFromPublicQuestion` ->
+            `selectFamilyLayout` -> the production scenario band. No premise,
+            layout, or scenario decision is made here.
+
+            The scenario comes from the backend's `presentation` and nowhere
+            else. A row without one previews as the text-only surface — which
+            is what a question with no declared safe premise honestly is, and
+            what the `wave` form of minion_xp_level_breakpoint deliberately
+            gets until its contract can express a safe premise.
+        ------------------------------------------------------------------ */}
+        {previewPayload && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Player preview
+              </p>
+              <Button
+                size="sm"
+                variant={previewing ? "secondary" : "ghost"}
+                className="h-6 gap-1 px-1.5 text-[10px]"
+                data-testid="stored-preview-toggle"
+                onClick={() => setPreviewing((v) => !v)}
+              >
+                <Eye className="h-3 w-3" aria-hidden /> {previewing ? "Hide" : "Preview"}
+              </Button>
+            </div>
+            {previewing && (
+              <div className="rounded border border-border/60 bg-muted/10 p-2">
+                <QuestionPreviewPanel
+                  payload={previewPayload}
+                  correctAnswerIndex={storedCorrectOptionIndex(q)}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Explanation */}
         {q.explanation && (

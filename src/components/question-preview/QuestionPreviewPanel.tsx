@@ -28,14 +28,19 @@
  * Reveal state's correct-option treatment. Omit it and Reveal is unavailable.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, Eye, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
 import { PreviewStage } from "@/components/question-preview/PreviewStage";
 import { PreviewStateControl } from "@/components/question-preview/PreviewStateControl";
 import { PreviewViewportControl } from "@/components/question-preview/PreviewViewportControl";
-import { UNSUPPORTED_MODULE_MESSAGE } from "@/lib/question-preview/rankedPreviewAdapter";
+import {
+  adaptCandidatePreview,
+  PreviewAdapterError,
+  UNSUPPORTED_MODULE_MESSAGE,
+  type RankedPreviewModel,
+} from "@/lib/question-preview/rankedPreviewAdapter";
 import { useExactRankedQuestion } from "@/lib/question-preview/useExactRankedQuestion";
 import { usePreviewInteractionState } from "@/lib/question-preview/usePreviewInteractionState";
 import {
@@ -44,22 +49,72 @@ import {
 } from "@/lib/question-preview/previewViewport";
 
 export interface QuestionPreviewPanelProps {
-  /** Ranked candidate id, e.g. the `ranked:<id>` review key without its prefix. */
-  candidateId: string;
+  /**
+   * Ranked candidate id, e.g. the `ranked:<id>` review key without its prefix.
+   * The panel FETCHES this one, because a candidate lives behind an endpoint.
+   */
+  candidateId?: string | null;
+  /**
+   * An already-in-hand public-question payload — the CON1 stored-question path.
+   *
+   * A stored Admin Review row is already loaded, so there is nothing to fetch;
+   * pass its envelope (`storedQuestionPreviewPayload`) and the panel adapts it
+   * synchronously through the SAME `adaptCandidatePreview` a fetched candidate
+   * goes through. That parity is the point: one adapter, one layout authority,
+   * one surface, two ways of getting the payload in. When `payload` is given
+   * the network hook is held idle and `candidateId` is ignored.
+   */
+  payload?: unknown;
   /** Index of the correct option, when the caller knows it. Enables Reveal. */
   correctAnswerIndex?: number | null;
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
 export function QuestionPreviewPanel({
-  candidateId,
+  candidateId = null,
+  payload,
   correctAnswerIndex = null,
 }: QuestionPreviewPanelProps) {
-  const { status, model, error, notFound, reload } = useExactRankedQuestion(candidateId);
+  const local = payload !== undefined;
+  // Exactly one source is live. Passing null holds the hook idle and aborts
+  // nothing, so the local path makes no request at all rather than making one
+  // and discarding it.
+  const remote = useExactRankedQuestion(local ? null : candidateId);
   const [viewport, setViewport] = useState<PreviewViewportId>(DEFAULT_PREVIEW_VIEWPORT);
+
+  const adapted = useMemo(() => {
+    if (!local) return null;
+    try {
+      return { model: adaptCandidatePreview(payload), error: null as string | null };
+    } catch (err) {
+      return {
+        model: null as RankedPreviewModel | null,
+        error:
+          err instanceof PreviewAdapterError
+            ? err.message
+            : "This question could not be adapted for preview.",
+      };
+    }
+  }, [local, payload]);
+
+  const status = adapted ? (adapted.model ? "ready" : "error") : remote.status;
+  const model = adapted ? adapted.model : remote.model;
+  const error = adapted ? adapted.error : remote.error;
+  // A locally-adapted payload cannot 404 and cannot be re-fetched: it is the
+  // row the caller already holds. No "not found", no reload affordance.
+  const notFound = adapted ? false : remote.notFound;
+  const reload = adapted ? null : remote.reload;
+
+  const resetKey =
+    (adapted && isRecord(payload) && typeof payload.question_id === "string"
+      ? payload.question_id
+      : candidateId) ?? "preview";
 
   const interaction = usePreviewInteractionState({
     correctAnswerIndex,
-    resetKey: candidateId,
+    resetKey,
     optionCount: model?.question.options.length ?? 0,
   });
 
@@ -76,7 +131,7 @@ export function QuestionPreviewPanel({
           Operator preview — local only. Nothing here submits an answer, scores,
           or changes this question.
         </span>
-        {status === "ready" && (
+        {status === "ready" && reload && (
           <Button
             size="sm"
             variant="ghost"
@@ -108,7 +163,7 @@ export function QuestionPreviewPanel({
               ? "This question no longer exists, so it cannot be previewed."
               : error}
           </p>
-          {!notFound && (
+          {!notFound && reload && (
             <Button
               size="sm"
               variant="outline"
