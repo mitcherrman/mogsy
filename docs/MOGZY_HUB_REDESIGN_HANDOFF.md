@@ -1,8 +1,210 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 19 (Commons visual polish, COMPLETE/APPROVED) is at the top of
-     this file. Revision 18 was the painted Commons; 17 the two-screen Academy;
-     16 the Mogzy Premium promotion module; 15 the below-the-fold rework. -->
+<!-- Revision 20 (WHATSNEW1 — Academy Updates, BUILT AND DORMANT) is at the
+     top of this file. Revision 19 was the Commons visual polish; 18 the
+     painted Commons; 17 the two-screen Academy; 16 the Mogzy Premium
+     promotion module; 15 the below-the-fold rework. -->
+
+## Revision 2026-09-05 — WHATSNEW1 / ACADEMY UPDATES — **BUILT, SHIPPED DORMANT**
+
+**Status:** complete and merged-ready on branch `whatsnew1`, worktree
+`/Users/macmoney/mogsy-wt-whatsnew1`, based on `origin/main` @ `c65bbe17`.
+**The feature is DISABLED and must stay disabled until the owner decides
+otherwise.** Nothing in Revisions 15–19 was touched: the four books, Patch
+Report, the radio, the Hall shelves, the background crop, the entrance
+choreography, the Hall sounds, Mogzy's position and size, the Commons, scroll
+snap, the scroll hints, Premium, Pro Play naming, community links and the
+global footer are all byte-identical.
+
+### 1. Purpose
+
+A small owner-authored news channel on the /lol Hall — "Academy Updates" —
+for telling players what changed. It exists so that when real users arrive in
+a few weeks there is a finished surface waiting, rather than a feature built
+under time pressure.
+
+It is **manually written**. It does not read git history, changelogs, deploys,
+the database, or `src/lib/lol-changelog.ts` (which is the *internal developer*
+log behind `/lol/dev-changelog` — a different artefact for a different reader,
+deliberately not wired in).
+
+### 2. Files
+
+| File | Role |
+|---|---|
+| `src/lib/lol/academy-updates.ts` | **The authority.** Master switch, the entries, and the selectors. This is the only file the owner edits. |
+| `src/lib/lol/academy-updates-seen.ts` | One localStorage key holding one id: the newest update this browser has opened. |
+| `src/components/lol/AcademyUpdates.tsx` | The mark and the parchment notice. Both the Hall and the mobile presentations. |
+| `src/pages/LolHub.tsx` | Two mount points, 2 lines of JSX. |
+| `src/index.css` | `academy-updates-pulse` keyframes + its reduced-motion cancel. |
+
+No Supabase, no table, no API, no CMS, no admin screen, no route, no
+notification infrastructure, no account-level read tracking.
+
+### 3. Activation
+
+Three edits, all in `src/lib/lol/academy-updates.ts`:
+
+1. **Add** — prepend an entry to `ACADEMY_UPDATES` with `published: false`. A
+   draft is invisible to visitors, so a half-written entry is safe to commit
+   and deploy.
+2. **Publish** — flip that entry's `published` to `true`. Authored order does
+   not matter; the surface sorts by `date`, newest first.
+3. **Enable** — set `ACADEMY_UPDATES_ENABLED = true`. This is the master
+   switch and it currently ships `false`.
+
+An entry is `{ id, date, title, body, published, cta? }`. The `id` is what the
+browser remembers as seen, so it must be stable and never reused — convention
+`YYYY-MM-DD-short-slug`. A `cta.href` is either an in-app route (starts with
+`/`) or an absolute `https://` URL; anything else is dropped rather than
+rendered, so a typo cannot become a `javascript:` anchor.
+
+The file carries this same guide as a comment block at the top, so it is
+readable without this document.
+
+### 4. Current state — dormant, and what dormant means
+
+`ACADEMY_UPDATES_ENABLED` is `false` and both authored entries are drafts, so
+the feature is inert twice over. The two entries are **clearly marked examples
+for development and tests** — not production copy. Delete or overwrite them
+when the first real announcement is written.
+
+Dormant means the component returns `null` before rendering anything: no mark,
+no panel, no hidden clickable region, no empty wrapper, no layout shift.
+
+> The first cut got this wrong in a way worth recording. The positioning layer
+> was a `<div>` in `LolHub.tsx` wrapping `<AcademyUpdates />`, and it kept
+> rendering after the component returned null — an invisible layer sitting over
+> Mogzy. Tests keyed on `data-testid` all passed, because the wrapper had none.
+> A DOM-and-geometry diff against `origin/main` is what caught it. The layer now
+> lives **inside** the component, and `LolHub.test.tsx` pins the central lane's
+> child count at 2 so it cannot come back.
+
+### 5. Activated UX
+
+A "!" in **Academy red** (`#b63a35`, the `ACADEMY_RED` constant in
+`AcademyUpdates.tsx`) on a 28px parchment disc, just off Hall Mogzy's right
+shoulder (`--mogzy-w * 0.42`,
+`--mogzy-h * 0.58` from his float anchor) — a 22px mark inside a 44×44 hit
+target. Clicking it opens a compact parchment notice **centred on Mogzy**, not
+on the mark: hung off the mark it drifted right and leaned over the Patch
+Report volume. It uses the guide speech bubble's own parchment gradient and
+Cinzel/navy ink, so the two read as the same material. Newest three entries,
+then it scrolls; each is date, title, body, optional CTA, with older entries at
+80% opacity.
+
+The red is a rubricator's vermilion — the pigment a scribe reserved for the
+line that matters — so on parchment it reads as an accent, not an error state
+or a notification dot. **Only the glyph takes it**: the circle keeps its
+parchment fill, brass border and shadow, which is what stops the mark becoming
+a filled badge.
+
+> Sized twice. The first cut was a 22px disc with 13px ink in a dark oxblood
+> (`#7a2226`). It was legible up close and invisible at full Hall scale — which
+> is the only scale that matters — so it went to **28px with 17px ink** in the
+> brighter red. The glyph grew with the circle so the character still fills it.
+> The button stays 44×44 and the glyph stays centred in it, so the mark's
+> measured centre is `800.6, 634.9` before and after: the disc grew
+> symmetrically and needed no compensating offset. It is the **unseen** treatment only; a
+read notice returns to the ordinary ink `#3a2c12` at 70% **at the same size**,
+so the colour carries "new" and nothing moves when a notice is read. Colour is never the sole carrier of the state: the accessible
+name still says "Academy Updates — new". The mobile row is unchanged, on the
+ordinary ink in both states.
+
+**Why it is not part of `MogzyHubGuide`.** The guide renders inside a wrapper
+the Hall marks `aria-hidden` and `pointer-events-none`, because the speech
+bubble is decoration. A focusable, labelled button cannot live in an
+`aria-hidden` subtree. So `AcademyUpdates` mounts as a **sibling** that repeats
+the guide's geometry (`top-[3.25rem] -bottom-[3.25rem]`, `bottom-[16%]`,
+centred, the same `clamp(97px, 9.7vw, 167px)` width term) and lands on Mogzy
+without either component importing the other. `MogzyHubGuide` is unmodified:
+its hover glide, facing and click reaction are untouched.
+
+The two geometry constants are copied, not shared — if Mogzy's size or anchor
+changes in `MogzyHubGuide`, change them here too. Both carry a comment saying so.
+
+**Mobile.** The mobile Hall has no Mogzy — it is a list of Hextech panels — so
+the desktop treatment is not forced onto it. The mark becomes a compact
+labelled row placed after the four destinations, so primary navigation keeps
+the top of the list, and the panel opens inline beneath it.
+
+### 6. Seen state
+
+`lol:academy-updates:seen_id` in localStorage, one id, wrapped in try/catch on
+every access (the repo's existing idiom — `src/lib/quiz/onboarding-gate.ts`).
+A browser that has stored nothing counts as unseen, so a first-time visitor is
+nudged once. Opening the panel stamps the newest id — opening *is* reading, and
+a user who opens it and navigates away should not be re-nudged. Once seen, the
+mark stays available but drops to 70% opacity and loses its halo.
+
+Every failure degrades to "nothing seen", which over-shows a subtle dot rather
+than suppressing a genuine announcement. No account sync, no Supabase, no
+notification centre.
+
+The "new" state is carried in the button's **accessible name**
+("Academy Updates — new"), never by the halo alone, so cancelling the animation
+under `prefers-reduced-motion` loses no information.
+
+### 7. Tests
+
+`src/components/lol/AcademyUpdates.test.tsx` — 24 tests: the shipped default is
+off with zero published entries; disabled renders nothing; enabled-with-no-
+published-entries fails closed; the affordance appears; open/close by mark, by
+close button, by Escape; drafts excluded; ordering independent of authored
+order; the three-entry cap and its remainder line; internal vs external vs
+rejected CTAs; the red-while-unseen / ordinary-ink-when-seen glyph with its
+size, border and shadow asserted unchanged across both states; the mobile row
+keeping both the ordinary ink and its smaller size; and the full seen-state
+lifecycle across simulated visits.
+
+`src/pages/LolHub.test.tsx` — 3 added (81 total, was 78): no affordance
+anywhere in the dormant Hall, the guide's `aria-hidden` lane is untouched, and
+the central lane's child count is pinned.
+
+Final verification run: **173/173 pass** across every Hall suite
+(`AcademyUpdates`, `LolHub`, `academy-layout`, `HexPanelLink`,
+`HubPremiumPanel`, both `LolWelcomeIntro` suites), eslint clean on every
+touched file, `vite build` succeeds, `tsc` reports nothing in these files (the
+pre-existing repo errors listed in the frontend baseline are unchanged).
+
+**Visual proof.** Pixel diffing the Hall is worthless here: two captures of
+`origin/main` against *itself* differ by 0.5–5.6% of pixels, because the grain
+and gradient dither rasterise nondeterministically and the champion art loads
+off the network. So dormancy was proved structurally instead — full rendered
+markup plus the measured box of all 422 elements plus `scrollHeight`, compared
+between `origin/main` and this branch at 1440×900, 1920×1080, 1440×768
+(short-height desktop) and 390×844 (mobile): **identical at every viewport.**
+
+The activated state was screenshotted at the same four viewports, and verified
+in the real build to be keyboard-reachable (25 tabs — after the four books,
+which is the right priority), to open on Enter, to move focus into the panel,
+to close on Escape with focus returned to the mark, to carry a 44×44 hit
+target, and to have its halo cancelled under reduced motion with the accessible
+name unchanged.
+
+The colour and sizing passes were re-verified the same way. In the browser,
+unseen reads `color: rgb(182, 58, 53)`, `font-size: 17px`, a 28×28 circle on
+the parchment gradient with the brass border, a 44×44 hit target, and a glyph
+centre of `800.6, 634.9`. Seen reads `rgb(58, 44, 18)` at `opacity: 0.7` with
+**every one of those geometric values identical**, so neither the colour nor
+the enlargement contributes any layout shift between states. Under reduced
+motion the red is retained while `animation-name` resolves to `none`, and the
+mark keeps its focus ring, Enter-to-open and Escape-to-close-with-focus-return.
+
+Dormancy was re-proved against a freshly built `origin/main` after each pass —
+identical markup, boxes and `scrollHeight` at all four viewports. Note that
+`origin/main` advanced to `81bfda5a` ("Deployed 4 Edge Functions") during this
+work, and the final dormancy proof above was run against **that** build, not
+the older base. Those three upstream commits touch only `public/sitemap.xml`
+and the generated `src/integrations/supabase/types.ts` — no overlap with any
+WHATSNEW1 surface. `origin/main` moves often; re-fetch before merging.
+
+### 8. Next task
+
+None claimed. WHATSNEW1 is closed. Do not activate the feature in production —
+that is the owner's decision, and step 3 of §3 is the whole of it.
+
+---
 
 ## Revision 2026-09-05 — COMMONS VISUAL POLISH — **COMPLETE / APPROVED**
 

@@ -17,6 +17,7 @@ import {
 import LolWelcomeIntro from "@/components/lol/LolWelcomeIntro";
 import { hasHandledAcademyWelcome } from "@/lib/welcome/academy-welcome";
 import MogzyHubGuide from "@/components/lol/MogzyHubGuide";
+import AcademyUpdates from "@/components/lol/AcademyUpdates";
 import {
   HUB_GUIDE_MODES,
   hubGuideDescriptionId,
@@ -862,6 +863,22 @@ export default function LolHub() {
               >
                 <MogzyHubGuide activeModeId={activeModeId} />
               </div>
+              {/* Academy Updates (WHATSNEW1) — a SIBLING of the guide wrapper,
+                  never a child of it. The wrapper above is aria-hidden and
+                  pointer-events-none because the speech bubble is decoration;
+                  a labelled, focusable button cannot live in there. This layer
+                  repeats the guide's geometry so the mark lands on Mogzy, and
+                  stays transparent to the pointer except on the button itself.
+                  z-20 puts the open notice above the bubble's z-10.
+
+                  It renders NOTHING while the feature is disabled or has no
+                  published entries — not even a wrapper — so the Hall's
+                  approved geometry and DOM are byte-identical to production.
+                  The positioning layer therefore lives INSIDE the component,
+                  not here: an empty div left behind at this level is exactly
+                  the "hidden region" the dormant contract forbids.
+                  See src/lib/lol/academy-updates.ts. */}
+              <AcademyUpdates />
             </div>
 
             {renderShelvedColumn(
@@ -885,6 +902,14 @@ export default function LolHub() {
               />
             ))}
           </div>
+
+          {/* Academy Updates, mobile (WHATSNEW1). The mobile Hall has no
+              Mogzy to anchor to — it is a plain list of Hextech panels — so
+              the mark becomes a compact labelled row instead of a bare glyph.
+              Placed after the four destinations so primary navigation keeps
+              the top of the list, and it renders nothing at all while the
+              feature is disabled. */}
+          <AcademyUpdates variant="mobile" />
 
           {/* Mobile Academy Broadcast — the stacked magic-book card with the
               radio dock beneath it, after the four destinations so primary

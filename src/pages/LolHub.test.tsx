@@ -1252,3 +1252,45 @@ describe("LolHub — the painted Academy Commons", () => {
     expect(container.querySelectorAll(".academy-hub-hint")).toHaveLength(2);
   });
 });
+
+/**
+ * WHATSNEW1 — Academy Updates is built but dormant. These assertions are the
+ * production contract: with the master switch off the Hall must be byte-for-
+ * byte what it was before the feature existed.
+ */
+describe("Academy Updates (WHATSNEW1) — dormant in production", () => {
+  it("puts no updates affordance anywhere in the Hall", () => {
+    renderHub();
+    expect(screen.queryByTestId("academy-updates-mark")).toBeNull();
+    expect(screen.queryByTestId("academy-updates-panel")).toBeNull();
+    expect(screen.queryByTestId("academy-updates-hall")).toBeNull();
+    expect(screen.queryByTestId("academy-updates-mobile")).toBeNull();
+    expect(screen.queryByRole("button", { name: /academy updates/i })).toBeNull();
+  });
+
+  it("leaves the Mogzy guide's aria-hidden lane exactly as it was", () => {
+    const { container } = renderHub();
+    // The mark mounts as a SIBLING of the guide, never inside it: a focusable
+    // button in an aria-hidden subtree would be invisible to assistive tech.
+    // Dormant, the sibling layer holds nothing at all.
+    const guide = screen.getByTestId("mogzy-guide-lean");
+    const hiddenLane = guide.closest("[aria-hidden]");
+    expect(hiddenLane).not.toBeNull();
+    expect(hiddenLane!.querySelector("[data-testid='academy-updates-mark']")).toBeNull();
+    // And the dormant feature contributes no empty wrappers to the lane.
+    expect(container.querySelectorAll("[data-testid^='academy-updates']")).toHaveLength(0);
+  });
+
+  it("adds not one DOM node to the central lane while dormant", () => {
+    // Regression pin. The first cut wrapped <AcademyUpdates /> in a
+    // positioning div HERE, which kept rendering after the component returned
+    // null — an invisible layer over Mogzy that a DOM-and-geometry diff
+    // against origin/main caught. The positioning layer now lives inside the
+    // component, so "disabled" means no element at all. The lane's child
+    // count is the assertion that keeps it that way.
+    renderHub();
+    const guide = screen.getByTestId("mogzy-guide-lean");
+    const lane = guide.closest("[aria-hidden]")!.parentElement!;
+    expect(lane.children).toHaveLength(2); // the centerpiece, and the guide
+  });
+});
