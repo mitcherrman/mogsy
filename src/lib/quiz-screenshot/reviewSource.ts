@@ -55,6 +55,14 @@ export const REVIEW_KEY_RE = /^[^\u0000-\u001f\u007f,-][^\u0000-\u001f\u007f,]{0
 /** `<prefix>` → the `source_kind` the review universe emits for it. */
 export const GENERATED_NAMESPACES: Readonly<Record<string, string>> = {
   "mastery:": "mastery_question",
+  /**
+   * CON1 Step 3C — one namespace for every frozen Daily card, quiz and Meta
+   * Reflex alike. A second namespace would give one card two names, which
+   * Step 3B's Part 4 forbids; the reflex cards are refused PER CARD by the
+   * backend, and the discovery row carries that refusal on itself
+   * (`render_refusal`) so the button is greyed out before the click.
+   */
+  "daily:": "daily_card",
   "ranked:": "ranked_candidate",
   "ranked-fallback:": "ranked_fallback",
   "family:": "family_definition",
@@ -67,6 +75,15 @@ export const STORED_SOURCE_KIND = "stored_question";
 /** Source kinds the Content Factory can publish through a review key. */
 export const PUBLISHABLE_REVIEW_SOURCE_KINDS: readonly string[] = [
   "mastery_question",
+  /**
+   * Publishable at the NAMESPACE level only. Daily is the first source whose
+   * publishability is a property of the CARD rather than of the kind: one
+   * frozen day holds ~13 cards and five of them are two-entity Meta Reflex
+   * cards. `sourceKindSupport` therefore takes the ROW's own `render_refusal`
+   * when it has one — see `reviewRowSupport` below — and the backend refuses
+   * independently either way.
+   */
+  "daily_card",
 ] as const;
 
 /** Refusal codes, shared verbatim with `quiz/review_render.py`. */
@@ -201,6 +218,37 @@ export function sourceKindSupport(sourceKind: string, key = ""): ReviewKeySuppor
     code: REFUSAL_CODES.notIntegrated,
     reason: `Source kind "${sourceKind}" is not integrated with the Content Factory yet.`,
   };
+}
+
+/**
+ * A discovery row's OWN publishability verdict, when it carries one.
+ *
+ * Every other source's verdict is decided by its `source_kind`, and that is
+ * still the default. Daily cannot be decided that way — a single frozen day
+ * holds both publishable quiz cards and unpublishable Meta Reflex cards under
+ * one namespace — so the backend collector computes the verdict per card
+ * (`quiz.daily_review.card_refusal`, the SAME function the resolver refuses
+ * with) and attaches it to the row.
+ *
+ * Reading the row's refusal first is what keeps the two in step. It is not a
+ * Daily branch: any source may attach one, and a row without one falls through
+ * to the shared source-kind policy exactly as before.
+ */
+export function reviewRowSupport(row: {
+  source_kind: string;
+  review_key: string;
+  render_refusal?: { code: string; reason: string } | null;
+}): ReviewKeySupport {
+  const refusal = row.render_refusal;
+  if (refusal && typeof refusal.code === "string" && refusal.code) {
+    return {
+      ok: false,
+      sourceKind: row.source_kind,
+      code: refusal.code,
+      reason: refusal.reason || refusal.code,
+    };
+  }
+  return sourceKindSupport(row.source_kind, row.review_key);
 }
 
 /**

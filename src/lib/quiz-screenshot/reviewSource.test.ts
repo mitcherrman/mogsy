@@ -90,8 +90,15 @@ describe("review-key grammar", () => {
 });
 
 describe("publishability policy", () => {
-  it("supports Mastery, and only Mastery, today", () => {
-    expect([...PUBLISHABLE_REVIEW_SOURCE_KINDS]).toEqual(["mastery_question"]);
+  it("supports exactly the sources that were integrated, in order", () => {
+    // An EXACT list, so adding a source stays a conscious act on both sides of
+    // the wire. Step 3B: Mastery. Step 3C: the frozen Daily card — publishable
+    // at the NAMESPACE level only, with the per-card verdict riding on the row
+    // (see `reviewRowSupport`).
+    expect([...PUBLISHABLE_REVIEW_SOURCE_KINDS]).toEqual([
+      "mastery_question",
+      "daily_card",
+    ]);
     expect(isFailure(reviewKeySupport(MASTERY_KEY))).toBe(false);
   });
 

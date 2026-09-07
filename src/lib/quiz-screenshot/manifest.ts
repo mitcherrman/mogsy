@@ -68,6 +68,20 @@ export type RunManifest = {
     source_version: string | null;
     specimen_version: string | null;
     data_version: string | null;
+    /**
+     * CON1 Step 3C — the source's own CONTEXT, verbatim, when it has any.
+     *
+     * A frozen Daily card is not just a question: it is question 3 of the day
+     * frozen on 2026-09-06 as challenge version 1. Those facts do not belong
+     * in the question's identity — the same question can be drawn on any day —
+     * but they are exactly what "which frozen card produced this asset?" means,
+     * so they are recorded beside it rather than folded into it.
+     *
+     * Deliberately untyped and generic: this is the source's own vocabulary,
+     * copied whole, and a second source's framing rides the same channel
+     * without a schema change. `null` when the source declares none.
+     */
+    framing: Record<string, unknown> | null;
   }>;
   /** Ordered question previews for display without re-fetching. */
   questions: Array<{ id: string | number; prompt_preview: string; correct_label?: string }>;
@@ -136,6 +150,10 @@ export function manifestSourceEntry(q: {
     source_version: str(p.source_version),
     specimen_version: str(p.specimen_version),
     data_version: str(p.data_version),
+    framing:
+      p.framing && typeof p.framing === "object" && !Array.isArray(p.framing)
+        ? (p.framing as Record<string, unknown>)
+        : null,
   };
 }
 

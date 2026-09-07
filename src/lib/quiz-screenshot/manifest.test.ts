@@ -24,6 +24,7 @@ const fullArgs = {
       source_version: null,
       specimen_version: null,
       data_version: null,
+      framing: null,
     },
     {
       id: "2",
@@ -34,6 +35,7 @@ const fullArgs = {
       source_version: null,
       specimen_version: null,
       data_version: null,
+      framing: null,
     },
   ],
   questions: [
@@ -163,6 +165,7 @@ describe("source provenance", () => {
       source_version: null,
       specimen_version: null,
       data_version: null,
+      framing: null,
     });
   });
 
@@ -190,6 +193,7 @@ describe("source provenance", () => {
       source_version: "mset_bbb59f3c",
       specimen_version: "ssm.slice.barrier",
       data_version: null,
+      framing: null,
     });
   });
 

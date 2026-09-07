@@ -41,7 +41,7 @@ import {
   GenerateContentPanel,
   ReadinessBadge,
 } from "@/components/admin/GenerateContentPanel";
-import { sourceKindSupport } from "@/lib/quiz-screenshot/reviewSource";
+import { reviewRowSupport } from "@/lib/quiz-screenshot/reviewSource";
 import { isFailure } from "@/lib/result-narrowing";
 import {
   storedCorrectOptionIndex,
@@ -184,7 +184,29 @@ const SOURCE_LABELS: Record<string, string> = {
   stored_question: "Stored questions", mastery_question: "Mastery", ranked_candidate: "Ranked candidates",
   ranked_fallback: "Ranked fallback", family_definition: "Family definitions",
   meta_reflex_rule: "Meta Reflex rules", meta_reflex_specimen: "Meta Reflex specimens",
+  daily_card: "Daily frozen cards",
 };
+
+/**
+ * CON1 Step 3C — where a frozen Daily card sat in its day.
+ *
+ * Read from the row's own `metadata`, which for a Daily row IS the backend's
+ * framing block. Nothing is parsed out of the review key: the key is an
+ * identity, and re-deriving a date from it here would be a second, weaker copy
+ * of the grammar the backend owns.
+ */
+function dailyFramingOf(row: ReviewUniverseRow): string | null {
+  if (row.source_kind !== "daily_card") return null;
+  const meta = (row.metadata ?? {}) as Record<string, unknown>;
+  const date = typeof meta.challenge_date === "string" ? meta.challenge_date : null;
+  if (!date) return null;
+  const version = typeof meta.challenge_version === "number" ? meta.challenge_version : null;
+  const sequence = typeof meta.sequence === "number" ? meta.sequence : null;
+  const count = typeof meta.card_count === "number" ? meta.card_count : null;
+  const position =
+    sequence === null ? "" : ` · card ${sequence}${count === null ? "" : `/${count}`}`;
+  return `${date}${version === null ? "" : ` · v${version}`}${position}`;
+}
 
 /**
  * The Ranked candidate id behind a universe row, or null.
@@ -232,7 +254,11 @@ function UniverseRow({
 }) {
   const candidateId = rankedCandidateIdOf(row);
   const [previewing, setPreviewing] = useState(false);
-  const support = sourceKindSupport(row.source_kind, row.review_key);
+  // CON1 Step 3C: the ROW's own verdict when it carries one (a frozen Daily
+  // card is publishable or not per card, not per source kind), else the shared
+  // source-kind policy. Both are the earliest gate, never the only one.
+  const support = reviewRowSupport(row);
+  const framing = dailyFramingOf(row);
   // `strictNullChecks` is off, so a boolean discriminant needs the repo's own
   // narrowing predicate — see src/lib/result-narrowing.ts.
   const refusal = isFailure(support) ? support : null;
@@ -241,7 +267,15 @@ function UniverseRow({
     <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3">
       <div><div className="font-medium">{SOURCE_LABELS[row.source_kind] ?? row.source_kind}</div><div className="text-muted-foreground">{row.materialization}</div></div>
       <div className="truncate" title={row.family}>{row.family || "—"}</div>
-      <div className="min-w-0"><div className="truncate font-medium" title={row.question_text}>{row.question_text || row.review_key}</div><div className="truncate text-muted-foreground">{row.review_key}</div></div>
+      <div className="min-w-0">
+        <div className="truncate font-medium" title={row.question_text}>{row.question_text || row.review_key}</div>
+        <div className="truncate text-muted-foreground">{row.review_key}</div>
+        {framing && (
+          <div className="truncate text-muted-foreground" data-testid={`universe-framing-${row.review_key}`}>
+            {framing}
+          </div>
+        )}
+      </div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div>{row.source_status || "—"}</div>

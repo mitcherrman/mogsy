@@ -455,6 +455,18 @@ export type ReviewUniverseRow = {
   source_version: string;
   dataset_id: string;
   metadata: Record<string, unknown>;
+  /**
+   * CON1 Step 3C — this ROW's own publishability verdict, when the collector
+   * could reach one.
+   *
+   * Present only where publishability is a property of the row rather than of
+   * the source kind — today, a frozen Daily card, because one day holds both
+   * quiz cards and Meta Reflex cards under one namespace. Computed by the same
+   * backend function the resolver refuses with, so the greyed-out control and
+   * the backend answer cannot disagree. Absent everywhere else, where the
+   * shared source-kind policy still decides.
+   */
+  render_refusal?: { code: string; reason: string } | null;
 };
 /**
  * CON1 Step 3B — the resolver's answer for one review key.
