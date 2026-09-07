@@ -40,6 +40,15 @@ describe("visual QA fixture — coverage", () => {
     expect(rows.map((q) => String(q.id))).toEqual([
       "vq-01", "vq-02", "vq-03", "vq-04", "vq-05",
       "vq-06", "vq-07", "vq-08", "vq-09", "vq-10",
+      // CON1 Step 5 — the three CURRENT Pro Play anchors: a scope (vq-03,
+      // which replaced the hand-authored legacy-shaped row), a team (vq-11)
+      // and a player (vq-12). Each carries the full presentation contract.
+      "vq-11", "vq-12",
+      // vq-13 is the CHAMPION-anchored Pro shape: it is the only row in the
+      // set that exercises both the symmetric PLAYER subject cards and the
+      // runtime champion splash — and therefore the only one that exercises
+      // the Step 5 unresolved-subject-image gate.
+      "vq-13",
     ]);
   });
 
@@ -66,6 +75,47 @@ describe("visual QA fixture — coverage", () => {
     expect(new Set(lifecycleItems?.map((i) => i.status))).toEqual(
       new Set(["retained", "purchased", "sold"]),
     );
+  });
+
+  it("covers the CURRENT Pro Play source, at all three anchors", () => {
+    // Every Pro Play row must be a CURRENT generated specimen, never one of
+    // the ~50k legacy stored rows: the legacy population carries no `context`
+    // and therefore cannot render the production Pro Play card at all.
+    for (const id of ["vq-03", "vq-11", "vq-12", "vq-13"]) {
+      const row = byId.get(id);
+      expect(row?.source_kind, id).toBe("pro_question");
+      expect(String(row?.review_key), id).toMatch(/^pro:/);
+      // The presentation contract, not the stored premise projection, is what
+      // makes these publishable.
+      expect(row?.context, id).toBeTruthy();
+    }
+    // The three anchor kinds the contract distinguishes, each drawn from a
+    // different family, so a regression in one cannot hide behind the others.
+    const anchorKind = (id: string) =>
+      ((byId.get(id) as { context?: { anchor?: { kind?: string } } } | undefined)
+        ?.context?.anchor?.kind);
+    expect(new Set(["vq-03", "vq-11", "vq-12"].map(anchorKind))).toEqual(
+      new Set(["scope", "team", "player"]),
+    );
+    // vq-03 is the CURRENT-season international scope: the 2026 data that
+    // makes this set Worlds-relevant rather than historical.
+    expect(String(byId.get("vq-03")?.question_text)).toContain("26.13");
+
+    // vq-13 must keep the two properties it was added for: champion art to
+    // resolve, and at least two ENTITY subjects (champion subjects render no
+    // cards by design, so a champion-vs-champion row would not exercise them).
+    const thirteen = byId.get("vq-13") as {
+      context?: {
+        anchor?: { media?: { kind?: string; key?: string } };
+        subjects?: Array<{ kind?: string }>;
+      };
+    };
+    expect(thirteen.context?.anchor?.media).toMatchObject({ kind: "champion" });
+    expect(thirteen.context?.anchor?.media?.key).toBeTruthy();
+    const entities = (thirteen.context?.subjects ?? []).filter(
+      (s) => s.kind === "player" || s.kind === "team",
+    );
+    expect(entities.length).toBeGreaterThanOrEqual(2);
   });
 
   it("covers the two GENERATED sources the factory ships", () => {

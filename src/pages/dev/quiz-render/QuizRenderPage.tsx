@@ -27,8 +27,11 @@ import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
 import ProDataSourceLink from "@/components/quiz/ProDataSourceLink";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import ProPlayQuestionCard from "@/components/pro-play/ProPlayQuestionCard";
+import { selectScenario } from "@/components/quiz-broadcast/scenario-cards";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import {
+  rendersThroughProPlayCard,
   rendersThroughScenarioSurface,
   resolveScenarioPresentation,
 } from "@/lib/quiz-screenshot/presentation";
@@ -291,6 +294,50 @@ function QuestionCard({
   const scenarioModel = rendersThroughScenarioSurface(presentation)
     ? presentation.model
     : null;
+  /**
+   * CON1 Step 5 — the PRODUCTION Pro Play card, mounted rather than imitated.
+   *
+   * `ProPlayQuestionCard` is the component `ProPlayQuiz` renders, composing
+   * `ProPlayContextRail`, `ProPlayChampionAnchor` and `ProPlaySubjectCards`
+   * over the same frozen `pre_answer()` object the server sends a player. The
+   * factory supplies the answer grid as its children — which is exactly the
+   * contract the card declares — so the tablets stay the shared
+   * `QuizAnswerOptions` the rest of the harness draws.
+   *
+   * Mutually exclusive with `scenarioModel` by construction: the resolver
+   * returns `pro-context` or a band status, never both.
+   */
+  const proContext = rendersThroughProPlayCard(presentation)
+    ? presentation.proContext
+    : null;
+  /**
+   * The subject artwork this card expects, or null. See the
+   * `data-quiz-expected-image` attribute below for why it exists.
+   */
+  const proAnchorMedia = proContext?.anchor?.media;
+  /**
+   * A cinematic band does NOT always intend to draw art. When the subject is
+   * the answer, `selectScenario` deliberately returns a `placeholder` card
+   * pre-reveal — the "REVEAL INCOMING" plate — and an absent image there is the
+   * design, not a failure. Measured: without this, every pre-reveal frozen
+   * Daily item card reported an unresolved image.
+   *
+   * The distinction is the production selector's own, asked with the reveal
+   * state this capture is actually in, so the declaration tracks the spoiler
+   * rule instead of restating it. `placeholder` is only ever reached through
+   * `shouldHide`; it is never a fallback for art that failed to load, which is
+   * what makes it safe to treat as "no image expected".
+   */
+  const cinematicCard =
+    presentation.band === "cinematic" && scenarioModel
+      ? selectScenario(scenarioModel.scenarioSource, revealed, null).card
+      : null;
+  const expectedImage =
+    cinematicCard && cinematicCard !== "placeholder" && cinematicCard !== "empty"
+      ? `cinematic:${cinematicCard}`
+      : proAnchorMedia?.kind === "champion" && proAnchorMedia.key
+        ? `champion:${proAnchorMedia.key}`
+        : null;
   // Item-build questions get a recipe layout in content (social) formats;
   // audit formats keep the plain production-page visual. deriveRecipe never
   // exposes the missing component before reveal.
@@ -355,11 +402,37 @@ function QuestionCard({
       data-quiz-presentation={presentation.status}
       data-quiz-presentation-band={presentation.band ?? undefined}
       data-quiz-presentation-reason={presentation.reason ?? undefined}
+      /**
+       * CON1 Step 5 — the card DECLARES that it expects subject artwork.
+       *
+       * The one way the factory could still publish a bad image and call the
+       * run clean (recorded as remaining debt at the end of Step 4): a
+       * cinematic band and the Pro Play champion anchor both resolve their art
+       * at RUNTIME from the champion manifest. When that fetch fails, the
+       * component renders no <img> at all — so the broken-image backstop, which
+       * only sees images that loaded and measured zero, has nothing to look at,
+       * and a black rectangle publishes silently.
+       *
+       * The declaration is what closes it, and it has to come from here: only
+       * the harness knows, before paint, that a subject visual was expected.
+       * `capture.ts` then checks the DOM for a real one and FAILS when there is
+       * none. Two halves, neither of which can lie about the other — the page
+       * states the intent, the browser states the outcome.
+       *
+       * Derived from the production payloads themselves: a `cinematic` band is
+       * the layout authority's own answer, and the Pro Play anchor's
+       * `media.kind === "champion"` is the presentation contract's own. No
+       * family list, and nothing to keep in sync.
+       */
+      data-quiz-expected-image={expectedImage ?? undefined}
     >
       {/* Screenshot presentation: no category pill — the question text is the
           topmost content of the card. The rank emblem lives above answer A
           (below), so the title keeps its full width and is never reflowed. */}
-      {scenarioModel ? null : (
+      {/* The Pro Play card prints its own stem (after its chips and anchor,
+          which is the composition order that IS the product), so the harness
+          must not print a second one above it. */}
+      {scenarioModel || proContext ? null : (
         <CardHeader className="pb-3">
           <CardTitle className="text-base md:text-lg font-semibold leading-snug">
             {question.question_text}
@@ -367,7 +440,7 @@ function QuestionCard({
         </CardHeader>
       )}
       <CardContent className="space-y-4">
-        {scenarioModel ? null : recipe ? (
+        {scenarioModel || proContext ? null : recipe ? (
           <RecipeVisual recipe={recipe} resolveUrl={resolveQuizAssetUrl} />
         ) : mainVisual ? (
           <div className="rounded-lg overflow-hidden border border-border bg-black/20 flex justify-center py-3">
@@ -414,6 +487,26 @@ function QuestionCard({
               reveal={surfaceReveal}
               variant="competitive"
             />
+          </div>
+        ) : proContext ? (
+          /* The PRODUCTION Pro Play card — chips, champion anchor, stem and
+             the symmetric subject cards — with the harness's own answer grid
+             as its children, which is the composition `ProPlayQuiz` uses. */
+          <div data-quiz-pro-play-surface>
+            <ProPlayQuestionCard
+              topic={question.category ?? "Pro Play"}
+              questionText={question.question_text}
+              context={proContext}
+            >
+              <QuizAnswerOptions
+                choices={question.choices}
+                selectedAnswer={selectedAnswer}
+                answerResult={answerResult}
+                onSelect={() => {
+                  /* static render — selection is fixed by the state plan */
+                }}
+              />
+            </ProPlayQuestionCard>
           </div>
         ) : (
           <QuizAnswerOptions
@@ -730,6 +823,94 @@ function FormatShell({
           background-image:linear-gradient(90deg,
             rgba(8,19,34,0.98) 0%, rgba(15,31,51,0.95) 50%, rgba(8,19,34,0.98) 100%);
           border-color:rgba(185,147,76,0.45);
+        }
+
+        /* THE PRO PLAY CONTEXT RAIL, MOUNTED ON PAPER.
+           Same defect, same fix, same reasoning as the bands above -- and the
+           same one index.css records for the Leaguecraft scroll and Step 4
+           recorded for the recipe labels ("pale gold on cream, effectively
+           invisible ... they are ink now").
+
+           Every chip in ProPlayContextRail is light-on-dark by construction:
+           the competition chips are a pale gold ink over a 10%-gold wash, the
+           metric chip is sky-200, the editorial chip is emerald-200. Those are
+           correct on the Pro Play surface, which is a dark panel. On vellum
+           the ink is lighter than the paper and the chips read as blank
+           capsules -- measured on the first Step 5 run: SCOPE -> CHAMPION,
+           PICKS and RECENT ESPORTS were all effectively invisible while the
+           two muted temporal chips read normally.
+
+           So the INK is darkened and the wash is warmed; the chips keep their
+           own hue families (brass for competition identity, a cool tone for
+           the metric, green for the current-events marker), their geometry,
+           their order and their tooltips. Colour only, scoped to the capture
+           stage, so the live Pro Play surface is untouched. */
+        /* ...but NOT inside the champion anchor, whose ground is the splash.
+           ProPlayChampionAnchor puts the rail and the stem OVER a full-bleed
+           champion image with a dark scrim, so there the components' original
+           light-on-dark ink is already correct -- and the paper re-tone below
+           would put dark ink on a dark splash, which is the same defect in the
+           other direction. Measured: on the Ornn anchor the chips and the stem
+           were both unreadable before this exclusion. */
+        [data-quiz-render-stage]
+          [data-pro-play-anchor] [data-pro-play-context-rail] [data-tag-type],
+        [data-quiz-render-stage]
+          [data-pro-play-anchor] [data-pro-play-context-rail]
+          [data-tag-type="metric"],
+        [data-quiz-render-stage]
+          [data-pro-play-anchor] [data-pro-play-context-rail]
+          [data-tag-type="editorial"]{
+          border-color:rgba(201,168,76,0.45);
+          background-color:rgba(12,20,32,0.72);
+          color:#f0dcae;
+        }
+        /* The stem sits on the splash too, so it takes the light ink there
+           rather than the folio ink the h2 rule gives it on paper. */
+        [data-quiz-render-stage] [data-pro-play-anchor] [data-pro-play-question]{
+          color:#f6ecd2;
+          text-shadow:0 2px 10px rgba(0,0,0,0.85);
+        }
+        /* Three attribute selectors, deliberately. The anchor rules above are
+           four, so they out-specify this and the splash keeps its light ink.
+           A :not([data-pro-play-anchor]) here would read as belt-and-braces
+           and in fact BREAK it: :not() contributes its argument's specificity,
+           which would make this rule four as well and let source order win.
+           Measured -- the chips published dark-on-dark until it was removed. */
+        [data-quiz-render-stage] [data-pro-play-context-rail] [data-tag-type]{
+          border-color:rgba(122,92,30,0.45);
+          background-color:rgba(201,168,76,0.16);
+          color:#5c451a;
+        }
+        [data-quiz-render-stage] [data-pro-play-context-rail]
+          [data-tag-type="metric"]{
+          border-color:rgba(30,74,110,0.40);
+          background-color:rgba(56,120,168,0.14);
+          color:#1d4a6e;
+        }
+        [data-quiz-render-stage] [data-pro-play-context-rail]
+          [data-tag-type="editorial"]{
+          border-color:rgba(28,92,60,0.40);
+          background-color:rgba(46,140,92,0.14);
+          color:#1c5c3c;
+        }
+        /* The symmetric subject cards. Their ground is a translucent DARK
+           background token and their ink the light foreground token; on paper
+           the card disappears and the label with it. An opaque warm plate with folio
+           ink keeps the two-or-four cards legible as a comparison, which is
+           the whole reason they exist. */
+        [data-quiz-render-stage] [data-pro-play-subject]{
+          background-color:rgba(120,96,52,0.10);
+          border-color:rgba(122,92,30,0.35);
+          color:#2c2417;
+        }
+        [data-quiz-render-stage] [data-pro-play-subject] *{
+          color:#3a2f1e;
+        }
+        [data-quiz-render-stage] [data-pro-play-subject] [data-pro-play-team-chip],
+        [data-quiz-render-stage] [data-pro-play-subject] [data-pro-play-league-chip]{
+          border-color:rgba(122,92,30,0.40);
+          background-color:rgba(201,168,76,0.14);
+          color:#5c451a;
         }
 
         /* THE REVEAL GUTTER — a reserved slot for the verdict icon.

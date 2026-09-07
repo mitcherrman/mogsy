@@ -26,7 +26,8 @@
     "  vq-09  Daily frozen card carrying real frozen media",
     "  vq-10  a long-explanation row, for the explanation state",
     "The reveal and explanation cases are STATES over these rows, captured with",
-    "--states question,correct,explanation."
+    "--states question,correct,explanation.",
+    "CON1 Step 5: vq-03 was a HAND-AUTHORED row shaped like one of the ~50k legacy stored pro_champion_scope_comparison questions. That population is not the current Pro Play serving architecture -- Pro Play generates on demand (pro_authority.on_demand) and the stored rows carry no `context`, so they can never render the production Pro Play card. vq-03 is now a REAL current specimen emitted by quiz.review_render.resolve_review_item; vq-11 and vq-12 add the team and player anchors. All three payloads are the resolver's own output, copied verbatim, never hand-written. The legacy shape's continued REFUSAL is held by a unit test (presentation.proPlay.test.ts) rather than by a fixture row, because a fixture row that must fail would make every clean run report a failure."
   ],
   "questions": [
     {
@@ -36,10 +37,17 @@
       "format": "multiple_choice",
       "category": "items",
       "difficulty": 2,
-      "choices": ["Sunfire Aegis", "Thornmail", "Dead Man's Plate", "Randuin's Omen"],
+      "choices": [
+        "Sunfire Aegis",
+        "Thornmail",
+        "Dead Man's Plate",
+        "Randuin's Omen"
+      ],
       "correct_answer": "Thornmail",
       "explanation": "Thornmail grants 70 armor, the highest flat armor on any completed item.",
-      "metadata": { "cost": 2700 }
+      "metadata": {
+        "cost": 2700
+      }
     },
     {
       "id": "vq-02",
@@ -56,26 +64,186 @@
       ],
       "correct_answer": "About ninety gold — the cannon is worth close to three melee minions there",
       "explanation": "Cannon gold is indexed to game time rather than to wave number, and in the wave-9 window it is worth roughly ninety gold, which is close to three melee minions at their own value in that same window. Nothing else in the wave changes hands, so the whole difference is the cannon.",
-      "metadata": { "wave_number": 9 }
+      "metadata": {
+        "wave_number": 9
+      }
     },
     {
       "id": "vq-03",
-      "question_key": "pro_champion_scope_comparison:worlds:4.14:picks",
-      "question_text": "In the World Championship on patch 4.14, which champion had the higher pick count?",
+      "_case": "CURRENT Pro Play (2026 international meta), 2 options - the CTA's option-count case",
+      "question_key": "pro_champion_scope_comparison:Mid-Season Invitational|ALL|26.13:picks:pairwise:fa00a90f9a4ea3cc",
+      "question_text": "In MSI, patch 26.13, which champion had the higher pick count: Ziggs or Caitlyn?",
       "format": "multiple_choice",
       "category": "Pro Play",
-      "difficulty": 3,
-      "choices": ["Kha'Zix", "Janna"],
-      "correct_answer": "Kha'Zix",
-      "explanation": "Kha'Zix was a contested jungle pick in that window; Janna appeared in fewer games.",
-      "presentation": {
-        "scope_key": "World Championship|ALL|4.14",
-        "candidates": ["Janna", "Kha'Zix"],
-        "metric": "picks",
-        "patch": "4.14",
+      "choices": [
+        {
+          "label": "Ziggs"
+        },
+        {
+          "label": "Caitlyn"
+        }
+      ],
+      "correct_answer": "Ziggs",
+      "correct_index": 0,
+      "explanation": "Ziggs had 15 pick count versus Caitlyn's 13 in MSI, patch 26.13 (authority revision 1).",
+      "metadata": {
+        "family": "pro_champion_scope_comparison",
         "shape": "pairwise",
+        "metric": "picks",
+        "scope_key": "Mid-Season Invitational|ALL|26.13",
+        "league_slug": "Mid-Season Invitational",
         "tournament_id": null,
-        "league_slug": "World Championship"
+        "patch": "26.13",
+        "candidates": [
+          "Ziggs",
+          "Caitlyn"
+        ],
+        "correct_champion": "Ziggs",
+        "values": {
+          "Ziggs": 15,
+          "Caitlyn": 13
+        },
+        "authority_revision": 1,
+        "metric_definition_version": "pick_ban_presence_v1"
+      },
+      "presentation": {
+        "shape": "pairwise",
+        "candidates": [
+          "Ziggs",
+          "Caitlyn"
+        ],
+        "league_slug": "Mid-Season Invitational",
+        "scope_key": "Mid-Season Invitational|ALL|26.13",
+        "tournament_id": null,
+        "metric": "picks",
+        "patch": "26.13"
+      },
+      "context": {
+        "version": 1,
+        "relationship": {
+          "id": "scope_champion",
+          "label": "Scope → Champion",
+          "anchor_entity": "scope",
+          "subject_entity": "champion"
+        },
+        "editorial_tags": [
+          {
+            "id": "recent_esports",
+            "label": "Recent Esports Trivia",
+            "tooltip": "The competition this question is scoped to was played in 2025 or 2026."
+          }
+        ],
+        "scope_tags": [
+          {
+            "id": "Mid-Season Invitational",
+            "type": "league",
+            "label": "MSI",
+            "tooltip": "Mid-Season Invitational",
+            "priority": 10
+          },
+          {
+            "id": "2026",
+            "type": "year",
+            "label": "2026",
+            "tooltip": "Competitive season",
+            "priority": 30
+          },
+          {
+            "id": "26.13",
+            "type": "patch",
+            "label": "PATCH 26.13",
+            "tooltip": "Game patch",
+            "priority": 40
+          }
+        ],
+        "metric": {
+          "id": "picks",
+          "label": "PICKS",
+          "kind": "count",
+          "tooltip": "Times picked in this scope"
+        },
+        "anchor": {
+          "kind": "scope",
+          "label": "MSI, patch 26.13",
+          "id": "Mid-Season Invitational|ALL|26.13",
+          "media": {
+            "kind": "scope",
+            "key": null
+          },
+          "tooltip": "MSI, patch 26.13"
+        },
+        "subjects": [
+          {
+            "kind": "champion",
+            "label": "Ziggs",
+            "id": "Ziggs",
+            "media": {
+              "kind": "champion",
+              "key": "Ziggs"
+            },
+            "tooltip": "Ziggs"
+          },
+          {
+            "kind": "champion",
+            "label": "Caitlyn",
+            "id": "Caitlyn",
+            "media": {
+              "kind": "champion",
+              "key": "Caitlyn"
+            },
+            "tooltip": "Caitlyn"
+          }
+        ]
+      },
+      "asset_status": {
+        "status": "not_required",
+        "reason": "",
+        "references": [],
+        "unresolved": [],
+        "degraded_to_text": false,
+        "optional_unresolved": false,
+        "case_repaired": false
+      },
+      "review_key": "pro:champion-scope;k=Mid-Season Invitational|ALL|26.13;m=picks;s=pairwise",
+      "source_kind": "pro_question",
+      "provenance": {
+        "review_key": "pro:champion-scope;k=Mid-Season Invitational|ALL|26.13;m=picks;s=pairwise",
+        "source_kind": "pro_question",
+        "materialization": "code_generated",
+        "family": "pro_champion_scope_comparison",
+        "source_version": "1",
+        "specimen_version": "pro_champion_scope_comparison:Mid-Season Invitational|ALL|26.13:picks:pairwise:fa00a90f9a4ea3cc",
+        "data_version": "pick_ban_presence_v1",
+        "pro_family_alias": "champion-scope",
+        "pro_metric": "picks",
+        "pro_shape": "pairwise",
+        "pro_form": "pairwise",
+        "pro_relationship": "scope_champion",
+        "pro_content_style": "patch_meta",
+        "pro_recent": true,
+        "pro_anchor_kind": "scope",
+        "pro_anchor": "Mid-Season Invitational|ALL|26.13",
+        "pro_league_filter": null,
+        "pro_window": null,
+        "pro_scope": {
+          "scope_key": "Mid-Season Invitational|ALL|26.13",
+          "league_slug": "Mid-Season Invitational",
+          "tournament_id": null,
+          "patch": "26.13"
+        },
+        "pro_scope_label": "MSI, patch 26.13",
+        "pro_subjects": [
+          "Ziggs",
+          "Caitlyn"
+        ],
+        "pro_champion": null,
+        "pro_league_slug": "Mid-Season Invitational",
+        "pro_tournament_id": null,
+        "pro_patch": "26.13",
+        "pro_seasons": [
+          2026
+        ],
+        "generated_at": "2026-09-07T22:33:58.205953+00:00"
       }
     },
     {
@@ -85,7 +253,12 @@
       "format": "multiple_choice",
       "category": "item_build_path",
       "difficulty": 2,
-      "choices": ["Dagger", "Amplifying Tome", "Ruby Crystal", "Long Sword"],
+      "choices": [
+        "Dagger",
+        "Amplifying Tome",
+        "Ruby Crystal",
+        "Long Sword"
+      ],
       "correct_answer": "Amplifying Tome",
       "explanation": "Aether Wisp is built from Amplifying Tome and Rejuvenation Bead.",
       "image_path": "assets/items/3113.png",
@@ -95,8 +268,15 @@
         "item_id": 3113,
         "item_name": "Aether Wisp",
         "asset_path": "assets/items/3113.png",
-        "known_components": ["Rejuvenation Bead"],
-        "known_component_icons": [{ "name": "Rejuvenation Bead", "icon": "assets/items/1006.png" }],
+        "known_components": [
+          "Rejuvenation Bead"
+        ],
+        "known_component_icons": [
+          {
+            "name": "Rejuvenation Bead",
+            "icon": "assets/items/1006.png"
+          }
+        ],
         "missing_component_item_name": "Amplifying Tome",
         "missing_component_icon": "assets/items/1052.png"
       }
@@ -108,7 +288,12 @@
       "format": "multiple_choice",
       "category": "Champion Ability Cooldowns",
       "difficulty": 3,
-      "choices": ["4.55", "5.00", "4.00", "3.50"],
+      "choices": [
+        "4.55",
+        "5.00",
+        "4.00",
+        "3.50"
+      ],
       "correct_answer": "4.55",
       "explanation": "Ability haste divides the cooldown by (1 + haste/100): 5 / 1.10 = 4.55 seconds.",
       "presentation": {
@@ -127,7 +312,12 @@
       "format": "multiple_choice",
       "category": "post_mitigation_damage",
       "difficulty": 4,
-      "choices": ["64", "75", "86", "109"],
+      "choices": [
+        "64",
+        "75",
+        "86",
+        "109"
+      ],
       "correct_answer": "75",
       "explanation": "600 raw against 60 armor is 375 post-mitigation; against 100 armor it is 300. The purchase removes 75 damage.",
       "presentation": {
@@ -142,8 +332,20 @@
           },
           "entities": {
             "champions": [
-              { "type": "champion", "id": "Caitlyn", "name": "Caitlyn", "role": "attacker", "icon": "assets/champions/Caitlyn/icon.png" },
-              { "type": "champion", "id": "Ahri", "name": "Ahri", "role": "target", "icon": "assets/champions/Ahri/icon.png" }
+              {
+                "type": "champion",
+                "id": "Caitlyn",
+                "name": "Caitlyn",
+                "role": "attacker",
+                "icon": "assets/champions/Caitlyn/icon.png"
+              },
+              {
+                "type": "champion",
+                "id": "Ahri",
+                "name": "Ahri",
+                "role": "target",
+                "icon": "assets/champions/Ahri/icon.png"
+              }
             ],
             "items": [],
             "abilities": [],
@@ -166,7 +368,12 @@
       "format": "multiple_choice",
       "category": "flat_inventory_stat",
       "difficulty": 3,
-      "choices": ["750", "810", "700", "800"],
+      "choices": [
+        "750",
+        "810",
+        "700",
+        "800"
+      ],
       "correct_answer": "810",
       "explanation": "Sunfire Aegis and Abyssal Mask are the only items left; Doran's Shield left the inventory when it was sold.",
       "presentation": {
@@ -176,18 +383,51 @@
             "champion": "Ornn",
             "champion_icon": "assets/champions/Ornn/icon.png",
             "item_icons": [
-              { "name": "Sunfire Aegis", "icon": "assets/items/3068.png" },
-              { "name": "Abyssal Mask", "icon": "assets/items/8020.png" }
+              {
+                "name": "Sunfire Aegis",
+                "icon": "assets/items/3068.png"
+              },
+              {
+                "name": "Abyssal Mask",
+                "icon": "assets/items/8020.png"
+              }
             ]
           },
           "entities": {
             "champions": [
-              { "type": "champion", "id": "Ornn", "name": "Ornn", "role": "subject", "icon": "assets/champions/Ornn/icon.png" }
+              {
+                "type": "champion",
+                "id": "Ornn",
+                "name": "Ornn",
+                "role": "subject",
+                "icon": "assets/champions/Ornn/icon.png"
+              }
             ],
             "items": [
-              { "type": "item", "id": 3068, "name": "Sunfire Aegis", "role": "subject", "status": "retained", "icon": "assets/items/3068.png" },
-              { "type": "item", "id": 8020, "name": "Abyssal Mask", "role": "subject", "status": "purchased", "icon": "assets/items/8020.png" },
-              { "type": "item", "id": 1054, "name": "Doran's Shield", "role": "subject", "status": "sold", "icon": "assets/items/1054.png" }
+              {
+                "type": "item",
+                "id": 3068,
+                "name": "Sunfire Aegis",
+                "role": "subject",
+                "status": "retained",
+                "icon": "assets/items/3068.png"
+              },
+              {
+                "type": "item",
+                "id": 8020,
+                "name": "Abyssal Mask",
+                "role": "subject",
+                "status": "purchased",
+                "icon": "assets/items/8020.png"
+              },
+              {
+                "type": "item",
+                "id": 1054,
+                "name": "Doran's Shield",
+                "role": "subject",
+                "status": "sold",
+                "icon": "assets/items/1054.png"
+              }
             ],
             "abilities": [],
             "runes": [],
@@ -205,7 +445,12 @@
       "format": "multiple_choice",
       "category": "mastery",
       "difficulty": 4,
-      "choices": ["1636", "1500", "1786", "2460"],
+      "choices": [
+        "1636",
+        "1500",
+        "1786",
+        "2460"
+      ],
       "correct_answer": "1786",
       "explanation": "Flat penetration reduces the target's armor to 82, so the multiplier is 100 / (100 + 82) = 0.549, and 3000 × 0.549 = 1786.",
       "provenance": {
@@ -225,7 +470,12 @@
       "format": "multiple_choice",
       "category": "items",
       "difficulty": 2,
-      "choices": ["Infinity Edge", "Bloodthirster", "Serylda's Grudge", "Youmuu's Ghostblade"],
+      "choices": [
+        "Infinity Edge",
+        "Bloodthirster",
+        "Serylda's Grudge",
+        "Youmuu's Ghostblade"
+      ],
       "correct_answer": "Serylda's Grudge",
       "explanation": "Serylda's Grudge builds out of Last Whisper, which itself starts from a Long Sword.",
       "presentation": {
@@ -239,7 +489,13 @@
           "entities": {
             "champions": [],
             "items": [
-              { "type": "item", "id": 1036, "name": "Long Sword", "role": "subject", "icon": "assets/items/1036.png" }
+              {
+                "type": "item",
+                "id": 1036,
+                "name": "Long Sword",
+                "role": "subject",
+                "icon": "assets/items/1036.png"
+              }
             ],
             "abilities": [],
             "runes": [],
@@ -262,9 +518,770 @@
       "format": "multiple_choice",
       "category": "champion_ability_scaling",
       "difficulty": 3,
-      "choices": ["45", "60", "70", "160"],
+      "choices": [
+        "45",
+        "60",
+        "70",
+        "160"
+      ],
       "correct_answer": "60",
       "explanation": "The ratio is on BONUS attack damage, not total: 15 base plus 45% of 100 bonus AD is 60 physical damage per cast. All three casts of Broken Wings use the same values, so the full chain is 180 before mitigation — but the question asks for a single cast. Reading the ratio as total AD is the common error and would give a number roughly three times too large on a full build."
+    },
+    {
+      "id": "vq-11",
+      "_case": "CURRENT Pro Play, Worlds 2026 watchlist team, 4 options + team subject cards",
+      "question_key": "pro_team_champion_comparison:team_scope:Gen.G|team|PRO_TEAM:wins:team_ranking:1778fe16d272b6ac",
+      "question_text": "Which of these champions does Gen.G have the most pro wins on?",
+      "format": "multiple_choice",
+      "category": "Pro Play",
+      "choices": [
+        {
+          "label": "Sejuani"
+        },
+        {
+          "label": "Azir"
+        },
+        {
+          "label": "Ezreal"
+        },
+        {
+          "label": "Rakan"
+        }
+      ],
+      "correct_answer": "Azir",
+      "correct_index": 1,
+      "explanation": "Gen.G leads with 96 pro wins on Azir (authority revision 1).",
+      "metadata": {
+        "family": "pro_team_champion_comparison",
+        "shape": "team_ranking",
+        "metric": "wins",
+        "anchor_type": "team_scope",
+        "anchor": "Gen.G|team|PRO_TEAM",
+        "scope_label": "Gen.G in pro play",
+        "team_key": "Gen.G",
+        "team_display": "Gen.G",
+        "league_filter": "PRO_TEAM",
+        "scope_window": null,
+        "champion_key": null,
+        "candidates": [
+          "Sejuani",
+          "Azir",
+          "Ezreal",
+          "Rakan"
+        ],
+        "correct_candidate": "Azir",
+        "values": {
+          "Azir": 96,
+          "Rakan": 81,
+          "Ezreal": 71,
+          "Sejuani": 63
+        },
+        "authority_revision": 1,
+        "metric_definition_version": "team_champion_v1"
+      },
+      "presentation": {
+        "shape": "team_ranking",
+        "candidates": [
+          "Sejuani",
+          "Azir",
+          "Ezreal",
+          "Rakan"
+        ],
+        "team_display": "Gen.G",
+        "scope_label": "Gen.G in pro play",
+        "champion_key": null,
+        "metric": "wins"
+      },
+      "context": {
+        "version": 1,
+        "relationship": {
+          "id": "team_champion",
+          "label": "Team → Champion",
+          "anchor_entity": "team",
+          "subject_entity": "champion"
+        },
+        "editorial_tags": [],
+        "scope_tags": [
+          {
+            "id": "all_pro_play",
+            "type": "pro_play",
+            "label": "ALL PRO PLAY",
+            "tooltip": "Every competition Mogzy counts as pro play",
+            "priority": 10
+          },
+          {
+            "id": "all_time",
+            "type": "all_time",
+            "label": "ALL TIME",
+            "tooltip": "Every season available in this scope",
+            "priority": 90
+          }
+        ],
+        "metric": {
+          "id": "wins",
+          "label": "WINS",
+          "kind": "count",
+          "tooltip": "Games won on this champion in this scope"
+        },
+        "anchor": {
+          "kind": "team",
+          "label": "Gen.G",
+          "id": "e017aedf573470ce",
+          "short": "GEN",
+          "region": "Korea",
+          "seasons": {
+            "first": 2018,
+            "last": 2026,
+            "label": "2018–2026",
+            "tooltip": "Seasons in this scope"
+          },
+          "leagues": [
+            {
+              "id": "LoL Champions Korea",
+              "label": "LCK",
+              "media": {
+                "kind": "league",
+                "key": null
+              },
+              "tooltip": "LoL Champions Korea"
+            },
+            {
+              "id": "First Stand",
+              "label": "First Stand",
+              "media": {
+                "kind": "league",
+                "key": null
+              },
+              "tooltip": "First Stand"
+            },
+            {
+              "id": "World Championship",
+              "label": "Worlds",
+              "media": {
+                "kind": "league",
+                "key": null
+              },
+              "tooltip": "World Championship"
+            },
+            {
+              "id": "Mid-Season Invitational",
+              "label": "MSI",
+              "media": {
+                "kind": "league",
+                "key": null
+              },
+              "tooltip": "Mid-Season Invitational"
+            }
+          ],
+          "leagues_total": 5,
+          "leagues_shown": 4,
+          "media": {
+            "kind": "team",
+            "key": null
+          },
+          "tooltip": "Gen.G"
+        },
+        "subjects": [
+          {
+            "kind": "champion",
+            "label": "Sejuani",
+            "id": "Sejuani",
+            "media": {
+              "kind": "champion",
+              "key": "Sejuani"
+            },
+            "tooltip": "Sejuani"
+          },
+          {
+            "kind": "champion",
+            "label": "Azir",
+            "id": "Azir",
+            "media": {
+              "kind": "champion",
+              "key": "Azir"
+            },
+            "tooltip": "Azir"
+          },
+          {
+            "kind": "champion",
+            "label": "Ezreal",
+            "id": "Ezreal",
+            "media": {
+              "kind": "champion",
+              "key": "Ezreal"
+            },
+            "tooltip": "Ezreal"
+          },
+          {
+            "kind": "champion",
+            "label": "Rakan",
+            "id": "Rakan",
+            "media": {
+              "kind": "champion",
+              "key": "Rakan"
+            },
+            "tooltip": "Rakan"
+          }
+        ]
+      },
+      "asset_status": {
+        "status": "not_required",
+        "reason": "",
+        "references": [],
+        "unresolved": [],
+        "degraded_to_text": false,
+        "optional_unresolved": false,
+        "case_repaired": false
+      },
+      "review_key": "pro:team-champion;k=Gen.G|team|PRO_TEAM;m=wins;s=team_ranking",
+      "source_kind": "pro_question",
+      "provenance": {
+        "review_key": "pro:team-champion;k=Gen.G|team|PRO_TEAM;m=wins;s=team_ranking",
+        "source_kind": "pro_question",
+        "materialization": "code_generated",
+        "family": "pro_team_champion_comparison",
+        "source_version": "1",
+        "specimen_version": "pro_team_champion_comparison:team_scope:Gen.G|team|PRO_TEAM:wins:team_ranking:1778fe16d272b6ac",
+        "data_version": "team_champion_v1",
+        "pro_family_alias": "team-champion",
+        "pro_metric": "wins",
+        "pro_shape": "team_ranking",
+        "pro_form": "ranking",
+        "pro_relationship": "team_champion",
+        "pro_content_style": "team_champion_pool",
+        "pro_recent": false,
+        "pro_anchor_kind": "team_scope",
+        "pro_anchor": "Gen.G|team|PRO_TEAM",
+        "pro_league_filter": null,
+        "pro_window": null,
+        "pro_scope": {
+          "anchor_type": "team_scope",
+          "anchor": "Gen.G|team|PRO_TEAM",
+          "scope_label": "Gen.G in pro play",
+          "player_lp_page": null,
+          "team_key": "Gen.G",
+          "champion_key": null,
+          "league_filter": "PRO_TEAM"
+        },
+        "pro_scope_label": "Gen.G",
+        "pro_subjects": [
+          "Sejuani",
+          "Azir",
+          "Ezreal",
+          "Rakan"
+        ],
+        "pro_champion": null,
+        "pro_league_slug": null,
+        "pro_tournament_id": null,
+        "pro_patch": null,
+        "pro_seasons": [],
+        "generated_at": "2026-09-07T22:33:58.250109+00:00"
+      }
+    },
+    {
+      "id": "vq-12",
+      "_case": "CURRENT Pro Play, player anchor with role/seasons/teams subject context",
+      "question_key": "pro_player_champion_comparison:player_scope:Doss|career|LoL EMEA Championship:games_played:player_ranking:513b2445f350d7fb",
+      "question_text": "In LEC, which of these champions does Doss have the most games played on?",
+      "format": "multiple_choice",
+      "category": "Pro Play",
+      "choices": [
+        {
+          "label": "Nautilus"
+        },
+        {
+          "label": "Renata"
+        },
+        {
+          "label": "Rakan"
+        },
+        {
+          "label": "Lulu"
+        }
+      ],
+      "correct_answer": "Rakan",
+      "correct_index": 2,
+      "explanation": "Doss leads with 18 games played on Rakan, in LEC (authority revision 1).",
+      "metadata": {
+        "family": "pro_player_champion_comparison",
+        "shape": "player_ranking",
+        "metric": "games_played",
+        "anchor_type": "player_scope",
+        "anchor": "Doss|career|LoL EMEA Championship",
+        "scope_label": "Doss's career in LEC",
+        "player_lp_page": "Doss",
+        "player_display": "Doss",
+        "league_filter": "LoL EMEA Championship",
+        "scope_window": null,
+        "champion_key": null,
+        "candidates": [
+          "Nautilus",
+          "Renata",
+          "Rakan",
+          "Lulu"
+        ],
+        "correct_candidate": "Rakan",
+        "values": {
+          "Rakan": 18,
+          "Nautilus": 17,
+          "Lulu": 11,
+          "Renata": 9
+        },
+        "authority_revision": 1,
+        "metric_definition_version": "player_champion_v1"
+      },
+      "presentation": {
+        "shape": "player_ranking",
+        "candidates": [
+          "Nautilus",
+          "Renata",
+          "Rakan",
+          "Lulu"
+        ],
+        "player_display": "Doss",
+        "scope_label": "Doss's career in LEC",
+        "champion_key": null,
+        "metric": "games_played"
+      },
+      "context": {
+        "version": 1,
+        "relationship": {
+          "id": "player_champion",
+          "label": "Player → Champion",
+          "anchor_entity": "player",
+          "subject_entity": "champion"
+        },
+        "editorial_tags": [],
+        "scope_tags": [
+          {
+            "id": "LoL EMEA Championship",
+            "type": "league",
+            "label": "LEC",
+            "tooltip": "LoL EMEA Championship",
+            "priority": 10
+          },
+          {
+            "id": "all_time",
+            "type": "all_time",
+            "label": "ALL TIME",
+            "tooltip": "Every season available in this scope",
+            "priority": 90
+          }
+        ],
+        "metric": {
+          "id": "games_played",
+          "label": "GAMES",
+          "kind": "count",
+          "tooltip": "Games played on this champion in this scope"
+        },
+        "anchor": {
+          "kind": "player",
+          "label": "Doss",
+          "id": "f012b194768f2614",
+          "role": {
+            "id": "support",
+            "label": "SUPPORT",
+            "tooltip": "Support"
+          },
+          "seasons": {
+            "first": 2019,
+            "last": 2024,
+            "label": "2019–2024",
+            "tooltip": "Seasons in this scope"
+          },
+          "teams": [
+            {
+              "id": "dced417139cacde6",
+              "label": "SK Gaming",
+              "short": "SK",
+              "region": "EMEA",
+              "seasons": {
+                "first": 2023,
+                "last": 2024,
+                "label": "2023–2024",
+                "tooltip": "Seasons in this scope"
+              },
+              "media": {
+                "kind": "team",
+                "key": null
+              },
+              "tooltip": "SK Gaming"
+            },
+            {
+              "id": "81b18b8b93308e94",
+              "label": "Misfits Gaming",
+              "short": "MSF",
+              "region": "Europe",
+              "seasons": {
+                "first": 2019,
+                "last": 2020,
+                "label": "2019–2020",
+                "tooltip": "Seasons in this scope"
+              },
+              "media": {
+                "kind": "team",
+                "key": null
+              },
+              "tooltip": "Misfits Gaming"
+            }
+          ],
+          "teams_total": 2,
+          "teams_shown": 2,
+          "media": {
+            "kind": "player",
+            "key": null
+          },
+          "tooltip": "Doss"
+        },
+        "subjects": [
+          {
+            "kind": "champion",
+            "label": "Nautilus",
+            "id": "Nautilus",
+            "media": {
+              "kind": "champion",
+              "key": "Nautilus"
+            },
+            "tooltip": "Nautilus"
+          },
+          {
+            "kind": "champion",
+            "label": "Renata",
+            "id": "Renata",
+            "media": {
+              "kind": "champion",
+              "key": "Renata"
+            },
+            "tooltip": "Renata"
+          },
+          {
+            "kind": "champion",
+            "label": "Rakan",
+            "id": "Rakan",
+            "media": {
+              "kind": "champion",
+              "key": "Rakan"
+            },
+            "tooltip": "Rakan"
+          },
+          {
+            "kind": "champion",
+            "label": "Lulu",
+            "id": "Lulu",
+            "media": {
+              "kind": "champion",
+              "key": "Lulu"
+            },
+            "tooltip": "Lulu"
+          }
+        ]
+      },
+      "asset_status": {
+        "status": "not_required",
+        "reason": "",
+        "references": [],
+        "unresolved": [],
+        "degraded_to_text": false,
+        "optional_unresolved": false,
+        "case_repaired": false
+      },
+      "review_key": "pro:player-champion;k=Doss|career|LoL EMEA Championship;m=games_played;s=player_ranking",
+      "source_kind": "pro_question",
+      "provenance": {
+        "review_key": "pro:player-champion;k=Doss|career|LoL EMEA Championship;m=games_played;s=player_ranking",
+        "source_kind": "pro_question",
+        "materialization": "code_generated",
+        "family": "pro_player_champion_comparison",
+        "source_version": "1",
+        "specimen_version": "pro_player_champion_comparison:player_scope:Doss|career|LoL EMEA Championship:games_played:player_ranking:513b2445f350d7fb",
+        "data_version": "player_champion_v1",
+        "pro_family_alias": "player-champion",
+        "pro_metric": "games_played",
+        "pro_shape": "player_ranking",
+        "pro_form": "ranking",
+        "pro_relationship": "player_champion",
+        "pro_content_style": "player_champion_pool",
+        "pro_recent": false,
+        "pro_anchor_kind": "player_scope",
+        "pro_anchor": "Doss|career|LoL EMEA Championship",
+        "pro_league_filter": null,
+        "pro_window": null,
+        "pro_scope": {
+          "anchor_type": "player_scope",
+          "anchor": "Doss|career|LoL EMEA Championship",
+          "scope_label": "Doss's career in LEC",
+          "player_lp_page": "Doss",
+          "team_key": null,
+          "champion_key": null,
+          "league_filter": "LoL EMEA Championship"
+        },
+        "pro_scope_label": "Doss",
+        "pro_subjects": [
+          "Nautilus",
+          "Renata",
+          "Rakan",
+          "Lulu"
+        ],
+        "pro_champion": null,
+        "pro_league_slug": "LoL EMEA Championship",
+        "pro_tournament_id": null,
+        "pro_patch": null,
+        "pro_seasons": [],
+        "generated_at": "2026-09-07T22:33:58.368551+00:00"
+      }
+    },
+    {
+      "id": "vq-13",
+      "_case": "CURRENT Pro Play, CHAMPION-anchored: real splash art plus symmetric PLAYER subject cards (role/years/teams)",
+      "question_key": "pro_player_champion_comparison:champion_scope:Ornn|Europe League Championship Series:games_played:champion_pairwise:f4333c011dd09791",
+      "question_text": "In Europe League Championship Series, who has more games played on Ornn: Wunder or Alphari?",
+      "format": "multiple_choice",
+      "category": "Pro Play",
+      "choices": [
+        {
+          "label": "Alphari"
+        },
+        {
+          "label": "Wunder"
+        }
+      ],
+      "correct_answer": "Wunder",
+      "correct_index": 1,
+      "explanation": "Wunder has 7 games played on Ornn versus Alphari's 4, in Europe League Championship Series (authority revision 1 / 1).",
+      "metadata": {
+        "family": "pro_player_champion_comparison",
+        "shape": "champion_pairwise",
+        "metric": "games_played",
+        "anchor_type": "champion_scope",
+        "anchor": "Ornn|Europe League Championship Series",
+        "scope_label": "Ornn in Europe League Championship Series",
+        "player_lp_page": null,
+        "player_display": null,
+        "league_filter": "Europe League Championship Series",
+        "scope_window": null,
+        "champion_key": "Ornn",
+        "candidates": [
+          "Alphari",
+          "Wunder"
+        ],
+        "correct_candidate": "Wunder",
+        "values": {
+          "Wunder": 7,
+          "Alphari": 4
+        },
+        "authority_revisions": {
+          "Wunder": 1,
+          "Alphari": 1
+        },
+        "metric_definition_version": "player_champion_v1"
+      },
+      "presentation": {
+        "metric": "games_played",
+        "champion_key": "Ornn",
+        "candidates": [
+          "Alphari",
+          "Wunder"
+        ],
+        "player_display": null,
+        "shape": "champion_pairwise",
+        "scope_label": "Ornn in Europe League Championship Series"
+      },
+      "context": {
+        "version": 1,
+        "relationship": {
+          "id": "champion_player",
+          "label": "Champion → Player",
+          "anchor_entity": "champion",
+          "subject_entity": "player"
+        },
+        "editorial_tags": [],
+        "scope_tags": [
+          {
+            "id": "Europe League Championship Series",
+            "type": "league",
+            "label": "Europe League Championship Series",
+            "tooltip": "Europe League Championship Series",
+            "priority": 10
+          },
+          {
+            "id": "all_time",
+            "type": "all_time",
+            "label": "ALL TIME",
+            "tooltip": "Every season available in this scope",
+            "priority": 90
+          }
+        ],
+        "metric": {
+          "id": "games_played",
+          "label": "GAMES",
+          "kind": "count",
+          "tooltip": "Games played on this champion in this scope"
+        },
+        "anchor": {
+          "kind": "champion",
+          "label": "Ornn",
+          "id": "Ornn",
+          "media": {
+            "kind": "champion",
+            "key": "Ornn"
+          },
+          "tooltip": "Ornn"
+        },
+        "subjects": [
+          {
+            "kind": "player",
+            "label": "Alphari",
+            "id": "976308185d6c8866",
+            "role": {
+              "id": "top",
+              "label": "TOP",
+              "tooltip": "Top lane"
+            },
+            "seasons": {
+              "first": 2016,
+              "last": 2018,
+              "label": "2016–2018",
+              "tooltip": "Seasons in this scope"
+            },
+            "teams": [
+              {
+                "id": "81b18b8b93308e94",
+                "label": "Misfits Gaming",
+                "short": "MSF",
+                "region": "Europe",
+                "seasons": {
+                  "first": 2016,
+                  "last": 2018,
+                  "label": "2016–2018",
+                  "tooltip": "Seasons in this scope"
+                },
+                "media": {
+                  "kind": "team",
+                  "key": null
+                },
+                "tooltip": "Misfits Gaming"
+              }
+            ],
+            "teams_total": 1,
+            "teams_shown": 1,
+            "media": {
+              "kind": "player",
+              "key": null
+            },
+            "tooltip": "Alphari"
+          },
+          {
+            "kind": "player",
+            "label": "Wunder",
+            "id": "d829fd72e2d07ea9",
+            "role": {
+              "id": "top",
+              "label": "TOP",
+              "tooltip": "Top lane"
+            },
+            "seasons": {
+              "first": 2016,
+              "last": 2018,
+              "label": "2016–2018",
+              "tooltip": "Seasons in this scope"
+            },
+            "teams": [
+              {
+                "id": "4add6afaa7543d14",
+                "label": "G2 Esports",
+                "short": "G2",
+                "region": "EMEA",
+                "seasons": {
+                  "first": 2018,
+                  "last": 2018,
+                  "label": "2018",
+                  "tooltip": "Seasons in this scope"
+                },
+                "media": {
+                  "kind": "team",
+                  "key": null
+                },
+                "tooltip": "G2 Esports"
+              },
+              {
+                "id": "1fa2ea9bcafb8cea",
+                "label": "Splyce",
+                "short": "SPY",
+                "region": "Europe",
+                "seasons": {
+                  "first": 2016,
+                  "last": 2017,
+                  "label": "2016–2017",
+                  "tooltip": "Seasons in this scope"
+                },
+                "media": {
+                  "kind": "team",
+                  "key": null
+                },
+                "tooltip": "Splyce"
+              }
+            ],
+            "teams_total": 2,
+            "teams_shown": 2,
+            "media": {
+              "kind": "player",
+              "key": null
+            },
+            "tooltip": "Wunder"
+          }
+        ]
+      },
+      "asset_status": {
+        "status": "not_required",
+        "reason": "",
+        "references": [],
+        "unresolved": [],
+        "degraded_to_text": false,
+        "optional_unresolved": false,
+        "case_repaired": false
+      },
+      "review_key": "pro:player-champion;k=Ornn;m=games_played;s=champion_pairwise;lf=Europe League Championship Series",
+      "source_kind": "pro_question",
+      "provenance": {
+        "review_key": "pro:player-champion;k=Ornn;m=games_played;s=champion_pairwise;lf=Europe League Championship Series",
+        "source_kind": "pro_question",
+        "materialization": "code_generated",
+        "family": "pro_player_champion_comparison",
+        "source_version": "Alphari=1;Wunder=1",
+        "specimen_version": "pro_player_champion_comparison:champion_scope:Ornn|Europe League Championship Series:games_played:champion_pairwise:f4333c011dd09791",
+        "data_version": "player_champion_v1",
+        "pro_family_alias": "player-champion",
+        "pro_metric": "games_played",
+        "pro_shape": "champion_pairwise",
+        "pro_form": "pairwise",
+        "pro_relationship": "champion_player",
+        "pro_content_style": "champion_specialist",
+        "pro_recent": false,
+        "pro_anchor_kind": "champion_scope",
+        "pro_anchor": "Ornn",
+        "pro_league_filter": "Europe League Championship Series",
+        "pro_window": null,
+        "pro_scope": {
+          "anchor_type": "champion_scope",
+          "anchor": "Ornn|Europe League Championship Series",
+          "scope_label": "Ornn in Europe League Championship Series",
+          "player_lp_page": null,
+          "team_key": null,
+          "champion_key": "Ornn",
+          "league_filter": "Europe League Championship Series"
+        },
+        "pro_scope_label": "Ornn",
+        "pro_subjects": [
+          "Alphari",
+          "Wunder"
+        ],
+        "pro_champion": "Ornn",
+        "pro_league_slug": "Europe League Championship Series",
+        "pro_tournament_id": null,
+        "pro_patch": null,
+        "pro_seasons": [],
+        "generated_at": "2026-09-07T23:02:37.233207+00:00"
+      }
     }
   ]
 }

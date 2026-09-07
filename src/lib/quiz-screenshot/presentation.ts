@@ -28,6 +28,7 @@
  * only makes the fallback visible instead of silent.
  */
 
+import { asQuestionContext, type ProPlayQuestionContext } from "@/lib/pro-play/contract";
 import { selectFamilyLayout, type FamilyLayout } from "@/lib/question-surface/familyLayout";
 import {
   bandPresentsPayload,
@@ -76,6 +77,12 @@ export const HARNESS_SURFACE_VARIANT: SurfaceVariant = "competitive";
  *                   calc, collectible, spoiler placeholder). A rendered
  *                   presentation; valid.
  * - `family`      — the layout authority supports a family band. Valid.
+ * - `pro-context`  — the question carries the Pro Play PRESENTATION CONTRACT
+ *                   (`pro_authority.question_context.pre_answer`) and the
+ *                   PRODUCTION narrower `asQuestionContext` accepts it, so the
+ *                   shipped `ProPlayQuestionCard` draws the relationship, the
+ *                   scope tags, the metric, the champion anchor and the
+ *                   symmetric subject cards. A rendered presentation; valid.
  *
  * MEASURED, and the reason `cinematic` is named separately from `text-only`:
  * `ability_cooldown_haste` rows project {champion_name, slot, ability_name,
@@ -90,12 +97,14 @@ export type ScenarioPresentationStatus =
   | "no-scenario"
   | "text-only"
   | "cinematic"
-  | "family";
+  | "family"
+  | "pro-context";
 
 /** Statuses in which the presentation actually reached the picture. */
 export const RENDERED_PRESENTATION_STATUSES: readonly ScenarioPresentationStatus[] = [
   "family",
   "cinematic",
+  "pro-context",
 ];
 
 export interface ScenarioPresentationResult {
@@ -121,6 +130,12 @@ export interface ScenarioPresentationResult {
    * the picture, and `compact` is where it demonstrably does not.
    */
   band: ScenarioBandProfile | null;
+  /**
+   * The Pro Play presentation contract this question carries, narrowed by the
+   * PRODUCTION narrower, or null. Non-null exactly when `status` is
+   * `pro-context`; it is what the render page hands `ProPlayQuestionCard`.
+   */
+  proContext: ProPlayQuestionContext | null;
   /** Adapter message when `status` is `unreadable`, or `no-scenario`. */
   reason: string | null;
 }
@@ -130,6 +145,7 @@ const ABSENT: ScenarioPresentationResult = {
   model: null,
   familyLayout: null,
   band: null,
+  proContext: null,
   reason: null,
 };
 
@@ -145,6 +161,42 @@ export function resolveScenarioPresentation(
   question: RenderQuestion | null | undefined,
   variant: SurfaceVariant = HARNESS_SURFACE_VARIANT,
 ): ScenarioPresentationResult {
+  /**
+   * CON1 Step 5 — the Pro Play path, asked FIRST, and why that is not a
+   * special case.
+   *
+   * This function's job is to say what the PRODUCTION presentation system
+   * does with a question. Until Step 5 there was one such system — the
+   * scenario band — so "resolve the presentation" and "resolve the band" were
+   * the same sentence. They are not: Pro Play questions have never rendered
+   * through a scenario band in production. `ProPlayQuiz` composes
+   * `ProPlayQuestionCard` from `question.context`, and `selectFamilyLayout`
+   * has never had a Pro Play entry, because it was never meant to.
+   *
+   * So a Pro Play question routed down the band path resolves to `compact` and
+   * reads `text-only` — which was the correct verdict about the WRONG path.
+   * Asking the production narrower first routes each payload to the production
+   * component that actually draws it, exactly as `resolveBandProfile` routes
+   * on the scenario source's own shape.
+   *
+   * This is not a family list and not an allow-list: nothing here names a
+   * family, a question key or a source kind. The question is only ever
+   * "does the production narrower accept this payload's own `context`?", and
+   * `asQuestionContext` — the shipped one, imported, not copied — answers it.
+   * A payload whose context it rejects falls through to the band path below
+   * and is judged there, so a malformed context cannot pass by being present.
+   */
+  const proContext = asQuestionContext(question?.context);
+  if (proContext) {
+    return {
+      status: "pro-context",
+      model: null,
+      familyLayout: null,
+      band: null,
+      proContext,
+      reason: null,
+    };
+  }
   if (!question?.presentation || typeof question.presentation !== "object") return ABSENT;
 
   const payload = storedQuestionPreviewPayload(question);
@@ -154,6 +206,7 @@ export function resolveScenarioPresentation(
       model: null,
       familyLayout: null,
       band: null,
+      proContext: null,
       reason: "Question could not be shaped as a public question payload.",
     };
   }
@@ -167,6 +220,7 @@ export function resolveScenarioPresentation(
       model: null,
       familyLayout: null,
       band: null,
+      proContext: null,
       reason: err instanceof Error ? err.message : "Presentation could not be adapted.",
     };
   }
@@ -177,6 +231,7 @@ export function resolveScenarioPresentation(
       model,
       familyLayout: null,
       band: null,
+      proContext: null,
       reason: "Presentation was readable but produced no scenario source.",
     };
   }
@@ -197,6 +252,7 @@ export function resolveScenarioPresentation(
     model,
     familyLayout,
     band,
+    proContext: null,
     reason: bandPresentsPayload(band)
       ? null
       : band === "none"
@@ -211,4 +267,11 @@ export function rendersThroughScenarioSurface(
   result: ScenarioPresentationResult,
 ): boolean {
   return result.model !== null && result.model.scenarioSource !== null;
+}
+
+/** True when the harness should render through the production Pro Play card. */
+export function rendersThroughProPlayCard(
+  result: ScenarioPresentationResult,
+): boolean {
+  return result.proContext !== null;
 }

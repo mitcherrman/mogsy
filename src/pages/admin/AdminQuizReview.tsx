@@ -185,7 +185,56 @@ const SOURCE_LABELS: Record<string, string> = {
   ranked_fallback: "Ranked fallback", family_definition: "Family definitions",
   meta_reflex_rule: "Meta Reflex rules", meta_reflex_specimen: "Meta Reflex specimens",
   daily_card: "Daily frozen cards",
+  pro_question: "Pro Play (current)",
 };
+
+/**
+ * CON1 Step 5 — the status the backend gives a stored row whose FAMILY is no
+ * longer served from the bank.
+ *
+ * The ~50k stored `pro_champion_scope_comparison` rows are historical: Pro Play
+ * generates on demand and has no question bank. `quiz.review_universe` derives
+ * this from `pro_authority.on_demand.SUPPORTED_FAMILIES`, so the marking cannot
+ * drift from what the product serves. Kept as a LABEL, not a gate — the row is
+ * still readable, still addressable by its numeric id, and its publishability
+ * is decided by exactly the rules it always was.
+ */
+const LEGACY_SUPERSEDED_STATUS = "legacy_superseded";
+
+/**
+ * CON1 Step 5 — the Pro Play context Admin needs to judge a specimen.
+ *
+ * Player/team/champion, the metric and the scope. Read off the row's own
+ * `metadata`, which for a Pro row is the discovery projection the backend
+ * built from the FROZEN presentation contract — nothing is parsed back out of
+ * the review key, for the same reason the Daily framing is not.
+ */
+function proContextOf(row: ReviewUniverseRow): string | null {
+  if (row.source_kind !== "pro_question") return null;
+  // A bounded specimen REQUEST the current authority cannot answer. It is a
+  // row rather than an omission on purpose: "no current supply" and "the
+  // collector did not ask" are different facts and a content owner acts on
+  // them differently, so the provider's own message is shown in place of the
+  // context that does not exist.
+  if (row.source_status === "no_current_supply") {
+    return row.explanation
+      ? `No current supply — ${row.explanation}`
+      : "No current supply for this scope.";
+  }
+  const meta = (row.metadata ?? {}) as {
+    scope_label?: string;
+    scope_tags?: string[];
+    subjects?: string[];
+    metric?: string;
+  };
+  const parts = [
+    meta.scope_label,
+    (meta.scope_tags ?? []).join(" · "),
+    meta.metric ? `metric: ${meta.metric}` : null,
+    (meta.subjects ?? []).length ? `vs ${(meta.subjects ?? []).join(" / ")}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join("  —  ") : null;
+}
 
 /**
  * CON1 Step 3C — where a frozen Daily card sat in its day.
@@ -258,7 +307,11 @@ function UniverseRow({
   // card is publishable or not per card, not per source kind), else the shared
   // source-kind policy. Both are the earliest gate, never the only one.
   const support = reviewRowSupport(row);
-  const framing = dailyFramingOf(row);
+  const framing = dailyFramingOf(row) ?? proContextOf(row);
+  // A stored row from a family the product now generates on demand. Marked, not
+  // hidden: an operator scanning for current content should be able to see at a
+  // glance that this row is not it.
+  const legacy = row.source_status === LEGACY_SUPERSEDED_STATUS;
   // `strictNullChecks` is off, so a boolean discriminant needs the repo's own
   // narrowing predicate — see src/lib/result-narrowing.ts.
   const refusal = isFailure(support) ? support : null;
@@ -278,7 +331,18 @@ function UniverseRow({
       </div>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div>{row.source_status || "—"}</div>
+          <div
+            className={legacy ? "text-amber-500/90" : undefined}
+            data-testid={legacy ? `universe-legacy-${row.review_key}` : undefined}
+            title={
+              legacy
+                ? "This family is served on demand by the Pro Authority; the " +
+                  "stored rows are a historical population, not current content."
+                : undefined
+            }
+          >
+            {legacy ? "Legacy (superseded)" : row.source_status || "—"}
+          </div>
           <div className="truncate text-muted-foreground" title={row.source_version}>{row.source_version || "—"}</div>
         </div>
         <div className="flex shrink-0 items-center gap-1">

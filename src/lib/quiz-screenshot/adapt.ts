@@ -52,6 +52,8 @@ export type ScreenshotSourceQuestion = {
   review_key?: string | null;
   source_kind?: string | null;
   provenance?: RenderProvenance | null;
+  /** CON1 Step 5 — the Pro Play presentation contract, carried verbatim. */
+  context?: unknown;
 };
 
 export type SkippedSource = { id: number | string; reason: string };
@@ -124,6 +126,9 @@ export function adaptScreenshotQuestion(q: ScreenshotSourceQuestion): RenderQues
     source_kind: typeof q.source_kind === "string" && q.source_kind ? q.source_kind : undefined,
     provenance:
       q.provenance && typeof q.provenance === "object" ? q.provenance : undefined,
+    // Carried verbatim, exactly like `presentation` above. The adapter does
+    // not narrow it: `./presentation` asks the production narrower.
+    context: q.context ?? undefined,
   };
 }
 

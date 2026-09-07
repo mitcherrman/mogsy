@@ -34,6 +34,16 @@
  *                     `familyLayout`: `ability_cooldown_haste` (601 active rows
  *                     measured locally) has no family layout and renders a full
  *                     champion band.
+ *   pro-context PASS  the question carries the Pro Play presentation contract
+ *                     and the production narrower (`asQuestionContext`)
+ *                     accepted it, so `ProPlayQuestionCard` draws the scope,
+ *                     the metric, the anchor and the symmetric subject cards.
+ *                     Added in Step 5 by widening what "the production
+ *                     presentation system" means — Pro Play has never rendered
+ *                     through a scenario band — NOT by exempting anything:
+ *                     this module's `INCOMPLETE_STATUSES` set is unchanged,
+ *                     and a Pro Play payload the narrower rejects still falls
+ *                     through to the band path and still fails as `text-only`.
  *   text-only   FAIL  a presentation exists and the band fell back to the
  *                     category-only compact strip (or to no band at all).
  *                     CompactScenarioBand receives ONLY `category`, so every
@@ -47,6 +57,19 @@ import type { ScenarioPresentationStatus } from "./presentation";
 
 /** The QA code every finding from this gate carries. */
 export const INCOMPLETE_PRESENTATION_CODE = "incomplete-presentation";
+
+/**
+ * CON1 Step 5 — the code for a subject image the card EXPECTED and never got.
+ *
+ * A different failure from this gate's own: the premise reached the layout
+ * correctly and the question required no asset the backend could check, but
+ * the component's runtime art fetch failed and it rendered an empty frame
+ * instead of a splash. Declared here beside the other presentation code so the
+ * whole "the picture is not what the payload promised" vocabulary lives in one
+ * module; the check itself is in `capture.ts`, because only the browser can
+ * say whether an image actually painted.
+ */
+export const UNRESOLVED_SUBJECT_IMAGE_CODE = "unresolved-subject-image";
 
 /** Statuses that mean the projected premise never reached the picture. */
 const INCOMPLETE_STATUSES: ReadonlySet<string> = new Set([

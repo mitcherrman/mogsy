@@ -114,6 +114,24 @@ export type RenderQuestion = {
   source_kind?: string;
   /** Verbatim provenance from the resolver; recorded in the run manifest. */
   provenance?: RenderProvenance;
+  /**
+   * CON1 Step 5 — the Pro Play PRESENTATION CONTRACT, carried verbatim from
+   * the resolver's `context` field.
+   *
+   * This is `QuestionContext.pre_answer()` — the answer-safe half of
+   * `pro_authority.question_context`, and the exact object the shipped
+   * production surface (`ProPlayQuestionCard`) renders. It is deliberately
+   * NOT merged into `presentation`: `presentation` is
+   * `quiz.premise_projection`'s stored-row projection, read by the scenario
+   * band path, and Pro Play's premise reaches the picture through its own
+   * production component instead. Two premises would be two authorities.
+   *
+   * Typed `unknown` here for the same reason `presentation` is a loose
+   * record: the harness carries it and never interprets it. The one module
+   * that reads it (`./presentation`) narrows it with the PRODUCTION narrower,
+   * `@/lib/pro-play/contract`'s `asQuestionContext`.
+   */
+  context?: unknown;
 };
 
 export const RENDER_STATES = [

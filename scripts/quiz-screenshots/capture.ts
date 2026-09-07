@@ -7,7 +7,10 @@
 import { chromium, type Browser, type Page } from "playwright";
 import type { QaFinding } from "../../src/lib/quiz-screenshot/metadata";
 import { evaluateAssetGate } from "../../src/lib/quiz-screenshot/assetGate";
-import { evaluatePresentationGate } from "../../src/lib/quiz-screenshot/presentationGate";
+import {
+  evaluatePresentationGate,
+  UNRESOLVED_SUBJECT_IMAGE_CODE,
+} from "../../src/lib/quiz-screenshot/presentationGate";
 import {
   PRESENTATION_BAND_ATTRIBUTE,
   PRESENTATION_REASON_ATTRIBUTE,
@@ -114,6 +117,23 @@ type DomQa = {
   presentationStatus: string | null;
   presentationBand: string | null;
   presentationReason: string | null;
+  /**
+   * CON1 Step 5 — the subject artwork the card said it expected, and whether
+   * a real one is on screen.
+   *
+   * `expectedImage` is the page's declaration (see `data-quiz-expected-image`
+   * in QuizRenderPage). `subjectImageResolved` is the browser's answer: at
+   * least one <img> inside the card that has finished loading with a non-zero
+   * intrinsic size and a non-zero box.
+   *
+   * The pair exists because the two ways this can go wrong look nothing alike
+   * in the DOM. A BROKEN image is an <img> with naturalWidth 0, which
+   * `missingAssets` already catches. An UNRESOLVED one is no <img> at all —
+   * the runtime manifest fetch failed, the resolver returned undefined and the
+   * component rendered an empty frame. Nothing existing sees that.
+   */
+  expectedImage: string | null;
+  subjectImageResolved: boolean;
   /** Layout geometry for cross-state stability checks (px, page space). */
   layout: Record<string, { x: number; y: number; w: number; h: number } | null>;
 };
@@ -340,10 +360,29 @@ async function runDomQa(page: Page): Promise<DomQa> {
     const presentationBand = presentationEl?.getAttribute(attrs.band) ?? null;
     const presentationReason = presentationEl?.getAttribute(attrs.reason) ?? null;
 
+    // CON1 Step 5 — did the subject artwork the card expected actually arrive?
+    // Scoped to the CARD, not the page: the painted ground, the QR and the
+    // brand chrome are images too, and counting them would make every card
+    // look like it had a subject visual.
+    const expectedImage =
+      presentationEl?.getAttribute("data-quiz-expected-image") ?? null;
+    const cardEl = doc.querySelector("[data-quiz-content-card]") ?? presentationEl;
+    let subjectImageResolved = false;
+    cardEl?.querySelectorAll("img").forEach((img) => {
+      const r = img.getBoundingClientRect();
+      // `complete && naturalWidth > 0` is "the bytes decoded"; the box test is
+      // "and it occupies the frame". A 0x0 image is as blank as a missing one.
+      if (img.complete && img.naturalWidth > 0 && r.width > 1 && r.height > 1) {
+        subjectImageResolved = true;
+      }
+    });
+
     return {
       presentationStatus,
       presentationBand,
       presentationReason,
+      expectedImage,
+      subjectImageResolved,
       ctaPresent,
       ctaText,
       ctaHasLogo,
@@ -530,6 +569,39 @@ export async function captureOne(args: {
       allowMissingAssets: args.allowMissingAssets === true,
     });
     for (const finding of assetGate.findings) {
+      if (finding.severity === "failure") qa.failures.push(finding);
+      else qa.warnings.push(finding);
+    }
+
+    // ── CON1 Step 5: an EXPECTED subject image that never resolved ───────
+    // The gap Step 4 recorded as "the one way the factory can currently
+    // produce a bad image and call the run clean". Distinct from both gates
+    // above: the presentation gate asks whether a premise reached the LAYOUT,
+    // and the asset gate asks whether the files a question REQUIRES exist on
+    // disk. Neither sees a card whose layout is right and whose files are fine
+    // but whose runtime art fetch failed, because the component then renders
+    // no <img> at all and there is nothing broken to find.
+    //
+    // Fail-closed and narrow: it fires only when the page itself declared that
+    // it expected a subject visual, so a text card can never trip it.
+    if (dom.expectedImage && !dom.subjectImageResolved) {
+      const finding: QaFinding = {
+        severity: args.allowMissingAssets === true ? "warning" : "failure",
+        code: UNRESOLVED_SUBJECT_IMAGE_CODE,
+        message:
+          `Unresolved subject image on question ${question.id}: the card ` +
+          `declared it expected ${dom.expectedImage} artwork, but no image ` +
+          `rendered inside it (format=${format.key}, state=${state}). The ` +
+          `art is resolved at runtime from GET /api/assets/champions; a ` +
+          `failed or CORS-blocked fetch publishes an empty frame rather than ` +
+          `a broken image, which is why this is checked separately.` +
+          (args.allowMissingAssets === true
+            ? " Downgraded to a warning because --allow-missing-assets is set;"
+            + " this image is a diagnostic, not a publishable capture."
+            : ""),
+        format: format.key,
+        state,
+      };
       if (finding.severity === "failure") qa.failures.push(finding);
       else qa.warnings.push(finding);
     }

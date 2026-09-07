@@ -94,12 +94,34 @@ describe("publishability policy", () => {
     // An EXACT list, so adding a source stays a conscious act on both sides of
     // the wire. Step 3B: Mastery. Step 3C: the frozen Daily card — publishable
     // at the NAMESPACE level only, with the per-card verdict riding on the row
-    // (see `reviewRowSupport`).
+    // (see `reviewRowSupport`). Step 5: CURRENT Pro Play, also namespace-level,
+    // with the per-key verdict in the backend's specimen grammar.
     expect([...PUBLISHABLE_REVIEW_SOURCE_KINDS]).toEqual([
       "mastery_question",
       "daily_card",
+      "pro_question",
     ]);
     expect(isFailure(reviewKeySupport(MASTERY_KEY))).toBe(false);
+  });
+
+  it("supports a pinned Pro Play specimen key", () => {
+    const key =
+      "pro:champion-scope;k=Mid-Season Invitational|ALL|26.13;m=picks;s=pairwise";
+    const support = reviewKeySupport(key);
+    expect(isFailure(support)).toBe(false);
+    if (!isFailure(support)) expect(support.sourceKind).toBe("pro_question");
+  });
+
+  it("keeps a LEGACY stored Pro Play key on the stored branch", () => {
+    // `pro_champion_scope_comparison:…` begins `pro_`, not `pro:`. The prefix
+    // match is on the colon, so the ~50k stored rows keep their stored
+    // identity and their stored refusal — the one thing that would break if
+    // the namespace were `pro` rather than `pro:`.
+    const support = reviewKeySupport(
+      "pro_champion_scope_comparison:worlds:4.14:picks",
+    );
+    expect(isFailure(support)).toBe(true);
+    if (isFailure(support)) expect(support.code).toBe(REFUSAL_CODES.useQuestionId);
   });
 
   it("refuses a family definition — a definition must never look publishable", () => {

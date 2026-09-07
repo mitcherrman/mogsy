@@ -63,6 +63,16 @@ export const GENERATED_NAMESPACES: Readonly<Record<string, string>> = {
    * (`render_refusal`) so the button is greyed out before the click.
    */
   "daily:": "daily_card",
+  /**
+   * CON1 Step 5 — CURRENT Pro Play, generated on demand and identified by the
+   * generation SLOT it occupies (`pro:<family-alias>;k=…;m=…;s=…`).
+   *
+   * The ~50k stored `pro_champion_scope_comparison` rows are NOT this source.
+   * Their keys begin `pro_`, not `pro:`, so they fall through to the stored
+   * branch and keep the stored refusal (`use_question_id`) — the prefix match
+   * below is on the colon, which is what keeps the two apart.
+   */
+  "pro:": "pro_question",
   "ranked:": "ranked_candidate",
   "ranked-fallback:": "ranked_fallback",
   "family:": "family_definition",
@@ -84,6 +94,12 @@ export const PUBLISHABLE_REVIEW_SOURCE_KINDS: readonly string[] = [
    * independently either way.
    */
   "daily_card",
+  /**
+   * Publishable at the NAMESPACE level, like Daily. A bare `pro:<family>` is a
+   * DEFINITION over thousands of slots and the backend refuses it per key with
+   * `definition_only`; a key that pins a slot resolves.
+   */
+  "pro_question",
 ] as const;
 
 /** Refusal codes, shared verbatim with `quiz/review_render.py`. */
