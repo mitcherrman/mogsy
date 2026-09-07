@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ASSET_REQUIRED_UNRESOLVED } from "./presentationFixtures";
+import type { AssetStatus } from "../quiz/assetStatus";
 import type { RenderQuestion } from "./types";
 import { adaptScreenshotQuestion, adaptScreenshotQuestions } from "./adapt";
 
@@ -71,7 +72,9 @@ describe("asset_status carry-through", () => {
   };
 
   it("carries the backend's computed signal verbatim", () => {
-    const asset_status = ASSET_REQUIRED_UNRESOLVED;
+    // The fixture is `as const` (deeply readonly); widen it the same way
+    // assetGate.test.ts does, so the literal fits the mutable AssetStatus.
+    const asset_status = ASSET_REQUIRED_UNRESOLVED as unknown as AssetStatus;
     const result = adaptScreenshotQuestion({ ...base, asset_status });
     expect(typeof result).not.toBe("string");
     expect((result as RenderQuestion).asset_status).toEqual(asset_status);
