@@ -176,6 +176,15 @@ export interface Roster {
     ambiguous_roles: { role: string; reason: string }[] | string[];
     has_full_five: boolean;
   };
+  /** Present when the roster registry was attached: which demonstrated
+   *  players are also DECLARED, and the two ways the two lists disagree.
+   *  null when the registry was unavailable — a degraded but honest result,
+   *  never a claim that the lists agree. */
+  declared_corroboration: {
+    declared_open_memberships: number;
+    declared_not_played_in_scope: string[];
+    played_but_not_declared: string[];
+  } | null;
 }
 
 export interface FocusBlock {

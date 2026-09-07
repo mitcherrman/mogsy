@@ -332,3 +332,280 @@ export function withPoolScope(selection: MatchupSelection, scopeId: string): Mat
   // in 2026" is a real answer, and the server flags it rather than erasing it.
   return { ...selection, pool_scope_id: scopeId };
 }
+
+// ---------------------------------------------------------------------------
+// Team mode — the five-lane board (/api/pro-play/matchup/team).
+//
+// A SECOND ENDPOINT, ONE CONTRACT. `/contract` still serves the vocabulary for
+// both modes (see `MatchupContract.team_mode`); only the resolve call differs,
+// because a team board takes none of lane mode's six lane/player/champion
+// parameters and returns five lanes instead of two sides. The page's `mode`
+// lives in the URL and picks which fetch to make.
+//
+// THE SAME FOUR THINGS THIS CLIENT MUST NOT SAY still apply, and one more:
+// team mode must never read as a PREDICTION. The server ships
+// `notes.team_mode` denying it in words; this file renders that note and
+// invents no wording of its own.
+// ---------------------------------------------------------------------------
+
+/** The three states a lane can be in. Never collapsed into two. */
+export const LANE_CLEAR_STARTER = "clear_starter";
+export const LANE_TIMESHARE = "timeshare";
+export const LANE_UNCOVERED = "uncovered";
+
+export type LaneState = "clear_starter" | "timeshare" | "uncovered";
+
+/** Warning codes the board reports rather than smoothing over. */
+export const WARN_LANE_UNCOVERED = "lane_uncovered";
+export const WARN_LANE_TIMESHARE = "lane_timeshare";
+export const WARN_ROSTER_PARTIAL = "roster_partial";
+export const WARN_TEAM_ABSENT = "team_absent_from_scope";
+export const WARN_SAME_TEAM = "same_team_selected";
+
+export interface LaneRecord {
+  scope_id: string;
+  scope_label: string;
+  participation: "participated" | "did_not_participate";
+  games: number;
+  wins: number | null;
+  losses: number | null;
+  /** null over zero games, never 0. */
+  win_rate: number | null;
+  champion_pool_size: number;
+  /** The server's own side-by-side sentence. Printed, never reworded. */
+  note: string;
+}
+
+export interface LaneCandidate {
+  player_lp_page: string;
+  display_name: string;
+  games: number;
+  wins: number;
+  share_of_team_games: number | null;
+  first_played_at: string | null;
+  last_played_at: string | null;
+  /** What the ROSTER authority said about games already played. Never a
+   *  claim about who will start. */
+  is_starter: boolean;
+  declared_member: boolean | null;
+  record: LaneRecord | null;
+  pool: DemonstratedPool | null;
+  /** The pool FETCH was bounded, not the roster. This candidate's full,
+   *  unfiltered pool is one lane drill-down away. */
+  pool_omitted: boolean;
+}
+
+export interface LaneSide {
+  team_key: string;
+  lane: Lane;
+  state: LaneState;
+  starter: string | null;
+  ambiguous: boolean;
+  ambiguous_reason: string | null;
+  lane_covered: boolean;
+  candidates: LaneCandidate[];
+  candidates_total: number;
+  candidates_with_pool: number;
+  /** The only player a drill-down may pre-fill; null for a timeshare and for
+   *  an uncovered lane. */
+  unambiguous_player: string | null;
+}
+
+export interface LaneDrilldown {
+  lane: Lane;
+  selection: MatchupSelection;
+  player_a_prefilled: boolean;
+  player_b_prefilled: boolean;
+}
+
+export interface LaneRow {
+  lane: Lane;
+  a: LaneSide | null;
+  b: LaneSide | null;
+  drilldown: LaneDrilldown | null;
+}
+
+export interface TeamChampionSummary {
+  team_key: string;
+  scope_id: string;
+  scope_label: string;
+  participation: "participated" | "did_not_participate";
+  team_games_in_scope: number;
+  wins: number | null;
+  losses: number | null;
+  win_rate: number | null;
+  champion_pool_size: number;
+  top_champions: PoolChampion[];
+  note: string;
+}
+
+export interface TeamHeader {
+  team_key: string;
+  display_name: string;
+  focus: FocusTeamRow;
+  roster: Roster;
+  completeness: Roster["completeness"];
+  team_games_in_scope: number;
+  declared_corroboration: Roster["declared_corroboration"];
+  champion_summary: TeamChampionSummary | null;
+}
+
+export interface MatchupWarning {
+  code: string;
+  team_key?: string;
+  lane?: Lane;
+  detail: string;
+}
+
+export interface TeamSelection {
+  team_a: string | null;
+  team_b: string | null;
+  bans: string[];
+  scope_id: string;
+  league_filter?: string;
+}
+
+export interface TeamMatchupResponse {
+  contract_version: string;
+  comparison_contract_version: string;
+  mode: "team";
+  comparison_kind: "players_side_by_side";
+  semantics: "independent_side_by_side";
+  /** Always false, on a screen showing ten records at once — which is exactly
+   *  why it is asserted before any of them render. */
+  head_to_head: false;
+  selection: TeamSelection & { mode: "team" };
+  scope: { scope_id: string; scope_label: string };
+  lane_order: Lane[];
+  lanes: LaneRow[];
+  teams: { a: TeamHeader | null; b: TeamHeader | null };
+  bans: { champions: string[]; note: string };
+  warnings: MatchupWarning[];
+  resolved: boolean;
+  /** How many champions to show before "expand". A DISPLAY point served by
+   *  the server; the payload still carries every row. */
+  pool_preview: number;
+  pool_candidates_per_lane: number;
+  notes: MatchupNotes & {
+    team_mode: string;
+    pool_bound: string;
+    team_summary: string;
+  };
+}
+
+/** Empty team selection: the board's first paint. */
+export const EMPTY_TEAM_SELECTION: TeamSelection = {
+  team_a: null,
+  team_b: null,
+  bans: [],
+  scope_id: "current_2026",
+};
+
+export type MatchupMode = "lane" | "team";
+
+/**
+ * Team-mode params, for BOTH the request and the address bar — the same rule
+ * lane mode follows, so a configured board is one shareable URL.
+ *
+ * `mode=team` is written only for the page; the API knows its own mode from
+ * which endpoint was called, and `stripMode` removes it from the request.
+ */
+export function teamSelectionToParams(selection: TeamSelection, withMode = true): URLSearchParams {
+  const params = new URLSearchParams();
+  if (withMode) params.set("mode", "team");
+  if (selection.team_a) params.set("team_a", selection.team_a);
+  if (selection.team_b) params.set("team_b", selection.team_b);
+  // Sorted, so two people who banned the same champions in a different order
+  // share one link.
+  for (const ban of [...new Set(selection.bans)].filter(Boolean).sort()) {
+    params.append("ban", ban);
+  }
+  if (selection.scope_id && selection.scope_id !== EMPTY_TEAM_SELECTION.scope_id) {
+    params.set("scope", selection.scope_id);
+  }
+  return params;
+}
+
+/** The exact inverse. */
+export function teamSelectionFromParams(params: URLSearchParams): TeamSelection {
+  return {
+    team_a: params.get("team_a") || null,
+    team_b: params.get("team_b") || null,
+    bans: [...new Set(params.getAll("ban").filter(Boolean))].sort(),
+    scope_id: params.get("scope") || EMPTY_TEAM_SELECTION.scope_id,
+  };
+}
+
+/** Which board the URL asks for. Lane mode is the default, so every Phase 1
+ *  link ever shared keeps resolving to the lane explorer. */
+export function modeFromParams(params: URLSearchParams): MatchupMode {
+  return params.get("mode") === "team" ? "team" : "lane";
+}
+
+export function fetchTeamMatchup(selection: TeamSelection, signal?: AbortSignal) {
+  const qs = teamSelectionToParams(selection, false).toString();
+  return get<TeamMatchupResponse>(`/team${qs ? `?${qs}` : ""}`, signal);
+}
+
+// --- team-mode selection edits ---------------------------------------------
+
+export function withTeamSide(
+  selection: TeamSelection,
+  side: SideId,
+  teamKey: string | null,
+): TeamSelection {
+  // Nothing downstream to clear: the board holds no player or champion
+  // choice, which is the whole reason team mode has no `needs`.
+  return { ...selection, [side === "a" ? "team_a" : "team_b"]: teamKey };
+}
+
+export function withTeamScope(selection: TeamSelection, scopeId: string): TeamSelection {
+  return { ...selection, scope_id: scopeId };
+}
+
+export function withTeamBanToggled(selection: TeamSelection, key: string): TeamSelection {
+  const bans = new Set(selection.bans);
+  if (bans.has(key)) bans.delete(key);
+  else bans.add(key);
+  return { ...selection, bans: [...bans].sort() };
+}
+
+/** Swap the two teams. A board is symmetric, and reading it the other way
+ *  round is a real thing to want. */
+export function withTeamsSwapped(selection: TeamSelection): TeamSelection {
+  return { ...selection, team_a: selection.team_b, team_b: selection.team_a };
+}
+
+/**
+ * The lane drill-down, as a URL for the SAME page in lane mode.
+ *
+ * Built from the server's own `drilldown.selection` — the teams, the lane, the
+ * bans and the scope carry over, and a player appears only where the roster
+ * authority named one. Nothing here decides any of that.
+ */
+export function drilldownUrl(path: string, drilldown: LaneDrilldown): string {
+  const selection: MatchupSelection = {
+    ...EMPTY_SELECTION,
+    ...drilldown.selection,
+    bans: drilldown.selection.bans ?? [],
+  };
+  const qs = selectionToParams(selection).toString();
+  return `${path}${qs ? `?${qs}` : ""}`;
+}
+
+/** Back to the board from a lane view, keeping the teams, bans and scope. */
+export function teamModeUrl(path: string, selection: TeamSelection): string {
+  const qs = teamSelectionToParams(selection).toString();
+  return `${path}${qs ? `?${qs}` : ""}`;
+}
+
+/** The team selection implied by a lane selection — used by the "back to the
+ *  five-lane board" link so a round trip loses nothing but the lane. */
+export function teamSelectionFromLane(selection: MatchupSelection): TeamSelection {
+  return {
+    team_a: selection.team_a,
+    team_b: selection.team_b,
+    bans: selection.bans,
+    scope_id: selection.pool_scope_id,
+  };
+}

@@ -52,12 +52,21 @@ import {
   formatRecord,
   profilePath,
 } from "@/lib/pro-play/researchApi";
+import { TeamBoard } from "@/pages/pro-play/ProPlayMatchupTeam";
 import {
   CONFLICT_CHAMPION_BANNED,
   CONFLICT_CHAMPION_OFF_POOL,
   CONFLICT_PLAYER_OFF_LANE,
   EMPTY_SELECTION,
   fetchMatchup,
+  fetchTeamMatchup,
+  modeFromParams,
+  teamModeUrl,
+  teamSelectionFromLane,
+  teamSelectionFromParams,
+  teamSelectionToParams,
+  type TeamMatchupResponse,
+  type TeamSelection,
   fetchMatchupContract,
   selectionFromParams,
   selectionToParams,
@@ -525,71 +534,41 @@ function MechanicsPanel({ data }: { data: MatchupResponse }) {
 
 // --- page -------------------------------------------------------------------
 
-export function MatchupBody() {
-  const [params, setParams] = useSearchParams();
-  const [contract, setContract] = useState<MatchupContract | null>(null);
-  const [data, setData] = useState<MatchupResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const abort = useRef<AbortController | null>(null);
-
-  // The URL is the state. Reading it here rather than holding a second copy is
-  // what makes back/forward and a pasted link behave identically.
-  const selection = useMemo(() => selectionFromParams(params), [params]);
-
-  const apply = useCallback(
-    (next: MatchupSelection) => {
-      setParams(selectionToParams(next), { replace: false });
-    },
-    [setParams],
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchMatchupContract(controller.signal)
-      .then(setContract)
-      .catch((err) => {
-        if ((err as Error)?.name !== "AbortError") setError((err as Error).message);
-      });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
-    abort.current?.abort();
-    const controller = new AbortController();
-    abort.current = controller;
-    setLoading(true);
-    fetchMatchup(selection, controller.signal)
-      .then((res) => {
-        if (controller.signal.aborted) return;
-        setData(res);
-        setError(null);
-      })
-      .catch((err) => {
-        if ((err as Error)?.name === "AbortError") return;
-        setError((err as Error).message || "Could not load the matchup");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [selection]);
-
-  if (error && !data) return <ErrorBlock message={error} />;
-  if (!contract || !data) return <LoadingBlock />;
-
+/**
+ * Lane mode — Phase 1's explorer, unchanged in behaviour and still the
+ * default. It is a component rather than the page body only so that team mode
+ * can be the page's other half; every control, rule and label below is the
+ * one Phase 1 shipped.
+ */
+function LaneExplorer({
+  contract,
+  data,
+  selection,
+  apply,
+  onSwitchToTeam,
+}: {
+  contract: MatchupContract;
+  data: MatchupResponse;
+  selection: MatchupSelection;
+  apply: (next: MatchupSelection) => void;
+  onSwitchToTeam: () => void;
+}) {
   return (
-    <ResearchPage>
-      <ResearchBreadcrumb trail={[{ label: "Matchup Explorer" }]} />
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight md:text-3xl">
-        {contract.focus_set.target_event} Matchup Explorer
-      </h1>
-      <p className="mb-5 text-sm text-muted-foreground" data-testid="matchup-focus-note">
-        {contract.notes.focus}
-      </p>
-
-      {error ? <ErrorBlock message={error} /> : null}
-
+    <>
+      {selection.team_a && selection.team_b ? (
+        // Back to the board, keeping the teams, bans and scope. The round
+        // trip loses only the lane, which is what the reader just chose.
+        <div className="mb-3">
+          <button
+            type="button"
+            className="text-xs underline text-muted-foreground hover:text-foreground"
+            data-testid="lane-to-team"
+            onClick={onSwitchToTeam}
+          >
+            ← Five-lane board for these teams
+          </button>
+        </div>
+      ) : null}
       <Panel
         title="Configuration"
         note={
@@ -667,6 +646,153 @@ export function MatchupBody() {
             <RosterContext side={data.sides.b} label="B" />
           </div>
         </Panel>
+      ) : null}
+    </>
+  );
+}
+
+export function MatchupBody() {
+  const [params, setParams] = useSearchParams();
+  const [contract, setContract] = useState<MatchupContract | null>(null);
+  const [data, setData] = useState<MatchupResponse | null>(null);
+  const [teamData, setTeamData] = useState<TeamMatchupResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const abort = useRef<AbortController | null>(null);
+
+  // The URL is the state, in both modes. Reading it here rather than holding a
+  // second copy is what makes back/forward and a pasted link behave
+  // identically — including a link that crosses between the two boards.
+  const mode = useMemo(() => modeFromParams(params), [params]);
+  const selection = useMemo(() => selectionFromParams(params), [params]);
+  const teamSelection = useMemo(() => teamSelectionFromParams(params), [params]);
+
+  const apply = useCallback(
+    (next: MatchupSelection) => {
+      setParams(selectionToParams(next), { replace: false });
+    },
+    [setParams],
+  );
+
+  const applyTeam = useCallback(
+    (next: TeamSelection) => {
+      setParams(teamSelectionToParams(next), { replace: false });
+    },
+    [setParams],
+  );
+
+  // Crossing between the boards carries everything the other board can hold.
+  // Lane -> team drops the lane, the players and the champions, because a
+  // board has no place to put them; team -> lane keeps the teams, bans and
+  // scope and leaves the lane for the reader.
+  const toTeam = useCallback(
+    () => applyTeam(teamSelectionFromLane(selection)),
+    [applyTeam, selection],
+  );
+  const toLane = useCallback(() => {
+    apply({
+      ...EMPTY_SELECTION,
+      team_a: teamSelection.team_a,
+      team_b: teamSelection.team_b,
+      bans: teamSelection.bans,
+      pool_scope_id: teamSelection.scope_id,
+    });
+  }, [apply, teamSelection]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMatchupContract(controller.signal)
+      .then(setContract)
+      .catch((err) => {
+        if ((err as Error)?.name !== "AbortError") setError((err as Error).message);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    abort.current?.abort();
+    const controller = new AbortController();
+    abort.current = controller;
+    setLoading(true);
+    const request =
+      mode === "team"
+        ? fetchTeamMatchup(teamSelection, controller.signal).then((res) => {
+            if (!controller.signal.aborted) setTeamData(res);
+          })
+        : fetchMatchup(selection, controller.signal).then((res) => {
+            if (!controller.signal.aborted) setData(res);
+          });
+    request
+      .then(() => {
+        if (!controller.signal.aborted) setError(null);
+      })
+      .catch((err) => {
+        if ((err as Error)?.name === "AbortError") return;
+        setError((err as Error).message || "Could not load the matchup");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+    // `mode` is derived from the same params as both selections, so the two
+    // selection objects are the honest dependency list.
+  }, [mode, selection, teamSelection]);
+
+  const ready = mode === "team" ? teamData : data;
+  if (error && !ready) return <ErrorBlock message={error} />;
+  if (!contract || !ready) return <LoadingBlock />;
+
+  return (
+    <ResearchPage>
+      <ResearchBreadcrumb trail={[{ label: "Matchup Explorer" }]} />
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight md:text-3xl">
+        {contract.focus_set.target_event} Matchup Explorer
+      </h1>
+      <p className="mb-3 text-sm text-muted-foreground" data-testid="matchup-focus-note">
+        {contract.notes.focus}
+      </p>
+
+      <div className="mb-4 flex gap-1" role="tablist" aria-label="Explorer mode">
+        {(["team", "lane"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            data-testid={`matchup-mode-${m}`}
+            onClick={m === "team" ? toTeam : toLane}
+            className={[
+              "rounded-md border px-3 py-1 text-xs transition-colors",
+              mode === m
+                ? "border-foreground/30 bg-muted font-medium"
+                : "border-border text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            {m === "team" ? "Five-lane board" : "Lane explorer"}
+          </button>
+        ))}
+      </div>
+
+      {error ? <ErrorBlock message={error} /> : null}
+
+      {mode === "team" && teamData ? (
+        <TeamBoard
+          contract={contract}
+          data={teamData}
+          selection={teamSelection}
+          onChange={applyTeam}
+          onSwitchToLane={toLane}
+        />
+      ) : null}
+
+      {mode !== "team" && data ? (
+        <LaneExplorer
+          contract={contract}
+          data={data}
+          selection={selection}
+          apply={apply}
+          onSwitchToTeam={toTeam}
+        />
       ) : null}
 
       {loading ? <Note>Updating…</Note> : null}
