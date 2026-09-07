@@ -28,6 +28,27 @@
 
 import type { ReviewQuestion } from "@/lib/quiz/api";
 
+/**
+ * The minimum a stored row must be for this envelope to be written from it.
+ *
+ * CON1 Step 1C widened the parameter from `ReviewQuestion` to this structural
+ * shape so the Content Factory render harness — whose `RenderQuestion` is the
+ * same stored question in the harness's own envelope — goes through THIS
+ * function rather than growing a third mapping beside it. `ReviewQuestion`
+ * satisfies it unchanged; nothing about the payload written below moved.
+ *
+ * `presentation` is part of the shape and `metadata` deliberately is not:
+ * this function has no way to read a premise out of the raw blob because it
+ * is never handed one.
+ */
+export interface StoredPreviewRow {
+  id: number | string;
+  question_text?: string | null;
+  category?: string | null;
+  choices?: readonly unknown[];
+  presentation?: Record<string, unknown> | null;
+}
+
 /** Module identity the static preview can render end to end. */
 const STORED_MODULE_ID = "quiz";
 
@@ -49,7 +70,7 @@ function choiceLabel(choice: unknown): string {
  * payload and the correct-index helper both read, so an empty or malformed
  * choice cannot shift the answer index away from the option it labels.
  */
-function optionLabelsOf(row: ReviewQuestion): string[] {
+function optionLabelsOf(row: StoredPreviewRow): string[] {
   return (Array.isArray(row.choices) ? row.choices : [])
     .map(choiceLabel)
     .filter((label) => label.trim() !== "");
@@ -64,7 +85,7 @@ function optionLabelsOf(row: ReviewQuestion): string[] {
  * surface would claim otherwise.
  */
 export function storedQuestionPreviewPayload(
-  row: ReviewQuestion | null | undefined,
+  row: StoredPreviewRow | null | undefined,
 ): Record<string, unknown> | null {
   if (!row) return null;
 

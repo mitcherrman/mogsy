@@ -26,6 +26,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
 import ProDataSourceLink from "@/components/quiz/ProDataSourceLink";
+import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
+import {
+  rendersThroughScenarioSurface,
+  resolveScenarioPresentation,
+} from "@/lib/quiz-screenshot/presentation";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { getFormat } from "@/lib/quiz-screenshot/formats";
 import { isRenderState, resolveAnswerPlan } from "@/lib/quiz-screenshot/states";
@@ -202,6 +208,19 @@ function QuestionCard({
   challenge?: ChallengeSlideInfo | null;
 }) {
   const { selectedIndex, revealed, isCorrectSelection, showExplanation } = plan;
+  /**
+   * CON1 Step 1C — the scenario premise, resolved through the PRODUCTION path.
+   *
+   * `resolveScenarioPresentation` reads `question.presentation` (the backend's
+   * canonical safe projection) and nothing else, then runs it through the same
+   * envelope → adapter → layout-authority chain Admin Review uses. A question
+   * with no presentation, or one the layout authority cannot draw, comes back
+   * with no model and this card renders exactly as it always did.
+   */
+  const presentation = resolveScenarioPresentation(question);
+  const scenarioModel = rendersThroughScenarioSurface(presentation)
+    ? presentation.model
+    : null;
   // Item-build questions get a recipe layout in content (social) formats;
   // audit formats keep the plain production-page visual. deriveRecipe never
   // exposes the missing component before reveal.
@@ -220,18 +239,49 @@ function QuestionCard({
     : null;
   const mainVisual = resolveQuizAssetUrl(question.image_path);
 
+  /**
+   * Screenshot state → the surface's neutral props. The option ids come off
+   * the adapted view itself, so the selected and correct tablets can never
+   * drift from the options actually rendered. The reveal object carries only
+   * what the harness already knows from the render plan; no explanation is
+   * passed, because the "competitive" variant leaves the explanation to the
+   * card's own reserved result area below (one feedback panel, not two).
+   */
+  const surfaceOptions = scenarioModel?.question.options ?? [];
+  const surfaceSelectedOptionId =
+    selectedIndex !== null ? (surfaceOptions[selectedIndex]?.id ?? null) : null;
+  const surfaceReveal = revealed
+    ? {
+        revealed: true,
+        isCorrect: isCorrectSelection,
+        correctOptionId: surfaceOptions[question.correct_index]?.id ?? null,
+      }
+    : null;
+
   return (
-    <Card className="relative bg-card/80 backdrop-blur-sm">
+    <Card
+      className="relative bg-card/80 backdrop-blur-sm"
+      /**
+       * What the presentation path did with this question — "absent",
+       * "unreadable", "no-scenario", "text-only" or "family". The capture
+       * runner and CON1 Step 1D read this: it is what makes a fallback from a
+       * real presentation to a text-only card observable instead of silent.
+       * Step 1D decides the policy; this only states the fact.
+       */
+      data-quiz-presentation={presentation.status}
+    >
       {/* Screenshot presentation: no category pill — the question text is the
           topmost content of the card. The rank emblem lives above answer A
           (below), so the title keeps its full width and is never reflowed. */}
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base md:text-lg font-semibold leading-snug">
-          {question.question_text}
-        </CardTitle>
-      </CardHeader>
+      {scenarioModel ? null : (
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg font-semibold leading-snug">
+            {question.question_text}
+          </CardTitle>
+        </CardHeader>
+      )}
       <CardContent className="space-y-4">
-        {recipe ? (
+        {scenarioModel ? null : recipe ? (
           <RecipeVisual recipe={recipe} resolveUrl={resolveQuizAssetUrl} />
         ) : mainVisual ? (
           <div className="rounded-lg overflow-hidden border border-border bg-black/20 flex justify-center py-3">
@@ -260,14 +310,35 @@ function QuestionCard({
             <DifficultyBadge info={difficulty} resolveUrl={resolveQuizAssetUrl} size={60} />
           </div>
         ) : null}
-        <QuizAnswerOptions
-          choices={question.choices}
-          selectedAnswer={selectedAnswer}
-          answerResult={answerResult}
-          onSelect={() => {
-            /* static render — selection is fixed by the state plan */
-          }}
-        />
+        {scenarioModel ? (
+          /* The PRODUCTION surface — prompt, scenario band and answer grid.
+             Not a copy of it, and not a second family selector: the surface
+             calls `selectFamilyLayout` itself on the same source. Static
+             capture, so no interaction is permitted and selection is fixed by
+             the render plan. */
+          <div data-quiz-scenario-surface>
+            <InteractiveScenarioSurface
+              question={scenarioModel.question}
+              scenarioSource={scenarioModel.scenarioSource}
+              selectedOptionId={surfaceSelectedOptionId}
+              permissions={NO_INTERACTIONS}
+              onSelectOption={() => {
+                /* static render — selection is fixed by the state plan */
+              }}
+              reveal={surfaceReveal}
+              variant="competitive"
+            />
+          </div>
+        ) : (
+          <QuizAnswerOptions
+            choices={question.choices}
+            selectedAnswer={selectedAnswer}
+            answerResult={answerResult}
+            onSelect={() => {
+              /* static render — selection is fixed by the state plan */
+            }}
+          />
+        )}
         {/* Result area is RESERVED in every state so the card keeps one fixed
             height and nothing reflows between the question and correct
             captures. Pre-reveal it shows a quiet engagement panel with the

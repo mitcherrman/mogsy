@@ -29,7 +29,25 @@ export type RenderQuestion = {
   difficulty?: number;
   /** Top-level question visual (e.g. "assets/items/3161.png"). */
   image_path?: string;
+  /**
+   * Raw stored metadata — REVIEW/DEBUG ONLY, and answer-bearing.
+   *
+   * It drives incidental screenshot chrome (difficulty tier, the Pro data
+   * source line, item recipes) and it must NEVER be read as a scenario
+   * premise: it is the complete stored blob, solution fields included.
+   */
   metadata?: Record<string, unknown>;
+  /**
+   * CON1 — the canonical SAFE pre-answer premise, projected by the BACKEND
+   * (`quiz.premise_projection.build_presentation`) and carried verbatim from
+   * the review row's `presentation` field.
+   *
+   * This, and only this, is what the render harness may draw a scenario from.
+   * ABSENT (not empty) when the family — or the row's form within it —
+   * declares no safe premise; a missing premise renders as text, never as a
+   * premise reconstructed from `metadata`.
+   */
+  presentation?: Record<string, unknown>;
 };
 
 export const RENDER_STATES = [

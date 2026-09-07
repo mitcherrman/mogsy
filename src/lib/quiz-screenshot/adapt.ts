@@ -20,6 +20,16 @@ export type ScreenshotSourceQuestion = {
   correct_index?: number;
   explanation?: string | null;
   metadata?: Record<string, unknown>;
+  /**
+   * CON1 — the backend's canonical safe premise projection for this row
+   * (`/api/quiz/admin/review/questions` → `presentation`).
+   *
+   * Passed through untouched and read from NOWHERE else. `metadata` below it
+   * is the complete stored blob with solution fields in it; deriving a premise
+   * from that here would rebuild in TypeScript the safety projection the
+   * backend owns, and would leak answers the first time a contract narrowed.
+   */
+  presentation?: Record<string, unknown> | null;
   image_path?: string | null;
 };
 
@@ -81,6 +91,9 @@ export function adaptScreenshotQuestion(q: ScreenshotSourceQuestion): RenderQues
     difficulty: q.difficulty,
     image_path: q.image_path ?? undefined,
     metadata: Object.keys(meta).length ? meta : undefined,
+    // Verbatim, or absent. Never substituted from `meta`.
+    presentation:
+      q.presentation && typeof q.presentation === "object" ? q.presentation : undefined,
   };
 }
 

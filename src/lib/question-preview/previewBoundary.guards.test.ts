@@ -39,6 +39,11 @@ const PREVIEW_CONSUMERS = [
   "components/question-preview/PreviewStateControl.tsx",
   "components/question-preview/PreviewViewportControl.tsx",
   "components/question-preview/QuestionPreviewPanel.tsx",
+  // CON1 Step 1C — the Content Factory's bridge onto this subtree. It composes
+  // the envelope and the adapter above and holds no state of its own, so the
+  // same structural guarantee has to cover it: a render harness that captures
+  // unattended is the last place a stray write should be able to appear.
+  "lib/quiz-screenshot/presentation.ts",
 ];
 
 const PREVIEW_FILES = [...PREVIEW_CONSUMERS, PREVIEW_CLIENT];
