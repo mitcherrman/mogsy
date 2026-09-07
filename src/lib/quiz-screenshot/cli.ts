@@ -57,6 +57,17 @@ export type ScreenshotCliConfig = {
    * development while a band is unmerged upstream — not for publishing.
    */
   allowIncompletePresentation: boolean;
+  /**
+   * CON1 Step 1E diagnostic override (`--allow-missing-assets`).
+   *
+   * Deliberately SEPARATE from `allowIncompletePresentation`. A premise the
+   * layout did not draw and a file that is not on disk are different failure
+   * classes with different owners and different fixes; one flag covering both
+   * would silence the other by accident. This exists so an approved run can be
+   * completed while an asset defect is being repaired upstream — not for
+   * publishing the affected images.
+   */
+  allowMissingAssets: boolean;
 };
 
 const VALUE_FLAGS = new Set([
@@ -82,6 +93,7 @@ const BOOL_FLAGS = new Set([
   "--overwrite",
   "--allow-remote",
   "--allow-incomplete-presentation",
+  "--allow-missing-assets",
 ]);
 
 export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
@@ -134,9 +146,10 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
       outRoot,
       overwrite: bools.has("--overwrite"),
       allowRemote: false,
-      // Report-only recovery captures nothing, so there is no presentation to
-      // gate; the override is rejected above with every other flag.
+      // Report-only recovery captures nothing, so there is no presentation or
+      // asset to gate; both overrides are rejected above with every other flag.
       allowIncompletePresentation: false,
+      allowMissingAssets: false,
     };
   }
 
@@ -267,6 +280,7 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
     api: values.get("--api"),
     adminKey: values.get("--admin-key"),
     allowIncompletePresentation: bools.has("--allow-incomplete-presentation"),
+    allowMissingAssets: bools.has("--allow-missing-assets"),
   };
 }
 
@@ -301,6 +315,14 @@ Options:
                                 not render, instead of failing it. Every such
                                 image is recorded as a warning and the override
                                 is written into summary.json/manifest.json.
+                                Not for publishing.
+  --allow-missing-assets        DIAGNOSTIC: capture a question that REQUIRES a
+                                visual asset the backend's canonical resolver
+                                could not resolve, instead of failing it. Every
+                                such image is recorded as a warning and the
+                                override is written into
+                                summary.json/manifest.json. Separate from
+                                --allow-incomplete-presentation on purpose.
                                 Not for publishing.
   --api <url>                   Backend base for question data (default VITE_COMBAT_API_URL / .env)
   --admin-key <key>             Admin key (default ADMIN_KEY / KNOWLEDGE_ADMIN_KEY env)

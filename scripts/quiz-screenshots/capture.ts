@@ -6,6 +6,7 @@
  */
 import { chromium, type Browser, type Page } from "playwright";
 import type { QaFinding } from "../../src/lib/quiz-screenshot/metadata";
+import { evaluateAssetGate } from "../../src/lib/quiz-screenshot/assetGate";
 import { evaluatePresentationGate } from "../../src/lib/quiz-screenshot/presentationGate";
 import {
   PRESENTATION_BAND_ATTRIBUTE,
@@ -363,6 +364,8 @@ export async function captureOne(args: {
   /** CON1 Step 1D diagnostic override (--allow-incomplete-presentation).
       Default false: an unrendered safe presentation fails the capture. */
   allowIncompletePresentation?: boolean;
+  /** CON1 Step 1E diagnostic override (--allow-missing-assets). */
+  allowMissingAssets?: boolean;
 }): Promise<CaptureResult> {
   const { browser, baseUrl, question, state, format } = args;
   const slideKind = args.slide ?? "quiz";
@@ -469,6 +472,27 @@ export async function captureOne(args: {
       allowIncomplete: args.allowIncompletePresentation === true,
     });
     for (const finding of presentationGate.findings) {
+      if (finding.severity === "failure") qa.failures.push(finding);
+      else qa.warnings.push(finding);
+    }
+
+    // ── CON1 Step 1E: asset completeness ─────────────────────────────────
+    // A DIFFERENT failure class from the presentation gate above, decided by a
+    // different authority. It reads no DOM at all: the backend already asked
+    // the canonical asset resolver whether the files this question requires
+    // exist, and `question.asset_status` is that answer. The browser's own
+    // broken-image check below stays as defence in depth for assets that break
+    // between the resolver and the pixel — but it is the backstop, never the
+    // primary authority for something the backend already knew.
+    const assetGate = evaluateAssetGate({
+      assetStatus: question.asset_status,
+      questionId: question.id,
+      questionKey: question.question_key ?? null,
+      format: format.key,
+      state,
+      allowMissingAssets: args.allowMissingAssets === true,
+    });
+    for (const finding of assetGate.findings) {
       if (finding.severity === "failure") qa.failures.push(finding);
       else qa.warnings.push(finding);
     }

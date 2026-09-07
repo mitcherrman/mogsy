@@ -190,3 +190,57 @@ describe("--allow-incomplete-presentation (CON1 Step 1D)", () => {
     expect(CLI_USAGE).toMatch(/DIAGNOSTIC/);
   });
 });
+
+describe("--allow-missing-assets (CON1 Step 1E)", () => {
+  it("defaults to false — fail-closed is the default publishing posture", () => {
+    expect(parseScreenshotCli(["--question-id", "1"]).allowMissingAssets).toBe(false);
+    expect(parseScreenshotCli(["--approved"]).allowMissingAssets).toBe(false);
+  });
+
+  it("is a boolean flag that takes no value", () => {
+    const c = parseScreenshotCli([
+      "--question-id",
+      "1",
+      "--allow-missing-assets",
+      "--states",
+      "question",
+    ]);
+    expect(c.allowMissingAssets).toBe(true);
+    expect(c.states).toEqual(["question"]);
+  });
+
+  it("is INDEPENDENT of the presentation override in both directions", () => {
+    // The whole reason it is a second flag: a premise the layout did not draw
+    // and a file that is not on disk are different failure classes, and one
+    // must never silence the other.
+    const assets = parseScreenshotCli(["--approved", "--allow-missing-assets"]);
+    expect(assets.allowMissingAssets).toBe(true);
+    expect(assets.allowIncompletePresentation).toBe(false);
+
+    const presentation = parseScreenshotCli([
+      "--approved",
+      "--allow-incomplete-presentation",
+    ]);
+    expect(presentation.allowIncompletePresentation).toBe(true);
+    expect(presentation.allowMissingAssets).toBe(false);
+
+    const both = parseScreenshotCli([
+      "--approved",
+      "--allow-incomplete-presentation",
+      "--allow-missing-assets",
+    ]);
+    expect(both.allowIncompletePresentation).toBe(true);
+    expect(both.allowMissingAssets).toBe(true);
+  });
+
+  it("is refused in report-only recovery mode, which captures nothing", () => {
+    expect(() =>
+      parseScreenshotCli(["--finalize-run", "run-1", "--allow-missing-assets"]),
+    ).toThrow(/--finalize-run only accepts/);
+    expect(parseScreenshotCli(["--finalize-run", "run-1"]).allowMissingAssets).toBe(false);
+  });
+
+  it("is documented in the CLI usage text", () => {
+    expect(CLI_USAGE).toContain("--allow-missing-assets");
+  });
+});

@@ -428,6 +428,7 @@ export async function runGeneration(
               injectQuestions: job.injectAll || challengeSpecs ? questions : undefined,
               extraParams: job.extraParams,
               allowIncompletePresentation: config.allowIncompletePresentation === true,
+              allowMissingAssets: config.allowMissingAssets === true,
             });
             if (
               !challengeSpecs &&
@@ -629,6 +630,10 @@ export async function runGeneration(
     /** CON1 Step 1D — true when this run was made with the diagnostic
      *  presentation override. A run recorded true is NOT a publishable run. */
     allow_incomplete_presentation: config.allowIncompletePresentation === true,
+    /** CON1 Step 1E — true when this run was made with the diagnostic asset
+     *  override. Recorded separately so the summary says WHICH class of
+     *  completeness was waived. A run recorded true is NOT publishable. */
+    allow_missing_assets: config.allowMissingAssets === true,
     aborted: captureError
       ? String(captureError instanceof Error ? captureError.message : captureError)
       : null,
@@ -667,6 +672,7 @@ export async function runGeneration(
       : null,
     copy_variants: COPY_VARIANTS,
     allow_incomplete_presentation: config.allowIncompletePresentation === true,
+    allow_missing_assets: config.allowMissingAssets === true,
     platform: config.platform ?? "generic",
     generator: { version: GENERATOR_VERSION, commit: await gitCommit() },
     completed: !captureError,
@@ -809,6 +815,9 @@ export async function runDailyPackage(
         // override. Explicit, so an incomplete presentation cannot slip into a
         // package run because someone widened a shared default.
         allowIncompletePresentation: false,
+        // Same rule for the asset override, and stated separately so widening
+        // one can never silently widen the other.
+        allowMissingAssets: false,
         api: req.api,
         adminKey: req.adminKey,
         packageType: post.key,

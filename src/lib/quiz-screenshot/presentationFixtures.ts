@@ -318,3 +318,156 @@ export const PHASE_0_DIAGNOSTIC: readonly RenderQuestion[] = [
   MINION_EXACT,
   MINION_WAVE,
 ];
+
+// ---------------------------------------------------------------------------
+// CON1 Step 1E — asset-health fixtures
+//
+// These mirror what `quiz.asset_health.compute_asset_status` actually returns
+// for the corresponding row shapes, verified against the backend module and
+// the live corpus (58,526 active rows). They are the ONLY asset knowledge in
+// the Content Factory — a fixture of the backend's answer, never a lookup that
+// could be consulted at runtime.
+// ---------------------------------------------------------------------------
+
+/** A visual-recognition question whose required icon resolves. */
+export const ASSET_REQUIRED_RESOLVED = {
+  status: "resolved",
+  reason: "",
+  references: [
+    {
+      channel: "image_path",
+      path: "assets/champions/Aatrox/icon.png",
+      requirement: "required",
+      resolution: "match",
+      resolved_path: "assets/champions/Aatrox/icon.png",
+      reason: "",
+    },
+  ],
+  unresolved: [],
+  degraded_to_text: false,
+  optional_unresolved: false,
+  case_repaired: false,
+} as const;
+
+/** The same family, with the file absent from disk. */
+export const ASSET_REQUIRED_UNRESOLVED = {
+  status: "unresolved",
+  reason:
+    "image_path: 'assets/champions/NoSuchChampion/icon.png' does not resolve to a file on disk",
+  references: [
+    {
+      channel: "image_path",
+      path: "assets/champions/NoSuchChampion/icon.png",
+      requirement: "required",
+      resolution: "missing",
+      resolved_path: null,
+      reason:
+        "'assets/champions/NoSuchChampion/icon.png' does not resolve to a file on disk",
+    },
+  ],
+  unresolved: [
+    {
+      channel: "image_path",
+      path: "assets/champions/NoSuchChampion/icon.png",
+      requirement: "required",
+      resolution: "missing",
+      resolved_path: null,
+      reason:
+        "'assets/champions/NoSuchChampion/icon.png' does not resolve to a file on disk",
+    },
+  ],
+  degraded_to_text: false,
+  optional_unresolved: false,
+  case_repaired: false,
+} as const;
+
+/**
+ * A text-only question — Minion XP is exactly this. The band is drawn from
+ * geometric glyphs, so no minion art is referenced and none is required.
+ */
+export const ASSET_NOT_REQUIRED = {
+  status: "not_required",
+  reason: "",
+  references: [],
+  unresolved: [],
+  degraded_to_text: false,
+  optional_unresolved: false,
+  case_repaired: false,
+} as const;
+
+/**
+ * A context family (`item_cost`) whose illustrative icon is gone. The prompt
+ * names the item, so production legitimately renders this as text.
+ */
+export const ASSET_OPTIONAL_UNRESOLVED = {
+  status: "not_required",
+  reason: "",
+  references: [
+    {
+      channel: "image_path",
+      path: "assets/items/9999.png",
+      requirement: "optional",
+      resolution: "missing",
+      resolved_path: null,
+      reason: "'assets/items/9999.png' does not resolve to a file on disk",
+    },
+  ],
+  unresolved: [],
+  degraded_to_text: false,
+  optional_unresolved: true,
+  case_repaired: false,
+} as const;
+
+/** An audited answer-revealing family: production withholds the image. */
+export const ASSET_WITHHELD = {
+  status: "not_required",
+  reason: "",
+  references: [
+    {
+      channel: "image_path",
+      path: "assets/items/3003.png",
+      requirement: "withheld",
+      resolution: "match",
+      resolved_path: "assets/items/3003.png",
+      reason: "",
+    },
+  ],
+  unresolved: [],
+  degraded_to_text: true,
+  optional_unresolved: false,
+  case_repaired: false,
+} as const;
+
+/** Serves through the resolver's case repair; the stored string 404s on Linux. */
+export const ASSET_CASE_REPAIRED = {
+  status: "resolved",
+  reason: "",
+  references: [
+    {
+      channel: "image_path",
+      path: "assets/champions/BelVeth/icon.png",
+      requirement: "required",
+      resolution: "case_repaired",
+      resolved_path: "assets/champions/Belveth/icon.png",
+      reason:
+        "stored spelling 'assets/champions/BelVeth/icon.png' differs from the " +
+        "on-disk spelling 'assets/champions/Belveth/icon.png'; it opens on a " +
+        "case-insensitive filesystem and 404s on Linux",
+    },
+  ],
+  unresolved: [],
+  degraded_to_text: false,
+  optional_unresolved: false,
+  case_repaired: true,
+} as const;
+
+/** No asset tree in the serving checkout — nothing is claimed either way. */
+export const ASSET_UNKNOWN = {
+  status: "unknown",
+  reason: "no asset tree in this checkout; asset health cannot be judged here",
+  references: [],
+  unresolved: [],
+  degraded_to_text: false,
+  optional_unresolved: false,
+  case_repaired: false,
+} as const;

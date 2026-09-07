@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { ASSET_REQUIRED_UNRESOLVED } from "./presentationFixtures";
+import type { RenderQuestion } from "./types";
 import { adaptScreenshotQuestion, adaptScreenshotQuestions } from "./adapt";
 
 const source = {
@@ -56,5 +58,40 @@ describe("adaptScreenshotQuestions", () => {
     const { adapted, skipped } = adaptScreenshotQuestions(rows, 2);
     expect(adapted.map((q) => q.id)).toEqual([42, 44]);
     expect(skipped).toEqual([{ id: 43, reason: "missing question_text" }]);
+  });
+});
+
+// CON1 Step 1E — the harness's ONLY source of asset truth is the review row.
+describe("asset_status carry-through", () => {
+  const base = {
+    id: 1,
+    question_text: "Which ability is this?",
+    choices: ["Q", "W"],
+    correct_index: 0,
+  };
+
+  it("carries the backend's computed signal verbatim", () => {
+    const asset_status = ASSET_REQUIRED_UNRESOLVED;
+    const result = adaptScreenshotQuestion({ ...base, asset_status });
+    expect(typeof result).not.toBe("string");
+    expect((result as RenderQuestion).asset_status).toEqual(asset_status);
+  });
+
+  it("leaves it ABSENT rather than inventing one", () => {
+    for (const value of [undefined, null]) {
+      const result = adaptScreenshotQuestion({ ...base, asset_status: value });
+      expect((result as RenderQuestion).asset_status).toBeUndefined();
+    }
+  });
+
+  it("does not derive it from image_path", () => {
+    // A row with an image and no computed signal is NOT judged. Deriving one
+    // here would be the Content-Factory-side asset catalog CON1 forbids.
+    const result = adaptScreenshotQuestion({
+      ...base,
+      image_path: "assets/items/9999.png",
+    });
+    expect((result as RenderQuestion).image_path).toBe("assets/items/9999.png");
+    expect((result as RenderQuestion).asset_status).toBeUndefined();
   });
 });

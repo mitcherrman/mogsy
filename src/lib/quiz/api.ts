@@ -1,5 +1,6 @@
 import { getAdminKey } from "@/lib/knowledge-admin/key";
 import { getBackendAuthHeaders, ensureBackendAuthToken } from "@/lib/backend-auth";
+import type { AssetStatus } from "./assetStatus";
 
 // Optional access: under the Remotion webpack bundle (video export)
 // `import.meta.env` is undefined; the Vite app build is unaffected.
@@ -389,6 +390,16 @@ export type ReviewQuestion = {
    * and the correct response is no scenario, never a reconstruction.
    */
   presentation?: Record<string, unknown> | null;
+  /**
+   * COMPUTED asset completeness, from the backend's canonical asset resolver
+   * (`quiz.asset_health.compute_asset_status`). See `./assetStatus`.
+   *
+   * Deliberately a SIBLING of `missing_asset` above, never a replacement:
+   * `missing_asset` is a human reviewer's annotation this signal never reads,
+   * writes or infers. A row can be flagged by a reviewer while every asset
+   * resolves, and can have a genuinely unresolved asset nobody has flagged.
+   */
+  asset_status?: AssetStatus | null;
   pack_keys?: string[];
   packs?: ReviewQuestionPack[];
 };

@@ -6,6 +6,8 @@
  * (scripts/quiz-screenshots), and unit tests.
  */
 
+import type { AssetStatus } from "../quiz/assetStatus";
+
 export type RenderChoice = {
   label: string;
   image_path?: string;
@@ -57,6 +59,20 @@ export type RenderQuestion = {
    * premise reconstructed from `metadata`.
    */
   presentation?: Record<string, unknown>;
+  /**
+   * CON1 Step 1E — the backend's COMPUTED asset-completeness signal for this
+   * row, carried verbatim from the review row's `asset_status`.
+   *
+   * The Content Factory never decides whether an asset is required or whether
+   * it exists: the backend already asked the canonical resolver, and this is
+   * its answer. A Content-Factory-specific image catalog is exactly what CON1
+   * forbids, so there is none — this field is the whole of what the harness
+   * knows about assets.
+   *
+   * ABSENT for a source that predates the field (a hand-written fixture, an
+   * older JSON dump). Absent means "not judged", never "failed".
+   */
+  asset_status?: AssetStatus;
 };
 
 export const RENDER_STATES = [

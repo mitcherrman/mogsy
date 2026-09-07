@@ -162,6 +162,10 @@ function toGenerationRequest(
     // presentation override. It is a deliberate CLI-only escape hatch; there
     // is no Studio control that turns it on, by design.
     allowIncompletePresentation: false,
+    // CON1 Step 1E — and the same for the asset override. Two flags, two
+    // explicit false values: Studio never publishes an image whose required
+    // asset did not resolve, and no Studio control turns this on either.
+    allowMissingAssets: false,
     platform: req.platform,
   };
 }

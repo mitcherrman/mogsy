@@ -6,6 +6,7 @@
  * Mirrors src/video/adapter.ts but preserves choice image objects, which the
  * video pipeline flattens to strings. Pure module: no fetch, no fs.
  */
+import type { AssetStatus } from "../quiz/assetStatus";
 import type { RenderChoice, RenderQuestion } from "./types";
 
 export type ScreenshotSourceQuestion = {
@@ -32,6 +33,12 @@ export type ScreenshotSourceQuestion = {
    * backend owns, and would leak answers the first time a contract narrowed.
    */
   presentation?: Record<string, unknown> | null;
+  /**
+   * CON1 Step 1E — the backend's computed asset health for this row
+   * (`/api/quiz/admin/review/questions` → `asset_status`). Passed through
+   * untouched; nothing here recomputes or second-guesses it.
+   */
+  asset_status?: AssetStatus | null;
   image_path?: string | null;
 };
 
@@ -97,6 +104,9 @@ export function adaptScreenshotQuestion(q: ScreenshotSourceQuestion): RenderQues
     // Verbatim, or absent. Never substituted from `meta`.
     presentation:
       q.presentation && typeof q.presentation === "object" ? q.presentation : undefined,
+    // Verbatim, or absent. The harness has no other source of asset truth.
+    asset_status:
+      q.asset_status && typeof q.asset_status === "object" ? q.asset_status : undefined,
   };
 }
 

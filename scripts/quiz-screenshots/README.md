@@ -273,7 +273,8 @@ the capture stage (failure), conservative text-clipping via
 `scrollWidth/Height` (warning), missing reveal styling in reveal states
 (failure), any visible selection/reveal/feedback in the `question` state
 (**leakage failure**), render-ready timeout (failure), **incomplete
-presentation** (failure — see below). The process exits non-zero if any failure
+presentation** (failure — see below), **unresolved required asset** (failure —
+see below). The process exits non-zero if any failure
 was recorded, but continues past per-question errors and reports everything at
 the end.
 
@@ -309,6 +310,70 @@ proceeds, every affected image is recorded as a **warning** naming the flag, and
 `allow_incomplete_presentation: true` is written into both `summary.json` and
 `manifest.json` so a diagnostic run can never be mistaken for a publishable one.
 Content Studio never enables it — it is deliberately CLI-only.
+
+## Asset completeness (CON1 Step 1E)
+
+A question that genuinely REQUIRES a visual asset, whose asset cannot be
+resolved, **fails by default**. The Content Factory publishes unattended, so a
+card with a hole where the tested object should be is worse than no card.
+
+The decision comes entirely from `asset_status` on the review row — the
+backend's computed signal (`quiz.asset_health.compute_asset_status`), which asks
+the canonical resolver `ranked_public.question_media.canonical_asset_path` about
+the paths the row itself declares, and takes required-vs-optional from the
+authorities that already own each media channel (`quiz.question_media_policy`'s
+audited family taxonomy for the legacy `image_path` column, the typed
+contract's own `presentation.role` for `assets.subject`).
+
+**There is no image lookup, family list, path map or file check anywhere in the
+Content Factory.** That would be a second asset catalog, and it would drift from
+production the first time a family's semantics changed. The policy lives in
+`src/lib/quiz-screenshot/assetGate.ts`:
+
+| `asset_status.status` | verdict |
+| --- | --- |
+| *(absent)* | **pass** — the source carried no signal (a fixture, an older dump). Not judged is not failed |
+| `not_required` | **pass** — no required asset. Text-only questions, illustration-only families whose prompt names the subject, and artwork production deliberately withholds |
+| `resolved` | **pass** — every required asset resolves |
+| `unknown` | **pass** — no asset tree in the serving checkout, so nothing was claimed |
+| `unresolved` | **fail** — a required asset does not resolve |
+
+An unresolved OPTIONAL asset and a path that resolved only via case repair are
+recorded as **warnings** (`degraded-asset`) and never fail: production
+legitimately degrades in the first case and renders correctly in the second.
+
+Minion XP is `not_required` and passes: `MinionXpBand` draws geometric glyphs,
+so no minion art is referenced and none is expected. Pro Play is `not_required`
+too — it has no portrait contract today, and none is invented here.
+
+### Relationship to the browser's broken-image check
+
+The `<img>` check above (`naturalWidth === 0` → failure) **stays**, as defence
+in depth for assets that break between the resolver and the pixel — a bad URL
+join, a serving 404, a CSP block. But it is the backstop, not the authority:
+when the backend already KNEW the file was unresolvable, waiting for a browser
+to notice names a URL rather than a question, cannot tell a required asset from
+a decorative one, and says nothing at all when the surface simply omitted the
+broken image.
+
+Note the two are independent, and the browser's is the stricter: an
+illustrative image that 404s passes this gate as a warning and still fails the
+run on the `<img>` check, because a visibly broken picture in an exported PNG is
+not publishable whatever the premise required.
+
+### `--allow-missing-assets`
+
+The diagnostic escape hatch, default false. The capture proceeds, every affected
+image is recorded as a **warning** naming the flag, and `allow_missing_assets:
+true` is written into both `summary.json` and `manifest.json`. Content Studio
+and the daily-package runner pin it `false` explicitly.
+
+It is a **separate flag from `--allow-incomplete-presentation` on purpose**: a
+premise the layout did not draw and a file that is not on disk are different
+failure classes with different owners and different fixes, and one flag covering
+both would silence the other by accident. It also waives only the class it
+names — an image that is actually broken on screen still fails the run on the
+`<img>` backstop.
 
 ## Determinism
 

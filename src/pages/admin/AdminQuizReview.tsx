@@ -5,6 +5,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, Star, StarOff, EyeOff, Eye,
   ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ImageOff,
   ArrowLeft, Loader2, Wrench, ListChecks, Send, Package, KeyRound, Download,
+  Image as ImageIcon, ImageMinus, HelpCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { upsertPlaylist } from "@/lib/quiz-broadcast/storage";
 import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
 import { getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
 import { QuestionPreviewPanel } from "@/components/question-preview/QuestionPreviewPanel";
+import { describeAssetStatus, type AssetStatus } from "@/lib/quiz/assetStatus";
 import {
   storedCorrectOptionIndex,
   storedQuestionPreviewPayload,
@@ -105,6 +107,70 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 const DIFFICULTY_LABELS: Record<number, string> = {
   1: "Recognition", 2: "Recall", 3: "Comparison", 4: "Reasoning", 5: "Simulation",
 };
+
+/**
+ * CON1 Step 1E — the COMPUTED asset-health badge.
+ *
+ * Deliberately NOT merged with the `missing_asset` control below it. They are
+ * different claims by different authors:
+ *
+ *   missing_asset  a REVIEWER'S annotation — "a human looked and says the art
+ *                  is wrong/absent". Editable, and stays editable.
+ *   asset_status   the BACKEND'S computation — the canonical resolver was asked
+ *                  whether the files this question requires exist. Read-only
+ *                  here; nothing in Admin can set it.
+ *
+ * Collapsing them into one checkbox would let a computed truth be silently
+ * overwritten by an opinion, or an opinion be mistaken for verification. The
+ * tooltip on every state says "Computed:" for exactly that reason.
+ */
+const ASSET_TONE: Record<string, string> = {
+  ok:    "border-emerald-400/50 text-emerald-300 bg-emerald-400/10",
+  warn:  "border-amber-400/50 text-amber-300 bg-amber-400/10",
+  bad:   "border-red-400/50 text-red-300 bg-red-400/10",
+  muted: "border-muted-foreground/30 text-muted-foreground",
+};
+
+const ASSET_ICON: Record<string, React.ElementType> = {
+  resolved: ImageIcon,
+  unresolved: ImageOff,
+  not_required: ImageMinus,
+  unknown: HelpCircle,
+};
+
+function AssetBadge({ status, compact = false }: { status?: AssetStatus | null; compact?: boolean }) {
+  if (!status) return null;
+  const described = describeAssetStatus(status);
+  const Icon = ASSET_ICON[status.status] ?? HelpCircle;
+  if (compact) {
+    return (
+      <Icon
+        className={`h-3 w-3 ${
+          described.tone === "bad" ? "text-red-400"
+            : described.tone === "warn" ? "text-amber-400"
+            : described.tone === "ok" ? "text-emerald-400"
+            : "text-muted-foreground"
+        }`}
+        aria-label={described.label}
+        data-asset-status={status.status}
+      >
+        <title>{described.help}</title>
+      </Icon>
+    );
+  }
+  return (
+    <span
+      data-asset-status={status.status}
+      title={described.help}
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] ${
+        ASSET_TONE[described.tone] ?? ASSET_TONE.muted
+      }`}
+    >
+      <Icon className="h-3 w-3" aria-hidden />
+      {described.label}
+    </span>
+  );
+}
 
 const SOURCE_LABELS: Record<string, string> = {
   stored_question: "Stored questions", mastery_question: "Mastery", ranked_candidate: "Ranked candidates",
@@ -520,7 +586,13 @@ function QuestionRow({
           <div className="flex shrink-0 flex-col items-end gap-1">
             <StatusBadge status={q.review_status} />
             {q.favorite_for_shorts && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
-            {q.missing_asset && <ImageOff className="h-3 w-3 text-orange-400" />}
+            {q.missing_asset && (
+              <ImageOff
+                className="h-3 w-3 text-orange-400"
+                aria-label="Flagged by a reviewer as missing an asset"
+              />
+            )}
+            <AssetBadge status={q.asset_status} compact />
           </div>
         </div>
       </button>
@@ -734,8 +806,15 @@ function DetailPanel({
             {q.favorite_for_shorts ? "Shorts Fav" : "Add to Shorts"}
           </button>
 
+          <AssetBadge status={q.asset_status} />
+
           <button
             disabled={isPending}
+            title={
+              q.missing_asset
+                ? "Reviewer annotation: someone flagged this row's art. Separate from the computed badge beside it."
+                : "Flag this row's art for a human to fix. This is your annotation, not the computed asset check."
+            }
             onClick={() => apply({ missing_asset: !q.missing_asset })}
             className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] transition-colors ${
               q.missing_asset

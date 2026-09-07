@@ -73,6 +73,16 @@ export type RunManifest = {
    * before the flag existed, which parse as false.
    */
   allow_incomplete_presentation: boolean;
+  /**
+   * CON1 Step 1E — true when this run was captured with the diagnostic
+   * `--allow-missing-assets` override, i.e. questions requiring an asset the
+   * canonical resolver could not resolve were captured anyway.
+   *
+   * Recorded separately from `allow_incomplete_presentation` so the manifest
+   * says WHICH class of completeness was waived. Absent on older runs, which
+   * parse as false.
+   */
+  allow_missing_assets: boolean;
   platform: string;
   generator: { version: string; commit: string | null };
   completed: boolean;
@@ -138,6 +148,7 @@ export function parseRunManifest(raw: unknown): RunManifest | null {
         : {},
     // Older manifests predate the flag; absence means it was not overridden.
     allow_incomplete_presentation: m.allow_incomplete_presentation === true,
+    allow_missing_assets: m.allow_missing_assets === true,
     platform: typeof m.platform === "string" ? m.platform : "generic",
     generator:
       m.generator && typeof m.generator === "object"

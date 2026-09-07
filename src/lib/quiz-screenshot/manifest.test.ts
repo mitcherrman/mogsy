@@ -32,6 +32,7 @@ const fullArgs = {
   challenge: { question_count: 2, repeat_variant: 1, mid_cta_variant: null, summary_title: "TODAY'S ANSWERS" },
   copy_variants: { app_cta: "prove-it-v2" },
   allow_incomplete_presentation: false,
+  allow_missing_assets: false,
   platform: "generic",
   generator: { version: "quiz-screenshots-2", commit: "abc1234" },
   completed: true,
@@ -94,5 +95,24 @@ describe("CON1 Step 1D — the presentation override is auditable from the manif
     const raw = JSON.parse(JSON.stringify(buildRunManifest({ ...fullArgs })));
     delete raw.allow_incomplete_presentation;
     expect(parseRunManifest(raw)?.allow_incomplete_presentation).toBe(false);
+  });
+});
+
+// CON1 Step 1E — the asset override is recorded SEPARATELY, so a manifest says
+// WHICH class of completeness was waived rather than just "something was".
+describe("CON1 Step 1E — the asset override is auditable from the manifest", () => {
+  it("round-trips allow_missing_assets independently of the presentation flag", () => {
+    const m = buildRunManifest({ ...fullArgs, allow_missing_assets: true });
+    expect(m.allow_missing_assets).toBe(true);
+    expect(m.allow_incomplete_presentation).toBe(false);
+    const raw = JSON.parse(JSON.stringify(m));
+    expect(parseRunManifest(raw)?.allow_missing_assets).toBe(true);
+    expect(parseRunManifest(raw)?.allow_incomplete_presentation).toBe(false);
+  });
+
+  it("treats a manifest predating the asset override as not overridden", () => {
+    const raw = JSON.parse(JSON.stringify(buildRunManifest(fullArgs)));
+    delete raw.allow_missing_assets;
+    expect(parseRunManifest(raw)?.allow_missing_assets).toBe(false);
   });
 });
