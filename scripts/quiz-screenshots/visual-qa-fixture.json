@@ -1,0 +1,270 @@
+{
+  "_comment": [
+    "CON1 Step 4 — the deterministic VISUAL QA fixture set.",
+    "",
+    "One row per shape the Content Factory shell has to compose correctly. It is",
+    "a fixture of the BACKEND's answers, never a second source of truth: every",
+    "`presentation` here is a strict safe projection of the shape",
+    "`quiz.premise_projection.build_presentation` emits for that family, and",
+    "every `metadata` is the complete stored blob with its solution fields left",
+    "in — exactly as the review endpoint returns it. Nothing in the factory may",
+    "read a premise from `metadata`; these rows exist so a regression that does",
+    "is visible in a picture.",
+    "",
+    "Asset paths point at the backend `assets/` tree (served locally for offline",
+    "runs), so every icon in a capture is a real file and a missing one shows.",
+    "",
+    "Coverage — the ten cases Step 4 is measured against:",
+    "  vq-01  short 4-option MCQ, no premise",
+    "  vq-02  long prompt + long options (the readability worst case)",
+    "  vq-03  2-option question (the CTA's option-count case)",
+    "  vq-04  item recipe visual (missing_component)",
+    "  vq-05  champion + ability cinematic band",
+    "  vq-06  combat family band (post-mitigation, two champions)",
+    "  vq-07  lifecycle family band (purchase/sell swap, item statuses)",
+    "  vq-08  Mastery generated question (review_key + provenance, text-only)",
+    "  vq-09  Daily frozen card carrying real frozen media",
+    "  vq-10  a long-explanation row, for the explanation state",
+    "The reveal and explanation cases are STATES over these rows, captured with",
+    "--states question,correct,explanation."
+  ],
+  "questions": [
+    {
+      "id": "vq-01",
+      "question_key": "item_exact_stat:armor:highest",
+      "question_text": "Which item grants the most armor?",
+      "format": "multiple_choice",
+      "category": "items",
+      "difficulty": 2,
+      "choices": ["Sunfire Aegis", "Thornmail", "Dead Man's Plate", "Randuin's Omen"],
+      "correct_answer": "Thornmail",
+      "explanation": "Thornmail grants 70 armor, the highest flat armor on any completed item.",
+      "metadata": { "cost": 2700 }
+    },
+    {
+      "id": "vq-02",
+      "question_key": "wave_economy:cannon_gold:long",
+      "question_text": "A solo laner has taken every minion since the first wave and has missed nothing. The cannon minion of wave 9 has just died to the enemy laner instead. Counting only minion gold and ignoring passive income, items, and any kill or assist gold, how far behind is the solo laner at that exact instant?",
+      "format": "multiple_choice",
+      "category": "league_mechanics",
+      "difficulty": 4,
+      "choices": [
+        "About sixty gold — roughly one and a half melee minions of difference",
+        "About ninety gold — the cannon is worth close to three melee minions there",
+        "About one hundred and forty gold — the cannon plus the wave it arrived with",
+        "About two hundred gold — a full wave of minions, cannon included"
+      ],
+      "correct_answer": "About ninety gold — the cannon is worth close to three melee minions there",
+      "explanation": "Cannon gold is indexed to game time rather than to wave number, and in the wave-9 window it is worth roughly ninety gold, which is close to three melee minions at their own value in that same window. Nothing else in the wave changes hands, so the whole difference is the cannon.",
+      "metadata": { "wave_number": 9 }
+    },
+    {
+      "id": "vq-03",
+      "question_key": "pro_champion_scope_comparison:worlds:4.14:picks",
+      "question_text": "In the World Championship on patch 4.14, which champion had the higher pick count?",
+      "format": "multiple_choice",
+      "category": "Pro Play",
+      "difficulty": 3,
+      "choices": ["Kha'Zix", "Janna"],
+      "correct_answer": "Kha'Zix",
+      "explanation": "Kha'Zix was a contested jungle pick in that window; Janna appeared in fewer games.",
+      "presentation": {
+        "scope_key": "World Championship|ALL|4.14",
+        "candidates": ["Janna", "Kha'Zix"],
+        "metric": "picks",
+        "patch": "4.14",
+        "shape": "pairwise",
+        "tournament_id": null,
+        "league_slug": "World Championship"
+      }
+    },
+    {
+      "id": "vq-04",
+      "question_key": "item_build_path:aether-wisp:missing_component",
+      "question_text": "Which component is missing from this build path?",
+      "format": "multiple_choice",
+      "category": "item_build_path",
+      "difficulty": 2,
+      "choices": ["Dagger", "Amplifying Tome", "Ruby Crystal", "Long Sword"],
+      "correct_answer": "Amplifying Tome",
+      "explanation": "Aether Wisp is built from Amplifying Tome and Rejuvenation Bead.",
+      "image_path": "assets/items/3113.png",
+      "metadata": {
+        "question_type": "item_build_path",
+        "recipe_type": "missing_component",
+        "item_id": 3113,
+        "item_name": "Aether Wisp",
+        "asset_path": "assets/items/3113.png",
+        "known_components": ["Rejuvenation Bead"],
+        "known_component_icons": [{ "name": "Rejuvenation Bead", "icon": "assets/items/1006.png" }],
+        "missing_component_item_name": "Amplifying Tome",
+        "missing_component_icon": "assets/items/1052.png"
+      }
+    },
+    {
+      "id": "vq-05",
+      "question_key": "ability_cooldown_haste:aatrox:e:r5",
+      "question_text": "Aatrox E — Umbral Dash has a rank 5 cooldown of 5 seconds. With 10 ability haste, what is its cooldown?",
+      "format": "multiple_choice",
+      "category": "Champion Ability Cooldowns",
+      "difficulty": 3,
+      "choices": ["4.55", "5.00", "4.00", "3.50"],
+      "correct_answer": "4.55",
+      "explanation": "Ability haste divides the cooldown by (1 + haste/100): 5 / 1.10 = 4.55 seconds.",
+      "presentation": {
+        "base_cooldown": 5.0,
+        "rank": 5,
+        "slot": "E",
+        "champion_name": "Aatrox",
+        "ability_haste": 10.0,
+        "ability_name": "Umbral Dash"
+      }
+    },
+    {
+      "id": "vq-06",
+      "question_key": "post_mitigation_damage:caitlyn:q:ahri",
+      "question_text": "How much less post-mitigation damage does the hit deal after the purchase?",
+      "format": "multiple_choice",
+      "category": "post_mitigation_damage",
+      "difficulty": 4,
+      "choices": ["64", "75", "86", "109"],
+      "correct_answer": "75",
+      "explanation": "600 raw against 60 armor is 375 post-mitigation; against 100 armor it is 300. The purchase removes 75 damage.",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "combat_cooldown",
+            "champion": "Caitlyn",
+            "champion_icon": "assets/champions/Caitlyn/icon.png",
+            "item_icons": [],
+            "ability_slot": "Q",
+            "ability_name": "Piltover Peacemaker"
+          },
+          "entities": {
+            "champions": [
+              { "type": "champion", "id": "Caitlyn", "name": "Caitlyn", "role": "attacker", "icon": "assets/champions/Caitlyn/icon.png" },
+              { "type": "champion", "id": "Ahri", "name": "Ahri", "role": "target", "icon": "assets/champions/Ahri/icon.png" }
+            ],
+            "items": [],
+            "abilities": [],
+            "runes": [],
+            "summoner_spells": []
+          },
+          "premise_facts": {
+            "damage_type": "physical",
+            "raw_damage": 600,
+            "target_resist": 60,
+            "target_resist_after": 100
+          }
+        }
+      }
+    },
+    {
+      "id": "vq-07",
+      "question_key": "flat_inventory_stat:ornn:sell-swap",
+      "question_text": "Ornn started with Doran's Shield and still has Sunfire Aegis. Later, Ornn sold Doran's Shield and bought Abyssal Mask. How much flat health do Ornn's items provide now?",
+      "format": "multiple_choice",
+      "category": "flat_inventory_stat",
+      "difficulty": 3,
+      "choices": ["750", "810", "700", "800"],
+      "correct_answer": "810",
+      "explanation": "Sunfire Aegis and Abyssal Mask are the only items left; Doran's Shield left the inventory when it was sold.",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "combat_cooldown",
+            "champion": "Ornn",
+            "champion_icon": "assets/champions/Ornn/icon.png",
+            "item_icons": [
+              { "name": "Sunfire Aegis", "icon": "assets/items/3068.png" },
+              { "name": "Abyssal Mask", "icon": "assets/items/8020.png" }
+            ]
+          },
+          "entities": {
+            "champions": [
+              { "type": "champion", "id": "Ornn", "name": "Ornn", "role": "subject", "icon": "assets/champions/Ornn/icon.png" }
+            ],
+            "items": [
+              { "type": "item", "id": 3068, "name": "Sunfire Aegis", "role": "subject", "status": "retained", "icon": "assets/items/3068.png" },
+              { "type": "item", "id": 8020, "name": "Abyssal Mask", "role": "subject", "status": "purchased", "icon": "assets/items/8020.png" },
+              { "type": "item", "id": 1054, "name": "Doran's Shield", "role": "subject", "status": "sold", "icon": "assets/items/1054.png" }
+            ],
+            "abilities": [],
+            "runes": [],
+            "summoner_spells": []
+          }
+        }
+      }
+    },
+    {
+      "id": "vq-08",
+      "question_key": "mastery:physical_penetration.armor.flat",
+      "review_key": "mastery:ssm.base.PHYSICAL_PENETRATION",
+      "source_kind": "mastery_slice",
+      "question_text": "A 3000-damage physical hit lands on 100 armor with 18 flat armor penetration applied. What is the post-mitigation damage?",
+      "format": "multiple_choice",
+      "category": "mastery",
+      "difficulty": 4,
+      "choices": ["1636", "1500", "1786", "2460"],
+      "correct_answer": "1786",
+      "explanation": "Flat penetration reduces the target's armor to 82, so the multiplier is 100 / (100 + 82) = 0.549, and 3000 × 0.549 = 1786.",
+      "provenance": {
+        "review_key": "mastery:ssm.base.PHYSICAL_PENETRATION",
+        "source_kind": "mastery_slice",
+        "materialization": "code_generated",
+        "family": "physical_penetration",
+        "source_version": "ssm.base.v1"
+      }
+    },
+    {
+      "id": "vq-09",
+      "question_key": "daily:2026-08-20:v1:12",
+      "review_key": "daily:2026-08-20:1:12",
+      "source_kind": "daily_card",
+      "question_text": "Which item is built from this component?",
+      "format": "multiple_choice",
+      "category": "items",
+      "difficulty": 2,
+      "choices": ["Infinity Edge", "Bloodthirster", "Serylda's Grudge", "Youmuu's Ghostblade"],
+      "correct_answer": "Serylda's Grudge",
+      "explanation": "Serylda's Grudge builds out of Last Whisper, which itself starts from a Long Sword.",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "item",
+            "id": 1036,
+            "name": "Long Sword",
+            "icon": "assets/items/1036.png"
+          },
+          "entities": {
+            "champions": [],
+            "items": [
+              { "type": "item", "id": 1036, "name": "Long Sword", "role": "subject", "icon": "assets/items/1036.png" }
+            ],
+            "abilities": [],
+            "runes": [],
+            "summoner_spells": []
+          }
+        }
+      },
+      "provenance": {
+        "review_key": "daily:2026-08-20:1:12",
+        "source_kind": "daily_card",
+        "materialization": "frozen_snapshot",
+        "family": "item_build_path",
+        "source_version": "2026-08-20/v1"
+      }
+    },
+    {
+      "id": "vq-10",
+      "question_key": "champion_ability_scaling:riven:q:long-explanation",
+      "question_text": "Riven's Q — Broken Wings deals 15 (+45% bonus AD) physical damage per cast at rank 1. With 100 bonus attack damage, what does one cast deal before mitigation?",
+      "format": "multiple_choice",
+      "category": "champion_ability_scaling",
+      "difficulty": 3,
+      "choices": ["45", "60", "70", "160"],
+      "correct_answer": "60",
+      "explanation": "The ratio is on BONUS attack damage, not total: 15 base plus 45% of 100 bonus AD is 60 physical damage per cast. All three casts of Broken Wings use the same values, so the full chain is 180 before mitigation — but the question asks for a single cast. Reading the ratio as total AD is the common error and would give a number roughly three times too large on a full build."
+    }
+  ]
+}

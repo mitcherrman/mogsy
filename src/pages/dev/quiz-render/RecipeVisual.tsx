@@ -71,14 +71,18 @@ function ItemTile({
         </div>
       </div>
       <span
-        className="text-center text-[10px] leading-tight"
+        className="text-center text-[11px] font-semibold leading-tight"
         style={{
-          color: highlight ? "hsl(42 75% 66%)" : "hsl(42 30% 72%)",
+          // CON1 Step 4 — the cluster sits on the vellum folio now, so the
+          // labels are INK. They were pale gold, tuned for the dark card the
+          // recipe used to be drawn on; on paper they published as barely-there
+          // grey under the icons they name.
+          color: highlight ? "#7a5410" : "rgba(58,46,26,0.8)",
           // FIXED two-line envelope (not minHeight): the label must occupy
           // identical space whether it is empty (pre-reveal "?" slot) or
           // holds a wrapped item name, so revealing never changes the row
           // height — the screenshot question/correct pair must not reflow.
-          height: 26,
+          height: 28,
           overflow: "hidden",
           display: "-webkit-box",
           WebkitLineClamp: 2,
@@ -96,7 +100,7 @@ function Join({ symbol }: { symbol: "+" | "→" }) {
     <span
       data-recipe-join={symbol === "+" ? "plus" : "arrow"}
       className="mx-1 mt-4 text-lg font-bold"
-      style={{ color: "hsl(42 55% 60%)" }}
+      style={{ color: "#7a5e22" }}
     >
       {symbol}
     </span>

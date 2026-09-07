@@ -10,21 +10,49 @@ QA/audit formats remain available but are opt-in.
 npm run quiz:screenshots -- --question-id 123
 ```
 
-Content formats include: a fit-to-frame mobile card (measured and zoomed at
-readiness time so nothing clips or collides), **item-build recipe visuals**
-covering the whole build-question family (see table below), and a **CTA
-footer** with the Mogsy
-wordmark, "Play more LoL quizzes at mogzy.lol", and a deterministic QR code
-encoding `https://mogzy.lol/quiz` (compact strip on `question`, full QR block
-on reveals; never in the answer area). The spoiler fields of recipe metadata
-are only read after reveal — the unanswered state cannot leak the answer.
+Content formats compose the question as a **vellum folio in the Mogzy academy
+chamber** — the same skin the live Ranked arena wears, activated by the same
+`ranked-academy` / `ranked-folio` classes in `index.css`, over the same shared
+components. Each format declares the composition it wants (`layoutFamily`) and
+where its brand chrome sits (`ctaPlacement`); there is no device mock-up.
 
-Deterministic, local-first screenshot production and visual QA for Mogsy's
+- **portrait / square** — a stacked column: the Mogzy lockup above the folio,
+  the QR and "Scan to play" below it.
+- **landscape / broadcast** — two real columns: the folio takes the full frame
+  height, and a brand rail beside it carries the wordmark, `mogzy.lol` and the
+  QR.
+
+The wordmark is set in Cinzel (the academy display face) rather than loaded
+from `mogsy-logo-text.png`, which is the pre-2026 mark and says the wrong name.
+Item-build **recipe visuals** cover the whole build-question family (see table
+below); their spoiler fields are only read after reveal, so the unanswered
+state cannot leak the answer.
+
+Deterministic, local-first screenshot production and visual QA for Mogzy's
 existing League quiz questions. Renders real quiz questions through the REAL
 production quiz UI (`QuizAnswerOptions` / `QuizAnswerFeedback`, extracted from
 `Quiz.tsx`) into reusable PNGs across controlled quiz states and multiple
 aspect ratios — for future TikTok/Shorts/Reels/X/Reddit content and for
 mobile/desktop layout audits.
+
+### Offline runs
+
+`--fixture` mode needs no backend and no admin key. Two asset surfaces still
+resolve against `VITE_COMBAT_API_URL`, so an offline run should point it at a
+local static server over the backend repo's `assets/` tree:
+
+- the item/champion icons the bands draw (plain `<img>` loads), and
+- `GET /api/assets/champions`, the champion manifest the cinematic splash card
+  fetches. That one is a real XHR, so the local server must send
+  `Access-Control-Allow-Origin` or the splash silently falls back to an empty
+  frame.
+
+`scripts/quiz-screenshots/visual-qa-fixture.json` is the deterministic visual
+QA set: ten rows spanning every shape the shell has to compose (short MCQ, long
+prompt + long options, two options, item recipe, cinematic band, combat and
+lifecycle family bands, a Mastery generated row, a frozen Daily card with real
+media, and a long explanation). Its coverage is asserted by
+`src/lib/quiz-screenshot/visualQaFixture.test.ts`.
 
 **This tool never publishes, never mutates quiz records, and never writes to
 the backend.** All output lands under a gitignored local export root.
@@ -116,23 +144,29 @@ Answer order is never reshuffled — backend order is preserved exactly.
 `--post <type>` expands each question into an ordered carousel of slides
 (one PNG per slide, named `<format>_slide-NN_<slug>.png`). It replaces
 `--states` (they are mutually exclusive). Every slide uses the same premium
-phone composition; only the card contents change.
+composition; only the card contents change.
 
 | Post type | Slides |
 |---|---|
 | `single-question` | `slide-01` question (engagement) → `slide-02` app-CTA (“Think you know League? Prove it.” → “Challenge others to test your knowledge at” → dominant “mogzy.lol” + socials + QR) |
 | `answer-reveal` | `slide-01` recap (question re-shown, **no answer**, “Swipe right →”) → `slide-02` answer (jade correct reveal) → `slide-03` community (“See how your answers stack up” + socials) |
 
-The question slide's engagement CTA is **“Comment A, B, C, or D”**.
+The question slide's engagement CTA is derived from the OPTION COUNT
+(`src/lib/quiz-screenshot/cta.ts`): “Comment A or B”, “Comment A, B, or C”,
+“Comment A, B, C, or D”, and a plain “Comment your answer” past four. It used
+to be the constant four-letter form on every question, including two-option
+ones.
 
 End slides (app-cta/community) are brand-led: the top strip drops the small
-“Play more LoL quizzes at mogzy.lol” line in favor of a larger Mogsy wordmark
+“Play more LoL quizzes at mogzy.lol” line in favor of a larger Mogzy wordmark
 (`QuizCtaTop variant="brand"`), lead with the real hero art
-(`public/content/blitz-thinking.png`), and close with the neutral socials row
-(“Follow Mogsy on TikTok · Instagram · YouTube · Twitch” — no invented
-handles). The app-CTA slide's play CTA is text-led (no button box). Post
-frame-parity gates the CTA geometry within each slide family (quiz-style vs
-end-style); phone/screen/island/QR/scan stay identical across all slides.
+(`public/content/blitz-thinking.png`), and close with the brand line — wordmark
+over `mogzy.lol`. The platform row (“Follow Mogsy on TikTok · Instagram ·
+YouTube · Twitch”) was removed: no Mogzy-owned account exists on any of them,
+so it named four places a reader would find nothing. The app-CTA slide's play
+CTA is text-led (no button box). Post frame-parity gates the CTA geometry
+within each slide family (quiz-style vs end-style); ground/rail/QR/scan stay
+identical across all slides.
 
 ```powershell
 # Single-question post (2 slides)

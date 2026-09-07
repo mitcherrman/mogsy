@@ -48,7 +48,8 @@ import {
   midCtaCopy,
   repeatCopy,
 } from "@/lib/quiz-screenshot/challenge";
-import { QuizCtaQr, QuizCtaTop } from "./QuizCta";
+import { answerPromptCopy } from "@/lib/quiz-screenshot/cta";
+import { QuizCtaQr, QuizCtaRail, QuizCtaTop } from "./QuizCta";
 import RecipeVisual from "./RecipeVisual";
 import DifficultyBadge from "./DifficultyBadge";
 import {
@@ -63,6 +64,7 @@ import {
   type AnswerPlan,
   type QuizRenderInjection,
   type RenderFormat,
+  type LayoutFamily,
   type RenderQuestion,
   type RenderState,
 } from "@/lib/quiz-screenshot/types";
@@ -74,8 +76,56 @@ import {
 const PREV_SKIP_ANIMATIONS = MotionGlobalConfig.skipAnimations;
 MotionGlobalConfig.skipAnimations = true;
 
-/** Native mobile card width the content shell scales up from. */
-const BASE_CONTENT_WIDTH = 420;
+/**
+ * The width the folio is LAID OUT at, before the shell's zoom.
+ *
+ * Portrait and square keep the mobile-native 420: the shape they publish is a
+ * phone-shaped reading column, and the production components were designed
+ * against it.
+ *
+ * Landscape needs a genuinely different sheet, and a bigger zoom is not it. A
+ * 420-wide card is roughly square once it has a prompt, a band, four answers
+ * and a result area, and the landscape content column is 1.42:1 — so height
+ * binds first and the card can never fill the frame no matter how far it is
+ * scaled. Laying it out WIDE makes it short: the prompt stops wrapping, and
+ * the answers go two-up (see the layout-scoped rule in the shell's style
+ * block), so the sheet ends up the shape the frame actually is.
+ */
+const BASE_CONTENT_WIDTH_BY_FAMILY: Record<LayoutFamily, number> = {
+  portrait: 420,
+  square: 420,
+  landscape: 640,
+};
+
+/**
+ * CON1 Step 4 — the academy visual system, reused rather than reinvented.
+ *
+ * The stage carries `ranked-academy` and the card carries `ranked-folio`, the
+ * two class hooks the LIVE Ranked arena already uses (`ArenaShell`,
+ * `CanonicalArena`). Every rule they activate lives in `index.css` and is
+ * written against the shared question surface, the shared answer grid and
+ * `QuizAnswerFeedback` — the exact components this harness renders. So the
+ * card becomes a vellum folio with carved navy answer tablets, a brass
+ * scenario-category rule and paper-toned feedback, from production CSS,
+ * without a single value being copied into the factory.
+ *
+ * What the factory still owns, and what the constants below are for: the
+ * ground the folio sits on, the brand chrome around it, and the two states
+ * Ranked deliberately does not have an opinion about in a STATIC post (the
+ * pre-reveal engagement prompt, and a correct answer that has to read as
+ * correct on its own — Ranked's own reveal is a separate banner).
+ */
+const ACADEMY_FACE = '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif';
+const ACADEMY_GOLD_BRIGHT = "#e2c987";
+/** Brass INK — for factory copy printed on the vellum folio itself, where the
+ *  bright gold used on the dark ground reads as a highlight rather than as
+ *  writing. Mirrors the folio's own `.scenario-category` colour. */
+const ACADEMY_INK_BRASS = "#6d5626";
+/** The chamber the Ranked arena is set in — the same painting, so the factory
+ *  and the live product are demonstrably the same room. Served from `public/`,
+ *  and mounted as a real <img> so it participates in the harness's
+ *  image-readiness wait and its missing-asset QA. */
+const ACADEMY_GROUND_SRC = "/assets/ranked/ranked-academy-duel-bg.png";
 
 /** Screenshot-only headroom over the format's nominal contentScale, so the
  *  quiz card can grow to fill the phone screen (the fit is still bounded by
@@ -115,10 +165,24 @@ function useRenderReady(
   format: RenderFormat | undefined,
   forcedScale?: number,
 ) {
+  const baseWidth = format ? BASE_CONTENT_WIDTH_BY_FAMILY[format.layoutFamily] : 420;
   const stageRef = useRef<HTMLDivElement | null>(null);
   const centerRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
+  /**
+   * CON1 Step 4 — the card's own height, quantized to an 8px block.
+   *
+   * The 8px quantization already existed, but only as an INPUT to the zoom fit
+   * (see the note below). That kept the two captures' zoom identical while
+   * leaving their rects free to differ by whatever the unzoomed layout
+   * differed by — and on the longest row in the corpus that was one unzoomed
+   * pixel, which the zoom then magnified to two and the geometry gate caught.
+   * Quantizing the card's BOX by the same block makes the two rects identical
+   * as well, instead of merely nearly so. It only ever grows the box, so it
+   * can neither clip content nor change the fit that produced it.
+   */
+  const [quantizedH, setQuantizedH] = useState<number | undefined>(undefined);
   useEffect(() => {
     if (!enabled || !format) return;
     let cancelled = false;
@@ -140,6 +204,12 @@ function useRenderReady(
         ),
       );
       if (cancelled) return;
+      if (format.kind === "social" && cardRef.current) {
+        // Measured in EVERY state, including the forced-scale ones — a state
+        // that skipped this would keep its natural height and defeat the
+        // point of quantizing at all.
+        setQuantizedH(Math.ceil(cardRef.current.scrollHeight / 8) * 8);
+      }
       if (forcedScale !== undefined && format.kind === "social") {
         // State-independent envelope: the runner captures the question state
         // first, reads the fitted scale, and FORCES the same scale onto every
@@ -161,7 +231,7 @@ function useRenderReady(
         const maxScale = format.contentScale * CONTENT_SCALE_HEADROOM;
         const fit = Math.min(
           maxScale,
-          availW / BASE_CONTENT_WIDTH,
+          availW / baseWidth,
           cardH > 0 ? availH / cardH : maxScale,
         );
         // Quantize the scale itself too, so equal-block heights can never
@@ -175,8 +245,8 @@ function useRenderReady(
     return () => {
       cancelled = true;
     };
-  }, [enabled, format, forcedScale]);
-  return { stageRef, centerRef, cardRef, scale };
+  }, [enabled, format, forcedScale, baseWidth]);
+  return { stageRef, centerRef, cardRef, scale, quantizedH };
 }
 
 /** Per-slide challenge presentation (multi-question posts). */
@@ -260,7 +330,17 @@ function QuestionCard({
 
   return (
     <Card
-      className="relative bg-card/80 backdrop-blur-sm"
+      /**
+       * CON1 Step 4 — the card IS the arena's folio.
+       *
+       * `ranked-panel ranked-folio` is the exact pair `CanonicalArena` puts on
+       * the live question box. Inside the stage's `ranked-academy` ancestor
+       * they resolve, from index.css, to the vellum sheet with its brass edge,
+       * the navy scenario plate, the brass category rule and the paper-toned
+       * feedback box — over these same shared components. Nothing about the
+       * skin is authored here; the factory only names it.
+       */
+      className="ranked-panel ranked-folio relative"
       /**
        * What the presentation path did with this question — "absent",
        * "unreadable", "no-scenario", "text-only", "cinematic" or "family" —
@@ -367,7 +447,10 @@ function QuestionCard({
             >
               <div className="flex items-center justify-center gap-2 font-extrabold">
                 <div className="flex origin-center scale-[1.2] items-center gap-2">
-                  <span className="tracking-tight text-amber-100 drop-shadow-[0_0_10px_rgba(251,191,36,0.45)]">
+                  <span
+                    className="tracking-tight"
+                    style={{ fontFamily: ACADEMY_FACE, color: ACADEMY_INK_BRASS }}
+                  >
                     Ready for the answer? Swipe right →
                   </span>
                 </div>
@@ -387,19 +470,16 @@ function QuestionCard({
                 <span
                   data-challenge-progress
                   className="text-xs font-extrabold uppercase"
-                  style={{ letterSpacing: "0.3em", color: "hsl(197 65% 66%)" }}
+                  style={{ letterSpacing: "0.3em", color: "rgba(58,46,26,0.74)" }}
                 >
                   Question {challenge.number} of {challenge.total}
                 </span>
                 <span
-                  className="text-base font-extrabold uppercase tracking-tight"
+                  className="text-base font-extrabold uppercase"
                   style={{
-                    backgroundImage:
-                      "linear-gradient(92deg, hsl(190 95% 72%), hsl(196 92% 62%) 45%, hsl(43 92% 66%))",
-                    WebkitBackgroundClip: "text",
-                    backgroundClip: "text",
-                    color: "transparent",
-                    filter: "drop-shadow(0 0 12px rgba(34,211,238,0.5))",
+                    fontFamily: ACADEMY_FACE,
+                    letterSpacing: "0.06em",
+                    color: ACADEMY_INK_BRASS,
                   }}
                 >
                   Lock in your answer
@@ -438,23 +518,24 @@ function QuestionCard({
               style={{ borderColor: "transparent", background: "transparent" }}
             >
               <div className="flex items-center justify-center gap-2 font-extrabold mb-1">
-                <div className="flex origin-center scale-[1.45] items-center gap-2.5">
-                  <MessageCircle
-                    className="h-4 w-4 text-cyan-300"
-                    style={{ filter: "drop-shadow(0 0 10px rgba(34,211,238,0.85))" }}
-                  />
+                <div className="flex origin-center scale-[1.35] items-center gap-2.5">
+                  <MessageCircle className="h-4 w-4" style={{ color: ACADEMY_INK_BRASS }} />
+                  {/* CON1 Step 4 — the letters come from the OPTION COUNT.
+                      This line used to be the constant "Comment A, B, C, or D"
+                      and a two-option question shipped asking readers to
+                      comment C or D. The copy rule is a pure module, so a
+                      wrong ask is a unit-test failure rather than something
+                      noticed in a published PNG. */}
                   <span
-                    className="uppercase tracking-tight"
+                    data-quiz-answer-prompt
+                    className="uppercase"
                     style={{
-                      backgroundImage:
-                        "linear-gradient(92deg, hsl(190 95% 72%), hsl(196 92% 62%) 45%, hsl(43 92% 66%))",
-                      WebkitBackgroundClip: "text",
-                      backgroundClip: "text",
-                      color: "transparent",
-                      filter: "drop-shadow(0 0 12px rgba(34,211,238,0.5))",
+                      fontFamily: ACADEMY_FACE,
+                      color: ACADEMY_INK_BRASS,
+                      letterSpacing: "0.06em",
                     }}
                   >
-                    Comment A, B, C, or D
+                    {answerPromptCopy(question.choices.length)}
                   </span>
                 </div>
               </div>
@@ -474,6 +555,7 @@ function FormatShell({
   centerRef,
   cardRef,
   scale,
+  quantizedH,
   state,
   slide,
 }: {
@@ -483,6 +565,8 @@ function FormatShell({
   centerRef: React.Ref<HTMLDivElement>;
   cardRef: React.Ref<HTMLDivElement>;
   scale: number;
+  /** The card box's 8px-quantized height — see useRenderReady. */
+  quantizedH?: number;
   state: RenderState;
   slide: SlideKind;
 }) {
@@ -510,306 +594,412 @@ function FormatShell({
       </div>
     );
   }
-  // Social content shell: a large premium (brand-neutral) smartphone
-  // dominates the frame — clean rounded body, flat top screen, and only a
-  // subtle dynamic-island pill as hardware detail. Every element — wordmark/
-  // CTA, quiz card, QR and its caption — lives INSIDE the phone screen. The
-  // phone shows its top and side bezels and runs off the bottom of the
-  // capture (the bottom hardware edge is deliberately cropped). Geometry is
-  // identical in every state; the zoom is fitted once per question and forced
-  // onto later states (see useRenderReady).
+
+  /**
+   * CON1 Step 4 — THE SOCIAL COMPOSITION.
+   *
+   * What this replaced: one portrait smartphone mock-up that every social
+   * format was poured through. It cost the frame twice — the bezel took the
+   * outer ~14% and the "screen" interior took more — and because the mock-up
+   * is portrait by construction, `landscape` ended up drawing a 334px-wide
+   * card into a 1200px frame with empty gutters either side. The card was
+   * unreadable at feed scale for reasons that had nothing to do with the card.
+   *
+   * What replaced it: the frame IS the composition. The stage is the academy
+   * chamber — the same painting the live Ranked arena is set in — and the
+   * question sits on it as a vellum folio, at the size the format can actually
+   * afford. `format.layoutFamily` picks between a stacked column and a real
+   * two-column horizontal arrangement; nothing else branches.
+   *
+   * The stage carries `ranked-academy`, so `index.css` supplies the folio, the
+   * carved answer tablets, the scenario band's navy plate and the paper-toned
+   * feedback box — all of it already written against these exact shared
+   * components. `.ranked-academy::after` (a `position: fixed` room backdrop
+   * sized to the VIEWPORT) is suppressed here and the ground is painted inside
+   * the stage instead, because a capture stage is not the viewport and a fixed
+   * layer would not follow it.
+   */
   const showCta = format.cta !== "none";
-  const phoneW = Math.round(format.width * 0.86);
-  const phoneTop = Math.round(format.height * 0.02);
-  const phoneLeft = Math.round((format.width - phoneW) / 2);
-  const bezel = 16;
-  const screenW = phoneW - bezel * 2;
-  const islandW = 128;
-  const islandH = 34;
-  const islandTop = 18;
-  const visibleScreenH = format.height - phoneTop - bezel;
-  const shellFill = "linear-gradient(180deg, #232a38 0%, #151b26 55%, #10151f 100%)";
+  const rail = format.ctaPlacement === "rail";
+  const pad = format.safeAreaPadding;
+  // A reveal has answered the question; it invites the next one instead of
+  // asking for a comment it has already spent.
+  const tone: "question" | "reveal" = state === "question" ? "question" : "reveal";
+  // Rail width is DERIVED, never a second magic number: the format already
+  // declares how wide the folio column may be, and the rail is what the frame
+  // has left after it.
+  const railGap = Math.round(pad * 0.75);
+  const railW = rail
+    ? Math.max(220, format.width - pad * 2 - railGap - format.contentMaxWidth)
+    : 0;
+  const qrPx = format.width >= 1600 ? 150 : 108;
+  const baseWidth = BASE_CONTENT_WIDTH_BY_FAMILY[format.layoutFamily];
+
   return (
     <div
       ref={stageRef}
       data-quiz-render-stage
       data-render-state={state}
       data-render-format={format.key}
+      data-render-layout={format.layoutFamily}
       data-render-scale={scale}
-      className="overflow-hidden relative text-foreground"
+      /* `ranked-academy` is not decoration here either — see ArenaShell's note.
+         It is the ancestor half of every `.ranked-academy .ranked-folio …` and
+         `.ranked-academy [data-answers-state] [data-quiz-choice] …` rule in
+         index.css, and without it the folio class on the card would be inert. */
+      className="ranked-academy overflow-hidden relative text-foreground"
       style={{
         width: format.width,
         height: format.height,
-        background:
-          "radial-gradient(130% 100% at 50% 0%, #0d1526 0%, #070b16 60%, #04070e 100%)",
+        background: "#050c17",
       }}
     >
       {/* Screenshot-only stabilizers/overrides — scoped to the harness stage,
-          never touching live quiz UI:
-          1. fixed answer-row floor (reveal styling must not reflow rows)
-          2. vivid jade correct-state treatment (row, checkmark, feedback) */}
+          never touching live quiz UI. Three jobs only:
+            1. suppress the arena's viewport-fixed backdrop (see above);
+            2. tighten the card's internal rhythm so the fitted zoom can grow;
+            3. supply the two states the academy skin has no static opinion on
+               — the plain (non-arena) answer grid, and a correct answer that
+               must read as correct without Ranked's separate reveal banner. */}
       <style>{`
-        /* Card chrome: tighter internal padding/rhythm so the fitted zoom can
-           grow — the card ends up larger on screen with the same balance.
-           Scoped to the harness stage; the live quiz card is untouched. */
+        /* 1 — the arena's room backdrop is sized to the viewport; the stage is
+           not the viewport. The ground below is painted inside the stage. */
+        [data-quiz-render-stage].ranked-academy::after{ display:none; }
+
+        /* 2 — card chrome: tighter internal padding/rhythm so the fitted zoom
+           can grow. Scoped to the stage; the live quiz card is untouched. */
         [data-quiz-render-stage] [data-quiz-content-card] > div{
-          border-radius:14px;
+          border-radius:10px;
         }
-        [data-quiz-render-stage] [data-quiz-content-card] .p-6{
-          padding:12px;
+        [data-quiz-render-stage] [data-quiz-content-card] .p-6{ padding:14px; }
+        [data-quiz-render-stage] [data-quiz-content-card] .pb-3{ padding-bottom:6px; }
+        [data-quiz-render-stage] [data-quiz-content-card] .pt-0{ padding-top:0; }
+        [data-quiz-render-stage] [data-quiz-content-card] .space-y-4 > * + *{
+          margin-top:9px;
         }
-        [data-quiz-render-stage] [data-quiz-content-card] .pb-3{
-          padding-bottom:4px;
-        }
-        [data-quiz-render-stage] [data-quiz-content-card] .pt-0{
-          padding-top:0;
-        }
-        /* Question prompt reads centered and intentional in content captures.
-           Text alignment only — the card, recipe cluster, and answer grid are
-           untouched, so geometry/parity are unaffected. */
+        /* ONE PROMPT VOICE.
+           A scenario question renders its prompt through the production
+           surface, whose heading is an h2 and therefore already picks up the
+           academy display face from .theme-lol. A plain stored question renders
+           through CardTitle, which is an h3 and did not — so the two published
+           side by side in different typefaces, which is exactly the "two design
+           systems" read this step exists to remove. Same face, same centring,
+           same colour as the folio ink. Wrapping changes identically in every
+           state, so cross-state parity is unaffected. */
         [data-quiz-render-stage] [data-quiz-content-card] h3{
           text-align:center;
-        }
-        [data-quiz-render-stage] [data-quiz-content-card] .space-y-4 > * + *{
-          margin-top:8px;
+          font-family:"Cinzel","Trajan Pro","EB Garamond",Georgia,serif;
+          font-weight:700;
+          letter-spacing:0.01em;
+          color:#2c2417;
         }
         /* Recipe cluster: tighter vertical rhythm only — tile sizes and the
            fixed label envelope (anti-drift) are untouched. */
         [data-quiz-render-stage] [data-quiz-recipe]{
-          gap:4px;
-          padding-top:0;
-          padding-bottom:0;
+          gap:4px; padding-top:0; padding-bottom:0;
         }
-        /* Answer grid: tighter gaps; the row floor stays a real floor (above
-           every natural single-line height) so reveal styling cannot reflow. */
-        [data-quiz-render-stage] [data-quiz-answer-options]{
-          gap:7px;
-        }
-        [data-quiz-render-stage] [data-quiz-choice]{
-          padding-top:8px;
-          padding-bottom:8px;
+        [data-quiz-render-stage] [data-quiz-answer-options]{ gap:7px; }
+        /* Landscape only: the answers go two-up. This is the other half of the
+           wide-sheet decision above — it is what makes the folio short enough
+           to fill a 16:9 frame instead of being pinned by its own height. The
+           shared grid already supports a two-column mode for compact
+           competitive surfaces (QuizAnswerOptions columns="wide-2"); this
+           reaches the same layout from the composition side, so no production
+           call signature changes and a picture-choice grid — which manages its
+           own 2-up columns — is left alone. */
+        [data-render-layout="landscape"] [data-quiz-answer-options][data-columns="auto"]{
+          grid-template-columns:repeat(2,minmax(0,1fr));
         }
         /* Result panel chrome (both states share these classes → no shift). */
-        [data-quiz-render-stage] [data-quiz-result-area] > div{
-          padding:10px 12px;
+        [data-quiz-render-stage] [data-quiz-result-area] > div{ padding:10px 12px; }
+
+        /* THE BANDS, MOUNTED ON PAPER.
+           The scenario bands are built from translucent BLACK — rgba(0,0,0,.55)
+           on the family bands, bg-black/30 on the cinematic hero — because they
+           were tuned against a dark panel. On the vellum folio those wash out
+           to a muddy tan and the gold labels inside them lose their ground.
+           index.css already solves exactly this for the low-content compact
+           strip, with exactly this reasoning, by giving it an opaque navy
+           plate; the family and cinematic bands simply never had a caller that
+           put them on paper. Colour only — the bands keep their own height,
+           ring, sheen, emblems and internal layout, and the rule is scoped to
+           the capture stage so the live arena is untouched. */
+        [data-quiz-render-stage] [data-testid^="family-band-"],
+        [data-quiz-render-stage] [data-testid="scenario-hero"]{
+          background-color:#0b1727;
+          background-image:linear-gradient(90deg,
+            rgba(8,19,34,0.98) 0%, rgba(15,31,51,0.95) 50%, rgba(8,19,34,0.98) 100%);
+          border-color:rgba(185,147,76,0.45);
         }
-        /* Answer rows: fixed height floor (anti-drift) + stronger typography. */
+
+        /* THE REVEAL GUTTER — a reserved slot for the verdict icon.
+           Revealing an answer appends a 16px check/cross INSIDE the row, and
+           the label is the flex child that pays for it. On short options that
+           is invisible; on a long one it costs a wrapped line, and the correct
+           card came out 43px taller than the question card of the same
+           question. Every long-option row in the corpus drifted this way, in
+           every format, before and after the reshell — it is a property of the
+           shared grid, not of this composition, so the fix is a reservation
+           rather than a fork: the row keeps a constant right gutter in EVERY
+           state and the icon is lifted out of flow into it. Text-mode rows
+           only (.justify-start); the picture-choice tiles centre their own
+           icon inside a wrapper and are untouched. */
+        [data-quiz-render-stage] [data-quiz-choice].justify-start{
+          position:relative;
+          padding-right:34px;
+        }
+        [data-quiz-render-stage] [data-quiz-choice].justify-start > svg{
+          position:absolute;
+          right:10px;
+          top:50%;
+          margin-left:0;
+          transform:translateY(-50%);
+        }
+
+        /* 3a — the PLAIN answer grid. QuizAnswerOptions renders the same
+           tablets in both paths, but only the arena's AnswerGrid wraps them in
+           the [data-answers-state] fieldset the academy rules key on. These
+           mirror the academy rule for the arena fieldset, so
+           a stored MCQ and a scenario question publish the same object; the
+           academy's own rule is more specific and still wins where it applies.
+           The row floor is a real floor (above every natural single-line
+           height) so reveal styling can never reflow a row. */
+        /* THE ANSWER-GEOMETRY LOCK, for the plain grid.
+           Revealing an answer swaps the shared quiz button from the "outline"
+           variant (1px border) to "default" (no border) — a 2px change to the
+           control's border box, which shrinks the revealed row and lifts
+           everything under it. index.css already fixes exactly this, as the
+           RA1 Phase 1.5 lock, but deliberately scoped to the [data-answers-state]
+           fieldset so it can never reach a plain quiz page. The factory's
+           stored-question path has no such ancestor, so the same pin is applied
+           here at the stage instead: every state carries the same 1px border
+           box, and the states that had none get a transparent one. Colour, fill
+           and glow still change freely — only the geometry is pinned. */
+        /* UN-DIM THE TABLETS.
+           A static capture is not a live round, and every tablet in it is
+           disabled — twice over. AnswerGrid renders a disabled fieldset
+           because the harness passes NO_INTERACTIONS, and a revealed card
+           disables every button again. The shared Button dims a disabled
+           control to 50% (disabled:opacity-50) and the academy skin eases
+           the LOCKED state back to 62%; neither reaches a REVEALED one. The
+           result was carved navy publishing as a half-strength wash of navy on
+           cream — measured rgb(117,117,109) against a computed rgb(14,28,47) —
+           on the reveal card, which is the one whose whole job is to be read.
+           Both dims exist to say "you cannot press this", which no reader of a
+           PNG was going to try. Opacity only; nothing else about the disabled
+           state changes, and the reveal's own colours still do the talking. */
+        [data-quiz-render-stage] [data-quiz-choice],
+        [data-quiz-render-stage] [data-quiz-choice]:disabled,
+        [data-quiz-render-stage] [data-answers-state] [data-quiz-choice]{
+          opacity:1;
+        }
+
+        [data-quiz-render-stage] [data-quiz-choice]{
+          border-width:1px;
+          border-style:solid;
+        }
+        [data-quiz-render-stage] [data-quiz-choice]:not([data-choice-state="idle"]){
+          border-color:transparent;
+        }
         [data-quiz-render-stage] [data-quiz-choice]{
           min-height:48px;
+          padding-top:8px;
+          padding-bottom:8px;
           font-size:15px;
           font-weight:600;
-          color:hsl(215 30% 93%);
-          border-color:hsl(213 35% 30% / 0.9);
-          background:linear-gradient(180deg,hsl(215 45% 12% / 0.9) 0%,hsl(216 45% 9% / 0.9) 100%);
-        }
-        /* A/B/C/D letter chips: slightly stronger. */
-        [data-quiz-render-stage] [data-quiz-choice] span.font-bold{
-          font-weight:800;
-          color:hsl(197 65% 66%);
-          letter-spacing:0.02em;
-        }
-        /* Correct row: luminous jade, dark readable text, premium lift.
-           transform/shadow only — never row height or spacing. */
-        [data-quiz-render-stage] [data-quiz-choice][data-choice-state="correct"]{
-          background:linear-gradient(180deg,hsl(158 82% 52%) 0%,hsl(161 86% 44%) 55%,hsl(164 90% 38%) 100%)!important;
-          border-color:hsl(155 95% 68%)!important;
-          color:hsl(168 95% 7%)!important;
-          font-weight:800;
+          border-color:rgba(185,147,76,0.34);
+          background-color:#0e1c2f;
+          background-image:linear-gradient(180deg,
+            rgba(25,44,69,0.97) 0%, rgba(12,25,42,0.98) 62%, rgba(7,15,28,1) 100%);
+          color:#efe8d6;
           box-shadow:
-            0 6px 26px -6px hsl(160 95% 42% / 0.75),
-            0 0 30px hsl(160 90% 48% / 0.4),
-            inset 0 1px 0 hsl(145 95% 82% / 0.7),
-            inset 0 -8px 18px hsl(168 90% 25% / 0.35)!important;
-          transform:translateY(-1px);
-          text-shadow:0 1px 0 hsl(150 80% 70% / 0.35);
+            inset 0 1px 0 rgba(213,182,111,0.16),
+            inset 0 -10px 18px -14px rgba(0,0,0,0.9),
+            0 6px 16px -12px rgba(0,0,0,0.85);
+        }
+        [data-quiz-render-stage] [data-quiz-choice] [data-choice-letter]{
+          display:inline-flex; align-items:center; justify-content:center;
+          min-width:1.5rem; padding:0.1rem 0.2rem; border-radius:4px;
+          background:rgba(185,147,76,0.14);
+          box-shadow:inset 0 0 0 1px rgba(185,147,76,0.3);
+          color:rgba(232,201,122,0.92);
+          opacity:1;
+        }
+
+        /* 3b — the CORRECT tablet.
+           Ranked paints a revealed correct option BLUE, because in the arena
+           the verdict is delivered by its own RevealBanner and the tablet is
+           only pointing at it. A static post has no banner: this row is the
+           entire answer, and blue does not read as "right". So the factory
+           keeps a green tablet — retoned out of the neon jade it used to be
+           and into the academy's own deep leaf, the same ink family as the
+           folio's "positive" verdict tone. Colour, fill and shadow
+           only: never height, padding, border-width — and never FONT WEIGHT.
+           The jade rule this replaced also set weight 800 on the revealed row,
+           and on a long option that re-wrapped the label onto an extra line:
+           the correct card came out 43px taller than the question card, which
+           tripped the cross-state geometry gate and, at mobile-social, an
+           actual collision with the footer. Contrast is gated at >=4.5:1 by
+           the capture runner. */
+        [data-quiz-render-stage] [data-quiz-choice][data-choice-state="correct"]{
+          border-color:rgba(122,196,138,0.9)!important;
+          background-color:#123b28!important;
+          background-image:linear-gradient(180deg,
+            rgba(23,79,52,0.99) 0%, rgba(14,52,34,0.99) 60%, rgba(9,38,25,1) 100%)!important;
+          color:#d8f2e0!important;
+          box-shadow:
+            inset 0 1px 0 rgba(168,226,185,0.34),
+            0 0 26px -8px rgba(70,168,105,0.62)!important;
+          text-shadow:0 1px 0 rgba(4,20,12,0.75);
         }
         [data-quiz-render-stage] [data-quiz-choice][data-choice-state="correct"] *{
-          color:hsl(168 95% 7%)!important;
+          color:#d8f2e0!important;
         }
-        [data-quiz-render-stage] [data-quiz-choice][data-choice-state="correct"] span.font-bold{
-          color:hsl(170 90% 12%)!important;
+        [data-quiz-render-stage] [data-quiz-choice][data-choice-state="correct"] [data-choice-letter]{
+          background:rgba(168,226,185,0.9)!important;
+          box-shadow:inset 0 0 0 1px rgba(168,226,185,0.45);
+          color:#08361f!important;
         }
-        /* Correct! feedback panel: polished jade, still airy and readable. */
+        /* The feedback panel on vellum, in the same leaf ink. The academy skin
+           already tones this box for the folio; this only carries the "correct"
+           variant's green through, which the shared component sets as a
+           Tailwind text-green class the folio rules do not name. */
+        /* THE EXPLANATION IS THE POINT OF THE EXPLANATION CARD, so it is set
+           in the folio's own muted ink rather than an 80%-opacity tint of the
+           verdict colour, which on cream came out as a pale sage the reader has
+           to work at. The verdict line above it keeps the verdict colour. */
+        [data-quiz-render-stage] [data-quiz-answer-feedback] p.text-xs{
+          color:rgba(45,36,20,0.92)!important;
+          opacity:1;
+        }
         [data-quiz-render-stage] [data-quiz-answer-feedback].text-green-400{
-          background:linear-gradient(180deg,hsl(160 85% 45% / 0.2) 0%,hsl(163 85% 40% / 0.12) 100%)!important;
-          border-color:hsl(157 92% 55% / 0.85)!important;
-          color:hsl(155 96% 62%)!important;
-          box-shadow:0 0 22px hsl(160 90% 45% / 0.3), inset 0 1px 0 hsl(150 90% 70% / 0.25)!important;
-          text-shadow:0 0 12px hsl(160 90% 50% / 0.45);
+          background-color:rgba(86,138,92,0.16)!important;
+          border-color:rgba(58,110,68,0.6)!important;
+          color:#2f5b38!important;
+          box-shadow:none!important;
+          text-shadow:none;
         }
       `}</style>
-      <div
-        data-quiz-phone
-        className="absolute"
+
+      {/* ---- The ground -------------------------------------------------
+          The academy chamber, as a real <img> so the readiness wait and the
+          missing-asset QA both cover it, under a scrim that keeps it a room
+          and not a subject. `object-position` is the only per-family
+          difference: a 16:9 painting cropped to 4:5 has to keep the lit floor
+          and the banner wall, not the ceiling. */}
+      <img
+        data-quiz-stage-ground
+        src={ACADEMY_GROUND_SRC}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full select-none"
         style={{
-          left: phoneLeft,
-          top: phoneTop,
-          width: phoneW,
-          // Extends far past the capture so the bottom hardware edge is
-          // always cropped out of the frame.
-          height: Math.round(format.height * 1.2),
-          borderRadius: `${bezel * 4}px ${bezel * 4}px 0 0`,
-          background: shellFill,
-          boxShadow:
-            "0 0 0 2px hsl(215 25% 40% / 0.35), 0 30px 80px -20px rgba(0,0,0,0.9), inset 0 1px 0 hsl(215 30% 60% / 0.35)",
+          position: "absolute",
+          objectFit: "cover",
+          objectPosition: rail ? "center 42%" : "center 58%",
+          zIndex: 0,
         }}
-      >
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          position: "absolute",
+          zIndex: 1,
+          background: [
+            // vignette — the frame reads as a lit chamber
+            "radial-gradient(118% 88% at 50% 44%, rgba(7,17,31,0) 0%, rgba(5,12,23,0.5) 56%, rgba(2,6,13,0.96) 100%)",
+            // navy wash — atmosphere sits BEHIND the folio, never competes
+            "linear-gradient(180deg, rgba(7,17,31,0.78) 0%, rgba(7,17,31,0.62) 45%, rgba(4,10,20,0.9) 100%)",
+          ].join(", "),
+        }}
+      />
+      {/* A single inset brass hairline: the plate edge. The one piece of
+          decoration on the stage, and it is a line. */}
+      <div
+        aria-hidden
+        className="absolute pointer-events-none"
+        style={{
+          left: Math.round(pad * 0.45),
+          right: Math.round(pad * 0.45),
+          top: Math.round(pad * 0.45),
+          bottom: Math.round(pad * 0.45),
+          position: "absolute",
+          border: "1px solid rgba(185,147,76,0.26)",
+          boxShadow: "inset 0 0 0 1px rgba(2,6,13,0.55)",
+          zIndex: 2,
+        }}
+      />
+
+      {rail ? (
+        /* ---- LANDSCAPE: two real columns ------------------------------
+           The folio takes the full frame height and everything the rail does
+           not, so a 1200×675 post is a question a reader can read at feed
+           scale rather than a picture of a phone. The rail sits on the RIGHT
+           so the question is what the eye reaches first; the brand is present
+           and subordinate, which is the whole rule for these cards. */
         <div
-          data-quiz-phone-screen
-          className="absolute overflow-hidden"
-          style={{
-            left: bezel,
-            right: bezel,
-            top: bezel,
-            bottom: 0,
-            borderRadius: `${bezel * 3}px ${bezel * 3}px 0 0`,
-            // Premium ambient layers (top to bottom): vignette, cyan bloom
-            // behind the card, faint jade echo low down, deep navy base.
-            background: [
-              "radial-gradient(140% 110% at 50% 105%, transparent 55%, hsl(222 60% 3% / 0.75) 100%)",
-              "radial-gradient(85% 42% at 50% 46%, hsl(192 80% 45% / 0.2) 0%, transparent 70%)",
-              "radial-gradient(70% 30% at 50% 96%, hsl(160 80% 42% / 0.17) 0%, transparent 72%)",
-              "radial-gradient(120% 90% at 50% 0%, #14213b 0%, #0a1022 55%, #060912 100%)",
-            ].join(", "),
-          }}
+          className="absolute inset-0 flex items-stretch"
+          style={{ position: "absolute", padding: pad, gap: railGap, zIndex: 10 }}
         >
-          {/* Subtle game-flavored texture: arcane rings, map-like ley lines,
-              tiny particles, low-opacity item motifs, and a whisper of noise.
-              Pure inline SVG with fixed coordinates/seed — deterministic,
-              image-free, and strictly BEHIND the content. */}
-          <svg
-            data-quiz-phone-bg
-            className="absolute inset-0 pointer-events-none"
-            width="100%"
-            height="100%"
-            viewBox={`0 0 ${screenW} 1350`}
-            preserveAspectRatio="xMidYMid slice"
-            aria-hidden
-            style={{ zIndex: 1, opacity: 1 }}
-          >
-            <defs>
-              <filter id="bgNoise">
-                <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" stitchTiles="stitch" />
-                <feColorMatrix type="matrix" values="0 0 0 0 0.6  0 0 0 0 0.75  0 0 0 0 0.9  0 0 0 0.05 0" />
-              </filter>
-            </defs>
-            {/* magic haze noise */}
-            <rect width="100%" height="100%" filter="url(#bgNoise)" opacity="0.85" />
-            {/* arcane rings behind the card */}
-            <g fill="none" stroke="hsl(190 80% 60%)" opacity="0.1">
-              <circle cx={screenW / 2} cy={640} r={330} strokeWidth="1.5" />
-              <circle cx={screenW / 2} cy={640} r={395} strokeWidth="1" strokeDasharray="3 14" />
-              <circle cx={screenW / 2} cy={640} r={455} strokeWidth="0.8" strokeDasharray="1 22" />
-            </g>
-            {/* soft map-like ley lines */}
-            <g fill="none" stroke="hsl(45 70% 60%)" opacity="0.09" strokeWidth="1.2">
-              <path d={`M-20 300 Q ${screenW * 0.3} 250 ${screenW * 0.55} 330 T ${screenW + 20} 290`} />
-              <path d={`M-20 1080 Q ${screenW * 0.4} 1130 ${screenW * 0.7} 1050 T ${screenW + 20} 1100`} />
-              <path d={`M60 -10 Q 120 320 40 640 T 110 1360`} />
-              <path d={`M${screenW - 60} -10 Q ${screenW - 130} 380 ${screenW - 40} 700 T ${screenW - 100} 1360`} />
-            </g>
-            {/* hex facets (Hextech nod) */}
-            <g fill="none" stroke="hsl(197 75% 55%)" opacity="0.11" strokeWidth="1.4">
-              <path d="M70 180 l26 -15 26 15 v30 l-26 15 -26 -15 z" />
-              <path d={`M${screenW - 120} 240 l22 -13 22 13 v26 l-22 13 -22 -13 z`} />
-              <path d={`M${screenW - 88} 1150 l18 -11 18 11 v22 l-18 11 -18 -11 z`} />
-              <path d="M96 1210 l16 -9 16 9 v19 l-16 9 -16 -9 z" />
-            </g>
-            {/* low-opacity item-shape motifs: sword + potion outlines */}
-            <g fill="none" stroke="hsl(45 80% 62%)" opacity="0.1" strokeWidth="1.6">
-              <path d="M120 880 l38 -38 m-38 10 l28 -28 m-18 38 l-8 8 m4 -14 l10 10" />
-              <path d={`M${screenW - 150} 420 q0 -16 12 -16 q12 0 12 16 q10 8 10 24 q0 22 -22 22 q-22 0 -22 -22 q0 -16 10 -24 z`} />
-            </g>
-            {/* tiny particles */}
-            <g fill="hsl(190 85% 70%)">
-              <circle cx="104" cy="500" r="1.6" opacity="0.32" />
-              <circle cx={screenW - 90} cy="560" r="1.2" opacity="0.28" />
-              <circle cx="150" cy="1020" r="1.4" opacity="0.26" />
-              <circle cx={screenW - 130} cy="940" r="1.8" opacity="0.24" />
-              <circle cx={screenW / 2 - 250} cy="330" r="1.2" opacity="0.24" />
-              <circle cx={screenW / 2 + 265} cy="1180" r="1.5" opacity="0.26" />
-              <circle cx={screenW / 2 + 180} cy="250" r="1.1" opacity="0.2" />
-            </g>
-            <g fill="hsl(160 85% 60%)">
-              <circle cx={screenW / 2 - 190} cy="1240" r="1.6" opacity="0.28" />
-              <circle cx={screenW / 2 + 120} cy="1290" r="1.3" opacity="0.24" />
-            </g>
-            <g fill="hsl(45 90% 65%)">
-              <circle cx="210" cy="230" r="1.3" opacity="0.28" />
-              <circle cx={screenW - 200} cy="1250" r="1.4" opacity="0.24" />
-            </g>
-          </svg>
-          {/* Content column spans only the VISIBLE part of the screen so the
-              QR + caption sit near the lower edge of the capture. */}
-          <div
-            className="absolute left-0 right-0 top-0 flex flex-col"
-            style={{
-              height: visibleScreenH,
-              paddingTop: islandTop + islandH + 12,
-              paddingLeft: 14,
-              paddingRight: 14,
-              paddingBottom: 12,
-              zIndex: 10,
-            }}
-          >
-            {showCta && (
-              <div className="shrink-0 flex justify-center pb-2">
-                <QuizCtaTop variant={isEndSlide ? "brand" : "full"} />
-              </div>
-            )}
-            <div ref={centerRef} className="flex-1 min-h-0 flex items-center justify-center">
-              <div
-                ref={cardRef}
-                data-quiz-content-card
-                style={{ width: BASE_CONTENT_WIDTH, zoom: scale, flexShrink: 0 }}
-              >
-                {children}
-              </div>
-            </div>
-            {showCta && (
-              <div className="shrink-0 flex flex-col items-center gap-1 pt-2">
-                <QuizCtaQr />
-                <span
-                  data-quiz-cta-scan
-                  className="text-[13px] font-semibold tracking-wide"
-                  style={{ color: "hsl(42 45% 78%)" }}
-                >
-                  Scan to play
-                </span>
-              </div>
-            )}
-          </div>
-          {/* Subtle dynamic-island pill — the only hardware detail on the
-              flat top screen. Sits clear of the content (no overlay). */}
-          <div
-            data-quiz-phone-island
-            className="absolute pointer-events-none"
-            aria-hidden
-            style={{
-              left: (screenW - islandW) / 2,
-              top: islandTop,
-              width: islandW,
-              height: islandH,
-              borderRadius: islandH / 2,
-              background: "#0b0f18",
-              boxShadow: "inset 0 0 0 1px hsl(215 25% 30% / 0.55)",
-              zIndex: 30,
-            }}
-          >
+          <div ref={centerRef} className="flex-1 min-w-0 min-h-0 flex items-center justify-center">
             <div
-              className="absolute rounded-full"
-              style={{
-                right: 12,
-                top: islandH / 2 - 5,
-                width: 10,
-                height: 10,
-                background: "#141b28",
-                boxShadow: "inset 0 0 0 1.5px hsl(215 40% 38% / 0.7), inset 0 0 3px hsl(215 60% 30%)",
-              }}
-            />
+              ref={cardRef}
+              data-quiz-content-card
+              style={{ width: baseWidth, minHeight: quantizedH, zoom: scale, flexShrink: 0 }}
+            >
+              {children}
+            </div>
           </div>
+          {showCta && (
+            <div
+              data-quiz-brand-rail
+              className="shrink-0"
+              style={{ width: railW }}
+            >
+              <QuizCtaRail tone={tone} qrPx={qrPx} />
+            </div>
+          )}
         </div>
-      </div>
+      ) : (
+        /* ---- PORTRAIT / SQUARE: one stacked column --------------------
+           Brand lockup, folio, footer. Same order the gate has always
+           enforced (CTA above the card, QR below it) — what changed is that
+           there is no device between them and the frame, so the folio gets
+           the height the two chrome rows do not use instead of the height a
+           phone screen left over. */
+        <div
+          className="absolute inset-0 flex flex-col"
+          style={{ position: "absolute", padding: pad, zIndex: 10 }}
+        >
+          {showCta && (
+            <div className="shrink-0 flex justify-center pb-3">
+              <QuizCtaTop variant={isEndSlide ? "brand" : "full"} tone={tone} />
+            </div>
+          )}
+          <div ref={centerRef} className="flex-1 min-h-0 flex items-center justify-center">
+            <div
+              ref={cardRef}
+              data-quiz-content-card
+              style={{ width: baseWidth, minHeight: quantizedH, zoom: scale, flexShrink: 0 }}
+            >
+              {children}
+            </div>
+          </div>
+          {showCta && (
+            <div className="shrink-0 flex flex-col items-center gap-1 pt-3">
+              <QuizCtaQr px={format.layoutFamily === "square" ? 68 : 80} />
+              <span
+                data-quiz-cta-scan
+                className="text-[13px] font-semibold tracking-wide"
+                style={{ color: "#e9dcbe", opacity: 0.8 }}
+              >
+                Scan to play
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1000,7 +1190,11 @@ export default function QuizRenderPage() {
     }
   }
 
-  const { stageRef, centerRef, cardRef, scale } = useRenderReady(!error, format, forcedScale);
+  const { stageRef, centerRef, cardRef, scale, quantizedH } = useRenderReady(
+    !error,
+    format,
+    forcedScale,
+  );
 
   if (error) return <ErrorPanel message={error} />;
 
@@ -1013,6 +1207,7 @@ export default function QuizRenderPage() {
       centerRef={centerRef}
       cardRef={cardRef}
       scale={scale}
+      quantizedH={quantizedH}
     >
       {content}
     </FormatShell>

@@ -130,6 +130,34 @@ export type FormatKind = "social" | "audit";
 
 export type CtaMode = "full" | "compact" | "none";
 
+/**
+ * CON1 Step 4 — the COMPOSITION family a social format belongs to.
+ *
+ * Before Step 4 every social format was composed identically: one portrait
+ * device shell, centred, with the card fitted inside its screen. That is why
+ * `landscape` published a 334px-wide card in a 1200px frame — the shape was
+ * decided by the shell, not by the format. The family is what a format now
+ * declares INSTEAD of inheriting one portrait shell, and it is the only thing
+ * the render shell branches on.
+ *
+ * `portrait`  — a vertical column: brand lockup, folio, footer.
+ * `square`    — the same column, tightened; 1:1 has the least vertical slack.
+ * `landscape` — two real columns: a brand rail beside a full-height folio.
+ */
+export type LayoutFamily = "portrait" | "square" | "landscape";
+
+/**
+ * Where the brand lockup and the QR sit for this family.
+ *
+ * `stacked` — lockup above the folio, QR below it (the portrait/square rule,
+ *             and the one the capture gate has always enforced).
+ * `rail`    — both live in a side column beside the folio. "CTA above, QR
+ *             below" is meaningless there and the gate checks rail-side
+ *             containment instead.
+ * `none`    — audit formats: no brand chrome at all.
+ */
+export type CtaPlacement = "stacked" | "rail" | "none";
+
 export type RenderFormat = {
   key: string;
   width: number;
@@ -147,6 +175,10 @@ export type RenderFormat = {
   contentScale: number;
   /** CTA footer treatment for this format ("none" on audit formats). */
   cta: CtaMode;
+  /** CON1 Step 4 — which composition the render shell builds for this format. */
+  layoutFamily: LayoutFamily;
+  /** CON1 Step 4 — where the brand lockup and QR sit in that composition. */
+  ctaPlacement: CtaPlacement;
   description: string;
 };
 

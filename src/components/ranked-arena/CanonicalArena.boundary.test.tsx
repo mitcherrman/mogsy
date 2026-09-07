@@ -104,6 +104,16 @@ describe("the .ranked-academy context is owned by the arena's shell", () => {
       ].join(" "),
     ).toEqual([
       "components/ranked-arena/ArenaShell.tsx",
+      // CON1 Step 4. The screenshot harness is the same case as the inspector
+      // below, and is listed for the same reason: it mounts the shared question
+      // surface with no arena around it, so it has to establish the context
+      // itself. It is not a mode — it renders no match, reaches no controller
+      // and holds no credentials — so the failure this rule guards against, a
+      // mode author forgetting and the folio going silently inert, cannot reach
+      // a player through it. Applying the academy context is the whole point:
+      // the Content Factory publishes the SAME skin the live arena wears, from
+      // the same rules, instead of a second card design beside it.
+      "pages/dev/quiz-render/QuizRenderPage.tsx",
       // The dev fixture bench mounts arena PARTS with no arena around them, so
       // it has to establish the context itself. It renders no match and reaches
       // no controller (see RankedArenaInspector.test).

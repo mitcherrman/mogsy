@@ -52,7 +52,11 @@ describe("QuizRenderPage — question state (no leakage)", () => {
     expect(container.querySelector("[data-quiz-answer-feedback]")).toBeNull();
     const placeholder = container.querySelector("[data-quiz-result-placeholder]");
     expect(placeholder).not.toBeNull();
-    expect(placeholder!.textContent).toContain("Comment A, B, C, or D");
+    // CON1 Step 4 — the ask is derived from the option count. This fixture has
+    // THREE choices, so a card that still said "or D" would be asking for an
+    // answer the reader cannot give.
+    expect(placeholder!.textContent).toContain("Comment A, B, or C");
+    expect(placeholder!.textContent).not.toContain("or D");
     expect(screen.queryByText("Correct!")).toBeNull();
     expect(screen.queryByText(/Thornmail grants 70 armor/)).toBeNull();
     expect(container.querySelector("svg.lucide-circle-check-big, svg.lucide-check-circle-2")).toBeNull();
@@ -171,31 +175,51 @@ describe("QuizRenderPage — content CTA", () => {
     expect(qrQuestion!.querySelector("svg path")).not.toBeNull();
     // CTA lives outside the card — never inside the answer grid.
     expect(a.container.querySelector("[data-quiz-answer-options] [data-quiz-cta]")).toBeNull();
-    const questionCtaHtml = ctaQuestion!.outerHTML;
+    const questionCtaWidth = (ctaQuestion as HTMLElement).style.width;
     const questionQrHtml = qrQuestion!.outerHTML;
     cleanup();
     inject([fixture]);
     const b = renderHarness("?q=t1&state=correct&format=mobile-social");
-    // Byte-identical CTA + QR markup between the two screenshot states.
-    expect(b.container.querySelector("[data-quiz-cta]")!.outerHTML).toBe(questionCtaHtml);
+    const ctaCorrect = b.container.querySelector("[data-quiz-cta]") as HTMLElement;
+    // CON1 Step 4 — the lockup's BOX is identical between the two states; its
+    // copy is not. A reveal has already answered the question, so it invites
+    // the next one rather than repeating the play line. What the geometry gate
+    // actually needs is the rect, and a fixed strip width guarantees it
+    // regardless of the line inside — which is why the copy was allowed to
+    // differ at all.
+    expect(ctaCorrect.style.width).toBe(questionCtaWidth);
+    expect(questionCtaWidth).not.toBe("");
+    expect(ctaQuestion!.textContent).toContain("Play more LoL quizzes at");
+    expect(ctaCorrect.textContent).toContain("More like this at");
+    for (const el of [ctaQuestion!, ctaCorrect]) {
+      expect(el.textContent).toContain("mogzy.lol");
+      // The wordmark is set in type, not loaded from the pre-2026 PNG.
+      expect(el.querySelector("[data-quiz-brand-mark]")!.textContent).toBe("MOGZY");
+      expect(el.querySelector("img")).toBeNull();
+    }
+    // The QR is state-independent and stays byte-identical.
     expect(b.container.querySelector("[data-quiz-cta-qr]")!.outerHTML).toBe(questionQrHtml);
   });
 
-  it("phone composition: CTA, card, QR + caption all inside the screen, in order", () => {
+  it("stacked composition: lockup above the folio, QR + caption below it", () => {
+    // CON1 Step 4 — this replaced the phone-mock-up assertions. The device is
+    // gone; what it was standing in for — one column, brand above, QR below,
+    // everything inside the frame, no combined panel — is asserted directly.
     inject([fixture]);
     const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
-    const phone = container.querySelector("[data-quiz-phone]")!;
-    expect(phone).not.toBeNull();
-    const phoneScreen = phone.querySelector("[data-quiz-phone-screen]")!;
-    expect(phoneScreen).not.toBeNull();
-    expect(phoneScreen.querySelector("[data-quiz-phone-island]")).not.toBeNull();
-    // Everything lives inside the phone screen.
+    const stage = container.querySelector("[data-quiz-render-stage]")!;
+    expect(stage.getAttribute("data-render-layout")).toBe("portrait");
+    expect(container.querySelector("[data-quiz-phone]")).toBeNull();
+    expect(container.querySelector("[data-quiz-brand-rail]")).toBeNull();
+    // The painted ground is a real <img>, so the readiness wait and the
+    // missing-asset QA both cover it.
+    const ground = container.querySelector("[data-quiz-stage-ground]") as HTMLImageElement;
+    expect(ground).not.toBeNull();
+    expect(ground.tagName).toBe("IMG");
     for (const sel of ["[data-quiz-cta]", "[data-quiz-content-card]", "[data-quiz-cta-qr]", "[data-quiz-cta-scan]"]) {
-      expect(phoneScreen.querySelector(sel)).not.toBeNull();
       expect(container.querySelectorAll(sel).length).toBe(1);
     }
-    // Column order: CTA wrapper, card area, QR+caption wrapper.
-    const column = phoneScreen.querySelector(".flex.flex-col")!;
+    const column = stage.querySelector(".flex.flex-col")!;
     const children = Array.from(column.children);
     expect(children[0].querySelector("[data-quiz-cta]")).not.toBeNull();
     expect(children[1].querySelector("[data-quiz-content-card]")).not.toBeNull();
@@ -204,9 +228,26 @@ describe("QuizRenderPage — content CTA", () => {
     // No combined panel; QR keeps its white quiet-zone tile.
     expect(container.querySelector("[data-quiz-cta] [data-quiz-cta-qr]")).toBeNull();
     expect(container.querySelector("[data-quiz-cta-qr]")!.className).toContain("bg-white");
-    // Larger, clearly visible wordmark.
-    const wordmark = container.querySelector("[data-quiz-cta] img")!;
-    expect(wordmark.className).toContain("h-14");
+  });
+
+  it("landscape composition: a brand rail beside the folio, not above it", () => {
+    // The whole point of the layout family. In a 16:9 frame nothing sits above
+    // the card, so the lockup and the QR move into a column of their own and
+    // the folio takes the width the device shell used to waste.
+    inject([fixture]);
+    const { container } = renderHarness("?q=t1&state=question&format=landscape");
+    const stage = container.querySelector("[data-quiz-render-stage]")!;
+    expect(stage.getAttribute("data-render-layout")).toBe("landscape");
+    const rail = container.querySelector("[data-quiz-brand-rail]")!;
+    expect(rail).not.toBeNull();
+    // The rail IS the CTA here — one object, brand over domain over QR.
+    expect(rail.querySelector("[data-quiz-cta]")).not.toBeNull();
+    expect(rail.querySelector("[data-quiz-brand-mark]")!.textContent).toBe("MOGZY");
+    expect(rail.querySelector("[data-quiz-cta-qr]")).not.toBeNull();
+    expect(rail.querySelector("[data-quiz-cta-scan]")!.textContent).toBe("Scan to play");
+    // The folio is NOT inside the rail, and the rail is not inside the card.
+    expect(rail.querySelector("[data-quiz-content-card]")).toBeNull();
+    expect(container.querySelector("[data-quiz-content-card] [data-quiz-brand-rail]")).toBeNull();
   });
 
   it("keeps the result area reserved with a matching-box placeholder", () => {
@@ -216,7 +257,7 @@ describe("QuizRenderPage — content CTA", () => {
     const placeholder = a.container.querySelector("[data-quiz-result-placeholder]")!;
     // Identical box model to the feedback panel: same classes, one text line.
     expect(placeholder.className).toContain("rounded-lg border p-4 text-sm");
-    expect(placeholder.textContent).toContain("Comment A, B, C, or D");
+    expect(placeholder.textContent).toContain("Comment A, B, or C");
     cleanup();
     inject([fixture]);
     const b = renderHarness("?q=t1&state=correct&format=mobile-social");
@@ -264,13 +305,13 @@ describe("QuizRenderPage — item-build recipe visual", () => {
     const a = renderHarness("?q=build1&state=question&format=mobile-social");
     const labelsQ = tileLabels(a.container);
     expect(labelsQ.length).toBeGreaterThan(0);
-    labelsQ.forEach((label) => expect(label.style.height).toBe("26px"));
+    labelsQ.forEach((label) => expect(label.style.height).toBe("28px"));
     cleanup();
     inject([recipeFixture]);
     const b = renderHarness("?q=build1&state=correct&format=mobile-social");
     const labelsC = tileLabels(b.container);
     expect(labelsC.length).toBe(labelsQ.length);
-    labelsC.forEach((label) => expect(label.style.height).toBe("26px"));
+    labelsC.forEach((label) => expect(label.style.height).toBe("28px"));
   });
 
   it("fills the missing component in the correct state", () => {
@@ -440,8 +481,15 @@ describe("QuizRenderPage — content slides + difficulty", () => {
     const domain = playCta.querySelector("span") as HTMLElement;
     expect(domain.className).not.toContain("leading-none");
     expect(domain.style.lineHeight).toBe("1.25");
-    // Socials on every end slide.
-    expect(slide.querySelector("[data-social-links]")).not.toBeNull();
+    // CON1 Step 4 — the platform row is gone and the brand close replaced it.
+    // See the note in ContentSlides: there is no Mogzy-owned account on any of
+    // the four platforms the row named, so it pointed readers at four places
+    // where they would find nothing, under a misspelling of the brand.
+    expect(slide.querySelector("[data-social-links]")).toBeNull();
+    const close = slide.querySelector("[data-brand-close]")!;
+    expect(close).not.toBeNull();
+    expect(close.querySelector("[data-quiz-brand-mark]")!.textContent).toBe("MOGZY");
+    expect(close.textContent).toContain("mogzy.lol");
     // Still inside the phone shell with its QR + scan caption.
     expect(container.querySelector("[data-quiz-cta-qr]")).not.toBeNull();
     expect(container.querySelector("[data-quiz-cta-scan]")).not.toBeNull();
@@ -454,9 +502,13 @@ describe("QuizRenderPage — content slides + difficulty", () => {
       const { container } = renderHarness(`?q=t1&slide=${slide}&format=mobile-social`);
       const cta = container.querySelector("[data-quiz-cta]")!;
       expect(cta.getAttribute("data-quiz-cta-mode")).toBe("brand");
-      // The small top line is gone; only the enlarged wordmark remains.
+      // The small top line is gone; only the enlarged wordmark remains, and it
+      // is TYPE now — the old `mogsy-logo-text.png` said the wrong name.
       expect(cta.textContent).not.toContain("Play more LoL quizzes");
-      expect(cta.querySelector("img")!.className).toContain("h-24");
+      expect(cta.querySelector("img")).toBeNull();
+      const mark = cta.querySelector("[data-quiz-brand-mark]") as HTMLElement;
+      expect(mark.textContent).toBe("MOGZY");
+      expect(Number.parseFloat(mark.style.fontSize)).toBeGreaterThan(50);
     }
     cleanup();
     inject([fixture]);
@@ -490,19 +542,17 @@ describe("QuizRenderPage — content slides + difficulty", () => {
     expect(slide.textContent).toContain("Check the comments and compare answers");
     expect(slide.textContent).toContain("Think they’re wrong?");
     expect(slide.textContent).not.toContain("Let them know");
-    // Social links row: neutral platform list, no invented handle/URL.
-    const social = slide.querySelector("[data-social-links]")!;
-    expect(social).not.toBeNull();
-    expect(social.textContent).toMatch(/Follow Mogsy on/);
-    ["TikTok", "Instagram", "YouTube", "Twitch"].forEach((p) =>
-      expect(social.textContent).toContain(p),
-    );
-    // Consistent icon treatment: every platform entry carries an svg glyph
-    // (TikTok uses a minimal inline SVG — lucide has no TikTok icon).
-    const platformEntries = Array.from(social.querySelectorAll(".flex.items-center.gap-1"));
-    expect(platformEntries.length).toBe(4);
-    platformEntries.forEach((entry) => expect(entry.querySelector("svg")).not.toBeNull());
-    expect(social.textContent).not.toMatch(/@/); // no @handle
+    // CON1 Step 4 — one brand destination that exists, in place of four
+    // platform names that did not, and no misspelling of the brand anywhere.
+    expect(slide.querySelector("[data-social-links]")).toBeNull();
+    const close = slide.querySelector("[data-brand-close]")!;
+    expect(close).not.toBeNull();
+    expect(close.textContent).toContain("mogzy.lol");
+    for (const platform of ["TikTok", "Instagram", "YouTube", "Twitch"]) {
+      expect(slide.textContent).not.toContain(platform);
+    }
+    expect(slide.textContent).not.toMatch(/Mogsy/);
+    expect(close.textContent).not.toMatch(/@/); // no @handle
     expect(container.querySelector("[data-quiz-choice]")).toBeNull();
   });
 
@@ -522,11 +572,13 @@ describe("QuizRenderPage — content slides + difficulty", () => {
     }
   });
 
-  it("question slide uses the direct 'Comment A, B, C, or D' CTA", () => {
+  it("question slide asks for the letters the question actually has", () => {
     inject([fixture]);
     const { container } = renderHarness("?q=t1&state=question&format=mobile-social");
+    // Three choices, so three letters. The constant this replaced asked every
+    // reader of every question to comment "A, B, C, or D".
     expect(container.querySelector("[data-quiz-result-placeholder]")?.textContent).toContain(
-      "Comment A, B, C, or D",
+      "Comment A, B, or C",
     );
   });
 
@@ -572,7 +624,7 @@ describe("QuizRenderPage — multi-question challenge slides", () => {
     expect(slide.textContent).toContain("Challenge other players at");
     expect(slide.querySelector("[data-play-cta]")!.textContent).toContain("mogzy.lol");
     expect(slide.querySelector("[data-hero-mascot]")).not.toBeNull();
-    expect(slide.querySelector("[data-social-links]")).not.toBeNull();
+    expect(slide.querySelector("[data-brand-close]")).not.toBeNull();
     expect(slide.textContent).not.toMatch(/@/);
   });
 
@@ -624,7 +676,7 @@ describe("QuizRenderPage — multi-question challenge slides", () => {
     expect(cta.textContent).toMatch(/Question 2 of 5/i);
     expect(cta.textContent).toMatch(/Lock in your answer/i);
     // No comment prompt on challenge question slides.
-    expect(container.textContent).not.toContain("Comment A, B, C, or D");
+    expect(container.textContent).not.toMatch(/Comment A/);
     // Progress element present for QA/tests.
     expect(container.querySelector("[data-challenge-progress]")).not.toBeNull();
     // Still no leakage.

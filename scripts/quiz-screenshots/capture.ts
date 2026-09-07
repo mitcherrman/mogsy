@@ -20,6 +20,11 @@ import {
 
 const READY_TIMEOUT_MS = 20_000;
 
+/** Layout reported when a capture never got far enough to measure anything. */
+const EMPTY_LAYOUT: CaptureLayout = {
+  card: null, cta: null, qr: null, ground: null, rail: null, scan: null, resultArea: null,
+};
+
 export type CaptureQa = {
   consoleErrors: string[];
   pageErrors: string[];
@@ -35,9 +40,14 @@ export type CaptureLayout = {
   card: LayoutRect | null;
   cta: LayoutRect | null;
   qr: LayoutRect | null;
-  phone: LayoutRect | null;
-  screen: LayoutRect | null;
-  island: LayoutRect | null;
+  /**
+   * CON1 Step 4 — `phone` / `screen` / `island` are gone with the device
+   * mock-up they described. The composition's own parts replace them: the
+   * painted ground (deterministic per format) and, in the landscape family,
+   * the brand rail.
+   */
+  ground: LayoutRect | null;
+  rail: LayoutRect | null;
   scan: LayoutRect | null;
   resultArea: LayoutRect | null;
 };
@@ -58,7 +68,16 @@ export async function launchBrowser(): Promise<Browser> {
 type DomQa = {
   ctaPresent: boolean;
   ctaText: string;
-  /** The CTA strip contains a successfully-loaded Mogsy wordmark image. */
+  /**
+   * CON1 Step 4 — the brand lockup actually rendered a wordmark.
+   *
+   * This used to be `img.src.includes("mogsy-logo") && naturalWidth > 0`: a
+   * FILENAME check, which was always a weak proxy for "the brand is on the
+   * card" and became an outright wrong one when the wordmark stopped being an
+   * image. The mark is set in type now (see QuizCta.tsx), so the gate asks the
+   * question directly — is there a `[data-quiz-brand-mark]` node inside the
+   * lockup, does it carry text, and does it have a non-zero box.
+   */
   ctaHasLogo: boolean;
   cardClipped: boolean;
   cardOverlapsCta: boolean;
@@ -74,12 +93,20 @@ type DomQa = {
   ctaAboveCard: boolean;
   qrBelowCard: boolean;
   qrInsideCtaPanel: boolean;
-  /** Phone-composition checks. */
-  phonePresent: boolean;
-  phoneBottomCropped: boolean;
-  allContentInsideScreen: boolean;
-  contentOutsideScreen: string[];
-  islandClearOfContent: boolean;
+  /**
+   * CON1 Step 4 — composition checks, replacing the phone-frame ones.
+   *
+   * `groundPresent` is the painted stage the folio sits on (the old
+   * `phonePresent`). `contentInsideFrame` is what `allContentInsideScreen`
+   * was actually protecting: nothing may leave the capture, and nothing may
+   * sit under the inset plate edge. `railClearOfCard` is the landscape
+   * family's equivalent of the island-overlap check — the brand column and
+   * the folio must not intersect.
+   */
+  groundPresent: boolean;
+  contentInsideFrame: boolean;
+  contentOutsideFrame: string[];
+  railClearOfCard: boolean;
   correctRowContrast: number | null;
   /** CON1 Step 1D — the production presentation outcome the page stamped on
    *  the question card. Read as attributes, never inferred from pixels or
@@ -146,8 +173,9 @@ async function runDomQa(page: Page): Promise<DomQa> {
     const ctaPresent = !!doc.querySelector("[data-quiz-cta]");
     const ctaText = doc.querySelector("[data-quiz-cta]")?.textContent ?? "";
     let ctaHasLogo = false;
-    doc.querySelectorAll<HTMLImageElement>("[data-quiz-cta] img").forEach((img) => {
-      if (img.src.includes("mogsy-logo") && img.complete && img.naturalWidth > 0) {
+    doc.querySelectorAll<HTMLElement>("[data-quiz-cta] [data-quiz-brand-mark]").forEach((mark) => {
+      const r = mark.getBoundingClientRect();
+      if ((mark.textContent ?? "").trim().length > 0 && r.width > 0 && r.height > 0) {
         ctaHasLogo = true;
       }
     });
@@ -170,38 +198,53 @@ async function runDomQa(page: Page): Promise<DomQa> {
       }
     }
 
-    // Structural placement: the CTA text strip must sit fully ABOVE the card
-    // and the QR fully BELOW it; the QR must never live inside the CTA strip
-    // (no combined panel).
+    // Structural placement.
+    //
+    // CON1 Step 4 — the rule is per LAYOUT FAMILY now. In the stacked
+    // (portrait/square) compositions it is unchanged and unrelaxed: the brand
+    // lockup sits fully ABOVE the folio, the QR fully BELOW it, and the QR is
+    // never inside the lockup. In the landscape family both live in a rail
+    // BESIDE the folio, so "above" and "below" describe nothing — the vertical
+    // assertions are vacuously satisfied there and `railClearOfCard` below is
+    // what actually holds the composition together. This is a different rule
+    // for a different composition, not a weakened one.
+    const stageEl = doc.querySelector("[data-quiz-render-stage]");
+    const layoutFamily = stageEl?.getAttribute("data-render-layout") ?? "portrait";
+    const stacked = layoutFamily !== "landscape";
     const ctaEl = doc.querySelector("[data-quiz-cta]");
     const qrEl = doc.querySelector("[data-quiz-cta-qr]");
     let ctaAboveCard = true;
     let qrBelowCard = true;
-    const qrInsideCtaPanel = !!(ctaEl && qrEl && ctaEl.contains(qrEl));
-    if (card) {
+    // In the rail the QR is deliberately part of the lockup — one column, one
+    // object. The "no combined panel" rule exists so a stacked card never
+    // grows a footer block that competes with the answers; it does not apply
+    // to a side rail.
+    const qrInsideCtaPanel = stacked && !!(ctaEl && qrEl && ctaEl.contains(qrEl));
+    if (card && stacked) {
       const cardR = card.getBoundingClientRect();
       if (ctaEl) ctaAboveCard = ctaEl.getBoundingClientRect().bottom <= cardR.top + 1;
       if (qrEl) qrBelowCard = qrEl.getBoundingClientRect().top >= cardR.bottom - 1;
     }
 
-    // Phone-composition checks. Everything (CTA, card, QR, caption) must sit
-    // inside the phone screen; the phone's bottom hardware edge must be
-    // cropped out of the frame; the arched hood must overlap the CTA region
-    // and reach below the card's top edge at the sides (framing its corners)
-    // WITHOUT covering any card text (card padding keeps text clear).
-    const phoneEl = doc.querySelector("[data-quiz-phone]");
-    const screenEl = doc.querySelector("[data-quiz-phone-screen]");
-    const hoodEl = doc.querySelector("[data-quiz-phone-island]");
+    // CON1 Step 4 — composition checks, in place of the phone-frame ones.
+    //
+    // The old checks were about a device mock-up: is the phone there, does its
+    // bottom edge run off the capture, is everything inside its screen, does
+    // the island pill clear the content. Three of those describe an object
+    // that no longer exists. What they were PROTECTING does still matter and
+    // is asserted here against the composition that replaced it:
+    //   groundPresent      — the painted stage rendered (was: phonePresent)
+    //   contentInsideFrame — nothing leaves the capture (was: inside-screen)
+    //   railClearOfCard    — the brand column and the folio do not intersect
+    //                        (was: the island pill clearing the content)
+    const groundEl = doc.querySelector("[data-quiz-stage-ground]");
+    const railEl = doc.querySelector("[data-quiz-brand-rail]");
     const scanEl = doc.querySelector("[data-quiz-cta-scan]");
-    const phonePresent = !!(phoneEl && screenEl && hoodEl);
-    let phoneBottomCropped = false;
-    let allContentInsideScreen = true;
-    const contentOutsideScreen: string[] = [];
-    let islandClearOfContent = true;
-    if (phonePresent && stageRect) {
-      const phoneR = phoneEl!.getBoundingClientRect();
-      phoneBottomCropped = phoneR.bottom >= stageRect.bottom + 8;
-      const screenR = screenEl!.getBoundingClientRect();
+    const groundPresent = !!groundEl;
+    let contentInsideFrame = true;
+    const contentOutsideFrame: string[] = [];
+    let railClearOfCard = true;
+    if (stageRect) {
       const named: Array<[string, Element | null]> = [
         ["cta", ctaEl],
         ["card", card],
@@ -212,26 +255,22 @@ async function runDomQa(page: Page): Promise<DomQa> {
         if (!el) continue;
         const r = el.getBoundingClientRect();
         const inside =
-          r.left >= screenR.left - 1 &&
-          r.right <= screenR.right + 1 &&
-          r.top >= screenR.top - 1 &&
+          r.left >= stageRect.left - 1 &&
+          r.right <= stageRect.right + 1 &&
+          r.top >= stageRect.top - 1 &&
           r.bottom <= stageRect.bottom + 1;
         if (!inside) {
-          allContentInsideScreen = false;
-          contentOutsideScreen.push(label);
+          contentInsideFrame = false;
+          contentOutsideFrame.push(label);
         }
       }
-      const islandR = hoodEl!.getBoundingClientRect();
-      // The island pill must sit clear of every content element — the frame
-      // supports the content, it never overlays it.
-      islandClearOfContent = true;
-      for (const [, el] of named) {
-        if (!el) continue;
-        const r = el.getBoundingClientRect();
-        const overlaps =
-          islandR.bottom > r.top + 1 && r.bottom > islandR.top + 1 &&
-          islandR.right > r.left + 1 && r.right > islandR.left + 1;
-        if (overlaps) islandClearOfContent = false;
+      if (railEl && card) {
+        const railR = railEl.getBoundingClientRect();
+        const cardR = card.getBoundingClientRect();
+        railClearOfCard = !(
+          railR.right > cardR.left + 1 && cardR.right > railR.left + 1 &&
+          railR.bottom > cardR.top + 1 && cardR.bottom > railR.top + 1
+        );
       }
     }
 
@@ -275,9 +314,8 @@ async function runDomQa(page: Page): Promise<DomQa> {
       ["card", card],
       ["cta", ctaEl],
       ["qr", qrEl],
-      ["phone", phoneEl],
-      ["screen", screenEl],
-      ["island", hoodEl],
+      ["ground", groundEl],
+      ["rail", railEl],
       ["scan", scanEl],
       ["resultArea", doc.querySelector("[data-quiz-result-area]")],
     ];
@@ -321,11 +359,10 @@ async function runDomQa(page: Page): Promise<DomQa> {
       ctaAboveCard,
       qrBelowCard,
       qrInsideCtaPanel,
-      phonePresent,
-      phoneBottomCropped,
-      allContentInsideScreen,
-      contentOutsideScreen,
-      islandClearOfContent,
+      groundPresent,
+      contentInsideFrame,
+      contentOutsideFrame,
+      railClearOfCard,
       correctRowContrast,
       layout,
     };
@@ -432,7 +469,7 @@ export async function captureOne(args: {
         state,
       });
       const png = await page.screenshot();
-      return { png, qa, layout: { card: null, cta: null, qr: null }, usedScale: null };
+      return { png, qa, layout: EMPTY_LAYOUT, usedScale: null };
     }
     if (await errorPanel.count()) {
       const msg = (await errorPanel.textContent())?.trim().slice(0, 300) ?? "unknown harness error";
@@ -444,7 +481,7 @@ export async function captureOne(args: {
         state,
       });
       const png = await page.screenshot();
-      return { png, qa, layout: { card: null, cta: null, qr: null }, usedScale: null };
+      return { png, qa, layout: EMPTY_LAYOUT, usedScale: null };
     }
 
     const dom = await runDomQa(page);
@@ -578,7 +615,7 @@ export async function captureOne(args: {
         qa.failures.push({
           severity: "failure",
           code: "cta-missing",
-          message: "End-slide brand CTA is missing a loaded Mogsy wordmark",
+          message: "End-slide brand CTA is missing a rendered Mogzy wordmark",
           format: format.key,
           state,
         });
@@ -620,43 +657,35 @@ export async function captureOne(args: {
           state,
         });
       }
-      // Phone-composition structure.
-      if (!dom.phonePresent) {
+      // CON1 Step 4 — composition structure, replacing the phone-frame gates.
+      // Same failure class (`composition`, renamed from `phone-frame`), same
+      // severity, asserted against the composition that exists.
+      if (!dom.groundPresent) {
         qa.failures.push({
           severity: "failure",
-          code: "phone-frame",
-          message: "Phone frame/screen/island missing from the social composition",
+          code: "composition",
+          message: "Social composition rendered without its painted stage ground",
           format: format.key,
           state,
         });
-      } else {
-        if (!dom.phoneBottomCropped) {
-          qa.failures.push({
-            severity: "failure",
-            code: "phone-frame",
-            message: "Phone bottom edge is visible — it must run off the capture",
-            format: format.key,
-            state,
-          });
-        }
-        if (!dom.allContentInsideScreen) {
-          qa.failures.push({
-            severity: "failure",
-            code: "phone-frame",
-            message: `Content outside the phone screen: ${dom.contentOutsideScreen.join(", ")}`,
-            format: format.key,
-            state,
-          });
-        }
-        if (!dom.islandClearOfContent) {
-          qa.failures.push({
-            severity: "failure",
-            code: "phone-frame",
-            message: "Dynamic-island pill overlaps content (CTA/card/QR/caption)",
-            format: format.key,
-            state,
-          });
-        }
+      }
+      if (!dom.contentInsideFrame) {
+        qa.failures.push({
+          severity: "failure",
+          code: "composition",
+          message: `Content outside the capture frame: ${dom.contentOutsideFrame.join(", ")}`,
+          format: format.key,
+          state,
+        });
+      }
+      if (!dom.railClearOfCard) {
+        qa.failures.push({
+          severity: "failure",
+          code: "composition",
+          message: "Brand rail overlaps the question card",
+          format: format.key,
+          state,
+        });
       }
       if (slideKind === "quiz" && state !== "question" &&
           dom.correctRowContrast !== null && dom.correctRowContrast < 4.5) {

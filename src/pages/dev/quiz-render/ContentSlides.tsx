@@ -14,21 +14,31 @@
  * There is deliberately NO fabricated fallback — if the asset is missing the
  * capture fails visibly through QA rather than silently substituting art.
  */
-import { Instagram, Twitch, Youtube } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { SITE_NAME } from "@/lib/site-config";
 import type { RenderQuestion } from "@/lib/quiz-screenshot/types";
 import { SUMMARY_TITLES } from "@/lib/quiz-screenshot/challenge";
-import { CTA_DOMAIN } from "./QuizCta";
+import { CTA_DOMAIN, MogzyWordmark } from "./QuizCta";
 
 /** Supplied hero artwork (public asset, served from the site root). */
 export const HERO_IMAGE_SRC = "/content/blitz-thinking.png";
-const HERO_ALT = "Mogsy — a gold robot pondering a question";
+const HERO_ALT = `${SITE_NAME} — a gold robot pondering a question`;
 
 /**
- * Configurable social platform row. Neutral platform list only — no invented
- * handles/URLs. Swap in real handles here when they are confirmed.
+ * CON1 Step 4 — the end slides carry a BRAND line, not a platform row.
+ *
+ * What was here: "Follow Mogsy on TikTok · Instagram · YouTube · Twitch",
+ * four lucide/inline icons, and a comment saying to swap in real handles when
+ * they were confirmed. They never were — there is no Mogzy-owned account on
+ * any of those four platforms, so the row named four places a reader could go
+ * and find nothing, under a misspelling of the brand. Four dead icons is worse
+ * than no icons, so the row is gone.
+ *
+ * What replaced it is the one destination that does exist: the wordmark and
+ * the domain, in the academy lockup the rest of the factory uses. When real
+ * accounts exist, the honest version of this is a short list of HANDLES here —
+ * not a row of platform logos.
  */
-const SOCIAL_PLATFORMS = ["TikTok", "Instagram", "YouTube", "Twitch"] as const;
 
 /** Dominant top hero — the real supplied PNG, transparent, never cropped. */
 export function HeroArt({ size = 210 }: { size?: number }) {
@@ -48,47 +58,19 @@ export function HeroArt({ size = 210 }: { size?: number }) {
   );
 }
 
-/** TikTok note glyph — lucide has no TikTok icon, so this is a minimal inline
- *  SVG (currentColor fill) sized to match the lucide icons in the row. */
-function TikTokIcon() {
-  return (
-    <svg
-      className="h-3.5 w-3.5"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden
-    >
-      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
-    </svg>
-  );
-}
-
-/** Compact social-platform row. Neutral copy — no handles/URLs invented. */
-function SocialLinksRow() {
-  const iconFor = (name: string) => {
-    if (name === "TikTok") return <TikTokIcon />;
-    if (name === "Instagram") return <Instagram className="h-3.5 w-3.5" />;
-    if (name === "YouTube") return <Youtube className="h-3.5 w-3.5" />;
-    if (name === "Twitch") return <Twitch className="h-3.5 w-3.5" />;
-    return null;
-  };
+/** The brand close on an end slide: wordmark over the domain. Deliberately
+ *  small — the slide body is what the reader came for. */
+function BrandCloseRow() {
   return (
     <div
-      data-social-links
+      data-brand-close
       className="flex flex-col items-center gap-1"
-      style={{ color: "hsl(215 20% 68%)" }}
+      style={{ color: "#e9dcbe" }}
     >
-      <span className="text-xs font-semibold" style={{ letterSpacing: "0.02em" }}>
-        Follow <span className="font-extrabold" style={{ color: "hsl(190 80% 70%)" }}>Mogsy</span> on
+      <MogzyWordmark px={26} />
+      <span className="text-[13px] font-semibold tracking-wide" style={{ opacity: 0.82 }}>
+        {CTA_DOMAIN}
       </span>
-      <div className="flex items-center gap-3 text-[11px] font-medium">
-        {SOCIAL_PLATFORMS.map((name) => (
-          <span key={name} className="flex items-center gap-1">
-            {iconFor(name)}
-            {name}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
@@ -125,8 +107,8 @@ export function AppCtaSlide() {
         <p className="text-base font-semibold" style={{ color: "hsl(215 30% 86%)" }}>
           Challenge others to test your knowledge at
         </p>
-        <MogsyAppLine />
-        <SocialLinksRow />
+        <MogzyAppLine />
+        <BrandCloseRow />
       </CardContent>
     </Card>
   );
@@ -134,7 +116,7 @@ export function AppCtaSlide() {
 
 /** Dominant site-domain line (CTA_DOMAIN), shared by the app-CTA and challenge
  *  ending slides so the treatment stays single-sourced. */
-export function MogsyAppLine() {
+export function MogzyAppLine() {
   return (
     <div data-play-cta className="flex flex-col items-center py-1">
       <span
@@ -146,11 +128,11 @@ export function MogsyAppLine() {
           // (they render clipped). Keep the glyphs fully painted.
           lineHeight: 1.25,
           backgroundImage:
-            "linear-gradient(92deg, hsl(190 95% 72%), hsl(196 92% 62%) 55%, hsl(43 92% 66%))",
+            "linear-gradient(92deg, hsl(46 96% 82%), hsl(41 90% 66%) 55%, hsl(36 82% 56%))",
           WebkitBackgroundClip: "text",
           backgroundClip: "text",
           color: "transparent",
-          filter: "drop-shadow(0 0 18px rgba(34,211,238,0.45))",
+          filter: "drop-shadow(0 0 18px rgba(213,182,111,0.5))",
         }}
       >
         {CTA_DOMAIN}
@@ -173,25 +155,25 @@ export function CommunitySlide({ question: _question }: { question: RenderQuesti
           See how your answers{" "}
           <span
             style={{
-              backgroundImage: "linear-gradient(92deg, hsl(188 98% 82%), hsl(194 95% 70%))",
+              backgroundImage: "linear-gradient(92deg, hsl(44 88% 80%), hsl(40 84% 64%))",
               WebkitBackgroundClip: "text",
               backgroundClip: "text",
               color: "transparent",
               // Same text-shadow suppression as the app-cta accent.
               textShadow: "none",
-              filter: "drop-shadow(0 0 14px rgba(34,211,238,0.55))",
+              filter: "drop-shadow(0 0 14px rgba(213,182,111,0.55))",
             }}
           >
             stack up
           </span>
         </h2>
-        <p className="text-lg font-bold" style={{ color: "hsl(190 70% 74%)" }}>
+        <p className="text-lg font-bold" style={{ color: "hsl(43 55% 78%)" }}>
           Check the comments and compare answers
         </p>
         <p className="text-lg font-bold" style={{ color: "hsl(43 60% 74%)" }}>
           Think they’re wrong?
         </p>
-        <SocialLinksRow />
+        <BrandCloseRow />
       </CardContent>
     </Card>
   );
@@ -202,12 +184,12 @@ export function CommunitySlide({ question: _question }: { question: RenderQuesti
 /** Challenge slide 1 — the approved intro. No answer information. */
 export function ChallengeOpeningSlide() {
   const gradientAccent = {
-    backgroundImage: "linear-gradient(92deg, hsl(188 98% 82%), hsl(194 95% 70%))",
+    backgroundImage: "linear-gradient(92deg, hsl(44 88% 80%), hsl(40 84% 64%))",
     WebkitBackgroundClip: "text" as const,
     backgroundClip: "text" as const,
     color: "transparent",
     textShadow: "none",
-    filter: "drop-shadow(0 0 14px rgba(34,211,238,0.55))",
+    filter: "drop-shadow(0 0 14px rgba(213,182,111,0.55))",
   };
   return (
     <Card data-content-slide="opening" className="bg-card/80 backdrop-blur-sm">
@@ -385,14 +367,14 @@ export function ChallengeEndingSlide() {
         >
           How did you do?
         </h2>
-        <p className="text-lg font-bold" style={{ color: "hsl(190 70% 74%)" }}>
+        <p className="text-lg font-bold" style={{ color: "hsl(43 55% 78%)" }}>
           Comment your score below.
         </p>
         <p className="text-base font-semibold" style={{ color: "hsl(215 30% 86%)" }}>
           Challenge other players at
         </p>
-        <MogsyAppLine />
-        <SocialLinksRow />
+        <MogzyAppLine />
+        <BrandCloseRow />
       </CardContent>
     </Card>
   );

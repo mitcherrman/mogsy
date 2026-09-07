@@ -65,11 +65,16 @@ export const GENERATOR_VERSION = "quiz-screenshots-2";
 /** Copy variants currently wired into the slide components (recorded in the
  *  manifest for reproducibility — changing slide copy should bump these). */
 export const COPY_VARIANTS: Record<string, string> = {
-  question_cta: "comment-abcd-v1",
+  // CON1 Step 4: the question prompt is derived from the option count
+  // (src/lib/quiz-screenshot/cta.ts) rather than the constant "Comment A, B,
+  // C, or D" the previous id named.
+  question_cta: "comment-by-option-count-v1",
   app_cta: "prove-it-v2",
   community: "stack-up-v2",
   challenge_opening: "test-your-knowledge-v1",
   challenge_ending: "how-did-you-do-v1",
+  /** CON1 Step 4: the academy shell + type-set Mogzy wordmark. */
+  shell: "mogzy-academy-v1",
 };
 
 export type GenerationRequest = ScreenshotCliConfig & {
@@ -411,8 +416,24 @@ export async function runGeneration(
           const file = job.fileFor(format.key);
           // Reuse the fitted zoom only for quiz slides of the SAME question +
           // format, so the classic question/correct pair stays pixel-stable.
+          //
+          // CON1 Step 4 — EXCEPT the explanation state, which is excluded in
+          // both directions (it neither takes the shared zoom nor sets it).
+          //
+          // The reserved result area gives question/selected/correct/incorrect
+          // one identical card height, which is what makes forcing one zoom
+          // across them correct. `explanation` is the one state that genuinely
+          // is taller: it prints the rationale paragraph. Forcing the question
+          // state's zoom onto it did not shrink it to fit — it overflowed, and
+          // before this change EVERY explanation capture in EVERY format failed
+          // `cta-overlap`, with the card sitting on top of the QR. The
+          // explanation is its own publishable card (see the handoff's Part 7),
+          // so it fits itself; the parity pair is unaffected because the gate
+          // compares question against correct, and neither is this state.
           const reuseScale =
-            !challengeSpecs && job.slide === "quiz" ? scaleByFormat.get(format.key) : undefined;
+            !challengeSpecs && job.slide === "quiz" && job.state !== "explanation"
+              ? scaleByFormat.get(format.key)
+              : undefined;
           try {
             const { png, qa, layout, usedScale } = await captureOne({
               browser,
@@ -434,6 +455,7 @@ export async function runGeneration(
             if (
               !challengeSpecs &&
               job.slide === "quiz" &&
+              job.state !== "explanation" &&
               !scaleByFormat.has(format.key) &&
               usedScale !== null
             ) {
@@ -529,7 +551,7 @@ export async function runGeneration(
         };
 
         if (config.post || challengeSpecs) {
-          // Carousel: the phone frame chrome (deterministic per format) must
+          // Carousel: the composition chrome (deterministic per format) must
           // be identical across every slide; card/result vary with content.
           // The top CTA has two deliberate variants — full strip on
           // quiz-family slides, larger brand wordmark on end slides — so CTA
@@ -543,7 +565,7 @@ export async function runGeneration(
           for (let i = 1; i < entries.length; i++) {
             const [slugB, b] = entries[i];
             if (first) {
-              cmp(first.layout, b.layout, ["phone", "screen", "island", "qr", "scan"], `frame:${slugB}`);
+              cmp(first.layout, b.layout, ["ground", "rail", "qr", "scan"], `frame:${slugB}`);
             }
             const family = END_SLIDES.has(b.slide) ? "end" : "quiz";
             const ctaRef = ctaRefByFamily.get(family);
@@ -560,13 +582,13 @@ export async function runGeneration(
             cmp(
               a.layout,
               b.layout,
-              ["card", "cta", "qr", "phone", "screen", "island", "scan", "resultArea"],
+              ["card", "cta", "qr", "ground", "rail", "scan", "resultArea"],
               "correct",
             );
             emit(
               "qa",
-              `  ◻ ${formatKey} layout parity — phone ${JSON.stringify(a.layout.phone)} | ` +
-                `screen ${JSON.stringify(a.layout.screen)} | island ${JSON.stringify(a.layout.island)} | ` +
+              `  ◻ ${formatKey} layout parity — ground ${JSON.stringify(a.layout.ground)} | ` +
+                `rail ${JSON.stringify(a.layout.rail)} | ` +
                 `cta ${JSON.stringify(a.layout.cta)} | card ${JSON.stringify(a.layout.card)} | ` +
                 `result ${JSON.stringify(a.layout.resultArea)} | qr ${JSON.stringify(a.layout.qr)} | ` +
                 `scan ${JSON.stringify(a.layout.scan)}`,
