@@ -105,6 +105,7 @@ export const Routes = {
   ProPlayPlayerProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayPlayerProfile")),
   ProPlayTeamProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayTeamProfile")),
   ProPlayChampionProfile: lazyWithRetry(() => import("@/pages/pro-play/ProPlayChampionProfile")),
+  ProPlayMatchup: lazyWithRetry(() => import("@/pages/pro-play/ProPlayMatchup")),
   AdminAbout: lazyWithRetry(() => import("@/pages/AdminAbout")),
   AdminDiagnostics: lazyWithRetry(() => import("@/pages/AdminDiagnostics")),
   AdminQuizBroadcast: lazyWithRetry(() => import("@/pages/admin/AdminQuizBroadcast")),
@@ -179,6 +180,12 @@ const PATH_TO_KEYS: Array<{ test: (p: string) => boolean; keys: (keyof typeof Ro
   { test: (p) => p.startsWith("/lol/pro-play/player/"), keys: ["ProPlayPlayerProfile", "ProPlayTeamProfile"] },
   { test: (p) => p.startsWith("/lol/pro-play/team/"), keys: ["ProPlayTeamProfile", "ProPlayPlayerProfile"] },
   { test: (p) => p.startsWith("/lol/pro-play/champion/"), keys: ["ProPlayChampionProfile"] },
+  // The Explorer links out to the player and team profiles from every
+  // resolved side, so they are worth the same prefetch as from search.
+  {
+    test: (p) => p === "/lol/pro-play/matchup",
+    keys: ["ProPlayMatchup", "ProPlayPlayerProfile", "ProPlayTeamProfile"],
+  },
   { test: (p) => p === "/leaderboard" || p.startsWith("/leaderboard/"), keys: ["Leaderboard"] },
   { test: (p) => p.startsWith("/leagues/"), keys: ["Leagues"] },
   { test: (p) => p === "/blog", keys: ["BlogIndex"] },

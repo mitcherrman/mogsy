@@ -21,6 +21,7 @@ import {
   PRO_PLAY_CHAMPION_ROUTE,
   PRO_PLAY_LIVE_ARCHIVE_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_MATCHUP_ROUTE,
   PRO_PLAY_PLAYER_ROUTE,
   PRO_PLAY_SEARCH_ROUTE,
   PRO_PLAY_TEAM_ROUTE,
@@ -110,6 +111,7 @@ const ProPlaySearch = R.ProPlaySearch.Component;
 const ProPlayPlayerProfile = R.ProPlayPlayerProfile.Component;
 const ProPlayTeamProfile = R.ProPlayTeamProfile.Component;
 const ProPlayChampionProfile = R.ProPlayChampionProfile.Component;
+const ProPlayMatchup = R.ProPlayMatchup.Component;
 const AdminAbout = R.AdminAbout.Component;
 const AdminDiagnostics = R.AdminDiagnostics.Component;
 const AdminQuizBroadcast = R.AdminQuizBroadcast.Component;
@@ -607,6 +609,10 @@ const App = () => (
                   <Route path={PRO_PLAY_PLAYER_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayPlayerProfile /></Suspense>} />
                   <Route path={PRO_PLAY_TEAM_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTeamProfile /></Suspense>} />
                   <Route path={PRO_PLAY_CHAMPION_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayChampionProfile /></Suspense>} />
+                  {/* The Worlds Matchup Explorer. Same admin gate as the
+                      research routes above; its whole selection lives in the
+                      query string, so the path takes no parameters. */}
+                  <Route path={PRO_PLAY_MATCHUP_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayMatchup /></Suspense>} />
                   {/* LIVE1 match centre. It shipped at /esports/live (below,
                       now a redirect) before Pro Play had a hub; this is its
                       canonical URL. Same component, one page. */}

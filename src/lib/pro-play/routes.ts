@@ -79,3 +79,17 @@ export type ProPlayEntityKind = "player" | "team" | "champion";
 export function proPlayProfileUrl(kind: ProPlayEntityKind, key: string): string {
   return `/lol/pro-play/${kind}/${encodeURIComponent(key)}`;
 }
+
+/**
+ * The Worlds Matchup Explorer: configure two teams, a lane, two players and
+ * two champions, and read both sides over the four standard scopes.
+ *
+ * A child of the Pro Play area rather than of `search`, because it is a
+ * sibling surface and not a drill-down from one: search resolves an identity,
+ * the Explorer composes several. Admin-gated for the same reason the research
+ * routes are, so the hub carries no tile for it either.
+ *
+ * All of its state lives in the query string (see `matchupApi.ts`), so the
+ * path itself takes no parameters and a configured matchup is one URL.
+ */
+export const PRO_PLAY_MATCHUP_ROUTE = "/lol/pro-play/matchup";
