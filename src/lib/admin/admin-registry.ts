@@ -616,6 +616,25 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Consolidated to two tabs. Quiz Builder and Ranked Duel Review are DELETED, not hidden: both frontend subsystems, the builder's API client, and the backend builder routes/services are gone. The one capability worth keeping was extracted to components/question-preview/QuestionPreviewPanel (GET-only client), which Quiz Review hosts inline on Ranked candidate rows.",
   },
   {
+    id: "leaguecraft-demo-analytics",
+    title: "Demo Analytics (Free vs Premium)",
+    description:
+      "One synthetic study record, rendered by the shipped Performance Trends pane as a Free account sees it and as a Premium account sees it, side by side.",
+    area: "leaguecraft",
+    section: "diagnostics",
+    kind: "route",
+    path: "/admin/demo-analytics",
+    oldLocation: "PT1.9 — new",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    requiredRole: "master_admin",
+    authorization:
+      "AdminRoute roles={[\"master_admin\"]} + backend require_admin on /api/admin/demo-analytics/*. The route accepts ONLY the demo subjects in services/demo_identity.py, whose ids are in a namespace a Supabase auth uuid cannot occupy, so no real account is nameable.",
+    notes:
+      "Read-only. Switching Free/Premium selects between FREE_CAPABILITY and PREMIUM_CAPABILITY and changes nothing that is stored — no entitlement is resolved, written or implied. The record is seeded out of band by scripts/seed_demo_analytics.py and is excluded from every cross-user aggregate.",
+  },
+  {
     id: "quiz-diagnostics-tab",
     title: "Quiz Diagnostics",
     description:

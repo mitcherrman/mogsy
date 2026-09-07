@@ -159,6 +159,10 @@ const AdminAcademyUpdates = lazy(() => import("./pages/admin/AdminAcademyUpdates
 // ADM2 Phase A — master-admin user and bot directory.
 const AdminUserDirectory = lazy(() => import("./pages/admin/AdminUserDirectory"));
 
+// PT1.9 — master-admin Free-vs-Premium analytics preview over a synthetic
+// record. Same gate as the user directory; not linked from any consumer nav.
+const AdminDemoAnalytics = lazy(() => import("./pages/admin/AdminDemoAnalytics"));
+
 // Combat Sim Battles (CB Phase 3A) — public prediction loop + admin operations.
 const CombatBattlesIndex = lazy(() => import("./pages/CombatBattlesIndex"));
 const CombatBattleDetail = lazy(() => import("./pages/CombatBattleDetail"));
@@ -439,6 +443,9 @@ const App = () => (
                     <Route path="legacy-dashboard" element={<Admin />} />
                     <Route path="people" element={<Suspense fallback={<RouteFallback />}><AdminPeoplePage /></Suspense>} />
                     <Route path="users" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminUserDirectory /></Suspense></AdminRoute>} />
+                    {/* PT1.9 — synthetic Free/Premium analytics comparison.
+                        master_admin only, exactly as the user directory is. */}
+                    <Route path="demo-analytics" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminDemoAnalytics /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
                     <Route path="ranked" element={<Suspense fallback={<RouteFallback />}><AdminRankedPage /></Suspense>} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />

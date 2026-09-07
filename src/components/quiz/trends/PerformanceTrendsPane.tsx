@@ -44,7 +44,10 @@ import {
   type TrendPoint,
   type TrendReport,
 } from "@/lib/quiz/analyticsApi";
-import { usePerformanceTrends } from "@/components/quiz/trends/usePerformanceTrends";
+import {
+  usePerformanceTrends,
+  type TrendsSource,
+} from "@/components/quiz/trends/usePerformanceTrends";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 
 const DIRECTION_ICON: Record<TrendDirection, LucideIcon> = {
@@ -226,6 +229,8 @@ export default function PerformanceTrendsPane({
   hasAccount = true,
   signInHref = "/auth",
   onPractiseWeakness,
+  source,
+  demoNotice = null,
 }: {
   /**
    * Whether this pane is being looked at. It defaults to TRUE because the
@@ -252,9 +257,40 @@ export default function PerformanceTrendsPane({
   hasAccount?: boolean;
   signInHref?: string;
   onPractiseWeakness?: (preset: TrendsPracticePreset) => void;
+  /**
+   * PT1.9 — where the two answers come from. Defaults to the real,
+   * self-scoped analytics API; the master-admin demo preview passes a source
+   * that reads a synthetic account so the owner can compare the Free and
+   * Premium presentations of the SAME pane. Nothing else in the product
+   * passes it, and no consumer route can.
+   */
+  source?: TrendsSource;
+  /**
+   * A line printed above everything, in every branch, when this pane is not
+   * showing the reader their own record. The demo preview sets it; a real
+   * reader never sees it, because for them it is null.
+   */
+  demoNotice?: string | null;
 }) {
-  const state = usePerformanceTrends(open && hasAccount);
+  const state = usePerformanceTrends(open && hasAccount, source);
   const [switching, setSwitching] = useState(false);
+
+  /** The demo banner, or nothing. Rendered ahead of EVERY branch below —
+   *  including the paywall and the error — because a screenshot of any of them
+   *  must carry the warning, not just the happy one. */
+  const notice = demoNotice ? (
+    <div
+      data-testid="trends-demo-notice"
+      role="note"
+      className="mb-2 rounded-sm border-2 border-dashed px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em]"
+      style={{
+        borderColor: LEAGUECRAFT_INK.rubric,
+        color: LEAGUECRAFT_INK.rubric,
+      }}
+    >
+      {demoNotice}
+    </div>
+  ) : null;
 
   const report = state.report;
   const recurring = useMemo(
@@ -267,6 +303,7 @@ export default function PerformanceTrendsPane({
   if (!hasAccount) {
     return (
       <div data-testid="trends-signed-out" className="space-y-2 py-3">
+        {notice}
         <LedgerTitle>Performance Trends</LedgerTitle>
         <WorkspaceNote>
           Your trends are read from your own record, so they need an account.
@@ -281,13 +318,16 @@ export default function PerformanceTrendsPane({
 
   if (state.loading && !report && !state.capability) {
     return (
-      <div
-        data-testid="trends-loading"
-        className="flex items-center gap-2 py-4 text-[11px]"
-        style={{ color: LEAGUECRAFT_INK.faint }}
-      >
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-        Reading your record…
+      <div className="py-1">
+        {notice}
+        <div
+          data-testid="trends-loading"
+          className="flex items-center gap-2 py-3 text-[11px]"
+          style={{ color: LEAGUECRAFT_INK.faint }}
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          Reading your record…
+        </div>
       </div>
     );
   }
@@ -301,6 +341,7 @@ export default function PerformanceTrendsPane({
   if (state.error && !state.capability) {
     return (
       <div data-testid="trends-error" className="space-y-2 py-3">
+        {notice}
         <WorkspaceNote>
           Trends are unavailable right now. This is not a subscription problem —
           nothing about your account changed.
@@ -315,6 +356,7 @@ export default function PerformanceTrendsPane({
   if (!state.capability?.can_view_trends) {
     return (
       <div data-testid="trends-locked" className="space-y-2 py-3">
+        {notice}
         <LedgerTitle>Performance Trends</LedgerTitle>
         <WorkspaceNote>
           See how your Practice &amp; Time Trial accuracy and study volume have
@@ -337,13 +379,16 @@ export default function PerformanceTrendsPane({
 
   if (!report) {
     return (
-      <div
-        data-testid="trends-loading"
-        className="flex items-center gap-2 py-4 text-[11px]"
-        style={{ color: LEAGUECRAFT_INK.faint }}
-      >
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-        Reading your record…
+      <div className="py-1">
+        {notice}
+        <div
+          data-testid="trends-loading"
+          className="flex items-center gap-2 py-3 text-[11px]"
+          style={{ color: LEAGUECRAFT_INK.faint }}
+        >
+          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          Reading your record…
+        </div>
       </div>
     );
   }
@@ -352,6 +397,7 @@ export default function PerformanceTrendsPane({
 
   return (
     <div className="space-y-3 py-2" data-testid="trends-pane">
+      {notice}
       {/* The window selector. The list is the SERVER's — a window this client
           invented would be refused rather than answered, which is the correct
           outcome but a pointless round trip. */}

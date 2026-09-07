@@ -21,6 +21,8 @@ vi.mock("@/lib/quiz/analyticsApi", async (importOriginal) => {
 });
 
 import PerformanceTrendsPane from "./PerformanceTrendsPane";
+import type { TrendsSource } from "./usePerformanceTrends";
+import type { TrendReport } from "@/lib/quiz/analyticsApi";
 
 const PREMIUM = {
   can_view_trends: true,
@@ -353,5 +355,46 @@ describe("PT1.8 — what the pane says about itself", () => {
     expect(bars.length).toBe(3);
     // The zero-attempt day draws nothing at all.
     expect((bars[1] as SVGRectElement).getAttribute("height")).toBe("0");
+  });
+});
+
+
+// ------------------------------------------------- PT1.9 did not change this
+
+describe("PT1.9 — the pane still defaults to the reader's OWN record", () => {
+  it("uses the self-scoped analytics API when no source is given", async () => {
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    // The injectable source is an admin-preview seam, not a change of default:
+    // every consumer render must still go to the API that takes no user id.
+    expect(api.capability).toHaveBeenCalled();
+    expect(api.trends).toHaveBeenCalled();
+  });
+
+  it("prints no demo notice for a real reader", async () => {
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    expect(screen.queryByTestId("trends-demo-notice")).toBeNull();
+  });
+
+  it("prints the demo notice on the paywall too when one is given", async () => {
+    // The banner has to survive the branch a screenshot is most likely to be
+    // taken from — the locked one — not only the happy path.
+    api.capability.mockResolvedValue({ ok: true, capability: FREE });
+    render(<PerformanceTrendsPane demoNotice="DEMO — synthetic record." />);
+    await waitFor(() => expect(screen.getByTestId("trends-locked")).toBeTruthy());
+    expect(screen.getByTestId("trends-demo-notice").textContent).toContain("DEMO");
+  });
+
+  it("reads an injected source instead, and leaves the real API alone", async () => {
+    const source: TrendsSource = {
+      capability: vi.fn(async () => ({ capability: PREMIUM })),
+      trends: vi.fn(async () => REPORT() as unknown as TrendReport),
+    };
+    render(<PerformanceTrendsPane source={source} />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    expect(source.capability).toHaveBeenCalled();
+    expect(api.capability).not.toHaveBeenCalled();
+    expect(api.trends).not.toHaveBeenCalled();
   });
 });
