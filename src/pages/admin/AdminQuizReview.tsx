@@ -22,6 +22,7 @@ import {
   type ReviewFilterOptions,
   type ReviewPatchPayload,
   type ReviewUniverseRow,
+  type ReviewUniverseItem,
   type QuizQuestion,
 } from "@/lib/quiz/api";
 import {
@@ -40,6 +41,8 @@ import {
   GenerateContentPanel,
   ReadinessBadge,
 } from "@/components/admin/GenerateContentPanel";
+import { sourceKindSupport } from "@/lib/quiz-screenshot/reviewSource";
+import { isFailure } from "@/lib/result-narrowing";
 import {
   storedCorrectOptionIndex,
   storedQuestionPreviewPayload,
@@ -212,9 +215,27 @@ function correctIndexOf(row: ReviewUniverseRow): number | null {
   return i >= 0 ? i : null;
 }
 
-function UniverseRow({ row }: { row: ReviewUniverseRow }) {
+/**
+ * CON1 Step 3B — is this universe row publishable through a review key?
+ *
+ * Decided from the row's declared `source_kind` against the shared policy, so
+ * a definition can never LOOK publishable. It is the earliest gate, not the
+ * only one: the backend resolver refuses independently, and the capture gates
+ * still run after Playwright paints.
+ */
+function UniverseRow({
+  row,
+  onGenerate,
+}: {
+  row: ReviewUniverseRow;
+  onGenerate?: (reviewKey: string) => void;
+}) {
   const candidateId = rankedCandidateIdOf(row);
   const [previewing, setPreviewing] = useState(false);
+  const support = sourceKindSupport(row.source_kind, row.review_key);
+  // `strictNullChecks` is off, so a boolean discriminant needs the repo's own
+  // narrowing predicate — see src/lib/result-narrowing.ts.
+  const refusal = isFailure(support) ? support : null;
 
   return <div className="border-b px-3 py-2 text-[11px] last:border-b-0">
     <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3">
@@ -226,19 +247,48 @@ function UniverseRow({ row }: { row: ReviewUniverseRow }) {
           <div>{row.source_status || "—"}</div>
           <div className="truncate text-muted-foreground" title={row.source_version}>{row.source_version || "—"}</div>
         </div>
-        {candidateId && (
-          <Button
-            size="sm"
-            variant={previewing ? "secondary" : "ghost"}
-            className="h-6 shrink-0 gap-1 px-1.5 text-[10px]"
-            data-testid={`universe-preview-toggle-${row.review_key}`}
-            onClick={() => setPreviewing((v) => !v)}
-          >
-            <Eye className="h-3 w-3" aria-hidden /> {previewing ? "Hide" : "Preview"}
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          {onGenerate && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 shrink-0 gap-1 px-1.5 text-[10px]"
+              data-testid={`universe-generate-${row.review_key}`}
+              data-source-supported={refusal ? "false" : "true"}
+              data-refusal-code={refusal ? refusal.code : undefined}
+              disabled={!!refusal}
+              title={
+                refusal
+                  ? refusal.reason
+                  : `Hand this ${SOURCE_LABELS[row.source_kind] ?? row.source_kind} row off to the Content Factory.`
+              }
+              onClick={() => onGenerate(row.review_key)}
+            >
+              <Terminal className="h-3 w-3" aria-hidden /> Generate
+            </Button>
+          )}
+          {candidateId && (
+            <Button
+              size="sm"
+              variant={previewing ? "secondary" : "ghost"}
+              className="h-6 shrink-0 gap-1 px-1.5 text-[10px]"
+              data-testid={`universe-preview-toggle-${row.review_key}`}
+              onClick={() => setPreviewing((v) => !v)}
+            >
+              <Eye className="h-3 w-3" aria-hidden /> {previewing ? "Hide" : "Preview"}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
+    {onGenerate && refusal && (
+      <p
+        className="mt-1 text-[10px] text-muted-foreground"
+        data-testid={`universe-generate-reason-${row.review_key}`}
+      >
+        {refusal.reason}
+      </p>
+    )}
     {candidateId && previewing && (
       <div className="mt-2 rounded border border-border/60 bg-muted/10 p-2">
         <QuestionPreviewPanel
@@ -1241,7 +1291,18 @@ export default function AdminQuizReview({
    * Nothing is persisted. The handoff is a command, not a job.
    */
   const [contentHandoff, setContentHandoff] = useState<
-    { kind: "selection" } | { kind: "single"; question: ReviewQuestion } | null
+    | { kind: "selection" }
+    | { kind: "single"; question: ReviewQuestion }
+    /**
+     * CON1 Step 3B — one GENERATED review object, named by its review key.
+     *
+     * The key, not the row: the universe row is a discovery projection with no
+     * `presentation` and no computed `asset_status`, so readiness over it would
+     * be a verdict about a payload nobody renders. The resolved render payload
+     * is fetched below.
+     */
+    | { kind: "review-key"; reviewKey: string }
+    | null
   >(null);
 
   const queryClient = useQueryClient();
@@ -1322,6 +1383,32 @@ export default function AdminQuizReview({
   const checkedCount = checkedQuestions.size;
 
   /**
+   * The resolved render payload behind an open review-key handoff.
+   *
+   * One focused read of the canonical resolver, not a widening of the universe
+   * query: the universe list is the discovery model and stays that way.
+   */
+  const reviewItemQuery = useQuery({
+    queryKey: [
+      "review-universe-item",
+      contentHandoff?.kind === "review-key" ? contentHandoff.reviewKey : null,
+    ],
+    queryFn: () =>
+      quizApi.getReviewUniverseItem(
+        (contentHandoff as { kind: "review-key"; reviewKey: string }).reviewKey,
+      ),
+    enabled: authorized && contentHandoff?.kind === "review-key",
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const handoffReviewItems = useMemo<ReviewUniverseItem[]>(() => {
+    if (contentHandoff?.kind !== "review-key") return [];
+    const payload = reviewItemQuery.data;
+    return payload && !isFailure(payload) ? [payload.item] : [];
+  }, [contentHandoff, reviewItemQuery.data]);
+
+  /**
    * The questions the open handoff covers.
    *
    * For a `selection` handoff this is `Map.values()` — JavaScript Map
@@ -1333,6 +1420,7 @@ export default function AdminQuizReview({
    */
   const handoffQuestions = useMemo<ReviewQuestion[]>(() => {
     if (!contentHandoff) return [];
+    if (contentHandoff.kind === "review-key") return [];
     return contentHandoff.kind === "single"
       ? [contentHandoff.question]
       : Array.from(checkedQuestions.values());
@@ -1352,6 +1440,53 @@ export default function AdminQuizReview({
       return next;
     });
   }, []);
+
+  /**
+   * The Generate Content column.
+   *
+   * Defined once and rendered from BOTH tabs: a review-key handoff starts in
+   * the All-sources tab, and sending the operator back to the stored list to
+   * see the panel they just opened would lose the list they were working
+   * through.
+   */
+  const contentHandoffColumn = contentHandoff === null ? null : (
+    <div className="flex h-full w-[400px] shrink-0 flex-col overflow-y-auto border-l p-2">
+      {contentHandoff.kind === "review-key" && handoffReviewItems.length === 0 ? (
+        <div
+          className="rounded-lg border border-border bg-background p-3 text-xs"
+          data-testid="generate-content-review-key-status"
+        >
+          {reviewItemQuery.isLoading ? (
+            <p className="text-muted-foreground">Resolving {contentHandoff.reviewKey}…</p>
+          ) : (
+            <p className="text-red-300" data-testid="generate-content-review-key-error">
+              {reviewItemQuery.data && isFailure(reviewItemQuery.data)
+                ? reviewItemQuery.data.error
+                : `Could not resolve ${contentHandoff.reviewKey}.`}
+            </p>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2 h-6 text-[10px]"
+            onClick={() => setContentHandoff(null)}
+          >
+            Close
+          </Button>
+        </div>
+      ) : (
+        <GenerateContentPanel
+          questions={handoffQuestions}
+          reviewItems={handoffReviewItems}
+          onClose={() => setContentHandoff(null)}
+          onDropBlocked={
+            contentHandoff.kind === "selection" ? dropBlockedFromSelection : undefined
+          }
+        />
+      )}
+    </div>
+  );
+
 
   const downloadExport = async () => {
     setExporting(true);
@@ -1495,6 +1630,7 @@ export default function AdminQuizReview({
       </div>
 
       {showUniverse && (
+        <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto bg-background">
           <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur">
             <Select value={universeSource} onValueChange={setUniverseSource}>
@@ -1514,8 +1650,16 @@ export default function AdminQuizReview({
           <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3 border-b bg-muted/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Source</span><span>Family</span><span>Review material</span><span>Status / version</span></div>
           {universe.isLoading ? <div className="p-8 text-center text-xs text-muted-foreground">Loading review sources…</div>
             : universe.isError ? <div className="p-8 text-center text-xs text-red-400">Could not load the source universe.</div>
-            : universe.data?.rows.map((row) => <UniverseRow key={row.review_key} row={row} />)}
+            : universe.data?.rows.map((row) => (
+              <UniverseRow
+                key={row.review_key}
+                row={row}
+                onGenerate={(reviewKey) => setContentHandoff({ kind: "review-key", reviewKey })}
+              />
+            ))}
           {!!universe.data?.provenance.collector_errors.length && <div className="m-4 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Some sources were unavailable: {universe.data.provenance.collector_errors.map((item) => item.source).join(", ")}</div>}
+        </div>
+        {contentHandoffColumn}
         </div>
       )}
 
@@ -1650,15 +1794,7 @@ export default function AdminQuizReview({
             were already reading the question, and Quiz Review does not become
             an export dashboard. */}
         {contentHandoff !== null ? (
-          <div className="flex h-full w-[400px] shrink-0 flex-col overflow-y-auto p-2">
-            <GenerateContentPanel
-              questions={handoffQuestions}
-              onClose={() => setContentHandoff(null)}
-              onDropBlocked={
-                contentHandoff.kind === "selection" ? dropBlockedFromSelection : undefined
-              }
-            />
-          </div>
+          contentHandoffColumn
         ) : selectedId !== null ? (
           <div className="flex h-full w-[400px] shrink-0 flex-col overflow-hidden">
             <DetailPanel

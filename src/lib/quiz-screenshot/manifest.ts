@@ -46,6 +46,29 @@ export type RunManifest = {
   formats: string[];
   /** Ordered source question ids. */
   question_ids: Array<string | number>;
+  /**
+   * CON1 Step 3B — ordered SOURCE IDENTITY, one entry per rendered question.
+   *
+   * `question_ids` above is enough for a stored row: the id is durable and the
+   * row can be re-read. A generated source has no such row. `mastery:ssm.base.
+   * FLASH` is materialized by a code enumerator whose curriculum moves with the
+   * game, so an image recorded only as "question 0" would be unattributable one
+   * patch later.
+   *
+   * Present on every run made after this field existed, generated or not, so a
+   * reader never has to infer the source kind from the shape of an id. Older
+   * manifests parse as `[]`.
+   */
+  sources: Array<{
+    id: string | number;
+    review_key: string | null;
+    source_kind: string;
+    materialization: string | null;
+    family: string | null;
+    source_version: string | null;
+    specimen_version: string | null;
+    data_version: string | null;
+  }>;
   /** Ordered question previews for display without re-fetching. */
   questions: Array<{ id: string | number; prompt_preview: string; correct_label?: string }>;
   states: string[] | null;
@@ -88,6 +111,34 @@ export type RunManifest = {
   completed: boolean;
 };
 
+/**
+ * The provenance row for one rendered question.
+ *
+ * A stored question keeps the identity it always had (`stored_question`, no
+ * review key); a generated one carries whatever the backend resolver returned,
+ * verbatim. Nothing is invented here — an absent field records as null rather
+ * than as a guess.
+ */
+export function manifestSourceEntry(q: {
+  id: string | number;
+  review_key?: string;
+  source_kind?: string;
+  provenance?: Record<string, unknown>;
+}): RunManifest["sources"][number] {
+  const p = q.provenance ?? {};
+  const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
+  return {
+    id: q.id,
+    review_key: q.review_key ?? str(p.review_key),
+    source_kind: q.source_kind ?? str(p.source_kind) ?? "stored_question",
+    materialization: str(p.materialization) ?? (q.review_key ? null : "stored"),
+    family: str(p.family),
+    source_version: str(p.source_version),
+    specimen_version: str(p.specimen_version),
+    data_version: str(p.data_version),
+  };
+}
+
 export function buildRunManifest(
   args: Omit<RunManifest, "schema_version">,
 ): RunManifest {
@@ -124,6 +175,9 @@ export function parseRunManifest(raw: unknown): RunManifest | null {
     package_prefix: typeof m.package_prefix === "string" ? m.package_prefix : null,
     formats: Array.isArray(m.formats) ? (m.formats as string[]) : [],
     question_ids: Array.isArray(m.question_ids) ? (m.question_ids as Array<string | number>) : [],
+    // Older manifests predate the field; absence means "not recorded", which
+    // is exactly what an empty list says.
+    sources: Array.isArray(m.sources) ? (m.sources as RunManifest["sources"]) : [],
     questions: Array.isArray(m.questions)
       ? (m.questions as RunManifest["questions"])
       : [],

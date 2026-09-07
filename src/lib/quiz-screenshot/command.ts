@@ -46,6 +46,9 @@ import {
 // The run-id grammar has ONE owner — the local studio server's own validator.
 // A second literal here is how "valid in Admin, rejected locally" happens.
 import { RUN_ID_RE } from "./studio-request";
+// CON1 Step 3B — the review-key grammar and the publishability policy have
+// ONE owner too, for the same reason the run-id grammar does.
+import { normalizeReviewKeys } from "./reviewSource";
 
 /** The npm script the local Content Factory runner is invoked through. */
 export const CONTENT_COMMAND_SCRIPT = "npm run quiz:screenshots";
@@ -73,6 +76,15 @@ export type ContentCommandConfig = {
    * sequence, so silently reordering the selection would change the artefact.
    */
   questionIds: ReadonlyArray<number | string>;
+  /**
+   * CON1 Step 3B — selected GENERATED review-object identities, in order.
+   *
+   * MUTUALLY EXCLUSIVE with `questionIds`. The runner's source modes are
+   * exclusive by construction (`parseScreenshotCli` refuses two sources), so a
+   * builder that emitted both would produce a command that cannot run. A
+   * config naming both is refused here, with that reason.
+   */
+  reviewKeys?: ReadonlyArray<string>;
   /** Format registry keys (`./formats`). */
   formats: readonly string[];
   /** Render states (`./types`). Ignored — and not emitted — when `post` is set,
@@ -90,6 +102,7 @@ export type ContentCommandConfig = {
 
 export const DEFAULT_CONTENT_COMMAND_CONFIG: ContentCommandConfig = {
   questionIds: [],
+  reviewKeys: [],
   formats: DEFAULT_FORMAT_KEYS,
   states: DEFAULT_STATES,
   post: null,
@@ -160,7 +173,32 @@ function normalizeIds(ids: ReadonlyArray<number | string>, errors: string[]): st
  */
 export function buildContentCommand(config: ContentCommandConfig): BuiltContentCommand {
   const errors: string[] = [];
-  const ids = normalizeIds(config.questionIds ?? [], errors);
+
+  // ── Source: exactly one kind ───────────────────────────────────────────
+  const rawIds = config.questionIds ?? [];
+  const rawKeys = config.reviewKeys ?? [];
+  if (rawIds.length && rawKeys.length) {
+    return {
+      ...EMPTY,
+      errors: [
+        "A command names one source kind. This selection mixes " +
+          `${rawIds.length} stored question id(s) with ${rawKeys.length} review key(s), ` +
+          "and the runner's source flags are mutually exclusive.",
+      ],
+    };
+  }
+  const usingReviewKeys = rawKeys.length > 0;
+  const keys = usingReviewKeys ? normalizeReviewKeys(rawKeys, errors) : [];
+  const ids = usingReviewKeys ? [] : normalizeIds(rawIds, errors);
+  if (usingReviewKeys) {
+    if (!keys.length && !errors.length) errors.push("Select at least one question.");
+    if (keys.length > MAX_BATCH_LIMIT) {
+      errors.push(
+        `${keys.length} items selected — the runner's maximum is ${MAX_BATCH_LIMIT}. ` +
+          `Generate them in smaller batches.`,
+      );
+    }
+  }
 
   // ── Formats ────────────────────────────────────────────────────────────
   const formats: string[] = [];
@@ -233,7 +271,10 @@ export function buildContentCommand(config: ContentCommandConfig): BuiltContentC
   if (errors.length) return { ...EMPTY, errors };
 
   const args: string[] = [];
-  if (ids.length === 1) args.push("--question-id", ids[0]);
+  if (usingReviewKeys) {
+    if (keys.length === 1) args.push("--review-key", keys[0]);
+    else args.push("--review-keys", keys.join(","));
+  } else if (ids.length === 1) args.push("--question-id", ids[0]);
   else args.push("--question-ids", ids.join(","));
   if (post) args.push("--post", post);
   else args.push("--states", states.join(","));

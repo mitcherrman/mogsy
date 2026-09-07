@@ -62,10 +62,27 @@ import {
   RUN_ID_RE,
   type StudioModeKey,
 } from "../quiz-screenshot/studio-request";
+import { reviewKeySupport } from "../quiz-screenshot/reviewSource";
+import { isFailure } from "../result-narrowing";
 import type { ContentCommandConfig } from "../quiz-screenshot/command";
 
-/** Wire version. Bumped only for a breaking change to the field set. */
+/**
+ * Wire versions.
+ *
+ * v1 — `questionIds`, stored ids only. Every v1 payload ever emitted still
+ *      parses, and a stored-only selection still SERIALIZES as v1, so the URLs
+ *      and clipboard payloads Step 3A proved are byte-identical today.
+ * v2 — CON1 Step 3B. `items`: an ORDERED list of typed sources, so a review
+ *      key is a first-class identity rather than a string smuggled through an
+ *      id field. Emitted only when the selection actually contains one.
+ *
+ * Two wire shapes rather than a migration, because a handoff is ephemeral —
+ * it is a link an operator follows now — and paying for a rewrite of the v1
+ * proof would buy nothing.
+ */
 export const CONTENT_HANDOFF_VERSION = 1;
+export const CONTENT_HANDOFF_VERSION_V2 = 2;
+export const SUPPORTED_HANDOFF_VERSIONS: readonly number[] = [1, 2] as const;
 
 /**
  * Keys a handoff must never carry, asserted as a set rather than trusted to
@@ -91,10 +108,42 @@ export const HANDOFF_FORBIDDEN_KEYS: readonly string[] = [
  * first. Everything here is a SEED — the local workspace owns the final
  * generation configuration (see CONTENT_FACTORY_HANDOFF.md, Step 3A).
  */
+/**
+ * One selected source, typed.
+ *
+ * The kind is carried EXPLICITLY rather than sniffed from the value's shape.
+ * A stored id and a review key resolve through different backend routes, and
+ * a numeric-looking review key or an id-shaped key would otherwise silently
+ * take the wrong one.
+ */
+export type ContentHandoffItem =
+  | { kind: "question-id"; value: string }
+  | { kind: "review-key"; value: string };
+
+export const HANDOFF_ITEM_KINDS = ["question-id", "review-key"] as const;
+
+/** Query-string tag per kind. `items=qid:41,rk:mastery%3Assm.base.FLASH`. */
+export const HANDOFF_ITEM_TAGS: Record<ContentHandoffItem["kind"], string> = {
+  "question-id": "qid",
+  "review-key": "rk",
+};
+
 export type ContentHandoff = {
-  version: typeof CONTENT_HANDOFF_VERSION;
+  version: number;
+  /**
+   * The canonical ORDERED selection. Everything below is derived from it.
+   *
+   * The model can represent a mixed list; the validator refuses one today,
+   * because the runner's source flags are mutually exclusive and a handoff
+   * that could not be run would be worse than one that is refused early. When
+   * the runner grows a mixed source mode, this field is already the right
+   * shape and only the refusal moves.
+   */
+  items: ContentHandoffItem[];
   /** Ordered, deduped question ids. Order is the artefact's order. */
   questionIds: string[];
+  /** Ordered, deduped review keys (CON1 Step 3B). */
+  reviewKeys: string[];
   /** Format registry keys. */
   formats: string[];
   /** Carousel post type, or null meaning "capture explicit render states". */
@@ -134,6 +183,78 @@ function normalizeList(value: unknown): string[] | null {
 }
 
 /**
+ * Read the v2 `items` field from either wire form.
+ *
+ * Object form  `[{kind:"review-key", value:"mastery:…"}, …]`
+ * String form  `"qid:41,rk:mastery%3Assm.base.FLASH"` — the URL's, where the
+ *              tag is separated by the FIRST colon and the value is
+ *              percent-decoded. A review key's own colons therefore cannot be
+ *              mistaken for the separator.
+ */
+export function parseHandoffItems(raw: unknown, errors: string[]): ContentHandoffItem[] {
+  const out: ContentHandoffItem[] = [];
+  const push = (kindRaw: unknown, valueRaw: unknown, where: string) => {
+    const kind = String(kindRaw ?? "").trim();
+    const value = String(valueRaw ?? "").trim();
+    if (kind !== "question-id" && kind !== "review-key") {
+      errors.push(
+        `Unknown handoff item kind "${kind}" in ${where}. Valid kinds: ` +
+          HANDOFF_ITEM_KINDS.join(", "),
+      );
+      return;
+    }
+    if (!value) {
+      errors.push(`Handoff item in ${where} has no value`);
+      return;
+    }
+    out.push({ kind, value } as ContentHandoffItem);
+  };
+
+  if (Array.isArray(raw)) {
+    for (const entry of raw) {
+      const rec = asRecord(entry);
+      if (!rec) {
+        errors.push(`Handoff item must be an object with kind and value`);
+        continue;
+      }
+      push(rec.kind, rec.value, "items");
+    }
+    return out;
+  }
+  if (typeof raw === "string") {
+    for (const token of raw.split(",").map((t) => t.trim()).filter(Boolean)) {
+      const at = token.indexOf(":");
+      if (at <= 0) {
+        errors.push(`Handoff item "${token}" is missing its kind tag (qid: or rk:)`);
+        continue;
+      }
+      const tag = token.slice(0, at);
+      let value: string;
+      try {
+        value = decodeURIComponent(token.slice(at + 1));
+      } catch {
+        errors.push(`Handoff item "${token}" is not decodable`);
+        continue;
+      }
+      const kind = (Object.keys(HANDOFF_ITEM_TAGS) as ContentHandoffItem["kind"][]).find(
+        (k) => HANDOFF_ITEM_TAGS[k] === tag,
+      );
+      if (!kind) {
+        errors.push(
+          `Unknown handoff item tag "${tag}". Valid tags: ` +
+            Object.values(HANDOFF_ITEM_TAGS).join(", "),
+        );
+        continue;
+      }
+      push(kind, value, "items");
+    }
+    return out;
+  }
+  errors.push("items must be an array of {kind, value} or a tagged comma list");
+  return out;
+}
+
+/**
  * Validate an untrusted handoff payload — a parsed JSON object, or the record
  * `decodeContentHandoffParams` builds out of a query string. Both intake paths
  * land here, so a rule cannot apply to one and not the other.
@@ -155,40 +276,105 @@ export function validateContentHandoff(raw: unknown): ContentHandoffResult {
   }
 
   // ── Version ────────────────────────────────────────────────────────────
+  let declaredVersion: number | null = null;
   const rawVersion = b.version ?? b.v;
   if (rawVersion !== undefined && rawVersion !== null && rawVersion !== "") {
     const n = typeof rawVersion === "string" ? Number(rawVersion) : rawVersion;
     if (typeof n !== "number" || !Number.isInteger(n)) {
       errors.push(`Unreadable handoff version "${String(rawVersion)}"`);
-    } else if (n !== CONTENT_HANDOFF_VERSION) {
+    } else if (!SUPPORTED_HANDOFF_VERSIONS.includes(n)) {
       errors.push(
-        `Handoff version ${n} is not supported (this workspace speaks v${CONTENT_HANDOFF_VERSION})`,
+        `Handoff version ${n} is not supported (this workspace speaks v` +
+          `${SUPPORTED_HANDOFF_VERSIONS.join(" and v")})`,
       );
+    } else {
+      declaredVersion = n;
     }
   }
 
-  // ── Question ids — ordered, deduped, shape-checked ─────────────────────
-  const rawIds = normalizeList(b.questionIds ?? b.ids);
+  // ── Selection — v2 `items`, or v1 `questionIds`/`ids`. Never both: two
+  //    orderings of the same selection is exactly the source ambiguity a
+  //    typed handoff exists to remove. ──────────────────────────────────────
+  const itemsGiven = b.items !== undefined && b.items !== null && b.items !== "";
+  const idsGiven =
+    (b.questionIds !== undefined && b.questionIds !== null && b.questionIds !== "") ||
+    (b.ids !== undefined && b.ids !== null && b.ids !== "");
+  const items: ContentHandoffItem[] = [];
   const questionIds: string[] = [];
-  if (rawIds === null) {
-    errors.push("questionIds must be an array of ids or a comma-separated list");
+  const reviewKeys: string[] = [];
+
+  if (itemsGiven && idsGiven) {
+    errors.push(
+      "Handoff carries both `items` (v2) and `questionIds` (v1) — one selection, one list",
+    );
+  } else if (itemsGiven) {
+    const parsed = parseHandoffItems(b.items, errors);
+    items.push(...parsed);
   } else {
+    const rawIds = normalizeList(b.questionIds ?? b.ids);
+    if (rawIds === null) {
+      errors.push("questionIds must be an array of ids or a comma-separated list");
+    } else {
+      for (const id of rawIds) items.push({ kind: "question-id", value: id });
+    }
+  }
+
+  // Validate + dedupe, preserving order. A repeat is dropped, not reported:
+  // a selection is a set.
+  {
     const seen = new Set<string>();
-    for (const id of rawIds) {
-      if (!QUESTION_ID_RE.test(id)) {
-        errors.push(`Invalid question id "${id}"`);
-        continue;
+    const kept: ContentHandoffItem[] = [];
+    for (const item of items) {
+      const token = `${item.kind}:${item.value}`;
+      if (seen.has(token)) continue;
+      if (item.kind === "question-id") {
+        if (!QUESTION_ID_RE.test(item.value)) {
+          errors.push(`Invalid question id "${item.value}"`);
+          continue;
+        }
+        seen.add(token);
+        kept.push(item);
+        questionIds.push(item.value);
+      } else {
+        const support = reviewKeySupport(item.value);
+        if (isFailure(support)) {
+          errors.push(`Review key "${item.value}": ${support.reason}`);
+          continue;
+        }
+        seen.add(token);
+        kept.push(item);
+        reviewKeys.push(item.value);
       }
-      if (seen.has(id)) continue; // a selection is a set; a repeat is not an error
-      seen.add(id);
-      questionIds.push(id);
     }
-    if (!questionIds.length && !errors.length) errors.push("Handoff selects no questions");
-    if (questionIds.length > MAX_BATCH_LIMIT) {
-      errors.push(
-        `Handoff selects ${questionIds.length} questions — the runner's maximum is ${MAX_BATCH_LIMIT}`,
-      );
-    }
+    items.length = 0;
+    items.push(...kept);
+  }
+
+  if (questionIds.length && reviewKeys.length) {
+    errors.push(
+      "A handoff names one source kind. This one mixes " +
+        `${questionIds.length} stored question id(s) with ${reviewKeys.length} review key(s), ` +
+        "and the runner's source flags are mutually exclusive.",
+    );
+  }
+  if (!items.length && !errors.length) errors.push("Handoff selects no questions");
+  if (items.length > MAX_BATCH_LIMIT) {
+    errors.push(
+      `Handoff selects ${items.length} questions — the runner's maximum is ${MAX_BATCH_LIMIT}`,
+    );
+  }
+
+  // A payload that CALLS itself v1 while carrying a review key is refused
+  // rather than upgraded: a consumer that only speaks v1 would read the
+  // version, trust it, and then not understand the selection.
+  const impliedVersion = reviewKeys.length
+    ? CONTENT_HANDOFF_VERSION_V2
+    : CONTENT_HANDOFF_VERSION;
+  if (declaredVersion !== null && declaredVersion < impliedVersion) {
+    errors.push(
+      `Handoff declares v${declaredVersion} but carries a review key, which is v` +
+        `${CONTENT_HANDOFF_VERSION_V2}`,
+    );
   }
 
   // ── Formats. Absent means the RUNNER's own default, so a minimal handoff
@@ -307,8 +493,10 @@ export function validateContentHandoff(raw: unknown): ContentHandoffResult {
   return {
     ok: true,
     handoff: {
-      version: CONTENT_HANDOFF_VERSION,
+      version: impliedVersion,
+      items,
       questionIds,
+      reviewKeys,
       formats,
       post,
       states: post ? [] : states,
@@ -328,9 +516,15 @@ export function validateContentHandoff(raw: unknown): ContentHandoffResult {
 export function contentHandoffFromCommandConfig(
   config: ContentCommandConfig,
 ): ContentHandoffResult {
+  const reviewKeys = (config.reviewKeys ?? []).map((k) => String(k).trim()).filter(Boolean);
+  const questionIds = (config.questionIds ?? []).map((id) => String(id).trim()).filter(Boolean);
+  const items: ContentHandoffItem[] = [
+    ...questionIds.map((value) => ({ kind: "question-id" as const, value })),
+    ...reviewKeys.map((value) => ({ kind: "review-key" as const, value })),
+  ];
   return validateContentHandoff({
-    version: CONTENT_HANDOFF_VERSION,
-    questionIds: (config.questionIds ?? []).map((id) => String(id).trim()),
+    version: reviewKeys.length ? CONTENT_HANDOFF_VERSION_V2 : CONTENT_HANDOFF_VERSION,
+    items,
     formats: [...(config.formats ?? [])],
     post: config.post ?? null,
     states: config.post ? [] : [...(config.states ?? [])],
@@ -347,10 +541,17 @@ export function contentHandoffFromCommandConfig(
  */
 export function encodeContentHandoffParams(handoff: ContentHandoff): string {
   const enc = (list: readonly string[]) => list.map(encodeURIComponent).join(",");
-  const parts: string[] = [
-    `hv=${CONTENT_HANDOFF_VERSION}`,
-    `ids=${enc(handoff.questionIds)}`,
-  ];
+  // A stored-only selection still serializes as v1 `ids=…`, byte for byte what
+  // Step 3A emitted. v2 appears only when the selection actually needs it.
+  const parts: string[] =
+    handoff.version === CONTENT_HANDOFF_VERSION_V2
+      ? [
+          `hv=${CONTENT_HANDOFF_VERSION_V2}`,
+          `items=${handoff.items
+            .map((i) => `${HANDOFF_ITEM_TAGS[i.kind]}:${encodeURIComponent(i.value)}`)
+            .join(",")}`,
+        ]
+      : [`hv=${CONTENT_HANDOFF_VERSION}`, `ids=${enc(handoff.questionIds)}`];
   if (handoff.formats.length) parts.push(`formats=${enc(handoff.formats)}`);
   if (handoff.post) parts.push(`post=${encodeURIComponent(handoff.post)}`);
   else if (handoff.states.length) parts.push(`states=${enc(handoff.states)}`);
@@ -363,7 +564,12 @@ export function encodeContentHandoffParams(handoff: ContentHandoff): string {
 /** True when a location's query string carries a handoff at all. */
 export function hasContentHandoffParams(search: string | URLSearchParams): boolean {
   const params = typeof search === "string" ? new URLSearchParams(search) : search;
-  return params.has("ids") || params.has("hv") || params.has("questionIds");
+  return (
+    params.has("ids") ||
+    params.has("hv") ||
+    params.has("questionIds") ||
+    params.has("items")
+  );
 }
 
 /**
@@ -389,6 +595,7 @@ export function decodeContentHandoffParams(
   }
   return validateContentHandoff({
     version: raw.hv ?? raw.version,
+    items: raw.items,
     questionIds: raw.ids ?? raw.questionIds,
     formats: raw.formats,
     post: raw.post,
@@ -401,10 +608,14 @@ export function decodeContentHandoffParams(
 
 /** Deterministic JSON form for the clipboard/import path. Fixed key order. */
 export function serializeContentHandoff(handoff: ContentHandoff): string {
+  const selection =
+    handoff.version === CONTENT_HANDOFF_VERSION_V2
+      ? { items: handoff.items }
+      : { questionIds: handoff.questionIds };
   return JSON.stringify(
     {
       version: handoff.version,
-      questionIds: handoff.questionIds,
+      ...selection,
       formats: handoff.formats,
       post: handoff.post,
       states: handoff.states,
@@ -465,6 +676,10 @@ export function studioJobBodyFromHandoff(handoff: ContentHandoff): Record<string
     formats: [...handoff.formats],
     overwrite: handoff.overwrite,
   };
+  // CON1 Step 3B — a review-key selection travels in its own field, for the
+  // same reason it has its own CLI flag: `validateStudioJob` resolves the two
+  // through different backend routes and must not have to guess which it got.
+  if (handoff.reviewKeys.length) body.reviewKeys = [...handoff.reviewKeys];
   if (mode === "classic") body.states = [...handoff.states];
   if (handoff.difficulty) body.difficulty = handoff.difficulty;
   if (handoff.runId) body.runId = handoff.runId;

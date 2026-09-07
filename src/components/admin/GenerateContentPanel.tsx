@@ -53,7 +53,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ReviewQuestion } from "@/lib/quiz/api";
+import type { ReviewQuestion, ReviewUniverseItem } from "@/lib/quiz/api";
 import { isFailure } from "@/lib/result-narrowing";
 import { RENDER_FORMATS } from "@/lib/quiz-screenshot/formats";
 import { RENDER_STATES, type RenderState } from "@/lib/quiz-screenshot/types";
@@ -187,13 +187,27 @@ function Toggle({
 export type GenerateContentPanelProps = {
   /** The selected stored questions, in selection order. */
   questions: readonly ReviewQuestion[];
+  /**
+   * CON1 Step 3B — selected GENERATED review objects, already resolved through
+   * `/api/quiz/admin/review/universe/item`.
+   *
+   * Resolved rows, not universe rows: readiness runs `adaptScreenshotQuestion`
+   * and the production band profile over the row it is given, and a discovery
+   * projection carries neither `presentation` nor `asset_status`. Judging one
+   * of those would produce a readiness verdict about a payload nobody renders.
+   *
+   * Mutually exclusive with `questions`, because the runner's source flags are.
+   */
+  reviewItems?: readonly ReviewUniverseItem[];
   onClose: () => void;
-  /** Drop the blocked rows from the selection (the operator's explicit call). */
+  /** Drop the blocked rows from the selection (the operator's explicit call).
+   *  Stored selections only — a generated handoff is one resolved row. */
   onDropBlocked?: (ids: number[]) => void;
 };
 
 export function GenerateContentPanel({
   questions,
+  reviewItems = [],
   onClose,
   onDropBlocked,
 }: GenerateContentPanelProps) {
@@ -204,9 +218,38 @@ export function GenerateContentPanel({
   const [runId, setRunId] = useState("");
   const [overwrite, setOverwrite] = useState(false);
 
+  /**
+   * The selection as ONE ordered list, whatever kind it is.
+   *
+   * `key` is the react/test key and the identity shown to the operator;
+   * `reviewKey` is set only for a generated row. Readiness runs over `row`,
+   * which for both kinds is the resolved payload the runner would render.
+   */
+  const selection = useMemo(
+    () =>
+      reviewItems.length
+        ? reviewItems.map((item) => ({
+            key: item.review_key,
+            reviewKey: item.review_key,
+            sourceKind: item.source_kind,
+            id: undefined as number | undefined,
+            text: item.question_text ?? "",
+            row: item,
+          }))
+        : questions.map((q) => ({
+            key: String(q.id),
+            reviewKey: undefined as string | undefined,
+            sourceKind: "stored_question",
+            id: q.id,
+            text: q.question_text ?? "",
+            row: q,
+          })),
+    [questions, reviewItems],
+  );
+
   const readiness = useMemo(
-    () => questions.map((q) => ({ q, r: evaluateContentReadiness(q) })),
-    [questions],
+    () => selection.map((q) => ({ q, r: evaluateContentReadiness(q.row) })),
+    [selection],
   );
   const summary = useMemo(
     () => summarizeReadiness(readiness.map((x) => x.r)),
@@ -218,7 +261,8 @@ export function GenerateContentPanel({
   const config = useMemo<ContentCommandConfig>(
     () => ({
       // Selection order, preserved — a carousel post is an ordered sequence.
-      questionIds: questions.map((q) => q.id),
+      questionIds: reviewItems.length ? [] : questions.map((q) => q.id),
+      reviewKeys: reviewItems.map((item) => item.review_key),
       formats,
       states,
       post,
@@ -226,7 +270,7 @@ export function GenerateContentPanel({
       runId,
       overwrite,
     }),
-    [questions, formats, states, post, difficulty, runId, overwrite],
+    [questions, reviewItems, formats, states, post, difficulty, runId, overwrite],
   );
 
   const built = useMemo(() => buildContentCommand(config), [config]);
@@ -249,7 +293,7 @@ export function GenerateContentPanel({
         <div className="flex items-center gap-1.5">
           <Terminal className="h-3.5 w-3.5 text-primary" aria-hidden />
           <h3 className="text-xs font-semibold">
-            Generate Content ({questions.length})
+            Generate Content ({selection.length})
           </h3>
         </div>
         <button
@@ -287,15 +331,18 @@ export function GenerateContentPanel({
 
         {readiness.map(({ q, r }) => (
           <div
-            key={q.id}
-            data-testid={`readiness-row-${q.id}`}
+            key={q.key}
+            data-testid={`readiness-row-${q.key}`}
             data-content-readiness={r.state}
+            data-source-kind={q.sourceKind}
             className="flex items-start justify-between gap-2 rounded border border-border/50 px-2 py-1"
           >
             <div className="min-w-0">
-              <p className="truncate text-[11px]">#{q.id} {q.question_text}</p>
+              <p className="truncate text-[11px]">
+                {q.reviewKey ? q.reviewKey : `#${q.id}`} {q.text}
+              </p>
               {r.blocking && (
-                <p className="text-[10px] text-red-300" data-testid={`readiness-reason-${q.id}`}>
+                <p className="text-[10px] text-red-300" data-testid={`readiness-reason-${q.key}`}>
                   {r.detail}
                 </p>
               )}
@@ -303,7 +350,7 @@ export function GenerateContentPanel({
             <div className="flex shrink-0 items-center gap-1">
               {r.reviewerFlaggedMissingAsset && (
                 <span
-                  data-testid={`readiness-reviewer-flag-${q.id}`}
+                  data-testid={`readiness-reviewer-flag-${q.key}`}
                   title="Reviewer annotation: a human flagged this row's art. Separate from the computed checks."
                   className="rounded border border-orange-400/50 bg-orange-400/10 px-1 py-0.5 text-[9px] text-orange-300"
                 >
@@ -322,11 +369,11 @@ export function GenerateContentPanel({
           data-testid="generate-content-blocked"
         >
           <p className="text-[10px] text-red-200">
-            {blocked.length} of {questions.length} selected question
-            {questions.length === 1 ? "" : "s"} cannot be published as-is. Fix them,
+            {blocked.length} of {selection.length} selected question
+            {selection.length === 1 ? "" : "s"} cannot be published as-is. Fix them,
             or drop them from this handoff.
           </p>
-          {onDropBlocked && (
+          {onDropBlocked && reviewItems.length === 0 && (
             <Button
               size="sm"
               variant="outline"

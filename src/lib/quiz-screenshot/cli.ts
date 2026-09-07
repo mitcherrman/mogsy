@@ -10,6 +10,7 @@ import { RENDER_STATES, type RenderState } from "./types";
 import type { RenderFormat } from "./types";
 import { POST_TYPES, isPostType, type PostType } from "./content-posts";
 import { DIFFICULTY_TIERS, isDifficultyTier, type DifficultyTier } from "./difficulty";
+import { normalizeReviewKeys } from "./reviewSource";
 
 // Content-first defaults: a content run needs the unanswered hook + the
 // reveal, in the primary mobile-social format. All other states/formats
@@ -25,6 +26,15 @@ export type ScreenshotCliConfig = {
   finalizeRun?: string;
   source:
     | { mode: "question-id"; ids: string[] }
+    /**
+     * CON1 Step 3B — ordered `review_key` identities for a GENERATED source.
+     *
+     * A separate mode rather than a second meaning for `ids`: a stored id and
+     * a review key resolve through different backend routes, and smuggling one
+     * through the other's field is how a source becomes ambiguous. The parser
+     * enforces mutual exclusion below with every other source.
+     */
+    | { mode: "review-key"; keys: string[] }
     | { mode: "pack"; packKey: string; limit: number }
     | { mode: "approved"; limit: number }
     | { mode: "fixture"; path: string; limit: number };
@@ -74,6 +84,8 @@ const VALUE_FLAGS = new Set([
   "--finalize-run",
   "--question-id",
   "--question-ids",
+  "--review-key",
+  "--review-keys",
   "--pack",
   "--fixture",
   "--limit",
@@ -157,13 +169,16 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
   const sources = [
     values.has("--question-id") ? "--question-id" : null,
     values.has("--question-ids") ? "--question-ids" : null,
+    values.has("--review-key") ? "--review-key" : null,
+    values.has("--review-keys") ? "--review-keys" : null,
     values.has("--pack") ? "--pack" : null,
     bools.has("--approved") ? "--approved" : null,
     values.has("--fixture") ? "--fixture" : null,
   ].filter(Boolean) as string[];
   if (sources.length === 0) {
     throw new Error(
-      "No question source. Use one of --question-id, --question-ids, --pack, --approved, --fixture",
+      "No question source. Use one of --question-id, --question-ids, --review-key, " +
+        "--review-keys, --pack, --approved, --fixture",
     );
   }
   if (sources.length > 1) {
@@ -198,6 +213,28 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
       throw new Error(`--question-ids lists ${ids.length} ids — maximum is ${MAX_BATCH_LIMIT}`);
     }
     source = { mode: "question-id", ids };
+  } else if (values.has("--review-key") || values.has("--review-keys")) {
+    // CON1 Step 3B. Validated through `normalizeReviewKeys`, the SAME grammar
+    // the handoff and Admin use, so "accepted in Admin, rejected by the
+    // runner" is not expressible. Order is preserved and never sorted.
+    const raw = values.has("--review-key")
+      ? [values.get("--review-key")!]
+      : values.get("--review-keys")!.split(",");
+    const flag = values.has("--review-key") ? "--review-key" : "--review-keys";
+    const errors: string[] = [];
+    const seen = new Set<string>();
+    const trimmed = raw.map((s2) => s2.trim()).filter(Boolean);
+    for (const k of trimmed) {
+      if (seen.has(k)) throw new Error(`${flag} contains duplicates`);
+      seen.add(k);
+    }
+    const keys = normalizeReviewKeys(trimmed, errors);
+    if (errors.length) throw new Error(`${flag}: ${errors.join(" ")}`);
+    if (!keys.length) throw new Error(`${flag} must contain at least one review key`);
+    if (keys.length > MAX_BATCH_LIMIT) {
+      throw new Error(`${flag} lists ${keys.length} keys — maximum is ${MAX_BATCH_LIMIT}`);
+    }
+    source = { mode: "review-key", keys };
   } else if (values.has("--pack")) {
     source = { mode: "pack", packKey: values.get("--pack")!.trim(), limit };
   } else if (bools.has("--approved")) {
@@ -289,6 +326,8 @@ export const CLI_USAGE = `Usage: npm run quiz:screenshots -- <source> [options]
 Sources (exactly one):
   --question-id <id>            One question by id
   --question-ids <id,id,...>    Multiple explicit ids
+  --review-key <key>            One review-object identity (e.g. mastery:ssm.base.FLASH)
+  --review-keys <key,key,...>   Multiple review keys, in order
   --pack <pack_key>             One quiz pack (bounded by --limit)
   --approved                    Bounded batch of active questions (--limit, default ${DEFAULT_BATCH_LIMIT})
   --fixture <file.json>         Local question dump (offline)

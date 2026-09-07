@@ -1,6 +1,7 @@
 import { getAdminKey } from "@/lib/knowledge-admin/key";
 import { getBackendAuthHeaders, ensureBackendAuthToken } from "@/lib/backend-auth";
 import type { AssetStatus } from "./assetStatus";
+import type { RenderProvenance } from "@/lib/quiz-screenshot/types";
 
 // Optional access: under the Remotion webpack bundle (video export)
 // `import.meta.env` is undefined; the Vite app build is unaffected.
@@ -455,6 +456,42 @@ export type ReviewUniverseRow = {
   dataset_id: string;
   metadata: Record<string, unknown>;
 };
+/**
+ * CON1 Step 3B — the resolver's answer for one review key.
+ *
+ * `item` is shaped like a `ReviewQuestion` (the same field names
+ * `/review/questions/{id}` emits) plus its review identity and provenance, so
+ * the readiness preflight and the Content Factory adapter need no per-source
+ * branch. A refusal is `ok: false` with a machine-readable `code`
+ * (`definition_only`, `renderer_unsupported`, …).
+ */
+export type ReviewUniverseItem = Omit<
+  ReviewQuestion,
+  "id" | "correct_answer" | "is_active" | "review_status" | "favorite_for_shorts" |
+  "missing_asset" | "category" | "format"
+> & {
+  /** A generated instance's id IS its review key — there is no stored row. */
+  id: number | string;
+  review_key: string;
+  source_kind: string;
+  materialization: string;
+  category?: string | null;
+  format?: string;
+  /** Plain text for a generated source; the stored shape is `{type, value}`. */
+  correct_answer?: string | { type?: string; value?: string } | null;
+  /** Pre-resolved, so no text match against the options is needed. */
+  correct_index?: number;
+  choices: Array<string | { label: string; image_path?: string }>;
+  /** Verbatim from the resolver, and the SAME type the runner records in a
+   *  manifest — so a provenance field cannot mean one thing in Admin and
+   *  another in the export. */
+  provenance?: RenderProvenance;
+  missing_asset?: boolean;
+};
+export type ReviewUniverseItemResponse =
+  | { ok: true; item: ReviewUniverseItem }
+  | { ok: false; error: string; code: string; review_key: string; source_kind: string };
+
 export type ReviewUniverseResponse = {
   ok: boolean;
   total: number;
@@ -842,6 +879,17 @@ export const quizApi = {
     return adminRequest<ReviewUniverseResponse>(`/api/quiz/admin/review/universe?${params}`);
   },
   downloadReviewUniverseExport: () => adminDownload("/api/quiz/admin/review/universe/export.csv"),
+  /**
+   * CON1 Step 3B — one review key → the complete, RENDER-SAFE payload.
+   *
+   * Deliberately not the universe list row: that is a discovery projection
+   * with no `presentation`, no computed `asset_status`, no option media and no
+   * `image_path`. Readiness and the Content Factory both need the real thing.
+   */
+  getReviewUniverseItem: (reviewKey: string) =>
+    adminRequest<ReviewUniverseItemResponse>(
+      `/api/quiz/admin/review/universe/item?review_key=${encodeURIComponent(reviewKey)}`,
+    ),
   getReviewPacks: () =>
     adminRequest<ReviewPacksResponse>("/api/quiz/admin/review/packs"),
   getReviewPackQuestions: (packKey: string) =>

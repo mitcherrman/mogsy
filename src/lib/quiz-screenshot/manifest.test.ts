@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildRunManifest, parseRunManifest, RUN_MANIFEST_VERSION } from "./manifest";
+import {
+  buildRunManifest,
+  manifestSourceEntry,
+  parseRunManifest,
+  RUN_MANIFEST_VERSION,
+} from "./manifest";
 
 const fullArgs = {
   run_id: "r1",
@@ -9,6 +14,28 @@ const fullArgs = {
   package_prefix: "daily-x",
   formats: ["mobile-social"],
   question_ids: ["1", "2"],
+  sources: [
+    {
+      id: "1",
+      review_key: null,
+      source_kind: "stored_question",
+      materialization: "stored",
+      family: null,
+      source_version: null,
+      specimen_version: null,
+      data_version: null,
+    },
+    {
+      id: "2",
+      review_key: null,
+      source_kind: "stored_question",
+      materialization: "stored",
+      family: null,
+      source_version: null,
+      specimen_version: null,
+      data_version: null,
+    },
+  ],
   questions: [
     { id: "1", prompt_preview: "Q1?", correct_label: "A1" },
     { id: "2", prompt_preview: "Q2?", correct_label: "A2" },
@@ -114,5 +141,68 @@ describe("CON1 Step 1E — the asset override is auditable from the manifest", (
     const raw = JSON.parse(JSON.stringify(buildRunManifest(fullArgs)));
     delete raw.allow_missing_assets;
     expect(parseRunManifest(raw)?.allow_missing_assets).toBe(false);
+  });
+});
+
+/**
+ * CON1 Step 3B — a run manifest must not lose a GENERATED source's identity.
+ *
+ * A stored id names a durable row anyone can re-read. `mastery:ssm.base.FLASH`
+ * names a record a code enumerator materializes, and that curriculum moves
+ * with the game — so an image recorded only as "question 0" would be
+ * unattributable one patch later.
+ */
+describe("source provenance", () => {
+  it("records a stored question as stored, inventing nothing", () => {
+    expect(manifestSourceEntry({ id: 41 })).toEqual({
+      id: 41,
+      review_key: null,
+      source_kind: "stored_question",
+      materialization: "stored",
+      family: null,
+      source_version: null,
+      specimen_version: null,
+      data_version: null,
+    });
+  });
+
+  it("carries a generated source's review key, kind, family and version", () => {
+    expect(
+      manifestSourceEntry({
+        id: "mastery:ssm.base.BARRIER",
+        review_key: "mastery:ssm.base.BARRIER",
+        source_kind: "mastery_question",
+        provenance: {
+          review_key: "mastery:ssm.base.BARRIER",
+          source_kind: "mastery_question",
+          materialization: "code_generated",
+          family: "mastery",
+          source_version: "mset_bbb59f3c",
+          specimen_version: "ssm.slice.barrier",
+        },
+      }),
+    ).toEqual({
+      id: "mastery:ssm.base.BARRIER",
+      review_key: "mastery:ssm.base.BARRIER",
+      source_kind: "mastery_question",
+      materialization: "code_generated",
+      family: "mastery",
+      source_version: "mset_bbb59f3c",
+      specimen_version: "ssm.slice.barrier",
+      data_version: null,
+    });
+  });
+
+  it("round-trips through parse, and an older manifest parses as no sources", () => {
+    const manifest = buildRunManifest({
+      ...fullArgs,
+      sources: [manifestSourceEntry({ id: 41 })],
+    });
+    expect(parseRunManifest(JSON.parse(JSON.stringify(manifest)))!.sources).toEqual(
+      manifest.sources,
+    );
+    const legacy = { ...JSON.parse(JSON.stringify(manifest)) };
+    delete legacy.sources;
+    expect(parseRunManifest(legacy)!.sources).toEqual([]);
   });
 });

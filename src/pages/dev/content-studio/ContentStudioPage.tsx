@@ -314,13 +314,21 @@ export default function ContentStudioPage() {
       setOverwrite(handoff.overwrite);
       setFeaturedId(null);
 
+      // CON1 Step 3B — each item is hydrated through the route its OWN kind
+      // resolves through. A stored id goes to `/questions/:id`; a review key
+      // goes to `/review-items?key=`, which the local server proxies onto the
+      // backend's canonical materialized-row resolver. One list, two routes,
+      // no guessing from the shape of a string.
       const settled = await Promise.all(
-        handoff.questionIds.map(async (id) => {
+        handoff.items.map(async (item) => {
           try {
-            const { question } = await studioApi.getQuestion(apiBase, id);
-            return { id, question };
+            const { question } =
+              item.kind === "review-key"
+                ? await studioApi.getReviewItem(apiBase, item.value)
+                : await studioApi.getQuestion(apiBase, item.value);
+            return { id: item.value, question };
           } catch (err) {
-            return { id, reason: err instanceof Error ? err.message : String(err) };
+            return { id: item.value, reason: err instanceof Error ? err.message : String(err) };
           }
         }),
       );
@@ -384,21 +392,28 @@ export default function ContentStudioPage() {
       (seed.runId ?? "") !== runId.trim() ||
       seed.overwrite !== overwrite ||
       !sameList(
-        seed.questionIds,
-        selected.map((q) => String(q.id)),
+        seed.items.map((i) => i.value),
+        selected.map((q) => q.review_key ?? String(q.id)),
       )
     );
   }, [handoffState, mode, formats, states, difficulty, runId, overwrite, selected]);
 
   // Build the job request body (shared with server-side validation).
   const jobBody = useMemo(() => {
-    const ids = selected.map((s) => String(s.id));
+    // CON1 Step 3B — a row hydrated from a review key keeps that key as its
+    // identity all the way to the job. `validateStudioJob` refuses a job
+    // carrying both kinds, so the split is made once, here.
+    const reviewKeys = selected
+      .map((s) => s.review_key)
+      .filter((k): k is string => typeof k === "string" && k.length > 0);
+    const ids = selected.filter((s) => !s.review_key).map((s) => String(s.id));
     const overrides: Record<string, string> = {};
     for (const s of selected) {
-      if (s.difficultyOverride) overrides[String(s.id)] = s.difficultyOverride;
+      if (s.difficultyOverride) overrides[s.review_key ?? String(s.id)] = s.difficultyOverride;
     }
     const body: Record<string, unknown> = {
       mode,
+      reviewKeys: reviewKeys.length ? reviewKeys : undefined,
       questionIds:
         mode === "daily-package" && featuredId && reuseFeatured
           ? ids.filter((id) => id !== featuredId)
@@ -545,8 +560,11 @@ export default function ContentStudioPage() {
                           {handoffState.hydrating ? " · loading…" : null}
                         </p>
                         <p className="text-muted-foreground" data-testid="handoff-seed">
-                          {handoffState.handoff.questionIds.length} question
-                          {handoffState.handoff.questionIds.length === 1 ? "" : "s"} ·{" "}
+                          {handoffState.handoff.items.length} question
+                          {handoffState.handoff.items.length === 1 ? "" : "s"}
+                          {handoffState.handoff.reviewKeys.length
+                            ? ` (${handoffState.handoff.reviewKeys.length} generated)`
+                            : ""} ·{" "}
                           {studioModeForHandoff(handoffState.handoff)} ·{" "}
                           {handoffState.handoff.formats.join(", ")}
                           {handoffState.handoff.states.length

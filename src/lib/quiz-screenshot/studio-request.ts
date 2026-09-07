@@ -19,6 +19,7 @@ import {
   type RepeatVariantId,
 } from "./challenge";
 import { MAX_BATCH_LIMIT } from "./cli";
+import { normalizeReviewKeys } from "./reviewSource";
 
 export const STUDIO_MODES = [
   "classic",
@@ -49,6 +50,14 @@ export type StudioJobRequest = {
   /** Ordered question ids. For daily-package: the challenge list (the
    *  featured question is carried separately). */
   questionIds: string[];
+  /**
+   * CON1 Step 3B — ordered GENERATED review-object identities.
+   *
+   * Mutually exclusive with `questionIds`: the runner resolves the two through
+   * different backend routes and its source flags cannot be combined. Empty on
+   * every stored job, so nothing downstream has to change to ignore it.
+   */
+  reviewKeys: string[];
   runId?: string;
   overwrite: boolean;
   formats: string[];
@@ -107,14 +116,45 @@ export function validateStudioJob(body: unknown): StudioJobValidation {
     }
   }
 
-  // Per-mode count rules.
+  // Review keys (CON1 Step 3B): the same grammar and publishability policy the
+  // CLI and the handoff use, imported rather than restated.
+  let reviewKeys: string[] = [];
+  if (b.reviewKeys !== undefined && b.reviewKeys !== null) {
+    if (!Array.isArray(b.reviewKeys)) {
+      errors.push("reviewKeys must be an array of review keys");
+    } else {
+      const keyErrors: string[] = [];
+      reviewKeys = normalizeReviewKeys(b.reviewKeys, keyErrors);
+      errors.push(...keyErrors);
+      if (new Set(reviewKeys).size !== reviewKeys.length) {
+        errors.push("reviewKeys contains duplicates");
+      }
+    }
+  }
+  if (reviewKeys.length && questionIds.length) {
+    errors.push(
+      "A job names one source kind — questionIds and reviewKeys are mutually exclusive",
+    );
+  }
+  if (reviewKeys.length && (m === "multi-question" || m === "daily-package")) {
+    // Both modes address questions BY ID (daily-package names a featured id),
+    // and the runner has no mixed source. Refused rather than half-supported.
+    errors.push(`${m} does not accept review keys yet — use a stored selection`);
+  }
+  if (reviewKeys.length > MAX_BATCH_LIMIT) {
+    errors.push(`Too many questions (max ${MAX_BATCH_LIMIT})`);
+  }
+
+  // Per-mode count rules. A review-key selection satisfies the "at least one"
+  // rule the same way a stored one does.
+  const selectionCount = questionIds.length + reviewKeys.length;
   if (m === "multi-question") {
     if (questionIds.length < CHALLENGE_MIN_QUESTIONS || questionIds.length > CHALLENGE_MAX_QUESTIONS) {
       errors.push(
         `multi-question needs ${CHALLENGE_MIN_QUESTIONS}-${CHALLENGE_MAX_QUESTIONS} questions (got ${questionIds.length})`,
       );
     }
-  } else if (m !== "daily-package" && questionIds.length === 0) {
+  } else if (m !== "daily-package" && selectionCount === 0) {
     errors.push("Select at least one question");
   }
   if (questionIds.length > MAX_BATCH_LIMIT) {
@@ -252,6 +292,7 @@ export function validateStudioJob(body: unknown): StudioJobValidation {
     request: {
       mode: m,
       questionIds,
+      reviewKeys,
       runId,
       overwrite: b.overwrite === true,
       formats,

@@ -30,6 +30,7 @@ import {
   validateStudioJob,
   type StudioJobRequest,
 } from "../../src/lib/quiz-screenshot/studio-request";
+import { reviewKeySupport } from "../../src/lib/quiz-screenshot/reviewSource";
 import { parseFormats } from "../../src/lib/quiz-screenshot/formats";
 import type { RenderState } from "../../src/lib/quiz-screenshot/types";
 import {
@@ -139,7 +140,11 @@ function toGenerationRequest(
   baseUrl: string,
 ): GenerationRequest {
   return {
-    source: { mode: "question-id", ids: req.questionIds },
+    // CON1 Step 3B — the job's source kind, not a guess. `validateStudioJob`
+    // has already refused a job carrying both.
+    source: req.reviewKeys.length
+      ? { mode: "review-key", keys: req.reviewKeys }
+      : { mode: "question-id", ids: req.questionIds },
     states: (req.states as RenderState[] | undefined) ?? ["question", "correct"],
     formats: parseFormats(req.formats.join(",")),
     post:
@@ -243,6 +248,9 @@ async function executeJob(job: StudioJob, renderBaseUrl: string): Promise<void> 
 
 type StudioQuestion = {
   id: string | number;
+  /** CON1 Step 3B — set only for a row hydrated from a review key. */
+  review_key?: string;
+  source_kind?: string;
   prompt: string;
   category: string | null;
   choices: string[];
@@ -262,6 +270,8 @@ function toStudioQuestion(row: ScreenshotSourceQuestion): StudioQuestion {
   const active = (row as Record<string, unknown>).is_active;
   return {
     id: row.id,
+    review_key: typeof row.review_key === "string" ? row.review_key : undefined,
+    source_kind: typeof row.source_kind === "string" ? row.source_kind : undefined,
     prompt: row.question_text ?? "",
     category: row.category ?? null,
     choices: ok ? adapted.choices.map((c) => c.label) : [],
@@ -287,6 +297,43 @@ async function fetchQuestionById(id: string): Promise<StudioQuestion | null> {
   const payload = (await res.json()) as { ok?: boolean; question?: ScreenshotSourceQuestion };
   if (!payload.ok || !payload.question) return null;
   return toStudioQuestion(payload.question);
+}
+
+/**
+ * CON1 Step 3B — hydrate ONE generated review object.
+ *
+ * The sibling of `fetchQuestionById`, against the backend's canonical
+ * materialized-row resolver instead of the stored-detail route. It is a READ:
+ * the workspace never calls generation code, and the resolver never
+ * regenerates — it looks a declared record up.
+ *
+ * The admin key stays in this process, exactly as it does for stored rows.
+ */
+async function fetchReviewItem(
+  key: string,
+): Promise<{ question: StudioQuestion } | { error: string; code: string }> {
+  const api = apiBase();
+  const adminKeyValue = adminKey();
+  if (!api || !adminKeyValue) {
+    throw new Error("Backend not configured (VITE_COMBAT_API_URL / admin key env)");
+  }
+  const res = await fetch(
+    `${api}/api/quiz/admin/review/universe/item?review_key=${encodeURIComponent(key)}`,
+    { headers: { "X-Admin-Key": adminKeyValue } },
+  );
+  if (!res.ok) throw new Error(`Backend ${res.status}`);
+  const payload = (await res.json()) as {
+    ok?: boolean;
+    error?: string;
+    code?: string;
+    item?: ScreenshotSourceQuestion;
+  };
+  if (!payload.ok || !payload.item) {
+    // A refusal is an ANSWER, not a failure: `family:…` is a definition and
+    // the resolver said so with a code. It travels to the operator intact.
+    return { error: payload.error ?? "not found", code: payload.code ?? "not_found" };
+  }
+  return { question: toStudioQuestion(payload.item) };
 }
 
 // ── HTTP plumbing ────────────────────────────────────────────────────────────
@@ -387,6 +434,24 @@ async function handle(
       const q = await fetchQuestionById(id);
       if (!q) sendJson(res, 404, { error: `Question ${id} not found` });
       else sendJson(res, 200, { question: q });
+      return;
+    }
+
+    // GET /review-items?key=<review key> — per-key hydration for a v2 handoff.
+    //
+    // A QUERY parameter, not a path segment: measured against the live bank,
+    // review keys contain "/", spaces, apostrophes and "|", none of which
+    // survive a path segment intact.
+    if (req.method === "GET" && parts[0] === "review-items" && parts.length === 1) {
+      const key = url.searchParams.get("key") ?? "";
+      const support = reviewKeySupport(key);
+      if (!support.ok) {
+        sendJson(res, 400, { error: support.reason, code: support.code });
+        return;
+      }
+      const result = await fetchReviewItem(support.key);
+      if ("error" in result) sendJson(res, 404, result);
+      else sendJson(res, 200, { question: result.question });
       return;
     }
 

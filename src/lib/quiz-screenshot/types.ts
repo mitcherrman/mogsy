@@ -8,6 +8,36 @@
 
 import type { AssetStatus } from "../quiz/assetStatus";
 
+/**
+ * CON1 Step 3B — where a rendered question CAME FROM.
+ *
+ * A stored-id export could get away with recording only the id: the row it
+ * names is durable and re-readable. A generated source cannot. `mastery:ssm.
+ * base.FLASH` is materialized by a code enumerator whose curriculum changes
+ * with the game, so an image whose only recorded identity was "question 0"
+ * would be unattributable a patch later.
+ *
+ * Carried VERBATIM from the backend resolver
+ * (`/api/quiz/admin/review/universe/item` → `item.provenance`) and written
+ * into the run manifest. Nothing derives behaviour from it — it is evidence,
+ * not a switch.
+ */
+export type RenderProvenance = {
+  review_key: string;
+  source_kind: string;
+  /** stored | code_generated | deterministic_specimen | definition | … */
+  materialization?: string;
+  family?: string;
+  /** The source's own version of itself (a mastery set id, a candidate
+   *  version, a generator version). */
+  source_version?: string;
+  /** A specimen/slice identity where the source has one. */
+  specimen_version?: string | null;
+  /** Patch / data version, where the source records one. */
+  data_version?: string | null;
+  [key: string]: unknown;
+};
+
 export type RenderChoice = {
   label: string;
   image_path?: string;
@@ -73,6 +103,17 @@ export type RenderQuestion = {
    * older JSON dump). Absent means "not judged", never "failed".
    */
   asset_status?: AssetStatus;
+  /**
+   * CON1 Step 3B — the durable review-object identity this question came from,
+   * for a GENERATED source. Absent for a stored question loaded by id, whose
+   * `id` already is its durable identity.
+   */
+  review_key?: string;
+  /** The review universe's `source_kind` for this row. Absent for a stored
+   *  question loaded by id. */
+  source_kind?: string;
+  /** Verbatim provenance from the resolver; recorded in the run manifest. */
+  provenance?: RenderProvenance;
 };
 
 export const RENDER_STATES = [

@@ -2,6 +2,10 @@
  * Question acquisition for the screenshot runner. READ-ONLY:
  *  - remote: GET {api}/api/quiz/admin/review/questions (X-Admin-Key), the
  *    same endpoint + env resolution the video prepare script uses. No writes.
+ *  - review-key (CON1 Step 3B): GET {api}/api/quiz/admin/review/universe/item
+ *    ?review_key=… — the backend's canonical materialized-row resolver. It is
+ *    a READ of an already-materialized record; the Content Factory never calls
+ *    generation code, and there is no second generator here.
  *  - fixture: a local JSON dump (array or {questions:[...]}) — fully offline.
  */
 import { readFileSync } from "node:fs";
@@ -110,6 +114,47 @@ export async function loadQuestions(config: ScreenshotCliConfig): Promise<Loaded
       questions: adapted,
       skipped: [...skipped, ...adaptSkipped],
       sourceDescription: `question-id ${src.ids.join(",")}`,
+    };
+  }
+
+  if (src.mode === "review-key") {
+    // CON1 Step 3B. One read per key, in the operator's order — the same shape
+    // as the question-id branch above, against the resolver route instead of
+    // the stored-detail route.
+    //
+    // A refusal is NOT an error: `family:…` is a definition and the resolver
+    // says so with a code. It is reported as a skip naming the reason, exactly
+    // as an unusable stored row is, so a package never comes back short with
+    // nobody knowing why.
+    const rows: ScreenshotSourceQuestion[] = [];
+    const skipped: SkippedSource[] = [];
+    for (const key of src.keys) {
+      const url = `${api}/api/quiz/admin/review/universe/item?review_key=${encodeURIComponent(key)}`;
+      const res = await fetch(url, { headers: { "X-Admin-Key": adminKey } });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(
+          `Quiz admin API ${res.status} for review key ${key}: ${body || res.statusText}`,
+        );
+      }
+      const payload = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        code?: string;
+        item?: ScreenshotSourceQuestion;
+      };
+      if (!payload.ok || !payload.item) {
+        const code = payload.code ? ` (${payload.code})` : "";
+        skipped.push({ id: key, reason: `${payload.error ?? "not found"}${code}` });
+        continue;
+      }
+      rows.push(payload.item);
+    }
+    const { adapted, skipped: adaptSkipped } = adaptScreenshotQuestions(rows);
+    return {
+      questions: adapted,
+      skipped: [...skipped, ...adaptSkipped],
+      sourceDescription: `review-key ${src.keys.join(",")}`,
     };
   }
 

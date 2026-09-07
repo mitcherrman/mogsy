@@ -64,7 +64,16 @@ describe("handoff from an Admin selection", () => {
     const h = ok(contentHandoffFromCommandConfig(CONFIG));
     expect(h).toEqual({
       version: CONTENT_HANDOFF_VERSION,
+      // CON1 Step 3B — `items` is the canonical ordered selection; the two
+      // per-kind lists below are derived from it. A stored-only selection is
+      // still v1, so nothing about the wire form changed.
+      items: [
+        { kind: "question-id", value: "41" },
+        { kind: "question-id", value: "7" },
+        { kind: "question-id", value: "103" },
+      ],
       questionIds: ["41", "7", "103"],
+      reviewKeys: [],
       formats: ["mobile-social", "square"],
       post: null,
       states: ["question", "correct"],

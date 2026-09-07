@@ -49,6 +49,7 @@ import {
 } from "../../src/lib/quiz-screenshot/metadata";
 import {
   buildRunManifest,
+  manifestSourceEntry,
   type ManifestSlide,
   type RunManifest,
   type StudioMode,
@@ -650,6 +651,8 @@ export async function runGeneration(
     package_prefix: config.packagePrefix ?? null,
     formats: config.formats.map((f) => f.key),
     question_ids: questions.map((q) => q.id),
+    // CON1 Step 3B — generated sources stop losing their identity here.
+    sources: questions.map(manifestSourceEntry),
     questions: questions.map((q) => ({
       id: q.id,
       prompt_preview: promptPreview(q.question_text),

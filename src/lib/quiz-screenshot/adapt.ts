@@ -7,7 +7,7 @@
  * video pipeline flattens to strings. Pure module: no fetch, no fs.
  */
 import type { AssetStatus } from "../quiz/assetStatus";
-import type { RenderChoice, RenderQuestion } from "./types";
+import type { RenderChoice, RenderProvenance, RenderQuestion } from "./types";
 
 export type ScreenshotSourceQuestion = {
   id: number | string;
@@ -40,6 +40,18 @@ export type ScreenshotSourceQuestion = {
    */
   asset_status?: AssetStatus | null;
   image_path?: string | null;
+  /**
+   * CON1 Step 3B — a GENERATED source's durable review-object identity, and
+   * the provenance the resolver returned with it. Present only on rows that
+   * came from `/api/quiz/admin/review/universe/item`; a stored review row has
+   * neither, and gets neither.
+   *
+   * Carried through untouched, like `presentation` and `asset_status` above:
+   * the adapter's job is to reshape a question, never to author identity.
+   */
+  review_key?: string | null;
+  source_kind?: string | null;
+  provenance?: RenderProvenance | null;
 };
 
 export type SkippedSource = { id: number | string; reason: string };
@@ -107,6 +119,11 @@ export function adaptScreenshotQuestion(q: ScreenshotSourceQuestion): RenderQues
     // Verbatim, or absent. The harness has no other source of asset truth.
     asset_status:
       q.asset_status && typeof q.asset_status === "object" ? q.asset_status : undefined,
+    // Verbatim, or absent. A stored row carries none of these three.
+    review_key: typeof q.review_key === "string" && q.review_key ? q.review_key : undefined,
+    source_kind: typeof q.source_kind === "string" && q.source_kind ? q.source_kind : undefined,
+    provenance:
+      q.provenance && typeof q.provenance === "object" ? q.provenance : undefined,
   };
 }
 

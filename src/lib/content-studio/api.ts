@@ -19,6 +19,12 @@ export const DEFAULT_STUDIO_API_BASE = "http://127.0.0.1:8790/api/dev/content-st
 
 export type StudioQuestion = {
   id: string | number;
+  /**
+   * CON1 Step 3B — the durable review-object identity, present only on a row
+   * hydrated from a review key. A stored row has none: its id IS its identity.
+   */
+  review_key?: string;
+  source_kind?: string;
   prompt: string;
   category: string | null;
   choices: string[];
@@ -91,6 +97,19 @@ export const studioApi = {
   health: (base: string) => request<StudioHealth>(base, "/health"),
   getQuestion: (base: string, id: string) =>
     request<{ question: StudioQuestion }>(base, `/questions/${encodeURIComponent(id)}`),
+  /**
+   * CON1 Step 3B — hydrate one GENERATED review object.
+   *
+   * The sibling of `getQuestion`, and deliberately not a widening of it: a
+   * stored id and a review key resolve through different backend routes, and
+   * one method taking "an id or maybe a key" is how a source becomes
+   * ambiguous. A query parameter, because review keys contain "/" and spaces.
+   */
+  getReviewItem: (base: string, key: string) =>
+    request<{ question: StudioQuestion }>(
+      base,
+      `/review-items?key=${encodeURIComponent(key)}`,
+    ),
   createJob: (base: string, body: unknown) =>
     request<{ job_id: string; state: string }>(base, "/jobs", {
       method: "POST",
