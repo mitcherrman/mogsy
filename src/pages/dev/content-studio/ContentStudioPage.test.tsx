@@ -1,14 +1,19 @@
 /**
- * Content Studio UI behavior: search, selection/ordering, mode switching,
- * Generate enablement, and job progress rendering — against a mocked studio
+ * Content Workspace UI behaviour: handoff intake, selection/ordering, mode
+ * switching, Generate enablement, and job progress — against a mocked local
  * server (no network, no generation).
+ *
+ * CON1 Step 3A2 rewrote this file. It used to drive every case through the
+ * page's own corpus search; that search is gone, so each case now arrives the
+ * way an operator actually does — through an Admin handoff. The behaviours
+ * being held are the same ones as before, minus discovery.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ContentStudioPage from "./ContentStudioPage";
 
-const QUESTIONS = [
-  {
+const QUESTIONS: Record<string, unknown> = {
+  "101": {
     id: "101",
     prompt: "Which item grants the most armor?",
     category: "items",
@@ -21,7 +26,7 @@ const QUESTIONS = [
     compatible: true,
     incompatible_reason: null,
   },
-  {
+  "102": {
     id: "102",
     prompt: "Which item grants haste?",
     category: "items",
@@ -34,20 +39,7 @@ const QUESTIONS = [
     compatible: true,
     incompatible_reason: null,
   },
-  {
-    id: "103",
-    prompt: "Broken question",
-    category: "items",
-    choices: [],
-    correct_index: null,
-    correct_label: null,
-    content_difficulty: null,
-    question_type: null,
-    is_active: true,
-    compatible: false,
-    incompatible_reason: "needs at least 2 choices (got 0)",
-  },
-];
+};
 
 let jobState = "running";
 
@@ -68,7 +60,11 @@ function mockFetch(url: string): Promise<Response> {
       active_job: null,
     });
   }
-  if (url.includes("/questions")) return respond({ questions: QUESTIONS });
+  const single = url.match(/\/questions\/([^/?]+)$/);
+  if (single) {
+    const q = QUESTIONS[single[1]];
+    return q ? respond({ question: q }) : respond({ error: "not found" }, 404);
+  }
   if (url.includes("/jobs/job-1")) {
     return respond({
       id: "job-1",
@@ -95,82 +91,75 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
-async function searchAndAdd(ids: string[]) {
-  fireEvent.change(screen.getByPlaceholderText(/Search text or exact ID/i), {
-    target: { value: "item" },
-  });
-  fireEvent.submit(screen.getByPlaceholderText(/Search text or exact ID/i).closest("form")!);
-  await waitFor(() => expect(screen.getByTestId("search-results").textContent).toContain("#101"));
-  for (const id of ids) {
-    fireEvent.click(screen.getByLabelText(`Add question ${id}`));
-  }
+/** Open the workspace the way Admin opens it. */
+function openWith(ids: string, extra = "&formats=mobile-social&states=question,correct") {
+  window.history.replaceState({}, "", `/dev/content-studio?hv=1&ids=${ids}${extra}`);
+  return render(<ContentStudioPage />);
 }
 
+const selectedText = () => screen.getByTestId("selected-list").textContent ?? "";
+
 describe("ContentStudioPage", () => {
-  it("searches, shows compatibility, and blocks adding incompatible questions", async () => {
-    render(<ContentStudioPage />);
-    await searchAndAdd(["101"]);
-    const results = screen.getByTestId("search-results");
-    expect(results.textContent).toContain("needs at least 2 choices");
-    expect((screen.getByLabelText("Add question 103") as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByTestId("selected-list").textContent).toContain("#101");
+  it("opens straight into the workspace with the handed-off selection", async () => {
+    openWith("101,102");
+    await waitFor(() => expect(selectedText()).toContain("#101"));
+    expect(selectedText()).toContain("#102");
   });
 
-  it("supports ordering and removal of selected questions", async () => {
-    render(<ContentStudioPage />);
-    await searchAndAdd(["101", "102"]);
-    const list = screen.getByTestId("selected-list");
-    expect(list.textContent!.indexOf("#101")).toBeLessThan(list.textContent!.indexOf("#102"));
+  it("supports ordering and removal of the selected questions", async () => {
+    openWith("101,102");
+    await waitFor(() => expect(selectedText()).toContain("#102"));
+    expect(selectedText().indexOf("#101")).toBeLessThan(selectedText().indexOf("#102"));
     fireEvent.click(screen.getAllByLabelText("Move down")[0]);
-    expect(list.textContent!.indexOf("#102")).toBeLessThan(list.textContent!.indexOf("#101"));
+    expect(selectedText().indexOf("#102")).toBeLessThan(selectedText().indexOf("#101"));
     fireEvent.click(screen.getByLabelText("Remove 102"));
-    expect(list.textContent).not.toContain("#102");
+    expect(selectedText()).not.toContain("#102");
   });
 
   it("disables Generate with a reason until the request validates per mode", async () => {
     render(<ContentStudioPage />);
     await waitFor(() => expect(screen.getByText("backend ready")).toBeTruthy());
-    // No selection yet.
+    // Nothing handed off yet.
     expect((screen.getByTestId("generate-button") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId("disabled-reason").textContent).toMatch(/at least one/i);
+    cleanup();
+
     // Multi-question needs 2-10.
+    openWith("101");
+    await waitFor(() => expect(selectedText()).toContain("#101"));
     fireEvent.click(screen.getByRole("radio", { name: /Multi-question challenge/i }));
-    await searchAndAdd(["101"]);
     expect((screen.getByTestId("generate-button") as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByTestId("disabled-reason").textContent).toMatch(/2-10/);
-    fireEvent.click(screen.getByLabelText("Add question 102"));
-    await waitFor(() =>
-      expect((screen.getByTestId("generate-button") as HTMLButtonElement).disabled).toBe(false),
-    );
   });
 
   it("daily-package requires a featured (★) question", async () => {
-    render(<ContentStudioPage />);
+    openWith("101,102");
+    await waitFor(() => expect(selectedText()).toContain("#102"));
     fireEvent.click(screen.getByRole("radio", { name: /Daily package/i }));
-    await searchAndAdd(["101", "102"]);
     expect((screen.getByTestId("generate-button") as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByLabelText("Feature question 101"));
-    // 101 featured + reused, 102 challenge → still below the 2-question
-    // challenge minimum needs one more... featured reuse counts, so 102 + ★ = 2 → valid.
     await waitFor(() =>
       expect((screen.getByTestId("generate-button") as HTMLButtonElement).disabled).toBe(false),
     );
   });
 
   it("starts a job and renders its progress log", async () => {
-    render(<ContentStudioPage />);
-    await searchAndAdd(["101"]);
+    openWith("101");
+    await waitFor(() => expect(selectedText()).toContain("#101"));
     await waitFor(() =>
       expect((screen.getByTestId("generate-button") as HTMLButtonElement).disabled).toBe(false),
     );
     fireEvent.click(screen.getByTestId("generate-button"));
-    await waitFor(() => expect(screen.getByTestId("job-log").textContent).toContain("mobile-social question"));
+    await waitFor(() =>
+      expect(screen.getByTestId("job-log").textContent).toContain("mobile-social question"),
+    );
     expect(screen.getByText("running")).toBeTruthy();
   });
 
-  it("shows an offline notice when the studio server is unreachable", async () => {
+  it("shows an offline notice when the workspace server is unreachable", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => Promise.reject(new Error("ECONNREFUSED"))),

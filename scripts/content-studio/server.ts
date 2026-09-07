@@ -289,34 +289,6 @@ async function fetchQuestionById(id: string): Promise<StudioQuestion | null> {
   return toStudioQuestion(payload.question);
 }
 
-async function searchQuestions(params: URLSearchParams): Promise<StudioQuestion[]> {
-  const api = apiBase();
-  const key = adminKey();
-  if (!api || !key) throw new Error("Backend not configured (VITE_COMBAT_API_URL / admin key env)");
-  const limit = Math.min(Math.max(Number(params.get("limit") ?? 25) || 25, 1), 50);
-  const search = (params.get("search") ?? "").trim().toLowerCase().slice(0, 120);
-  const category = (params.get("category") ?? "").trim().toLowerCase().slice(0, 60);
-  const pack = (params.get("pack") ?? "").trim().slice(0, 80);
-
-  const upstream = new URLSearchParams({ is_active: "1", page_size: "100" });
-  if (pack && /^[A-Za-z0-9._-]+$/.test(pack)) upstream.set("pack_key", pack);
-  const res = await fetch(`${api}/api/quiz/admin/review/questions?${upstream}`, {
-    headers: { "X-Admin-Key": key },
-  });
-  if (!res.ok) throw new Error(`Backend ${res.status}`);
-  const payload = (await res.json()) as { questions?: ScreenshotSourceQuestion[] };
-  const rows = payload.questions ?? [];
-  const out: StudioQuestion[] = [];
-  for (const row of rows) {
-    const text = (row.question_text ?? "").toLowerCase();
-    if (search && !text.includes(search) && String(row.id) !== search) continue;
-    if (category && (row.category ?? "").toLowerCase() !== category) continue;
-    out.push(toStudioQuestion(row));
-    if (out.length >= limit) break;
-  }
-  return out;
-}
-
 // ── HTTP plumbing ────────────────────────────────────────────────────────────
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -397,24 +369,15 @@ async function handle(
       return;
     }
 
-    // GET /questions[?id=|search=|category=|pack=|limit=]
-    if (req.method === "GET" && parts[0] === "questions" && parts.length === 1) {
-      const id = url.searchParams.get("id");
-      if (id !== null) {
-        if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) {
-          sendJson(res, 400, { error: "Invalid question id" });
-          return;
-        }
-        const q = await fetchQuestionById(id);
-        if (!q) sendJson(res, 404, { error: `Question ${id} not found` });
-        else sendJson(res, 200, { question: q });
-        return;
-      }
-      sendJson(res, 200, { questions: await searchQuestions(url.searchParams) });
-      return;
-    }
-
-    // GET /questions/:id
+    // GET /questions/:id — per-question hydration for an Admin handoff.
+    //
+    // CON1 Step 3A2: the corpus SEARCH route that used to live beside this one
+    // (`GET /questions?search=&category=&pack=&limit=`) is gone. It existed
+    // only to feed Studio's own discovery UI, and those rows carried no
+    // `presentation` and no computed `asset_status` — so a question found here
+    // could be generated when Admin Quiz Review would have blocked it. There
+    // is now exactly one GUI discovery surface, and this route resolves ids it
+    // already chose.
     if (req.method === "GET" && parts[0] === "questions" && parts.length === 2) {
       const id = parts[1];
       if (!/^[A-Za-z0-9_-]{1,32}$/.test(id)) {

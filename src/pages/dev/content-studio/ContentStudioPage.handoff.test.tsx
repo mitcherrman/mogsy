@@ -13,12 +13,14 @@
  *      the workspace owns the final generation configuration;
  *   6. reorder, post-mode/challenge composition, daily-package, featured,
  *      preview, generate and run browsing are all still here;
- *   7. the legacy corpus search is DEMOTED, not removed.
+ *   7. the legacy corpus search is GONE, and nothing reaches its server route.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ContentStudioPage from "./ContentStudioPage";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { serializeContentHandoff, validateContentHandoff } from "@/lib/content-handoff/schema";
 import { isFailure } from "@/lib/result-narrowing";
 
@@ -185,10 +187,10 @@ describe("a workspace opened from an Admin handoff", () => {
     openWith("?hv=1&ids=101&formats=billboard");
     await waitFor(() => expect(screen.getByTestId("handoff-errors")).toBeTruthy());
     expect(screen.getByTestId("handoff-errors").textContent).toMatch(/Unknown format "billboard"/);
-    // Nothing was seeded, and the legacy fallback is re-opened so the operator
+    // Nothing was seeded, and the paste intake is still there so the operator
     // is not stranded on a dead link.
     expect(screen.queryByTestId("handoff-banner")).toBeNull();
-    expect((screen.getByTestId("legacy-search") as HTMLElement).hidden).toBe(false);
+    expect(screen.getByTestId("handoff-import-input")).toBeTruthy();
   });
 
   it("refuses a URL carrying a secret or a gate override", async () => {
@@ -345,30 +347,75 @@ describe("the specialized workspace capabilities survive", () => {
   });
 });
 
-describe("legacy discovery is demoted, not removed", () => {
-  it("is collapsed by default when a handoff arrived, and still reachable", async () => {
+describe("legacy discovery is GONE (CON1 Step 3A2)", () => {
+  it("has no corpus-search UI, under a handoff or without one", async () => {
     openWith("?hv=1&ids=101&formats=mobile-social&states=question");
     await waitFor(() => expect(selectedText()).toContain("#101"));
-    const legacy = screen.getByTestId("legacy-search");
-    expect(legacy.hidden).toBe(true);
-    expect(screen.getByTestId("legacy-search-toggle").textContent).toMatch(/deprecated/i);
-    fireEvent.click(screen.getByTestId("legacy-search-toggle"));
-    expect(screen.getByTestId("legacy-search").hidden).toBe(false);
-    // ...and it still works.
-    fireEvent.submit(screen.getByPlaceholderText(/Search text or exact ID/i).closest("form")!);
-    await waitFor(() =>
-      expect(screen.getByTestId("search-results").textContent).toContain("#102"),
+    for (const id of ["legacy-search", "legacy-search-toggle", "search-results"]) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+    expect(screen.queryByPlaceholderText(/Search text or exact ID/i)).toBeNull();
+    expect(screen.queryByPlaceholderText(/Category/i)).toBeNull();
+    cleanup();
+
+    render(<ContentStudioPage />);
+    for (const id of ["legacy-search", "legacy-search-toggle", "search-results"]) {
+      expect(screen.queryByTestId(id)).toBeNull();
+    }
+    expect(screen.queryByPlaceholderText(/Search text or exact ID/i)).toBeNull();
+  });
+
+  it("cannot reach the removed search route — it is never requested", async () => {
+    render(<ContentStudioPage />);
+    await waitFor(() => expect(screen.getByTestId("handoff-empty")).toBeTruthy());
+    fireEvent.change(screen.getByTestId("handoff-import-input"), {
+      target: { value: "http://127.0.0.1:5199/dev/content-studio?hv=1&ids=101" },
+    });
+    fireEvent.click(screen.getByTestId("handoff-import-button"));
+    await waitFor(() => expect(selectedText()).toContain("#101"));
+    const calls = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map(String);
+    expect(calls.some((c) => c.includes("search="))).toBe(false);
+    expect(calls.some((c) => c.includes("category="))).toBe(false);
+    // The per-id hydration route IS still used — that is the one that stays.
+    expect(calls.some((c) => c.includes("/questions/101"))).toBe(true);
+    expect(requestedIds).toEqual(["101"]);
+  });
+
+  it("sends an operator with no handoff to Admin Quiz Review, not to a search box", () => {
+    render(<ContentStudioPage />);
+    const empty = screen.getByTestId("handoff-empty");
+    expect(empty.textContent).toMatch(/does not search the corpus/i);
+    expect(screen.getByTestId("handoff-admin-link").getAttribute("href")).toBe(
+      "/admin/quiz-content",
     );
+    // The paste intake is the other way in, and it is present.
+    expect(screen.getByTestId("handoff-import-input")).toBeTruthy();
   });
 
-  it("stays open on the direct local path, where there is no handoff", () => {
-    render(<ContentStudioPage />);
-    expect((screen.getByTestId("legacy-search") as HTMLElement).hidden).toBe(false);
-    expect(screen.getByTestId("handoff-empty").textContent).toMatch(/Admin Quiz Review/);
+  it("keeps no corpus-search method on the local API client", async () => {
+    const api = await import("@/lib/content-studio/api");
+    expect("searchQuestions" in api.studioApi).toBe(false);
+    expect(typeof api.studioApi.getQuestion).toBe("function");
   });
 
-  it("names Admin Quiz Review as the surface that owns discovery", () => {
-    render(<ContentStudioPage />);
-    expect(screen.getByTestId("legacy-search").textContent).toMatch(/Prefer Admin Quiz Review/);
+  it("leaves no frontend consumer of the removed server route", () => {
+    // Proved against the source, not asserted from memory: the route was
+    // deleted only because nothing but the search UI called it.
+    const root = path.resolve(__dirname, "../../..");
+    const files = [
+      "lib/content-studio/api.ts",
+      "pages/dev/content-studio/ContentStudioPage.tsx",
+    ];
+    for (const rel of files) {
+      const code = readFileSync(path.join(root, rel), "utf8");
+      expect(code).not.toMatch(/searchQuestions/);
+      expect(code).not.toMatch(/questions\?search=/);
+    }
+    const server = readFileSync(
+      path.resolve(root, "../scripts/content-studio/server.ts"),
+      "utf8",
+    );
+    expect(server).not.toMatch(/async function searchQuestions/);
+    expect(server).toMatch(/fetchQuestionById/); // per-id hydration stays
   });
 });

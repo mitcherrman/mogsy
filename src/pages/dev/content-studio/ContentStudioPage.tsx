@@ -1,6 +1,10 @@
 /**
  * /dev/content-studio — the local Content Workspace.
  *
+ * (The route and filenames still say "content-studio"; the surface is named
+ * Content Workspace. Renaming the files would be churn with no behavioural
+ * gain, and the route is a local dev URL operators have bookmarked.)
+ *
  * CON1 Step 3A — WHAT THIS PAGE IS NOW
  * It is no longer a second place to search the question corpus. Discovery,
  * filtering, readiness and selection belong to Admin Quiz Review, which hands
@@ -17,13 +21,16 @@
  * `validateContentHandoff`, and everything it accepts is a legal
  * `validateStudioJob` seed.
  *
- * THE LEGACY SEARCH IS DEPRECATED, NOT DELETED
- * Studio's own search has no `presentation`, no computed `asset_status` and
+ * THERE IS NO CORPUS SEARCH HERE (CON1 Step 3A2)
+ * Studio's own search had no `presentation`, no computed `asset_status` and
  * therefore no readiness — an operator searching here could select and
- * generate a question Admin would have refused. It is demoted to a collapsed
- * fallback section (default-collapsed whenever a handoff arrived) so the
- * direct local path and the CLI keep working while the operator flow moves to
- * Admin. Nothing about generation, runs or export changed.
+ * generate a question Admin Quiz Review would have blocked. It was REMOVED
+ * rather than taught readiness, which would have duplicated the very authority
+ * CON1 exists to keep single. With no handoff this page offers a link back to
+ * Admin and the paste intake; it does not fall back to discovery.
+ *
+ * The Content Factory CLI keeps every source mode it had. The restriction is
+ * on the operator GUI, not on the engine.
  *
  * CONFIGURATION OWNERSHIP: Admin SEEDS, this workspace OWNS the final
  * generation configuration. Everything the handoff carries is prefilled and
@@ -39,20 +46,7 @@
  * the loopback studio server is running. No credentials in the browser.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  Inbox,
-  Loader2,
-  Play,
-  Plus,
-  RefreshCw,
-  Search,
-  Star,
-  X,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Inbox, Play, RefreshCw, Star, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -98,6 +92,11 @@ const MODE_INFO: Record<StudioModeKey, { title: string; blurb: string }> = {
 };
 
 type SelectedQuestion = StudioQuestion & { difficultyOverride: DifficultyTier | "" };
+
+/** Admin Quiz Review — the ONE GUI discovery surface, and where a handoff
+ *  comes from. A relative path: on the loopback dev server it points at the
+ *  same route the deployed Admin serves. */
+const ADMIN_QUIZ_CONTENT_PATH = "/admin/quiz-content";
 
 /** Where the current seed came from — the URL Admin linked, or a paste. */
 type HandoffOrigin = "url" | "import";
@@ -228,18 +227,6 @@ export default function ContentStudioPage() {
   const [handoffState, setHandoffState] = useState<HandoffState | null>(null);
   const [handoffErrors, setHandoffErrors] = useState<string[]>([]);
   const [importText, setImportText] = useState("");
-  // The legacy corpus search is a deprecated fallback: collapsed by default the
-  // moment a handoff exists, because rediscovering the same questions here is
-  // exactly what Step 3A removes from the operator flow.
-  const [showLegacySearch, setShowLegacySearch] = useState(!urlHasHandoff);
-
-  // Search
-  const [searchText, setSearchText] = useState("");
-  const [searchCategory, setSearchCategory] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [results, setResults] = useState<StudioQuestion[]>([]);
-
   // Selection
   const [selected, setSelected] = useState<SelectedQuestion[]>([]);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
@@ -289,41 +276,6 @@ export default function ContentStudioPage() {
     }
   }, [apiBase]);
 
-  const runSearch = async () => {
-    setSearching(true);
-    setSearchError(null);
-    try {
-      const idLike = /^[0-9]+$/.test(searchText.trim());
-      if (idLike && searchText.trim()) {
-        try {
-          const { question } = await studioApi.getQuestion(apiBase, searchText.trim());
-          setResults([question]);
-          return;
-        } catch {
-          /* fall through to text search */
-        }
-      }
-      const { questions } = await studioApi.searchQuestions(apiBase, {
-        search: searchText.trim() || undefined,
-        category: searchCategory.trim() || undefined,
-        limit: 25,
-      });
-      setResults(questions);
-    } catch (err) {
-      setSearchError(err instanceof Error ? err.message : String(err));
-      setResults([]);
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const addQuestion = (q: StudioQuestion) => {
-    setSelected((prev) =>
-      prev.some((p) => String(p.id) === String(q.id))
-        ? prev
-        : [...prev, { ...q, difficultyOverride: "" }],
-    );
-  };
   const removeQuestion = (id: string) => {
     setSelected((prev) => prev.filter((p) => String(p.id) !== id));
     if (featuredId === id) setFeaturedId(null);
@@ -397,7 +349,6 @@ export default function ContentStudioPage() {
     const parsed = decodeContentHandoffParams(urlSearch);
     if (isFailure(parsed)) {
       setHandoffErrors(parsed.errors);
-      setShowLegacySearch(true);
       return;
     }
     void applyHandoff(parsed.handoff, "url");
@@ -412,7 +363,6 @@ export default function ContentStudioPage() {
       return;
     }
     setImportText("");
-    setShowLegacySearch(false);
     void applyHandoff(parsed.handoff, "import");
   };
 
@@ -527,7 +477,7 @@ export default function ContentStudioPage() {
   };
 
   const disabledReason = !health
-    ? "Studio server unreachable — start it with: npm run content-studio"
+    ? "Workspace server unreachable — start it with: npm run content-studio"
     : jobRunning
       ? "A generation job is already running"
       : isFailure(validation)
@@ -538,11 +488,11 @@ export default function ContentStudioPage() {
     <div className="min-h-screen bg-background p-4 text-foreground md:p-6">
       <div className="mx-auto max-w-7xl space-y-4">
         <header className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-extrabold">Content Post Studio</h1>
+          <h1 className="text-2xl font-extrabold">Content Workspace</h1>
           <Badge variant="outline">local</Badge>
           <div className="ml-auto flex items-center gap-2">
             <Input
-              aria-label="Studio API base"
+              aria-label="Workspace API base"
               className="w-80 text-xs"
               value={apiBase}
               onChange={(e) => setApiBase(e.target.value)}
@@ -561,7 +511,7 @@ export default function ContentStudioPage() {
         </header>
         {healthError ? (
           <p className="text-sm text-amber-400">
-            Studio server unreachable ({healthError}). Start it with{" "}
+            Workspace server unreachable ({healthError}). Start it with{" "}
             <code className="rounded bg-muted px-1">npm run content-studio</code>.
           </p>
         ) : null}
@@ -625,15 +575,33 @@ export default function ContentStudioPage() {
                         </p>
                       </div>
                     ) : (
-                      <div className="rounded-md border border-border p-2 text-xs" data-testid="handoff-empty">
+                      <div className="rounded-md border border-border p-3 text-xs" data-testid="handoff-empty">
                         <p className="flex items-center gap-1 font-bold">
                           <Inbox className="h-3 w-3" /> No handoff loaded
                         </p>
-                        <p className="text-muted-foreground">
-                          Discover, review and select questions in Admin Quiz Review, then
-                          use <span className="font-semibold">Open Content Workspace</span> or
-                          paste its config below.
+                        <p className="mt-1 text-muted-foreground">
+                          This workspace composes, renders and exports a selection Admin
+                          Quiz Review has already reviewed. It does not search the corpus —
+                          Admin is the one place that can see readiness, so it is the one
+                          place questions are chosen.
                         </p>
+                        <ol className="mt-2 list-decimal space-y-0.5 pl-4 text-muted-foreground">
+                          <li>
+                            Find and select questions in{" "}
+                            <a
+                              className="font-semibold text-cyan-400 underline"
+                              href={ADMIN_QUIZ_CONTENT_PATH}
+                              data-testid="handoff-admin-link"
+                            >
+                              Admin Quiz Review
+                            </a>
+                          </li>
+                          <li>
+                            Press <span className="font-semibold">Generate Content</span>, then{" "}
+                            <span className="font-semibold">Open Content Workspace</span>
+                          </li>
+                          <li>Or copy its config there and paste it below</li>
+                        </ol>
                       </div>
                     )}
 
@@ -735,94 +703,6 @@ export default function ContentStudioPage() {
                     ))}
                   </div>
 
-                  {/* ── Legacy discovery — DEPRECATED (CON1 Step 3A) ──
-                      Admin Quiz Review owns discovery: it has the presentation
-                      projection, the computed asset status and the readiness
-                      preflight, none of which exist here. Kept as a fallback so
-                      the direct local path still works; not the intended flow. */}
-                  <div className="rounded-md border border-dashed border-border">
-                    <button
-                      type="button"
-                      data-testid="legacy-search-toggle"
-                      aria-expanded={showLegacySearch}
-                      onClick={() => setShowLegacySearch((v) => !v)}
-                      className="flex w-full items-center gap-1 p-2 text-left text-xs font-semibold text-muted-foreground"
-                    >
-                      {showLegacySearch ? (
-                        <ChevronDown className="h-3 w-3" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3" />
-                      )}
-                      Legacy search (deprecated — no readiness here)
-                    </button>
-                    <div
-                      className="space-y-3 p-2 pt-0"
-                      data-testid="legacy-search"
-                      hidden={!showLegacySearch}
-                    >
-                      <p className="text-[10px] text-muted-foreground">
-                        This search cannot see presentation completeness, computed asset
-                        health or readiness, so it can offer a question Admin would refuse.
-                        Prefer Admin Quiz Review.
-                      </p>
-                    <form
-                      className="flex gap-2"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        void runSearch();
-                      }}
-                    >
-                      <Input
-                        placeholder="Search text or exact ID…"
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                      />
-                      <Input
-                        placeholder="Category"
-                        className="w-28"
-                        value={searchCategory}
-                        onChange={(e) => setSearchCategory(e.target.value)}
-                      />
-                      <Button type="submit" size="sm" disabled={searching}>
-                        {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                      </Button>
-                    </form>
-                    {searchError ? <p className="text-xs text-red-400">{searchError}</p> : null}
-                    <div className="max-h-64 space-y-1 overflow-auto" data-testid="search-results">
-                      {results.length === 0 && !searching ? (
-                        <p className="text-xs text-muted-foreground">
-                          No results yet — search by prompt text or a question ID.
-                        </p>
-                      ) : null}
-                      {results.map((q) => (
-                        <div key={String(q.id)} className="flex items-start gap-2 rounded-md border border-border p-2 text-xs">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold">
-                              #{q.id} {q.category ? <span className="text-muted-foreground">· {q.category}</span> : null}{" "}
-                              {q.content_difficulty ? <Badge variant="outline">{q.content_difficulty}</Badge> : null}{" "}
-                              {!q.compatible ? (
-                                <Badge className="bg-red-500/20 text-red-300">{q.incompatible_reason}</Badge>
-                              ) : null}
-                            </p>
-                            <p className="truncate">{q.prompt}</p>
-                            <p className="text-muted-foreground">
-                              ✓ {q.correct_label ?? "?"} · {q.choices.length} choices
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={!q.compatible}
-                            onClick={() => addQuestion(q)}
-                            aria-label={`Add question ${q.id}`}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
 

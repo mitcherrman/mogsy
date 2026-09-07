@@ -33,7 +33,7 @@ already-running Vite instead of starting one).
 
 ## What it does
 
-- **Question search/selection** — by exact ID, prompt text, or category
+- **Question intake** — an Admin Quiz Review handoff (URL or pasted config); ids are hydrated one at a time. There is no corpus search here (CON1 Step 3A2)
   (active questions via the admin review API, proxied server-side). Results
   show prompt, choices, correct answer, category, difficulty metadata, and
   social-render compatibility. Select many, reorder (challenge order = list
@@ -89,7 +89,6 @@ directory-scan fallback). Manifests never contain secrets.
 ## API (loopback only)
 
 `GET  /api/dev/content-studio/health`
-`GET  /api/dev/content-studio/questions?search=&category=&pack=&limit=` · `?id=`
 `GET  /api/dev/content-studio/questions/:id`
 `POST /api/dev/content-studio/jobs` → `GET /jobs/:id`
 `GET  /api/dev/content-studio/runs` · `/runs/:runId` · `/runs/:runId/zip`
@@ -107,7 +106,7 @@ generation runs in-process (no shell, no subprocess arguments).
   8790 isn't taken (`CONTENT_STUDIO_PORT` to change).
 - **"backend not configured"** — set `KNOWLEDGE_ADMIN_KEY` (or `ADMIN_KEY`)
   and `VITE_COMBAT_API_URL` in the studio server's environment.
-- **Question search 500** — backend not running at the configured URL, or
+- **Question hydration 500** — backend not running at the configured URL, or
   wrong admin key.
 - **missing-asset failures** — the backend serving `assets/` (items + rank
   emblems) isn't running on the URL in `.env`.

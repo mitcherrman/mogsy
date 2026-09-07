@@ -7,6 +7,14 @@
  */
 import type { RunManifest } from "@/lib/quiz-screenshot/manifest";
 
+/**
+ * CON1 Step 3A2 — there is deliberately NO corpus-search method here. Admin
+ * Quiz Review is the single GUI discovery surface; this client resolves ids an
+ * Admin handoff already selected (`getQuestion`) and drives generation, runs
+ * and export. A search method here would re-create the readiness-blind
+ * discovery path Step 3A2 removed.
+ */
+
 export const DEFAULT_STUDIO_API_BASE = "http://127.0.0.1:8790/api/dev/content-studio";
 
 export type StudioQuestion = {
@@ -81,13 +89,6 @@ async function request<T>(base: string, path: string, init?: RequestInit): Promi
 
 export const studioApi = {
   health: (base: string) => request<StudioHealth>(base, "/health"),
-  searchQuestions: (base: string, params: { search?: string; category?: string; limit?: number }) => {
-    const qs = new URLSearchParams();
-    if (params.search) qs.set("search", params.search);
-    if (params.category) qs.set("category", params.category);
-    if (params.limit) qs.set("limit", String(params.limit));
-    return request<{ questions: StudioQuestion[] }>(base, `/questions?${qs}`);
-  },
   getQuestion: (base: string, id: string) =>
     request<{ question: StudioQuestion }>(base, `/questions/${encodeURIComponent(id)}`),
   createJob: (base: string, body: unknown) =>
