@@ -4,8 +4,12 @@
  * network-touching sitemap generator), or reuses an explicit --base-url.
  */
 import { spawn, type ChildProcess } from "node:child_process";
+// One owner for the loopback port: Admin builds its "Open Content Workspace"
+// link from the same constant (src/lib/content-handoff/location.ts), so the
+// link and the server cannot drift onto different ports.
+import { CONTENT_WORKSPACE_PORT } from "../../src/lib/content-handoff/location";
 
-const RUNNER_PORT = 5199;
+const RUNNER_PORT = CONTENT_WORKSPACE_PORT;
 const STARTUP_TIMEOUT_MS = 90_000;
 
 export type ManagedServer = {

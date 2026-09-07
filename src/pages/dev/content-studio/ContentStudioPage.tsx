@@ -1,16 +1,58 @@
 /**
- * /dev/content-studio — local Content Post Studio.
+ * /dev/content-studio — the local Content Workspace.
  *
- * Drives the local studio server (scripts/content-studio/server.ts): search
- * and select questions, choose a post mode (classic / single-question /
- * answer-reveal / multi-question / daily-package), assign difficulty,
- * generate, preview slides, and browse prior runs.
+ * CON1 Step 3A — WHAT THIS PAGE IS NOW
+ * It is no longer a second place to search the question corpus. Discovery,
+ * filtering, readiness and selection belong to Admin Quiz Review, which hands
+ * over an ordered selection plus a first configuration
+ * (`src/lib/content-handoff/schema.ts`). This page RECEIVES that handoff and
+ * owns everything that can only happen on this machine:
+ *
+ *   reorder · post-mode and challenge composition · daily-package assembly ·
+ *   featured treatment · preview · generate · run history · manifest
+ *   browsing · per-image download · ZIP export
+ *
+ * Two intake routes, one schema: a `?ids=…` URL (the "Open Content Workspace"
+ * link in Admin) and a pasted payload. Both go through
+ * `validateContentHandoff`, and everything it accepts is a legal
+ * `validateStudioJob` seed.
+ *
+ * THE LEGACY SEARCH IS DEPRECATED, NOT DELETED
+ * Studio's own search has no `presentation`, no computed `asset_status` and
+ * therefore no readiness — an operator searching here could select and
+ * generate a question Admin would have refused. It is demoted to a collapsed
+ * fallback section (default-collapsed whenever a handoff arrived) so the
+ * direct local path and the CLI keep working while the operator flow moves to
+ * Admin. Nothing about generation, runs or export changed.
+ *
+ * CONFIGURATION OWNERSHIP: Admin SEEDS, this workspace OWNS the final
+ * generation configuration. Everything the handoff carries is prefilled and
+ * remains editable here; local edits win, and the banner says when the config
+ * has drifted from the seed.
+ *
+ * READINESS: an Admin handoff may be stale by the time it is generated, and
+ * this page does NOT re-implement the readiness rules. The Content Factory's
+ * own runtime gates (presentation completeness, required assets, capture QA)
+ * run at generation time and remain the final authority.
  *
  * Local dev/admin tooling only: not linked from navigation; useful only when
  * the loopback studio server is running. No credentials in the browser.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Loader2, Play, Plus, RefreshCw, Search, Star, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Inbox,
+  Loader2,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +79,15 @@ import { DIFFICULTY_TIERS, type DifficultyTier } from "@/lib/quiz-screenshot/dif
 import { MID_CTA_VARIANTS, REPEAT_COPY_VARIANTS } from "@/lib/quiz-screenshot/challenge";
 import { RENDER_FORMATS } from "@/lib/quiz-screenshot/formats";
 import { RENDER_STATES } from "@/lib/quiz-screenshot/types";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  decodeContentHandoffParams,
+  hasContentHandoffParams,
+  parseContentHandoffText,
+  serializeContentHandoff,
+  studioModeForHandoff,
+  type ContentHandoff,
+} from "@/lib/content-handoff/schema";
 
 const MODE_INFO: Record<StudioModeKey, { title: string; blurb: string }> = {
   classic: { title: "Classic", blurb: "State-driven screenshots (question/correct/…) per question." },
@@ -47,6 +98,28 @@ const MODE_INFO: Record<StudioModeKey, { title: string; blurb: string }> = {
 };
 
 type SelectedQuestion = StudioQuestion & { difficultyOverride: DifficultyTier | "" };
+
+/** Where the current seed came from — the URL Admin linked, or a paste. */
+type HandoffOrigin = "url" | "import";
+
+type HandoffState = {
+  origin: HandoffOrigin;
+  handoff: ContentHandoff;
+  /** Ids the local server could not resolve. Reported, never silently dropped. */
+  unresolved: { id: string; reason: string }[];
+  hydrating: boolean;
+};
+
+/** The query string this page was opened with. Read once, from the location
+ *  itself rather than a router hook, so the page stays renderable standalone
+ *  (the existing direct-path tests mount it with no Router at all). */
+function initialHandoffSearch(): string {
+  try {
+    return typeof window === "undefined" ? "" : window.location.search;
+  } catch {
+    return "";
+  }
+}
 
 function StateBadge({ state }: { state: StudioJobStatus["state"] | "idle" }) {
   const styles: Record<string, string> = {
@@ -148,6 +221,17 @@ export default function ContentStudioPage() {
   const [apiBase, setApiBase] = useState(DEFAULT_STUDIO_API_BASE);
   const [health, setHealth] = useState<StudioHealth | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
+
+  // ── Admin handoff intake (CON1 Step 3A) ──────────────────────────────────
+  const [urlSearch] = useState(initialHandoffSearch);
+  const urlHasHandoff = useMemo(() => hasContentHandoffParams(urlSearch), [urlSearch]);
+  const [handoffState, setHandoffState] = useState<HandoffState | null>(null);
+  const [handoffErrors, setHandoffErrors] = useState<string[]>([]);
+  const [importText, setImportText] = useState("");
+  // The legacy corpus search is a deprecated fallback: collapsed by default the
+  // moment a handoff exists, because rediscovering the same questions here is
+  // exactly what Step 3A removes from the operator flow.
+  const [showLegacySearch, setShowLegacySearch] = useState(!urlHasHandoff);
 
   // Search
   const [searchText, setSearchText] = useState("");
@@ -253,6 +337,108 @@ export default function ContentStudioPage() {
       return next;
     });
   };
+
+  /**
+   * Seed the workspace from a validated handoff.
+   *
+   * The selection is hydrated through the local server's EXISTING
+   * `GET /questions/:id` — the same read the legacy search used — and
+   * reassembled in the handoff's order, never in completion order. An id the
+   * local server cannot resolve is reported as unresolved and left out of the
+   * selection: a package that silently comes back one question short is the
+   * failure mode this whole step exists to remove.
+   */
+  const applyHandoff = useCallback(
+    async (handoff: ContentHandoff, origin: HandoffOrigin) => {
+      setHandoffErrors([]);
+      setHandoffState({ origin, handoff, unresolved: [], hydrating: true });
+
+      // Configuration first, so the panel is already right while ids resolve.
+      setMode(studioModeForHandoff(handoff));
+      setFormats([...handoff.formats]);
+      if (!handoff.post && handoff.states.length) setStates([...handoff.states]);
+      setDifficulty(handoff.difficulty ?? "");
+      setRunId(handoff.runId ?? "");
+      setOverwrite(handoff.overwrite);
+      setFeaturedId(null);
+
+      const settled = await Promise.all(
+        handoff.questionIds.map(async (id) => {
+          try {
+            const { question } = await studioApi.getQuestion(apiBase, id);
+            return { id, question };
+          } catch (err) {
+            return { id, reason: err instanceof Error ? err.message : String(err) };
+          }
+        }),
+      );
+
+      const resolved: SelectedQuestion[] = [];
+      const unresolved: { id: string; reason: string }[] = [];
+      // Handoff order, not completion order.
+      for (const entry of settled) {
+        if ("question" in entry && entry.question) {
+          resolved.push({ ...entry.question, difficultyOverride: "" });
+        } else {
+          unresolved.push({ id: entry.id, reason: entry.reason ?? "not found" });
+        }
+      }
+      setSelected(resolved);
+      setHandoffState({ origin, handoff, unresolved, hydrating: false });
+    },
+    [apiBase],
+  );
+
+  // The URL handoff, applied once on mount.
+  const appliedUrlHandoff = useRef(false);
+  useEffect(() => {
+    if (!urlHasHandoff || appliedUrlHandoff.current) return;
+    appliedUrlHandoff.current = true;
+    const parsed = decodeContentHandoffParams(urlSearch);
+    if (isFailure(parsed)) {
+      setHandoffErrors(parsed.errors);
+      setShowLegacySearch(true);
+      return;
+    }
+    void applyHandoff(parsed.handoff, "url");
+  }, [urlHasHandoff, urlSearch, applyHandoff]);
+
+  /** Paste intake — the same validator, so a URL and a payload cannot differ. */
+  const importHandoff = () => {
+    const parsed = parseContentHandoffText(importText);
+    if (isFailure(parsed)) {
+      setHandoffErrors(parsed.errors);
+      setHandoffState(null);
+      return;
+    }
+    setImportText("");
+    setShowLegacySearch(false);
+    void applyHandoff(parsed.handoff, "import");
+  };
+
+  /**
+   * Has the operator changed the seeded configuration? Local edits are
+   * intentional and always win — this only reports the divergence so the
+   * banner cannot claim to describe what will actually be generated.
+   */
+  const seedEdited = useMemo(() => {
+    const seed = handoffState?.handoff;
+    if (!seed) return false;
+    const sameList = (a: readonly string[], b: readonly string[]) =>
+      a.length === b.length && a.every((v, i) => v === b[i]);
+    return (
+      studioModeForHandoff(seed) !== mode ||
+      !sameList(seed.formats, formats) ||
+      (mode === "classic" && !sameList(seed.states, states)) ||
+      (seed.difficulty ?? "") !== difficulty ||
+      (seed.runId ?? "") !== runId.trim() ||
+      seed.overwrite !== overwrite ||
+      !sameList(
+        seed.questionIds,
+        selected.map((q) => String(q.id)),
+      )
+    );
+  }, [handoffState, mode, formats, states, difficulty, runId, overwrite, selected]);
 
   // Build the job request body (shared with server-side validation).
   const jobBody = useMemo(() => {
@@ -391,64 +577,97 @@ export default function ContentStudioPage() {
               {/* ── Left: search + selection ── */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Questions</CardTitle>
+                  <CardTitle className="text-base">Selected content</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <form
-                    className="flex gap-2"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void runSearch();
-                    }}
-                  >
-                    <Input
-                      placeholder="Search text or exact ID…"
-                      value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
-                    />
-                    <Input
-                      placeholder="Category"
-                      className="w-28"
-                      value={searchCategory}
-                      onChange={(e) => setSearchCategory(e.target.value)}
-                    />
-                    <Button type="submit" size="sm" disabled={searching}>
-                      {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    </Button>
-                  </form>
-                  {searchError ? <p className="text-xs text-red-400">{searchError}</p> : null}
-                  <div className="max-h-64 space-y-1 overflow-auto" data-testid="search-results">
-                    {results.length === 0 && !searching ? (
-                      <p className="text-xs text-muted-foreground">
-                        No results yet — search by prompt text or a question ID.
-                      </p>
+                  {/* ── Admin handoff intake — the primary way in ── */}
+                  <div className="space-y-2" data-testid="handoff-panel">
+                    {handoffState ? (
+                      <div
+                        className="rounded-md border border-cyan-400/40 bg-cyan-500/10 p-2 text-xs"
+                        data-testid="handoff-banner"
+                        data-handoff-origin={handoffState.origin}
+                        data-handoff-edited={seedEdited ? "true" : "false"}
+                      >
+                        <p className="font-bold">
+                          Admin handoff ·{" "}
+                          {handoffState.origin === "url" ? "opened from Admin" : "imported"}
+                          {handoffState.hydrating ? " · loading…" : null}
+                        </p>
+                        <p className="text-muted-foreground" data-testid="handoff-seed">
+                          {handoffState.handoff.questionIds.length} question
+                          {handoffState.handoff.questionIds.length === 1 ? "" : "s"} ·{" "}
+                          {studioModeForHandoff(handoffState.handoff)} ·{" "}
+                          {handoffState.handoff.formats.join(", ")}
+                          {handoffState.handoff.states.length
+                            ? ` · ${handoffState.handoff.states.join(", ")}`
+                            : ""}
+                          {handoffState.handoff.difficulty
+                            ? ` · ${handoffState.handoff.difficulty}`
+                            : ""}
+                          {handoffState.handoff.runId ? ` · ${handoffState.handoff.runId}` : ""}
+                        </p>
+                        {seedEdited ? (
+                          <p className="text-amber-300" data-testid="handoff-edited">
+                            Edited locally — this workspace owns the final configuration.
+                          </p>
+                        ) : null}
+                        {handoffState.unresolved.length ? (
+                          <p className="text-red-300" data-testid="handoff-unresolved">
+                            Unresolved here:{" "}
+                            {handoffState.unresolved.map((u) => `#${u.id} (${u.reason})`).join(", ")}
+                          </p>
+                        ) : null}
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Admin&apos;s readiness check is a preflight. The capture gates
+                          (presentation, required assets, capture QA) run again here at
+                          generation time and stay the final authority.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-border p-2 text-xs" data-testid="handoff-empty">
+                        <p className="flex items-center gap-1 font-bold">
+                          <Inbox className="h-3 w-3" /> No handoff loaded
+                        </p>
+                        <p className="text-muted-foreground">
+                          Discover, review and select questions in Admin Quiz Review, then
+                          use <span className="font-semibold">Open Content Workspace</span> or
+                          paste its config below.
+                        </p>
+                      </div>
+                    )}
+
+                    {handoffErrors.length ? (
+                      <ul className="space-y-0.5" data-testid="handoff-errors">
+                        {handoffErrors.map((e) => (
+                          <li key={e} className="text-xs text-red-400">{e}</li>
+                        ))}
+                      </ul>
                     ) : null}
-                    {results.map((q) => (
-                      <div key={String(q.id)} className="flex items-start gap-2 rounded-md border border-border p-2 text-xs">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold">
-                            #{q.id} {q.category ? <span className="text-muted-foreground">· {q.category}</span> : null}{" "}
-                            {q.content_difficulty ? <Badge variant="outline">{q.content_difficulty}</Badge> : null}{" "}
-                            {!q.compatible ? (
-                              <Badge className="bg-red-500/20 text-red-300">{q.incompatible_reason}</Badge>
-                            ) : null}
-                          </p>
-                          <p className="truncate">{q.prompt}</p>
-                          <p className="text-muted-foreground">
-                            ✓ {q.correct_label ?? "?"} · {q.choices.length} choices
-                          </p>
-                        </div>
+
+                    <details className="rounded-md border border-border p-2">
+                      <summary className="cursor-pointer text-xs font-semibold">
+                        Import handoff (paste config or URL)
+                      </summary>
+                      <div className="mt-2 space-y-2">
+                        <Textarea
+                          aria-label="Handoff payload"
+                          data-testid="handoff-import-input"
+                          className="h-24 font-mono text-[10px]"
+                          placeholder='{"version":1,"questionIds":["101"],…}  — or the ?ids=… URL'
+                          value={importText}
+                          onChange={(e) => setImportText(e.target.value)}
+                        />
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={!q.compatible}
-                          onClick={() => addQuestion(q)}
-                          aria-label={`Add question ${q.id}`}
+                          data-testid="handoff-import-button"
+                          onClick={importHandoff}
                         >
-                          <Plus className="h-3 w-3" />
+                          Load handoff
                         </Button>
                       </div>
-                    ))}
+                    </details>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -514,6 +733,95 @@ export default function ContentStudioPage() {
                         </Button>
                       </div>
                     ))}
+                  </div>
+
+                  {/* ── Legacy discovery — DEPRECATED (CON1 Step 3A) ──
+                      Admin Quiz Review owns discovery: it has the presentation
+                      projection, the computed asset status and the readiness
+                      preflight, none of which exist here. Kept as a fallback so
+                      the direct local path still works; not the intended flow. */}
+                  <div className="rounded-md border border-dashed border-border">
+                    <button
+                      type="button"
+                      data-testid="legacy-search-toggle"
+                      aria-expanded={showLegacySearch}
+                      onClick={() => setShowLegacySearch((v) => !v)}
+                      className="flex w-full items-center gap-1 p-2 text-left text-xs font-semibold text-muted-foreground"
+                    >
+                      {showLegacySearch ? (
+                        <ChevronDown className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                      Legacy search (deprecated — no readiness here)
+                    </button>
+                    <div
+                      className="space-y-3 p-2 pt-0"
+                      data-testid="legacy-search"
+                      hidden={!showLegacySearch}
+                    >
+                      <p className="text-[10px] text-muted-foreground">
+                        This search cannot see presentation completeness, computed asset
+                        health or readiness, so it can offer a question Admin would refuse.
+                        Prefer Admin Quiz Review.
+                      </p>
+                    <form
+                      className="flex gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void runSearch();
+                      }}
+                    >
+                      <Input
+                        placeholder="Search text or exact ID…"
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                      />
+                      <Input
+                        placeholder="Category"
+                        className="w-28"
+                        value={searchCategory}
+                        onChange={(e) => setSearchCategory(e.target.value)}
+                      />
+                      <Button type="submit" size="sm" disabled={searching}>
+                        {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      </Button>
+                    </form>
+                    {searchError ? <p className="text-xs text-red-400">{searchError}</p> : null}
+                    <div className="max-h-64 space-y-1 overflow-auto" data-testid="search-results">
+                      {results.length === 0 && !searching ? (
+                        <p className="text-xs text-muted-foreground">
+                          No results yet — search by prompt text or a question ID.
+                        </p>
+                      ) : null}
+                      {results.map((q) => (
+                        <div key={String(q.id)} className="flex items-start gap-2 rounded-md border border-border p-2 text-xs">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold">
+                              #{q.id} {q.category ? <span className="text-muted-foreground">· {q.category}</span> : null}{" "}
+                              {q.content_difficulty ? <Badge variant="outline">{q.content_difficulty}</Badge> : null}{" "}
+                              {!q.compatible ? (
+                                <Badge className="bg-red-500/20 text-red-300">{q.incompatible_reason}</Badge>
+                              ) : null}
+                            </p>
+                            <p className="truncate">{q.prompt}</p>
+                            <p className="text-muted-foreground">
+                              ✓ {q.correct_label ?? "?"} · {q.choices.length} choices
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!q.compatible}
+                            onClick={() => addQuestion(q)}
+                            aria-label={`Add question ${q.id}`}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

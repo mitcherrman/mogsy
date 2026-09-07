@@ -24,14 +24,37 @@
  * `--allow-missing-assets` are NOT offered here. They exist so a developer can
  * capture a known-bad question for diagnosis; putting them beside a Copy button
  * would turn "the gate says no" into a checkbox.
+ *
+ * CON1 Step 3A — THREE ROUTES, ONE CONFIGURATION
+ * The same `ContentCommandConfig` produces all three handoffs, so they can
+ * never describe different work:
+ *   Copy command             the shell line (unchanged; still the CLI path)
+ *   Open Content Workspace   a loopback link that seeds the local workspace
+ *   Copy workspace config    the JSON payload, for pasting when the link
+ *                            cannot be followed
+ * Admin cannot detect whether the local workspace is running — it is https →
+ * loopback http, where a probe is blocked long before CORS — so the link is
+ * always offered and never claimed to work; the two copy routes are the
+ * guaranteed ones. All three carry the SAME selection, and none of them can
+ * carry a credential, a backend URL or a gate override.
  */
 
 import { useMemo, useState } from "react";
-import { Check, Copy, Terminal, X, AlertTriangle, CheckCircle2, HelpCircle } from "lucide-react";
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  Terminal,
+  X,
+  AlertTriangle,
+  CheckCircle2,
+  HelpCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ReviewQuestion } from "@/lib/quiz/api";
+import { isFailure } from "@/lib/result-narrowing";
 import { RENDER_FORMATS } from "@/lib/quiz-screenshot/formats";
 import { RENDER_STATES, type RenderState } from "@/lib/quiz-screenshot/types";
 import { POST_TYPES, type PostType } from "@/lib/quiz-screenshot/content-posts";
@@ -46,6 +69,14 @@ import {
   summarizeReadiness,
   type ContentReadiness,
 } from "@/lib/quiz-screenshot/readiness";
+import {
+  contentHandoffFromCommandConfig,
+  serializeContentHandoff,
+} from "@/lib/content-handoff/schema";
+import {
+  buildContentWorkspaceUrl,
+  CONTENT_WORKSPACE_START_COMMAND,
+} from "@/lib/content-handoff/location";
 
 /** Tone per readiness state — the same three-way vocabulary the asset badge uses. */
 const READINESS_TONE: Record<string, string> = {
@@ -82,27 +113,42 @@ export function ReadinessBadge({
   );
 }
 
-function CopyCommandButton({ text, disabled }: { text: string; disabled: boolean }) {
+function CopyButton({
+  text,
+  disabled,
+  label,
+  successMessage,
+  testId,
+  variant,
+}: {
+  text: string;
+  disabled: boolean;
+  label: string;
+  successMessage: string;
+  testId: string;
+  variant?: "outline";
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
       size="sm"
+      variant={variant}
       className="h-7 gap-1 text-[11px]"
       disabled={disabled}
-      data-testid="generate-content-copy"
+      data-testid={testId}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
           setCopied(true);
           setTimeout(() => setCopied(false), 1600);
-          toast.success("Command copied — run it in the local checkout");
+          toast.success(successMessage);
         } catch {
-          toast.error("Clipboard unavailable — select and copy the command manually.");
+          toast.error("Clipboard unavailable — select and copy the text manually.");
         }
       }}
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-      {copied ? "Copied" : "Copy command"}
+      {copied ? "Copied" : label}
     </Button>
   );
 }
@@ -168,8 +214,9 @@ export function GenerateContentPanel({
   );
   const blocked = readiness.filter((x) => x.r.blocking);
 
-  const built = useMemo(() => {
-    const config: ContentCommandConfig = {
+  // ONE configuration object feeds all three handoff routes.
+  const config = useMemo<ContentCommandConfig>(
+    () => ({
       // Selection order, preserved — a carousel post is an ordered sequence.
       questionIds: questions.map((q) => q.id),
       formats,
@@ -178,12 +225,20 @@ export function GenerateContentPanel({
       difficulty,
       runId,
       overwrite,
-    };
-    return buildContentCommand(config);
-  }, [questions, formats, states, post, difficulty, runId, overwrite]);
+    }),
+    [questions, formats, states, post, difficulty, runId, overwrite],
+  );
+
+  const built = useMemo(() => buildContentCommand(config), [config]);
+
+  /** CON1 Step 3A — the same selection as a workspace seed. */
+  const handoff = useMemo(() => contentHandoffFromCommandConfig(config), [config]);
+  const workspaceUrl = isFailure(handoff) ? "" : buildContentWorkspaceUrl(handoff.handoff);
+  const workspaceConfig = isFailure(handoff) ? "" : serializeContentHandoff(handoff.handoff);
 
   const handoffBlocked = blocked.length > 0;
   const canCopy = !handoffBlocked && built.command !== "";
+  const canHandOff = !handoffBlocked && !isFailure(handoff);
 
   return (
     <div
@@ -415,13 +470,82 @@ export function GenerateContentPanel({
         </div>
       </div>
 
+      {/* ── Handoff to the local Content Workspace ────────────────────── */}
+      <div className="space-y-1.5" data-testid="generate-content-handoff">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Open in Content Workspace
+          </p>
+          <div className="flex items-center gap-1">
+            {/* A plain link: Admin is https and the workspace is loopback http,
+                so no probe is possible and none is faked. If the workspace is
+                not running the browser says so and the copy routes below still
+                work. */}
+            <Button
+              asChild={canHandOff}
+              size="sm"
+              variant="outline"
+              disabled={!canHandOff}
+              className="h-7 gap-1 text-[11px]"
+            >
+              {canHandOff ? (
+                <a
+                  href={workspaceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="generate-content-open-workspace"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  Open Content Workspace
+                </a>
+              ) : (
+                <span data-testid="generate-content-open-workspace-disabled">
+                  <ExternalLink className="mr-1 inline h-3.5 w-3.5" />
+                  Open Content Workspace
+                </span>
+              )}
+            </Button>
+            <CopyButton
+              text={workspaceConfig}
+              disabled={!canHandOff}
+              label="Copy config"
+              successMessage="Workspace config copied — paste it into the local Content Workspace"
+              testId="generate-content-copy-config"
+              variant="outline"
+            />
+          </div>
+        </div>
+        <p className="text-[10px] leading-relaxed text-muted-foreground">
+          Opens <code className="rounded bg-muted px-1">{CONTENT_WORKSPACE_START_COMMAND}</code>{" "}
+          on this machine with the selection and this configuration already
+          loaded, in order. Not running? The link fails in the browser and
+          nothing is lost — start the workspace, or paste the copied config into
+          its Import panel. Admin seeds the workspace; the workspace owns the
+          final generation settings.
+        </p>
+
+        {isFailure(handoff) && (
+          <ul className="space-y-0.5" data-testid="generate-content-handoff-errors">
+            {handoff.errors.map((e) => (
+              <li key={e} className="text-[10px] text-red-300">{e}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* ── Command handoff ───────────────────────────────────────────── */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Local command
           </p>
-          <CopyCommandButton text={built.command} disabled={!canCopy} />
+          <CopyButton
+            text={built.command}
+            disabled={!canCopy}
+            label="Copy command"
+            successMessage="Command copied — run it in the local checkout"
+            testId="generate-content-copy"
+          />
         </div>
 
         {built.errors.length > 0 && (

@@ -43,6 +43,9 @@ import {
   DEFAULT_STATES,
   MAX_BATCH_LIMIT,
 } from "./cli";
+// The run-id grammar has ONE owner — the local studio server's own validator.
+// A second literal here is how "valid in Admin, rejected locally" happens.
+import { RUN_ID_RE } from "./studio-request";
 
 /** The npm script the local Content Factory runner is invoked through. */
 export const CONTENT_COMMAND_SCRIPT = "npm run quiz:screenshots";
@@ -61,9 +64,6 @@ export const NEVER_EMITTED_FLAGS: readonly string[] = [
   "--allow-incomplete-presentation",
   "--allow-missing-assets",
 ] as const;
-
-/** Run-id shape, matching what the runner accepts as a directory name. */
-const RUN_ID_RE = /^[A-Za-z0-9][A-Za-z0-9-_]{0,63}$/;
 
 export type ContentCommandConfig = {
   /**
