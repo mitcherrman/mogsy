@@ -20,6 +20,15 @@ export type RenderChoice = {
  */
 export type RenderQuestion = {
   id: number | string;
+  /**
+   * Stored `question_key` from the review row, when it carried one.
+   *
+   * Identity for REPORTING only — the completeness gate names the row a
+   * failure belongs to. Nothing derives behaviour from it: mapping a key back
+   * to a generator family is backend knowledge (`quiz.generator_registry`) and
+   * duplicating it here is exactly the family map CON1 must not create.
+   */
+  question_key?: string;
   question_text: string;
   choices: RenderChoice[];
   /** Index into choices. */
@@ -106,6 +115,14 @@ export type QuizRenderInjection = {
 };
 
 export const QUIZ_RENDER_WINDOW_KEY = "__MOGSY_QUIZ_RENDER__";
+/**
+ * Structured presentation outcome the harness stamps on the question card, and
+ * the ONLY channel the capture runner reads it through. Attributes, not text:
+ * the gate must never be a heuristic over rendered words.
+ */
+export const PRESENTATION_STATUS_ATTRIBUTE = "data-quiz-presentation";
+export const PRESENTATION_BAND_ATTRIBUTE = "data-quiz-presentation-band";
+export const PRESENTATION_REASON_ATTRIBUTE = "data-quiz-presentation-reason";
 export const READY_ATTRIBUTE = "data-quiz-render-ready";
 export const STAGE_SELECTOR = "[data-quiz-render-stage]";
 export const ERROR_SELECTOR = "[data-quiz-render-error]";

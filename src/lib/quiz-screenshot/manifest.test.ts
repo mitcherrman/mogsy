@@ -31,6 +31,7 @@ const fullArgs = {
   warning_count: 0,
   challenge: { question_count: 2, repeat_variant: 1, mid_cta_variant: null, summary_title: "TODAY'S ANSWERS" },
   copy_variants: { app_cta: "prove-it-v2" },
+  allow_incomplete_presentation: false,
   platform: "generic",
   generator: { version: "quiz-screenshots-2", commit: "abc1234" },
   completed: true,
@@ -72,5 +73,26 @@ describe("run manifest", () => {
     });
     expect(parsed!.slides.length).toBe(1);
     expect(parsed!.capture_count).toBe(1);
+  });
+});
+
+describe("CON1 Step 1D — the presentation override is auditable from the manifest", () => {
+  it("records the override when a run enabled it", () => {
+    const m = buildRunManifest({ ...fullArgs, allow_incomplete_presentation: true });
+    expect(m.allow_incomplete_presentation).toBe(true);
+    expect(JSON.parse(JSON.stringify(m)).allow_incomplete_presentation).toBe(true);
+  });
+
+  it("round-trips through parse, so a reader never has to infer it", () => {
+    const raw = JSON.parse(
+      JSON.stringify(buildRunManifest({ ...fullArgs, allow_incomplete_presentation: true })),
+    );
+    expect(parseRunManifest(raw)?.allow_incomplete_presentation).toBe(true);
+  });
+
+  it("reads false for a manifest written before the flag existed", () => {
+    const raw = JSON.parse(JSON.stringify(buildRunManifest({ ...fullArgs })));
+    delete raw.allow_incomplete_presentation;
+    expect(parseRunManifest(raw)?.allow_incomplete_presentation).toBe(false);
   });
 });

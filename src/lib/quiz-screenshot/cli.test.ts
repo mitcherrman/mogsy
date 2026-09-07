@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLI_USAGE,
   DEFAULT_BATCH_LIMIT,
   MAX_BATCH_LIMIT,
   parseScreenshotCli,
@@ -141,5 +142,51 @@ describe("parseScreenshotCli", () => {
     const c = parseScreenshotCli(["--question-id", "1", "--post", "answer-reveal", "--difficulty", "iron"]);
     expect(c.post).toBe("answer-reveal");
     expect(c.difficulty).toBe("iron");
+  });
+});
+
+describe("--allow-incomplete-presentation (CON1 Step 1D)", () => {
+  it("defaults to false — fail-closed is the default publishing posture", () => {
+    expect(
+      parseScreenshotCli(["--question-id", "1"]).allowIncompletePresentation,
+    ).toBe(false);
+    expect(parseScreenshotCli(["--approved"]).allowIncompletePresentation).toBe(false);
+  });
+
+  it("is a boolean flag that takes no value", () => {
+    const c = parseScreenshotCli([
+      "--question-id",
+      "1",
+      "--allow-incomplete-presentation",
+      "--states",
+      "question",
+    ]);
+    expect(c.allowIncompletePresentation).toBe(true);
+    expect(c.states).toEqual(["question"]);
+  });
+
+  it("composes with the other options rather than replacing a source", () => {
+    const c = parseScreenshotCli([
+      "--approved",
+      "--limit",
+      "3",
+      "--allow-incomplete-presentation",
+    ]);
+    expect(c.source).toEqual({ mode: "approved", limit: 3 });
+    expect(c.allowIncompletePresentation).toBe(true);
+  });
+
+  it("is refused in report-only recovery mode, which captures nothing", () => {
+    expect(() =>
+      parseScreenshotCli(["--finalize-run", "run-1", "--allow-incomplete-presentation"]),
+    ).toThrow(/--finalize-run only accepts/);
+    expect(
+      parseScreenshotCli(["--finalize-run", "run-1"]).allowIncompletePresentation,
+    ).toBe(false);
+  });
+
+  it("is documented in the CLI usage text", () => {
+    expect(CLI_USAGE).toContain("--allow-incomplete-presentation");
+    expect(CLI_USAGE).toMatch(/DIAGNOSTIC/);
   });
 });

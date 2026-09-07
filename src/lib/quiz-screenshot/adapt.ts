@@ -10,6 +10,8 @@ import type { RenderChoice, RenderQuestion } from "./types";
 
 export type ScreenshotSourceQuestion = {
   id: number | string;
+  /** Stored question key from the review row — carried for reporting only. */
+  question_key?: string | null;
   question_text?: string | null;
   format?: string;
   category?: string;
@@ -83,6 +85,7 @@ export function adaptScreenshotQuestion(q: ScreenshotSourceQuestion): RenderQues
 
   return {
     id: q.id,
+    question_key: typeof q.question_key === "string" && q.question_key ? q.question_key : undefined,
     question_text: text,
     choices,
     correct_index: correctIndex,

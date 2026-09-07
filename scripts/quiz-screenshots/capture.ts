@@ -6,7 +6,11 @@
  */
 import { chromium, type Browser, type Page } from "playwright";
 import type { QaFinding } from "../../src/lib/quiz-screenshot/metadata";
+import { evaluatePresentationGate } from "../../src/lib/quiz-screenshot/presentationGate";
 import {
+  PRESENTATION_BAND_ATTRIBUTE,
+  PRESENTATION_REASON_ATTRIBUTE,
+  PRESENTATION_STATUS_ATTRIBUTE,
   QUIZ_RENDER_WINDOW_KEY,
   type RenderFormat,
   type RenderQuestion,
@@ -76,12 +80,18 @@ type DomQa = {
   contentOutsideScreen: string[];
   islandClearOfContent: boolean;
   correctRowContrast: number | null;
+  /** CON1 Step 1D — the production presentation outcome the page stamped on
+   *  the question card. Read as attributes, never inferred from pixels or
+   *  visible text; null when the slide renders no question card. */
+  presentationStatus: string | null;
+  presentationBand: string | null;
+  presentationReason: string | null;
   /** Layout geometry for cross-state stability checks (px, page space). */
   layout: Record<string, { x: number; y: number; w: number; h: number } | null>;
 };
 
 async function runDomQa(page: Page): Promise<DomQa> {
-  return page.evaluate(() => {
+  return page.evaluate((attrs: { status: string; band: string; reason: string }) => {
     const doc = document;
     const missingAssets: string[] = [];
     doc.querySelectorAll("img").forEach((img) => {
@@ -285,7 +295,16 @@ async function runDomQa(page: Page): Promise<DomQa> {
       }
     }
 
+    // CON1 Step 1D — structured presentation outcome, straight off the card.
+    const presentationEl = doc.querySelector(`[${attrs.status}]`);
+    const presentationStatus = presentationEl?.getAttribute(attrs.status) ?? null;
+    const presentationBand = presentationEl?.getAttribute(attrs.band) ?? null;
+    const presentationReason = presentationEl?.getAttribute(attrs.reason) ?? null;
+
     return {
+      presentationStatus,
+      presentationBand,
+      presentationReason,
       ctaPresent,
       ctaText,
       ctaHasLogo,
@@ -309,6 +328,10 @@ async function runDomQa(page: Page): Promise<DomQa> {
       correctRowContrast,
       layout,
     };
+  }, {
+    status: PRESENTATION_STATUS_ATTRIBUTE,
+    band: PRESENTATION_BAND_ATTRIBUTE,
+    reason: PRESENTATION_REASON_ATTRIBUTE,
   });
 }
 
@@ -337,6 +360,9 @@ export async function captureOne(args: {
   /** Additional harness query params (progress/repeat/mid/qids/sum*). Keys
       and values are appended via URLSearchParams — never shell-interpolated. */
   extraParams?: Record<string, string>;
+  /** CON1 Step 1D diagnostic override (--allow-incomplete-presentation).
+      Default false: an unrendered safe presentation fails the capture. */
+  allowIncompletePresentation?: boolean;
 }): Promise<CaptureResult> {
   const { browser, baseUrl, question, state, format } = args;
   const slideKind = args.slide ?? "quiz";
@@ -425,6 +451,28 @@ export async function captureOne(args: {
     const usedScale = scaleAttr !== null && Number.isFinite(Number(scaleAttr))
       ? Number(scaleAttr)
       : null;
+    // ── CON1 Step 1D: presentation completeness ──────────────────────────
+    // Enforced HERE, at the first point the real production layout result is
+    // known: the page has mounted, called the one band authority and stamped
+    // the outcome. Earlier is a guess; later (finalize) would already have
+    // written a publishable-looking PNG with no record of what was missing.
+    // The decision itself lives in the pure gate module — this only reports it
+    // through the QA channel every other structural check uses.
+    const presentationGate = evaluatePresentationGate({
+      status: dom.presentationStatus,
+      band: dom.presentationBand,
+      reason: dom.presentationReason,
+      questionId: question.id,
+      questionKey: question.question_key ?? null,
+      format: format.key,
+      state,
+      allowIncomplete: args.allowIncompletePresentation === true,
+    });
+    for (const finding of presentationGate.findings) {
+      if (finding.severity === "failure") qa.failures.push(finding);
+      else qa.warnings.push(finding);
+    }
+
     qa.missingAssets.push(...dom.missingAssets);
     if (dom.missingAssets.length) {
       qa.failures.push({

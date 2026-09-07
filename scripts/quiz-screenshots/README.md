@@ -272,9 +272,43 @@ horizontal document scroll on audit formats (failure), answer buttons outside
 the capture stage (failure), conservative text-clipping via
 `scrollWidth/Height` (warning), missing reveal styling in reveal states
 (failure), any visible selection/reveal/feedback in the `question` state
-(**leakage failure**), render-ready timeout (failure). The process exits
-non-zero if any failure was recorded, but continues past per-question errors
-and reports everything at the end.
+(**leakage failure**), render-ready timeout (failure), **incomplete
+presentation** (failure — see below). The process exits non-zero if any failure
+was recorded, but continues past per-question errors and reports everything at
+the end.
+
+## Presentation completeness (CON1 Step 1D)
+
+The backend projects a canonical, answer-safe `presentation` for the families
+that declare one (`quiz.premise_projection.build_presentation`). When a question
+carries one, that premise is part of the question — so if the production layout
+system does not draw it, the exported PNG is a text card that silently drops
+context the reader was meant to have. **That capture fails by default.**
+
+The runner reads two attributes the render page stamps on the question card —
+`data-quiz-presentation` (the resolver status) and `data-quiz-presentation-band`
+(the production band profile) — and never the rendered text. The policy lives in
+`src/lib/quiz-screenshot/presentationGate.ts`:
+
+| presentation | band | verdict |
+| --- | --- | --- |
+| `absent` | — | **pass** — no premise was projected; an ordinary text question |
+| `family` | `family` | **pass** — the family band drew the premise |
+| `cinematic` | `cinematic` | **pass** — a real subject visual resolved from the premise |
+| `text-only` | `compact` / `none` | **fail** — the premise reached no pixel |
+| `no-scenario` | — | **fail** — a readable premise produced no scenario source |
+| `unreadable` | — | **fail** — the premise could not be adapted |
+
+The gate holds no family list and inspects no premise field. It reads the one
+band authority (`src/lib/question-surface/bandProfile.ts`) that the surface
+itself calls, so when a layout rule lands upstream for a family, that family's
+captures start passing with nothing here edited.
+
+`--allow-incomplete-presentation` is the diagnostic escape hatch: the capture
+proceeds, every affected image is recorded as a **warning** naming the flag, and
+`allow_incomplete_presentation: true` is written into both `summary.json` and
+`manifest.json` so a diagnostic run can never be mistaken for a publishable one.
+Content Studio never enables it — it is deliberately CLI-only.
 
 ## Determinism
 

@@ -158,6 +158,10 @@ function toGenerationRequest(
     overwrite: req.overwrite,
     baseUrl,
     allowRemote: false,
+    // CON1 Step 1D — Studio publishes, so it NEVER enables the diagnostic
+    // presentation override. It is a deliberate CLI-only escape hatch; there
+    // is no Studio control that turns it on, by design.
+    allowIncompletePresentation: false,
     platform: req.platform,
   };
 }

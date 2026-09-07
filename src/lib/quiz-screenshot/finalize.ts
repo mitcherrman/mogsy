@@ -21,6 +21,10 @@ export type ScannedQuestionDir = {
 
 export type RunFailure = {
   question_id: number | string | null;
+  /** Stored `question_key`, when the source row carried one. Identity for a
+   *  reader of failures.json — a numeric id alone does not say which question
+   *  family a capture belonged to. */
+  question_key?: string | null;
   format: string | null;
   state: string | null;
   classification: string;

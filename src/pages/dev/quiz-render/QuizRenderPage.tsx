@@ -263,12 +263,18 @@ function QuestionCard({
       className="relative bg-card/80 backdrop-blur-sm"
       /**
        * What the presentation path did with this question — "absent",
-       * "unreadable", "no-scenario", "text-only" or "family". The capture
-       * runner and CON1 Step 1D read this: it is what makes a fallback from a
-       * real presentation to a text-only card observable instead of silent.
-       * Step 1D decides the policy; this only states the fact.
+       * "unreadable", "no-scenario", "text-only", "cinematic" or "family" —
+       * together with the production band profile that produced it and, when
+       * the premise did not reach the picture, why.
+       *
+       * This is the capture runner's ONLY input for the Step 1D completeness
+       * gate: structured attributes stamped by the page that actually rendered,
+       * never a heuristic over the visible text. The page states the fact; the
+       * runner decides pass/fail.
        */
       data-quiz-presentation={presentation.status}
+      data-quiz-presentation-band={presentation.band ?? undefined}
+      data-quiz-presentation-reason={presentation.reason ?? undefined}
     >
       {/* Screenshot presentation: no category pill — the question text is the
           topmost content of the card. The rank emblem lives above answer A

@@ -44,6 +44,19 @@ export type ScreenshotCliConfig = {
   allowRemote: boolean;
   api?: string;
   adminKey?: string;
+  /**
+   * DIAGNOSTIC ONLY (CON1 Step 1D). Default false.
+   *
+   * When false, a capture whose backend-projected `presentation` the production
+   * layout system does not render fails, and the run exits non-zero. When true
+   * the capture still happens, but every affected image is recorded as a
+   * warning and the flag is written into summary.json and manifest.json, so a
+   * run made under the override can never be mistaken for a clean one.
+   *
+   * This exists for diagnosing an incomplete layout and for transitional
+   * development while a band is unmerged upstream — not for publishing.
+   */
+  allowIncompletePresentation: boolean;
 };
 
 const VALUE_FLAGS = new Set([
@@ -64,7 +77,12 @@ const VALUE_FLAGS = new Set([
   "--api",
   "--admin-key",
 ]);
-const BOOL_FLAGS = new Set(["--approved", "--overwrite", "--allow-remote"]);
+const BOOL_FLAGS = new Set([
+  "--approved",
+  "--overwrite",
+  "--allow-remote",
+  "--allow-incomplete-presentation",
+]);
 
 export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
   const values = new Map<string, string>();
@@ -116,6 +134,9 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
       outRoot,
       overwrite: bools.has("--overwrite"),
       allowRemote: false,
+      // Report-only recovery captures nothing, so there is no presentation to
+      // gate; the override is rejected above with every other flag.
+      allowIncompletePresentation: false,
     };
   }
 
@@ -245,6 +266,7 @@ export function parseScreenshotCli(argv: string[]): ScreenshotCliConfig {
     allowRemote,
     api: values.get("--api"),
     adminKey: values.get("--admin-key"),
+    allowIncompletePresentation: bools.has("--allow-incomplete-presentation"),
   };
 }
 
@@ -273,6 +295,13 @@ Options:
   --overwrite                   Allow replacing an existing run directory
   --base-url <url>              Reuse a running local server instead of starting one
   --allow-remote                Permit a non-localhost --base-url (deliberate override)
+  --allow-incomplete-presentation
+                                DIAGNOSTIC: capture a question whose safe
+                                presentation the production layout system does
+                                not render, instead of failing it. Every such
+                                image is recorded as a warning and the override
+                                is written into summary.json/manifest.json.
+                                Not for publishing.
   --api <url>                   Backend base for question data (default VITE_COMBAT_API_URL / .env)
   --admin-key <key>             Admin key (default ADMIN_KEY / KNOWLEDGE_ADMIN_KEY env)
 `;

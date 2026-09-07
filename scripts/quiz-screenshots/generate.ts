@@ -427,6 +427,7 @@ export async function runGeneration(
               difficulty: job.showDifficulty ? difficultyInfo?.tier : undefined,
               injectQuestions: job.injectAll || challengeSpecs ? questions : undefined,
               extraParams: job.extraParams,
+              allowIncompletePresentation: config.allowIncompletePresentation === true,
             });
             if (
               !challengeSpecs &&
@@ -469,6 +470,7 @@ export async function runGeneration(
             for (const f of qa.failures) {
               runFailures.push({
                 question_id: job.question.id,
+                question_key: job.question.question_key ?? null,
                 format: format.key,
                 state: job.slug,
                 classification: f.code,
@@ -624,6 +626,9 @@ export async function runGeneration(
     success_count: captureCount,
     failure_count: runFailures.length,
     warning_count: warningCount,
+    /** CON1 Step 1D — true when this run was made with the diagnostic
+     *  presentation override. A run recorded true is NOT a publishable run. */
+    allow_incomplete_presentation: config.allowIncompletePresentation === true,
     aborted: captureError
       ? String(captureError instanceof Error ? captureError.message : captureError)
       : null,
@@ -661,6 +666,7 @@ export async function runGeneration(
         }
       : null,
     copy_variants: COPY_VARIANTS,
+    allow_incomplete_presentation: config.allowIncompletePresentation === true,
     platform: config.platform ?? "generic",
     generator: { version: GENERATOR_VERSION, commit: await gitCommit() },
     completed: !captureError,
@@ -799,6 +805,10 @@ export async function runDailyPackage(
         overwrite: req.overwrite,
         baseUrl: server.baseUrl,
         allowRemote: false,
+        // The daily package publishes; it never enables the diagnostic
+        // override. Explicit, so an incomplete presentation cannot slip into a
+        // package run because someone widened a shared default.
+        allowIncompletePresentation: false,
         api: req.api,
         adminKey: req.adminKey,
         packageType: post.key,

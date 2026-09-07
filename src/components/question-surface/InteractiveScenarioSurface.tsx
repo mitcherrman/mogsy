@@ -28,11 +28,14 @@ import { VerdictLine } from "@/components/question-feedback/VerdictLine";
 import type { ResolvedFeedback } from "@/lib/question-feedback/model";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/ScenarioCard";
-import { selectScenario } from "@/components/quiz-broadcast/scenario-cards/classify";
 import { CompactScenarioBand } from "./CompactScenarioBand";
 import { FamilyScenarioBand } from "./family/FamilyScenarioBand";
 import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
 import { selectFamilyLayout, type FamilyLayout } from "@/lib/question-surface/familyLayout";
+import {
+  resolveBandProfile,
+  type ScenarioBandProfile,
+} from "@/lib/question-surface/bandProfile";
 import {
   AnswerOptionView,
   InteractionPermissions,
@@ -108,43 +111,11 @@ const BAND_ASPECT: Record<Exclude<SurfaceSettings["mediaScale"], "none">, string
 };
 
 /**
- * Presentation of the scenario band, chosen by CONTENT CAPABILITY (never mode
- * identity):
- *  - "family": the payload describes a premise the subject-shaped cards cannot
- *    express — a combat RELATION (attacker → ability → target, with the stated
- *    quantities) or an item TRANSACTION (started with / kept / bought / sold).
- *    Renders the absolute-sized family band (RA7). Chosen FIRST, and only when
- *    `selectFamilyLayout` can support the payload completely.
- *  - "cinematic": the source resolves to a real premium visual — champion
- *    splash, item/recipe, combat calc, a framed collectible, OR a spoiler-hidden
- *    subject (placeholder card) that will reveal into a rich subject. Keeps the
- *    tall container-query box the Broadcast cards were designed for.
- *  - "compact": no source, or a source that classifies to nothing worth a
- *    cinematic panel ("empty"). Renders the short absolute-sized CompactScenarioBand
- *    instead of reserving a large, mostly-empty cqmin panel.
- *
- * Reusing selectScenario (the exact classifier the cinematic card itself uses,
- * called spoiler-safely with revealActive=false / correctAnswer=null) keeps the
- * decision consistent with what would actually render and avoids a second
- * capability heuristic. A spoiler subject classifies to "placeholder", so it
- * stays cinematic and the band does NOT resize when the reveal arrives.
- *
- * The family tier is decided from pre-reveal premise fields only and is
- * therefore reveal-invariant by construction: nothing it reads can change when
- * a round resolves, so the band cannot swap profile — or resize — mid-question.
+ * Band profile — the ONE rule, now in `@/lib/question-surface/bandProfile` so
+ * the Content Factory's completeness gate can ask the same question this
+ * component asks, before the page mounts. Moved verbatim (CON1 Step 1D); the
+ * rendered result is unchanged.
  */
-type ScenarioBandProfile = "family" | "cinematic" | "compact" | "none";
-
-function resolveBandProfile(
-  scenarioSource: ScenarioSource | null | undefined,
-  mediaScale: SurfaceSettings["mediaScale"],
-  familyLayout: FamilyLayout | null,
-): ScenarioBandProfile {
-  if (mediaScale === "none") return "none";
-  if (familyLayout) return "family";
-  if (!scenarioSource) return "compact";
-  return selectScenario(scenarioSource, false, null).card === "empty" ? "compact" : "cinematic";
-}
 
 /** Premium scenario band. Family band for relation/transaction premises;
  * cinematic Broadcast card for rich subject content; a short, readable

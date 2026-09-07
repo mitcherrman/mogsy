@@ -63,6 +63,16 @@ export type RunManifest = {
   } | null;
   /** Named copy variants in effect, for reproducibility. */
   copy_variants: Record<string, string>;
+  /**
+   * CON1 Step 1D — true when this run was captured with the diagnostic
+   * `--allow-incomplete-presentation` override, i.e. questions whose safe
+   * presentation the layout system does not render were captured anyway.
+   *
+   * Persisted so the override is auditable from the manifest alone: a run with
+   * this true is a diagnostic run, not a publishable one. Absent on runs made
+   * before the flag existed, which parse as false.
+   */
+  allow_incomplete_presentation: boolean;
   platform: string;
   generator: { version: string; commit: string | null };
   completed: boolean;
@@ -126,6 +136,8 @@ export function parseRunManifest(raw: unknown): RunManifest | null {
       m.copy_variants && typeof m.copy_variants === "object"
         ? (m.copy_variants as Record<string, string>)
         : {},
+    // Older manifests predate the flag; absence means it was not overridden.
+    allow_incomplete_presentation: m.allow_incomplete_presentation === true,
     platform: typeof m.platform === "string" ? m.platform : "generic",
     generator:
       m.generator && typeof m.generator === "object"

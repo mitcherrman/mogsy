@@ -99,6 +99,7 @@ export const COMBAT_PRESENTATION = {
 /** 1 — a plain multiple-choice question: no premise contract, no presentation. */
 export const PLAIN_MCQ: RenderQuestion = {
   id: "plain-1",
+  question_key: "item_exact_stat:armor:highest",
   question_text: "Which item grants the most armor?",
   choices: [{ label: "Sunfire Aegis" }, { label: "Thornmail" }, { label: "Dead Man's Plate" }],
   correct_index: 1,
@@ -110,6 +111,7 @@ export const PLAIN_MCQ: RenderQuestion = {
 /** 2 — a combat scenario the production layout authority fully supports. */
 export const COMBAT_SCENARIO: RenderQuestion = {
   id: "combat-1",
+  question_key: "post_mitigation_damage:caitlyn:q:ahri",
   question_text:
     "How much less post-mitigation damage does the hit deal after the purchase?",
   choices: [{ label: "64" }, { label: "86" }, { label: "75" }, { label: "109" }],
@@ -121,6 +123,7 @@ export const COMBAT_SCENARIO: RenderQuestion = {
 /** 3 — Minion XP `exact_minion`: a real safe premise the backend does project. */
 export const MINION_EXACT: RenderQuestion = {
   id: "minion-exact",
+  question_key: "minion_xp_level_breakpoint:exact_minion:solo:l4:w4",
   question_text:
     "Solo lane, no XP missed — which minion of wave 4 takes you to level 4?",
   choices: [
@@ -142,11 +145,170 @@ export const MINION_EXACT: RenderQuestion = {
  */
 export const MINION_WAVE: RenderQuestion = {
   id: "minion-wave",
+  question_key: "minion_xp_level_breakpoint:wave:solo:l4",
   question_text: "Solo lane, no XP missed — which wave takes you to level 4?",
   choices: [{ label: "Wave 3" }, { label: "Wave 4" }, { label: "Wave 5" }, { label: "Wave 6" }],
   correct_index: 1,
   category: "league_mechanics",
   metadata: { ...EXACT_MINION_METADATA, target_level: 4, composition: "3 melee, 3 caster" },
+};
+
+/**
+ * A purchase/sell-swap premise — the LIFECYCLE family layout, the second rule
+ * `selectFamilyLayout` supports on this branch. Shaped exactly like the RA7
+ * fixture the layout authority's own tests use, so the harness proves the
+ * bridge for both supported families, not just combat.
+ */
+export const LIFECYCLE_PRESENTATION = {
+  assets: {
+    subject: {
+      type: "combat_cooldown",
+      champion: "Ornn",
+      champion_icon: "assets/champions/Ornn/icon.png",
+      item_icons: [
+        { name: "Sunfire Aegis", icon: "assets/items/3068.png" },
+        { name: "Abyssal Mask", icon: "assets/items/8020.png" },
+      ],
+    },
+    entities: {
+      champions: [
+        {
+          type: "champion",
+          id: "Ornn",
+          name: "Ornn",
+          role: "subject",
+          icon: "assets/champions/Ornn/icon.png",
+        },
+      ],
+      items: [
+        { type: "item", id: 3068, name: "Sunfire Aegis", role: "subject", status: "retained", icon: "assets/items/3068.png" },
+        { type: "item", id: 8020, name: "Abyssal Mask", role: "subject", status: "purchased", icon: "assets/items/8020.png" },
+        { type: "item", id: 1054, name: "Doran's Shield", role: "subject", status: "sold", icon: "assets/items/1054.png" },
+      ],
+      abilities: [],
+      runes: [],
+      summoner_spells: [],
+    },
+  },
+};
+
+/**
+ * `ability_cooldown_haste` — the exact safe premise
+ * `quiz.family_contract.PREMISE_CONTRACTS` projects for this family, copied
+ * from a real active row.
+ *
+ * It is here because it is the counter-example that shaped the Step 1D gate:
+ * `selectFamilyLayout` declines it (no assets, no entities), yet
+ * `classifySubject` reads `champion_name` and the band renders a full
+ * champion_profile card. A gate keyed on "no family layout" would have failed
+ * every one of these; the gate is keyed on the BAND, and passes them.
+ */
+export const COOLDOWN_HASTE_PRESENTATION = {
+  base_cooldown: 5.0,
+  rank: 5,
+  slot: "E",
+  champion_name: "Aatrox",
+  ability_haste: 10.0,
+  ability_name: "Umbral Dash",
+} as const;
+
+/**
+ * `pro_champion_scope_comparison` — likewise the real projected premise from an
+ * active row. Scope, metric and candidate identities: no subject, no entities,
+ * nothing `classifySubject` or `selectFamilyLayout` can draw. The band falls
+ * back to the category-only compact strip, so the premise reaches no pixel.
+ */
+export const PRO_SCOPE_PRESENTATION = {
+  scope_key: "World Championship|ALL|4.14",
+  candidates: ["Janna", "Kha'Zix"],
+  metric: "picks",
+  patch: "4.14",
+  shape: "pairwise",
+  tournament_id: null,
+  league_slug: "World Championship",
+} as const;
+
+/** 5 — a lifecycle transaction premise the layout authority fully supports. */
+export const LIFECYCLE_SCENARIO: RenderQuestion = {
+  id: "lifecycle-1",
+  question_key: "flat_inventory_stat:ornn:sell-swap",
+  question_text:
+    "Ornn started with Doran's Shield and still has Sunfire Aegis. Later, Ornn sold "
+    + "Doran's Shield and bought Abyssal Mask. How much flat health do Ornn's items provide now?",
+  choices: [{ label: "750" }, { label: "810" }, { label: "700" }, { label: "800" }],
+  correct_index: 1,
+  category: "flat_inventory_stat",
+  presentation: LIFECYCLE_PRESENTATION,
+};
+
+/** 6 — a real `ability_cooldown_haste` row: no family band, a cinematic one. */
+export const COOLDOWN_HASTE: RenderQuestion = {
+  id: "haste-1",
+  question_key: "ability_cooldown_haste:aatrox:e:r5",
+  question_text:
+    "Aatrox E - Umbral Dash has a rank 5 cooldown of 5 seconds. With Sundered Sky and "
+    + "Plated Steelcaps and Spear of Shojin, what is its cooldown?",
+  choices: [{ label: "4.5" }, { label: "5.0" }, { label: "4.0" }, { label: "3.5" }],
+  correct_index: 0,
+  category: "Champion Ability Cooldowns",
+  presentation: { ...COOLDOWN_HASTE_PRESENTATION },
+};
+
+/** 7 — a real `pro_champion_scope_comparison` row: a premise that draws nothing. */
+export const PRO_SCOPE_COMPARISON: RenderQuestion = {
+  id: "pro-1",
+  question_key: "pro_champion_scope_comparison:worlds:4.14:picks",
+  question_text:
+    "In World Championship (patch 4.14), which champion had the higher pick count: "
+    + "Kha'Zix or Janna?",
+  choices: [{ label: "Kha'Zix" }, { label: "Janna" }],
+  correct_index: 0,
+  category: "Pro Play",
+  presentation: { ...PRO_SCOPE_PRESENTATION },
+};
+
+/**
+ * 8 — a row the preview envelope cannot shape into a public question at all:
+ * one option. `storedQuestionPreviewPayload` returns null, so the resolver
+ * reports `unreadable` rather than adapting a half-model.
+ *
+ * Not reachable through the render harness — `adaptScreenshotQuestion` refuses
+ * a row with fewer than two choices before it is ever injected — which is why
+ * this fixture is exercised on the pure path. It is kept because `unreadable`
+ * is a real resolver outcome for the Admin preview, which loads rows the
+ * screenshot adapter never sees.
+ */
+export const UNREADABLE_PRESENTATION_QUESTION: RenderQuestion = {
+  id: "unreadable-1",
+  question_key: "broken:presentation:row",
+  question_text: "Which item grants the most armor?",
+  choices: [{ label: "Thornmail" }],
+  correct_index: 0,
+  category: "items",
+  presentation: { ...COMBAT_PRESENTATION },
+};
+
+/**
+ * 9 — a row whose presentation the RANKED TRANSPORT reader discards.
+ *
+ * `readOptionalPresentation` walks a presentation against a node budget and
+ * returns null for anything over it, so a payload that is well-formed on the
+ * wire can still arrive with no premise attached. The row is a complete,
+ * capturable question — the harness accepts it and the card renders — and the
+ * premise silently vanishes on the way to the band. Exactly the class of
+ * silent loss this gate exists to catch, and reachable through the real page.
+ */
+export const OVERSIZED_PRESENTATION_QUESTION: RenderQuestion = {
+  id: "oversized-1",
+  question_key: "oversized:presentation:row",
+  question_text: "Which item grants the most armor?",
+  choices: [{ label: "Sunfire Aegis" }, { label: "Thornmail" }, { label: "Randuin's Omen" }],
+  correct_index: 1,
+  category: "items",
+  presentation: Object.fromEntries(
+    // Comfortably past the reader's node budget.
+    Array.from({ length: 800 }, (_, i) => [`fact_${i}`, i]),
+  ),
 };
 
 /** The Phase 0 diagnostic set, in the order the diagnostic reports them. */

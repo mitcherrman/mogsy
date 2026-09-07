@@ -30,6 +30,12 @@
 
 import { selectFamilyLayout, type FamilyLayout } from "@/lib/question-surface/familyLayout";
 import {
+  bandPresentsPayload,
+  resolveBandProfile,
+  type ScenarioBandProfile,
+} from "@/lib/question-surface/bandProfile";
+import { resolveSettings, type SurfaceVariant } from "@/lib/question-surface/contract";
+import {
   adaptCandidatePreview,
   type RankedPreviewModel,
 } from "@/lib/question-preview/rankedPreviewAdapter";
@@ -37,31 +43,60 @@ import { storedQuestionPreviewPayload } from "@/lib/question-preview/storedQuest
 import type { RenderQuestion } from "./types";
 
 /**
+ * The surface variant the Content Factory renders scenario questions with.
+ * Named here because the band profile depends on it (a variant with
+ * `mediaScale: "none"` draws no band at all), and the gate must ask the layout
+ * authority the same question the harness will ask it.
+ */
+export const HARNESS_SURFACE_VARIANT: SurfaceVariant = "competitive";
+
+/**
  * What the presentation path did with one render question.
+ *
+ * The three "rendered" statuses are the PRODUCTION band profile
+ * (`@/lib/question-surface/bandProfile`), not a second classification — this
+ * module calls the same function the surface calls, on the same input.
  *
  * - `absent`      — the row carried no `presentation`. The correct, expected
  *                   outcome for a family with no premise contract and for a
  *                   form (e.g. Minion XP `wave`) whose contract declares none.
- *                   Renders text-only, by design.
+ *                   Renders text-only, by design, and is NOT a defect.
  * - `unreadable`  — a `presentation` was present but the payload could not be
  *                   read as a public question (too few options, no prompt, or
  *                   the adapter rejected it). A defect, not a design outcome.
  * - `no-scenario` — a `presentation` was present and readable, but produced no
  *                   scenario source at all.
- * - `text-only`   — a scenario source EXISTS and the layout authority supports
- *                   no family for it. Today this is the honest outcome for the
- *                   Minion XP `exact_minion` form, whose layout rule and band
- *                   are unmerged work; the surface falls back to its existing
- *                   compact/cinematic presentation. This is the silent fallback
- *                   Step 1D must be able to fail on.
- * - `family`      — the layout authority supports a family band for it.
+ * - `text-only`   — a scenario source exists and the production band profile is
+ *                   `compact` (or `none`). CompactScenarioBand receives ONLY
+ *                   the category, so every field the backend projected is
+ *                   dropped and the exported image is text. THIS is the state
+ *                   Step 1D fails on.
+ * - `cinematic`   — the band draws a real premium subject visual resolved FROM
+ *                   the presentation (champion splash, item/recipe, combat
+ *                   calc, collectible, spoiler placeholder). A rendered
+ *                   presentation; valid.
+ * - `family`      — the layout authority supports a family band. Valid.
+ *
+ * MEASURED, and the reason `cinematic` is named separately from `text-only`:
+ * `ability_cooldown_haste` rows project {champion_name, slot, ability_name,
+ * rank, ability_haste, base_cooldown}, which `selectFamilyLayout` declines and
+ * `selectScenario` resolves to a champion_profile card. Collapsing "no family
+ * layout" into "text-only" would have condemned every one of those captures
+ * while a full champion band was on screen.
  */
 export type ScenarioPresentationStatus =
   | "absent"
   | "unreadable"
   | "no-scenario"
   | "text-only"
+  | "cinematic"
   | "family";
+
+/** Statuses in which the presentation actually reached the picture. */
+export const RENDERED_PRESENTATION_STATUSES: readonly ScenarioPresentationStatus[] = [
+  "family",
+  "cinematic",
+];
 
 export interface ScenarioPresentationResult {
   status: ScenarioPresentationStatus;
@@ -76,7 +111,17 @@ export interface ScenarioPresentationResult {
    * capture runner needs the answer BEFORE the page mounts.
    */
   familyLayout: FamilyLayout | null;
-  /** Adapter message when `status` is `unreadable`. */
+  /**
+   * The PRODUCTION band profile for this payload — `family`, `cinematic`,
+   * `compact` or `none` — or `null` when no surface renders at all.
+   *
+   * Same second-call-to-a-pure-function property as `familyLayout`: the
+   * surface resolves it itself and that call is what renders. It is exposed
+   * because the completeness gate must know whether the presentation reached
+   * the picture, and `compact` is where it demonstrably does not.
+   */
+  band: ScenarioBandProfile | null;
+  /** Adapter message when `status` is `unreadable`, or `no-scenario`. */
   reason: string | null;
 }
 
@@ -84,6 +129,7 @@ const ABSENT: ScenarioPresentationResult = {
   status: "absent",
   model: null,
   familyLayout: null,
+  band: null,
   reason: null,
 };
 
@@ -97,6 +143,7 @@ const ABSENT: ScenarioPresentationResult = {
  */
 export function resolveScenarioPresentation(
   question: RenderQuestion | null | undefined,
+  variant: SurfaceVariant = HARNESS_SURFACE_VARIANT,
 ): ScenarioPresentationResult {
   if (!question?.presentation || typeof question.presentation !== "object") return ABSENT;
 
@@ -106,6 +153,7 @@ export function resolveScenarioPresentation(
       status: "unreadable",
       model: null,
       familyLayout: null,
+      band: null,
       reason: "Question could not be shaped as a public question payload.",
     };
   }
@@ -118,20 +166,43 @@ export function resolveScenarioPresentation(
       status: "unreadable",
       model: null,
       familyLayout: null,
+      band: null,
       reason: err instanceof Error ? err.message : "Presentation could not be adapted.",
     };
   }
 
   if (!model.scenarioSource) {
-    return { status: "no-scenario", model, familyLayout: null, reason: null };
+    return {
+      status: "no-scenario",
+      model,
+      familyLayout: null,
+      band: null,
+      reason: "Presentation was readable but produced no scenario source.",
+    };
   }
 
+  // The production chain, in the production order, with the production
+  // variant's settings: family layout first, then the band profile that
+  // decides which presentation of the band actually renders.
   const familyLayout = selectFamilyLayout(model.scenarioSource);
+  const band = resolveBandProfile(
+    model.scenarioSource,
+    resolveSettings(variant).mediaScale,
+    familyLayout,
+  );
+  const status: ScenarioPresentationStatus =
+    band === "family" ? "family" : band === "cinematic" ? "cinematic" : "text-only";
   return {
-    status: familyLayout ? "family" : "text-only",
+    status,
     model,
     familyLayout,
-    reason: null,
+    band,
+    reason: bandPresentsPayload(band)
+      ? null
+      : band === "none"
+        ? "The surface variant renders no media band."
+        : "A safe presentation exists, but the layout authority draws no scenario " +
+          "for it — the band falls back to the category-only compact strip.",
   };
 }
 
