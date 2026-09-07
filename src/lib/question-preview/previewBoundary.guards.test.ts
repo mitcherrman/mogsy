@@ -44,6 +44,12 @@ const PREVIEW_CONSUMERS = [
   // same structural guarantee has to cover it: a render harness that captures
   // unattended is the last place a stray write should be able to appear.
   "lib/quiz-screenshot/presentation.ts",
+  // CON1 Step 2 — the Admin content-readiness preflight. It composes the
+  // bridge above to answer "would a capture of this row be publishable?", and
+  // it runs inside the ADMIN bundle, on rows an operator is curating. A stray
+  // write from a read-only preflight is exactly the class of bug this boundary
+  // exists to make impossible.
+  "lib/quiz-screenshot/readiness.ts",
 ];
 
 const PREVIEW_FILES = [...PREVIEW_CONSUMERS, PREVIEW_CLIENT];

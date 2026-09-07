@@ -20,6 +20,7 @@ import {
   type QuizVideoQuestion,
 } from "@/video/types";
 import { buildChapters, buildTimeline, formatTimestamp, type Chapter } from "@/video/timing";
+import { quoteArg } from "@/lib/cli/shellQuote";
 
 export type VideoFormat = "16:9" | "9:16";
 
@@ -62,14 +63,13 @@ export const DEFAULT_VIDEO_EXPORT_CONFIG: VideoExportConfig = {
 
 /**
  * Quote a single CLI argument for a POSIX-ish shell only when needed.
- * Values with spaces or shell-special chars get double-quoted; inner double
- * quotes are escaped. Simple tokens (paths, numbers, flags) pass through.
+ *
+ * The rule itself now lives in `@/lib/cli/shellQuote` so the Content Factory's
+ * command builder (CON1 Step 2) uses the same escaping rather than a second
+ * copy of it. Re-exported here unchanged: this module's public API is
+ * untouched.
  */
-export function quoteArg(value: string): string {
-  if (value === "") return '""';
-  if (/^[A-Za-z0-9_./:@=-]+$/.test(value)) return value;
-  return `"${value.replace(/(["\\$`])/g, "\\$1")}"`;
-}
+export { quoteArg };
 
 function pushFlag(args: string[], flag: string, value: string | undefined | null) {
   const v = (value ?? "").trim();

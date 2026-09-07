@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2, XCircle, AlertTriangle, Star, StarOff, EyeOff, Eye,
   ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ImageOff,
   ArrowLeft, Loader2, Wrench, ListChecks, Send, Package, KeyRound, Download,
-  Image as ImageIcon, ImageMinus, HelpCircle,
+  Image as ImageIcon, ImageMinus, HelpCircle, Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,11 @@ import type { BroadcastPlaylist } from "@/lib/quiz-broadcast/types";
 import { getAdminKey, setAdminKey, subscribeAdminKey } from "@/lib/knowledge-admin/key";
 import { QuestionPreviewPanel } from "@/components/question-preview/QuestionPreviewPanel";
 import { describeAssetStatus, type AssetStatus } from "@/lib/quiz/assetStatus";
+import { evaluateContentReadiness } from "@/lib/quiz-screenshot/readiness";
+import {
+  GenerateContentPanel,
+  ReadinessBadge,
+} from "@/components/admin/GenerateContentPanel";
 import {
   storedCorrectOptionIndex,
   storedQuestionPreviewPayload,
@@ -543,6 +548,10 @@ function QuestionRow({
   onClick: () => void;
   onCheck: (q: ReviewQuestion) => void;
 }) {
+  // CON1 Step 2 — the content preflight for this row. Pure and derived from
+  // fields already on it, so no fetch and no extra state; memoized because it
+  // runs the runner's own adapter and the production layout authority.
+  const readiness = useMemo(() => evaluateContentReadiness(q), [q]);
   return (
     <div
       data-question-id={q.id}
@@ -593,6 +602,7 @@ function QuestionRow({
               />
             )}
             <AssetBadge status={q.asset_status} compact />
+            <ReadinessBadge readiness={readiness} compact />
           </div>
         </div>
       </button>
@@ -610,12 +620,15 @@ function DetailPanel({
   onNavigate,
   canPrev,
   canNext,
+  onGenerateContent,
 }: {
   questionId: number;
   onClose: () => void;
   onNavigate: (dir: "prev" | "next") => void;
   canPrev: boolean;
   canNext: boolean;
+  /** CON1 Step 2 — hand this ONE question to the Generate Content panel. */
+  onGenerateContent?: (q: ReviewQuestion) => void;
 }) {
   const queryClient = useQueryClient();
   const [note, setNote] = useState("");
@@ -807,6 +820,20 @@ function DetailPanel({
           </button>
 
           <AssetBadge status={q.asset_status} />
+
+          <ReadinessBadge readiness={evaluateContentReadiness(q)} />
+
+          {onGenerateContent && (
+            <button
+              data-testid="generate-content-open"
+              onClick={() => onGenerateContent(q)}
+              title="Configure a local Content Factory run for this question and copy the command."
+              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+            >
+              <Terminal className="h-3 w-3" />
+              Generate Content
+            </button>
+          )}
 
           <button
             disabled={isPending}
@@ -1199,6 +1226,24 @@ export default function AdminQuizReview({
   // Selection state: map preserves question data across page changes
   const [checkedQuestions, setCheckedQuestions] = useState<Map<number, ReviewQuestion>>(new Map());
 
+  /**
+   * CON1 Step 2 — the open Generate Content handoff, or null.
+   *
+   * Two kinds, ONE panel:
+   *   `selection` reads the checked-question map live, so dropping a blocked
+   *               row updates the command in place rather than reopening.
+   *   `single`    carries the one question the detail panel handed over, which
+   *               is deliberately independent of the checkbox selection: an
+   *               operator reading one question should not have to check it
+   *               first, and opening it must not disturb a package they were
+   *               already assembling.
+   *
+   * Nothing is persisted. The handoff is a command, not a job.
+   */
+  const [contentHandoff, setContentHandoff] = useState<
+    { kind: "selection" } | { kind: "single"; question: ReviewQuestion } | null
+  >(null);
+
   const queryClient = useQueryClient();
   const adminKey = useAdminKey();
   const hasAdminKey = !!adminKey;
@@ -1270,8 +1315,43 @@ export default function AdminQuizReview({
     });
   };
 
-  const clearSelection = () => setCheckedQuestions(new Map());
+  const clearSelection = () => {
+    setCheckedQuestions(new Map());
+    setContentHandoff((h) => (h?.kind === "selection" ? null : h));
+  };
   const checkedCount = checkedQuestions.size;
+
+  /**
+   * The questions the open handoff covers.
+   *
+   * For a `selection` handoff this is `Map.values()` — JavaScript Map
+   * iteration is INSERTION order, so the ids reach the command in the order the
+   * operator ticked them and stay stable across filtering and pagination
+   * (the map holds the row data, not a page index). That order is deliberate:
+   * a carousel post is an ordered sequence, so re-sorting the selection would
+   * silently change the artefact.
+   */
+  const handoffQuestions = useMemo<ReviewQuestion[]>(() => {
+    if (!contentHandoff) return [];
+    return contentHandoff.kind === "single"
+      ? [contentHandoff.question]
+      : Array.from(checkedQuestions.values());
+  }, [contentHandoff, checkedQuestions]);
+
+  // A `selection` handoff whose selection has emptied has nothing left to say.
+  useEffect(() => {
+    if (contentHandoff?.kind === "selection" && checkedQuestions.size === 0) {
+      setContentHandoff(null);
+    }
+  }, [contentHandoff, checkedQuestions]);
+
+  const dropBlockedFromSelection = useCallback((ids: number[]) => {
+    setCheckedQuestions((prev) => {
+      const next = new Map(prev);
+      for (const id of ids) next.delete(id);
+      return next;
+    });
+  }, []);
 
   const downloadExport = async () => {
     setExporting(true);
@@ -1484,6 +1564,16 @@ export default function AdminQuizReview({
                 <Button
                   size="sm"
                   className="h-6 gap-1 text-[10px]"
+                  data-testid="generate-content-open-selection"
+                  onClick={() => setContentHandoff({ kind: "selection" })}
+                >
+                  <Terminal className="h-3 w-3" />
+                  Generate Content ({checkedCount})
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 gap-1 text-[10px]"
                   onClick={saveToPlaylist}
                 >
                   <Send className="h-3 w-3" />
@@ -1555,8 +1645,21 @@ export default function AdminQuizReview({
           )}
         </div>
 
-        {/* Detail panel */}
-        {selectedId !== null ? (
+        {/* Right column — the Generate Content handoff when open, else detail.
+            One column, not a third: the operator configures content where they
+            were already reading the question, and Quiz Review does not become
+            an export dashboard. */}
+        {contentHandoff !== null ? (
+          <div className="flex h-full w-[400px] shrink-0 flex-col overflow-y-auto p-2">
+            <GenerateContentPanel
+              questions={handoffQuestions}
+              onClose={() => setContentHandoff(null)}
+              onDropBlocked={
+                contentHandoff.kind === "selection" ? dropBlockedFromSelection : undefined
+              }
+            />
+          </div>
+        ) : selectedId !== null ? (
           <div className="flex h-full w-[400px] shrink-0 flex-col overflow-hidden">
             <DetailPanel
               questionId={selectedId}
@@ -1564,6 +1667,7 @@ export default function AdminQuizReview({
               onNavigate={navigate}
               canPrev={selectedIndex > 0}
               canNext={selectedIndex < questions.length - 1}
+              onGenerateContent={(q) => setContentHandoff({ kind: "single", question: q })}
             />
           </div>
         ) : (
