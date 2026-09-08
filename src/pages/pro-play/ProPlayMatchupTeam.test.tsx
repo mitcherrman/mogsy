@@ -583,10 +583,26 @@ async function renderBoard(search = TEAM_URL) {
 // --- URL state --------------------------------------------------------------
 
 describe("mode and URL state", () => {
-  it("defaults to lane mode so every Phase 1 link keeps working", () => {
-    expect(modeFromParams(new URLSearchParams(""))).toBe("lane");
-    expect(modeFromParams(new URLSearchParams("team_a=T1"))).toBe("lane");
+  it("opens on the five-lane board when the URL names no lane", () => {
+    // Phase 3 made the board the flagship: a bare URL, and one carrying only
+    // teams, must land on the dossier rather than an empty form.
+    expect(modeFromParams(new URLSearchParams(""))).toBe("team");
+    expect(modeFromParams(new URLSearchParams("team_a=T1"))).toBe("team");
     expect(modeFromParams(new URLSearchParams("mode=team"))).toBe("team");
+  });
+
+  it("still opens every Phase 1 lane link in lane mode", () => {
+    // Each of these was shareable before Phase 3 and must be unchanged by it.
+    for (const qs of [
+      "team_a=T1&team_b=Gen.G&lane=Mid",
+      "player_a=Faker",
+      "player_b=Chovy",
+      "champion_a=Azir",
+      "champion_b=Azir",
+      "mode=lane",
+    ]) {
+      expect(modeFromParams(new URLSearchParams(qs))).toBe("lane");
+    }
   });
 
   it("round-trips a team selection through the query string", () => {
@@ -715,7 +731,10 @@ describe("the five-lane board", () => {
   });
 
   it("offers only focus-set teams", async () => {
+    // Phase 3 moved the pickers behind "Change teams": once two teams are
+    // chosen they are how you change the subject, not how you read it.
     await renderBoard();
+    fireEvent.click(screen.getByTestId("dossier-team-picker-toggle"));
     const select = screen.getByTestId("team-select-a");
     const values = [...select.querySelectorAll("option")].map((o) => o.getAttribute("value")).filter(Boolean);
     expect(values).toEqual(["T1", "Bilibili Gaming"]);
@@ -778,9 +797,11 @@ describe("roster semantics", () => {
 // --- side-by-side, never head-to-head ---------------------------------------
 
 describe("side-by-side semantics", () => {
-  it("heads the board 'Side-by-side record' and never 'head-to-head'", async () => {
+  it("names the comparison accurately and never 'head-to-head'", async () => {
+    // Phase 3 leads with what this IS. The server's denial still prints, as
+    // the note under the plates — see the next test.
     await renderBoard();
-    expect(screen.getByText("Side-by-side record")).toBeInTheDocument();
+    expect(screen.getByText("Independent performance comparison")).toBeInTheDocument();
     expect(screen.queryByText(/head-to-head record of/i)).toBeNull();
     expect(document.body.textContent).not.toMatch(/versus record|series score/i);
   });
@@ -810,8 +831,9 @@ describe("side-by-side semantics", () => {
     await renderBoard();
     const top = screen.getByTestId("lane-card-Top");
     const records = within(top).getAllByTestId("candidate-record");
-    expect(records[0]).toHaveTextContent("101 games");
-    expect(records[1]).toHaveTextContent("125 games");
+    expect(records[0]).toHaveTextContent("Games");
+    expect(records[0]).toHaveTextContent("101");
+    expect(records[1]).toHaveTextContent("125");
   });
 });
 
@@ -878,29 +900,32 @@ describe("demonstrated picks", () => {
     const doran = within(top).getByTestId("candidate-Doran");
     // pool_preview is 2; Doran has three picks, the third with one game.
     expect(within(doran).queryByTestId("pool-row-Rumble")).toBeNull();
-    fireEvent.click(within(doran).getByTestId("pool-show-all"));
+    fireEvent.click(within(doran).getByTestId("pool-disclosure-toggle"));
     expect(within(doran).getByTestId("pool-row-Rumble")).toBeInTheDocument();
   });
 
   it("shows a one-game pick when expanded — no minimum-game floor", async () => {
     await renderBoard();
     const doran = within(screen.getByTestId("lane-card-Top")).getByTestId("candidate-Doran");
-    fireEvent.click(within(doran).getByTestId("pool-show-all"));
-    expect(within(doran).getByTestId("pool-row-Rumble")).toHaveTextContent("1g");
+    fireEvent.click(within(doran).getByTestId("pool-disclosure-toggle"));
+    expect(within(doran).getByTestId("pool-row-Rumble")).toHaveTextContent("1");
   });
 
   it("expanding is a display toggle and never a second request", async () => {
     await renderBoard();
     const before = requests.length;
     const doran = within(screen.getByTestId("lane-card-Top")).getByTestId("candidate-Doran");
-    fireEvent.click(within(doran).getByTestId("pool-show-all"));
+    fireEvent.click(within(doran).getByTestId("pool-disclosure-toggle"));
     expect(requests.length).toBe(before);
   });
 
   it("declares a bounded pool fetch rather than looking like an empty bench", async () => {
     await renderBoard();
     const support = screen.getByTestId("lane-card-Support");
-    // The third candidate is still listed, with his games...
+    // Phase 3 leads with the demonstrated starter and keeps every other
+    // candidate one click behind "Other players in this lane" — retained in
+    // full, never filtered.
+    fireEvent.click(within(support).getByTestId("lane-more-Support-T1-toggle"));
     expect(within(support).getByTestId("candidate-Sub2")).toBeInTheDocument();
     // ...and the omission is stated, pointing at the lane view.
     expect(within(support).getByTestId("pool-omitted")).toHaveTextContent("open the lane");
@@ -914,28 +939,40 @@ describe("bans", () => {
   it("applies one ban across every lane", async () => {
     await renderBoard();
     fireEvent.click(screen.getByTestId("team-ban-Vi"));
-    await waitFor(() =>
-      expect(requests.some((u) => u.includes("ban=Vi"))).toBe(true),
-    );
-    // Both Jungle sides play Vi; both must show it struck through.
+    await waitFor(() => expect(requests.some((u) => u.includes("ban=Vi"))).toBe(true));
+    // Both Jungle sides play Vi; both must show it struck out where the reader
+    // actually looks — the summary chip, not only the expanded table.
     await waitFor(() => {
       const jungle = screen.getByTestId("lane-card-Jungle");
-      const rows = within(jungle).getAllByTestId("pool-row-Vi");
-      expect(rows.length).toBe(2);
-      for (const row of rows) expect(row.className).toContain("line-through");
+      const chips = within(jungle).getAllByTestId("champ-chip-Vi");
+      expect(chips.length).toBeGreaterThanOrEqual(2);
+      for (const chip of chips) expect(chip.className).toContain("is-banned");
     });
   });
 
   it("keeps a banned champion visible in the pool", async () => {
+    // The whole point of the ban control: you see what you removed. It is a
+    // set difference over `selectable`, never a filter over the pool.
     await renderBoard(`${TEAM_URL}&ban=Vi`);
     const jungle = screen.getByTestId("lane-card-Jungle");
-    expect(within(jungle).getAllByTestId("pool-row-Vi").length).toBe(2);
+    expect(within(jungle).getAllByTestId("champ-chip-Vi").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps a banned champion in the full evidence table too", async () => {
+    await renderBoard(`${TEAM_URL}&ban=Vi`);
+    const jungle = screen.getByTestId("lane-card-Jungle");
+    for (const toggle of within(jungle).getAllByTestId("pool-disclosure-toggle")) {
+      fireEvent.click(toggle);
+    }
+    const rows = within(jungle).getAllByTestId("pool-row-Vi");
+    expect(rows.length).toBe(2);
+    for (const row of rows) expect(row.className).toContain("is-banned");
   });
 
   it("marks a ban on the team summary too", async () => {
     await renderBoard(`${TEAM_URL}&ban=Ambessa`);
     const chip = screen.getByTestId("team-champ-Bilibili Gaming-Ambessa");
-    expect(chip.className).toContain("line-through");
+    expect(chip.className).toContain("is-banned");
   });
 
   it("writes the ban into the URL so a board is shareable", async () => {
@@ -1008,8 +1045,9 @@ describe("lane drill-down", () => {
     expect(params.get("player_b")).toBeNull();
     expect(params.getAll("ban")).toEqual(["Vi"]);
     expect(params.get("pool_scope")).toBe("all_time");
-    // No mode, so the link lands in lane mode.
-    expect(params.get("mode")).toBeNull();
+    // The lane it names would resolve to lane mode on its own; since Phase 3
+    // the link says so outright as well.
+    expect(params.get("mode")).toBe("lane");
   });
 
   it("pre-fills both players for an unambiguous lane", async () => {
@@ -1061,8 +1099,18 @@ describe("lane drill-down", () => {
 // --- Phase 1 regression -----------------------------------------------------
 
 describe("Phase 1 is not regressed", () => {
-  it("renders the lane explorer with no mode in the URL", async () => {
+  it("opens the five-lane board with no mode in the URL", async () => {
+    // Phase 3 made the board the flagship. A bare URL is now a dossier, not
+    // an empty configuration form.
     renderAt("");
+    await waitFor(() => expect(screen.getByTestId("lane-board")).toBeInTheDocument());
+    expect(screen.queryByTestId("matchup-lane")).toBeNull();
+    expect(requests.some((u) => u.includes("/matchup/team"))).toBe(true);
+  });
+
+  it("still renders a Phase 1 lane link in lane mode", async () => {
+    // Every link Phase 1 ever produced names a lane, and must be unchanged.
+    renderAt("?team_a=T1&team_b=Bilibili+Gaming&lane=Mid");
     await waitFor(() => expect(screen.getByTestId("matchup-lane")).toBeInTheDocument());
     expect(screen.queryByTestId("lane-board")).toBeNull();
     expect(requests.some((u) => u.includes("/matchup/explore"))).toBe(true);
@@ -1089,5 +1137,98 @@ describe("Phase 1 is not regressed", () => {
     await renderBoard();
     expect(screen.getByTestId("matchup-mode-team")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("matchup-mode-lane")).toHaveAttribute("aria-selected", "false");
+  });
+});
+
+// --- Phase 3: the dossier ---------------------------------------------------
+
+describe("Phase 3 dossier", () => {
+  it("answers 'who is playing' before it asks anything", async () => {
+    await renderBoard();
+    const header = screen.getByTestId("team-heading");
+    expect(header).toHaveTextContent("T1");
+    expect(header).toHaveTextContent("Bilibili Gaming");
+    expect(header).toHaveTextContent("2026");
+    // The five lanes are present on first paint — no configuration required.
+    expect(screen.getByTestId("lane-board")).toBeInTheDocument();
+    for (const lane of ["Top", "Jungle", "Mid", "Bot", "Support"]) {
+      expect(screen.getByTestId(`lane-card-${lane}`)).toBeInTheDocument();
+    }
+  });
+
+  it("offers the four scopes as a dossier-level rail", async () => {
+    await renderBoard();
+    const rail = screen.getByTestId("dossier-scope-rail");
+    for (const id of ["current_2026", "worlds_2025", "recent_2025_2026", "all_time"]) {
+      expect(within(rail).getByTestId(`dossier-scope-${id}`)).toBeInTheDocument();
+    }
+    expect(screen.getByTestId("dossier-scope-current_2026")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("re-requests the board when the scope changes", async () => {
+    await renderBoard();
+    fireEvent.click(screen.getByTestId("dossier-scope-all_time"));
+    await waitFor(() =>
+      expect(requests.some((u) => u.includes("scope=all_time"))).toBe(true),
+    );
+  });
+
+  it("renders a timeshare as a finding, with every candidate and no starter", async () => {
+    await renderBoard();
+    const jungle = screen.getByTestId("lane-card-Jungle");
+    const side = within(jungle).getByTestId("lane-Jungle-T1");
+    expect(within(side).getByTestId("lane-state-Jungle-T1")).toHaveTextContent("timeshare");
+    // No starter badge anywhere on a shared lane, and the other candidates
+    // are OPEN by default — collapsing half a shared lane would be the forced
+    // starter this board refuses to name.
+    expect(within(side).queryByTestId("starter-badge")).toBeNull();
+    expect(within(side).getAllByTestId(/^candidate-/).length).toBeGreaterThan(1);
+  });
+
+  it("explains an uncovered lane rather than showing it as empty or zero", async () => {
+    await renderBoard();
+    // BLG Mid before the identity rebuild: quarantined, so uncovered. The
+    // OTHER side of the same lane still has its demonstrated starter — an
+    // uncovered side must never borrow one, and never suppress one either.
+    const uncovered = within(screen.getByTestId("lane-card-Mid")).getByTestId(
+      "lane-Mid-Bilibili Gaming",
+    );
+    expect(within(uncovered).getByText(/Nobody played this lane/i)).toBeInTheDocument();
+    expect(within(uncovered).queryByTestId("starter-badge")).toBeNull();
+    expect(within(uncovered).queryByTestId(/^candidate-/)).toBeNull();
+  });
+
+  it("still prints the server's no-prediction note, unedited", async () => {
+    await renderBoard();
+    expect(screen.getByTestId("team-mode-note")).toHaveTextContent(NOTES.team_mode);
+  });
+
+  it("surfaces team-level figures already served by the backend", async () => {
+    await renderBoard();
+    const summary = screen.getByTestId("team-summary-T1");
+    expect(summary).toHaveTextContent("Games");
+    expect(summary).toHaveTextContent("Win rate");
+    expect(summary).toHaveTextContent("Champions");
+    expect(within(summary).getByTestId("team-roster-T1")).toHaveTextContent(/roster/i);
+  });
+
+  it("never claims a head-to-head anywhere on the dossier", async () => {
+    await renderBoard();
+    let body = document.body.textContent ?? "";
+    for (const note of Object.values(NOTES)) body = body.split(note).join("");
+    expect(body).not.toMatch(/head-to-head|h2h|series score|versus record/i);
+    expect(body).not.toMatch(/will start|predicted|projected|expected to win/i);
+  });
+
+  it("prefills a lane drill-down only where the server named a player", async () => {
+    await renderBoard();
+    const jungle = screen.getByTestId("lane-card-Jungle");
+    const href = within(jungle).getByTestId("lane-drilldown-Jungle").getAttribute("href")!;
+    const params = new URLSearchParams(href.split("?")[1]);
+    expect(params.get("lane")).toBe("Jungle");
+    // T1's jungle is the timeshare, so side A must stay unfilled; BLG's is
+    // unambiguous and carries its player through.
+    expect(params.get("player_a")).toBeNull();
+    expect(params.get("player_b")).toBeTruthy();
   });
 });

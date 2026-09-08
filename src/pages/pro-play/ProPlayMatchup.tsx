@@ -82,6 +82,15 @@ import {
   type MatchupSide,
 } from "@/lib/pro-play/matchupApi";
 import { championSlug, getChampionDoc, type ChampionDoc } from "@/lib/league-docs/api";
+import {
+  Disclosure,
+  Dossier,
+  DossierSection,
+  FinePrint,
+  GoldRule,
+  MogzyNote,
+} from "@/components/pro-play/dossier/DossierChrome";
+import { ChampionIcon, PlayerPortrait } from "@/components/pro-play/dossier/DossierMedia";
 
 const CONFLICT_TEXT: Record<string, string> = {
   [CONFLICT_CHAMPION_BANNED]:
@@ -305,28 +314,51 @@ function BanBar({
 function SideCard({ side, label }: { side: MatchupSide; label: string }) {
   return (
     <Card className="p-4" data-testid={`matchup-side-${label.toLowerCase()}`}>
-      <div className="mb-3 flex flex-wrap items-baseline gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </span>
-        {side.player ? (
-          <Link className="text-lg font-semibold hover:underline" to={profilePath("player", side.player.player_lp_page)}>
-            {side.player.display_name}
-          </Link>
-        ) : (
-          <span className="text-lg font-semibold text-muted-foreground">—</span>
-        )}
-        {side.champion_key ? <span className="text-lg text-muted-foreground">· {side.champion_key}</span> : null}
-        {side.team ? (
-          <Link className="text-xs text-muted-foreground hover:underline" to={profilePath("team", side.team.team_key)}>
-            {side.team.display_name}
-          </Link>
-        ) : null}
-        <FocusBadge side={side} />
+      <div className="mb-3 flex items-start gap-3">
+        {/* Media slots: empty today, shaped for the portraits and champion art
+            a later workstream will source. See DossierMedia. */}
+        <PlayerPortrait name={side.player?.display_name ?? "?"} />
+        {side.champion_key ? <ChampionIcon champion={side.champion_key} size="md" /> : null}
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {label}
+          </div>
+          {side.player ? (
+            <Link
+              className="text-lg font-semibold hover:underline"
+              to={profilePath("player", side.player.player_lp_page)}
+            >
+              {side.player.display_name}
+            </Link>
+          ) : (
+            <span className="text-lg font-semibold text-muted-foreground">—</span>
+          )}
+          {side.champion_key ? (
+            // The leading space is real text, not margin: `ml-2` separates
+            // these visually but leaves "Fakeron Azir" for anything reading
+            // the text — a screen reader, a copy-paste, a snapshot.
+            <span className="ml-2 text-sm text-muted-foreground">{" "}on {side.champion_key}</span>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {side.team ? (
+              <Link
+                className="text-xs text-muted-foreground hover:underline"
+                to={profilePath("team", side.team.team_key)}
+              >
+                {side.team.display_name}
+              </Link>
+            ) : null}
+            <FocusBadge side={side} />
+          </div>
+        </div>
       </div>
 
       {side.conflicts.map((c) => (
-        <p key={c} className="mb-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs" data-testid={`matchup-conflict-${c}`}>
+        <p
+          key={c}
+          className="mb-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs"
+          data-testid={`matchup-conflict-${c}`}
+        >
           {CONFLICT_TEXT[c] ?? c}
         </p>
       ))}
@@ -490,8 +522,26 @@ function MechanicsPanel({ data }: { data: MatchupResponse }) {
   ];
 
   return (
+    <>
+      {/* Champion A vs Champion B, as an event. The mechanics table below is
+          the same League Docs authority Phase 1 rendered — what Phase 3 adds
+          is the identification, so the reader sees WHICH duel these numbers
+          describe before reading a single cooldown. */}
+      <div className="dossier-champvs" data-testid="matchup-champion-vs">
+        <div className="dossier-champvs__side">
+          <ChampionIcon champion={a} size="lg" />
+          <span className="dossier-champvs__name">{a}</span>
+        </div>
+        <span className="dossier-champvs__glyph" aria-label="versus">
+          VS
+        </span>
+        <div className="dossier-champvs__side is-right">
+          <ChampionIcon champion={b} size="lg" />
+          <span className="dossier-champvs__name">{b}</span>
+        </div>
+      </div>
     <Panel
-      title="Champion mechanics"
+      title="Mechanics Analysis"
       note={
         <>
           Base stats, cooldowns, costs and ranges come from the League Docs champion authority, unchanged.
@@ -529,6 +579,7 @@ function MechanicsPanel({ data }: { data: MatchupResponse }) {
         </table>
       </TableScroll>
     </Panel>
+    </>
   );
 }
 
@@ -554,14 +605,14 @@ function LaneExplorer({
   onSwitchToTeam: () => void;
 }) {
   return (
-    <>
+    <Dossier>
       {selection.team_a && selection.team_b ? (
         // Back to the board, keeping the teams, bans and scope. The round
         // trip loses only the lane, which is what the reader just chose.
         <div className="mb-3">
           <button
             type="button"
-            className="text-xs underline text-muted-foreground hover:text-foreground"
+            className="dossier-btn"
             data-testid="lane-to-team"
             onClick={onSwitchToTeam}
           >
@@ -570,7 +621,7 @@ function LaneExplorer({
         </div>
       ) : null}
       <Panel
-        title="Configuration"
+        title="Lane Study · configuration"
         note={
           contract.focus_set.pending_slots.length ? (
             <>
@@ -616,17 +667,24 @@ function LaneExplorer({
         </div>
       </Panel>
 
-      <Panel title="Side-by-side record" note={data.notes.side_by_side}>
+      <DossierSection
+        title="Independent performance comparison"
+        eyebrow="Lane dossier"
+        testId="dossier-lane-comparison"
+      >
         {/* The flag is asserted, not assumed. If a future payload ever carried
             a true head-to-head this heading would be wrong, so the render is
-            conditioned on it being false. */}
+            conditioned on it being false. The heading now NAMES what this is
+            rather than opening with what it is not; the denial itself still
+            ships, as the note under the plates. */}
         {data.head_to_head === false ? (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2" data-testid="matchup-sides">
             <SideCard side={data.sides.a} label="A" />
             <SideCard side={data.sides.b} label="B" />
           </div>
         ) : null}
-      </Panel>
+        <MogzyNote testId="lane-side-by-side-note">{data.notes.side_by_side}</MogzyNote>
+      </DossierSection>
 
       <MechanicsPanel data={data} />
 
@@ -647,7 +705,7 @@ function LaneExplorer({
           </div>
         </Panel>
       ) : null}
-    </>
+    </Dossier>
   );
 }
 
@@ -745,12 +803,17 @@ export function MatchupBody() {
   return (
     <ResearchPage>
       <ResearchBreadcrumb trail={[{ label: "Matchup Explorer" }]} />
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight md:text-3xl">
+      <h1 className="mb-3 text-2xl font-semibold tracking-tight md:text-3xl">
         {contract.focus_set.target_event} Matchup Explorer
       </h1>
-      <p className="mb-3 text-sm text-muted-foreground" data-testid="matchup-focus-note">
-        {contract.notes.focus}
-      </p>
+      {/* The focus-set caveat still ships on every render, in both modes, and
+          is one click from every reader — not hidden, and not read only by a
+          screen reader. What Phase 3 removed is its place as the first
+          paragraph the page shows. It lives here, once, rather than being
+          repeated by the dossier header. */}
+      <div className="proplay-dossier mb-3">
+        <FinePrint testId="matchup-focus-note">{contract.notes.focus}</FinePrint>
+      </div>
 
       <div className="mb-4 flex gap-1" role="tablist" aria-label="Explorer mode">
         {(["team", "lane"] as const).map((m) => (

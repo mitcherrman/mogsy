@@ -393,8 +393,11 @@ describe("selection <-> URL", () => {
     expect(one).toBe(two);
   });
 
-  it("omits the default pool scope and empty fields", () => {
-    expect(selectionToParams(EMPTY_SELECTION).toString()).toBe("");
+  it("omits the default pool scope and empty fields, and names its mode", () => {
+    // `mode=lane` is now explicit: since Phase 3 the board is the default, so
+    // a lane selection with nothing chosen yet has to say which board it is
+    // or it would bounce back to the dossier.
+    expect(selectionToParams(EMPTY_SELECTION).toString()).toBe("mode=lane");
   });
 
   it("restores a pasted matchup", async () => {
@@ -474,7 +477,7 @@ describe("the Explorer's wording", () => {
   it("never says head-to-head", async () => {
     renderAt(SCENARIO_URL);
     await waitFor(() => expect(screen.getByTestId("matchup-sides")).toBeInTheDocument());
-    expect(screen.getByText("Side-by-side record")).toBeInTheDocument();
+    expect(screen.getByText("Independent performance comparison")).toBeInTheDocument();
     expect(document.body.textContent?.toLowerCase()).not.toContain("head-to-head record:");
     expect(screen.getByText(/not a head-to-head record/i)).toBeInTheDocument();
   });
@@ -700,7 +703,7 @@ describe("champion mechanics", () => {
 
   it("is absent until both champions are chosen", async () => {
     installFetch(response({ a: side(), b: side() }));
-    renderAt("/lol/pro-play/matchup");
+    renderAt("/lol/pro-play/matchup?mode=lane");
     await waitFor(() => expect(screen.getByTestId("matchup-focus-note")).toBeInTheDocument());
     expect(screen.queryByTestId("matchup-mechanics")).toBeNull();
   });
@@ -709,7 +712,7 @@ describe("champion mechanics", () => {
 describe("first paint", () => {
   it("renders the configuration with nothing selected", async () => {
     installFetch(response({ a: side(), b: side() }));
-    renderAt("/lol/pro-play/matchup");
+    renderAt("/lol/pro-play/matchup?mode=lane");
     await waitFor(() => expect(screen.getByTestId("matchup-team-a")).toBeInTheDocument());
     expect((screen.getByTestId("matchup-player-a") as HTMLSelectElement).disabled).toBe(true);
     expect((screen.getByTestId("matchup-champion-a") as HTMLSelectElement).disabled).toBe(true);

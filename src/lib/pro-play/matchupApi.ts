@@ -245,6 +245,13 @@ export function selectionToParams(selection: MatchupSelection): URLSearchParams 
   if (selection.pool_scope_id && selection.pool_scope_id !== EMPTY_SELECTION.pool_scope_id) {
     params.set("pool_scope", selection.pool_scope_id);
   }
+  // Lane mode has to SAY so once the board became the default. A lane
+  // selection with no lane and no player yet — exactly what the "Lane
+  // explorer" tab produces — carries no lane-only key, so without this the
+  // reader would be bounced straight back to the board and the tab would be
+  // unreachable. Harmless on a fully specified lane URL, which `modeFromParams`
+  // would have read as lane anyway.
+  params.set("mode", "lane");
   return params;
 }
 
@@ -538,8 +545,29 @@ export function teamSelectionFromParams(params: URLSearchParams): TeamSelection 
 
 /** Which board the URL asks for. Lane mode is the default, so every Phase 1
  *  link ever shared keeps resolving to the lane explorer. */
+/** Keys only the lane explorer can hold. A URL carrying any of them was built
+ *  by, or for, the lane view. */
+const LANE_ONLY_PARAMS = ["lane", "player_a", "player_b", "champion_a", "champion_b"];
+
+/**
+ * Which board a URL asks for.
+ *
+ * PHASE 3 FLIPPED THE DEFAULT, WITHOUT BREAKING A SINGLE SHARED LINK. The
+ * five-lane board is the flagship experience, so a bare
+ * `/lol/pro-play/matchup` — and a link carrying only teams, bans or a scope —
+ * now opens on it rather than on an empty configuration form.
+ *
+ * Phase 1 links keep working because every one of them names a lane: the
+ * drilldown builds `lane=`, and a hand-made lane URL needs at least a lane or
+ * a player to mean anything. Any lane-only key present ⇒ lane mode, exactly
+ * as before. An explicit `mode=` still wins over both, so the two mode tabs
+ * can address either board unambiguously.
+ */
 export function modeFromParams(params: URLSearchParams): MatchupMode {
-  return params.get("mode") === "team" ? "team" : "lane";
+  const explicit = params.get("mode");
+  if (explicit === "team") return "team";
+  if (explicit === "lane") return "lane";
+  return LANE_ONLY_PARAMS.some((k) => params.get(k)) ? "lane" : "team";
 }
 
 export function fetchTeamMatchup(selection: TeamSelection, signal?: AbortSignal) {

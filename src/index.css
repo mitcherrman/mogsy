@@ -9724,3 +9724,785 @@ html.hub-commons-in-view .hextech-ambience-layer {
 @media (prefers-reduced-motion: reduce) {
   .hextech-ambience-layer { transition: opacity 120ms linear; }
 }
+
+/* ---------------------------------------------------------------------------
+   Pro Play matchup dossier (Matchup Explorer Phase 3)
+   ---------------------------------------------------------------------------
+   An academy scouting dossier: leather folio, parchment inserts pasted onto
+   it, antique-gold hierarchy, and cyan for anything technical. The parchment
+   is a GRADIENT with the existing vellum texture multiplied over it, so a
+   missing texture still leaves a clean sheet rather than a grey box.
+
+   Everything is namespaced under `.proplay-dossier`. Nothing here may leak
+   into the rest of the product, which is why no bare element or utility class
+   is styled outside that scope.
+
+   Dark-first: the folio is dark in both themes (it is a leather cover), while
+   the parchment stays warm and light in both. That is deliberate — the
+   contrast between cover and sheet IS the metaphor, so it must not invert.
+--------------------------------------------------------------------------- */
+.proplay-dossier {
+  --dsr-gold: #c9a84c;
+  --dsr-gold-dim: rgba(201, 168, 76, 0.28);
+  --dsr-cyan: #4fd1d9;
+  --dsr-folio: #12151b;
+  --dsr-folio-2: #191d26;
+  --dsr-vellum: #e8dcc0;
+  --dsr-vellum-edge: #c9bb98;
+  --dsr-ink: #23201a;
+  --dsr-ink-soft: rgba(93, 85, 70, 0.85);
+
+  color: #e6e3dc;
+}
+
+/* ---- 1. The VS header ---------------------------------------------------- */
+.proplay-dossier .dossier-vs {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--dsr-gold-dim);
+  border-radius: 12px;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(201, 168, 76, 0.1), transparent 60%),
+    linear-gradient(180deg, var(--dsr-folio-2), var(--dsr-folio));
+  padding: 1.25rem 1rem 1rem;
+  margin-bottom: 1rem;
+}
+
+/* The ghost seal. Purely decorative, and low enough in contrast that it never
+   competes with a team name sitting on top of it. */
+.proplay-dossier .dossier-vs__watermark {
+  position: absolute;
+  inset: auto -10% -55% auto;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  border: 2px solid rgba(201, 168, 76, 0.12);
+  box-shadow: inset 0 0 0 14px rgba(201, 168, 76, 0.05);
+  pointer-events: none;
+}
+
+.proplay-dossier .dossier-vs__eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.8);
+  margin-bottom: 0.9rem;
+}
+.proplay-dossier .dossier-vs__scope {
+  color: var(--dsr-cyan);
+}
+
+.proplay-dossier .dossier-vs__row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+}
+.proplay-dossier .dossier-vs__team {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-vs__team.is-right {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.proplay-dossier .dossier-vs__names {
+  min-width: 0;
+}
+.proplay-dossier .dossier-vs__name {
+  display: block;
+  font-size: clamp(1.05rem, 2.6vw, 1.7rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: #f4f1e8;
+  text-decoration: none;
+}
+.proplay-dossier .dossier-vs__name:hover {
+  color: var(--dsr-gold);
+}
+.proplay-dossier .dossier-vs__meta {
+  display: block;
+  font-size: 0.7rem;
+  color: rgba(230, 227, 220, 0.55);
+}
+.proplay-dossier .dossier-vs__status {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid rgba(230, 227, 220, 0.18);
+  border-radius: 999px;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.proplay-dossier .dossier-vs__glyph {
+  font-family: ui-serif, Georgia, serif;
+  font-size: clamp(1rem, 3vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--dsr-gold);
+  padding: 0.25rem 0.6rem;
+  border-top: 1px solid var(--dsr-gold-dim);
+  border-bottom: 1px solid var(--dsr-gold-dim);
+}
+
+/* ---- 2. Media slots ------------------------------------------------------ */
+.proplay-dossier .dossier-media {
+  background: linear-gradient(160deg, rgba(201, 168, 76, 0.16), rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--dsr-gold-dim);
+  color: rgba(201, 168, 76, 0.9);
+}
+.proplay-dossier .dossier-media--shield {
+  border-radius: 10px 10px 14px 14px / 10px 10px 22px 22px;
+}
+.proplay-dossier .dossier-media--round {
+  border-radius: 50%;
+}
+.proplay-dossier .dossier-media--square {
+  border-radius: 6px;
+}
+
+/* ---- 3. Controls --------------------------------------------------------- */
+.proplay-dossier .dossier-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+.proplay-dossier .dossier-controls__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.proplay-dossier .dossier-scoperail {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.proplay-dossier .dossier-scoperail__label {
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.75);
+}
+.proplay-dossier .dossier-scoperail__options {
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--dsr-gold-dim);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.proplay-dossier .dossier-scoperail__btn {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  background: transparent;
+  color: rgba(230, 227, 220, 0.7);
+  border-right: 1px solid var(--dsr-gold-dim);
+  transition: background-color 0.15s, color 0.15s;
+}
+.proplay-dossier .dossier-scoperail__btn:last-child {
+  border-right: 0;
+}
+.proplay-dossier .dossier-scoperail__btn:hover {
+  color: #f4f1e8;
+  background: rgba(201, 168, 76, 0.08);
+}
+.proplay-dossier .dossier-scoperail__btn.is-active {
+  background: rgba(201, 168, 76, 0.18);
+  color: var(--dsr-gold);
+  font-weight: 600;
+}
+.proplay-dossier .dossier-btn {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.75rem;
+  border: 1px solid rgba(230, 227, 220, 0.18);
+  border-radius: 8px;
+  color: rgba(230, 227, 220, 0.75);
+}
+.proplay-dossier .dossier-btn:hover {
+  color: #f4f1e8;
+  border-color: var(--dsr-gold-dim);
+}
+.proplay-dossier .dossier-pickers {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+}
+@media (min-width: 640px) {
+  .proplay-dossier .dossier-pickers {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.proplay-dossier select {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(230, 227, 220, 0.2);
+  background: var(--dsr-folio-2);
+  color: #e6e3dc;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+/* ---- 4. Sections and tabs ------------------------------------------------ */
+.proplay-dossier .dossier-section {
+  margin-bottom: 1.5rem;
+}
+.proplay-dossier .dossier-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--dsr-gold-dim);
+}
+/* The archival tab: a shape sitting ON the rule, not a card title above it. */
+.proplay-dossier .dossier-tab {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 0.35rem 0.85rem 0.3rem;
+  border: 1px solid var(--dsr-gold-dim);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, rgba(201, 168, 76, 0.12), rgba(201, 168, 76, 0.03));
+}
+.proplay-dossier .dossier-tab__eyebrow {
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(230, 227, 220, 0.45);
+}
+.proplay-dossier .dossier-tab__title {
+  font-family: ui-serif, Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--dsr-gold);
+}
+.proplay-dossier .dossier-section__body {
+  padding-top: 0.85rem;
+}
+
+.proplay-dossier .dossier-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.proplay-dossier .dossier-rule__line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--dsr-gold-dim), transparent);
+}
+.proplay-dossier .dossier-rule__label {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.7);
+}
+
+/* ---- 5. Parchment inserts ------------------------------------------------ */
+.proplay-dossier .dossier-parchment {
+  position: relative;
+  border-radius: 10px;
+  border: 1px solid var(--dsr-vellum-edge);
+  background-color: var(--dsr-vellum);
+  background-image:
+    linear-gradient(160deg, rgba(255, 252, 240, 0.75), rgba(226, 213, 184, 0.55)),
+    url("/assets/ranked/ranked-vellum-texture.png");
+  background-size: cover, 420px;
+  background-blend-mode: normal, multiply;
+  color: var(--dsr-ink);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  padding: 0.85rem;
+}
+
+/* ---- 6. Lane plates ------------------------------------------------------ */
+.proplay-dossier .dossier-lanes {
+  display: grid;
+  gap: 0.85rem;
+}
+.proplay-dossier .dossier-lane__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(93, 85, 70, 0.25);
+}
+.proplay-dossier .dossier-lane__name {
+  font-family: ui-serif, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #3a3128;
+}
+.proplay-dossier .dossier-lane__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b5a2a;
+  border-bottom: 1px solid rgba(107, 90, 42, 0.4);
+}
+.proplay-dossier .dossier-lane__cta:hover {
+  color: #40361a;
+  border-bottom-color: #40361a;
+}
+.proplay-dossier .dossier-lane__body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+.proplay-dossier .dossier-lane__divider {
+  display: none;
+}
+@media (min-width: 768px) {
+  .proplay-dossier .dossier-lane__body {
+    grid-template-columns: 1fr 1px 1fr;
+  }
+  .proplay-dossier .dossier-lane__divider {
+    display: block;
+    background: linear-gradient(180deg, transparent, rgba(93, 85, 70, 0.3), transparent);
+  }
+}
+.proplay-dossier .dossier-lane__half {
+  min-width: 0;
+}
+.proplay-dossier .dossier-lane__state {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(26, 96, 104, 0.14);
+  border: 1px solid rgba(26, 96, 104, 0.35);
+  color: #1a6068;
+}
+/* A timeshare is a FINDING. Technical annotation, never a warning colour —
+   "these two split the lane" is information the reader wanted. */
+.proplay-dossier .dossier-finding {
+  border-left: 2px solid #1a6068;
+  padding-left: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.75rem;
+  color: #1a5058;
+}
+.proplay-dossier .dossier-uncovered {
+  border: 1px dashed rgba(93, 85, 70, 0.4);
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-size: 0.78rem;
+  color: var(--dsr-ink-soft);
+}
+
+/* ---- 7. Players and figures ---------------------------------------------- */
+.proplay-dossier .dossier-player {
+  margin-bottom: 0.85rem;
+}
+.proplay-dossier .dossier-player:last-child {
+  margin-bottom: 0;
+}
+.proplay-dossier .dossier-player__id {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.5rem;
+}
+.proplay-dossier .dossier-player__name {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2c251c;
+  text-decoration: none;
+}
+.proplay-dossier .dossier-player__name:hover {
+  text-decoration: underline;
+}
+.proplay-dossier .dossier-player__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.1rem;
+}
+.proplay-dossier .dossier-badge {
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.proplay-dossier .dossier-badge.is-starter {
+  background: rgba(107, 90, 42, 0.16);
+  border: 1px solid rgba(107, 90, 42, 0.4);
+  color: #5c4d1f;
+}
+.proplay-dossier .dossier-badge.is-quiet {
+  border: 1px solid rgba(93, 85, 70, 0.3);
+  color: var(--dsr-ink-soft);
+}
+
+.proplay-dossier .dossier-player__figures,
+.proplay-dossier .dossier-teamsum__figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+.proplay-dossier .dossier-figure {
+  display: flex;
+  flex-direction: column;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(93, 85, 70, 0.07);
+  border-left: 2px solid rgba(26, 96, 104, 0.4);
+}
+.proplay-dossier .dossier-figure__label {
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-figure__value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #241f18;
+}
+.proplay-dossier .dossier-figure__hint {
+  font-size: 0.55rem;
+  color: var(--dsr-ink-soft);
+}
+
+/* ---- 8. Champion pool ---------------------------------------------------- */
+.proplay-dossier .dossier-pool__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.proplay-dossier .dossier-pool__title {
+  font-family: ui-serif, Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6b5a2a;
+}
+.proplay-dossier .dossier-pool__count {
+  font-size: 0.65rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-pool__cat {
+  margin-bottom: 0.45rem;
+}
+.proplay-dossier .dossier-pool__cat-label {
+  display: block;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+  margin-bottom: 0.2rem;
+}
+.proplay-dossier .dossier-pool__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.proplay-dossier .dossier-champ-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.4rem 0.15rem 0.15rem;
+  border: 1px solid rgba(93, 85, 70, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 253, 245, 0.55);
+}
+.proplay-dossier .dossier-champ-chip.is-banned {
+  opacity: 0.6;
+}
+.proplay-dossier .dossier-champ-chip.is-banned .dossier-champ-chip__name {
+  text-decoration: line-through;
+}
+.proplay-dossier .dossier-champ-chip__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.proplay-dossier .dossier-champ-chip__name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #2c251c;
+}
+.proplay-dossier .dossier-champ-chip__stat {
+  font-size: 0.58rem;
+  color: var(--dsr-ink-soft);
+}
+
+/* ---- 9. Tables (evidence, behind disclosure) ----------------------------- */
+.proplay-dossier .dossier-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 0.5rem;
+}
+.proplay-dossier .dossier-table {
+  width: 100%;
+  min-width: 420px;
+  font-size: 0.7rem;
+  border-collapse: collapse;
+}
+.proplay-dossier .dossier-table th {
+  text-align: left;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+  border-bottom: 1px solid rgba(93, 85, 70, 0.3);
+  padding: 0.25rem 0.5rem 0.25rem 0;
+}
+.proplay-dossier .dossier-table td {
+  padding: 0.22rem 0.5rem 0.22rem 0;
+  border-bottom: 1px solid rgba(93, 85, 70, 0.12);
+}
+.proplay-dossier .dossier-table tr.is-banned {
+  color: var(--dsr-ink-soft);
+  text-decoration: line-through;
+}
+
+/* ---- 10. Notes, fine print, disclosure ----------------------------------- */
+.proplay-dossier .dossier-note {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 2px solid var(--dsr-gold);
+  background: rgba(201, 168, 76, 0.07);
+  border-radius: 0 8px 8px 0;
+}
+.proplay-dossier .dossier-note__seal {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 0.15rem;
+  border-radius: 50%;
+  border: 1px solid var(--dsr-gold);
+  background: radial-gradient(circle at 35% 30%, rgba(201, 168, 76, 0.55), rgba(201, 168, 76, 0.12));
+}
+.proplay-dossier .dossier-note__label {
+  display: block;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--dsr-gold);
+}
+.proplay-dossier .dossier-note__body {
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: rgba(230, 227, 220, 0.65);
+}
+/* A note pasted onto parchment inverts its ink, or it is unreadable. */
+.proplay-dossier .dossier-parchment .dossier-note__body {
+  color: var(--dsr-ink-soft);
+}
+
+.proplay-dossier .dossier-fineprint {
+  margin-top: 0.6rem;
+}
+.proplay-dossier .dossier-fineprint__toggle,
+.proplay-dossier .dossier-disclosure__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: rgba(230, 227, 220, 0.55);
+}
+.proplay-dossier .dossier-fineprint__toggle:hover,
+.proplay-dossier .dossier-disclosure__toggle:hover {
+  color: var(--dsr-gold);
+}
+.proplay-dossier .dossier-fineprint__body {
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: rgba(230, 227, 220, 0.5);
+  max-width: 68ch;
+}
+.proplay-dossier .dossier-disclosure {
+  margin-top: 0.5rem;
+}
+/* On parchment the controls take ink colours instead of folio colours. */
+.proplay-dossier .dossier-parchment .dossier-disclosure__toggle,
+.proplay-dossier .dossier-parchment .dossier-fineprint__toggle,
+.proplay-dossier .dossier-parchment .dossier-fineprint__body {
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-parchment .dossier-disclosure__toggle:hover,
+.proplay-dossier .dossier-parchment .dossier-fineprint__toggle:hover {
+  color: #40361a;
+}
+
+.proplay-dossier .dossier-muted {
+  font-size: 0.72rem;
+  color: var(--dsr-ink-soft);
+}
+/* Off parchment, muted text sits on the dark folio instead. */
+.proplay-dossier .dossier-section__body > .dossier-muted,
+.proplay-dossier .dossier-controls .dossier-muted {
+  color: rgba(230, 227, 220, 0.5);
+}
+
+/* ---- 11. Team summary and archive --------------------------------------- */
+.proplay-dossier .dossier-teamsums {
+  display: grid;
+  gap: 0.85rem;
+}
+@media (min-width: 900px) {
+  .proplay-dossier .dossier-teamsums {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.proplay-dossier .dossier-teamsum__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+.proplay-dossier .dossier-teamsum__name {
+  display: block;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2c251c;
+  text-decoration: none;
+}
+.proplay-dossier .dossier-teamsum__name:hover {
+  text-decoration: underline;
+}
+.proplay-dossier .dossier-teamsum__roster {
+  display: block;
+  font-size: 0.62rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-warnings {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: rgba(230, 227, 220, 0.6);
+}
+.proplay-dossier .dossier-warnings__who {
+  font-weight: 600;
+  color: rgba(230, 227, 220, 0.85);
+}
+
+/* ---- 12. Ban bar --------------------------------------------------------- */
+.proplay-dossier [data-testid="team-bans"] button {
+  border-radius: 6px;
+}
+
+/* ---- 13. Mobile ---------------------------------------------------------- */
+@media (max-width: 640px) {
+  /* The VS row stacks; the glyph becomes a divider between the two teams
+     rather than a column between them. */
+  .proplay-dossier .dossier-vs__row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .proplay-dossier .dossier-vs__team.is-right {
+    flex-direction: row;
+    text-align: left;
+  }
+  .proplay-dossier .dossier-vs__glyph {
+    justify-self: start;
+    padding: 0.1rem 0.5rem;
+  }
+  .proplay-dossier .dossier-vs__watermark {
+    display: none;
+  }
+  .proplay-dossier .dossier-player__figures,
+  .proplay-dossier .dossier-teamsum__figures {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ---- 14. Champion A vs Champion B (lane dossier) ------------------------- */
+.dossier-champvs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  border-radius: 12px;
+  background:
+    radial-gradient(120% 140% at 50% 0%, rgba(79, 209, 217, 0.08), transparent 62%),
+    linear-gradient(180deg, #191d26, #12151b);
+}
+.dossier-champvs__side {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.dossier-champvs__side.is-right {
+  flex-direction: row-reverse;
+}
+.dossier-champvs__name {
+  font-family: ui-serif, Georgia, serif;
+  font-size: clamp(0.95rem, 2.4vw, 1.35rem);
+  font-weight: 700;
+  color: #f4f1e8;
+}
+.dossier-champvs__glyph {
+  font-family: ui-serif, Georgia, serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #c9a84c;
+  padding: 0.15rem 0.5rem;
+  border-top: 1px solid rgba(201, 168, 76, 0.28);
+  border-bottom: 1px solid rgba(201, 168, 76, 0.28);
+}
+.dossier-champvs .dossier-media {
+  background: linear-gradient(160deg, rgba(201, 168, 76, 0.16), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  border-radius: 8px;
+  color: rgba(201, 168, 76, 0.9);
+}
+@media (max-width: 640px) {
+  .dossier-champvs {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .dossier-champvs__side.is-right {
+    flex-direction: row;
+  }
+}
+
+/* The ornamental half of the pool heading. Decorative only: the semantic
+   label "Demonstrated picks" sits under it and is never replaced by it. */
+.proplay-dossier .dossier-pool__ornament {
+  display: block;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: rgba(107, 90, 42, 0.6);
+}

@@ -187,6 +187,90 @@ Semantic boundaries that must survive every one of the above: no prediction, no
 fabricated head-to-head, no forced starter, watchlist is never qualification,
 and demonstrated evidence stays primary over the declared roster.
 
+## Phase 3 — Premier Matchup Overview (SHIPPED)
+
+**Objective.** Turn the Explorer from a form-first internal tool into Mogzy's
+scouting dossier: the five-lane team board is the flagship, the lane explorer
+is the drill-down.
+
+**Visual direction.** A dark-academy scouting folio. Dark leather cover
+(`--dsr-folio`), parchment inserts reusing the existing
+`/assets/ranked/ranked-vellum-texture.png`, antique gold for hierarchy, cyan
+for anything technical (figures, findings, lane-state chips), archival tabs as
+section headings, a ghost seal watermark, and "Mogzy's Notes" as the margin
+hand. All of it is namespaced under `.proplay-dossier` in `src/index.css` — it
+cannot leak, and it replaces nothing outside the Explorer.
+
+**New files** (`src/components/pro-play/dossier/`)
+
+| File | What it is |
+|---|---|
+| `DossierMedia.tsx` | `TeamCrest`, `PlayerPortrait`, `ChampionIcon` + `monogram()` |
+| `DossierChrome.tsx` | `Dossier`, `DossierSection`, `Parchment`, `GoldRule`, `MogzyNote`, `FinePrint`, `Disclosure`, `Figure` |
+| `ChampionPool.tsx` | `poolCategories()` + `ChampionPoolSummary` |
+| `MatchDossier.tsx` | `MatchHeader`, `ScopeRail`, `LanePlate`, `TeamSummaryPlate`, `ArchiveWarnings` |
+| `Dossier.test.tsx` | 17 tests: media fallbacks, pool category rules, disclosure |
+
+**Changed**: `ProPlayMatchupTeam.tsx` (board recomposed), `ProPlayMatchup.tsx`
+(comparison plate, champion-vs module, dossier framing), `matchupApi.ts`
+(default mode), `src/index.css` (the dossier stylesheet), both existing test
+files.
+
+**Structure now**: VS header → scope rail → *Lane Study* (5 parchment plates,
+each with both sides, figures, pool summary, "Open lane dossier") → *Team
+Record* → *Global Bans* → *Archive Evidence*. Lane mode is a chapter:
+configuration, *Independent performance comparison*, Champion A **vs**
+Champion B, *Mechanics Analysis*, demonstrated picks, roster context.
+
+**Default mode flipped, no link broken.** `modeFromParams` returns `team`
+unless the URL carries a lane-only key (`lane`, `player_a/b`, `champion_a/b`)
+or an explicit `mode`. Every Phase 1 drilldown names a lane, so all of them
+still open in lane mode. `selectionToParams` now emits `mode=lane` explicitly —
+without it the "Lane explorer" tab was unreachable, because a fresh lane
+selection carries no lane-only key.
+
+**Champion pool categories are sorts, not judgements.** "Most played" (games),
+"Most recent" (`last_played_at`), "Best record (5+ games)" — the threshold is
+printed on screen. There is deliberately no signature/comfort/pocket pick:
+none has a defined rule, and inventing one in a component would put an unbacked
+claim on the page. Full table stays behind *View full champion pool*, unfiltered.
+
+**Media placeholders.** No `<img>` is ever rendered without a source, so a
+broken-image glyph is impossible. Team and player slots show a deterministic
+monogram in a designed frame; champion icons resolve from the Combat API asset
+store (`getChampionSquareIconUrl`) and fall back the same way. Frame geometry
+is identical with and without art, so dropping real media in later changes the
+picture and nothing else.
+
+**Semantics preserved.** `clear_starter` / `timeshare` / `uncovered` all render
+distinctly; a timeshare is styled as a cyan *finding*, not a warning, and its
+other candidates are expanded by default (collapsing half a shared lane would
+BE the forced starter). `head_to_head === false` still gates every record. The
+server's team-mode note, pool notes, focus caveat and side-by-side sentence all
+still print, unedited — moved to margin notes and "What this means", never
+reworded or dropped. "Demonstrated picks" survived the visual pass as the
+semantic label, with "Champion Arsenal" as ornament above it.
+
+**Verified against the real corpus** (local backend on `origin/master`, 4.7 GB DB):
+T1 vs Gen.G, BLG vs T1, Gen.G vs HLE. BLG Mid renders `uncovered` in 2026 and
+`timeshare` all-time — 14 candidates retained, zero starter badges, drilldown
+prefills only `player_b=Faker`. Scope rail re-requests and repaints. Faker vs
+Chovy on Azir/Ryze renders the champion-vs module with real icons and the
+mechanics table. Every pro-play request and champion icon 200. Mobile 375px:
+no page overflow, no unscrollable overflow, 5 lane plates stacked.
+
+**Tests**: 114 pro-play + 17 dossier. Full suite 53 failed / 9779 passed against
+a 53-failed baseline — identical failure set. `tsc` 11 = baseline, 0 in
+pro-play. Build green.
+
+**Still blocked on media sourcing**: team crests and player portraits. The
+slots are built and tested; only the assets are missing.
+
+**Backend data available but still unsurfaced**: `roster.declared_corroboration`,
+`team_games_in_scope` on the header, `first_played_at` per champion,
+`banned_from_pool` / `selectable` as an explicit count, and the focus set's
+`pending_slots` (rendered in lane mode only).
+
 ## Next task
 
 1. Owner reviews the routes above.
