@@ -1,6 +1,7 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 32 (Commons side architecture) is at the top of this file.
+<!-- Revision 33 (side architecture verified in production) is at the top of
+     this file. Revision 32 built it.
      Revision 31 verified Academy Bulletin V1 COMPLETE in production;
      Revision 30 was the media-eligibility fix it verifies.
      Revision 29 was the enrichment and long-question fix; Revision 28 the
@@ -14,6 +15,108 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-08 — SIDE ARCHITECTURE **VERIFIED IN PRODUCTION**
+
+**Live bundle:** `index-BhMjcAji.js` → **`index-DfGesPh-.js`**, carrying
+`8a3a1752`. Verification only; no source changed.
+
+### 1. The pilasters match the gutter, to the sub-pixel
+
+| viewport | gutter | pilaster L / R | delta | z |
+|---|---|---|---|---|
+| **2560x1080** | 186px | 186.172 / 186.172 | **+0.17px** | 5 |
+| **3440x1440** | 262px | 261.562 / 261.562 | **−0.44px** | 5 |
+| **1920x1080** (control) | 0px | **0px / 0px** | — | 5 |
+| **1440x900** | −80px | **0px / 0px** | — | 5 |
+| 390x844 flow | — | not rendered | — | — |
+| 1440x900 large text | — | not rendered | — | — |
+
+The negative control holds: at 1920 and 1440 the pilasters resolve to **zero
+width**, so no architecture covers any part of the painting. Flow mode and
+large text leave the stage gate and the pseudo-elements do not exist there at
+all — `width` reads `auto` because the rule never applies.
+
+Sub-pixel deltas are the browser's own rounding of the same `calc()` the paint
+is placed from; there is no independent number to drift.
+
+### 2. Visual
+
+**No grey strip anywhere.** The flat grain band that Revision 32 diagnosed is
+gone at both ultrawide sizes.
+
+**No visible seam.** At full resolution the inner edge reads as a lit arris
+with the contact shadow falling onto the painting behind it — the column stands
+in front of the wall rather than being cut into it. On the left it meets the
+blurred bookcase and candles; on the right it meets the globe and the banner.
+Both transitions are soft.
+
+**One family, left and right.** Same walnut gradient, same two panel stiles,
+same lit inner edge, mirrored. Neither side reads as a different construction.
+
+**Secondary to the room.** The columns are the darkest objects on screen —
+darker than the panelling, far darker than the Record's gilt frame or either
+gold CTA. Nothing about them competes for attention.
+
+**No horizontal intrusion.** The painting's edges are exactly where they were;
+the architecture occupies only the previously-bare section.
+
+**Right edge / scrollbar.** Headless Chromium reports a 0px overlay scrollbar,
+so the right pilaster runs to the viewport edge and looks deliberate. A machine
+with classic scrollbars is still worth one look, though the gutter and the
+painting derive from the same `100vw` and shift together.
+
+### 3. Centre composition and function — unchanged
+
+Measured identical to the pre-change production values at every width. At
+1440x900: Record `x=352`, seal `y=222`, plinth `y=731`. At 2560x1080: Record
+`x=777`, seal `y=229`, plinth `y=924`.
+
+Record `empty`/"Summoner"; Premium CTA `/lol/premium`; Community showing the
+Discord pending state; utility strip `/feedback`, `/feedback?intent=bug`,
+`/about`, `/contact`; legal three links, "© 2026 Mogzy.", **disclaimer 297
+characters**. Bulletin prev/next still advances at 2560. Screen 1 untouched.
+
+The Bulletin showed **2 notices** (mechanics + Pro Play) throughout, i.e. today
+is one of the roughly one-in-seven days where neither of the day's two subjects
+holds a Bulletin-eligible question. Designed behaviour, not a defect.
+
+### 4. Console and network
+
+No `/api/ranked/*` requests from an anonymous visitor. Three failing requests,
+none attributable to this change:
+
+| Entry | Verdict |
+|---|---|
+| `403 /api/stat-check/invites` | pre-existing |
+| `404 /rest/v1/funnel_events` | pre-existing |
+| `429 /auth/v1/signup` | test artefact — rapid repeated loads from one IP trip Supabase's signup limit |
+
+### 5. Do the empty pilasters look finished?
+
+**They look intentional, and they are not broken — but at 3440 they read as
+bare rather than resolved.**
+
+They are unmistakably deliberate: real joinery, correct light direction, a
+clean seam, consistent on both sides. Nothing about them says "unfinished
+edge", which was the whole complaint. At **2560 (186px)** the proportion is
+good and the column reads as a natural edge to the room.
+
+At **3440 (262px)** the same treatment becomes a large, very plain dark face.
+The two stiles are the only articulation across a quarter-metre of screen, and
+the eye starts reading it as reserved space.
+
+The honest distinction: what it lacks is **architecture, not content**. A
+capital and a base — a horizontal moulding where the column meets the ceiling
+line and the skirting — would make it read as a column rather than a band, and
+would cost nothing conceptually because the room already has both those
+mouldings in its own paint. That is a smaller and safer next step than pinning
+papers or art to it, and it would likely settle the question of whether the
+surfaces need anything on them at all.
+
+**Recommendation: articulate before decorating.** Nothing added here.
+
+---
 
 ## Revision 2026-09-08 — COMMONS SIDE ARCHITECTURE — **SHIPPED, AWAITING DEPLOY**
 
@@ -151,11 +254,8 @@ CSS.
 
 ### 7. Deployment
 
-Pushed. **Not yet live** — production still serves `index-BhMjcAji.js`. On the
-evidence of every previous cycle the auto-deploy does not fire on its own; the
-owner triggers Publish. Production verification is owed once the bundle hash
-changes, and needs an **ultrawide viewport** to be meaningful — at 1440 there
-is nothing to see.
+Published by the owner and **verified live** as `index-DfGesPh-.js` — see
+Revision 33.
 
 ### 8. Next task
 
