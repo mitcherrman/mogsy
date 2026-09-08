@@ -1,13 +1,184 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 26 (visual QA pass + the guest 403 fix) is at the top of this
-     file. Revision 25 shipped Step 3, Revision 24 was the recomposition,
-     Revision 23 the specification, Revision 22 the preservation audit.
+<!-- Revision 27 (Step 4 — the Bulletin carousel) is at the top of this file.
+     Revision 26 was the visual QA pass and the guest 403 fix, Revision 25
+     shipped Step 3, Revision 24 was the recomposition, Revision 23 the
+     specification, Revision 22 the preservation audit.
      Revision 21 was WHATSNEW2 — Academy Updates become admin-managed.
      Revision 20 was WHATSNEW1, which built the surface;
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-07 — STEP 4: THE ACADEMY BULLETIN CAROUSEL — **SHIPPED**
+
+**Commit:** `f275ed62` — `feat(hub): the Academy Bulletin rotates over four production-backed families`
+**Pushed:** `bb35a24f..f275ed62`, clean fast-forward, no force.
+**Mount geometry:** unchanged. The board is still `.5840 / .2520 / .2440 /
+.2440`, no other Commons mount moved, and the plinth and Screen 1 have no diff.
+
+### 1. Implemented families
+
+Every one reads a source that already serves production. No new backend, no
+CMS, no feed, no fixture.
+
+| Family | Source | What it claims |
+|---|---|---|
+| **personal** | `useRankedMatchHistory(5, { enabled: isIdentified })` | the outcome, rating delta, opponent and date **the row itself carries** |
+| **quiz** | `quizApi.categoryQuestions("Champion Ability Cooldowns", 1)` | the live question, verbatim |
+| **mechanics** | `fetchTablesIndex()` — the Mechanics Explorer's own index, on the **same React Query key**, so the two share one cache | a published study table's title, subtitle, patch and row count |
+| **proplay** | none needed | nothing — it is an invitation to `/lol/pro-play` |
+
+**No answer can reach the board.** `GET /api/quiz/questions` returns
+`question_text` and shuffled `choices` and *no* correct answer — the answer
+exists only in the response to `submitAnswer` — so a prompt card physically
+cannot leak one. The choices are dropped in the hook as well: the board asks,
+the quiz answers. A test walks every notice and asserts no choice string is
+ever printed.
+
+**No manufactured significance.** The personal family renders only on a real
+completed Ranked match. A null `ratingDelta` prints nothing rather than a zero;
+a bot opponent is called a bot rather than implied to be a person; a loss is
+reported as a loss. A guest, an anonymous session, an identified account with
+no matches, and a backend that will not answer all produce **no personal
+notice at all**.
+
+### 2. Deferred families, and why
+
+| Family | Why not |
+|---|---|
+| **Patch** | Screen 1's Broadcast already renders the Patch Brief from `usePatchBriefFeed`. The same transmission twice on one page is not a bulletin. The mechanics notice names the patch its tables are verified through, which is patch-adjacent and is not that transmission. Revisit only with a genuinely distinct projection. |
+| **Pro Play statistics** | Confirmed again: `src/lib/pro-play/api.ts` exposes only `startProPlayQuiz` and `answerProPlayQuestion`. Questions are generated at request time and there is no read-only stats endpoint, so a stats card would have to invent its numbers. The invitation ships instead. |
+| **Aggregate / community activity** | No activity-feed table and no aggregate endpoint exist. Needs backend; out of scope. |
+| **General League / esports news** | LIVE1 serves match data, not editorial. No news source exists and none is proposed. |
+
+### 3. Geometry — solved before any content was wired
+
+The painted board is about **339 x 191 CSS pixels at 1024x781**. Navigation had
+to cost no height, so:
+
+* **Prev/next sit on the paper's own left and right margins**, vertically
+  centred, outside the text column. They take horizontal space the copy was
+  not using.
+* **The position dots share the CTA's row**, in the space beside it.
+* **Title and body are clamped**, which is what lets any family be pinned to
+  this board without measuring each one first.
+
+There is deliberately **no navigation row**. A row would have cost ~30px of a
+191px board — a line of body copy on every card, forever.
+
+**Two corrections came from looking at it, not from the numbers:**
+
+1. The clamp split went **3 lines of title / 2 of body**, not 2/3. At 2/3 a real
+   question truncated mid-word — *"cooldown of Malphite R…"* — and a question
+   you cannot finish reading is not a question. The headline IS the card for
+   that family. The stack is one line shorter overall, not longer, and the
+   board's title is set at 20u rather than 24u to hold three lines.
+2. The text inset grew from 22u to 27u and the chevrons shrank. At 22u they sat
+   hard against the body's first line and read as part of the sentence.
+
+A third, smaller one came from the measurements: the foot's padding dropped
+from 11u to 7u after the densest real card — a two-line question plus a meta
+line plus the CTA at 1024x781 — put the CTA **one pixel** past the board's
+bottom edge.
+
+### 4. Behaviour
+
+* **One item at a time**, crossfade only. Paper pinned to a board does not
+  slide sideways.
+* **Twelve seconds.** Long enough to read a short notice, far too slow to read
+  as a slideshow.
+* **Stops** on hover, on focus within the board, while the tab is hidden, while
+  the Commons is not the room on screen, and **permanently** once the reader
+  presses prev or next. Taking manual control is a statement that they are
+  reading, so autoplay does not take it back.
+* The in-view check reuses `hub-commons-in-view`, which `LolHub`'s existing
+  settle observer already sets — no second observer.
+* **Reduced motion** — the OS query *or* the app's own `html.reduce-motion` —
+  disables autoplay entirely and drops the crossfade. Manual navigation still
+  works: the reader loses the movement, never the capability.
+* **A board is never empty.** The Pro Play invitation needs no data and is
+  always last. On a single-notice board the arrows and dots are **absent**
+  rather than present-and-disabled.
+
+**Accessibility.** Both controls carry real labels ("Previous notice", "Next
+notice"), are in the tab order, keep focus while the notice changes under them,
+and have explicit focus rings. The board is **deliberately not a live region** —
+an auto-advancing region announces itself over a screen-reader user every
+twelve seconds, which is the standard failure of an announced carousel. That
+also preserves the hub's existing "no live region anywhere" assertion.
+
+### 5. Deterministic selection
+
+Two component props, no product surface, no URL parameter, no demo mode:
+
+* `initialNoticeId` pins the board to one notice.
+* `autoRotate={false}` holds it still without pinning it.
+
+The pin is **derived on every render, never latched into state** — the board
+grows as its families answer, so an index captured once points at the wrong
+notice a tick later. That bug was caught by the tests. An id the board does not
+carry resolves to -1 and the board behaves normally, so a stale marketing
+script cannot blank it.
+
+### 6. Ordering
+
+`personal → quiz → mechanics → proplay`. What the reader did, then what they
+can do, then what is true in general, then an invitation. A family that is
+still loading is absent rather than a skeleton — the board grows as answers
+arrive, and a reader never sees a placeholder pinned to a noticeboard.
+
+### 7. Verification
+
+| Check | Result |
+|---|---|
+| lol / hub / community / quiz-ranked | **688 passed**, 49 files (was 374/21 — +29 Bulletin tests) |
+| Lint | **0 errors**; 2 warnings, both in `AcademyBroadcastSurface.tsx`, untouched |
+| Build | green |
+| Typecheck | **11 errors, none in changed files** — the standing baseline |
+| Pre-existing failures | `Quiz.rankedRole.test.tsx` (`ranked-class-champion`) and `LeaguecraftWorkspace.test.tsx` (`'3w ago'`) — **both confirmed identical at clean HEAD** by stashing and re-running |
+
+**Playwright geometry sweep** — 1024x781, 1280x800, 1440x900, flow (390x844)
+and large text, for each of the three impersonal families, driven through the
+real next control:
+
+* CTA inside the board: **true everywhere**. Title inside: true everywhere.
+* Arrows and dots: inside the board, overlapping **nothing** — not the title,
+  not the CTA.
+* No horizontal clipping anywhere; no page overflow in flow or large text.
+* Slack below the CTA after the fixes: **+14px** at the tightest case
+  (1024x781, quiz), up to +42px.
+* Large text correctly abandons stage mode and stacks in flow.
+
+A note on the environment: `.env.local` points the dev server at
+`127.0.0.1:8010`, which is not running, so a plain local run shows **only the
+Pro Play notice** — the fallback working exactly as designed. The sweep used a
+throwaway server pointed at the production API to see the real families.
+
+### 8. Next task
+
+**Recommendation: enrich the Bulletin from sources Mogzy already has, before
+the wood gutters.**
+
+The reasons are concrete rather than aesthetic. The board is now a shape with
+four occupants and three of them are one-notice-deep: the quiz family always
+draws from a single hard-coded category, the mechanics family always shows the
+first study table of the first category, and the personal family reads one row.
+Rotation therefore looks repetitive on a second visit even though the machinery
+is right. Widening it is cheap and needs no new backend:
+
+* rotate the quiz prompt across the six real subjects in
+  `PRACTICE_CATEGORY_SOURCES` instead of one;
+* pick a study table from anywhere in the mechanics index, not `[0][0]`;
+* add a second personal projection — a streak or an Academy tier change — from
+  `deriveProfileStats`, which the Record already reads.
+
+The gutters are a self-contained visual pass that neither blocks nor is blocked
+by this, and they will look better against a board that is finished. Timmy/demo
+population stays last, after the real experience is complete — and the
+`initialNoticeId` prop this revision added is the hook it will use.
+
+---
 
 ## Revision 2026-09-07 — VISUAL QA PASS + GUEST 403 FIX — **SHIPPED**
 
