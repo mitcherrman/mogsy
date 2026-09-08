@@ -13,6 +13,7 @@
 
 **Commit:** `155c3a89` — `fix(hub): stop the guest Ranked 403, and three defects visual QA found`
 **Pushed:** `c52182e8..155c3a89`, clean fast-forward, no force.
+**Production:** deployed and verified — bundle `index-BDRSQ9we.js`. See §4b.
 **Screenshot capture finally worked** — Playwright, driven directly against the
 dev server, produced real images of the room. The Browser pane still returns a
 black frame; that limitation is the pane's, not the site's.
@@ -82,6 +83,36 @@ horizontal overflow at any size.
 | `Quiz.rankedRole.test.tsx` | 1 failure, **`ranked-class-champion` on `/quiz`** — confirmed **identical at clean HEAD** by stashing and re-running. Pre-existing, unrelated to the Commons, part of the repo's known baseline. Failure sets compared, not totals. |
 
 Screen 1, the artwork and the legal plinth: **no diff at all**.
+
+### 4b. Production — deployed and smoke-checked
+
+Deploy fired: `index-CebjhgD1.js` → **`index-BDRSQ9we.js`**. Re-checked live at
+1440x900.
+
+| Check | Live result |
+|---|---|
+| Screen 1 loads | ✅ |
+| Scroll to Screen 2 | ✅ settles at 0; snap `y mandatory` |
+| Hall ↔ Commons controls | ✅ both hints reveal (opacity 1) and both controls navigate; "Back to the Hall" is focusable |
+| Academy Record | ✅ `empty`, title now reads **"Summoner"** — the duplication fix is live |
+| Academy Bulletin | ✅ CTA → `/lol/mechanics` |
+| Premium mount | ✅ `promo`, CTA → `/lol/premium`, **12px inset** — the padding fix is live |
+| Community mount | ✅ Discord pending, **11px inset** |
+| Utility strip | ✅ all four routes; clears the rail by 30px |
+| Legal set | ✅ `/privacy` `/terms` `/security`, "© 2026 Mogzy.", disclaimer **297 chars — unchanged** |
+| Seal | ✅ centre y=244 against medallion y=244, **zero drift** |
+| Horizontal overflow | ✅ none |
+| **`/api/ranked/progression`** | ✅ **not requested at all** for an anonymous visitor |
+| Console | only the two pre-existing errors (`403 /api/stat-check/invites`, `404 /rest/v1/funnel_events`). **The guest 403 is gone.** |
+
+**A testing-environment note worth keeping.** The Browser pane cannot perform
+`scrollIntoView({behavior: "smooth"})` — `behavior: "auto"` scrolls fine, but
+smooth is a no-op. Since `hubScrollTo` uses smooth, *both* navigation controls
+appear dead in the pane, including the Hall's descend control, which no part of
+this workstream has ever touched. Real Chromium via Playwright shows both
+working correctly against production. Do not diagnose hub navigation in the
+Browser pane; it will report a failure that is not there. This is the second
+pane limitation this workstream has hit, after the black screenshots.
 
 ### 5. Outstanding
 
