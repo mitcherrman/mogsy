@@ -20,6 +20,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
+import ProPlayResearchLinks from "@/components/pro-play/ProPlayResearchLinks";
 import EntityPicker from "@/components/graph1/EntityPicker";
 import FeaturedGraphs from "@/components/graph1/FeaturedGraphs";
 import GraphBuilderControls from "@/components/graph1/GraphBuilderControls";
@@ -474,6 +475,10 @@ export default function ProPlayGraphs() {
           </div>
           <p className="text-muted-foreground">{subtitle}</p>
         </header>
+
+        {/* Admin-only doorway to the Matchup Explorer and Pro Play Search.
+            Renders nothing for everyone else; see the component. */}
+        <ProPlayResearchLinks />
 
         <div className="space-y-5 rounded-lg border border-border/60 bg-card/40 p-4">
           <GraphBuilderControls
