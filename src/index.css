@@ -8644,6 +8644,14 @@ html.high-contrast * { text-shadow: none !important; }
   overflow: hidden;
 }
 
+/* FLOW MODE needs the same inset the stage gate gives in `--u`: the arrows are
+   absolutely placed on the sheet's margins, and at flow-mode type they land on
+   the copy without it. Caught in large-text, where the box grows but the
+   arrows do not. */
+.academy-commons-bulletin-bill {
+  padding-inline: 2.75rem;
+}
+
 /* Prev/next: struck into the paper, not plated onto it. Ink that darkens, no
    fill and no border — a plate here would read as a web slider bolted to a
    painted board. They sit on the sheet's own margins, clear of the text

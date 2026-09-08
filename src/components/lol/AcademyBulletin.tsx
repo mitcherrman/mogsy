@@ -85,15 +85,22 @@ export interface AcademyBulletinProps {
   initialNoticeId?: string;
   /** Off for deterministic capture. Production leaves it on. */
   autoRotate?: boolean;
+  /**
+   * Override the day rotation that chooses the quiz subject and the study
+   * table. Same purpose as `initialNoticeId`: a test or a capture needs the
+   * same board twice. Production never passes it.
+   */
+  daySeed?: number;
 }
 
 export default function AcademyBulletin({
   initialNoticeId,
   autoRotate = true,
+  daySeed,
 }: AcademyBulletinProps = {}) {
   const { user } = useAuth();
   const isIdentified = !!user?.id && !(user as { is_anonymous?: boolean }).is_anonymous;
-  const notices = useAcademyBulletin({ isIdentified });
+  const notices = useAcademyBulletin({ isIdentified, userId: user?.id ?? null, daySeed });
 
   const [index, setIndex] = useState(0);
   /** Set once the reader drives the board themselves. Never unset. */
@@ -171,7 +178,11 @@ export default function AcademyBulletin({
           all round in flow mode; under half a degree of rotation, so no line of
           type is measurably off the horizontal. Stage mode drops both — the
           painting supplies the paper and the pins. */}
-      <div className="academy-commons-notice academy-commons-bill academy-commons-bulletin-bill relative flex flex-col rounded-[2px] px-5 py-5 [transform:rotate(-0.45deg)] sm:px-6">
+      <div /* No Tailwind px-* here: the inline padding is the arrows' clearance and
+            index.css owns it, in rem for flow and in `--u` inside the stage
+            gate. A utility class would out-order the rule and put the chevrons
+            back on the copy. */
+        className="academy-commons-notice academy-commons-bill academy-commons-bulletin-bill relative flex flex-col rounded-[2px] py-5 [transform:rotate(-0.45deg)]">
         <span
           aria-hidden
           className="academy-commons-pin absolute left-4 top-2.5 h-2.5 w-2.5 rounded-full"

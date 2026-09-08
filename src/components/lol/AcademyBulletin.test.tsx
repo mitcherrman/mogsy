@@ -16,17 +16,25 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AcademyBulletin from "./AcademyBulletin";
+import {
+  BULLETIN_AUTHORED_BODY_MAX_CHARS,
+  BULLETIN_QUESTION_MAX_CHARS,
+  BULLETIN_QUIZ_SOURCES,
+  isBulletinSuitableQuestion,
+} from "./useAcademyBulletin";
 
 const mocks = vi.hoisted(() => ({
   authUser: null as { id: string; is_anonymous?: boolean } | null,
   rankedEntries: [] as Array<Record<string, unknown>>,
   rankedLoadState: "unavailable" as "loading" | "ready" | "unavailable",
   rankedCalls: [] as Array<{ enabled?: boolean } | undefined>,
-  question: null as Record<string, unknown> | null,
+  questions: [] as Array<Record<string, unknown>>,
   questionThrows: false,
+  progress: null as Record<string, unknown> | null,
   tables: null as Record<string, unknown> | null,
   tablesThrows: false,
   reducedMotion: false,
+  requestedCategories: [] as string[],
 }));
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mocks.authUser }) }));
@@ -45,10 +53,12 @@ vi.mock("@/lib/quiz/api", async (importOriginal) => {
   return {
     ...actual,
     quizApi: {
-      categoryQuestions: () => {
+      categoryQuestions: (category: string) => {
         if (mocks.questionThrows) return Promise.reject(new Error("down"));
-        return Promise.resolve({ questions: mocks.question ? [mocks.question] : [] });
+        mocks.requestedCategories.push(category);
+        return Promise.resolve({ questions: mocks.questions });
       },
+      getProgress: () => Promise.resolve(mocks.progress),
     },
   };
 });
@@ -61,11 +71,33 @@ vi.mock("@/lib/mechanics-tables/api", async (importOriginal) => {
   };
 });
 
+/** 42 characters — comfortably inside the measured budget. */
 const QUESTION = {
   id: 132030,
+  category: "Item Costs",
+  question_text: "How much does a Doran's Blade cost?",
+  choices: ["450 gold", "400 gold", "500 gold", "350 gold"],
+  format: "multiple_choice",
+};
+
+/**
+ * The two real production formats that broke the live board. Both are drawn
+ * from what mogzy.lol actually served on 2026-09-07.
+ */
+const LONG_COMPARISON = {
+  id: 900001,
   category: "Champion Ability Cooldowns",
-  question_text: "What is the cooldown of Cassiopeia Q - Noxious Blast?",
-  choices: ["2.5 seconds", "6.5 seconds", "4.5 seconds", "3.5 seconds"],
+  question_text:
+    "Which ultimate has the shorter rank 1 cooldown: Lee Sin R - Dragon's Rage, or Leona R - Solar Flare?",
+  choices: ["Lee Sin R", "Leona R", "Equal", "Neither"],
+  format: "multiple_choice",
+};
+const LONG_SCENARIO = {
+  id: 900002,
+  category: "Champion Ability Cooldowns",
+  question_text:
+    "Tryndamere R - Undying Rage has a rank 3 cooldown of 80 seconds. With Sundered Sky and 20 ability haste, what is it?",
+  choices: ["61.5 seconds", "66.7 seconds", "58.0 seconds", "72.0 seconds"],
   format: "multiple_choice",
 };
 
@@ -76,6 +108,12 @@ const TABLES = {
       category: "base_systems",
       study_tables: [
         {
+          table_id: "base_systems.study.fountain",
+          title: "The fountain",
+          subtitle: "What your own fountain gives back, and what the enemy one takes",
+          row_count: 6,
+        },
+        {
           table_id: "base_systems.study.death_timers",
           title: "Death timers",
           subtitle: "How long you stay dead, and what makes it longer",
@@ -83,7 +121,31 @@ const TABLES = {
         },
       ],
     },
+    {
+      category: "waves",
+      study_tables: [
+        {
+          table_id: "waves.study.gold",
+          title: "Wave gold",
+          subtitle: "What a wave is worth, minute by minute",
+          row_count: 14,
+        },
+      ],
+    },
   ],
+};
+
+const PROGRESS_ACTIVE = {
+  total_attempts: 412,
+  accuracy: 72.8,
+  current_streak: 7,
+  best_streak: 19,
+  academy_tier: "gold",
+  academy_next_tier: "diamond",
+  academy_current_tier_xp: 5000,
+  academy_next_tier_xp: 8000,
+  academy_xp_to_next: 2600,
+  academy_progress_percent: 13.3,
 };
 
 const MATCH = {
@@ -101,7 +163,8 @@ function renderBulletin(props: Parameters<typeof AcademyBulletin>[0] = {}) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <AcademyBulletin {...props} />
+        {/* A fixed seed everywhere, so a test never depends on today's date. */}
+        <AcademyBulletin daySeed={0} {...props} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -119,8 +182,10 @@ beforeEach(() => {
   mocks.rankedEntries = [];
   mocks.rankedLoadState = "unavailable";
   mocks.rankedCalls = [];
-  mocks.question = QUESTION;
+  mocks.questions = [QUESTION];
   mocks.questionThrows = false;
+  mocks.progress = null;
+  mocks.requestedCategories = [];
   mocks.tables = TABLES;
   mocks.tablesThrows = false;
   mocks.reducedMotion = false;
@@ -161,11 +226,12 @@ describe("what the board is allowed to say", () => {
   });
 
   it("names a real published study table, with its own patch", async () => {
-    renderBulletin({ initialNoticeId: "mechanics-base_systems.study.death_timers" });
+    // Seed 0 selects the first table in the flattened index.
+    renderBulletin({ initialNoticeId: "mechanics-base_systems.study.fountain" });
     await waitFor(() =>
       expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).toBe("mechanics"),
     );
-    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe("Death timers");
+    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe("The fountain");
     expect(screen.getByTestId("academy-bulletin-meta").textContent).toContain("Patch 26.15");
     expect(screen.getByTestId("academy-bulletin-cta").getAttribute("href")).toBe("/lol/mechanics");
   });
@@ -478,6 +544,186 @@ describe("deterministic selection", () => {
     expect(board.dataset.bulletinIndex).toBe("0");
     fireEvent.click(screen.getByTestId("academy-bulletin-next"));
     expect(board.dataset.bulletinIndex).toBe("1");
+  });
+});
+
+describe("question suitability — a question must be shown WHOLE", () => {
+  it("rejects the long comparison format that truncated in production", async () => {
+    mocks.questions = [LONG_COMPARISON];
+    renderBulletin();
+    await settled(2); // mechanics + proplay only
+    const kinds = new Set<string>();
+    for (let i = 0; i < 2; i++) {
+      kinds.add(screen.getByTestId("academy-bulletin").dataset.bulletinKind!);
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
+    expect(kinds.has("quiz")).toBe(false);
+  });
+
+  it("rejects the long scenario format too", async () => {
+    mocks.questions = [LONG_SCENARIO];
+    renderBulletin();
+    await settled(2);
+    expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).not.toBe("quiz");
+  });
+
+  it("picks the eligible question out of a batch that mostly does not fit", async () => {
+    // Exactly what the live bank looks like: mostly too long, a few short.
+    mocks.questions = [LONG_SCENARIO, LONG_COMPARISON, QUESTION];
+    renderBulletin({ initialNoticeId: `quiz-${QUESTION.id}` });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).toBe("quiz"),
+    );
+    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe(
+      QUESTION.question_text,
+    );
+  });
+
+  it("shows an eligible question complete — no ellipsis, no cut", async () => {
+    renderBulletin({ initialNoticeId: `quiz-${QUESTION.id}` });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).toBe("quiz"),
+    );
+    const t = screen.getByTestId("academy-bulletin-title").textContent ?? "";
+    expect(t).toBe(QUESTION.question_text);
+    expect(t.endsWith("?")).toBe(true);
+    expect(t).not.toMatch(/[…]|\.\.\.$/);
+  });
+
+  it("rejects a pathological unbroken token whatever the total length", async () => {
+    expect(isBulletinSuitableQuestion("Which is longer: " + "x".repeat(19) + "?")).toBe(false);
+    expect(isBulletinSuitableQuestion("Which is longer: abcdefgh?")).toBe(true);
+  });
+
+  it("authored bodies fit the two-line clamp whole", async () => {
+    // The Pro Play invitation shipped at 127 characters and was cut mid-
+    // sentence on the live board. Authored copy is policed the same way a
+    // question is; a table's own subtitle is its authority's business.
+    renderBulletin({ initialNoticeId: "proplay-invitation" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).toBe("proplay"),
+    );
+    const body = document.querySelector(".academy-commons-bulletin-blurb")?.textContent ?? "";
+    expect(body.length).toBeLessThanOrEqual(BULLETIN_AUTHORED_BODY_MAX_CHARS);
+    expect(body.trim().endsWith(".")).toBe(true);
+  });
+
+  it("the threshold sits below the shortest failure measured in production", () => {
+    // 52 characters was the shortest live question that would not fit the
+    // three-line budget at 1024x781. The rule must be strictly under it.
+    expect(BULLETIN_QUESTION_MAX_CHARS).toBeLessThan(52);
+    expect(isBulletinSuitableQuestion("x".repeat(BULLETIN_QUESTION_MAX_CHARS))).toBe(false);
+  });
+
+  it("falls back honestly when no question in the day's subject is suitable", async () => {
+    mocks.questions = [LONG_COMPARISON, LONG_SCENARIO];
+    renderBulletin();
+    await settled(2);
+    // The board is still a board: mechanics and the invitation both stand.
+    expect(screen.getByTestId("academy-bulletin-cta")).toBeTruthy();
+    expect(screen.getByTestId("academy-bulletin-next")).toBeTruthy();
+  });
+});
+
+describe("variety", () => {
+  it("draws its subject from the practice rail's own sources", () => {
+    expect(BULLETIN_QUIZ_SOURCES).toContain("Item Costs");
+    expect(BULLETIN_QUIZ_SOURCES).toContain("Champion Ability Cooldowns");
+    expect(BULLETIN_QUIZ_SOURCES).toContain("Minion Waves");
+    // `vision` has no sources and must contribute nothing.
+    expect(BULLETIN_QUIZ_SOURCES.length).toBeGreaterThan(10);
+  });
+
+  it("asks a different subject on a different day", async () => {
+    renderBulletin({ daySeed: 0 });
+    await settled(3);
+    const first = mocks.requestedCategories[0];
+    cleanup();
+    mocks.requestedCategories = [];
+    renderBulletin({ daySeed: 1 });
+    await settled(3);
+    expect(mocks.requestedCategories[0]).not.toBe(first);
+  });
+
+  it("shows a different study table on a different day", async () => {
+    renderBulletin({ daySeed: 0, initialNoticeId: "mechanics-base_systems.study.fountain" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).toBe("mechanics"),
+    );
+    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe("The fountain");
+    cleanup();
+    renderBulletin({ daySeed: 1, initialNoticeId: "mechanics-base_systems.study.death_timers" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).toBe("mechanics"),
+    );
+    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe("Death timers");
+  });
+
+  it("considers study tables from every category, not just the first", async () => {
+    // Seed 2 lands on the third table, which lives under a different category.
+    renderBulletin({ daySeed: 2, initialNoticeId: "mechanics-waves.study.gold" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin-title").textContent).toBe("Wave gold"),
+    );
+  });
+});
+
+describe("personal projections", () => {
+  beforeEach(() => {
+    mocks.authUser = { id: "u1", is_anonymous: false };
+    mocks.rankedLoadState = "ready";
+    mocks.rankedEntries = [MATCH];
+    mocks.progress = PROGRESS_ACTIVE;
+  });
+
+  it("adds a streak notice on a streak day, with the real numbers", async () => {
+    renderBulletin({ daySeed: 0, initialNoticeId: "personal-streak" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinNotice).toBe(
+        "personal-streak",
+      ),
+    );
+    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe("7 correct in a row");
+    expect(screen.getByTestId("academy-bulletin-meta").textContent).toContain("Best 19");
+  });
+
+  it("adds an Academy standing notice on the alternate day", async () => {
+    renderBulletin({ daySeed: 1, initialNoticeId: "personal-standing" });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinNotice).toBe(
+        "personal-standing",
+      ),
+    );
+    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe(
+      "You stand at Academy Gold",
+    );
+    expect(screen.getByTestId("academy-bulletin-meta").textContent).toContain("2,600 XP");
+  });
+
+  it("gives a sparse account fewer personal notices, not padded ones", async () => {
+    // Real account, one match, but no streak and no coherent academy block.
+    mocks.progress = { total_attempts: 4, accuracy: 50, current_streak: 1, best_streak: 2 };
+    renderBulletin();
+    // match + quiz + mechanics + proplay — the SECOND personal notice is the
+    // one a sparse account loses, not the board's structure.
+    await settled(4);
+    const kinds: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      kinds.push(screen.getByTestId("academy-bulletin").dataset.bulletinKind!);
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
+    expect(kinds.filter((k) => k === "personal")).toHaveLength(1);
+  });
+
+  it("never calls a four-answer run a streak", async () => {
+    mocks.rankedEntries = [];
+    mocks.progress = { total_attempts: 40, accuracy: 60, current_streak: 4, best_streak: 9 };
+    renderBulletin({ daySeed: 0 });
+    await settled(3);
+    for (let i = 0; i < 3; i++) {
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).not.toBe("personal");
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
   });
 });
 
