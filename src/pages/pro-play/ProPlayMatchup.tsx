@@ -88,7 +88,6 @@ import {
   DossierSection,
   FinePrint,
   GoldRule,
-  MogzyNote,
 } from "@/components/pro-play/dossier/DossierChrome";
 import { ChampionIcon, PlayerPortrait } from "@/components/pro-play/dossier/DossierMedia";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
@@ -146,17 +145,13 @@ function Field({
   );
 }
 
-/** A focus status, printed literally. `asserts_qualification` is the only
- *  thing that may change the wording, and it is what the server says. */
-function FocusBadge({ side }: { side: MatchupSide }) {
-  if (!side.focus) return null;
-  return (
-    <Badge variant={side.focus.asserts_qualification ? "default" : "secondary"} className="text-[10px]">
-      {side.focus.status}
-      {side.focus.asserts_qualification ? " · slot claimed" : ""}
-    </Badge>
-  );
-}
+/* The focus-status badge is gone from both boards. It printed the word
+   "watchlist" on a team, which read as a label on the ORG rather than on
+   Mogzy's editorial interest, and it forced a caveat paragraph above the page
+   to say it was not a qualification claim. Neither is needed once neither is
+   shown. `side.focus` is untouched in the payload and
+   `asserts_qualification` remains the only thing that could ever change this
+   page's wording — nothing currently asserts it. */
 
 // --- configuration ----------------------------------------------------------
 
@@ -354,7 +349,6 @@ function SideCard({ side, label }: { side: MatchupSide; label: string }) {
                 {side.team.display_name}
               </Link>
             ) : null}
-            <FocusBadge side={side} />
           </div>
         </div>
       </div>
@@ -689,7 +683,7 @@ function LaneExplorer({
             <SideCard side={data.sides.b} label="B" />
           </div>
         ) : null}
-        <MogzyNote testId="lane-side-by-side-note">{data.notes.side_by_side}</MogzyNote>
+        <FinePrint testId="lane-side-by-side-note">{data.notes.side_by_side}</FinePrint>
       </DossierSection>
 
       <MechanicsPanel data={data} />
@@ -814,19 +808,19 @@ export function MatchupBody() {
   return (
     <ResearchPage>
       <ResearchBreadcrumb trail={[{ label: "Matchup Explorer" }]} />
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight md:text-3xl">
-        {contract.focus_set.target_event} Matchup Explorer
+      {/* EVERGREEN. The event this dossier is curated for is a kicker inside
+          the VS banner, not the product's name — a title with a year in it
+          goes stale on a schedule, and the Explorer does not. */}
+      <h1 className="mb-2 text-2xl font-semibold tracking-tight md:text-[1.75rem]">
+        League of Legends Esports Matchup Explorer
       </h1>
-      {/* The focus-set caveat still ships on every render, in both modes, and
-          is one click from every reader — not hidden, and not read only by a
-          screen reader. What Phase 3 removed is its place as the first
-          paragraph the page shows. It lives here, once, rather than being
-          repeated by the dossier header. */}
-      <div className="proplay-dossier mb-3">
-        <FinePrint testId="matchup-focus-note">{contract.notes.focus}</FinePrint>
-      </div>
 
-      <div className="mb-4 flex gap-1" role="tablist" aria-label="Explorer mode">
+      {/* The focus-set caveat used to sit here, correcting a "watchlist" badge
+          the page no longer prints. With no qualification claimed anywhere on
+          screen there is nothing left for it to correct, and it cost the reader
+          a paragraph before the matchup. `contract.notes.focus` and the whole
+          focus payload are untouched. */}
+      <div className="mb-3 flex gap-1" role="tablist" aria-label="Explorer mode">
         {(["team", "lane"] as const).map((m) => (
           <button
             key={m}

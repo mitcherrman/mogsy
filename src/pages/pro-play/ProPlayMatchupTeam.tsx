@@ -42,11 +42,9 @@
 
 import { useMemo, useState } from "react";
 import {
-  Disclosure,
   Dossier,
   DossierSection,
   FinePrint,
-  MogzyNote,
 } from "@/components/pro-play/dossier/DossierChrome";
 import {
   ArchiveWarnings,
@@ -66,43 +64,9 @@ import {
 } from "@/lib/pro-play/matchupApi";
 
 // --- controls ---------------------------------------------------------------
-
-function TeamSelect({
-  contract,
-  selection,
-  side,
-  onChange,
-}: {
-  contract: MatchupContract;
-  selection: TeamSelection;
-  side: "a" | "b";
-  onChange: (next: TeamSelection) => void;
-}) {
-  const value = side === "a" ? selection.team_a : selection.team_b;
-  return (
-    <label className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        Team {side.toUpperCase()}
-      </span>
-      <select
-        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-        value={value ?? ""}
-        aria-label={`Team ${side.toUpperCase()}`}
-        data-testid={`team-select-${side}`}
-        onChange={(e) => onChange(withTeamSide(selection, side, e.target.value || null))}
-      >
-        <option value="">Select a team…</option>
-        {contract.focus_set.teams.map((t) => (
-          // The owner's short label beside the canonical key, and the status
-          // verbatim. "watchlist" is never rewritten into anything warmer.
-          <option key={t.team_key} value={t.team_key}>
-            {t.owner_label} — {t.team_key} ({t.status})
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
+// Team selection lives in the VS banner (`MatchHeader`), which is the one
+// control that changes the subject. What remains here operates on the matchup
+// already chosen: scope, sides and bans.
 
 function TeamBanBar({
   data,
@@ -173,7 +137,7 @@ function TeamBanBar({
           </button>
         ) : null}
       </div>
-      <MogzyNote label="On bans">{data.bans.note}</MogzyNote>
+      <FinePrint testId="dossier-bans-note">{data.bans.note}</FinePrint>
     </div>
   );
 }
@@ -199,12 +163,16 @@ export function TeamBoard({
 
   return (
     <Dossier>
-      <MatchHeader data={data} contract={contract} />
+      <MatchHeader
+        data={data}
+        contract={contract}
+        selection={selection}
+        onChange={onChange}
+      />
 
       {/* The server's team-mode note denies a draft, a ban, a starter and a
           result, in its own words. It is a margin annotation now instead of a
           leading paragraph — but it renders on every board, unedited. */}
-      <MogzyNote testId="team-mode-note">{data.notes.team_mode}</MogzyNote>
 
       <div className="dossier-controls" data-testid="dossier-controls">
         <ScopeRail
@@ -232,28 +200,13 @@ export function TeamBoard({
         </div>
       </div>
 
-      {/* The team pickers move BELOW the dossier once both are chosen: they
-          are how you change the subject, not how you read it. Before that
-          they are the only thing on screen worth doing, so they lead. */}
-      <Disclosure
-        label={configured ? "Change teams" : "Choose two teams"}
-        openLabel="Done choosing"
-        defaultOpen={!configured}
-        testId="dossier-team-picker"
-      >
-        <div className="dossier-pickers">
-          <TeamSelect contract={contract} selection={selection} side="a" onChange={onChange} />
-          <TeamSelect contract={contract} selection={selection} side="b" onChange={onChange} />
-        </div>
-      </Disclosure>
-
       {/* Asserted, not assumed. Ten records at once is exactly where a reader
           would invent a series score, so nothing renders unless the server
           says this is not head-to-head. */}
       {data.head_to_head === false ? (
         <DossierSection
           title="Lane Study"
-          eyebrow="The five matchups"
+          eyebrow="Each player's own record"
           testId="dossier-lane-study"
         >
           <div className="dossier-lanes" data-testid="lane-board">
@@ -261,11 +214,11 @@ export function TeamBoard({
               <LanePlate key={row.lane} row={row} preview={data.pool_preview} />
             ))}
           </div>
-          {/* Named accurately, then explained on request — rather than a
-              denial paragraph sitting above ten records. */}
-          <MogzyNote label="Independent performance comparison" testId="dossier-side-by-side-note">
-            {data.notes.side_by_side}
-          </MogzyNote>
+          {/* The no-head-to-head guarantee is carried by the section's own
+              eyebrow and by this one line, not by a boxed disclaimer above ten
+              records. The server's sentence is still printed verbatim — it is
+              the exact wording the semantics are guaranteed in. */}
+          <FinePrint testId="dossier-side-by-side-note">{data.notes.side_by_side}</FinePrint>
           {/* Two separate server sentences, rendered separately. Joining them
               into one string would make each unquotable, and these are the
               exact words the pool semantics are guaranteed in. */}

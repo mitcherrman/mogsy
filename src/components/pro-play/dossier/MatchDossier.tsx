@@ -40,13 +40,15 @@ import {
   type LaneRow,
   type LaneSide,
   type MatchupContract,
+  type TeamSelection,
+  withTeamSide,
   type TeamHeader,
   type TeamMatchupResponse,
 } from "@/lib/pro-play/matchupApi";
 import { PRO_PLAY_MATCHUP_ROUTE } from "@/lib/pro-play/routes";
 
 import { ChampionPoolSummary } from "./ChampionPool";
-import { Disclosure, DossierSection, Figure, MogzyNote, Parchment } from "./DossierChrome";
+import { Disclosure, DossierSection, Figure, Parchment } from "./DossierChrome";
 import { ChampionIcon, PlayerPortrait, TeamCrest } from "./DossierMedia";
 
 /** Each lane state in the reader's words. All three are about games played. */
@@ -63,39 +65,81 @@ const LANE_STATE_LABEL: Record<string, string> = {
 
 // --- 1. who is playing ------------------------------------------------------
 
-function TeamFace({ header, align }: { header: TeamHeader | null; align: "left" | "right" }) {
-  if (!header) {
-    return (
-      <div className={`dossier-vs__team is-${align}`} data-testid="vs-team-empty">
-        <TeamCrest name="?" shortCode="?" />
-        <div className="dossier-vs__names">
-          <span className="dossier-vs__name">Select a team</span>
-        </div>
-      </div>
-    );
-  }
+/**
+ * One side of the VS banner — and the ONLY way a team is chosen.
+ *
+ * The Explorer used to carry two selectors: this banner, which showed the
+ * matchup, and a disclosure below the dossier, which changed it. Two controls
+ * for one decision is one too many, and the one that looked like the subject
+ * was not the one that owned it. So the banner IS the control now: the crest,
+ * the name and the whole plate are a single click target over a native
+ * `<select>`.
+ *
+ * A NATIVE SELECT ON PURPOSE. It is keyboard-navigable, it is a real form
+ * control for a screen reader, and on a phone it opens the platform's own
+ * picker rather than a bespoke popover that has to reimplement scroll,
+ * dismissal and focus trapping. It is transparent and stretched over the plate,
+ * so the visible chrome stays the dossier's while the semantics stay the
+ * browser's.
+ */
+function TeamChooser({
+  header,
+  align,
+  contract,
+  selection,
+  side,
+  onChange,
+}: {
+  header: TeamHeader | null;
+  align: "left" | "right";
+  contract: MatchupContract;
+  selection: TeamSelection;
+  side: "a" | "b";
+  onChange: (next: TeamSelection) => void;
+}) {
+  const value = side === "a" ? selection.team_a : selection.team_b;
   return (
-    <div className={`dossier-vs__team is-${align}`} data-testid={`vs-team-${header.team_key}`}>
+    <div
+      className={`dossier-vs__team is-${align}`}
+      data-testid={header ? `vs-team-${header.team_key}` : "vs-team-empty"}
+    >
       <TeamCrest
-        name={header.display_name}
-        shortCode={header.focus.owner_label}
-        entityKey={header.team_key}
+        name={header?.display_name ?? "?"}
+        shortCode={header?.focus.owner_label ?? "?"}
+        entityKey={header?.team_key}
       />
       <div className="dossier-vs__names">
-        <Link className="dossier-vs__name" to={profilePath("team", header.team_key)}>
-          {header.display_name}
-        </Link>
+        <span className="dossier-vs__name">
+          {header ? header.display_name : "Choose a team"}
+        </span>
+        {/* The org's own short label and its region. The focus STATUS is not
+            printed: with no qualification claimed anywhere on this page there
+            is nothing for the word "watchlist" to correct, and it read as a
+            label on the team rather than on Mogzy's interest. The field is
+            untouched in the payload — see `header.focus`. */}
         <span className="dossier-vs__meta">
-          {header.focus.owner_label}
-          {header.focus.group ? ` · ${header.focus.group}` : ""}
-          {/* The status word, verbatim. It is small here by design: truthful,
-              and no longer the paragraph that opens the page. */}
-          <span className="dossier-vs__status" data-testid={`team-focus-${header.team_key}`}>
-            {header.focus.status}
-            {header.focus.asserts_qualification ? " · slot claimed" : ""}
+          {header
+            ? `${header.focus.owner_label}${header.focus.group ? ` · ${header.focus.group}` : ""}`
+            : "Select from the focus set"}
+          <span className="dossier-vs__change" aria-hidden="true">
+            change
           </span>
         </span>
       </div>
+      <select
+        className="dossier-vs__select"
+        value={value ?? ""}
+        aria-label={`Team ${side.toUpperCase()}`}
+        data-testid={`team-select-${side}`}
+        onChange={(e) => onChange(withTeamSide(selection, side, e.target.value || null))}
+      >
+        <option value="">Select a team…</option>
+        {contract.focus_set.teams.map((t) => (
+          <option key={t.team_key} value={t.team_key}>
+            {t.owner_label} — {t.team_key}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -103,14 +147,21 @@ function TeamFace({ header, align }: { header: TeamHeader | null; align: "left" 
 export function MatchHeader({
   data,
   contract,
+  selection,
+  onChange,
 }: {
   data: TeamMatchupResponse;
   contract: MatchupContract;
+  selection: TeamSelection;
+  onChange: (next: TeamSelection) => void;
 }) {
   const { a, b } = data.teams;
   return (
     <header className="dossier-vs" data-testid="team-heading">
       <span className="dossier-vs__watermark" aria-hidden="true" />
+      {/* The event survives as a kicker, not as the page's name. It says what
+          this dossier is curated FOR without putting a year in the title of a
+          product that outlives it. */}
       <div className="dossier-vs__eyebrow">
         <span>{contract.focus_set.target_event} · Scouting Dossier</span>
         <span className="dossier-vs__scope" data-testid="dossier-header-scope">
@@ -118,11 +169,25 @@ export function MatchHeader({
         </span>
       </div>
       <div className="dossier-vs__row">
-        <TeamFace header={a} align="left" />
+        <TeamChooser
+          header={a}
+          align="left"
+          contract={contract}
+          selection={selection}
+          side="a"
+          onChange={onChange}
+        />
         <span className="dossier-vs__glyph" aria-label="versus" data-testid="dossier-vs-glyph">
           VS
         </span>
-        <TeamFace header={b} align="right" />
+        <TeamChooser
+          header={b}
+          align="right"
+          contract={contract}
+          selection={selection}
+          side="b"
+          onChange={onChange}
+        />
       </div>
     </header>
   );
@@ -422,7 +487,6 @@ export function ArchiveWarnings({ data }: { data: TeamMatchupResponse }) {
           </li>
         ))}
       </ul>
-      <MogzyNote>{data.notes.team_summary}</MogzyNote>
     </DossierSection>
   );
 }

@@ -30,13 +30,13 @@ import {
 
 export function ResearchPage({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-8">{children}</div>
+    <div className="mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">{children}</div>
   );
 }
 
 export function ResearchBreadcrumb({ trail }: { trail: { label: string; to?: string }[] }) {
   return (
-    <nav className="mb-4 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+    <nav className="mb-2 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
       <Link to="/lol/pro-play" className="hover:text-foreground">
         Pro Play
       </Link>

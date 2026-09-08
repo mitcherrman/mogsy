@@ -731,10 +731,11 @@ describe("the five-lane board", () => {
   });
 
   it("offers only focus-set teams", async () => {
-    // Phase 3 moved the pickers behind "Change teams": once two teams are
-    // chosen they are how you change the subject, not how you read it.
+    // The VS banner IS the selector now — there is no disclosure to open, and
+    // no second control anywhere on the page.
     await renderBoard();
-    fireEvent.click(screen.getByTestId("dossier-team-picker-toggle"));
+    expect(screen.queryByTestId("dossier-team-picker")).toBeNull();
+    expect(screen.queryByTestId("dossier-team-picker-toggle")).toBeNull();
     const select = screen.getByTestId("team-select-a");
     const values = [...select.querySelectorAll("option")].map((o) => o.getAttribute("value")).filter(Boolean);
     expect(values).toEqual(["T1", "Bilibili Gaming"]);
@@ -798,10 +799,13 @@ describe("roster semantics", () => {
 
 describe("side-by-side semantics", () => {
   it("names the comparison accurately and never 'head-to-head'", async () => {
-    // Phase 3 leads with what this IS. The server's denial still prints, as
-    // the note under the plates — see the next test.
+    // The boxed label is gone; the section's own eyebrow now says what the five
+    // plates ARE, and the server's denial still prints beneath them as fine
+    // print — see the next test. The negative guarantee is unchanged.
     await renderBoard();
-    expect(screen.getByText("Independent performance comparison")).toBeInTheDocument();
+    expect(screen.getByTestId("dossier-lane-study")).toHaveTextContent(
+      /each player's own record/i,
+    );
     expect(screen.queryByText(/head-to-head record of/i)).toBeNull();
     expect(document.body.textContent).not.toMatch(/versus record|series score/i);
   });
@@ -840,31 +844,41 @@ describe("side-by-side semantics", () => {
 // --- qualification wording --------------------------------------------------
 
 describe("qualification wording", () => {
-  it("prints the focus status verbatim and never 'qualified'", async () => {
+  it("claims no qualification, and no longer needs a caveat to say so", async () => {
+    // The board used to print the focus STATUS on each team and a paragraph
+    // above the page explaining that the status was not a qualification claim.
+    // Both are gone together: with no status word on screen there is no claim
+    // to correct. The guarantee is unchanged and is asserted more strictly —
+    // NOTHING on the page suggests qualification.
     await renderBoard();
-    expect(screen.getByTestId("team-focus-T1")).toHaveTextContent("watchlist");
-    expect(screen.getByTestId("team-focus-T1")).not.toHaveTextContent("slot claimed");
-    expect(document.body.textContent).not.toMatch(/qualified for|has qualified/i);
+    expect(screen.queryByTestId("team-focus-T1")).toBeNull();
+    expect(screen.queryByTestId("matchup-focus-note")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/qualified|qualification|slot claimed/i);
+    expect(document.body.textContent).not.toMatch(/watchlist/i);
   });
 
-  it("prints the server's focus note", async () => {
+  it("keeps the focus payload intact behind the presentation", async () => {
+    // Presentation only. The contract still carries the focus set and each
+    // team's status; the board simply does not print them.
     await renderBoard();
-    expect(screen.getByTestId("matchup-focus-note")).toHaveTextContent(
-      "not a qualification claim",
-    );
+    expect(CONTRACT.focus_set.teams[0].status).toBe("watchlist");
+    expect(teamResponse().teams.a?.focus.asserts_qualification).toBe(false);
   });
 });
 
 // --- no prediction ----------------------------------------------------------
 
 describe("no prediction", () => {
-  it("prints the server's team-mode note denying every prediction", async () => {
+  it("predicts nothing, and no longer says so in a box", async () => {
+    // The denial paragraph is gone. Asserting its ABSENCE would be weaker than
+    // what it protected, so this asserts the guarantee itself: the board makes
+    // no forward-looking claim about a starter, a draft or a result anywhere.
     await renderBoard();
     const body = document.body.textContent ?? "";
-    expect(body).toContain("not a prediction");
-    expect(body).toContain("who will start");
-    expect(body).toContain("what will be drafted");
-    expect(body).toContain("who will win");
+    expect(body).not.toMatch(/Mogzy's Notes/);
+    expect(body).not.toMatch(/will start|will be drafted|will win|predict|favou?rite|projected/i);
+    // And what it DOES claim is demonstrated, in the label itself.
+    expect(body).toMatch(/demonstrated/i);
   });
 
   it("never says a lineup is expected, projected or likely", async () => {
@@ -1008,9 +1022,13 @@ describe("team champion summary", () => {
     expect(screen.getByTestId("team-champ-Bilibili Gaming-Ambessa")).toBeInTheDocument();
   });
 
-  it("prints the note denying a meta or draft read", async () => {
+  it("scopes the team's champion usage without a meta or draft claim", async () => {
+    // The note under the plate is gone; the plate's own scope label is what
+    // stops a reader reading a meta into it, and the negative guarantee stands.
     await renderBoard();
-    expect(screen.getByText(NOTES.team_summary)).toBeInTheDocument();
+    const summary = screen.getByTestId("team-summary-T1");
+    expect(summary).toHaveTextContent(/Champion|Games/i);
+    expect(document.body.textContent).not.toMatch(/meta read|draft expectation|tier list/i);
   });
 
   it("reports a partial roster beside the team", async () => {
@@ -1198,9 +1216,18 @@ describe("Phase 3 dossier", () => {
     expect(within(uncovered).queryByTestId(/^candidate-/)).toBeNull();
   });
 
-  it("still prints the server's no-prediction note, unedited", async () => {
+  it("makes every lane state honest without a global disclaimer", async () => {
+    // The boxed "Mogzy's Notes" denial is gone. What replaces it is not softer
+    // wording — it is the per-lane state the board already computes, which is
+    // where a reader actually forms the wrong belief.
     await renderBoard();
-    expect(screen.getByTestId("team-mode-note")).toHaveTextContent(NOTES.team_mode);
+    expect(screen.queryByTestId("team-mode-note")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Mogzy's Notes/);
+    // Demonstrated, never predicted.
+    expect(screen.getAllByTestId("starter-badge")[0]).toHaveTextContent(
+      /demonstrated starter/i,
+    );
+    expect(document.body.textContent).not.toMatch(/will start|expected to start|predicted/i);
   });
 
   it("surfaces team-level figures already served by the backend", async () => {
@@ -1230,5 +1257,82 @@ describe("Phase 3 dossier", () => {
     // unambiguous and carries its player through.
     expect(params.get("player_a")).toBeNull();
     expect(params.get("player_b")).toBeTruthy();
+  });
+});
+
+
+// --- the refinement pass ----------------------------------------------------
+
+describe("the VS banner is the only team selector", () => {
+  it("selects Team A directly from the banner", async () => {
+    await renderBoard();
+    const select = screen.getByTestId("team-select-a") as HTMLSelectElement;
+    // It lives INSIDE the banner, not in a panel below the dossier.
+    expect(screen.getByTestId("team-heading")).toContainElement(select);
+    fireEvent.change(select, { target: { value: "Bilibili Gaming" } });
+    // The board re-reads from the server with the new selection, which is the
+    // same path the removed picker used — state and shareability unchanged.
+    await waitFor(() =>
+      expect(requests[requests.length - 1]).toContain("team_a=Bilibili+Gaming"),
+    );
+  });
+
+  it("selects Team B directly from the banner", async () => {
+    await renderBoard();
+    const select = screen.getByTestId("team-select-b") as HTMLSelectElement;
+    expect(screen.getByTestId("team-heading")).toContainElement(select);
+    fireEvent.change(select, { target: { value: "T1" } });
+    await waitFor(() => expect(requests[requests.length - 1]).toContain("team_b=T1"));
+  });
+
+  it("has exactly one control per side, page-wide", async () => {
+    // The regression this guards is the one the pass removed: a second
+    // selector below the dossier competing with the banner.
+    await renderBoard();
+    expect(screen.getAllByTestId("team-select-a")).toHaveLength(1);
+    expect(screen.getAllByTestId("team-select-b")).toHaveLength(1);
+    expect(screen.queryByTestId("dossier-team-picker")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Change teams|Choose two teams/);
+  });
+
+  it("keeps swap and share state working alongside the banner", async () => {
+    await renderBoard();
+    fireEvent.click(screen.getByTestId("team-swap"));
+    await waitFor(() => {
+      const last = requests[requests.length - 1];
+      expect(last).toContain("team_a=Bilibili+Gaming");
+      expect(last).toContain("team_b=T1");
+    });
+  });
+
+  it("still offers every focus team and no other", async () => {
+    await renderBoard();
+    const values = [...screen.getByTestId("team-select-b").querySelectorAll("option")]
+      .map((o) => o.getAttribute("value"))
+      .filter(Boolean);
+    expect(values).toEqual(["T1", "Bilibili Gaming"]);
+  });
+});
+
+describe("the refined chrome", () => {
+  it("carries no Mogzy's Notes block", async () => {
+    await renderBoard();
+    expect(document.body.textContent).not.toMatch(/Mogzy's Notes/);
+  });
+
+  it("keeps the event as a banner kicker, never as the page title", async () => {
+    await renderBoard();
+    expect(screen.getByTestId("team-heading")).toHaveTextContent("Worlds 2026");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "League of Legends Esports Matchup Explorer",
+    );
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveTextContent("Worlds");
+  });
+
+  it("keeps every lane state honest", async () => {
+    await renderBoard();
+    const body = document.body.textContent ?? "";
+    expect(body).toMatch(/demonstrated/i);
+    expect(body).not.toMatch(/will start|will win|predict/i);
   });
 });

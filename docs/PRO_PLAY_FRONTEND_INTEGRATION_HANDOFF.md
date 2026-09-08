@@ -276,3 +276,86 @@ slots are built and tested; only the assets are missing.
 1. Owner reviews the routes above.
 2. Decide on the canonical rebuild that closes Knight/Smash/Thanatos.
 3. Pick the next expansion slice from the gap analysis.
+
+
+---
+
+## Matchup Explorer refinement pass (2026-09-08)
+
+**Base:** `origin/main` `c9230ae1`. **Frontend only** — no backend, no API
+semantics, no access rules touched.
+
+**What changed, and why the diff is small.** Seven asked-for refinements, all
+presentational, plus one deletion of dead code:
+
+| # | Change |
+| --- | --- |
+| 1 | Player portraits — **already fully wired**; see the gap below |
+| 2 | The VS banner IS the team selector (`TeamChooser` in `MatchDossier`) |
+| 3 | The `Change teams` disclosure and `TeamSelect` deleted |
+| 4 | `dossier-vs__status` and `FocusBadge` removed; focus payload untouched |
+| 5 | Every `MogzyNote` gone from both boards |
+| 6 | Lane board reaches **479px** from the top, down from **645px** |
+| 7 | Title is exactly `League of Legends Esports Matchup Explorer` |
+
+### The hero is the only selector
+
+Each plate wraps a transparent native `<select>` stretched over it, so crest,
+name and plate are one click target. Native on purpose: keyboard-navigable, a
+real control for a screen reader, and the platform's own picker on a phone
+rather than a bespoke popover. The plate carries a small `CHANGE` pill as the
+affordance. `withTeamSide` is unchanged, so URL state, shareable links, swap and
+scope all behave exactly as before — asserted.
+
+The team-name link to the team profile was dropped from the banner: the plate is
+now a control, and a link inside a control is a second target for one gesture.
+
+### Watchlist and the notes box came out together
+
+The status word ("watchlist") and the caveat paragraph explaining it was not a
+qualification claim were a matched pair — with no status printed there is
+nothing to correct, so both went. **`contract.notes.focus`, `focus_set` and
+every team's `focus.status` / `asserts_qualification` are untouched in the
+payload;** the UI simply does not render them, and the pending South America
+slots still print the server's own "qualification unresolved" line.
+
+`Mogzy's Notes` is gone from the team board, the lane explorer and the team
+summary plate. Honesty moved from a paragraph to the places a reader actually
+forms a belief: `demonstrated starter` badges, `Timeshare` / `Uncovered` lane
+states, the scope label on each plate, `Each player's own record` as the Lane
+Study eyebrow, and the server's own sentences still printed verbatim as fine
+print. The tests were rewritten to assert the GUARANTEE rather than the
+paragraph — the page now asserts it never says `will start`, `will win`,
+`predicted`, `qualified for` or `series score` anywhere, which is stricter than
+checking that a disclaimer exists.
+
+### Portraits — wired, and blocked server-side
+
+`matchupMediaKeys` already collects `player_lp_page` from every lane candidate,
+the provider already requests them, and `PlayerPortrait` already takes
+`entityKey`. **No frontend change was needed or made.** Nothing renders because
+production holds **three** portrait rows, all `candidate`, **zero approved** —
+verified against the live resolver, which answers `no_approved_media` for every
+player including Faker, Chovy, Zeus, Kiin, Canyon and Ruler.
+
+The blocker is one owner decision, not per-player sourcing: portraits are held
+under `rights_basis = not_established`, and `media.approve` refuses any basis
+outside `APPROVABLE_RIGHTS_BASES`. Approving photographs needs a basis someone
+must name — `identification_trademark` is structurally refused for a portrait,
+and neither `explicit_license` nor `owner_supplied` is currently true. Once a
+basis exists and rows are approved, **every portrait appears with no frontend
+work at all.** Roster coverage beyond the pilot three is a separate ingest.
+
+### Verified
+
+Gen.G vs Hanwha Life Esports and T1 vs Gen.G, at 1440 / 834 / 390px: title
+correct, exactly two selectors and both inside the banner, no old picker, no
+`Mogzy's Notes`, no `watchlist`, 4/4 crests resolved, 0/10 portraits (expected),
+no horizontal overflow at any width, no console errors from this pass.
+Selecting in the banner moved side B to Hanwha Life Esports and wrote the URL.
+
+513 tests pass across Pro Play + LIVE. Typecheck failure set identical to
+`origin/main` (11 = 11). Build clean.
+
+**Next:** decide the portrait rights basis (owner), then ingest portraits for the
+focus-team rosters. Everything else is cosmetic polish.

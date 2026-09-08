@@ -10321,8 +10321,10 @@ html.hub-commons-in-view .hextech-ambience-layer {
   background:
     radial-gradient(120% 140% at 50% 0%, rgba(201, 168, 76, 0.1), transparent 60%),
     linear-gradient(180deg, var(--dsr-folio-2), var(--dsr-folio));
-  padding: 1.25rem 1rem 1rem;
-  margin-bottom: 1rem;
+  /* Tightened: the banner is the page's identity, not its content. Every row
+     it costs is a row of the five-lane board pushed below the fold. */
+  padding: 0.8rem 1rem 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
 /* The ghost seal. Purely decorative, and low enough in contrast that it never
@@ -10347,7 +10349,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(201, 168, 76, 0.8);
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.55rem;
 }
 .proplay-dossier .dossier-vs__scope {
   color: var(--dsr-cyan);
@@ -10360,10 +10362,57 @@ html.hub-commons-in-view .hextech-ambience-layer {
   gap: 0.75rem;
 }
 .proplay-dossier .dossier-vs__team {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
+  border-radius: 10px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+/* The whole plate is the control. The select below is transparent and covers
+   it, so the visible chrome stays the dossier's and the semantics stay the
+   browser's — keyboard, screen reader and the platform picker on a phone. */
+.proplay-dossier .dossier-vs__team:hover,
+.proplay-dossier .dossier-vs__team:focus-within {
+  border-color: var(--dsr-gold-dim);
+  background: rgba(201, 168, 76, 0.06);
+}
+.proplay-dossier .dossier-vs__select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  /* Comfortably past the 44px touch target at every breakpoint, because the
+     plate it covers is taller than that. */
+  appearance: none;
+  border: 0;
+  font: inherit;
+}
+/* The affordance that says the plate is a control. It follows the meta text in
+   source order on BOTH sides, so it needs the same leading gap on both — the
+   right-hand plate is mirrored by flex-direction, not by reversing inline
+   content, and giving it a trailing margin instead ran "LCK" into "CHANGE". */
+.proplay-dossier .dossier-vs__change {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.02rem 0.3rem;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  border-radius: 999px;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(201, 168, 76, 0.8);
+  vertical-align: 1px;
+}
+.proplay-dossier .dossier-vs__team:hover .dossier-vs__change,
+.proplay-dossier .dossier-vs__team:focus-within .dossier-vs__change {
+  border-color: var(--dsr-gold);
+  color: var(--dsr-gold);
 }
 .proplay-dossier .dossier-vs__team.is-right {
   flex-direction: row-reverse;
@@ -10433,7 +10482,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.6rem;
 }
 .proplay-dossier .dossier-controls__actions {
   display: flex;
@@ -10511,7 +10560,12 @@ html.hub-commons-in-view .hextech-ambience-layer {
 
 /* ---- 4. Sections and tabs ------------------------------------------------ */
 .proplay-dossier .dossier-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.15rem;
+}
+/* The first section under the banner is the Lane Study, and it is the reason
+   the page exists. It starts immediately. */
+.proplay-dossier .dossier-section:first-of-type {
+  margin-top: 0;
 }
 .proplay-dossier .dossier-section__head {
   display: flex;

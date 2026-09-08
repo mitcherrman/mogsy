@@ -482,14 +482,22 @@ describe("the Explorer's wording", () => {
     expect(screen.getByText(/not a head-to-head record/i)).toBeInTheDocument();
   });
 
-  it("prints the focus status literally and claims no qualification", async () => {
+  it("claims no qualification, and prints no focus status to correct", async () => {
+    // The Explorer used to print each team's focus STATUS and a caveat saying
+    // the status was not a qualification claim. Both are gone together — with
+    // no status word on screen there is nothing to correct — so the guarantee
+    // is now asserted directly and more strictly than the caveat ever did.
     renderAt(SCENARIO_URL);
     await waitFor(() => expect(screen.getByTestId("matchup-sides")).toBeInTheDocument());
-    expect(screen.getAllByText("watchlist").length).toBeGreaterThan(0);
     const text = document.body.textContent ?? "";
-    expect(text).toContain("not a qualification claim");
+    expect(text).not.toMatch(/watchlist/i);
     expect(text).not.toContain("slot claimed");
-    expect(text).not.toMatch(/qualified for/i);
+    // No TEAM is presented as qualified. The focus set's own line about the
+    // two unresolved South America slots still prints verbatim — that is the
+    // server saying qualification is UNRESOLVED, which is the opposite of a
+    // claim, so the assertion targets the claim rather than the word.
+    expect(text).not.toMatch(/qualified for|has qualified|is qualified/i);
+    expect(text).toContain("qualification unresolved");
   });
 
   it("shows the unresolved slots rather than omitting them", async () => {
@@ -704,7 +712,7 @@ describe("champion mechanics", () => {
   it("is absent until both champions are chosen", async () => {
     installFetch(response({ a: side(), b: side() }));
     renderAt("/lol/pro-play/matchup?mode=lane");
-    await waitFor(() => expect(screen.getByTestId("matchup-focus-note")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("matchup-mode-lane")).toBeInTheDocument());
     expect(screen.queryByTestId("matchup-mechanics")).toBeNull();
   });
 });
