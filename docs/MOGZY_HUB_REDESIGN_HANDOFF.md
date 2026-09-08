@@ -1,7 +1,8 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 31 (production verified; Academy Bulletin V1 COMPLETE) is at the
-     top of this file. Revision 30 was the media-eligibility fix it verifies.
+<!-- Revision 32 (Commons side architecture) is at the top of this file.
+     Revision 31 verified Academy Bulletin V1 COMPLETE in production;
+     Revision 30 was the media-eligibility fix it verifies.
      Revision 29 was the enrichment and long-question fix; Revision 28 the
      Step 4 production verification.
      Revision 27 was Step 4, the Bulletin carousel.
@@ -13,6 +14,156 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-08 — COMMONS SIDE ARCHITECTURE — **SHIPPED, AWAITING DEPLOY**
+
+**Commit:** `8a3a1752` — `feat(hub): close the Commons with side architecture instead of a raw strip`
+**Pushed:** `4567c686..8a3a1752`, clean fast-forward, no force.
+**Files:** `src/index.css` (one 111-line insertion) and a new
+`src/components/lol/academy-commons-framing.test.ts`. No component, no asset,
+no DOM.
+
+### 1. Root cause of the raw edges
+
+The hand-rolled cover fits the painting to the viewport **height** until the
+window passes about **2.03:1**, where the `100svh * 1.14` cap stops it growing
+so it cannot eat the plinth. Past that ratio `--commons-img-x` turns positive
+and there is bare section either side:
+
+| viewport | `--commons-img-x` |
+|---|---|
+| 1024x781 | **-182px** — painting overflows, no gutter |
+| 1280x800 | -71px |
+| 1440x900 | -80px |
+| 1920x1080 | 0px — exactly edge to edge |
+| 2200x1000 | **+87px** each side |
+| 2560x1080 | **+186px** each side |
+| 3440x1440 | **+262px** each side |
+
+**The strip was not empty, which is why it read as broken rather than as
+background.** `.academy-commons-wall` *does* carry the over-scaled blurred copy
+of the painting its comment promises. But `.academy-commons-art` sits above it,
+and that element's grade layers — the vignette, the masks, and above all the
+film grain, which tiles in *screen* space at a fixed 200px by deliberate design
+— are `inset: 0` and paint across the whole section. Beyond the painting's edge
+those layers had nothing under them and rendered as flat grey grain.
+
+Proof: painting `.academy-commons-wall` red at 2560x1080 leaves the strip
+**still grey**. That is also why the fix had to sit **above** the art layer
+rather than behind it.
+
+### 2. Architecture chosen
+
+Two pilasters, `.academy-commons::before` / `::after`, inside the stage gate.
+
+**One expression does the whole job:**
+
+```
+width: max(0px, var(--commons-img-x));
+```
+
+The width *is* the gutter, read from the same custom property the painting is
+placed from. Below 2.03:1 that value is negative, `max()` clamps it to zero,
+and the architecture is simply absent — **no media query, nothing to keep in
+step with the fit policy, and no chance of a wood column stealing width from a
+painting that is already bleeding off both edges at 1440.** The two sides can
+never disagree with the paint about where the room ends.
+
+Surface: dark walnut in the room's existing `--shelf-*` tones, darkest in the
+outer corner and warming inward; one lit arris and a 1px gilt hairline along
+the inner edge, where the room's candles would catch it; two faint panel stiles
+so it reads as joinery rather than a painted band; and a contact shadow thrown
+onto the painting so the seam reads as a column standing in front of the wall.
+`z-index: 5` — above the grade, below every live mount (10). `pointer-events:
+none`.
+
+**No new asset was needed.** Reusing the plinth's and the board's own wood
+tokens is what makes the sides read as the same construction; a bespoke image
+would have had to be re-cut for every gutter width.
+
+### 3. Two premises in the brief that did not hold
+
+* **There is no global navigation rail on `/lol`.** The only fixed chrome is a
+  full-width top bar (`nav.fixed.inset-x-0.top-0`, 56px), plus the floating
+  GlobalHud avatar and the friends control. So the intended
+  `nav rail → wood separator → room` transition has nothing to attach to, and
+  the two sides are the same construction rather than asymmetric. If a left
+  rail is added later, the left pilaster is where it would meet the room.
+* **The raw edges are ultrawide-only.** At 1024, 1280, 1440 and 1920 there is
+  no gutter at all. Framing those widths would have covered paint, not bare
+  section — so the architecture deliberately does not exist there.
+
+### 4. Responsive behaviour
+
+Measured, not assumed. Pilaster width against gutter at every tested size:
+
+| viewport | gutter | pilaster | stage |
+|---|---|---|---|
+| 1024x781 | -182 | **0px** | yes |
+| 1280x800 | -71 | **0px** | yes |
+| 1440x900 | -80 | **0px** | yes |
+| 1920x1080 | 0 | **0px** | yes |
+| 2200x1000 | 87 | **87.2px** | yes |
+| 2560x1080 | 186 | **186.2px** | yes |
+| 3440x1440 | 262 | **261.6px** | yes |
+| 390x844 flow | — | not rendered | no |
+| 1440x900 large text | — | not rendered | no |
+
+No horizontal overflow at any size. Flow mode and large text leave the stage
+gate, so the pseudo-elements do not exist there at all.
+
+**Scrollbar:** headless Chromium reports a 0px scrollbar (overlay), and the
+gutter and the painting are both derived from `100vw`, so a classic scrollbar
+shifts them together — the same reasoning the original cover comment records.
+Worth one look on a Windows machine with classic scrollbars.
+
+### 5. Before / after
+
+**Before, 2560x1080:** flat grey grain strips, 186px each side, visibly
+unfinished — the page reading as artwork dropped into a browser window.
+
+**After:** dark walnut pilasters. The left crop shows the column darkest at the
+outer corner, warming toward the room, two faint stiles, a lit inner arris and
+the contact shadow falling onto the blurred bookshelves. The right mirrors it
+against the globe. Both are clearly secondary to the Record and the Bulletin,
+which is the point.
+
+**Centre composition unchanged**, verified numerically rather than by eye: at
+1440x900 the Record still sits at x=352, the seal at y=222, the plinth at
+y=731 — identical to the production measurements taken before this change.
+Premium, Community, the utility strip and the legal plinth all likewise. Screen
+1 untouched.
+
+### 6. Verification
+
+| Check | Result |
+|---|---|
+| lol / hub / community / quiz-ranked | **722 passed**, 50 files (+5 new) |
+| Lint | **0 errors**; 2 pre-existing warnings in `AcademyBroadcastSurface.tsx` |
+| Full `npm run build` | **exit 0** on retry — the first attempt failed at the prerender step with `HTTP 502` from the item-roster endpoint, a transient backend outage; Vite's own build succeeded in both runs |
+| Typecheck | **11 errors, none in changed files** — the standing baseline |
+
+The new test asserts the one invariant worth protecting — that the width
+derives from `--commons-img-x` and is never a hard-coded px, that both sides
+are declared, that it lives inside the stage gate, and that its z-index sits
+between the grade and the mounts. No pixel geometry is asserted for decorative
+CSS.
+
+### 7. Deployment
+
+Pushed. **Not yet live** — production still serves `index-BhMjcAji.js`. On the
+evidence of every previous cycle the auto-deploy does not fire on its own; the
+owner triggers Publish. Production verification is owed once the bundle hash
+changes, and needs an **ultrawide viewport** to be meaningful — at 1440 there
+is nothing to see.
+
+### 8. Next task
+
+Decide whether the pilasters stay empty or take sparse attachments, **after
+seeing them live at an ultrawide width**. Nothing is pinned to them by design.
+Timmy/demo population remains last.
+
+---
 
 ## Revision 2026-09-08 — PRODUCTION VERIFIED — **ACADEMY BULLETIN V1 COMPLETE**
 
