@@ -1,6 +1,7 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 27 (Step 4 — the Bulletin carousel) is at the top of this file.
+<!-- Revision 28 (Step 4 production verification) is at the top of this file.
+     Revision 27 was Step 4, the Bulletin carousel.
      Revision 26 was the visual QA pass and the guest 403 fix, Revision 25
      shipped Step 3, Revision 24 was the recomposition, Revision 23 the
      specification, Revision 22 the preservation audit.
@@ -10,13 +11,106 @@
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
 
+## Revision 2026-09-07 — STEP 4 **PRODUCTION VERIFICATION COMPLETE** (and one live defect found)
+
+Verification only. **No source was changed.** Production bundle
+`index-RzKFkVx5.js` → **`index-C3v-_uzT.js`**, carrying `f275ed62`. All checks
+run in real Playwright Chromium against `https://mogzy.lol/lol`.
+
+### 1. Everything asked for, verified live
+
+| Check | Result |
+|---|---|
+| Production carries `f275ed62` behaviour | ✅ `[data-testid="academy-bulletin-next"]` present; `data-bulletin-*` attributes live |
+| Academy Record renders | ✅ `data-record-state="empty"`, title "Summoner" (guest — correct) |
+| Academy Bulletin renders | ✅ |
+| `data-bulletin-count > 1` | ✅ **3** — quiz, mechanics, proplay. Correct for a guest: the personal family is absent because there is no account, which is the honest fallback, not a failure |
+| Previous / next work | ✅ next 0→1→2, prev wraps 2→1 |
+| Automatic rotation works | ✅ index 0 → **1 after 13.5s** (the 12s tick) |
+| Manual interaction stops autoplay | ✅ after one click `data-bulletin-rotating="false"`, and the index did **not** move over a further 14s |
+| Guest fallback honest | ✅ three impersonal notices; no personal card; no invented account state |
+| No quiz answer/choice leakage | ✅ pulled **8 live questions** straight from the API and searched the whole Commons for every one of their choice strings — **0 hits** |
+| Premium survives | ✅ `data-premium-state="promo"`, CTA → `/lol/premium` |
+| Community survives | ✅ present, Discord renders the "opening soon" pending state |
+| Feedback / Bug / About / Contact | ✅ `/feedback`, `/feedback?intent=bug`, `/about`, `/contact` — exact routes |
+| Privacy / Terms / Security | ✅ unchanged |
+| Copyright + Riot disclaimer | ✅ "© 2026 Mogzy."; disclaimer **297 characters — byte-identical to the pre-deploy baseline** |
+| No new console errors | ✅ only the two pre-existing (`403 /api/stat-check/invites`, `404 /rest/v1/funnel_events`). **No Ranked 403** — the `enabled` gating on both Ranked hooks holds in production |
+
+**Geometry, live.** 1440x900: CTA inside the board, arrows inside, no overlap
+with title or CTA, slack +11px, no page overflow. 1024x781: same, slack +14px,
+stage mode on. Both match the Revision 27 local sweep within a pixel or two.
+
+### 2. Local vs production — content differences
+
+The machinery is identical; the **data is not**, and that matters.
+
+Locally the quiz family only ever served the short template —
+*"What is the rank N cooldown of X - Y?"*, 47-60 characters. Production's bank
+also contains at least two longer formats that local sampling never produced:
+
+* a **comparison** format, ~100 chars: *"Which ultimate has the shorter rank 1
+  cooldown: Lee Sin R - Dragon's Rage, or Leona R - Solar Flare?"*
+* a **scenario** format, ~146 chars: *"Tryndamere R - Undying Rage has a rank 3
+  cooldown of 80 seconds. With Sundered Sky…"*
+
+Everything else matched: the mechanics family serves "The fountain" with patch
+26.15 in both, and the Pro Play invitation is static.
+
+### 3. **One live defect — long questions truncate**
+
+Sampled the board eight times at 1024x781 and once at 1440x900:
+
+| Question length | Truncated |
+|---|---|
+| 47-60 chars (the common template) | no |
+| ~100 chars (comparison format) | **yes** |
+| ~146 chars (scenario format) | **yes** |
+
+The 1440 screenshot shows it on the live front page: *"WHICH ULTIMATE HAS THE
+SHORTER RANK 1 COOLDOWN: LEE SIN R - DRAGON'S RAGE, OR LEONA R -…"*. The card
+asks a question the reader cannot finish reading.
+
+This is **the same class of defect Revision 27 fixed pre-ship at two lines**,
+recurring at three because local sampling only ever served the short template.
+The lesson is specific and worth keeping: *a family that draws from a live bank
+must be validated against the bank's longest row, not against whatever one
+request happened to return.*
+
+**Severity: quality, not breakage.** Nothing is broken and no geometry gave
+way — the clamp did exactly its job, holding slack at +4px even on the 146-char
+question, with no overflow and the CTA still inside the board and working.
+
+**Not fixed here, deliberately.** This brief was verification-only, and the fix
+is a design choice rather than an obvious repair — filter the quiz family to
+questions that fit, allow more lines at a smaller size, or truncate at a word
+boundary on purpose. It belongs to the enrichment step, which already had to
+touch quiz-prompt selection.
+
+### 4. Next task
+
+Unchanged from Revision 27 §8: **enrich the Bulletin from existing sources**,
+now with a first item that is concrete —
+
+1. **Bound the quiz prompt by length** (or pick the shortest of a few
+   candidates) so a notice is never truncated mid-question.
+2. Rotate the prompt across the six real subjects in
+   `PRACTICE_CATEGORY_SOURCES` instead of one hard-coded category.
+3. Pick a study table from anywhere in the mechanics index, not `[0][0]`.
+4. Add a second personal projection from `deriveProfileStats`.
+
+Then the wood gutters; Timmy/demo population last, using the `initialNoticeId`
+prop Revision 27 added.
+
+---
+
 ## Revision 2026-09-07 — STEP 4: THE ACADEMY BULLETIN CAROUSEL — **SHIPPED**
 
 **Commit:** `f275ed62` — `feat(hub): the Academy Bulletin rotates over four production-backed families`
 **Pushed:** `bb35a24f..f275ed62`, clean fast-forward, no force.
 **Mount geometry:** unchanged. The board is still `.5840 / .2520 / .2440 /
 .2440`, no other Commons mount moved, and the plinth and Screen 1 have no diff.
-**Production: NOT YET DEPLOYED at time of writing — see §7b.**
+**Production: DEPLOYED and verified — see Revision 28.**
 
 ### 1. Implemented families
 
