@@ -1,7 +1,8 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 29 (Bulletin enrichment + the long-question fix) is at the top of
-     this file. Revision 28 was the Step 4 production verification.
+<!-- Revision 30 (Bulletin media eligibility) is at the top of this file.
+     Revision 29 was the enrichment and long-question fix; Revision 28 the
+     Step 4 production verification.
      Revision 27 was Step 4, the Bulletin carousel.
      Revision 26 was the visual QA pass and the guest 403 fix, Revision 25
      shipped Step 3, Revision 24 was the recomposition, Revision 23 the
@@ -11,6 +12,139 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-08 — BULLETIN MEDIA ELIGIBILITY — **FIXED, SHIPPED, AWAITING DEPLOY**
+
+**Commit:** `8e71dc24` — `fix(hub): a Bulletin question must not depend on a picture the board never draws`
+**Pushed:** `4d657fdc..8e71dc24`, clean fast-forward, no force.
+**Scope:** selection only. No geometry, no carousel behaviour, no image rendering.
+
+### 1. Root cause
+
+Revision 29 solved *fitting* and stopped there. It proved a question could be
+shown WHOLE; it never asked whether a question could STAND ALONE. Production
+then showed `Which item is this?` — nineteen characters, complete,
+un-truncated, perfectly readable, and unanswerable, because the item is an
+`image_path` the text-only card does not render.
+
+The two rules also interacted badly: recognition stems are the shortest in the
+bank, so Revision 29's length rule made the unanswerable questions the **most**
+likely to be selected.
+
+### 2. The rule — structural, and deliberately narrower than "has an image"
+
+Eligibility is now both halves: **the text renders completely, AND the question
+does not depend on media this card cannot show.**
+
+The discriminator is the row's own family id. `question_key` is
+`<family>:<subject…>`, and the families whose subject IS the picture are named
+for it:
+
+| family | prompt |
+|---|---|
+| `item_recognition:Sapphire Crystal` | "Which item is this?" |
+| `ability_recognition:Q:Gragas` | "Which champion owns this Q?" |
+| `summoner_spell_recognition:HEAL` | "Which summoner spell is this?" |
+
+Matched on the family's own `recognition` segment, so a future recognition
+family is covered the day it ships without this list being edited. No wording
+heuristic: a recognition row re-worded to *"Name the champion who owns it"* — no
+"this", no "shown" — is still a recognition row and is still rejected. A test
+asserts exactly that.
+
+**Why not "any row with an `image_path`".** That rule was written first and
+measured second. `image_path` is set on very nearly **every** row, because the
+quiz surface shows an item or ability icon beside the prompt as decoration. All
+20 sampled `Item Costs` rows carry one; so does *"What is the cooldown of
+Cassiopeia Q - Noxious Blast?"*, which needs no picture at all. Simulated over
+57 consecutive day-seeds, blanket rejection left the board with **no quiz card
+on 42 of them** — five days in seven, to fix a defect confined to three
+families. An icon beside a question that names its own subject is decoration,
+and decoration is not a dependency.
+
+This is a deliberate narrowing of the instruction as written, on evidence. If
+the stricter blanket rule is wanted anyway, it is a one-line change to
+`requiresUnrenderedMedia` — with the measured consequence above.
+
+A subject-presence rule (does the `question_key` subject appear in the prompt?)
+was also tried and rejected: it wrongly flags legitimate rows whose answer is
+the subject, such as `item_final_from_components_v2:Kraken Slayer` →
+*"What can Null-Magic Mantle build into?"*.
+
+### 3. Affected sources
+
+Measured against 347 keyed live rows: the rule catches **all 55** recognition
+rows, rejects **nothing** outside those three families, and misses **no** row
+that reads as picture-dependent.
+
+| Source | Bulletin-eligible before | after |
+|---|---|---|
+| Item Recognition | 20 | **0** |
+| Champion Ability Recognition | 20 | **0** |
+| Summoner Spell Recognition | 5 | **0** |
+| every other source | unchanged | unchanged |
+
+**11 of 19 subjects still supply** a question. The existing two-subject-a-day
+selector already covers a subject that yields nothing — source A can be
+entirely image-backed and source B still supplies the notice; when neither can,
+the family is absent and the board falls back to mechanics and the invitation.
+Measured over 20 day-seeds: 3 had no quiz card, 17 did.
+
+**Nothing was removed from the bank and gameplay is untouched.** These rows stay
+first-class on `/quiz`, where the image is rendered beside them. They are
+ineligible for this projection only.
+
+### 4. Corrected claim from Revision 29
+
+Revision 29 said repeated visits give visible question variety because the API
+returns different ids. **That was misleading.** The API does randomise, but some
+subjects phrase every row identically — every `item_recognition` row reads
+"Which item is this?" — so a different id there reads as the same notice.
+Visible variety comes from the **subject rotation**; per-request randomisation
+only varies which row of that subject is picked. Corrected in the source header
+as well.
+
+### 5. Tests — 59 in the file, 13 new
+
+Structural rule tested directly, not through category names: a short
+image-backed row rejected; a re-worded image-backed row with no deictic wording
+rejected; a **decorative** icon on a text-only row still eligible; family-id
+matching including a hypothetical `rune_recognition`; empty/whitespace
+`image_path` treated as no image; an image-only subject producing no quiz
+notice; its text and its choices never rendered; source A failing while source B
+supplies; both failing and the board still honest; and Revision 29's
+long-question rejections still holding.
+
+### 6. Verification
+
+| Check | Result |
+|---|---|
+| lol / hub / community / quiz-ranked | **717 passed**, 49 files (was 704) |
+| Lint | **0 errors**; 2 pre-existing warnings in `AcademyBroadcastSurface.tsx` |
+| Full `npm run build` (prerender + both verify steps) | **exit 0**, 173 champions |
+| Typecheck | **11 errors, none in changed files** — the standing baseline |
+
+**Playwright, 117 cards** over 20 day-seeds at 1024x781 and 1440x900, plus flow
+and large text:
+
+| | |
+|---|---|
+| Recognition questions shown | **0** |
+| Images rendered on the board | **0** |
+| Distinct quiz questions | **28**, all answerable from their own text |
+| Truncation / clipping / overlap / overflow | **0** |
+| Longest question shown | 48 characters |
+| Minimum slack below the CTA | +14px |
+| Day-seeds with no quiz card | 3 of 20 |
+
+### 7. Deployment
+
+Pushed to `origin/main`. **Not yet live** at time of writing — production still
+serves `index-C35BnItg.js`, the Revision 29 build. On the evidence of the last
+two cycles the auto-deploy does not fire on its own; the owner triggers Publish.
+Production verification is owed once the bundle hash changes.
+
+---
 
 ## Revision 2026-09-07 — BULLETIN V1 ENRICHMENT + THE LONG-QUESTION FIX — **SHIPPED**
 
