@@ -21,9 +21,16 @@
 //     was deleted with the workflow it belonged to; only the GET-only
 //     `lib/question-preview/questionPreviewApi` survives.
 //
-// The shell owns the shared chrome: SEOHead, breadcrumb, ONE admin gate, and
-// the tab navigation. Each tab renders in `embedded` mode so there is exactly
-// one header and one gate.
+// The shell owns the shared chrome: SEOHead, breadcrumb, the admin gate, and
+// the tab navigation, all in ONE bar. Each tab renders in `embedded` mode so
+// there is exactly one header.
+//
+// The gate wraps each tab's CONTENT rather than the whole shell: a blocked
+// operator must still be able to read where they are and click back to
+// /admin. It is one authority either way — <AdminAuthGate> renders the
+// shared `useAdminAuth` context and performs no check of its own — so
+// gating the content rather than the navigation costs nothing and loses no
+// authorization.
 //
 // State lives in the URL (`?tab=`, `?questionId=`, and the diagnostic filter
 // params) so a Diagnostics deep link, a bookmark, and browser Back/Forward all
@@ -151,7 +158,15 @@ export default function AdminQuizWorkspace() {
   }, [searchParams, setSearchParams]);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+    // `--app-viewport-h` is the authority on how much height a page gets.
+    // The old `calc(100vh-4rem)` guessed a 64px header the shell has not had
+    // since it became 3.5rem, so the console ran 8px short of the fold AND
+    // could not follow a future header change.
+    // `bg-background` is not decoration: a full-bleed route escapes the
+    // shell's centred painted stage (a max-w-[88rem] band with faded edges),
+    // so without its own ground the console's left and right thirds render
+    // dark-on-dark. Full-bleed routes supply their own background by contract.
+    <div className="flex h-[var(--app-viewport-h)] flex-col overflow-hidden bg-background">
       <SEOHead
         title="Admin Quiz Review"
         description="Review quiz questions and the health of the quiz system in one place."
@@ -159,46 +174,54 @@ export default function AdminQuizWorkspace() {
         noindex
       />
 
-      {/* Shared shell header */}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
-        <div className="flex items-center gap-2">
+      {/* ONE bar of chrome, not three.
+          Breadcrumb, page title, tab navigation and the cross-link used to
+          occupy three stacked rows — ~150px of a 900px viewport before the
+          first question. They carry the same amount of information side by
+          side, and the tabs ARE the page identity, so nothing was dropped.
+          Broadcast Studio is demoted to a quiet trailing link: it belongs to a
+          different workflow and was competing with the review actions. */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="flex h-full min-h-0 flex-1 flex-col"
+      >
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-1.5">
           <Link
             to="/admin"
             className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Admin
           </Link>
-          <span className="text-muted-foreground/40">/</span>
-          <h1 className="text-sm font-semibold">Admin Quiz Review</h1>
-        </div>
-        <Button asChild size="sm" variant="ghost" className="h-7 gap-1 text-[11px]">
-          <Link to="/admin/quiz-broadcast">
-            <ExternalLink className="h-3 w-3" /> Broadcast Studio
-          </Link>
-        </Button>
-      </div>
-
-      <AdminAuthGate>
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex h-full min-h-0 flex-1 flex-col"
-        >
-          <TabsList className="mx-4 mt-2 w-fit shrink-0 flex-wrap">
+          <span className="text-muted-foreground/40" aria-hidden>/</span>
+          <h1 className="text-base font-semibold tracking-tight">Quiz Review</h1>
+          <TabsList className="h-9 shrink-0">
             {WORKSPACE_TABS.map((tab) => {
               const { label, icon: Icon } = TAB_META[tab];
               return (
-                <TabsTrigger key={tab} value={tab} className="gap-1.5 text-xs">
-                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                <TabsTrigger key={tab} value={tab} className="h-7 gap-1.5 text-sm">
+                  <Icon className="h-4 w-4" aria-hidden />
                   {label}
                 </TabsTrigger>
               );
             })}
           </TabsList>
+          <Button
+            asChild
+            size="sm"
+            variant="ghost"
+            className="ml-auto h-7 gap-1 text-xs text-muted-foreground"
+          >
+            <Link to="/admin/quiz-broadcast">
+              <ExternalLink className="h-3.5 w-3.5" /> Broadcast Studio
+            </Link>
+          </Button>
+        </div>
 
-          {/* Review — every question, every provenance source, Ranked included.
-              Selection and diagnostic focus are both URL-controlled. */}
-          <TabsContent value="review" className="mt-0 min-h-0 flex-1 overflow-hidden">
+        {/* Review — every question, every provenance source, Ranked included.
+            Selection and diagnostic focus are both URL-controlled. */}
+        <TabsContent value="review" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <AdminAuthGate>
             <Suspense fallback={<TabLoading label="Loading Quiz Review" />}>
               <AdminQuizReview
                 embedded
@@ -209,15 +232,17 @@ export default function AdminQuizWorkspace() {
                 onClearFocus={clearFocus}
               />
             </Suspense>
-          </TabsContent>
+          </AdminAuthGate>
+        </TabsContent>
 
-          {/* Diagnostics — the read-only audit harness, rendered as
-              destinations rather than as a report. */}
-          <TabsContent value="diagnostics" className="mt-0 min-h-0 flex-1 overflow-hidden">
+        {/* Diagnostics — the read-only audit harness, rendered as
+            destinations rather than as a report. */}
+        <TabsContent value="diagnostics" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <AdminAuthGate>
             <QuizDiagnosticsPanel onOpenInReview={openInReview} />
-          </TabsContent>
-        </Tabs>
-      </AdminAuthGate>
+          </AdminAuthGate>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

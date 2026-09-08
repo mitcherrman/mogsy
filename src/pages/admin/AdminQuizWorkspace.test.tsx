@@ -236,6 +236,16 @@ describe("two-tab navigation", () => {
     expect(screen.queryByText(/Ranked Duel Review/i)).toBeNull();
   });
 
+  it("keeps the breadcrumb, title and tabs in one bar above the gate", () => {
+    renderAt("/admin/quiz-content");
+    // The gate wraps each tab's CONTENT, so a blocked operator can still read
+    // where they are and click back out to /admin.
+    const back = screen.getByRole("link", { name: /Admin/i });
+    expect(back.getAttribute("href")).toBe("/admin");
+    expect(screen.getByRole("heading", { name: "Quiz Review" })).toBeTruthy();
+    expect(screen.getAllByRole("tab").length).toBe(2);
+  });
+
   it("opens on Quiz Review by default — review, not authoring, is the job", () => {
     renderAt("/admin/quiz-content");
     expect(screen.getByTestId("quiz-review-tab")).toBeTruthy();

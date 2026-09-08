@@ -77,15 +77,26 @@ export default function Layout() {
   // layer — the reading-column cap was the only thing keeping the arena
   // confined at large desktop widths. The dev arena inspector escapes with
   // it, or its "Full" viewport could never reach the arena's wide-stage tier.
+  // The Admin Quiz Review workspace qualifies for the same reason: it is a
+  // multi-column console an operator works in daily, not a reading column. At
+  // 1920px the max-w-7xl cap left it 1216px wide — 63% of the viewport — and
+  // the question list and detail panel both paid for gutters nobody reads. It
+  // brings its own header, gutters and background, exactly like the others.
   const isFullBleed = isStatCheckSurface || pathname === "/lol" || pathname === "/quiz"
     || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector"
-    || pathname === "/dev/ranked-shell-probe";
+    || pathname === "/dev/ranked-shell-probe" || pathname === "/admin/quiz-content";
 
   // The friends drawer is a floating overlay. On the full-bleed Stat Check
   // gameplay surface it would sit on top of the tabletop and its trigger would
   // compete with the board for clicks, so it is suppressed there. The /lol hub
   // is full-bleed but not a gameplay surface, so the drawer stays.
-  const showFriendsDrawer = !isStatCheckSurface;
+  // The Admin Quiz Review console is a work surface with controls in both
+  // bottom corners (pagination on the left, the detail panel on the right),
+  // which is exactly where these two floating overlays sit. Neither belongs on
+  // an internal admin tool, and both were landing on top of it once the
+  // console reached the viewport edges.
+  const isAdminConsole = pathname === "/admin/quiz-content";
+  const showFriendsDrawer = !isStatCheckSurface && !isAdminConsole;
 
   // After first paint, warm the chunks the user is most likely to visit next.
   // In League-only mode /home, /play, /swipe and /shop are <Navigate> stubs that
@@ -176,7 +187,7 @@ export default function Layout() {
           Riot disclaimer stay visible; it self-hides on gameplay routes. */}
       <Footer />
       {showFriendsDrawer && <FloatingFriendsButton />}
-      {!isLolSection && <FloatingThemeSwitcher />}
+      {!isLolSection && !isAdminConsole && <FloatingThemeSwitcher />}
       {/* COM1-2B: <FloatingScrollButton /> was here. It was a legacy Mogzy
           page-scroll control pinned to `fixed bottom-6 left-6 z-[60]` — the
           Community trigger's exact coordinates, one stacking layer above it —
