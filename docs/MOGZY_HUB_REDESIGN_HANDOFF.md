@@ -19,6 +19,7 @@
 unrelated commits that landed mid-task (no file overlap; suites re-run after
 the rebase). No force.
 **Geometry:** untouched. No mount moved.
+**Production: NOT YET DEPLOYED — see §8b.**
 
 ### 1. The long-question solution — eligibility, not truncation
 
@@ -168,6 +169,28 @@ four-answer run never called a streak; authored bodies fitting whole.
 12s autoplay, hover/focus/hidden-tab/off-Commons pause, permanent stop after
 manual navigation, reduced motion, prev/next wrapping, `initialNoticeId`,
 `autoRotate`, and no live-region announcements. All still asserted.
+
+### 8b. Deployment — pushed, awaiting a Lovable Publish
+
+`b95a9aef` and `1a1ac0b8` are both on `origin/main`, which is at `1a1ac0b8`.
+**Production is still serving `index-C3v-_uzT.js`** — the Revision 28 build,
+i.e. the carousel *before* this enrichment. Watched for ~70 minutes across two
+windows; the bundle hash never changed.
+
+This is the same pattern as the Step 4 cycle: the auto-deploy did not fire on
+its own there either, and the build only went out after the owner triggered
+Publish in Lovable. A broken build is again ruled out — the full `npm run
+build`, prerender and both verify steps included, exits 0 under the production
+API configuration Lovable builds with.
+
+**Owner action: press Publish in Lovable.**
+
+**Still owed — the production smoke check.** Once the bundle hash changes:
+Bulletin renders with `data-bulletin-count > 1`; no truncated question at
+1440x900 or 1024x781; prev/next and the rotation/pause contract intact; Premium
+and Community present; the four utility routes; the legal set unchanged; no new
+console errors. Everything else in this revision is verified locally and needs
+no deployment to stand.
 
 ### 9. Next task
 
