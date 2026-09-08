@@ -1,13 +1,164 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 24 (Step 3 — the recomposition, implemented) is at the top of
-     this file. Revision 23 was the specification it implements; Revision 22
-     the preservation audit under both.
+<!-- Revision 25 (Step 3 committed and pushed; deploy pending Lovable) is at
+     the top of this file. Revision 24 was the recomposition it ships,
+     Revision 23 the specification, Revision 22 the preservation audit.
      Revision 21 was WHATSNEW2 — Academy Updates become admin-managed.
      Revision 20 was WHATSNEW1, which built the surface;
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-07 — STEP 3 **COMMITTED AND PUSHED TO `origin/main`**; production deploy BLOCKED on the owner's Lovable Publish
+
+**Commit:** `640bb0b3` — `feat(hub): redesign the Academy Commons around the Academy Record`
+**Branch:** `main` → pushed `046116b7..640bb0b3`, clean fast-forward, no force.
+**Production:** **NOT deployed.** mogzy.lol still serves the pre-redesign
+Screen 2. One owner action remains.
+
+### 1. Pre-commit scope check
+
+Twelve files, all intended, nothing unrelated in the worktree:
+
+```
+M docs/MOGZY_HUB_REDESIGN_HANDOFF.md      A src/components/lol/AcademyBulletin.test.tsx
+M src/components/lol/AcademyCommons.tsx   A src/components/lol/AcademyBulletin.tsx
+M src/components/lol/HubCommunitySection.tsx  A src/components/lol/AcademyRecord.test.tsx
+M src/components/lol/HubPremiumPanel.test.tsx A src/components/lol/AcademyRecord.tsx
+M src/components/lol/HubPremiumPanel.tsx
+M src/components/lol/HubUtilitySection.tsx
+M src/index.css
+M src/pages/LolHub.test.tsx
+```
+
+Verified before staging:
+
+- **Screen 1 untouched** — `src/pages/LolHub.tsx` has no diff at all. Nor does
+  `src/components/Footer.tsx`, nor anything under `src/academy/`.
+- **Legal plinth unchanged** — no diff line in `AcademyCommons.tsx` touches
+  `LEGAL_LINKS`, Privacy/Terms/Security, the copyright line, the Riot
+  disclaimer or `.academy-commons-plinth`; no diff line in `index.css`
+  mentions `plinth`.
+- **`index.css` diff is confined to lines 9024–9368**, the stage-mode mount
+  block only. The plinth's own rules sit after it, untouched.
+- Files were staged by explicit path, never `git add -A`.
+
+One comment correction was made before committing: `AcademyCommons.tsx`'s
+mount table still described the utility strip as "cut into the panelling above
+the rail", which Revision 24 §5 had already superseded. It now says the counter
+top, matching `index.css`. Comment only — no behaviour, no design change.
+
+### 2. A concurrent advance, and why it was safe
+
+Local `main` had moved from `3d914096` (Revision 24's base) to `046116b7`
+while this work was in the tree — **19 commits** from the pro-play, CON1 and
+PT1.9 workstreams, in the shared checkout. Checked before committing:
+
+- **Zero overlap.** None of those 19 commits touches any of the 12 files here.
+- They *did* touch `src/lib/quiz/api.ts`, which `AcademyRecord` imports from.
+  The full verification below was re-run **after** the tree was already at
+  `046116b7`, so it validates this work against the merged state, not the old
+  base.
+- `git status --short` showed only this workstream's files, so no other
+  session had uncommitted work in the shared checkout at commit time.
+
+### 3. Verification (re-run on the new base, at commit)
+
+| Check | Result | Rev 24 baseline |
+|---|---|---|
+| lol / hub / community tests | **360 passed**, 20 files | 360 passed |
+| Profile-side tests | **45 passed**, 4 files | 45 passed |
+| Lint (all 10 changed/added files) | **clean**, exit 0 | clean |
+| Build (`vite build --mode development`) | **green**, 18s | green |
+| Typecheck | **11 errors, none in changed files** | 11, pre-existing |
+
+The 11 typecheck errors are the repo's standing pre-existing set (AdminBots,
+LeaguecraftWorkspace, admin-users, team-sim, social-result, diagnostics,
+ComboPlanner). Not regressions.
+
+### 4. Push
+
+```
+git fetch origin           → 1 ahead, 0 behind
+git merge-base --is-ancestor origin/main HEAD → YES (clean fast-forward)
+git push origin main       → 046116b7..640bb0b3  main -> main
+```
+
+`origin/main` re-fetched and confirmed at `640bb0b3`. No force, no
+force-with-lease, no rebase needed.
+
+### 5. Deployment — BLOCKED, owner action required
+
+**The push did not deploy, and will not on its own.** Confirmed in this repo:
+there is no `.github/workflows`, no `vercel.json`, no `netlify.toml`, and no CI
+of any kind. mogzy.lol is published from Lovable, and **the owner must press
+Publish there**. This is the same gate that has held Graph1 Phase F, Pro Play
+Step 2, the hub Premium module and Universal Mastery — pushing to `main` moves
+the source, not the site.
+
+Production checked after the push: `/lol` serves bundle `index-CHF93u9d.js`
+and still renders the **old** Screen 2 —
+
+| Marker | Live now |
+|---|---|
+| `academy-record` | **absent** |
+| `academy-bulletin` | **absent** |
+| `hub-premium-panel` | present (old large plaque) |
+| `hub-community-section` | present (old large board) |
+| `hub-utility-section` | present (old two slips) |
+| `commons-legal-nav` | present |
+
+A watcher is polling the production bundle hash; it had not changed at the time
+of writing.
+
+### 6. Production smoke check — PRE-DEPLOY BASELINE
+
+Read-only, on the live pre-redesign build, so the post-deploy pass has
+something to compare against. Nothing was changed on the site.
+
+- Screen 1 loads; `[data-hub-screen="hall"]` present.
+- Scrolling to Screen 2 works — `commonsTop` settles at 0; `hub-two-screen` is
+  on `html`.
+- Legal set intact and byte-identical to what this commit ships:
+  `/privacy` Privacy, `/terms` Terms, `/security` Security; "© 2026 Mogzy."; the
+  Riot disclaimer at 297 characters, opening "Mogzy is an unofficial fan
+  project. Mogzy isn't endorsed by Riot Games…".
+- Console: two pre-existing resource errors (one 403, one 404) on the current
+  production build. **These predate this commit** and are not introduced by it.
+  Worth a look during the next pass, but not a blocker.
+
+**The post-deploy smoke check in §6 of the task has NOT been performed**,
+because the redesign is not live. It must be run once Publish has fired:
+Record present, Bulletin present, Premium and Community supporting mounts
+present, all four utility destinations present, legal set unchanged, no fatal
+layout or runtime errors.
+
+### 7. Visual QA still outstanding
+
+Unchanged from Revision 24 §7 and still the gate on Step 4. Screenshot capture
+returns a black frame for this room in the Browser pane, so everything verified
+so far is geometric, not visual. Carried forward:
+
+1. The utility strip resting on bare counter top — the one mount with no
+   painted surface of its own, and the likeliest to read wrong.
+2. Record register density inside a frame that cannot grow.
+3. The seal with a real avatar clipped into the painted laurel ring.
+4. Premium and Community at the smallest gate (143px / 158px wide, `nowrap`
+   titles).
+5. Premium's deliberately quiet ink CTA — does it still read as an action.
+6. Bulletin balance now that the board carries less than the community section
+   did.
+
+Plus, newly noted: the two pre-existing production console errors above.
+
+### 8. Next task
+
+**Visual review and correction — before any carousel work.** A Playwright pass
+(not the Browser pane) over the six risks above, on the deployed build, then
+whatever corrections it turns up. Step 4's Bulletin rotation and card families
+stay parked until that pass is signed off. No Step 4 work was started here.
+
+---
 
 ## Revision 2026-09-07 — SCREEN 2 RECOMPOSITION, STEP 3 **IMPLEMENTED AND LOCALLY VERIFIED** (not committed)
 
