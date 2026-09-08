@@ -133,16 +133,18 @@ const FREE_SNAPSHOT = {
   preview: "free",
   target: TARGET,
   capability: FREE_CAP,
-  windows: [7],
-  window_days: 7,
-  since: "2026-08-31 12:00:00",
+  windows: [] as number[],
+  window_days: null,
+  since: "2026-07-14 12:00:00",
   until: "2026-09-07 12:00:00",
-  current: { attempts: 23, correct: 16, accuracy: 69.57, active_days: 6 },
+  recent_answers: 50,
+  span_days: 26,
+  current: { attempts: 50, correct: 33, accuracy: 66, active_days: 14 },
   modes: [
     { mode: "standard", label: "Practice", known: true, attempts: 12, correct: 9, accuracy: 75 },
   ],
   categories: [
-    { category: "Item Costs", attempts: 6, correct: 2, accuracy: 33.33 },
+    { category: "Item Costs", attempts: 12, correct: 4, accuracy: 33.33, low_sample: false },
   ],
   sufficiency: { has_data: true },
   counts_modes: ["practice", "time_trial_official"],
@@ -192,10 +194,14 @@ describe("PT1.9 — the demo comparison", () => {
     // figures, reached through the shipped path, not a sales card.
     expect(within(free).getByTestId("trends-pane")).toBeTruthy();
     expect(within(free).queryByTestId("trends-locked")).toBeNull();
-    expect((free.textContent ?? "")).toContain("69.6%");
+    expect((free.textContent ?? "")).toContain("66%");
     expect((free.textContent ?? "")).toContain("Item Costs");
     // ...with the upsell as a footer beneath them.
     expect(within(free).getByTestId("trends-premium-upsell")).toBeTruthy();
+    // PT1.11 — Recent Performance, and the span it really covered.
+    expect((free.textContent ?? "")).toContain("Recent Performance");
+    expect(within(free).getByTestId("trends-recent-span").textContent)
+      .toMatch(/last 50 answers, over 26 days/i);
     // The Premium half is the shipped pane, with the shipped window picker.
     expect(within(premium).getByTestId("trends-pane")).toBeTruthy();
     expect(within(premium).getByTestId("trends-window-picker")).toBeTruthy();
@@ -292,15 +298,17 @@ describe("PT1.9 — the demo comparison", () => {
     expect(surface).toEqual(["read", "targets"]);
   });
 
-  it("does not offer the Practice handoff, which would write for the admin", async () => {
-    const { premium } = await bothPanes();
-    // The recurring-weak row is present; its "Practise this" button is not,
-    // because acting on it would build a REAL session for the admin's own
-    // account out of a synthetic account's weaknesses.
-    expect(within(premium).getAllByTestId("trends-category-row").length)
-      .toBeGreaterThan(0);
+  it("shows the Premium Practice action, inert, so it can be reviewed", async () => {
+    const { free, premium } = await bothPanes();
     expect(within(premium).getByTestId("trends-recurring")).toBeTruthy();
-    expect(within(premium).queryByTestId("trends-practise-category")).toBeNull();
+    const action = within(premium).getAllByTestId("trends-practise-category")[0];
+    expect(action.textContent).toMatch(/^Practice /);
+    // Inert by construction: this page mounts no Practice Builder to receive a
+    // preset, so clicking it cannot configure a session for the admin.
+    fireEvent.click(action);
+    expect(within(premium).getByTestId("trends-recurring")).toBeTruthy();
+    // And Free never sees it — `is_recurring_weak` is not in its payload.
+    expect(within(free).queryByTestId("trends-practise-category")).toBeNull();
   });
 
   it("says so plainly when the demo record has not been seeded", async () => {

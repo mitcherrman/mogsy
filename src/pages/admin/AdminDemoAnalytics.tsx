@@ -97,11 +97,23 @@ function PreviewSheet({
           key={`${target}:${preview}`}
           source={source}
           demoNotice={banner}
-          // The handoff into the Practice Builder is deliberately NOT wired
-          // here. It would configure a real session for the ADMIN's account
-          // out of a synthetic account's weaknesses, which is a real write
-          // caused by looking at a demo. The button is simply absent.
-          onPractiseWeakness={undefined}
+          /*
+           * PT1.11 — the Practice action RENDERS here, and does nothing.
+           *
+           * PT1.9 withheld the handler entirely, on the grounds that acting on
+           * it would configure a real session for the ADMIN's account out of a
+           * synthetic account's weaknesses. That risk is real but it lives in
+           * the Builder, and this page mounts none: there is no
+           * PracticeBuilderPanel on it to receive a preset. Withholding the
+           * handler therefore bought no safety and cost the owner the ability
+           * to SEE the affordance on the surface built for reviewing it —
+           * which is the entire purpose of this page.
+           *
+           * So the button appears, and the handler is inert by construction.
+           */
+          onPractiseWeakness={() => {
+            /* inert: no Builder is mounted on this page to receive a preset */
+          }}
         />
       </div>
     </section>

@@ -38,6 +38,8 @@ import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { LedgerRow, LedgerTitle, WorkspaceNote } from "@/components/quiz/workspace/primitives";
 import {
   movementSentence,
+  recentSpanLabel,
+  trendLabel,
   windowLabel,
   type TrendCategory,
   type TrendDirection,
@@ -102,45 +104,88 @@ function Figure({ label, value, hint }: { label: string; value: string; hint?: s
  * honest when zero-filled, and the accuracy figures are stated as numbers
  * above rather than plotted into a shape they cannot support.
  */
-function VolumeSparkline({ series }: { series: TrendPoint[] }) {
+/**
+ * Answers per day across the window.
+ *
+ * ATTEMPTS, not accuracy: a day with no answers has no accuracy at all (the
+ * server sends null rather than 0), and a line that dips to the floor on every
+ * rest day draws a collapse that did not happen. Volume is the series that is
+ * honest when zero-filled, and the accuracy figures are stated as numbers
+ * above rather than plotted into a shape they cannot support.
+ *
+ * PT1.11 LABELLED IT RATHER THAN REMOVING IT. It shipped as bare bars with no
+ * caption, no scale and no dates — an `aria-label` the sighted reader never
+ * sees — and it was not decipherable without being told what it was. It does
+ * carry something the numbers above do not (study CADENCE: the clumps and the
+ * gaps), so it earned a caption, a peak, and its two end dates instead of
+ * deletion.
+ */
+function VolumeSparkline({ series, windowDays }: { series: TrendPoint[]; windowDays: number | null }) {
   const peak = Math.max(1, ...series.map((p) => p.attempts));
+  const total = series.reduce((sum, p) => sum + p.attempts, 0);
   const width = 100;
   const height = 22;
   const step = series.length > 1 ? width / series.length : width;
   const barWidth = Math.max(0.6, step * 0.7);
+  const first = series[0]?.date;
+  const last = series[series.length - 1]?.date;
+  const day = (iso?: string) =>
+    iso ? new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+      day: "numeric", month: "short",
+    }) : "";
+
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      role="img"
-      aria-label={`Answers per day over the last ${series.length} days`}
-      data-testid="trends-sparkline"
-      className="h-6 w-full"
-    >
-      {series.map((point, i) => {
-        const barHeight = point.attempts === 0 ? 0 : Math.max(1, (point.attempts / peak) * height);
-        return (
-          <rect
-            key={point.date}
-            x={i * step}
-            y={height - barHeight}
-            width={barWidth}
-            height={barHeight}
-            fill={LEAGUECRAFT_INK.brass}
-            opacity={point.attempts === 0 ? 0 : 0.75}
-          />
-        );
-      })}
-      <line
-        x1={0}
-        y1={height - 0.5}
-        x2={width}
-        y2={height - 0.5}
-        stroke={LEAGUECRAFT_INK.rule}
-        strokeWidth={0.5}
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    <div className="space-y-0.5" data-testid="trends-volume-chart">
+      <div
+        className="flex items-baseline justify-between text-[10px] font-bold uppercase tracking-[0.14em]"
+        style={{ color: LEAGUECRAFT_INK.faint }}
+      >
+        <span>Answers per day</span>
+        <span className="tabular-nums" data-testid="trends-volume-peak">
+          peak {peak} · {total} total
+        </span>
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`Answers per day over the last ${series.length} days. Busiest day ${peak} answers, ${total} in total.`}
+        data-testid="trends-sparkline"
+        className="h-6 w-full"
+      >
+        {series.map((point, i) => {
+          const barHeight = point.attempts === 0 ? 0 : Math.max(1, (point.attempts / peak) * height);
+          return (
+            <rect
+              key={point.date}
+              x={i * step}
+              y={height - barHeight}
+              width={barWidth}
+              height={barHeight}
+              fill={LEAGUECRAFT_INK.brass}
+              opacity={point.attempts === 0 ? 0 : 0.75}
+            />
+          );
+        })}
+        <line
+          x1={0}
+          y1={height - 0.5}
+          x2={width}
+          y2={height - 0.5}
+          stroke={LEAGUECRAFT_INK.rule}
+          strokeWidth={0.5}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div
+        className="flex items-baseline justify-between text-[9px] tabular-nums"
+        style={{ color: LEAGUECRAFT_INK.faint }}
+      >
+        <span data-testid="trends-volume-from">{day(first)}</span>
+        <span>{windowDays ? `${windowDays} days` : ""}</span>
+        <span data-testid="trends-volume-to">{day(last)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -181,6 +226,23 @@ export type TrendsPracticePreset = {
  * against. That is the PT1.10 rule in miniature: the figure is what happened,
  * everything to the right of it is what it means.
  */
+/**
+ * One category row.
+ *
+ * PT1.11 replaced the notation with language. `↗ +16.7` is a chart legend, not
+ * a sentence: the reader is now told *Improving · +16.7 pts*, *Steady*,
+ * *Declining · −13.9 pts*, or *Not enough data for a trend*. The icon stays as
+ * a colour cue beside the words rather than as the message itself. **No
+ * threshold moved** — every one of those strings renders a `direction` the
+ * server had already decided.
+ *
+ * LOW SAMPLE. `Objective Timers — 100% — 1 answer` used to sit in the same
+ * type, weight and colour as a category with twenty-six answers behind it, and
+ * read as the same claim. The score and the count are both still printed — they
+ * are true, and hiding them would be worse — but a thin row is set in the muted
+ * ink and says so. No statistic is invented: `low_sample` is the server's own
+ * evidence floor, restated.
+ */
 function CategoryLine({
   entry,
   onPractise,
@@ -188,95 +250,88 @@ function CategoryLine({
   entry: TrendCategory;
   onPractise?: (preset: TrendsPracticePreset) => void;
 }) {
-  // A Free payload carries no `direction` at all; a Premium one can carry
-  // "insufficient". Both mean the same thing here: nothing to say about
-  // movement, so say nothing rather than drawing a placeholder.
+  const label = trendLabel(entry);
   const hasTrend =
     entry.direction != null &&
     entry.direction !== "insufficient" &&
     entry.delta_points != null;
   const Icon = hasTrend ? DIRECTION_ICON[entry.direction!] : null;
-  // Premium, but this window has no prior evidence for this category.
-  const awaitingEvidence =
-    entry.direction === "insufficient" || (entry.direction != null && !hasTrend);
+  const thin = entry.low_sample === true && entry.attempts > 0;
+  // A thin row is quieter, not hidden: muted ink for the whole line.
+  const figureInk = thin ? LEAGUECRAFT_INK.faint : LEAGUECRAFT_INK.strong;
 
   return (
     <LedgerRow testId="trends-category-row">
       <div className="flex items-baseline justify-between gap-2">
         <span
           className="min-w-0 truncate text-[12px] font-semibold"
-          style={{ color: LEAGUECRAFT_INK.body }}
+          style={{ color: thin ? LEAGUECRAFT_INK.faint : LEAGUECRAFT_INK.body }}
         >
           {entry.category}
         </span>
         <span className="flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums">
-          {/* A category with no answers this window has no accuracy — the
-              server sends 0.0 because that is what an empty ratio is, not
-              because the reader got everything wrong. Premium keeps such a row
-              for its `was`; print the figure as absent rather than as nought.
-              (A Free payload never contains one — the server drops it.) */}
           <span
             data-testid="trends-category-accuracy"
-            style={{ color: LEAGUECRAFT_INK.strong }}
+            style={{ color: figureInk }}
           >
             {entry.attempts === 0 ? "—" : pct(entry.accuracy)}
           </span>
           {hasTrend && Icon && (
-            <>
-              <Icon
-                className="h-3 w-3"
-                aria-hidden
-                style={{ color: directionColour(entry.direction!) }}
-              />
-              <span
-                data-testid="trends-category-delta"
-                style={{ color: directionColour(entry.direction!) }}
-              >
-                {entry.direction === "steady"
-                  ? "no change"
-                  : `${entry.delta_points! > 0 ? "+" : ""}${entry.delta_points!.toFixed(
-                      entry.delta_points! % 1 === 0 ? 0 : 1,
-                    )}`}
-              </span>
-            </>
+            <Icon
+              className="h-3 w-3"
+              aria-hidden
+              style={{ color: directionColour(entry.direction!) }}
+            />
           )}
         </span>
       </div>
-      <div className="flex items-center justify-between gap-2">
+
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
         <span className="text-[10px]" style={{ color: LEAGUECRAFT_INK.faint }}>
           {entry.attempts === 0
             ? "Nothing this window"
             : `${entry.attempts} answer${entry.attempts === 1 ? "" : "s"}`}
+          {thin && (
+            <span data-testid="trends-low-sample"> · too few to read much into</span>
+          )}
           {entry.previous_accuracy != null && ` · was ${pct(entry.previous_accuracy)}`}
-          {/* Why there is no arrow, in words. Two different reasons, and the
-              reader is owed the right one: either nothing preceded this window
-              at all, or something did but there were too few answers on one
-              side of it to call a direction honestly. Saying nothing leaves a
-              row that looks like it lost its trend. */}
-          {awaitingEvidence && (
-            <span data-testid="trends-no-prior-data">
-              {entry.previous_accuracy == null
-                ? " · Not enough prior data"
-                : " · Not enough answers to call a trend"}
+        </span>
+
+        <span className="flex shrink-0 items-center gap-2">
+          {label && (
+            <span
+              data-testid="trends-category-delta"
+              className="text-[10px] font-semibold"
+              style={{
+                color: hasTrend
+                  ? directionColour(entry.direction!)
+                  : LEAGUECRAFT_INK.faint,
+              }}
+            >
+              {label}
             </span>
           )}
+          {/* PT1.11 — the action, on the row that diagnosed the problem.
+              Premium only by construction: `is_recurring_weak` is a field a
+              Free payload does not carry, and the handler is the EXISTING
+              PT1.7B Builder preset. No second practice system. */}
+          {entry.is_recurring_weak && onPractise && (
+            <button
+              type="button"
+              data-testid="trends-practise-category"
+              onClick={() => {
+                trackFunnelEvent("trends_practice_weakness_clicked", {
+                  category: entry.category,
+                });
+                onPractise({ pool: "bank", category: entry.category });
+              }}
+              className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] underline underline-offset-2"
+              style={{ color: LEAGUECRAFT_INK.accent }}
+            >
+              Practice {entry.category}
+            </button>
+          )}
         </span>
-        {entry.is_recurring_weak && onPractise && (
-          <button
-            type="button"
-            data-testid="trends-practise-category"
-            onClick={() => {
-              trackFunnelEvent("trends_practice_weakness_clicked", {
-                category: entry.category,
-              });
-              onPractise({ pool: "bank", category: entry.category });
-            }}
-            className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] underline underline-offset-2"
-            style={{ color: LEAGUECRAFT_INK.accent }}
-          >
-            Practise this
-          </button>
-        )}
       </div>
     </LedgerRow>
   );
@@ -438,9 +493,9 @@ export default function PerformanceTrendsPane({
    * so every Premium block below is guarded on the field it actually needs.
    */
   const isPremium = report.tier === "premium";
-  const windows = report.windows.length
-    ? report.windows
-    : state.capability.allowed_windows;
+  // The windows to OFFER. Empty for a Free snapshot, which is bounded by
+  // answers and has no window to pick, so the picker is never rendered.
+  const windows = report.windows ?? [];
 
   return (
     <div className="space-y-3 py-2" data-testid="trends-pane">
@@ -450,7 +505,7 @@ export default function PerformanceTrendsPane({
           outcome but a pointless round trip. */}
       <div className="flex items-center justify-between gap-2">
         <LedgerTitle>
-          {isPremium ? "Performance Trends" : "Your last 7 days"}
+          {isPremium ? "Performance Trends" : "Recent Performance"}
         </LedgerTitle>
         {/* One window is not a choice. Free is offered exactly one, so the
             picker is absent rather than present-and-inert — a control that
@@ -492,13 +547,30 @@ export default function PerformanceTrendsPane({
         </div>
       </div>
 
+      {/* PT1.11 — what period this actually covered, said before the figures.
+          Free's snapshot is bounded by ANSWERS, so "recent" has to be
+          qualified by the span it really spanned; a reader returning after a
+          month is shown their record and told when it is from, rather than an
+          empty pane. */}
+      {!isPremium && (
+        <WorkspaceNote testId="trends-recent-span">
+          {recentSpanLabel(report)}
+        </WorkspaceNote>
+      )}
+
       <div className="flex flex-wrap items-start gap-x-6 gap-y-2">
         <Figure label="Answers" value={String(report.current.attempts)} />
         <Figure label="Accuracy" value={pct(report.current.accuracy)} />
         <Figure
           label="Days studied"
           value={String(report.current.active_days)}
-          hint={`of ${report.window_days}`}
+          hint={
+            report.window_days != null
+              ? `of ${report.window_days}`
+              : report.span_days != null
+                ? `of ${report.span_days}`
+                : undefined
+          }
         />
       </div>
 
@@ -514,20 +586,20 @@ export default function PerformanceTrendsPane({
 
       {!isPremium && !report.sufficiency.has_data && (
         <WorkspaceNote testId="trends-snapshot-empty">
-          No answers in the last {report.window_days} days yet. Play a set and
-          this fills in.
+          You have not answered anything yet. Play a set and this fills in.
         </WorkspaceNote>
       )}
 
       {report.series && report.sufficiency.has_data && (
-        <VolumeSparkline series={report.series} />
+        <VolumeSparkline series={report.series} windowDays={report.window_days} />
       )}
 
       {recurring.length > 0 && (
         <div className="space-y-1.5" data-testid="trends-recurring">
-          <LedgerTitle>Keeps coming back</LedgerTitle>
+          <LedgerTitle>Recurring Weaknesses</LedgerTitle>
           <WorkspaceNote>
-            Below your own average in this window and in the one before it.
+            Categories you scored below your own average in — in this period
+            AND the one before it. Not just a low score once.
           </WorkspaceNote>
           <ul>
             {recurring.slice(0, 5).map((entry) => (
@@ -539,10 +611,18 @@ export default function PerformanceTrendsPane({
 
       {report.categories.length > 0 && (
         <div className="space-y-1.5" data-testid="trends-categories">
-          <LedgerTitle>By category</LedgerTitle>
+          <LedgerTitle>
+            {isPremium ? "Category performance" : "By category"}
+          </LedgerTitle>
           <ul>
+            {/* PT1.11 — no action here, deliberately. A recurring weakness is
+                already listed above WITH its action; repeating the button on
+                the full category list put "Practice Item Costs" on screen
+                twice for the same category. The list stays complete — the
+                information is useful and is not removed to make Premium look
+                different — it simply is not the place the action lives. */}
             {report.categories.slice(0, 8).map((entry) => (
-              <CategoryLine key={entry.category} entry={entry} onPractise={onPractiseWeakness} />
+              <CategoryLine key={entry.category} entry={entry} />
             ))}
           </ul>
         </div>
@@ -550,7 +630,9 @@ export default function PerformanceTrendsPane({
 
       {report.modes.length > 0 && (
         <div className="space-y-1.5" data-testid="trends-modes">
-          <LedgerTitle>By mode</LedgerTitle>
+          <LedgerTitle>
+            {isPremium ? "Mode performance" : "By mode"}
+          </LedgerTitle>
           <ul>
             {report.modes.map((mode) => (
               <LedgerRow key={mode.mode} testId="trends-mode-row">
@@ -592,7 +674,7 @@ export default function PerformanceTrendsPane({
           }}
         >
           <Target className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          Build a session from these
+          Practice all of these
         </Button>
       )}
 

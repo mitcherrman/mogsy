@@ -75,6 +75,10 @@ export type TrendCategory = {
   attempts: number;
   correct: number;
   accuracy: number;
+  /** PT1.11 — this percentage rests on very few answers. The server sets it
+   *  from its own existing evidence floor; it is NOT a confidence interval and
+   *  the row keeps its true score and true count either way. */
+  low_sample?: boolean;
   previous_attempts?: number;
   previous_accuracy?: number | null;
   delta_points?: number | null;
@@ -113,9 +117,17 @@ export type TrendReport = {
   tier: AnalyticsTier;
   capability: AnalyticsCapability;
   windows: number[];
-  window_days: number;
-  since: string;
-  until: string;
+  /** Premium's trailing window length. NULL for a Free snapshot, which is
+   *  bounded by answers rather than by days and so has no window length to
+   *  report. */
+  window_days: number | null;
+  /** The first and last answer this payload actually read. */
+  since: string | null;
+  until: string | null;
+  /** PT1.11, Free only — how many answers the snapshot read, and how many
+   *  calendar days they happened to span. */
+  recent_answers?: number;
+  span_days?: number;
   current: TrendPeriod;
   modes: TrendMode[];
   categories: TrendCategory[];
@@ -155,6 +167,26 @@ export const analyticsApi = {
     authedRequest<TrendReport>(`/api/quiz/analytics/trends?window=${windowDays}`),
 };
 
+/**
+ * PT1.11 — a category's movement, in words rather than in notation.
+ *
+ * `↗ +16.7` is a chart legend, not a sentence. The reader is told what the
+ * server concluded and then the number behind it, in that order, because the
+ * conclusion is the thing they can act on. The MATH is untouched: every branch
+ * here reads a `direction` the server had already decided.
+ */
+export function trendLabel(entry: TrendCategory): string | null {
+  const { direction, delta_points: points } = entry;
+  if (direction == null) return null;              // a Free row: no comparison
+  if (direction === "insufficient" || points == null) {
+    return "Not enough data for a trend";
+  }
+  if (direction === "steady") return "Steady";
+  const size = Math.abs(points).toFixed(Math.abs(points) % 1 === 0 ? 0 : 1);
+  if (direction === "improving") return `Improving · +${size} pts`;
+  return `Declining · −${size} pts`;
+}
+
 /** How a window is named in copy. The number is the server's; only the wording
  *  is here, because a label is not a claim about the data. */
 export function windowLabel(days: number): string {
@@ -171,6 +203,17 @@ export function windowLabel(days: number): string {
  * enough evidence it says so rather than printing a number with a caveat next
  * to it — a delta shown at all reads as a delta that counts.
  */
+/** What period a Free snapshot covered, said plainly, so "recent" is never a
+ *  claim the data cannot support. */
+export function recentSpanLabel(report: TrendReport): string {
+  const answers = report.recent_answers ?? report.current.attempts;
+  const days = report.span_days ?? 0;
+  if (!answers) return "No answers recorded yet";
+  const a = `${answers} answer${answers === 1 ? "" : "s"}`;
+  if (days <= 1) return `Your last ${a}, all on one day`;
+  return `Your last ${a}, over ${days} days`;
+}
+
 export function movementSentence(report: TrendReport): string {
   const { delta, sufficiency, current } = report;
   if (!sufficiency.has_data) {

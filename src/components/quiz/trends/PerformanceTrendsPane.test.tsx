@@ -100,18 +100,22 @@ const SNAPSHOT = (over: Record<string, unknown> = {}) => ({
   ok: true,
   tier: "free",
   capability: FREE,
-  windows: [7],
-  window_days: 7,
-  since: "2026-08-29 12:00:00",
+  windows: [] as number[],
+  // PT1.11 — bounded by ANSWERS, so no window length and no window to pick.
+  window_days: null,
+  since: "2026-07-02 12:00:00",
   until: "2026-09-05 12:00:00",
-  current: { attempts: 23, correct: 16, accuracy: 69.6, active_days: 6 },
+  recent_answers: 50,
+  span_days: 26,
+  current: { attempts: 50, correct: 35, accuracy: 70, active_days: 12 },
   modes: [
     { mode: "standard", label: "Practice", known: true, attempts: 8, correct: 6, accuracy: 75 },
     { mode: "daily_score_attack", label: "Time Trial", known: true, attempts: 8, correct: 7, accuracy: 87.5 },
   ],
   categories: [
-    { category: "Item Costs", attempts: 6, correct: 2, accuracy: 33.3 },
-    { category: "Rune Recognition", attempts: 5, correct: 5, accuracy: 100 },
+    { category: "Item Costs", attempts: 6, correct: 2, accuracy: 33.3, low_sample: false },
+    { category: "Rune Recognition", attempts: 5, correct: 5, accuracy: 100, low_sample: false },
+    { category: "Objective Timers", attempts: 1, correct: 1, accuracy: 100, low_sample: true },
   ],
   sufficiency: { has_data: true },
   counts_modes: ["practice", "time_trial_official"],
@@ -148,9 +152,9 @@ describe("PT1.8 — what the pane draws for whom", () => {
     expect(api.trends).toHaveBeenCalledWith(7);
     expect(screen.queryByTestId("trends-locked")).toBeNull();
     const pane = screen.getByTestId("trends-pane").textContent ?? "";
-    expect(pane).toContain("23");        // answers
-    expect(pane).toContain("69.6%");     // accuracy
-    expect(pane).toContain("6");         // days studied
+    expect(pane).toContain("50");        // answers
+    expect(pane).toContain("70%");       // accuracy
+    expect(pane).toContain("12");        // days studied
     expect(pane).toContain("Item Costs");
     expect(pane).toContain("33.3%");
     expect(pane).toContain("Rune Recognition");
@@ -391,13 +395,12 @@ describe("PT1.8 — handing a weakness to the Practice Builder", () => {
     const onPractise = vi.fn();
     render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
     await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
-    // Two categories are rendered; only Runes is recurring.
-    expect(screen.getAllByTestId("trends-practise-category").length).toBe(2);
-    // …the second is the same Runes row, printed once under "keeps coming
-    // back" and once in the full list. Item Costs offers no button.
-    for (const button of screen.getAllByTestId("trends-practise-category")) {
-      expect(button.closest("li")!.textContent).toMatch(/Runes/);
-    }
+    // Only Runes is recurring, and PT1.11 puts the action on the diagnosis
+    // rather than on every listing of the category — so exactly one button.
+    const buttons = screen.getAllByTestId("trends-practise-category");
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].closest("li")!.textContent).toMatch(/Runes/);
+    expect(buttons[0].closest("[data-testid='trends-recurring']")).toBeTruthy();
   });
 });
 
@@ -498,11 +501,11 @@ describe("PT1.9 — the pane still defaults to the reader's OWN record", () => {
 
 // ------------------------------------------- PT1.10 — the trend-glyph cleanup
 
-describe("PT1.10 — a dash is not a measurement", () => {
+describe("PT1.11 — trends in words, not notation", () => {
   const withCategories = (categories: unknown[]) =>
     REPORT({ categories, recurring_weak: [] });
 
-  it("prints no icon and no delta when there is no comparison behind it", async () => {
+  it("says so in words when there is no comparison behind a row", async () => {
     // The old render produced `100% — —`: an em-dash where a direction belongs
     // and another where a number belongs, both of which read as measurements.
     api.trends.mockResolvedValue(withCategories([
@@ -518,15 +521,13 @@ describe("PT1.10 — a dash is not a measurement", () => {
     const row = screen.getAllByTestId("trends-category-row")[0];
     // The accuracy survives — it is the reader's own result.
     expect(within(row).getByTestId("trends-category-accuracy").textContent).toBe("100%");
-    // The trend slot is empty rather than filled with placeholders.
-    expect(within(row).queryByTestId("trends-category-delta")).toBeNull();
-    // And the reason is stated in words.
-    expect(within(row).getByTestId("trends-no-prior-data").textContent)
-      .toMatch(/not enough prior data/i);
+    // The trend slot carries a sentence, never a placeholder glyph.
+    expect(within(row).getByTestId("trends-category-delta").textContent)
+      .toBe("Not enough data for a trend");
     expect(row.textContent).not.toMatch(/—\s*—/);
   });
 
-  it("explains a thin comparison differently from an absent one", async () => {
+  it("uses the same honest wording when a prior figure exists but is thin", async () => {
     api.trends.mockResolvedValue(withCategories([
       {
         // Prior data EXISTS, but too few answers to call a direction.
@@ -540,9 +541,11 @@ describe("PT1.10 — a dash is not a measurement", () => {
     await waitFor(() => expect(screen.getByTestId("trends-categories")).toBeTruthy());
     const row = screen.getAllByTestId("trends-category-row")[0];
     expect(within(row).getByTestId("trends-category-accuracy").textContent).toBe("100%");
-    expect(within(row).getByTestId("trends-no-prior-data").textContent)
-      .toMatch(/not enough answers to call a trend/i);
-    expect(within(row).queryByTestId("trends-category-delta")).toBeNull();
+    expect(within(row).getByTestId("trends-category-delta").textContent)
+      .toBe("Not enough data for a trend");
+    // The prior figure is still shown, so the reader can see there IS history
+    // — just not enough of it on one side to call a direction.
+    expect(row.textContent).toMatch(/was 100%/);
     expect(row.textContent).not.toMatch(/—\s*—/);
   });
 
@@ -559,8 +562,9 @@ describe("PT1.10 — a dash is not a measurement", () => {
     await waitFor(() => expect(screen.getByTestId("trends-categories")).toBeTruthy());
     const row = screen.getAllByTestId("trends-category-row")[0];
     expect(within(row).getByTestId("trends-category-accuracy").textContent).toBe("84.6%");
-    expect(within(row).getByTestId("trends-category-delta").textContent).toBe("+42.3");
-    expect(within(row).queryByTestId("trends-no-prior-data")).toBeNull();
+    // PT1.11 — the conclusion first, then the number behind it.
+    expect(within(row).getByTestId("trends-category-delta").textContent)
+      .toBe("Improving · +42.3 pts");
   });
 
   it("preserves current accuracy for a Free row, which has no trend at all", async () => {
@@ -581,7 +585,7 @@ describe("PT1.10 — a dash is not a measurement", () => {
     }
   });
 
-  it("says a steady category is steady, in words, not as a bare 0", async () => {
+  it("says Steady rather than printing a bare 0", async () => {
     api.trends.mockResolvedValue(withCategories([
       {
         category: "Item Costs", attempts: 6, correct: 2, accuracy: 33.3,
@@ -593,13 +597,159 @@ describe("PT1.10 — a dash is not a measurement", () => {
     render(<PerformanceTrendsPane />);
     await waitFor(() => expect(screen.getByTestId("trends-categories")).toBeTruthy());
     const row = screen.getAllByTestId("trends-category-row")[0];
-    // The movement WAS measured and it was flat, which is a different fact
-    // from "not measured" — so it is stated rather than omitted. But `— 0`
-    // reads as a missing value, so it is stated in words.
-    expect(within(row).getByTestId("trends-category-delta").textContent)
-      .toBe("no change");
+    expect(within(row).getByTestId("trends-category-delta").textContent).toBe("Steady");
     expect(within(row).getByTestId("trends-category-accuracy").textContent).toBe("33.3%");
-    expect(within(row).queryByTestId("trends-no-prior-data")).toBeNull();
     expect(row.textContent).not.toMatch(/—\s*0\b/);
+  });
+
+  it("says Declining with the size of the drop", async () => {
+    api.trends.mockResolvedValue(withCategories([
+      {
+        category: "Champion Ability Cooldowns", attempts: 20, correct: 12,
+        accuracy: 60, previous_attempts: 23, previous_accuracy: 73.9,
+        delta_points: -13.9, direction: "declining", eligible: true,
+        is_weak: true, is_recurring_weak: false,
+      },
+    ]));
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-categories")).toBeTruthy());
+    const row = screen.getAllByTestId("trends-category-row")[0];
+    expect(within(row).getByTestId("trends-category-delta").textContent)
+      .toBe("Declining · −13.9 pts");
+  });
+});
+
+
+// ------------------------------------------- PT1.11 — Recent Performance & polish
+
+describe("PT1.11 — Recent Performance, and reading the record", () => {
+  const asFree = () => {
+    api.capability.mockResolvedValue({ ok: true, capability: FREE });
+    api.trends.mockResolvedValue(SNAPSHOT());
+  };
+
+  it("calls the Free pane Recent Performance, not a calendar window", async () => {
+    asFree();
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    const pane = screen.getByTestId("trends-pane").textContent ?? "";
+    expect(pane).toContain("Recent Performance");
+    expect(pane).not.toMatch(/last 7 days/i);
+  });
+
+  it("states the span the snapshot actually covered", async () => {
+    asFree();
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-recent-span")).toBeTruthy());
+    // 50 answers spread over 26 days — a reader returning after a break is
+    // told when their record is from rather than being shown an empty pane.
+    expect(screen.getByTestId("trends-recent-span").textContent)
+      .toMatch(/last 50 answers, over 26 days/i);
+  });
+
+  it("does not print a window length Free never consulted", async () => {
+    asFree();
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    expect(screen.getByTestId("trends-pane").textContent ?? "")
+      .not.toMatch(/of null/);
+  });
+
+  it("de-emphasises a one-answer category without hiding its real figures", async () => {
+    asFree();
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-categories")).toBeTruthy());
+    const rows = screen.getAllByTestId("trends-category-row");
+    const thin = rows.find((r) => (r.textContent ?? "").includes("Objective Timers"))!;
+    // The true score and the true count both survive.
+    expect(within(thin).getByTestId("trends-category-accuracy").textContent).toBe("100%");
+    expect(thin.textContent).toContain("1 answer");
+    // And it says why it should not be read as the same claim.
+    expect(within(thin).getByTestId("trends-low-sample").textContent)
+      .toMatch(/too few to read much into/i);
+    // A well-evidenced row carries no such note.
+    const solid = rows.find((r) => (r.textContent ?? "").includes("Item Costs"))!;
+    expect(within(solid).queryByTestId("trends-low-sample")).toBeNull();
+  });
+
+  it("renames the recurring-weakness block and explains what it means", async () => {
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-recurring")).toBeTruthy());
+    const block = screen.getByTestId("trends-recurring").textContent ?? "";
+    expect(block).toContain("Recurring Weaknesses");
+    expect(block).not.toMatch(/keeps coming back/i);
+    // "repeatedly across periods", not "low once".
+    expect(block).toMatch(/this period and the one before it/i);
+    expect(block).toMatch(/not just a low score once/i);
+  });
+
+  it("offers a named Practice action on a recurring weakness, via the Builder", async () => {
+    const onPractise = vi.fn();
+    render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
+    await waitFor(() => expect(screen.getByTestId("trends-recurring")).toBeTruthy());
+    const button = within(screen.getByTestId("trends-recurring"))
+      .getByTestId("trends-practise-category");
+    expect(button.textContent).toBe("Practice Runes");
+    fireEvent.click(button);
+    // The EXISTING PT1.7B preset shape, unchanged: a single category goes as
+    // the bank pool narrowed to it, never as the Builder's own weak pool.
+    expect(onPractise).toHaveBeenCalledWith({ pool: "bank", category: "Runes" });
+  });
+
+  it("puts the Practice action on the diagnosis, not on every listing of it", async () => {
+    const onPractise = vi.fn();
+    render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
+    await waitFor(() => expect(screen.getByTestId("trends-recurring")).toBeTruthy());
+    // Runes is both a recurring weakness AND a row in the full category list.
+    const recurring = within(screen.getByTestId("trends-recurring"))
+      .getAllByTestId("trends-practise-category");
+    const catalogue = within(screen.getByTestId("trends-categories"))
+      .queryAllByTestId("trends-practise-category");
+    expect(recurring.length).toBeGreaterThan(0);
+    expect(catalogue.length).toBe(0);
+    // The category itself is still listed in full — nothing was removed.
+    expect(screen.getByTestId("trends-categories").textContent).toContain("Runes");
+  });
+
+  it("never offers the Practice action to Free", async () => {
+    asFree();
+    const onPractise = vi.fn();
+    render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    // `is_recurring_weak` is a field a Free payload does not carry at all, so
+    // the action disappears by construction rather than by a second check.
+    expect(screen.queryByTestId("trends-practise-category")).toBeNull();
+    expect(screen.queryByTestId("trends-build-weak-session")).toBeNull();
+    expect(onPractise).not.toHaveBeenCalled();
+  });
+
+  it("labels the volume chart so it means something without explanation", async () => {
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-volume-chart")).toBeTruthy());
+    const chart = screen.getByTestId("trends-volume-chart").textContent ?? "";
+    expect(chart).toContain("Answers per day");
+    expect(screen.getByTestId("trends-volume-peak").textContent)
+      .toMatch(/peak \d+ · \d+ total/);
+    // And its two ends are dated, so the bars sit on a timeline.
+    expect(screen.getByTestId("trends-volume-from").textContent).toBeTruthy();
+    expect(screen.getByTestId("trends-volume-to").textContent).toBeTruthy();
+  });
+
+  it("shows Free no chart, because the series is Premium", async () => {
+    asFree();
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    expect(screen.queryByTestId("trends-volume-chart")).toBeNull();
+  });
+
+  it("keeps Premium 7/30/90 intact", async () => {
+    render(<PerformanceTrendsPane />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    const picker = screen.getByTestId("trends-window-picker");
+    expect(picker.hasAttribute("hidden")).toBe(false);
+    for (const days of [7, 30, 90]) {
+      expect(within(picker).getByTestId(`trends-window-${days}`)).toBeTruthy();
+    }
+    expect(screen.getByTestId("trends-movement")).toBeTruthy();
   });
 });
