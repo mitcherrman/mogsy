@@ -357,34 +357,63 @@ committed and pushed, so that hazard is closed.
   (`StructuralReview.test.tsx` ×10, `AdminUsers.phase1.test.tsx` ×1), both
   pre-existing on a clean tree. `tsc` 11, unchanged. No CON1-caused failure.
 
-### Deployment status — PUBLISH PENDING (owner-only)
+### Deployment status — PUBLISHED AND VERIFIED
 
-This repo has **no CI**: `.github/workflows` does not exist, and the README's
-documented mechanism is Lovable *Share → Publish*. A push does not deploy.
+The owner published through Lovable. Production is serving the new build.
 
-Confirmed by reading production rather than assuming: `mogzy.lol` still serves
-`assets/AdminQuizReview-Dy-1Pa09.js`, which contains the OLD string
-`Open Content Workspace` and none of `PNGs as ZIP`, `Open local renderer` or
-`no local server needed`.
+| | |
+| --- | --- |
+| Entry bundle | `assets/index-DciLyaTI.js` (was `index-D8Dnecbv.js`) |
+| Admin Quiz Review chunk | `assets/AdminQuizReview-BSwG71Yr.js` (was `AdminQuizReview-Dy-1Pa09.js`) |
+| Export runner chunk | `assets/runBrowserExport-CTtHrh_x.js` (new — did not exist before) |
+| Render harness chunk | `assets/QuizRenderPage-RgFSUNhu.js` |
 
-**Live `/admin/quiz-content` verification is therefore not yet possible** and was
-not attempted. The dev-only E2E persona is dead-code-eliminated from production
-builds by design, and using real owner credentials against production is not
-something to do on the owner's behalf. The equivalent verification has been
-completed against a local authenticated build — see the owner-review pass above,
-including a real export and download.
+Verified by reading the served JavaScript, not by filename change alone.
+
+**Present in `AdminQuizReview-BSwG71Yr.js`:** `Export PNG` · `PNGs as ZIP` ·
+`Open local renderer (Content Workspace)` · `no local server needed` ·
+`one folder per question` · `generate-content-export-action` ·
+`cannot be exported from the browser`.
+
+**Gone:** the old normal-path copy (`Not running?`, `Admin seeds the …`). The
+only remaining "Content Workspace" occurrences are the two variants of the
+Developer-tools label, and it sits after the Developer-tools disclosure in the
+chunk — the primary action is the export.
+
+**Present in `runBrowserExport-CTtHrh_x.js`:** `data-quiz-render-stage` ·
+`foreignObject` · `data-content-export-frame` · `data-quiz-render-ready` ·
+`theme-lol` · `animation:none !important` — the whole capture path shipped.
+
+**The theme-flash fix shipped**, visible in the minified harness chunk as
+`(e??document).documentElement` and `(e??document).getElementById("initial-shell")`,
+where `e` is the minified `renderDocument` prop.
+
+**Both disclosures ship collapsed:** the `Disclosure` factory renders
+`<details>` with only `className` and `data-testid` — no `open` prop.
+
+### What still needs an owner-authenticated check
+
+Production `/admin/quiz-content` correctly redirects an unauthenticated visitor
+to `/` (403 on the admin resource, no page errors, no runtime crash). The
+dev-only E2E persona is dead-code-eliminated from production builds by design,
+so an interactive pass needs real owner credentials and was not attempted.
+
+Left for the owner, signed in, on production — each already verified on the same
+code in a local authenticated build (see the owner-review pass above, which
+included a real export and a 3.0 MB download):
+
+1. CTA reads `Export PNG` at one card and `Export N PNGs as ZIP` at more.
+2. Advanced options and Developer tools appear collapsed; `Open Content
+   Workspace` is only inside Developer tools.
+3. A real export downloads, at the right dimensions, with no theme flash.
 
 ## Exact next task
 
-1. **Owner: press Publish in Lovable** (*Share → Publish*). Nothing else is
-   outstanding in the code; `origin/main` already carries the work.
-2. Then verify live `/admin/quiz-content`: the CTA reads `Export PNG` /
-   `Export N PNGs as ZIP`, Advanced options and Developer tools are collapsed,
-   `Open Content Workspace` appears only inside Developer tools, and a real
-   export downloads a 1080×1350 PNG (or a ZIP) without the page changing theme.
-   A quick check that the deploy landed: `assets/AdminQuizReview-*.js` should
-   contain `PNGs as ZIP` and no longer contain `Open Content Workspace` as the
-   primary action.
-3. Decide the two measured, accepted limitations: the ≤15px vertical drift and
-   the single `vq-12` zoom boundary — accept for published content, or keep the
-   CLI as the authority for anything that must be frame-perfect.
+CON1 direct Admin export is **production-verified and complete** at the bundle
+level. The only outstanding item is the owner's own signed-in spot check on
+production listed above; nothing in the code is pending.
+
+The two measured limitations remain accepted as-is: the ≤15px vertical drift and
+the single `vq-12` Pro Play square zoom boundary (~2.06 vs ~2.02; no wrapping
+change, no clipping, no collision, publishable). Neither is to be "fixed" by
+diverging the renderer.
