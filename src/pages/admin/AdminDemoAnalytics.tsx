@@ -46,8 +46,8 @@ const PREVIEW_LABEL: Record<DemoPreview, string> = {
 };
 
 const PREVIEW_BLURB: Record<DemoPreview, string> = {
-  free: "What a Free account sees on /quiz#trends. The refusal is the whole surface — no report is sent.",
-  premium: "What a Mogzy Premium account sees, computed by the shipped trend_report() over the same rows.",
+  free: "What a Free account sees: the figures over one 7-day window — answers, accuracy, days studied, per category and per mode. No comparison, no direction, no weakness diagnosis.",
+  premium: "What a Mogzy Premium account sees: the same rows, plus what they mean over time — 7/30/90, the period before, deltas, direction and recurring weakness.",
 };
 
 type Layout = "both" | DemoPreview;
@@ -172,7 +172,10 @@ export default function AdminDemoAnalytics() {
         <p className="max-w-3xl text-[12px] text-muted-foreground">
           The same fabricated study record, read by the shipped analytics and
           rendered twice — as a Free account sees it and as a Premium account
-          sees it. Nothing on this page is a real player, nothing here changes
+          sees it. Both halves come out of one call to{" "}
+          <code className="text-[11px]">trend_report()</code> and one
+          server-side projection, so the two tiers cannot disagree about a
+          figure. Nothing on this page is a real player, nothing here changes
           any entitlement, and no request on it writes anything.
         </p>
         {banner && (

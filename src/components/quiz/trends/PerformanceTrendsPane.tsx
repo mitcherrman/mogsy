@@ -158,6 +158,29 @@ export type TrendsPracticePreset = {
   category: string | null;
 };
 
+/**
+ * One category row.
+ *
+ * PT1.10 rewrote the right-hand side. It used to print an icon and a delta
+ * unconditionally, so a category with no comparison behind it rendered as
+ * `33.3% — 0` or `100% — —`: two glyphs that look like measurements and are
+ * not. A dash is not a number and an em-dash next to a percentage reads as one.
+ *
+ * The rule now, three visually distinct states and no placeholders:
+ *
+ *   improving / declining   the icon and a signed number — `84.6%  ↑ +42.3`
+ *   steady                  the icon and the WORD "no change" — because the
+ *                           bare `0` in `33.3%  — 0` was the other display
+ *                           called out as unclear: a zero next to a dash reads
+ *                           as a missing value, not as a measured flat one
+ *   no comparison at all    nothing in the trend slot, and "Not enough prior
+ *                           data" in the sub-line
+ *
+ * **The accuracy figure is printed in all three** — it is the reader's own
+ * result and it does not depend on there being a period before it to compare
+ * against. That is the PT1.10 rule in miniature: the figure is what happened,
+ * everything to the right of it is what it means.
+ */
 function CategoryLine({
   entry,
   onPractise,
@@ -165,7 +188,18 @@ function CategoryLine({
   entry: TrendCategory;
   onPractise?: (preset: TrendsPracticePreset) => void;
 }) {
-  const Icon = DIRECTION_ICON[entry.direction];
+  // A Free payload carries no `direction` at all; a Premium one can carry
+  // "insufficient". Both mean the same thing here: nothing to say about
+  // movement, so say nothing rather than drawing a placeholder.
+  const hasTrend =
+    entry.direction != null &&
+    entry.direction !== "insufficient" &&
+    entry.delta_points != null;
+  const Icon = hasTrend ? DIRECTION_ICON[entry.direction!] : null;
+  // Premium, but this window has no prior evidence for this category.
+  const awaitingEvidence =
+    entry.direction === "insufficient" || (entry.direction != null && !hasTrend);
+
   return (
     <LedgerRow testId="trends-category-row">
       <div className="flex items-baseline justify-between gap-2">
@@ -178,20 +212,34 @@ function CategoryLine({
         <span className="flex shrink-0 items-center gap-1.5 text-[11px] tabular-nums">
           {/* A category with no answers this window has no accuracy — the
               server sends 0.0 because that is what an empty ratio is, not
-              because the reader got everything wrong. It is here at all for
-              its `was`, which is what "you have not touched this since" is
-              made of, so print the figure as absent rather than as nought. */}
-          <span style={{ color: LEAGUECRAFT_INK.strong }}>
+              because the reader got everything wrong. Premium keeps such a row
+              for its `was`; print the figure as absent rather than as nought.
+              (A Free payload never contains one — the server drops it.) */}
+          <span
+            data-testid="trends-category-accuracy"
+            style={{ color: LEAGUECRAFT_INK.strong }}
+          >
             {entry.attempts === 0 ? "—" : pct(entry.accuracy)}
           </span>
-          <Icon className="h-3 w-3" aria-hidden style={{ color: directionColour(entry.direction) }} />
-          <span style={{ color: directionColour(entry.direction) }}>
-            {entry.delta_points == null
-              ? "—"
-              : `${entry.delta_points > 0 ? "+" : ""}${entry.delta_points.toFixed(
-                  entry.delta_points % 1 === 0 ? 0 : 1,
-                )}`}
-          </span>
+          {hasTrend && Icon && (
+            <>
+              <Icon
+                className="h-3 w-3"
+                aria-hidden
+                style={{ color: directionColour(entry.direction!) }}
+              />
+              <span
+                data-testid="trends-category-delta"
+                style={{ color: directionColour(entry.direction!) }}
+              >
+                {entry.direction === "steady"
+                  ? "no change"
+                  : `${entry.delta_points! > 0 ? "+" : ""}${entry.delta_points!.toFixed(
+                      entry.delta_points! % 1 === 0 ? 0 : 1,
+                    )}`}
+              </span>
+            </>
+          )}
         </span>
       </div>
       <div className="flex items-center justify-between gap-2">
@@ -200,8 +248,18 @@ function CategoryLine({
             ? "Nothing this window"
             : `${entry.attempts} answer${entry.attempts === 1 ? "" : "s"}`}
           {entry.previous_accuracy != null && ` · was ${pct(entry.previous_accuracy)}`}
-          {entry.direction === "insufficient" && entry.previous_accuracy == null &&
-            " · nothing to compare yet"}
+          {/* Why there is no arrow, in words. Two different reasons, and the
+              reader is owed the right one: either nothing preceded this window
+              at all, or something did but there were too few answers on one
+              side of it to call a direction honestly. Saying nothing leaves a
+              row that looks like it lost its trend. */}
+          {awaitingEvidence && (
+            <span data-testid="trends-no-prior-data">
+              {entry.previous_accuracy == null
+                ? " · Not enough prior data"
+                : " · Not enough answers to call a trend"}
+            </span>
+          )}
         </span>
         {entry.is_recurring_weak && onPractise && (
           <button
@@ -293,8 +351,10 @@ export default function PerformanceTrendsPane({
   ) : null;
 
   const report = state.report;
+  // Premium only by construction: a Free payload carries no `is_recurring_weak`
+  // on any row, so this is empty and every block keyed off it disappears.
   const recurring = useMemo(
-    () => (report?.categories ?? []).filter((c) => c.is_recurring_weak),
+    () => (report?.categories ?? []).filter((c) => c.is_recurring_weak === true),
     [report],
   );
 
@@ -353,30 +413,6 @@ export default function PerformanceTrendsPane({
     );
   }
 
-  if (!state.capability?.can_view_trends) {
-    return (
-      <div data-testid="trends-locked" className="space-y-2 py-3">
-        {notice}
-        <LedgerTitle>Performance Trends</LedgerTitle>
-        <WorkspaceNote>
-          See how your Practice &amp; Time Trial accuracy and study volume have
-          moved over the last 7, 30 or 90 days, which categories are improving
-          or slipping, and which weak spots keep coming back. Mogzy Premium.
-        </WorkspaceNote>
-        {/* The record itself is never what is gated, and a reader deciding
-            whether to pay is owed that plainly rather than being left to
-            wonder what happens to their history. */}
-        <WorkspaceNote testId="trends-free-note">
-          Your results, your session record and your category breakdown stay
-          free, and stay yours.
-        </WorkspaceNote>
-        <Button asChild size="sm" className="mt-1">
-          <a href="/lol/premium">See Mogzy Premium</a>
-        </Button>
-      </div>
-    );
-  }
-
   if (!report) {
     return (
       <div className="py-1">
@@ -393,7 +429,18 @@ export default function PerformanceTrendsPane({
     );
   }
 
-  const windows = report.windows.length ? report.windows : state.capability.trend_windows;
+  /**
+   * PT1.10 — which half of the pane this payload can fill.
+   *
+   * Taken from the SERVER's `tier` and the presence of the data itself, never
+   * from a tier this client worked out. A Free payload does not carry `delta`,
+   * `series` or `recurring_weak` at all — they are projected away, not nulled —
+   * so every Premium block below is guarded on the field it actually needs.
+   */
+  const isPremium = report.tier === "premium";
+  const windows = report.windows.length
+    ? report.windows
+    : state.capability.allowed_windows;
 
   return (
     <div className="space-y-3 py-2" data-testid="trends-pane">
@@ -402,12 +449,18 @@ export default function PerformanceTrendsPane({
           invented would be refused rather than answered, which is the correct
           outcome but a pointless round trip. */}
       <div className="flex items-center justify-between gap-2">
-        <LedgerTitle>Performance Trends</LedgerTitle>
+        <LedgerTitle>
+          {isPremium ? "Performance Trends" : "Your last 7 days"}
+        </LedgerTitle>
+        {/* One window is not a choice. Free is offered exactly one, so the
+            picker is absent rather than present-and-inert — a control that
+            cannot do anything is worse than no control. */}
         <div
           role="group"
           aria-label="Window"
           data-testid="trends-window-picker"
           className="flex shrink-0 items-center gap-1"
+          hidden={windows.length <= 1}
         >
           {windows.map((days) => {
             const active = days === state.windowDays;
@@ -449,15 +502,26 @@ export default function PerformanceTrendsPane({
         />
       </div>
 
-      <p
-        className="text-[11px] font-semibold"
-        data-testid="trends-movement"
-        style={{ color: directionColour(report.delta.direction) }}
-      >
-        {movementSentence(report)}
-      </p>
+      {report.delta && (
+        <p
+          className="text-[11px] font-semibold"
+          data-testid="trends-movement"
+          style={{ color: directionColour(report.delta.direction) }}
+        >
+          {movementSentence(report)}
+        </p>
+      )}
 
-      {report.sufficiency.has_data && <VolumeSparkline series={report.series} />}
+      {!isPremium && !report.sufficiency.has_data && (
+        <WorkspaceNote testId="trends-snapshot-empty">
+          No answers in the last {report.window_days} days yet. Play a set and
+          this fills in.
+        </WorkspaceNote>
+      )}
+
+      {report.series && report.sufficiency.has_data && (
+        <VolumeSparkline series={report.series} />
+      )}
 
       {recurring.length > 0 && (
         <div className="space-y-1.5" data-testid="trends-recurring">
@@ -530,6 +594,31 @@ export default function PerformanceTrendsPane({
           <Target className="mr-1.5 h-3.5 w-3.5" aria-hidden />
           Build a session from these
         </Button>
+      )}
+
+      {/* PT1.10 — the upsell is a FOOTER now, not a gate.
+          It sits below the reader's own figures and describes what Premium
+          adds to them, because the figures themselves are no longer the
+          product being sold. A Free reader who never clicks it has still been
+          answered. */}
+      {!isPremium && (
+        <div
+          data-testid="trends-premium-upsell"
+          className="space-y-1.5 border-t pt-2"
+          style={{ borderColor: LEAGUECRAFT_INK.rule }}
+        >
+          <WorkspaceNote>
+            Mogzy Premium reads the same record over time: how these figures
+            have moved against the 7, 30 or 90 days before them, which
+            categories are improving or slipping, and which weak spots keep
+            coming back.
+          </WorkspaceNote>
+          <Button asChild size="sm" variant="outline" className="mt-1">
+            <a href="/lol/premium" data-testid="trends-premium-link">
+              See Mogzy Premium
+            </a>
+          </Button>
+        </div>
       )}
 
       {state.error && (

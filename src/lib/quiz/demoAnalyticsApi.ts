@@ -58,8 +58,13 @@ export type DemoTargetList = {
   targets: DemoTarget[];
 };
 
-/** The Free reading. It carries the refusal and NO report, because that is
- *  exactly what the live 403 carries and what a Free reader actually gets. */
+/** A refusal, carrying no report.
+ *
+ *  PT1.10 made this unreachable for either preview: Free is now answered with
+ *  the snapshot, exactly as the live route answers it. The shape stays because
+ *  the server can still emit it for a tier with no snapshot right at all, and
+ *  because a client that stopped being able to recognise a refusal would render
+ *  one as an empty record. */
 export type DemoRefusal = {
   ok: boolean;
   demo: true;
@@ -115,10 +120,11 @@ export const demoAnalyticsApi = {
  * A `TrendsSource` over one demo subject and one presentation.
  *
  * The shape it returns is deliberately identical to the real API's, including
- * the Free case: `capability.can_view_trends` comes back false and the hook
- * therefore never asks for a report, exactly as it does not for a real Free
- * reader. The paywall the pane then draws is the SHIPPED paywall reached by
- * the SHIPPED code path, which is the thing under evaluation.
+ * the Free case: since PT1.10 that means the Free SNAPSHOT — the figures with
+ * the interpretation projected away — reached through the same hook, the same
+ * pane and the same server-side projection a real Free reader gets. What the
+ * owner compares is therefore the shipped product, not a drawing of it, which
+ * is the property that made the PT1.9 review worth acting on.
  *
  * Built fresh per (target, preview) by the page below, and passed as a
  * dependency, so moving the toggle re-reads both answers rather than leaving
@@ -133,9 +139,9 @@ export function demoTrendsSource(target: string, preview: DemoPreview) {
     trends: async (windowDays: number) => {
       const body = await demoAnalyticsApi.read(target, preview, windowDays);
       if (!("current" in body)) {
-        // Unreachable through the pane — the hook only asks for a report once
-        // the capability said yes — but a server that answered a refusal here
-        // must not be silently rendered as an empty record.
+        // A server that answered a refusal here must not be silently rendered
+        // as an empty record — "you have studied nothing" is a false statement
+        // about the reader, where "this could not be loaded" is a true one.
         throw new DemoPreviewError(
           "The demo preview refused to serve a report for this presentation.",
         );

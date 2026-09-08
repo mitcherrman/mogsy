@@ -18,9 +18,19 @@ import { authedRequest } from "@/lib/quiz/api";
 /** What this account may read about its own record. A superset of the
  *  Builder's capability — one object, one resolver, one failure policy. */
 export type AnalyticsCapability = {
+  /** PT1.10 — may read the FIGURES: answers, accuracy, days studied, and the
+   *  same totals per category and per mode. Every account may. */
+  can_view_snapshot: boolean;
+  /** The single window a snapshot covers. */
+  snapshot_window_days: number;
+  /** May read what those figures MEAN over time. Premium. */
   can_view_trends: boolean;
-  /** Trailing windows, in days, this caller may ask for. */
+  /** Trailing windows, in days, a trend reader may ask for. [] for Free. */
   trend_windows: number[];
+  /** Every window this caller may ask for, whichever tier. Render the picker
+   *  from THIS — a client that decides for itself that one entry means "no
+   *  picker" is a client that needs a new branch for the next tier. */
+  allowed_windows: number[];
   can_build: boolean;
   reason: string;
 };
@@ -52,18 +62,26 @@ export type TrendDelta = {
   comparable: boolean;
 };
 
+/**
+ * A category row.
+ *
+ * The four figure fields are always present. Everything else is the
+ * COMPARISON, which the server withholds from a Free payload entirely — not
+ * nulled, ABSENT — so they are optional here and the pane must treat "missing"
+ * and "null" as the same thing: nothing to say about direction.
+ */
 export type TrendCategory = {
   category: string;
   attempts: number;
   correct: number;
   accuracy: number;
-  previous_attempts: number;
-  previous_accuracy: number | null;
-  delta_points: number | null;
-  direction: TrendDirection;
-  eligible: boolean;
-  is_weak: boolean;
-  is_recurring_weak: boolean;
+  previous_attempts?: number;
+  previous_accuracy?: number | null;
+  delta_points?: number | null;
+  direction?: TrendDirection;
+  eligible?: boolean;
+  is_weak?: boolean;
+  is_recurring_weak?: boolean;
 };
 
 export type TrendMode = {
@@ -77,32 +95,51 @@ export type TrendMode = {
   accuracy: number;
 };
 
+/** Which projection the server sent. Never inferred client-side. */
+export type AnalyticsTier = "free" | "premium";
+
+/**
+ * PT1.10 — one payload type, two shapes.
+ *
+ * The figures are always there. The longitudinal half is `?` because a Free
+ * payload does not carry those keys at all: the server projects them away
+ * through an allow-list rather than sending nulls, so the honest client type
+ * is "may be absent". `isTrendReport` below is the one place that decides
+ * which shape arrived, and it asks the SERVER's `tier`, never a tier the
+ * client worked out for itself.
+ */
 export type TrendReport = {
   ok: boolean;
+  tier: AnalyticsTier;
   capability: AnalyticsCapability;
   windows: number[];
   window_days: number;
   since: string;
   until: string;
-  previous_since: string;
   current: TrendPeriod;
-  previous: TrendPeriod;
-  delta: TrendDelta;
-  series: TrendPoint[];
   modes: TrendMode[];
   categories: TrendCategory[];
-  recurring_weak: string[];
-  sufficiency: {
-    min_attempts: number;
-    category_min_attempts: number;
-    trend_points: number;
-    has_data: boolean;
-    enough_for_trend: boolean;
-    enough_for_comparison: boolean;
-  };
   counts_modes: string[];
   excludes_modes: string[];
+  sufficiency: {
+    has_data: boolean;
+    min_attempts?: number;
+    category_min_attempts?: number;
+    trend_points?: number;
+    enough_for_trend?: boolean;
+    enough_for_comparison?: boolean;
+  };
+  /* ---- Premium only. Absent, not null, in a Free payload. ---- */
+  previous_since?: string;
+  previous?: TrendPeriod;
+  delta?: TrendDelta;
+  series?: TrendPoint[];
+  recurring_weak?: string[];
 };
+
+/** Whether this payload carries the interpretation, per the SERVER. */
+export const isTrendReport = (report: TrendReport | null): boolean =>
+  !!report && report.tier === "premium" && !!report.delta;
 
 export const PREMIUM_REQUIRED = "PREMIUM_REQUIRED";
 
@@ -139,7 +176,13 @@ export function movementSentence(report: TrendReport): string {
   if (!sufficiency.has_data) {
     return "No answers in this window yet.";
   }
-  if (!sufficiency.enough_for_trend) {
+  // PT1.10: only ever called for a Premium payload, but a missing delta must
+  // not read as "steady" — that would be a claim about movement made from the
+  // absence of the data that measures it.
+  if (!delta) {
+    return "";
+  }
+  if (sufficiency.enough_for_trend === false) {
     return `${current.attempts} answer${current.attempts === 1 ? "" : "s"} so far — ${sufficiency.min_attempts} in a window is where a trend starts to mean something.`;
   }
   if (!delta.comparable) {

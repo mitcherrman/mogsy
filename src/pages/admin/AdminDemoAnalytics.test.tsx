@@ -66,20 +66,27 @@ const TARGET = {
 };
 
 const PREMIUM_CAP = {
+  can_view_snapshot: true,
+  snapshot_window_days: 7,
   can_view_trends: true,
   trend_windows: [7, 30, 90],
+  allowed_windows: [7, 30, 90],
   can_build: true,
   reason: "premium",
 };
 const FREE_CAP = {
+  can_view_snapshot: true,
+  snapshot_window_days: 7,
   can_view_trends: false,
   trend_windows: [] as number[],
+  allowed_windows: [7],
   can_build: false,
   reason: "free",
 };
 
 const REPORT = {
   ok: true,
+  tier: "premium",
   demo: true,
   banner: BANNER,
   preview: "premium",
@@ -116,15 +123,30 @@ const REPORT = {
   excludes_modes: ["ranked", "daily_challenge", "mastery"],
 };
 
-const REFUSAL = {
+/** PT1.10 — Free is no longer a refusal here. It is the SAME record, projected
+ *  to the figures: the thing the owner now compares against Premium. */
+const FREE_SNAPSHOT = {
   ok: true,
+  tier: "free",
   demo: true,
   banner: BANNER,
   preview: "free",
   target: TARGET,
   capability: FREE_CAP,
-  windows: [] as number[],
-  refusal: { code: "PREMIUM_REQUIRED", message: "A Mogzy Premium subscription is required." },
+  windows: [7],
+  window_days: 7,
+  since: "2026-08-31 12:00:00",
+  until: "2026-09-07 12:00:00",
+  current: { attempts: 23, correct: 16, accuracy: 69.57, active_days: 6 },
+  modes: [
+    { mode: "standard", label: "Practice", known: true, attempts: 12, correct: 9, accuracy: 75 },
+  ],
+  categories: [
+    { category: "Item Costs", attempts: 6, correct: 2, accuracy: 33.33 },
+  ],
+  sufficiency: { has_data: true },
+  counts_modes: ["practice", "time_trial_official"],
+  excludes_modes: ["ranked", "daily_challenge", "mastery"],
 };
 
 beforeEach(() => {
@@ -137,7 +159,7 @@ beforeEach(() => {
     previews: ["free", "premium"], targets: [TARGET],
   });
   demo.read.mockImplementation(async (_t: string, preview: string) =>
-    preview === "free" ? REFUSAL : REPORT);
+    preview === "free" ? FREE_SNAPSHOT : REPORT);
 });
 
 afterEach(cleanup);
@@ -154,7 +176,7 @@ const bothPanes = async () => {
     ).toBeTruthy();
     expect(
       within(screen.getByTestId("demo-preview-free"))
-        .getByTestId("trends-locked"),
+        .getByTestId("trends-pane"),
     ).toBeTruthy();
   });
   return {
@@ -166,21 +188,35 @@ const bothPanes = async () => {
 describe("PT1.9 — the demo comparison", () => {
   it("renders both presentations of the same record side by side", async () => {
     const { free, premium } = await bothPanes();
-    // The Free half is the shipped paywall, reached through the shipped path.
-    expect(within(free).getByTestId("trends-locked")).toBeTruthy();
-    expect(within(free).getByTestId("trends-free-note")).toBeTruthy();
+    // PT1.10 — the Free half is now the shipped SNAPSHOT: the reader's own
+    // figures, reached through the shipped path, not a sales card.
+    expect(within(free).getByTestId("trends-pane")).toBeTruthy();
+    expect(within(free).queryByTestId("trends-locked")).toBeNull();
+    expect((free.textContent ?? "")).toContain("69.6%");
+    expect((free.textContent ?? "")).toContain("Item Costs");
+    // ...with the upsell as a footer beneath them.
+    expect(within(free).getByTestId("trends-premium-upsell")).toBeTruthy();
     // The Premium half is the shipped pane, with the shipped window picker.
     expect(within(premium).getByTestId("trends-pane")).toBeTruthy();
     expect(within(premium).getByTestId("trends-window-picker")).toBeTruthy();
   });
 
-  it("never asks for a report on the Free side", async () => {
+  it("shows only Premium the interpretation of the same rows", async () => {
+    const { free, premium } = await bothPanes();
+    expect(within(premium).getByTestId("trends-movement")).toBeTruthy();
+    expect(within(premium).getByTestId("trends-sparkline")).toBeTruthy();
+    expect(within(free).queryByTestId("trends-movement")).toBeNull();
+    expect(within(free).queryByTestId("trends-sparkline")).toBeNull();
+    expect(within(free).queryByTestId("trends-recurring")).toBeNull();
+  });
+
+  it("asks for a report on BOTH sides now", async () => {
     await bothPanes();
-    // Free's capability read happened; a report read for Free did not. This
-    // is the same rule the live pane keeps, proved here through the same hook.
+    // The tier boundary moved to the server's field projection, so the client
+    // no longer decides not to ask.
     const freeCalls = demo.read.mock.calls.filter((c) => c[1] === "free");
     expect(freeCalls.length).toBeGreaterThan(0);
-    expect(freeCalls.every((c) => c[2] === undefined)).toBe(true);
+    expect(freeCalls.some((c) => c[2] === 7)).toBe(true);
   });
 
   it("never touches the self-scoped analytics API", async () => {
@@ -219,17 +255,18 @@ describe("PT1.9 — the demo comparison", () => {
 
     demo.read.mockClear();
     fireEvent.click(screen.getByTestId("demo-layout-free"));
-    await waitFor(() => expect(screen.getByTestId("trends-locked")).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByTestId("trends-premium-upsell")).toBeTruthy());
     expect(demo.read).toHaveBeenCalled();
     expect(demo.read.mock.calls.every((c) => c[1] === "free")).toBe(true);
-    // The Premium report that was on screen a moment ago is gone with it.
-    expect(screen.queryByTestId("trends-pane")).toBeNull();
+    // The Premium interpretation that was on screen a moment ago is gone.
+    expect(screen.queryByTestId("trends-movement")).toBeNull();
 
     demo.read.mockClear();
     fireEvent.click(screen.getByTestId("demo-layout-premium"));
-    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("trends-movement")).toBeTruthy());
     expect(demo.read.mock.calls.every((c) => c[1] === "premium")).toBe(true);
-    expect(screen.queryByTestId("trends-locked")).toBeNull();
+    expect(screen.queryByTestId("trends-premium-upsell")).toBeNull();
   });
 
   it("shows one presentation at a time when asked", async () => {

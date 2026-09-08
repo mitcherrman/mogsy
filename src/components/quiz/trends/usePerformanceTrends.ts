@@ -8,8 +8,12 @@
  *
  * TWO REQUESTS, IN THIS ORDER, ON PURPOSE. The capability read is ungated and
  * always runs; the report is only asked for once the server has said the
- * caller may have it. That is what keeps a refusal (a paywall) and a failure
- * (an outage) apart in the pane above — see the error branch there.
+ * caller may have one. That is what keeps a refusal and a failure (an outage)
+ * apart in the pane above — see the error branch there.
+ *
+ * PT1.10 changed WHICH callers get a report: every account does. The tier
+ * boundary moved from "may you make this request" to "which fields does the
+ * response carry", so the client no longer decides not to ask.
  *
  * WHERE THE ANSWERS COME FROM IS A PARAMETER (PT1.9)
  * ──────────────────────────────────────────────────
@@ -74,11 +78,17 @@ export function usePerformanceTrends(
         const answer = await source.capability();
         if (cancelled) return;
         setCapability(answer.capability);
-        if (!answer.capability.can_view_trends) {
+        // PT1.10 — the report is fetched for EVERY tier that may read one.
+        // It used to be skipped unless `can_view_trends`, which is what made a
+        // Free reader's own figures unreachable; the tier boundary is now
+        // applied to the FIELDS by the server, not to the request by the
+        // client. A tier with no snapshot right at all still fetches nothing.
+        if (!answer.capability.can_view_snapshot) {
           setReport(null);
           return;
         }
-        const first = windowDays ?? answer.capability.trend_windows[0];
+        const offered = answer.capability.allowed_windows ?? [];
+        const first = windowDays ?? offered[0];
         if (first == null) return;
         setWindowDays(first);
         const next = await source.trends(first);
@@ -104,7 +114,10 @@ export function usePerformanceTrends(
 
   const setWindow = useCallback(
     (days: number) => {
-      if (!capability?.can_view_trends) return;
+      // Guarded on what the SERVER offered, not on the tier: a client that
+      // asked for a window it was not offered would be refused anyway, and
+      // this keeps the check in one vocabulary.
+      if (!capability?.allowed_windows?.includes(days)) return;
       setWindowDays(days);
       setLoading(true);
       setError(null);
