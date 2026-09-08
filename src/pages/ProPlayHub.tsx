@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Brain, BarChart3, Radio } from "lucide-react";
+import { ArrowLeft, Trophy, Brain, BarChart3, Radio, Search, Swords } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import HexPanelLink from "@/components/lol/HexPanelLink";
 import {
   PRO_PLAY_GRAPHS_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_MATCHUP_ROUTE,
   PRO_PLAY_QUIZ_ROUTE,
   PRO_PLAY_ROUTE,
+  PRO_PLAY_SEARCH_ROUTE,
 } from "@/lib/pro-play/routes";
 
 /**
@@ -16,6 +18,12 @@ import {
  * and the page needs no other change. Every entry is something that is BUILT —
  * no placeholder "coming soon" tiles, because an empty promise is worse than a
  * short page.
+ *
+ * Two of the five — Matchup Explorer and Search Pro Play — are admin-gated at
+ * the DESTINATION (`AdminAuthGate` on the page itself). They are listed here
+ * anyway, by product decision: the hub states what Pro Play is, and the gate,
+ * not the hub, decides who may read each surface. That is why this file does
+ * no authorization of its own.
  *
  * NOT to be confused with /lol/premium, which is the paid-subscription page. This
  * area is professional-play content and lives at /lol/pro-play.
@@ -28,8 +36,10 @@ export {
   LEGACY_ESPORTS_LIVE_ROUTE,
   PRO_PLAY_GRAPHS_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_MATCHUP_ROUTE,
   PRO_PLAY_QUIZ_ROUTE,
   PRO_PLAY_ROUTE,
+  PRO_PLAY_SEARCH_ROUTE,
 } from "@/lib/pro-play/routes";
 
 type ProPlayModule = {
@@ -52,10 +62,17 @@ const MODULES: ProPlayModule[] = [
     Icon: Radio,
   },
   {
-    to: PRO_PLAY_QUIZ_ROUTE,
-    title: "Pro Play Quiz",
-    description: "Ten questions on champions, players and teams from pro play.",
-    Icon: Brain,
+    to: PRO_PLAY_MATCHUP_ROUTE,
+    title: "Matchup Explorer",
+    description:
+      "Deep-dive into team matchups — lanes, players, champion pools, historical performance and mechanics.",
+    Icon: Swords,
+  },
+  {
+    to: PRO_PLAY_SEARCH_ROUTE,
+    title: "Search Pro Play",
+    description: "Find players, teams and champions across Mogzy's Pro Play data.",
+    Icon: Search,
   },
   {
     to: PRO_PLAY_GRAPHS_ROUTE,
@@ -64,8 +81,13 @@ const MODULES: ProPlayModule[] = [
       "Build graphs from real pro match history — players, teams, champions, picks and bans.",
     Icon: BarChart3,
   },
+  {
+    to: PRO_PLAY_QUIZ_ROUTE,
+    title: "Pro Play Quiz",
+    description: "Ten questions on champions, players and teams from pro play.",
+    Icon: Brain,
+  },
 ];
-
 export default function ProPlayHub() {
   return (
     <div className="min-h-screen bg-background">

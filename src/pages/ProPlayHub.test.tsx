@@ -9,8 +9,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import ProPlayHub, {
   PRO_PLAY_GRAPHS_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
+  PRO_PLAY_MATCHUP_ROUTE,
   PRO_PLAY_QUIZ_ROUTE,
   PRO_PLAY_ROUTE,
+  PRO_PLAY_SEARCH_ROUTE,
 } from "./ProPlayHub";
 
 afterEach(cleanup);
@@ -79,8 +81,54 @@ describe("ProPlayHub", () => {
       a.getAttribute("href")?.startsWith(PRO_PLAY_ROUTE + "/"),
     );
     expect(modules.map((a) => a.getAttribute("href")).sort()).toEqual(
-      [PRO_PLAY_GRAPHS_ROUTE, PRO_PLAY_LIVE_ROUTE, PRO_PLAY_QUIZ_ROUTE].sort(),
+      [
+        PRO_PLAY_GRAPHS_ROUTE,
+        PRO_PLAY_LIVE_ROUTE,
+        PRO_PLAY_MATCHUP_ROUTE,
+        PRO_PLAY_QUIZ_ROUTE,
+        PRO_PLAY_SEARCH_ROUTE,
+      ].sort(),
     );
+  });
+
+  it("offers Matchup Explorer, pointing at the matchup route", () => {
+    renderHub();
+    const link = screen.getByRole("link", { name: /Matchup Explorer/i });
+    expect(link.getAttribute("href")).toBe(PRO_PLAY_MATCHUP_ROUTE);
+  });
+
+  it("offers Search Pro Play, pointing at the search route", () => {
+    renderHub();
+    const link = screen.getByRole("link", { name: /Search Pro Play/i });
+    expect(link.getAttribute("href")).toBe(PRO_PLAY_SEARCH_ROUTE);
+  });
+
+  it("puts the research surfaces above the quiz, and Matchup Explorer first", () => {
+    // The order is the product hierarchy: what is happening now, then the
+    // deep pre-match surface, then the two ways to browse, then the game.
+    // Matchup Explorer must never sit below the exploratory graphs again.
+    renderHub();
+    const order = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"))
+      .filter((h) => h?.startsWith(PRO_PLAY_ROUTE + "/"));
+    expect(order).toEqual([
+      PRO_PLAY_LIVE_ROUTE,
+      PRO_PLAY_MATCHUP_ROUTE,
+      PRO_PLAY_SEARCH_ROUTE,
+      PRO_PLAY_GRAPHS_ROUTE,
+      PRO_PLAY_QUIZ_ROUTE,
+    ]);
+  });
+
+  it("says what the Matchup Explorer is for, not merely that it exists", () => {
+    // A card titled "Matchup Explorer" alone does not distinguish it from the
+    // graphs page; the description is what separates "investigate this
+    // matchup" from "explore the data".
+    renderHub();
+    const tile = screen.getByRole("link", { name: /Matchup Explorer/i });
+    expect(tile.textContent).toMatch(/lanes/i);
+    expect(tile.textContent).toMatch(/champion pools/i);
   });
 
   it("is not the subscription page", () => {
