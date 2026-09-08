@@ -16,6 +16,7 @@
 **Pushed:** `bb35a24f..f275ed62`, clean fast-forward, no force.
 **Mount geometry:** unchanged. The board is still `.5840 / .2520 / .2440 /
 .2440`, no other Commons mount moved, and the plinth and Screen 1 have no diff.
+**Production: NOT YET DEPLOYED at time of writing — see §7b.**
 
 ### 1. Implemented families
 
@@ -154,6 +155,40 @@ A note on the environment: `.env.local` points the dev server at
 `127.0.0.1:8010`, which is not running, so a plain local run shows **only the
 Pro Play notice** — the fallback working exactly as designed. The sweep used a
 throwaway server pointed at the production API to see the real families.
+
+### 7b. Deployment — pushed, not yet live
+
+`f275ed62` is on `origin/main`. **After ~45 minutes production was still
+serving `index-RzKFkVx5.js`**, which is Revision 26: the Academy Record reads
+"Summoner" but there is no `[data-testid="academy-bulletin-next"]` and no
+`data-bulletin-kind` in the DOM. Earlier deploys in this workstream landed in
+roughly ten minutes, so this one is slow rather than typical.
+
+**It is not a broken build.** The obvious suspicion was that `vite build
+--mode development` — all this workstream had been running — hides a failure in
+the four prerender/verify steps that `npm run build` adds. Checked directly:
+
+* `npm run build` **fails locally**, but at the prerender step, with
+  `ECONNREFUSED 127.0.0.1:8010` — that is `.env.local` pointing at a dev
+  backend that is not running, not a code fault.
+* `VITE_COMBAT_API_URL=<production> npm run build` — the configuration Lovable
+  actually builds under — **exits 0**, prerenders all 173 champions and passes
+  both verify steps.
+
+So the commit builds cleanly in production's own configuration and the delay is
+on the deploy side.
+
+**A method note worth keeping.** The first check of "is it live?" grepped the
+entry bundle for `academy-bulletin`, found nothing, and concluded the carousel
+had not shipped. That reasoning was wrong even though the answer was right: the
+Commons is code-split into its own chunk, so its markers were never going to be
+in `index-*.js`. Load the page and read the DOM — the entry bundle proves
+nothing about a lazily-loaded route.
+
+**Still owed:** the production smoke check. Once the bundle hash changes,
+verify Record and Bulletin both present, `data-bulletin-count` > 1, prev/next
+operable, all four utility routes, the legal set unchanged, and no new console
+errors.
 
 ### 8. Next task
 
