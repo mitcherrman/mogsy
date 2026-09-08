@@ -24,7 +24,7 @@ import { InkBlock, RevealSlot } from "./InkText";
 import RegistrationForm, { type RegistrationValue } from "./RegistrationForm";
 import { ACADEMY_CHAPTERS, type AcademyChapter } from "./academyChapters";
 import { chapterBlocks } from "./cadence";
-import { SCENE_PADDING, TOME_CHROME } from "./tomeChrome";
+import { useTomeChrome } from "./tomeChrome";
 import { CRITICAL_SCENE_IMAGES, TOME_DISPLAY_FONT } from "./sceneAssets";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 import { useSceneReady } from "./useSceneReady";
@@ -239,8 +239,12 @@ export default function AcademyWelcomePage() {
   // rather than pushing them under the fold — the exact failure of the popup
   // this replaces. RESERVED rather than measured, which is what keeps the tome
   // still: see tomeChrome.ts and the note above.
-  const chromeKey = isLandscapePhone ? "compact" : "regular";
-  const chrome = TOME_CHROME[chromeKey];
+  //
+  // AND THE BUDGET IS HEIGHT-AWARE (WE1). 208px of chrome is 23% of a 900px
+  // screen and 37% of a 568px one; on the short viewports it was the single
+  // largest reason the register would not fit the page it is written on. Short
+  // viewports read `snug` instead — see tomeChrome.ts for the arithmetic.
+  const { key: chromeKey, spec: chrome, scenePadding } = useTomeChrome(tier);
 
   const finish = useCallback(
     (outcome: "explored" | "tutorial") => {
@@ -579,6 +583,10 @@ export default function AcademyWelcomePage() {
       data-registered={registered ? "true" : "false"}
       data-instant={instant ? "true" : "false"}
       data-ready={sceneReady ? "true" : "false"}
+      /* Which vertical budget the composition is working to. Published so the
+         responsive-fit tests can assert the tier a viewport reads rather than
+         re-deriving the rule, and so a screenshot can be read back. */
+      data-chrome={chromeKey}
       className="academy-welcome relative flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#04070f]"
       style={{
         paddingTop: "env(safe-area-inset-top)",
@@ -652,7 +660,7 @@ export default function AcademyWelcomePage() {
         /* The scene's own padding is part of the chrome budget the tome sizes
            itself against, so it is stated here from the same table rather than
            as a Tailwind class the budget cannot see. */
-        style={{ paddingTop: SCENE_PADDING[chromeKey] / 2, paddingBottom: SCENE_PADDING[chromeKey] / 2 }}
+        style={{ paddingTop: scenePadding / 2, paddingBottom: scenePadding / 2 }}
       >
         <div className="tome-opening w-full">
           {/* NOT keyed by chapter: the tome is the stage and must persist

@@ -26,7 +26,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { SCENE_PADDING, TOME_CHROME } from "./tomeChrome";
+import { SCENE_PADDING, SNUG_MAX_HEIGHT, TOME_CHROME, chromeKeyFor } from "./tomeChrome";
 
 const css = readFileSync(resolve(__dirname, "../../index.css"), "utf8");
 
@@ -129,9 +129,19 @@ describe("the control rows reserve their height", () => {
   });
 
   it("budgets more than the rows and the padding actually take", () => {
-    for (const key of ["regular", "compact"] as const) {
+    for (const key of ["regular", "snug", "compact"] as const) {
       const spec = TOME_CHROME[key];
       expect(spec.budget).toBeGreaterThanOrEqual(spec.controls + spec.rail + SCENE_PADDING[key]);
+    }
+  });
+
+  it("still reserves a real gap around controls that are 34px and 33px tall", () => {
+    // The reservations are measured, not invented, and `snug` cutting them is
+    // the point of WE1 — but a reservation that no longer clears the control
+    // inside it is the tome sliding down the screen again.
+    for (const key of ["regular", "snug", "compact"] as const) {
+      expect(TOME_CHROME[key].controls).toBeGreaterThan(34);
+      expect(TOME_CHROME[key].rail).toBeGreaterThan(33);
     }
   });
 
@@ -247,5 +257,171 @@ describe("the last spread stays on the paper", () => {
     // ...and still more room than a chapter's page gets, or it is pointless.
     expect(top).toBeLessThan(15);
     expect(bottom).toBeLessThan(13);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * WE1 — the composition fits the budget, and the budget is a real budget.
+ *
+ * The failure this pass closed was not a missing breakpoint. It was that the
+ * tome's vertical budget existed and the CONTENT did not honour it: the phone's
+ * sheet claimed the budget as a MINIMUM and grew past it (570px against a 360px
+ * budget at 320x568, with the rail 134px under the fold), and the painted
+ * spread's writing kept its size after the page it was written on had stopped
+ * keeping its own (a 1024x580 window printed the register 23px past the page
+ * box, top and bottom).
+ *
+ * The rules below are what makes that not come back. Every one of them is the
+ * mechanism of a measured failure, not a style preference.
+ */
+describe("WE1 — the phone sheet is a budget, not a suggestion", () => {
+  it("states a height rather than a minimum, so a dense chapter cannot grow the book", () => {
+    const sheet = ruleBody(".academy-welcome .tome-single > .tome-sheet");
+    expect(sheet).toMatch(/height:\s*min\(calc\(100dvh - var\(--tome-chrome/);
+    expect(sheet).not.toMatch(/min-height:/);
+  });
+
+  it("keeps the emergency growth, and keeps it behind a pathological height", () => {
+    // Below 520px of portrait height nothing composes honestly, so the sheet is
+    // handed back its old grow-and-scroll behaviour rather than clipping a word.
+    // Every phone in the WE1 set is taller than this.
+    const hatch = css.match(
+      /@media \(orientation: portrait\) and \(max-height: 520px\) \{([\s\S]*?)\n\}/,
+    );
+    expect(hatch).not.toBeNull();
+    expect(hatch![1]).toContain("height: auto");
+    expect(hatch![1]).toMatch(/min-height:\s*min\(calc\(100dvh/);
+  });
+
+  it("makes the artwork the element that gives ground", () => {
+    const art = ruleBody(".tome-single-art");
+    // `flex: 0 1 auto` over a stated height: the plate says how big it wants to
+    // be, the sheet's budget says how big it gets. `min-height: 0` is what lets
+    // a flex item shrink below its content at all.
+    expect(art).toContain("flex: 0 1 auto");
+    expect(art).toContain("min-height: 0");
+    // And it does NOT clip: every plate is `h-full` inside this box, so a
+    // shorter box is a smaller plate — while Mogzy's entrance haze is inset
+    // past the slot's edges on purpose and would meet a hard cut.
+    expect(art).not.toContain("overflow: hidden");
+  });
+
+  it("does not shrink the artwork by height band instead", () => {
+    // A per-band `height` on the slot would make the plate small on every
+    // chapter of a short phone, including the four with room to spare. The
+    // budget decides per PAGE, which is only possible if there is one height.
+    // The landscape sheet's own slot is a different LAYOUT — art beside the
+    // writing rather than above it — and keeps its own height; it is not a
+    // height band of the portrait one.
+    const bare = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const heights = [...bare.matchAll(/([^{}]*\.tome-single-art[^{}]*)\{([^}]*)\}/g)]
+      .filter(([, selector]) => {
+        const trimmed = selector.trim();
+        return trimmed !== ".tome-single-art" && !trimmed.includes("tome-single-wide");
+      })
+      .map(([, , body]) => body)
+      .filter((body) => /height:\s*min\(\d+dvh/.test(body));
+    expect(heights).toHaveLength(0);
+    expect(ruleBody(".tome-single-art")).toMatch(/height:\s*min\(30dvh, 190px\)/);
+  });
+
+  it("does not let the writing shrink with it", () => {
+    expect(ruleBody(".academy-welcome .tome-single .tome-single-body")).toContain("flex: 0 0 auto");
+  });
+
+  it("exempts the finale's left page, which is a page and not a picture", () => {
+    // Cropping a plate is a crop; cropping this slot is clipping words.
+    const finale = ruleBody(".academy-welcome .tome-single-art:has(.tome-writing)");
+    expect(finale).toContain("flex: 0 0 auto");
+    expect(finale).toContain("height: auto");
+  });
+
+  it("never sets a body font-size in the short-height blocks", () => {
+    // The order of sacrifice is artwork, then decorative spacing, then display
+    // type. Body copy is not in it: it stays at its shipped size at every
+    // supported viewport.
+    for (const maxHeight of [700, 600]) {
+      const block = css.match(
+        new RegExp(
+          `@media \\(orientation: portrait\\) and \\(max-height: ${maxHeight}px\\) \\{([\\s\\S]*?)\\n\\}\\n`,
+        ),
+      );
+      expect(block, `no portrait max-height ${maxHeight} block`).not.toBeNull();
+      expect(block![1]).not.toMatch(/\.tome-body\s*\{[^}]*font-size/);
+    }
+  });
+});
+
+describe("WE1 — the painted spread compacts by its own width", () => {
+  it("asks the tome, not the viewport, how much room the dense pages have", () => {
+    // `.academy-tome` is the `container-type: inline-size` element every `cqw`
+    // on these pages already resolves against, and its width is the min of the
+    // width budget and the height budget — so one container query on it is the
+    // joint width-and-height condition, stated once and in the right unit.
+    expect(css).toMatch(/@container \(max-width: 660px\) \{/);
+    const block = css.match(/@container \(max-width: 660px\) \{([\s\S]*?)\n\}\n/);
+    expect(block).not.toBeNull();
+    // Only the painted spread: the phone sheet is inside the same container and
+    // has its own, differently-shaped compaction.
+    for (const selector of block![1].matchAll(/^\s{2}(\.[^{]+)\{/gm)) {
+      expect(selector[1]).toContain(".tome-spread ");
+    }
+  });
+
+  it("brings the finale graph's floor down with the book", () => {
+    // At a 514px tome the graph's `13cqw` term is ~67px and its 5rem floor was
+    // holding it at 80 — enough, on its own, to push the lower exit off the
+    // paper. It is still the page's anchor and still takes what the copy leaves.
+    const block = css.match(/@container \(max-width: 660px\) \{([\s\S]*?)\n\}\n/)![1];
+    expect(block).toMatch(/\.tome-finale-graph \{[^}]*min-height:\s*clamp\(3\.25rem/);
+  });
+
+  it("takes nothing away from the register but its air", () => {
+    const block = css.match(/@container \(max-width: 660px\) \{([\s\S]*?)\n\}\n/)![1];
+    // No display:none, no font-size on an input, no change of control.
+    expect(block).not.toMatch(/display:\s*none/);
+    expect(block).not.toMatch(/\.tome-field-input/);
+  });
+});
+
+describe("WE1 — which budget a viewport reads", () => {
+  // The acceptance set, and the two shapes that were measured failing. The
+  // ones at or above 768px tall must still read `regular`, because their
+  // composition is the one that ships today and must not move.
+  const CASES: [number, number, "regular" | "snug" | "compact"][] = [
+    [320, 568, "snug"],
+    [360, 640, "snug"],
+    [390, 664, "snug"],
+    [390, 844, "regular"],
+    [430, 932, "regular"],
+    [667, 375, "compact"],
+    [844, 390, "compact"],
+    [768, 1024, "regular"],
+    [1024, 768, "regular"],
+    [1024, 580, "snug"],
+    [1366, 768, "regular"],
+    [1440, 900, "regular"],
+    [1920, 1080, "regular"],
+  ];
+
+  function tier(width: number, height: number) {
+    // The same resolution useViewportTier makes, restated so this test does not
+    // depend on a hook that belongs to the entrance.
+    if (height < 560 && width > height) return "phone-landscape" as const;
+    if (width < 640) return "phone" as const;
+    if (width < 1024) return "tablet" as const;
+    return "desktop" as const;
+  }
+
+  it.each(CASES)("%ix%i reads %s", (width, height, expected) => {
+    expect(chromeKeyFor(tier(width, height), height)).toBe(expected);
+  });
+
+  it("leaves every viewport at or above the reference laptop's height alone", () => {
+    // 1366x768 is the short desktop reference. `snug` must not reach it, or the
+    // shipped desktop composition changes.
+    expect(SNUG_MAX_HEIGHT).toBeLessThan(768);
   });
 });

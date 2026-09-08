@@ -2719,28 +2719,84 @@ html.high-contrast * { text-shadow: none !important; }
    height claimed there is invisible room under a sheet that stayed its old size,
    which is a measurement that improves and a page that does not.
 
-   `min-height` AND NOT `height`, deliberately. The sheet is `overflow: hidden` —
-   it is a piece of paper — so a hard height would CLIP a chapter that did not
-   fit rather than showing it. The last spread carries the most of anything in
-   the book and is trimmed to fit this budget at a phone's usual proportions (see
-   its own rules further down); on a viewport too short even for that, the sheet
-   grows past the budget and the scene scrolls, which costs the visitor a little
-   stillness and never a word.
+   `height`, NOT `min-height` (WE1). It used to be a minimum, on the reasoning
+   that a hard height would CLIP a chapter that did not fit — and what actually
+   happened is that the two dense chapters did not fit and the minimum let them
+   grow: measured at 320x568, the arrival's sheet was 360px and the register's
+   570px, so the book jumped 210px between two consecutive pages, the rail ended
+   134px under the fold and the introduction scrolled. A minimum that is
+   routinely exceeded is not a budget; it is a suggestion.
+
+   So the budget is now real, and the CONTENT was made to fit it instead — the
+   artwork gives ground first (see `.tome-single-art` below), then the decorative
+   spacing, and the body copy last and least. Every chapter is measured against
+   this height at every viewport in the WE1 set.
+
+   THE EMERGENCY HATCH IS STILL THERE, and is now explicit rather than
+   accidental: below 520px of portrait height there is no honest composition, so
+   the rule at the end of this block hands the sheet back its old grow-and-scroll
+   behaviour. That is a pathological screen, not a phone anyone ships.
 
    The direct-child selector keeps it off the turning leaf's faces, which wear
    `.tome-sheet` for its vellum and are `inset: 0` over the sheet they lifted
    from. */
 .academy-welcome .tome-single > .tome-sheet {
-  min-height: min(calc(100dvh - var(--tome-chrome, 208px)), 42rem);
+  height: min(calc(100dvh - var(--tome-chrome, 208px)), 42rem);
   justify-content: center;
 }
 
+/* Truly tiny, and only truly tiny: grow past the budget and let the scene
+   scroll rather than clip a word. 520px is below every phone in the WE1 set. */
+@media (orientation: portrait) and (max-height: 520px) {
+  .academy-welcome .tome-single > .tome-sheet {
+    height: auto;
+    min-height: min(calc(100dvh - var(--tome-chrome, 208px)), 42rem);
+  }
+}
+
+/* THE ARTWORK IS THE GIVING ELEMENT (WE1).
+
+   It used to claim `min(30dvh, 190px)` outright — an allocation made against
+   the VIEWPORT, with no knowledge of how much of the sheet the chapter's
+   writing had already spoken for. On a 568px phone that is 170px of a 360px
+   budget for a picture, with a register still to fit under it.
+
+   `flex: 0 1 auto` over a stated height keeps the intent — this is how big the
+   plate WANTS to be — while making the sheet's budget the authority: when the
+   writing needs the room, the picture is what shrinks, which is the order the
+   brief asks for. `min-height: 0` is what lets a flex item shrink below its
+   content at all.
+
+   AND THE SLOT DOES NOT CLIP. Every plate in the book is `h-full` inside this
+   box, so a shorter box is a smaller plate and there is nothing to crop; an
+   `overflow: hidden` here buys nothing and costs Mogzy's entrance, whose haze
+   and motes are deliberately inset PAST the slot's edges and would meet a hard
+   rectangular cut on a phone.
+
+   AND THE STATED HEIGHT IS UNCHANGED — still `min(30dvh, 190px)`, the number
+   this page shipped with. That matters: a fixed step-down per height band would
+   have made the plate small on EVERY chapter of a short phone, including the
+   four that have room to spare, and "the artwork is smaller everywhere" is a
+   worse page than "the artwork gives way where it has to". Measured at
+   320x568, where the budget is 440px: the arrival asks for 190px and gets all
+   of it; the register asks for 190, the sheet is ~78px short, and the plate
+   alone gives that back and settles at ~112. One rule, and the page it is on
+   decides. */
 .tome-single-art {
   width: 100%;
+  flex: 0 1 auto;
+  min-height: 0;
   height: min(30dvh, 190px);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* And the writing does NOT shrink: it is the thing the picture is giving room
+   to. Stated rather than relied upon, because a flex column's default is to let
+   everything shrink together. */
+.academy-welcome .tome-single .tome-single-body {
+  flex: 0 0 auto;
 }
 
 .tome-rule {
@@ -3091,6 +3147,11 @@ html.high-contrast * { text-shadow: none !important; }
 
 .academy-welcome .tome-register-seal {
   display: flex;
+  /* NEVER SQUASHED (WE1). It is the last item in a flex column, so on a card
+     with less height than its content it was the one thing that shrank — into
+     an ellipse, and then out of the plate's `overflow: hidden` altogether. A
+     circle is a circle at every viewport; the card's air gives way instead. */
+  flex: none;
   align-self: center;
   align-items: center;
   justify-content: center;
@@ -3814,6 +3875,12 @@ html.high-contrast * { text-shadow: none !important; }
    in it and were never meant to: the box gives way for a composed page. */
 .academy-welcome .tome-single-art:has(.tome-writing) {
   height: auto;
+  /* AND IT IS NOT THE GIVING ELEMENT HERE (WE1). The slot shrinks and crops on
+     every other chapter because what is in it is a picture; on the finale what
+     is in it is a PAGE — a title, a sentence and the four library seals — and
+     cropping a page is clipping words. The finale's own compaction further down
+     is what buys this page its room instead. */
+  flex: 0 0 auto;
 }
 
 /* A LANDSCAPE SHEET SPLITS THE FINALE EVENLY. Everywhere else the illustration
@@ -3925,6 +3992,292 @@ html.high-contrast * { text-shadow: none !important; }
   align-self: stretch;
   margin: 0.35rem 0;
   background: linear-gradient(180deg, transparent, rgba(107, 84, 24, 0.5), transparent);
+}
+
+/* ---- WE1: short viewports ------------------------------------------------ */
+
+/* THE PROBLEM THIS SOLVES. Everything above sizes the phone sheet's contents
+   from the viewport's WIDTH — type in `vw`, the plate in a flat `30dvh` cap —
+   while the sheet's budget comes from its HEIGHT. A 390x844 phone and a 320x568
+   phone therefore laid out almost identically in the vertical direction while
+   their budgets differed by 276px, and the two dense chapters (the register and
+   the finale) simply grew the paper.
+
+   THE ORDER OF SACRIFICE IS FIXED, and it is the brief's: the artwork gives
+   ground first, then the decorative spacing — rules, gaps, margins — then the
+   display type, and the body copy never falls below 0.8rem. Nothing below sets
+   a body font-size at all.
+
+   THE STEPS ARE VIEWPORT-HEIGHT MEDIA QUERIES because the sheet's height IS
+   `100dvh - var(--tome-chrome)`: the viewport's height is not a proxy for the
+   budget here, it is the budget's only variable. 700px is the same line
+   tomeChrome.ts draws for `snug`, so the tighter chrome and the tighter
+   composition arrive together rather than one at a time. */
+
+@media (orientation: portrait) and (max-height: 700px) {
+  .academy-welcome .tome-single > .tome-sheet {
+    padding: 0.85rem 0.9rem 0.95rem;
+  }
+
+  .academy-welcome .tome-single .tome-rule {
+    margin: 0.5rem 0 0.55rem;
+  }
+
+  /* Display type answers to the short axis as well as the long one. `min()` of
+     the two, so the heading is set by whichever of width and height is scarcer;
+     the floor is a real floor and is the last thing to give. */
+  .academy-welcome .tome-single .tome-eyebrow {
+    font-size: clamp(0.6rem, min(2.6vw, 1.5vh), 0.72rem);
+  }
+
+  .academy-welcome .tome-single .tome-heading {
+    font-size: clamp(1.25rem, min(6.2vw, 3.3vh), 1.5rem);
+  }
+
+  .academy-welcome .tome-single .tome-body {
+    margin-top: 0.6em;
+  }
+
+  /* The register loses its air, never a field — the same trade the landscape
+     sheet already makes. */
+  .academy-welcome .tome-single .tome-form {
+    gap: 0.5em;
+    margin-top: 0.7em;
+  }
+
+  .academy-welcome .tome-single .tome-submit {
+    margin-top: 0.25em;
+    padding: 0.5em 0.9em;
+  }
+
+  .academy-welcome .tome-single .tome-signin {
+    margin-top: 0.6em;
+    padding-top: 0.5em;
+  }
+
+  /* And the finale's pictures come in with everything else. */
+  .academy-welcome .tome-single .tome-finale-graph {
+    height: min(14vh, 92px);
+    margin-top: 0.55em;
+  }
+
+  .academy-welcome .tome-single .tome-symbols {
+    margin-top: 0.9em;
+    gap: 0.5rem;
+  }
+
+  .academy-welcome .tome-single .tome-symbol {
+    width: clamp(2.2rem, 12vw, 3rem);
+  }
+
+  .academy-welcome .tome-single .tome-discovery-accent {
+    margin-top: 0.35em;
+  }
+
+  .academy-welcome .tome-single .tome-discovery-emote {
+    width: clamp(1.8rem, 9vw, 2.4rem);
+  }
+
+  .academy-welcome .tome-single .tome-writing[data-finale] .tome-exits {
+    margin-top: 0.7em;
+    gap: 0.4rem;
+  }
+}
+
+/* The 568px phone — the shortest in the supported set, and the one every
+   measurement in this section was taken against. */
+@media (orientation: portrait) and (max-height: 600px) {
+  .academy-welcome .tome-single > .tome-sheet {
+    padding: 0.7rem 0.85rem 0.8rem;
+  }
+
+  .academy-welcome .tome-single .tome-rule {
+    margin: 0.4rem 0 0.45rem;
+  }
+
+  .academy-welcome .tome-single .tome-heading {
+    font-size: clamp(1.25rem, min(6vw, 3.1vh), 1.4rem);
+  }
+
+  .academy-welcome .tome-single .tome-body {
+    margin-top: 0.5em;
+    line-height: 1.46;
+  }
+
+  .academy-welcome .tome-single .tome-form {
+    gap: 0.42em;
+    margin-top: 0.55em;
+  }
+
+  .academy-welcome .tome-single .tome-field-input {
+    padding-bottom: 0.2em;
+  }
+
+  .academy-welcome .tome-single .tome-submit {
+    margin-top: 0.15em;
+    padding: 0.45em 0.85em;
+  }
+
+  .academy-welcome .tome-single .tome-signin {
+    margin-top: 0.5em;
+    padding-top: 0.4em;
+  }
+
+  .academy-welcome .tome-single .tome-finale-graph {
+    height: min(12vh, 72px);
+    margin-top: 0.45em;
+  }
+
+  .academy-welcome .tome-single .tome-symbols {
+    margin-top: 0.7em;
+    gap: 0.4rem;
+  }
+
+  .academy-welcome .tome-single .tome-symbol {
+    width: clamp(2rem, 11vw, 2.6rem);
+  }
+
+  .academy-welcome .tome-single .tome-discovery-emote {
+    width: clamp(1.6rem, 8vw, 2.1rem);
+  }
+
+  /* THE REGISTER PLATE STOPS BEING A SQUARE. Every other illustration in the
+     book is composed into a square box and that is right for a picture; the
+     register card is not a picture but four stacked rows, and a square that has
+     come down to ~108px is ~76px of usable width — narrow enough that "Academy
+     Register" wraps to two lines and the seal is pushed off the bottom. Given
+     the sheet's width instead, the same four rows fit in the same height with
+     the title on one line. Scoped by `:has()` so no other plate is touched. */
+  .academy-welcome .tome-single .tome-plate:has(.tome-register) {
+    aspect-ratio: auto;
+    width: min(100%, 15rem);
+  }
+
+  /* THE REGISTER CARD KEEPS ITS SEAL. The card is a square plate inside the
+     illustration slot, so when the slot came down to ~108px the seal — the last
+     thing in its column, and the one piece of feedback the card exists to give —
+     was the first thing the plate's `overflow: hidden` took. It is not dropped
+     here: the card's own air comes in instead, exactly as the form's did, and
+     all four of its parts stay on the plate. Measured at 320x568: title 11 +
+     two ruled lines 53 + seal 22 + gaps 11 + padding 11 = 108. */
+  .academy-welcome .tome-single .tome-register {
+    gap: 0.22em;
+    padding: 5% 7%;
+  }
+
+  /* A little more air under the rule than the card's own 0.12em: at this size
+     the hand-set value's descenders were crossing the line they are written
+     on. The plate gives the room back — it is the elastic element here. */
+  .academy-welcome .tome-single .tome-register-field {
+    min-height: 1.6em;
+    padding-bottom: 0.26em;
+  }
+
+  .academy-welcome .tome-single .tome-register-seal {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.1em;
+  }
+
+  .academy-welcome .tome-single .tome-register-seal-mark {
+    font-size: 0.58rem;
+  }
+}
+
+/* ---- WE1: the painted spread on a short viewport ------------------------- */
+
+/* THE SPREAD FAILS FROM THE SAME CAUSE FROM THE OTHER DIRECTION. Every measure
+   on the painted book is `cqw` — a percentage of the tome's own width — and the
+   tome's width is already the smaller of a width budget and a height budget, so
+   in principle the whole composition scales with the book. In practice it stops:
+   every one of those measures is a `clamp()` with a real floor, and once the
+   floors engage the writing keeps its size while the page it is written on goes
+   on shrinking. Measured on the register's page, holding everything else still:
+
+       tome width   page box    the writing
+         992px        516px        390px      fits, 126px spare
+         650px        338px        301px      fits, 37px spare
+         600px        312px        297px      fits, 15px spare
+         550px        286px        314px      OVERFLOWS by 28px
+         450px        234px        351px      OVERFLOWS by 117px
+
+   The writing gets TALLER below ~600px because the type has stopped shrinking
+   and the lines have started wrapping. The crossing point is a tome about
+   590px wide, which is a viewport about 635px tall — a 1024x580 laptop window
+   sized the book to 514px and printed the register over the painted frame, and
+   the finale's lower exit crossed the paper's bottom edge by 5px.
+
+   TWO THINGS FIX IT TOGETHER. `snug` chrome (tomeChrome.ts) hands the short
+   viewport ~80px back, which alone lifts a 1024x580 window's tome from 514px to
+   624px — clear of the crossing. This block is the belt to that pair of braces:
+   below a 660px tome the two dense pages give up their decorative spacing and
+   their pictures' floors, so the margin above the crossing is real rather than
+   nominal.
+
+   A CONTAINER QUERY AND NOT A MEDIA QUERY, deliberately. `.academy-tome` is
+   already the `container-type: inline-size` element every `cqw` on these pages
+   resolves against, and its width is the min of the width and height budgets —
+   so one query on it is exactly the joint width-and-height condition these rules
+   want, stated once, in the same unit as everything around it. */
+
+@container (max-width: 660px) {
+  /* The register: gaps, not fields. Nothing here removes a control, changes a
+     label or touches the input type size. */
+  .academy-welcome .tome-spread .tome-form {
+    gap: 0.5em;
+    margin-top: 0.7em;
+  }
+
+  .academy-welcome .tome-spread .tome-submit {
+    margin-top: 0.25em;
+    padding: 0.42em 0.85em;
+  }
+
+  .academy-welcome .tome-spread .tome-signin {
+    margin-top: 0.6em;
+    padding-top: 0.5em;
+  }
+
+  /* The register CARD on the facing page follows the form in, so the two pages
+     stay in balance while both are being compacted. */
+  .academy-welcome .tome-spread .tome-register {
+    gap: 0.4em;
+    padding: 6% 7% 7%;
+  }
+
+  .academy-welcome .tome-spread .tome-register-field {
+    min-height: 1.75em;
+  }
+
+  /* The finale. The graph's floor is the single biggest number on the closing
+     right page and the one that most needs to come down: at a 514px tome its
+     `13cqw` term is 67px and the 5rem floor was holding it at 80. It is still
+     the page's anchor and still takes whatever the copy leaves. */
+  .academy-welcome .tome-spread .tome-finale-graph {
+    min-height: clamp(3.25rem, 11cqw, 11.5rem);
+    margin-top: 0.55em;
+  }
+
+  .academy-welcome .tome-spread .tome-symbols {
+    margin-top: 0.9em;
+  }
+
+  .academy-welcome .tome-spread .tome-discovery-accent {
+    margin-top: 0.3em;
+  }
+
+  .academy-welcome .tome-spread .tome-discovery-emote {
+    width: clamp(1.7rem, 5.4cqw, 3.9rem);
+  }
+
+  .academy-welcome .tome-spread .tome-writing[data-finale] .tome-exits {
+    margin-top: 0.65em;
+    gap: 0.36rem;
+  }
+
+  .academy-welcome .tome-spread .tome-writing[data-finale] .tome-exit {
+    padding: 0.42em 0.6em;
+  }
 }
 
 /* ---- Reveal slots -------------------------------------------------------- */
@@ -4420,6 +4773,18 @@ html.high-contrast * { text-shadow: none !important; }
 .tome-leaf-whole .tome-leaf-front,
 .tome-leaf-whole .tome-leaf-back {
   border-radius: 0.75rem;
+}
+
+/* AND THE LIFTING SHEET CENTRES ITS WRITING, exactly as the sheet under it does
+   (WE1). The faces are `inset: 0` over the live sheet, so they have always been
+   the same BOX — but `justify-content: center` lives on `.tome-single > .tome-
+   sheet` and the direct-child selector does not reach a leaf. That cost nothing
+   while the sheet was sized by its content, because a sheet with no slack
+   centres and top-aligns identically. Now that the sheet is a fixed budget the
+   slack is real, and without this the outgoing chapter jumped to the top of the
+   paper on the first frame of every turn. */
+.tome-leaf-whole .tome-leaf-front {
+  justify-content: center;
 }
 
 /* The outgoing writing, positioned exactly where the live right page had it.
