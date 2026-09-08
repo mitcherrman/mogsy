@@ -468,13 +468,47 @@ describe("Generate Content simple mode", () => {
     expect(screen.getAllByText(/Reveal post/).length).toBeGreaterThan(0);
   });
 
-  it("keeps Open Content Workspace as the one primary action", async () => {
+  it("makes the export itself the one primary action, and names what it will produce", async () => {
     await openPanel();
-    expect(screen.getByTestId("generate-content-open-workspace")).toBeTruthy();
-    // The CLI routes still exist — behind Developer tools, not beside it.
+    const action = screen.getByTestId("generate-content-export-action");
+    // The default selection is one question in `question,correct`, so the
+    // button has to say two cards — a label that counted differently from the
+    // plan would be a promise the run does not keep.
+    expect(action.textContent).toContain("Export 2 PNGs as ZIP");
+
+    // One card is one PNG, and the label follows the selection rather than a
+    // fixed string.
+    fireEvent.click(screen.getByTestId("content-intent-question"));
+    expect(screen.getByTestId("generate-content-export-action").textContent).toContain("Export PNG");
+    expect(screen.getByTestId("generate-content-export-hint").textContent).toContain(".png");
+  });
+
+  it("moves the local renderer into Developer tools, and no normal copy asks for localhost", async () => {
+    await openPanel();
+    // `<details>` keeps its children mounted, so the question is not whether
+    // the link EXISTS — it is where it lives. It must be inside Developer
+    // tools, and the normal path must not mention a local server at all.
+    const developer = screen.getByTestId("generate-content-developer");
+    expect(within(developer).getByTestId("generate-content-open-workspace")).toBeTruthy();
+
+    const primary = screen.getByTestId("generate-content-export");
+    expect(primary.textContent).not.toMatch(/127\.0\.0\.1|localhost|Content Workspace/);
+    expect(within(primary).queryByTestId("generate-content-open-workspace")).toBeNull();
+
     openDeveloperTools();
     expect(screen.getByTestId("generate-content-copy")).toBeTruthy();
     expect(screen.getByTestId("generate-content-copy-config")).toBeTruthy();
+  });
+
+  it("refuses an audit format in the browser rather than exporting the wrong viewport", async () => {
+    await openPanel();
+    openAdvanced();
+    fireEvent.click(screen.getByTestId("content-format-mobile-audit"));
+
+    const errors = screen.getByTestId("generate-content-export-errors");
+    expect(errors.textContent).toContain("mobile-audit");
+    expect(errors.textContent).toMatch(/Developer tools/);
+    expect((screen.getByTestId("generate-content-export-action") as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

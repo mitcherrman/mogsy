@@ -136,7 +136,9 @@ The panel asks two operator questions and answers them by writing the **same**
 * **Where are you posting?** → `DESTINATIONS`, five publishable
   `RENDER_FORMATS` keys under operator names
 * **What do you want?** → `INTENTS`, three ordered `RENDER_STATES` sets
-* then one primary action: **Open Content Workspace**
+* then one primary action: **Export** — the export itself, in the browser,
+  labelled from the plan (`Export PNG` / `Export N PNGs as ZIP`). The local
+  renderer moved into Developer tools. See `docs/CON1_ADMIN_EXPORT.md`.
 
 Both derive their selected state by *reading the config back*, so an advanced
 edit is reflected in simple mode rather than silently disagreeing with it. When
@@ -197,8 +199,9 @@ Added:
   other admin pages; both overlays suppressed here and kept elsewhere
 * `AdminQuizReview.generateContent.test.tsx` — simple mode writes real format
   keys and real render states, reflects an advanced edit instead of
-  disagreeing with it, hides the card question under a post composition, keeps
-  Open Content Workspace as the one primary action; and the advanced filters
+  disagreeing with it, hides the card question under a post composition, makes
+  the export the one primary action and keeps the local renderer inside
+  Developer tools; and the advanced filters
   are all reachable one click behind More filters, which reports its count
 
 Existing tests that reached advanced controls now open the disclosure first

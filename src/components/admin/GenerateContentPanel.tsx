@@ -54,7 +54,9 @@ import {
   Check,
   ChevronDown,
   Copy,
+  Download,
   ExternalLink,
+  Loader2,
   Terminal,
   X,
   AlertTriangle,
@@ -75,6 +77,15 @@ import {
   buildContentCommand,
   type ContentCommandConfig,
 } from "@/lib/quiz-screenshot/command";
+import {
+  buildExportPlan,
+  exportActionLabel,
+  exportDeliveryHint,
+} from "@/lib/quiz-screenshot/exportPlan";
+import { deliverExportedFiles } from "@/lib/quiz-screenshot/deliverExport";
+import { adaptScreenshotQuestion } from "@/lib/quiz-screenshot/adapt";
+import type { RenderQuestion } from "@/lib/quiz-screenshot/types";
+import type { ExportCardOutcome } from "@/lib/quiz-screenshot/runBrowserExport";
 import {
   evaluateContentReadiness,
   summarizeReadiness,
@@ -390,6 +401,86 @@ export function GenerateContentPanel({
   const canCopy = !handoffBlocked && built.command !== "";
   const canHandOff = !handoffBlocked && !isFailure(handoff);
 
+  // ── CON1 Step 6 — direct export ────────────────────────────────────────
+  //
+  // The same `config` again. The plan is what the button PROMISES, so it is
+  // derived from the selection and the configuration rather than written
+  // beside them: a label that counts cards independently is a label that can
+  // be wrong.
+  const plan = useMemo(
+    () =>
+      buildExportPlan({
+        selection: selection.map((q) => ({ id: String(q.id ?? q.reviewKey), label: q.key })),
+        formats,
+        states,
+        post,
+        runId,
+      }),
+    [selection, formats, states, post, runId],
+  );
+
+  const [exporting, setExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ done: 0, total: 0 });
+  const [exportOutcomes, setExportOutcomes] = useState<ExportCardOutcome[]>([]);
+
+  const canExport = !handoffBlocked && plan.errors.length === 0 && plan.cards.length > 0;
+  const exportProblems = exportOutcomes.filter((o) => o.status !== "captured");
+
+  /**
+   * Run the export without leaving this page.
+   *
+   * The runner is imported on demand: the render harness sets a global
+   * framer-motion flag at module scope, and pulling it into the Admin bundle
+   * eagerly would apply that to the whole app.
+   */
+  const onExport = async () => {
+    setExporting(true);
+    setExportOutcomes([]);
+    setExportProgress({ done: 0, total: plan.cards.length });
+    try {
+      const adapted: RenderQuestion[] = [];
+      const unusable: string[] = [];
+      for (const q of selection) {
+        const result = adaptScreenshotQuestion(q.row);
+        if (typeof result === "string") unusable.push(`${q.key}: ${result}`);
+        else adapted.push(result);
+      }
+      if (unusable.length > 0) {
+        // The readiness preflight already blocks these, so reaching here means
+        // the two disagreed. Say so rather than exporting a short set.
+        toast.error(`Cannot export: ${unusable[0]}`);
+        return;
+      }
+
+      const { runBrowserExport } = await import("@/lib/quiz-screenshot/runBrowserExport");
+      const run = await runBrowserExport({
+        plan,
+        questions: adapted,
+        onProgress: (p) => setExportProgress({ done: p.done, total: p.total }),
+      });
+      setExportOutcomes(run.outcomes);
+
+      const delivered = await deliverExportedFiles(run.files, plan.zipFileName);
+      const failedCount = run.outcomes.filter((o) => o.status === "failed").length;
+      const skippedCount = run.outcomes.filter((o) => o.status === "skipped").length;
+
+      if (!delivered) {
+        toast.error("Nothing was exported — every card was blocked. See the reasons below.");
+      } else if (failedCount || skippedCount) {
+        toast.warning(
+          `Exported ${delivered.fileCount} of ${plan.cards.length} cards as ${delivered.fileName}. ` +
+            `${failedCount} failed, ${skippedCount} skipped.`,
+        );
+      } else {
+        toast.success(`Exported ${delivered.fileName}`);
+      }
+    } catch (error) {
+      toast.error(`Export failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div
       className="flex flex-col gap-4 rounded-lg border border-border bg-background p-4"
@@ -582,46 +673,60 @@ export function GenerateContentPanel({
       </div>
 
       {/* ── PRIMARY ACTION ─────────────────────────────────────────────
-          A plain link: Admin is https and the workspace is loopback http, so
-          no probe is possible and none is faked. If the workspace is not
-          running the browser says so and the copy routes below still work. */}
-      <div className="space-y-1.5" data-testid="generate-content-handoff">
+          The export itself, here, on this page. The label is derived from the
+          plan, so it counts the cards the run will actually attempt. */}
+      <div className="space-y-1.5" data-testid="generate-content-export">
         <Button
-          asChild={canHandOff}
           size="sm"
-          disabled={!canHandOff}
+          disabled={!canExport || exporting}
+          onClick={onExport}
+          data-testid="generate-content-export-action"
           className="h-10 w-full gap-2 text-sm font-semibold"
         >
-          {canHandOff ? (
-            <a
-              href={workspaceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="generate-content-open-workspace"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Open Content Workspace
-            </a>
+          {exporting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Exporting {Math.min(exportProgress.done + 1, exportProgress.total)} of{" "}
+              {exportProgress.total}…
+            </>
           ) : (
-            <span data-testid="generate-content-open-workspace-disabled">
-              <ExternalLink className="mr-1 inline h-4 w-4" />
-              Open Content Workspace
-            </span>
+            <>
+              <Download className="h-4 w-4" aria-hidden />
+              {exportActionLabel(plan)}
+            </>
           )}
         </Button>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Opens <code className="rounded bg-muted px-1">{CONTENT_WORKSPACE_START_COMMAND}</code>{" "}
-          on this machine with the selection and this configuration already
-          loaded, in order. Not running? The link fails in the browser and
-          nothing is lost — start the workspace, or paste the copied config
-          from Developer tools into its Import panel. Admin seeds the
-          workspace; the workspace owns the final generation settings.
+        <p
+          className="text-xs leading-relaxed text-muted-foreground"
+          data-testid="generate-content-export-hint"
+        >
+          {exportDeliveryHint(plan) || "Choose a destination and at least one card to export."}{" "}
+          Rendered here, through the same production components and the same
+          readiness gates the local renderer uses — no local server needed.
         </p>
 
-        {isFailure(handoff) && (
-          <ul className="space-y-0.5" data-testid="generate-content-handoff-errors">
-            {handoff.errors.map((e) => (
-              <li key={e} className="text-xs text-red-300">{e}</li>
+        {plan.errors.length > 0 && (
+          <ul className="space-y-0.5" data-testid="generate-content-export-errors">
+            {plan.errors.map((e) => (
+              <li key={e} className="text-xs text-amber-300">{e}</li>
+            ))}
+          </ul>
+        )}
+
+        {/* A partial run reports what it did NOT produce, by name and reason.
+            Quietly shipping a short ZIP is how a package comes back missing a
+            slide with nobody knowing which one. */}
+        {exportProblems.length > 0 && (
+          <ul className="space-y-0.5" data-testid="generate-content-export-problems">
+            {exportProblems.map((o) => (
+              <li
+                key={`${o.card.questionId}-${o.card.formatKey}-${o.card.state}-${o.card.slide}`}
+                className={o.status === "failed" ? "text-xs text-red-300" : "text-xs text-amber-300"}
+              >
+                {o.card.questionLabel} · {formatLabel(o.card.formatKey)} ·{" "}
+                {STATE_LABELS[o.card.state] ?? o.card.state} —{" "}
+                {o.status === "failed" ? "blocked" : "skipped"}: {o.reason}
+              </li>
             ))}
           </ul>
         )}
@@ -770,9 +875,55 @@ export function GenerateContentPanel({
           thing on screen; it does not stop being available. */}
       <Disclosure
         label="Developer tools"
-        hint="copy the config or the exact command"
+        hint="local renderer, QA batches, the exact command"
         testId="generate-content-developer"
       >
+        {/* The local renderer is still the only route to the things a browser
+            genuinely cannot do — Playwright capture QA, audit-viewport formats,
+            manifests, contact sheets and run history on disk. It is no longer
+            the way to get a picture. */}
+        <div className="space-y-1.5" data-testid="generate-content-handoff">
+          <Button
+            asChild={canHandOff}
+            size="sm"
+            variant="outline"
+            disabled={!canHandOff}
+            className="h-8 w-full gap-2 text-xs"
+          >
+            {canHandOff ? (
+              <a
+                href={workspaceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="generate-content-open-workspace"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open local renderer (Content Workspace)
+              </a>
+            ) : (
+              <span data-testid="generate-content-open-workspace-disabled">
+                <ExternalLink className="mr-1 inline h-3.5 w-3.5" />
+                Open local renderer (Content Workspace)
+              </span>
+            )}
+          </Button>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Needs <code className="rounded bg-muted px-1">{CONTENT_WORKSPACE_START_COMMAND}</code>{" "}
+            running on this machine. It carries this same selection and
+            configuration, and adds what only a local Playwright run can do:
+            capture QA, the audit-viewport formats, manifests, contact sheets
+            and run history on disk.
+          </p>
+
+          {isFailure(handoff) && (
+            <ul className="space-y-0.5" data-testid="generate-content-handoff-errors">
+              {handoff.errors.map((e) => (
+                <li key={e} className="text-xs text-red-300">{e}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <CopyButton
             text={workspaceConfig}

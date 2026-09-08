@@ -16,7 +16,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { GenerateContentPanel } from "./GenerateContentPanel";
 import type { ReviewQuestion } from "@/lib/quiz/api";
 import type { AssetStatus } from "@/lib/quiz/assetStatus";
@@ -193,6 +193,14 @@ describe("a workspace that is not running degrades gracefully", () => {
     expect(screen.getByTestId("generate-content-copy")).toBeTruthy();
     expect(screen.getByTestId("generate-content-copy-config")).toBeTruthy();
     expect(container.textContent).toContain("npm run content-studio");
-    expect(container.textContent).toMatch(/Not running\?/);
+    // The link, the two copy routes and the start command are now one
+    // developer group. The "not running? nothing is lost" reassurance went
+    // with them: it existed because getting a picture used to depend on the
+    // workspace, and it no longer does — so the copy says what the local
+    // renderer ADDS instead of apologising for its absence.
+    const developer = screen.getByTestId("generate-content-developer");
+    expect(within(developer).getByTestId("generate-content-open-workspace")).toBeTruthy();
+    expect(within(developer).getByTestId("generate-content-copy")).toBeTruthy();
+    expect(developer.textContent).toMatch(/capture QA|manifests|contact sheets/);
   });
 });

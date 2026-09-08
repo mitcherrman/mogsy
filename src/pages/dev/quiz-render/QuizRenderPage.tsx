@@ -1185,7 +1185,20 @@ function FormatShell({
   );
 }
 
-export default function QuizRenderPage() {
+/**
+ * `renderDocument` — the document this harness is actually rendering INTO.
+ *
+ * The route mounts into the page's own document and passes nothing. The Admin
+ * exporter mounts this component into an offscreen, format-sized iframe, and
+ * React renders it from the PARENT realm — so a bare `document` here is
+ * Admin's, not the export surface's. The two document-level effects below then
+ * themed and stripped the wrong page, and the operator watched
+ * `/admin/quiz-content` turn League-dark for the length of an export.
+ *
+ * Nothing about the composition changes; only which root these two effects
+ * address. The route passes nothing and is byte-identical.
+ */
+export default function QuizRenderPage({ renderDocument }: { renderDocument?: Document } = {}) {
   const [params] = useSearchParams();
   const [questions] = useState<RenderQuestion[] | null>(() => {
     const injected = readInjectedQuestions();
@@ -1203,20 +1216,21 @@ export default function QuizRenderPage() {
 
   // The live quiz always renders under the dark LoL theme (Layout.tsx applies
   // these classes); the harness mounts outside Layout, so apply them here for
-  // faithful, deterministic styling.
+  // faithful, deterministic styling — on the document being RENDERED INTO,
+  // which is not always the one this module's `document` refers to.
   useEffect(() => {
-    const root = document.documentElement;
+    const root = (renderDocument ?? document).documentElement;
     const added = ["dark", "theme-lol"].filter((c) => !root.classList.contains(c));
     added.forEach((c) => root.classList.add(c));
     return () => added.forEach((c) => root.classList.remove(c));
-  }, []);
+  }, [renderDocument]);
 
   // Remove the index.html boot splash (#initial-shell): it is a fixed,
   // viewport-centered Mogsy wordmark at z-index 9999 whose fade-out lingers
   // in captures and overlaps answer rows.
   useEffect(() => {
-    document.getElementById("initial-shell")?.remove();
-  }, []);
+    (renderDocument ?? document).getElementById("initial-shell")?.remove();
+  }, [renderDocument]);
 
   const qId = params.get("q") ?? "";
   const stateParam = params.get("state") ?? "question";
