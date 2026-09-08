@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2, XCircle, AlertTriangle, Star, StarOff, EyeOff, Eye,
-  ChevronLeft, ChevronRight, Search, SlidersHorizontal, X, ImageOff,
+  ChevronLeft, ChevronRight, ChevronDown, Search, SlidersHorizontal, X, ImageOff,
   ArrowLeft, Loader2, Wrench, ListChecks, Send, Package, KeyRound, Download,
   Image as ImageIcon, ImageMinus, HelpCircle, Terminal,
 } from "lucide-react";
@@ -104,6 +104,17 @@ function AdminKeyPanel({ invalid }: { invalid: boolean }) {
 
 const REVIEW_STATUSES = ["unreviewed", "approved", "rejected", "needs_fix", "missing_asset"] as const;
 
+/**
+ * The three verdicts a reviewer actually reaches for, and the two that only
+ * ever undo or re-route. Splitting them is the whole point of the Review
+ * section: five equally-weighted buttons hid the decision the page exists for.
+ * Both lists come from REVIEW_STATUSES, so no status can be dropped silently.
+ */
+const PRIMARY_REVIEW_STATUSES = ["approved", "needs_fix", "rejected"] as const;
+const SECONDARY_REVIEW_STATUSES = REVIEW_STATUSES.filter(
+  (s) => !(PRIMARY_REVIEW_STATUSES as readonly string[]).includes(s),
+);
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   unreviewed:    { label: "Unreviewed",    color: "border-muted-foreground/30 text-muted-foreground",         icon: SlidersHorizontal },
   approved:      { label: "Approved",      color: "border-emerald-400/50 text-emerald-300 bg-emerald-400/10", icon: CheckCircle2 },
@@ -153,7 +164,7 @@ function AssetBadge({ status, compact = false }: { status?: AssetStatus | null; 
   if (compact) {
     return (
       <Icon
-        className={`h-3 w-3 ${
+        className={`h-4 w-4 ${
           described.tone === "bad" ? "text-red-400"
             : described.tone === "warn" ? "text-amber-400"
             : described.tone === "ok" ? "text-emerald-400"
@@ -170,11 +181,11 @@ function AssetBadge({ status, compact = false }: { status?: AssetStatus | null; 
     <span
       data-asset-status={status.status}
       title={described.help}
-      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] ${
+      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${
         ASSET_TONE[described.tone] ?? ASSET_TONE.muted
       }`}
     >
-      <Icon className="h-3 w-3" aria-hidden />
+      <Icon className="h-3.5 w-3.5" aria-hidden />
       {described.label}
     </span>
   );
@@ -316,15 +327,15 @@ function UniverseRow({
   // narrowing predicate — see src/lib/result-narrowing.ts.
   const refusal = isFailure(support) ? support : null;
 
-  return <div className="border-b px-3 py-2 text-[11px] last:border-b-0">
-    <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3">
+  return <div className="border-b px-3 py-2.5 text-sm last:border-b-0">
+    <div className="grid grid-cols-[11rem_13rem_1fr_10rem] gap-3">
       <div><div className="font-medium">{SOURCE_LABELS[row.source_kind] ?? row.source_kind}</div><div className="text-muted-foreground">{row.materialization}</div></div>
       <div className="truncate" title={row.family}>{row.family || "—"}</div>
       <div className="min-w-0">
         <div className="truncate font-medium" title={row.question_text}>{row.question_text || row.review_key}</div>
-        <div className="truncate text-muted-foreground">{row.review_key}</div>
+        <div className="truncate text-xs text-muted-foreground">{row.review_key}</div>
         {framing && (
-          <div className="truncate text-muted-foreground" data-testid={`universe-framing-${row.review_key}`}>
+          <div className="truncate text-xs text-muted-foreground" data-testid={`universe-framing-${row.review_key}`}>
             {framing}
           </div>
         )}
@@ -343,14 +354,14 @@ function UniverseRow({
           >
             {legacy ? "Legacy (superseded)" : row.source_status || "—"}
           </div>
-          <div className="truncate text-muted-foreground" title={row.source_version}>{row.source_version || "—"}</div>
+          <div className="truncate text-xs text-muted-foreground" title={row.source_version}>{row.source_version || "—"}</div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {onGenerate && (
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 shrink-0 gap-1 px-1.5 text-[10px]"
+              className="h-8 shrink-0 gap-1 px-2 text-xs"
               data-testid={`universe-generate-${row.review_key}`}
               data-source-supported={refusal ? "false" : "true"}
               data-refusal-code={refusal ? refusal.code : undefined}
@@ -362,18 +373,18 @@ function UniverseRow({
               }
               onClick={() => onGenerate(row.review_key)}
             >
-              <Terminal className="h-3 w-3" aria-hidden /> Generate
+              <Terminal className="h-3.5 w-3.5" aria-hidden /> Generate
             </Button>
           )}
           {candidateId && (
             <Button
               size="sm"
               variant={previewing ? "secondary" : "ghost"}
-              className="h-6 shrink-0 gap-1 px-1.5 text-[10px]"
+              className="h-8 shrink-0 gap-1 px-2 text-xs"
               data-testid={`universe-preview-toggle-${row.review_key}`}
               onClick={() => setPreviewing((v) => !v)}
             >
-              <Eye className="h-3 w-3" aria-hidden /> {previewing ? "Hide" : "Preview"}
+              <Eye className="h-3.5 w-3.5" aria-hidden /> {previewing ? "Hide" : "Preview"}
             </Button>
           )}
         </div>
@@ -381,7 +392,7 @@ function UniverseRow({
     </div>
     {onGenerate && refusal && (
       <p
-        className="mt-1 text-[10px] text-muted-foreground"
+        className="mt-1 text-xs text-muted-foreground"
         data-testid={`universe-generate-reason-${row.review_key}`}
       >
         {refusal.reason}
@@ -402,12 +413,19 @@ function UniverseRow({
 // Small helpers
 // ---------------------------------------------------------------------------
 
+/** One consistent section heading for the detail panel. */
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{children}</p>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.unreviewed;
   const Icon = cfg.icon;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${cfg.color}`}>
-      <Icon className="h-3 w-3" />
+    <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${cfg.color}`}>
+      <Icon className="h-3.5 w-3.5" />
       {cfg.label}
     </span>
   );
@@ -420,7 +438,7 @@ function DiffBadge({ difficulty }: { difficulty?: number }) {
     "bg-amber-400/15 text-amber-300", "bg-orange-400/15 text-orange-300", "bg-red-400/15 text-red-300",
   ];
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${colors[difficulty] ?? ""}`}>
+    <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${colors[difficulty] ?? ""}`}>
       D{difficulty}
     </span>
   );
@@ -449,8 +467,8 @@ function AssetImage({ src, label }: { src?: string | null; label: string }) {
           onError={() => setState("error")}
         />
       )}
-      <span className="text-center text-[9px] text-muted-foreground">{label}</span>
-      {state === "error" && <span className="text-[9px] text-red-400">broken</span>}
+      <span className="text-center text-[11px] text-muted-foreground">{label}</span>
+      {state === "error" && <span className="text-[11px] text-red-400">broken</span>}
     </div>
   );
 }
@@ -460,16 +478,46 @@ function choiceLabel(c: string | { label: string; raw_stats?: string[] }): strin
 }
 
 // ---------------------------------------------------------------------------
-// Filter sidebar
+// Filters
+//
+// The primary toolbar carries only what the operator touches every day:
+// search, source, review status, and one door to everything else. The eleven
+// controls that used to occupy a permanent 240px column are all still here —
+// behind "More filters", which also reports how many of them are active so a
+// narrowed list is never a mystery.
 // ---------------------------------------------------------------------------
 
-type FilterSidebarProps = {
+type FilterFieldsProps = {
   filters: ReviewFilters;
   onFilters: (f: ReviewFilters) => void;
   filterOptions?: ReviewFilterOptions;
 };
 
-function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps) {
+/** The filters that live behind "More filters", for the active-count badge. */
+const ADVANCED_FILTER_KEYS = [
+  "category", "answer_certainty", "format", "is_active", "favorite_for_shorts",
+  "missing_asset", "has_image", "difficulty_min", "difficulty_max",
+  "ability_slot", "subject_type", "pack_key",
+] as const;
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The advanced filter panel.
+ *
+ * An absolutely-positioned overlay rather than an inline block: opening it
+ * must not shove the question list down the page, which is the layout jump the
+ * old always-on column was avoiding by never closing.
+ */
+function MoreFilters({ filters, onFilters, filterOptions }: FilterFieldsProps) {
+  const [open, setOpen] = useState(false);
   const set = (key: keyof ReviewFilters, val: ReviewFilters[keyof ReviewFilters]) =>
     onFilters({ ...filters, [key]: val, page: 1 });
   const clear = (key: keyof ReviewFilters) => {
@@ -478,204 +526,221 @@ function FilterSidebar({ filters, onFilters, filterOptions }: FilterSidebarProps
     onFilters(next);
   };
 
-  const activeCount = [
-    filters.category, filters.source_type, filters.answer_certainty, filters.format,
-    filters.review_status, filters.is_active, filters.favorite_for_shorts,
-    filters.missing_asset, filters.has_image, filters.difficulty_min, filters.difficulty_max,
-    filters.ability_slot, filters.subject_type, filters.pack_key,
-  ].filter((v) => v !== undefined && v !== "").length;
+  const activeCount = ADVANCED_FILTER_KEYS
+    .filter((k) => filters[k] !== undefined && filters[k] !== "").length;
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col gap-3 overflow-y-auto pr-1">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filters</span>
+    <div className="relative">
+      <Button
+        size="sm"
+        variant={activeCount > 0 ? "secondary" : "outline"}
+        className="h-9 gap-1.5 text-sm"
+        aria-expanded={open}
+        data-testid="more-filters-toggle"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <SlidersHorizontal className="h-4 w-4" aria-hidden />
+        More filters
         {activeCount > 0 && (
-          <button
-            className="text-[10px] text-muted-foreground hover:text-foreground"
-            onClick={() => onFilters({ page: 1, page_size: filters.page_size })}
-          >
-            Clear all ({activeCount})
-          </button>
+          <span className="rounded bg-primary px-1.5 py-px text-[11px] font-semibold text-primary-foreground">
+            {activeCount}
+          </span>
         )}
-      </div>
+        <ChevronDown
+          className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </Button>
 
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Category</label>
-        <Select value={filters.category ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("category") : set("category", v)}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            {filterOptions?.categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Source Type</label>
-        <Select value={filters.source_type ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("source_type") : set("source_type", v)}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            {filterOptions?.source_types.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Difficulty</label>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((d) => {
-            const active = filters.difficulty_min === d && filters.difficulty_max === d;
-            return (
-              <button
-                key={d}
-                onClick={() =>
-                  active
-                    ? onFilters({ ...filters, page: 1, difficulty_min: undefined, difficulty_max: undefined })
-                    : onFilters({ ...filters, page: 1, difficulty_min: d, difficulty_max: d })
-                }
-                className={`h-6 w-6 rounded text-[10px] font-bold transition-colors ${
-                  active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {d}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Answer Certainty</label>
-        <Select value={filters.answer_certainty ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("answer_certainty") : set("answer_certainty", v)}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            <SelectItem value="objective">Objective</SelectItem>
-            <SelectItem value="derived">Derived</SelectItem>
-            <SelectItem value="subjective">Subjective</SelectItem>
-            <SelectItem value="community">Community</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Format</label>
-        <Select value={filters.format ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("format") : set("format", v)}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            {filterOptions?.formats.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Review Status</label>
-        <Select value={filters.review_status ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("review_status") : set("review_status", v)}>
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            {REVIEW_STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_CONFIG[s]?.label ?? s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Active</label>
-        <Select
-          value={filters.is_active !== undefined ? String(filters.is_active) : "__all__"}
-          onValueChange={(v) => v === "__all__" ? clear("is_active") : set("is_active", Number(v))}
-        >
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            <SelectItem value="1">Active only</SelectItem>
-            <SelectItem value="0">Inactive only</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Ability Slot</label>
-        <Select
-          value={filters.ability_slot ?? "__all__"}
-          onValueChange={(v) => v === "__all__" ? clear("ability_slot") : set("ability_slot", v)}
-        >
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            <SelectItem value="passive">Passive</SelectItem>
-            <SelectItem value="q">Q</SelectItem>
-            <SelectItem value="w">W</SelectItem>
-            <SelectItem value="e">E</SelectItem>
-            <SelectItem value="r">R (Ultimate)</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-medium text-muted-foreground">Subject Type</label>
-        <Select
-          value={filters.subject_type ?? "__all__"}
-          onValueChange={(v) => v === "__all__" ? clear("subject_type") : set("subject_type", v)}
-        >
-          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            <SelectItem value="champion">Champion</SelectItem>
-            <SelectItem value="ability">Ability</SelectItem>
-            <SelectItem value="item">Item</SelectItem>
-            <SelectItem value="rune">Rune</SelectItem>
-            <SelectItem value="summoner_spell">Summoner Spell</SelectItem>
-            <SelectItem value="objective">Objective</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {(filterOptions?.packs?.length ?? 0) > 0 && (
-        <div className="space-y-1">
-          <label className="text-[10px] font-medium text-muted-foreground">Pack</label>
-          <Select
-            value={filters.pack_key ?? "__all__"}
-            onValueChange={(v) => v === "__all__" ? clear("pack_key") : set("pack_key", v)}
+      {open && (
+        <>
+          {/* Click-away. Transparent and behind the panel, so nothing dims. */}
+          <div
+            className="fixed inset-0 z-20"
+            aria-hidden
+            onClick={() => setOpen(false)}
+          />
+          <div
+            data-testid="more-filters-panel"
+            className="absolute right-0 top-full z-30 mt-2 w-[46rem] max-w-[92vw] animate-in fade-in-0 zoom-in-95 duration-150 rounded-xl border border-border bg-background p-4 shadow-xl"
           >
-            <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="All" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All</SelectItem>
-              {filterOptions?.packs?.map((p) => (
-                <SelectItem key={p.pack_key} value={p.pack_key}>{p.title}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-semibold">More filters</span>
+              <div className="flex items-center gap-2">
+                {activeCount > 0 && (
+                  <button
+                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    onClick={() =>
+                      onFilters({
+                        page: 1,
+                        page_size: filters.page_size,
+                        search: filters.search,
+                        source_type: filters.source_type,
+                        review_status: filters.review_status,
+                      })
+                    }
+                  >
+                    Clear all ({activeCount})
+                  </button>
+                )}
+                <button
+                  aria-label="Close more filters"
+                  className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => setOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-medium text-muted-foreground">Quick Filters</label>
-        {[
-          { label: "⭐ Shorts Favorites", key: "favorite_for_shorts" as const, val: 1 },
-          { label: "🚨 Missing Asset",    key: "missing_asset" as const,     val: 1 },
-          { label: "🖼️ Has Image",        key: "has_image" as const,          val: 1 },
-          { label: "No Image",            key: "has_image" as const,          val: 0 },
-        ].map(({ label, key, val }) => {
-          const active = filters[key] === val;
-          return (
-            <button
-              key={`${key}-${val}`}
-              onClick={() => (active ? clear(key) : set(key, val))}
-              className={`w-full rounded border px-2 py-1 text-left text-[10px] transition-colors ${
-                active
-                  ? "border-primary/50 bg-primary/10 text-primary"
-                  : "border-transparent bg-muted text-muted-foreground hover:border-muted-foreground/20"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-    </aside>
+            <div className="grid grid-cols-3 gap-x-4 gap-y-3">
+              <Field label="Category">
+                <Select value={filters.category ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("category") : set("category", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Any category</SelectItem>
+                    {filterOptions?.categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label="Answer certainty">
+                <Select value={filters.answer_certainty ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("answer_certainty") : set("answer_certainty", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Any certainty</SelectItem>
+                    <SelectItem value="objective">Objective</SelectItem>
+                    <SelectItem value="derived">Derived</SelectItem>
+                    <SelectItem value="subjective">Subjective</SelectItem>
+                    <SelectItem value="community">Community</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label="Format">
+                <Select value={filters.format ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("format") : set("format", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Any format</SelectItem>
+                    {filterOptions?.formats.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label="Ability slot">
+                <Select value={filters.ability_slot ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("ability_slot") : set("ability_slot", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Any slot</SelectItem>
+                    <SelectItem value="passive">Passive</SelectItem>
+                    <SelectItem value="q">Q</SelectItem>
+                    <SelectItem value="w">W</SelectItem>
+                    <SelectItem value="e">E</SelectItem>
+                    <SelectItem value="r">R (Ultimate)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label="Subject type">
+                <Select value={filters.subject_type ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("subject_type") : set("subject_type", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Any subject</SelectItem>
+                    <SelectItem value="champion">Champion</SelectItem>
+                    <SelectItem value="ability">Ability</SelectItem>
+                    <SelectItem value="item">Item</SelectItem>
+                    <SelectItem value="rune">Rune</SelectItem>
+                    <SelectItem value="summoner_spell">Summoner Spell</SelectItem>
+                    <SelectItem value="objective">Objective</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Field label="Live in the app">
+                <Select
+                  value={filters.is_active !== undefined ? String(filters.is_active) : "__all__"}
+                  onValueChange={(v) => v === "__all__" ? clear("is_active") : set("is_active", Number(v))}
+                >
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Live and retired</SelectItem>
+                    <SelectItem value="1">Live only</SelectItem>
+                    <SelectItem value="0">Retired only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {(filterOptions?.packs?.length ?? 0) > 0 && (
+                <Field label="Set">
+                  <Select value={filters.pack_key ?? "__all__"} onValueChange={(v) => v === "__all__" ? clear("pack_key") : set("pack_key", v)}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Any set</SelectItem>
+                      {filterOptions?.packs?.map((p) => (
+                        <SelectItem key={p.pack_key} value={p.pack_key}>{p.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+
+              <div className="col-span-3">
+                <Field label="Difficulty">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {[1, 2, 3, 4, 5].map((d) => {
+                      const active = filters.difficulty_min === d && filters.difficulty_max === d;
+                      return (
+                        <button
+                          key={d}
+                          onClick={() =>
+                            active
+                              ? onFilters({ ...filters, page: 1, difficulty_min: undefined, difficulty_max: undefined })
+                              : onFilters({ ...filters, page: 1, difficulty_min: d, difficulty_max: d })
+                          }
+                          className={`h-9 rounded-md px-3 text-sm font-medium transition-colors ${
+                            active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+                          }`}
+                        >
+                          {d} · {DIFFICULTY_LABELS[d]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              </div>
+
+              <div className="col-span-3">
+                <Field label="Shortcuts">
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: "⭐ Shorts Favorites", key: "favorite_for_shorts" as const, val: 1 },
+                      { label: "🚨 Missing Asset",    key: "missing_asset" as const,     val: 1 },
+                      { label: "🖼️ Has Image",        key: "has_image" as const,          val: 1 },
+                      { label: "No Image",            key: "has_image" as const,          val: 0 },
+                    ].map(({ label, key, val }) => {
+                      const active = filters[key] === val;
+                      return (
+                        <button
+                          key={`${key}-${val}`}
+                          onClick={() => (active ? clear(key) : set(key, val))}
+                          className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                            active
+                              ? "border-primary/50 bg-primary/10 text-primary"
+                              : "border-border bg-muted/40 text-muted-foreground hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Field>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -703,54 +768,65 @@ function QuestionRow({
   return (
     <div
       data-question-id={q.id}
-      className={`flex items-start gap-2 rounded-lg border px-2 py-2.5 transition-colors ${
+      className={`flex items-start gap-3 rounded-lg border px-3 py-3 transition-colors ${
         selected
-          ? "border-primary/50 bg-primary/10"
+          ? "border-primary/60 bg-primary/10"
           : "border-transparent hover:border-border hover:bg-muted/40"
-      } ${!q.is_active ? "opacity-50" : ""}`}
+      } ${!q.is_active ? "opacity-60" : ""}`}
     >
-      {/* Checkbox */}
+      {/* Checkbox — a real 20px hit target, not a 16px glyph. */}
       <button
         onClick={(e) => { e.stopPropagation(); onCheck(q); }}
-        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
           checked
             ? "border-primary bg-primary text-primary-foreground"
             : "border-muted-foreground/40 hover:border-primary/60"
         }`}
-        title={checked ? "Deselect" : "Select for playlist"}
+        title={checked ? "Deselect" : "Select for content"}
       >
-        {checked && <CheckCircle2 className="h-3 w-3" />}
+        {checked && <CheckCircle2 className="h-3.5 w-3.5" />}
       </button>
 
-      {/* Row body — clicking opens detail */}
+      {/* Row body — clicking opens detail.
+          ONE horizontal meta line under the question, and ONE horizontal
+          signal cluster on the right. The old row stacked five separate
+          badges vertically down the right edge — status, star, reviewer flag,
+          asset, readiness — which is what made a row three lines tall and
+          unreadable at a glance. Everything below is still here; it is laid
+          out to be scanned rather than decoded. */}
       <button onClick={onClick} className="min-w-0 flex-1 text-left">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="line-clamp-2 text-xs text-foreground">{q.question_text}</p>
-            <div className="mt-1 flex flex-wrap items-center gap-1">
-              <span className="text-[10px] text-muted-foreground">#{q.id}</span>
-              <span className="text-[10px] text-muted-foreground">·</span>
-              <span className="text-[10px] text-muted-foreground">{q.category}</span>
+            <p className="line-clamp-2 text-[15px] leading-snug text-foreground">{q.question_text}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground/70">{q.category}</span>
               {q.source_type && (
                 <>
-                  <span className="text-[10px] text-muted-foreground">·</span>
-                  <span className="text-[10px] text-muted-foreground">{q.source_type}</span>
+                  <span aria-hidden>·</span>
+                  <span>{q.source_type}</span>
                 </>
               )}
+              <span aria-hidden>·</span>
+              <span>#{q.id}</span>
               {q.difficulty && <DiffBadge difficulty={q.difficulty} />}
+              {!q.is_active && (
+                <span className="rounded border border-border px-1.5 py-px text-[11px]">Retired</span>
+              )}
             </div>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <StatusBadge status={q.review_status} />
-            {q.favorite_for_shorts && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {q.favorite_for_shorts && (
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-label="Shorts favorite" />
+            )}
             {q.missing_asset && (
               <ImageOff
-                className="h-3 w-3 text-orange-400"
+                className="h-4 w-4 text-orange-400"
                 aria-label="Flagged by a reviewer as missing an asset"
               />
             )}
             <AssetBadge status={q.asset_status} compact />
             <ReadinessBadge readiness={readiness} compact />
+            <StatusBadge status={q.review_status} />
           </div>
         </div>
       </button>
@@ -829,11 +905,11 @@ function DetailPanel({
         className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center"
         data-testid="review-detail-not-found"
       >
-        <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden />
-        <span className="text-xs text-muted-foreground">
+        <AlertTriangle className="h-6 w-6 text-amber-400" aria-hidden />
+        <span className="text-sm text-muted-foreground">
           Question #{questionId} was not found. It may have been deleted or the link is invalid.
         </span>
-        <Button size="sm" variant="outline" className="mt-1 h-7 text-xs" onClick={onClose}>
+        <Button size="sm" variant="outline" className="mt-1 h-9 text-sm" onClick={onClose}>
           Close
         </Button>
       </div>
@@ -843,8 +919,8 @@ function DetailPanel({
   if (isLoading || !q) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Loading…</span>
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Loading…</span>
       </div>
     );
   }
@@ -900,241 +976,70 @@ function DetailPanel({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => onNavigate("prev")} disabled={!canPrev} className="rounded p-0.5 hover:bg-muted disabled:opacity-30">
-            <ChevronLeft className="h-4 w-4" />
+      {/* Header — identity, paging, close. */}
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-2">
+        <div className="flex items-center gap-1">
+          <button onClick={() => onNavigate("prev")} disabled={!canPrev} aria-label="Previous question" className="rounded p-1 hover:bg-muted disabled:opacity-30">
+            <ChevronLeft className="h-5 w-5" />
           </button>
-          <span className="text-xs text-muted-foreground">#{q.id}</span>
-          <button onClick={() => onNavigate("next")} disabled={!canNext} className="rounded p-0.5 hover:bg-muted disabled:opacity-30">
-            <ChevronRight className="h-4 w-4" />
+          <span className="px-1 text-sm font-medium text-muted-foreground">#{q.id}</span>
+          <button onClick={() => onNavigate("next")} disabled={!canNext} aria-label="Next question" className="rounded p-1 hover:bg-muted disabled:opacity-30">
+            <ChevronRight className="h-5 w-5" />
           </button>
+          <StatusBadge status={q.review_status} />
         </div>
-        <button onClick={onClose} className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground">
-          <X className="h-4 w-4" />
+        <button onClick={onClose} aria-label="Close detail" className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+          <X className="h-5 w-5" />
         </button>
       </div>
 
-      {/* V1 capability notice */}
-      <div className="shrink-0 border-b bg-muted/20 px-4 py-1.5">
-        <p className="text-[10px] text-muted-foreground">
-          <span className="font-semibold text-foreground/70">Review Console V1</span>
-          {" — "}approve, reject, adjust difficulty, flags, notes, and active status. Full question editing and playlist building coming next.
-        </p>
-      </div>
+      {/* Scrollable body.
+          The order IS the workflow: read the question, look at it the way a
+          player will, judge it, then decide what to do with it. Everything
+          that describes the record rather than the question — difficulty,
+          certainty, provenance, ids, asset paths, raw metadata — sits under
+          Properties at the bottom, where it is one click away instead of
+          three sections above the question text. */}
+      <div className="flex-1 space-y-5 overflow-y-auto px-5 py-4">
 
-      {/* Scrollable body */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3">
+        {/* ── 1. QUESTION ─────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <SectionLabel>Question</SectionLabel>
+          <p className="text-lg font-medium leading-snug text-foreground">{q.question_text}</p>
 
-        {/* Review status buttons */}
-        <div className="space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Review Status</p>
-          <div className="flex flex-wrap gap-1.5">
-            {REVIEW_STATUSES.map((s) => {
-              const cfg = STATUS_CONFIG[s];
-              const Icon = cfg.icon;
-              const active = q.review_status === s;
-              return (
-                <button
-                  key={s}
-                  disabled={isPending}
-                  onClick={() => apply({ review_status: s })}
-                  className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-colors ${
-                    active ? cfg.color + " ring-1 ring-current/40" : "border-border text-muted-foreground hover:border-muted-foreground/40"
-                  }`}
-                >
-                  <Icon className="h-3 w-3" />
-                  {cfg.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          {q.image_path && <AssetImage src={q.image_path} label="question image" />}
 
-        {/* Quick toggles */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            disabled={isPending}
-            onClick={() => apply({ favorite_for_shorts: !q.favorite_for_shorts })}
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] transition-colors ${
-              q.favorite_for_shorts
-                ? "border-amber-400/50 bg-amber-400/10 text-amber-300"
-                : "border-border text-muted-foreground hover:border-amber-400/30"
-            }`}
-          >
-            {q.favorite_for_shorts ? <Star className="h-3 w-3 fill-amber-400" /> : <StarOff className="h-3 w-3" />}
-            {q.favorite_for_shorts ? "Shorts Fav" : "Add to Shorts"}
-          </button>
-
-          <AssetBadge status={q.asset_status} />
-
-          <ReadinessBadge readiness={evaluateContentReadiness(q)} />
-
-          {onGenerateContent && (
-            <button
-              data-testid="generate-content-open"
-              onClick={() => onGenerateContent(q)}
-              title="Configure a local Content Factory run for this question and copy the command."
-              className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-            >
-              <Terminal className="h-3 w-3" />
-              Generate Content
-            </button>
-          )}
-
-          <button
-            disabled={isPending}
-            title={
-              q.missing_asset
-                ? "Reviewer annotation: someone flagged this row's art. Separate from the computed badge beside it."
-                : "Flag this row's art for a human to fix. This is your annotation, not the computed asset check."
-            }
-            onClick={() => apply({ missing_asset: !q.missing_asset })}
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] transition-colors ${
-              q.missing_asset
-                ? "border-orange-400/50 bg-orange-400/10 text-orange-300"
-                : "border-border text-muted-foreground hover:border-orange-400/30"
-            }`}
-          >
-            <ImageOff className="h-3 w-3" />
-            {q.missing_asset ? "Asset Missing" : "Flag Asset"}
-          </button>
-
-          <button
-            disabled={isPending}
-            onClick={() => apply({ is_active: !q.is_active })}
-            className={`flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] transition-colors ${
-              !q.is_active
-                ? "border-red-400/50 bg-red-400/10 text-red-300"
-                : "border-border text-muted-foreground hover:border-red-400/30"
-            }`}
-          >
-            {q.is_active ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            {q.is_active ? "Active" : "Inactive"}
-          </button>
-        </div>
-
-        {/* Difficulty */}
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Difficulty</p>
-          <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5].map((d) => (
-              <button
-                key={d}
-                disabled={isPending}
-                onClick={() => apply({ difficulty: d })}
-                title={DIFFICULTY_LABELS[d]}
-                className={`flex h-7 w-7 items-center justify-center rounded text-xs font-bold transition-colors ${
-                  q.difficulty === d ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/60"
-                }`}
-              >
-                {d}
-              </button>
-            ))}
-            <span className="self-center text-[10px] text-muted-foreground">{DIFFICULTY_LABELS[q.difficulty ?? 1]}</span>
-          </div>
-        </div>
-
-        {/* Answer certainty */}
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Answer Certainty</p>
-          <div className="flex gap-1.5">
-            {["objective", "derived", "subjective", "community"].map((c) => (
-              <button
-                key={c}
-                disabled={isPending}
-                onClick={() => apply({ answer_certainty: c })}
-                className={`rounded px-2 py-0.5 text-[10px] capitalize transition-colors ${
-                  q.answer_certainty === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/60"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Metadata grid */}
-        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-[10px]">
-          {[
-            ["Category",    q.category],
-            ["Source",      q.source_type ?? "—"],
-            ["Format",      q.format],
-            ["Certainty",   q.answer_certainty],
-            ["Key",         q.question_key ?? "—"],
-            ["Created",     q.created_at ? q.created_at.slice(0, 10) : "—"],
-            ["Reviewed by", q.reviewed_by ?? "—"],
-            ["Reviewed at", q.reviewed_at ? q.reviewed_at.slice(0, 10) : "—"],
-          ].map(([label, value]) => (
-            <div key={label} className="flex gap-1">
-              <span className="text-muted-foreground">{label}:</span>
-              <span className="truncate font-medium text-foreground">{value}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Pack badges */}
-        {(q.packs?.length ?? 0) > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {q.packs?.map((p) => (
-              <span
-                key={p.pack_key}
-                title={p.pack_key}
-                className="inline-flex items-center gap-1 rounded-md border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
-              >
-                <Package className="h-3 w-3" />
-                {p.title}
-                {p.position != null && <span className="text-amber-300/60">#{p.position}</span>}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Question text */}
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Question</p>
-          <p className="text-sm leading-relaxed text-foreground">{q.question_text}</p>
-        </div>
-
-        {/* Question image */}
-        {q.image_path && (
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Question Image</p>
-            <AssetImage src={q.image_path} label="question image" />
-          </div>
-        )}
-
-        {/* Choices + correct answer */}
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Choices</p>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {q.choices.map((c, i) => {
               const label = choiceLabel(c);
               const isCorrect = label.toLowerCase().trim() === correctValue.toLowerCase().trim();
               return (
                 <div
                   key={i}
-                  className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs ${
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
                     isCorrect
-                      ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-                      : "border-border/30 text-muted-foreground"
+                      ? "border-emerald-400/50 bg-emerald-400/10 font-medium text-emerald-200"
+                      : "border-border/40 text-muted-foreground"
                   }`}
                 >
-                  {isCorrect && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
+                  {isCorrect
+                    ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                    : <span className="h-4 w-4 shrink-0" aria-hidden />}
                   <span>{label}</span>
                 </div>
               );
             })}
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            Correct: <span className="font-medium text-emerald-400">{correctValue || "—"}</span>
-          </p>
-        </div>
 
-        {/* ------------------------------------------------------------------
-            PLAYER PREVIEW (CON1 Step 1B).
+          {q.explanation && (
+            <div className="space-y-1">
+              <SectionLabel>Explanation</SectionLabel>
+              <p className="text-sm leading-relaxed text-muted-foreground">{q.explanation}</p>
+            </div>
+          )}
+        </section>
 
+        {/* ── 2. PREVIEW ──────────────────────────────────────────────────
             The SAME production surface a Ranked candidate previews through,
             reached the same way: the row's envelope goes through
             `adaptCandidatePreview` -> `scenarioSourceFromPublicQuestion` ->
@@ -1145,108 +1050,105 @@ function DetailPanel({
             else. A row without one previews as the text-only surface — which
             is what a question with no declared safe premise honestly is, and
             what the `wave` form of minion_xp_level_breakpoint deliberately
-            gets until its contract can express a safe premise.
-        ------------------------------------------------------------------ */}
+            gets until its contract can express a safe premise. */}
         {previewPayload && (
-          <div className="space-y-1.5">
+          <section className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Player preview
-              </p>
+              <SectionLabel>Preview</SectionLabel>
               <Button
                 size="sm"
-                variant={previewing ? "secondary" : "ghost"}
-                className="h-6 gap-1 px-1.5 text-[10px]"
+                variant={previewing ? "secondary" : "outline"}
+                className="h-8 gap-1.5 text-sm"
                 data-testid="stored-preview-toggle"
                 onClick={() => setPreviewing((v) => !v)}
               >
-                <Eye className="h-3 w-3" aria-hidden /> {previewing ? "Hide" : "Preview"}
+                <Eye className="h-4 w-4" aria-hidden /> {previewing ? "Hide" : "Preview"}
               </Button>
             </div>
             {previewing && (
-              <div className="rounded border border-border/60 bg-muted/10 p-2">
+              <div className="rounded-lg border border-border/60 bg-muted/10 p-3">
                 <QuestionPreviewPanel
                   payload={previewPayload}
                   correctAnswerIndex={storedCorrectOptionIndex(q)}
                 />
               </div>
             )}
-          </div>
+          </section>
         )}
 
-        {/* Explanation */}
-        {q.explanation && (
-          <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Explanation</p>
-            <p className="text-xs leading-relaxed text-muted-foreground">{q.explanation}</p>
+        {/* ── 3. REVIEW ───────────────────────────────────────────────────
+            The verdict, and only the verdict. Approve / Needs Fix / Reject are
+            the three an operator actually presses; "Unreviewed" (undo) and
+            "Missing Asset" (a routing state that duplicates the Flag Asset
+            annotation below) are kept but demoted, because giving five buttons
+            equal weight is what made the primary decision invisible. */}
+        <section className="space-y-2">
+          <SectionLabel>Review</SectionLabel>
+          <div className="grid grid-cols-3 gap-2">
+            {PRIMARY_REVIEW_STATUSES.map((s) => {
+              const cfg = STATUS_CONFIG[s];
+              const Icon = cfg.icon;
+              const active = q.review_status === s;
+              return (
+                <button
+                  key={s}
+                  disabled={isPending}
+                  onClick={() => apply({ review_status: s })}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                    active
+                      ? cfg.color + " ring-2 ring-current/30"
+                      : "border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {cfg.label}
+                </button>
+              );
+            })}
           </div>
-        )}
-
-        {/* Metadata assets (icon/splash/loading/item/ability/rune/summoner from stored paths) */}
-        {(metadataAssets.length > 0 || subjectItemIcons.length > 0) && (
-          <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {subjectType === "ability" ? "Ability Asset"
-                : subjectType === "combat_cooldown" ? "Calculation Assets"
-                : "Assets"}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {metadataAssets.map(({ key, label }) => (
-                <AssetImage key={key} src={subject[key] as string} label={label} />
-              ))}
-              {subjectItemIcons.map(({ name, icon }) => (
-                <AssetImage key={`item-${name}`} src={icon} label={name} />
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SECONDARY_REVIEW_STATUSES.map((s) => {
+              const cfg = STATUS_CONFIG[s];
+              const Icon = cfg.icon;
+              const active = q.review_status === s;
+              return (
+                <button
+                  key={s}
+                  disabled={isPending}
+                  onClick={() => apply({ review_status: s })}
+                  className={`flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition-colors ${
+                    active ? cfg.color + " ring-1 ring-current/40" : "border-border text-muted-foreground hover:border-muted-foreground/40"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {cfg.label}
+                </button>
+              );
+            })}
           </div>
-        )}
 
-        {/* Champion expansion for ability questions */}
-        {showChampionExpansion && (
-          <div className="space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Champion Assets — {championName}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {championManifestAssets.map(({ url, label }) => (
-                <AssetImage key={label} src={url} label={label} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Metadata JSON */}
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Metadata</p>
-          <pre className="max-h-40 overflow-auto rounded-md bg-muted/30 p-2 text-[10px] text-muted-foreground">
-            {JSON.stringify(q.metadata, null, 2)}
-          </pre>
-        </div>
-
-        {/* Review note */}
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Internal Note</p>
+          {/* Internal note — part of the verdict, not a property. */}
           {noteEditing ? (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Internal review note…"
-                className="min-h-[60px] text-xs"
+                className="min-h-[72px] text-sm"
               />
-              <div className="flex gap-1.5">
+              <div className="flex gap-2">
                 <Button
                   size="sm"
-                  className="h-6 text-[10px]"
+                  className="h-8 text-sm"
                   disabled={isPending}
                   onClick={() => { apply({ review_note: note }); setNoteEditing(false); }}
                 >
-                  Save
+                  Save note
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 text-[10px]"
+                  className="h-8 text-sm"
                   onClick={() => { setNote(q.review_note ?? ""); setNoteEditing(false); }}
                 >
                   Cancel
@@ -1256,12 +1158,219 @@ function DetailPanel({
           ) : (
             <button
               onClick={() => { setNote(q.review_note ?? ""); setNoteEditing(true); }}
-              className="w-full rounded-md border border-dashed border-border/50 p-2 text-left text-[10px] text-muted-foreground hover:border-border"
+              className="w-full rounded-md border border-dashed border-border/60 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:border-border hover:text-foreground"
             >
-              {q.review_note || "Click to add note…"}
+              {q.review_note || "Add an internal note…"}
             </button>
           )}
-        </div>
+        </section>
+
+        {/* ── 4. USE THIS QUESTION ────────────────────────────────────────
+            Only routes that exist. Admin Quiz Review has no write path into
+            Ranked, Daily or a Set — those are read-only relationships here
+            (a Set membership is shown under Properties) — so no button
+            pretends otherwise. */}
+        <section className="space-y-2">
+          <SectionLabel>Use this question</SectionLabel>
+          <div className="flex flex-wrap gap-2">
+            {onGenerateContent && (
+              <Button
+                size="sm"
+                className="h-9 gap-1.5 text-sm"
+                data-testid="generate-content-open"
+                title="Set up a Content Factory run for this question."
+                onClick={() => onGenerateContent(q)}
+              >
+                <Terminal className="h-4 w-4" />
+                Generate Content
+              </Button>
+            )}
+            <button
+              disabled={isPending}
+              onClick={() => apply({ favorite_for_shorts: !q.favorite_for_shorts })}
+              className={`flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm transition-colors ${
+                q.favorite_for_shorts
+                  ? "border-amber-400/50 bg-amber-400/10 text-amber-300"
+                  : "border-border text-muted-foreground hover:border-amber-400/40 hover:text-foreground"
+              }`}
+            >
+              {q.favorite_for_shorts ? <Star className="h-4 w-4 fill-amber-400" /> : <StarOff className="h-4 w-4" />}
+              {q.favorite_for_shorts ? "Shorts Fav" : "Add to Shorts"}
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AssetBadge status={q.asset_status} />
+            <ReadinessBadge readiness={evaluateContentReadiness(q)} />
+          </div>
+        </section>
+
+        {/* ── 5. PROPERTIES ───────────────────────────────────────────────
+            Collapsed by default and native <details>, so its content is
+            always in the DOM (no remount, no scroll jump) and the disclosure
+            costs no JavaScript. */}
+        <details className="group rounded-lg border border-border/60 bg-muted/10" data-testid="detail-properties">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground">
+            Properties &amp; technical detail
+            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-open:rotate-180" aria-hidden />
+          </summary>
+
+          <div className="space-y-4 border-t border-border/60 px-3 py-3">
+
+            {/* Difficulty */}
+            <div className="space-y-1.5">
+              <SectionLabel>Difficulty</SectionLabel>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((d) => (
+                  <button
+                    key={d}
+                    disabled={isPending}
+                    onClick={() => apply({ difficulty: d })}
+                    title={DIFFICULTY_LABELS[d]}
+                    className={`flex h-8 w-8 items-center justify-center rounded text-sm font-bold transition-colors ${
+                      q.difficulty === d ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/60"
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+                <span className="ml-1 text-xs text-muted-foreground">{DIFFICULTY_LABELS[q.difficulty ?? 1]}</span>
+              </div>
+            </div>
+
+            {/* Answer certainty */}
+            <div className="space-y-1.5">
+              <SectionLabel>Answer certainty</SectionLabel>
+              <div className="flex flex-wrap gap-1.5">
+                {["objective", "derived", "subjective", "community"].map((c) => (
+                  <button
+                    key={c}
+                    disabled={isPending}
+                    onClick={() => apply({ answer_certainty: c })}
+                    className={`rounded px-2.5 py-1 text-xs capitalize transition-colors ${
+                      q.answer_certainty === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/60"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Serving + asset annotations */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                disabled={isPending}
+                onClick={() => apply({ is_active: !q.is_active })}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                  !q.is_active
+                    ? "border-red-400/50 bg-red-400/10 text-red-300"
+                    : "border-border text-muted-foreground hover:border-red-400/30"
+                }`}
+              >
+                {q.is_active ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                {q.is_active ? "Active" : "Inactive"}
+              </button>
+              <button
+                disabled={isPending}
+                title={
+                  q.missing_asset
+                    ? "Reviewer annotation: someone flagged this row's art. Separate from the computed badge beside it."
+                    : "Flag this row's art for a human to fix. This is your annotation, not the computed asset check."
+                }
+                onClick={() => apply({ missing_asset: !q.missing_asset })}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${
+                  q.missing_asset
+                    ? "border-orange-400/50 bg-orange-400/10 text-orange-300"
+                    : "border-border text-muted-foreground hover:border-orange-400/30"
+                }`}
+              >
+                <ImageOff className="h-3.5 w-3.5" />
+                {q.missing_asset ? "Asset Missing" : "Flag Asset"}
+              </button>
+            </div>
+
+            {/* Provenance grid */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-md bg-muted/30 px-3 py-2 text-xs">
+              {[
+                ["Category",    q.category],
+                ["Source",      q.source_type ?? "—"],
+                ["Format",      q.format],
+                ["Certainty",   q.answer_certainty],
+                ["Key",         q.question_key ?? "—"],
+                ["Created",     q.created_at ? q.created_at.slice(0, 10) : "—"],
+                ["Reviewed by", q.reviewed_by ?? "—"],
+                ["Reviewed at", q.reviewed_at ? q.reviewed_at.slice(0, 10) : "—"],
+              ].map(([label, value]) => (
+                <div key={label} className="flex gap-1">
+                  <span className="text-muted-foreground">{label}:</span>
+                  <span className="truncate font-medium text-foreground">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Set membership — read-only: nothing here writes pack membership. */}
+            {(q.packs?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {q.packs?.map((pk) => (
+                  <span
+                    key={pk.pack_key}
+                    title={pk.pack_key}
+                    className="inline-flex items-center gap-1 rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-300"
+                  >
+                    <Package className="h-3.5 w-3.5" />
+                    {pk.title}
+                    {pk.position != null && <span className="text-amber-300/60">#{pk.position}</span>}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Metadata assets (icon/splash/loading/item/ability/rune/summoner from stored paths) */}
+            {(metadataAssets.length > 0 || subjectItemIcons.length > 0) && (
+              <div className="space-y-2">
+                <SectionLabel>
+                  {subjectType === "ability" ? "Ability asset"
+                    : subjectType === "combat_cooldown" ? "Calculation assets"
+                    : "Assets"}
+                </SectionLabel>
+                <div className="flex flex-wrap gap-3">
+                  {metadataAssets.map(({ key, label }) => (
+                    <AssetImage key={key} src={subject[key] as string} label={label} />
+                  ))}
+                  {subjectItemIcons.map(({ name, icon }) => (
+                    <AssetImage key={`item-${name}`} src={icon} label={name} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Champion expansion for ability questions */}
+            {showChampionExpansion && (
+              <div className="space-y-2">
+                <SectionLabel>Champion assets — {championName}</SectionLabel>
+                <div className="flex flex-wrap gap-3">
+                  {championManifestAssets.map(({ url, label }) => (
+                    <AssetImage key={label} src={url} label={label} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Raw metadata */}
+            <div className="space-y-1">
+              <SectionLabel>Metadata</SectionLabel>
+              <pre className="max-h-56 overflow-auto rounded-md bg-muted/40 p-2 text-[11px] leading-relaxed text-muted-foreground">
+                {JSON.stringify(q.metadata, null, 2)}
+              </pre>
+            </div>
+
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-foreground/70">Review Console V1</span>
+              {" — "}approve, reject, adjust difficulty, flags, notes, and active status.
+              Full question editing and playlist building coming next.
+            </p>
+          </div>
+        </details>
 
       </div>
     </div>
@@ -1273,6 +1382,15 @@ function DetailPanel({
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 50;
+
+/**
+ * The width of the right-hand column (detail, or the Generate Content
+ * handoff). Previously a flat `w-[400px]`, which read as cramped on a 1440px
+ * screen and absurd on a 1920px one. A viewport fraction with a floor and a
+ * ceiling grows the reading area with the display while leaving the question
+ * list the larger share.
+ */
+const DETAIL_WIDTH = "w-[min(38rem,max(26rem,34vw))]";
 
 function toQuizQuestion(q: ReviewQuestion): QuizQuestion {
   return {
@@ -1548,10 +1666,10 @@ export default function AdminQuizReview({
    * through.
    */
   const contentHandoffColumn = contentHandoff === null ? null : (
-    <div className="flex h-full w-[400px] shrink-0 flex-col overflow-y-auto border-l p-2">
+    <div className={`flex h-full shrink-0 flex-col overflow-y-auto border-l p-3 ${DETAIL_WIDTH}`}>
       {contentHandoff.kind === "review-key" && handoffReviewItems.length === 0 ? (
         <div
-          className="rounded-lg border border-border bg-background p-3 text-xs"
+          className="rounded-lg border border-border bg-background p-3 text-sm"
           data-testid="generate-content-review-key-status"
         >
           {reviewItemQuery.isLoading ? (
@@ -1566,7 +1684,7 @@ export default function AdminQuizReview({
           <Button
             size="sm"
             variant="outline"
-            className="mt-2 h-6 text-[10px]"
+            className="mt-2 h-8 text-sm"
             onClick={() => setContentHandoff(null)}
           >
             Close
@@ -1630,7 +1748,7 @@ export default function AdminQuizReview({
   // question count. Standalone, the full top bar and chrome are preserved.
   const rootClass = embedded
     ? "flex h-full min-h-0 flex-col overflow-hidden"
-    : "flex h-[calc(100vh-4rem)] flex-col overflow-hidden";
+    : "flex h-[var(--app-viewport-h)] flex-col overflow-hidden";
 
   if (authError) {
     return (
@@ -1665,32 +1783,83 @@ export default function AdminQuizReview({
         <SEOHead title="Quiz Review Console · Admin" description="Inspect and curate quiz questions." path="/admin/quiz-review" />
       )}
 
-      {/* Top bar */}
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          {!embedded && (
-            <>
-              <Link to="/admin/quiz-broadcast" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Broadcast Studio
-              </Link>
-              <span className="text-muted-foreground/40">/</span>
-            </>
-          )}
-          <h1 className="text-sm font-semibold">Quiz Review Console</h1>
-          <Button size="sm" variant={showUniverse ? "secondary" : "ghost"} className="h-7 text-[11px]" onClick={() => setShowUniverse((value) => !value)}>
-            {showUniverse ? "Stored review" : "All sources"}
-          </Button>
+      {/* ── PRIMARY TOOLBAR ──────────────────────────────────────────────
+          One row. Find on the left, scope and export on the right.
+          Search + Source + Status + More filters is the whole daily control
+          set; the eleven remaining filters live behind More filters, and the
+          permanent 240px column they used to occupy is gone — the question
+          list inherited its width. */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2">
+        {!embedded && (
+          <>
+            <h1 className="text-sm font-semibold">Quiz Review Console</h1>
+            <span className="text-muted-foreground/40" aria-hidden>/</span>
+          </>
+        )}
 
+        {!showUniverse && (
+          <>
+            <div className="relative min-w-[16rem] flex-1">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && applySearch()}
+                placeholder="Malphite, ultimate, slot:r, item name…"
+                className="h-9 pl-9 text-sm"
+              />
+              {search && (
+                <button
+                  aria-label="Clear search"
+                  onClick={() => { setSearch(""); setFilters((f) => ({ ...f, search: undefined, page: 1 })); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <Button size="sm" variant="outline" className="h-9 text-sm" onClick={applySearch}>Search</Button>
+
+            <Select
+              value={filters.source_type ?? "__any__"}
+              onValueChange={(v) =>
+                setFilters((f) => ({ ...f, page: 1, source_type: v === "__any__" ? undefined : v }))
+              }
+            >
+              <SelectTrigger className="h-9 w-44 text-sm" aria-label="Source"><SelectValue placeholder="Any source" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__any__">Any source</SelectItem>
+                {filterOptions?.source_types.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.review_status ?? "__any__"}
+              onValueChange={(v) =>
+                setFilters((f) => ({ ...f, page: 1, review_status: v === "__any__" ? undefined : v }))
+              }
+            >
+              <SelectTrigger className="h-9 w-40 text-sm" aria-label="Review status"><SelectValue placeholder="Any status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__any__">Any status</SelectItem>
+                {REVIEW_STATUSES.map((s) => <SelectItem key={s} value={s}>{STATUS_CONFIG[s]?.label ?? s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <MoreFilters filters={filters} onFilters={setFilters} filterOptions={filterOptions} />
+          </>
+        )}
+
+        <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
           {/* A diagnostic focus is stated, not silent. An operator who lands
               here from Diagnostics must be able to see WHY the list is short
               and get back to the whole bank in one click. */}
           {focusFilters && (
             <span
               data-testid="review-focus-banner"
-              className="inline-flex items-center gap-1.5 rounded border border-primary/50 bg-primary/10 px-2 py-0.5 text-[10px] text-primary"
+              className="inline-flex items-center gap-1.5 rounded border border-primary/50 bg-primary/10 px-2 py-1 text-xs text-primary"
             >
-              <ListChecks className="h-3 w-3" aria-hidden />
+              <ListChecks className="h-3.5 w-3.5" aria-hidden />
               Diagnostics: {focusLabel ?? "selection"}
               {focusFilters.ids !== undefined && ` (${focusFilters.ids.length})`}
               <button
@@ -1702,52 +1871,74 @@ export default function AdminQuizReview({
                   onClearFocus?.();
                 }}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Select value={exportScope} onValueChange={(value) => setExportScope(value as typeof exportScope)}>
-            <SelectTrigger className="h-7 w-44 text-[11px]" aria-label="Question export mode"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Export All Questions</SelectItem>
-              <SelectItem value="changed">Export Changed Questions</SelectItem>
-              <SelectItem value="flagged">Export Flagged Questions</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" disabled={exporting} onClick={downloadExport}>
-            {exporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />} Export CSV
+
+          <Button
+            size="sm"
+            variant={showUniverse ? "secondary" : "ghost"}
+            className="h-9 text-sm"
+            onClick={() => setShowUniverse((value) => !value)}
+          >
+            {showUniverse ? "Stored review" : "All sources"}
           </Button>
+
           {isLoading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <span>{total.toLocaleString()} questions</span>
+            <span className="tabular-nums">{total.toLocaleString()} questions</span>
           )}
+
+          {/* Export is a real capability but not a daily one — it keeps its
+              full behaviour inside a disclosure instead of two permanent
+              controls at the top of every session. */}
+          <details className="group relative">
+            <summary className="flex cursor-pointer list-none items-center gap-1 rounded-md px-2 py-1.5 text-sm hover:bg-muted hover:text-foreground">
+              <Download className="h-4 w-4" aria-hidden /> Export
+              <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" aria-hidden />
+            </summary>
+            <div className="absolute right-0 top-full z-30 mt-2 w-64 space-y-2 rounded-lg border border-border bg-background p-3 shadow-xl">
+              <Select value={exportScope} onValueChange={(value) => setExportScope(value as typeof exportScope)}>
+                <SelectTrigger className="h-9 text-sm" aria-label="Question export mode"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Export All Questions</SelectItem>
+                  <SelectItem value="changed">Export Changed Questions</SelectItem>
+                  <SelectItem value="flagged">Export Flagged Questions</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" className="h-9 w-full gap-1.5 text-sm" disabled={exporting} onClick={downloadExport}>
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Export CSV
+              </Button>
+              <Button size="sm" variant="ghost" className="h-9 w-full gap-1.5 text-sm" disabled={exporting} onClick={downloadUniverse}>
+                <Download className="h-4 w-4" /> Export source universe
+              </Button>
+            </div>
+          </details>
         </div>
       </div>
 
       {showUniverse && (
         <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="min-h-0 flex-1 overflow-auto bg-background">
-          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-3 backdrop-blur">
+          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 py-2 backdrop-blur">
             <Select value={universeSource} onValueChange={setUniverseSource}>
-              <SelectTrigger className="h-8 w-52 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">All sources</SelectItem>{Object.entries(SOURCE_LABELS).map(([value,label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
+              <SelectTrigger className="h-9 w-52 text-sm" aria-label="Source kind"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="all">Every source</SelectItem>{Object.entries(SOURCE_LABELS).map(([value,label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={universeMaterialization} onValueChange={setUniverseMaterialization}>
-              <SelectTrigger className="h-8 w-48 text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 w-48 text-sm" aria-label="Materialization"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="all">Stored + generated</SelectItem><SelectItem value="stored">Stored only</SelectItem><SelectItem value="definition">Definitions</SelectItem><SelectItem value="code_generated">Code-generated</SelectItem><SelectItem value="deterministic_specimen">Specimens</SelectItem></SelectContent>
             </Select>
-            <Input className="h-8 w-56 text-xs" value={universeSearch} onChange={(event) => setUniverseSearch(event.target.value)} placeholder="Filter family, key, or text…" />
-            <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" disabled={exporting} onClick={downloadUniverse}><Download className="h-3 w-3" /> Export source universe</Button>
-            {universe.data && <div className="ml-auto text-[11px] text-muted-foreground">
+            <Input className="h-9 w-64 text-sm" value={universeSearch} onChange={(event) => setUniverseSearch(event.target.value)} placeholder="Filter family, key, or text…" />
+            {universe.data && <div className="ml-auto text-xs text-muted-foreground">
               {universe.data.total.toLocaleString()} rows · schema {universe.data.provenance.schema_version} · baseline {universe.data.provenance.baseline_id.slice(0, 10)} · DB {universe.data.provenance.database.name}
             </div>}
           </div>
-          <div className="grid grid-cols-[10rem_12rem_1fr_9rem] gap-3 border-b bg-muted/30 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"><span>Source</span><span>Family</span><span>Review material</span><span>Status / version</span></div>
-          {universe.isLoading ? <div className="p-8 text-center text-xs text-muted-foreground">Loading review sources…</div>
-            : universe.isError ? <div className="p-8 text-center text-xs text-red-400">Could not load the source universe.</div>
+          <div className="grid grid-cols-[11rem_13rem_1fr_10rem] gap-3 border-b bg-muted/30 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"><span>Source</span><span>Family</span><span>Review material</span><span>Status / version</span></div>
+          {universe.isLoading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading review sources…</div>
+            : universe.isError ? <div className="p-8 text-center text-sm text-red-400">Could not load the source universe.</div>
             : universe.data?.rows.map((row) => (
               <UniverseRow
                 key={row.review_key}
@@ -1755,75 +1946,47 @@ export default function AdminQuizReview({
                 onGenerate={(reviewKey) => setContentHandoff({ kind: "review-key", reviewKey })}
               />
             ))}
-          {!!universe.data?.provenance.collector_errors.length && <div className="m-4 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">Some sources were unavailable: {universe.data.provenance.collector_errors.map((item) => item.source).join(", ")}</div>}
+          {!!universe.data?.provenance.collector_errors.length && <div className="m-4 rounded border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">Some sources were unavailable: {universe.data.provenance.collector_errors.map((item) => item.source).join(", ")}</div>}
         </div>
         {contentHandoffColumn}
         </div>
       )}
 
-      {/* Body */}
+      {/* Body — two columns, both allowed to be wide. */}
       {!showUniverse && <div className="flex min-h-0 flex-1 overflow-hidden">
-
-        {/* Filter sidebar */}
-        <div className="h-full w-64 shrink-0 overflow-y-auto border-r px-3 py-3">
-          <FilterSidebar filters={filters} onFilters={setFilters} filterOptions={filterOptions} />
-        </div>
 
         {/* Question list */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden border-r">
 
-          {/* Search bar */}
-          <div className="shrink-0 flex gap-2 border-b px-3 py-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && applySearch()}
-                placeholder="Malphite, ultimate, slot:r, item name…"
-                className="h-7 pl-7 text-xs"
-              />
-              {search && (
-                <button
-                  onClick={() => { setSearch(""); setFilters((f) => ({ ...f, search: undefined, page: 1 })); }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applySearch}>Search</Button>
-          </div>
-
           {/* Selection action bar — only shown when items are checked */}
           {checkedCount > 0 && (
-            <div className="shrink-0 flex items-center justify-between gap-2 border-b bg-primary/5 px-3 py-1.5">
-              <div className="flex items-center gap-1.5">
-                <ListChecks className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[11px] font-medium text-foreground">{checkedCount} selected</span>
+            <div className="shrink-0 flex items-center justify-between gap-2 border-b bg-primary/5 px-4 py-2">
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">{checkedCount} selected</span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  className="h-6 gap-1 text-[10px]"
+                  className="h-8 gap-1.5 text-sm"
                   data-testid="generate-content-open-selection"
                   onClick={() => setContentHandoff({ kind: "selection" })}
                 >
-                  <Terminal className="h-3 w-3" />
+                  <Terminal className="h-4 w-4" />
                   Generate Content ({checkedCount})
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-6 gap-1 text-[10px]"
+                  className="h-8 gap-1.5 text-sm"
                   onClick={saveToPlaylist}
                 >
-                  <Send className="h-3 w-3" />
+                  <Send className="h-4 w-4" />
                   Save to Broadcast Playlists
                 </Button>
                 <button
                   onClick={clearSelection}
-                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                  className="text-sm text-muted-foreground hover:text-foreground"
                 >
                   Clear
                 </button>
@@ -1832,20 +1995,20 @@ export default function AdminQuizReview({
           )}
 
           {/* List */}
-          <div ref={listRef} className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
+          <div ref={listRef} className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
             {isLoading && (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             )}
             {isError && (
-              <div className="flex items-center justify-center gap-2 py-12 text-xs text-red-400">
+              <div className="flex items-center justify-center gap-2 py-12 text-sm text-red-400">
                 <AlertTriangle className="h-4 w-4" />
                 Failed to load questions
               </div>
             )}
             {!isLoading && questions.length === 0 && (
-              <p className="py-12 text-center text-xs text-muted-foreground">No questions match these filters.</p>
+              <p className="py-12 text-center text-sm text-muted-foreground">No questions match these filters.</p>
             )}
             {questions.map((q) => (
               <QuestionRow
@@ -1861,27 +2024,27 @@ export default function AdminQuizReview({
 
           {/* Pagination */}
           {pages > 1 && (
-            <div className="shrink-0 flex items-center justify-between border-t px-3 py-2">
+            <div className="shrink-0 flex items-center justify-between border-t px-4 py-2">
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 text-[10px]"
+                className="h-8 text-sm"
                 disabled={page <= 1}
                 onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) - 1 }))}
               >
-                <ChevronLeft className="h-3 w-3 mr-0.5" />
+                <ChevronLeft className="mr-1 h-4 w-4" />
                 Prev
               </Button>
-              <span className="text-[10px] text-muted-foreground">Page {page} / {pages}</span>
+              <span className="text-sm text-muted-foreground tabular-nums">Page {page} / {pages}</span>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 text-[10px]"
+                className="h-8 text-sm"
                 disabled={page >= pages}
                 onClick={() => setFilters((f) => ({ ...f, page: (f.page ?? 1) + 1 }))}
               >
                 Next
-                <ChevronRight className="h-3 w-3 ml-0.5" />
+                <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           )}
@@ -1890,11 +2053,15 @@ export default function AdminQuizReview({
         {/* Right column — the Generate Content handoff when open, else detail.
             One column, not a third: the operator configures content where they
             were already reading the question, and Quiz Review does not become
-            an export dashboard. */}
+            an export dashboard.
+
+            Width is a viewport fraction with a floor and a ceiling, so the
+            detail pane grows with the screen instead of staying at the 400px
+            it was fixed to on a 1920px display. */}
         {contentHandoff !== null ? (
           contentHandoffColumn
         ) : selectedId !== null ? (
-          <div className="flex h-full w-[400px] shrink-0 flex-col overflow-hidden">
+          <div className={`flex h-full shrink-0 flex-col overflow-hidden ${DETAIL_WIDTH}`}>
             <DetailPanel
               questionId={selectedId}
               onClose={() => setSelectedId(null)}
@@ -1905,8 +2072,8 @@ export default function AdminQuizReview({
             />
           </div>
         ) : (
-          <div className="flex w-[400px] shrink-0 items-center justify-center text-xs text-muted-foreground">
-            Select a question to review
+          <div className={`flex shrink-0 items-center justify-center px-6 text-center text-sm text-muted-foreground ${DETAIL_WIDTH}`}>
+            Select a question to review it, preview it and decide what to do with it.
           </div>
         )}
       </div>}

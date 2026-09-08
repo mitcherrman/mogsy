@@ -132,6 +132,21 @@ function check(container: HTMLElement, id: number) {
 
 const commandText = () => screen.getByTestId("generate-content-command").textContent ?? "";
 
+/**
+ * Open a disclosure the way an operator does.
+ *
+ * `<details>` keeps its children mounted, so a fireEvent.click would "work"
+ * without this — which is exactly why it is here: a test that never opens the
+ * section cannot notice if the section stops being reachable.
+ */
+const openDisclosure = (testId: string) => {
+  const details = screen.getByTestId(testId) as HTMLDetailsElement;
+  details.open = true;
+  fireEvent(details, new Event("toggle"));
+};
+const openAdvanced = () => openDisclosure("generate-content-advanced");
+const openDeveloperTools = () => openDisclosure("generate-content-developer");
+
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   setAdminKey("secret-admin");
@@ -170,6 +185,7 @@ describe("single stored question", () => {
     fireEvent.click(await screen.findByTestId("generate-content-open"));
     await screen.findByTestId("generate-content-panel");
 
+    openDeveloperTools();
     expect(commandText()).toBe(
       'npm run quiz:screenshots -- --question-id 1 --states "question,correct" ' +
         "--formats mobile-social",
@@ -185,9 +201,11 @@ describe("single stored question", () => {
     fireEvent.click(await screen.findByTestId("generate-content-open"));
     await screen.findByTestId("generate-content-panel");
 
+    openAdvanced();
     fireEvent.click(screen.getByTestId("content-format-vertical"));
     fireEvent.click(screen.getByTestId("content-state-correct"));
     fireEvent.click(screen.getByTestId("content-difficulty-diamond"));
+    openDeveloperTools();
 
     expect(commandText()).toBe(
       "npm run quiz:screenshots -- --question-id 1 --states question " +
@@ -200,7 +218,9 @@ describe("single stored question", () => {
     fireEvent.click(await screen.findByTestId("generate-content-open"));
     await screen.findByTestId("generate-content-panel");
 
+    openAdvanced();
     fireEvent.click(screen.getByTestId("content-post-answer-reveal"));
+    openDeveloperTools();
     expect(commandText()).toContain("--post answer-reveal");
     expect(commandText()).not.toContain("--states");
     // and the now-irrelevant state toggles are gone from the surface
@@ -386,11 +406,120 @@ describe("readiness is visible before the handoff", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Simple mode — the operator questions, over the canonical registries
+// ---------------------------------------------------------------------------
+
+describe("Generate Content simple mode", () => {
+  const openPanel = async () => {
+    renderReview(1);
+    fireEvent.click(await screen.findByTestId("generate-content-open"));
+    await screen.findByTestId("generate-content-panel");
+  };
+
+  it("asks where you are posting, and writes real renderer format keys", async () => {
+    await openPanel();
+
+    // Default is the one default format key, shown under its operator name.
+    expect(screen.getByTestId("content-destination-mobile-social").getAttribute("aria-pressed"))
+      .toBe("true");
+    expect(screen.getByTestId("content-destination-landscape").getAttribute("aria-pressed"))
+      .toBe("false");
+
+    fireEvent.click(screen.getByTestId("content-destination-landscape"));
+    openDeveloperTools();
+    expect(commandText()).toContain('--formats "mobile-social,landscape"');
+  });
+
+  it("asks what you want, and writes real render states in post order", async () => {
+    await openPanel();
+
+    // Default states are question + correct — "Question + Reveal".
+    expect(screen.getByTestId("content-intent-reveal").getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(screen.getByTestId("content-intent-explained"));
+    openDeveloperTools();
+    expect(commandText()).toContain('--states "question,correct,explanation"');
+
+    fireEvent.click(screen.getByTestId("content-intent-question"));
+    expect(commandText()).toContain("--states question");
+  });
+
+  it("reflects an advanced edit rather than disagreeing with it", async () => {
+    await openPanel();
+
+    // An arbitrary state set matches no intent, and simple mode says so
+    // instead of showing a stale selection.
+    openAdvanced();
+    fireEvent.click(screen.getByTestId("content-state-incorrect"));
+    expect(screen.getByTestId("content-intent-custom").textContent)
+      .toContain("Question → Reveal → Wrong answer");
+    expect(screen.getByTestId("content-intent-reveal").getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("hides the card question under a post composition, which owns its slides", async () => {
+    await openPanel();
+    openAdvanced();
+    fireEvent.click(screen.getByTestId("content-post-answer-reveal"));
+
+    expect(screen.queryByTestId("content-intent-reveal")).toBeNull();
+    // Named in operator language in both places: the simple-mode sentence and
+    // the advanced toggle that set it.
+    expect(screen.getAllByText(/Reveal post/).length).toBeGreaterThan(0);
+  });
+
+  it("keeps Open Content Workspace as the one primary action", async () => {
+    await openPanel();
+    expect(screen.getByTestId("generate-content-open-workspace")).toBeTruthy();
+    // The CLI routes still exist — behind Developer tools, not beside it.
+    openDeveloperTools();
+    expect(screen.getByTestId("generate-content-copy")).toBeTruthy();
+    expect(screen.getByTestId("generate-content-copy-config")).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Progressive disclosure in the filter toolbar
+// ---------------------------------------------------------------------------
+
+describe("advanced filters are hidden until asked for", () => {
+  it("keeps every advanced filter, one click behind More filters", async () => {
+    renderReview();
+    await screen.findByText("Question number 1");
+
+    // Not on the toolbar…
+    expect(screen.queryByLabelText("Category")).toBeNull();
+    expect(screen.queryByLabelText("Subject type")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("more-filters-toggle"));
+    const panel = screen.getByTestId("more-filters-panel");
+    for (const label of [
+      "Category", "Answer certainty", "Format", "Ability slot",
+      "Subject type", "Live in the app", "Difficulty", "Shortcuts",
+    ]) {
+      expect(within(panel).getByText(label)).toBeTruthy();
+    }
+  });
+
+  it("reports how many advanced filters are narrowing the list", async () => {
+    renderReview();
+    await screen.findByText("Question number 1");
+
+    fireEvent.click(screen.getByTestId("more-filters-toggle"));
+    fireEvent.click(within(screen.getByTestId("more-filters-panel")).getByText("🚨 Missing Asset"));
+
+    expect(screen.getByTestId("more-filters-toggle").textContent).toContain("1");
+  });
+});
+
 describe("favorite_for_shorts remains the one content shortlist", () => {
   it("is still the existing filter and toggle — no second content flag exists", async () => {
     const { container } = renderReview(6);
     await screen.findByText("Question number 1");
-    // The existing shortlist filter.
+    // The existing shortlist filter. It moved behind "More filters" with the
+    // rest of the advanced set — still the same filter, one click further in.
+    expect(screen.queryByText("⭐ Shorts Favorites")).toBeNull();
+    fireEvent.click(screen.getByTestId("more-filters-toggle"));
     expect(screen.getByText("⭐ Shorts Favorites")).toBeTruthy();
     // The existing per-row toggle, unchanged.
     expect(await screen.findByText("Shorts Fav")).toBeTruthy();
