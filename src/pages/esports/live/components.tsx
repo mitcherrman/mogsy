@@ -6,6 +6,7 @@
  * for the twenty minutes someone might leave it open.
  */
 import { useState } from "react";
+import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import {
   Area,
   AreaChart,
@@ -331,6 +332,18 @@ export function TeamPanel({
         )}
       />
       <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {/* `resolved_page` is LIVE1's own canonical team identity — the same
+              `esports_teams.lp_page` the media authority keys on — so the crest
+              is looked up by identity, never by the broadcast's display name.
+              A game between teams with no approved media renders exactly as it
+              did before, with the short code in a frame. */}
+          <TeamCrest
+            teamKey={team?.resolved_page ?? null}
+            name={teamLabel(team)}
+            shortCode={team?.code ?? null}
+            size="md"
+          />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className="truncate text-base font-bold">{teamLabel(team)}</span>
@@ -343,6 +356,7 @@ export function TeamPanel({
           {team?.name && team.name !== team.code && (
             <div className="truncate text-xs text-muted-foreground">{team.name}</div>
           )}
+        </div>
         </div>
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Kills</div>

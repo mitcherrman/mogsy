@@ -65,17 +65,26 @@ export function ProfileHeader({
   subtitle,
   meta,
   focus,
+  media,
 }: {
   title: string;
   subtitle?: ReactNode;
   meta?: ReactNode;
   focus?: FocusBlock | null;
+  /** An identity anchor to the left of the title — a team crest today. Optional
+   *  on purpose: a profile with no approved media renders exactly as before,
+   *  with no reserved gap where a logo might one day go. The NAME stays the
+   *  dominant element either way; the crest is a cue, not the headline. */
+  media?: ReactNode;
 }) {
   return (
     <header className="mb-6 space-y-2" data-testid="profile-header">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
-        {subtitle ? <span className="text-sm text-muted-foreground">{subtitle}</span> : null}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {media}
+        <div className="flex min-w-0 flex-wrap items-baseline gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h1>
+          {subtitle ? <span className="text-sm text-muted-foreground">{subtitle}</span> : null}
+        </div>
       </div>
       {meta ? <div className="flex flex-wrap items-center gap-2 text-sm">{meta}</div> : null}
       {focus ? <FocusNotice focus={focus} /> : null}

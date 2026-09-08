@@ -11,7 +11,7 @@
 // result limit — so a truncated list cannot hide one of the options.
 // ---------------------------------------------------------------------------
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Search as SearchIcon } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -27,6 +27,8 @@ import {
   ResearchBreadcrumb,
   ResearchPage,
 } from "@/components/pro-play/ResearchShell";
+import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
+import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import {
   decodeRegistryText,
   formatDate,
@@ -46,6 +48,10 @@ const KIND_LABEL: Record<EntityKind, string> = {
 const EXAMPLES = ["Faker", "Chovy", "T1", "Gen.G", "Azir", "Faker Azir", "IG"];
 
 function ResultRow({ result }: { result: SearchResult }) {
+  // A crest is an identity cue in a list whose job is the NAME, so it is small
+  // and it leads the row. Champions keep the existing text-only row: champion
+  // art has its own authority and pulling it in here would be a second media
+  // system, which this workstream exists to avoid.
   const context: string[] = [];
   if (result.primary_role) context.push(result.primary_role);
   if (result.region) context.push(result.region);
@@ -61,6 +67,15 @@ function ResultRow({ result }: { result: SearchResult }) {
         to={profilePath(result.kind, result.key)}
         className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-1 py-2.5 hover:bg-muted/40"
       >
+        {result.kind === "team" ? (
+          <TeamCrest
+            teamKey={result.key}
+            name={result.display_name}
+            shortCode={result.short ?? null}
+            size="sm"
+            className="self-center"
+          />
+        ) : null}
         <Badge variant="outline" className="text-[10px] uppercase">
           {KIND_LABEL[result.kind]}
         </Badge>
@@ -171,8 +186,21 @@ function SearchBody() {
 
   useEffect(() => () => abort.current?.abort(), []);
 
+  // Every team key on screen, in ONE request — the ranked list plus any
+  // disambiguation candidates, which are the same rows rendered twice.
+  const teamKeys = useMemo(() => {
+    const keys = [
+      ...(data?.results ?? []),
+      ...(data?.ambiguity.candidates ?? []),
+    ]
+      .filter((r) => r.kind === "team")
+      .map((r) => r.key);
+    return [...new Set(keys)];
+  }, [data]);
+
   return (
     <ResearchPage>
+      <ProPlayMediaProvider teams={teamKeys}>
       <ResearchBreadcrumb trail={[{ label: "Search" }]} />
       <h1 className="mb-1 text-2xl font-semibold tracking-tight md:text-3xl">
         Pro Play research
@@ -242,6 +270,7 @@ function SearchBody() {
           </Panel>
         </>
       ) : null}
+      </ProPlayMediaProvider>
     </ResearchPage>
   );
 }

@@ -12,6 +12,7 @@
  * numbers never change again.
  */
 import { useEffect, useMemo, useState } from "react";
+import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, Library, Radio, RefreshCw, WifiOff } from "lucide-react";
@@ -397,21 +398,28 @@ export default function EsportsLivePage() {
                 />
               )}
 
-              {/* scoreboard */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TeamPanel
-                  side="blue"
-                  team={selected.teams.blue}
-                  state={detail.data?.team_state?.blue}
-                  winner={isFinal && isWinner(detail.data?.team_state, "blue")}
-                />
-                <TeamPanel
-                  side="red"
-                  team={selected.teams.red}
-                  state={detail.data?.team_state?.red}
-                  winner={isFinal && isWinner(detail.data?.team_state, "red")}
-                />
-              </div>
+              {/* scoreboard — one media request for the two teams on it */}
+              <ProPlayMediaProvider
+                teams={[
+                  selected.teams.blue?.resolved_page,
+                  selected.teams.red?.resolved_page,
+                ]}
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TeamPanel
+                    side="blue"
+                    team={selected.teams.blue}
+                    state={detail.data?.team_state?.blue}
+                    winner={isFinal && isWinner(detail.data?.team_state, "blue")}
+                  />
+                  <TeamPanel
+                    side="red"
+                    team={selected.teams.red}
+                    state={detail.data?.team_state?.red}
+                    winner={isFinal && isWinner(detail.data?.team_state, "red")}
+                  />
+                </div>
+              </ProPlayMediaProvider>
 
               {/* players */}
               <SectionCard title="Players">

@@ -35,6 +35,8 @@ import {
   ScopeTabs,
   TableScroll,
 } from "@/components/pro-play/ResearchShell";
+import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
+import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { teamRoute } from "@/lib/league-docs/roster-api";
 import {
   fetchTeamProfile,
@@ -192,7 +194,19 @@ function Body({ teamKey }: { teamKey: string }) {
   return (
     <ResearchPage>
       <ResearchBreadcrumb trail={[{ label: profile.entity.display_name }]} />
+      {/* One request for the one entity this page is about. `entity.key` IS the
+          canonical `esports_teams.lp_page` the profile was loaded by, so the
+          crest and the name cannot disagree. */}
+      <ProPlayMediaProvider teams={[profile.entity.key]}>
       <ProfileHeader
+        media={
+          <TeamCrest
+            teamKey={profile.entity.key}
+            name={profile.entity.display_name}
+            shortCode={identity.short ? String(identity.short) : null}
+            size="xl"
+          />
+        }
         title={profile.entity.display_name}
         subtitle={profile.entity.key !== profile.entity.display_name ? profile.entity.key : undefined}
         focus={profile.worlds_focus}
@@ -251,6 +265,7 @@ function Body({ teamKey }: { teamKey: string }) {
           <EmptyRow label={`No competitions recorded in ${active.scope.label}.`} />
         )}
       </Panel>
+      </ProPlayMediaProvider>
     </ResearchPage>
   );
 }

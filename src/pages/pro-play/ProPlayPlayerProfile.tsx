@@ -39,6 +39,8 @@ import {
   ScopeGrid,
   ScopeTabs,
 } from "@/components/pro-play/ResearchShell";
+import { PlayerPortraitSlot, TeamCrest } from "@/components/pro-play/media/EntityCrest";
+import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { playerRoute } from "@/lib/league-docs/roster-api";
 import {
   decodeRegistryText,
@@ -155,10 +157,36 @@ function Body({ playerKey }: { playerKey: string }) {
   if (identity.country) meta.push(String(identity.country));
   if (identity.real_name) meta.push(decodeRegistryText(String(identity.real_name)));
 
+  // SECONDARY IDENTITY, AND ONLY WHERE THE CANONICAL KEY IS UNAMBIGUOUS.
+  // `demonstrated.team_key` is who this player actually played for in the
+  // corpus and is always a canonical page. The declared value is a fallback and
+  // is used ONLY when the registry resolved it — an `ambiguous` resolution is
+  // exactly the case where putting a crest on screen would assert something the
+  // authority refuses to assert.
+  const ctxTeam = profile.team_context;
+  const teamKey =
+    ctxTeam.demonstrated?.team_key ??
+    (ctxTeam.declared && ctxTeam.declared.resolution !== "ambiguous"
+      ? ctxTeam.declared.resolved_team_key
+      : null);
+
   return (
     <ResearchPage>
       <ResearchBreadcrumb trail={[{ label: profile.entity.display_name }]} />
+      {/* The player's OWN portrait is not requested: no player portrait is
+          approved, so asking would spend a round trip to be told so. The team
+          crest is the only media this page can show, and it is shown AS the
+          team's, never as the player's. */}
+      <ProPlayMediaProvider teams={teamKey ? [teamKey] : []}>
       <ProfileHeader
+        media={
+          <span className="flex items-center gap-2">
+            <PlayerPortraitSlot name={profile.entity.display_name} size="xl" />
+            {teamKey ? (
+              <TeamCrest teamKey={teamKey} name={teamKey} size="md" />
+            ) : null}
+          </span>
+        }
         title={profile.entity.display_name}
         subtitle={profile.entity.key !== profile.entity.display_name ? profile.entity.key : undefined}
         focus={profile.worlds_focus}
@@ -233,6 +261,7 @@ function Body({ playerKey }: { playerKey: string }) {
           <EmptyRow label={`No competitions recorded in ${active.scope.label}.`} />
         )}
       </Panel>
+      </ProPlayMediaProvider>
     </ResearchPage>
   );
 }
