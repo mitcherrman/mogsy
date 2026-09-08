@@ -1,5 +1,6 @@
 import React from "react";
 import type { ChampionDoc, DocAbility, DocChampionStats, DocFormula, DocRankValues } from "../../lib/league-docs/api";
+import { rangeRows } from "../../lib/league-docs/range";
 
 const card = "rounded-2xl border border-border bg-card/40 p-5 md:p-6";
 const SLOT_LABELS: Record<DocAbility["slot"], string> = { P: "Passive", Q: "Q", W: "W", E: "E", R: "R" };
@@ -69,7 +70,11 @@ export default function ChampionReference({ doc }: { doc: ChampionDoc }) {
               <ul className="mt-1 text-xs text-muted-foreground">
                 {rankText(ability.cooldown) && <li>Cooldown: {rankText(ability.cooldown)}</li>}
                 {rankText(ability.cost) && <li>Cost: {rankText(ability.cost)}</li>}
-                {rankText(ability.range) && <li>Range: {rankText(ability.range)}</li>}
+                {/* CHAMPDATA Pass 12: the authority's typed distances, not one
+                    Data Dragon scalar labelled "Range". */}
+                {rangeRows(ability).map((row) => (
+                  <li key={row.label}>{row.label}: {row.text}</li>
+                ))}
               </ul>
               {ability.formulas.length > 0 && (
                 <ul className="mt-1 space-y-0.5">

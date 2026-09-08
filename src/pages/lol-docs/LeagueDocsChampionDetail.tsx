@@ -34,6 +34,7 @@ import {
   type DocFormula,
   type DocRankValues,
 } from "@/lib/league-docs/api";
+import { rangeAbsenceNote, rangeRows } from "@/lib/league-docs/range";
 
 const GOLD = "#c9a84c";
 
@@ -188,11 +189,16 @@ function FormulaText({ formula }: { formula: DocFormula }) {
 
 function AbilityCard({ ability }: { ability: DocAbility }) {
   const isSynthesizedPassive = ability.slot === "P" && !ability.name && !ability.description;
+  // CHAMPDATA Pass 12. "Range" used to be one row holding `rankText(ability.range)`
+  // — a Data Dragon scalar that was the ability's cast range for fewer than a
+  // third of abilities. It is now the authority's typed set: a cast range when
+  // the wiki publishes one, plus every other distance it publishes, each named.
   const rankRows = [
-    { label: "Cooldown", text: rankText(ability.cooldown) },
-    { label: "Cost", text: rankText(ability.cost) },
-    { label: "Range", text: rankText(ability.range) },
+    { label: "Cooldown", text: rankText(ability.cooldown), note: null as string | null },
+    { label: "Cost", text: rankText(ability.cost), note: null as string | null },
+    ...rangeRows(ability),
   ].filter((r) => r.text !== null);
+  const absenceNote = rangeAbsenceNote(ability);
 
   return (
     <article className="rounded-xl border border-border bg-card/60 p-4">
@@ -228,9 +234,16 @@ function AbilityCard({ ability }: { ability: DocAbility }) {
                 {row.label}
               </dt>
               <dd className="mt-0.5 font-mono text-[12px] text-foreground/90 break-words">{row.text}</dd>
+              {row.note && (
+                <dd className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{row.note}</dd>
+              )}
             </div>
           ))}
         </dl>
+      )}
+
+      {absenceNote && (
+        <p className="mt-2 text-[11px] italic text-muted-foreground">{absenceNote}</p>
       )}
 
       {ability.formulas.length > 0 && (

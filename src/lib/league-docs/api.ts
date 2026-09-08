@@ -394,13 +394,56 @@ export type DocFormula = {
   resolved_value: number | null;
 };
 
+/** One spatial quantity the League Wiki publishes for an ability.
+ *  `type` is the backend's controlled vocabulary (services/canonical_range.py);
+ *  `value` is the wiki's own rendering, so "80 • 480" and "300 - 1000" arrive
+ *  as what they are rather than as one flattened number. */
+export type DocRangeComponent = {
+  type:
+    | "CAST_RANGE"
+    | "TRAVEL_RANGE"
+    | "EFFECT_RADIUS"
+    | "INNER_RADIUS"
+    | "COLLISION_RADIUS"
+    | "TETHER_RADIUS"
+    | "DETECTION_RADIUS"
+    | "WIDTH"
+    | "ATTACK_RANGE_MODIFIER"
+    | string;
+  value: string;
+  note: string | null;
+  is_global: boolean;
+};
+
+/** CHAMPDATA Pass 12. `DocAbility.range` is a per-rank CAST range and nothing
+ *  else — null for the 416 abilities that do not have one, including every
+ *  globally cast ability. Everything else the authority publishes is here. */
+export type DocRangeDetail = {
+  modelled:
+    | "cast_range"
+    | "global"
+    | "components_only"
+    | "no_range_published"
+    | "not_established"
+    | string;
+  targeting: string | null;
+  is_global: boolean;
+  cast_range_note: string | null;
+  components: DocRangeComponent[];
+  authority: { host: string | null; source_url: string | null; revision_id: number | null } | null;
+};
+
 export type DocAbility = {
   slot: "P" | "Q" | "W" | "E" | "R";
   name: string | null;
   description: string | null;
   cooldown: DocRankValues | null;
   cost: DocRankValues | null;
+  /** A per-rank cast range from wiki.leagueoflegends.com. Null means the
+   *  authority does not publish one — never a licence to show another number.
+   *  Read `range_detail` for what it does publish. */
   range: DocRankValues | null;
+  range_detail: DocRangeDetail | null;
   ranks: number | null;
   source_id: number | null;
   formulas: DocFormula[];
