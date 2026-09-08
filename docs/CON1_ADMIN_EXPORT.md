@@ -325,50 +325,66 @@ exists precisely to absorb this noise (it does, on the other 16 cases). Changing
 it would change CLI output too, and special-casing Pro Play would be exactly the
 renderer divergence this workstream is built to avoid. Left for owner judgement.
 
-## Git state
+## Integration state (2026-09-08)
 
-Frontend `/Users/macmoney/mogsy`, branch `main`, **uncommitted**:
+| | |
+| --- | --- |
+| Implementation commit | `9698e94a` — *feat(admin): export quiz content directly from review* |
+| Base it was built on | `c7d05d58` |
+| `origin/main` at integration | `c7d05d58` — **had not moved**; 0 behind, 1 ahead |
+| Rebase / conflict resolution | **none required** — fast-forward |
+| `origin/main` now | `9698e94af26bc13b61ce9a0a7827d7f99f6f9842` |
+| Push | fast-forward `c7d05d58..9698e94a`, no force |
 
-```
- M docs/ADMIN_QUIZ_REVIEW_UX.md
- M src/components/admin/GenerateContentPanel.tsx
- M src/components/admin/GenerateContentPanel.handoff.test.tsx
- M src/pages/admin/AdminQuizReview.generateContent.test.tsx
- M src/pages/dev/quiz-render/QuizRenderPage.tsx
-?? docs/CON1_ADMIN_EXPORT.md
-?? scripts/quiz-screenshots/verify-browser-export.ts
-?? src/lib/quiz-screenshot/browserCapture.ts
-?? src/lib/quiz-screenshot/exportPlan.ts
-?? src/lib/quiz-screenshot/exportPlan.test.ts
-?? src/lib/quiz-screenshot/runBrowserExport.ts
-?? src/lib/quiz-screenshot/deliverExport.ts
-?? src/lib/quiz-screenshot/deliverExport.test.ts
-```
+13 files, all belonging to this task; the diff was reviewed line by line for
+concurrent-session contamination before committing. `package.json`,
+`package-lock.json` and the backend are untouched.
 
-No backend change. No dependency change (`package.json` / `package-lock.json`
-untouched). Backend `/Users/macmoney/League_Combat_Simulator` was not modified.
+The earlier hard reset by a concurrent session is what moved this checkout onto
+`c7d05d58` in the first place, so the restored work was already sitting on
+current main — which is why integration was a fast-forward. The work is now
+committed and pushed, so that hazard is closed.
 
-`QuizRenderPage.tsx` is new to this list: it gained the optional
-`renderDocument` prop described above. The route's own behaviour is unchanged.
+### Verification at integration
 
-> **THIS CHECKOUT IS SHARED.** During the review pass a concurrent session ran
-> `git reset` to `9d15e52b^` followed by a fast-forward merge of `origin/main`
-> (visible in `git reflog`). A hard reset discards uncommitted **tracked**
-> changes, and it silently wiped every tracked-file edit in this workstream —
-> the whole `GenerateContentPanel.tsx` rewrite, both test files and the UX doc.
-> Untracked new files survived. All of it was re-applied and re-verified. A copy
-> of the full state (`git diff` patch plus every untracked file) is kept outside
-> the repo at
-> `/private/tmp/claude-501/-Users-macmoney-League-Combat-Simulator/0a9b1d0b-631f-40b3-8c9c-9100dcaaa39f/scratchpad/con1-backup/`
-> so a repeat is recoverable. Committing this branch is the real fix.
+* **Parity** — 17/17 exact dimensions, 16/17 identical fitted zoom, the single
+  known `vq-12` Pro Play square outlier. No new visual regression.
+* **Behaviour** — 4/4: unresolved required asset blocks with zero files · a
+  4-card run delivers `bundle.zip` with the expected CLI-layout paths · the
+  export never touches the Admin document (0 root mutations, splash kept) · no
+  Content Workspace request in a normal export.
+* **Tests** — 1014 passed / 11 failed, the same two files by identity
+  (`StructuralReview.test.tsx` ×10, `AdminUsers.phase1.test.tsx` ×1), both
+  pre-existing on a clean tree. `tsc` 11, unchanged. No CON1-caused failure.
+
+### Deployment status — PUBLISH PENDING (owner-only)
+
+This repo has **no CI**: `.github/workflows` does not exist, and the README's
+documented mechanism is Lovable *Share → Publish*. A push does not deploy.
+
+Confirmed by reading production rather than assuming: `mogzy.lol` still serves
+`assets/AdminQuizReview-Dy-1Pa09.js`, which contains the OLD string
+`Open Content Workspace` and none of `PNGs as ZIP`, `Open local renderer` or
+`no local server needed`.
+
+**Live `/admin/quiz-content` verification is therefore not yet possible** and was
+not attempted. The dev-only E2E persona is dead-code-eliminated from production
+builds by design, and using real owner credentials against production is not
+something to do on the owner's behalf. The equivalent verification has been
+completed against a local authenticated build — see the owner-review pass above,
+including a real export and download.
 
 ## Exact next task
 
-Owner review of the three items above. Then, in order:
-
-1. **Commit this work** — the shared checkout has already destroyed it once.
-2. Push `main`, then **press Publish in Lovable** — a push alone does not deploy
-   the frontend.
-3. Decide the two remaining measured limitations: the ≤15px vertical drift and
-   the single `vq-12` zoom boundary. Either accept them for published content,
-   or keep the CLI as the authority for anything that has to be frame-perfect.
+1. **Owner: press Publish in Lovable** (*Share → Publish*). Nothing else is
+   outstanding in the code; `origin/main` already carries the work.
+2. Then verify live `/admin/quiz-content`: the CTA reads `Export PNG` /
+   `Export N PNGs as ZIP`, Advanced options and Developer tools are collapsed,
+   `Open Content Workspace` appears only inside Developer tools, and a real
+   export downloads a 1080×1350 PNG (or a ZIP) without the page changing theme.
+   A quick check that the deploy landed: `assets/AdminQuizReview-*.js` should
+   contain `PNGs as ZIP` and no longer contain `Open Content Workspace` as the
+   primary action.
+3. Decide the two measured, accepted limitations: the ≤15px vertical drift and
+   the single `vq-12` zoom boundary — accept for published content, or keep the
+   CLI as the authority for anything that must be frame-perfect.
