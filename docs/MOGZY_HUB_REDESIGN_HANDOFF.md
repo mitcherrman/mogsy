@@ -1,6 +1,7 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 28 (Step 4 production verification) is at the top of this file.
+<!-- Revision 29 (Bulletin enrichment + the long-question fix) is at the top of
+     this file. Revision 28 was the Step 4 production verification.
      Revision 27 was Step 4, the Bulletin carousel.
      Revision 26 was the visual QA pass and the guest 403 fix, Revision 25
      shipped Step 3, Revision 24 was the recomposition, Revision 23 the
@@ -10,6 +11,178 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-07 — BULLETIN V1 ENRICHMENT + THE LONG-QUESTION FIX — **SHIPPED**
+
+**Commit:** `b95a9aef` — `feat(hub): only show Bulletin questions the board can show whole, and widen every family`
+**Pushed:** `d3425a0a..b95a9aef`, clean fast-forward after a rebase onto two
+unrelated commits that landed mid-task (no file overlap; suites re-run after
+the rebase). No force.
+**Geometry:** untouched. No mount moved.
+
+### 1. The long-question solution — eligibility, not truncation
+
+A question that cannot be shown whole is **not selected**. Truncating at a word
+boundary was rejected outright: it moves the cut, it does not remove it.
+
+**The threshold is measured.** 414 live questions from all 17 stocked
+categories were rendered into the real title element at three gated viewports
+and compared against a three-line budget:
+
+| | |
+|---|---|
+| Title box, 1024x781 (tightest gate) | 17.2px type / 20.0px line-height / 292px wide / 61px budget |
+| Longest question that **fits** | **60 characters** |
+| Shortest question that **fails** | **52 characters** |
+
+The two overlap because wrapping follows glyph widths, not character counts —
+which is exactly why the rule sits **below the observed failure floor** rather
+than near the fitting ceiling. `BULLETIN_QUESTION_MAX_CHARS = 48` leaves four
+characters of margin. A second guard rejects any single token over 18
+characters, which no line budget would catch (the longest word in the whole
+bank is 20).
+
+Capacity is near-constant across the gated viewports — type and column both
+scale with `--u`, so 1440 measured a longest-fitting of 61 against 1024's 60 —
+so one threshold covers all three, and flow mode is more generous still.
+
+**The measurement trap, recorded in the file.** The first pass compared
+`scrollHeight` against `clientHeight`, which on a line-clamped element tracks
+the *content*: it reported that short item questions "did not fit" a box whose
+current content happened to be one line. Compare against three line-boxes
+computed from the line-height. The re-calibration recipe lives beside the
+constant.
+
+**Nothing else changed to accommodate it.** The bank is untouched, gameplay is
+untouched, no prompt is rewritten or summarised, no choices or answers are
+exposed, and the typography is as approved in Revision 27.
+
+### 2. Quiz sources now represented
+
+All 19 sources in `PRACTICE_CATEGORY_SOURCES`, flattened — the same map the
+practice rail uses. `vision` contributes nothing, as it has no sources.
+
+**Two subjects a day, not one.** Measured against the live bank: five of the
+nineteen cannot currently supply a board-eligible question — `Summoner Spell
+Cooldowns` and `Mana Management` are empty, and `Jungle Camps`, `Item Build
+Paths` and `Champion Ability Cooldowns` are stocked entirely with the long
+comparison and scenario formats. A one-subject rotation would therefore drop
+the most playable card on roughly a quarter of days. A deterministic pair
+(stride coprime with the source count) takes that to about one day in fourteen
+for one extra cached request — confirmed in the sweep, where 1 of 12 seeds
+produced no quiz card.
+
+Eligible-question supply, sampled at limit 20: `Item Costs` 20/20,
+`Item Recognition` 20/20, `Item Stats` 20/20, `Champion Ability Recognition`
+20/20, `Item Stat Diversity` 19/20, `Item Builds Into` 18/20,
+`Item Components` 15/20, `Item Exact Stats` 14/20, `Summoner Spells` 5/5,
+`Summoner Spell Recognition` 5/5, `Objectives` 3/20, `Minion Waves` 3/20,
+`Objective Timers` 2/11, `Champion Ability Costs` 1/20.
+
+### 3. Mechanics variety
+
+Every published study table in the index is a candidate — flattened across all
+categories, not `[0][0]`. The day picks which. Content is still only the
+table's own `title`, `subtitle`, `patch` and `row_count`; **no "fact" is
+synthesised from metadata that does not express one**, and the deep link is
+still `/lol/mechanics`.
+
+### 4. Personal projections
+
+The Ranked result as before, plus a **second** notice that alternates by day:
+
+| Projection | Condition | Source |
+|---|---|---|
+| Last Ranked result | a completed match exists | `useRankedMatchHistory` |
+| Current streak | **five or more** correct in a row | `deriveProfileStats.currentStreak` |
+| Academy standing | a coherent Academy block **and** real activity | `parseAcademyProgression` |
+
+Both new ones are **status, not milestones**. Nothing decides that an ordinary
+number is an achievement — a four-answer run is explicitly not a streak, and a
+test asserts it. An account meeting neither condition gets one personal notice;
+a guest gets none. Progress is read on the **same** `["quiz-progress", userId]`
+key the Academy Record and the profile page use, so no extra request.
+
+### 5. Ordering and repetition
+
+`personal → quiz → mechanics → proplay` is unchanged: what the reader did, then
+what they can do, then what is true in general, then an invitation. Variety
+comes from the day seed plus the backend's own within-subject randomisation, so
+two visits on the same day still differ. **No stored carousel history, no
+personalisation, no ranking.** `daySeed` is exposed as a prop purely so a test
+or a capture gets the same board twice.
+
+### 6. Visual measurements
+
+Playwright, **110 cards**: 12 day-seeds x three gated viewports, plus flow
+(390x844) and large text.
+
+| | |
+|---|---|
+| Truncated questions | **0** |
+| Clipped bodies | **0** |
+| Nav overlapping title or CTA | **0** |
+| CTA outside the board | **0** |
+| Horizontal overflow | **0** |
+| Minimum slack below the CTA | **+22px** |
+| Distinct questions across the sweep | **25** |
+| Longest question ever shown | **48 characters** |
+| Seeds with no quiz card | 1 of 12 |
+
+**Two defects the wider sweep caught that Revision 27's did not, both mine:**
+
+1. The Pro Play body was 127 characters against a two-line clamp and was being
+   cut mid-sentence on every board. Authored copy is now policed like a
+   question (`BULLETIN_AUTHORED_BODY_MAX_CHARS`), with a test. A data-sourced
+   body — a table's own subtitle — is its authority's business; the clamp still
+   protects the geometry.
+2. In flow and large-text the chevrons sat **on** the copy. The stage gate gave
+   them a `--u` inset but flow had none, and the rule meant to add one was
+   out-ordered by the sheet's Tailwind `px-5 sm:px-6`. The utility is gone and
+   index.css owns that padding in both modes.
+
+Revision 27's sweep missed both because it checked only the quiz card's title
+against the arrows, and only at stage sizes.
+
+### 7. Verification
+
+| Check | Result |
+|---|---|
+| lol / hub / community / quiz-ranked | **704 passed**, 49 files (was 688; +16 Bulletin tests) |
+| Lint | **0 errors**; 2 warnings, both pre-existing in `AcademyBroadcastSurface.tsx` |
+| **Full production build** (`npm run build`, prerender + both verify steps) | **exit 0**, 173 champions prerendered |
+| Typecheck | **11 errors, none in changed files** — the standing baseline |
+| Post-rebase re-run | 299 passed, typecheck still 11 |
+
+New coverage: long comparison and scenario formats rejected; the eligible
+question chosen out of a mostly-ineligible batch; an eligible question shown
+complete with no ellipsis; the pathological-token guard; the threshold asserted
+below the measured 52-character failure; honest fallback when a day's subjects
+supply nothing; sources drawn from the practice rail; different subject and
+different study table by day; tables from every category; streak and standing
+projections with their real numbers; a sparse account getting fewer notices; a
+four-answer run never called a streak; authored bodies fitting whole.
+
+### 8. Carousel behaviour — unchanged
+
+12s autoplay, hover/focus/hidden-tab/off-Commons pause, permanent stop after
+manual navigation, reduced motion, prev/next wrapping, `initialNoticeId`,
+`autoRotate`, and no live-region announcements. All still asserted.
+
+### 9. Next task
+
+**The wood side gutters** — the last purely visual pass on the Commons, and now
+unblocked: the board is finished, so the framing has something settled to frame.
+Timmy/demo population stays last, using `initialNoticeId` and `daySeed`.
+
+Worth carrying forward as a known limitation rather than a defect: three
+stocked subjects (`Jungle Camps`, `Item Build Paths`, `Champion Ability
+Cooldowns`) can never reach the board, because every question they hold is a
+long format. That is the eligibility rule working as designed, not a gap to
+close by loosening it — the fix, if ever wanted, is shorter question phrasing
+in the bank, which is a backend concern and out of scope here.
+
+---
 
 ## Revision 2026-09-07 — STEP 4 **PRODUCTION VERIFICATION COMPLETE** (and one live defect found)
 
