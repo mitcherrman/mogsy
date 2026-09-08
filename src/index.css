@@ -9576,6 +9576,76 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
     z-index: 5;
     pointer-events: none;
     background-color: var(--shelf-dark);
+
+    /* ---- capital and base -------------------------------------------------
+       At 2560 the plain shaft reads fine; at 3440 it is 262px of unarticulated
+       face and starts reading as reserved space rather than as architecture.
+       A column needs a top and a bottom, so it gets one of each — mouldings,
+       not ornament, and nothing is pinned to them.
+
+       BOTH ARE PLACED IN ARTWORK SPACE, like every other mount in this room:
+       `--commons-img-y + --commons-img-h * f`. So they track the painting
+       under any crop instead of floating at a fixed pixel height, and they
+       cannot drift from the room as the window changes shape.
+
+       THE BASE IS MEASURED. Sampling the outermost 30px column of the artwork
+       and looking for luminance steps, the lower band has one obvious
+       candidate and it is the same feature on both sides: a jump of +72 at
+       f=0.7545 on the left edge and +64 at f=0.7407 on the right — the lit
+       capping edge of the wall counter, an order of magnitude stronger than
+       any other step down there. That is the room's own skirting line, and it
+       is the same feature Revision 24 measured at 0.750-0.790 when it put the
+       utility strip on the counter top. The base sits at their mean, 0.7476.
+
+       THE CAPITAL IS NOT MEASURED, and that is worth saying plainly. The same
+       sampling over the upper band returns a step of only -8.8 at f=0.204 on
+       the left and -9.8 at f=0.117 on the right — near the noise floor, and
+       disagreeing with each other, because the two outer edges are not the
+       same thing: a window and an arch on the left, banners and a plant on the
+       right. The room simply does not declare a symmetric cornice at its
+       edges. So the capital is PLACED rather than aligned: 0.115 sits just
+       inside the top of the band that is actually visible at ultrawide (the
+       1.14 cap crops to 0.0614-0.9386 at every such width), which reads as the
+       head of the column without claiming an alignment the paint does not
+       contain. */
+    --pil-cap: calc(var(--commons-img-y) + var(--commons-img-h) * 0.115);
+    --pil-base: calc(var(--commons-img-y) + var(--commons-img-h) * 0.7476);
+    /* Slim. A deep entablature would out-weigh the Record. */
+    --pil-band: calc(var(--commons-img-h) * 0.0155);
+    --pil-edge: calc(var(--commons-img-h) * 0.0022);
+  }
+
+  /* The mouldings themselves, shared by both sides: a lit top arris, a face,
+     and a shadow under — the same three-part reading as the legal rail — plus
+     a quiet darkening of the shaft below the base so the lower stretch reads
+     as skirting rather than as more shaft. */
+  html.hub-two-screen:not(.large-text) .academy-commons::before,
+  html.hub-two-screen:not(.large-text) .academy-commons::after {
+    --pil-mouldings:
+      linear-gradient(
+        to bottom,
+        transparent 0 var(--pil-cap),
+        rgba(226, 190, 122, 0.22) var(--pil-cap)
+          calc(var(--pil-cap) + var(--pil-edge)),
+        var(--shelf-lit) calc(var(--pil-cap) + var(--pil-edge))
+          calc(var(--pil-cap) + var(--pil-edge) * 2),
+        var(--shelf-face) calc(var(--pil-cap) + var(--pil-edge) * 2)
+          calc(var(--pil-cap) + var(--pil-band)),
+        rgba(0, 0, 0, 0.55) calc(var(--pil-cap) + var(--pil-band))
+          calc(var(--pil-cap) + var(--pil-band) + var(--pil-edge)),
+        transparent calc(var(--pil-cap) + var(--pil-band) + var(--pil-edge))
+          var(--pil-base),
+        rgba(226, 190, 122, 0.26) var(--pil-base)
+          calc(var(--pil-base) + var(--pil-edge)),
+        var(--shelf-lit) calc(var(--pil-base) + var(--pil-edge))
+          calc(var(--pil-base) + var(--pil-edge) * 2),
+        var(--shelf-face) calc(var(--pil-base) + var(--pil-edge) * 2)
+          calc(var(--pil-base) + var(--pil-band)),
+        rgba(0, 0, 0, 0.6) calc(var(--pil-base) + var(--pil-band))
+          calc(var(--pil-base) + var(--pil-band) + var(--pil-edge)),
+        /* the skirting run below the base, a shade deeper than the shaft */
+        rgba(0, 0, 0, 0.3) calc(var(--pil-base) + var(--pil-band) + var(--pil-edge))
+      );
   }
 
   /* Left pilaster. The room's light comes from inside, so the INNER edge is
@@ -9588,6 +9658,8 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
       /* gilt hairline along the arris, then the lit edge itself */
       linear-gradient(to left, rgba(226, 190, 122, 0.34) 0 1px, transparent 1px),
       linear-gradient(to left, rgba(214, 178, 118, 0.13) 0 3px, transparent 3px),
+      /* capital and base, in front of the shaft's own panelling */
+      var(--pil-mouldings),
       /* two panel stiles, so it reads as joinery rather than a painted band */
       linear-gradient(
         90deg,
@@ -9616,6 +9688,7 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
       linear-gradient(to right, rgba(0, 0, 0, 0.5), transparent 14%),
       linear-gradient(to right, rgba(226, 190, 122, 0.34) 0 1px, transparent 1px),
       linear-gradient(to right, rgba(214, 178, 118, 0.13) 0 3px, transparent 3px),
+      var(--pil-mouldings),
       linear-gradient(
         270deg,
         transparent 0 22%,
