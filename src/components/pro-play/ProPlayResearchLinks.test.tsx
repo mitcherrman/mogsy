@@ -12,12 +12,12 @@ import { describe, expect, it, vi } from "vitest";
 import ProPlayResearchLinks from "./ProPlayResearchLinks";
 import { PRO_PLAY_MATCHUP_ROUTE, PRO_PLAY_SEARCH_ROUTE } from "@/lib/pro-play/routes";
 
-const status = vi.hoisted(() => ({ value: "loading" as string }));
+const status = vi.hoisted(() => ({ value: "loading" as string | null }));
 vi.mock("@/lib/admin-auth/AdminAuthProvider", () => ({
-  useAdminAuth: () => ({ status: status.value }),
+  useOptionalAdminAuth: () => (status.value == null ? null : { status: status.value }),
 }));
 
-function renderAs(value: string) {
+function renderAs(value: string | null) {
   status.value = value;
   return render(
     <MemoryRouter>
@@ -49,4 +49,12 @@ describe("ProPlayResearchLinks", () => {
       expect(container).toBeEmptyDOMElement();
     },
   );
+
+  // A page may mount this band without AdminAuthProvider above it (several
+  // page tests render their page bare). Absence must read as "not admin", not
+  // as a crash that takes the whole page down.
+  it("renders nothing, and does not throw, with no AdminAuthProvider above", () => {
+    const { container } = renderAs(null);
+    expect(container).toBeEmptyDOMElement();
+  });
 });

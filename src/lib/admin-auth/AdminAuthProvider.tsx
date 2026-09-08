@@ -143,3 +143,18 @@ export function useAdminAuth(): AdminAuthContextValue {
   if (!ctx) throw new Error("useAdminAuth must be used within AdminAuthProvider");
   return ctx;
 }
+
+/**
+ * The same value, or `null` when there is no provider above.
+ *
+ * For decoration that merely REACTS to admin status — a link that is pointless
+ * to show a non-admin, say — rather than for anything that gates access. A
+ * gate must keep using `useAdminAuth`, whose throw is the point: a gate
+ * rendered outside the provider is a bug that should be loud, not one that
+ * silently authorizes. Here the absence of a provider simply reads as "not
+ * admin", which is the fail-closed answer, and a page that mounts such a
+ * component without the provider renders without it instead of crashing.
+ */
+export function useOptionalAdminAuth(): AdminAuthContextValue | null {
+  return useContext(AdminAuthContext) ?? null;
+}

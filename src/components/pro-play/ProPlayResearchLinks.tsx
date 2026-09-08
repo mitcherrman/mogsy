@@ -15,7 +15,7 @@
 import { Link } from "react-router-dom";
 import { GitCompareArrows, Search as SearchIcon } from "lucide-react";
 
-import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
+import { useOptionalAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
 import { PRO_PLAY_MATCHUP_ROUTE, PRO_PLAY_SEARCH_ROUTE } from "@/lib/pro-play/routes";
 
 const LINKS = [
@@ -36,7 +36,9 @@ const LINKS = [
 ];
 
 export default function ProPlayResearchLinks() {
-  const { status } = useAdminAuth();
+  // Optional on purpose: this is a link, not a gate, so a page that mounts it
+  // without the provider must render without it rather than crash.
+  const status = useOptionalAdminAuth()?.status;
   const authorized = status === "authorized" || status === "authorized_via_fallback";
   if (!authorized) return null;
 
