@@ -376,18 +376,19 @@ describe("PT1.8 — handing a weakness to the Practice Builder", () => {
     expect(onPractise).toHaveBeenCalledWith({ pool: "bank", category: "Runes" });
   });
 
-  it("sends the PLURAL button as the Builder's own weak pool", async () => {
+  it("sends the COLLECTIVE header action as the Builder's own weak pool", async () => {
     const onPractise = vi.fn();
     render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
-    await waitFor(() => expect(screen.getByTestId("trends-build-weak-session")).toBeTruthy());
-    fireEvent.click(screen.getByTestId("trends-build-weak-session"));
+    await waitFor(() => expect(screen.getByTestId("trends-practise-all")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("trends-practise-all"));
+    // PT1.12 moved where it sits; the preset it hands over is unchanged.
     expect(onPractise).toHaveBeenCalledWith({ pool: "weak", category: null });
   });
 
   it("offers no handoff when the host did not supply one", async () => {
     render(<PerformanceTrendsPane />);
     await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
-    expect(screen.queryByTestId("trends-build-weak-session")).toBeNull();
+    expect(screen.queryByTestId("trends-practise-all")).toBeNull();
     expect(screen.queryByTestId("trends-practise-category")).toBeNull();
   });
 
@@ -683,13 +684,16 @@ describe("PT1.11 — Recent Performance, and reading the record", () => {
     expect(block).toMatch(/not just a low score once/i);
   });
 
-  it("offers a named Practice action on a recurring weakness, via the Builder", async () => {
+  it("offers a plain Practice action on a recurring weakness, via the Builder", async () => {
     const onPractise = vi.fn();
     render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
     await waitFor(() => expect(screen.getByTestId("trends-recurring")).toBeTruthy());
     const button = within(screen.getByTestId("trends-recurring"))
       .getByTestId("trends-practise-category");
-    expect(button.textContent).toBe("Practice Runes");
+    // PT1.12 — the category is already the first thing on the row, so the CTA
+    // does not repeat it. Every row's button is therefore the same width and
+    // the column reads as a column.
+    expect(button.textContent).toBe("Practice");
     fireEvent.click(button);
     // The EXISTING PT1.7B preset shape, unchanged: a single category goes as
     // the bank pool narrowed to it, never as the Builder's own weak pool.
@@ -717,9 +721,11 @@ describe("PT1.11 — Recent Performance, and reading the record", () => {
     render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
     await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
     // `is_recurring_weak` is a field a Free payload does not carry at all, so
-    // the action disappears by construction rather than by a second check.
+    // the whole Recurring Weaknesses block — and with it both actions —
+    // disappears by construction rather than by a second check.
+    expect(screen.queryByTestId("trends-recurring")).toBeNull();
     expect(screen.queryByTestId("trends-practise-category")).toBeNull();
-    expect(screen.queryByTestId("trends-build-weak-session")).toBeNull();
+    expect(screen.queryByTestId("trends-practise-all")).toBeNull();
     expect(onPractise).not.toHaveBeenCalled();
   });
 
@@ -751,5 +757,98 @@ describe("PT1.11 — Recent Performance, and reading the record", () => {
       expect(within(picker).getByTestId(`trends-window-${days}`)).toBeTruthy();
     }
     expect(screen.getByTestId("trends-movement")).toBeTruthy();
+  });
+});
+
+
+// ------------------------------------------ PT1.12 — one Practice pattern
+
+describe("PT1.12 — the Practice actions are one consistent pattern", () => {
+  it("puts exactly one collective action, in the section header", async () => {
+    const onPractise = vi.fn();
+    render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
+    await waitFor(() => expect(screen.getByTestId("trends-recurring")).toBeTruthy());
+    const all = screen.getAllByTestId("trends-practise-all");
+    expect(all.length).toBe(1);
+    expect(all[0].textContent).toBe("Practice all");
+    // In the header of the block it acts on, not adrift at the foot of the pane.
+    expect(all[0].closest("[data-testid='trends-recurring']")).toBeTruthy();
+  });
+
+  it("has retired the bottom-of-pane CTA and its old wording", async () => {
+    render(<PerformanceTrendsPane onPractiseWeakness={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    expect(screen.queryByTestId("trends-build-weak-session")).toBeNull();
+    expect(screen.getByTestId("trends-pane").textContent ?? "")
+      .not.toMatch(/practice all of these/i);
+  });
+
+  it("labels every recurring-weakness row identically", async () => {
+    api.trends.mockResolvedValue(REPORT({
+      categories: [
+        {
+          category: "Item Costs", attempts: 6, correct: 2, accuracy: 33.3,
+          previous_attempts: 6, previous_accuracy: 33.3, delta_points: 0,
+          direction: "steady", eligible: true, is_weak: true,
+          is_recurring_weak: true, low_sample: false,
+        },
+        {
+          category: "Champion Ability Cooldowns", attempts: 5, correct: 3,
+          accuracy: 60, previous_attempts: 5, previous_accuracy: 60,
+          delta_points: 0, direction: "steady", eligible: true, is_weak: true,
+          is_recurring_weak: true, low_sample: false,
+        },
+      ],
+      recurring_weak: ["Item Costs", "Champion Ability Cooldowns"],
+    }));
+    render(<PerformanceTrendsPane onPractiseWeakness={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("trends-recurring")).toBeTruthy());
+    const buttons = within(screen.getByTestId("trends-recurring"))
+      .getAllByTestId("trends-practise-category");
+    expect(buttons.length).toBe(2);
+    // Same label on every row — the point of the phase.
+    expect(buttons.map((b) => b.textContent)).toEqual(["Practice", "Practice"]);
+    // And no row repeats its own category in its CTA.
+    for (const b of buttons) {
+      expect(b.textContent).not.toMatch(/Item Costs|Champion Ability Cooldowns/);
+    }
+  });
+
+  it("keeps both presets exactly as the Builder already expects them", async () => {
+    const onPractise = vi.fn();
+    render(<PerformanceTrendsPane onPractiseWeakness={onPractise} />);
+    await waitFor(() => expect(screen.getByTestId("trends-recurring")).toBeTruthy());
+    const block = within(screen.getByTestId("trends-recurring"));
+
+    fireEvent.click(block.getByTestId("trends-practise-all"));
+    expect(onPractise).toHaveBeenLastCalledWith({ pool: "weak", category: null });
+
+    fireEvent.click(block.getAllByTestId("trends-practise-category")[0]);
+    expect(onPractise).toHaveBeenLastCalledWith({ pool: "bank", category: "Runes" });
+  });
+
+  it("puts no Practice action in Category performance or Mode performance", async () => {
+    render(<PerformanceTrendsPane onPractiseWeakness={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("trends-categories")).toBeTruthy());
+    for (const block of ["trends-categories", "trends-modes"]) {
+      const scope = within(screen.getByTestId(block));
+      expect(scope.queryAllByTestId("trends-practise-category").length).toBe(0);
+      expect(scope.queryAllByTestId("trends-practise-all").length).toBe(0);
+    }
+  });
+
+  it("has exactly two Practice ACTIONS on the whole pane for one weakness", async () => {
+    render(<PerformanceTrendsPane onPractiseWeakness={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("trends-pane")).toBeTruthy());
+    // Scoped to buttons deliberately: "Practice" is also a MODE LABEL in the
+    // By-mode block, so matching on text alone counts a row that is not a
+    // control at all.
+    const actions = screen
+      .getAllByRole("button")
+      .filter((b) => /^Practice( all)?$/.test(b.textContent ?? ""));
+    expect(actions.map((b) => b.textContent).sort())
+      .toEqual(["Practice", "Practice all"]);
+    // The mode label is still there, and is still not a button.
+    expect(screen.getByTestId("trends-modes").textContent).toContain("Practice");
   });
 });

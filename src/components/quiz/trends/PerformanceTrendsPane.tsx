@@ -32,7 +32,7 @@
  * in a chart library's default palette on a parchment sheet.
  */
 import { useMemo, useState } from "react";
-import { Loader2, TrendingDown, TrendingUp, Minus, Target, type LucideIcon } from "lucide-react";
+import { Loader2, TrendingDown, TrendingUp, Minus, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
 import { LedgerRow, LedgerTitle, WorkspaceNote } from "@/components/quiz/workspace/primitives";
@@ -311,7 +311,12 @@ function CategoryLine({
               {label}
             </span>
           )}
-          {/* PT1.11 — the action, on the row that diagnosed the problem.
+          {/* PT1.12 — the action, on the row that diagnosed the problem, and
+              labelled just "Practice".
+              The category name is already the first thing on the row, so
+              "Practice Item Costs" said it twice and made every button a
+              different width — the column stopped reading as a column. The
+              PRESET is unchanged and still carries the category.
               Premium only by construction: `is_recurring_weak` is a field a
               Free payload does not carry, and the handler is the EXISTING
               PT1.7B Builder preset. No second practice system. */}
@@ -328,7 +333,7 @@ function CategoryLine({
               className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] underline underline-offset-2"
               style={{ color: LEAGUECRAFT_INK.accent }}
             >
-              Practice {entry.category}
+              Practice
             </button>
           )}
         </span>
@@ -596,7 +601,34 @@ export default function PerformanceTrendsPane({
 
       {recurring.length > 0 && (
         <div className="space-y-1.5" data-testid="trends-recurring">
-          <LedgerTitle>Recurring Weaknesses</LedgerTitle>
+          {/* PT1.12 — one place for the collective action, and it is the
+              section header. It used to sit at the very bottom of the pane,
+              several blocks below the weaknesses it acts on and beneath the
+              scope note, so the two Practice actions were nowhere near each
+              other and neither read as part of a pattern. Header = all of
+              them, row = that one. Same two presets as before. */}
+          <div className="flex items-baseline justify-between gap-2">
+            <LedgerTitle>Recurring Weaknesses</LedgerTitle>
+            {onPractiseWeakness && (
+              <button
+                type="button"
+                data-testid="trends-practise-all"
+                onClick={() => {
+                  /* The COLLECTIVE button means "my weak spots", so it hands
+                     over the Builder's OWN weak pool rather than a category
+                     chosen here. Unchanged from PT1.8. */
+                  trackFunnelEvent("trends_practice_weakness_clicked", {
+                    category: null,
+                  });
+                  onPractiseWeakness({ pool: "weak", category: null });
+                }}
+                className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] underline underline-offset-2"
+                style={{ color: LEAGUECRAFT_INK.accent }}
+              >
+                Practice all
+              </button>
+            )}
+          </div>
           <WorkspaceNote>
             Categories you scored below your own average in — in this period
             AND the one before it. Not just a low score once.
@@ -660,23 +692,6 @@ export default function PerformanceTrendsPane({
         Counts your Practice and Time Trial answers. Ranked, the Daily Challenge
         and Mastery keep their own records.
       </WorkspaceNote>
-
-      {onPractiseWeakness && recurring.length > 0 && (
-        <Button
-          size="sm"
-          variant="outline"
-          data-testid="trends-build-weak-session"
-          onClick={() => {
-            /* The PLURAL button means "my weak spots", so it hands over the
-               Builder's OWN weak pool rather than a category chosen here. */
-            trackFunnelEvent("trends_practice_weakness_clicked", { category: null });
-            onPractiseWeakness({ pool: "weak", category: null });
-          }}
-        >
-          <Target className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-          Practice all of these
-        </Button>
-      )}
 
       {/* PT1.10 — the upsell is a FOOTER now, not a gate.
           It sits below the reader's own figures and describes what Premium

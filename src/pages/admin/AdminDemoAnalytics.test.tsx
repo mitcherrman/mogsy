@@ -302,7 +302,9 @@ describe("PT1.9 — the demo comparison", () => {
     const { free, premium } = await bothPanes();
     expect(within(premium).getByTestId("trends-recurring")).toBeTruthy();
     const action = within(premium).getAllByTestId("trends-practise-category")[0];
-    expect(action.textContent).toMatch(/^Practice /);
+    expect(action.textContent).toBe("Practice");
+    expect(within(premium).getByTestId("trends-practise-all").textContent)
+      .toBe("Practice all");
     // Inert by construction: this page mounts no Practice Builder to receive a
     // preset, so clicking it cannot configure a session for the admin.
     fireEvent.click(action);

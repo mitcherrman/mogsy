@@ -46,7 +46,9 @@ const PREVIEW_LABEL: Record<DemoPreview, string> = {
 };
 
 const PREVIEW_BLURB: Record<DemoPreview, string> = {
-  free: "What a Free account sees: the figures over one 7-day window — answers, accuracy, days studied, per category and per mode. No comparison, no direction, no weakness diagnosis.",
+  // PT1.12 — the old wording said "one 7-day window", which PT1.11 made false:
+  // Free is bounded by its most recent 50 answers, not by a calendar.
+  free: "A snapshot of your recent performance. Premium adds trends and deeper analysis.",
   premium: "What a Mogzy Premium account sees: the same rows, plus what they mean over time — 7/30/90, the period before, deltas, direction and recurring weakness.",
 };
 
