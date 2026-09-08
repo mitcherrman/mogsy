@@ -1,7 +1,7 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 33 (side architecture verified in production) is at the top of
-     this file. Revision 32 built it.
+<!-- Revision 34 (pilaster capital and base) is at the top of this file.
+     Revision 33 verified the side architecture in production; 32 built it.
      Revision 31 verified Academy Bulletin V1 COMPLETE in production;
      Revision 30 was the media-eligibility fix it verifies.
      Revision 29 was the enrichment and long-question fix; Revision 28 the
@@ -15,6 +15,120 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-08 — PILASTER CAPITAL AND BASE — **SHIPPED, AWAITING DEPLOY**
+
+**Commit:** `bd6ae9cb` — `feat(hub): give the Commons pilasters a capital and a base`
+**Pushed:** `0d6e8838..bd6ae9cb`, clean fast-forward, no force.
+**Files:** `src/index.css` only — one 73-line insertion. No asset, no DOM, no
+component.
+
+Worked entirely from an isolated worktree (`/Users/macmoney/mogsy-wt-pilaster`,
+branch `commons/pilaster-mouldings`), committed and pushed from there. Nothing
+was run against the shared checkout.
+
+### 1. Moulding geometry
+
+Both mouldings are placed in **artwork space**, exactly like every other mount
+in this room — `calc(var(--commons-img-y) + var(--commons-img-h) * f)` — so
+they track the painting under any crop rather than floating at a fixed pixel
+height.
+
+| | fraction | band | on screen (2560 / 3440) |
+|---|---|---|---|
+| Capital | **0.115** | `--commons-img-h * 0.0155` | y=66 / y=88 |
+| Base | **0.7476** | same | y=845 / y=1126 |
+
+Each is a lit arris, a face and a shadow beneath — the same three-part reading
+as the legal rail — in the room's existing `--shelf-*` walnut with the gilt it
+already uses. The shaft below the base is a shade deeper so that run reads as
+skirting rather than as more shaft.
+
+The width logic is **untouched**: still `max(0px, var(--commons-img-x))`, and
+the framing contract test still passes.
+
+### 2. How it aligns with the painted room
+
+**The base is measured.** Sampling the outermost 30px column of the artwork for
+luminance steps, the lower band has one obvious candidate and it is the same
+feature on both sides:
+
+| edge | fraction | luminance step |
+|---|---|---|
+| left | 0.7545 | **+72.4** |
+| right | 0.7407 | **+63.6** |
+
+That is the lit capping edge of the wall counter — an order of magnitude
+stronger than any other step in that band, and the same feature Revision 24
+measured at 0.750-0.790 when it put the utility strip on the counter top. Two
+independent measurements agreeing on the room's own skirting line. The base
+sits at their mean, **0.7476**.
+
+**The capital is not measured, and the code says so.** The same sampling over
+the upper band returns only **-8.8 at f=0.204** on the left and **-9.8 at
+f=0.117** on the right — near the noise floor, and disagreeing with each other,
+because the two outer edges are not the same thing: a window and an arch on one
+side, banners and a plant on the other. **The room does not declare a
+symmetric cornice at its edges.** So the capital is *placed* rather than
+aligned, at 0.115 — just inside the top of the band that is actually visible at
+ultrawide, where the 1.14 cap always crops to 0.0614-0.9386. It reads as the
+head of the column without claiming an alignment the paint does not contain.
+
+### 3. Visual result
+
+**3440x1440 — the case this existed for: resolved.** The side now reads
+unmistakably as a constructed pilaster: a capital band near the top, a shaft
+with its two stiles, a base band, and a darker skirting run below it. The
+"broad dark band" reading is gone. The base lands on the room's own counter
+line, so the moulding continues an architectural line rather than starting a
+new one.
+
+**2560x1080 — restraint kept.** The same mouldings read as two quiet horizontal
+lines. The column is still the darkest thing on screen and still well behind
+the Record and the Bulletin. Nothing about the 2560 feel changed.
+
+### 4. Negative controls
+
+| viewport | gutter | pilaster L / R |
+|---|---|---|
+| 1920x1080 | 0px | **0px / 0px** |
+| 1440x900 | −80px | **0px / 0px** |
+
+No architecture covers the painting where there is no gutter. Flow (390x844)
+and large text still never render the pseudo-elements at all — the rule lives
+inside the stage gate and `width` reads `auto` because it never applies.
+
+### 5. Centre geometry unchanged
+
+Identical at every width, verified numerically: 1440 Record `x=352`, seal
+`y=222`, plinth `y=731`; 2560 `777 / 229 / 924`; 3440 `1049 / 305 / 1232`.
+Bulletin, Premium, Community, utility strip and the three legal links all
+present and unmoved. No horizontal overflow anywhere. Screen 1 untouched.
+
+### 6. Verification
+
+| Check | Result |
+|---|---|
+| lol / hub / community / quiz-ranked | **722 passed**, 50 files |
+| Framing contract test | 5 passed — width still derives from `--commons-img-x` |
+| Lint | **0 errors**; 2 pre-existing warnings in `AcademyBroadcastSurface.tsx` |
+| Full `npm run build` | **exit 0**, 173 champions prerendered |
+| Typecheck | **11 errors, none in changed files** — the standing baseline |
+
+### 7. Deployment
+
+Pushed. **Not yet live** — the owner triggers Publish. Production verification
+is owed once the bundle hash changes, and needs an **ultrawide viewport**: at
+1920 and below there is nothing to see, by design.
+
+### 8. Next
+
+Judge the articulated pilaster live at 3440 and decide whether the surfaces
+stay empty. My reading from the local capture is that capital and base do the
+job and the sides no longer ask for decoration — but that is a judgement to
+make on the deployed build, not this one. Timmy/demo population remains last.
+
+---
 
 ## Revision 2026-09-08 — SIDE ARCHITECTURE **VERIFIED IN PRODUCTION**
 
