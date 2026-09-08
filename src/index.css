@@ -8608,6 +8608,85 @@ html.high-contrast * { text-shadow: none !important; }
     0 22px 40px -26px rgba(0, 0, 0, 0.95);
 }
 
+/* ---- the Bulletin's rotation ---------------------------------------------
+   Step 4. The board is a fixed painted rectangle, so every rule here exists to
+   keep a rotating notice inside it without the board ever growing.
+
+   CLAMPS ARE THE CONTRACT. Title three lines, body two. The quiz family draws
+   its headline from the live question bank, where a question can be long; the
+   clamp is what lets any family be pinned to this board without measuring each
+   one first. Without it, one long question pushes the CTA off the sheet.
+
+   The split went 3/2 rather than 2/3 after seeing it: at two lines a real
+   question truncated mid-word — "cooldown of Malphite R..." — and a question
+   you cannot finish reading is not a question. The headline IS the card for
+   that family, so it takes the lines and the supporting sentence gives them
+   up. The stack is one line shorter overall, not longer. */
+.academy-commons-bulletin-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.academy-commons-bulletin-blurb {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+.academy-commons-bulletin-meta {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  overflow: hidden;
+}
+
+/* Prev/next: struck into the paper, not plated onto it. Ink that darkens, no
+   fill and no border — a plate here would read as a web slider bolted to a
+   painted board. They sit on the sheet's own margins, clear of the text
+   column, so they cost the notice no height. */
+.academy-commons-bulletin-nav {
+  color: rgba(74, 61, 36, 0.55);
+  background: transparent;
+  border: 0;
+  transition: color 180ms ease;
+}
+.academy-commons-bulletin-nav:hover,
+.academy-commons-bulletin-nav:focus-visible {
+  color: rgba(44, 36, 23, 0.95);
+}
+.academy-commons-bulletin-nav-prev { left: 0.35rem; }
+.academy-commons-bulletin-nav-next { right: 0.35rem; }
+
+/* Position dots. Pinholes in the paper, not pagination bullets. */
+.academy-commons-bulletin-dot {
+  background: rgba(74, 61, 36, 0.28);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+.academy-commons-bulletin-dot.is-current {
+  background: rgba(122, 98, 48, 0.9);
+}
+
+/* The change of notice: a crossfade with the faintest settle, as if a fresh
+   sheet were laid over the last one. Never a horizontal slide — paper pinned
+   to a board does not travel sideways. The component drops this class outright
+   under either motion preference; the media query below is the belt-and-braces
+   for anything that renders it anyway. */
+@keyframes academy-bulletin-enter {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+.academy-commons-bulletin-enter {
+  animation: academy-bulletin-enter 420ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .academy-commons-bulletin-enter { animation: none; }
+}
+html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
+
 /* ---- the plinth ----------------------------------------------------------
    The legal band is not a footer floating under the scene: it is the room's
    skirting. A capping board with a lit top plane over a darker face, and the
@@ -9223,6 +9302,13 @@ html.high-contrast * { text-shadow: none !important; }
     margin-top: calc(3 * var(--u));
     font-size: calc(24 * var(--u));
   }
+  /* The Bulletin's headline runs to three lines, so it is set smaller than a
+     static bill's would be. 24u x 3 does not fit the painted board; 20u does,
+     and a full question beats a larger truncated one. */
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-title {
+    font-size: calc(20 * var(--u));
+    line-height: 1.16;
+  }
   html.hub-two-screen:not(.large-text) .academy-commons-bill-blurb {
     margin-top: calc(7 * var(--u));
     max-width: none;
@@ -9241,6 +9327,45 @@ html.high-contrast * { text-shadow: none !important; }
   html.hub-two-screen:not(.large-text) .academy-commons-bill-cta svg {
     width: calc(17 * var(--u));
     height: calc(17 * var(--u));
+  }
+  /* The Bulletin's rotation, at painted-board scale. The board is 0.2440 of
+     the artwork square — about 339x191 at the tightest gated viewport — and
+     the whole stack (eyebrow, two title lines, three body lines, one meta
+     line, the CTA row) has to sit inside that with the navigation costing no
+     height at all. Hence: arrows on the margins, dots in the CTA's own row. */
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-bill {
+    /* Room on the left and right for the arrows. At 22u the chevrons sat hard
+       against the body's first line and read as part of the sentence; the
+       inset is the separation. */
+    padding-inline: calc(27 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-meta {
+    margin-top: calc(4 * var(--u));
+    font-size: calc(10.5 * var(--u));
+  }
+  /* Measured against the densest card the live bank can produce: a two-line
+     quiz question plus a meta line plus the CTA, at 1024x781. At 11u of foot
+     padding that card put the CTA one pixel past the board's bottom edge. */
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-foot {
+    padding-top: calc(7 * var(--u));
+    gap: calc(12 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-nav {
+    width: calc(16 * var(--u));
+    height: calc(28 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-nav svg {
+    width: calc(13 * var(--u));
+    height: calc(13 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-nav-prev { left: 0; }
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-nav-next { right: 0; }
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-dot {
+    width: calc(5 * var(--u));
+    height: calc(5 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-bulletin-dots {
+    gap: calc(5 * var(--u));
   }
 
   /* ---- Premium + Community → the two small pinned parchments -------------

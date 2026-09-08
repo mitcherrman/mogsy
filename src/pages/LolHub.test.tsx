@@ -174,9 +174,15 @@ describe("LolHub — navigation structure", () => {
   });
 
   it("renders each destination twice: desktop book card + mobile panel", () => {
-    renderHub();
+    const { container } = renderHub();
+    // Scoped to Screen 1 since Revision 27: the Academy Bulletin's Pro Play
+    // notice is a third /lol/pro-play link on the page, and it is a notice on
+    // a board, not a book. What this guards is unchanged — inside the HALL
+    // every destination appears exactly twice, desktop volume plus mobile
+    // panel — and scoping keeps that guarantee exact.
+    const hall = within(container.querySelector('[data-hub-screen="hall"]') as HTMLElement);
     for (const d of HUB_DESTINATIONS) {
-      const links = screen
+      const links = hall
         .getAllByRole("link", { name: new RegExp(d.title) })
         .filter((l) => l.getAttribute("href") === d.to);
       expect(links.length, `${d.title} → ${d.to}`).toBe(2);
@@ -228,7 +234,12 @@ describe("LolHub — navigation structure", () => {
     // now a book at each breakpoint like its three peers, and Mogzy can
     // describe it.
     const { container } = renderHub();
-    const proPlay = container.querySelectorAll('a[href="/lol/pro-play"]');
+    // Scoped to the Hall since Revision 27, for the same reason as the count
+    // test above: the Commons' Bulletin may pin a Pro Play notice, which is a
+    // notice and not a book. Pro Play being a BOOK at each breakpoint — the
+    // thing this test exists for — is asserted exactly as before.
+    const hall = container.querySelector('[data-hub-screen="hall"]') as HTMLElement;
+    const proPlay = hall.querySelectorAll('a[href="/lol/pro-play"]');
     expect(proPlay).toHaveLength(2); // desktop book + mobile panel
     expect(container.querySelector('[data-guide-mode="pro-play"]')).toBeTruthy();
   });
