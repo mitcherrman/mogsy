@@ -1,13 +1,125 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 25 (Step 3 committed and pushed; deploy pending Lovable) is at
-     the top of this file. Revision 24 was the recomposition it ships,
+<!-- Revision 26 (visual QA pass + the guest 403 fix) is at the top of this
+     file. Revision 25 shipped Step 3, Revision 24 was the recomposition,
      Revision 23 the specification, Revision 22 the preservation audit.
      Revision 21 was WHATSNEW2 — Academy Updates become admin-managed.
      Revision 20 was WHATSNEW1, which built the surface;
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-07 — VISUAL QA PASS + GUEST 403 FIX — **SHIPPED**
+
+**Commit:** `155c3a89` — `fix(hub): stop the guest Ranked 403, and three defects visual QA found`
+**Pushed:** `c52182e8..155c3a89`, clean fast-forward, no force.
+**Screenshot capture finally worked** — Playwright, driven directly against the
+dev server, produced real images of the room. The Browser pane still returns a
+black frame; that limitation is the pane's, not the site's.
+
+Four corrections. One was the known 403; **three were defects nobody could
+have found without looking at the room**, which is the whole argument for
+doing this pass before the carousel.
+
+### 1. The guest Ranked 403 — fixed
+
+`useRankedProgression` gains an `enabled` option. `enabled: false` resolves
+straight to `unavailable` — the same outcome the 403 produced — without making
+the request. `AcademyRecord` passes `enabled: isIdentified`.
+
+What is deliberately preserved:
+
+- **Authenticated behaviour is untouched.** A real account still fetches, and a
+  real 401/403/429/500 still travels the normal path to `unavailable`. The
+  switch only covers the case the caller can prove in advance.
+- **Fail-closed is unchanged** — a disabled read is `unavailable`, never a
+  permanent `loading`, and never a guessed rank.
+- **Real errors are not hidden.** Nothing is swallowed; one question that could
+  not have an answer simply stops being asked.
+- **Every existing caller is unchanged** — the option defaults to `true`, so
+  `Quiz.tsx` behaves exactly as before.
+
+Coverage: 4 new hook tests (no request when disabled; never parks in loading;
+fetches on becoming enabled without a remount; omitting the option keeps the
+old behaviour) and 2 new Record tests (guest and anonymous both pass
+`enabled: false`; an identified account passes `true`, so the fix cannot
+silence real users).
+
+### 2. Three defects the pictures found
+
+| # | Defect | Cause | Fix |
+|---|---|---|---|
+| 2 | **The supporting slips had no padding in stage mode.** Both sheets rendered flush to their box edges; the Community eyebrow sat on the painted wooden frame rather than on the paper. | The shared mount rule sets `padding: 0` at three classes of specificity, which silently beat the two-class `.academy-commons-support` declaration. A specificity accident, invisible to every test. | The inset moved onto the mount rules themselves. Measured after: 10–11px on every edge of both sheets at the tightest gate. |
+| 3 | **A ~150px void in the empty Record.** | `mt-auto` pinned the actions to the foot of the frame. That reads correctly only once the register fills the middle — and the empty state is what every guest and logged-out visitor sees, i.e. the most common view of the page. | `mt-auto` dropped; the body centres as one group in both states. |
+| 4 | **The Record's title repeated its own band.** With no display name the title read "The Academy Record" directly beneath a band engraved ACADEMY RECORD. | The fallback was written for the panel, not for the reader. | The title is the person. A nameless reader is now addressed the way Screen 1 already addresses them. |
+
+### 3. Visual QA findings, against Revision 24 §7
+
+| Risk | Verdict |
+|---|---|
+| 1. Utility strip on bare counter top | **Resolved.** It reads as four inscriptions on the wooden counter, under the frame and clear of the rail. The most-doubted decision in the pass is the one that came out best. |
+| 2. Record register density | **Resolved by measurement.** The fully-populated register — six lines, tier bar, both actions — fits the painted frame with **zero overflow** at 1024×781 (body scrollHeight 324 = clientHeight 324), clearing the CTA by 26px. The real density problem was the opposite of the one predicted: emptiness, not crowding. Fixed as defect 3. |
+| 3. Seal with a real avatar | **Still unverified.** Geometry is exact — rendered centre y=244 against the artwork's medallion centre y=244, zero drift, and the fallback mark sits correctly in the laurel ring — but no session here has a profile avatar, so a real image clipped into that ring has never been seen. |
+| 4. Slips at the smallest gate | **Acceptable, after the padding fix.** At 1024×781 "Academy Membership" and "Discord — opening soon" each wrap to two lines. Nothing is clipped and nothing touches a pin. Tight, honest, readable. |
+| 5. Premium's quiet ink CTA | **Reads correctly.** It is clearly an action and clearly subordinate to the two gilt CTAs above it. Hierarchy holds. |
+| 6. Bulletin balance | **Fine.** The board carries eyebrow, headline, three lines and one gilt CTA, and does not read as under-filled. |
+| — | **The room is not a dashboard.** It reads as a room: a credential in the gilt frame, a notice on the board, two slips pinned below, inscriptions on the counter, the rail at the foot. |
+
+Viewports verified: **1440×900, 1280×800, 1024×781** (one pixel above the stage
+gate), **390×844 flow**, and **large-text**, which correctly abandons stage mode
+(`position: relative`, `scroll-snap-type: none`), stacks in flow order and
+restores every utility link to the full 44px. No overlaps at any size. No
+horizontal overflow at any size.
+
+### 4. Verification
+
+| Check | Result |
+|---|---|
+| lol / hub / community / progression tests | **374 passed**, 21 files (was 360/20 — +14 new) |
+| Lint | clean |
+| Build | green, 53s |
+| Typecheck | **11 errors, none in changed files** — the standing baseline |
+| `Quiz.rankedRole.test.tsx` | 1 failure, **`ranked-class-champion` on `/quiz`** — confirmed **identical at clean HEAD** by stashing and re-running. Pre-existing, unrelated to the Commons, part of the repo's known baseline. Failure sets compared, not totals. |
+
+Screen 1, the artwork and the legal plinth: **no diff at all**.
+
+### 5. Outstanding
+
+- **The avatar in the seal** (risk 3) — the one thing still unseen. It needs a
+  session with a profile picture; it is a clipping/`object-fit` question, not a
+  layout one.
+- Two pre-existing production console errors (`403 /api/stat-check/invites`,
+  `404 …/funnel_events`) predate this workstream and remain.
+- The gap between the band's eyebrow and the Record's title is a little open at
+  the top of the frame. Judged aesthetic preference, not a defect, and
+  deliberately not changed — this pass corrected only what the pictures proved.
+
+### 6. Next task, and the carousel question
+
+**Yes — the physical composition is stable enough to begin the Academy
+Bulletin carousel.**
+
+The grounds, rather than the assertion: every mount is verified at four
+viewports plus large text with no overlaps and no overflow; the seal tracks the
+painted medallion exactly; the largest content the Record can ever hold already
+fits its frame; flow mode and stage mode both hold; and the four defects this
+pass found were all in *content and inset*, none in the mount geometry. The
+fractions are the expensive part and they are proven.
+
+Two conditions for Step 4:
+
+1. **The Bulletin's mount is the constraint to design to.** Its box is fixed by
+   the painting (.5840/.2520/.2440/.2440). Every card family must fit an
+   eyebrow, a headline, ~3 lines and one CTA in that box at 1024×781 — the
+   Record's density check is the precedent, and it should be run per family
+   before the family ships.
+2. **Prev/next controls need a home inside that box**, and the box has no spare
+   room at the smallest gate. Settle that geometry first; it is the one open
+   layout question the carousel introduces.
+
+Timmy/demo population and the gutter wood framing both remain after Step 4.
+
+---
 
 ## Revision 2026-09-07 — STEP 3 **COMMITTED, PUSHED, DEPLOYED AND LIVE-VERIFIED ON mogzy.lol**
 
