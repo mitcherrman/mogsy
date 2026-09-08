@@ -1,6 +1,7 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 30 (Bulletin media eligibility) is at the top of this file.
+<!-- Revision 31 (production verified; Academy Bulletin V1 COMPLETE) is at the
+     top of this file. Revision 30 was the media-eligibility fix it verifies.
      Revision 29 was the enrichment and long-question fix; Revision 28 the
      Step 4 production verification.
      Revision 27 was Step 4, the Bulletin carousel.
@@ -12,6 +13,123 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-08 — PRODUCTION VERIFIED — **ACADEMY BULLETIN V1 COMPLETE**
+
+**Live bundle:** `index-C35BnItg.js` → **`index-BhMjcAji.js`**, carrying
+`8e71dc24`. Verification only; no source changed.
+
+### 1. Sampling
+
+Two independent Playwright sweeps against `https://mogzy.lol/lol`, both in real
+Chromium: **284 cards over 106 page loads** — 22 day-seeds at 1440x900 and
+1024x781, plus live-clock reloads at both, plus flow (390x844) and large text.
+The point of the day-seed sweep is that it walks the whole subject rotation
+rather than proving one good question happened to load.
+
+### 2. The recognition defect is gone
+
+| | |
+|---|---|
+| Recognition questions shown | **0** |
+| Images ever rendered on the board | **0** |
+| Distinct quiz questions observed | **34** (second sweep), 35 (first) |
+| Longest question shown | 48 characters |
+| Title truncation / ellipsis | **0** |
+
+Every one of the 34 distinct questions names its own subject and is answerable
+from rendered text alone — *"How much health does an outer turret have?"*,
+*"What can Serrated Dirk build into?"*, *"How much mana does Bard Q - Cosmic
+Binding cost?"*. Not one is of the form the defect produced.
+
+Answer leakage: **125 live questions sampled**, including all three recognition
+categories, searched against the whole Commons — **0 hits**.
+
+### 3. Board composition and fallback
+
+`cardsByBoardCount`: 111 cards on 3-notice boards, 30 on 2-notice boards, and
+**0 one-notice boards**. Families were `quiz` 37, `mechanics` 52, `proplay` 52.
+**0 personal cards** for a guest, correctly.
+
+3 of the 22 day-seeds (14%) produced no quiz card — the two-subject selector
+finding neither subject eligible, the family absent, and the board falling back
+to mechanics plus the invitation. That is the designed behaviour.
+
+**One correction to an earlier reading.** The first sweep logged a board with
+`count = 1`, which would have meant the mechanics family failing too. The
+second sweep saw **none** across 52 loads, so that was a transient fetch
+failure during sampling and not a selection outcome. Recorded because it was
+reported mid-verification as something to understand.
+
+### 4. Carousel contract — intact
+
+| Behaviour | Result |
+|---|---|
+| next advances | ✅ 0 → 1 |
+| prev reverses | ✅ 1 → 0 |
+| wrapping | ✅ prev from 0 → last |
+| autoplay | ✅ advanced on its own by 13.5s |
+| hover pause | ✅ `rotating="false"`, index **held through a further 14s** |
+| resume on unhover | ✅ `rotating="true"` |
+| permanent manual stop | ✅ after one click, index unmoved 15s later |
+
+### 5. Visual integrity
+
+**0 failures across all 141 cards** of the second sweep: no title or body
+truncation, no ellipsis, no clipping, no overflow, arrows never colliding with
+title or CTA, dots never colliding with the CTA, CTA always inside the painted
+board. **Minimum slack +14px**, at 1024x781.
+
+Mechanics cards were varied and accurate to source — The fountain (6 rows),
+Homeguard (6), Death timers (22), Jungle timers (11), What makes minions attack
+you (4), all `Patch 26.15`, all deep-linking `/lol/mechanics`. Pro Play remained
+an invitation with no statistic, at `/lol/pro-play`.
+
+### 6. Preservation
+
+Record present (`empty`, "Summoner"); Premium `promo` → `/lol/premium`;
+Community present with the Discord pending state; `/feedback`,
+`/feedback?intent=bug`, `/about`, `/contact` exact; Privacy/Terms/Security
+unchanged; "© 2026 Mogzy."; **disclaimer 297 characters — byte-identical to the
+baseline**. Hall → Commons and Commons → Hall both navigate in real Chromium.
+
+### 7. Console and network
+
+`/api/ranked/*` requests from an anonymous visitor: **none** — the `enabled`
+gating on both Ranked hooks holds.
+
+| Entry | Verdict |
+|---|---|
+| `403 /api/stat-check/invites` | pre-existing |
+| `404 /rest/v1/funnel_events` | pre-existing |
+| `429 /auth/v1/signup` | **artefact of this test run, not a regression** — 106 rapid page loads from one IP, each opening an anonymous session, tripped Supabase's signup rate limit. It does not appear on ordinary browsing. |
+
+No product regressions.
+
+### 8. Academy Bulletin V1 — **COMPLETE**
+
+Both defects that reached users came from the same blind spot: projecting the
+question bank onto a surface it was not written for. Revision 29 proved a
+question FITS. Revision 30 proved it STANDS ALONE. Eligibility now asks both,
+and both halves are structural rather than cosmetic.
+
+Known limitations, all deliberate and none open work:
+
+* Three `*_recognition` families can never reach the board — the rule working.
+* Roughly one day in seven has no quiz notice; the board falls back honestly.
+* Some subjects phrase every row identically, so visible variety comes from the
+  subject rotation, not from per-request randomisation (Revision 29's claim,
+  corrected in Revision 30).
+* The board is text-only by design. Rendering `image_path` would make the
+  recognition families eligible again; that is a future feature, not a gap.
+
+### 9. Next task
+
+**The wood side gutters** — the last purely visual pass on the Commons.
+Timmy/demo population after that, using the `initialNoticeId` and `daySeed`
+props. No Bulletin work remains.
+
+---
 
 ## Revision 2026-09-08 — BULLETIN MEDIA ELIGIBILITY — **FIXED, SHIPPED, AWAITING DEPLOY**
 
@@ -139,10 +257,8 @@ and large text:
 
 ### 7. Deployment
 
-Pushed to `origin/main`. **Not yet live** at time of writing — production still
-serves `index-C35BnItg.js`, the Revision 29 build. On the evidence of the last
-two cycles the auto-deploy does not fire on its own; the owner triggers Publish.
-Production verification is owed once the bundle hash changes.
+Pushed to `origin/main`, published by the owner, and **verified live** as
+`index-BhMjcAji.js` — see Revision 31.
 
 ---
 
