@@ -9524,6 +9524,117 @@ html.reduce-motion .academy-commons-bulletin-enter { animation: none; }
     height: calc(12 * var(--u));
   }
 
+  /* ---- the side architecture: two pilasters closing the room ------------
+     WHERE THE RAW EDGE COMES FROM. The hand-rolled cover fits the painting to
+     the viewport HEIGHT until the window passes about 2.03:1, at which point
+     the `100svh * 1.14` cap stops it growing so it cannot eat the plinth.
+     Past that ratio `--commons-img-x` turns positive and there is bare section
+     either side of the painting:
+
+       1440x900 .......  -80px  (painting overflows; no gutter)
+       1920x1080 ......    0px  (exactly edge to edge)
+       2200x1000 ......   87px each side
+       2560x1080 ......  186px each side
+       3440x1440 ......  262px each side
+
+     The strip was NOT empty, which is why it read as broken rather than as
+     background: `.academy-commons-wall` does carry an over-scaled blurred copy
+     of the painting, but `.academy-commons-art` sits above it and its GRADE
+     layers — the vignette, the masks and above all the film grain, which tiles
+     in screen space at a fixed 200px by design — are `inset: 0` and therefore
+     paint across the whole section. Beyond the painting's edge those layers
+     had nothing under them, so they rendered as flat grey grain. Painting the
+     wall red at 2560 leaves the strip grey, which is the proof.
+
+     So the fix has to sit ABOVE the art layer, not behind it.
+
+     ONE EXPRESSION DOES THE WHOLE JOB. The pilaster's width is the gutter
+     itself — `max(0px, var(--commons-img-x))` — computed from the same custom
+     property the painting is placed from. Below 2.03:1 that value is negative,
+     `max()` clamps it to zero, and the architecture simply is not there. No
+     media query, no breakpoint to keep in step with the fit policy, and no
+     chance of a wood column stealing width from a painting that is already
+     bleeding off both edges. It also means the two sides can never disagree
+     with the paint about where the room ends.
+
+     Deliberately quiet: dark walnut in the room's own `--shelf-*` tones, one
+     lit arris and one gilt hairline along the inner edge where the candles
+     would catch it, and a contact shadow onto the painting so the seam reads
+     as a column standing in front of the wall rather than as a cut. It is
+     environmental framing and must stay well behind the Record and the
+     Bulletin.
+
+     Nothing is pinned to them. That is the next decision, not this one. */
+  html.hub-two-screen:not(.large-text) .academy-commons::before,
+  html.hub-two-screen:not(.large-text) .academy-commons::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: max(0px, var(--commons-img-x));
+    /* Above the painting and its grade, below every live mount (z-index 10). */
+    z-index: 5;
+    pointer-events: none;
+    background-color: var(--shelf-dark);
+  }
+
+  /* Left pilaster. The room's light comes from inside, so the INNER edge is
+     the lit one; the outer edge falls away into the corner. */
+  html.hub-two-screen:not(.large-text) .academy-commons::before {
+    left: 0;
+    background-image:
+      /* contact shadow thrown onto the painting's edge */
+      linear-gradient(to left, rgba(0, 0, 0, 0.5), transparent 14%),
+      /* gilt hairline along the arris, then the lit edge itself */
+      linear-gradient(to left, rgba(226, 190, 122, 0.34) 0 1px, transparent 1px),
+      linear-gradient(to left, rgba(214, 178, 118, 0.13) 0 3px, transparent 3px),
+      /* two panel stiles, so it reads as joinery rather than a painted band */
+      linear-gradient(
+        90deg,
+        transparent 0 22%,
+        rgba(0, 0, 0, 0.26) 22% 23%,
+        rgba(214, 178, 118, 0.05) 23% 24%,
+        transparent 24% 68%,
+        rgba(0, 0, 0, 0.26) 68% 69%,
+        rgba(214, 178, 118, 0.05) 69% 70%,
+        transparent 70%
+      ),
+      /* the walnut itself, darkest in the corner */
+      linear-gradient(
+        90deg,
+        #140d07 0%,
+        var(--shelf-dark) 34%,
+        var(--shelf-mid) 78%,
+        var(--shelf-face) 100%
+      );
+  }
+
+  /* Right pilaster — the same construction, mirrored. */
+  html.hub-two-screen:not(.large-text) .academy-commons::after {
+    right: 0;
+    background-image:
+      linear-gradient(to right, rgba(0, 0, 0, 0.5), transparent 14%),
+      linear-gradient(to right, rgba(226, 190, 122, 0.34) 0 1px, transparent 1px),
+      linear-gradient(to right, rgba(214, 178, 118, 0.13) 0 3px, transparent 3px),
+      linear-gradient(
+        270deg,
+        transparent 0 22%,
+        rgba(0, 0, 0, 0.26) 22% 23%,
+        rgba(214, 178, 118, 0.05) 23% 24%,
+        transparent 24% 68%,
+        rgba(0, 0, 0, 0.26) 68% 69%,
+        rgba(214, 178, 118, 0.05) 69% 70%,
+        transparent 70%
+      ),
+      linear-gradient(
+        270deg,
+        #140d07 0%,
+        var(--shelf-dark) 34%,
+        var(--shelf-mid) 78%,
+        var(--shelf-face) 100%
+      );
+  }
+
   /* ---- the legal inscription → the walnut rail ---------------------------
      Set between the reading table on the left and the side table on the right:
      the one stretch of the painted rail that no furniture stands in front of,
