@@ -9265,12 +9265,21 @@ html.high-contrast * { text-shadow: none !important; }
     --mw: 0.1137;
     --mh: 0.1600;
   }
+  /* The sheets' inset, kept HERE rather than on `.academy-commons-support`.
+     The shared mount rule above sets `padding: 0` at three classes of
+     specificity, which silently beat a two-class `.academy-commons-support`
+     declaration — the slips then rendered flush to their box edges and the
+     Community eyebrow sat on the painted frame rather than on the paper. Same
+     specificity as the mount rule and later in source, so this wins.
+     Clear of the painted pin rows at the top and bottom of each sheet. */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-support-premium,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-support-community {
+    padding: calc(15 * var(--u)) calc(12 * var(--u)) calc(12 * var(--u));
+  }
   html.hub-two-screen:not(.large-text) .academy-commons-support {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    /* Clear of the painted pin rows at the top and bottom of each sheet. */
-    padding: calc(15 * var(--u)) calc(12 * var(--u)) calc(12 * var(--u));
     transform: none;
     /* The painting supplies the paper. */
     background-image: none;

@@ -6,7 +6,7 @@
  */
 
 import { renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => {
   class FakeApiError extends Error {
@@ -27,6 +27,10 @@ vi.mock("@/lib/ranked-public/client", () => ({
 
 import { useRankedProgression } from "./useRankedProgression";
 
+beforeEach(() => {
+  h.getRankedProgression.mockReset();
+});
+
 const VIEW = {
   rating: 1200, tier: "gold" as const, nextTier: "diamond" as const,
   nextTierRating: 1300, ratingToNext: 100, progressPercent: 20,
@@ -42,6 +46,44 @@ it("adopts the server's numbers verbatim", async () => {
   const { result } = renderHook(() => useRankedProgression());
   await waitFor(() => expect(result.current.loadState).toBe("ready"));
   expect(result.current.progression).toEqual(VIEW);
+});
+
+describe("enabled: false — the caller already knows there is no account", () => {
+  it("resolves to unavailable without ever asking the backend", async () => {
+    h.getRankedProgression.mockResolvedValue(VIEW);
+    const { result } = renderHook(() => useRankedProgression({ enabled: false }));
+    await waitFor(() => expect(result.current.loadState).toBe("unavailable"));
+    expect(result.current.progression).toBeNull();
+    // The point of the switch: no request, so no expected-403 in the console
+    // on every anonymous view of the front page.
+    expect(h.getRankedProgression).not.toHaveBeenCalled();
+  });
+
+  it("never parks in loading — a disabled read is resolved, not pending", () => {
+    h.getRankedProgression.mockResolvedValue(VIEW);
+    const { result } = renderHook(() => useRankedProgression({ enabled: false }));
+    // Synchronously, on the very first render.
+    expect(result.current.loadState).toBe("unavailable");
+  });
+
+  it("fetches as soon as it becomes enabled, without a remount", async () => {
+    h.getRankedProgression.mockResolvedValue(VIEW);
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useRankedProgression({ enabled }),
+      { initialProps: { enabled: false } },
+    );
+    expect(h.getRankedProgression).not.toHaveBeenCalled();
+    rerender({ enabled: true });
+    await waitFor(() => expect(result.current.loadState).toBe("ready"));
+    expect(result.current.progression).toEqual(VIEW);
+  });
+
+  it("omitting the option keeps the original always-fetch behaviour", async () => {
+    h.getRankedProgression.mockResolvedValue(VIEW);
+    const { result } = renderHook(() => useRankedProgression());
+    await waitFor(() => expect(result.current.loadState).toBe("ready"));
+    expect(h.getRankedProgression).toHaveBeenCalled();
+  });
 });
 
 describe("degradation", () => {

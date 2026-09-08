@@ -25,10 +25,13 @@
  * (`["quiz-progress", userId]`, `["quiz-categories", userId]`), so a reader who
  * goes from here to their profile pays for neither fetch twice.
  *
- * `useRankedProgression` has no `enabled` switch and fires once per mount. It
- * is fail-closed by construction — a guest, an older backend and a rate limit
- * all resolve to `unavailable`, and the Ranked line is then absent — so the
- * cost is one small aborted-on-unmount GET, not a failure mode.
+ * `useRankedProgression` is fail-closed by construction — an older backend, a
+ * rate limit and an ineligible account all resolve to `unavailable`, and the
+ * Ranked line is then absent. It is asked **only for an identified account**:
+ * `/lol` is the front page and every anonymous visitor loads it, so firing the
+ * request for guests put an expected 403 in the console on every page view.
+ * A 403 nobody can act on is noise that hides real failures. An authenticated
+ * failure is untouched and still travels the normal path.
  *
  * ### States
  * Signed out, anonymous, or no activity at all → the empty register: the frame
@@ -93,7 +96,8 @@ export default function AcademyRecord() {
     enabled: !!userId,
   });
 
-  const ranked = useRankedProgression();
+  // Only ask about a Ranked standing when there is an account to have one.
+  const ranked = useRankedProgression({ enabled: isIdentified });
 
   const stats = deriveProfileStats(progress ?? null, categoriesData?.categories ?? [], null);
   const academy = parseAcademyProgression(progress ?? null);
@@ -141,7 +145,11 @@ export default function AcademyRecord() {
             className="academy-commons-record-title text-[1.5rem] font-medium leading-tight text-[#f0e2bd] sm:text-[1.75rem]"
             style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
           >
-            {displayName ?? "The Academy Record"}
+            {/* The band above is already engraved "Academy Record"; the title
+                is the PERSON. With no display name the hub's own established
+                fallback is used (Screen 1 addresses a nameless reader the same
+                way) rather than repeating the band back at them. */}
+            {displayName ?? "Summoner"}
           </h2>
           <p className="academy-commons-record-standing mt-1.5 text-[12px] font-bold uppercase tracking-[0.26em] text-[#c9a84c]">
             {hasRecord ? standing : "No record opened"}
@@ -203,7 +211,12 @@ export default function AcademyRecord() {
           </p>
         )}
 
-        <div className="academy-commons-record-actions mt-auto flex flex-col items-center gap-2">
+        {/* No `mt-auto`. Pinning the actions to the foot of the frame reads
+            correctly only once the register fills the middle; in the empty
+            state — which is what every guest and every logged-out visitor sees
+            — it left a large void of bare navy between the copy and the CTA.
+            The body centres as one group instead, in both states. */}
+        <div className="academy-commons-record-actions flex flex-col items-center gap-2">
           <Link
             to="/quiz"
             data-testid="academy-record-primary"

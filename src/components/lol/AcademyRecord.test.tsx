@@ -31,6 +31,8 @@ const mocks = vi.hoisted(() => ({
     loadState: "loading" | "ready" | "unavailable";
     progression: { rating: number; tier: string; rated: boolean } | null;
   },
+  /** Every `useRankedProgression(...)` options object this render passed. */
+  rankedCalls: [] as Array<{ enabled?: boolean } | undefined>,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mocks.authUser }) }));
@@ -41,7 +43,10 @@ vi.mock("@/hooks/useProfileIdentity", () => ({
   useProfileIdentity: () => mocks.identity,
 }));
 vi.mock("@/pages/quiz-ranked/useRankedProgression", () => ({
-  useRankedProgression: () => mocks.ranked,
+  useRankedProgression: (opts?: { enabled?: boolean }) => {
+    mocks.rankedCalls.push(opts);
+    return mocks.ranked;
+  },
 }));
 vi.mock("@/lib/quiz/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/quiz/api")>();
@@ -90,6 +95,7 @@ beforeEach(() => {
   mocks.progress = null;
   mocks.categories = [];
   mocks.ranked = { loadState: "unavailable", progression: null };
+  mocks.rankedCalls = [];
 });
 afterEach(cleanup);
 
@@ -196,6 +202,31 @@ describe("AcademyRecord — Ranked and membership", () => {
     renderRecord();
     await waitFor(() => expect(screen.getByText("Ranked")).toBeTruthy());
     expect(screen.getByText("1,240 · Silver")).toBeTruthy();
+  });
+
+  it("does not ask about a Ranked standing for a guest or an anonymous session", async () => {
+    // `/lol` is the front page: every anonymous visitor mounts this panel, and
+    // asking an endpoint about an account that does not exist logged an
+    // expected 403 in the console on every one of those page views.
+    mocks.authUser = null;
+    renderRecord();
+    await waitFor(() => expect(mocks.rankedCalls.length).toBeGreaterThan(0));
+    expect(mocks.rankedCalls.every((o) => o?.enabled === false)).toBe(true);
+
+    cleanup();
+    mocks.rankedCalls = [];
+    mocks.authUser = { id: "anon1", is_anonymous: true };
+    renderRecord();
+    await waitFor(() => expect(mocks.rankedCalls.length).toBeGreaterThan(0));
+    expect(mocks.rankedCalls.every((o) => o?.enabled === false)).toBe(true);
+  });
+
+  it("does ask for an identified account — the fix must not silence real users", async () => {
+    mocks.authUser = { id: "u1", is_anonymous: false };
+    mocks.progress = ACTIVE_PROGRESS;
+    renderRecord();
+    await waitFor(() => expect(mocks.rankedCalls.length).toBeGreaterThan(0));
+    expect(mocks.rankedCalls.some((o) => o?.enabled === true)).toBe(true);
   });
 
   it("marks a member's standing and never advertises to them", async () => {
