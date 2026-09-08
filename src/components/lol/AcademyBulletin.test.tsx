@@ -20,7 +20,10 @@ import {
   BULLETIN_AUTHORED_BODY_MAX_CHARS,
   BULLETIN_QUESTION_MAX_CHARS,
   BULLETIN_QUIZ_SOURCES,
+  isBulletinEligibleQuestion,
   isBulletinSuitableQuestion,
+  isRecognitionFamily,
+  requiresUnrenderedMedia,
 } from "./useAcademyBulletin";
 
 const mocks = vi.hoisted(() => ({
@@ -29,6 +32,8 @@ const mocks = vi.hoisted(() => ({
   rankedLoadState: "unavailable" as "loading" | "ready" | "unavailable",
   rankedCalls: [] as Array<{ enabled?: boolean } | undefined>,
   questions: [] as Array<Record<string, unknown>>,
+  /** Per-subject overrides, for proving the primary/secondary fallthrough. */
+  questionsByCategory: {} as Record<string, Array<Record<string, unknown>>>,
   questionThrows: false,
   progress: null as Record<string, unknown> | null,
   tables: null as Record<string, unknown> | null,
@@ -56,7 +61,8 @@ vi.mock("@/lib/quiz/api", async (importOriginal) => {
       categoryQuestions: (category: string) => {
         if (mocks.questionThrows) return Promise.reject(new Error("down"));
         mocks.requestedCategories.push(category);
-        return Promise.resolve({ questions: mocks.questions });
+        const byCat = mocks.questionsByCategory[category];
+        return Promise.resolve({ questions: byCat ?? mocks.questions });
       },
       getProgress: () => Promise.resolve(mocks.progress),
     },
@@ -75,6 +81,10 @@ vi.mock("@/lib/mechanics-tables/api", async (importOriginal) => {
 const QUESTION = {
   id: 132030,
   category: "Item Costs",
+  question_key: "item_cost:Doran's Blade",
+  // Live rows carry a decorative icon. It is NOT a dependency: the prompt
+  // names its own subject, so the question stands on its text alone.
+  image_path: "assets/items_wiki/1055.png",
   question_text: "How much does a Doran's Blade cost?",
   choices: ["450 gold", "400 gold", "500 gold", "350 gold"],
   format: "multiple_choice",
@@ -98,6 +108,35 @@ const LONG_SCENARIO = {
   question_text:
     "Tryndamere R - Undying Rage has a rank 3 cooldown of 80 seconds. With Sundered Sky and 20 ability haste, what is it?",
   choices: ["61.5 seconds", "66.7 seconds", "58.0 seconds", "72.0 seconds"],
+  format: "multiple_choice",
+};
+
+/**
+ * The row that broke production: 19 characters, sails through every length
+ * rule, and is unanswerable because the item is an `image_path` the board
+ * does not draw.
+ */
+const IMAGE_RECOGNITION = {
+  id: 121672,
+  category: "Item Recognition",
+  question_key: "item_recognition:Bloodthirster",
+  question_text: "Which item is this?",
+  image_path: "assets/items_wiki/8010.png",
+  choices: ["Bloodthirster", "Infinity Edge", "Kraken Slayer", "Navori"],
+  format: "multiple_choice",
+};
+
+/**
+ * The same defect with wording a phrase-matcher would sail past — proof the
+ * rule is structural rather than linguistic.
+ */
+const IMAGE_NO_DEICTIC = {
+  id: 121999,
+  category: "Champion Ability Recognition",
+  question_key: "ability_recognition:Q:Ahri",
+  question_text: "Name the champion who owns it.",
+  image_path: "assets/champions/Ahri/Q.png",
+  choices: ["Ahri", "Zoe", "Lux", "Syndra"],
   format: "multiple_choice",
 };
 
@@ -183,6 +222,7 @@ beforeEach(() => {
   mocks.rankedLoadState = "unavailable";
   mocks.rankedCalls = [];
   mocks.questions = [QUESTION];
+  mocks.questionsByCategory = {};
   mocks.questionThrows = false;
   mocks.progress = null;
   mocks.requestedCategories = [];
@@ -622,6 +662,134 @@ describe("question suitability — a question must be shown WHOLE", () => {
     // The board is still a board: mechanics and the invitation both stand.
     expect(screen.getByTestId("academy-bulletin-cta")).toBeTruthy();
     expect(screen.getByTestId("academy-bulletin-next")).toBeTruthy();
+  });
+});
+
+describe("media dependence — a text-only card cannot ask about a picture", () => {
+  it("rejects a short question whose subject is an image", () => {
+    // 19 characters: every length rule passes it. The image is the problem.
+    expect(isBulletinSuitableQuestion(IMAGE_RECOGNITION.question_text)).toBe(true);
+    expect(requiresUnrenderedMedia(IMAGE_RECOGNITION)).toBe(true);
+    expect(isBulletinEligibleQuestion(IMAGE_RECOGNITION)).toBe(false);
+  });
+
+  it("is structural, not linguistic — wording it differently does not help", () => {
+    // No "this", no "these", no "shown". A phrase-matcher would let it through.
+    expect(/\bthis\b|\bthese\b|\bshown\b/i.test(IMAGE_NO_DEICTIC.question_text)).toBe(false);
+    expect(isBulletinEligibleQuestion(IMAGE_NO_DEICTIC)).toBe(false);
+  });
+
+  it("keeps a text-only question eligible", () => {
+    expect(requiresUnrenderedMedia(QUESTION)).toBe(false);
+    expect(isBulletinEligibleQuestion(QUESTION)).toBe(true);
+  });
+
+  it("treats an empty image_path as no image", () => {
+    expect(isBulletinEligibleQuestion({ ...QUESTION, image_path: "" })).toBe(true);
+    expect(isBulletinEligibleQuestion({ ...QUESTION, image_path: "   " })).toBe(true);
+  });
+
+  it("a DECORATIVE icon is not a dependency — the prompt names its own subject", () => {
+    // This is why the rule is not "any row with an image_path". Nearly every
+    // live row carries an icon; blanket rejection measured at 42 of 57 day-
+    // seeds with no quiz card at all.
+    expect(QUESTION.image_path).toBeTruthy();
+    expect(isRecognitionFamily(QUESTION)).toBe(false);
+    expect(requiresUnrenderedMedia(QUESTION)).toBe(false);
+    expect(isBulletinEligibleQuestion(QUESTION)).toBe(true);
+  });
+
+  it("matches the family id, so a future recognition family is covered", () => {
+    expect(isRecognitionFamily({ question_key: "item_recognition:X" })).toBe(true);
+    expect(isRecognitionFamily({ question_key: "ability_recognition:Q:Y" })).toBe(true);
+    expect(isRecognitionFamily({ question_key: "summoner_spell_recognition:HEAL" })).toBe(true);
+    expect(isRecognitionFamily({ question_key: "rune_recognition:Z" })).toBe(true);
+    expect(isRecognitionFamily({ question_key: "item_cost:X" })).toBe(false);
+    expect(isRecognitionFamily({ question_key: "ability_cooldown_flat:Ahri:Q" })).toBe(false);
+  });
+
+  it("still applies the length rule to a text-only question", () => {
+    expect(isBulletinEligibleQuestion(LONG_COMPARISON)).toBe(false);
+    expect(isBulletinEligibleQuestion(LONG_SCENARIO)).toBe(false);
+  });
+
+  it("an image-only subject produces no quiz notice at all", async () => {
+    // Exactly the live shape of Item Recognition: every row image-backed.
+    mocks.questions = [IMAGE_RECOGNITION, { ...IMAGE_RECOGNITION, id: 2 }, IMAGE_NO_DEICTIC];
+    renderBulletin();
+    await settled(2); // mechanics + proplay
+    const kinds = new Set<string>();
+    for (let i = 0; i < 2; i++) {
+      kinds.add(screen.getByTestId("academy-bulletin").dataset.bulletinKind!);
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
+    expect(kinds.has("quiz")).toBe(false);
+  });
+
+  it("never renders the question text of an image-backed row", async () => {
+    mocks.questions = [IMAGE_RECOGNITION];
+    const { container } = renderBulletin();
+    await settled(2);
+    for (let i = 0; i < 2; i++) {
+      expect(container.textContent).not.toContain("Which item is this?");
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
+  });
+
+  it("leaks no choice from an image-backed row either", async () => {
+    mocks.questions = [IMAGE_RECOGNITION];
+    const { container } = renderBulletin();
+    await settled(2);
+    for (const choice of IMAGE_RECOGNITION.choices) {
+      expect(container.textContent).not.toContain(choice);
+    }
+  });
+});
+
+describe("two-subject fallthrough", () => {
+  it("uses the second subject when the first is entirely image-backed", async () => {
+    const [a, b] = [BULLETIN_QUIZ_SOURCES[0], BULLETIN_QUIZ_SOURCES[3]];
+    mocks.questionsByCategory = {
+      [a]: [IMAGE_RECOGNITION, IMAGE_NO_DEICTIC],
+      [b]: [QUESTION],
+    };
+    mocks.questions = [];
+    renderBulletin({ daySeed: 0, initialNoticeId: `quiz-${QUESTION.id}` });
+    await waitFor(() =>
+      expect(screen.getByTestId("academy-bulletin").dataset.bulletinKind).toBe("quiz"),
+    );
+    expect(screen.getByTestId("academy-bulletin-title").textContent).toBe(
+      QUESTION.question_text,
+    );
+    // Both subjects were asked; the eligible one supplied the notice.
+    expect(mocks.requestedCategories).toContain(a);
+    expect(mocks.requestedCategories).toContain(b);
+  });
+
+  it("falls back honestly when BOTH subjects are ineligible", async () => {
+    mocks.questions = [IMAGE_RECOGNITION, LONG_COMPARISON, LONG_SCENARIO];
+    renderBulletin();
+    await settled(2);
+    const kinds = new Set<string>();
+    for (let i = 0; i < 2; i++) {
+      kinds.add(screen.getByTestId("academy-bulletin").dataset.bulletinKind!);
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
+    expect(kinds).toEqual(new Set(["mechanics", "proplay"]));
+    // Still a working board, not a broken one.
+    expect(screen.getByTestId("academy-bulletin-cta")).toBeTruthy();
+    expect(screen.getByTestId("academy-bulletin-next")).toBeTruthy();
+  });
+
+  it("still supplies a quiz on a normal day where text questions exist", async () => {
+    renderBulletin();
+    await settled(3);
+    const kinds = new Set<string>();
+    for (let i = 0; i < 3; i++) {
+      kinds.add(screen.getByTestId("academy-bulletin").dataset.bulletinKind!);
+      fireEvent.click(screen.getByTestId("academy-bulletin-next"));
+    }
+    expect(kinds).toEqual(new Set(["quiz", "mechanics", "proplay"]));
   });
 });
 

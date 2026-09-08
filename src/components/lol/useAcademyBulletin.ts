@@ -34,14 +34,20 @@
  * ### Variety without infrastructure
  * Which quiz subject and which study table appear is chosen by the DAY, not by
  * stored history: `daySeed` is days-since-epoch, so the board's subject rotates
- * on its own and every visitor on a given day sees the same one. Within a
- * subject the backend already randomises, so two visits on the same day still
- * get different questions. No storage, no personalisation, no recommender —
- * and it stays deterministic for a test or a capture by passing `daySeed`.
+ * on its own and every visitor on a given day sees the same one. No storage,
+ * no personalisation, no recommender — and it stays deterministic for a test
+ * or a capture by passing `daySeed`.
+ *
+ * The backend randomises WITHIN a subject, so the row chosen varies between
+ * visits — but that is not the same as visible variety, and Revision 29
+ * overstated it. Some subjects phrase every row identically ("Which item is
+ * this?"), so a different id there reads as the same notice. Visible variety
+ * comes from the subject rotation; the per-request randomisation only varies
+ * which row of that subject is picked.
  */
 import { useQuery } from "@tanstack/react-query";
 import { fetchTablesIndex, mechanicsTablesKeys } from "@/lib/mechanics-tables/api";
-import { categoryLabel, quizApi, type QuizProgress } from "@/lib/quiz/api";
+import { categoryLabel, quizApi, type QuizProgress, type QuizQuestion } from "@/lib/quiz/api";
 import { PRACTICE_CATEGORY_SOURCES } from "@/lib/quiz/practiceCategories";
 import { PRO_PLAY_ROUTE } from "@/lib/pro-play/routes";
 import { deriveProfileStats } from "@/lib/profile/view-model";
@@ -116,12 +122,114 @@ export const BULLETIN_QUESTION_MAX_CHARS = 48;
  */
 export const BULLETIN_QUESTION_MAX_WORD = 18;
 
-/** Can this question be shown WHOLE on the painted board? */
+/** Can this question's TEXT be shown whole on the painted board? */
 export function isBulletinSuitableQuestion(text: string | null | undefined): boolean {
   if (!text) return false;
   const trimmed = text.trim();
   if (!trimmed || trimmed.length > BULLETIN_QUESTION_MAX_CHARS) return false;
   return !trimmed.split(/\s+/).some((word) => word.length > BULLETIN_QUESTION_MAX_WORD);
+}
+
+/* ---------------------------------------------------------------------------
+   MEDIA DEPENDENCE — the second half of eligibility
+   ---------------------------------------------------------------------------
+   Production shipped "Which item is this?" onto the board. The text was
+   complete, un-truncated and perfectly readable — and completely unanswerable,
+   because the item in question is an `image_path` the Bulletin does not
+   render. Fitting the text was never the whole of being answerable.
+
+   The rule is STRUCTURAL, not linguistic. A question that carries media is
+   ineligible for a text-only card whatever its wording, because the wording is
+   not what makes it unanswerable — the missing picture is. Matching on "this"
+   or "shown" would be a guess about phrasing that a re-worded row could walk
+   straight through, and would also reject rows that merely mention the word.
+
+   Three sources are affected, and they are affected ENTIRELY: measured against
+   the live bank on 2026-09-07, every Bulletin-eligible row in Item
+   Recognition (20/20), Champion Ability Recognition (20/20) and Summoner Spell
+   Recognition (5/5) carries an image. Every other sampled source had none.
+
+   Worse, the two rules interact: recognition stems are the shortest in the
+   bank ("Which item is this?" is 19 characters), so the length rule made the
+   unanswerable questions the MOST likely to be selected. That is why this had
+   to be fixed at the eligibility contract rather than by tuning lengths.
+
+   Nothing is removed from the bank and nothing changes about gameplay. These
+   rows remain first-class on `/quiz`, where the image is rendered beside them.
+   They are ineligible for THIS projection only.
+--------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
+   WHY THIS IS NOT "any row with an image_path"
+   ---------------------------------------------------------------------------
+   That was the first rule written here, and measuring it against the live bank
+   showed it would have gutted the family: `image_path` is set on very nearly
+   EVERY row, because the quiz surface shows an item or ability icon beside the
+   prompt as decoration. All 20 sampled Item Costs rows carry one. So does
+   "What is the cooldown of Cassiopeia Q - Noxious Blast?", which is completely
+   answerable from its own text.
+
+   Simulated over 57 consecutive day-seeds, a blanket image_path rule left the
+   board with NO quiz card on 42 of them — it would have removed the most
+   playable notice five days in seven to fix a defect that affects three
+   families.
+
+   The real discriminator is in the row's own family id. `question_key` is
+   `<family>:<subject...>`, and the families whose SUBJECT is the picture are
+   named for it:
+
+     item_recognition:Sapphire Crystal        "Which item is this?"
+     ability_recognition:Q:Gragas             "Which champion owns this Q?"
+     summoner_spell_recognition:HEAL          "Which summoner spell is this?"
+
+   against, for example, `item_cost:Scorchclaw Pup`, whose prompt names its own
+   subject and needs no picture at all.
+
+   This is structural — the backend's own taxonomy, not a guess about phrasing.
+   A recognition row re-worded to "Name the champion who owns it" is still a
+   recognition row and is still rejected, which a wording matcher would miss.
+   Verified against 347 keyed live rows: it catches all 55 recognition rows,
+   rejects nothing outside those three families, and misses no row that reads
+   as picture-dependent. 11 of the 19 subjects still supply a question.
+--------------------------------------------------------------------------- */
+
+/** A question row, as far as Bulletin eligibility is concerned. */
+type BulletinCandidate = Pick<QuizQuestion, "question_text" | "image_path" | "question_key">;
+
+/** `item_recognition:Sapphire Crystal` → `item_recognition`. */
+function questionFamily(question: BulletinCandidate): string {
+  return (question.question_key ?? "").split(":")[0] ?? "";
+}
+
+/**
+ * A family whose subject IS the artwork. Matched on the family id's own
+ * `recognition` segment, so a future recognition family is covered the day it
+ * ships without this list being edited.
+ */
+export function isRecognitionFamily(question: BulletinCandidate): boolean {
+  return /(^|_)recognition(_|$)/.test(questionFamily(question));
+}
+
+/**
+ * Does this question need media the text-only Bulletin card cannot show?
+ *
+ * Both halves are structural: the row declares a picture, and the row's family
+ * says that picture is the thing being asked about. An icon beside a question
+ * that names its own subject is decoration, and decoration is not a
+ * dependency.
+ */
+export function requiresUnrenderedMedia(question: BulletinCandidate): boolean {
+  const hasImage = !!question.image_path && question.image_path.trim() !== "";
+  return hasImage && isRecognitionFamily(question);
+}
+
+/**
+ * The whole contract: the text renders completely, AND the question does not
+ * depend on media this card does not draw.
+ */
+export function isBulletinEligibleQuestion(question: BulletinCandidate): boolean {
+  if (requiresUnrenderedMedia(question)) return false;
+  return isBulletinSuitableQuestion(question.question_text);
 }
 
 /**
@@ -327,10 +435,14 @@ export function useAcademyBulletin({
   // ---- 2. something to answer right now --------------------------------
   // Only a question the board can show WHOLE. If the day's subject has none,
   // the family is absent rather than truncated.
+  // Primary subject first, then the secondary — so a subject whose every row
+  // is image-backed (all three Recognition sources are) simply yields nothing
+  // and the other one supplies the notice. If neither can, the family is
+  // absent and the board falls back to mechanics and the invitation.
   const prompt = [
     ...(primaryBatch.data?.questions ?? []),
     ...(secondaryBatch.data?.questions ?? []),
-  ].find((q) => isBulletinSuitableQuestion(q.question_text));
+  ].find(isBulletinEligibleQuestion);
   if (prompt?.question_text) {
     notices.push({
       id: `quiz-${prompt.id}`,
