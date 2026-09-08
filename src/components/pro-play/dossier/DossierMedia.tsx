@@ -2,10 +2,10 @@
 // Media slots for the matchup dossier — team crests, player portraits and
 // champion icons.
 //
-// WE DO NOT HAVE TEAM OR PLAYER MEDIA YET. Sourcing it is a later workstream,
-// so the point of this file is to make the ABSENCE deliberate: a slot that is
-// empty must look like a designed frame with a monogram in it, never like an
-// image that failed. Three rules follow from that:
+// TEAM AND PLAYER MEDIA NOW EXIST, for the entities the media authority has an
+// approved asset for. Everything below was written for the absence and none of
+// it changed: a slot with no art still looks like a designed frame with a
+// monogram in it, never like an image that failed. Three rules still hold:
 //
 // 1. No `<img>` is ever rendered without a source. A broken-image glyph is the
 //    one thing these frames exist to prevent.
@@ -16,15 +16,30 @@
 //    dropping real media in later changes the picture and nothing else — no
 //    reflow, no layout pass, no second design.
 //
-// Champion icons are the exception: those we DO have, out of the Combat API's
-// champion asset store, and `getChampionSquareIconUrl` already returns null
-// for a champion it has no art for — which lands on the same fallback path.
+// Champion icons resolve the same way, out of the Combat API's champion asset
+// store; `getChampionSquareIconUrl` returns null for a champion it has no art
+// for, which lands on the same fallback path.
+//
+// WHERE THE ART COMES FROM. Pass `entityKey` — the canonical `team_key` or
+// `player_lp_page` the caller already holds — and the slot reads the answer
+// that `ProPlayMediaProvider` fetched once for the whole screen. It never
+// builds a URL, never knows a source, and an unresolved key is simply a
+// monogram. An explicit `src` still wins, for a caller that has already
+// resolved one.
+//
+// CRESTS CONTAIN, PORTRAITS COVER, AND THAT IS NOT A STYLE PREFERENCE. A team
+// mark is frequently a wide wordmark — T1's is 1024x405 — so `object-cover`
+// inside a square frame would crop it to the middle two letters. A portrait is
+// a photograph of a person in a landscape frame, where covering is exactly
+// right and the framing is nudged upward so the crop lands on a face rather
+// than a chest.
 // ---------------------------------------------------------------------------
 
 import { useState } from "react";
 import { Shield, Swords, User } from "lucide-react";
 
 import { getChampionSquareIconUrl } from "@/lib/combat-lab/abilityIcons";
+import { useEntityMedia } from "@/components/pro-play/media/ProPlayMediaProvider";
 
 /** Up to two letters from a name, for an empty frame. "Gen.G" -> "GG",
  *  "Bin (Chen Ze-Bin)" -> "B", "Hanwha Life Esports" -> "HL". */
@@ -57,6 +72,7 @@ function MediaFrame({
   size,
   shape,
   testId,
+  fit = "cover",
 }: {
   src?: string | null;
   alt: string;
@@ -64,6 +80,7 @@ function MediaFrame({
   size: SlotSize;
   shape: "shield" | "round" | "square";
   testId: string;
+  fit?: "cover" | "contain";
 }) {
   // An asset that 404s must degrade to the monogram, not to a broken glyph.
   const [failed, setFailed] = useState(false);
@@ -88,7 +105,11 @@ function MediaFrame({
           src={src as string}
           alt={alt}
           loading="lazy"
-          className="h-full w-full object-cover"
+          className={
+            fit === "contain"
+              ? "h-full w-full object-contain p-[12%]"
+              : "h-full w-full object-cover [object-position:center_28%]"
+          }
           onError={() => setFailed(true)}
         />
       ) : (
@@ -98,24 +119,31 @@ function MediaFrame({
   );
 }
 
-/** A team crest slot. Empty today; shaped for a crest. */
+/** A team crest slot. Renders the org's approved mark when the authority has
+ *  one for `entityKey`, and the designed monogram frame otherwise. */
 export function TeamCrest({
   name,
   shortCode,
   size = "lg",
   src,
+  entityKey,
 }: {
   name: string;
   shortCode?: string | null;
   size?: SlotSize;
   src?: string | null;
+  /** Canonical `team_key`. An alias or a short code resolves to nothing, which
+   *  is the media authority refusing to guess rather than a bug here. */
+  entityKey?: string | null;
 }) {
   // The owner's short label is a better monogram than initials when we have
   // it — "BLG" is how the team is actually known.
   const label = (shortCode || monogram(name)).slice(0, 4);
+  const resolved = useEntityMedia("team", entityKey);
   return (
     <MediaFrame
-      src={src}
+      src={src ?? resolved.src}
+      fit="contain"
       alt={name}
       size={size}
       shape="shield"
@@ -130,19 +158,24 @@ export function TeamCrest({
   );
 }
 
-/** A player portrait slot. Empty today; shaped for a head-and-shoulders crop. */
+/** A player portrait slot, shaped for a head-and-shoulders crop. */
 export function PlayerPortrait({
   name,
   size = "md",
   src,
+  entityKey,
 }: {
   name: string;
   size?: SlotSize;
   src?: string | null;
+  /** Canonical `player_lp_page`. A bare handle — `Knight`, `Zeus` where six or
+   *  five people share it — is not one, and resolves to the monogram. */
+  entityKey?: string | null;
 }) {
+  const resolved = useEntityMedia("player", entityKey);
   return (
     <MediaFrame
-      src={src}
+      src={src ?? resolved.src}
       alt={name}
       size={size}
       shape="round"

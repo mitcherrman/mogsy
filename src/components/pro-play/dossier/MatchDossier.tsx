@@ -76,7 +76,11 @@ function TeamFace({ header, align }: { header: TeamHeader | null; align: "left" 
   }
   return (
     <div className={`dossier-vs__team is-${align}`} data-testid={`vs-team-${header.team_key}`}>
-      <TeamCrest name={header.display_name} shortCode={header.focus.owner_label} />
+      <TeamCrest
+        name={header.display_name}
+        shortCode={header.focus.owner_label}
+        entityKey={header.team_key}
+      />
       <div className="dossier-vs__names">
         <Link className="dossier-vs__name" to={profilePath("team", header.team_key)}>
           {header.display_name}
@@ -173,7 +177,7 @@ function CandidateFace({
   return (
     <div className="dossier-player" data-testid={`candidate-${candidate.player_lp_page}`}>
       <div className={`dossier-player__id is-${align}`}>
-        <PlayerPortrait name={candidate.display_name} />
+        <PlayerPortrait name={candidate.display_name} entityKey={candidate.player_lp_page} />
         <div className="dossier-player__names">
           <Link className="dossier-player__name" to={profilePath("player", candidate.player_lp_page)}>
             {candidate.display_name}
@@ -351,7 +355,12 @@ export function TeamSummaryPlate({ header }: { header: TeamHeader | null }) {
   return (
     <Parchment className="dossier-teamsum" testId={`team-summary-${header.team_key}`}>
       <div className="dossier-teamsum__head">
-        <TeamCrest name={header.display_name} shortCode={header.focus.owner_label} size="md" />
+        <TeamCrest
+          name={header.display_name}
+          shortCode={header.focus.owner_label}
+          size="md"
+          entityKey={header.team_key}
+        />
         <div>
           <Link className="dossier-teamsum__name" to={profilePath("team", header.team_key)}>
             {header.display_name}

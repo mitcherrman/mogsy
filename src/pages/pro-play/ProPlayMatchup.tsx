@@ -91,6 +91,8 @@ import {
   MogzyNote,
 } from "@/components/pro-play/dossier/DossierChrome";
 import { ChampionIcon, PlayerPortrait } from "@/components/pro-play/dossier/DossierMedia";
+import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
+import { matchupMediaKeys } from "@/lib/pro-play/mediaApi";
 
 const CONFLICT_TEXT: Record<string, string> = {
   [CONFLICT_CHAMPION_BANNED]:
@@ -315,9 +317,13 @@ function SideCard({ side, label }: { side: MatchupSide; label: string }) {
   return (
     <Card className="p-4" data-testid={`matchup-side-${label.toLowerCase()}`}>
       <div className="mb-3 flex items-start gap-3">
-        {/* Media slots: empty today, shaped for the portraits and champion art
-            a later workstream will source. See DossierMedia. */}
-        <PlayerPortrait name={side.player?.display_name ?? "?"} />
+        {/* The portrait resolves through the media authority when it holds an
+            approved one for this canonical page; otherwise the monogram frame
+            this slot was designed around. See DossierMedia. */}
+        <PlayerPortrait
+          name={side.player?.display_name ?? "?"}
+          entityKey={side.player?.player_lp_page}
+        />
         {side.champion_key ? <ChampionIcon champion={side.champion_key} size="md" /> : null}
         <div className="min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -797,6 +803,11 @@ export function MatchupBody() {
   }, [mode, selection, teamSelection]);
 
   const ready = mode === "team" ? teamData : data;
+  const mediaKeys = useMemo(
+    () => matchupMediaKeys(mode === "team" ? teamData : data),
+    [mode, teamData, data],
+  );
+
   if (error && !ready) return <ErrorBlock message={error} />;
   if (!contract || !ready) return <LoadingBlock />;
 
@@ -838,25 +849,31 @@ export function MatchupBody() {
 
       {error ? <ErrorBlock message={error} /> : null}
 
-      {mode === "team" && teamData ? (
-        <TeamBoard
-          contract={contract}
-          data={teamData}
-          selection={teamSelection}
-          onChange={applyTeam}
-          onSwitchToLane={toLane}
-        />
-      ) : null}
+      {/* ONE media request for whichever board is on screen. The keys come out
+          of the payload that is about to render, so a crest and its team name
+          can never disagree, and switching modes re-asks rather than reusing
+          the other board's answer. */}
+      <ProPlayMediaProvider {...mediaKeys}>
+        {mode === "team" && teamData ? (
+          <TeamBoard
+            contract={contract}
+            data={teamData}
+            selection={teamSelection}
+            onChange={applyTeam}
+            onSwitchToLane={toLane}
+          />
+        ) : null}
 
-      {mode !== "team" && data ? (
-        <LaneExplorer
-          contract={contract}
-          data={data}
-          selection={selection}
-          apply={apply}
-          onSwitchToTeam={toTeam}
-        />
-      ) : null}
+        {mode !== "team" && data ? (
+          <LaneExplorer
+            contract={contract}
+            data={data}
+            selection={selection}
+            apply={apply}
+            onSwitchToTeam={toTeam}
+          />
+        ) : null}
+      </ProPlayMediaProvider>
 
       {loading ? <Note>Updating…</Note> : null}
     </ResearchPage>
