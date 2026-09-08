@@ -18,10 +18,20 @@
  *
  *   | Panel                | Painted mount                             |
  *   |----------------------|-------------------------------------------|
- *   | Mogzy Premium        | the large gilt-framed navy panel, left     |
- *   | Join the Academy     | the large parchment noticeboard, right     |
- *   | Feedback + About     | the two small pinned parchments below it   |
+ *   | Academy Record       | the large gilt-framed navy panel, left     |
+ *   | Academy Bulletin     | the large parchment noticeboard, right     |
+ *   | Mogzy Premium        | the LEFT small pinned parchment below it   |
+ *   | Join the Academy     | the RIGHT small pinned parchment           |
+ *   | Utility strip        | the wooden counter top, left run           |
  *   | Legal inscription    | a walnut rail on the panelling, bottom     |
+ *
+ *   Revision 24 changed WHO sits on each painted surface, not how the room is
+ *   built. The Record took the frame Premium used to hold, the Bulletin took
+ *   the board Community used to hold, Premium and Community took the two small
+ *   sheets, and the four utility links — for which the painting has no sheet
+ *   left — rest on the broad wooden counter top below the frame. Every
+ *   fraction was re-measured against the artwork, and then against the
+ *   rendered page; nothing inherited Premium's old numbers.
  *
  *   Coordinates are fractions of the ARTWORK, not of the viewport, and the
  *   artwork's own placement is computed from the same custom properties — so
@@ -53,6 +63,8 @@
 import { Link } from "react-router-dom";
 import { ChevronUp } from "lucide-react";
 import AdSlot from "@/components/ads/AdSlot";
+import AcademyRecord from "@/components/lol/AcademyRecord";
+import AcademyBulletin from "@/components/lol/AcademyBulletin";
 import HubPremiumPanel from "@/components/lol/HubPremiumPanel";
 import HubCommunitySection from "@/components/lol/HubCommunitySection";
 import HubUtilitySection from "@/components/lol/HubUtilitySection";
@@ -198,11 +210,20 @@ export default function AcademyCommons({
           </button>
         </div>
 
-        {/* Plaque and board share a row in flow mode; in stage mode each takes
-            its own painted mount and this grid stops applying. DOM order is
-            unchanged either way, so reading order stays Premium → Community →
-            Feedback/About at every width. */}
-        <div className="academy-commons-mounts grid gap-4 lg:min-h-0 lg:max-h-[21rem] lg:flex-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-6">
+        {/* The two large mounts share a row in flow mode; in stage mode each
+            takes its own painted mount and this grid stops applying. DOM order
+            is unchanged either way, so the reading order is
+            Record → Bulletin → Premium → Community → Utilities → legal at
+            every width. That order IS the room's hierarchy and is asserted in
+            LolHub.test.tsx. */}
+        <div className="academy-commons-mounts grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-6">
+          <AcademyRecord />
+          <AcademyBulletin />
+        </div>
+
+        {/* The two supporting sheets. Subordinate to both mounts above them by
+            size, by surface (ink on paper, not gilt on navy) and by order. */}
+        <div className="academy-commons-mount-support grid shrink-0 gap-4 sm:grid-cols-2 lg:gap-6">
           <HubPremiumPanel />
           <HubCommunitySection />
         </div>

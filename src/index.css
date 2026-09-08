@@ -9021,17 +9021,28 @@ html.high-contrast * { text-shadow: none !important; }
      against the section itself. `display: contents` keeps the DOM — and
      therefore the reading order — exactly as it is in flow mode. */
   html.hub-two-screen:not(.large-text) .academy-commons-room,
-  html.hub-two-screen:not(.large-text) .academy-commons-mounts {
+  html.hub-two-screen:not(.large-text) .academy-commons-mounts,
+  html.hub-two-screen:not(.large-text) .academy-commons-mount-support {
     display: contents;
   }
 
   /* ---- the mounts --------------------------------------------------------
      `--mx/--my/--mw/--mh` are fractions of the artwork, measured off the
-     approved file. Keep them together: they are the alignment contract. */
+     approved file. Keep them together: they are the alignment contract.
+
+     REVISION 24. The painting contains exactly four live surfaces — one gilt
+     frame, one large board, two small parchments — plus the panelling the
+     legal rail is fixed to. The occupants changed; the surfaces did not. Every
+     fraction below was re-derived against the file, and the two small sheets
+     were split out of what used to be ONE utility mount (mx .5540, mw .2495,
+     an internal 172fr/190fr grid with a 55u gutter), so the pair still lands
+     on the painted sheets rather than on the wood between them. */
   html.hub-two-screen:not(.large-text) .academy-commons > .academy-commons-plinth,
   html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-crest,
-  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-plaque,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-record,
   html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-board,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-support-premium,
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-support-community,
   html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-mount-utility {
     position: absolute;
     left: calc(var(--commons-img-x) + var(--commons-img-w) * var(--mx));
@@ -9046,9 +9057,9 @@ html.high-contrast * { text-shadow: none !important; }
     z-index: 10;
   }
 
-  /* The bare arch above the membership frame — the one wide stretch of empty
-     wall in the composition, and the only place a title can hang without
-     covering paint that is doing work. */
+  /* The bare arch above the frame — the one wide stretch of empty wall in the
+     composition, and the only place a title can hang without covering paint
+     that is doing work. Unchanged: the arch did not move. */
   html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-crest {
     --mx: 0.300;
     --my: 0.085;
@@ -9067,8 +9078,12 @@ html.high-contrast * { text-shadow: none !important; }
     width: calc(70 * var(--u));
   }
 
-  /* ---- Mogzy Premium → the gilt-framed navy panel, left ------------------ */
-  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-plaque {
+  /* ---- Academy Record → the gilt-framed navy panel, left -----------------
+     The frame itself is unmoved, so the mount box that fits inside it is the
+     same box the membership plaque used: these four numbers describe the
+     PAINTED FRAME's usable interior, not the panel that used to sit in it.
+     Re-checked against the file rather than copied. */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-record {
     --mx: 0.2700;
     --my: 0.2150;
     --mw: 0.2140;
@@ -9084,10 +9099,13 @@ html.high-contrast * { text-shadow: none !important; }
     box-shadow: none;
     overflow: visible;
   }
-  /* The seal leaves the flow and drops into the medallion's empty ring. The
-     offset is the medallion's centre (0.2715 of the artwork) expressed inside
-     this mount's own box, so it tracks the frame at every size. */
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-seal {
+  /* The record's seal — the reader's own avatar — drops into the medallion's
+     empty ring. The offset is the medallion's centre (0.2715 of the artwork)
+     expressed inside THIS mount's box: `(0.2715 - --my) / --mh`. The plaque's
+     old expression happened to use the same two numbers because the mount is
+     the same painted frame; it is re-derived here rather than inherited, so
+     changing `--my`/`--mh` above forces this line to be revisited. */
+  html.hub-two-screen:not(.large-text) .academy-commons-record-seal {
     position: absolute;
     left: 50%;
     top: calc((0.2715 - 0.2150) / 0.5150 * 100%);
@@ -9096,88 +9114,84 @@ html.high-contrast * { text-shadow: none !important; }
     width: calc(46 * var(--u));
     height: calc(46 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-seal-ring {
-    width: calc(37 * var(--u));
-    height: calc(37 * var(--u));
+  html.hub-two-screen:not(.large-text) .academy-commons-record-seal svg {
+    width: calc(21 * var(--u));
+    height: calc(21 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-seal svg {
-    width: calc(19 * var(--u));
-    height: calc(19 * var(--u));
-  }
-  /* The brass title band is gone with the mount board; the eyebrow is cut
+  /* The brass title band is gone with the mount board; the band's text is cut
      straight into the painted field instead. */
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-band {
+  html.hub-two-screen:not(.large-text) .academy-commons-record-band {
     background-image: none;
     box-shadow: none;
     padding: 0;
     justify-content: center;
     font-size: calc(10.5 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-band .academy-commons-engraved {
+  html.hub-two-screen:not(.large-text) .academy-commons-record-band .academy-commons-engraved {
     color: rgba(233, 208, 148, 0.9);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     font-size: calc(10.5 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-body {
-    /* The seal is placed against the PLAQUE — i.e. against the painted frame —
+  html.hub-two-screen:not(.large-text) .academy-commons-record-body {
+    /* The seal is placed against the RECORD — i.e. against the painted frame —
        so nothing between it and the frame may be a containing block. This div
        carries `relative` for stacking in flow mode and must give it up here. */
     position: static;
     padding: 0;
-    gap: calc(15 * var(--u));
+    gap: calc(13 * var(--u));
     justify-content: center;
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-head {
-    display: block;
-    text-align: center;
-  }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-title {
-    font-size: calc(30 * var(--u));
+  html.hub-two-screen:not(.large-text) .academy-commons-record-title {
+    font-size: calc(27 * var(--u));
     line-height: 1.14;
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-blurb {
-    margin-top: calc(11 * var(--u));
-    max-width: none;
-    font-size: calc(14.5 * var(--u));
+  html.hub-two-screen:not(.large-text) .academy-commons-record-standing {
+    margin-top: calc(6 * var(--u));
+    font-size: calc(11.5 * var(--u));
+  }
+  /* The register is the record's substance: it gets the width, and its rules
+     are read at a size a credential is read at, not a caption. */
+  html.hub-two-screen:not(.large-text) .academy-commons-record-register {
+    gap: calc(9 * var(--u));
+    padding-inline: calc(6 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-record-line-label {
+    font-size: calc(10.5 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-record-line-value {
+    font-size: calc(14 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-record-empty {
+    font-size: calc(14 * var(--u));
     line-height: 1.55;
+    padding-inline: calc(4 * var(--u));
   }
-  /* Symmetrical under a symmetrical frame — the flow-mode rule fades one way
-     only, which reads as a left-aligned card. */
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-rule {
-    background-image: linear-gradient(
-      90deg,
-      transparent,
-      rgba(201, 168, 76, 0.4) 24%,
-      rgba(201, 168, 76, 0.4) 76%,
-      transparent
-    );
+  html.hub-two-screen:not(.large-text) .academy-commons-record-bar {
+    margin-inline: calc(6 * var(--u));
+    height: calc(4 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-pillars {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: flex-start;
-    width: fit-content;
-    margin-inline: auto;
-    margin-top: calc(12 * var(--u));
-    gap: calc(8 * var(--u));
-    font-size: calc(13.5 * var(--u));
+  html.hub-two-screen:not(.large-text) .academy-commons-record-actions {
+    gap: calc(6 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-plaque-cta {
+  html.hub-two-screen:not(.large-text) .academy-commons-record-cta {
     width: auto;
     align-self: center;
-    margin-top: calc(16 * var(--u));
     /* The 44px floor is absolute: it is a tap target, not a proportion. */
-    min-height: max(44px, calc(46 * var(--u)));
-    padding: calc(10 * var(--u)) calc(30 * var(--u));
-    font-size: calc(14.5 * var(--u));
+    min-height: max(44px, calc(44 * var(--u)));
+    padding: calc(9 * var(--u)) calc(26 * var(--u));
+    font-size: calc(14 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-record-secondary {
+    min-height: max(32px, calc(26 * var(--u)));
+    font-size: calc(10.5 * var(--u));
   }
 
-  /* ---- Join the Academy → the parchment noticeboard, right ---------------
+  /* ---- Academy Bulletin → the parchment noticeboard, right ---------------
      The painted sheet is in perspective: its horizontal axis rises 1.7deg to
      the right. The whole mount is turned onto that axis so the type lies on
-     the paper rather than across it, and the bill's own half-degree tilt —
-     which existed to stop a coded rectangle reading as a rectangle inside a
-     rectangle — is dropped, because there is no coded rectangle left. */
+     the paper rather than across it, and the bill's own half-degree tilt is
+     dropped, because there is no coded rectangle left. The board did not move,
+     so its box is unchanged — only its occupant is. */
   html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-board {
     --mx: 0.5840;
     --my: 0.2520;
@@ -9228,68 +9242,144 @@ html.high-contrast * { text-shadow: none !important; }
     width: calc(17 * var(--u));
     height: calc(17 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-bill-footnote {
-    margin-top: calc(9 * var(--u));
-    font-size: calc(11.5 * var(--u));
-  }
 
-  /* ---- Feedback + About → the two small pinned slips --------------------- */
-  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-mount-utility {
+  /* ---- Premium + Community → the two small pinned parchments -------------
+     Derived from the retired combined mount, so the pair still lands exactly
+     where the two painted sheets are:
+
+       left  sheet   mx .5540                       mw .1029   (172fr)
+       gutter        .0329  (the painted wood between them, = 55u at 1672px)
+       right sheet   mx .5540 + .1029 + .0329 = .6898   mw .1137  (190fr)
+
+     Both sheets keep the combined mount's vertical box (.5970 / .1600), which
+     is the painted parchments' own run. */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-support-premium {
     --mx: 0.5540;
     --my: 0.5970;
-    --mw: 0.2495;
+    --mw: 0.1029;
     --mh: 0.1600;
   }
-  /* Column ratio and gutter are the painted sheets', not a design grid's. */
-  html.hub-two-screen:not(.large-text) .academy-commons-slips {
-    display: grid;
-    grid-template-columns: 172fr 190fr;
-    gap: calc(55 * var(--u));
-    height: 100%;
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-support-community {
+    --mx: 0.6898;
+    --my: 0.5970;
+    --mw: 0.1137;
+    --mh: 0.1600;
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-slip {
+  html.hub-two-screen:not(.large-text) .academy-commons-support {
     display: flex;
     flex-direction: column;
     justify-content: center;
     /* Clear of the painted pin rows at the top and bottom of each sheet. */
-    padding: calc(17 * var(--u)) calc(13 * var(--u)) calc(12 * var(--u));
+    padding: calc(15 * var(--u)) calc(12 * var(--u)) calc(12 * var(--u));
     transform: none;
+    /* The painting supplies the paper. */
     background-image: none;
     box-shadow: none;
   }
-  /* Two 44px targets and a heading is all a sheet this size will hold. The
-     supporting sentence and the "Feedback" eyebrow are the two pieces that
-     say nothing the heading and the link labels do not already say. */
-  html.hub-two-screen:not(.large-text) .academy-commons-slip-blurb,
-  html.hub-two-screen:not(.large-text) [data-testid="hub-feedback-block"] .academy-commons-slip-eyebrow {
+  /* A sheet this size holds a heading, one short line and one 44px target.
+     The seal and the supporting sentence are what a reader can lose without
+     losing an action, so they go first. */
+  html.hub-two-screen:not(.large-text) .academy-commons-support-seal,
+  html.hub-two-screen:not(.large-text) .academy-commons-support-blurb {
     display: none;
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-slip-row {
+  html.hub-two-screen:not(.large-text) .academy-commons-support-head {
     display: block;
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-slip-eyebrow {
-    font-size: calc(10 * var(--u));
+  html.hub-two-screen:not(.large-text) .academy-commons-support-eyebrow {
+    font-size: calc(9.5 * var(--u));
   }
-  /* One line. A sheet this size holds a heading and two 44px targets; a
-     heading that wraps costs it one of the targets' clearance from the
-     painted pin rows. */
-  html.hub-two-screen:not(.large-text) .academy-commons-slip-title {
-    font-size: calc(12.8 * var(--u));
+  /* One line. A heading that wraps costs the action below it its clearance
+     from the painted pin row at the foot of the sheet. */
+  html.hub-two-screen:not(.large-text) .academy-commons-support-title {
+    margin-top: calc(2 * var(--u));
+    font-size: calc(13.5 * var(--u));
     line-height: 1.2;
     white-space: nowrap;
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-slip-actions {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
+  html.hub-two-screen:not(.large-text) .academy-commons-support-actions {
     margin-top: calc(8 * var(--u));
     gap: calc(5 * var(--u));
   }
-  html.hub-two-screen:not(.large-text) .academy-commons-slip-action {
-    min-height: max(44px, calc(30 * var(--u)));
-    padding: calc(4 * var(--u)) calc(10 * var(--u));
-    font-size: calc(12.5 * var(--u));
+  html.hub-two-screen:not(.large-text) .academy-commons-support-cta {
+    align-self: stretch;
     justify-content: flex-start;
+    margin-top: calc(8 * var(--u));
+    min-height: max(38px, calc(30 * var(--u)));
+    padding: calc(4 * var(--u)) calc(9 * var(--u));
+    font-size: calc(12 * var(--u));
+    gap: calc(6 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-support-cta svg {
+    width: calc(14 * var(--u));
+    height: calc(14 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-support-mark {
+    min-height: max(34px, calc(28 * var(--u)));
+    min-width: max(34px, calc(28 * var(--u)));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-support-footnote {
+    margin-top: calc(6 * var(--u));
+    font-size: calc(10 * var(--u));
+    line-height: 1.35;
+  }
+
+  /* ---- the utility strip → inscribed on the panelling --------------------
+     The four utility links are the ONE mount with no painted surface of its
+     own: the file has a gilt frame, a board and two small sheets, and all four
+     are occupied. Rather than paste a coded card onto the artwork, the links
+     are cut into the panelling directly above the legal rail, in the rail's
+     own inscription hand.
+
+     The band is measured, not guessed — and the first attempt at it was wrong,
+     which is worth recording. The obvious-looking home was the panelling
+     between the painted capping rail and the legal board, at 0.779-0.826. In
+     the browser that band turned out to be 30px of MOULDED panel face with the
+     walnut rail's own top edge at 0.8244: the links cleared it by three
+     pixels and sat across the wainscot's lit nosing. Measured, not guessed,
+     means measured in the page.
+
+     What the painting actually offers is the broad wooden COUNTER TOP that
+     runs the width of the room below the frame — flat, unornamented, and
+     genuinely a surface things rest on. It is clear from about 0.750 to 0.790
+     on the left of the room; on the right the two small parchments hang down
+     into it as far as 0.767, so the strip takes the LEFT run only, under the
+     Record. Four links left on the counter, rather than four links floating
+     on a moulding.
+
+     Height budget: at the smallest gated viewport (1024x780) this band is
+     ~28px. The links therefore take a 30px floor rather than the room's usual
+     44px — still larger than the legal links immediately below them, which are
+     plain inscription text with no floor at all. Flow mode keeps the full
+     44px. */
+  html.hub-two-screen:not(.large-text) .academy-commons .academy-commons-mount-utility {
+    --mx: 0.2320;
+    --my: 0.7560;
+    --mw: 0.3120;
+    --mh: 0.0360;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-utilstrip {
+    justify-content: flex-start;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-utilstrip-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: calc(16 * var(--u));
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-utilstrip-link {
+    min-height: max(30px, calc(26 * var(--u)));
+    padding-inline: calc(3 * var(--u));
+    font-size: calc(10 * var(--u));
+    letter-spacing: 0.12em;
+    gap: calc(5 * var(--u));
+    white-space: nowrap;
+  }
+  html.hub-two-screen:not(.large-text) .academy-commons-utilstrip-link svg {
+    width: calc(12 * var(--u));
+    height: calc(12 * var(--u));
   }
 
   /* ---- the legal inscription → the walnut rail ---------------------------

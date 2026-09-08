@@ -1,17 +1,19 @@
 /**
- * "Join the Academy" — the Commons' **noticeboard**.
+ * "Join the Academy" — the Commons' second **supporting slip**.
  *
- * Second in the room's hierarchy, under the membership plaque: a walnut
- * planked board with a parchment bill pinned to it. Quieter than the plaque by
- * construction — the bill carries ink on paper, not gilt, and the board's own
- * wood is the same `--shelf-*` walnut as the hall's shelving.
+ * ### Revision 24 — it moved, and it kept everything
+ * This section used to own the large parchment noticeboard. The Academy
+ * Bulletin holds that board now: five links do not earn one of the two biggest
+ * surfaces in the room. Community moved to the right of the two small painted
+ * parchments, beside Premium.
  *
- * Destinations come from `@/lib/community/links`, which resolves them from the
- * environment and fails closed. **None are configured today**, so the honest
- * render is a Discord headline in a "not open yet" state plus a line saying so
- * — not a dead link and not a fake invite. Solving the Discord/social
- * configuration is explicitly out of scope for the two-screen redesign; this
- * component's behaviour is unchanged from 2026-09-04 and only its surface moved.
+ * **The behaviour is untouched.** Destinations still come from
+ * `@/lib/community/links`, which resolves them from the environment, accepts
+ * `https:` only and fails closed. **None are configured today**, so the honest
+ * render is still a Discord headline in a "not open yet" state plus a line
+ * saying so — not a dead link and not a fake invite. Every per-channel
+ * `if (!channel.url) return null` and the collapsed "on the way" footnote are
+ * exactly as they shipped; only the surface got smaller.
  */
 import { Youtube, Instagram, Twitter, ArrowUpRight } from "lucide-react";
 import {
@@ -48,16 +50,12 @@ const CHANNEL_MARKS: Record<CommunityChannelId, (p: { className?: string }) => J
   x: (p) => <Twitter {...p} aria-hidden />,
 };
 
-/** A brass pin. Decorative only — the notice is held to the board by these. */
-function Pin({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={`academy-commons-pin absolute h-2.5 w-2.5 rounded-full ${className ?? ""}`}
-    />
-  );
-}
-
+/**
+ * A secondary channel, as an icon-only mark on the slip. The label is carried
+ * by `aria-label` and `title` rather than by visible text — the sheet is small
+ * now, and four labelled chips would not fit without dropping one. The channel
+ * still renders only when it has a resolved URL.
+ */
 function SecondaryChannel({ channel }: { channel: CommunityChannel }) {
   const Mark = CHANNEL_MARKS[channel.id];
   if (!channel.url) return null;
@@ -66,11 +64,12 @@ function SecondaryChannel({ channel }: { channel: CommunityChannel }) {
       href={channel.url}
       target="_blank"
       rel="noopener noreferrer"
+      aria-label={channel.label}
+      title={channel.label}
       data-testid={`hub-community-${channel.id}`}
-      className="inline-flex min-h-[44px] items-center gap-2 rounded-[2px] border border-[#6d5a33]/50 bg-[#e6d9b6]/45 px-3 py-1.5 text-[13px] font-semibold text-[#2c2417] transition-colors hover:bg-[#efe4c6]/70"
+      className="academy-commons-support-mark inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[2px] border border-[#6d5a33]/50 bg-[#e6d9b6]/45 text-[#2c2417] transition-colors hover:bg-[#efe4c6]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230]"
     >
-      <Mark className="h-3.5 w-3.5 text-[#7a6230]" />
-      {channel.label}
+      <Mark className="h-4 w-4 text-[#7a6230]" />
     </a>
   );
 }
@@ -84,75 +83,62 @@ export default function HubCommunitySection() {
     <section
       data-testid="hub-community-section"
       aria-labelledby="hub-community-heading"
-      className="academy-commons-board relative flex min-w-0 flex-col justify-center rounded-[3px] border-4 border-solid p-4 sm:p-5"
+      className="academy-commons-notice academy-commons-support academy-commons-support-community relative flex min-w-0 flex-col justify-center rounded-[2px] px-5 py-4 [transform:rotate(-0.28deg)]"
     >
-      {/* The pinned bill. Deliberately NOT stretched to the board: a sheet that
-          fills its board is just a card with a brown outline, and stretching it
-          opened a large void down the middle. Auto-height and centred, it
-          leaves real planking showing all round — which is the whole reason the
-          board is here.
+      <span
+        aria-hidden
+        className="academy-commons-pin absolute left-1/2 top-2 h-2.5 w-2.5 -translate-x-1/2 rounded-full"
+      />
 
-          The rotation is what stops it reading as a rectangle inside a
-          rectangle; it is under half a degree, so no line of type is measurably
-          off the horizontal. */}
-      <div className="academy-commons-notice academy-commons-bill relative flex flex-col rounded-[2px] px-5 py-5 [transform:rotate(-0.45deg)] sm:px-6">
-        <Pin className="left-4 top-2.5" />
-        <Pin className="right-4 top-2.5" />
+      <span className="academy-commons-notice-soft academy-commons-support-eyebrow text-[10px] font-bold uppercase tracking-[0.28em]">
+        Community
+      </span>
+      <h2
+        id="hub-community-heading"
+        className="academy-commons-notice-ink academy-commons-support-title text-[1.05rem] font-semibold leading-tight"
+        style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
+      >
+        Join the Academy
+      </h2>
+      <p className="academy-commons-notice-soft academy-commons-support-blurb mt-1.5 text-[12.5px] leading-snug">
+        Talk patches, compare runs, and hear what’s coming first.
+      </p>
 
-        <span className="academy-commons-notice-soft academy-commons-bill-eyebrow text-[10px] font-bold uppercase tracking-[0.28em]">
-          Notice Board
-        </span>
-        <h2
-          id="hub-community-heading"
-          className="academy-commons-notice-ink academy-commons-bill-title mt-1 text-[1.35rem] font-medium leading-tight sm:text-2xl"
-          style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
-        >
-          Join the Academy
-        </h2>
-        <p className="academy-commons-notice-soft academy-commons-bill-blurb mt-2 max-w-sm text-[13px] leading-relaxed">
-          Talk patches, compare runs, and hear about what’s coming to Mogzy
-          before anyone else.
-        </p>
+      <div className="academy-commons-support-actions mt-3 flex flex-wrap items-center gap-2">
+        {discord.url ? (
+          <a
+            href={discord.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="hub-community-discord"
+            className="academy-commons-support-cta inline-flex min-h-[44px] items-center gap-2 rounded-[2px] border border-[#7a6230]/45 bg-[#e6d9b6]/45 px-3.5 py-1.5 text-[13px] font-semibold text-[#2c2417] transition-colors hover:bg-[#f0e5c8]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230]"
+          >
+            <DiscordMark className="h-4 w-4 text-[#7a6230]" />
+            Join the Discord
+            <ArrowUpRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
+          </a>
+        ) : (
+          /* No invite exists yet. A dashed entry keeps the hierarchy the design
+             calls for without pretending there is somewhere to go. */
+          <div
+            data-testid="hub-community-discord-pending"
+            className="academy-commons-support-cta inline-flex min-h-[44px] items-center gap-2 rounded-[2px] border border-dashed border-[#7a6230]/55 bg-[#d3c19a]/40 px-3.5 py-1.5 text-[13px] font-semibold text-[#4a3d24]"
+          >
+            <DiscordMark className="h-4 w-4 text-[#7a6230]" />
+            Discord — opening soon
+          </div>
+        )}
 
-        <div className="academy-commons-bill-actions pt-5">
-          {discord.url ? (
-            <a
-              href={discord.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="hub-community-discord"
-              className="academy-commons-bill-cta group inline-flex min-h-[52px] items-center gap-3 rounded-[3px] bg-gradient-to-b from-[#e0c273] to-[#b08c30] px-5 py-3 text-[15px] font-bold text-[#160f02] shadow-[0_1px_0_hsl(42_90%_78%)_inset] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-            >
-              <DiscordMark className="h-5 w-5" />
-              Join the Discord
-              <ArrowUpRight className="h-4 w-4 opacity-70" aria-hidden />
-            </a>
-          ) : (
-            /* No invite exists yet. A struck-through entry on the bill keeps
-               the hierarchy the design calls for without pretending there is
-               somewhere to go. */
-            <div
-              data-testid="hub-community-discord-pending"
-              className="academy-commons-bill-cta inline-flex min-h-[52px] items-center gap-3 rounded-[2px] border border-dashed border-[#7a6230]/55 bg-[#d3c19a]/40 px-5 py-3 text-[15px] font-semibold text-[#4a3d24]"
-            >
-              <DiscordMark className="h-5 w-5 text-[#7a6230]" />
-              Discord — opening soon
-            </div>
-          )}
-
-          {openSecondary.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {openSecondary.map((channel) => (
-                <SecondaryChannel key={channel.id} channel={channel} />
-              ))}
-            </div>
-          ) : (
-            <p className="academy-commons-notice-soft academy-commons-bill-footnote mt-3 text-[11.5px] leading-snug">
-              YouTube, TikTok, Instagram and X are on the way.
-            </p>
-          )}
-        </div>
+        {openSecondary.map((channel) => (
+          <SecondaryChannel key={channel.id} channel={channel} />
+        ))}
       </div>
+
+      {openSecondary.length === 0 && (
+        <p className="academy-commons-notice-soft academy-commons-support-footnote mt-2 text-[11.5px] leading-snug">
+          YouTube, TikTok, Instagram and X are on the way.
+        </p>
+      )}
     </section>
   );
 }

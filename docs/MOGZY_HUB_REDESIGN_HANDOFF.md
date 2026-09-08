@@ -1,10 +1,617 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 21 (WHATSNEW2 — Academy Updates become admin-managed) is at the
-     top of this file. Revision 20 was WHATSNEW1, which built the surface;
+<!-- Revision 24 (Step 3 — the recomposition, implemented) is at the top of
+     this file. Revision 23 was the specification it implements; Revision 22
+     the preservation audit under both.
+     Revision 21 was WHATSNEW2 — Academy Updates become admin-managed.
+     Revision 20 was WHATSNEW1, which built the surface;
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-07 — SCREEN 2 RECOMPOSITION, STEP 3 **IMPLEMENTED AND LOCALLY VERIFIED** (not committed)
+
+**Status:** implemented on `main` @ `3d914096`, working tree, **uncommitted and
+unpushed**. Revisions 22 (preservation) and 23 (specification) remain
+authoritative for intent; this revision records what actually shipped into the
+working tree and what changed against the plan.
+
+### 1. Files changed
+
+| File | Change |
+|---|---|
+| `src/components/lol/AcademyRecord.tsx` | **new** — the large left mount |
+| `src/components/lol/AcademyBulletin.tsx` | **new** — the large right board, one static notice |
+| `src/components/lol/AcademyRecord.test.tsx` | **new** — 7 tests, all state paths |
+| `src/components/lol/AcademyBulletin.test.tsx` | **new** — 5 tests |
+| `src/components/lol/AcademyCommons.tsx` | recomposed: new DOM order, new support row |
+| `src/components/lol/HubPremiumPanel.tsx` | plaque → compact parchment slip; **logic untouched** |
+| `src/components/lol/HubCommunitySection.tsx` | board → compact parchment slip; **logic untouched** |
+| `src/components/lol/HubUtilitySection.tsx` | two slips → one four-link strip |
+| `src/index.css` | stage-mode mount block rewritten (271 lines → 348) |
+| `src/pages/LolHub.test.tsx` | 3 intentional updates |
+| `src/components/lol/HubPremiumPanel.test.tsx` | 1 intentional update |
+
+Screen 1, the plinth, the artwork, `LolHub.tsx` and `Footer.tsx` are **not
+touched**.
+
+### 2. Layout and component changes
+
+DOM order is now **Record → Bulletin → Premium → Community → Utilities →
+plinth**, identical in both modes.
+
+Stage-mode fractions, all re-measured (see §5 for the one that had to be
+measured twice):
+
+| Mount | mx | my | mw | mh |
+|---|---|---|---|---|
+| Crest (unchanged) | .3000 | .0850 | .1800 | .0930 |
+| **Academy Record** (gilt frame) | .2700 | .2150 | .2140 | .5150 |
+| **Academy Bulletin** (board) | .5840 | .2520 | .2440 | .2440 |
+| **Premium** (left sheet) | .5540 | .5970 | .1029 | .1600 |
+| **Community** (right sheet) | .6898 | .5970 | .1137 | .1600 |
+| **Utility strip** (counter top) | .2320 | .7560 | .3120 | .0360 |
+| Plinth (frozen) | .2320 | .8120 | .5540 | .1080 |
+
+The Record and Bulletin boxes describe the same painted frame and board the
+previous occupants sat in — the surfaces did not move, only who is on them.
+The two sheets were **derived**, not inherited: the retired combined utility
+mount (mx .5540, mw .2495, internal 172fr/190fr grid, 55u gutter) was solved
+into two absolute boxes so each lands on its own painted parchment.
+
+**The seal.** The Record's seal — the reader's avatar, or a fallback mark —
+drops into the painted laurel medallion using `(0.2715 − --my) / --mh`, written
+out against the Record's own box rather than copied from the plaque. Verified
+in the browser at 1024×780: medallion centre 211.8px, rendered seal centre
+212px.
+
+Flow mode: the two large mounts share a `lg:grid-cols-[1fr_1.05fr]` row, the
+two sheets a `sm:grid-cols-2` row, the strip its own row. All coded chrome
+(navy plaque, planked board, parchment, pins) is restored outside the gate.
+
+### 3. Academy Record — data sources reused
+
+Every value is an existing authority. Nothing new was fetched, derived or
+invented, and there is no backend work in this slice.
+
+| Line | Source |
+|---|---|
+| Name, avatar | `useProfileIdentity` (canonical `profiles` read); `null` for guests and anonymous sessions |
+| Standing | `parseAcademyProgression(progress)` → `academyTierLabel`; falls back to `deriveProfileStats().rankName` when the wire block is incoherent |
+| To next tier, tier bar | `AcademyProgression.xpToNext` / `.progressPercent` — omitted entirely at Challenger and whenever the block fails validation |
+| Answered, Accuracy, Streak | `deriveProfileStats` — the same view model the profile page renders |
+| Strongest | `pickBestCategory` over `quizApi.getCategories` |
+| Ranked | `useRankedProgression`, rendered **only** when `loadState === "ready" && rated` |
+| Member mark | `useSitewideTheme().proStatus` |
+
+React Query keys are `["quiz-progress", userId]` and `["quiz-categories",
+userId]` — the **same keys** `LeagueProfileStats` uses, so the cache is shared
+with the profile page.
+
+**States.** `data-record-state` is `empty` for a guest, an anonymous session,
+or any signed-in account with `activityState === "none"`; `open` otherwise. The
+empty state prints no zeroes, no "Unranked" and no bar — it says "No record
+opened" and offers "Begin Studying". A member gets "Academy Record · Member" in
+the band and **no upsell in this panel at all**.
+
+**Excluded as specified:** mastery/champion progression, Combat Lab stats,
+achievements, history rows, per-role records. No fixture or demo data exists in
+this slice.
+
+### 4. Academy Bulletin V1
+
+One `NOTICE` object — not an array, not an index, no rotation state, no
+carousel framework. Eyebrow / headline / body / one CTA is the shape every
+future family must fit.
+
+The notice points at **`/lol/mechanics`** (the Mechanics Explorer). It was
+originally written against `/quiz` and changed during implementation: the
+Record's own primary action already goes there, and a board that repeats the
+panel beside it is not a bulletin. It also avoids Screen 1's Patch Brief and
+claims no live statistic — tests assert all three.
+
+### 5. Preservation verification
+
+| Behaviour | Verified how |
+|---|---|
+| Premium promo state, member state, `/lol/premium` | `HubPremiumPanel.test.tsx`, 6 tests green; still the page's only `/lol/premium` link |
+| Discord configured / unconfigured | `LolHub.test.tsx` — pending state renders, no link to nowhere |
+| YouTube, TikTok, Instagram, X | per-channel `if (!channel.url) return null` intact; collapsed footnote intact; `links.ts` untouched (5 tests green) |
+| `/feedback`, `/feedback?intent=bug`, `/about`, `/contact` | all four in the strip, asserted with exact hrefs plus a count of 4 |
+| Legal plinth | copy, routes, layout and role unchanged; `LolHub.test.tsx` wording test passes untouched; still the section's last element child |
+| Hall ↔ Commons, snap, settle, reduced motion | `data-hub-screen="commons"` untouched, `LolHub.tsx` untouched, hint tests green |
+| Stage/flow duality | measured live at 1440×900, 1024×780 and 375×812 |
+
+Live geometry at the tightest gated viewport (1024×780): utility strip clears
+the walnut rail by 23px, clears the Premium sheet by 41px, sits 21px below the
+Record; no horizontal overflow. Flow mode at 375×812: `position: relative`
+(stage off), correct stacking order, all four utility links at the full 44px,
+legal nav intact.
+
+**The measurement that was wrong first.** The strip was originally placed on
+the panelling at .7790–.8260, which looked clear in the file. In the browser
+that band is 30px of moulded panel face with the legal rail's top edge at
+.8244 — a 3px gap, with the links across the wainscot's lit nosing. It was
+moved to the broad wooden **counter top** that runs below the frame
+(.750–.790), taking the left run only, because the two small parchments hang
+into that band on the right. "Measured, not guessed" has to mean measured in
+the page.
+
+### 6. Tests, typecheck, build
+
+- **Tests:** `src/components/lol`, `src/pages/LolHub.test.tsx`,
+  `src/pages/Quiz.hub.test.tsx`, `src/lib/community` — **360 passed, 0 failed**
+  (20 files). Profile-side regression sweep — **45 passed** (4 files).
+- **Typecheck:** `tsc --noEmit -p tsconfig.app.json` — **11 errors before, 11
+  after, byte-identical**, none in any changed file. All pre-existing.
+- **Lint:** clean on all eight changed/added files.
+- **Build:** `vite build --mode development` — green, 48s.
+- The full repo suite was not run; per the standing note it has a ~42-test
+  baseline failure set on clean `main` and must be compared serially.
+
+**Four intentional test updates** (the old assertions encoded the old
+hierarchy; the behaviour each guarded is preserved):
+
+1. `LolHub.test.tsx` "mobile panel list is untouched" — scoped to
+   `[data-hub-screen="hall"]`. The Record's primary action is also a `/quiz`
+   link and is not a book; scoping keeps the twice-exactly guarantee exact.
+2. `LolHub.test.tsx` painted-mount class hooks — renamed with their occupants
+   (`-record`, `-record-seal`, `-support-premium`, `-support-community`).
+3. `LolHub.test.tsx` utility destinations — reads the strip instead of the
+   retired `hub-about-block`, and now also asserts there are exactly 4 links.
+4. `HubPremiumPanel.test.tsx` feature-claim check — case-insensitive, because
+   the compact slip names both live features in prose rather than as a
+   three-item register. The rule under test (both named, no coming-soon
+   feature, no price) is unchanged.
+
+The Premium → Community → Utility → legal order assertion in
+`LolHub.test.tsx:301` **did not need changing**: Record and Bulletin were
+inserted above that run, so the relative order it guards still holds.
+
+### 7. Visual risks still needing browser review
+
+Screenshot capture returns a black frame for this room in the Browser pane, so
+everything above is **geometric verification, not a visual sign-off**. Per the
+standing note, Playwright is the tool for a real visual pass. Open risks:
+
+1. **The utility strip on bare counter top.** It is the one mount with no
+   painted surface of its own. Four inscription links resting on wood, 30px
+   above the legal rail — this is the single most likely thing to read wrong.
+2. **Record register density.** Up to six label/value lines plus a bar inside
+   the painted frame. A long display name or a wide category label may crowd
+   it; the frame cannot grow.
+3. **The seal with a real avatar.** Verified as a box; never seen with an
+   actual image clipped into the painted laurel ring.
+4. **Compact slips at the smallest gate.** Premium and Community are 143px and
+   158px wide at 1024×780, with `white-space: nowrap` titles.
+5. **Premium's quiet CTA.** Deliberately ink-on-parchment rather than gold, so
+   the room has exactly two bright objects. Needs eyes to confirm it still
+   reads as a call to action.
+6. **Bulletin balance.** The board is 2.44:2.44 of the artwork and now carries
+   less content than the community section did.
+
+### 8. What remains for Step 4
+
+Rotation for the Bulletin — the card families from Revision 23 §3 (quiz prompt,
+mechanics fact, patch projection, personal activity, Pro Play invitation), slow
+rotation, prev/next, pause rules, deterministic first item. Then the Record's
+later fields (achievements, history rows, per-role records), the gutter wood
+framing, and — only after real implementation — Timmy/demo population.
+
+A Playwright visual pass over the six risks in §7 should come **before** Step 4
+adds content to either mount.
+
+---
+
+## Revision 2026-09-07 — SCREEN 2 REDESIGN SPECIFICATION (design only, no code changed)
+
+**Status:** specification. Read on `main` @ `3d914096`. No source file was
+modified; this document is the only file touched. Builds directly on
+Revision 22's preservation table — every row there still binds.
+
+Screen 1 is out of scope and unchanged. Academy Updates / "What's New" stays
+owner-authored **Mogzy product news** on Screen 1
+(`src/lib/lol/academy-updates.ts` + `public.academy_updates`, admin-managed,
+currently OFF). The Bulletin defined below is **League content**, not product
+news, and the two must never share a source.
+
+### 1. LOCKED SCREEN 2 MOUNT MAP
+
+Room, artwork, Mogzy, the desk occlusion, the crest band and the plinth are
+unchanged in kind. Only the occupants of the painted mounts change.
+
+| Painted mount | Today | **Locked new occupant** | Hierarchy |
+|---|---|---|---|
+| Large gilt-framed navy panel (left) | Mogzy Premium plaque | **Academy Record** | 1 — Me |
+| Large parchment noticeboard (right) | Join the Academy | **Academy Bulletin** | 2 — League right now |
+| Small pinned slip, lower left | Feedback ("Help improve Mogzy") | **Mogzy Premium**, compact | 3 — Membership |
+| Small pinned slip, lower right | About / Contact | **Community**, compact | 4 — Community |
+| *(new)* narrow utility strip under the two slips | — | **Feedback · Bug · About · Contact**, one row of four ink-on-parchment links | 5 — Utilities |
+| Walnut rail, bottom | Legal plinth | **unchanged, frozen** | 5 |
+| Left/right raw gutters | raw | **reserved only** — dark wood framing later; sparse pinned papers a later possibility | — |
+
+Rationale for the smallest structural change: the two large mounts swap
+occupants, the two existing small slips swap occupants, and exactly **one** new
+mount is introduced (the utility strip) because four links no longer fit inside
+a slip that now carries Premium or Community. Nothing else in the room moves.
+
+Deliberate non-fills: the gutters stay empty in V1; no mount is added above the
+crest; the Bulletin shows **one** item at a time rather than a grid. The room
+must not become a dashboard — the Record and the Bulletin are the only two
+things a reader is meant to look at.
+
+DOM order (flow mode reading order, and therefore the new test contract):
+**Academy Record → Academy Bulletin → Premium → Community → Utilities → legal
+plinth.**
+
+### 2. ACADEMY RECORD V1 DATA CONTRACT
+
+Not an embedded Profile page. It reads the **same authorities Profile already
+reads** and renders a compact standing, never a full breakdown.
+
+#### Field availability — verified against source
+
+| Candidate | Verdict | Authority |
+|---|---|---|
+| Display name + avatar | **available now** | `useProfileIdentity(userId)` → `profiles.display_name/avatar_url`; null for guests by design |
+| Academy tier (five-tier) + interval progress | **available now** | `quizApi.getProgress` `academy_*` block → `parseAcademyProgression` (`src/lib/progression/academy.ts`); returns null unless the whole set is coherent |
+| Legacy 11-tier rank name + icon | **available now** | `deriveProfileStats().rankName / rankIconUrl` |
+| Total XP | **available now** | `QuizProgress.total_xp` |
+| Questions answered | **available now** | `deriveProfileStats().totalQuestionsAnswered` (already reconciles a stale progress row against category totals) |
+| Quiz accuracy | **available now** | `deriveProfileStats().accuracy` |
+| Current / best streak | **available now** | `deriveProfileStats().currentStreak / bestStreak` |
+| Strongest category | **available now** | `pickBestCategory(getCategories(userId).categories)` — deterministic, and never picks a 0-attempt category |
+| Recent quiz activity | **available now** | `quizApi.getHistory()` (JWT-scoped, best-effort; `null` means "no detailed history", never "no activity") |
+| Achievements | **available now** | `quizApi.getAchievements(userId)` → `unlocked_count` / `total` |
+| Ranked rating + Ranked tier | **available now** | `useRankedProgression()` → `RankedProgressionView.rating / tier / rated / matchesRated`; `unavailable` is a first-class state |
+| Recent Ranked result | **available now** | `useRankedMatchHistory(limit)` → `viewerOutcome`, `ratingDelta`, `ratingAfter`, `completedAt` |
+| Per-role Ranked record | **derivable** | `src/lib/ranked-public/roleRecords.ts` over the same history rows |
+| Activity state (none / aggregate-only / detailed) | **derivable** | `deriveProfileStats().activityState` — already the empty-state authority |
+| Champion / mastery progression | **requires new backend** | `mastery` on the frontend exists only as Ranked *question* modules (`ranked-core/modules/masterySlice*`). There is no per-user champion mastery read. |
+| Combat Lab / Team Sim usage stats | **requires new backend** | no per-user aggregate endpoint |
+| Friends / social standing | **should not be used** | `useFriends` is a relationship list, not progression |
+| Last-seen / session time | **should not be used** | `useTrackActivity` writes `last_seen_at`; surfacing it is presence, not achievement |
+
+#### V1 view model — the smallest strong version
+
+Five facts and one action. Everything is already fetched by hooks that exist.
+
+```
+AcademyRecordV1
+  identity     displayName | null, avatarUrl | null        (useProfileIdentity)
+  standing     academyTier + progressPercent               (parseAcademyProgression)
+               fallback: rankName + rankIconUrl            (deriveProfileStats)
+  answered     totalQuestionsAnswered                      (deriveProfileStats)
+  accuracy     accuracy                                    (deriveProfileStats)
+  streak       currentStreak (bestStreak as the subtitle)  (deriveProfileStats)
+  strength     pickBestCategory(...) | null                (getCategories)
+  ranked       rating + tier, ONLY when loadState==="ready" && rated
+                                                           (useRankedProgression)
+  action       one primary link, state-dependent (below)
+```
+
+Deliberately **excluded from V1**: achievements (a count with no icons reads as
+filler), recent-history rows (the Bulletin already carries a personal-activity
+card family), per-role records, mastery. All are Later.
+
+#### UI states
+
+| State | Detection | Render |
+|---|---|---|
+| Signed-out / guest | no `user`, or anonymous session | The frame is an **empty register**: room-consistent copy inviting the reader to begin, one CTA to `/quiz`. No zeroed statistics, no fabricated tier. The hub already signs anonymous users in, so this is mostly the *anonymous* case. |
+| New / sparse Free | `activityState === "none"` | Same empty register plus the identity line if a display name exists. Never "0% accuracy". |
+| Mature Free | `activityState !== "none"` | Full V1 view model. Ranked block appears only if `rated`. Primary action = "Continue" → `/quiz`. |
+| Mature Premium | as above, `proStatus === "pro"` | Identical facts plus a quiet member mark on the frame. **No upsell.** The Premium mount goes quiet for this user (§4). |
+| Loading | any query in flight | Skeleton **within the existing frame** — the mount never collapses, because stage mode positions it absolutely and a height change would tear the composition. |
+| Partial failure | any single query rejects | That fact is omitted; the Record still renders. Consistent with `deriveProfileStats`' existing tolerance and with `useRankedProgression`'s `unavailable`. |
+
+No demo/fixture data in V1. Timmy-style population is explicitly later (§6).
+
+### 3. ACADEMY BULLETIN V1 CONTENT CONTRACT
+
+A physical noticeboard, not a slider: **one** primary notice pinned at a time,
+slow rotation, manual prev/next, and a deterministic first item.
+
+| # | Card family | Existing source | Production-ready today | CTA / deep link | Fallback | V1? |
+|---|---|---|---|---|---|---|
+| 1 | Pro Play / Worlds feature | `src/lib/pro-play/api.ts` exposes only `startProPlayQuiz` / `answerProPlayQuestion` — questions are generated **at request time** (LIVE1: bulk pro banks are legacy). No read-only stats endpoint. | **No** for a stats card; **yes** for a static invitation card | `/lol/pro-play` | drop the card | V1 as an invitation only; stats card = Later |
+| 2 | Quiz question prompt | `quizApi.categoryQuestions(category, limit)` / `quizApi.questions(set, limit)`. (`getPlaylist` is admin-only — do not call it here.) | **Yes** | `/quiz` (optionally `?category=`) | drop the card | **V1** |
+| 3 | Trivia / mechanics fact | `src/lib/mechanics-tables/api.ts` → `fetchTablesIndex()` / `fetchStudyTable(id)`; 23 live tables, `/lol/mechanics` is a real public route | **Yes**, but there is no "fact of the day" selector — that is client-side derivation over an existing table | `/lol/mechanics` | drop the card | **V1** |
+| 4 | Patch-related League content | `usePatchBriefFeed()` / `fetchPatchReports` + `fetchPatchReport`, shared query keys | **Yes** | `/lol/patch-reports` | its own placeholder transmission already exists | **V1**, with the dedupe caveat below |
+| 5 | Personal recent activity | `quizApi.getHistory()` and `useRankedMatchHistory()` | **Yes** | `/lol/history` or the Ranked lobby | omit for guests and for `activityState === "none"` | **V1** |
+| 6 | Aggregate / community activity | **none exists.** No activity-feed table, no aggregate endpoint. | No | — | — | Later (needs backend; out of scope) |
+| 7 | General League / esports news | LIVE1 gives **match data** (`fetchLiveGames`, `fetchArchive`, `fetchGameInsights`), not editorial news | Match data yes; news no | `/esports/live` archive | drop the card | LIVE-match card Later; a news feed is **not** proposed |
+
+**Dedupe caveat (family 4):** Screen 1's Academy Broadcast already renders the
+Patch Brief from the same feed. A patch card on Screen 2 must present a
+*different* projection (e.g. a single champion change) or it will read as the
+same notice twice on one page. This is a content decision to settle during
+implementation, not a data problem.
+
+**Composition contract**
+
+- Exactly one card visible; the rest are pinned "behind" it conceptually.
+- **Rotation: slow**, on the order of tens of seconds, not a carousel autoplay.
+- Manual **prev / next** controls are the primary affordance and are always in
+  the tab order.
+- **Pause** on hover, on focus within the board, when `document.hidden`, and
+  permanently once the reader presses prev/next. Rotation is fully suppressed
+  under `prefers-reduced-motion` **and** `html.reduce-motion` (both, per the
+  precedent set by `prefersReducedMotion()` in `LolHub.tsx`).
+- **Deterministic first item** for screenshots/video: the card order is a
+  declared list, index 0 shows first, and rotation never starts before first
+  paint. No `Math.random()` at render — the hub's existing academy-line pattern
+  (a lazy `useState` initializer) is the precedent if randomness is ever wanted.
+- Every family **fails to absence**: a card whose source is unavailable is
+  removed from the rotation. If the rotation empties, the board shows one
+  neutral standing notice rather than an error.
+- No new CMS, no new feed, no new table is proposed for V1.
+
+### 4. EXISTING FUNCTIONALITY RELOCATION MAP
+
+Nothing disappears. Every row below is a Revision 22 row with a destination.
+
+| Current feature | Destination | Requirement |
+|---|---|---|
+| Premium **member** state | Compact Premium slip, lower left | Keep `data-premium-state="member"`. Quietest form: a member mark and "View Premium" — no pillars, no promotional blurb. This is the "less dominant for an existing member" requirement. |
+| Premium **nonmember** state | Same slip | Keep `data-premium-state="promo"`. Retain a short line and the CTA; the three pillars may compress to one line or drop — that is a copy decision. Still fails open to promo on `unknown`. |
+| `/lol/premium` CTA | Same slip | `hub-premium-cta`, still the **only** `a[href="/lol/premium"]` on the page. Keep the ≥52px tap target and the explicit focus ring. |
+| Discord **configured** | Compact Community slip, lower right | `hub-community-discord`, `target="_blank" rel="noopener noreferrer"` |
+| Discord **unconfigured** | Same slip | `hub-community-discord-pending`, "opening soon". Must survive — it is the live state today. |
+| YouTube / TikTok / Instagram / X | Same slip, as a chip row | `hub-community-<id>`; each renders only when `channel.url` is non-null; the "on the way" footnote remains the all-absent fallback. |
+| `/feedback` | Utility strip | `hub-feedback-give` |
+| `/feedback?intent=bug` | Utility strip | `hub-feedback-bug` — **the query param is the feature**; preserve verbatim |
+| `/about` | Utility strip | link, accessible name matching `/About Mogzy/` |
+| `/contact` | Utility strip | link, accessible name matching `/Contact/` |
+| Back to the Hall | Crest band, unmoved | `commons-back-to-hall`, `data-hub-hint="commons"`, `academy-hub-hint` |
+| Legal plinth | Unmoved, frozen | last element child of the section; `scroll-snap-align: end` |
+| `AdSlot lol_hub_mid` | Stays mounted in the room | still renders `null` with no reserved space when suppressed |
+
+Community explicitly loses the large mount: five links do not earn one of the
+two biggest surfaces in the room. It keeps every action.
+
+### 5. RESPONSIVE / TEST IMPACT
+
+**Stage mode — must be remeasured (not done here).**
+
+- New `--mx/--my/--mw/--mh` fractions for: Academy Record (gilt frame),
+  Academy Bulletin (noticeboard), Premium slip, Community slip, and the new
+  utility strip. All fractions are of the **artwork**, derived from
+  `--commons-img-x/y/w/h`; the `--u` unit scales internal type and spacing.
+- `.academy-commons-plaque-seal`'s absolute position is currently computed from
+  the plaque's own painted fractions (`(0.2715 - 0.2150) / 0.5150`). Moving
+  Premium invalidates that expression — it must be re-derived, not copied.
+- The frame-suppression overrides (walnut mount, brass band, planking,
+  parchment switched OFF inside the gate) must be re-pointed at whichever
+  component now sits on each painted surface.
+- The Record and the Bulletin are the two mounts most at risk of **content
+  overflow** inside a fixed painted frame. Both need an internal scroll-free
+  budget — a fixed number of facts, a single notice — rather than a scrollbar.
+- Mogzy's aspect gate and the `-desk` occlusion clip are unaffected: they are
+  keyed to the artwork, not to the panels.
+
+**Flow mode — a separate, mandatory pass.** Flow is DOM order plus each
+component's own coded chrome. The new order (Record → Bulletin → Premium →
+Community → Utilities → plinth) must read correctly on a phone with all coded
+frames restored. Shipping stage-only leaves phones with the old room.
+
+**Load-bearing, must not change:** `data-hub-screen="commons"` (snap anchor,
+settle observer, ambience toggle), `.academy-hub-hint`, the plinth as last
+child, `pt-[calc(var(--app-header-h)+1rem)]` HUD clearance, the plinth's `pb-16`
+flow-mode clearance for the bottom-left friends control.
+
+**Tests requiring intentional update**
+
+| Test | Why |
+|---|---|
+| `LolHub.test.tsx:301` "ends the Commons at the legal plinth…" | Asserts DOM order `hub-premium-panel → hub-community-section → hub-utility-section → commons-legal-nav`. The new order puts Record and Bulletin first and Premium fourth. **This encodes a hierarchy decision and must be rewritten, not deleted.** |
+| `LolHub.test.tsx:260` "opens the lower page with the Mogzy Premium module, above Community" | Same reason — the premise ("opens with Premium") is being deliberately reversed. |
+| `LolHub.test.tsx:357` "opens the lower page with the Academy community section" | Premise changes; the Discord pending assertions inside it must be **kept**. |
+| `LolHub.test.tsx:277` "keeps Premium out of the four primary destination books" | Should still pass — verify the single-`/lol/premium`-link invariant survives. |
+| `LolHub.test.tsx:327` legal-plinth wording | Must continue to pass untouched. It is the regression alarm on the frozen region. |
+| `HubPremiumPanel.test.tsx` | Both `data-premium-state` variants and the ≥44px/focus-ring assertions must survive the compact form. Copy assertions ("claims only features Premium actually ships") may need updating if pillars are dropped. |
+| New | Order test for Record → Bulletin → Premium → Community → Utilities → legal; Bulletin determinism (index 0 first, no rotation before paint); Record guest/sparse states render no zeroed statistics. |
+
+### 6. DEFERRED ITEMS
+
+**V1 implementation (this workstream's next slices)**
+Mount re-allocation; Academy Record V1 (five facts + Ranked when rated);
+Academy Bulletin with families 2, 3, 4, 5 and the Pro Play invitation card;
+compact Premium and Community slips; the utility strip; stage remeasure; flow
+pass; test updates.
+
+**Later enhancements**
+Achievements and recent-history rows in the Record; per-role Ranked records;
+Pro Play *stats* cards (needs a read endpoint); LIVE1 match cards; aggregate
+community activity (family 6, needs backend); a real League news feed (family 7
+— not currently proposed); wood gutter framing; pinned papers/art in the
+gutters; champion mastery progression (needs backend).
+
+**Timmy / demo population**
+Explicitly after real implementation. No fixture, no seeded Record, no fake
+Bulletin card in V1. The precedent to follow when it happens is
+`/dev/lobby-preview`, which keeps demo data out of the production path entirely.
+
+**Never (decided)**
+Champion mastery in the Record before a backend exists; a fifth navigation
+book; Screen 1 Academy Updates content appearing in the Bulletin; any price in
+the Commons; filling the gutters because space exists.
+
+### 7. RECOMMENDED STEP 3 — smallest coherent slice
+
+**Re-allocate the mounts with the components that already exist, and add the
+Academy Record with quiz-only data. No Bulletin yet.**
+
+Concretely: swap Premium and Community into the two small slips, add the
+utility strip, put the Record in the large left frame reading only
+`useProfileIdentity` + `deriveProfileStats` + `parseAcademyProgression`, and
+leave the noticeboard rendering a single static standing notice as the
+Bulletin's placeholder. Remeasure stage mode and fix flow mode in the same
+slice; update the four order-dependent tests.
+
+Why this is the right cut: it forces the expensive, risky work (the stage
+remeasure and the flow-mode pass, per Revision 22's R1/R2) to happen once,
+against components whose behaviour is already proven, and it proves the new
+hierarchy on screen before any new content system is built. The Ranked block,
+and then the Bulletin's card families, land as Step 4 and Step 5 against a room
+that is already correctly composed.
+
+---
+
+## Revision 2026-09-07 — SCREEN 2 PRESERVATION AUDIT (read-only, no code changed)
+
+**Status:** audit only. No source file was modified; this document is the only
+file touched. Read on `main` @ `3d914096`, worktree clean.
+
+Purpose: a preservation map of every Screen 2 / Academy Commons behaviour, so
+the next pass can recompose the room (large left frame = Academy Record, large
+right board = rotating Bulletin) without silently dropping an action.
+
+### A. Files that own Screen 2
+
+| File | Owns |
+|---|---|
+| `src/pages/LolHub.tsx` | both screens, the snap class, `hubScrollTo`, the settle/hint observer, the ambience class |
+| `src/components/lol/AcademyCommons.tsx` | the room shell, art layers, Mogzy/desk, crest + Back to the Hall, the mount grid, the plinth |
+| `src/components/lol/HubPremiumPanel.tsx` | membership plaque |
+| `src/components/lol/HubCommunitySection.tsx` | notice board |
+| `src/components/lol/HubUtilitySection.tsx` | the two pinned slips |
+| `src/index.css` ~8340–9490 | the entire stage/flow duality; every mount coordinate |
+| `src/components/Footer.tsx` | self-hides on `/lol` (exact match) |
+| `src/lib/community/links.ts` | community channel resolution, fail-closed |
+| `src/lib/premium-routes.ts`, `src/hooks/useSitewideTheme.tsx` | Premium route + entitlement |
+
+### B. Preservation table
+
+| Current feature | Component/file | Data/state dependency | Interaction/route | Responsive/state behaviour | Redesign preservation requirement |
+|---|---|---|---|---|---|
+| Premium plaque, promo variant | `HubPremiumPanel.tsx` | `useSitewideTheme().proStatus` (`unknown`/`free`/`pro`); `unknown` renders promo | `<Link to={PREMIUM_ROUTE}>` = `/lol/premium`; label "Explore Premium" | `data-premium-state="promo"`; stage mode strips the walnut mount + brass band | Keep exactly one `a[href="/lol/premium"]` on the page, inside `[data-testid="hub-premium-panel"]`; keep `hub-premium-cta` |
+| Premium plaque, member variant | same | `proStatus === "pro"` | same route, label "View Premium"; band reads "Member in good standing" + Check | `data-premium-state="member"` | Both variants must survive the smaller mount; the state attribute is asserted by tests |
+| Premium loading/failure | `useSitewideTheme.tsx:104–129` | `fetchProEntitlement()`; a **null** entitlement stays `unknown` | no spinner, no error UI | fails **open to promo**, never to a gate | Do not add a loading skeleton or a gate — a promo module must not block on entitlement |
+| Premium pillars (3) + no price | `HubPremiumPanel.tsx` `PILLARS` | static; bounded by `LolPremium.tsx` `PREMIUM_FEATURES` | none | wraps to a row ≥sm | Price stays off the client (PT1.5); do not name a `comingSoon` feature |
+| Discord CTA | `HubCommunitySection.tsx` | `COMMUNITY_CHANNELS` ← `VITE_COMMUNITY_DISCORD_URL`, `https:`-only | `<a target="_blank" rel="noopener noreferrer">`, testid `hub-community-discord` | **unset today** → renders `hub-community-discord-pending` "Discord — opening soon" | Both branches must survive; never render a link when `url` is null |
+| YouTube / TikTok / Instagram / X | same | `secondaryCommunityChannels()` filtered by `url` | `hub-community-<id>` new-tab anchors | all four unset → the whole row is replaced by the footnote "…are on the way." | Preserve the per-channel `if (!channel.url) return null` and the footnote fallback |
+| Community config source | `src/lib/community/links.ts` | `import.meta.env`, deploy-time | n/a | `normalizeUrl` refuses non-`https:` (incl. `javascript:`) | Fail-closed resolver must remain the only source; no hard-coded URLs |
+| Give Feedback | `HubUtilitySection.tsx` | none | `<Link to="/feedback">`, testid `hub-feedback-give` | — | Route is a `ProtectedRoute`; see risk R3 |
+| Report a Bug | same | none | `<Link to="/feedback?intent=bug">`, testid `hub-feedback-bug` | — | The **query param is the feature** (`Feedback.tsx:87` opens that door directly); preserve it verbatim |
+| About Mogzy | same, `UTILITIES` | none | `<Link to="/about">` | inside `hub-about-block`, `nav aria-label="About and help"` | Must remain a link with accessible name matching `/About Mogzy/` |
+| Contact | same | none | `<Link to="/contact">` | same nav | Must remain, accessible name `/Contact/` |
+| (Help/FAQ) | — | — | **deliberately absent** — no such route exists | — | Do not add one to "balance" the new layout |
+| Back to the Hall | `AcademyCommons.tsx` crest | `navHintRevealed` prop ← `settledHint === "commons"` | `onBackToHall` → `hubScrollTo("hall")` (`scrollIntoView`) | inside the snap gate the control fades in after settle; **outside the gate CSS never hides it**; `:focus-visible` also reveals it | Always in the DOM and in tab order; testid `commons-back-to-hall`, `data-hub-hint="commons"` |
+| Hall → Commons descend | `LolHub.tsx:944` | same hint machinery, `data-hub-hint="hall"` | `hubScrollTo("commons")` | chevron drift stops under reduced motion | Screen 1 control — untouched by this redesign |
+| Two-screen scroll snap | `index.css:8360–8375` + `HUB_SNAP_CLASS` | `html.hub-two-screen`, added on mount / removed on unmount | `scroll-snap-type: y mandatory` on `html` | gate = `(min-width:1024px) and (min-height:780px)` **and** `:not(.large-text)` | `[data-hub-screen="commons"]` attribute is the snap anchor — the new root element must keep it |
+| Plinth snap safety | `index.css:8372` | — | `scroll-snap-align: end` on `.academy-commons-plinth` | belt-and-braces if the room outgrows the viewport | Keep the plinth as the section's **last element child** (asserted in tests) |
+| Settle/hint observer | `LolHub.tsx:367–447` | scroll + resize listeners, `matchMedia(HUB_SNAP_MEDIA)` | idle 140ms → settled if `|rect.top| ≤ 18px` → reveal after 1700ms | disarmed under `large-text` and outside the gate | Depends only on `[data-hub-screen]` and `.academy-hub-hint` classes — layout-agnostic |
+| Ambience override | `LolHub.tsx` `syncAmbience` | `html.hub-commons-in-view` toggled when commons top < 50vh | quiets sitewide Hextech ambience | rAF-throttled; class removed on unmount | Queries `[data-hub-screen="commons"]` — preserve that attribute |
+| Reduced motion | `prefersReducedMotion()` | OS media query **or** `html.reduce-motion` | `scrollIntoView` drops to `auto` | snapping itself is kept by design | Both sources must keep being honoured |
+| Stage mode (painted room) | `index.css:8716+` | `--commons-art`, `--commons-img-w/h/x/y`, unit `--u` | panels absolutely positioned by `--mx/--my/--mw/--mh` **fractions of the artwork** | only inside the gate | Any new mount needs its own measured fractions from the same custom properties (see risk R1) |
+| Flow mode | default | — | ordinary scrolling document, panels keep coded chrome | phones, short laptops, deep zoom, large text | The redesign must ship **both** modes or flow-mode readers lose the room |
+| Mogzy + desk occlusion | `AcademyCommons.tsx` | `MOGZY_MASCOT_ASSETS.base` as a CSS background | aria-hidden, no interaction, stage-only, aspect-gated | never contributes layout height (deliberately not an `<img>`) | Keep as backgrounds; DOM paint order art → Mogzy → desk → panels |
+| Room title / crest rule | `AcademyCommons.tsx` | none | decorative, `aria-hidden`, **not** an `<h*>` | `lg:` only | Must not become a heading — the section's `aria-label="Academy Commons"` already names the room |
+| Ad slot | `AdSlot placement="lol_hub_mid"` | ads policy + consent + `proStatus` | renders `null` with **no reserved space** when suppressed | dev/test renders a placeholder (`ad-lol_hub_mid`, asserted in tests) | Keep the mount inside the commons; a filled slot would land over the painting |
+| **Legal plinth (FROZEN)** | `AcademyCommons.tsx` `LEGAL_LINKS` + disclaimer | `SITE_NAME`, `new Date().getFullYear()` | `/privacy`, `/terms`, `/security` (all real routes, `App.tsx:597–599`); `nav aria-label="Legal"`, testid `commons-legal-nav` | flow mode keeps wide side returns + `pb-16` to clear the bottom-left friends control; stage mode draws a walnut rail | **Byte-for-byte unchanged.** Footer self-hides on `/lol`, so these three destinations exist nowhere else on this page |
+| © line + Riot disclaimer | same | `SITE_NAME` | text only | `max-w-5xl`, opacity .8 | Frozen; wording is asserted in `LolHub.test.tsx` |
+| Global footer suppression | `Footer.tsx:36` | `pathname === "/lol"` (exact) | returns `null` | — | Intentional and verified. If the redesign moves the plinth, the footer does **not** come back — the links would simply vanish |
+
+Verified vs assumed: everything above is read from source. **Assumption, not verified:** that
+`lol_hub_mid` renders `null` in production (the policy layer decides it; only the
+test-environment placeholder was observed).
+
+### C. Behaviour not in the brief that could be lost in re-layout
+
+1. Reading order is contractual. `LolHub.test.tsx:301` asserts DOM order
+   `hub-premium-panel → hub-community-section → hub-utility-section →
+   commons-legal-nav`, and that the plinth is the section's last element child
+   and the section the page's last element child.
+2. `data-hub-screen="commons"` is load-bearing for three separate mechanisms
+   (snap anchor, settle observer, ambience toggle).
+3. Every `data-testid` in the table is asserted somewhere in
+   `LolHub.test.tsx`, `HubPremiumPanel.test.tsx` or `Quiz.hub.test.tsx`.
+4. Tap targets: `min-h-[44px]` on every slip/secondary action, `min-h-[52px]`
+   on both primary CTAs. Explicit focus rings exist because gold-on-black hides
+   the UA default.
+5. `pt-[calc(var(--app-header-h)+1rem)]` on `.academy-commons-room` is the HUD
+   clearance the shell does not supply to this full-bleed screen; without it
+   "Back to the Hall" lands under the floating HUD on a phone.
+6. The plaque's `:focus-within` gilt sweep (`index.css:8538`) is keyboard
+   feedback, not decoration.
+7. No `Pro` wording may appear anywhere in the commons — asserted by two tests
+   (`docs/naming-premium-vs-pro-play.md`).
+
+## PROPOSED RELOCATION MAP
+
+Target: large left frame = Academy Record (personalised progression); large
+right board = rotating League Bulletin/Carousel; Premium and Community survive
+in smaller supporting mounts; Feedback/Bug/About/Contact all survive; plinth
+untouched.
+
+| Current occupant | Proposed home | Everything that must come with it |
+|---|---|---|
+| Premium plaque (large left frame today) | **smaller supporting mount** | `hub-premium-panel`, `data-premium-state`, `hub-premium-cta` → `/lol/premium`, both copy variants, the crown seal, ≥52px CTA. The three pillars and the blurb are the only compressible parts — dropping a pillar is a copy decision, dropping the member variant is a regression. |
+| Notice board / Join the Academy (large right board today) | **smaller supporting mount** | `hub-community-section`, the Discord CTA **and** its pending state, the four secondary channel slots, the "on the way" footnote. The mount must be able to render either a 5-chip row (if channels are ever configured) or a single pending pill. |
+| Feedback + About slips | **unchanged in kind, re-placed** | all four links with exact hrefs, including `?intent=bug`. They may merge into one slip only if all four remain individually clickable links. |
+| Back to the Hall | stays in the crest band | centre of the band is the only region never under a fixed corner control at any width; `academy-hub-hint` class + `data-hub-hint="commons"` |
+| Legal plinth | **frozen, unmoved** | last element child of the section; `scroll-snap-align: end` |
+| — (new) | **Academy Record**, large left frame | no existing component; consumes existing progression state only. No backend work is proposed here. |
+| — (new) | **Bulletin/Carousel**, large right board | note the adjacency to `src/lib/lol/academy-updates.ts` (Revision 21) — it is admin-managed, currently OFF with zero announcements, and today renders on **Screen 1**. Reusing it for the Bulletin is a decision for the redesign pass, not an assumption of this audit. |
+| Side gutters | left raw | wood framing is explicitly deferred |
+
+Nothing is removed or consolidated in this map: every action listed in the
+preservation table has a named destination.
+
+### D. Hidden coupling and regression risks
+
+- **R1 — the mount coordinates are measured against one painting.** Stage mode
+  positions every panel by fractions of `academy-commons-desktop.png`. Moving
+  Premium to a small mount and putting a new Record frame in the large gilt
+  frame means the painting no longer matches its occupants. Either new
+  fractions are measured for the existing artwork, or new artwork is produced.
+  This is the single largest cost in the redesign and it is a CSS/art cost, not
+  a component cost.
+- **R2 — flow mode is a second, independent composition.** The stage layout is
+  entirely CSS overrides; flow mode is the DOM's own order. A relocation done
+  only in the stage gate leaves phones with the old room.
+- **R3 — `/feedback` is a `ProtectedRoute`.** With `require_auth` on and no
+  user it redirects to auth. The hub signs anonymous users in (`LolHub.tsx:340`),
+  so in practice the link works, but the two feedback actions are the only
+  Screen 2 destinations that are not unconditionally public. Not a new risk —
+  recorded so it is not "discovered" later as a redesign regression.
+- **R4 — the ad slot.** If a provider ever fills `lol_hub_mid`, it renders
+  inside the painted room. The composition would have to be revisited; the
+  redesign should not make that harder by removing the mount.
+- **R5 — plinth clearance.** `pb-16` in flow mode exists because a shell-level
+  friends control floats bottom-left. Tightening the plinth's padding in a
+  layout pass would put that control on top of the Privacy link.
+- **R6 — test coupling.** The order assertion in `LolHub.test.tsx:301` will
+  fail the moment Premium stops preceding Community in the DOM. That test
+  encodes a *hierarchy* decision, so the redesign must consciously update it
+  rather than treat the failure as noise.
+
+### E. Unclear ownership
+
+- **The Bulletin's content authority.** `academy-updates.ts` exists, is
+  admin-managed, is OFF, and belongs to Screen 1. Whether the Bulletin reuses
+  it, or is a separate rotating surface, is undecided and is not settled by
+  this audit.
+- **The Academy Record's data.** No component today reads user progression on
+  `/lol`. Which existing hook supplies it was not established here.
+- **Ambience.** `hub-commons-in-view` is set by `LolHub` but consumed by
+  sitewide ambience CSS; neither file is obviously the owner.
+
+### F. Can the redesign proceed as composition/layout only?
+
+**Yes for the React layer.** Every Screen 2 behaviour is either a pure link, a
+prop, or a single already-resolved context read (`proStatus`). The three panel
+components can be re-parented into different mounts with no logic change, and
+the two new large surfaces are additive. No foundational refactoring is needed.
+
+**No for the CSS/art layer.** The stage-mode composition is welded to the
+painting by measured fractions (R1), and it is a genuinely separate layout from
+flow mode (R2). Budget the redesign as *component composition (cheap) + a full
+re-measure or re-paint of the stage (the real work)*, and land both modes in the
+same pass.
+
+---
 
 ## Revision 2026-09-06 — WHATSNEW2 / ACADEMY UPDATES, ADMIN-MANAGED — **MIGRATION APPLIED, LIVE-VERIFIED, STILL OFF**
 

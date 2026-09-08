@@ -1,118 +1,67 @@
 /**
- * The Commons' two **pinned slips**: "Help improve Mogzy" beside a quieter
- * About / Contact notice.
+ * The Commons' **utility strip** — Feedback, Bug, About, Contact in one row.
  *
- * Third in the room's hierarchy and deliberately subordinate to both the
- * membership plaque and the noticeboard — smaller sheets, smaller type, no
- * gilt. They are the same parchment as the notice board's bill
- * (`.academy-commons-notice`), pinned the other way so the pair reads as two
- * slips someone tacked up rather than as a two-column card grid.
+ * ### Revision 24 — why this is a strip and no longer two slips
+ * These four destinations used to live on the two small painted parchments
+ * below the noticeboard. Premium and Community now hold those sheets, and the
+ * painting contains no fifth sheet: it has one gilt frame, one large board,
+ * two small parchments and the panelling the legal rail is fixed to. So rather
+ * than invent a surface the artwork does not have, the four links are cut into
+ * the panelling directly above the legal rail, in the same inscription hand
+ * the rail itself uses.
  *
- * Every action here is an EXISTING route — `/feedback` (the Feedback Center,
- * whose four doors are deep-linkable via `?intent=`), `/about` and `/contact`.
- * Nothing new was invented on the backend, and nothing links to a page that
- * does not exist: an audit on 2026-09-04 found no Help/FAQ route in the app, so
- * that item is simply absent rather than pointed at a placeholder. This pass
- * changed the surface only; the routes and actions are untouched.
+ * That is a deliberate exception to the room's "every mount sits on a painted
+ * surface" rule, and it is the smallest one available: four short links on
+ * bare panelling, immediately above a real board carrying five more. It is
+ * flagged in the handoff for browser review.
+ *
+ * **Nothing changed about where they go.** Every action is the same EXISTING
+ * route it was — `/feedback` (the Feedback Center, whose four doors are
+ * deep-linkable via `?intent=`), `/feedback?intent=bug`, `/about` and
+ * `/contact`. Help/FAQ is still intentionally absent: an audit on 2026-09-04
+ * found no such route in the app, and a link to a placeholder is worse than no
+ * link.
  */
 import { Link } from "react-router-dom";
 import { Bug, Info, Mail, MessageSquarePlus } from "lucide-react";
 
-type Utility = { to: string; label: string; Icon: typeof Info };
+type Utility = { to: string; label: string; Icon: typeof Info; testId?: string };
 
-/** Quieter group. Help/FAQ is intentionally missing — no such route exists. */
+/**
+ * Reading order is deliberate: the two feedback doors first — they are the
+ * reason a reader looks down here — then the two informational ones.
+ */
 const UTILITIES: Utility[] = [
+  { to: "/feedback", label: "Give Feedback", Icon: MessageSquarePlus, testId: "hub-feedback-give" },
+  // Opens the Feedback Center's bug door directly. The query parameter IS the
+  // feature — see the `?intent=` reader in Feedback.tsx.
+  { to: "/feedback?intent=bug", label: "Report a Bug", Icon: Bug, testId: "hub-feedback-bug" },
   { to: "/about", label: "About Mogzy", Icon: Info },
   { to: "/contact", label: "Contact", Icon: Mail },
 ];
-
-/** Shared slip chrome: parchment, one pin, a whisper of rotation. */
-function Slip({
-  children,
-  className,
-  ...rest
-}: React.ComponentProps<"div"> & { className?: string }) {
-  return (
-    <div
-      {...rest}
-      className={`academy-commons-notice academy-commons-slip relative rounded-[2px] px-5 py-3.5 ${className ?? ""}`}
-    >
-      <span
-        aria-hidden
-        className="academy-commons-pin absolute left-1/2 top-2 h-2.5 w-2.5 -translate-x-1/2 rounded-full"
-      />
-      {children}
-    </div>
-  );
-}
-
-/** Ink-on-paper action, the parchment counterpart of a secondary button. */
-const SLIP_ACTION =
-  "academy-commons-slip-action inline-flex min-h-[44px] items-center gap-2 rounded-[2px] border border-[#7a6230]/45 bg-[#e6d9b6]/45 px-3.5 py-1.5 text-[13px] font-semibold text-[#2c2417] transition-colors hover:bg-[#f0e5c8]/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7a6230]";
 
 export default function HubUtilitySection() {
   return (
     <section
       data-testid="hub-utility-section"
-      className="academy-commons-slips grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
+      className="academy-commons-utilstrip flex w-full items-center justify-center"
     >
-      {/* Feedback — the louder slip of the pair. */}
-      <Slip
-        data-testid="hub-feedback-block"
-        aria-labelledby="hub-feedback-heading"
-        className="[transform:rotate(0.3deg)]"
+      <nav
+        aria-label="Feedback and information"
+        className="academy-commons-utilstrip-row flex flex-wrap items-center justify-center gap-x-2 gap-y-2"
       >
-        <div className="academy-commons-slip-row flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="academy-commons-slip-headings min-w-0">
-            <span className="academy-commons-notice-soft academy-commons-slip-eyebrow text-[10px] font-bold uppercase tracking-[0.28em]">
-              Feedback
-            </span>
-            <h2
-              id="hub-feedback-heading"
-              className="academy-commons-notice-ink academy-commons-slip-title text-[1.05rem] font-semibold leading-tight"
-              style={{ fontFamily: '"Cinzel", "Trajan Pro", "EB Garamond", Georgia, serif' }}
-            >
-              Help improve Mogzy
-            </h2>
-            <p className="academy-commons-notice-soft academy-commons-slip-blurb mt-0.5 text-[12.5px] leading-snug">
-              Found something wrong? Have an idea? Tell us.
-            </p>
-          </div>
-          <div className="academy-commons-slip-actions flex flex-wrap gap-2">
-            <Link to="/feedback" data-testid="hub-feedback-give" className={SLIP_ACTION}>
-              <MessageSquarePlus className="h-3.5 w-3.5 text-[#7a6230]" aria-hidden />
-              Give Feedback
-            </Link>
-            {/* Opens the Feedback Center's bug door directly. */}
-            <Link to="/feedback?intent=bug" data-testid="hub-feedback-bug" className={SLIP_ACTION}>
-              <Bug className="h-3.5 w-3.5 text-[#7a6230]" aria-hidden />
-              Report a Bug
-            </Link>
-          </div>
-        </div>
-      </Slip>
-
-      {/* About / Contact — the quiet slip. */}
-      <Slip
-        data-testid="hub-about-block"
-        aria-labelledby="hub-about-heading"
-        className="[transform:rotate(-0.28deg)]"
-      >
-        <h2
-          id="hub-about-heading"
-          className="academy-commons-notice-soft text-[10px] font-bold uppercase tracking-[0.28em]"
-        >
-          About the Academy
-        </h2>
-        <nav aria-label="About and help" className="academy-commons-slip-actions mt-1.5 flex flex-wrap gap-2">
-          {UTILITIES.map(({ to, label, Icon }) => (
-            <Link key={to} to={to} className={SLIP_ACTION}>
-              <Icon className="h-3.5 w-3.5 shrink-0 text-[#7a6230]" aria-hidden />
-              {label}
-            </Link>
-          ))}
-        </nav>
-      </Slip>
+        {UTILITIES.map(({ to, label, Icon, testId }) => (
+          <Link
+            key={to}
+            to={to}
+            data-testid={testId}
+            className="academy-commons-utilstrip-link academy-commons-inscription-link inline-flex min-h-[44px] items-center gap-2 rounded-[2px] px-3 text-[11px] font-bold uppercase tracking-[0.18em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e6cd93]/70"
+          >
+            <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+            {label}
+          </Link>
+        ))}
+      </nav>
     </section>
   );
 }

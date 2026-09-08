@@ -74,8 +74,11 @@ describe("HubPremiumPanel", () => {
     const { container } = renderPanel("free");
     // The two live features on /lol/premium. Everything else there is badged
     // "Coming soon" and must stay unnamed here.
-    expect(container.textContent).toContain("Your full quiz history");
-    expect(container.textContent).toContain("Every question you’ve missed");
+    // Case-insensitive since Revision 24: the compact slip names both live
+    // features in one sentence rather than as a three-item register, so the
+    // rule under test is that they are NAMED, not how they are capitalised.
+    expect(container.textContent).toMatch(/your full quiz history/i);
+    expect(container.textContent).toMatch(/every question you’ve missed/i);
     for (const comingSoon of [
       "Combat Lab",
       "Matchup Cards",

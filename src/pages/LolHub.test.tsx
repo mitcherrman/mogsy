@@ -374,13 +374,17 @@ describe("LolHub — navigation structure", () => {
     expect(screen.getByTestId("hub-feedback-bug").getAttribute("href")).toBe(
       "/feedback?intent=bug",
     );
-    const utility = screen.getByTestId("hub-about-block");
+    // Revision 24 replaced the two pinned slips with one strip; the four
+    // destinations are what this test is actually about, and all four are
+    // still here, still individually clickable, still at the same routes.
+    const utility = screen.getByTestId("hub-utility-section");
     expect(within(utility).getByRole("link", { name: /About Mogzy/ }).getAttribute("href")).toBe(
       "/about",
     );
     expect(within(utility).getByRole("link", { name: /Contact/ }).getAttribute("href")).toBe(
       "/contact",
     );
+    expect(within(utility).getAllByRole("link")).toHaveLength(4);
   });
 
   it("fades the painted library into the lower page instead of cutting it off", () => {
@@ -1069,10 +1073,15 @@ describe("LolHub — closed Academy volumes (four-book quadrant)", () => {
 
   it("the mobile panel list is untouched by the conversion", () => {
     const { container } = renderHub();
-    // Every destination still appears twice: desktop volume + mobile panel.
+    // Scoped to Screen 1 since Revision 24: the Academy Record's primary action
+    // is also a /quiz link, and it is not a book. What this guards is unchanged
+    // — inside the HALL every destination appears exactly twice, desktop volume
+    // plus mobile panel — and scoping it keeps that guarantee exact rather than
+    // letting the Commons inflate the count.
+    const hall = container.querySelector('[data-hub-screen="hall"]')!;
     for (const href of ["/quiz", "/combat-lab", "/lol/docs", "/lol/pro-play"]) {
-      expect(container.querySelectorAll(`a[href="${href}"]`)).toHaveLength(2);
-      expect(container.querySelector(`a.academy-hub-book[href="${href}"]`)).not.toBeNull();
+      expect(hall.querySelectorAll(`a[href="${href}"]`)).toHaveLength(2);
+      expect(hall.querySelector(`a.academy-hub-book[href="${href}"]`)).not.toBeNull();
     }
   });
 });
@@ -1247,9 +1256,14 @@ describe("LolHub — the painted Academy Commons", () => {
     for (const hook of [
       ".academy-commons-art",
       ".academy-commons-crest",
-      ".academy-commons-plaque",
-      ".academy-commons-plaque-seal",
+      // Revision 24: the Record holds the gilt frame and its seal drops into
+      // the painted medallion; Premium and Community hold the two small
+      // sheets; the utility strip is inscribed on the panelling.
+      ".academy-commons-record",
+      ".academy-commons-record-seal",
       ".academy-commons-board",
+      ".academy-commons-support-premium",
+      ".academy-commons-support-community",
       ".academy-commons-mount-utility",
       ".academy-commons-plinth",
     ]) {
