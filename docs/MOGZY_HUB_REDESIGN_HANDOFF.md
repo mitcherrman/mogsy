@@ -1,6 +1,7 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 34 (pilaster capital and base) is at the top of this file.
+<!-- Revision 35 (capital/base verified; side-gutter work CLOSED) is at the
+     top of this file. Revision 34 built the mouldings.
      Revision 33 verified the side architecture in production; 32 built it.
      Revision 31 verified Academy Bulletin V1 COMPLETE in production;
      Revision 30 was the media-eligibility fix it verifies.
@@ -15,6 +16,88 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-08 — CAPITAL AND BASE **VERIFIED IN PRODUCTION** — side-gutter work CLOSED
+
+**Live bundle:** `index-DfGesPh-.js` → **`index-DZiURKoe.js`**, carrying
+`bd6ae9cb`. Verification only; no source changed. The pilaster background stack
+reads **51 layers** live, i.e. the `--pil-mouldings` gradient is present.
+
+### 1. Geometry — unchanged and exact
+
+| viewport | gutter | pilaster L / R | painting spans | capital y | base y |
+|---|---|---|---|---|---|
+| **2560x1080** | 186 | 186.172 / 186.172 | 186 → 2374 | 66 | 845 |
+| **3440x1440** | 262 | 261.562 / 261.562 | 262 → 3178 | 88 | 1126 |
+| **1920x1080** | 0 | **0px / 0px** | 0 → 1920 | — | — |
+
+The painting occupies exactly the non-gutter region at both ultrawide sizes, so
+there is **no intrusion over the painting** and **no grey strip** anywhere. The
+1920 negative control resolves to zero width and shows no pilaster at all.
+
+### 2. 2560 — restraint kept
+
+The mouldings read as two quiet horizontal lines. The column is still the
+darkest object on screen, still well behind the Record's gilt frame and both
+gold CTAs. Nothing about the 2560 character changed, which was the explicit
+requirement.
+
+### 3. 3440 — the flatness is resolved
+
+The side now reads unmistakably as a constructed pilaster: capital, shaft with
+its two stiles, base, and a darker skirting run below. The "broad dark reserved
+band" reading is gone.
+
+Two things make it convincing rather than decorative:
+
+* **The base continues the room's own line.** It lands where the painting's
+  counter capping edge sits — the same feature measured at f=0.7545 / 0.7407 on
+  the two edges — so the moulding reads as the room's architecture carrying on
+  through the column rather than as a stripe drawn across it.
+* **The capital terminates the shaft.** Its lit-arris / face / shadow build and
+  the fact that the shaft's stiles stop at it make it read as the head of a
+  column. It does not read as a floating stripe.
+
+Both sides are the same construction, mirrored.
+
+### 4. Preservation — no regression
+
+Centre geometry identical at every width: 2560 Record `x=777`, seal `y=229`,
+plinth `y=924`; 3440 `1049 / 305 / 1232`; 1920 `518 / 267 / 877`. Bulletin,
+Premium (`/lol/premium`), Community, the four utility routes
+(`/feedback`, `/feedback?intent=bug`, `/about`, `/contact`), the three legal
+links, "© 2026 Mogzy." and the **297-character** disclaimer all unchanged. No
+horizontal overflow. Screen 1 untouched.
+
+Console and network: only `403 /api/stat-check/invites` and
+`404 /rest/v1/funnel_events`, both long-standing and unrelated. **No 429 this
+run** — confirming that entry in Revisions 29-31 was an artefact of rapid
+repeated loads, not a product fault. No anonymous `/api/ranked/*` requests.
+
+The Bulletin showed 2 notices, i.e. today is again one of the roughly
+one-in-seven days where neither of the day's two subjects holds a
+Bulletin-eligible question. Designed behaviour.
+
+### 5. Recommendation — **leave the pilasters empty; close the side-gutter work**
+
+The 3440 view now reads as finished Academy architecture. The question
+Revision 33 left open — whether the sides needed sparse mounted decoration —
+is answered: **they do not.** What they were missing was articulation, and a
+capital and a base supplied it. Adding papers, art or information cards now
+would give the room a fourth competing surface and undo the hierarchy the whole
+redesign was built around: Record first, Bulletin second, everything else
+quiet.
+
+**The side-gutter workstream is closed.** No further architectural work is
+recommended, and no decoration should be added.
+
+### 6. Next
+
+Nothing outstanding on the Commons. Timmy/demo population remains the last item
+in this workstream, using the `initialNoticeId` and `daySeed` props Revision 27
+added.
+
+---
 
 ## Revision 2026-09-08 — PILASTER CAPITAL AND BASE — **SHIPPED, AWAITING DEPLOY**
 
@@ -117,9 +200,8 @@ present and unmoved. No horizontal overflow anywhere. Screen 1 untouched.
 
 ### 7. Deployment
 
-Pushed. **Not yet live** — the owner triggers Publish. Production verification
-is owed once the bundle hash changes, and needs an **ultrawide viewport**: at
-1920 and below there is nothing to see, by design.
+Published by the owner and **verified live** as `index-DZiURKoe.js` — see
+Revision 35.
 
 ### 8. Next
 
