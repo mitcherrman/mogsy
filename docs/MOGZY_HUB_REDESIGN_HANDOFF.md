@@ -9,12 +9,12 @@
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
 
-## Revision 2026-09-07 — STEP 3 **COMMITTED AND PUSHED TO `origin/main`**; production deploy BLOCKED on the owner's Lovable Publish
+## Revision 2026-09-07 — STEP 3 **COMMITTED, PUSHED, DEPLOYED AND LIVE-VERIFIED ON mogzy.lol**
 
 **Commit:** `640bb0b3` — `feat(hub): redesign the Academy Commons around the Academy Record`
 **Branch:** `main` → pushed `046116b7..640bb0b3`, clean fast-forward, no force.
-**Production:** **NOT deployed.** mogzy.lol still serves the pre-redesign
-Screen 2. One owner action remains.
+**Production:** **LIVE and verified** on mogzy.lol, bundle
+`index-CHF93u9d.js` → `index-BTLe2UvJ.js`. See §5 and §6.
 
 ### 1. Pre-commit scope check
 
@@ -87,51 +87,63 @@ git push origin main       → 046116b7..640bb0b3  main -> main
 `origin/main` re-fetched and confirmed at `640bb0b3`. No force, no
 force-with-lease, no rebase needed.
 
-### 5. Deployment — BLOCKED, owner action required
+### 5. Deployment — FIRED AND CONFIRMED
 
-**The push did not deploy, and will not on its own.** Confirmed in this repo:
-there is no `.github/workflows`, no `vercel.json`, no `netlify.toml`, and no CI
-of any kind. mogzy.lol is published from Lovable, and **the owner must press
-Publish there**. This is the same gate that has held Graph1 Phase F, Pro Play
-Step 2, the hub Premium module and Universal Mastery — pushing to `main` moves
-the source, not the site.
+The push does not itself deploy: this repo has no `.github/workflows`, no
+`vercel.json`, no `netlify.toml` and no CI, and mogzy.lol publishes from
+Lovable. Immediately after the push, production still served the old bundle
+`index-CHF93u9d.js` and the pre-redesign Screen 2, so this was recorded as
+blocked on the owner's Publish.
 
-Production checked after the push: `/lol` serves bundle `index-CHF93u9d.js`
-and still renders the **old** Screen 2 —
+**A deploy then fired.** A watcher polling the production bundle hash caught
+the change: `index-CHF93u9d.js` → **`index-BTLe2UvJ.js`**, now serving this
+commit. The gate is real and still owner-owned — it simply resolved within the
+session.
 
-| Marker | Live now |
+### 6. Production smoke check — POST-DEPLOY, PASSED
+
+Read-only against the live build at 1440×900. Nothing on the site was changed.
+
+| Check | Result |
 |---|---|
-| `academy-record` | **absent** |
-| `academy-bulletin` | **absent** |
-| `hub-premium-panel` | present (old large plaque) |
-| `hub-community-section` | present (old large board) |
-| `hub-utility-section` | present (old two slips) |
-| `commons-legal-nav` | present |
+| Screen 1 loads | ✅ `[data-hub-screen="hall"]` present |
+| Scroll to Screen 2 | ✅ settles at `top: 0`; snap armed (`y mandatory`) |
+| Academy Record | ✅ present, `data-record-state="empty"` (guest — correct) |
+| Academy Bulletin | ✅ present, CTA → `/lol/mechanics` |
+| Premium supporting mount | ✅ present, `data-premium-state="promo"`, CTA → `/lol/premium` |
+| Community supporting mount | ✅ present, Discord renders the pending state |
+| Feedback / Bug / About / Contact | ✅ `/feedback`, `/feedback?intent=bug`, `/about`, `/contact` |
+| Privacy / Terms / Security | ✅ unchanged |
+| © line and Riot disclaimer | ✅ "© 2026 Mogzy."; disclaimer 297 characters — **byte-identical to the pre-deploy baseline** |
+| Fatal layout / runtime errors | ✅ none |
 
-A watcher is polling the production bundle hash; it had not changed at the time
-of writing.
+Live stage-mode geometry, measured in production:
 
-### 6. Production smoke check — PRE-DEPLOY BASELINE
+- **The seal lands exactly on the painted medallion**: rendered centre y=244,
+  the artwork's medallion centre y=244. Zero drift.
+- Utility strip clears the walnut rail by **30px** and the Premium sheet by
+  **64px**.
+- No horizontal overflow. The Commons artwork loaded 200.
+- Mounts: Record 342×464 at (352,194); Bulletin 397×231 at (851,221); Premium
+  165×144; Community 182×144.
 
-Read-only, on the live pre-redesign build, so the post-deploy pass has
-something to compare against. Nothing was changed on the site.
+**Console — one new entry, by design, and one to tidy.** Three failing
+requests on the live hub:
 
-- Screen 1 loads; `[data-hub-screen="hall"]` present.
-- Scrolling to Screen 2 works — `commonsTop` settles at 0; `hub-two-screen` is
-  on `html`.
-- Legal set intact and byte-identical to what this commit ships:
-  `/privacy` Privacy, `/terms` Terms, `/security` Security; "© 2026 Mogzy."; the
-  Riot disclaimer at 297 characters, opening "Mogzy is an unofficial fan
-  project. Mogzy isn't endorsed by Riot Games…".
-- Console: two pre-existing resource errors (one 403, one 404) on the current
-  production build. **These predate this commit** and are not introduced by it.
-  Worth a look during the next pass, but not a blocker.
+| Request | Verdict |
+|---|---|
+| `403 /api/stat-check/invites` | pre-existing, unrelated |
+| `404 supabase …/funnel_events` | pre-existing, unrelated |
+| `403 /api/ranked/progression` | **new, from this commit** |
 
-**The post-deploy smoke check in §6 of the task has NOT been performed**,
-because the redesign is not live. It must be run once Publish has fired:
-Record present, Bulletin present, Premium and Community supporting mounts
-present, all four utility destinations present, legal set unchanged, no fatal
-layout or runtime errors.
+The Ranked 403 is `useRankedProgression` firing for a guest, and it is the
+documented fail-closed path — 401/403 means "no Ranked standing to show", the
+hook resolves to `unavailable`, and the Record correctly omits the Ranked line.
+The panel renders properly. But it puts a 403 in the console on **every guest
+visit to the hub**, which is avoidable noise: the hook has no `enabled` switch,
+so gating the call behind an identified (non-anonymous) account is a one-line
+change for the next pass. Not fixed here — deployment verification is not the
+place for design or behaviour changes.
 
 ### 7. Visual QA still outstanding
 
@@ -149,7 +161,16 @@ so far is geometric, not visual. Carried forward:
 6. Bulletin balance now that the board carries less than the community section
    did.
 
-Plus, newly noted: the two pre-existing production console errors above.
+Plus, newly noted:
+7. **The guest Ranked 403** (§6) — gate `useRankedProgression` behind an
+   identified account so the hub stops logging a 403 for every visitor.
+8. The two pre-existing production console errors (stat-check invites 403,
+   funnel_events 404), which predate this work but are worth a look.
+
+Screenshot capture still returns a black frame for this room in the Browser
+pane even against production, with the artwork confirmed loading 200 — so it is
+a capture limitation, not a site fault. Playwright remains the tool for the
+visual pass.
 
 ### 8. Next task
 
