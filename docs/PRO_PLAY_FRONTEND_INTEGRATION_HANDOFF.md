@@ -357,5 +357,12 @@ Selecting in the banner moved side B to Hanwha Life Esports and wrote the URL.
 513 tests pass across Pro Play + LIVE. Typecheck failure set identical to
 `origin/main` (11 = 11). Build clean.
 
+### Published
+
+Commit `02ceb592` on `main`; Lovable published ~5 minutes after the push. The
+served bundle (`ProPlayMatchup-CIIwj_On.js`, `index-D4NQliTl.css`) was verified
+to carry the evergreen title, the hero selector and its CSS, and to no longer
+contain the old title, `Mogzy's Notes`, `Change teams` or `dossier-vs__status`.
+
 **Next:** decide the portrait rights basis (owner), then ingest portraits for the
 focus-team rosters. Everything else is cosmetic polish.
