@@ -1,7 +1,8 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 40 (Timmy Demo v3 — three fixture defects fixed, Premium
-     verified, grant still active) is at the top of this file.
+<!-- Revision 41 (WORKSTREAM CLOSED — Premium revoked, Timmy Demo verified
+     Free) is at the top of this file.
+     Revision 40 fixed the three fixture defects and verified Premium.
      Revision 39 created and seeded him; its 4,082 XP / 1,918 figures are
      superseded by v3's 4,098 / 1,902.
      Revision 38 verified the containment that made it safe to create.
@@ -24,6 +25,118 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-09 — **WORKSTREAM CLOSED** — Timmy Demo final Free state verified
+
+Premium was granted, verified, and revoked through the existing
+`admin_set_pro_grant` path. Timmy Demo ends **Free**, with the v3 record
+intact. Verification only — nothing was reseeded or modified.
+
+**The Mogzy Hub redesign / Timmy Demo workstream is CLOSED.**
+
+### 1. Entitlement — revoked, and Free resolved in 1 second
+
+| | |
+|---|---|
+| Supabase resolver | `effective_pro false · stripe_pro false · grant_kind null · expires null · reason null` |
+| `profiles` | `is_pro false · pro_grant_* all null · is_bot **true** · is_disabled false` |
+| backend `/api/quiz/entitlement` | `is_pro false` on the **first** call, **t+1 s** |
+
+**Observed cache delay: none, in either direction.** Premium appeared
+immediately on grant and Free immediately on revoke. That is not evidence the
+120 s cache in `services/pro_status.py` is absent — it caches only *successful*
+lookups, and on both occasions the previous read was well over 120 s old, so
+the entry had already expired. A grant or revoke landing within 120 s of a read
+would still lag by up to two minutes.
+
+### 2. Free gates — 13 checks, all pass
+
+| surface | result |
+|---|---|
+| `/api/quiz/entitlement` | `is_pro false` |
+| `/api/quiz/history` | 10 of **46**, `limited true`, upsell present |
+| `/api/quiz/missed-questions` | `locked true`, 0 rows |
+| `/api/quiz/analytics/capability` | `can_view_trends false`, `trend_windows []`, `reason "free"` |
+| `/api/quiz/analytics/trends?window=30` | payload gated — no `current`/`previous`/`delta` |
+
+### 3. UI — reverted exactly
+
+* **Academy Record** reads `ACADEMY RECORD` — the `· MEMBER` suffix is gone
+  (asserted by regex, not eyeballed).
+* **Commons mount** is back to `ACADEMY MEMBERSHIP / Mogzy Premium / Explore
+  Premium`.
+* **`/lol/premium`** shows the upgrade offer.
+* **Quiz History** carries *"Free accounts save your last 10 results"* + Unlock
+  Full History.
+* **Missed Question Bank** locked behind the upgrade prompt.
+* **No fixture marker** (`~alt` / `~fixture` / `PLACEHOLDER`) anywhere in the
+  rendered DOM.
+
+### 4. v3 record — unchanged by the entitlement round trip
+
+| | |
+|---|---|
+| answered / correct / accuracy | **428 / 317 / 74.07 %** |
+| total XP | **4,098** |
+| Academy | **Diamond**, **1,902** to Challenger |
+| streak / best | **7 / 24** |
+| best category | **Champion Attack Types 91.38 %**, 6 categories |
+| achievements | **6 / 6** |
+| Ranked | **1,218 · Gold**, 18 rated, 22 history rows |
+| seed fingerprint | **`e1e0942cae93fa65b95f7bf705326d07…`** |
+| rows | 428 attempts · 46 sessions · 1 rating |
+| fixture markers stored | **0** |
+| future-dated rows | **0** |
+
+### 5. Containment at close
+
+`platform_total_attempts` **11,224**, `platform_accuracy` **13.02 %** — the
+pre-seed values, and what `/api/quiz/stats` still serves. `demo::timmy`
+untouched at **302 / 60**. Registry holds exactly one id. `dsa_runs` 0, live
+queue entries 0.
+
+### 6. Final architecture, as built
+
+* **One** real Supabase account, `is_bot = true`, contained in
+  `demo_accounts` before it had a single row.
+* Quiz record **derived** by the real production writers; Ranked
+  **fixture-seeded** as `dev_fixture` because the rating path refuses bot
+  matches by design; Time Trial, champion mastery and Combat Lab **omitted**
+  because no durable per-user authority exists.
+* **Zero** Timmy-specific frontend branches, and no uuid hardcoded in any
+  analytics predicate.
+* Deterministic, idempotent, removable, reseedable.
+
+**Backend:** `b59b2978` (containment + planner) → `87afd685` (session tally) →
+`68e01ddc` (v3: distractors, per-category correctness, no future dates).
+**Frontend:** documentation only throughout.
+
+### 7. Cleanup / reseed
+
+```bash
+python3 scripts/seed_demo_account.py --remove --db /data/lol_calc.db \
+  --user-id d1f43bfb-a51b-4055-ae83-c790c8ad2348
+python3 scripts/seed_demo_account.py --user-id d1f43bfb-a51b-4055-ae83-c790c8ad2348 \
+  --as-of 2026-09-09 --db /data/lol_calc.db --apply
+```
+
+Entitlement: `admin_set_pro_grant(<uuid>, 'manual'|'playtest', <expiry>, <reason>)`
+to grant, `admin_set_pro_grant(<uuid>, NULL)` to revoke. Both need an admin
+session; the SQL editor cannot call them (the function refuses a NULL
+`auth.uid()`).
+
+### 8. Housekeeping — carried forward, deliberately NOT actioned here
+
+Two items, both outside this close-out and neither expanded into product work:
+
+1. **One anonymous `auth.users` row** was created during UUID resolution,
+   before Timmy's email was available — the app's own guest path.
+   `purge-anonymous-users` is admin-gated, so it needs an owner run.
+2. **Timmy's test-account password** was shared in plaintext in the working
+   transcript. It is a demo credential, but a real one, and should eventually
+   be rotated.
+
+---
 
 ## Revision 2026-09-09 — TIMMY DEMO **v3 — THREE FIXTURE DEFECTS FIXED, PREMIUM VERIFIED**
 
