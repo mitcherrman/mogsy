@@ -1015,6 +1015,65 @@ Frontend (`mogsy`):
   files touched here (verified by stashing)
 - `vite build`: clean
 
+## Deploy state — Step 2 enrichment (2026-09-09)
+
+| | |
+|---|---|
+| Backend commit | `e76dd3c7` on `master`, pushed |
+| Railway | deployment `5027bcab` for `e76dd3c7` — **SUCCESS** |
+| Frontend commit | `ec24c192` on `main`, pushed |
+| Lovable | **published** — the live `ProPlayMatchup-D8MKCyWN.js` chunk on `mogzy.lol` contains `row-csmin`, `Gold/min`, `Dmg/min`, `dossier-drawer-coverage` and `Perfect` |
+
+**Production endpoint verified** (`Faker · Azir · all_time · vs Gen.G`):
+`statistics` present, `unavailable_metrics: []`, coverage **198 of 200**,
+K/D/A 664/430/1045 → KDA 3.974, CS/min 9.234, gold/min 426.6, dmg/min 652.8,
+opponent slice 21/21. `Doran · Jayce · 2026` returns 13/13 and KDA 4.0588 —
+identical to the local raw-row cross-check. `Doran · Teemo · 2026` returns
+0 games and `null` everywhere.
+
+**Rendered production page NOT verified by this pass.** `/lol/pro-play/matchup`
+is admin-gated and requires the owner's Mogsy account sign-in; the session is
+the owner's to provide. Everything the page depends on IS verified: the
+production backend serves the contract, and the published bundle contains the
+rendering code.
+
+**Verified instead against the real 5.6 GB corpus, locally, in a browser**
+(local FastAPI + vite, throwaway admin key, never the production secret):
+
+- `Doran · Jayce · 2026 · vs Gen.G` — rows read
+  `KDA 4.06 / 2.00`, `CS/min 9.1 / 8.4`, `Gold/min 455 / 400`,
+  `Dmg/min 841 / 668`; KDA cell `title` = `58 / 34 / 80 over 13 games`;
+  **no** coverage note (13 of 13).
+- `Faker · Azir · all_time · vs Gen.G` — note reads
+  **"Statistics available for 195 of 197 games."** while `Games` still reads
+  197. `title` = `657 / 419 / 1034 over 195 games`.
+- `Faker · Orianna · all_time` — 93 of 93, no note; KDA 5.62 confirmed against
+  the raw rows as (329 + 655) / 175.
+- **375 x 812 (mobile)**: `document.scrollWidth == clientWidth` (no page-level
+  horizontal overflow), table 347px inside a 375px sheet, **no** row label
+  wraps, **no** cell clipped.
+- 1280px desktop: no page overflow; drawer height essentially unchanged.
+- Rapid re-selection (Azir → Orianna, 60ms apart) painted Orianna's figures
+  under Orianna's heading — no stale response.
+- No console error from the dossier; the only errors on the local page are a
+  401 on `/api/stat-check/invites` (no Supabase session in that harness) and a
+  400 on `/api/pro-play/media/resolve`, both pre-existing and unrelated.
+
+## Remaining gaps — Step 2 enrichment
+
+1. **The rendered production page** still wants an owner-session pass, per above.
+2. **Field-level coverage is exposed but never yet observed to differ in the
+   product.** 868 rows corpus-wide lack `total_gold`; the `1–2 of 3 games`
+   range wording is covered by tests but has not been seen on a real slice.
+3. **No per-role or per-patch normalisation.** A support's CS/min and a mid's
+   sit in the same column with no context beyond the lane the drawer opened
+   from. That is a comparison feature, not a correctness gap.
+4. **`versus_opponent` samples are small by nature** — 2 games is common. The
+   drawer prints the count beside the figure and does nothing further; a
+   minimum-sample gate was not added because the reader can see the denominator.
+5. **OE publishes nothing before 2014**, so pre-2014 canonical games can never
+   receive these statistics. Not fixable from this side.
+
 ## Next recommended slice — Step 5
 
 **The game state, and the per-player table that is the reason to open one.**
