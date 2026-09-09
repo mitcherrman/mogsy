@@ -116,7 +116,7 @@ export default function PlayScrollRecord({
   onPlayDailyChallenge,
   onPlayPractice,
   signedIn = false,
-  isAdmin = false,
+  canPlayRankedBot = false,
   returnFocusTo,
   handoffDelayMs = DEFAULT_HANDOFF_MS,
 }: {
@@ -204,7 +204,8 @@ export default function PlayScrollRecord({
    * does not supply it — including `/dev/play-scroll` — draws the ordinary
    * player's record.
    */
-  isAdmin?: boolean;
+  /** Offer the Ranked bot option (Premium access, or admin override). */
+  canPlayRankedBot?: boolean;
   /**
    * Where focus goes when the record closes — the PLAY seal it was opened
    * from. Radix restores focus to whatever was active when the dialog
@@ -816,7 +817,7 @@ export default function PlayScrollRecord({
                        confirmation once a status lands; this is only the
                        frame before that. */
                     role={displayRole}
-                    isAdmin={isAdmin}
+                    canPlayRankedBot={canPlayRankedBot}
                     onJoin={queue.joinWithoutClass}
                     onBack={() => setView("menu")}
                   />
