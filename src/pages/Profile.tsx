@@ -419,7 +419,22 @@ export default function Profile() {
       location: form.location,
       status_message: form.statusMessage,
       socials,
-      profile_frame: isPro ? selectedFrame : "default",
+      // PT1.13B — LAPSE KEEPS THE EQUIPPED COSMETIC.
+      //
+      // This read `isPro ? selectedFrame : "default"`, which destroyed a
+      // lapsed member's stored frame on their next unrelated profile save
+      // (change your bio, lose your frame). It protected nothing: the frame
+      // GRID below is rendered only when `isPro`, and `selectedFrame` is
+      // seeded from the stored profile, so a non-member's value is already
+      // exactly what is in the database and there is no way for them to
+      // have chosen anything else.
+      //
+      // `custom_theme` on the next line was never clamped and the theme
+      // picker disables locked entries rather than resetting the active one
+      // — which is the approved policy (keep what you equipped, lose the
+      // ability to switch, resubscribe restores the choice) already
+      // implemented. Frames were the only surface that disagreed.
+      profile_frame: selectedFrame,
       custom_theme: activeThemeId,
     };
     // Set avatar_url to a random photo from the first 3

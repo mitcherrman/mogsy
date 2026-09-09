@@ -34,9 +34,34 @@
  * already has. (PT1.6 found three such claims live on `/lol/premium`.)
  *
  * `userFacingSummary: null` means DO NOT MARKET THIS. It is the single
- * mechanism that keeps an internal row — a disabled meter, an unreachable
- * cosmetic, a backend that ships ahead of its front door — out of the
- * comparison UI without deleting the knowledge that it exists.
+ * mechanism that keeps an internal row — a disabled meter, an admin-only
+ * API — out of the comparison UI without deleting the knowledge that it
+ * exists.
+ *
+ * PT1.13B — MARKETABLE AND AVAILABLE ARE TWO DIFFERENT QUESTIONS
+ * ─────────────────────────────────────────────────────────────
+ * PT1.13 conflated them: it withheld every non-`shipped` row, which was the
+ * right answer to "may this be advertised as available" and the wrong answer
+ * to "may a buyer be told this is coming". The page is now a LIVING
+ * CHECKLIST — Free today, Premium today, and Premium soon — so the two
+ * questions are asked separately:
+ *
+ *   `userFacingSummary !== null`   may appear on the page at all
+ *   `status === "shipped"`         may appear as AVAILABLE
+ *
+ * A marketable row that is `partial` or `planned` renders as **Coming soon**,
+ * never with a checkmark and never in the hero or the lead cards. When the
+ * feature lands, one word changes here — `partial` → `shipped` — and the row
+ * moves from the Coming soon treatment to the available one with no edit to
+ * the page, the hero, the tests' intent or a second roadmap list. That is the
+ * entire point of the phase: there is no roadmap document to fall out of
+ * date, because the roadmap IS the matrix.
+ *
+ * The judgement a status cannot make for you is whether a row is a BENEFIT.
+ * Credit metering is a billing mechanism; the Pro Play research API is admin
+ * tooling. Both are real, both are `partial`, and neither is something a
+ * buyer wants — so both stay `userFacingSummary: null`. "Partial" is not a
+ * synonym for "announce it".
  */
 
 /** Where a row belongs in the product, for grouping the comparison. */
@@ -52,10 +77,18 @@ export type BenefitGroup =
 /**
  * How real this row is, in production, right now.
  *
- *  `shipped`  a user can do it today on mogzy.lol.
- *  `partial`  built and reachable, but limited, disabled, or missing a
- *             front door — never presentable as available.
- *  `planned`  does not exist. Not renderable in any user-facing surface.
+ *  `shipped`  a user can do it today on mogzy.lol. The ONLY status that may
+ *             render as available.
+ *  `partial`  real implementation exists, but the full user-facing feature
+ *             is not usable — limited, switched off, or missing a front
+ *             door. Renders as "Coming soon" when marketable.
+ *  `planned`  does not exist yet. Renders as "Coming soon" when marketable.
+ *
+ * `partial` and `planned` differ for US, not for the reader: both are
+ * "Coming soon" on the page, because a buyer cannot spend a distinction
+ * between "the backend is done" and "nothing is written". Keep them apart in
+ * the matrix anyway — they are very different amounts of remaining work, and
+ * the internal view prints them.
  */
 export type BenefitStatus = "shipped" | "partial" | "planned";
 
@@ -113,6 +146,9 @@ export interface PremiumBenefit {
   /**
    * The one-line description a user may be shown, or `null` for
    * "internal knowledge, never marketed". Null is load-bearing.
+   *
+   * Non-null on a `partial`/`planned` row means "announce this as Coming
+   * soon", NOT "announce this". Availability is `status`'s job alone.
    */
   userFacingSummary: string | null;
   /** A true limit a reader deserves to know before paying. */
@@ -396,18 +432,17 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
   {
     id: "team-combat",
     group: "combat",
-    label: "Team Combat (3v3 / 5v5)",
-    free: "Not available.",
-    premium:
-      "Not offered yet either. The backend is live and Premium-gated; there is no way into it from the site.",
+    label: "Team Combat",
+    free: "Not included.",
+    premium: "Simulate whole 3v3 and 5v5 team fights, not just one champion against another.",
     status: "partial",
     enforcement: "backend",
     enforcementNote:
       "Backend READY: /api/combat-lab/team-simulate/readiness/v1 → available (probed 2026-09-08), gated by services/combat_lab_access.py with 402 premium_required and a fail-closed 503 for an indeterminate lookup. Frontend NOT OFFERED: VITE_TEAM_SIM_ENABLED is absent from the production bundle, so /combat-lab/team-sim is unregistered and the Combat Lab entry link is not rendered; the /dev alias is dead-code-eliminated in production builds.",
     differentiator: true,
     discrepancy:
-      "The backend flag was turned on (PT1.6 measured it 'unavailable'; it now answers 'available') while the frontend flag stayed off. A shipped, billable, Premium-only feature is currently reachable by nobody.",
-    userFacingSummary: null,
+      "The backend flag was turned on (PT1.6 measured it 'unavailable'; it now answers 'available') while the frontend flag stayed off. A shipped, billable, Premium-only feature is currently reachable by nobody. PT1.13B announces it as Coming soon and does NOT enable it; activation is its own pass.",
+    userFacingSummary: "Simulate whole 3v3 and 5v5 team fights.",
   },
 
   // ──────────────────────────────────────────────────────── proplay
@@ -460,69 +495,73 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
     premium: "Choose any frame.",
     status: "shipped",
     enforcement: "frontend",
-    enforcementNote: "Profile.tsx:998–1000 renders the choice; Profile.tsx:422 persists it.",
+    enforcementNote:
+      "Profile.tsx renders the frame grid only when isPro; the save payload persists `selectedFrame`, which is seeded from the stored profile. A lapsed member therefore keeps the frame they equipped and cannot switch to another — the approved lapse policy, and the same shape the theme picker already had.",
     differentiator: true,
     discrepancy:
-      "Profile.tsx:422 writes `profile_frame: isPro ? selectedFrame : \"default\"`, so a lapsed member's stored frame is DESTROYED on their next profile save. `custom_theme` on the next line is not clamped, which is evidence the clamp is incidental rather than intended. This contradicts the lapse guarantee that services/saved_practice_sets.py states explicitly.",
-    userFacingSummary: "Profile frames.",
+      "FIXED IN PT1.13B. The save payload previously read `profile_frame: isPro ? selectedFrame : \"default\"`, so a lapsed member's stored frame was DESTROYED on their next unrelated profile save. It protected nothing — the picker is already isPro-gated and `selectedFrame` is seeded from the database — and `custom_theme` on the very next line was never clamped, which is what showed the clamp was incidental. Frames were the only cosmetic surface that disagreed with the policy. What remains for a follow-up is the SERVER side: nothing stops a crafted profiles.update() from setting a Premium frame without entitlement, and cosmetics have no backend gate at all.",
+    userFacingSummary: "Profile frames."
   },
   {
     id: "ad-free",
     group: "profile",
-    label: "No third-party ads",
-    free: "Sees no ads — because no ads are served to anyone.",
-    premium: "The same.",
+    label: "Ad-free",
+    free: "No ads today. Ads are planned, and Free will see them.",
+    premium: "No ads, once ads launch.",
     status: "planned",
     enforcement: "inert",
     enforcementNote:
-      "src/lib/ads/policy.ts suppresses ads for Premium and is fully tested, but VITE_ADS_ENABLED is absent from the production bundle, so the global kill switch is off and no placement renders anything. Third-party additionally requires a CMP that does not exist.",
-    differentiator: false,
+      "src/lib/ads/policy.ts suppresses ads for Premium and is fully tested (fail-closed while a signed-in reader's entitlement is unresolved), but VITE_ADS_ENABLED is absent from the production bundle so the global kill switch is off and no placement renders anything. Third-party additionally requires a CMP that does not exist.",
+    differentiator: true,
+    caveat: "No ads run anywhere on Mogzy today. This matters once they do.",
     discrepancy:
-      "'Ad-free' is a real, correct, tested Premium rule that is worth nothing today. It becomes a genuine benefit the moment ads are switched on, and not before.",
-    userFacingSummary: null,
+      "INTENT VERIFIED, NOT ASSUMED (PT1.13B). docs/advertising.md records a real, deliberately preserved AdSense account (ca-pub-9823769047605421) previously declined for site readiness rather than configuration, lists 'request review' as owner action 5 and 'after approval: enable flags deliberately' as owner action 7, and src/lib/ads/houseAds.ts already ships a creative titled 'Go ad-free with Mogzy Premium'. So this is a real intended benefit rather than a stale row — but it is worth nothing until the owner completes those actions, and the caveat says so on the page.",
+    userFacingSummary: "No ads, once ads launch.",
   },
   {
     id: "card-animations",
     group: "profile",
-    label: "Premium card animations",
-    free: "Unreachable.",
-    premium: "Unreachable.",
+    label: "Animated card styles",
+    free: "The standard card style.",
+    premium: "Animated styles for the cards you play with.",
     status: "partial",
     enforcement: "unreachable",
     enforcementNote:
-      "Play.tsx:721 gates animations on an admin-configured pro_only flag, but /play, /swipe and /swipe-game all redirect to /lol under LEAGUE_ONLY_MODE.",
-    differentiator: false,
-    userFacingSummary: null,
+      "Play.tsx:721 gates animations on an admin-configured pro_only flag and the picker is built, but /play, /swipe and /swipe-game all redirect to /lol under LEAGUE_ONLY_MODE, so no reader can reach the surface they decorate.",
+    differentiator: true,
+    discrepancy:
+      "ANNOUNCED ON THE OWNER'S INSTRUCTION, AND THE WEAKEST ROW ON THE PAGE. Unlike every other Coming soon item, this one is not waiting on its own implementation — it is built. It is waiting on LEAGUE_ONLY_MODE being lifted, i.e. on the whole Swipe/Play product family being un-hidden, for which no phase is scoped. Announcing it commits us to that. Worth revisiting: if Swipe is not coming back, this row should return to internal-only rather than sit on the page indefinitely.",
+    userFacingSummary: "Animated styles for the cards you play with.",
   },
 
   // ──────────────────────────── claimed on the sales page, nonexistent
   {
     id: "curated-learning-journeys",
     group: "practice",
-    label: "Curated Learning Journeys",
-    free: "Does not exist.",
-    premium: "Does not exist.",
+    label: "Learning Journeys",
+    free: "Not included.",
+    premium: "Guided quiz paths that build a subject up in order, instead of random sets.",
     status: "planned",
     enforcement: "none",
-    enforcementNote: "No implementation in either repository.",
-    differentiator: false,
+    enforcementNote: "No implementation in either repository. Nothing is scoped.",
+    differentiator: true,
     discrepancy:
-      "Listed on /lol/premium as a Premium feature with a 'Coming soon' badge. Nothing by this or any equivalent name exists in the frontend or the backend, and no phase has been scoped for it.",
-    userFacingSummary: null,
+      "Zero implementation, in either repository, and no phase scoped. PT1.13 removed it from the page as an invented claim; PT1.13B restores it as an explicitly Coming soon checklist item on the owner's instruction. It must never lose that treatment while this row says `planned`.",
+    userFacingSummary: "Guided quiz paths that build a subject up in order.",
   },
   {
     id: "earned-matchup-cards",
     group: "practice",
-    label: "Earned Matchup Cards",
-    free: "Does not exist.",
-    premium: "Does not exist.",
+    label: "Matchup Cards",
+    free: "Not included.",
+    premium: "Beat a matchup set, earn the card for it.",
     status: "planned",
     enforcement: "none",
-    enforcementNote: "No implementation in either repository.",
-    differentiator: false,
+    enforcementNote: "No implementation in either repository. Nothing is scoped.",
+    differentiator: true,
     discrepancy:
-      "Listed on /lol/premium AND named in the page's SEO description and hero paragraph as something Premium unlocks. It exists nowhere in either repository — PT1.6 recorded the same finding on 2026-09-04 and it is still on the live page.",
-    userFacingSummary: null,
+      "Zero implementation, in either repository. It was previously in the hero paragraph AND the <meta name=\"description\">, so it was being indexed as a live benefit — PT1.6 found that on 2026-09-04 and it was still live on 2026-09-08. PT1.13B may show it on the checklist as Coming soon, but it must never return to the hero, the lead cards or the page metadata while this row says `planned`.",
+    userFacingSummary: "Beat a matchup set, earn the card for it.",
   },
 ] as const;
 
@@ -542,36 +581,65 @@ export function benefitById(id: string): PremiumBenefit | undefined {
 }
 
 /**
- * Rows a user-facing surface may render.
+ * Rows a user-facing surface may render AT ALL.
  *
- * TWO conditions, and both are necessary: a row must be shipped (`partial`
- * and `planned` are never presentable as available) AND must carry a
- * `userFacingSummary` (its author decided it is worth describing). This is
- * the only function any UI should use to decide what to show.
+ * One condition, and it is an editorial one: the row's author wrote copy for
+ * it. Status is deliberately NOT checked here — a Coming soon item belongs on
+ * the checklist. Use :func:`availableBenefits` when you need "usable today".
  */
 export function presentableBenefits(): readonly PremiumBenefit[] {
-  return PREMIUM_MATRIX.filter(
-    (b) => b.status === "shipped" && b.userFacingSummary !== null
-  );
-}
-
-/** Presentable rows where Premium genuinely adds something. The sales list. */
-export function premiumBenefits(): readonly PremiumBenefit[] {
-  return presentableBenefits().filter((b) => b.differentiator);
+  return PREMIUM_MATRIX.filter((b) => b.userFacingSummary !== null);
 }
 
 /**
- * Presentable rows that are complete on Free.
+ * Presentable rows a reader can actually use right now.
+ *
+ * THE ONLY SET THAT MAY BE RENDERED AS AVAILABLE. The hero, the lead cards
+ * and any checkmark treatment draw from this and from nothing else.
+ */
+export function availableBenefits(): readonly PremiumBenefit[] {
+  return presentableBenefits().filter((b) => b.status === "shipped");
+}
+
+/**
+ * Presentable rows that are announced but not yet usable.
+ *
+ * `partial` and `planned` collapse into one reader-facing state on purpose —
+ * see the status doc. This is the set the page renders with the Coming soon
+ * treatment, and it is what makes the page a living checklist: a status flip
+ * moves a row out of here and into `availableBenefits()` with no other edit.
+ */
+export function comingSoonBenefits(): readonly PremiumBenefit[] {
+  return presentableBenefits().filter((b) => b.status !== "shipped");
+}
+
+/** Rows kept as internal knowledge and never shown to a reader. */
+export function internalOnlyBenefits(): readonly PremiumBenefit[] {
+  return PREMIUM_MATRIX.filter((b) => b.userFacingSummary === null);
+}
+
+/**
+ * Available rows where Premium genuinely adds something — the sales list.
+ *
+ * Shipped ONLY, because this feeds the lead cards and every "what you get"
+ * claim. A Coming soon row is never in here.
+ */
+export function premiumBenefits(): readonly PremiumBenefit[] {
+  return availableBenefits().filter((b) => b.differentiator);
+}
+
+/**
+ * Available rows that are complete on Free.
  *
  * These are the anti-claims, and they belong ON the page: the honest answer
  * to "what do I lose by not paying?" is often "nothing", and saying so is
  * what keeps the rest of the list believable.
  */
 export function freeBenefits(): readonly PremiumBenefit[] {
-  return presentableBenefits().filter((b) => !b.differentiator);
+  return availableBenefits().filter((b) => !b.differentiator);
 }
 
-/** Presentable rows of one group, in matrix order. */
+/** Presentable rows of one group, in matrix order — available AND upcoming. */
 export function benefitsInGroup(group: BenefitGroup): readonly PremiumBenefit[] {
   return presentableBenefits().filter((b) => b.group === group);
 }

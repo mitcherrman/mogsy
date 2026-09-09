@@ -14,7 +14,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LolPremium from "./LolPremium";
 import {
   PREMIUM_MATRIX,
+  availableBenefits,
+  comingSoonBenefits,
   freeBenefits,
+  internalOnlyBenefits,
   populatedGroups,
   premiumBenefits,
   presentableBenefits,
@@ -236,6 +239,15 @@ describe("PT1.13 — the comparison is rendered FROM the canonical matrix", () =
     expect(row.textContent).toContain("Every session you have ever completed");
   });
 
+  it("lists only shipped, complete-on-Free rows under Free, forever", async () => {
+    renderPage();
+    await screen.findByText("Free, forever");
+    const listed = Array.from(document.querySelectorAll("[data-testid^='premium-free-']"))
+      .map((el) => el.getAttribute("data-testid")!.replace("premium-free-", ""));
+    expect(listed).toEqual(freeBenefits().map((b) => b.id));
+    for (const b of freeBenefits()) expect(b.status, b.id).toBe("shipped");
+  });
+
   it("marks the rows where Premium adds nothing as identical, not as a lock", async () => {
     renderPage();
     await screen.findByTestId("premium-comparison");
@@ -259,45 +271,115 @@ describe("PT1.13 — the comparison is rendered FROM the canonical matrix", () =
     renderPage();
     await screen.findByText("What Premium adds");
     const sellable = new Set(premiumBenefits().map((b) => b.id));
+    const available = new Set(availableBenefits().map((b) => b.id));
     const leads = Array.from(document.querySelectorAll("[data-testid^='premium-lead-']"));
     expect(leads).toHaveLength(4);
     for (const el of leads) {
       const id = el.getAttribute("data-testid")!.replace("premium-lead-", "");
       expect(sellable.has(id), id).toBe(true);
+      expect(available.has(id), id).toBe(true);
     }
   });
 });
 
-describe("PT1.13 — nothing unshipped is advertised as available", () => {
+describe("PT1.13B — the checklist shows what is coming, and never as available", () => {
   beforeEach(() => {
     getEntitlement.mockResolvedValue({ ok: true, is_pro: false });
     entitlementRpc.mockResolvedValue({ data: null, error: null });
   });
 
-  it("names no planned or partial benefit anywhere on the page", async () => {
+  it("renders every upcoming benefit with the Coming soon treatment", async () => {
     renderPage();
     await screen.findByTestId("premium-comparison");
-    const body = document.body.textContent ?? "";
-    for (const b of PREMIUM_MATRIX) {
-      if (b.status === "shipped") continue;
-      expect(body, b.id).not.toContain(b.label);
+    const soon = comingSoonBenefits();
+    expect(soon.length).toBeGreaterThan(0);
+    for (const b of soon) {
+      const cell = screen.getByTestId(`premium-soon-${b.id}`);
+      expect(cell.textContent, b.id).toMatch(/Coming soon/i);
     }
   });
 
-  it("has no 'Coming soon' badge left to hang a claim on", async () => {
+  it("gives an upcoming row NO available-now treatment", async () => {
     renderPage();
     await screen.findByTestId("premium-comparison");
-    expect(document.body.textContent).not.toMatch(/coming soon/i);
+    for (const b of comingSoonBenefits()) {
+      // Neither the gold Premium check nor the "same on both tiers" marker.
+      const row = screen.getByTestId(`premium-row-${b.id}`);
+      expect(row.querySelector("svg.lucide-check"), b.id).toBeNull();
+      expect(screen.queryByTestId(`premium-same-${b.id}`), b.id).toBeNull();
+    }
+  });
+
+  it("gives every shipped Premium row the check, and no Coming soon pill", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    for (const b of premiumBenefits()) {
+      expect(screen.queryByTestId(`premium-soon-${b.id}`), b.id).toBeNull();
+      expect(screen.getByTestId(`premium-row-${b.id}`).textContent, b.id)
+        .not.toMatch(/Coming soon/i);
+    }
+  });
+
+  it("names Team Combat as coming, not as included", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    const row = screen.getByTestId("premium-row-team-combat");
+    expect(row.textContent).toMatch(/Team Combat/);
+    expect(row.textContent).toMatch(/Coming soon/i);
+    expect(row.textContent).toMatch(/Not included/);
+    // And it is not sold anywhere that means "you get this now".
+    expect(screen.queryByTestId("premium-lead-team-combat")).toBeNull();
+    expect(screen.queryByTestId("premium-free-team-combat")).toBeNull();
+  });
+
+  it("names Matchup Cards and Learning Journeys as coming, not as live", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    for (const id of ["earned-matchup-cards", "curated-learning-journeys"]) {
+      const row = screen.getByTestId(`premium-row-${id}`);
+      expect(row.textContent, id).toMatch(/Coming soon/i);
+      expect(screen.queryByTestId(`premium-lead-${id}`), id).toBeNull();
+    }
+  });
+
+  it("keeps upcoming features out of the hero and the page metadata", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    // The hero is the one block a scanner reads as the promise, so it may
+    // only ever contain shipped claims.
+    const hero = document.querySelector("h2")!.closest("div")!;
+    const meta = document.querySelector('meta[name="description"]')?.getAttribute("content") ?? "";
+    for (const b of comingSoonBenefits()) {
+      expect(hero.textContent, b.id).not.toContain(b.label);
+      expect(meta, b.id).not.toContain(b.label);
+    }
+    expect(meta).not.toMatch(/Matchup Card/i);
+  });
+
+  it("leaks no internal-only row into the page at all", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    for (const b of internalOnlyBenefits()) {
+      expect(screen.queryByTestId(`premium-row-${b.id}`), b.id).toBeNull();
+      expect(document.body.textContent, b.id).not.toContain(b.label);
+    }
   });
 
   it("does not promise to withdraw the free, unlimited 1v1 Combat Lab", async () => {
     renderPage();
     await screen.findByTestId("premium-comparison");
     const body = document.body.textContent ?? "";
+    // These two were never "early" — they were false. No status brings them back.
     expect(body).not.toMatch(/Unlimited Combat Lab|Unlimited Saves/);
-    // It appears instead as a row that says Free already has it.
     expect(screen.getByTestId("premium-free-combat-lab-1v1").textContent)
       .toMatch(/free and unlimited/i);
+  });
+
+  it("says nowhere that ads exist today", async () => {
+    renderPage();
+    const row = await screen.findByTestId("premium-row-ad-free");
+    expect(row.textContent).toMatch(/No ads run anywhere on Mogzy today/);
+    expect(row.textContent).toMatch(/Coming soon/i);
   });
 });
 
@@ -337,9 +419,17 @@ describe("PT1.13 — the page keeps selling nothing it cannot deliver", () => {
   });
 
   it("has removed Matchup Cards from the hero and the page metadata", async () => {
+    // PT1.13B put Matchup Cards back on the CHECKLIST as Coming soon, which
+    // is a different claim from the one PT1.13 removed. What must not come
+    // back is the available-now framing: it was in the hero paragraph AND
+    // the meta description, so search results were advertising a feature
+    // that has never existed. Both remain forbidden.
     renderPage();
-    await screen.findByTestId("premium-comparison");
-    expect(document.body.textContent).not.toMatch(/Matchup Card/i);
+    const soon = await screen.findByTestId("premium-soon-earned-matchup-cards");
+    expect(soon.textContent).toMatch(/Coming soon/i);
+
+    const hero = document.querySelector("h2")!.closest("div")!;
+    expect(hero.textContent).not.toMatch(/Matchup Card/i);
     const meta = document.querySelector('meta[name="description"]');
     expect(meta?.getAttribute("content") ?? "").not.toMatch(/Matchup Card/i);
   });

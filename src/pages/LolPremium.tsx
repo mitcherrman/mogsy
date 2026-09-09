@@ -14,6 +14,9 @@ import {
   Target,
   Library,
   Palette,
+  Swords,
+  Layers,
+  GraduationCap,
   CreditCard,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -39,6 +42,7 @@ import { annualSavingsPct, STANDARD_OFFERS } from "@/lib/pro/offers";
 import {
   benefitById,
   benefitsInGroup,
+  comingSoonBenefits,
   freeBenefits,
   populatedGroups,
   premiumBenefits,
@@ -57,11 +61,26 @@ const GOLD = "#c9a84c";
  * WHAT THIS REMOVED, AND WHY. The hand-maintained list carried four "Coming
  * soon" cards. Two of them ("Unlimited Combat Lab", "Unlimited Saves &
  * Exports") described capabilities Free ALREADY HAS, unlimited, today — the
- * page was promising to withdraw something. The other two ("Curated Learning
- * Journeys", "Earned Matchup Cards") exist nowhere in either repository.
- * All four are still recorded in the matrix, with their contradictions, as
- * `planned` rows with a null `userFacingSummary`: kept as knowledge, refused
- * as marketing.
+ * page was promising to withdraw something. Those two are gone for good: a
+ * status can never make them true, because they are already true for
+ * everyone.
+ *
+ * PT1.13B — THE OTHER TWO CAME BACK, AND THE PAGE BECAME A CHECKLIST.
+ * "Learning Journeys" and "Matchup Cards" describe features that do not
+ * exist, which is a reason to label them honestly rather than to hide them:
+ * a buyer deciding today is entitled to know what is being built. So the
+ * comparison now renders `presentableBenefits()` — available AND upcoming —
+ * and marks the difference with a Coming soon pill instead of a checkmark.
+ *
+ * The safety property is that "Coming soon" is not a decoration this page
+ * chooses. It is `status !== "shipped"` read off the canonical row, so the
+ * only way to present something as available is to change the matrix, and
+ * changing the matrix updates every surface at once. There is no roadmap
+ * list here to fall out of date with the product.
+ *
+ * WHAT UPCOMING ROWS MAY NEVER DO: appear in the hero, appear in the lead
+ * cards, or appear in the page metadata. Those three read from
+ * `premiumBenefits()`, which is shipped-only, and the tests assert it.
  *
  * The matrix carries no icons on purpose — it is product data, imported by
  * tests and by an admin reference, and none of those want React. The mapping
@@ -77,6 +96,9 @@ const BENEFIT_ICONS: Record<string, React.ElementType> = {
   "missed-question-bank": BookX,
   "profile-themes": Palette,
   "profile-frames": Palette,
+  "team-combat": Swords,
+  "matchup-cards": Layers,
+  "curated-learning-journeys": GraduationCap,
 };
 
 /**
@@ -393,14 +415,23 @@ export default function LolPremium() {
       </div>
 
       {/* ── Free vs Premium, group by group ────────────────────────────
-          The definitive comparison. Rows come from the matrix and include
-          the ones where the two columns are IDENTICAL — those are the point:
-          a reader deciding whether to pay is owed the parts they already
-          have, and a list of only the differences reads as a list of things
-          being withheld. */}
+          The definitive comparison, and the living checklist.
+
+          Rows come from the matrix and include the ones where the two
+          columns are IDENTICAL — those are the point: a reader deciding
+          whether to pay is owed the parts they already have, and a list of
+          only the differences reads as a list of things being withheld.
+
+          They also include what is still being built, marked Coming soon.
+          The three states are visually distinct and each is a direct read of
+          the row: no mark = both tiers have it, a gold check = Premium has it
+          now, a Coming soon pill = `status !== "shipped"`. */}
       <h3 className="mb-1 text-lg font-semibold">Free vs Premium</h3>
       <p className="mb-4 text-sm text-muted-foreground">
-        Everything below is live today. Nothing on this page is a plan.
+        {premiumBenefits().length} things Premium unlocks today, and{" "}
+        {comingSoonBenefits().length} more on the way — marked{" "}
+        <span className="font-medium">Coming soon</span>, never counted as
+        included.
       </p>
       <div className="mb-10 overflow-x-auto">
         <table className="w-full min-w-[34rem] border-collapse text-sm" data-testid="premium-comparison">
@@ -434,7 +465,26 @@ export default function LolPremium() {
                   </th>
                   <td className="py-2.5 pr-3 text-muted-foreground">{b.free}</td>
                   <td className="py-2.5 text-muted-foreground">
-                    {b.differentiator ? (
+                    {b.status !== "shipped" ? (
+                      // Not a checkmark, and not the muted "same on both"
+                      // treatment either — an upcoming Premium feature is
+                      // neither included nor shared. The pill carries the
+                      // word, so the row reads correctly even to someone
+                      // scanning only the right-hand column.
+                      // Stacked rather than wrapped: the pill lands in the
+                      // same place on every upcoming row, so the column can
+                      // be scanned for "what is not included yet" without
+                      // reading any of the descriptions.
+                      <span data-testid={`premium-soon-${b.id}`} className="flex flex-col items-start gap-1">
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 border-dashed text-[10px] uppercase tracking-wide"
+                        >
+                          Coming soon
+                        </Badge>
+                        <span className="opacity-70">{b.premium}</span>
+                      </span>
+                    ) : b.differentiator ? (
                       <span className="flex items-start gap-1.5">
                         <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: GOLD }} aria-hidden />
                         <span>{b.premium}</span>

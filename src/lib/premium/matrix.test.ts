@@ -17,10 +17,13 @@ import { describe, expect, it } from "vitest";
 import {
   BENEFIT_GROUPS,
   PREMIUM_MATRIX,
+  availableBenefits,
   benefitById,
   benefitsInGroup,
+  comingSoonBenefits,
   discrepancies,
   freeBenefits,
+  internalOnlyBenefits,
   populatedGroups,
   premiumBenefits,
   presentableBenefits,
@@ -54,37 +57,85 @@ describe("the matrix is well formed", () => {
   });
 });
 
-describe("PHASE 5 — status semantics: nothing unshipped is ever presentable", () => {
-  it("presents only shipped rows", () => {
-    for (const b of presentableBenefits()) expect(b.status).toBe("shipped");
-  });
-
-  it("presents only rows whose author wrote user-facing copy", () => {
+describe("PT1.13B — status semantics: marketable and available are separate", () => {
+  it("lets a row be presentable at any status, but available only when shipped", () => {
     for (const b of presentableBenefits()) expect(b.userFacingSummary).toBeTruthy();
+    for (const b of availableBenefits()) expect(b.status).toBe("shipped");
+    for (const b of comingSoonBenefits()) expect(b.status).not.toBe("shipped");
   });
 
-  it("withholds every planned row from every user-facing helper", () => {
-    const planned = PREMIUM_MATRIX.filter((b) => b.status === "planned");
-    expect(planned.length).toBeGreaterThan(0);
+  it("partitions every presentable row into exactly one of available / coming soon", () => {
+    const a = availableBenefits().map((b) => b.id);
+    const c = comingSoonBenefits().map((b) => b.id);
+    expect(a.length + c.length).toBe(presentableBenefits().length);
+    expect(a.filter((id) => c.includes(id))).toEqual([]);
+  });
+
+  it("never lets an unshipped row into the sales list or the Free list", () => {
+    // These two feed the hero, the lead cards and the "Free, forever" list.
+    for (const b of [...premiumBenefits(), ...freeBenefits()]) {
+      expect(b.status, b.id).toBe("shipped");
+    }
+  });
+
+  it("keeps internal-only rows out of every reader-facing helper", () => {
     const shown = new Set(presentableBenefits().map((b) => b.id));
-    for (const b of planned) expect(shown.has(b.id), b.id).toBe(false);
+    for (const b of internalOnlyBenefits()) expect(shown.has(b.id), b.id).toBe(false);
   });
 
-  it("withholds Team Combat: the backend is live and Premium-gated, but nothing offers it", () => {
+  it("keeps billing mechanism and admin tooling internal — 'partial' is not 'announce it'", () => {
+    // The judgement a status cannot make: is this row a BENEFIT?
+    for (const id of ["combat-lab-metering", "pro-play-research"]) {
+      const b = benefitById(id)!;
+      expect(b.status).toBe("partial");
+      expect(b.userFacingSummary, id).toBeNull();
+    }
+  });
+
+  it("announces Team Combat as coming, and never as available", () => {
     const team = benefitById("team-combat")!;
     expect(team.status).toBe("partial");
     expect(team.enforcement).toBe("backend");
-    expect(team.userFacingSummary).toBeNull();
-    expect(team.discrepancy).toMatch(/VITE_TEAM_SIM_ENABLED|reachable by nobody/);
+    expect(comingSoonBenefits().map((b) => b.id)).toContain("team-combat");
+    expect(availableBenefits().map((b) => b.id)).not.toContain("team-combat");
+    // PT1.13B does not enable it, and the row records why not.
+    expect(team.discrepancy).toMatch(/does NOT enable it/);
   });
 
-  it("flags the sales claims that describe nothing, rather than normalising them", () => {
-    for (const id of ["curated-learning-journeys", "earned-matchup-cards"]) {
+  it("announces Matchup Cards and Learning Journeys as coming, never as live", () => {
+    for (const id of ["earned-matchup-cards", "curated-learning-journeys"]) {
       const b = benefitById(id)!;
       expect(b.status).toBe("planned");
-      expect(b.userFacingSummary).toBeNull();
-      expect(b.discrepancy).toBeTruthy();
+      expect(b.userFacingSummary, id).toBeTruthy();
+      expect(availableBenefits().map((x) => x.id)).not.toContain(id);
+      expect(comingSoonBenefits().map((x) => x.id)).toContain(id);
     }
+  });
+
+  it("keeps ad-free because the intent is EVIDENCED, and says so", () => {
+    // PT1.13B's one product judgement call. The row is only allowed to
+    // survive because docs/advertising.md and houseAds.ts prove intent —
+    // not because an old matrix row existed.
+    const ads = benefitById("ad-free")!;
+    expect(ads.status).toBe("planned");
+    expect(ads.userFacingSummary).toBeTruthy();
+    expect(ads.discrepancy).toMatch(/INTENT VERIFIED/);
+    expect(ads.discrepancy).toMatch(/advertising\.md|ca-pub/);
+    // And the page must not imply ads exist today.
+    expect(ads.caveat).toMatch(/No ads run anywhere on Mogzy today/);
+  });
+
+  it("refuses to resurrect the two claims that were false, not merely early", () => {
+    // "Unlimited Combat Lab" / "Unlimited Saves & Exports" described things
+    // Free already has. No status can make those true, so unlike Matchup
+    // Cards they may never come back as Coming soon.
+    for (const b of PREMIUM_MATRIX) {
+      const copy = `${b.label} ${b.userFacingSummary ?? ""} ${b.premium}`;
+      expect(copy, b.id).not.toMatch(/Unlimited Combat Lab|Unlimited Saves/);
+    }
+    const lab = benefitById("combat-lab-1v1")!;
+    expect(lab.status).toBe("shipped");
+    expect(lab.differentiator).toBe(false);
   });
 
   it("flags every contradiction it knows about", () => {
@@ -95,10 +146,40 @@ describe("PHASE 5 — status semantics: nothing unshipped is ever presentable", 
         "team-combat",
         "profile-frames",
         "ad-free",
+        "card-animations",
         "curated-learning-journeys",
         "earned-matchup-cards",
       ]),
     );
+  });
+});
+
+describe("PT1.13B — lapse keeps the equipped cosmetic", () => {
+  const profile = readFileSync(join(process.cwd(), "src/pages/Profile.tsx"), "utf8");
+
+  it("never resets a lapsed member's stored frame on save", () => {
+    // The approved policy: keep what you equipped, lose the ability to
+    // switch, resubscribe restores the choice. A save that rewrites the
+    // stored frame to "default" breaks the first clause on an unrelated
+    // action — change your bio, lose your frame.
+    expect(profile).not.toMatch(/profile_frame:\s*isPro\s*\?/);
+    expect(profile).toMatch(/profile_frame:\s*selectedFrame\b/);
+  });
+
+  it("still blocks a lapsed member from switching INTO another Premium frame", () => {
+    // The clause the clamp was mistaken for. The grid is entitlement-gated,
+    // which is what actually enforces it — and is why removing the clamp
+    // opens nothing.
+    expect(profile).toMatch(/\{!isPro && [^}]*Premium/);
+    expect(profile).toMatch(/\{isPro \? \(/);
+  });
+
+  it("records the frame row as fixed, and names what is still open", () => {
+    const frames = benefitById("profile-frames")!;
+    expect(frames.discrepancy).toMatch(/FIXED IN PT1\.13B/);
+    // Cosmetics are frontend-only. Say so rather than implying a server gate.
+    expect(frames.enforcement).toBe("frontend");
+    expect(frames.discrepancy).toMatch(/no backend gate/);
   });
 });
 
@@ -202,10 +283,14 @@ describe("the anti-claims — rows where Premium adds nothing", () => {
     }
   });
 
-  it("keeps 'ad-free' out of the sales list while no ads are served", () => {
+  it("keeps 'ad-free' out of the SALES list while no ads are served", () => {
+    // PT1.13B announces it, which is not the same as counting it. It must
+    // not appear among the things Premium unlocks today, and it must not
+    // appear among the things Free already has either — it is neither.
     const ads = benefitById("ad-free")!;
     expect(ads.enforcement).toBe("inert");
-    expect(ads.userFacingSummary).toBeNull();
+    expect(premiumBenefits().map((b) => b.id)).not.toContain("ad-free");
+    expect(freeBenefits().map((b) => b.id)).not.toContain("ad-free");
   });
 });
 
@@ -241,9 +326,17 @@ describe("grouping", () => {
     for (const g of shown) expect(benefitsInGroup(g).length).toBeGreaterThan(0);
   });
 
-  it("partitions the presentable rows exactly once between Free and Premium", () => {
-    const total = presentableBenefits().length;
+  it("partitions the AVAILABLE rows exactly once between Free and Premium", () => {
+    const total = availableBenefits().length;
     expect(premiumBenefits().length + freeBenefits().length).toBe(total);
+  });
+
+  it("groups upcoming rows alongside the shipped ones they belong with", () => {
+    // A living checklist, not a roadmap appendix: Team Combat sits under
+    // Combat tools next to the 1v1 lab, so a status flip changes a pill to a
+    // check and moves nothing.
+    expect(benefitsInGroup("combat").map((b) => b.id)).toContain("team-combat");
+    expect(benefitsInGroup("combat").map((b) => b.id)).toContain("combat-lab-1v1");
   });
 });
 
