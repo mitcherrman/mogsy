@@ -17,6 +17,7 @@ export type { CalcInput, CalcResult, CalcStep } from "./CalculationBreakdown";
 export { ChampionScenarioCard } from "./ChampionScenarioCard";
 export { CombatCalculationScenarioCard } from "./CombatCalculationScenarioCard";
 export { MatchupScenarioCard } from "./MatchupScenarioCard";
+export { SummonerSpellScenarioCard } from "./SummonerSpellScenarioCard";
 export { CollectibleCard, SubjectPlaceholder, SubjectPlaceholderCard } from "./DefaultScenarioCard";
 export {
   classifySubject,
@@ -24,6 +25,7 @@ export {
   getCombatCooldownSubject,
   getItemAnalysisSubject,
   getMatchupSubject,
+  getSummonerSpellHasteSubject,
   inferKindFromQuestion,
   isSpoilerSubject,
   normalizeLabel,
@@ -34,6 +36,7 @@ export type {
   CombatCooldownSubject,
   ItemAnalysisSubject,
   MatchupSubject,
+  SummonerSpellHasteSubject,
   ScenarioCardProps,
   ScenarioEntryData,
   ScenarioSectionData,

@@ -915,6 +915,28 @@ const SLICE_MATCHUP_SCENARIO = scenarioSourceForMasteryChallenge({
   },
 });
 
+// The SSM slice, as the backend now emits it. Copied verbatim from
+// `ranked_public.mastery_slices._phase_presentation` output for the
+// Barrier slice — the combined (rune + boots) phase, which is the richest
+// shape the family has.
+const SSM_SPELL_SCENARIO = {
+  id: "ssm-1", category: "summoners", question_text: "", format: "multiple_choice",
+  choices: [] as string[],
+  metadata: {
+    assets: { subject: {
+      type: "summoner_spell_haste",
+      spell: "Barrier",
+      spell_icon: "assets/summoner_spells/Barrier.png",
+      sources: [
+        { name: "Cosmic Insight", icon: "assets/runes/Cosmic_Insight.png", kind: "rune" },
+        { name: "Ionian Boots of Lucidity", icon: "assets/items/3158.png", kind: "item" },
+      ],
+      total_haste: 28,
+    } },
+    presentation: { role: "context", timing: "question", spoiler: false },
+  },
+} as unknown as QuizQuestion;
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -1039,6 +1061,10 @@ const STATES: InspectorState[] = [
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "What is Ahri's base Armor at level 9?" }}
       scenarioSource={SLICE_STAT_SCENARIO} selected={null} /> },
+  { key: "arena-ssm", label: "Arena — SSM slice (spell + haste sources)",
+    render: () => <ArenaComposition
+      question={{ ...ITEM_Q, prompt: "Barrier has a 180-second base cooldown. You are running Cosmic Insight (18 summoner spell haste) and Ionian Boots of Lucidity (10 summoner spell haste). That is 28 summoner spell haste in total. What is Barrier's cooldown now?" }}
+      scenarioSource={SSM_SPELL_SCENARIO} selected={null} /> },
   { key: "arena-matchup", label: "Arena — Matchup slice (champion vs champion)",
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "Whose W has the longer cooldown at rank 1?" }}

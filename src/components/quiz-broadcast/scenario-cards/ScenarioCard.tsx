@@ -5,6 +5,7 @@ import { selectScenario } from "./classify";
 import { ChampionScenarioCard } from "./ChampionScenarioCard";
 import { CombatCalculationScenarioCard } from "./CombatCalculationScenarioCard";
 import { MatchupScenarioCard } from "./MatchupScenarioCard";
+import { SummonerSpellScenarioCard } from "./SummonerSpellScenarioCard";
 import { ItemAnalysisScenarioCard } from "./ItemAnalysisScenarioCard";
 import { CollectibleCard, SubjectPlaceholder, SubjectPlaceholderCard } from "./DefaultScenarioCard";
 
@@ -50,6 +51,8 @@ function renderCard(selection: ScenarioSelection, revealed: boolean) {
       return <CombatCalculationScenarioCard subject={selection.combat} />;
     case "matchup":
       return <MatchupScenarioCard subject={selection.matchup} />;
+    case "summoner_spell_haste":
+      return <SummonerSpellScenarioCard subject={selection.spell} />;
     case "item_analysis":
       return <ItemAnalysisScenarioCard item={selection.item} revealed={revealed} />;
     case "champion_profile":

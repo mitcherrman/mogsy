@@ -374,3 +374,115 @@ describe("MatchupScenarioCard — two champions at balanced weight", () => {
     expect(selectScenario(oneSided, false, null).card).not.toBe("matchup");
   });
 });
+
+// ============================================ the SSM summoner-spell card
+
+describe("SummonerSpellScenarioCard — the live SSM slice", () => {
+  // Verbatim `_phase_presentation` output for the Barrier slice. Base phase,
+  // single-source phase and combined phase are the three real shapes; there is
+  // no fourth, and none of them names a champion.
+  function spellQuestion(subject: Record<string, unknown>): QuizQuestion {
+    return {
+      id: "ssm",
+      category: "summoners",
+      question_text: "What is Barrier's cooldown now?",
+      format: "multiple_choice",
+      choices: ["129.6s", "140.6s", "180s", "152.5s"],
+      metadata: {
+        assets: { subject },
+        presentation: { role: "context", timing: "question", spoiler: false },
+      } as QuizQuestion["metadata"],
+    };
+  }
+
+  const BASE = spellQuestion({
+    type: "summoner_spell_haste", spell: "Barrier",
+    spell_icon: "assets/summoner_spells/Barrier.png", sources: [],
+  });
+  const SINGLE = spellQuestion({
+    type: "summoner_spell_haste", spell: "Barrier",
+    spell_icon: "assets/summoner_spells/Barrier.png",
+    sources: [{ name: "Cosmic Insight", icon: "assets/runes/Cosmic_Insight.png", kind: "rune" }],
+    total_haste: 18,
+  });
+  const COMBINED = spellQuestion({
+    type: "summoner_spell_haste", spell: "Barrier",
+    spell_icon: "assets/summoner_spells/Barrier.png",
+    sources: [
+      { name: "Cosmic Insight", icon: "assets/runes/Cosmic_Insight.png", kind: "rune" },
+      { name: "Ionian Boots of Lucidity", icon: "assets/items/3158.png", kind: "item" },
+    ],
+    total_haste: 28,
+  });
+
+  function renderSpell(q: QuizQuestion) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <ScenarioCard question={q} revealActive={false} correctAnswer={null} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("is the card the classifier selects, on the cinematic band", () => {
+    for (const q of [BASE, SINGLE, COMBINED]) {
+      expect(selectScenario(q, false, null).card).toBe("summoner_spell_haste");
+      expect(selectFamilyLayout(q)).toBeNull();
+      expect(resolveBandProfile(q, "band", null)).toBe("cinematic");
+    }
+  });
+
+  it("makes the SPELL the subject, with no champion media anywhere", () => {
+    const { container } = renderSpell(COMBINED);
+    expect(screen.getByText("Barrier")).toBeInTheDocument();
+    // Stated ONCE, by the badge — the card carries no sub-label echoing it.
+    expect(screen.getAllByText("Summoner Spell")).toHaveLength(1);
+    expect(screen.getByRole("img", { name: "Barrier" }).getAttribute("src"))
+      .toContain("summoner_spells/Barrier.png");
+    // The universal rule: show the subject of the question and nothing
+    // irrelevant. An SSM phase is not about a champion.
+    expect(container.innerHTML).not.toContain("champions/");
+    expect(container.innerHTML).not.toContain("splash");
+  });
+
+  it("names each haste source and labels its kind", () => {
+    renderSpell(COMBINED);
+    expect(screen.getByText("Haste Sources")).toBeInTheDocument();
+    expect(screen.getByText("Cosmic Insight")).toBeInTheDocument();
+    expect(screen.getByText("Rune")).toBeInTheDocument();
+    expect(screen.getByText("Ionian Boots of Lucidity")).toBeInTheDocument();
+    expect(screen.getByText("Item")).toBeInTheDocument();
+    expect(screen.getByText("Haste")).toBeInTheDocument();
+    expect(screen.getByText("28")).toBeInTheDocument();
+  });
+
+  it("draws the base phase as the spell alone", () => {
+    // Its answer IS the base cooldown, so it may state only which spell.
+    renderSpell(BASE);
+    expect(screen.getByText("Barrier")).toBeInTheDocument();
+    expect(screen.queryByText("Haste Sources")).not.toBeInTheDocument();
+    expect(screen.queryByText("Haste")).not.toBeInTheDocument();
+  });
+
+  it("shows one source for a single-source phase", () => {
+    renderSpell(SINGLE);
+    expect(screen.getByText("Cosmic Insight")).toBeInTheDocument();
+    expect(screen.queryByText("Ionian Boots of Lucidity")).not.toBeInTheDocument();
+    expect(screen.getByText("18")).toBeInTheDocument();
+  });
+
+  it("discloses no cooldown before the reveal", () => {
+    const { container } = renderSpell(COMBINED);
+    for (const option of ["129.6", "140.6", "180s", "152.5"]) {
+      expect(container.textContent).not.toContain(option);
+    }
+  });
+
+  it("falls through when the spell is missing rather than drawing sources alone", () => {
+    const noSpell = spellQuestion({
+      type: "summoner_spell_haste",
+      sources: [{ name: "Cosmic Insight", icon: "assets/runes/Cosmic_Insight.png", kind: "rune" }],
+    });
+    expect(selectScenario(noSpell, false, null).card).not.toBe("summoner_spell_haste");
+  });
+});

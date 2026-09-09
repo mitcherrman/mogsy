@@ -53,6 +53,21 @@ export type MatchupSubject = {
   badge?: string;
 };
 
+/**
+ * Parsed payload for an SSM slice phase — a summoner spell under haste.
+ *
+ * Carries the premise only: which spell, which haste sources, and the haste
+ * total the prompt already states. Never a cooldown, because every phase's
+ * answer is one.
+ */
+export type SummonerSpellHasteSubject = {
+  spell: string;
+  spellIcon?: string | null;
+  sources: { name: string; icon: string | null; kind: "rune" | "item" }[];
+  totalHaste?: number;
+  badge?: string;
+};
+
 /** Parsed payload for combat cooldown calculation questions. */
 export type CombatCooldownSubject = {
   champion: string;
@@ -124,6 +139,7 @@ export type ScenarioSectionData = {
 export type ScenarioSelection =
   | { card: "combat_calculation"; key: string; combat: CombatCooldownSubject }
   | { card: "matchup"; key: string; matchup: MatchupSubject }
+  | { card: "summoner_spell_haste"; key: string; spell: SummonerSpellHasteSubject }
   | { card: "item_analysis"; key: string; item: ItemAnalysisSubject }
   | { card: "champion_profile"; key: string; champion: string }
   | { card: "collectible"; key: string; iconUrl: string; label?: string; kind: SubjectKind }

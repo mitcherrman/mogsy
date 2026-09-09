@@ -20,6 +20,7 @@ import type {
   CombatCooldownSubject,
   ItemAnalysisSubject,
   MatchupSubject,
+  SummonerSpellHasteSubject,
   ScenarioSelection,
   SubjectKind,
 } from "./types";
@@ -369,6 +370,43 @@ export function getMatchupSubject(question: QuizQuestion): MatchupSubject | null
   };
 }
 
+/**
+ * Parse an SSM summoner-spell-haste subject, or null.
+ *
+ * The spell is required: it is the subject of every phase, and a card built
+ * from the haste sources alone would state a premise the question does not
+ * have. The backend already fails closed the same way (4 of the 9 certified
+ * spells have no canonical row), so in practice this guard is belt-and-braces.
+ */
+export function getSummonerSpellHasteSubject(
+  question: QuizQuestion,
+): SummonerSpellHasteSubject | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
+    | Record<string, unknown>
+    | undefined;
+  if (!subject || subject.type !== "summoner_spell_haste") return null;
+  const spell = subject.spell as string | undefined;
+  if (!spell) return null;
+  const rawSources = Array.isArray(subject.sources) ? subject.sources : [];
+  return {
+    spell,
+    spellIcon: resolveQuizAssetUrl(subject.spell_icon as string | undefined),
+    sources: rawSources.flatMap((entry) => {
+      const s = entry as Record<string, unknown>;
+      const kind = s.kind === "rune" || s.kind === "item" ? s.kind : null;
+      if (!kind || typeof s.name !== "string") return [];
+      return [{
+        name: s.name,
+        icon: resolveQuizAssetUrl(s.icon as string | undefined),
+        kind,
+      }];
+    }),
+    totalHaste: typeof subject.total_haste === "number" ? subject.total_haste : undefined,
+    badge: typeof subject.badge === "string" && subject.badge ? subject.badge : undefined,
+  };
+}
+
 export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubject | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
   const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
@@ -458,6 +496,7 @@ export function selectScenario(
 
   const combat = getCombatCooldownSubject(question);
   const matchup = getMatchupSubject(question);
+  const spellHaste = getSummonerSpellHasteSubject(question);
   const item = getItemAnalysisSubject(question);
   const explicit = getExplicitScenarioType(question);
 
@@ -483,6 +522,9 @@ export function selectScenario(
   }
   if (matchup && !shouldHide) {
     return { card: "matchup", key: `matchup-${question.id}`, matchup };
+  }
+  if (spellHaste && !shouldHide) {
+    return { card: "summoner_spell_haste", key: `spell-${question.id}`, spell: spellHaste };
   }
   if (item && !shouldHide) {
     return { card: "item_analysis", key: `item-${question.id}`, item };

@@ -143,6 +143,13 @@ export function ScenarioSubject({
  * Hero artwork for subjects without splash art (items, runes, spells):
  * a large centered icon with a soft gold glow and gentle float, sitting in
  * the card's upper art zone.
+ *
+ * FLOORED (RR1 SSM pass). This primitive shipped unused, and its sizes were
+ * bare `cqmin` like the rest of the pre-`--sc-fit` era — 13cqmin is 130px on
+ * the 16:9 broadcast stage and 23px in the Ranked band. Its first real consumer
+ * is the summoner-spell card, whose whole subject IS this icon, so it gets the
+ * same floor idiom every other primitive here uses. `M <= 0.625 * N` keeps the
+ * `cqmin` term winning on the stage, so the broadcast rendering is unchanged.
  */
 export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
   const [errored, setErrored] = useState(false);
@@ -156,7 +163,7 @@ export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; al
       >
         <motion.div
           aria-hidden
-          className="absolute -inset-[2cqmin] rounded-3xl bg-[#d4b35a]/20 blur-2xl"
+          className="absolute -inset-[max(2cqmin,calc(0.625*var(--sc-fit)))] rounded-3xl bg-[#d4b35a]/20 blur-2xl"
           animate={{ opacity: [0.4, 0.75, 0.4] }}
           transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -164,7 +171,7 @@ export function ScenarioHeroIcon({ iconUrl, alt }: { iconUrl?: string | null; al
           src={iconUrl}
           alt={alt}
           onError={() => setErrored(true)}
-          className="relative h-[13cqmin] w-[13cqmin] rounded-2xl border border-[#d4b35a]/50 object-cover shadow-[0_18px_44px_-10px_rgba(0,0,0,0.85)]"
+          className="relative h-[max(13cqmin,calc(4*var(--sc-fit)))] w-[max(13cqmin,calc(4*var(--sc-fit)))] rounded-2xl border border-[#d4b35a]/50 object-cover shadow-[0_18px_44px_-10px_rgba(0,0,0,0.85)]"
         />
       </motion.div>
     </div>
