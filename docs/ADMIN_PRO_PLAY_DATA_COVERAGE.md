@@ -113,8 +113,23 @@ navigation exposure.
 
 ## Status
 
-See the final report in the session that shipped this for the live-verification
-record.
+**Merged to `main` (`55b31e2f`) — NOT LIVE.**
+
+Pushed 2026-09-09. Production's main bundle
+(`/assets/index-B9L9ushQ.js`) was polled every 30s for 30 minutes afterwards
+and its hash never changed; it still contains no `pro-play-coverage`
+reference. Lovable did not publish automatically. **The owner must press
+Publish in Lovable** — the same trap this repo has hit before (Graph1 Phase F,
+Pro Play Step 2, the hub Premium module).
+
+`https://mogzy.lol/admin/pro-play-coverage` answers 200 today only because it
+is a SPA index; the route does not exist in the deployed bundle.
+
+Verified so far: 17 new tests green on the `origin/main` base, `vite build`
+clean (`AdminProCoverage-*.js`, 14.94 kB), and the route/gate/registry
+agreement suites green. Live desktop and narrow-viewport verification against
+real production data is BLOCKED until the publish fires, and has not been
+done.
 
 ## Next task
 
