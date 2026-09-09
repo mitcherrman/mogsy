@@ -1,7 +1,8 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 38 (containment VERIFIED IN PRODUCTION; Timmy Demo cleared to
-     create) is at the top of this file.
+<!-- Revision 39 (Timmy Demo CREATED, SEEDED AND LIVE in Free; Premium
+     pending one admin action) is at the top of this file.
+     Revision 38 verified the containment that made it safe to create.
      Revision 37 built the containment and the seed planner it verifies.
      Revision 36 was the data-contract audit it implements — APPROVED, with
      the ten binding owner decisions in its §0a.
@@ -21,6 +22,219 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-09 — TIMMY DEMO **CREATED, SEEDED AND LIVE (FREE)** — Premium pending one admin action
+
+Timmy Demo exists in production, is contained, and renders the mature Free
+experience end to end. **Premium has not been granted** — that step needs an
+admin Supabase session, which this workstream does not hold.
+
+### 1. Identity
+
+| | |
+|---|---|
+| auth UUID | **`d1f43bfb-a51b-4055-ae83-c790c8ad2348`** |
+| `profiles.id` | `8fbeafd6-6b23-4c2a-aa99-5117eb0e23bf` |
+| display name | `Timmy` (claimed under AUTH3) |
+| created | `2026-09-09T02:48:40Z`, email confirmed `02:49:22Z` |
+| `is_bot` | **true** — set by the owner in the SQL editor |
+| `is_anonymous` / `is_disabled` | false / false |
+
+**The mapping was proved, not assumed:** signed in through the production
+`/auth` flow, decoded the JWT `sub` independently of the response body, then
+read the profile row under own-row RLS — which scopes to `auth.uid() = user_id`,
+so the row is his by construction. All six fields matched exactly.
+
+**`is_bot` needed the owner, and this revision proves why.** Attempting it with
+Timmy's own session returned **HTTP 200 with a row** and changed nothing:
+`protect_profile_premium_fields` reverts `NEW.is_bot` to `OLD.is_bot` for any
+authenticated non-admin. A success response is not a mutation here. The SQL
+editor works only because ADM3's `auth.uid() IS NOT NULL AND` guard exempts
+writes with no `auth.uid()`.
+
+### 2. Containment came before history
+
+Registered in `demo_accounts` while Timmy still had **0 rows** — the script
+aborts if he has any — and the platform aggregate was **11,224 before and
+after**, because there was nothing yet to contain.
+
+```
+d1f43bfb-… | timmy_demo | Timmy | 2026-09-09 03:10:34 | plan_fingerprint NULL
+```
+
+`plan_fingerprint` NULL is the point: contained first, seeded second.
+
+### 3. A defect found in production verification, not in test
+
+The first apply wrote all 653 rows and every headline number was correct — but
+**Quiz History rendered `0%` and `0/0` on all ten visible rows**. All 46
+sessions stored `score 0 / total_questions 0`.
+
+The cause was the seeder's, not the product's. `record_session_answer` tallies
+onto a session only while `completed_at IS NULL` — the live path's guard against
+a stale client scoring a finished run. The seeder inserted each session
+*already completed*, so every tally returned `False` and counted nothing. The
+428 attempts behind them were present and correct throughout, which is exactly
+why nothing else looked wrong.
+
+**The dry-run report is why it survived review**: it printed the session COUNT
+and nothing about their contents. It now reports how many sessions actually
+scored, how many questions and correct answers were tallied, and how many
+distinct labels resulted — so a fully-zeroed history cannot pass again.
+
+Two further shapes were wrong for one underlying reason — categories were
+assigned per *answer* rather than per *sitting*:
+
+* absolute-max-need drained the small categories first and handed the largest
+  one the entire tail, so the ten most recent sessions — exactly the Free
+  window — all carried one label;
+* proportional-need then spread every category so evenly that no session had a
+  dominant subject and every row lost its label.
+
+Real practice is themed, so the picker is now **sticky**: it stays on a subject
+for about a sitting's length, then moves on by proportional need. 46 sessions
+come out as 7 labelled subjects and 23 genuinely mixed, and a session is
+labelled by its own dominant category or `NULL` when mixed — `NULL` being what
+the live path already stores for a non-category-scoped run.
+
+Fixed in `87afd685`, `PLAN_VERSION → timmy_demo.v2`, four regression tests each
+naming the defect it pins. `quiz/tests` failure set identical to pristine
+`origin/master` (111 → 111); passing 382 → **386**.
+
+**One derived value moved as a consequence: `total_xp` 4074 → 4082**, and XP to
+Challenger 1926 → 1918, because the sticky picker changes which difficulty
+cycle each attempt draws. XP is an **output** of the economy, so it was not
+tuned back to hit the reviewed figure — doing that would be fitting the data to
+a number, which is the practice this architecture exists to avoid. Tier, band
+and every other headline value are unchanged.
+
+### 4. Final seeded state — production, verified through the live API
+
+| | |
+|---|---|
+| fingerprint of record | **`ff44f98f54efacd5a92f07fa344d316b…`** (v2) |
+| answered / correct / accuracy | **428 / 317 / 74.07 %** |
+| total XP | **4,082** |
+| Academy | **Diamond** `[3000…6000)`, **1,918 to Challenger** (36.07 %) |
+| legacy rank | Master |
+| streak | **7**, best **24** |
+| best category | **Champion Attack Types 91.38 %** |
+| achievements | **6 / 6** |
+| Ranked | **1,218 → Gold**, 82 to Diamond, 18 rated of 22 |
+| sessions | **46/46 scored** — 428 questions, 317 correct tallied |
+
+653 rows across 12 tables. Ranked: 22 matches / 44 participants / 22 results /
+18 rating events / 58 discoveries.
+
+**Omissions held:** `dsa_runs` 0 · `ranked_queue_entries` 0 · every match
+`creation_source='dev_fixture'` · no result left `pending` · no mastery, no
+Combat Lab.
+
+### 5. Idempotency
+
+| run | outcome |
+|---|---|
+| v1 apply | wrote 653 rows |
+| v1 second apply | *"unchanged — the stored fingerprint matches"* |
+| v2 apply (changed plan) | **rewrote**, did not double — counts identical |
+| v2 second apply | no-op on `ff44f98f…` |
+
+### 6. Containment after seeding
+
+Every protected table and **all four consumer aggregates byte-identical** to
+the pre-seed fingerprint:
+
+| | pre | post | |
+|---|---|---|---|
+| platform total_attempts | 11,224 | **11,224** | ✅ |
+| platform accuracy | 13.02 % | **13.02 %** | ✅ |
+| `question_performance` top-20 | `bf51759…` | `bf51759…` | ✅ |
+| `export_admin_report` most-missed | `eb29148…` | `eb29148…` | ✅ |
+| `demo::timmy` attempts / sessions | `f2f9473…` / `703dfa8…` | identical | ✅ |
+| other users' progress / categories / achievements | — | identical | ✅ |
+| pre-existing `ranked_matches` (63, filtered) | `026d91e…` | `026d91e…` | ✅ |
+
+`quiz_attempts` grew 11,526 → 11,954 (**+428**) while the served figure did
+not move at all. `GET /api/quiz/stats` still returns **11,224 @ 13.02 %**.
+
+### 7. Ranked and community containment
+
+| surface | result |
+|---|---|
+| `/api/ranked/progression` unauthenticated | 401 |
+| … as an anonymous guest | 403 `ACCOUNT_REQUIRED` |
+| … as Timmy | his own 1,218 / gold |
+| `/api/ranked/{leaderboard,ratings,rankings,top}` | **404 — no such surface exists** |
+| `search_league_profiles('timmy')` | **1 match before `is_bot`, 0 after** |
+| queue entries | 0 |
+
+Timmy holds the only `ranked_ratings` row in production, and nothing reads that
+table cross-user.
+
+### 8. Free-state UI — verified in Chromium
+
+The Browser pane could not be used: it reports `document.hidden = true` even
+when fronted, so every capture came back black. Playwright is this project's
+documented answer for visual verification and was used instead.
+
+**Academy Commons** — `ACADEMY RECORD | Timmy | ACADEMY DIAMOND | TO NEXT TIER
+1,918 XP | ANSWERED 428 | ACCURACY 74.1% | STREAK 7 · best 24 | STRONGEST
+Champion Attack Types | RANKED 1,218 · Gold`, `data-record-state="open"`.
+
+**Bulletin** — the personal notice fires from real seeded Ranked rows:
+*"YOU WON YOUR LAST RANKED MATCH · +18 RATING · VERSUS KESTREL · SEP 5"*.
+
+**Profile** — Academy Diamond 4,082 XP, 36 % to Challenger, streak 7 / best 24,
+74.07 %, 428 answered, achievements 6/6 100 %, Recent Activity `8/9 88.9 %`,
+`6/9 66.7 %`, `6/9 66.7 %`. Category block: *BEST: CHAMPION ATTACK TYPES · 91.4 %*.
+
+**Free gates all correct** — Quiz History 10 of 46 with the upgrade prompt;
+Missed Question Bank locked; Premium page showing the $9.99 offer; Commons
+Premium panel reading *ACADEMY MEMBERSHIP / Mogzy Premium / Explore Premium*.
+
+**Zero Timmy-specific frontend branches.** Every surface renders him through
+the same hook it uses for any member.
+
+### 9. Premium — one admin action outstanding
+
+`admin_set_pro_grant` raises `Forbidden: admin role required` and, unlike the
+trigger, **also refuses a NULL `auth.uid()`** — so the SQL editor cannot call
+it. It needs a real admin session.
+
+A security probe was run while establishing this, on the demo account: a
+non-admin **cannot** set their own `pro_grant_kind`. PT1.4 extended
+`protect_profile_premium_fields` to clamp `pro_grant_kind` and
+`pro_grant_expires_at`, and asserts the `auth.uid() IS NOT NULL` guard survived.
+Entitlement is properly protected; there is no escalation path.
+
+**Recommended:** grant from the Admin UI (PT1.4's control), which records
+`pro_grant_granted_by` / `_at`. Then allow **120 s** for the
+`services/pro_status.py` cache before verifying.
+
+### 10. Cleanup / reseed
+
+```bash
+# remove every fixture row (11 owned tables + the registry row)
+python3 scripts/seed_demo_account.py --remove --db /data/lol_calc.db \
+  --user-id d1f43bfb-a51b-4055-ae83-c790c8ad2348
+
+# reseed identically (same --as-of is byte-identical; a later one slides forward)
+python3 scripts/seed_demo_account.py --user-id d1f43bfb-a51b-4055-ae83-c790c8ad2348 \
+  --as-of 2026-09-09 --db /data/lol_calc.db --apply
+```
+
+Supabase side, if ever fully retiring him: `admin_set_pro_grant(<uuid>, NULL)`,
+then delete the profile and the auth user.
+
+### 11. Two housekeeping notes
+
+* **One anonymous `auth.users` row** was created during UUID resolution, before
+  the email was available — the app's own guest path. `purge-anonymous-users`
+  is admin-gated, so it needs an owner run.
+* **Timmy's password was shared in plaintext** in the working transcript. It is
+  a demo credential, but a real one — worth rotating once verification closes.
+
+---
 
 ## Revision 2026-09-09 — CONTAINMENT **VERIFIED IN PRODUCTION** — Timmy Demo cleared to create
 
