@@ -820,26 +820,13 @@ export function MatchupBody() {
           screen there is nothing left for it to correct, and it cost the reader
           a paragraph before the matchup. `contract.notes.focus` and the whole
           focus payload are untouched. */}
-      <div className="mb-3 flex gap-1" role="tablist" aria-label="Explorer mode">
-        {(["team", "lane"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            role="tab"
-            aria-selected={mode === m}
-            data-testid={`matchup-mode-${m}`}
-            onClick={m === "team" ? toTeam : toLane}
-            className={[
-              "rounded-md border px-3 py-1 text-xs transition-colors",
-              mode === m
-                ? "border-foreground/30 bg-muted font-medium"
-                : "border-border text-muted-foreground hover:text-foreground",
-            ].join(" ")}
-          >
-            {m === "team" ? "Five-lane board" : "Lane explorer"}
-          </button>
-        ))}
-      </div>
+      {/* THE MODE TABS STOOD HERE. The Explorer opened by asking which of two
+          products the reader wanted before showing either, and the five-lane
+          board is the answer in every case — `modeFromParams` already treats it
+          as the default. The lane explorer is NOT deleted: `mode=lane` still
+          resolves, every lane plate's "Open lane dossier" still routes into it
+          with the lane carried, and a pasted lane URL still works. Only the
+          question is gone. */}
 
       {error ? <ErrorBlock message={error} /> : null}
 
@@ -854,7 +841,6 @@ export function MatchupBody() {
             data={teamData}
             selection={teamSelection}
             onChange={applyTeam}
-            onSwitchToLane={toLane}
           />
         ) : null}
 

@@ -22,12 +22,14 @@
 // filtering it out would destroy the feature.
 // ---------------------------------------------------------------------------
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { formatDate, formatRate, formatRecord } from "@/lib/pro-play/researchApi";
-import type { DemonstratedPool, PoolChampion } from "@/lib/pro-play/matchupApi";
+import type { DemonstratedPool, Lane, PoolChampion } from "@/lib/pro-play/matchupApi";
 
 import ProPlayTooltip from "../ProPlayTooltip";
+
+import { useBoardSelection } from "./BoardSelection";
 
 import { ChampionIcon } from "./DossierMedia";
 import { Disclosure } from "./DossierChrome";
@@ -36,17 +38,15 @@ import { Disclosure } from "./DossierChrome";
 export const MIN_GAMES_FOR_RATE = 5;
 
 /**
- * How many champions the BOARD shows before the disclosure.
+ * How many champions a COLLAPSED card shows.
  *
- * The old board showed five per category because five is a small number, and
- * that was the complaint: a player with a twenty-champion pool looked like a
- * player with five. Fourteen is not a rounder arbitrary number -- it is what
- * fills whole rows of the new fixed-width tiles at the widths a lane card
- * actually gets, so the grid ends flush instead of trailing a ragged remainder.
- * Most demonstrated pools in the corpus are smaller than this, which means the
- * common case now shows the WHOLE pool and the cap never fires.
+ * This is a layout number, not a claim about the player, and it is never
+ * printed: the reader sees "Show all 24", not "top 12". Twelve is two full
+ * rows of fixed-width tiles at the width a lane half actually gets, which is
+ * what keeps the two halves of a lane the same height whether one player has
+ * six demonstrated picks and the other twenty-four.
  */
-export const BOARD_PRIMARY_MAX = 14;
+export const BOARD_PRIMARY_MAX = 12;
 
 /** The two ordering strips. Icon-only, so they cost one line each. */
 export const BOARD_STRIP_MAX = 10;
@@ -107,10 +107,19 @@ export function poolCategories(champions: PoolChampion[], size: number): PoolCat
  * recognises is still identifiable; it just costs a hover instead of a line of
  * text in every tile.
  */
-function ChampionChip({ champion }: { champion: PoolChampion }) {
+function ChampionChip({
+  champion,
+  onSelect,
+  selected,
+}: {
+  champion: PoolChampion;
+  onSelect?: (championKey: string) => void;
+  selected?: boolean;
+}) {
   // Leads with the name, then adds only what the tile does NOT already show.
-  // Games and win rate are printed on the tile, so repeating them here would
-  // make a screen reader say each twice.
+  // Wins, games and win rate are printed on the tile, so repeating them here
+  // would make a screen reader say each twice; the losses half of the record
+  // and the date are not.
   const detail = [
     champion.key,
     formatRecord(champion.wins, champion.losses),
@@ -125,11 +134,20 @@ function ChampionChip({ champion }: { champion: PoolChampion }) {
       label={champion.key}
       tooltip={detail}
       testId={`champ-chip-${champion.key}`}
-      className={["dossier-champ-chip", champion.banned ? "is-banned" : ""].join(" ")}
+      onClick={onSelect ? () => onSelect(champion.key) : undefined}
+      pressed={onSelect ? Boolean(selected) : undefined}
+      className={[
+        "dossier-champ-chip",
+        champion.banned ? "is-banned" : "",
+        selected ? "is-selected" : "",
+      ].join(" ")}
     >
       <ChampionIcon champion={champion.key} muted={champion.banned} />
+      {/* "10/13" rather than "13g": `g` reads as gold on a League page, and
+          wins-over-games says in the same width what games-plus-rate needed
+          two numbers to say. */}
       <span className="dossier-champ-chip__stat tabular-nums">
-        {champion.games}g
+        {champion.wins}/{champion.games}
       </span>
       <span className="dossier-champ-chip__rate tabular-nums">
         {formatRate(champion.win_rate)}
@@ -210,31 +228,62 @@ function PoolTable({ pool }: { pool: DemonstratedPool }) {
  * sentence: the roster row is real, only the pool FETCH was bounded, and the
  * lane view serves it in full.
  */
+/** Who this pool belongs to. Absent off the board — the lane explorer renders
+ *  the same component and has no selection to make. */
+export interface PoolOwner {
+  player_lp_page: string;
+  display_name: string;
+  team_key: string;
+  lane: Lane;
+}
+
 export function ChampionPoolSummary({
   pool,
   poolOmitted,
   preview,
   testId,
+  owner,
 }: {
   pool: DemonstratedPool | null;
   poolOmitted: boolean;
   preview: number;
   testId?: string;
+  owner?: PoolOwner;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const board = useBoardSelection();
   // `preview` is the server's own display hint. It stays the FLOOR rather than
   // the ceiling: the board may show more now that a tile is an icon instead of
   // a name, but never fewer than the backend asked for.
-  const { primary, strips } = useMemo(() => {
-    if (!pool) return { primary: [], strips: [] as PoolCategory[] };
-    const cats = poolCategories(pool.champions, Math.max(preview, BOARD_PRIMARY_MAX));
+  const cap = Math.max(preview, BOARD_PRIMARY_MAX);
+  const { primary, strips, total } = useMemo(() => {
+    if (!pool) return { primary: [], strips: [] as PoolCategory[], total: 0 };
+    const cats = poolCategories(pool.champions, pool.champions.length);
     const played = cats.find((c) => c.id === "played")?.champions ?? [];
     return {
-      primary: played.slice(0, Math.max(preview, BOARD_PRIMARY_MAX)),
+      // Collapsed shows a fixed number so the two halves of a lane stay level;
+      // expanded shows the pool, in the same tiles, in the same card.
+      primary: expanded ? played : played.slice(0, cap),
       strips: cats
         .filter((c) => c.id !== "played")
         .map((c) => ({ ...c, champions: c.champions.slice(0, BOARD_STRIP_MAX) })),
+      total: played.length,
     };
-  }, [pool, preview]);
+  }, [pool, cap, expanded]);
+
+  const onSelect = owner
+    ? (championKey: string) =>
+        board.onSelect({
+          player_lp_page: owner.player_lp_page,
+          display_name: owner.display_name,
+          team_key: owner.team_key,
+          opponent_team_key: board.opponentOf(owner.team_key),
+          lane: owner.lane,
+          champion: championKey,
+          scope_id: board.scopeId,
+          scope_label: board.scopeLabel,
+        })
+    : undefined;
 
   if (poolOmitted) {
     return (
@@ -261,36 +310,48 @@ export function ChampionPoolSummary({
 
   return (
     <div className="dossier-pool" data-testid={testId ?? "champion-pool"}>
-      <div className="dossier-pool__head">
-        {/* "Demonstrated picks" is the semantic label and must survive every
-            visual pass — it is what stops the list reading as "champions they
-            can play". "Champion Arsenal" is ornament above it, never instead
-            of it. */}
-        <span className="dossier-pool__title">
-          <span className="dossier-pool__ornament">Champion Arsenal</span>
-          Demonstrated picks
-        </span>
-        <span className="dossier-pool__count tabular-nums" data-testid="pool-size">
-          {pool.pool_size} in {pool.scope_label}
-        </span>
-      </div>
-
+      {/* The "Champion Arsenal · Demonstrated picks" heading and its "24 in
+          2026" counter used to sit here. Both were removed by owner decision:
+          the heading labelled the only thing in the block, and the scope and
+          the pool size are now carried by the player card's own scope tag and
+          by the "Show all 24" action. The POOL SEMANTICS are unchanged and
+          still printed verbatim by the board's own fine print
+          (`data.notes.pool`) — the label went, the guarantee did not. */}
       {/* THE POOL ITSELF, not a sample of it. Ordered by games, and showing
           every champion up to a cap that only fires on the largest pools. */}
       <div className="dossier-pool__cat" data-testid="pool-cat-played">
-        <span className="dossier-pool__cat-label">
-          Most played
-          {primary.length < pool.champions.length ? (
-            <span className="dossier-pool__cat-more tabular-nums">
-              {primary.length} of {pool.champions.length}
-            </span>
-          ) : null}
-        </span>
-        <div className="dossier-pool__grid">
+        <span className="dossier-pool__cat-label">Most played</span>
+        {/* Collapsed, the grid holds two rows whether the player has six picks
+            or twenty-four, which is what keeps a lane's two halves level. */}
+        <div
+          className={["dossier-pool__grid", expanded ? "is-expanded" : ""].join(" ")}
+          data-expanded={expanded ? "true" : "false"}
+        >
           {primary.map((c) => (
-            <ChampionChip key={`played-${c.key}`} champion={c} />
+            <ChampionChip
+              key={`played-${c.key}`}
+              champion={c}
+              onSelect={onSelect}
+              selected={
+                board.selected?.champion === c.key &&
+                board.selected?.player_lp_page === owner?.player_lp_page
+              }
+            />
           ))}
         </div>
+        {/* No action when the whole pool already fits — an expander that
+            expands nothing is a lie about there being more. */}
+        {total > cap ? (
+          <button
+            type="button"
+            className="dossier-pool__expand"
+            data-testid="pool-expand"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? "Show fewer" : `Show all ${total}`}
+          </button>
+        ) : null}
       </div>
 
       {/* The other two orderings are ORDERINGS, not separate arsenals — the
@@ -309,9 +370,14 @@ export function ChampionPoolSummary({
         </div>
       ))}
 
+      {/* Named for what it IS, not for how many rows it has. "Show all 24"
+          above and "View full champion pool (24)" here were two controls
+          claiming the same thing and doing different things — one expands the
+          tiles, this one opens the evidence table with the columns a tile has
+          no room for (share of games, last played). */}
       <Disclosure
-        label={`View full champion pool (${pool.champions.length})`}
-        openLabel="Hide full champion pool"
+        label="View record table"
+        openLabel="Hide record table"
         testId="pool-disclosure"
       >
         <PoolTable pool={pool} />

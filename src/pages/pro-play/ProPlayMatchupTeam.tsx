@@ -40,7 +40,7 @@
 // composition, the team pickers and the ban bar.
 // ---------------------------------------------------------------------------
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Dossier,
   DossierSection,
@@ -53,6 +53,11 @@ import {
   ScopeRail,
   TeamSummaryPlate,
 } from "@/components/pro-play/dossier/MatchDossier";
+import {
+  BoardSelectionProvider,
+  type ChampionSelection,
+} from "@/components/pro-play/dossier/BoardSelection";
+import { ChampionIcon } from "@/components/pro-play/dossier/DossierMedia";
 import {
   type MatchupContract,
   type TeamMatchupResponse,
@@ -144,22 +149,108 @@ function TeamBanBar({
 
 // --- the board --------------------------------------------------------------
 
+/**
+ * What a champion click produces in Step 1: the settled question, stated, and
+ * an honest note that the answer is not built yet.
+ *
+ * It deliberately shows NO statistics. Everything it could cheaply repeat is
+ * already on the tile that was clicked, and anything more -- this player on
+ * this champion INTO that opponent -- is exactly the contextual aggregation
+ * Step 2 adds and this step was told not to start. An empty panel promising
+ * numbers would be worse than a panel that says what it is.
+ */
+function ChampionSelectionShell({
+  selection,
+  onClose,
+}: {
+  selection: ChampionSelection;
+  onClose: () => void;
+}) {
+  return (
+    <div className="dossier-champsel" data-testid="champion-selection-shell" role="status">
+      <div className="dossier-champsel__id">
+        <ChampionIcon champion={selection.champion} />
+        <span className="dossier-champsel__text">
+          <strong>{selection.champion}</strong>
+          <span className="dossier-muted">
+            {selection.display_name} · {selection.team_key} · {selection.lane} ·{" "}
+            {selection.scope_label}
+            {selection.opponent_team_key ? ` · vs ${selection.opponent_team_key}` : ""}
+          </span>
+        </span>
+      </div>
+      <span className="dossier-champsel__note">
+        The player × champion dossier is the next step; this selection is what it
+        will be built from.
+      </span>
+      <button
+        type="button"
+        className="dossier-btn"
+        data-testid="champion-selection-close"
+        onClick={onClose}
+      >
+        Clear
+      </button>
+    </div>
+  );
+}
+
 export function TeamBoard({
   contract,
   data,
   selection,
   onChange,
-  onSwitchToLane,
 }: {
   contract: MatchupContract;
   data: TeamMatchupResponse;
   selection: TeamSelection;
   onChange: (next: TeamSelection) => void;
-  onSwitchToLane: () => void;
 }) {
   const headerA = data.teams.a;
   const headerB = data.teams.b;
   const configured = Boolean(headerA && headerB);
+
+  // STEP 1 STOPS HERE ON PURPOSE. A champion click settles who/which/against
+  // whom/in what scope and nothing else: no request is made, no contract is
+  // invented, and the panel below states plainly that the detail is not built
+  // yet rather than showing an empty frame that looks broken. Step 2 replaces
+  // the panel and keeps this state.
+  const [selectedChampion, setSelectedChampion] = useState<ChampionSelection | null>(null);
+
+  // Clearing on a scope or team change is the honest default: a selection made
+  // in one scope is not a selection in another, and silently re-pointing it at
+  // different numbers would be worse than dropping it.
+  const boardKey = `${selection.team_a}|${selection.team_b}|${selection.scope_id}`;
+  const lastKey = useRef(boardKey);
+  if (lastKey.current !== boardKey) {
+    lastKey.current = boardKey;
+    if (selectedChampion) setSelectedChampion(null);
+  }
+
+  const boardSelection = useMemo(
+    () => ({
+      scopeLabel: data.scope.scope_label,
+      scopeId: data.scope.scope_id,
+      opponentOf: (teamKey: string) =>
+        teamKey === headerA?.team_key
+          ? headerB?.team_key ?? null
+          : teamKey === headerB?.team_key
+            ? headerA?.team_key ?? null
+            : null,
+      selected: selectedChampion,
+      onSelect: (next: ChampionSelection) =>
+        // Clicking the selected tile again clears it, so the tile is a toggle
+        // rather than a trap with no way back.
+        setSelectedChampion((cur) =>
+          cur &&
+          cur.champion === next.champion &&
+          cur.player_lp_page === next.player_lp_page
+            ? null
+            : next,
+        ),
+    }),
+    [data.scope, headerA, headerB, selectedChampion],
+  );
 
   return (
     <Dossier>
@@ -189,14 +280,11 @@ export function TeamBoard({
           >
             Swap sides
           </button>
-          <button
-            type="button"
-            className="dossier-btn"
-            data-testid="team-to-lane"
-            onClick={onSwitchToLane}
-          >
-            Lane explorer
-          </button>
+          {/* A second "Lane explorer" button stood here. The board no longer
+              asks the reader to choose a mode — each lane plate's "Open lane
+              dossier" is the one way down, and it carries the lane with it
+              instead of dropping them into an empty explorer. `onSwitchToLane`
+              is still plumbed for that route. */}
         </div>
       </div>
 
@@ -209,11 +297,19 @@ export function TeamBoard({
           eyebrow="Each player's own record"
           testId="dossier-lane-study"
         >
-          <div className="dossier-lanes" data-testid="lane-board">
-            {data.lanes.map((row) => (
-              <LanePlate key={row.lane} row={row} preview={data.pool_preview} />
-            ))}
-          </div>
+          <BoardSelectionProvider value={boardSelection}>
+            <div className="dossier-lanes" data-testid="lane-board">
+              {data.lanes.map((row) => (
+                <LanePlate key={row.lane} row={row} preview={data.pool_preview} />
+              ))}
+            </div>
+          </BoardSelectionProvider>
+          {selectedChampion ? (
+            <ChampionSelectionShell
+              selection={selectedChampion}
+              onClose={() => setSelectedChampion(null)}
+            />
+          ) : null}
           {/* The no-head-to-head guarantee is carried by the section's own
               eyebrow and by this one line, not by a boxed disclaimer above ten
               records. The server's sentence is still printed verbatim — it is

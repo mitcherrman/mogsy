@@ -36,6 +36,7 @@ import {
   LANE_TIMESHARE,
   LANE_UNCOVERED,
   drilldownUrl,
+  type Lane,
   type LaneCandidate,
   type LaneRow,
   type LaneSide,
@@ -49,6 +50,7 @@ import { PRO_PLAY_MATCHUP_ROUTE } from "@/lib/pro-play/routes";
 
 import { ChampionPoolSummary } from "./ChampionPool";
 import { Disclosure, DossierSection, Figure, Parchment } from "./DossierChrome";
+import { useBoardSelection } from "./BoardSelection";
 import { ChampionIcon, PlayerPortrait, TeamCrest } from "./DossierMedia";
 
 /** Each lane state in the reader's words. All three are about games played. */
@@ -229,16 +231,19 @@ export function ScopeRail({
 
 function CandidateFace({
   candidate,
-  state,
   preview,
   align,
+  teamKey,
+  lane,
 }: {
   candidate: LaneCandidate;
-  state: string;
   preview: number;
   align: "left" | "right";
+  teamKey: string;
+  lane: Lane;
 }) {
   const rec = candidate.record;
+  const board = useBoardSelection();
   return (
     <div className="dossier-player" data-testid={`candidate-${candidate.player_lp_page}`}>
       <div className={`dossier-player__id is-${align}`}>
@@ -251,13 +256,28 @@ function CandidateFace({
           <Link className="dossier-player__name" to={profilePath("player", candidate.player_lp_page)}>
             {candidate.display_name}
           </Link>
-          <span className="dossier-player__tags">
-            {candidate.is_starter && state === LANE_CLEAR_STARTER ? (
-              // "demonstrated" is load-bearing and must never be dropped.
-              <span className="dossier-badge is-starter" data-testid="starter-badge">
-                demonstrated starter
-              </span>
+          {/* WHERE THE "DEMONSTRATED STARTER" BADGE WAS. Removed by owner
+              decision. It is a badge, not the semantics: the lane's own state
+              still says whether one player held the lane, a timeshare still
+              renders as a timeshare and an uncovered lane still says nobody
+              played it. Removing the badge does not license starter language
+              anywhere else, and none was added. */}
+          <span className="dossier-player__meta">
+            {/* An isolated player card has to be readable on its own — whose
+                player is this, over what span. Small, and never competing with
+                the hero's team identity. */}
+            <TeamCrest name={teamKey} entityKey={teamKey} size="sm" />
+            <span className="dossier-player__team" data-testid="candidate-team">
+              {teamKey}
+            </span>
+            {board.scopeLabel ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span data-testid="candidate-scope">{board.scopeLabel}</span>
+              </>
             ) : null}
+          </span>
+          <span className="dossier-player__tags">
             {candidate.declared_member === false ? (
               <span
                 className="dossier-badge is-quiet"
@@ -298,6 +318,12 @@ function CandidateFace({
         poolOmitted={candidate.pool_omitted}
         preview={preview}
         testId={`pool-${candidate.player_lp_page}`}
+        owner={{
+          player_lp_page: candidate.player_lp_page,
+          display_name: candidate.display_name,
+          team_key: teamKey,
+          lane,
+        }}
       />
     </div>
   );
@@ -357,7 +383,15 @@ function LaneHalf({
         </p>
       ) : null}
 
-      {lead ? <CandidateFace candidate={lead} state={side.state} preview={preview} align={align} /> : null}
+      {lead ? (
+        <CandidateFace
+          candidate={lead}
+          preview={preview}
+          align={align}
+          teamKey={side.team_key}
+          lane={side.lane}
+        />
+      ) : null}
 
       {/* Every candidate is retained. On a timeshare the rest are expanded by
           default — hiding half of a shared lane would BE the forced starter
@@ -373,9 +407,10 @@ function LaneHalf({
             <CandidateFace
               key={c.player_lp_page}
               candidate={c}
-              state={side.state}
               preview={preview}
               align={align}
+              teamKey={side.team_key}
+              lane={side.lane}
             />
           ))}
         </Disclosure>

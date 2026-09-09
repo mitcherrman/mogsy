@@ -10769,6 +10769,67 @@ html.hub-commons-in-view .hextech-ambience-layer {
   color: var(--dsr-ink-soft);
 }
 
+/* Team and scope, so a lane card read on its own says whose player this is and
+   over what span. Restrained by design — the hero already carries the matchup
+   identity at full size, and this must not compete with it. */
+.proplay-dossier .dossier-player__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-player__meta .dossier-slot {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+}
+.proplay-dossier .dossier-player__team {
+  font-weight: 600;
+  color: #3a3126;
+}
+
+/* The Step 1 selection panel. A statement of what was chosen, not a dossier.
+   Sticky because the board is five lanes tall: a panel pinned under the last
+   lane is no feedback at all for a tile clicked in the first. Step 2 replaces
+   it with the real drawer. */
+.proplay-dossier .dossier-champsel {
+  position: sticky;
+  bottom: 0.5rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(93, 85, 70, 0.28);
+  border-left: 3px solid rgba(26, 96, 104, 0.55);
+  border-radius: 8px;
+  background: rgba(252, 248, 236, 0.97);
+  box-shadow: 0 6px 20px rgba(20, 16, 10, 0.28);
+  backdrop-filter: blur(2px);
+}
+.proplay-dossier .dossier-champsel__id {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-champsel__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-size: 0.72rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-champsel__note {
+  flex: 1 1 12rem;
+  font-size: 0.62rem;
+  color: var(--dsr-ink-soft);
+}
+
 .proplay-dossier .dossier-player__figures,
 .proplay-dossier .dossier-teamsum__figures {
   display: grid;
@@ -10858,6 +10919,11 @@ html.hub-commons-in-view .hextech-ambience-layer {
   border-color: rgba(93, 85, 70, 0.5);
   background: rgba(255, 253, 245, 0.85);
 }
+.proplay-dossier .dossier-champ-chip.is-selected {
+  border-color: rgba(26, 96, 104, 0.75);
+  background: rgba(255, 253, 245, 0.95);
+  box-shadow: 0 0 0 1px rgba(26, 96, 104, 0.35);
+}
 .proplay-dossier .dossier-champ-chip.is-banned {
   opacity: 0.55;
 }
@@ -10882,8 +10948,36 @@ html.hub-commons-in-view .hextech-ambience-layer {
 .proplay-dossier .dossier-pool__grid {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   gap: 0.25rem;
   margin-top: 0.2rem;
+  /* TWO ROWS, ALWAYS, WHEN COLLAPSED. Six demonstrated picks and twenty-four
+     occupy the same box, which is the only way the two halves of a lane line
+     up without the reader being shown a different amount of each player. The
+     cap that fills those rows lives in ChampionPool.tsx. */
+  min-height: 8.25rem;
+}
+.proplay-dossier .dossier-pool__grid.is-expanded {
+  min-height: 0;
+}
+
+/* The affordance, not a label: it names the whole pool ("Show all 24") rather
+   than the preview, because the preview count is layout, not a fact about the
+   player. */
+.proplay-dossier .dossier-pool__expand {
+  margin-top: 0.3rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b5a2a;
+  border-bottom: 1px solid rgba(107, 90, 42, 0.35);
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.proplay-dossier .dossier-pool__expand:hover,
+.proplay-dossier .dossier-pool__expand:focus-visible {
+  color: #4a3d1c;
+  border-color: rgba(107, 90, 42, 0.8);
 }
 
 /* An ordering strip: a sequence, so it is one line of icons and nothing else.
@@ -11113,7 +11207,68 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .proplay-dossier .dossier-vs__watermark {
     display: none;
   }
-  .proplay-dossier .dossier-player__figures,
+  /* Team and scope, so a lane card read on its own says whose player this is and
+   over what span. Restrained by design — the hero already carries the matchup
+   identity at full size, and this must not compete with it. */
+.proplay-dossier .dossier-player__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-player__meta .dossier-slot {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+}
+.proplay-dossier .dossier-player__team {
+  font-weight: 600;
+  color: #3a3126;
+}
+
+/* The Step 1 selection panel. A statement of what was chosen, not a dossier.
+   Sticky because the board is five lanes tall: a panel pinned under the last
+   lane is no feedback at all for a tile clicked in the first. Step 2 replaces
+   it with the real drawer. */
+.proplay-dossier .dossier-champsel {
+  position: sticky;
+  bottom: 0.5rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(93, 85, 70, 0.28);
+  border-left: 3px solid rgba(26, 96, 104, 0.55);
+  border-radius: 8px;
+  background: rgba(252, 248, 236, 0.97);
+  box-shadow: 0 6px 20px rgba(20, 16, 10, 0.28);
+  backdrop-filter: blur(2px);
+}
+.proplay-dossier .dossier-champsel__id {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-champsel__text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-size: 0.72rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-champsel__note {
+  flex: 1 1 12rem;
+  font-size: 0.62rem;
+  color: var(--dsr-ink-soft);
+}
+
+.proplay-dossier .dossier-player__figures,
   .proplay-dossier .dossier-teamsum__figures {
     grid-template-columns: repeat(2, 1fr);
   }

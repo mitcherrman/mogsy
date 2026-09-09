@@ -30,6 +30,10 @@ export interface ProPlayTooltipProps {
   tooltip?: string | null;
   className?: string;
   testId?: string;
+  /** When given the trigger becomes a real action rather than a disclosure. */
+  onClick?: () => void;
+  /** Reflected as `aria-pressed` so a selected trigger is announced as one. */
+  pressed?: boolean;
   children: React.ReactNode;
 }
 
@@ -38,9 +42,27 @@ export default function ProPlayTooltip({
   tooltip,
   className,
   testId,
+  onClick,
+  pressed,
   children,
 }: ProPlayTooltipProps) {
   if (!tooltip || tooltip === label) {
+    // Still a button when it DOES something — a clickable span is invisible to
+    // the keyboard.
+    if (onClick) {
+      return (
+        <button
+          type="button"
+          data-testid={testId}
+          aria-label={label}
+          aria-pressed={pressed}
+          onClick={onClick}
+          className={cn("rounded", className)}
+        >
+          {children}
+        </button>
+      );
+    }
     return (
       <span data-testid={testId} className={className}>
         {children}
@@ -62,8 +84,13 @@ export default function ProPlayTooltip({
             aria-label={
               tooltip.startsWith(label) ? tooltip : `${label} — ${tooltip}`
             }
+            aria-pressed={pressed}
+            onClick={onClick}
             className={cn(
-              "cursor-default rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60",
+              "rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60",
+              // `cursor-default` only while nothing happens on click. With a
+              // handler it is an action and must look like one.
+              onClick ? "cursor-pointer" : "cursor-default",
               className,
             )}
           >

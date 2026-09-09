@@ -712,7 +712,9 @@ describe("champion mechanics", () => {
   it("is absent until both champions are chosen", async () => {
     installFetch(response({ a: side(), b: side() }));
     renderAt("/lol/pro-play/matchup?mode=lane");
-    await waitFor(() => expect(screen.getByTestId("matchup-mode-lane")).toBeInTheDocument());
+    // The mode tabs are gone; lane mode is reached by URL and by a lane
+    // drill-down, so wait on something lane mode actually renders.
+    await waitFor(() => expect(screen.getByTestId("matchup-team-a")).toBeInTheDocument());
     expect(screen.queryByTestId("matchup-mechanics")).toBeNull();
   });
 });

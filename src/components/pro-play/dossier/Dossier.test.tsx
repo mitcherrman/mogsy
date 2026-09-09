@@ -153,9 +153,16 @@ describe("champion pool disclosure", () => {
     }
   });
 
-  it("keeps the semantic label 'Demonstrated picks' through the visual pass", () => {
+  it("no longer prints a heading over the only thing in the block", () => {
+    // Owner decision. The board still prints the server's pool sentence, which
+    // is where the "demonstrated, not able-to-play" guarantee actually lives —
+    // that assertion is in ProPlayMatchupTeam.test.tsx, against the real board.
     render(<ChampionPoolSummary pool={pool(many)} poolOmitted={false} preview={2} />);
-    expect(screen.getByTestId("champion-pool")).toHaveTextContent("Demonstrated picks");
+    const block = screen.getByTestId("champion-pool");
+    expect(block).not.toHaveTextContent("Champion Arsenal");
+    expect(block).not.toHaveTextContent("Demonstrated picks");
+    // The sorts still name themselves.
+    expect(block).toHaveTextContent("Most played");
   });
 
   it("keeps a banned champion visible, marked, in the summary", () => {
@@ -225,9 +232,9 @@ describe("champion tiles on the five-lane board", () => {
     for (const key of ["Jayce", "Ambessa", "K'Sante"]) {
       const tile = screen.getByTestId(`champ-chip-${key}`);
       expect(tile.textContent).not.toContain(key);
-      // What it DOES show is the same for every tile, which is what makes the
-      // row a grid.
-      expect(tile.textContent).toMatch(/\d+g/);
+      // What it DOES show is the same shape for every tile, which is what
+      // makes the row a grid: wins over games, then the rate.
+      expect(tile.textContent).toMatch(/\d+\/\d+/);
     }
   });
 
@@ -260,12 +267,58 @@ describe("champion tiles on the five-lane board", () => {
     expect(within(grid).getAllByTestId(/^champ-chip-/)).toHaveLength(12);
   });
 
-  it("says so when the pool is larger than the board shows", () => {
+  it("offers the whole pool by its real size, never the preview count", () => {
+    // "Show all 20", not "14 of 20" and never "top 14": the preview count is
+    // layout, and printing it would make a layout number look like a fact
+    // about the player.
     const many = Array.from({ length: 20 }, (_, i) =>
       champ({ key: `C${i}`, games: 20 - i, win_rate: 0.5 }),
     );
     render(<ChampionPoolSummary pool={pool(many)} poolOmitted={false} preview={5} />);
-    expect(screen.getByTestId("pool-cat-played")).toHaveTextContent("14 of 20");
+    const expand = screen.getByTestId("pool-expand");
+    expect(expand).toHaveTextContent("Show all 20");
+    expect(screen.getByTestId("pool-cat-played").textContent).not.toMatch(/top \d+|14 of 20/i);
+  });
+
+  it("expands to the full pool in place and collapses back", () => {
+    const many = Array.from({ length: 20 }, (_, i) =>
+      champ({ key: `C${i}`, games: 20 - i, win_rate: 0.5 }),
+    );
+    render(<ChampionPoolSummary pool={pool(many)} poolOmitted={false} preview={5} />);
+    const grid = () => screen.getByTestId("pool-cat-played");
+    expect(within(grid()).getAllByTestId(/^champ-chip-/)).toHaveLength(12);
+
+    fireEvent.click(screen.getByTestId("pool-expand"));
+    expect(within(grid()).getAllByTestId(/^champ-chip-/)).toHaveLength(20);
+    expect(screen.getByTestId("pool-expand")).toHaveTextContent("Show fewer");
+    // In place: the card is still the only thing rendered, no navigation.
+    expect(screen.getByTestId("pool-expand")).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(screen.getByTestId("pool-expand"));
+    expect(within(grid()).getAllByTestId(/^champ-chip-/)).toHaveLength(12);
+  });
+
+  it("offers no expander when the whole pool already fits", () => {
+    // An expander that expands nothing is a lie about there being more.
+    const few = Array.from({ length: 4 }, (_, i) =>
+      champ({ key: `C${i}`, games: 4 - i, win_rate: 0.5 }),
+    );
+    render(<ChampionPoolSummary pool={pool(few)} poolOmitted={false} preview={5} />);
+    expect(screen.queryByTestId("pool-expand")).toBeNull();
+  });
+
+  it("uses wins/games, not an ambiguous games count", () => {
+    render(
+      <ChampionPoolSummary
+        pool={pool([champ({ key: "Jayce", games: 13, wins: 10, losses: 3, win_rate: 0.769 })])}
+        poolOmitted={false}
+        preview={5}
+      />,
+    );
+    const tile = screen.getByTestId("champ-chip-Jayce");
+    expect(tile).toHaveTextContent("10/13");
+    // `g` reads as gold on a League page.
+    expect(tile.textContent).not.toMatch(/13g/);
   });
 
   it("renders the other orderings as icon-only strips, not a third arsenal", () => {

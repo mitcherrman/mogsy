@@ -421,3 +421,77 @@ table behind the disclosure is unchanged.
 uniform tiles, no visible names, no horizontal overflow, no broken media. On
 narrow screens the ordering strips stack their label rather than leaving a
 gutter.
+
+
+---
+
+## Step 1 of the unified Matchup Explorer (2026-09-09)
+
+**Base:** `origin/main` `3042d6b8`. Frontend only. Finishes the compact board's
+interaction shell so Step 2 can add the player × champion dossier cleanly.
+
+**No mode question.** The `Five-lane board / Lane explorer` tablist is gone, and
+so is the duplicate `Lane explorer` button in the board controls. The Explorer
+opens straight into the board — `modeFromParams` already treated `team` as the
+default. **The lane explorer is preserved, not deleted:** `mode=lane` still
+resolves, `LaneExplorer` is unchanged, every lane plate's `Open lane dossier`
+still routes into it with the lane carried, the `← Five-lane board` return path
+still works, and a pasted lane URL still works. Two pre-existing tests
+(`still renders a Phase 1 lane link in lane mode`, `offers a route back to the
+board from a lane view`) pass untouched and prove it.
+
+**Compact by default, expandable in place.** Collapsed cards show a fixed cap
+(`BOARD_PRIMARY_MAX = 12`) and the grid carries `min-height: 8.25rem` — two
+rows — so six demonstrated picks and twenty-four occupy the same box and the two
+halves of a lane stay level. Measured: all five plates 554px, every collapsed
+grid 142px, at 1440px and at 390px. The action names the **whole pool**
+(`Show all 24`), never the preview count; `Show fewer` restores it exactly
+(142 → 215 → 142px). No action at all when the pool already fits.
+
+**Notation.** Tiles read `12/13` over `92.3%` — wins/games, then rate. `g` read
+as gold on a League page, and wins-over-games says in the same width what
+games-plus-rate needed two numbers to say.
+
+**Per-card context.** Each player card carries its own crest, team key and the
+live scope tag (`[T1] T1 · 2026`), from the existing media provider, so a lane
+card is readable on its own. It follows the scope rail.
+
+**Two labels removed** by owner decision: `Champion Arsenal · Demonstrated picks`
+(and its `24 in 2026` counter) and the `demonstrated starter` badge. Verified
+zero occurrences of either inside the lane board. **The guarantees did not go
+with them:** the server's pool sentence (`Demonstrated picks: champions this
+player actually played…`) is still printed verbatim in the board's fine print,
+lane state still distinguishes clear-starter / timeshare / uncovered, and a test
+asserts no starter language (`will start`, `expected to start`, `predicted`,
+`confirmed starter`) appears anywhere.
+
+**Champion click hook — the deliverable.** `dossier/BoardSelection.tsx` is a
+small context (`scopeLabel`, `scopeId`, `opponentOf`, `selected`, `onSelect`),
+defaulting to a no-op so every isolated render and the lane explorer keep
+working without a provider. A tile click settles
+`{player_lp_page, display_name, team_key, opponent_team_key, lane, champion,
+scope_id, scope_label}`. `ProPlayTooltip` gained an optional `onClick`/`pressed`
+so the tile stays ONE button — tooltip, keyboard focus and action on the same
+element. Clicking the selected tile clears it; a scope or team change drops the
+selection rather than re-pointing it at different numbers. A sticky
+`ChampionSelectionShell` states the selection and says plainly that the detail
+is the next step — **no statistics, no invented API**.
+
+`View full champion pool (N)` was renamed `View record table`: two controls both
+claiming "24" while doing different things.
+
+**Untouched:** URL/query state, all four scopes, swap sides, the lane dossier
+drill-down, ordering strips, portraits, hero selector.
+
+**Tests** 292 pass (12 new; 9 rewritten around what replaced the removed
+labels). Typecheck failure set identical to `origin/main` (11 = 11). Build
+clean. Verified T1 vs Gen.G and Gen.G vs HLE at 1440 / 390px: no horizontal
+overflow, no broken media, no runtime errors.
+
+### Next task
+
+**Build the player × champion dossier drawer** using the selected
+`player + champion + opponent team + scope` state that `BoardSelection` now
+holds, replacing `ChampionSelectionShell`. That step owns the contextual H2H /
+backend aggregation; Step 1 deliberately made no request and assumed no
+endpoint.

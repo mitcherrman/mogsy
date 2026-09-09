@@ -745,11 +745,18 @@ describe("the five-lane board", () => {
 // --- roster semantics -------------------------------------------------------
 
 describe("roster semantics", () => {
-  it("badges a demonstrated starter and says 'demonstrated'", async () => {
+  it("carries the starter fact in the lane, not in a badge", async () => {
+    // The "demonstrated starter" badge was removed by owner decision. What it
+    // asserted was never the badge's to assert: a clear-starter lane is still a
+    // clear-starter lane, and the board still never claims a lineup.
     await renderBoard();
-    const top = screen.getByTestId("lane-card-Top");
-    const badge = within(top).getAllByTestId("starter-badge")[0];
-    expect(badge).toHaveTextContent("demonstrated starter");
+    expect(screen.queryAllByTestId("starter-badge")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(
+      /will start|expected to start|predicted|confirmed starter/i,
+    );
+    // The lane's own state is untouched and still distinguishes the cases.
+    expect(screen.getByTestId("lane-card-Top")).toBeInTheDocument();
+    expect(screen.getByTestId("lane-Jungle-T1")).toBeInTheDocument();
   });
 
   it("never badges a starter in a timeshared lane", async () => {
@@ -891,10 +898,15 @@ describe("no prediction", () => {
 // --- champion pools ---------------------------------------------------------
 
 describe("demonstrated picks", () => {
-  it("labels the pool 'Demonstrated picks'", async () => {
+  it("drops the pool heading and keeps the pool GUARANTEE", async () => {
+    // "Champion Arsenal · Demonstrated picks" was removed by owner decision.
+    // It labelled the only thing in the block. The semantics it was standing in
+    // for are served by the backend as a sentence, and that sentence is still
+    // printed verbatim — the label went, the guarantee did not.
     await renderBoard();
     const top = screen.getByTestId("lane-card-Top");
-    expect(within(top).getAllByText(/Demonstrated picks/i).length).toBeGreaterThan(0);
+    expect(within(top).queryAllByText(/Champion Arsenal/i)).toHaveLength(0);
+    expect(screen.getAllByText(NOTES.pool).length).toBeGreaterThan(0);
   });
 
   it("prints the server's pool note and never 'can play'", async () => {
@@ -1134,9 +1146,11 @@ describe("Phase 1 is not regressed", () => {
     expect(requests.some((u) => u.includes("/matchup/explore"))).toBe(true);
   });
 
-  it("switching to the board and back keeps the teams", async () => {
-    await renderBoard();
-    fireEvent.click(screen.getByTestId("matchup-mode-lane"));
+  it("reaches lane mode by URL with the teams intact", async () => {
+    // The tab that used to do this is gone. The route it drove is not: a lane
+    // URL still resolves to the explorer and still carries both teams, which
+    // is what every "Open lane dossier" link produces.
+    renderAt("?mode=lane&team_a=T1&team_b=Bilibili+Gaming");
     await waitFor(() => expect(screen.getByTestId("matchup-lane")).toBeInTheDocument());
     const last = requests[requests.length - 1];
     expect(last).toContain("/matchup/explore");
@@ -1151,10 +1165,15 @@ describe("Phase 1 is not regressed", () => {
     await waitFor(() => expect(screen.getByTestId("lane-board")).toBeInTheDocument());
   });
 
-  it("shows both mode tabs with the active one selected", async () => {
+  it("asks no mode question — the board IS the Explorer", async () => {
     await renderBoard();
-    expect(screen.getByTestId("matchup-mode-team")).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("matchup-mode-lane")).toHaveAttribute("aria-selected", "false");
+    expect(screen.queryByTestId("matchup-mode-team")).toBeNull();
+    expect(screen.queryByTestId("matchup-mode-lane")).toBeNull();
+    expect(screen.queryByRole("tablist", { name: /explorer mode/i })).toBeNull();
+    // And the redundant second route into an empty explorer went with them.
+    expect(screen.queryByTestId("team-to-lane")).toBeNull();
+    // What remains is the way down that carries the lane with it.
+    expect(screen.getAllByTestId(/^lane-drilldown-/).length).toBeGreaterThan(0);
   });
 });
 
@@ -1223,11 +1242,11 @@ describe("Phase 3 dossier", () => {
     await renderBoard();
     expect(screen.queryByTestId("team-mode-note")).toBeNull();
     expect(document.body.textContent).not.toMatch(/Mogzy's Notes/);
-    // Demonstrated, never predicted.
-    expect(screen.getAllByTestId("starter-badge")[0]).toHaveTextContent(
-      /demonstrated starter/i,
+    // Demonstrated, never predicted. The badge that used to say so is gone;
+    // removing it did not license the language it was guarding against.
+    expect(document.body.textContent).not.toMatch(
+      /will start|expected to start|predicted|confirmed starter/i,
     );
-    expect(document.body.textContent).not.toMatch(/will start|expected to start|predicted/i);
   });
 
   it("surfaces team-level figures already served by the backend", async () => {
@@ -1334,5 +1353,82 @@ describe("the refined chrome", () => {
     const body = document.body.textContent ?? "";
     expect(body).toMatch(/demonstrated/i);
     expect(body).not.toMatch(/will start|will win|predict/i);
+  });
+});
+
+// --- Step 1: the unified board ----------------------------------------------
+
+describe("the unified board", () => {
+  it("gives each player card its own team and scope", async () => {
+    // A lane card has to be readable on its own — whose player, over what span
+    // — now that the hero is the only other place the matchup is stated.
+    await renderBoard();
+    const top = screen.getByTestId("lane-card-Top");
+    const t1 = within(top).getByTestId("lane-Top-T1");
+    expect(within(t1).getAllByTestId("candidate-team")[0]).toHaveTextContent("T1");
+    expect(within(t1).getAllByTestId("candidate-scope")[0]).toHaveTextContent("2026");
+    // And a crest beside it, from the same media layer as everything else.
+    expect(within(t1).getAllByTestId("team-crest").length).toBeGreaterThan(0);
+  });
+
+  it("follows the scope rail in every player card", async () => {
+    await renderBoard();
+    expect(screen.getAllByTestId("candidate-scope")[0]).toHaveTextContent("2026");
+    fireEvent.click(screen.getByTestId("dossier-scope-all_time"));
+    await waitFor(() => expect(requests.some((u) => u.includes("scope=all_time"))).toBe(true));
+  });
+
+  it("keeps the way down into a lane", async () => {
+    await renderBoard();
+    expect(screen.getByTestId("lane-drilldown-Top")).toHaveTextContent(/Open lane dossier/i);
+  });
+
+  it("settles a player + champion + opponent + scope when a tile is clicked", async () => {
+    // STEP 1'S DELIVERABLE. Not a dossier — the question a dossier would
+    // answer, captured in a shape Step 2 can be written against.
+    await renderBoard();
+    expect(screen.queryByTestId("champion-selection-shell")).toBeNull();
+
+    const top = screen.getByTestId("lane-card-Top");
+    const t1 = within(top).getByTestId("lane-Top-T1");
+    fireEvent.click(within(t1).getAllByTestId("champ-chip-Ornn")[0]);
+
+    const shell = await screen.findByTestId("champion-selection-shell");
+    expect(shell).toHaveTextContent("Ornn");
+    expect(shell).toHaveTextContent("T1");
+    expect(shell).toHaveTextContent("Top");
+    expect(shell).toHaveTextContent("2026");
+    // The opponent is what makes the Step 2 question contextual.
+    expect(shell).toHaveTextContent("Bilibili Gaming");
+  });
+
+  it("marks the selected tile and lets it be unselected", async () => {
+    await renderBoard();
+    const t1 = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    const tile = within(t1).getAllByTestId("champ-chip-Ornn")[0];
+
+    fireEvent.click(tile);
+    expect(tile).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(tile);
+    expect(tile).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByTestId("champion-selection-shell")).toBeNull();
+  });
+
+  it("drops a selection when the scope changes", async () => {
+    // A selection made in one scope is not a selection in another. Silently
+    // re-pointing it at different numbers would be worse than dropping it.
+    await renderBoard();
+    const t1 = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(t1).getAllByTestId("champ-chip-Ornn")[0]);
+    await screen.findByTestId("champion-selection-shell");
+
+    fireEvent.click(screen.getByTestId("dossier-scope-all_time"));
+    await waitFor(() => expect(screen.queryByTestId("champion-selection-shell")).toBeNull());
+  });
+
+  it("shows a compact pool by default and never names the preview count", async () => {
+    await renderBoard();
+    const board = screen.getByTestId("lane-board");
+    expect(board.textContent).not.toMatch(/top \d+|first \d+|cap \d+/i);
   });
 });
