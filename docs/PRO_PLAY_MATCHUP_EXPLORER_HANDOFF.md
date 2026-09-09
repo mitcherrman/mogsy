@@ -21,7 +21,9 @@ cannot actually evidence.
   side journey lands wherever the corpus can honestly build a board.
 * **Step 4** — a specific historical **meeting** becomes a first-class state,
   reachable from the broad team matchup and from exact-matchup evidence.
-  *(this document)*
+* **Step 5** — one **game** inside that meeting, and the ten-player box score
+  that is the reason to open it. The first payload in this workstream that
+  carries a combat statistic. *(this document)*
 
 ## Important decisions
 
@@ -1035,10 +1037,339 @@ render rather than a state change:
 Bans could be added to the meeting shell in the same slice — as an unordered
 set of five per side, labelled as one.
 
+---
+
+# Step 5 — the specific game
+
+Implemented. A reader can drill from a historical meeting into one exact game
+and read the real 10-player box score plus the core team objectives, without
+leaving the Explorer and without a single invented number.
+
+## Endpoint contract — `GET /api/pro-play/matchup/game`
+
+Admin-gated (router-level), read-only. **A sixth sibling**, on the same shape
+argument that split the other five: it takes a game's identity and returns a
+box score. It shares the scope with `/series` and nothing else, and no other
+route in this prefix carries a per-player statistic.
+
+**Query:** `match_id` (required) · `game_number` (required, ≥ 1) ·
+`scope` (default `current_2026`) · `league_filter`.
+
+**Errors:** 400 unknown scope · 404 unknown `(match_id, game_number)` — which
+covers an unknown meeting AND a game number that meeting does not have,
+because the pair is one identity · 422 a missing or non-positive parameter.
+
+**Response:** `canonical_game_id` · `match_id` · `game_number` ·
+`meeting` (`kind`, `game_count`, `game_numbers`) · `league_slug` /
+`league_name` / `tournament_id` / `tournament_name` · `game_date` · `patch` ·
+`blue_team` / `red_team` (team ref + `side`) · `winner_team_key` · `decided` ·
+`duration_seconds` · `scope_id` · `in_scope` · `stats_available` ·
+`stat_player_rows` · `team_stats_available` · `stats_note` · `players[]` ·
+`teams[]` · `bans[]` · `bans_note` · `diagnostics` · `unavailable_metrics`.
+
+## Canonical game identity — the PAIR, not the opaque key
+
+`match_id` + `game_number`, and that is a deliberate choice over
+`canonical_game_id`:
+
+* it is **total** — `game_number` is non-null on 113,815 of 113,815 canonical
+  games and `(match_id, game_number)` has **zero** duplicates corpus-wide, and
+  a real-corpus test re-measures both;
+* it is **the state the Explorer's URL already holds**. Step 4 added `meeting`
+  and `game` and only rendered the first, so Step 5 is a render and a fetch
+  rather than a state change;
+* it makes **"does this game belong to this meeting" true by construction**.
+  There is no second containment check that could disagree with the lookup,
+  and a hand-edited URL naming a real meeting and a game it does not have gets
+  a 404 rather than some other meeting's game.
+
+`canonical_game_id` is **returned**, so a caller that wants the opaque key has
+it without ever having to build one.
+
+## Player stat authority
+
+`pro_canonical_player_game_stats`, read through the same tables
+`pro_authority/oe_stats_reader.py` exposes. **No second statistics authority
+was created**, and nothing here averages, rates, grades or predicts.
+
+**Participants are driven by `pro_canonical_player_games`** — the game's own
+rows — and the statistics are LEFT-joined onto them. So a substitute appears
+in the game he played, a rostered player who did not play appears nowhere, and
+nothing consults a roster, a declared starter or team membership.
+
+**Explicit columns, never `SELECT s.*`.** The two tables share `champion_key`,
+`side` and `player_lp_page`; a star join would make which one wins depend on
+cursor column order, which is the silent authority swap this module exists to
+prevent. Leaguepedia's `role` is served, and OE's `oe_position` is served
+**beside** it rather than substituted for it, so a disagreement stays visible.
+
+## Team objective authority
+
+`pro_canonical_team_game_stats`, read from the team table and **never summed
+from the player rows** — team objectives are not a player statistic. The
+upstream check that the join is right runs the other way: `SUM(player kills)`
+equals the team row's `team_kills`, and a real-corpus test re-asserts it on a
+live T1 vs Gen.G game.
+
+Served: kills, deaths, towers, inhibitors, dragons, elemental drakes, elders,
+heralds, void grubs, barons, atakhans, gold (total / earned / spent), damage
+to champions, CS, vision, wards, control wards, plus the `firsts` booleans.
+
+## Winner authority — unchanged from Step 4
+
+**The canonical `blue_win`, always**, even though the statistics are Oracle's
+Elixir's. A game card that took its result from OE would disagree with the
+meeting header above it, which counts canonical winners. Where OE's own row
+contradicts Leaguepedia's, `diagnostics.oe_winner_disagrees_with_canonical`
+reports it — **an operator flag, not a sentence for a reader**, who did not
+ask about Mogzy's ingestion. A frontend test asserts the words "disagree",
+"Oracle" and "canonical" never reach the screen.
+
+## Missing-stat semantics — unavailable is not zero, and the SHAPE says so
+
+OE statistics reach **92,714 of 113,815** canonical games (~81%, re-measured
+2026-09-09). A game outside that returns:
+
+* `stats_available: false`, `stat_player_rows: 0`, `teams: []`;
+* `players[]` **still complete** — ten rows, their champions, their canonical
+  win — with `stats: null` on every one;
+* `stats_note`, the server's own sentence, which the client prints verbatim.
+
+A zeroed box score would be indistinguishable from a real one, so none is
+produced. Inside an enriched row a **NULL column stays null** (a 2016 game has
+no vision score; a 22-minute game has no `gold_at25`), which is a different
+statement again. A zero anywhere in this payload is therefore always measured.
+
+## KDA formatting rule
+
+**Mogzy already had a convention and it was not invented here.**
+`oe_stats_reader.KDA_ZERO_DEATH_CONVENTION` — `(kills + assists) / deaths`,
+and `None` for `deaths == 0`, rendered "Perfect". Substituting `deaths = 1`
+reports a WORSE number than the player earned; printing infinity is not a
+number. `/game` calls that same function.
+
+**The empty-slice trap is closed by shape, not by a caller remembering.**
+`oe_stats_reader` warns that a matchup that never happened sums to 0/0/0 and
+lands on the same `None`, so every caller must check `games > 0` first. Here
+`kda_ratio` only ever exists **inside** a non-null `stats` object, and a game
+with no statistics has no stats object at all — so an unread game cannot be
+expressed as a perfect one. Three tests hold it: a deathless 2/0/9, a genuine
+0/0/0, and a statless game whose K/D/A cell contains no digit at all.
+
+K/D/A is always printed directly (`2 / 0 / 9`); the ratio is a secondary line.
+
+## Desktop and mobile design
+
+The dossier renders **inside the selected meeting-game plate**, so the meeting
+header and the sibling games never leave the screen. Selecting is a toggle —
+clicking the open game closes it and leaves the meeting open.
+
+* **Header** — `T1 vs Gen.G`, then event · game · patch · duration · date, and
+  the canonical result in gold.
+* **Two box scores**, side by side above 900px and stacked below it: crest,
+  team, side, Victory/Defeat, then Player · Champion · K/D/A · CS · Gold ·
+  Damage · Vision, with portraits and champion icons.
+* **Objective sheet** — a parchment plate, capped at 26rem, three columns. A
+  metric that is null on **both** teams is dropped rather than printed as a
+  row of dashes.
+* **Bans** — an unordered set of icons per side, with the server's sentence.
+* **375px** — the table stops being a table: `thead` leaves view and each cell
+  prints its own column name from `data-label`, so the seven facts read down
+  the page. Measured: `scrollWidth === innerWidth`, no horizontal overflow.
+
+### Two visual defects found and fixed on the way
+
+1. **All of Step 4's CSS had been trapped inside an unclosed
+   `@media (max-width: 640px)`** and had therefore **never applied on a
+   desktop viewport** — the meeting shell rendered unstyled above 640px in
+   everything shipped so far. The media query is now closed and the Step 4
+   block sits at top level.
+2. That exposed **two-ink mistakes** the media query had been hiding. This
+   dossier has a dark folio and light parchment plates: `--dsr-ink` is for the
+   plates, the folio's own pale ink for anything on the dark page. The meeting
+   head is folio; the meeting-game rows are parchment (and so is the game
+   dossier inside them). Both are now stated rather than inherited.
+
+`compactGold` re-states LIVE1's `kgold` convention (`63.2k`) rather than
+importing it: `src/pages/esports/live` is another workstream's page module,
+and Pro Play depending on its display choices would make one team's restyle
+the other's bug. `gameDuration` (`50:18`) is the Explorer's own, from Step 4.
+
+## Game state / query behaviour
+
+**No new state key, and no fourth mode.** `game` is `game_number` **inside**
+the existing `MeetingSelection`:
+
+```
+team_a  team_b  scope  lane                                   (the board)
+focus_player  focus_champion  vs_player  vs_champion          (the study)
+meeting  game                                                 (the evidence)
+```
+
+`withMeetingGame(selection, n)` sets it, and **returns the selection unchanged
+when there is no meeting** — a game number is a position inside a meeting and
+means nothing without one.
+
+## Clearing rules
+
+Because `game` lives inside `meeting`, **every Step 4 rule covers it for
+free** and no path can strand a game without a meeting:
+
+| change | `meeting` | `game` |
+|---|---|---|
+| team A or B | cleared | cleared with it |
+| scope | cleared | cleared with it |
+| study subject or opponent | cleared | cleared with it |
+| closing the study | cleared | cleared with it |
+| side journey | cleared | cleared with it |
+| **side swap** | **kept** | **kept** |
+| a different meeting | replaced | reset (to `single_game_number`, or null) |
+| a different game | **kept** | changed |
+
+Nine frontend tests hold the table, plus one that proves `game=2` with no
+`meeting` is dropped by `meetingFromParams`.
+
+## Scope semantics
+
+Unchanged and deliberate: the scope **searches**, the meeting and the game are
+**chosen by name**. `/game` returns the game whatever scope is selected and
+`in_scope` **reports** — a 2025 game opens under a 2026 scope and says so. A
+real-corpus test opens the Worlds 2025 Gen.G–T1 game under `current_2026`.
+
+## Real corpus examples verified (2026-09-09)
+
+* **T1 vs Gen.G Bo3** `LCK/2026 Season/Rounds 1-2_Week 7_7` game 2 — ten
+  enriched rows, Peyz 15/5/5, and player kills summing to `team_kills` on both
+  sides (22 and 26). Note game 3 **now has statistics**: the corpus was
+  enriched further after Step 4 was written, which is why Step 4's "duration
+  not recorded" example no longer reproduces there.
+* **A real single-game meeting** — `2025 Season World Championship/Main
+  Event_Round 3_4`, `kind: single_game`, `in_scope: false` under 2026.
+* **A real game with no statistics** — found by query in the ~19%; identity
+  and champions intact, `stats: null` throughout.
+* **A real deathless player** — Gumayusi 6/0/5, Worlds 2024 Semifinals game 1.
+* **A real substitution** — `LCP/2026 Season/Split 2 Playoffs_Round 3_2`; the
+  sixth player appears only in the games he played.
+* **A 2015 game** — the far end of the range still resolves as an identity.
+* **A real canonical/OE winner disagreement** — canonical wins, flag set. The
+  query that finds one must key on **`team_key`, not OE's own `side` column**:
+  the two do not always agree, and matching a fact row to a canonical side by
+  its side label is exactly the silent swap this layer refuses to make.
+
+## Fields intentionally deferred
+
+* **Lane checkpoints** are served (`stats.checkpoints.at10/15/20/25`, with the
+  lane opponent's value at each and a `reached` flag) and **rendered nowhere**.
+  They are a real early-game analysis surface and Step 5 is not one; serving
+  them now means the later layer needs no new read.
+* **Bans are shown; draft ORDER is not, and cannot be.** `sequence` is `-1` on
+  all 2,235,030 rows. The set is sorted **alphabetically on purpose** — row
+  order would offer an arbitrary sequence that looks like a draft.
+* **`turret_plates` is never projected.** Structural ceiling 25 per team,
+  observed maximum 45. Two tests assert the string appears exactly once in the
+  payload: inside the sentence explaining its absence.
+* **Damage taken / mitigated** exist upstream only as per-minute rates.
+* **Item builds** — the historical corpus has none.
+* No graphs, no gold-over-time, no objective timeline, no lane deltas, no
+  rating, no prediction.
+
+## Tests — Step 5
+
+**Backend — 56 new, 10 against the real corpus, all passing.**
+`test_pro_authority_game_detail.py`. The fixture writes every ambiguous case
+as a real row and gives each its own test: a deathless player and a genuine
+0/0/0 **in the same game**, a game with no statistics at all, a NULL field on
+an otherwise-enriched row, a game where OE's winner contradicts Leaguepedia's,
+a substitution across a meeting, a Bo1, and a 2025 meeting outside the scope.
+
+Pro Play backend regression: **176 passed** across the five
+`test_pro_authority_*` suites. Wider sweep (`-k "pro_play or pro_authority or
+matchup or oe_stats"`): **1790 passed, 2 failed, 1 error** — an **identical
+failure set** to clean `origin/master` measured in a throwaway worktree
+(`test_mastery_g4_timeline.py` ×2, `test_con1_pro_specimens.py` collection
+error from a corpus/schema skew). Compare failure SETS, never totals.
+
+**Frontend — 65 new (193 in the board suite, was 128), 403 Pro Play tests,
+all passing.** Full suite **53 failures across 13 files, none in pro-play** —
+the documented `origin/main` baseline. Typecheck **11 errors, none in
+pro-play** — also the baseline. Build green.
+
+## Deploy state — Step 5 (2026-09-09)
+
+| | SHA | Where |
+|---|---|---|
+| Backend | see below | `master`, Railway auto-deploys |
+| Frontend | see below | `main`, Lovable publishes on the owner's click |
+
+**There is no deploy-ordering hazard.** `/game` is a **new route**: nothing
+existing changed shape, no field was renamed or removed, and the published
+client never calls it. The backend can go first, last, or alone. The one
+frontend change to an existing payload's handling is that `MeetingShell` now
+requires an `onSelectGame` prop — internal to the bundle, invisible over the
+wire.
+
+### Live state, checked 2026-09-09 by fetching, not assumed
+
+* **Railway has `/series` and NOT `/game`.** `/api/pro-play/matchup/series`
+  answers **403** (registered, admin-gated) while `/game` and an invented
+  sibling under the same prefix both answer **404** — the same discriminator
+  Steps 3 and 4 used.
+* **Step 4's frontend IS now published.** `mogzy.lol`'s current chunk
+  `ProPlayMatchup-Ca9MF8Kg.js` contains `Recent Meetings`,
+  `dossier-meeting-shell`, `single_game`, `Duration not recorded` **and**
+  `teams_outside_explorer_pool`. Step 4's own note above ("Pushed, NOT
+  published") was true when it was written earlier the same day and is now
+  superseded.
+* Step 5 is not live: the same chunk contains none of `game-dossier`,
+  `stats_available` or `Perfect`.
+
+**Now unblocked from Step 3.1:** the condition for deleting the
+`teams_outside_focus_set` mirror — "a frontend carrying
+`teams_outside_explorer_pool` is *published*" — is **met**. That deletion is a
+separate, safe commit whenever someone wants it.
+
+**One thing the published bundle carries is the CSS defect.** The live Step 4
+meeting shell has no desktop styling at all, because its whole CSS block was
+inside an unclosed `@media (max-width: 640px)`. Step 5 fixes it, so publishing
+Step 5's frontend also repairs Step 4's desktop appearance.
+
+## Files — Step 5
+
+### Backend
+
+| File | Role |
+|---|---|
+| `pro_authority/game_detail.py` | **New.** The game payload, the participant read, the team rows, the bans, the missing-stat semantics, the diagnostic. |
+| `routes/pro_play_matchup.py` | `GET /game`. |
+| `test_pro_authority_game_detail.py` | **New.** 56 tests, 10 against the real corpus. |
+
+### Frontend
+
+| File | Role |
+|---|---|
+| `src/components/pro-play/dossier/GameDetail.tsx` | **New.** `GameDossier`, the box score, the objective sheet, the bans, `compactGold` / `kdaLine` / `kdaRatioLabel`. |
+| `src/components/pro-play/dossier/MeetingDrilldown.tsx` | The game row became a toggle button and hosts the dossier; `MeetingShell` gained `onSelectGame`. |
+| `src/lib/pro-play/matchupApi.ts` | Game types, `withMeetingGame`, `fetchGameDetail`. |
+| `src/pages/pro-play/ProPlayMatchupTeam.tsx` | Wires `onSelectGame`. |
+| `src/index.css` | `.dossier-game*`; **and the unclosed `@media` that had been swallowing the whole Step 4 block**. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 193 tests (was 128). |
+
+## Next recommended slice
+
+**The lane-checkpoint layer, on data this endpoint already returns.** `/game`
+serves `stats.checkpoints` at 10/15/20/25 with the lane opponent's value at
+each and a `reached` flag, and nothing renders them. The honest first cut is
+the **at-15 gold and CS differential per lane**, drawn beside the box score
+rows that already name both players — one derived figure whose two components
+are both stored, no curve, no timeline, and no claim about who "won lane".
+
+Do it after, not before: the raw components are the deliverable and a
+differential is a presentation of them.
+
 ## Next task
 
-1. **Step 5 — the game state**, scoped in "Next recommended slice" above.
-   Step 4 shipped the series slice this list used to name.
+1. **The lane-checkpoint layer**, scoped in Step 5's "Next recommended slice"
+   above. Step 5 shipped the game state this list used to name.
 2. **Delete the `teams_outside_focus_set` mirror** once the frontend carrying
    `teams_outside_explorer_pool` is published.
 3. **Re-run `scripts/audit_explorer_team_pool.py` each season.** The registry

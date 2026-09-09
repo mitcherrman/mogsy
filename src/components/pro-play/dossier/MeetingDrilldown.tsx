@@ -25,6 +25,7 @@ import { ChevronRight, X } from "lucide-react";
 
 import { DossierSection, FinePrint, Parchment } from "./DossierChrome";
 import { ChampionIcon } from "./DossierMedia";
+import { GameDossier } from "./GameDetail";
 import {
   MEETING_SERIES,
   MatchupApiError,
@@ -171,7 +172,32 @@ export function RecentMeetings({
 // The meeting shell
 // ---------------------------------------------------------------------------
 
-function GameRow({ game, kind }: { game: MeetingGame; kind: string }) {
+/**
+ * One game inside the meeting — the summary row, and, when it is the selected
+ * one, the full box score beneath it.
+ *
+ * STEP 5 MADE THIS ROW A BUTTON, and changed nothing else about it. The
+ * summary a reader scans (result, duration, the ten champions) stays exactly
+ * where it was; the dossier opens UNDER it, inside the same meeting shell, so
+ * the header and the sibling games never leave the screen. Selecting is a
+ * TOGGLE: clicking the open game closes it and leaves the meeting open, which
+ * is the only way back out that does not also lose the meeting.
+ */
+function GameRow({
+  game,
+  kind,
+  matchId,
+  scopeId,
+  selected,
+  onSelect,
+}: {
+  game: MeetingGame;
+  kind: string;
+  matchId: string;
+  scopeId: string;
+  selected: boolean;
+  onSelect: (gameNumber: number | null) => void;
+}) {
   const duration = gameDuration(game.duration_seconds);
   const label = kind === MEETING_SERIES ? `Game ${game.game_number}` : "Game";
   // Champions grouped by the side that took them. This IS the pick list; there
@@ -183,43 +209,60 @@ function GameRow({ game, kind }: { game: MeetingGame; kind: string }) {
   }
 
   return (
-    <li className="dossier-meeting-game" data-testid="meeting-game" data-game-number={game.game_number}>
-      <div className="dossier-meeting-game__head">
-        <span className="dossier-meeting-game__label">{label}</span>
-        <span className="dossier-meeting-game__result" data-testid="meeting-game-result">
-          {game.decided && game.winner_team_key
-            ? `${game.winner_team_key} win`
-            : "Result not recorded"}
-        </span>
-        {/* Absent rather than zeroed: the statistics reach 80% of the corpus. */}
-        <span className="dossier-meeting-game__duration">
-          {duration ?? "Duration not recorded"}
-        </span>
-      </div>
-      {game.participants.length ? (
-        <div className="dossier-meeting-game__sides">
-          {[...sides.entries()].map(([teamKey, players]) => (
-            <div key={teamKey} className="dossier-meeting-game__side" data-testid="meeting-game-side">
-              <span className="dossier-meeting-game__team">{teamKey}</span>
-              <span className="dossier-meeting-game__picks">
-                {players.map((p) => (
-                  <span
-                    key={`${p.player_lp_page}-${p.champion_key}`}
-                    className="dossier-meeting-game__pick"
-                    title={`${p.player_lp_page ?? "—"} — ${p.champion_key ?? "—"}`}
-                  >
-                    {p.champion_key ? <ChampionIcon champion={p.champion_key} size="sm" /> : null}
-                  </span>
-                ))}
-              </span>
-            </div>
-          ))}
+    <li
+      className="dossier-meeting-game"
+      data-testid="meeting-game"
+      data-game-number={game.game_number}
+      data-selected={selected ? "true" : undefined}
+    >
+      <button
+        type="button"
+        className="dossier-meeting-game__open"
+        data-testid="meeting-game-open"
+        aria-expanded={selected}
+        onClick={() => onSelect(selected ? null : game.game_number)}
+      >
+        <div className="dossier-meeting-game__head">
+          <span className="dossier-meeting-game__label">{label}</span>
+          <span className="dossier-meeting-game__result" data-testid="meeting-game-result">
+            {game.decided && game.winner_team_key
+              ? `${game.winner_team_key} win`
+              : "Result not recorded"}
+          </span>
+          {/* Absent rather than zeroed: the statistics reach ~81% of the corpus. */}
+          <span className="dossier-meeting-game__duration">
+            {duration ?? "Duration not recorded"}
+          </span>
+          <ChevronRight className="h-3 w-3 shrink-0 opacity-60" aria-hidden="true" />
         </div>
-      ) : (
-        <p className="dossier-meeting-game__empty" data-testid="meeting-game-empty">
-          No player rows are recorded for this game.
-        </p>
-      )}
+        {game.participants.length ? (
+          <div className="dossier-meeting-game__sides">
+            {[...sides.entries()].map(([teamKey, players]) => (
+              <div key={teamKey} className="dossier-meeting-game__side" data-testid="meeting-game-side">
+                <span className="dossier-meeting-game__team">{teamKey}</span>
+                <span className="dossier-meeting-game__picks">
+                  {players.map((p) => (
+                    <span
+                      key={`${p.player_lp_page}-${p.champion_key}`}
+                      className="dossier-meeting-game__pick"
+                      title={`${p.player_lp_page ?? "—"} — ${p.champion_key ?? "—"}`}
+                    >
+                      {p.champion_key ? <ChampionIcon champion={p.champion_key} size="sm" /> : null}
+                    </span>
+                  ))}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="dossier-meeting-game__empty" data-testid="meeting-game-empty">
+            No player rows are recorded for this game.
+          </p>
+        )}
+      </button>
+      {selected ? (
+        <GameDossier matchId={matchId} gameNumber={game.game_number} scopeId={scopeId} />
+      ) : null}
     </li>
   );
 }
@@ -229,11 +272,15 @@ export function MeetingShell({
   scopeId,
   scopeLabel,
   onClose,
+  onSelectGame,
 }: {
   selection: MeetingSelection | null;
   scopeId: string;
   scopeLabel: string;
   onClose: () => void;
+  /** STEP 5. Sets `game_number` INSIDE the open meeting — never a state of
+   *  its own, which is why nothing can strand a game without a meeting. */
+  onSelectGame: (gameNumber: number | null) => void;
 }) {
   const [payload, setPayload] = useState<MeetingPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -327,7 +374,15 @@ export function MeetingShell({
             {[...payload.games]
               .sort((a, b) => a.game_number - b.game_number)
               .map((game) => (
-                <GameRow key={game.canonical_game_id} game={game} kind={payload.kind} />
+                <GameRow
+                  key={game.canonical_game_id}
+                  game={game}
+                  kind={payload.kind}
+                  matchId={payload.match_id}
+                  scopeId={scopeId}
+                  selected={selection.game_number === game.game_number}
+                  onSelect={onSelectGame}
+                />
               ))}
           </ul>
 

@@ -39,6 +39,7 @@ import {
   withTeamsSwapped,
   meetingFromParams,
   withMeeting,
+  withMeetingGame,
   withStudyOpponent,
   withStudySubject,
   type MeetingSelection,
@@ -219,6 +220,226 @@ const BO1_PAYLOAD = {
   winner_team_key: "Bilibili Gaming",
   in_scope: false,
   games: [meetingGame(1, "Bilibili Gaming", 1800)],
+};
+
+// --- Step 5 fixtures --------------------------------------------------------
+//
+// THREE GAMES, THREE DIFFERENT TRUTHS, because the failures Step 5 can have
+// are all about telling them apart:
+//
+//   game 1 — fully enriched, and it holds BOTH ambiguous zero cases: a
+//            deathless player (2/0/9) and a genuine 0/0/0. Their sums are
+//            identical and their meanings are not.
+//   game 2 — enriched, with a NULL vision score on one row. Enriched is not
+//            the same claim as complete.
+//   game 3 — NO statistics at all. Ten players, ten champions, a real winner,
+//            and `stats: null` on every row. A zeroed box score would be
+//            indistinguishable from a real one.
+
+function gamePlayer(
+  team: string,
+  role: string,
+  champion: string,
+  stats: Record<string, unknown> | null,
+) {
+  return {
+    player_lp_page: `${team}-${role}`,
+    team_key: team,
+    display_name: team,
+    role,
+    oe_position: stats ? role.toLowerCase() : null,
+    side: team === "T1" ? "blue" : "red",
+    champion_key: champion,
+    win: team === "T1",
+    stats: stats
+      ? {
+          double_kills: 0,
+          triple_kills: 0,
+          quadra_kills: 0,
+          penta_kills: 0,
+          first_blood_kill: 0,
+          first_blood_assist: 0,
+          first_blood_victim: 0,
+          minion_kills: 200,
+          monster_kills: 50,
+          earned_gold: 9000,
+          gold_spent: 11000,
+          damage_to_towers: 3000,
+          wards_placed: 20,
+          wards_killed: 8,
+          control_wards_bought: 5,
+          checkpoints: {},
+          data_completeness: "complete",
+          ...stats,
+        }
+      : null,
+  };
+}
+
+function baseStats(kills: number, deaths: number, assists: number) {
+  return {
+    kills,
+    deaths,
+    assists,
+    total_cs: 250,
+    total_gold: 14175,
+    damage_to_champions: 18826,
+    vision_score: 71,
+    // `null` ONLY for deaths === 0 — the League "Perfect" convention, and it
+    // can only appear inside a stats object, so it can never be produced by
+    // an empty slice.
+    kda_ratio: deaths === 0 ? null : (kills + assists) / deaths,
+  };
+}
+
+function gameTeamRow(team: string, side: string, kills: number, gold: number, won: boolean) {
+  return {
+    team_key: team,
+    display_name: team,
+    explorer_navigable: true,
+    side,
+    objectives: {
+      team_kills: kills,
+      team_deaths: 26,
+      towers: won ? 9 : 8,
+      inhibitors: won ? 2 : 0,
+      dragons: 4,
+      elemental_drakes: 3,
+      elders: 1,
+      heralds: 1,
+      void_grubs: 0,
+      barons: 2,
+      atakhans: 0,
+      total_gold: gold,
+      earned_gold: 64815,
+      gold_spent: 91740,
+      damage_to_champions: 195280,
+      // A NULL objective stays null; the row is dropped rather than zeroed.
+      total_cs: null,
+      vision_score: 524,
+      wards_placed: 218,
+      wards_killed: 80,
+      control_wards_bought: 71,
+    },
+    firsts: { first_blood: won, first_tower: !won, first_dragon: false },
+    win: won,
+    data_completeness: "complete",
+  };
+}
+
+const GAME_UNAVAILABLE = [
+  { metric: "draft_order", reason: "bans are an unordered set." },
+  {
+    metric: "turret_plates",
+    reason:
+      "the stored plate count exceeds its own structural ceiling of 25 on thousands of rows, so it is not published until the column is reconciled.",
+  },
+  { metric: "item_builds", reason: "the historical corpus carries no item data." },
+];
+
+const BANS_NOTE =
+  "Bans are an unordered set. Pick/ban sequence is -1 on every row in the corpus, so the order in which these champions were banned is not recorded and none is implied by the order they are listed in.";
+
+function gameDetail(n: number, statted: boolean) {
+  const roles = ["Top", "Jungle", "Mid", "Bot", "Support"];
+  const lines: Record<string, [number, number, number]> = {
+    // DEATHLESS, and a genuine zero line, in the same game.
+    Top: [2, 0, 9],
+    Jungle: [3, 4, 15],
+    Mid: [2, 5, 9],
+    Bot: [15, 5, 5],
+    Support: [0, 0, 0],
+  };
+  const players = [
+    ...roles.map((role) =>
+      gamePlayer(
+        "T1",
+        role,
+        `G${n}${role}`,
+        statted
+          ? {
+              ...baseStats(...lines[role]),
+              // One NULL field on an otherwise-enriched row, in game 2 only.
+              ...(n === 2 && role === "Top" ? { vision_score: null } : {}),
+            }
+          : null,
+      ),
+    ),
+    ...roles.map((role) =>
+      gamePlayer("Bilibili Gaming", role, `G${n}R${role}`, statted ? baseStats(1, 2, 3) : null),
+    ),
+  ];
+  return {
+    canonical_game_id: `g${n}`,
+    match_id: BO3_ID,
+    game_number: n,
+    meeting: { kind: "series", game_count: 3, game_numbers: [1, 2, 3] },
+    league_slug: "LoL Champions Korea",
+    league_name: "LCK",
+    tournament_id: "LCK 2026 Rounds 1-2",
+    tournament_name: "LCK 2026 Rounds 1-2",
+    game_date: "2026-05-16 08:57:00",
+    patch: "26.09",
+    blue_team: {
+      team_key: "T1",
+      display_name: "T1",
+      explorer_navigable: true,
+      side: "blue",
+    },
+    red_team: {
+      team_key: "Bilibili Gaming",
+      display_name: "Bilibili Gaming",
+      explorer_navigable: true,
+      side: "red",
+    },
+    // THE CANONICAL WINNER, not Oracle's Elixir's.
+    winner_team_key: "T1",
+    decided: true,
+    duration_seconds: 3018,
+    scope_id: "current_2026",
+    in_scope: true,
+    stats_available: statted,
+    stat_player_rows: statted ? 10 : 0,
+    team_stats_available: statted,
+    stats_note: statted
+      ? null
+      : "Detailed box-score statistics are not available for this game. The canonical result, the players and the champions they took are recorded; the per-player and per-team numbers are not.",
+    players,
+    teams: statted
+      ? [
+          gameTeamRow("T1", "blue", 22, 96977, true),
+          gameTeamRow("Bilibili Gaming", "red", 26, 95090, false),
+        ]
+      : [],
+    bans: statted
+      ? [
+          {
+            team_key: "T1",
+            display_name: "T1",
+            side: "blue",
+            champions: ["Cassiopeia", "Orianna", "Vi"],
+            ordered: false,
+          },
+          {
+            team_key: "Bilibili Gaming",
+            display_name: "Bilibili Gaming",
+            side: "red",
+            champions: ["Ryze", "Varus"],
+            ordered: false,
+          },
+        ]
+      : [],
+    bans_note: BANS_NOTE,
+    diagnostics: { oe_winner_disagrees_with_canonical: false },
+    unavailable_metrics: GAME_UNAVAILABLE,
+  };
+}
+
+const GAME_DETAILS: Record<number, ReturnType<typeof gameDetail>> = {
+  1: gameDetail(1, true),
+  2: gameDetail(2, true),
+  // The 19% of the corpus with no statistics.
+  3: gameDetail(3, false),
 };
 
 const FOCUS_TEAMS = [
@@ -1107,6 +1328,18 @@ beforeEach(() => {
       } else if (url.includes("/matchup/exact")) {
         body = exact;
         status = 200;
+      } else if (url.includes("/matchup/game")) {
+        // Answered by the PAIR, the way the route is: a game_number this
+        // meeting does not have is a 404 here exactly as it is on the wire.
+        const params = new URLSearchParams(url.split("?")[1] ?? "");
+        const found =
+          params.get("match_id") === BO3_ID
+            ? GAME_DETAILS[Number(params.get("game_number"))]
+            : undefined;
+        if (found) {
+          body = found;
+          status = 200;
+        }
       } else if (url.includes("/matchup/series")) {
         // Answered by match_id, the way the route is. An unknown one is a 404
         // here exactly as it is on the wire.
@@ -3233,5 +3466,320 @@ describe("Step 4 — clearing rules", () => {
     expect(next.team_a).toBe("T1");
     expect(next.bans).toEqual(["Azir"]);
     expect(next.meeting?.match_id).toBe(BO3_ID);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Step 5 — the game dossier
+// ---------------------------------------------------------------------------
+//
+// The failures this layer can have are all about telling two things apart:
+// a deathless game from an empty slice, an unread game from a scoreless one,
+// a NULL field from a zero, an unordered ban set from a draft, and the
+// canonical winner from Oracle's Elixir's. Each has its own test.
+
+describe("Step 5 — the game dossier", () => {
+  async function openGame(gameNumber = 1, matchId = BO3_ID) {
+    await renderBoard();
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    fireEvent.click(rows.find((r) => r.dataset.matchId === matchId)!);
+    const shell = await screen.findByTestId("dossier-meeting-shell");
+    const games = within(shell).getAllByTestId("meeting-game");
+    const row = games.find((g) => g.dataset.gameNumber === String(gameNumber))!;
+    fireEvent.click(within(row).getByTestId("meeting-game-open"));
+    return screen.findByTestId("game-dossier");
+  }
+
+  function playersOf(dossier: HTMLElement) {
+    return within(dossier).getAllByTestId("game-player");
+  }
+
+  function playerRow(dossier: HTMLElement, player: string) {
+    return playersOf(dossier).find((r) => r.dataset.player === player)!;
+  }
+
+  it("clicking a game row establishes the game state", async () => {
+    const dossier = await openGame(2);
+    expect(dossier.dataset.gameNumber).toBe("2");
+    const url = requests.filter((u) => u.includes("/matchup/game")).pop() ?? "";
+    const params = new URLSearchParams(url.split("?")[1] ?? "");
+    expect(params.get("match_id")).toBe(BO3_ID);
+    expect(params.get("game_number")).toBe("2");
+    // The scope rides along as CONTEXT, exactly as it does for the meeting.
+    expect(params.get("scope")).toBe("current_2026");
+  });
+
+  it("renders the dossier INSIDE the meeting shell, not instead of it", async () => {
+    // The whole point of the layer: a reader drilled in, they did not leave.
+    const dossier = await openGame(1);
+    const shell = screen.getByTestId("dossier-meeting-shell");
+    expect(shell).toContainElement(dossier);
+    expect(within(shell).getByTestId("meeting-head")).toBeInTheDocument();
+    expect(within(shell).getAllByTestId("meeting-game")).toHaveLength(3);
+  });
+
+  it("marks the selected game and only the selected game", async () => {
+    await openGame(2);
+    const games = within(screen.getByTestId("dossier-meeting-shell")).getAllByTestId(
+      "meeting-game",
+    );
+    const selected = games.filter((g) => g.dataset.selected === "true");
+    expect(selected).toHaveLength(1);
+    expect(selected[0].dataset.gameNumber).toBe("2");
+  });
+
+  it("renders the ten actual participants, split by team", async () => {
+    const dossier = await openGame(1);
+    expect(playersOf(dossier)).toHaveLength(10);
+    const sides = within(dossier).getAllByTestId("game-side");
+    expect(sides).toHaveLength(2);
+    // Blue first, so the two halves read the way the game was played.
+    expect(sides[0].dataset.team).toBe("T1");
+    expect(sides[1].dataset.team).toBe("Bilibili Gaming");
+  });
+
+  it("renders each player's own champion", async () => {
+    const dossier = await openGame(1);
+    expect(playerRow(dossier, "T1-Mid").textContent).toContain("G1Mid");
+    expect(playerRow(dossier, "Bilibili Gaming-Mid").textContent).toContain("G1RMid");
+  });
+
+  it("renders K / D / A from the real stat row", async () => {
+    const dossier = await openGame(1);
+    const bot = within(playerRow(dossier, "T1-Bot")).getByTestId("game-player-kda");
+    expect(bot).toHaveTextContent("15 / 5 / 5");
+    expect(within(bot).getByTestId("game-player-ratio")).toHaveTextContent("4.00 KDA");
+  });
+
+  it("renders a deathless player as Perfect, without dividing by zero", async () => {
+    const dossier = await openGame(1);
+    const top = within(playerRow(dossier, "T1-Top")).getByTestId("game-player-kda");
+    expect(top).toHaveTextContent("2 / 0 / 9");
+    expect(within(top).getByTestId("game-player-ratio")).toHaveTextContent("Perfect");
+  });
+
+  it("renders a genuine 0/0/0 as the zero line it was", async () => {
+    // THE TRAP. Support really went 0/0/0 — it lands on the same null ratio
+    // as the deathless game and it is a REAL scoreline, which is exactly why
+    // "no statistics" has to be a different shape rather than a different
+    // number.
+    const dossier = await openGame(1);
+    const sup = within(playerRow(dossier, "T1-Support")).getByTestId("game-player-kda");
+    expect(sup).toHaveTextContent("0 / 0 / 0");
+  });
+
+  it("shows an honest unavailable state instead of a zeroed box score", async () => {
+    const dossier = await openGame(3);
+    expect(within(dossier).getByTestId("game-stats-unavailable").textContent).toContain(
+      "not available for this game",
+    );
+    // The identity SURVIVES: ten players, their champions, and the winner.
+    expect(playersOf(dossier)).toHaveLength(10);
+    expect(playerRow(dossier, "T1-Mid").textContent).toContain("G3Mid");
+    expect(within(dossier).getByTestId("game-result")).toHaveTextContent("T1 victory");
+    // And not one fabricated number.
+    const kda = within(playerRow(dossier, "T1-Top")).getByTestId("game-player-kda");
+    expect(kda.textContent).not.toMatch(/\d/);
+    expect(within(kda).queryByTestId("game-player-ratio")).toBeNull();
+  });
+
+  it("prints a NULL field as absent rather than as zero", async () => {
+    // Enriched is not the same claim as complete: game 2's top laner has no
+    // recorded vision score on an otherwise full row.
+    const dossier = await openGame(2);
+    const cells = within(playerRow(dossier, "T1-Top")).getAllByRole("cell");
+    expect(cells[cells.length - 1]).toHaveTextContent("—");
+    expect(cells[cells.length - 1]).not.toHaveTextContent("0");
+  });
+
+  it("renders the team objective comparison, mapped to the right teams", async () => {
+    const dossier = await openGame(1);
+    const table = within(dossier).getByTestId("game-objectives");
+    const kills = within(table).getByTestId("objective-team_kills");
+    expect(kills.textContent).toContain("22");
+    expect(kills.textContent).toContain("26");
+    // Gold in the League-readable shape the rest of Mogzy prints.
+    expect(within(table).getByTestId("objective-total_gold").textContent).toContain("97.0k");
+  });
+
+  it("drops an objective that is null on both sides rather than printing dashes", async () => {
+    const dossier = await openGame(1);
+    const table = within(dossier).getByTestId("game-objectives");
+    expect(within(table).queryByTestId("objective-total_cs")).toBeNull();
+  });
+
+  it("never prints turret_plates as a trustworthy metric", async () => {
+    // Its stored values exceed their own structural ceiling. It may appear
+    // only inside the sentence that explains its absence.
+    const dossier = await openGame(1);
+    const table = within(dossier).getByTestId("game-objectives");
+    expect(table.textContent).not.toMatch(/plate/i);
+    expect(within(dossier).getByTestId("game-unavailable-turret_plates")).toBeInTheDocument();
+  });
+
+  it("presents the canonical winner, on the game and on each side", async () => {
+    const dossier = await openGame(1);
+    expect(within(dossier).getByTestId("game-result")).toHaveTextContent("T1 victory");
+    const results = within(dossier).getAllByTestId("game-side-result");
+    expect(results[0]).toHaveTextContent("Victory");
+    expect(results[1]).toHaveTextContent("Defeat");
+  });
+
+  it("never surfaces the source-disagreement diagnostic to a reader", async () => {
+    // It is an operator flag. A reader did not ask about Mogzy's ingestion,
+    // and the canonical result already won.
+    const dossier = await openGame(1);
+    expect(dossier.textContent).not.toMatch(/disagree|oracle|canonical/i);
+  });
+
+  it("draws bans as an unordered set and says so", async () => {
+    const dossier = await openGame(1);
+    const bans = within(dossier).getByTestId("game-bans");
+    expect(bans.textContent).toContain("Bans");
+    expect(within(bans).getByTestId("game-bans-note").textContent).toContain("unordered set");
+    // NO shape that could read as a draft: no ordered list, no numbering, and
+    // no draft vocabulary anywhere the champions themselves are drawn. (The
+    // NOTE is allowed to say "pick/ban sequence" — that sentence is the
+    // server explaining the absence, which is the opposite of implying one.)
+    expect(bans.querySelector("ol")).toBeNull();
+    const drawn = within(bans).getAllByTestId("champion-icon");
+    expect(drawn.length).toBe(5);
+    for (const side of bans.querySelectorAll(".dossier-game-bans__side")) {
+      expect(side.textContent).not.toMatch(/\bpick\b|\bphase\b|\brotation\b|first ban|\b[1-5]\b/i);
+    }
+  });
+
+  it("changing the game preserves the meeting", async () => {
+    await openGame(1);
+    const shell = screen.getByTestId("dossier-meeting-shell");
+    const games = within(shell).getAllByTestId("meeting-game");
+    const three = games.find((g) => g.dataset.gameNumber === "3")!;
+    fireEvent.click(within(three).getByTestId("meeting-game-open"));
+    await waitFor(() =>
+      expect(screen.getByTestId("game-dossier").dataset.gameNumber).toBe("3"),
+    );
+    // Same meeting, same shell, one game open.
+    expect(screen.getByTestId("dossier-meeting-shell")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("dossier-meeting-shell"))
+        .getAllByTestId("meeting-game")
+        .filter((g) => g.dataset.selected === "true"),
+    ).toHaveLength(1);
+  });
+
+  it("clicking the open game closes it and leaves the meeting open", async () => {
+    await openGame(1);
+    const shell = screen.getByTestId("dossier-meeting-shell");
+    const one = within(shell)
+      .getAllByTestId("meeting-game")
+      .find((g) => g.dataset.gameNumber === "1")!;
+    fireEvent.click(within(one).getByTestId("meeting-game-open"));
+    await waitFor(() => expect(screen.queryByTestId("game-dossier")).toBeNull());
+    expect(screen.getByTestId("dossier-meeting-shell")).toBeInTheDocument();
+  });
+
+  it("is reloadable from the URL alone", async () => {
+    await renderBoard(`${TEAM_URL}&meeting=${encodeURIComponent(BO3_ID)}&game=2`);
+    const dossier = await screen.findByTestId("game-dossier");
+    expect(dossier.dataset.gameNumber).toBe("2");
+  });
+
+  it("a Bo1 opens with its one game already named", async () => {
+    // There is no series above it to choose from, so the row sets both keys.
+    await renderBoard();
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    fireEvent.click(rows.find((r) => r.dataset.matchId === BO1_ID)!);
+    const shell = await screen.findByTestId("dossier-meeting-shell");
+    expect(
+      within(shell)
+        .getAllByTestId("meeting-game")
+        .filter((g) => g.dataset.selected === "true"),
+    ).toHaveLength(1);
+  });
+
+  it("introduces no top-level Game tab", async () => {
+    // Specificity emerges by drilling in, never by choosing a mode.
+    await openGame(1);
+    expect(screen.getByTestId("dossier-controls").textContent).not.toMatch(
+      /\b(series|game|meeting)\b/i,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Step 5 — the clearing rules
+// ---------------------------------------------------------------------------
+//
+// `game` LIVES INSIDE `meeting`, which is the whole design: a game number is
+// a position inside a meeting and means nothing without one, so every Step 4
+// clearing rule covers it for free and no path can strand a game. These tests
+// hold that property rather than re-deriving each rule.
+
+describe("Step 5 — game clearing", () => {
+  const OPEN: TeamSelection = {
+    ...EMPTY_TEAM_SELECTION,
+    team_a: "T1",
+    team_b: "Bilibili Gaming",
+    meeting: { match_id: BO3_ID, game_number: 2 },
+  };
+
+  it("changing either team clears the game with the meeting", () => {
+    expect(withTeamSide(OPEN, "a", "Gen.G").meeting).toBeNull();
+    expect(withTeamSide(OPEN, "b", "Gen.G").meeting).toBeNull();
+  });
+
+  it("changing the scope clears the game with the meeting", () => {
+    expect(withTeamScope(OPEN, "all_time").meeting).toBeNull();
+  });
+
+  it("changing the meeting drops the stale game", () => {
+    const next = withMeeting(OPEN, { match_id: BO1_ID, game_number: null });
+    expect(next.meeting?.match_id).toBe(BO1_ID);
+    expect(next.meeting?.game_number).toBeNull();
+  });
+
+  it("closing the meeting closes the game", () => {
+    expect(withMeeting(OPEN, null).meeting).toBeNull();
+  });
+
+  it("a side swap keeps both — the same two teams played the same games", () => {
+    const swapped = withTeamsSwapped(OPEN);
+    expect(swapped.meeting?.match_id).toBe(BO3_ID);
+    expect(swapped.meeting?.game_number).toBe(2);
+  });
+
+  it("changing the study subject clears the game with the meeting", () => {
+    const next = withStudySubject(OPEN, { player: "Faker", champion: "Ahri" });
+    expect(next.meeting).toBeNull();
+  });
+
+  it("a game cannot be set without a meeting to number it inside", () => {
+    // The selection comes back UNCHANGED rather than growing a meeting-less
+    // game — there is no state in which `game` exists on its own.
+    const noMeeting: TeamSelection = { ...EMPTY_TEAM_SELECTION, team_a: "T1" };
+    const next = withMeetingGame(noMeeting, 2);
+    expect(next.meeting).toBeNull();
+    expect(next).toEqual(noMeeting);
+  });
+
+  it("changes only the game when the meeting stays", () => {
+    const next = withMeetingGame(OPEN, 3);
+    expect(next.meeting).toEqual({ match_id: BO3_ID, game_number: 3 });
+  });
+
+  it("round-trips the game through the URL, and never without its meeting", () => {
+    const params = teamSelectionToParams(OPEN);
+    expect(params.get("meeting")).toBe(BO3_ID);
+    expect(params.get("game")).toBe("2");
+    expect(teamSelectionFromParams(params).meeting).toEqual({
+      match_id: BO3_ID,
+      game_number: 2,
+    });
+    // A game with no meeting is dropped, not honoured.
+    expect(meetingFromParams(new URLSearchParams("game=2"))).toBeNull();
   });
 });

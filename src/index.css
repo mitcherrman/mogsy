@@ -11735,6 +11735,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .proplay-dossier .dossier-study__champions {
     grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
   }
+}
 
 /* --- Step 4: historical meetings, and one meeting's games ------------------
    A DEEPER LAYER OF THE SAME DOSSIER, not a new surface. The rows reuse the
@@ -11810,14 +11811,25 @@ html.hub-commons-in-view .hextech-ambience-layer {
   color: var(--dsr-ink-soft);
   opacity: 0.85;
 }
+/* TWO INKS, AND WHICH ONE DEPENDS ON WHAT IS UNDERNEATH. `--dsr-ink` is for
+   the light parchment plates; the folio's own pale ink is for anything
+   sitting directly on the dark page. The meeting HEAD sits on the folio. */
 .proplay-dossier .dossier-meeting-head {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.5rem;
   padding-bottom: 0.4rem;
-  border-bottom: 1px solid rgba(93, 85, 70, 0.18);
+  border-bottom: 1px solid rgba(201, 168, 76, 0.22);
   font-size: 0.8rem;
+}
+.proplay-dossier .dossier-meeting-head .dossier-meeting__meta,
+.proplay-dossier .dossier-meeting-head .dossier-meeting__scope,
+.proplay-dossier .dossier-meeting-head .dossier-meeting__undecided {
+  color: rgba(230, 227, 220, 0.65);
+}
+.proplay-dossier .dossier-meeting-head .dossier-meeting__score-sep {
+  color: rgba(230, 227, 220, 0.5);
 }
 .proplay-dossier .dossier-meeting-games {
   display: flex;
@@ -11827,11 +11839,14 @@ html.hub-commons-in-view .hextech-ambience-layer {
   padding: 0;
   list-style: none;
 }
+/* A PARCHMENT PLATE, so its ink is the parchment ink — and so is the ink of
+   the game dossier that Step 5 opens INSIDE it. */
 .proplay-dossier .dossier-meeting-game {
   padding: 0.4rem 0.5rem;
   border: 1px solid rgba(93, 85, 70, 0.18);
   border-radius: 5px;
   background: rgba(255, 253, 246, 0.6);
+  color: var(--dsr-ink);
 }
 .proplay-dossier .dossier-meeting-game__head {
   display: flex;
@@ -11906,4 +11921,315 @@ html.hub-commons-in-view .hextech-ambience-layer {
   }
 }
 
+
+/* --------------------------------------------------------------------------
+   Step 5 — the game dossier, inside the meeting shell.
+
+   IT IS A DEEPER PAGE OF THE SAME DOSSIER, so it inherits the parchment, the
+   antique gold and the ink the layers above already use, and adds only the
+   one thing a box score needs that nothing above it did: aligned columns of
+   numbers.
+
+   RESPONSIVE BY SHAPE, NOT BY SHRINKING. Below 640px the seven-column table
+   is re-laid as stacked rows with short labels drawn from `data-label`, so a
+   375px screen reads the same facts down the page instead of scrolling a
+   table sideways or squeezing seven columns into unreadable slivers. The
+   table element is kept — it is the correct semantics either way, and the
+   header cells stay in the accessibility tree.
+   -------------------------------------------------------------------------- */
+.proplay-dossier .dossier-meeting-game__open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.proplay-dossier .dossier-meeting-game[data-selected="true"] {
+  border-color: var(--dsr-gold, rgba(150, 118, 52, 0.65));
+  background: rgba(255, 250, 235, 0.96);
+}
+.proplay-dossier .dossier-game {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(93, 85, 70, 0.22);
+}
+.proplay-dossier .dossier-game__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.proplay-dossier .dossier-game__title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+/* PARCHMENT INK. The game dossier only ever renders inside the selected
+   meeting-game plate, which is parchment — see `.dossier-meeting-game`. */
+.proplay-dossier .dossier-game__meta {
+  font-size: 0.6rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game__result {
+  margin-left: auto;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(120, 92, 34, 0.95);
+}
+.proplay-dossier .dossier-game__sides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.proplay-dossier .dossier-game-side {
+  border: 1px solid rgba(93, 85, 70, 0.18);
+  border-radius: 5px;
+  background: rgba(255, 253, 246, 0.7);
+  overflow: hidden;
+}
+.proplay-dossier .dossier-game-side__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid rgba(93, 85, 70, 0.16);
+  background: rgba(246, 240, 226, 0.8);
+  font-size: 0.7rem;
+}
+.proplay-dossier .dossier-game-side__name {
+  font-weight: 600;
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-game-side__side {
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game-side__result {
+  margin-left: auto;
+  font-size: 0.58rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game-side__result[data-won="true"] {
+  color: var(--dsr-gold-ink, rgba(120, 92, 34, 0.95));
+  font-weight: 600;
+}
+.proplay-dossier .dossier-game-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.64rem;
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-game-table thead th {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.54rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+  white-space: nowrap;
+}
+.proplay-dossier .dossier-game-table tbody td,
+.proplay-dossier .dossier-game-table tbody th {
+  padding: 0.25rem 0.4rem;
+  border-top: 1px solid rgba(93, 85, 70, 0.12);
+  font-weight: 400;
+  vertical-align: middle;
+}
+.proplay-dossier .dossier-game-player__who {
+  text-align: left;
+}
+/* The flex is on the INNER span so the cell itself stays a table-cell and the
+   column keeps aligning with its header. */
+.proplay-dossier .dossier-game-player__who-inner,
+.proplay-dossier .dossier-game-player__champion-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-game-player__names {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+.proplay-dossier .dossier-game-player__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 8rem;
+}
+.proplay-dossier .dossier-game-player__role {
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game-player__champion {
+  text-align: left;
+}
+.proplay-dossier .dossier-game-player__champion-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 6rem;
+}
+.proplay-dossier .dossier-game-player__kda {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* `Perfect` sits under the line it qualifies, in the technical cyan the
+   dossier uses for a measured remark — never in the gold a result wears. */
+.proplay-dossier .dossier-game-player__ratio {
+  display: block;
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  color: rgba(30, 106, 114, 0.95);
+}
+/* A THREE-COLUMN COMPARISON, not a full-width sprawl. Left to itself the
+   metric name takes a third of a 1200px folio and the two numbers drift far
+   apart, which is the opposite of a comparison. */
+/* A PLATE, like the two box scores beside it — the comparison is evidence
+   and evidence sits on parchment in this dossier. Without the plate its ink
+   would be dark on the dark folio. */
+.proplay-dossier .dossier-game-objectives {
+  width: 100%;
+  max-width: 26rem;
+  margin-top: 0.7rem;
+  border: 1px solid rgba(93, 85, 70, 0.18);
+  border-radius: 5px;
+  background: rgba(252, 248, 238, 0.9);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  font-size: 0.64rem;
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-game-objectives th:first-child {
+  width: 40%;
+}
+.proplay-dossier .dossier-game-objectives th:not(:first-child),
+.proplay-dossier .dossier-game-objectives td {
+  width: 30%;
+}
+.proplay-dossier .dossier-game-objectives thead th {
+  padding: 0.3rem 0.5rem;
+  background: rgba(246, 240, 226, 0.8);
+  font-size: 0.54rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game-objectives tbody th,
+.proplay-dossier .dossier-game-objectives tbody td {
+  padding: 0.24rem 0.5rem;
+  border-top: 1px solid rgba(93, 85, 70, 0.12);
+  font-weight: 400;
+}
+.proplay-dossier .dossier-game-objectives tbody th {
+  text-align: left;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game-bans {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  margin-top: 0.6rem;
+}
+.proplay-dossier .dossier-game-bans__title {
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game-bans__side {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.proplay-dossier .dossier-game-bans__team {
+  font-size: 0.58rem;
+  color: var(--dsr-ink-soft);
+}
+/* A SET, NOT A SEQUENCE. No numbering, no arrows, no ordered container — the
+   corpus records no draft order and no shape here may imply one. */
+.proplay-dossier .dossier-game-bans__icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+}
+
+@media (min-width: 900px) {
+  /* Two teams side by side once there is room for two seven-column tables. */
+  .proplay-dossier .dossier-game__sides {
+    flex-direction: row;
+  }
+  .proplay-dossier .dossier-game-side {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  /* THE TABLE STOPS BEING A TABLE. Seven columns at 375px is either a
+     sideways scroll or seven unreadable slivers; the same seven facts read
+     down the page instead, each under the short label its column carried. */
+  .proplay-dossier .dossier-game-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .proplay-dossier .dossier-game-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.1rem 0.4rem;
+    padding: 0.35rem 0.45rem;
+    border-top: 1px solid rgba(93, 85, 70, 0.14);
+  }
+  .proplay-dossier .dossier-game-table tbody th,
+  .proplay-dossier .dossier-game-table tbody td {
+    padding: 0;
+    border: 0;
+  }
+  .proplay-dossier .dossier-game-player__who,
+  .proplay-dossier .dossier-game-player__champion {
+    grid-column: 1 / -1;
+    display: block;
+  }
+  .proplay-dossier .dossier-game-table tbody td::before {
+    content: attr(data-label) " ";
+    font-size: 0.5rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--dsr-ink-soft);
+  }
+  .proplay-dossier .dossier-game-table tbody td {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    text-align: left !important;
+  }
+  .proplay-dossier .dossier-game-player__name {
+    max-width: 100%;
+  }
+  .proplay-dossier .dossier-game__result {
+    margin-left: 0;
+  }
 }

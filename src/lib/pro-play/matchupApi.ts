@@ -1385,3 +1385,183 @@ export function fetchMeeting(
   const params = new URLSearchParams({ match_id: matchId, scope: scopeId });
   return get<MeetingPayload>(`/series?${params.toString()}`, signal);
 }
+
+// --- Step 5: one game ------------------------------------------------------
+//
+// THE TERMINAL LAYER of the drilldown, and the first payload in the Explorer
+// that carries a combat statistic:
+//
+//   team matchup -> player x champion -> exact matchup -> MEETING -> GAME
+//
+// IDENTIFIED BY `match_id` + `game_number`, which is the state the board's
+// selection already holds — Step 4 added both keys and only rendered the
+// first. So Step 5 is a render and a fetch, not a state change.
+//
+// UNAVAILABLE IS NOT ZERO, and the payload's SHAPE is what says so. A game the
+// corpus never enriched has `stats_available: false` and player rows whose
+// `stats` is `null` — never a row of zeroes, which is a real scoreline
+// somebody could have had. And because `kda_ratio: null` only ever appears
+// INSIDE a non-null `stats`, it means exactly one thing: a deathless game.
+//
+// NO DRAFT ORDER. `sequence` is -1 on every pick/ban row in the corpus. Bans
+// arrive as an alphabetically sorted set per side with `ordered: false`, and
+// nothing in this client may lay them out as a phase or a rotation.
+
+/** One lane checkpoint. `opp_*` is the direct lane opponent's VALUE — OE never
+ *  publishes their name, and the opponent's identity is on the player rows of
+ *  this same payload. Served for a later analysis layer; Step 5 renders none
+ *  of it. */
+export interface GameCheckpoint {
+  gold: number | null;
+  opp_gold: number | null;
+  xp: number | null;
+  opp_xp: number | null;
+  cs: number | null;
+  opp_cs: number | null;
+  kills: number | null;
+  opp_kills: number | null;
+  deaths: number | null;
+  opp_deaths: number | null;
+  assists: number | null;
+  opp_assists: number | null;
+  /** False when the game never reached this mark — the honest shape for a
+   *  22-minute game, and not a row of zeroes. */
+  reached: boolean;
+}
+
+/** RAW COMPONENTS ONLY. Every field is a stored fact; a `null` here is a NULL
+ *  column on an otherwise-enriched row (a 2016 game has no vision score), which
+ *  is a different statement from the game carrying no statistics. */
+export interface GamePlayerStats {
+  kills: number | null;
+  deaths: number | null;
+  assists: number | null;
+  double_kills: number | null;
+  triple_kills: number | null;
+  quadra_kills: number | null;
+  penta_kills: number | null;
+  first_blood_kill: number | null;
+  first_blood_assist: number | null;
+  first_blood_victim: number | null;
+  total_cs: number | null;
+  minion_kills: number | null;
+  monster_kills: number | null;
+  total_gold: number | null;
+  earned_gold: number | null;
+  gold_spent: number | null;
+  damage_to_champions: number | null;
+  damage_to_towers: number | null;
+  vision_score: number | null;
+  wards_placed: number | null;
+  wards_killed: number | null;
+  control_wards_bought: number | null;
+  /** `(kills + assists) / deaths`, and `null` when deaths is 0 — the standard
+   *  League "Perfect". Unambiguous because it only exists inside a stats
+   *  object that a statless game does not have at all. */
+  kda_ratio: number | null;
+  checkpoints: Record<string, GameCheckpoint>;
+  data_completeness: string | null;
+}
+
+export interface GamePlayer {
+  player_lp_page: string | null;
+  team_key: string | null;
+  display_name: string | null;
+  /** Leaguepedia's role — the one the rest of the Explorer is keyed on. */
+  role: string | null;
+  /** OE's own position, kept beside it rather than substituted for it. */
+  oe_position: string | null;
+  side: string | null;
+  champion_key: string | null;
+  win: boolean | null;
+  /** Null when this game carries no Oracle's Elixir row. NEVER zeroes. */
+  stats: GamePlayerStats | null;
+}
+
+export interface GameTeamRow {
+  team_key: string;
+  display_name: string;
+  explorer_navigable: boolean;
+  side: string | null;
+  /** Read from the team fact table, never summed from the player rows.
+   *  `turret_plates` is absent by design and never arrives. */
+  objectives: Record<string, number | null>;
+  firsts: Record<string, boolean | null>;
+  /** The CANONICAL result, not Oracle's Elixir's. */
+  win: boolean | null;
+  data_completeness: string | null;
+}
+
+export interface GameBans {
+  team_key: string | null;
+  display_name: string | null;
+  side: string | null;
+  champions: string[];
+  /** Always false. Sorted alphabetically precisely so no reader can mistake
+   *  the list for a draft sequence. */
+  ordered: boolean;
+}
+
+export interface GameDetailPayload {
+  canonical_game_id: string;
+  match_id: string;
+  game_number: number;
+  meeting: { kind: MeetingKind; game_count: number; game_numbers: number[] };
+  league_slug: string | null;
+  league_name: string | null;
+  tournament_id: string | null;
+  tournament_name: string | null;
+  game_date: string | null;
+  patch: string | null;
+  blue_team: MeetingTeamRef & { side: string };
+  red_team: MeetingTeamRef & { side: string };
+  winner_team_key: string | null;
+  decided: boolean;
+  duration_seconds: number | null;
+  scope_id: string | null;
+  in_scope: boolean | null;
+  stats_available: boolean;
+  stat_player_rows: number;
+  team_stats_available: boolean;
+  /** The server's own sentence for an unstatted game. Rendered as given. */
+  stats_note: string | null;
+  players: GamePlayer[];
+  teams: GameTeamRow[];
+  bans: GameBans[];
+  bans_note: string;
+  /** OPERATOR DIAGNOSTIC, never a sentence for a reader. A reader did not ask
+   *  about Mogzy's ingestion, and the canonical result already won. */
+  diagnostics: Record<string, boolean>;
+  unavailable_metrics: UnavailableMetric[];
+}
+
+/** Open a game inside the meeting that is already open.
+ *
+ *  THE MEETING IS PRESERVED and only `game_number` changes — a game number is
+ *  a position inside a meeting and means nothing without it, which is why the
+ *  two live in ONE selection key rather than two. Every Step 4 clearing rule
+ *  therefore covers `game` for free: whatever drops the meeting drops the
+ *  game with it, and there is no path that can strand one. */
+export function withMeetingGame(
+  selection: TeamSelection,
+  gameNumber: number | null,
+): TeamSelection {
+  const meeting = selection.meeting ?? null;
+  // A game with no meeting is not a state this selection can hold.
+  if (!meeting) return selection;
+  return { ...selection, meeting: { ...meeting, game_number: gameNumber } };
+}
+
+export function fetchGameDetail(
+  matchId: string,
+  gameNumber: number,
+  scopeId: string,
+  signal?: AbortSignal,
+): Promise<GameDetailPayload> {
+  const params = new URLSearchParams({
+    match_id: matchId,
+    game_number: String(gameNumber),
+    scope: scopeId,
+  });
+  return get<GameDetailPayload>(`/game?${params.toString()}`, signal);
+}

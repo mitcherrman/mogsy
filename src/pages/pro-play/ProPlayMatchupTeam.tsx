@@ -73,6 +73,7 @@ import {
   type TeamMatchupResponse,
   type TeamSelection,
   withMeeting,
+  withMeetingGame,
   withTeamBanToggled,
   withTeamScope,
   withTeamSide,
@@ -389,6 +390,12 @@ export function TeamBoard({
         scopeId={data.scope.scope_id}
         scopeLabel={data.scope.scope_label}
         onClose={() => onChange(withMeeting(selection, null))}
+        // STEP 5. One selection change, one history entry, so Back returns to
+        // the meeting with no game open — and `withMeetingGame` refuses to set
+        // a game when there is no meeting to number it inside.
+        onSelectGame={(gameNumber: number | null) =>
+          onChange(withMeetingGame(selection, gameNumber))
+        }
       />
 
       {headerA || headerB ? (
