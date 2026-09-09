@@ -27,11 +27,29 @@ import { useMemo } from "react";
 import { formatDate, formatRate, formatRecord } from "@/lib/pro-play/researchApi";
 import type { DemonstratedPool, PoolChampion } from "@/lib/pro-play/matchupApi";
 
+import ProPlayTooltip from "../ProPlayTooltip";
+
 import { ChampionIcon } from "./DossierMedia";
 import { Disclosure } from "./DossierChrome";
 
 /** Below this, a win rate is noise rather than a record. Printed on screen. */
 export const MIN_GAMES_FOR_RATE = 5;
+
+/**
+ * How many champions the BOARD shows before the disclosure.
+ *
+ * The old board showed five per category because five is a small number, and
+ * that was the complaint: a player with a twenty-champion pool looked like a
+ * player with five. Fourteen is not a rounder arbitrary number -- it is what
+ * fills whole rows of the new fixed-width tiles at the widths a lane card
+ * actually gets, so the grid ends flush instead of trailing a ragged remainder.
+ * Most demonstrated pools in the corpus are smaller than this, which means the
+ * common case now shows the WHOLE pool and the cap never fires.
+ */
+export const BOARD_PRIMARY_MAX = 14;
+
+/** The two ordering strips. Icon-only, so they cost one line each. */
+export const BOARD_STRIP_MAX = 10;
 
 export type PoolCategoryId = "played" | "recent" | "record";
 
@@ -66,28 +84,90 @@ export function poolCategories(champions: PoolChampion[], size: number): PoolCat
   if (record.length) {
     out.push({
       id: "record",
-      label: `Best record (${MIN_GAMES_FOR_RATE}+ games)`,
+      label: `Best record ${MIN_GAMES_FOR_RATE}g+`,
       champions: record.slice(0, size),
     });
   }
   return out;
 }
 
+/**
+ * One champion, as a fixed-width tile.
+ *
+ * THE NAME IS GONE FROM THE FACE OF THE CHIP, and that is the point. A row of
+ * chips labelled "Xin Zhao", "Vi", "Nocturne", "Jarvan IV" wraps into ragged
+ * columns whose width is decided by an accident of naming, so five champions
+ * could occupy the same space as three. Every tile is now the same width, so a
+ * row is a grid, twice as many fit, and the eye reads down the numbers instead
+ * of across the words.
+ *
+ * The name is not lost -- `ProPlayTooltip` makes each tile a real focusable
+ * button carrying the champion, its record and its last game, reachable by
+ * hover, by keyboard and (through the native `title`) by touch. An icon nobody
+ * recognises is still identifiable; it just costs a hover instead of a line of
+ * text in every tile.
+ */
 function ChampionChip({ champion }: { champion: PoolChampion }) {
+  // Leads with the name, then adds only what the tile does NOT already show.
+  // Games and win rate are printed on the tile, so repeating them here would
+  // make a screen reader say each twice.
+  const detail = [
+    champion.key,
+    formatRecord(champion.wins, champion.losses),
+    champion.last_played_at ? `last ${formatDate(champion.last_played_at)}` : null,
+    champion.banned ? "banned in this selection" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <span
+    <ProPlayTooltip
+      label={champion.key}
+      tooltip={detail}
+      testId={`champ-chip-${champion.key}`}
       className={["dossier-champ-chip", champion.banned ? "is-banned" : ""].join(" ")}
-      data-testid={`champ-chip-${champion.key}`}
-      title={champion.banned ? `${champion.key} — banned in this selection` : champion.key}
     >
       <ChampionIcon champion={champion.key} muted={champion.banned} />
-      <span className="dossier-champ-chip__text">
-        <span className="dossier-champ-chip__name">{champion.key}</span>
-        <span className="dossier-champ-chip__stat tabular-nums">
-          {champion.games}g · {formatRate(champion.win_rate)}
-        </span>
+      <span className="dossier-champ-chip__stat tabular-nums">
+        {champion.games}g
       </span>
-    </span>
+      <span className="dossier-champ-chip__rate tabular-nums">
+        {formatRate(champion.win_rate)}
+      </span>
+    </ProPlayTooltip>
+  );
+}
+
+/**
+ * A champion in an ordering strip: the icon alone, with everything else in the
+ * tooltip. The strips exist to show a SEQUENCE, and a sequence needs position,
+ * not statistics repeated from the grid above it.
+ */
+function ChampionGlyph({
+  champion,
+  category,
+}: {
+  champion: PoolChampion;
+  category: PoolCategoryId;
+}) {
+  const detail = [
+    champion.key,
+    category === "recent" && champion.last_played_at
+      ? `last played ${formatDate(champion.last_played_at)}`
+      : `${champion.games}g · ${formatRecord(champion.wins, champion.losses)} · ${formatRate(champion.win_rate)}`,
+    champion.banned ? "banned in this selection" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <ProPlayTooltip
+      label={champion.key}
+      tooltip={detail}
+      testId={`champ-glyph-${category}-${champion.key}`}
+      className={["dossier-champ-glyph", champion.banned ? "is-banned" : ""].join(" ")}
+    >
+      <ChampionIcon champion={champion.key} muted={champion.banned} />
+    </ProPlayTooltip>
   );
 }
 
@@ -141,10 +221,20 @@ export function ChampionPoolSummary({
   preview: number;
   testId?: string;
 }) {
-  const categories = useMemo(
-    () => (pool ? poolCategories(pool.champions, preview) : []),
-    [pool, preview],
-  );
+  // `preview` is the server's own display hint. It stays the FLOOR rather than
+  // the ceiling: the board may show more now that a tile is an icon instead of
+  // a name, but never fewer than the backend asked for.
+  const { primary, strips } = useMemo(() => {
+    if (!pool) return { primary: [], strips: [] as PoolCategory[] };
+    const cats = poolCategories(pool.champions, Math.max(preview, BOARD_PRIMARY_MAX));
+    const played = cats.find((c) => c.id === "played")?.champions ?? [];
+    return {
+      primary: played.slice(0, Math.max(preview, BOARD_PRIMARY_MAX)),
+      strips: cats
+        .filter((c) => c.id !== "played")
+        .map((c) => ({ ...c, champions: c.champions.slice(0, BOARD_STRIP_MAX) })),
+    };
+  }, [pool, preview]);
 
   if (poolOmitted) {
     return (
@@ -185,12 +275,35 @@ export function ChampionPoolSummary({
         </span>
       </div>
 
-      {categories.map((cat) => (
-        <div key={cat.id} className="dossier-pool__cat" data-testid={`pool-cat-${cat.id}`}>
-          <span className="dossier-pool__cat-label">{cat.label}</span>
-          <div className="dossier-pool__chips">
+      {/* THE POOL ITSELF, not a sample of it. Ordered by games, and showing
+          every champion up to a cap that only fires on the largest pools. */}
+      <div className="dossier-pool__cat" data-testid="pool-cat-played">
+        <span className="dossier-pool__cat-label">
+          Most played
+          {primary.length < pool.champions.length ? (
+            <span className="dossier-pool__cat-more tabular-nums">
+              {primary.length} of {pool.champions.length}
+            </span>
+          ) : null}
+        </span>
+        <div className="dossier-pool__grid">
+          {primary.map((c) => (
+            <ChampionChip key={`played-${c.key}`} champion={c} />
+          ))}
+        </div>
+      </div>
+
+      {/* The other two orderings are ORDERINGS, not separate arsenals — the
+          same champions in a different sequence. Repeating them as full tiles
+          was what made a lane card feel like the same four picks three times,
+          so they are icon-only strips: the sort is still on screen, and it
+          costs one line instead of a block. */}
+      {strips.map((cat) => (
+        <div key={cat.id} className="dossier-pool__strip" data-testid={`pool-cat-${cat.id}`}>
+          <span className="dossier-pool__strip-label">{cat.label}</span>
+          <div className="dossier-pool__strip-icons">
             {cat.champions.map((c) => (
-              <ChampionChip key={`${cat.id}-${c.key}`} champion={c} />
+              <ChampionGlyph key={`${cat.id}-${c.key}`} champion={c} category={cat.id} />
             ))}
           </div>
         </div>

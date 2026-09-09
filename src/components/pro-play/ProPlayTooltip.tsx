@@ -55,7 +55,13 @@ export default function ProPlayTooltip({
             type="button"
             data-testid={testId}
             title={tooltip}
-            aria-label={`${label} — ${tooltip}`}
+            // The accessible name is the visible label plus the hidden detail
+            // — unless the detail already opens with the label, which is the
+            // normal shape for a chip whose tooltip leads with the thing it is
+            // naming. Prefixing there produced "Jayce — Jayce · 13g · …".
+            aria-label={
+              tooltip.startsWith(label) ? tooltip : `${label} — ${tooltip}`
+            }
             className={cn(
               "cursor-default rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a84c]/60",
               className,

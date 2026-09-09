@@ -207,3 +207,100 @@ describe("dossier chrome", () => {
     expect(screen.getByText("shown")).toBeVisible();
   });
 });
+
+// --- the board's density pass ------------------------------------------------
+
+describe("champion tiles on the five-lane board", () => {
+  const arsenal = [
+    champ({ key: "Jayce", games: 13, wins: 12, losses: 1, win_rate: 0.923, last_played_at: "2026-07-06" }),
+    champ({ key: "Ambessa", games: 11, wins: 7, losses: 4, win_rate: 0.636, last_played_at: "2026-06-01" }),
+    champ({ key: "K'Sante", games: 6, wins: 5, losses: 1, win_rate: 0.833, last_played_at: "2026-05-02" }),
+  ];
+
+  it("renders no champion NAME on the face of a tile", () => {
+    // The complaint this pass answers: name-bearing chips wrap into ragged
+    // columns whose widths are an accident of naming. The name lives in the
+    // tooltip now, so the tile is the icon and its numbers.
+    render(<ChampionPoolSummary pool={pool(arsenal)} poolOmitted={false} preview={5} />);
+    for (const key of ["Jayce", "Ambessa", "K'Sante"]) {
+      const tile = screen.getByTestId(`champ-chip-${key}`);
+      expect(tile.textContent).not.toContain(key);
+      // What it DOES show is the same for every tile, which is what makes the
+      // row a grid.
+      expect(tile.textContent).toMatch(/\d+g/);
+    }
+  });
+
+  it("reaches the champion name by hover, keyboard and touch", () => {
+    render(<ChampionPoolSummary pool={pool(arsenal)} poolOmitted={false} preview={5} />);
+    const tile = screen.getByTestId("champ-chip-Jayce");
+    // A real focusable control, not a hover-only div: keyboard and screen
+    // reader both reach it, and `title` covers touch where hover does not exist.
+    expect(tile.tagName).toBe("BUTTON");
+    expect(tile.getAttribute("aria-label")).toContain("Jayce");
+    expect(tile.getAttribute("title")).toContain("Jayce");
+  });
+
+  it("puts in the tooltip only what the tile does not already print", () => {
+    render(<ChampionPoolSummary pool={pool(arsenal)} poolOmitted={false} preview={5} />);
+    const label = screen.getByTestId("champ-chip-Jayce").getAttribute("aria-label") ?? "";
+    expect(label).toContain("12–1");            // record — not on the tile
+    expect(label).toContain("2026-07-06");      // last played — not on the tile
+    expect(label.match(/Jayce/g)).toHaveLength(1);
+  });
+
+  it("shows far more of the pool than the server's preview hint", () => {
+    // `preview` was the old cap and is now a FLOOR. A 12-champion pool used to
+    // surface five; it surfaces all twelve.
+    const twelve = Array.from({ length: 12 }, (_, i) =>
+      champ({ key: `C${i}`, games: 12 - i, win_rate: 0.5 }),
+    );
+    render(<ChampionPoolSummary pool={pool(twelve)} poolOmitted={false} preview={5} />);
+    const grid = screen.getByTestId("pool-cat-played");
+    expect(within(grid).getAllByTestId(/^champ-chip-/)).toHaveLength(12);
+  });
+
+  it("says so when the pool is larger than the board shows", () => {
+    const many = Array.from({ length: 20 }, (_, i) =>
+      champ({ key: `C${i}`, games: 20 - i, win_rate: 0.5 }),
+    );
+    render(<ChampionPoolSummary pool={pool(many)} poolOmitted={false} preview={5} />);
+    expect(screen.getByTestId("pool-cat-played")).toHaveTextContent("14 of 20");
+  });
+
+  it("renders the other orderings as icon-only strips, not a third arsenal", () => {
+    // The repetition complaint: the same four champions rendered as full tiles
+    // three times. They are orderings, so they cost one line each now.
+    render(<ChampionPoolSummary pool={pool(arsenal)} poolOmitted={false} preview={5} />);
+    const recent = screen.getByTestId("pool-cat-recent");
+    expect(within(recent).queryAllByTestId(/^champ-chip-/)).toHaveLength(0);
+    const glyphs = within(recent).getAllByTestId(/^champ-glyph-recent-/);
+    expect(glyphs.length).toBeGreaterThan(0);
+    expect(glyphs[0].textContent).not.toContain("Jayce");
+    expect(glyphs[0].getAttribute("aria-label")).toContain("Jayce");
+  });
+
+  it("keeps a banned champion visible and struck through", () => {
+    const banned = [champ({ key: "Vi", games: 4, win_rate: 0.5, banned: true })];
+    render(<ChampionPoolSummary pool={pool(banned)} poolOmitted={false} preview={5} />);
+    const tile = screen.getByTestId("champ-chip-Vi");
+    expect(tile.className).toContain("is-banned");
+    expect(tile.getAttribute("aria-label")).toContain("banned");
+  });
+});
+
+describe("the lane portrait", () => {
+  it("is rendered at the board's largest slot", () => {
+    render(<PlayerPortrait name="Faker" size="xl" />);
+    const slot = screen.getByTestId("player-portrait");
+    // Structural rather than pixel-exact: the card asks for the big slot.
+    expect(slot.className).toMatch(/h-\[4\.5rem\]|md:h-28/);
+  });
+
+  it("still falls back to a monogram with no media", () => {
+    render(<PlayerPortrait name="Faker" size="xl" />);
+    const slot = screen.getByTestId("player-portrait");
+    expect(slot).toHaveAttribute("data-media-state", "placeholder");
+    expect(slot.querySelector("img")).toBeNull();
+  });
+});

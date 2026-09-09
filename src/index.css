@@ -10773,13 +10773,13 @@ html.hub-commons-in-view .hextech-ambience-layer {
 .proplay-dossier .dossier-teamsum__figures {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-  gap: 0.4rem;
-  margin-bottom: 0.6rem;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
 }
 .proplay-dossier .dossier-figure {
   display: flex;
   flex-direction: column;
-  padding: 0.3rem 0.45rem;
+  padding: 0.18rem 0.4rem;
   border-radius: 6px;
   background: rgba(93, 85, 70, 0.07);
   border-left: 2px solid rgba(26, 96, 104, 0.4);
@@ -10791,7 +10791,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   color: var(--dsr-ink-soft);
 }
 .proplay-dossier .dossier-figure__value {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #241f18;
@@ -10807,7 +10807,7 @@ html.hub-commons-in-view .hextech-ambience-layer {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.25rem;
 }
 .proplay-dossier .dossier-pool__title {
   font-family: ui-serif, Georgia, serif;
@@ -10822,7 +10822,8 @@ html.hub-commons-in-view .hextech-ambience-layer {
   color: var(--dsr-ink-soft);
 }
 .proplay-dossier .dossier-pool__cat {
-  margin-bottom: 0.45rem;
+  margin-top: 0.15rem;
+  margin-bottom: 0.3rem;
 }
 .proplay-dossier .dossier-pool__cat-label {
   display: block;
@@ -10837,34 +10838,98 @@ html.hub-commons-in-view .hextech-ambience-layer {
   flex-wrap: wrap;
   gap: 0.3rem;
 }
+/* A champion tile. FIXED WIDTH is the whole idea: with the name gone, every
+   tile is the same size, so a wrapped row is a grid rather than a ragged line
+   whose breaks were decided by how long "Jarvan IV" is next to "Vi". */
 .proplay-dossier .dossier-champ-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.15rem 0.4rem 0.15rem 0.15rem;
-  border: 1px solid rgba(93, 85, 70, 0.25);
-  border-radius: 8px;
-  background: rgba(255, 253, 245, 0.55);
-}
-.proplay-dossier .dossier-champ-chip.is-banned {
-  opacity: 0.6;
-}
-.proplay-dossier .dossier-champ-chip.is-banned .dossier-champ-chip__name {
-  text-decoration: line-through;
-}
-.proplay-dossier .dossier-champ-chip__text {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  align-items: center;
+  gap: 0.1rem;
+  width: 3.15rem;
+  padding: 0.2rem 0.1rem 0.22rem;
+  border: 1px solid rgba(93, 85, 70, 0.22);
+  border-radius: 7px;
+  background: rgba(255, 253, 245, 0.55);
+  transition: border-color 120ms ease, background-color 120ms ease;
 }
-.proplay-dossier .dossier-champ-chip__name {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #2c251c;
+.proplay-dossier .dossier-champ-chip:hover,
+.proplay-dossier .dossier-champ-chip:focus-visible {
+  border-color: rgba(93, 85, 70, 0.5);
+  background: rgba(255, 253, 245, 0.85);
+}
+.proplay-dossier .dossier-champ-chip.is-banned {
+  opacity: 0.55;
+}
+/* A banned champion stays visible — seeing what your ban removed IS the
+   feature — and the strike now falls on the games count, which is the tile's
+   remaining text. */
+.proplay-dossier .dossier-champ-chip.is-banned .dossier-champ-chip__stat {
+  text-decoration: line-through;
 }
 .proplay-dossier .dossier-champ-chip__stat {
-  font-size: 0.58rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #2c251c;
+}
+.proplay-dossier .dossier-champ-chip__rate {
+  font-size: 0.55rem;
+  line-height: 1.1;
   color: var(--dsr-ink-soft);
+}
+
+.proplay-dossier .dossier-pool__grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+
+/* An ordering strip: a sequence, so it is one line of icons and nothing else.
+   The statistics are in the grid above and in every tooltip. */
+.proplay-dossier .dossier-pool__strip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-pool__strip-label {
+  flex: none;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+  width: 5.3rem;
+  white-space: nowrap;
+}
+.proplay-dossier .dossier-pool__strip-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-champ-glyph {
+  display: inline-flex;
+  border-radius: 6px;
+  opacity: 0.92;
+  transition: opacity 120ms ease;
+}
+.proplay-dossier .dossier-champ-glyph:hover,
+.proplay-dossier .dossier-champ-glyph:focus-visible {
+  opacity: 1;
+}
+.proplay-dossier .dossier-champ-glyph.is-banned {
+  opacity: 0.45;
+}
+
+.proplay-dossier .dossier-pool__cat-more {
+  margin-left: 0.4rem;
+  font-size: 0.5rem;
+  color: var(--dsr-ink-soft);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* ---- 9. Tables (evidence, behind disclosure) ----------------------------- */
@@ -11111,9 +11176,15 @@ html.hub-commons-in-view .hextech-ambience-layer {
 
 /* The ornamental half of the pool heading. Decorative only: the semantic
    label "Demonstrated picks" sits under it and is never replaced by it. */
+/* The ornament sits BESIDE the semantic label rather than above it. It was
+   costing a whole line of every lane card for decoration, twice per lane. */
 .proplay-dossier .dossier-pool__ornament {
-  display: block;
+  display: inline;
   font-size: 0.55rem;
   letter-spacing: 0.2em;
   color: rgba(107, 90, 42, 0.6);
+}
+.proplay-dossier .dossier-pool__ornament::after {
+  content: " · ";
+  letter-spacing: 0;
 }

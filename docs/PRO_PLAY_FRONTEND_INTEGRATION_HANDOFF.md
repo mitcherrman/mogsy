@@ -366,3 +366,58 @@ contain the old title, `Mogzy's Notes`, `Change teams` or `dossier-vs__status`.
 
 **Next:** decide the portrait rights basis (owner), then ingest portraits for the
 focus-team rosters. Everything else is cosmetic polish.
+
+
+---
+
+## Five-lane board density pass (2026-09-09)
+
+**Base:** `origin/main` `7e06ae9f`. Frontend only.
+
+The board was a verbose inventory: 48px portraits, name-bearing champion chips
+whose widths were an accident of naming, and the same few champions rendered as
+full tiles three times under three headings.
+
+| | before | after |
+| --- | --- | --- |
+| lane portrait | 48px | **112px**, face-cropped |
+| champion tile widths | 103 / 97 / 101px | **uniform 50px** |
+| champions shown per player | 5 | **14** (whole pool when ≤14) |
+| lane plate height | 610px | **550px** |
+
+**Portrait.** New `xl` slot (`h-[4.5rem] md:h-28`). The crop is
+`scale-[1.45] object-cover [object-position:center_24%]`: these are 3:2 event
+photographs of a player at a desk, so a square cover alone landed on chest and
+jersey. Nothing is cropped destructively — the stored file is the whole shot and
+this is one slot's framing.
+
+**Tiles.** Fixed 50px width, icon + games + win rate, **no champion name**. That
+is what makes a wrapped row a grid. The name is not lost: each tile is a
+`ProPlayTooltip` — a real `<button>` with `aria-label` and a native `title`, so
+hover, keyboard and touch all reach it. The tooltip carries only what the tile
+does not print (name, W–L, last played), so nothing is announced twice.
+
+**Fuller, not just bigger.** The server's `pool_preview` became a FLOOR rather
+than a cap; the board shows up to `BOARD_PRIMARY_MAX = 14`, which is what fills
+whole rows at the widths a lane card gets. Most pools in the corpus are smaller
+than that, so the common case now shows the whole pool, and when it does not the
+label says `14 of 24`.
+
+**Less repetition.** "Most recent" and "Best record" are *orderings*, not
+separate arsenals, so they render as icon-only strips costing one line each
+instead of a block of full tiles. The sort is still on screen and the tooltip
+still carries the detail.
+
+One shared-primitive fix: `ProPlayTooltip` no longer prefixes the label when the
+tooltip already starts with it ("Jayce — Jayce · 13g …").
+
+**Semantics untouched.** Category labels still name their own sort, the
+`5+ games` threshold is still printed, banned champions stay visible and struck
+through, `pool_omitted` / DNP / empty all keep their own sentences, and the full
+table behind the disclosure is unchanged.
+
+**Tests** 282 pass (10 new). Typecheck failure set identical to `origin/main`
+(11 = 11). Build clean. Verified T1 vs Gen.G and Gen.G vs HLE at 1440 / 390px:
+uniform tiles, no visible names, no horizontal overflow, no broken media. On
+narrow screens the ordering strips stack their label rather than leaving a
+gutter.

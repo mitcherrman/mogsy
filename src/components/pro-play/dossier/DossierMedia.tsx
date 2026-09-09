@@ -53,12 +53,16 @@ export function monogram(name: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-type SlotSize = "sm" | "md" | "lg";
+type SlotSize = "sm" | "md" | "lg" | "xl";
 
 const BOX: Record<SlotSize, string> = {
   sm: "h-8 w-8 text-[10px]",
   md: "h-12 w-12 text-xs",
   lg: "h-16 w-16 text-sm md:h-20 md:w-20 md:text-base",
+  // The lane card's portrait. A scouting card's first job is "who is this",
+  // and at `lg` the face was a thumbnail beside the name rather than the
+  // subject of the row.
+  xl: "h-[4.5rem] w-[4.5rem] text-base md:h-28 md:w-28 md:text-lg",
 };
 
 /**
@@ -108,7 +112,13 @@ function MediaFrame({
           className={
             fit === "contain"
               ? "h-full w-full object-contain p-[12%]"
-              : "h-full w-full object-cover [object-position:center_28%]"
+              // FACE FIRST. These are 3:2 event photographs of a player at a
+              // desk, so a square `object-cover` alone lands on chest and
+              // jersey. Scaling past the frame and biasing upward puts the head
+              // in the middle of the circle; the frame clips the rest. Nothing
+              // is cropped destructively — the stored file is the whole shot,
+              // and this is only how one slot frames it.
+              : "h-full w-full scale-[1.45] object-cover [object-position:center_24%]"
           }
           onError={() => setFailed(true)}
         />

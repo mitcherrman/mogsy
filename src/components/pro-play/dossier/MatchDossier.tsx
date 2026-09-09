@@ -242,7 +242,11 @@ function CandidateFace({
   return (
     <div className="dossier-player" data-testid={`candidate-${candidate.player_lp_page}`}>
       <div className={`dossier-player__id is-${align}`}>
-        <PlayerPortrait name={candidate.display_name} entityKey={candidate.player_lp_page} />
+        <PlayerPortrait
+          name={candidate.display_name}
+          entityKey={candidate.player_lp_page}
+          size="xl"
+        />
         <div className="dossier-player__names">
           <Link className="dossier-player__name" to={profilePath("player", candidate.player_lp_page)}>
             {candidate.display_name}
