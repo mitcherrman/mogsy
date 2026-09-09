@@ -65,6 +65,7 @@ import {
   teamSelectionFromLane,
   teamSelectionFromParams,
   teamSelectionToParams,
+  boardRequestSelection,
   type TeamMatchupResponse,
   type TeamSelection,
   fetchMatchupContract,
@@ -767,6 +768,21 @@ export function MatchupBody() {
     return () => controller.abort();
   }, []);
 
+  // WHAT THE REQUEST ACTUALLY DEPENDS ON, spelled out rather than inferred from
+  // object identity. Step 3 put the open dossier in the query string, so every
+  // tile click produces a new params object and therefore a new selection
+  // object — but the five lanes, ten rosters and six champion pools `/team`
+  // returns do not change because one dossier is open. Keying the effect on the
+  // REQUEST STRING instead of the selection's identity is what keeps a tile
+  // click from refetching the whole board.
+  const requestKey = useMemo(
+    () =>
+      mode === "team"
+        ? `team:${teamSelectionToParams(boardRequestSelection(teamSelection), false)}`
+        : `lane:${selectionToParams(selection)}`,
+    [mode, selection, teamSelection],
+  );
+
   useEffect(() => {
     abort.current?.abort();
     const controller = new AbortController();
@@ -792,9 +808,11 @@ export function MatchupBody() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-    // `mode` is derived from the same params as both selections, so the two
-    // selection objects are the honest dependency list.
-  }, [mode, selection, teamSelection]);
+    // `requestKey` IS the question this effect asks; the two selection objects
+    // are the arguments it asks it with, and they are always current when it
+    // runs because the key changes whenever anything the request carries does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestKey]);
 
   const ready = mode === "team" ? teamData : data;
   const mediaKeys = useMemo(

@@ -640,11 +640,206 @@ function dossierResponse(overrides: Record<string, unknown> = {}) {
   };
 }
 
+// --- Step 3: the exact matchup study ----------------------------------------
+//
+// The payload `/exact` returns. Every figure here is arithmetic the assertions
+// below check by hand, and the example list is built to exercise all three
+// things the section must get right: the tier ORDER, an example the board can
+// open, and an example it cannot.
+
+const EXACT_DEFINITIONS = {
+  exact_matchup:
+    "Games in which this player played this champion and the opposing player played theirs, in the same game, on opposing teams, within the selected scope. Nothing is inferred from rosters or from the two champions appearing in separate games.",
+  no_exact_games:
+    "No game in the selected scope has both of these players on these champions on opposing sides. That is a fact about the record, not a gap in it \u2014 no looser sample is substituted.",
+  other_pro_examples:
+    "Other professional games in which the same two champions met on opposing sides in this scope, grouped by the players who played them. Every example is a real game; none is inferred.",
+  ranking:
+    "Ordered by relation to the matchup on screen \u2014 the same subject player first, then the same opposing player, then examples involving a team from this board, then the rest \u2014 and within each by number of games, then by most recent meeting.",
+  record_orientation: "Wins and losses are counted from the subject player's side.",
+  navigation_limit:
+    "The Explorer's team board is limited to Mogzy's curated focus set, so an example played between teams outside it is real evidence that the board cannot currently be pointed at.",
+};
+
+function exactSide(
+  player: string,
+  champion: string,
+  team: string,
+  role = "Top",
+) {
+  return {
+    player_lp_page: player,
+    display_name: player,
+    champion_key: champion,
+    team_key: team,
+    team_display_name: team,
+    role,
+  };
+}
+
+function exactExample(
+  relation: string,
+  subject: ReturnType<typeof exactSide>,
+  opposing: ReturnType<typeof exactSide>,
+  games: number,
+  wins: number,
+  { navigable = true, outside = [] as string[], date = "2026-05-01 10:00:00" } = {},
+) {
+  return {
+    relation,
+    subject,
+    opposing,
+    record: {
+      games,
+      wins,
+      losses: games - wins,
+      win_rate: games ? wins / games : null,
+      first_played_at: date,
+      last_played_at: date,
+    },
+    most_recent: {
+      canonical_game_id: `${subject.player_lp_page}-${opposing.player_lp_page}`,
+      game_date: date,
+      result: wins ? "W" : "L",
+      win: Boolean(wins),
+      subject_team_key: subject.team_key,
+      opposing_team_key: opposing.team_key,
+      league_slug: "LoL Champions Korea",
+      tournament_id: null,
+    },
+    navigation: {
+      team_a: subject.team_key,
+      team_b: opposing.team_key,
+      scope_id: "current_2026",
+      lane: subject.role,
+      subject_player_lp_page: subject.player_lp_page,
+      subject_champion: subject.champion_key,
+      opposing_player_lp_page: opposing.player_lp_page,
+      opposing_champion: opposing.champion_key,
+      explorer_navigable: navigable,
+      teams_outside_focus_set: outside,
+    },
+  };
+}
+
+/** Doran's Ornn against Bin's Ambessa: two games, one apiece. */
+function exactResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    contract_version: "pro_comparison_v1",
+    kind: "exact_player_champion_matchup",
+    scope: { scope_id: "current_2026", label: "2026", description: "The 2026 season." },
+    league_filter: "MAJOR_PRO",
+    // TRUE here and nowhere else on this screen.
+    head_to_head: true,
+    subject: {
+      player_lp_page: "Doran",
+      display_name: "Doran",
+      champion_key: "Ornn",
+      participation: "participated",
+      games_in_scope: 101,
+      champion_games_in_scope: 30,
+      teams_in_qualifying_games: ["T1"],
+    },
+    opposing: {
+      player_lp_page: "Bin",
+      display_name: "Bin",
+      champion_key: "Ambessa",
+      participation: "participated",
+      games_in_scope: 125,
+      champion_games_in_scope: 40,
+      teams_in_qualifying_games: ["Bilibili Gaming"],
+    },
+    exact: {
+      record: {
+        games: 2,
+        wins: 1,
+        losses: 1,
+        win_rate: 0.5,
+        first_played_at: "2026-03-01 09:00:00",
+        last_played_at: "2026-06-14 11:00:00",
+      },
+      meetings: [
+        {
+          canonical_game_id: "x2",
+          game_date: "2026-06-14 11:00:00",
+          result: "W",
+          win: true,
+          subject_team_key: "T1",
+          opposing_team_key: "Bilibili Gaming",
+          league_slug: "LoL Champions Korea",
+          tournament_id: null,
+        },
+        {
+          canonical_game_id: "x1",
+          game_date: "2026-03-01 09:00:00",
+          result: "L",
+          win: false,
+          subject_team_key: "T1",
+          opposing_team_key: "Bilibili Gaming",
+          league_slug: "LoL Champions Korea",
+          tournament_id: null,
+        },
+      ],
+      meetings_total: 2,
+      result_sequence: ["W", "L"],
+      most_recent: {
+        canonical_game_id: "x2",
+        game_date: "2026-06-14 11:00:00",
+        result: "W",
+        win: true,
+        subject_team_key: "T1",
+        opposing_team_key: "Bilibili Gaming",
+        league_slug: "LoL Champions Korea",
+        tournament_id: null,
+      },
+    },
+    champion_matchup_games_in_scope: 9,
+    other_pro_examples: [
+      exactExample(
+        "same_subject_player",
+        exactSide("Doran", "Ornn", "T1"),
+        exactSide("Zeus", "Ambessa", "Gen.G"),
+        3,
+        2,
+      ),
+      exactExample(
+        "same_opposing_player",
+        exactSide("Kingen", "Ornn", "Dplus Kia"),
+        exactSide("Bin", "Ambessa", "Bilibili Gaming"),
+        2,
+        1,
+      ),
+      exactExample(
+        "other_professional_example",
+        exactSide("Oscarinin", "Ornn", "Fnatic"),
+        exactSide("Myrwn", "Ambessa", "Movistar KOI"),
+        2,
+        0,
+        { navigable: false, outside: ["Fnatic"] },
+      ),
+    ],
+    example_limit: 6,
+    board_team_keys: ["Bilibili Gaming", "T1"],
+    unavailable_metrics: [
+      {
+        metric: "average_kda",
+        label: "Average KDA",
+        reason: "The professional corpus carries no combat statistics.",
+      },
+    ],
+    definitions: EXACT_DEFINITIONS,
+    ...overrides,
+  };
+}
+
+let exact: ReturnType<typeof exactResponse>;
+
 let dossier: ReturnType<typeof dossierResponse>;
 
 beforeEach(() => {
   requests.length = 0;
   dossier = dossierResponse();
+  exact = exactResponse();
   team = teamResponse();
   vi.stubGlobal(
     "fetch",
@@ -658,6 +853,9 @@ beforeEach(() => {
         status = 200;
       } else if (url.includes("/matchup/player-champion")) {
         body = dossier;
+        status = 200;
+      } else if (url.includes("/matchup/exact")) {
+        body = exact;
         status = 200;
       } else if (url.includes("/matchup/team")) {
         // Reflect the requested bans back, the way the server does, so a test
@@ -726,6 +924,10 @@ describe("mode and URL state", () => {
       team_b: "Bilibili Gaming",
       bans: ["Azir", "Vi"],
       scope_id: "all_time",
+      // Step 3 added the open dossier to the round trip. A board with none
+      // still parses to an explicit null rather than to an absent key, so the
+      // two states cannot be told apart by shape alone.
+      study: null,
     };
     expect(teamSelectionFromParams(teamSelectionToParams(selection))).toEqual(selection);
   });
@@ -778,7 +980,14 @@ describe("mode and URL state", () => {
         bans: ["Vi"],
         pool_scope_id: "all_time",
       }),
-    ).toEqual({ team_a: "T1", team_b: "Bilibili Gaming", bans: ["Vi"], scope_id: "all_time" });
+    ).toEqual({
+      team_a: "T1",
+      team_b: "Bilibili Gaming",
+      bans: ["Vi"],
+      scope_id: "all_time",
+      // The lane explorer holds no study, so crossing into the board opens none.
+      study: null,
+    });
   });
 });
 
@@ -1833,11 +2042,367 @@ describe("player x champion dossier", () => {
     expect(tile).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("leaves room for the later matchup study without promising it", async () => {
-    // A slot, not a disabled button: a control that promises a feature the
-    // product does not have is worse than silence.
+  it("fills the slot Step 2 left, with a working chooser rather than a promise", async () => {
+    // Step 2 asserted this slot was EMPTY: a control promising a feature the
+    // product did not have would have been worse than silence. Step 3 built
+    // the feature, so the assertion inverts -- but the standard does not. The
+    // slot now holds a real chooser wired to real data, and still nothing that
+    // says "coming soon".
     const drawer = await openDrawer();
-    expect(await within(drawer).findByTestId("dossier-drawer-study-slot")).toBeEmptyDOMElement();
+    const slot = await within(drawer).findByTestId("dossier-drawer-study-slot");
+    expect(slot).not.toBeEmptyDOMElement();
+    expect(within(slot).getByTestId("study-chooser")).toBeInTheDocument();
     expect(drawer.textContent).not.toMatch(/coming soon|not yet available|next step/i);
+  });
+});
+
+// --- Step 3: the exact matchup study ----------------------------------------
+//
+// The distinction this whole layer exists for: the dossier above answers
+// "Doran's Ornn, including against Bilibili Gaming" — a TEAM opponent axis —
+// and the study answers "Doran's Ornn against BIN'S AMBESSA", joined on the
+// game. Every test below pins either that distinction, the honesty of a zero,
+// or the side journey that turns the two into a graph.
+
+describe("the exact matchup study", () => {
+  async function openStudy({ pick = true } = {}) {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    const study = await within(drawer).findByTestId("dossier-study");
+    if (!pick) return { drawer, study };
+    // The other side of the same lane, chosen the way the board is read:
+    // player, then that player's demonstrated pick.
+    fireEvent.click(within(study).getByTestId("study-opposing-player"));
+    fireEvent.click(await within(drawer).findByTestId("study-opposing-champion"));
+    await within(drawer).findByTestId("study-record");
+    return { drawer, study: within(drawer).getByTestId("dossier-study") };
+  }
+
+  it("asks for nothing until BOTH sides are chosen", async () => {
+    // A request with half a matchup in it would either 422 or, worse, answer a
+    // question the reader did not ask.
+    const { study } = await openStudy({ pick: false });
+    expect(within(study).getByTestId("study-prompt")).toBeInTheDocument();
+    expect(requests.some((u) => u.includes("/matchup/exact"))).toBe(false);
+
+    fireEvent.click(within(study).getByTestId("study-opposing-player"));
+    await waitFor(() =>
+      expect(screen.getByTestId("study-opposing-champion")).toBeInTheDocument(),
+    );
+    // A player with no champion is still half a question.
+    expect(requests.some((u) => u.includes("/matchup/exact"))).toBe(false);
+  });
+
+  it("offers only the opposing half of the same lane", async () => {
+    // Never the reader's own side, and never a champion catalogue: the chooser
+    // is the board's own data, so it cannot offer a player the board does not
+    // show or a champion they did not demonstrably play.
+    const { study } = await openStudy({ pick: false });
+    const chooser = within(study).getByTestId("study-chooser");
+    const players = within(chooser).getAllByTestId("study-opposing-player");
+    expect(players).toHaveLength(1);
+    expect(players[0]).toHaveTextContent("Bin");
+    expect(chooser.textContent).toContain("Top · Bilibili Gaming");
+    // Scoped to the CHOOSER: the subject line above it names Doran on purpose,
+    // and the chooser offering him would be offering the reader themselves.
+    expect(chooser.textContent).not.toContain("Doran");
+  });
+
+  it("sends the exact question, with the board teams for ordering only", async () => {
+    await openStudy();
+    const url = requests.find((u) => u.includes("/matchup/exact")) ?? "";
+    const params = new URLSearchParams(url.split("?")[1]);
+    expect(params.get("subject_player")).toBe("Doran");
+    expect(params.get("subject_champion")).toBe("Ornn");
+    expect(params.get("opposing_player")).toBe("Bin");
+    expect(params.get("opposing_champion")).toBe("Ambessa");
+    expect(params.get("scope")).toBe("current_2026");
+    // Repeated, not comma-joined: a team key may contain punctuation.
+    expect(params.getAll("board_team").sort()).toEqual(["Bilibili Gaming", "T1"]);
+  });
+
+  it("prints the record, the sequence and the most recent meeting", async () => {
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-headline")).toHaveTextContent(
+      "2 games · 1–1 · 50.0%",
+    );
+    expect(within(study).getByTestId("study-sequence")).toHaveTextContent("WL");
+    expect(within(study).getByTestId("study-most-recent")).toHaveTextContent("2026-06-14");
+  });
+
+  it("names all four identities, both champions and both players", async () => {
+    const { study } = await openStudy();
+    const subject = within(study).getByTestId("study-subject");
+    expect(subject).toHaveTextContent("Ornn vs Ambessa");
+    expect(subject).toHaveTextContent("Doran vs Bin");
+  });
+
+  it("states whose side the record is read from", async () => {
+    // "1–1" is meaningless until you know that. The server's own sentence.
+    const { study } = await openStudy();
+    expect(study.textContent).toContain("Wins and losses are counted from the subject");
+  });
+
+  it("prints the server's exact-match definition rather than one of its own", async () => {
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-definition")).toHaveTextContent(
+      EXACT_DEFINITIONS.exact_matchup,
+    );
+  });
+
+  // --- the zero state -------------------------------------------------------
+
+  it("keeps a truthful zero visible rather than hiding the section", async () => {
+    exact = exactResponse({
+      exact: {
+        record: {
+          games: 0,
+          wins: 0,
+          losses: 0,
+          win_rate: null,
+          first_played_at: null,
+          last_played_at: null,
+        },
+        meetings: [],
+        meetings_total: 0,
+        result_sequence: [],
+        most_recent: null,
+      },
+    });
+    const { drawer } = await openStudyExpectingZero();
+    const zero = within(drawer).getByTestId("study-zero");
+    expect(zero).toHaveTextContent(
+      "No recorded Doran Ornn vs Bin Ambessa games in 2026.",
+    );
+    // The counts that make the sentence checkable, and the server's own
+    // sentence saying no looser sample was substituted.
+    expect(within(drawer).getByTestId("study-zero-counts")).toHaveTextContent(
+      "Doran: 30 games on Ornn. Bin: 40 games on Ambessa.",
+    );
+    expect(zero.textContent).toContain("no looser sample is substituted");
+    // A rate over zero games is never rendered as a result.
+    expect(zero.textContent).not.toMatch(/0\.0%/);
+  });
+
+  it("says WHICH zero it is when a player was not in the scope at all", async () => {
+    // Three different facts; one sentence for all three would be wrong two
+    // thirds of the time.
+    exact = exactResponse({
+      exact: {
+        record: { games: 0, wins: 0, losses: 0, win_rate: null, first_played_at: null, last_played_at: null },
+        meetings: [],
+        meetings_total: 0,
+        result_sequence: [],
+        most_recent: null,
+      },
+      opposing: {
+        player_lp_page: "Bin",
+        display_name: "Bin",
+        champion_key: "Ambessa",
+        participation: "did_not_participate",
+        games_in_scope: 0,
+        champion_games_in_scope: 0,
+        teams_in_qualifying_games: [],
+      },
+    });
+    const { drawer } = await openStudyExpectingZero();
+    expect(within(drawer).getByTestId("study-zero")).toHaveTextContent(
+      "Bin has no games at all in 2026",
+    );
+  });
+
+  it("says WHICH zero it is when the champion was never played", async () => {
+    exact = exactResponse({
+      exact: {
+        record: { games: 0, wins: 0, losses: 0, win_rate: null, first_played_at: null, last_played_at: null },
+        meetings: [],
+        meetings_total: 0,
+        result_sequence: [],
+        most_recent: null,
+      },
+      opposing: {
+        player_lp_page: "Bin",
+        display_name: "Bin",
+        champion_key: "Ambessa",
+        participation: "participated",
+        games_in_scope: 125,
+        champion_games_in_scope: 0,
+        teams_in_qualifying_games: [],
+      },
+    });
+    const { drawer } = await openStudyExpectingZero();
+    expect(within(drawer).getByTestId("study-zero")).toHaveTextContent(
+      "Bin did not play Ambessa in 2026",
+    );
+  });
+
+  async function openStudyExpectingZero() {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    fireEvent.click(await within(drawer).findByTestId("study-opposing-player"));
+    fireEvent.click(await within(drawer).findByTestId("study-opposing-champion"));
+    await within(drawer).findByTestId("study-zero");
+    return { drawer };
+  }
+
+  // --- other pro examples ---------------------------------------------------
+
+  it("shows other pro examples even when the exact sample is not empty", async () => {
+    // A core feature, not an empty-state fallback.
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-record")).toBeInTheDocument();
+    expect(within(study).getAllByTestId("study-example")).toHaveLength(3);
+  });
+
+  it("shows other pro examples when the exact sample IS empty", async () => {
+    exact = exactResponse({
+      exact: {
+        record: { games: 0, wins: 0, losses: 0, win_rate: null, first_played_at: null, last_played_at: null },
+        meetings: [],
+        meetings_total: 0,
+        result_sequence: [],
+        most_recent: null,
+      },
+    });
+    const { drawer } = await openStudyExpectingZero();
+    expect(within(drawer).getAllByTestId("study-example")).toHaveLength(3);
+  });
+
+  it("renders each example's four identities and its record", async () => {
+    const { study } = await openStudy();
+    const first = within(study).getAllByTestId("study-example")[0];
+    expect(first).toHaveTextContent("Doran");
+    expect(first).toHaveTextContent("T1");
+    expect(first).toHaveTextContent("Zeus");
+    expect(first).toHaveTextContent("Gen.G");
+    expect(first).toHaveTextContent("3g · 2–1");
+  });
+
+  it("groups the examples by the server's relation, in the server's order", async () => {
+    const { study } = await openStudy();
+    const groups = within(study)
+      .getAllByTestId("study-example-group")
+      .map((el) => el.textContent);
+    expect(groups).toEqual([
+      "Same player, other opponents",
+      "Same opponent, other players",
+      "Elsewhere in the professional record",
+    ]);
+  });
+
+  it("never labels an example with a judgement it has no statistic for", async () => {
+    const { study } = await openStudy();
+    expect(study.textContent).not.toMatch(
+      /signature|elite|best example|strongest|pocket pick|comfort pick|must[- ]watch/i,
+    );
+  });
+
+  // --- the side journey -----------------------------------------------------
+
+  it("clicking an example establishes its whole matchup in one navigation", async () => {
+    const { study } = await openStudy();
+    const example = within(study).getAllByTestId("study-example")[0];
+    fireEvent.click(example);
+
+    // The board follows: new teams, and the study's four keys carried with it.
+    await waitFor(() => {
+      const url = requests.filter((u) => u.includes("/matchup/team")).pop() ?? "";
+      const params = new URLSearchParams(url.split("?")[1]);
+      expect(params.get("team_a")).toBe("T1");
+      expect(params.get("team_b")).toBe("Gen.G");
+    });
+    // And the reader did not have to rebuild any of it by hand.
+    await waitFor(() =>
+      expect(screen.getByTestId("player-champion-drawer")).toBeInTheDocument(),
+    );
+    const url = requests.filter((u) => u.includes("/matchup/exact")).pop() ?? "";
+    const params = new URLSearchParams(url.split("?")[1]);
+    expect(params.get("subject_player")).toBe("Doran");
+    expect(params.get("subject_champion")).toBe("Ornn");
+    expect(params.get("opposing_player")).toBe("Zeus");
+    expect(params.get("opposing_champion")).toBe("Ambessa");
+  });
+
+  it("renders an example the board cannot open as evidence, not a dead link", async () => {
+    // Hiding it would quietly redefine "other professional examples" as
+    // "other focus-set examples" — a different and much smaller claim.
+    const { study } = await openStudy();
+    const blocked = within(study).getAllByTestId("study-example")[2];
+    expect(blocked.tagName).toBe("DIV");
+    expect(blocked).not.toHaveAttribute("data-navigable");
+    expect(within(study).getByTestId("study-example-blocked")).toHaveTextContent("Fnatic");
+    // And the limit is explained in the server's own words.
+    expect(within(study).getByTestId("study-navigation-limit")).toHaveTextContent(
+      EXACT_DEFINITIONS.navigation_limit,
+    );
+  });
+
+  // --- the study lives in the URL -------------------------------------------
+
+  it("restores a whole study from a pasted link", async () => {
+    // What makes a side journey a navigation rather than a hidden state
+    // transition: the same URL, opened cold, is the same screen.
+    renderAt(
+      "?mode=team&team_a=T1&team_b=Bilibili+Gaming&focus_player=Doran" +
+        "&focus_champion=Ornn&vs_player=Bin&vs_champion=Ambessa",
+    );
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    expect(await within(drawer).findByTestId("study-record")).toHaveTextContent("1–1");
+  });
+
+  it("opens no drawer for a link naming somebody this board does not show", async () => {
+    // The board is the authority on who is in which lane. A drawer headed with
+    // another player's lane and team would be worse than no drawer.
+    renderAt("?mode=team&team_a=T1&team_b=Bilibili+Gaming&focus_player=Ghost&focus_champion=Ornn");
+    await waitFor(() => expect(screen.getByTestId("lane-board")).toBeInTheDocument());
+    expect(screen.queryByTestId("player-champion-drawer")).toBeNull();
+  });
+
+  it("does not refetch the board when a dossier is opened", async () => {
+    // The study is in the query string; five lanes, ten rosters and six
+    // champion pools do not change because one dossier is open.
+    await renderBoard();
+    const before = requests.filter((u) => u.includes("/matchup/team")).length;
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    await screen.findByTestId("player-champion-drawer");
+    expect(requests.filter((u) => u.includes("/matchup/team")).length).toBe(before);
+  });
+
+  it("drops the study when the scope or a team changes", async () => {
+    // A selection made in one scope is not a selection in another, and an open
+    // dossier belongs to the board it was opened on.
+    await openStudy();
+    fireEvent.click(screen.getByTestId("dossier-scope-all_time"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("player-champion-drawer")).toBeNull(),
+    );
+  });
+
+  it("keeps the study across a side swap", async () => {
+    // Reading the same board the other way round does not change which player
+    // is on which champion; dropping the dossier would be a surprise.
+    await openStudy();
+    fireEvent.click(screen.getByTestId("team-swap"));
+    await waitFor(() =>
+      expect(screen.getByTestId("player-champion-drawer")).toBeInTheDocument(),
+    );
+  });
+
+  it("never calls the dossier's own two columns a head-to-head", async () => {
+    // The study IS a head-to-head; the table above it is not. Two payloads,
+    // two sections, and the drawer must not blur them.
+    const { drawer } = await openStudy();
+    const table = within(drawer).getByTestId("dossier-drawer-table");
+    expect(table.textContent).not.toMatch(/head[- ]to[- ]head/i);
+    // The board's own side-by-side sentence still renders behind the drawer,
+    // unedited, on the section that carries the ten records.
+    expect(screen.getByTestId("dossier-side-by-side-note")).toHaveTextContent(
+      NOTES.side_by_side,
+    );
   });
 });

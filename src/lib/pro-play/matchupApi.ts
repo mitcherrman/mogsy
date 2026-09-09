@@ -470,6 +470,10 @@ export interface TeamSelection {
   bans: string[];
   scope_id: string;
   league_filter?: string;
+  /** Step 3: which dossier is open, and against whom. Optional and additive —
+   *  a board with no study parses and renders exactly as it did before, and
+   *  every URL shared before Step 3 still resolves. See `StudySelection`. */
+  study?: StudySelection | null;
 }
 
 export interface TeamMatchupResponse {
@@ -506,6 +510,7 @@ export const EMPTY_TEAM_SELECTION: TeamSelection = {
   team_b: null,
   bans: [],
   scope_id: "current_2026",
+  study: null,
 };
 
 export type MatchupMode = "lane" | "team";
@@ -530,7 +535,11 @@ export function teamSelectionToParams(selection: TeamSelection, withMode = true)
   if (selection.scope_id && selection.scope_id !== EMPTY_TEAM_SELECTION.scope_id) {
     params.set("scope", selection.scope_id);
   }
-  return params;
+  // Step 3's open dossier. Written for the address bar and stripped from the
+  // request by `boardRequestSelection` — the board's five lanes do not change
+  // because one dossier is open, and refetching them on every tile click would
+  // be a regression dressed up as consistency.
+  return studyToParams(params, selection.study ?? null);
 }
 
 /** The exact inverse. */
@@ -540,6 +549,7 @@ export function teamSelectionFromParams(params: URLSearchParams): TeamSelection 
     team_b: params.get("team_b") || null,
     bans: [...new Set(params.getAll("ban").filter(Boolean))].sort(),
     scope_id: params.get("scope") || EMPTY_TEAM_SELECTION.scope_id,
+    study: studyFromParams(params),
   };
 }
 
@@ -571,7 +581,10 @@ export function modeFromParams(params: URLSearchParams): MatchupMode {
 }
 
 export function fetchTeamMatchup(selection: TeamSelection, signal?: AbortSignal) {
-  const qs = teamSelectionToParams(selection, false).toString();
+  // The study is stripped: `/team` has no parameter for it and the board it
+  // returns does not change because one dossier is open. Sending it would make
+  // every tile click a new request URL and refetch five lanes for nothing.
+  const qs = teamSelectionToParams(boardRequestSelection(selection), false).toString();
   return get<TeamMatchupResponse>(`/team${qs ? `?${qs}` : ""}`, signal);
 }
 
@@ -582,13 +595,21 @@ export function withTeamSide(
   side: SideId,
   teamKey: string | null,
 ): TeamSelection {
-  // Nothing downstream to clear: the board holds no player or champion
-  // choice, which is the whole reason team mode has no `needs`.
-  return { ...selection, [side === "a" ? "team_a" : "team_b"]: teamKey };
+  // A new team is a new board, and an open dossier belongs to the old one.
+  // Repointing it at a player who may not be on this team would put one
+  // player's figures under another's name; dropping it is the honest default,
+  // and it is the same rule `withTeam` follows in lane mode.
+  return {
+    ...selection,
+    [side === "a" ? "team_a" : "team_b"]: teamKey,
+    study: null,
+  };
 }
 
 export function withTeamScope(selection: TeamSelection, scopeId: string): TeamSelection {
-  return { ...selection, scope_id: scopeId };
+  // A selection made in one scope is not a selection in another: the same
+  // rule, and the same reason, as a team change.
+  return { ...selection, scope_id: scopeId, study: null };
 }
 
 export function withTeamBanToggled(selection: TeamSelection, key: string): TeamSelection {
@@ -601,6 +622,9 @@ export function withTeamBanToggled(selection: TeamSelection, key: string): TeamS
 /** Swap the two teams. A board is symmetric, and reading it the other way
  *  round is a real thing to want. */
 export function withTeamsSwapped(selection: TeamSelection): TeamSelection {
+  // The study SURVIVES a swap: reading the same board the other way round does
+  // not change which player is on which champion, and dropping an open dossier
+  // for a purely presentational flip would be a surprise, not a safeguard.
   return { ...selection, team_a: selection.team_b, team_b: selection.team_a };
 }
 
@@ -635,6 +659,8 @@ export function teamSelectionFromLane(selection: MatchupSelection): TeamSelectio
     team_b: selection.team_b,
     bans: selection.bans,
     scope_id: selection.pool_scope_id,
+    // The lane explorer holds no study, so crossing into the board opens none.
+    study: null,
   };
 }
 
@@ -750,4 +776,285 @@ export function fetchPlayerChampionDossier(query: DossierQuery, signal?: AbortSi
   // zero record), and an empty string would blur the two.
   if (query.opponent_team_key) params.set("opponent", query.opponent_team_key);
   return get<PlayerChampionDossier>(`/player-champion?${params.toString()}`, signal);
+}
+
+// ---------------------------------------------------------------------------
+// Step 3 — the exact matchup study (/api/pro-play/matchup/exact).
+//
+// A FOURTH ROUTE, AND THE FIRST THAT IS A REAL HEAD-TO-HEAD. The dossier's
+// opponent axis is a TEAM: "Doran's Olaf, including against Gen.G". This one
+// joins on the GAME — the subject's row and the opposing row must share a
+// canonical game, carry their two named champions, and sit on opposing teams.
+// Nothing qualifies through roster membership or through the two champions
+// appearing in separate games, and no looser team-level sample is substituted
+// for an empty one. `head_to_head` is TRUE here and only here; the board and
+// the dossier still assert false and this client must keep the two apart.
+//
+// EVERY DEFINITION AND EVERY LIMIT IS THE SERVER'S, including the sentence
+// explaining why some real examples cannot be opened on the board.
+// ---------------------------------------------------------------------------
+
+/** Tier labels for `other_pro_examples`, served rather than invented. Every
+ *  one names a counted relation, never a judgement. */
+export const REL_SAME_SUBJECT = "same_subject_player";
+export const REL_SAME_OPPONENT = "same_opposing_player";
+export const REL_BOARD_TEAM = "involves_a_board_team";
+export const REL_OTHER = "other_professional_example";
+
+export interface ExactRecord {
+  games: number;
+  wins: number;
+  losses: number;
+  /** Null over zero games — never 0.0, which would render as a result. */
+  win_rate: number | null;
+  first_played_at: string | null;
+  last_played_at: string | null;
+}
+
+export interface ExactMeeting {
+  canonical_game_id: string;
+  game_date: string | null;
+  /** From the SUBJECT's side. */
+  result: "W" | "L";
+  win: boolean;
+  subject_team_key: string;
+  opposing_team_key: string;
+  league_slug: string | null;
+  tournament_id: string | null;
+}
+
+/** One named player's standing in the scope. Three states, kept apart so a
+ *  zero can say WHICH zero it is. */
+export interface ExactPlayerFacts {
+  player_lp_page: string;
+  display_name: string;
+  champion_key: string;
+  participation: "participated" | "did_not_participate";
+  games_in_scope: number;
+  champion_games_in_scope: number;
+  teams_in_qualifying_games: string[];
+}
+
+/**
+ * Where a side journey lands, and whether it can.
+ *
+ * `explorer_navigable` is false when either team is outside the Explorer's
+ * curated focus set. The example is still real evidence — it is served, not
+ * filtered — so the UI renders it as a row with the server's reason instead of
+ * as a link that would 404.
+ */
+export interface ExampleNavigation {
+  team_a: string;
+  team_b: string;
+  scope_id: string;
+  lane: string | null;
+  subject_player_lp_page: string;
+  subject_champion: string;
+  opposing_player_lp_page: string;
+  opposing_champion: string;
+  explorer_navigable: boolean;
+  teams_outside_focus_set: string[];
+}
+
+export interface ExampleSide {
+  player_lp_page: string;
+  display_name: string;
+  champion_key: string;
+  team_key: string;
+  team_display_name: string;
+  role: string | null;
+}
+
+export interface OtherProExample {
+  relation: string;
+  subject: ExampleSide;
+  opposing: ExampleSide;
+  record: ExactRecord;
+  most_recent: ExactMeeting;
+  navigation: ExampleNavigation;
+}
+
+export interface ExactMatchupPayload {
+  contract_version: string;
+  kind: "exact_player_champion_matchup";
+  scope: ScopeDescriptor;
+  league_filter: string;
+  /** TRUE, and only here. Two named players on two named champions in the
+   *  same games really is a head-to-head record. */
+  head_to_head: true;
+  subject: ExactPlayerFacts;
+  opposing: ExactPlayerFacts;
+  exact: {
+    record: ExactRecord;
+    meetings: ExactMeeting[];
+    meetings_total: number;
+    /** Newest first, from the subject's side. */
+    result_sequence: Array<"W" | "L">;
+    most_recent: ExactMeeting | null;
+  };
+  /** Every qualifying pair of these two champions in scope, exact included. */
+  champion_matchup_games_in_scope: number;
+  other_pro_examples: OtherProExample[];
+  example_limit: number;
+  board_team_keys: string[];
+  unavailable_metrics: UnavailableMetric[];
+  definitions: Record<string, string>;
+}
+
+export interface ExactMatchupQuery {
+  subject_player: string;
+  subject_champion: string;
+  opposing_player: string;
+  opposing_champion: string;
+  scope_id: string;
+  /** The teams on screen. Affects ONE TIER of the example ordering and
+   *  nothing else — never which games qualify. */
+  board_team_keys?: string[];
+}
+
+export function fetchExactMatchup(query: ExactMatchupQuery, signal?: AbortSignal) {
+  const params = new URLSearchParams({
+    subject_player: query.subject_player,
+    subject_champion: query.subject_champion,
+    opposing_player: query.opposing_player,
+    opposing_champion: query.opposing_champion,
+    scope: query.scope_id,
+  });
+  // Repeated, not comma-joined: a team key may contain punctuation, and
+  // splitting on a separator that can appear inside a key is how
+  // "LYON (2024 American Team)" becomes two teams.
+  for (const key of query.board_team_keys ?? []) {
+    if (key) params.append("board_team", key);
+  }
+  return get<ExactMatchupPayload>(`/exact?${params.toString()}`, signal);
+}
+
+// --- the study selection, in the URL ---------------------------------------
+//
+// THE URL IS THE STATE, AND STEP 3 IS WHY THAT HAD TO EXTEND. Step 2 held the
+// open dossier in React state, which was enough while the only way in was a
+// click on the board. A side journey has to establish a DIFFERENT board plus a
+// player, a champion, an opposing player and an opposing champion in one
+// navigation — and the board already re-reads its whole selection from the
+// query string, so the smallest coherent extension was four more optional keys
+// rather than a second navigation mechanism beside the one that exists.
+//
+// It is additive: every URL ever shared still parses, `mode`, teams, bans and
+// scope are untouched, and a board with no study reads exactly as before.
+
+export interface StudySelection {
+  subject_player: string;
+  subject_champion: string;
+  /** Null until the reader picks the other side of the matchup. */
+  opposing_player: string | null;
+  opposing_champion: string | null;
+}
+
+const STUDY_PARAMS = {
+  subject_player: "focus_player",
+  subject_champion: "focus_champion",
+  opposing_player: "vs_player",
+  opposing_champion: "vs_champion",
+} as const;
+
+export function studyToParams(params: URLSearchParams, study: StudySelection | null) {
+  if (!study) return params;
+  params.set(STUDY_PARAMS.subject_player, study.subject_player);
+  params.set(STUDY_PARAMS.subject_champion, study.subject_champion);
+  // An opposing side is only half-chosen for a moment; writing an empty key
+  // would make "not chosen yet" indistinguishable from "chosen as nothing".
+  if (study.opposing_player) params.set(STUDY_PARAMS.opposing_player, study.opposing_player);
+  if (study.opposing_champion) {
+    params.set(STUDY_PARAMS.opposing_champion, study.opposing_champion);
+  }
+  return params;
+}
+
+export function studyFromParams(params: URLSearchParams): StudySelection | null {
+  const subjectPlayer = params.get(STUDY_PARAMS.subject_player);
+  const subjectChampion = params.get(STUDY_PARAMS.subject_champion);
+  // Both halves of the subject or nothing: a champion with no player is not a
+  // dossier, and half a question would open a drawer with no answer in it.
+  if (!subjectPlayer || !subjectChampion) return null;
+  return {
+    subject_player: subjectPlayer,
+    subject_champion: subjectChampion,
+    opposing_player: params.get(STUDY_PARAMS.opposing_player) || null,
+    opposing_champion: params.get(STUDY_PARAMS.opposing_champion) || null,
+  };
+}
+
+/**
+ * The board's own selection, with the study removed.
+ *
+ * THE BOARD FETCH MUST NOT DEPEND ON THE STUDY. Five lanes, ten rosters and
+ * six champion pools do not change because a reader opened one dossier, and a
+ * request keyed on the study would refetch all of it on every tile click.
+ */
+export function boardRequestSelection(selection: TeamSelection): TeamSelection {
+  const { study: _study, ...board } = selection;
+  return board;
+}
+
+export function withStudySubject(
+  selection: TeamSelection,
+  subject: { player: string; champion: string } | null,
+): TeamSelection {
+  if (!subject) return { ...selection, study: null };
+  // A new subject is a new question: the opposing side chosen for the previous
+  // one is not an answer to this one, so it goes rather than being re-pointed
+  // at different numbers.
+  return {
+    ...selection,
+    study: {
+      subject_player: subject.player,
+      subject_champion: subject.champion,
+      opposing_player: null,
+      opposing_champion: null,
+    },
+  };
+}
+
+export function withStudyOpponent(
+  selection: TeamSelection,
+  opponent: { player: string | null; champion: string | null },
+): TeamSelection {
+  if (!selection.study) return selection;
+  return {
+    ...selection,
+    study: {
+      ...selection.study,
+      opposing_player: opponent.player,
+      // A different opposing PLAYER invalidates the champion chosen from the
+      // previous one's pool, exactly as `withPlayer` does upstream.
+      opposing_champion:
+        opponent.player === selection.study.opposing_player ? opponent.champion : null,
+    },
+  };
+}
+
+/**
+ * Where clicking an "Other pro example" lands: the example's own matchup, with
+ * both sides of the study already established.
+ *
+ * The bans carry over because they are the reader's, not the example's. The
+ * scope comes from the example — the server put it there, and an example found
+ * in 2026 is a 2026 example.
+ */
+export function sideJourneySelection(
+  current: TeamSelection,
+  navigation: ExampleNavigation,
+): TeamSelection {
+  return {
+    team_a: navigation.team_a,
+    team_b: navigation.team_b,
+    bans: current.bans,
+    scope_id: navigation.scope_id,
+    study: {
+      subject_player: navigation.subject_player_lp_page,
+      subject_champion: navigation.subject_champion,
+      opposing_player: navigation.opposing_player_lp_page,
+      opposing_champion: navigation.opposing_champion,
+    },
+  };
 }

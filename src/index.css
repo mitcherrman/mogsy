@@ -11465,6 +11465,245 @@ html.hub-commons-in-view .hextech-ambience-layer {
   color: var(--dsr-ink-soft);
 }
 
+/* ---------------------------------------------------------------------------
+   Step 3 — the matchup study, at the foot of the same drawer.
+
+   ONE LAYER DEEPER, NOT A SECOND SURFACE. It inherits every token above it and
+   adds no new colour: the same vellum, the same antique-gold rule, the same
+   restrained cyan for a technical figure, the same W/L glyphs. What separates
+   it from the dossier is one gold rule and a heading, which is exactly the
+   weight of the distinction — a related question, asked of a second authority,
+   in the same folio.
+   --------------------------------------------------------------------------- */
+.proplay-dossier .dossier-study {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--dsr-gold-dim);
+}
+.proplay-dossier .dossier-study__title {
+  font-family: var(--dsr-display, inherit);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dsr-gold, #9a7b3f);
+}
+.proplay-dossier .dossier-study__subject {
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--dsr-ink);
+  overflow-wrap: anywhere;
+}
+.proplay-dossier .dossier-study__subject .dossier-muted {
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+/* The chooser. Player row, then that player's demonstrated picks — the board's
+   own order, so the reader repeats a gesture instead of learning one. */
+.proplay-dossier .dossier-study__chooser {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid rgba(93, 85, 70, 0.2);
+  border-left: 3px solid rgba(26, 96, 104, 0.5);
+  border-radius: 6px;
+  background: rgba(255, 253, 246, 0.6);
+}
+.proplay-dossier .dossier-study__players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.proplay-dossier .dossier-study__player {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.45rem 0.2rem 0.25rem;
+  border: 1px solid rgba(93, 85, 70, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 253, 246, 0.85);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #3a3126;
+  cursor: pointer;
+}
+.proplay-dossier .dossier-study__player:hover {
+  border-color: var(--dsr-gold-dim);
+}
+.proplay-dossier .dossier-study__player.is-selected {
+  border-color: rgba(26, 96, 104, 0.75);
+  background: rgba(79, 209, 217, 0.16);
+  color: #14555c;
+}
+.proplay-dossier .dossier-study__player .dossier-slot {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: none;
+}
+
+/* Fixed-width tiles, for the reason the board's pool gives: a row of tiles is
+   a grid, a row of names is a ragged column. */
+.proplay-dossier .dossier-study__champions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3rem, 1fr));
+  gap: 0.25rem;
+}
+.proplay-dossier .dossier-study__champion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.22rem 0.1rem;
+  border: 1px solid rgba(93, 85, 70, 0.22);
+  border-radius: 5px;
+  background: rgba(255, 253, 246, 0.85);
+  cursor: pointer;
+}
+.proplay-dossier .dossier-study__champion:hover {
+  border-color: var(--dsr-gold-dim);
+}
+.proplay-dossier .dossier-study__champion.is-selected {
+  border-color: rgba(26, 96, 104, 0.75);
+  background: rgba(79, 209, 217, 0.16);
+}
+.proplay-dossier .dossier-study__champion .dossier-slot {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+.proplay-dossier .dossier-study__championrec {
+  font-size: 0.55rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-study__more {
+  align-self: flex-start;
+  font-size: 0.62rem;
+}
+
+/* The answer. */
+.proplay-dossier .dossier-study__record {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(93, 85, 70, 0.2);
+  border-left: 3px solid var(--dsr-gold-dim);
+  border-radius: 6px;
+  background: rgba(255, 253, 246, 0.8);
+}
+.proplay-dossier .dossier-study__headline {
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-study__seq {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+}
+.proplay-dossier .dossier-study__zero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px dashed rgba(93, 85, 70, 0.32);
+  border-radius: 6px;
+  background: rgba(246, 241, 228, 0.55);
+}
+
+/* Other pro examples. */
+.proplay-dossier .dossier-study__examples {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.proplay-dossier .dossier-study__examplelist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.proplay-dossier .dossier-study__examplegroup {
+  display: block;
+  margin: 0.4rem 0 0.15rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-study__examplelist li:first-child .dossier-study__examplegroup {
+  margin-top: 0;
+}
+.proplay-dossier .dossier-study__example {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid rgba(93, 85, 70, 0.2);
+  border-radius: 5px;
+  background: rgba(255, 253, 246, 0.75);
+  font-size: 0.68rem;
+  text-align: left;
+  color: var(--dsr-ink);
+  cursor: pointer;
+}
+.proplay-dossier .dossier-study__example:hover {
+  border-color: var(--dsr-gold-dim);
+  background: rgba(255, 250, 235, 0.95);
+}
+/* An example the board cannot open is evidence, not a control: it loses the
+   pointer, the hover and the arrow, and says why in its own line. */
+.proplay-dossier .dossier-study__example.is-static {
+  cursor: default;
+  background: rgba(246, 241, 228, 0.45);
+}
+.proplay-dossier .dossier-study__example.is-static:hover {
+  border-color: rgba(93, 85, 70, 0.2);
+  background: rgba(246, 241, 228, 0.45);
+}
+.proplay-dossier .dossier-study__exampleside {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-study__exampleside .dossier-slot {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+.proplay-dossier .dossier-study__examplename {
+  font-weight: 600;
+}
+.proplay-dossier .dossier-study__examplevs {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-study__examplerecord {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: #1a6068;
+}
+.proplay-dossier .dossier-study__examplego {
+  font-size: 0.8rem;
+  color: var(--dsr-gold, #9a7b3f);
+}
+
 @media (max-width: 640px) {
   /* Full width on a phone; the sheet is the page. */
   .proplay-dossier.dossier-drawer {
@@ -11472,5 +11711,17 @@ html.hub-commons-in-view .hextech-ambience-layer {
   }
   .proplay-dossier .dossier-drawer__stats {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  /* The example row stacks rather than compressing four things into a strip
+     too narrow to read any of them. */
+  .proplay-dossier .dossier-study__examplerecord {
+    margin-left: 0;
+    width: 100%;
+  }
+  .proplay-dossier .dossier-study__champions {
+    grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
   }
 }

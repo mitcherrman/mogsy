@@ -40,7 +40,7 @@
 // composition, the team pickers and the ban bar.
 // ---------------------------------------------------------------------------
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Dossier,
   DossierSection,
@@ -59,6 +59,11 @@ import {
 } from "@/components/pro-play/dossier/BoardSelection";
 import PlayerChampionDrawer from "@/components/pro-play/dossier/PlayerChampionDrawer";
 import {
+  sideJourneySelection,
+  withStudyOpponent,
+  withStudySubject,
+  type ExampleNavigation,
+  type LaneSide,
   type MatchupContract,
   type TeamMatchupResponse,
   type TeamSelection,
@@ -174,21 +179,63 @@ export function TeamBoard({
   const headerB = data.teams.b;
   const configured = Boolean(headerA && headerB);
 
-  // A champion click settles who/which/against whom/in what scope; the drawer
-  // turns that into one request. The state stays HERE rather than inside the
-  // drawer because the tile's pressed state and the board's clear-on-change
-  // rule both read it.
-  const [selectedChampion, setSelectedChampion] = useState<ChampionSelection | null>(null);
+  // STEP 3 MOVED THIS INTO THE URL, and it had to. A side journey establishes a
+  // different board plus a player, a champion, an opposing player and an
+  // opposing champion in ONE navigation; React state local to this component
+  // cannot survive that, and a second mechanism beside the query string the
+  // board already reads would be two sources of truth for one selection. The
+  // clearing rules that used to live here now live in `withTeamSide` and
+  // `withTeamScope` beside every other selection rule, so a stale study is
+  // impossible rather than merely cleaned up afterwards.
+  const study = selection.study ?? null;
 
-  // Clearing on a scope or team change is the honest default: a selection made
-  // in one scope is not a selection in another, and silently re-pointing it at
-  // different numbers would be worse than dropping it.
-  const boardKey = `${selection.team_a}|${selection.team_b}|${selection.scope_id}`;
-  const lastKey = useRef(boardKey);
-  if (lastKey.current !== boardKey) {
-    lastKey.current = boardKey;
-    if (selectedChampion) setSelectedChampion(null);
-  }
+  // The board is the authority on who is in which lane. Resolving the study's
+  // player against the payload rather than trusting the URL means a link
+  // naming somebody this board does not show opens no drawer at all, instead
+  // of a drawer with another player's lane and team in its header.
+  const selectedChampion = useMemo<ChampionSelection | null>(() => {
+    if (!study) return null;
+    for (const row of data.lanes) {
+      for (const side of [row.a, row.b] as (LaneSide | null)[]) {
+        if (!side) continue;
+        const candidate = side.candidates.find(
+          (c) => c.player_lp_page === study.subject_player,
+        );
+        if (!candidate) continue;
+        return {
+          player_lp_page: candidate.player_lp_page,
+          display_name: candidate.display_name,
+          team_key: side.team_key,
+          opponent_team_key:
+            side.team_key === headerA?.team_key
+              ? headerB?.team_key ?? null
+              : headerA?.team_key ?? null,
+          lane: row.lane,
+          champion: study.subject_champion,
+          scope_id: data.scope.scope_id,
+          scope_label: data.scope.scope_label,
+        };
+      }
+    }
+    return null;
+  }, [study, data, headerA, headerB]);
+
+  // The other half of the same lane — the candidates and their demonstrated
+  // pools the study's chooser offers. Read off the board payload, so choosing
+  // the opposing side costs no request and cannot offer a player the board
+  // does not show.
+  const opposition = useMemo<LaneSide | null>(() => {
+    if (!selectedChampion) return null;
+    const row = data.lanes.find((r) => r.lane === selectedChampion.lane);
+    if (!row) return null;
+    const sides = [row.a, row.b] as (LaneSide | null)[];
+    return sides.find((sd) => sd && sd.team_key !== selectedChampion.team_key) ?? null;
+  }, [data.lanes, selectedChampion]);
+
+  const boardTeamKeys = useMemo(
+    () => [headerA?.team_key, headerB?.team_key].filter(Boolean) as string[],
+    [headerA, headerB],
+  );
 
   const boardSelection = useMemo(
     () => ({
@@ -201,18 +248,22 @@ export function TeamBoard({
             ? headerA?.team_key ?? null
             : null,
       selected: selectedChampion,
-      onSelect: (next: ChampionSelection) =>
+      onSelect: (next: ChampionSelection) => {
         // Clicking the selected tile again clears it, so the tile is a toggle
-        // rather than a trap with no way back.
-        setSelectedChampion((cur) =>
-          cur &&
-          cur.champion === next.champion &&
-          cur.player_lp_page === next.player_lp_page
-            ? null
-            : next,
-        ),
+        // rather than a trap with no way back. Unchanged behaviour; it now
+        // writes the query string instead of local state.
+        const same =
+          study?.subject_player === next.player_lp_page &&
+          study?.subject_champion === next.champion;
+        onChange(
+          withStudySubject(
+            selection,
+            same ? null : { player: next.player_lp_page, champion: next.champion },
+          ),
+        );
+      },
     }),
-    [data.scope, headerA, headerB, selectedChampion],
+    [data.scope, headerA, headerB, selectedChampion, study, selection, onChange],
   );
 
   return (
@@ -272,7 +323,23 @@ export function TeamBoard({
               so the sheet can animate closed rather than vanishing. */}
           <PlayerChampionDrawer
             selection={selectedChampion}
-            onClose={() => setSelectedChampion(null)}
+            onClose={() => onChange(withStudySubject(selection, null))}
+            opposition={opposition}
+            opposingPlayer={study?.opposing_player ?? null}
+            opposingChampion={study?.opposing_champion ?? null}
+            boardTeamKeys={boardTeamKeys}
+            onOpposingChange={(player, champion) =>
+              onChange(withStudyOpponent(selection, { player, champion }))
+            }
+            // THE SIDE JOURNEY. One selection change carries the reader to the
+            // example's own board with both halves of its study already
+            // established — no rebuilding teams, lane, player, champion,
+            // opponent and opposing champion by hand. It goes through the same
+            // `onChange` every other control uses, so it is one history entry
+            // and Back returns to where they were.
+            onNavigate={(navigation: ExampleNavigation) =>
+              onChange(sideJourneySelection(selection, navigation))
+            }
           />
           {/* The no-head-to-head guarantee is carried by the section's own
               eyebrow and by this one line, not by a boxed disclaimer above ten

@@ -20,10 +20,13 @@
 // them, and in particular nothing here turns a draft observation into a motive
 // or two independent columns into a head-to-head.
 //
-// WHAT IS DELIBERATELY NOT HERE. No champion-versus-champion record, no
-// "vs Kiin", no opposing-player anything. The opponent axis is a TEAM. The
-// `Matchup Study` slot at the foot of the drawer is where that later layer
-// lands; it renders nothing today rather than a disabled button.
+// WHAT THE DOSSIER ITSELF STILL DOES NOT SAY. Everything above the study is
+// unchanged and its opponent axis is still a TEAM: no champion-versus-champion
+// record, no opposing-player anything, `head_to_head: false` asserted on the
+// wire. Step 3 did not loosen that — it added a SECOND payload underneath it
+// (`MatchupStudy`, reading `/exact`) which joins on the game and is the only
+// thing on this screen allowed to be a head-to-head. The two are rendered as
+// two sections with two sources precisely so neither can be read as the other.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -37,8 +40,11 @@ import {
   type PlayerChampionDossier,
 } from "@/lib/pro-play/matchupApi";
 
+import type { ExampleNavigation, LaneSide } from "@/lib/pro-play/matchupApi";
+
 import type { ChampionSelection } from "./BoardSelection";
 import { ChampionIcon, PlayerPortrait, TeamCrest } from "./DossierMedia";
+import MatchupStudy from "./MatchupStudy";
 
 /** The server's own participation word for "was not in this scope at all". */
 const DID_NOT_PARTICIPATE = "did_not_participate";
@@ -236,9 +242,14 @@ function ComparisonTable({
 function DossierBody({
   data,
   selection,
+  study,
 }: {
   data: PlayerChampionDossier;
   selection: ChampionSelection;
+  /** Step 3, already composed by the drawer. Rendered in all three of the
+   *  dossier's states — a player who never played this champion in this scope
+   *  is exactly the reader who wants to know who has. */
+  study: React.ReactNode;
 }) {
   const opponentLabel =
     data.entity.opponent_display_name ?? selection.opponent_team_key ?? null;
@@ -247,10 +258,13 @@ function DossierBody({
   // apart on the server and the drawer must not flatten them here.
   if (data.participation === DID_NOT_PARTICIPATE || !data.overall) {
     return (
-      <p className="dossier-drawer__empty" data-testid="dossier-drawer-dnp">
-        {selection.display_name} has no games in {data.scope.label}, so there is
-        nothing to report on {selection.champion} in this scope.
-      </p>
+      <div className="dossier-drawer__body">
+        <p className="dossier-drawer__empty" data-testid="dossier-drawer-dnp">
+          {selection.display_name} has no games in {data.scope.label}, so there
+          is nothing to report on {selection.champion} in this scope.
+        </p>
+        {study}
+      </div>
     );
   }
 
@@ -270,6 +284,7 @@ function DossierBody({
             {banPressureText(data.ban_pressure.overall)} of those drafts.
           </p>
         ) : null}
+        {study}
       </div>
     );
   }
@@ -320,9 +335,10 @@ function DossierBody({
         {data.definitions.champion_games} {data.definitions.ban_pressure}
       </p>
 
-      {/* Where the later champion-versus-champion study lands. Nothing renders
-          today: a disabled control promising a feature is worse than silence. */}
-      <div data-testid="dossier-drawer-study-slot" />
+      {/* Step 3 lands here — the slot Step 2 left, now filled. It is a
+          separate section reading a separate payload, and it is the only thing
+          in this drawer that is a head-to-head. */}
+      <div data-testid="dossier-drawer-study-slot">{study}</div>
     </div>
   );
 }
@@ -338,9 +354,23 @@ function DossierBody({
 export default function PlayerChampionDrawer({
   selection,
   onClose,
+  opposition = null,
+  opposingPlayer = null,
+  opposingChampion = null,
+  boardTeamKeys = [],
+  onOpposingChange,
+  onNavigate,
 }: {
   selection: ChampionSelection | null;
   onClose: () => void;
+  /** The other side of this lane, straight off the board payload. Optional so
+   *  the drawer still renders standalone in the tests and in the lane view. */
+  opposition?: LaneSide | null;
+  opposingPlayer?: string | null;
+  opposingChampion?: string | null;
+  boardTeamKeys?: string[];
+  onOpposingChange?: (player: string | null, champion: string | null) => void;
+  onNavigate?: (navigation: ExampleNavigation) => void;
 }) {
   const [data, setData] = useState<PlayerChampionDossier | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -431,7 +461,27 @@ export default function PlayerChampionDrawer({
               </p>
             ) : null}
             {data && !loading && !error ? (
-              <DossierBody data={data} selection={selection} />
+              <DossierBody
+                data={data}
+                selection={selection}
+                study={
+                  // Rendered only where a host wired the board in. Without an
+                  // opposing-selection handler there is no way to choose the
+                  // other side, and a section the reader cannot operate is
+                  // worse than one that is not there.
+                  onOpposingChange ? (
+                    <MatchupStudy
+                      selection={selection}
+                      opposition={opposition}
+                      opposingPlayer={opposingPlayer}
+                      opposingChampion={opposingChampion}
+                      boardTeamKeys={boardTeamKeys}
+                      onOpposingChange={onOpposingChange}
+                      onNavigate={onNavigate ?? (() => {})}
+                    />
+                  ) : null
+                }
+              />
             ) : null}
           </>
         ) : null}
