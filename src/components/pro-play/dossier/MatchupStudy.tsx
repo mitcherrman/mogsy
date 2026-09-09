@@ -38,6 +38,7 @@ import {
   REL_SAME_SUBJECT,
   type ExactMatchupPayload,
   type ExactPlayerFacts,
+  type MeetingSelection,
   type ExampleNavigation,
   type LaneSide,
   type OtherProExample,
@@ -254,10 +255,12 @@ function ExactRecordBand({
   data,
   subjectName,
   opposingName,
+  onOpenMeeting,
 }: {
   data: ExactMatchupPayload;
   subjectName: string;
   opposingName: string;
+  onOpenMeeting: (meeting: MeetingSelection) => void;
 }) {
   const record = data.exact.record;
   return (
@@ -293,6 +296,61 @@ function ExactRecordBand({
       <span className="dossier-drawer__stathint">
         {subjectName} vs {opposingName}. {data.definitions.record_orientation}
       </span>
+      <SourceMeetings data={data} onOpenMeeting={onOpenMeeting} />
+    </div>
+  );
+}
+
+/**
+ * STEP 4 — the source meetings behind the record above.
+ *
+ * AGGREGATE CLAIM -> EVIDENCE -> SOURCE MEETING, which is the research move
+ * this whole study exists to make possible. "2 games · 2–0" is a count; these
+ * are the meetings it counted, and clicking one opens it in the same Explorer.
+ *
+ * DEDUPED BY `match_id`, because two games of one best-of are ONE meeting to
+ * open, not two — listing it twice would suggest the pair met twice.
+ */
+function SourceMeetings({
+  data,
+  onOpenMeeting,
+}: {
+  data: ExactMatchupPayload;
+  onOpenMeeting: (meeting: MeetingSelection) => void;
+}) {
+  const seen = new Set<string>();
+  const rows = data.exact.meetings.filter((m) => {
+    if (!m.match_id || seen.has(m.match_id)) return false;
+    seen.add(m.match_id);
+    return true;
+  });
+  if (!rows.length) return null;
+
+  return (
+    <div className="dossier-study__sources" data-testid="study-source-meetings">
+      <span className="dossier-drawer__stathint">
+        {rows.length === 1 ? "Source meeting" : "Source meetings"}
+      </span>
+      {rows.map((m) => (
+        <button
+          key={m.match_id as string}
+          type="button"
+          className="dossier-study__source"
+          data-testid="study-source-meeting"
+          data-match-id={m.match_id as string}
+          onClick={() =>
+            onOpenMeeting({
+              match_id: m.match_id as string,
+              // The game number rides along so the meeting opens knowing
+              // WHICH of its games this record counted. Step 5 renders it.
+              game_number: m.game_number,
+            })
+          }
+        >
+          {shortDate(m.game_date)} · {m.subject_team_key} vs {m.opposing_team_key}
+          {m.tournament_id ? ` · ${m.tournament_id}` : ""}
+        </button>
+      ))}
     </div>
   );
 }
@@ -432,6 +490,7 @@ export default function MatchupStudy({
   boardTeamKeys,
   onOpposingChange,
   onNavigate,
+  onOpenMeeting,
 }: {
   selection: ChampionSelection;
   /** The other side of this lane, straight off the board payload. Null when
@@ -442,6 +501,8 @@ export default function MatchupStudy({
   boardTeamKeys: string[];
   onOpposingChange: (player: string | null, champion: string | null) => void;
   onNavigate: (navigation: ExampleNavigation) => void;
+  /** STEP 4: open the meeting a counted game was played in. */
+  onOpenMeeting: (meeting: MeetingSelection) => void;
 }) {
   const [data, setData] = useState<ExactMatchupPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -555,6 +616,7 @@ export default function MatchupStudy({
               data={data}
               subjectName={subjectName}
               opposingName={opposingName}
+              onOpenMeeting={onOpenMeeting}
             />
           ) : (
             <ExactZeroState

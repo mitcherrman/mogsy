@@ -11724,4 +11724,175 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .proplay-dossier .dossier-study__champions {
     grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr));
   }
+
+/* --- Step 4: historical meetings, and one meeting's games ------------------
+   A DEEPER LAYER OF THE SAME DOSSIER, not a new surface. The rows reuse the
+   study's plate geometry and ink so the drilldown reads as the folio going one
+   page further rather than as an analytics panel bolted underneath it. */
+.proplay-dossier .dossier-meetings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.proplay-dossier .dossier-meeting {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(93, 85, 70, 0.2);
+  border-radius: 5px;
+  background: rgba(255, 253, 246, 0.75);
+  font-size: 0.68rem;
+  text-align: left;
+  color: var(--dsr-ink);
+  cursor: pointer;
+}
+.proplay-dossier .dossier-meeting:hover {
+  border-color: rgba(93, 85, 70, 0.42);
+  background: rgba(255, 253, 246, 0.95);
+}
+.proplay-dossier .dossier-meeting[aria-current="true"] {
+  border-color: var(--dsr-gold, rgba(150, 118, 52, 0.65));
+  background: rgba(255, 250, 235, 0.98);
+}
+.proplay-dossier .dossier-meeting__score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.proplay-dossier .dossier-meeting__score-wins {
+  font-variant-numeric: tabular-nums;
+}
+/* `T1 3–1 Gen.G`: the names sit outside, the numbers meet in the middle. The
+   dash carries no padding of its own so `3–1` reads as one figure. */
+.proplay-dossier .dossier-meeting__score-team + .dossier-meeting__score-wins,
+.proplay-dossier .dossier-meeting__score-wins + .dossier-meeting__score-team {
+  margin-left: 0.3rem;
+}
+.proplay-dossier .dossier-meeting__score-sep {
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-meeting__meta,
+.proplay-dossier .dossier-meeting__kind,
+.proplay-dossier .dossier-meeting__scope {
+  font-size: 0.6rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-meeting__kind {
+  margin-left: auto;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* An unresolved game is stated, never rounded away into the score. */
+.proplay-dossier .dossier-meeting__undecided {
+  font-size: 0.58rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+  opacity: 0.85;
+}
+.proplay-dossier .dossier-meeting-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(93, 85, 70, 0.18);
+  font-size: 0.8rem;
+}
+.proplay-dossier .dossier-meeting-games {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.proplay-dossier .dossier-meeting-game {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid rgba(93, 85, 70, 0.18);
+  border-radius: 5px;
+  background: rgba(255, 253, 246, 0.6);
+}
+.proplay-dossier .dossier-meeting-game__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  font-size: 0.68rem;
+}
+.proplay-dossier .dossier-meeting-game__label {
+  font-weight: 600;
+}
+.proplay-dossier .dossier-meeting-game__duration,
+.proplay-dossier .dossier-meeting-game__empty {
+  margin-left: auto;
+  font-size: 0.6rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-meeting-game__sides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+}
+.proplay-dossier .dossier-meeting-game__side {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.proplay-dossier .dossier-meeting-game__team {
+  min-width: 5.5rem;
+  font-size: 0.62rem;
+  color: var(--dsr-ink-soft);
+}
+/* The five champions a side took. NOT a draft: there is no order in the
+   corpus, so these are laid out as a set and never numbered. */
+.proplay-dossier .dossier-meeting-game__picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+/* The exact record's source meetings. */
+.proplay-dossier .dossier-study__sources {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.3rem;
+}
+.proplay-dossier .dossier-study__source {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid rgba(93, 85, 70, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 253, 246, 0.7);
+  font-size: 0.62rem;
+  text-align: left;
+  color: var(--dsr-ink);
+  cursor: pointer;
+}
+.proplay-dossier .dossier-study__source:hover {
+  border-color: rgba(93, 85, 70, 0.42);
+}
+
+@media (max-width: 640px) {
+  /* The kind stops being a right-aligned tail and joins the flow, so a narrow
+     row wraps into legible lines instead of a single squeezed one. */
+  .proplay-dossier .dossier-meeting__kind,
+  .proplay-dossier .dossier-meeting-game__duration {
+    margin-left: 0;
+  }
+  .proplay-dossier .dossier-meeting-game__team {
+    min-width: 0;
+  }
+}
+
 }

@@ -40,7 +40,7 @@ import {
   type PlayerChampionDossier,
 } from "@/lib/pro-play/matchupApi";
 
-import type { ExampleNavigation, LaneSide } from "@/lib/pro-play/matchupApi";
+import type { ExampleNavigation, LaneSide, MeetingSelection } from "@/lib/pro-play/matchupApi";
 
 import type { ChampionSelection } from "./BoardSelection";
 import { ChampionIcon, PlayerPortrait, TeamCrest } from "./DossierMedia";
@@ -360,6 +360,7 @@ export default function PlayerChampionDrawer({
   boardTeamKeys = [],
   onOpposingChange,
   onNavigate,
+  onOpenMeeting,
 }: {
   selection: ChampionSelection | null;
   onClose: () => void;
@@ -371,6 +372,8 @@ export default function PlayerChampionDrawer({
   boardTeamKeys?: string[];
   onOpposingChange?: (player: string | null, champion: string | null) => void;
   onNavigate?: (navigation: ExampleNavigation) => void;
+  /** STEP 4: open the meeting an exact-matchup game was played in. */
+  onOpenMeeting?: (meeting: MeetingSelection) => void;
 }) {
   const [data, setData] = useState<PlayerChampionDossier | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -478,6 +481,7 @@ export default function PlayerChampionDrawer({
                       boardTeamKeys={boardTeamKeys}
                       onOpposingChange={onOpposingChange}
                       onNavigate={onNavigate ?? (() => {})}
+                      onOpenMeeting={onOpenMeeting ?? (() => {})}
                     />
                   ) : null
                 }

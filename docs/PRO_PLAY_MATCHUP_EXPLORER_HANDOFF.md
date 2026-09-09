@@ -19,6 +19,8 @@ cannot actually evidence.
   matchup, and clickable side journeys into each of them.
 * **Step 3.1** — the board's team pool stops being the Worlds focus set, so a
   side journey lands wherever the corpus can honestly build a board.
+* **Step 4** — a specific historical **meeting** becomes a first-class state,
+  reachable from the broad team matchup and from exact-matchup evidence.
   *(this document)*
 
 ## Important decisions
@@ -535,10 +537,259 @@ Explicitly **not** in it: a Gol.gg-style standalone match page, Comparison Lab,
 custom cohorts, prediction, any new ingestion, any new statistics authority,
 and pretty URLs.
 
+---
+
+# Step 4 — the historical meeting
+
+Implemented. A specific historical meeting is now a state inside Matchup
+Explorer, reachable from two places, and it did not become a match-history
+application to get there.
+
+## Terminology — MEETING, and why it is not "series"
+
+A **meeting** is one `pro_canonical_games.match_id` — Leaguepedia's series
+identity, present on **113,815 of 113,815** canonical games. The product word
+is *meeting* because **39,902 of 67,659 (59%)** of those match_ids carry
+exactly ONE game: Bo1 leagues are the majority of the corpus, and a layer that
+called every match_id a series would be inventing a best-of around a single
+game.
+
+So the payload reports a measured `kind`:
+
+| `kind` | when | what the UI is allowed to say |
+|---|---|---|
+| `single_game` | `game_count == 1` | "Single game". `1–0` is printed as the factual result it is. **Never** "Series". |
+| `series` | `game_count > 1` | "Series · N games" |
+
+`match_id` / `game_number` remain the internal vocabulary, and the route is
+called `/series` because that is the parameter's own name — the *payload* is
+where the care lives, not the URL.
+
+## Endpoint contract — `GET /api/pro-play/matchup/series`
+
+Admin-gated (router-level), read-only. **A fifth sibling**, on the same shape
+argument that split the other four: it takes one identifier and returns a
+meeting with a list of games, sharing no parameter with `/team` except the
+scope and nothing at all with `/exact`.
+
+**Query:** `match_id` (required) · `scope` (default `current_2026`) ·
+`league_filter`.
+
+**Errors:** 404 unknown `match_id` · 400 unknown scope · **422** a `match_id`
+whose games do not describe two teams playing each other. The 422 is measured
+to be unreachable today and is raised rather than resolved: picking two of
+three teams and drawing a meeting around them would be the failure.
+
+**Response:** `match_id` · `kind` · `game_count` · `teams[]`
+(`team_key`, `display_name`, `explorer_navigable`) · `league_slug` /
+`league_name` / `tournament_id` / `tournament_name` · `started_at` · `patch`
+/ `patches` · `score_line[]` · `undecided` · `winner_team_key` · `scope_id` ·
+`in_scope` · `games[]` · `unavailable_metrics`.
+
+Each game carries `canonical_game_id`, `game_number`, `game_date`, `patch`,
+`blue_team_key` / `red_team_key`, `winner_team_key`, `decided`,
+`duration_seconds` and `participants[]` (`team_key`, `role`, `side`,
+`player_lp_page`, `champion_key`, `win`).
+
+**The board also gained the list.** `/team` now returns `meetings`,
+`meetings_total`, `meetings_limit` and `notes.meetings` — served on the board
+rather than from a sibling route because the board has already named the only
+three things the question takes (two teams and a scope), and a second request
+could return an answer that disagrees with the lanes above it. Measured at
+23 ms for the team-pair scan against the real corpus, over indexes that
+already ship.
+
+**`/exact` gained two columns.** Every meeting row and `most_recent` now carry
+`match_id` and `game_number`. Both were already on the fact the one pass holds,
+so this is a projection change and not a second read.
+
+## Game ordering rule
+
+**`game_number`, and nothing else.** Measured over the whole corpus:
+`game_number` is non-null on **113,815 of 113,815** games and
+`(match_id, game_number)` has **zero** duplicates, so the order is total.
+
+It is never inferred from the draft — `sequence` is `-1` on all 2,235,030
+pick/ban rows — and never from the date alone, because a best-of is played in
+one sitting and several games really do share a timestamp. **The client sorts
+again** rather than trusting the array: a fixture that hands the games back out
+of order is in the frontend suite, and it caught exactly that bug during this
+task.
+
+## Score derivation rule
+
+Counted from the games' own recorded winners, reading the **canonical**
+`blue_win` and never Oracle's Elixir's — the two disagree on 100 games, both
+are stored, and a meeting whose header disagreed with its own game rows would
+be worse than either.
+
+* `blue_win IS NULL` is counted in `undecided` and assigned to **neither**
+  team — the fail-closed posture `series_score` and `derive_blue_win` use.
+* `winner_team_key` is named **only when `lead > undecided`**. 1–0 with one
+  game unresolved is a 1–0 with a game missing; naming a winner there would be
+  inventing that game's result. A draw names none.
+* `score_line` is an **ordered** pair, winner first, so a client renders
+  `T1 2–1 Gen.G` without deciding anything itself.
+
+## Single-game handling
+
+`kind: "single_game"`, `1–0` as the factual result, and `single_game_number`
+set on the listing row so the meeting is entered with its one game already
+named — there is no series above it to choose from. The frontend has a test
+whose only job is that a Bo1 row's text never matches `/series/i`.
+
+## Meeting state / query design
+
+Two more optional keys on the board's existing selection, on exactly the terms
+`study` already established. **No fourth mode, and no visible tab.**
+
+```
+team_a  team_b  scope  lane                                   (the board)
+focus_player  focus_champion  vs_player  vs_champion          (the study)
+meeting  game                                                 (the evidence)
+```
+
+* `meeting` is a `match_id`; `game` is a `game_number` within it, never a bare
+  `canonical_game_id` — a number is legible in a URL and the pair is unique.
+* **`game` without `meeting` is dropped**: a game number identifies nothing
+  without the meeting it numbers.
+* `boardRequestSelection` strips both before `/team`, so opening a meeting
+  never refetches five lanes.
+* Additive: every URL shared before Step 4 parses unchanged.
+
+`game_number` is carried but not yet *rendered* as a per-game state — that is
+Step 5, and the key exists now so Step 5 is a render and not a state change.
+
+## Clearing rules
+
+| change | `study` | `meeting` | why |
+|---|---|---|---|
+| team A or B | cleared | **cleared** | a meeting is a meeting BETWEEN TWO TEAMS |
+| scope | cleared | **cleared** | the list is rebuilt from the new scope |
+| study subject | cleared | **cleared** | evidence for one exact matchup is not evidence for another |
+| study opponent | kept | **cleared** | same |
+| closing the study | cleared | **cleared** | a meeting shell with no question above it is a match page |
+| side journey | replaced | **cleared** | a new board *and* a new study |
+| **side swap** | kept | **kept** | reading the board the other way round does not change who played |
+
+They live in `matchupApi` beside every other selection rule, so a stale meeting
+is impossible rather than cleaned up afterwards. Seven tests hold the table,
+plus one that clears a meeting in the **rendered** board rather than only in
+the selection object.
+
+## Entry point 1 — Recent Meetings on the board
+
+A compact section under the five lanes: score, event, date, patch, and the
+`kind`. Bounded to 8 with `N of M` when there are more. It is a dossier line,
+not a match history page — no filters, no per-player numbers. Clicking a row
+sets `meeting` (and `game` for a Bo1).
+
+## Entry point 2 — exact matchup → source meeting
+
+The exact record's own meeting rows are now clickable, **deduped by
+`match_id`**: two games of one best-of are one meeting to open, and listing it
+twice would read as the pair having met twice. The study stays open behind the
+shell — the reader arrived through that question, and closing it would lose
+their place.
+
+`aggregate claim → source meeting → the games` is the move, and a backend test
+walks it end to end: every `match_id` the record hands out resolves to a
+meeting that really carries the game it counted.
+
+## Scope and meeting are not two equal filters
+
+The scope **searches**; the meeting is **chosen by name**.
+
+* `team_meetings` honours the scope — it is the same universe the five lanes
+  above it were built from.
+* `meeting()` is identified by `match_id` and returns **all** of its games
+  whatever scope is selected. Dropping games from a meeting because of a scope
+  would print a score that was never played.
+* `in_scope` **reports**. The shell says "Within 2026" or "Outside the selected
+  scope (2026)" — which is also the whole cross-scope deep-link rule, defined
+  now and needing no machinery: a meeting outside the current scope opens, and
+  says so.
+
+## Real examples verified against the corpus (2026-09-09)
+
+* **T1 vs Gen.G, `recent_2025_2026` — 12 meetings**, every score matching the
+  independent SQL walk in the audit above.
+* **Bo3** `LCK/2026 Season/Rounds 1-2_Week 7_7` — T1 2–1 Gen.G, three games on
+  26.09, ten participants each, durations 1634 / 3018 / **null** (game 3 has no
+  OE row, and prints "Duration not recorded").
+* **Bo1** `2025 Season World Championship/Main Event_Round 3_4` — Gen.G 1–0 T1,
+  `kind: single_game`, and `in_scope: false` under `current_2026`.
+* **Substitution** `LCP/2026 Season/Split 2 Playoffs_Round 3_2` — GAM Esports
+  used **six** players across five games (Gloryy → Aress from game 3), and the
+  sixth appears only in the games he played. Read off the games' own rows, never
+  off a roster.
+* **2015** `Champions/2015 Season/Spring Season_Week 1_1` — the far end of the
+  supported range, three games, two teams, a winner, durations present.
+* **The Step 3 source meeting** — `Doran (Choi Hyeon-joon)` Jayce vs `Kiin`
+  K'Sante is 2 games, 2–0, and its most recent is game 3 of the Bo3 above.
+
+## What Step 4 deliberately does not show
+
+Named in `unavailable_metrics`, in the server's words, rather than left
+missing: **draft order** (`sequence` is -1 on all 2,235,030 rows — bans are an
+unordered set and no shape here may imply a sequence), **bans** (deferred
+rather than laid out as a draft phase), and **per-player combat statistics**
+(they are in the corpus and nothing in the Explorer reads them yet).
+
+Also absent by design and held by tests: per-player K/D/A, damage, CS, vision
+and gold tables, objective timelines, graphs, `turret_plates` (max 45 against a
+structural ceiling of 25), prediction, win probability and inferred strategy.
+
+## Files — Step 4
+
+### Backend
+
+| File | Role |
+|---|---|
+| `pro_authority/meetings.py` | **New.** `team_meetings`, `meeting`, the score and winner rules, `MeetingNotFound` / `MalformedMeeting`. |
+| `pro_authority/comparison.py` | `GameFact` gained `match_id` / `game_number` (defaulted, so positional construction still works). |
+| `pro_authority/exact_matchup.py` | The meeting-row projection gained the two columns. |
+| `pro_authority/matchup.py` | `/team` serves the meetings section and `notes.meetings`. |
+| `routes/pro_play_matchup.py` | `GET /series`. |
+| `test_pro_authority_meetings.py` | **New.** 64 tests, 11 against the real corpus. |
+
+### Frontend
+
+| File | Role |
+|---|---|
+| `src/components/pro-play/dossier/MeetingDrilldown.tsx` | **New.** `RecentMeetings` and `MeetingShell`. |
+| `src/lib/pro-play/matchupApi.ts` | Meeting types, `meeting` selection key, `fetchMeeting`, the clearing rules. |
+| `src/pages/pro-play/ProPlayMatchupTeam.tsx` | Renders both, and owns both entry points. |
+| `src/components/pro-play/dossier/MatchupStudy.tsx` | `SourceMeetings` under the exact record. |
+| `src/components/pro-play/dossier/PlayerChampionDrawer.tsx` | Passes `onOpenMeeting` through. |
+| `src/index.css` | `.dossier-meeting*`, `.dossier-study__source*`, after the study block. |
+
+## Next recommended slice — Step 5
+
+**The game state, and the per-player table that is the reason to open one.**
+The state key (`game`) already exists and already round-trips, so this is a
+render rather than a state change:
+
+1. Clicking a game row sets `game`; the shell expands that one game.
+2. `GET /api/pro-play/matchup/game?match_id=…&game_number=…`, over
+   `oe_stats_reader` — per-player K/D/A, CS, gold, damage, vision, and the team
+   objective row. All raw components, never a baked ratio.
+3. **A game with no stat row must say so.** Coverage is 91,054 of 113,815 (80%),
+   concentrated away from pre-2014 and regional second divisions; a zero would
+   be a lie.
+4. Read the **canonical** `blue_win`, never OE's — they disagree on 100 games.
+5. `kda_ratio` returns `None` for `deaths == 0` ("Perfect"), and every caller
+   must check `games > 0` first: an empty slice sums to 0/0/0 and renders as
+   Perfect otherwise.
+6. Still no draft order, and still no `turret_plates`.
+
+Bans could be added to the meeting shell in the same slice — as an unordered
+set of five per side, labelled as one.
+
 ## Next task
 
-1. **The series slice above.** It is the natural continuation of Step 3 and
-   the first thing that lets the Explorer answer "show me the game".
+1. **Step 5 — the game state**, scoped in "Next recommended slice" above.
+   Step 4 shipped the series slice this list used to name.
 2. **Delete the `teams_outside_focus_set` mirror** once the frontend carrying
    `teams_outside_explorer_pool` is published.
 3. **Re-run `scripts/audit_explorer_team_pool.py` each season.** The registry

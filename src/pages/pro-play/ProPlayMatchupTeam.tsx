@@ -57,6 +57,10 @@ import {
   BoardSelectionProvider,
   type ChampionSelection,
 } from "@/components/pro-play/dossier/BoardSelection";
+import {
+  MeetingShell,
+  RecentMeetings,
+} from "@/components/pro-play/dossier/MeetingDrilldown";
 import PlayerChampionDrawer from "@/components/pro-play/dossier/PlayerChampionDrawer";
 import {
   sideJourneySelection,
@@ -65,8 +69,10 @@ import {
   type ExampleNavigation,
   type LaneSide,
   type MatchupContract,
+  type MeetingSelection,
   type TeamMatchupResponse,
   type TeamSelection,
+  withMeeting,
   withTeamBanToggled,
   withTeamScope,
   withTeamSide,
@@ -188,6 +194,12 @@ export function TeamBoard({
   // `withTeamScope` beside every other selection rule, so a stale study is
   // impossible rather than merely cleaned up afterwards.
   const study = selection.study ?? null;
+
+  // Step 4's open meeting, read from the same selection the study is. The
+  // clearing rules live with every other selection rule in `matchupApi` — a
+  // team, scope or study change drops it there, so a meeting belonging to a
+  // board that is no longer on screen is impossible rather than tidied up.
+  const meeting = selection.meeting ?? null;
 
   // The board is the authority on who is in which lane. Resolving the study's
   // player against the payload rather than trusting the URL means a link
@@ -340,6 +352,13 @@ export function TeamBoard({
             onNavigate={(navigation: ExampleNavigation) =>
               onChange(sideJourneySelection(selection, navigation))
             }
+            // THE SECOND ENTRY PATH. From the exact record's own evidence into
+            // the meeting that evidences it — the same one selection change,
+            // the same history entry, and the meeting shell opens below the
+            // board rather than anywhere else.
+            onOpenMeeting={(next: MeetingSelection) =>
+              onChange(withMeeting(selection, next))
+            }
           />
           {/* The no-head-to-head guarantee is carried by the section's own
               eyebrow and by this one line, not by a boxed disclaimer above ten
@@ -353,6 +372,24 @@ export function TeamBoard({
           <FinePrint testId="dossier-pool-bound-fineprint">{data.notes.pool_bound}</FinePrint>
         </DossierSection>
       ) : null}
+
+      {/* STEP 4. The times these two teams played, and the meeting a reader
+          opened from here or from the exact matchup above. Both live BELOW the
+          board they narrow — a meeting is a deeper layer of this dossier, not
+          a fourth mode, and there is deliberately no tab for it. */}
+      <RecentMeetings
+        meetings={data.meetings}
+        total={data.meetings_total}
+        note={data.notes.meetings}
+        selected={meeting}
+        onOpen={(next: MeetingSelection) => onChange(withMeeting(selection, next))}
+      />
+      <MeetingShell
+        selection={meeting}
+        scopeId={data.scope.scope_id}
+        scopeLabel={data.scope.scope_label}
+        onClose={() => onChange(withMeeting(selection, null))}
+      />
 
       {headerA || headerB ? (
         <DossierSection title="Team Record" eyebrow="Side by side" testId="dossier-team-record">

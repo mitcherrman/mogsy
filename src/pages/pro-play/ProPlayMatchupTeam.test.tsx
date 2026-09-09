@@ -37,6 +37,11 @@ import {
   withTeamScope,
   withTeamSide,
   withTeamsSwapped,
+  meetingFromParams,
+  withMeeting,
+  withStudyOpponent,
+  withStudySubject,
+  type MeetingSelection,
   type TeamSelection,
 } from "@/lib/pro-play/matchupApi";
 
@@ -77,6 +82,143 @@ const NOTES = {
     "Champion pools are fetched for the top 3 candidates per lane by games played. Every candidate is still listed with their record; a candidate marked pool_omitted has their full, unfiltered pool available in the lane view. No minimum-game floor is applied anywhere.",
   team_summary:
     "The team's own most-played champions in the selected scope, across all players. Not a meta read and not a draft expectation.",
+  meetings:
+    "Every time these two teams met inside the selected scope, newest first. The score is counted from the games' own recorded winners. Many professional leagues play a single game per meeting; those are shown as the one game they were, not as a series.",
+};
+
+// --- Step 4 fixtures --------------------------------------------------------
+//
+// A BO3 AND A BO1, because the difference between them is the whole point of
+// the terminology: 59% of the real corpus's match_ids carry one game.
+
+const BO3_ID = "LCK/2026 Season/Rounds 1-2_Week 7_7";
+const BO1_ID = "2025 Season World Championship/Main Event_Round 3_4";
+
+function meetingTeams() {
+  return [
+    { team_key: "Bilibili Gaming", display_name: "Bilibili Gaming", explorer_navigable: true },
+    { team_key: "T1", display_name: "T1", explorer_navigable: true },
+  ];
+}
+
+const MEETINGS = [
+  {
+    match_id: BO3_ID,
+    kind: "series",
+    game_count: 3,
+    started_at: "2026-05-16 08:06:00",
+    league_slug: "LoL Champions Korea",
+    tournament_id: "LCK 2026 Rounds 1-2",
+    score_line: [
+      { team_key: "T1", wins: 2 },
+      { team_key: "Bilibili Gaming", wins: 1 },
+    ],
+    undecided: 0,
+    winner_team_key: "T1",
+    teams: meetingTeams(),
+    patch: "26.09",
+    patches: ["26.09"],
+    single_game_number: null,
+  },
+  {
+    match_id: BO1_ID,
+    kind: "single_game",
+    game_count: 1,
+    started_at: "2025-10-18 09:22:00",
+    league_slug: "Worlds",
+    tournament_id: "Worlds 2025 Main Event",
+    score_line: [
+      { team_key: "Bilibili Gaming", wins: 1 },
+      { team_key: "T1", wins: 0 },
+    ],
+    undecided: 0,
+    winner_team_key: "Bilibili Gaming",
+    teams: meetingTeams(),
+    patch: "25.20",
+    patches: ["25.20"],
+    single_game_number: 1,
+  },
+];
+
+function meetingGame(n: number, winner: string, seconds: number | null) {
+  const five = (team: string, prefix: string) =>
+    ["Top", "Jungle", "Mid", "Bot", "Support"].map((role) => ({
+      team_key: team,
+      display_name: team,
+      role,
+      side: team === "T1" ? "Blue" : "Red",
+      player_lp_page: `${team}-${role}`,
+      champion_key: `${prefix}${role}`,
+      win: team === winner,
+    }));
+  return {
+    canonical_game_id: `g${n}`,
+    game_number: n,
+    game_date: `2026-05-16 0${n}:00:00`,
+    patch: "26.09",
+    blue_team_key: "T1",
+    red_team_key: "Bilibili Gaming",
+    winner_team_key: winner,
+    decided: true,
+    duration_seconds: seconds,
+    participants: [...five("T1", `G${n}`), ...five("Bilibili Gaming", `G${n}R`)],
+  };
+}
+
+const MEETING_UNAVAILABLE = [
+  {
+    metric: "draft_order",
+    reason:
+      "pick/ban sequence is -1 on every row in the corpus; the order in which champions were picked and banned is not recorded, so no ordering is shown.",
+  },
+];
+
+const BO3_PAYLOAD = {
+  match_id: BO3_ID,
+  kind: "series",
+  game_count: 3,
+  teams: meetingTeams(),
+  league_slug: "LoL Champions Korea",
+  league_name: "LCK",
+  tournament_id: "LCK 2026 Rounds 1-2",
+  tournament_name: "LCK 2026 Rounds 1-2",
+  started_at: "2026-05-16 08:06:00",
+  patch: "26.09",
+  patches: ["26.09"],
+  score_line: [
+    { team_key: "T1", wins: 2 },
+    { team_key: "Bilibili Gaming", wins: 1 },
+  ],
+  undecided: 0,
+  winner_team_key: "T1",
+  scope_id: "current_2026",
+  in_scope: true,
+  // DELIBERATELY OUT OF ORDER in the fixture, so a test that passes only
+  // because the server happened to sort would fail here.
+  games: [
+    meetingGame(2, "T1", 3018),
+    meetingGame(1, "Bilibili Gaming", 1634),
+    meetingGame(3, "T1", null),
+  ],
+  unavailable_metrics: MEETING_UNAVAILABLE,
+};
+
+const BO1_PAYLOAD = {
+  ...BO3_PAYLOAD,
+  match_id: BO1_ID,
+  kind: "single_game",
+  game_count: 1,
+  tournament_name: "Worlds 2025 Main Event",
+  started_at: "2025-10-18 09:22:00",
+  patch: "25.20",
+  patches: ["25.20"],
+  score_line: [
+    { team_key: "Bilibili Gaming", wins: 1 },
+    { team_key: "T1", wins: 0 },
+  ],
+  winner_team_key: "Bilibili Gaming",
+  in_scope: false,
+  games: [meetingGame(1, "Bilibili Gaming", 1800)],
 };
 
 const FOCUS_TEAMS = [
@@ -535,6 +677,9 @@ function teamResponse(bans: string[] = []) {
     resolved: true,
     pool_preview: 2,
     pool_candidates_per_lane: 3,
+    meetings: MEETINGS,
+    meetings_total: 12,
+    meetings_limit: 8,
     notes: NOTES,
   };
 }
@@ -833,8 +978,12 @@ function exactResponse(overrides: Record<string, unknown> = {}) {
           opposing_team_key: "Bilibili Gaming",
           league_slug: "LoL Champions Korea",
           tournament_id: null,
+          match_id: BO3_ID,
+          game_number: 3,
         },
         {
+          // The SECOND game of the SAME meeting, on purpose: the study must
+          // offer one source meeting to open, not two.
           canonical_game_id: "x1",
           game_date: "2026-03-01 09:00:00",
           result: "L",
@@ -843,6 +992,8 @@ function exactResponse(overrides: Record<string, unknown> = {}) {
           opposing_team_key: "Bilibili Gaming",
           league_slug: "LoL Champions Korea",
           tournament_id: null,
+          match_id: BO3_ID,
+          game_number: 1,
         },
       ],
       meetings_total: 2,
@@ -856,6 +1007,8 @@ function exactResponse(overrides: Record<string, unknown> = {}) {
         opposing_team_key: "Bilibili Gaming",
         league_slug: "LoL Champions Korea",
         tournament_id: null,
+        match_id: BO3_ID,
+        game_number: 3,
       },
     },
     champion_matchup_games_in_scope: 9,
@@ -935,6 +1088,16 @@ beforeEach(() => {
       } else if (url.includes("/matchup/exact")) {
         body = exact;
         status = 200;
+      } else if (url.includes("/matchup/series")) {
+        // Answered by match_id, the way the route is. An unknown one is a 404
+        // here exactly as it is on the wire.
+        const params = new URLSearchParams(url.split("?")[1] ?? "");
+        const wanted = params.get("match_id");
+        const found = [BO3_PAYLOAD, BO1_PAYLOAD].find((m) => m.match_id === wanted);
+        if (found) {
+          body = found;
+          status = 200;
+        }
       } else if (url.includes("/matchup/team")) {
         // Reflect the requested bans back, the way the server does, so a test
         // that toggles a ban sees every lane follow it.
@@ -1006,6 +1169,10 @@ describe("mode and URL state", () => {
       // still parses to an explicit null rather than to an absent key, so the
       // two states cannot be told apart by shape alone.
       study: null,
+      // Step 4 added the open meeting on exactly the same terms, and for the
+      // same reason: an explicit null, so "no meeting open" and "this key does
+      // not exist" cannot be told apart by shape.
+      meeting: null,
     };
     expect(teamSelectionFromParams(teamSelectionToParams(selection))).toEqual(selection);
   });
@@ -1063,8 +1230,10 @@ describe("mode and URL state", () => {
       team_b: "Bilibili Gaming",
       bans: ["Vi"],
       scope_id: "all_time",
-      // The lane explorer holds no study, so crossing into the board opens none.
+      // The lane explorer holds no study and no meeting, so crossing into the
+      // board opens neither.
       study: null,
+      meeting: null,
     });
   });
 });
@@ -2524,5 +2693,354 @@ describe("the exact matchup study", () => {
     expect(screen.getByTestId("dossier-side-by-side-note")).toHaveTextContent(
       NOTES.side_by_side,
     );
+  });
+});
+
+// --- Step 4: historical meetings --------------------------------------------
+//
+// THE CLAIM THIS STEP MAKES is that a reader can move from broad team scouting
+// OR from exact-matchup evidence into one specific historical meeting, in the
+// same Explorer, and understand it at a glance. These tests hold both entry
+// paths, the terminology that keeps a Bo1 from being called a series, and the
+// clearing rules that keep a meeting from outliving the question that opened it.
+
+describe("Step 4 — the meeting selection", () => {
+  it("round-trips a meeting through the query string", () => {
+    const selection: TeamSelection = {
+      ...EMPTY_TEAM_SELECTION,
+      team_a: "T1",
+      team_b: "Gen.G",
+      meeting: { match_id: BO3_ID, game_number: 3 },
+    };
+    const params = teamSelectionToParams(selection);
+    expect(params.get("meeting")).toBe(BO3_ID);
+    expect(params.get("game")).toBe("3");
+    expect(teamSelectionFromParams(params).meeting).toEqual({
+      match_id: BO3_ID,
+      game_number: 3,
+    });
+  });
+
+  it("keeps every URL that predates it parsing exactly as before", () => {
+    // Additive, in the way `study` was: a board with no meeting reads the same.
+    const before = teamSelectionFromParams(new URLSearchParams("team_a=T1&scope=all_time"));
+    expect(before.meeting).toBeNull();
+    expect(before.team_a).toBe("T1");
+    expect(before.scope_id).toBe("all_time");
+  });
+
+  it("drops a game number that names no meeting", () => {
+    // A game number identifies nothing without the meeting it numbers.
+    expect(meetingFromParams(new URLSearchParams("game=3"))).toBeNull();
+    // And a meeting with no game is the normal multi-game case.
+    expect(meetingFromParams(new URLSearchParams(`meeting=${encodeURIComponent(BO3_ID)}`)))
+      .toEqual({ match_id: BO3_ID, game_number: null });
+  });
+
+  it("never sends the meeting to the board endpoint", async () => {
+    // Five lanes do not change because one meeting is open, and a request keyed
+    // on it would refetch all of them on every click.
+    await renderBoard(`${TEAM_URL}&meeting=${encodeURIComponent(BO3_ID)}`);
+    for (const url of requests.filter((u) => u.includes("/matchup/team"))) {
+      expect(url).not.toContain("meeting=");
+      expect(url).not.toContain("game=");
+    }
+  });
+});
+
+describe("Step 4 — Recent Meetings on the board", () => {
+  it("renders the section under the team matchup", async () => {
+    await renderBoard();
+    const section = await screen.findByTestId("dossier-meetings");
+    expect(within(section).getAllByTestId("meeting-row")).toHaveLength(2);
+  });
+
+  it("shows the score, the event and the date on each row", async () => {
+    await renderBoard();
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    expect(rows[0].textContent).toContain("T1");
+    expect(rows[0].textContent).toContain("2");
+    expect(rows[0].textContent).toContain("LCK 2026 Rounds 1-2");
+    expect(rows[0].textContent).toContain("2026");
+    expect(rows[0].textContent).toContain("Patch 26.09");
+  });
+
+  it("does not call a one-game meeting a series", async () => {
+    // 59% of the corpus is one game per match_id. The word is the whole reason
+    // this layer says "meeting".
+    await renderBoard();
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    const bo1 = rows.find((r) => r.dataset.matchId === BO1_ID)!;
+    expect(bo1.dataset.kind).toBe("single_game");
+    expect(bo1.textContent).not.toMatch(/series/i);
+    expect(within(bo1).getByTestId("meeting-kind")).toHaveTextContent("Single game");
+    // …and the Bo3 beside it does say it.
+    const bo3 = rows.find((r) => r.dataset.matchId === BO3_ID)!;
+    expect(within(bo3).getByTestId("meeting-kind").textContent).toMatch(/series/i);
+  });
+
+  it("prints the server's own sentence about what the section is", async () => {
+    await renderBoard();
+    expect(screen.getByTestId("dossier-meetings-note")).toHaveTextContent(NOTES.meetings);
+  });
+
+  it("says how many of the total are shown", async () => {
+    await renderBoard();
+    expect(screen.getByTestId("dossier-meetings").textContent).toContain("2 of 12");
+  });
+
+  it("introduces no mode tab", async () => {
+    // The product stays progressive: team → lane → player × champion → exact
+    // → meeting. A "Series" or "Game" tab would flatten that into a filter.
+    await renderBoard();
+    const controls = screen.getByTestId("dossier-controls");
+    expect(controls.textContent).not.toMatch(/\b(series|game|meeting)\b/i);
+  });
+});
+
+describe("Step 4 — the meeting shell", () => {
+  async function openMeeting(matchId = BO3_ID) {
+    await renderBoard();
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    fireEvent.click(rows.find((r) => r.dataset.matchId === matchId)!);
+    return screen.findByTestId("dossier-meeting-shell");
+  }
+
+  it("opens the shell when a meeting is clicked", async () => {
+    const shell = await openMeeting();
+    expect(within(shell).getByTestId("meeting-head")).toBeInTheDocument();
+  });
+
+  it("addresses the meeting by match_id, over the same admin-gated API", async () => {
+    await openMeeting();
+    const url = requests.filter((u) => u.includes("/matchup/series")).pop() ?? "";
+    const params = new URLSearchParams(url.split("?")[1] ?? "");
+    expect(params.get("match_id")).toBe(BO3_ID);
+    // The scope rides along as CONTEXT — the route reports `in_scope`, it does
+    // not narrow the meeting.
+    expect(params.get("scope")).toBe("current_2026");
+  });
+
+  it("is reloadable from the URL alone", async () => {
+    // The serialisable half of "shareable". Pretty URLs stay future scope; the
+    // state is fully addressable either way.
+    await renderBoard(`${TEAM_URL}&meeting=${encodeURIComponent(BO3_ID)}`);
+    const shell = await screen.findByTestId("dossier-meeting-shell");
+    expect(within(shell).getAllByTestId("meeting-game")).toHaveLength(3);
+  });
+
+  it("shows the games in game-number order", async () => {
+    // The fixture deliberately hands them back out of order. Ordering comes
+    // from `game_number` — never from the draft, which does not exist, and
+    // never from the payload's own array order.
+    const shell = await openMeeting();
+    const games = within(shell).getAllByTestId("meeting-game");
+    expect(games.map((g) => g.dataset.gameNumber)).toEqual(["1", "2", "3"]);
+  });
+
+  it("names the winner and the duration of each game", async () => {
+    const shell = await openMeeting();
+    const games = within(shell).getAllByTestId("meeting-game");
+    expect(within(games[0]).getByTestId("meeting-game-result")).toHaveTextContent(
+      "Bilibili Gaming win",
+    );
+    expect(games[0].textContent).toContain("27:14");
+    expect(games[1].textContent).toContain("50:18");
+  });
+
+  it("says a duration is not recorded rather than printing a zero", async () => {
+    // OE covers 80% of the corpus; a zero would be a lie about a real game.
+    const shell = await openMeeting();
+    const games = within(shell).getAllByTestId("meeting-game");
+    expect(games[2].textContent).toContain("Duration not recorded");
+    expect(games[2].textContent).not.toContain("0:00");
+  });
+
+  it("shows the champions each side took, and never a draft order", async () => {
+    const shell = await openMeeting();
+    const first = within(shell).getAllByTestId("meeting-game")[0];
+    const sides = within(first).getAllByTestId("meeting-game-side");
+    expect(sides).toHaveLength(2);
+    expect(within(sides[0]).getAllByTestId("champion-icon")).toHaveLength(5);
+    // `sequence` is -1 on every pick/ban row in the corpus. Nothing may number
+    // a pick or lay the ten champions out as a draft.
+    expect(first.textContent).not.toMatch(/first pick|pick \d|ban \d|draft/i);
+  });
+
+  it("prints the server's words for what is not shown", async () => {
+    const shell = await openMeeting();
+    expect(within(shell).getByTestId("meeting-unavailable-draft_order")).toHaveTextContent(
+      MEETING_UNAVAILABLE[0].reason,
+    );
+  });
+
+  it("shows no per-player statistics table", async () => {
+    // Step 5. Until a payload carries a number, the shell must not imply one.
+    const shell = await openMeeting();
+    expect(shell.textContent).not.toMatch(/\bKDA\b|\bCS\b|vision score|gold@|damage/i);
+  });
+
+  it("keeps the scope visible as context, and says when a meeting is outside it", async () => {
+    const outside = await openMeeting(BO1_ID);
+    expect(within(outside).getByTestId("meeting-scope")).toHaveTextContent(
+      /outside the selected scope/i,
+    );
+    // …and the meeting still reads whole: it was chosen by name, not filtered.
+    expect(within(outside).getAllByTestId("meeting-game")).toHaveLength(1);
+  });
+
+  it("closes back to the board without losing the board", async () => {
+    const shell = await openMeeting();
+    fireEvent.click(within(shell).getByTestId("meeting-close"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("dossier-meeting-shell")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("lane-board")).toBeInTheDocument();
+    expect(screen.getByTestId("dossier-meetings")).toBeInTheDocument();
+  });
+
+  it("opens through the board's own selection, so Back returns", async () => {
+    // Back works because opening a meeting is the SAME `onChange` every other
+    // control uses — one history entry on the same page, not a route change.
+    // The observable proof is that the board is not refetched: a second
+    // mechanism would have remounted it.
+    await renderBoard();
+    const before = requests.filter((u) => u.includes("/matchup/team")).length;
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    fireEvent.click(rows[0]);
+    await screen.findByTestId("dossier-meeting-shell");
+    expect(requests.filter((u) => u.includes("/matchup/team"))).toHaveLength(before);
+    expect(screen.getByTestId("lane-board")).toBeInTheDocument();
+  });
+
+  it("says so honestly when a meeting cannot be read", async () => {
+    await renderBoard(`${TEAM_URL}&meeting=${encodeURIComponent("no/such meeting")}`);
+    expect(await screen.findByTestId("meeting-error")).toBeInTheDocument();
+    // An unreadable meeting does not take the board down with it.
+    expect(screen.getByTestId("lane-board")).toBeInTheDocument();
+  });
+});
+
+describe("Step 4 — from exact matchup evidence into the source meeting", () => {
+  async function openStudyForMeeting() {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    const study = await within(drawer).findByTestId("dossier-study");
+    fireEvent.click(within(study).getByTestId("study-opposing-player"));
+    fireEvent.click(await within(drawer).findByTestId("study-opposing-champion"));
+    await within(drawer).findByTestId("study-record");
+    return within(drawer).getByTestId("dossier-study");
+  }
+
+  it("offers the source meeting of a counted game", async () => {
+    const study = await openStudyForMeeting();
+    expect(within(study).getByTestId("study-source-meetings")).toBeInTheDocument();
+  });
+
+  it("offers ONE row for two games of the same meeting", async () => {
+    // Two games of a best-of are one meeting to open. Listing it twice would
+    // read as the pair having met twice.
+    const study = await openStudyForMeeting();
+    const rows = within(study).getAllByTestId("study-source-meeting");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].dataset.matchId).toBe(BO3_ID);
+  });
+
+  it("opens the same meeting state the board's own rows open", async () => {
+    const study = await openStudyForMeeting();
+    fireEvent.click(within(study).getAllByTestId("study-source-meeting")[0]);
+    const shell = await screen.findByTestId("dossier-meeting-shell");
+    expect(within(shell).getAllByTestId("meeting-game")).toHaveLength(3);
+    const url = requests.filter((u) => u.includes("/matchup/series")).pop() ?? "";
+    expect(new URLSearchParams(url.split("?")[1] ?? "").get("match_id")).toBe(BO3_ID);
+  });
+
+  it("leaves the study open behind the meeting", async () => {
+    // The reader arrived through that question; closing it behind them would
+    // lose their place.
+    const study = await openStudyForMeeting();
+    fireEvent.click(within(study).getAllByTestId("study-source-meeting")[0]);
+    await screen.findByTestId("dossier-meeting-shell");
+    expect(screen.getByTestId("player-champion-drawer")).toBeInTheDocument();
+  });
+});
+
+describe("Step 4 — clearing rules", () => {
+  const withMeetingOpen: TeamSelection = {
+    ...EMPTY_TEAM_SELECTION,
+    team_a: "T1",
+    team_b: "Gen.G",
+    study: {
+      subject_player: "Doran",
+      subject_champion: "Ornn",
+      opposing_player: "Bin",
+      opposing_champion: "Ambessa",
+    },
+    meeting: { match_id: BO3_ID, game_number: null } as MeetingSelection,
+  };
+
+  it("a team change clears the meeting", () => {
+    // A meeting is a meeting BETWEEN TWO TEAMS.
+    expect(withTeamSide(withMeetingOpen, "a", "KT Rolster").meeting).toBeNull();
+    expect(withTeamSide(withMeetingOpen, "b", "KT Rolster").meeting).toBeNull();
+  });
+
+  it("a scope change clears the meeting", () => {
+    expect(withTeamScope(withMeetingOpen, "all_time").meeting).toBeNull();
+  });
+
+  it("changing the subject of the study clears the meeting", () => {
+    expect(
+      withStudySubject(withMeetingOpen, { player: "Faker", champion: "Azir" }).meeting,
+    ).toBeNull();
+  });
+
+  it("closing the study clears the meeting", () => {
+    expect(withStudySubject(withMeetingOpen, null).meeting).toBeNull();
+  });
+
+  it("changing the opposing side of the study clears the meeting", () => {
+    expect(
+      withStudyOpponent(withMeetingOpen, { player: "Xun", champion: "Vi" }).meeting,
+    ).toBeNull();
+  });
+
+  it("a side swap KEEPS the meeting", () => {
+    // Reading the same board the other way round does not change which teams
+    // played, so dropping the meeting would be a surprise, not a safeguard.
+    expect(withTeamsSwapped(withMeetingOpen).meeting).toEqual(withMeetingOpen.meeting);
+  });
+
+  it("clears a stale meeting in the rendered board, not just in the selection", async () => {
+    await renderBoard(`${TEAM_URL}&meeting=${encodeURIComponent(BO3_ID)}`);
+    await screen.findByTestId("dossier-meeting-shell");
+    fireEvent.click(
+      within(screen.getByTestId("dossier-scope-rail")).getByTestId(
+        "dossier-scope-all_time",
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("dossier-meeting-shell")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("opening a meeting keeps the board's own selection intact", () => {
+    const next = withMeeting(
+      { ...EMPTY_TEAM_SELECTION, team_a: "T1", team_b: "Gen.G", bans: ["Azir"] },
+      { match_id: BO3_ID, game_number: null },
+    );
+    expect(next.team_a).toBe("T1");
+    expect(next.bans).toEqual(["Azir"]);
+    expect(next.meeting?.match_id).toBe(BO3_ID);
   });
 });

@@ -523,6 +523,9 @@ export interface TeamSelection {
    *  a board with no study parses and renders exactly as it did before, and
    *  every URL shared before Step 3 still resolves. See `StudySelection`. */
   study?: StudySelection | null;
+  /** Step 4: which historical meeting is open. Optional and additive in
+   *  exactly the way `study` is — see `MeetingSelection`. */
+  meeting?: MeetingSelection | null;
 }
 
 export interface TeamMatchupResponse {
@@ -546,10 +549,19 @@ export interface TeamMatchupResponse {
    *  the server; the payload still carries every row. */
   pool_preview: number;
   pool_candidates_per_lane: number;
+  /** STEP 4: the times these two teams met inside this scope, newest first.
+   *  Served ON THE BOARD rather than from a route of its own — the board has
+   *  already named the only three things the question takes, and a sibling
+   *  request could return an answer that disagrees with the lanes above it.
+   *  Empty when either side is unresolved. */
+  meetings: MeetingSummary[];
+  meetings_total: number;
+  meetings_limit: number;
   notes: MatchupNotes & {
     team_mode: string;
     pool_bound: string;
     team_summary: string;
+    meetings: string;
   };
 }
 
@@ -560,6 +572,7 @@ export const EMPTY_TEAM_SELECTION: TeamSelection = {
   bans: [],
   scope_id: "current_2026",
   study: null,
+  meeting: null,
 };
 
 export type MatchupMode = "lane" | "team";
@@ -588,7 +601,10 @@ export function teamSelectionToParams(selection: TeamSelection, withMode = true)
   // request by `boardRequestSelection` — the board's five lanes do not change
   // because one dossier is open, and refetching them on every tile click would
   // be a regression dressed up as consistency.
-  return studyToParams(params, selection.study ?? null);
+  studyToParams(params, selection.study ?? null);
+  // Step 4's open meeting, written for the address bar and stripped from the
+  // request by `boardRequestSelection` for the same reason the study is.
+  return meetingToParams(params, selection.meeting ?? null);
 }
 
 /** The exact inverse. */
@@ -599,6 +615,7 @@ export function teamSelectionFromParams(params: URLSearchParams): TeamSelection 
     bans: [...new Set(params.getAll("ban").filter(Boolean))].sort(),
     scope_id: params.get("scope") || EMPTY_TEAM_SELECTION.scope_id,
     study: studyFromParams(params),
+    meeting: meetingFromParams(params),
   };
 }
 
@@ -652,13 +669,19 @@ export function withTeamSide(
     ...selection,
     [side === "a" ? "team_a" : "team_b"]: teamKey,
     study: null,
+    // A meeting is a meeting BETWEEN TWO TEAMS. Change either of them and the
+    // open one is not a meeting of the pair on screen — leaving it would put
+    // one pair's games under another pair's board.
+    meeting: null,
   };
 }
 
 export function withTeamScope(selection: TeamSelection, scopeId: string): TeamSelection {
   // A selection made in one scope is not a selection in another: the same
-  // rule, and the same reason, as a team change.
-  return { ...selection, scope_id: scopeId, study: null };
+  // rule, and the same reason, as a team change. The meetings LIST is rebuilt
+  // from the new scope, so an open meeting found in the old one may not be in
+  // the section behind it any more.
+  return { ...selection, scope_id: scopeId, study: null, meeting: null };
 }
 
 export function withTeamBanToggled(selection: TeamSelection, key: string): TeamSelection {
@@ -708,8 +731,10 @@ export function teamSelectionFromLane(selection: MatchupSelection): TeamSelectio
     team_b: selection.team_b,
     bans: selection.bans,
     scope_id: selection.pool_scope_id,
-    // The lane explorer holds no study, so crossing into the board opens none.
+    // The lane explorer holds no study and no meeting, so crossing into the
+    // board opens neither.
     study: null,
+    meeting: null,
   };
 }
 
@@ -870,6 +895,12 @@ export interface ExactMeeting {
   opposing_team_key: string;
   league_slug: string | null;
   tournament_id: string | null;
+  /** STEP 4: the MEETING this game was played in, and where in it. Both are
+   *  columns already on the game the record counted, so this is a projection
+   *  and not a second read — and it is what lets an aggregate claim be opened
+   *  into the evidence underneath it. */
+  match_id: string | null;
+  game_number: number | null;
 }
 
 /** One named player's standing in the scope. Three states, kept apart so a
@@ -1043,7 +1074,10 @@ export function studyFromParams(params: URLSearchParams): StudySelection | null 
  * request keyed on the study would refetch all of it on every tile click.
  */
 export function boardRequestSelection(selection: TeamSelection): TeamSelection {
-  const { study: _study, ...board } = selection;
+  // The MEETING goes with the study, for the same reason: `/team` has no
+  // parameter for either, and the five lanes do not change because a reader
+  // opened one historical meeting underneath them.
+  const { study: _study, meeting: _meeting, ...board } = selection;
   return board;
 }
 
@@ -1051,7 +1085,10 @@ export function withStudySubject(
   selection: TeamSelection,
   subject: { player: string; champion: string } | null,
 ): TeamSelection {
-  if (!subject) return { ...selection, study: null };
+  // Closing the dossier closes the meeting opened FROM it. Nothing else on
+  // screen would still be naming it, and a meeting shell with no question
+  // above it is a match page — which is exactly what this is not.
+  if (!subject) return { ...selection, study: null, meeting: null };
   // A new subject is a new question: the opposing side chosen for the previous
   // one is not an answer to this one, so it goes rather than being re-pointed
   // at different numbers.
@@ -1063,6 +1100,9 @@ export function withStudySubject(
       opposing_player: null,
       opposing_champion: null,
     },
+    // A meeting reached as evidence for one exact matchup is not evidence for
+    // a different one.
+    meeting: null,
   };
 }
 
@@ -1081,6 +1121,9 @@ export function withStudyOpponent(
       opposing_champion:
         opponent.player === selection.study.opposing_player ? opponent.champion : null,
     },
+    // Same rule as a new subject: the source meeting belonged to the exact
+    // matchup that was on screen, and that question just changed.
+    meeting: null,
   };
 }
 
@@ -1107,5 +1150,182 @@ export function sideJourneySelection(
       opposing_player: navigation.opposing_player_lp_page,
       opposing_champion: navigation.opposing_champion,
     },
+    // A side journey is a new board AND a new study; a meeting held open
+    // across it would belong to neither.
+    meeting: null,
   };
+}
+
+
+// --- Step 4: historical meetings -------------------------------------------
+//
+// A MEETING IS ONE `match_id` — Leaguepedia's series identity, on every one of
+// the 113,815 canonical games. "Meeting" and not "series" because 59% of them
+// carry exactly ONE game: Bo1 leagues are the majority of the corpus, and a
+// layer that called every match_id a series would be inventing a best-of
+// around a single game. The server reports `kind`, and this client renders the
+// word it is given rather than choosing one.
+//
+// NOT A MATCH-HISTORY PAGE. The board's section is date, score and event; the
+// shell below it is the games in order with who played and what they took.
+// Per-player K/D/A, CS, gold, damage, vision, objectives and any draft ORDER
+// are deliberately absent — see `unavailable_metrics`, which names each in
+// words rather than leaving it missing.
+
+export const MEETING_SERIES = "series";
+export const MEETING_SINGLE_GAME = "single_game";
+export type MeetingKind = typeof MEETING_SERIES | typeof MEETING_SINGLE_GAME;
+
+export interface MeetingTeamRef {
+  team_key: string;
+  display_name: string;
+  /** Whether the BOARD can be pointed at this org. A meeting names the teams
+   *  that played it, which is a different question from the team pool. */
+  explorer_navigable: boolean;
+}
+
+/** One side of the score, as an ordered pair. The winner is first, so a client
+ *  renders `T1 2–1 Gen.G` without deciding anything itself. */
+export interface MeetingScoreEntry {
+  team_key: string;
+  wins: number;
+}
+
+/** A row in the board's compact section. */
+export interface MeetingSummary {
+  match_id: string;
+  kind: MeetingKind;
+  game_count: number;
+  started_at: string | null;
+  league_slug: string | null;
+  tournament_id: string | null;
+  score_line: MeetingScoreEntry[];
+  undecided: number;
+  /** Null when the meeting is drawn, or when the games still unresolved could
+   *  close the gap. A lead is not a result. */
+  winner_team_key: string | null;
+  teams: MeetingTeamRef[];
+  /** One patch, or null when the meeting straddled two. */
+  patch: string | null;
+  patches: string[];
+  /** Set only on a one-game meeting: there is no series above it to choose
+   *  from, so it is entered with its game already named. */
+  single_game_number: number | null;
+}
+
+export interface MeetingParticipant {
+  team_key: string | null;
+  display_name: string | null;
+  role: string | null;
+  side: string | null;
+  player_lp_page: string | null;
+  /** The champion this player took. This IS the pick; there is no separate
+   *  trustworthy pick projection and no pick ORDER anywhere in the corpus. */
+  champion_key: string | null;
+  win: boolean | null;
+}
+
+export interface MeetingGame {
+  canonical_game_id: string;
+  game_number: number;
+  game_date: string | null;
+  patch: string | null;
+  blue_team_key: string | null;
+  red_team_key: string | null;
+  winner_team_key: string | null;
+  decided: boolean;
+  /** Null where the statistics do not reach — 80% coverage, and a zero would
+   *  be a lie about a game that was played. */
+  duration_seconds: number | null;
+  /** The players who ACTUALLY played, read off the game's own rows, so a
+   *  substitution appears in the game it happened in. */
+  participants: MeetingParticipant[];
+}
+
+export interface MeetingPayload {
+  match_id: string;
+  kind: MeetingKind;
+  game_count: number;
+  teams: MeetingTeamRef[];
+  league_slug: string | null;
+  league_name: string | null;
+  tournament_id: string | null;
+  tournament_name: string | null;
+  started_at: string | null;
+  patch: string | null;
+  patches: string[];
+  score_line: MeetingScoreEntry[];
+  undecided: number;
+  winner_team_key: string | null;
+  scope_id: string | null;
+  /** Whether the meeting falls inside the scope the board is reading. It
+   *  REPORTS; it never filters. Dropping games from a meeting because of a
+   *  scope would print a score that was never played. */
+  in_scope: boolean | null;
+  games: MeetingGame[];
+  unavailable_metrics: UnavailableMetric[];
+}
+
+/**
+ * Which meeting is open, in the URL.
+ *
+ * THE SAME EXTENSION `study` ALREADY MADE, and deliberately not a new one. Two
+ * more optional query keys on the board's existing selection: `meeting` is the
+ * `match_id`, `game` a `game_number` within it — never a bare
+ * `canonical_game_id`, because a number is legible in a URL and the pair is
+ * unique across the whole corpus (measured: zero duplicate
+ * `(match_id, game_number)` in 113,815 games).
+ *
+ * `game_number` is carried now so a one-game meeting can be entered with its
+ * game already named; the per-game state itself is Step 5.
+ */
+export interface MeetingSelection {
+  match_id: string;
+  game_number: number | null;
+}
+
+const MEETING_PARAMS = { match_id: "meeting", game_number: "game" } as const;
+
+export function meetingToParams(params: URLSearchParams, meeting: MeetingSelection | null) {
+  if (!meeting) return params;
+  params.set(MEETING_PARAMS.match_id, meeting.match_id);
+  if (meeting.game_number != null) {
+    params.set(MEETING_PARAMS.game_number, String(meeting.game_number));
+  }
+  return params;
+}
+
+export function meetingFromParams(params: URLSearchParams): MeetingSelection | null {
+  const matchId = params.get(MEETING_PARAMS.match_id);
+  // A GAME WITHOUT A MEETING IS MEANINGLESS and is dropped, the same way
+  // `boardRequestSelection` strips what a request has no parameter for: a
+  // game number identifies nothing without the meeting it numbers.
+  if (!matchId) return null;
+  const raw = params.get(MEETING_PARAMS.game_number);
+  const gameNumber = raw == null ? null : Number.parseInt(raw, 10);
+  return {
+    match_id: matchId,
+    game_number: Number.isFinite(gameNumber as number) && (gameNumber as number) > 0
+      ? (gameNumber as number)
+      : null,
+  };
+}
+
+/** Open a meeting. The study above it is KEPT: the reader arrived at this
+ *  meeting through that question, and closing it behind them would lose their
+ *  place. */
+export function withMeeting(
+  selection: TeamSelection,
+  meeting: MeetingSelection | null,
+): TeamSelection {
+  return { ...selection, meeting };
+}
+
+export function fetchMeeting(
+  matchId: string,
+  scopeId: string,
+  signal?: AbortSignal,
+): Promise<MeetingPayload> {
+  const params = new URLSearchParams({ match_id: matchId, scope: scopeId });
+  return get<MeetingPayload>(`/series?${params.toString()}`, signal);
 }
