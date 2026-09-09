@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Info, Search, ChevronUp } from "lucide-react";
+import {
+  BENEFIT_GROUPS,
+  PREMIUM_MATRIX,
+  discrepancies,
+  presentableBenefits,
+  upsellEligible,
+} from "@/lib/premium/matrix";
 
 /**
  * Admin-only encyclopedic reference for the Mogsy app.
@@ -572,8 +579,83 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
     ),
   },
   {
+    // PT1.13 — the canonical Free-vs-Premium matrix, rendered from the SAME
+    // module `/lol/premium` reads. There is deliberately no separate admin
+    // system for this: an internal view whose data can drift from the sales
+    // page is worse than none, so this section holds no copy of its own and
+    // shows the internal columns the buyer's page withholds.
+    id: "premium-matrix",
+    title: "24. Free vs Premium — canonical matrix",
+    keywords:
+      "premium free matrix entitlement paywall gate monetization pt1.13 shipped partial planned upsell discrepancy subscription",
+    body: (
+      <>
+        <P>
+          The one product-level source of truth for what Free gets, what Mogzy Premium
+          adds, and whether the distinction is real. Source: <Tag>src/lib/premium/matrix.ts</Tag>.
+          It DESCRIBES the product and gates nothing — the authority is{" "}
+          <Tag>services/entitlement.py</Tag> on the server and <Tag>@/lib/pro/entitlement</Tag>{" "}
+          on the client, and a test fails the build if anything but a descriptive
+          surface imports the matrix.
+        </P>
+        <P>
+          {PREMIUM_MATRIX.length} rows; {presentableBenefits().length} presentable on{" "}
+          <Tag>/lol/premium</Tag>; {upsellEligible().length} carry upsell copy for a
+          later phase; {discrepancies().length} carry a live contradiction.
+        </P>
+
+        <H>Contradictions to resolve</H>
+        <UL>
+          {discrepancies().map((b) => (
+            <li key={b.id}>
+              <span className="font-semibold text-foreground">{b.label}</span> — {b.discrepancy}
+            </li>
+          ))}
+        </UL>
+
+        {BENEFIT_GROUPS.filter((g) => PREMIUM_MATRIX.some((b) => b.group === g.id)).map((g) => (
+          <div key={g.id}>
+            <H>{g.label}</H>
+            <div className="rounded-lg border border-border bg-card/40 p-4 space-y-3">
+              {PREMIUM_MATRIX.filter((b) => b.group === g.id).map((b) => (
+                <div key={b.id} data-testid={`admin-matrix-${b.id}`} className="border-b border-border/40 pb-3 last:border-0 last:pb-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-foreground">{b.label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      {b.status}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      enforced: {b.enforcement}
+                    </span>
+                    {b.differentiator && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                        premium adds
+                      </span>
+                    )}
+                    {b.userFacingSummary === null && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        not marketed
+                      </span>
+                    )}
+                  </div>
+                  <Row k="Free" v={b.free} />
+                  <Row k="Premium" v={b.premium} />
+                  <Row k="Where" v={<code className="font-mono text-[11px]">{b.enforcementNote}</code>} />
+                  {b.caveat && <Row k="Caveat" v={b.caveat} />}
+                  {b.discrepancy && (
+                    <Row k="Discrepancy" v={<span className="text-destructive">{b.discrepancy}</span>} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </>
+    ),
+  },
+  {
     id: "recent-updates",
-    title: "24. Recent Updates",
+    title: "25. Recent Updates",
     keywords:
       "recent updates changelog quiz league quiz quiz admin quiz diagnostics quiz reports report issue lol hub tier list combat lab diagnostics rewind security override question",
     body: (

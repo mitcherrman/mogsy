@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { PREMIUM_MATRIX, freeBenefits, premiumBenefits } from "@/lib/premium/matrix";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -473,22 +474,50 @@ describe("the Premium rename and the PT1.7 surfaces survive the PT1.5 port", () 
   });
 
   it("keeps PT1.7B's truthful capability copy on the sales page", () => {
-    // PT1.7A made per-category accuracy free, so PT1.7B rewrote these two
-    // bullets. A PT1.5 rebase that restored the old page would re-promise a
-    // capability players already have for nothing.
-    expect(lolPremium).toContain("Weakness Targeting");
-    expect(lolPremium).toContain("Turn your weakest categories into a practice set, on demand.");
-    expect(lolPremium).toContain("Custom Practice Filters");
-    expect(lolPremium).toContain(
-      "Build practice sets by category, subject, difficulty and length — and save them."
-    );
-    // The old bullet may survive in the comment that explains why it went.
+    // PT1.7A made per-category accuracy free, so PT1.7B rewrote two hardcoded
+    // bullets on this page. A PT1.5 rebase that restored the old page would
+    // re-promise a capability players already have for nothing.
+    //
+    // PT1.13 MOVED WHERE THIS IS ENFORCED, NOT WHETHER. The page no longer
+    // holds a benefit list — it renders `@/lib/premium/matrix`, so the fence
+    // has to follow the copy or it would pass on an empty page. What it
+    // guards is unchanged and is now stronger: the capability is still
+    // described, per-category accuracy is still not sold, and the whole
+    // matrix is checked rather than the two bullets that happened to be
+    // wrong in 2026-09.
+    expect(code(lolPremium)).toContain('from "@/lib/premium/matrix"');
+    const sellable = premiumBenefits();
+    const builder = sellable.find((b) => b.id === "practice-builder");
+    const pools = sellable.find((b) => b.id === "practice-pools");
+    const saved = sellable.find((b) => b.id === "saved-practice-sets");
+    for (const b of [builder, pools, saved]) expect(b).toBeTruthy();
+    expect(builder!.premium).toMatch(/pool.*category.*difficulty.*length/i);
+    expect(pools!.premium).toMatch(/weakest categories/i);
+    expect(saved!.premium).toMatch(/save/i);
+    // The thing PT1.7A made Free must appear as a FREE row, never as a sale.
+    const snapshot = PREMIUM_MATRIX.find((b) => b.id === "performance-snapshot")!;
+    expect(snapshot.differentiator).toBe(false);
+    expect(snapshot.free).toMatch(/per category/i);
+    // Neither the page nor the matrix may resurrect the old bullet.
     expect(code(lolPremium)).not.toContain("Advanced Category Stats");
+    for (const b of PREMIUM_MATRIX) {
+      expect(`${b.label} ${b.userFacingSummary ?? ""}`).not.toContain("Advanced Category Stats");
+    }
   });
 
   it("keeps PT1.7A's free baseline visible on the same page", () => {
+    // Same move: the heading is still the page's, the list under it is now
+    // the matrix's Free rows. Both halves are asserted, because a heading
+    // over an empty list is exactly the regression this test exists for.
     expect(lolPremium).toContain("Free, forever");
-    expect(lolPremium).toContain("Play quizzes as a guest — no account needed");
+    expect(code(lolPremium)).toContain("freeBenefits()");
+    const free = freeBenefits();
+    expect(free.length).toBeGreaterThan(3);
+    for (const b of free) expect(b.userFacingSummary, b.id).toBeTruthy();
+    // The specific PT1.7A restorations are still described as Free.
+    for (const id of ["practice-packs", "time-trial", "performance-snapshot"]) {
+      expect(free.map((b) => b.id), id).toContain(id);
+    }
   });
 
   it("leaves the PT1.7B Builder and its own boundary suite in place", () => {

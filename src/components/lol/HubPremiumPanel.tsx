@@ -19,10 +19,21 @@
  * features are still named, still in prose bounded by what `/lol/premium`
  * actually claims, and there is still no price.
  *
- * ### Copy is bounded by what `/lol/premium` actually claims
- * An audit of `LolPremium.tsx` on 2026-09-04 found exactly two Premium
- * features live — full quiz history and the missed-question bank; the other
- * six carry a "Coming soon" badge. Those two are named; nothing else is.
+ * ### Copy is bounded by what the canonical matrix says is SHIPPED
+ * The 2026-09-04 audit found exactly two live Premium features — full quiz
+ * history and the missed-question bank — and this slip has named those two
+ * ever since. PT1.13 re-audited and there are now **seven**: those two plus
+ * the Practice Builder, its own-record pools, saved sets, performance trends
+ * and recurring-weakness diagnosis (`@/lib/premium/matrix`,
+ * `premiumBenefits()`).
+ *
+ * The slip still names only the original two, deliberately. It is one
+ * sentence on a small painted parchment, and its job is to say what
+ * membership is FOR and send the reader to the page that lists it — not to
+ * become a second, competing benefit list that then drifts again. The one
+ * change made here is the promotional line's tail: "unlock the advanced
+ * tools as they land" promised future capability, and the tools have landed,
+ * so it now points at what is there.
  *
  * ### No price
  * PT1.5 moved pricing off the client entirely: the price list lives in the
@@ -85,7 +96,7 @@ export default function HubPremiumPanel() {
       <p className="academy-commons-notice-soft academy-commons-support-blurb mt-2 text-[12.5px] leading-snug">
         {isMember
           ? "Your membership is active. Your full quiz history and every question you’ve missed are unlocked."
-          : "Keep your full quiz history, review every question you’ve missed, and unlock the advanced tools as they land."}
+          : "Keep your full quiz history, review every question you’ve missed, and read how your results are moving over time."}
       </p>
 
       {/* Ink on paper, not a gold plate: the Record and the Bulletin own the

@@ -7,14 +7,13 @@ import {
   Check,
   History,
   BookX,
-  BarChart3,
   LineChart,
   SlidersHorizontal,
-  Swords,
   Save,
-  GraduationCap,
-  Layers,
   Sparkles,
+  Target,
+  Library,
+  Palette,
   CreditCard,
 } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
@@ -37,89 +36,70 @@ import {
   type PricingMode,
 } from "@/lib/pro/checkout";
 import { annualSavingsPct, STANDARD_OFFERS } from "@/lib/pro/offers";
+import {
+  benefitById,
+  benefitsInGroup,
+  freeBenefits,
+  populatedGroups,
+  premiumBenefits,
+  type PremiumBenefit,
+} from "@/lib/premium/matrix";
 
 const GOLD = "#c9a84c";
 
-const FREE_FEATURES = [
-  "Play quizzes as a guest — no account needed",
-  "Daily challenge and free quiz sets",
-  "Basic results after every quiz",
-  "Your last 10 quiz results saved",
-  "Missed-answer review on each results screen",
-  "Watch and play live quiz content",
-  "Share your quiz results",
-];
-
-type PremiumFeature = {
-  title: string;
-  description: string;
-  Icon: React.ElementType;
-  comingSoon?: boolean;
+/**
+ * PT1.13 — every benefit claim on this page now comes from the canonical
+ * matrix (`@/lib/premium/matrix`), which describes what the SHIPPED product
+ * actually does. Nothing on this page may state a benefit that is not a row
+ * there, and `presentableBenefits()` withholds anything `partial` or
+ * `planned` — so a feature cannot be advertised as available before it is.
+ *
+ * WHAT THIS REMOVED, AND WHY. The hand-maintained list carried four "Coming
+ * soon" cards. Two of them ("Unlimited Combat Lab", "Unlimited Saves &
+ * Exports") described capabilities Free ALREADY HAS, unlimited, today — the
+ * page was promising to withdraw something. The other two ("Curated Learning
+ * Journeys", "Earned Matchup Cards") exist nowhere in either repository.
+ * All four are still recorded in the matrix, with their contradictions, as
+ * `planned` rows with a null `userFacingSummary`: kept as knowledge, refused
+ * as marketing.
+ *
+ * The matrix carries no icons on purpose — it is product data, imported by
+ * tests and by an admin reference, and none of those want React. The mapping
+ * from a benefit id to its glyph is presentation, so it lives here.
+ */
+const BENEFIT_ICONS: Record<string, React.ElementType> = {
+  "practice-builder": SlidersHorizontal,
+  "practice-pools": Library,
+  "saved-practice-sets": Save,
+  "performance-trends": LineChart,
+  "recurring-weaknesses": Target,
+  "study-history": History,
+  "missed-question-bank": BookX,
+  "profile-themes": Palette,
+  "profile-frames": Palette,
 };
 
-const PREMIUM_FEATURES: PremiumFeature[] = [
-  {
-    title: "Full Quiz History",
-    description: "Every result you've ever posted, not just the last 10.",
-    Icon: History,
-  },
-  {
-    // PT1.8. Named for the QUESTION it answers, and scoped honestly: the
-    // windows are the three the server offers, and the record it reads is
-    // Practice + Time Trial. Nothing here promises a figure the product
-    // cannot derive from the attempt log it already keeps.
-    title: "Performance Trends",
-    description: "See how your Practice & Time Trial accuracy and study volume have moved over 7, 30 or 90 days, and which weak spots keep coming back.",
-    Icon: LineChart,
-  },
-  {
-    title: "Missed Question Bank",
-    description: "Review every question you missed across all your quizzes.",
-    Icon: BookX,
-  },
-  {
-    // PT1.7B. This entry used to read "Advanced Category Stats — see your
-    // accuracy by champions, items, abilities, and more". PT1.7A made
-    // per-category accuracy FREE (Knowledge Breakdown on /quiz), so the old
-    // bullet promised to withdraw a capability players already have. What
-    // Premium actually adds is acting on those numbers.
-    title: "Weakness Targeting",
-    description: "Turn your weakest categories into a practice set, on demand.",
-    Icon: BarChart3,
-  },
-  {
-    title: "Custom Practice Filters",
-    // Champion and item are NOT claimed: the bank does not record which
-    // champion a question is about in a way the Builder can safely read, so
-    // the copy names the filters that exist.
-    description: "Build practice sets by category, subject, difficulty and length — and save them.",
-    Icon: SlidersHorizontal,
-  },
-  {
-    title: "Unlimited Combat Lab",
-    description: "Run as many simulations as you want, no caps.",
-    Icon: Swords,
-    comingSoon: true,
-  },
-  {
-    title: "Unlimited Saves & Exports",
-    description: "Save and export every Combat Lab simulation you run.",
-    Icon: Save,
-    comingSoon: true,
-  },
-  {
-    title: "Curated Learning Journeys",
-    description: "Guided quiz paths that build real game knowledge.",
-    Icon: GraduationCap,
-    comingSoon: true,
-  },
-  {
-    title: "Earned Matchup Cards",
-    description: "Beat the set. Unlock the card.",
-    Icon: Layers,
-    comingSoon: true,
-  },
-];
+/**
+ * The four benefits the page leads with, in this order.
+ *
+ * A curated subset, not a computed one: "most valuable" is an editorial
+ * judgement and pretending to derive it would just hide the decision. Each id
+ * is asserted to be a real, shipped, differentiating row at render time by
+ * `leadBenefits()`, so this list cannot outlive the matrix it points into.
+ */
+const LEAD_BENEFIT_IDS = [
+  "performance-trends",
+  "missed-question-bank",
+  "practice-builder",
+  "study-history",
+] as const;
+
+function leadBenefits(): PremiumBenefit[] {
+  const sellable = new Set(premiumBenefits().map((b) => b.id));
+  return LEAD_BENEFIT_IDS.map(benefitById).filter(
+    (b): b is PremiumBenefit => !!b && sellable.has(b.id)
+  );
+}
 
 /** This page's route — where auth must return a user it interrupted here. */
 const LOL_PREMIUM_ROUTE = "/lol/premium";
@@ -233,7 +213,7 @@ export default function LolPremium() {
     <div className="container mx-auto max-w-4xl px-4 py-8">
       <SEOHead
         title="Mogzy Premium — Practice Smarter at League"
-        description="Track your full quiz history, review missed questions, train weak spots, and unlock Matchup Cards with Mogzy Premium."
+        description="Mogzy Premium: your full quiz history, every question you have missed, performance trends over 7/30/90 days, and a practice builder that turns your weak spots into a set."
       />
 
       <div className="mb-8 flex items-center gap-3">
@@ -266,10 +246,15 @@ export default function LolPremium() {
         <h2 className="mx-auto mt-3 max-w-xl text-3xl font-bold text-[#f5e9c8]">
           Track your progress. Review your mistakes. Practice smarter.
         </h2>
+        {/* PT1.13 — every clause here is a shipped row in the canonical
+            matrix. The previous copy ended on "unlock Matchup Cards by
+            completing curated quiz sets", which describes a feature that
+            exists in neither repository. */}
         <p className="mx-auto mt-3 max-w-xl text-sm text-[#c8d4e6]">
-          Mogzy Premium helps serious League players practice smarter. Track your full quiz
-          history, review missed questions, train weak spots, and unlock Matchup Cards
-          by completing curated quiz sets.
+          Playing is free — Ranked, Time Trial, the practice sets, the Combat Lab and
+          your own recent results. Premium is for reading your record over time: full
+          history, every question you have missed, and a builder that turns your weak
+          spots into the set you play next.
         </p>
 
         {isPremium ? (
@@ -386,38 +371,97 @@ export default function LolPremium() {
         )}
       </div>
 
-      {/* Premium features */}
-      <h3 className="mb-4 text-lg font-semibold">What Premium unlocks</h3>
+      {/* ── Lead benefits ──────────────────────────────────────────────
+          Four cards, not nine. The full list is directly below in the
+          comparison; leading with all of it makes none of it land. */}
+      <h3 className="mb-4 text-lg font-semibold">What Premium adds</h3>
       <div className="mb-10 grid gap-3 sm:grid-cols-2">
-        {PREMIUM_FEATURES.map((f) => (
-          <Card key={f.title} className="border-primary/20">
-            <CardContent className="flex items-start gap-3 py-4">
-              <f.Icon className="mt-0.5 h-5 w-5 shrink-0" style={{ color: GOLD }} />
-              <div>
-                <p className="font-medium">
-                  {f.title}
-                  {f.comingSoon && (
-                    <Badge variant="outline" className="ml-2 align-middle text-[10px] uppercase">
-                      Coming soon
-                    </Badge>
-                  )}
-                </p>
-                <p className="mt-0.5 text-sm text-muted-foreground">{f.description}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {leadBenefits().map((b) => {
+          const Icon = BENEFIT_ICONS[b.id] ?? Sparkles;
+          return (
+            <Card key={b.id} data-testid={`premium-lead-${b.id}`} className="border-primary/20">
+              <CardContent className="flex items-start gap-3 py-4">
+                <Icon className="mt-0.5 h-5 w-5 shrink-0" style={{ color: GOLD }} />
+                <div>
+                  <p className="font-medium">{b.label}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{b.userFacingSummary}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Free tier — honest baseline */}
+      {/* ── Free vs Premium, group by group ────────────────────────────
+          The definitive comparison. Rows come from the matrix and include
+          the ones where the two columns are IDENTICAL — those are the point:
+          a reader deciding whether to pay is owed the parts they already
+          have, and a list of only the differences reads as a list of things
+          being withheld. */}
+      <h3 className="mb-1 text-lg font-semibold">Free vs Premium</h3>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Everything below is live today. Nothing on this page is a plan.
+      </p>
+      <div className="mb-10 overflow-x-auto">
+        <table className="w-full min-w-[34rem] border-collapse text-sm" data-testid="premium-comparison">
+          <thead>
+            <tr className="border-b text-left">
+              <th scope="col" className="w-[30%] py-2 pr-3 font-semibold">Feature</th>
+              <th scope="col" className="w-[35%] py-2 pr-3 font-semibold">Free</th>
+              <th scope="col" className="w-[35%] py-2 font-semibold" style={{ color: GOLD }}>Premium</th>
+            </tr>
+          </thead>
+          {populatedGroups().map((group) => (
+            <tbody key={group.id} data-testid={`premium-group-${group.id}`}>
+              <tr>
+                <th
+                  scope="colgroup"
+                  colSpan={3}
+                  className="pt-5 pb-1 text-left text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground"
+                >
+                  {group.label}
+                </th>
+              </tr>
+              {benefitsInGroup(group.id).map((b) => (
+                <tr key={b.id} data-testid={`premium-row-${b.id}`} className="border-b align-top last:border-b-0">
+                  <th scope="row" className="py-2.5 pr-3 text-left font-medium">
+                    {b.label}
+                    {b.caveat && (
+                      <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                        {b.caveat}
+                      </span>
+                    )}
+                  </th>
+                  <td className="py-2.5 pr-3 text-muted-foreground">{b.free}</td>
+                  <td className="py-2.5 text-muted-foreground">
+                    {b.differentiator ? (
+                      <span className="flex items-start gap-1.5">
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: GOLD }} aria-hidden />
+                        <span>{b.premium}</span>
+                      </span>
+                    ) : (
+                      <span data-testid={`premium-same-${b.id}`}>{b.premium}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          ))}
+        </table>
+      </div>
+
+      {/* ── What stays free ────────────────────────────────────────────
+          Same rows as the identical-column entries above, restated as a
+          list, because "what do I keep if I never pay" is a question people
+          scan for rather than read a table for. */}
       <h3 className="mb-4 text-lg font-semibold">Free, forever</h3>
       <Card>
         <CardContent className="py-5">
           <ul className="grid gap-2.5 sm:grid-cols-2">
-            {FREE_FEATURES.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-sm">
+            {freeBenefits().map((b) => (
+              <li key={b.id} data-testid={`premium-free-${b.id}`} className="flex items-start gap-2 text-sm">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                <span>{f}</span>
+                <span>{b.userFacingSummary}</span>
               </li>
             ))}
           </ul>

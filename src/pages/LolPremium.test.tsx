@@ -12,6 +12,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LolPremium from "./LolPremium";
+import {
+  PREMIUM_MATRIX,
+  freeBenefits,
+  populatedGroups,
+  premiumBenefits,
+  presentableBenefits,
+} from "@/lib/premium/matrix";
 
 const getEntitlement = vi.fn();
 const entitlementRpc = vi.fn();
@@ -197,5 +204,143 @@ describe("LolPremium — manage-billing entry point", () => {
     await screen.findByTestId("premium-membership");
     expect(screen.queryByTestId("premium-manage-billing")).toBeNull();
     expect(screen.queryByTestId("premium-grant-line")).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────── PT1.13 — the page reads the matrix
+
+describe("PT1.13 — the comparison is rendered FROM the canonical matrix", () => {
+  beforeEach(() => {
+    getEntitlement.mockResolvedValue({ ok: true, is_pro: false });
+    entitlementRpc.mockResolvedValue({ data: null, error: null });
+  });
+
+  it("renders one comparison row per presentable benefit, and no others", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    const shown = presentableBenefits().map((b) => b.id);
+    for (const id of shown) {
+      expect(screen.getByTestId(`premium-row-${id}`), id).toBeTruthy();
+    }
+    // Nothing outside the presentable set reached the page.
+    for (const b of PREMIUM_MATRIX) {
+      if (shown.includes(b.id)) continue;
+      expect(screen.queryByTestId(`premium-row-${b.id}`), b.id).toBeNull();
+    }
+  });
+
+  it("prints both columns, so a reader can see what Free already covers", async () => {
+    renderPage();
+    const row = await screen.findByTestId("premium-row-study-history");
+    expect(row.textContent).toContain("10 most recent");
+    expect(row.textContent).toContain("Every session you have ever completed");
+  });
+
+  it("marks the rows where Premium adds nothing as identical, not as a lock", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    for (const b of freeBenefits()) {
+      expect(screen.getByTestId(`premium-same-${b.id}`), b.id).toBeTruthy();
+    }
+    for (const b of premiumBenefits()) {
+      expect(screen.queryByTestId(`premium-same-${b.id}`), b.id).toBeNull();
+    }
+  });
+
+  it("groups the comparison, in the matrix's own order", async () => {
+    renderPage();
+    const table = await screen.findByTestId("premium-comparison");
+    const rendered = Array.from(table.querySelectorAll("tbody[data-testid^='premium-group-']"))
+      .map((el) => el.getAttribute("data-testid"));
+    expect(rendered).toEqual(populatedGroups().map((g) => `premium-group-${g.id}`));
+  });
+
+  it("leads with four benefits, each a shipped differentiator", async () => {
+    renderPage();
+    await screen.findByText("What Premium adds");
+    const sellable = new Set(premiumBenefits().map((b) => b.id));
+    const leads = Array.from(document.querySelectorAll("[data-testid^='premium-lead-']"));
+    expect(leads).toHaveLength(4);
+    for (const el of leads) {
+      const id = el.getAttribute("data-testid")!.replace("premium-lead-", "");
+      expect(sellable.has(id), id).toBe(true);
+    }
+  });
+});
+
+describe("PT1.13 — nothing unshipped is advertised as available", () => {
+  beforeEach(() => {
+    getEntitlement.mockResolvedValue({ ok: true, is_pro: false });
+    entitlementRpc.mockResolvedValue({ data: null, error: null });
+  });
+
+  it("names no planned or partial benefit anywhere on the page", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    const body = document.body.textContent ?? "";
+    for (const b of PREMIUM_MATRIX) {
+      if (b.status === "shipped") continue;
+      expect(body, b.id).not.toContain(b.label);
+    }
+  });
+
+  it("has no 'Coming soon' badge left to hang a claim on", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    expect(document.body.textContent).not.toMatch(/coming soon/i);
+  });
+
+  it("does not promise to withdraw the free, unlimited 1v1 Combat Lab", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    const body = document.body.textContent ?? "";
+    expect(body).not.toMatch(/Unlimited Combat Lab|Unlimited Saves/);
+    // It appears instead as a row that says Free already has it.
+    expect(screen.getByTestId("premium-free-combat-lab-1v1").textContent)
+      .toMatch(/free and unlimited/i);
+  });
+});
+
+describe("PT1.13 — the analytics wording matches PT1.11/PT1.12", () => {
+  beforeEach(() => {
+    getEntitlement.mockResolvedValue({ ok: true, is_pro: false });
+    entitlementRpc.mockResolvedValue({ data: null, error: null });
+  });
+
+  it("gives Free the snapshot and Premium the reading of it", async () => {
+    renderPage();
+    const snapshot = await screen.findByTestId("premium-row-performance-snapshot");
+    expect(snapshot.textContent).toMatch(/50/);
+    expect(snapshot.textContent).toMatch(/answers/i);
+    const trends = screen.getByTestId("premium-row-performance-trends");
+    expect(trends.textContent).toMatch(/7, 30 or 90/);
+    expect(trends.textContent).toMatch(/improving, steady or declining/i);
+  });
+
+  it("states the Practice/Time-Trial scope beside the analytics rows", async () => {
+    renderPage();
+    const trends = await screen.findByTestId("premium-row-performance-trends");
+    expect(trends.textContent).toMatch(/Ranked rounds are not included/);
+  });
+
+  it("never reduces the distinction to 'Free analytics / Premium analytics'", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    expect(document.body.textContent).not.toMatch(/free analytics|premium analytics/i);
+  });
+});
+
+describe("PT1.13 — the page keeps selling nothing it cannot deliver", () => {
+  beforeEach(() => {
+    getEntitlement.mockResolvedValue({ ok: true, is_pro: false });
+    entitlementRpc.mockResolvedValue({ data: null, error: null });
+  });
+
+  it("has removed Matchup Cards from the hero and the page metadata", async () => {
+    renderPage();
+    await screen.findByTestId("premium-comparison");
+    expect(document.body.textContent).not.toMatch(/Matchup Card/i);
+    const meta = document.querySelector('meta[name="description"]');
+    expect(meta?.getAttribute("content") ?? "").not.toMatch(/Matchup Card/i);
   });
 });
