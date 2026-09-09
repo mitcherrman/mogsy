@@ -1,7 +1,8 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 37 (Timmy Demo containment + seed planner — BUILT, nothing
-     seeded) is at the top of this file.
+<!-- Revision 38 (containment VERIFIED IN PRODUCTION; Timmy Demo cleared to
+     create) is at the top of this file.
+     Revision 37 built the containment and the seed planner it verifies.
      Revision 36 was the data-contract audit it implements — APPROVED, with
      the ten binding owner decisions in its §0a.
      Revision 35 verified the capital/base and CLOSED the side-gutter work;
@@ -20,6 +21,212 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-09 — CONTAINMENT **VERIFIED IN PRODUCTION** — Timmy Demo cleared to create
+
+Verification only. **No account was created, no email was chosen, no
+`--apply` was run against production, no Premium was granted, and no
+production row was written or mutated.** Every production read was
+`mode=ro`; every write in this revision went to a throwaway `/tmp` database
+inside the container and was deleted afterwards.
+
+---
+
+### 1. The live backend is `b59b2978` — proved three ways, not inferred
+
+`origin/master` containing the commit proves nothing about the running
+service, so none of the following relies on that.
+
+| evidence | result |
+|---|---|
+| `RAILWAY_GIT_COMMIT_SHA` in the container | `b59b29782f2e19f0bf20b08d38dfc8e5272c61cf` |
+| SHA-256 of **9** changed/new files in `/app` vs `git show b59b2978:` | **all 9 byte-identical** |
+| PID 1 | `/app/.venv/bin/python .../uvicorn api_server:app --host 0.0.0.0 --port 8080` |
+| process age vs file mtime | files written 02:04 UTC, process started ≈02:08 UTC — **the running process loaded these files**, it did not predate them |
+| **behavioural** | `demo_accounts` exists in `/data/lol_calc.db`, mtime 02:08. Only the new lifespan creates it, so the running process executed the new startup path |
+
+The hashed set: `migrate_add_demo_accounts.py`, `services/demo_identity.py`,
+`services/demo_account_seed.py`, `scripts/seed_demo_account.py`,
+`routes/quiz.py`, `quiz/quiz_stats.py`, `quiz/question_performance.py`,
+`quiz/export_admin_report.py`, `api_server.py`.
+
+### 2. Production `demo_accounts`
+
+```
+CREATE TABLE demo_accounts (
+    user_id       TEXT PRIMARY KEY NOT NULL,
+    slug          TEXT NOT NULL UNIQUE,
+    label         TEXT NOT NULL,
+    note          TEXT NOT NULL DEFAULT '',
+    registered_at TEXT NOT NULL,
+    plan_fingerprint TEXT )
+```
+
+| | |
+|---|---|
+| columns | `user_id` notnull pk · `slug` notnull · `label` notnull · `note` notnull default `''` · `registered_at` notnull · `plan_fingerprint` **nullable** |
+| indexes | `sqlite_autoindex_demo_accounts_1` (PK, `user_id`) · `..._2` (UNIQUE, `slug`) |
+| rows | **0** |
+
+Byte-identical to a freshly-run `migrate()`. **Idempotency proved inside the
+production container** against a throwaway file: three consecutive `migrate()`
+calls produce an identical schema and 0 rows, and a row inserted between runs
+survives — so every future Railway restart is a no-op.
+
+### 3. The four consumers — actual production aggregates, old vs new
+
+Both predicates were built from the deployed `services.demo_identity` and run
+against the **live 11,526-row `quiz_attempts` table**, read-only.
+
+```
+OLD (PT1.9)  (user_id IS NULL OR substr(user_id,1,6) <> 'demo::')
+NEW (live)   (user_id IS NULL OR (substr(user_id,1,6) <> 'demo::'
+              AND user_id NOT IN (SELECT _da.user_id FROM demo_accounts _da
+                                  WHERE _da.user_id IS NOT NULL)))
+```
+
+| # | consumer | OLD | NEW | identical |
+|---|---|---|---|---|
+| 1 | `routes/quiz.py` total_attempts | **11,224** | **11,224** | ✅ |
+| 2 | `routes/quiz.py` overall accuracy | **13.02 %** | **13.02 %** | ✅ |
+| 3 | `quiz/quiz_stats.py` count + accuracy | 11,224 / 13.02 % | 11,224 / 13.02 % | ✅ |
+| 4 | `quiz/question_performance.py` top-20 | 20 rows | 20 rows, same order | ✅ |
+| 5 | `quiz/export_admin_report.py` most-missed | 25 rows | 25 rows, same order | ✅ |
+
+**Served, not just computed.** `GET /api/quiz/stats` on the live host returns
+`total_attempts: 11224, overall_accuracy: 13.02` — the same figures PT1.9
+recorded before this change existed.
+
+The three OFFLINE consumers are scripts, so a signature error in one would
+only surface when someone ran it. All three were **executed end to end** under
+the deployed code against a throwaway database: `quiz_stats.py`,
+`question_performance.py` and `export_admin_report.py` each ran clean.
+
+### 4. Legacy `demo::` semantics — intact
+
+| check | result |
+|---|---|
+| `demo::` rows in `quiz_attempts` | 302 |
+| kept by the new predicate | **0** |
+| arithmetic | 11,526 − 302 = 11,224 = what the predicate keeps ✅ |
+| Timmy Analytics Fixture | `demo::timmy` still **302 attempts / 60 sessions / 0 progress rows** — untouched, exactly as PT1.9 left it |
+
+**One honest gap.** Production currently holds **zero** `user_id IS NULL`
+rows, so the guest branch has nothing to exercise there and this revision
+cannot claim to have verified it on production data. It is verified instead in
+§5 against a database built from production's own subjects plus one synthetic
+guest row, and by unit test.
+
+### 5. Registry isolation — proved without mutating production
+
+A throwaway `/tmp` database inside the container, populated from the
+production table's **own real subjects** (all 11,526 rows, 14 uuid-shaped
+subjects, 4 legacy non-uuid subjects, `demo::timmy`) plus one synthetic guest
+row. Production was opened read-only and never transacted against.
+
+Registering one **uuid-shaped** subject (103 attempts):
+
+| property | result |
+|---|---|
+| baseline, empty registry | 11,225 kept |
+| after registering one uuid | 11,122 kept — **exactly its 103 rows dropped** |
+| only that uuid excluded | ✅ |
+| every other uuid subject still included | ✅ |
+| `demo::` subjects still excluded | ✅ |
+| guest / NULL rows still included | ✅ |
+| registry holds exactly one id | ✅ |
+| after unregistering | **11,225 — the prior aggregate restored exactly** |
+
+The throwaway file was deleted; production still reads 0 registry rows and
+11,526 attempts.
+
+### 6. Production dry run — deterministic, and identical to review
+
+Run in the container against the live question bank, in the non-writing
+default mode, with a clearly fake uuid (`00000000-…-0000000000ff`).
+
+```
+fingerprint      b8053a07361004aded19571076b7442c…   ← identical to the local
+question binding bound (6 categories)                  review run
+```
+
+| reviewed | produced | |
+|---|---|---|
+| 428 answered | **428** | ✅ |
+| 317 correct | **317** | ✅ |
+| 74.07 % accuracy | **74.07 %** | ✅ |
+| 4074 XP | **4074** (economy cross-check agrees) | ✅ |
+| Academy Diamond | **diamond** `[3000 … 6000)` | ✅ |
+| 1926 XP to Challenger | **1926** (35.8 % through) | ✅ |
+| streak 7 / best 24 | **7 / 24** | ✅ |
+| Champion Attack Types best | **91.38 % over 58** | ✅ |
+| six achievements | **6/6** | ✅ |
+| Ranked 1218 / Gold | **1218 → gold**, 82 to diamond | ✅ |
+| no Time Trial fixture | omitted, and stated in the report | ✅ |
+| no queue fabrication | `queue entries written 0` | ✅ |
+| no Premium history duplication | `rows that differ 0` | ✅ |
+
+Nothing differed, so nothing blocks the next step.
+
+### 7. Production is untouched
+
+| | |
+|---|---|
+| `demo_accounts` rows | **0** — no accidental verification uuid left behind |
+| rows with a `timmy%` slug / any `plan_fingerprint` | **0 / 0** |
+| `quiz_attempts` | 11,526 — unchanged |
+| `quiz_sessions` / `quiz_user_progress` / `quiz_category_progress` / `quiz_user_achievements` | 113 / 16 / 50 / 31 — unchanged |
+| `ranked_matches` with `creation_source='dev_fixture'` | **0** |
+| `rkfx_` match ids · `demo::rival_%` participants · `ranked:fixture_%` discoveries | **0 / 0 / 0** |
+| `ranked_ratings` · `ranked_rating_events` | **0 / 0** (no account has ever been rated) |
+| container `/tmp` | no stray databases |
+
+**Entitlement.** This session made **zero Supabase writes and zero RPC calls**;
+no `admin_set_pro_grant` was invoked. An anon read of `profiles` is refused by
+RLS (`permission denied for function has_role`), so this revision cannot
+independently prove the Supabase side and does not claim to. The owner can
+confirm from an admin session with:
+
+```sql
+select id, display_name, is_bot, pro_grant_kind, pro_grant_reason
+from public.profiles
+where display_name ilike '%timmy%' or pro_grant_reason ilike '%Timmy%';
+```
+
+### 8. Two observations, neither a blocker
+
+**Four legacy non-uuid subjects are in the platform total today** —
+`broadcast` (11,000 attempts), `terminal_user` (15), `api_test_user` (1),
+`local_test` (1). Neither containment arm touches them, and that is
+pre-existing behaviour this change did not alter. `broadcast` alone is 98 % of
+the 11,224 the site reports, which is worth knowing when reading that figure.
+The registry could contain any of them later with one INSERT and no code
+change — deliberately **not** done here, since it would alter a production
+aggregate and is outside this task.
+
+**`ranked_ratings` is empty in production.** Timmy Demo's would be the first
+row in it. Nothing depends on that; it simply means the Ranked standing on the
+Academy Record is currently unexercised by any real account.
+
+### 9. Verdict
+
+**Cleared to create Timmy Demo.** The containment is live, its schema is
+correct, it is inert while empty, it isolates exactly one subject when
+populated, it is reversible, and the planner reproduces the reviewed state
+deterministically against the deployed code.
+
+The remaining sequence is unchanged, and the first item is still the only
+input this workstream does not hold:
+
+1. **The email** — owner-controlled, not the owner's own account.
+2. Create the account, set `profiles.is_bot = true`, capture the uuid.
+3. `register_demo_account` for that uuid — **before** any fixture row exists.
+4. `--apply` against `/data/lol_calc.db` over `railway ssh`, with a pre-seed
+   fingerprint of every table the seeder must not touch.
+5. Verify each surface signed in as Timmy, Free then Premium, allowing the
+   120 s entitlement cache.
+
+---
 
 ## Revision 2026-09-09 — TIMMY DEMO: CONTAINMENT + SEED PLANNER — **BUILT, NOTHING SEEDED**
 
