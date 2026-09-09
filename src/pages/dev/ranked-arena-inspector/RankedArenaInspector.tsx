@@ -30,6 +30,7 @@ import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { scenarioSourceForMasteryChallenge } from "@/lib/question-surface/masterySliceScenario";
 import { questionViewFromPublicQuestion } from "@/lib/ranked-core/adapters/adaptToViews";
 import { scenarioSourceFromPublicQuestion } from "@/lib/ranked-core/adapters/scenarioSource";
 import {
@@ -879,6 +880,41 @@ const DISCOVERY_FIXTURE = {
   truncated: false,
 };
 
+// ---- RR1 slice pass fixtures -------------------------------------------
+// Built by the PRODUCTION adapter from real wire-shaped semantics, so these
+// cases cannot drift from what a live slice renders.
+const SLICE_ABILITY_SCENARIO = scenarioSourceForMasteryChallenge({
+  challengeIndex: 0, interactionKind: "atomic_recall",
+  questionFamily: "ability_cooldown_at_rank", prompt: "Ahri Q — ability_cooldown",
+  answerType: "numeric", answerOptions: [], comparisonSemantics: null,
+  promptSemantics: {
+    template: "ability_cooldown_at_rank", champion_display: "Ahri",
+    metric: "ability_cooldown", subject_ref: "Q", ability_name: "Orb of Deception",
+    context: { ability_rank: 3, champion_level: null, form: null },
+  },
+});
+const SLICE_STAT_SCENARIO = scenarioSourceForMasteryChallenge({
+  challengeIndex: 1, interactionKind: "atomic_recall",
+  questionFamily: "champion_stat_at_level", prompt: "Ahri — base_armor",
+  answerType: "numeric", answerOptions: [], comparisonSemantics: null,
+  promptSemantics: {
+    template: "champion_stat_at_level", champion_display: "Ahri",
+    metric: "base_armor", subject_ref: "", ability_name: "",
+    context: { ability_rank: null, champion_level: 9, form: null },
+  },
+});
+const SLICE_MATCHUP_SCENARIO = scenarioSourceForMasteryChallenge({
+  challengeIndex: 2, interactionKind: "comparison_left_right",
+  questionFamily: "compare_ability_cooldown", prompt: "Ahri vs Syndra — W cooldown",
+  answerType: "single_choice", answerOptions: ["Ahri", "Syndra"], promptSemantics: null,
+  comparisonSemantics: {
+    template: "compare_ability_cooldown", champion_a_display: "Ahri",
+    champion_b_display: "Syndra", metric: "ability_cooldown", dimension: "seconds",
+    subject_ref: "W", unit: "s",
+    context: { ability_rank: 1, champion_level: null, form: null },
+  },
+});
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -993,6 +1029,20 @@ const STATES: InspectorState[] = [
       scenarioSource={RA7.SELL_SWAP_SCENARIO} selected={null} /> },
   { key: "arena-compact", label: "Arena — compact fallback (no source)",
     render: () => <ArenaComposition scenarioSource={null} selected={null} /> },
+
+  // --- RR1 slice pass: Mastery / Matchup through the SHARED media band ---
+  { key: "arena-mastery-ability", label: "Arena — Mastery slice (champion + ability)",
+    render: () => <ArenaComposition
+      question={{ ...ITEM_Q, prompt: "What is the cooldown of Ahri's Q at rank 3?" }}
+      scenarioSource={SLICE_ABILITY_SCENARIO} selected={null} /> },
+  { key: "arena-mastery-stat", label: "Arena — Mastery slice (champion + stat)",
+    render: () => <ArenaComposition
+      question={{ ...ITEM_Q, prompt: "What is Ahri's base Armor at level 9?" }}
+      scenarioSource={SLICE_STAT_SCENARIO} selected={null} /> },
+  { key: "arena-matchup", label: "Arena — Matchup slice (champion vs champion)",
+    render: () => <ArenaComposition
+      question={{ ...ITEM_Q, prompt: "Whose W has the longer cooldown at rank 1?" }}
+      scenarioSource={SLICE_MATCHUP_SCENARIO} selected={null} /> },
 
   // --- shared InteractiveScenarioSurface ---
   { key: "surface-text-fallback", label: "Surface — compact band (no source)",

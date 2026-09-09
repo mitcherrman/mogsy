@@ -4,6 +4,7 @@ import type { ScenarioCardProps, ScenarioSelection } from "./types";
 import { selectScenario } from "./classify";
 import { ChampionScenarioCard } from "./ChampionScenarioCard";
 import { CombatCalculationScenarioCard } from "./CombatCalculationScenarioCard";
+import { MatchupScenarioCard } from "./MatchupScenarioCard";
 import { ItemAnalysisScenarioCard } from "./ItemAnalysisScenarioCard";
 import { CollectibleCard, SubjectPlaceholder, SubjectPlaceholderCard } from "./DefaultScenarioCard";
 
@@ -47,6 +48,8 @@ function renderCard(selection: ScenarioSelection, revealed: boolean) {
   switch (selection.card) {
     case "combat_calculation":
       return <CombatCalculationScenarioCard subject={selection.combat} />;
+    case "matchup":
+      return <MatchupScenarioCard subject={selection.matchup} />;
     case "item_analysis":
       return <ItemAnalysisScenarioCard item={selection.item} revealed={revealed} />;
     case "champion_profile":

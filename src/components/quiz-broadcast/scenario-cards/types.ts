@@ -30,6 +30,29 @@ export type ScenarioType =
   | "comparison"
   | "default";
 
+/**
+ * Parsed payload for a MATCHUP question — two champions compared.
+ *
+ * Deliberately carries the metric's NAME and never its values: a comparison
+ * question's answer is which side is higher, so the card must be able to say
+ * what is being compared without being able to say who wins.
+ */
+export type MatchupSubject = {
+  championA: string;
+  championB: string;
+  championASplash?: string | null;
+  championBSplash?: string | null;
+  /** Shared slot when the premise compares one ability across both kits. */
+  abilitySlot?: string;
+  abilityName?: string;
+  abilityIcon?: string | null;
+  /** Human label for the compared metric, e.g. "Cooldown". Never a value. */
+  metricLabel?: string;
+  level?: number;
+  abilityRank?: number;
+  badge?: string;
+};
+
 /** Parsed payload for combat cooldown calculation questions. */
 export type CombatCooldownSubject = {
   champion: string;
@@ -100,6 +123,7 @@ export type ScenarioSectionData = {
 /** Discriminated union produced by selectScenario — one variant per card. */
 export type ScenarioSelection =
   | { card: "combat_calculation"; key: string; combat: CombatCooldownSubject }
+  | { card: "matchup"; key: string; matchup: MatchupSubject }
   | { card: "item_analysis"; key: string; item: ItemAnalysisSubject }
   | { card: "champion_profile"; key: string; champion: string }
   | { card: "collectible"; key: string; iconUrl: string; label?: string; kind: SubjectKind }

@@ -19,6 +19,7 @@ import type {
   ClassifiedSubject,
   CombatCooldownSubject,
   ItemAnalysisSubject,
+  MatchupSubject,
   ScenarioSelection,
   SubjectKind,
 } from "./types";
@@ -336,6 +337,38 @@ export function getCombatCooldownSubject(question: QuizQuestion): CombatCooldown
   };
 }
 
+/**
+ * Parse a MATCHUP subject, or null.
+ *
+ * Same shape of rule as `getCombatCooldownSubject`: the card is chosen by the
+ * subject TYPE the backend/adapter declares, never by prompt text or category.
+ * Both champion names are required — a matchup with one side is not a matchup,
+ * and drawing it as one would misstate the premise.
+ */
+export function getMatchupSubject(question: QuizQuestion): MatchupSubject | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
+    | Record<string, unknown>
+    | undefined;
+  if (!subject || subject.type !== "matchup") return null;
+  const championA = subject.champion_a as string | undefined;
+  const championB = subject.champion_b as string | undefined;
+  if (!championA || !championB) return null;
+  return {
+    championA,
+    championB,
+    championASplash: resolveQuizAssetUrl(subject.champion_a_splash as string | undefined),
+    championBSplash: resolveQuizAssetUrl(subject.champion_b_splash as string | undefined),
+    abilitySlot: subject.ability_slot as string | undefined,
+    abilityName: subject.ability_name as string | undefined,
+    abilityIcon: resolveQuizAssetUrl(subject.ability_icon as string | undefined),
+    metricLabel: typeof subject.metric_label === "string" ? subject.metric_label : undefined,
+    level: subject.level as number | undefined,
+    abilityRank: subject.ability_rank as number | undefined,
+    badge: typeof subject.badge === "string" && subject.badge ? subject.badge : undefined,
+  };
+}
+
 export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubject | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
   const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
@@ -424,6 +457,7 @@ export function selectScenario(
   const shouldHide = spoiler && !revealActive;
 
   const combat = getCombatCooldownSubject(question);
+  const matchup = getMatchupSubject(question);
   const item = getItemAnalysisSubject(question);
   const explicit = getExplicitScenarioType(question);
 
@@ -431,6 +465,9 @@ export function selectScenario(
   if (!shouldHide && explicit) {
     if ((explicit === "combat_calculation" || explicit === "combat_simulation") && combat) {
       return { card: "combat_calculation", key: `combat-${question.id}`, combat };
+    }
+    if (explicit === "matchup" && matchup) {
+      return { card: "matchup", key: `matchup-${question.id}`, matchup };
     }
     if (explicit === "item" && item) {
       return { card: "item_analysis", key: `item-${question.id}`, item };
@@ -443,6 +480,9 @@ export function selectScenario(
   // Tier 2: assets.subject.type
   if (combat && !shouldHide) {
     return { card: "combat_calculation", key: `combat-${question.id}`, combat };
+  }
+  if (matchup && !shouldHide) {
+    return { card: "matchup", key: `matchup-${question.id}`, matchup };
   }
   if (item && !shouldHide) {
     return { card: "item_analysis", key: `item-${question.id}`, item };

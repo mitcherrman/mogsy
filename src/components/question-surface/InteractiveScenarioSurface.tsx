@@ -19,7 +19,6 @@
  * Variants change layout/density ONLY — there are no isTutorial/isRanked/isBot
  * branches. A mode passes `variant` and optional neutral `settings`.
  */
-import { MotionConfig } from "framer-motion";
 import QuizAnswerFeedback, {
   type QuizFeedbackVerdict,
 } from "@/components/quiz/QuizAnswerFeedback";
@@ -27,7 +26,7 @@ import { EvidenceLine } from "@/components/question-feedback/EvidenceLine";
 import { VerdictLine } from "@/components/question-feedback/VerdictLine";
 import type { ResolvedFeedback } from "@/lib/question-feedback/model";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
-import { ScenarioCard } from "@/components/quiz-broadcast/scenario-cards/ScenarioCard";
+import { ScenarioMediaBand } from "./ScenarioMediaBand";
 import { CompactScenarioBand } from "./CompactScenarioBand";
 import { FamilyScenarioBand } from "./family/FamilyScenarioBand";
 import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
@@ -100,16 +99,6 @@ export interface InteractiveScenarioSurfaceProps {
   context?: string | null;
 }
 
-// Cinematic band aspect ratios. The reused Broadcast cards size their foreground
-// in cqmin (min container dimension), which in this inline band is the HEIGHT — so
-// a taller band scales the subject art/labels UP. "band" was 16/6; 16/7 gives the
-// competitive/tutorial variants a noticeably larger, more legible subject without
-// tipping into an over-tall cinematic panel (weak scenarios already go compact).
-const BAND_ASPECT: Record<Exclude<SurfaceSettings["mediaScale"], "none">, string> = {
-  hero: "16 / 9",
-  band: "16 / 7",
-};
-
 /**
  * Band profile — the ONE rule, now in `@/lib/question-surface/bandProfile` so
  * the Content Factory's completeness gate can ask the same question this
@@ -148,49 +137,15 @@ function HeroBand({
     revealed && reveal?.correctOptionId != null
       ? (question.options.find((o) => o.id === reveal.correctOptionId)?.label ?? null)
       : null;
-  const aspectRatio = BAND_ASPECT[settings.mediaScale as "hero" | "band"];
-  const reducedMotion: "never" | "user" = settings.motionLevel === "full" ? "never" : "user";
-  // Compact density (competitive/speed) trades band size for above-the-fold
-  // room: an active Ranked round must fit question + answers + HUD in a
-  // desktop viewport, so the cinematic band is capped hard while comfortable
-  // surfaces keep the tall presentation.
-  const compactBand = settings.density === "compact";
-  const bandMinHeight = compactBand ? "8rem" : "12.5rem";
-  // QUIZ1 Phase 11 — the compact cap was set when a Ranked round had to fit
-  // question + answers + ABILITY TRAY + status panel above the fold. R1
-  // removed the tray and Phase 11 removed the XP row, so ~200px of that budget
-  // came back and the band was left artificially short in the middle of a
-  // half-empty viewport.
-  //
-  // The replacement is still self-limiting, and deliberately so: the cap is
-  // whichever is SMALLER of a fixed ceiling and a fraction of the viewport, so
-  // a short laptop screen keeps roughly the old height and only a tall desktop
-  // spends the reclaimed room. The "must fit above the fold" rule the original
-  // cap encoded is therefore intact — it is the fold that moved.
-  const bandMaxHeight = compactBand ? "min(22rem, 34vh)" : "30rem";
-
   return (
-    <MotionConfig reducedMotion={reducedMotion}>
-      <div
-        data-testid="scenario-hero"
-        className="@container relative w-full overflow-hidden rounded-xl bg-black/30"
-        // minHeight floors the container-query box on narrow viewports (where the
-        // band would otherwise collapse and shrink every cqmin unit into
-        // illegibility); maxHeight caps it on ultra-wide columns. Between the two
-        // the aspect ratio drives height, so the subject art gets more room and
-        // reads larger without an over-tall panel.
-        // `--qs-media-max` is the canonical question stage's reserved media
-        // region (ARENA1 Phase 1). It is set to that region's OWN height, which
-        // is the tallest this band reaches at any supported width, so inside the
-        // arena it caps the band to the box it already fits and shrinks nothing.
-        // Unset everywhere else, which is why the fallback is the value this
-        // band has always had.
-        style={{ containerType: "size", aspectRatio, minHeight: bandMinHeight,
-          maxHeight: `var(--qs-media-max, ${bandMaxHeight})` }}
-      >
-        <ScenarioCard question={scenarioSource!} revealActive={revealed} correctAnswer={correctAnswer} />
-      </div>
-    </MotionConfig>
+    <ScenarioMediaBand
+      source={scenarioSource!}
+      aspect={settings.mediaScale as "hero" | "band"}
+      compact={settings.density === "compact"}
+      motionLevel={settings.motionLevel}
+      revealActive={revealed}
+      correctAnswer={correctAnswer}
+    />
   );
 }
 

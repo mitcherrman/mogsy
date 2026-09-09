@@ -42,6 +42,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
+import { ScenarioMediaBand } from "@/components/question-surface/ScenarioMediaBand";
+import { scenarioSourceForMasteryChallenge } from "@/lib/question-surface/masterySliceScenario";
 import { MasteryQuestionDispatch } from "@/features/mastery/interactions/registry";
 import {
   revealDurationMs,
@@ -322,6 +324,18 @@ function MasterySliceChallengePhase({ state, actions }: {
   const current = revealed ?? challenges[serverIndex];
 
   const [pending, setPending] = useState<number | null>(null);
+  // Pure, memoised on the challenge: the adapter reads only structural
+  // semantics, never the options or the answer.
+  //
+  // Declared HERE, with the other hooks and ABOVE the early return below —
+  // this component returns early when the player has finished and there is no
+  // reveal to hold, so a hook placed after that return runs on some renders and
+  // not others and React tears the hook order. `current` can be undefined on
+  // exactly those renders, which the adapter treats as "no media".
+  const mediaSource = useMemo(
+    () => (current ? scenarioSourceForMasteryChallenge(current) : null),
+    [current],
+  );
   useEffect(() => {
     setPending((p) => (p !== null && p !== serverIndex ? null : p));
   }, [serverIndex]);
@@ -367,14 +381,39 @@ function MasterySliceChallengePhase({ state, actions }: {
           reveal={reveal}
         />
       ) : (
-        <MasteryQuestionDispatch
-          key={current.challengeIndex}
-          question={toPlayerQuestion(current, state.challengeCount, path)}
-          total={state.challengeCount}
-          submitting={submitting}
-          onSubmit={onSubmit}
-          reveal={reveal}
-        />
+        <>
+          {/* THE SHARED RANKED MEDIA REGION.
+              A structural Mastery challenge owns its own INPUT — numeric,
+              boolean or a left/right comparison — and those renderers stay
+              exactly as they are, because forcing them into answer tablets
+              would be a mechanics change wearing a visual costume. What they
+              never had was the band every other Ranked round draws its subject
+              in, so the round announced its champion in 32px of shadcn header
+              instead of a splash.
+              This is that band, and it is the SAME component the question
+              surface renders — same geometry, same container-query box, same
+              `--qs-media-max` participation — fed by a pure adapter over the
+              semantics the wire already carries. `null` when a challenge has no
+              drawable semantics, which renders nothing and leaves the round
+              exactly as it was. */}
+          {mediaSource && (
+            <ScenarioMediaBand
+              source={mediaSource}
+              aspect="band"
+              compact
+              revealActive={false}
+              correctAnswer={null}
+            />
+          )}
+          <MasteryQuestionDispatch
+            key={current.challengeIndex}
+            question={toPlayerQuestion(current, state.challengeCount, path)}
+            total={state.challengeCount}
+            submitting={submitting}
+            onSubmit={onSubmit}
+            reveal={reveal}
+          />
+        </>
       )}
     </div>
   );

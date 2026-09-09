@@ -16,6 +16,7 @@ export function ScenarioCardFrame({
   onBackgroundError,
   gradientClass,
   lightStreak = false,
+  backgroundSlot,
   children,
 }: {
   backgroundUrl: string | null;
@@ -25,6 +26,19 @@ export function ScenarioCardFrame({
   gradientClass: string;
   /** Moving light streak (champion splash treatment). */
   lightStreak?: boolean;
+  /**
+   * Replaces the single `<img>` inside the Ken Burns layer, for a card whose
+   * subject is not ONE picture — today only the matchup card, which draws two
+   * champions at balanced weight.
+   *
+   * Additive and default-off: every existing caller passes nothing and takes
+   * the exact `<img>`/placeholder path it always had, so the Combat Calculation
+   * gold standard is untouched. A card that supplies a slot still inherits the
+   * frame it would otherwise have had to copy — the gold hairline, the Ken
+   * Burns pan, the vignette and the inset ring — which is why this is a
+   * parameter rather than a second frame component.
+   */
+  backgroundSlot?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -36,7 +50,7 @@ export function ScenarioCardFrame({
         animate={{ scale: 1.14, x: -8, y: -6 }}
         transition={{ duration: 14, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
       >
-        {backgroundUrl ? (
+        {backgroundSlot ?? (backgroundUrl ? (
           <img
             src={backgroundUrl}
             alt={backgroundAlt}
@@ -61,7 +75,7 @@ export function ScenarioCardFrame({
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-slate-900 to-slate-800" />
-        )}
+        ))}
       </motion.div>
 
       {/* moving light streak */}

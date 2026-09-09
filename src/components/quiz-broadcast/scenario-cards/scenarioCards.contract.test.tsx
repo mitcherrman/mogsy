@@ -263,3 +263,114 @@ describe("ChampionScenarioCard and the default fallbacks", () => {
     expect(container.textContent).not.toContain("Abyssal Mask");
   });
 });
+
+// ==================================================== the matchup card
+
+describe("MatchupScenarioCard — two champions at balanced weight", () => {
+  const MATCHUP: QuizQuestion = {
+    id: "m1",
+    category: "mastery",
+    question_text: "Whose W has the longer cooldown at rank 1?",
+    format: "multiple_choice",
+    choices: ["Ahri", "Syndra"],
+    metadata: {
+      assets: {
+        subject: {
+          type: "matchup",
+          champion_a: "Ahri",
+          champion_b: "Syndra",
+          // Explicit splashes: jsdom cannot fetch the champion manifest, so the
+          // name-only path would fall back to the frame's placeholder. A real
+          // payload may carry either shape; the fallback is covered below.
+          champion_a_splash: "assets/champions/Ahri/splash/0_default.jpg",
+          champion_b_splash: "assets/champions/Syndra/splash/0_default.jpg",
+          ability_slot: "W",
+          ability_name: "Ability W",
+          metric_label: "Cooldown",
+          ability_rank: 1,
+          badge: "Matchup",
+        },
+      },
+      presentation: { role: "context", timing: "question", spoiler: false },
+    } as QuizQuestion["metadata"],
+  };
+
+  function renderMatchup() {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <ScenarioCard question={MATCHUP} revealActive={false} correctAnswer={null} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("is the card the classifier selects, on the cinematic band", () => {
+    expect(selectScenario(MATCHUP, false, null).card).toBe("matchup");
+    expect(selectFamilyLayout(MATCHUP)).toBeNull();
+    expect(resolveBandProfile(MATCHUP, "band", null)).toBe("cinematic");
+  });
+
+  it("draws BOTH champions, neither as a decoration of the other", () => {
+    renderMatchup();
+    // Balanced weight is the whole point of the family: two halves of one
+    // background layer, same treatment, same size class.
+    const a = screen.getByRole("img", { name: "Ahri" });
+    const b = screen.getByRole("img", { name: "Syndra" });
+    expect(a.className).toContain("w-1/2");
+    expect(b.className).toContain("w-1/2");
+    expect(a.className).toBe(b.className);
+    // Both names are stated, not just the winner-shaped one.
+    expect(screen.getByText("Ahri")).toBeInTheDocument();
+    expect(screen.getByText("Syndra")).toBeInTheDocument();
+  });
+
+  it("states what is being compared, and the axes it is compared at", () => {
+    renderMatchup();
+    expect(screen.getByText("Matchup")).toBeInTheDocument();
+    expect(screen.getByText("Compare")).toBeInTheDocument();
+    expect(screen.getByText("Cooldown")).toBeInTheDocument();
+    expect(screen.getByText("Rank")).toBeInTheDocument();
+    expect(screen.getByText("1")).toBeInTheDocument();
+  });
+
+  it("never discloses a measured value", () => {
+    // The answer to a comparison is which side is higher. The card carries the
+    // metric's NAME and no number that could rank the two.
+    const { container } = renderMatchup();
+    expect(container.textContent).not.toMatch(/\d+(\.\d+)?\s*(s|sec|seconds)\b/);
+  });
+
+  it("keeps both halves balanced even when neither splash resolves", () => {
+    // The manifest is unavailable here, so both sides take the frame's
+    // placeholder. The invariant that matters is that they stay a 50/50 split
+    // — a matchup that degrades to one visible champion misstates the premise.
+    const noArt: QuizQuestion = {
+      ...MATCHUP,
+      metadata: {
+        assets: {
+          subject: { type: "matchup", champion_a: "Ahri", champion_b: "Syndra" },
+        },
+      } as QuizQuestion["metadata"],
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={client}>
+        <ScenarioCard question={noArt} revealActive={false} correctAnswer={null} />
+      </QueryClientProvider>,
+    );
+    const halves = container.querySelectorAll(".w-1\\/2");
+    expect(halves).toHaveLength(2);
+    expect(screen.getByText("Ahri")).toBeInTheDocument();
+    expect(screen.getByText("Syndra")).toBeInTheDocument();
+  });
+
+  it("falls through when a side is missing rather than drawing half a matchup", () => {
+    const oneSided: QuizQuestion = {
+      ...MATCHUP,
+      metadata: {
+        assets: { subject: { type: "matchup", champion_a: "Ahri" } },
+      } as QuizQuestion["metadata"],
+    };
+    expect(selectScenario(oneSided, false, null).card).not.toBe("matchup");
+  });
+});

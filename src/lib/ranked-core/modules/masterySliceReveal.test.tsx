@@ -7,6 +7,7 @@
  * answered challenge stays on screen, coloured and locked, then advances
  * itself with no Next button.
  */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,6 +20,19 @@ import { masterySliceModule } from "./masterySliceModule";
 import type { ModuleSegmentActions } from "./types";
 
 const OPTIONS = ["9", "12", "6", "5"];
+
+/**
+ * RR1 slice pass — the viewport now renders the shared Ranked media band, and a
+ * Scenario Card resolves champion art through `useChampionAssets` (react-query).
+ * Production always has a client: `App.tsx` wraps the whole tree in
+ * `QueryClientProvider`. These tests mount the viewport in isolation, so they
+ * have to supply the same thing the app does. `retry: false` keeps a failed
+ * manifest fetch from retrying inside a test.
+ */
+function withQueryClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={client}>{ui}</QueryClientProvider>;
+}
 
 function challengeWire(index: number) {
   return {
@@ -110,7 +124,7 @@ function renderModule(state: SegmentStateView | null,
                       }) {
   return {
     ...render(
-      <masterySliceModule.Viewport
+      withQueryClient(<masterySliceModule.Viewport
         publicRound={readPublicRound(publicRoundV2())}
         selection={null}
         permissions={NO_INTERACTIONS}
@@ -118,7 +132,7 @@ function renderModule(state: SegmentStateView | null,
         segmentState={state}
         actions={acts}
         skewMs={0}
-      />,
+      />),
     ),
     acts,
   };
