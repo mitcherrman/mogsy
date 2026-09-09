@@ -11454,6 +11454,17 @@ html.hub-commons-in-view .hextech-ambience-layer {
   border-bottom: none;
 }
 
+/* The statistics group, and the ban-pressure row after it. One hairline above
+   the first row of each — not a heading, not a spacer — because the rows below
+   it answer to a different denominator (Oracle's Elixir enriches ~80% of the
+   corpus) and a reader scanning the column should see the seam without being
+   told about it. `:first-child` is excluded so a group opening the table draws
+   nothing against the header rule already there. */
+.proplay-dossier .dossier-drawer__table tbody tr.dossier-drawer__rowgroup:not(:first-child) th,
+.proplay-dossier .dossier-drawer__table tbody tr.dossier-drawer__rowgroup:not(:first-child) td {
+  border-top: 1px solid var(--dsr-gold-dim);
+}
+
 .proplay-dossier .dossier-drawer__empty {
   font-size: 0.74rem;
   line-height: 1.5;

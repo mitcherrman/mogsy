@@ -787,6 +787,55 @@ export interface DossierBanPressure {
   rate: number | null;
 }
 
+/**
+ * The Oracle's Elixir figures for one slice, and the coverage that produced
+ * them.
+ *
+ * A SEPARATE OBJECT FROM `DossierRecord`, DELIBERATELY. The record's games,
+ * wins and win rate are Leaguepedia's and cover every game in the slice. These
+ * cover only the games Oracle's Elixir enriched — OE reaches ~80% of the
+ * canonical corpus and nothing before 2014 — so they arrive with their own
+ * denominator and must never be printed against the record's game count.
+ *
+ * EVERY VALUE IS NULLABLE AND NULL IS NEVER ZERO. A slice with no enriched
+ * games is not a player who dealt no damage; the client renders a dash.
+ */
+export interface DossierStatCoverage {
+  /** Canonical games in this slice — equals the record's `games`. */
+  total_games: number;
+  /** Those carrying Oracle's Elixir statistics. */
+  stat_games: number;
+  missing_stat_games: number;
+}
+
+/** Raw components and the derived ratio. `perfect` is true only when deaths
+ *  were genuinely zero across games that exist — an empty slice also has a
+ *  null ratio, and the two must not be rendered the same way. */
+export interface DossierKda {
+  kills: number | null;
+  deaths: number | null;
+  assists: number | null;
+  ratio: number | null;
+  perfect: boolean;
+  games: number;
+}
+
+/** A per-minute rate, weighted by game length, with the games it covers. A
+ *  row can be enriched and still be missing one column, so this count is not
+ *  always `coverage.stat_games`. */
+export interface DossierRate {
+  value: number | null;
+  games: number;
+}
+
+export interface DossierStatistics {
+  coverage: DossierStatCoverage;
+  kda: DossierKda;
+  cs_per_min: DossierRate;
+  gold_per_min: DossierRate;
+  damage_per_min: DossierRate;
+}
+
 /** A metric the authority cannot serve, named rather than silently missing. */
 export interface UnavailableMetric {
   metric: string;
@@ -827,6 +876,13 @@ export interface PlayerChampionDossier {
   ban_pressure: {
     overall: DossierBanPressure;
     versus_opponent: DossierBanPressure | null;
+  } | null;
+  /** Oracle's Elixir statistics, a sibling of `ban_pressure` and null for the
+   *  same reason: the player was not in this scope at all. `versus_opponent`
+   *  is null when no opponent was supplied. */
+  statistics: {
+    overall: DossierStatistics;
+    versus_opponent: DossierStatistics | null;
   } | null;
   unavailable_metrics: UnavailableMetric[];
   definitions: Record<string, string>;

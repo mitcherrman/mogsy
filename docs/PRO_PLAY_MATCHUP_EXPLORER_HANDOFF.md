@@ -789,6 +789,230 @@ condition is still not met.
 | `src/components/pro-play/dossier/PlayerChampionDrawer.tsx` | Passes `onOpenMeeting` through. |
 | `src/index.css` | `.dossier-meeting*`, `.dossier-study__source*`, after the study block. |
 
+# Step 2 enrichment — Oracle's Elixir statistics in the dossier
+
+**Shipped 2026-09-09.** An enrichment pass on Step 2 only. The drawer was not
+redesigned, no route was added, and Steps 3–5 were not touched.
+
+## Objective
+
+Put four real historical statistics into the existing player x champion
+dossier, from the Oracle's Elixir enrichment layer promoted by
+`pro_authority/oe_stats.py` (see `OE_STATS_HANDOFF.md`).
+
+Added: **KDA, CS/min, gold/min, damage-to-champions/min.** Deliberately NOT
+added: vision, damage share, gold share, early-game deltas, objectives, wards,
+healing, or any other OE field. Those belong to a later analytics surface; the
+drawer has to stay fast to scan.
+
+## Stat authority
+
+| | |
+|---|---|
+| Game identity, player identity, team identity, result | **Leaguepedia** — unchanged |
+| K/D/A, CS, gold, damage, game length | **Oracle's Elixir** |
+
+OE never contributes a game, a player, a team or a winner to this dossier. It
+decorates games the canonical layer already owns. `overall.wins`,
+`overall.win_rate` and `recent_form` are Leaguepedia's and were not touched.
+
+**The premise that changed.** `pro_authority/player_dossier.py` used to state
+in its docstring that the corpus carried no kills, deaths or assists anywhere,
+and carried an `unavailable_metrics` entry saying so. That was TRUE of the
+corpus as it then was. The OE promotion (875,430 player-game stat rows) made it
+false, so the declaration is gone rather than left standing as a stale apology
+beside the figure it denies. `unavailable_metrics` is now `[]` and the key is
+retained so the NEXT unservable metric can be declared there.
+
+**Two static guards were checked and deliberately NOT weakened.**
+`test_pro_authority_player_champion.py` and
+`..._player_champion_comparison.py` fail the build if the words "kda", "kills",
+"deaths" or "assists" appear in the Player x Champion *derived-authority*
+slice (`canonical_player_games`, `player_champion_scope`, `schema`, `reader`,
+`rebuild`, `manifest`, `player_champion_question_family`). Those modules were
+not modified. `player_dossier` is not in either guard's module list, which is
+why this pass is legal without touching them — the rejection was of KDA in the
+precomputed scope-stats bank, not of KDA in a query-time read.
+
+## Exact formulas
+
+All four are **weighted aggregates derived from raw totals**, never averages of
+per-game rates. Every one is proved by a test that also asserts it differs from
+the naive average, so a regression to averaging fails loudly.
+
+```
+KDA      = (SUM(kills) + SUM(assists)) / SUM(deaths)
+           SUM(deaths) == 0 and games > 0  ->  null, rendered "Perfect"
+           games == 0                      ->  null, rendered "—"
+
+CS/min   = SUM(total_cs)            / (SUM(game_length_seconds) / 60)
+Gold/min = SUM(total_gold)          / (SUM(game_length_seconds) / 60)
+Dmg/min  = SUM(damage_to_champions) / (SUM(game_length_seconds) / 60)
+```
+
+**Each rate's denominator is its own.** A row is summed into a family only when
+BOTH that family's numerator column and `game_length_seconds > 0` are present.
+A row missing `total_gold` (868 of 875,430 in the real corpus) must not lend
+its minutes to gold/min — that would silently deflate the figure. The per-family
+`games` count in the payload IS that denominator.
+
+`game_length_seconds > 0` rather than merely NOT NULL: a zero duration is a
+broken row, not a very short game, and would raise rather than render.
+
+**Why weighted and not averaged.** Doran's Jayce, 2026, real corpus: the
+weighted CS/min is **9.111**, the average of the 13 per-game rates is **9.177**.
+The difference is a 22-minute stomp and a 45-minute grind being given equal
+say. OE's own published `cspm`/`dpm` columns are per-game rates and were
+deliberately not promoted for exactly this reason — the raw totals were stored
+instead so the aggregate could be derived correctly here.
+
+## Coverage semantics
+
+OE reaches ~80% of the canonical corpus and publishes nothing before 2014, so
+partial coverage is the NORMAL state of a long career, not an edge case.
+
+Every stat scope carries:
+
+```
+statistics.<scope>.coverage = {
+  total_games,          # canonical games in the slice — equals overall.games
+  stat_games,           # those carrying an OE row
+  missing_stat_games,   # the difference
+}
+```
+
+and every figure additionally carries its own `games`, because a row can be
+enriched and still be missing one column.
+
+`statistics` is a **sibling of `ban_pressure`, not a widening of `overall`**.
+`overall` is the canonical record and each of its numbers covers all of its
+games; these cover only the enriched ones. Folding them into one object would
+put two denominators under one heading, which is the exact confusion the
+coverage block exists to prevent. A static test
+(`test_no_combat_figure_appears_outside_the_statistics_block`) enforces the
+separation.
+
+**Null is never zero.** A slice with no enriched games returns `null` for every
+figure and the drawer renders `—`. Zero would read as a player who dealt no
+damage.
+
+## Endpoint contract addition
+
+`GET /api/pro-play/matchup/player-champion` — same route, same parameters, same
+scope/league_filter/opponent semantics, same 400/404 behaviour, same admin gate.
+One key added:
+
+```jsonc
+"statistics": {          // null when participation is did_not_participate
+  "overall": {
+    "coverage":       { "total_games": 13, "stat_games": 11, "missing_stat_games": 2 },
+    "kda":            { "kills": 58, "deaths": 34, "assists": 80,
+                        "ratio": 4.0588, "perfect": false, "games": 13 },
+    "cs_per_min":     { "value": 9.111, "games": 13 },
+    "gold_per_min":   { "value": 454.5, "games": 13 },
+    "damage_per_min": { "value": 840.8, "games": 13 }
+  },
+  "versus_opponent": { /* same shape; null when no opponent was supplied */ }
+}
+```
+
+`definitions` gains `statistics` and `statistics_coverage`.
+`unavailable_metrics` is now `[]`.
+
+## Real query proofs (2026-09-09, full corpus)
+
+Each cross-checked against the underlying OE fact rows with independent SQL,
+not against an endpoint snapshot.
+
+| Case | Result |
+|---|---|
+| **Doran · Jayce · 2026** (large sample) | 13/13 covered. K/D/A 58/34/80 → KDA **4.059**. 24,602s = 410.0 min. CS/min **9.111**, gold/min **454.5**, dmg/min **840.8**. Raw-row recomputation matched all four exactly. |
+| **Doran · Jayce · 2026 vs Gen.G** (opponent slice) | 2/2 covered. K/D/A 6/10/14 → KDA **2.00**, CS/min 8.36, gold/min 400.0, dmg/min 667.9. |
+| **Faker · Azir · all_time** (partial coverage) | **195 of 197** covered, 2 missing. KDA 4.036 over (657/419/1034). Every figure computed over 195. |
+| **Tomem · K'Sante · all_time** (zero stat coverage) | 27 canonical games, **0** enriched. All four figures `null`. The record still reads 27 games. |
+| **Doran · Teemo · 2026** (zero games) | `participated`, `overall.games == 0`, coverage 0/0/0, all figures `null`, `perfect: false`. |
+
+Corpus-wide field coverage over the 875,430 enriched rows: kills/deaths/assists
+**875,430 (100%)**, `total_cs` 875,420, `total_gold` 874,562,
+`damage_to_champions` 874,559, `game_length_seconds` 875,430. So the four
+families almost always share a denominator — which is why the UI prints ONE
+coverage note — but not always, which is why the API keeps them separate.
+
+## Performance
+
+Measured warm, in-process, over the real 5.6 GB corpus.
+
+| Case | Dossier total | of which statistics |
+|---|---:|---:|
+| Faker · Azir · all_time (197 games) | 56.4 ms | **0.72 ms (1%)** |
+| Doran · Jayce · 2026 vs Gen.G | 4.1 ms | 0.05 ms (1%) |
+| Doran · Aurora · 2026 (3 games) | 3.7 ms | 0.02 ms (1%) |
+| Doran · Teemo · 2026 (0 games) | 3.7 ms | 0.00 ms (0%) |
+
+One extra indexed query per stat scope (two per request), chunked at 400 ids
+against SQLite's 999-parameter limit. **No caching was built** — profiling says
+none is warranted, and building it would have been speculative.
+
+## Frontend presentation
+
+Four rows appended to the comparison table the drawer already had — not a
+second panel, not stat cards. The reader's question is unchanged, so the answer
+arrives in the table that already answers it. One hairline rule opens the
+statistics group so the different denominator is visible without being
+explained.
+
+Precision is chosen per metric rather than applied uniformly: KDA 2 decimals
+(the convention every League reader knows), CS/min 1, gold/min and damage/min 0
+— those are read as magnitudes and a decimal on 454.5 is noise. The raw
+`K / D / A over N games` sits in the KDA cell's `title`.
+
+## Partial-coverage UX
+
+One shared note under the table, in the drawer's quietest voice:
+
+> Statistics available for 2 of 3 games.
+
+- Complete coverage prints **nothing** — a note on every dossier stops being read.
+- Zero coverage prints "Detailed statistics are not available for these games."
+- When families disagree, the range is named (`1–2 of 3 games`) and each row's
+  own `title` carries its exact count.
+- The opponent column has its own coverage; both are named only when they differ.
+- **No engineering explanation reaches the scout.** A test asserts the note
+  never contains "oracle", "elixir", "leaguepedia", "corpus", "enrich",
+  "pipeline", "database", "backend" or "API".
+
+## Files changed
+
+Backend (`League_Combat_Simulator`):
+
+| File | Change |
+|---|---|
+| `pro_authority/oe_stats_reader.py` | **+** `player_stat_totals_for_games`, `derive_rate`, `RATE_FAMILIES`. Aggregates over an explicit game set, because product scopes are a season/league/tournament membership test that no WHERE clause over the fact tables can reproduce. |
+| `pro_authority/player_dossier.py` | **+** `_statistics`, the `statistics` payload key, two definitions. Premise docstring rewritten; `UNAVAILABLE_METRICS` emptied. |
+| `routes/pro_play_matchup.py` | Docstring only — no signature, parameter or gate change. |
+| `test_pro_authority_oe_stats.py` | **+8** reader tests |
+| `test_pro_authority_player_dossier.py` | **+18** tests; 2 obsolete premise tests rewritten |
+
+Frontend (`mogsy`):
+
+| File | Change |
+|---|---|
+| `src/lib/pro-play/matchupApi.ts` | **+** `DossierStatistics`, `DossierKda`, `DossierRate`, `DossierStatCoverage`; `statistics` on `PlayerChampionDossier` |
+| `src/components/pro-play/dossier/PlayerChampionDrawer.tsx` | **+** `kdaText`, `kdaDetail`, `rateText`, `coverageNote`; four table rows + the note |
+| `src/index.css` | **+** `.dossier-drawer__rowgroup` hairline (7 lines) |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | **+11** tests; fixture gains `statistics`, 1 obsolete test replaced |
+
+## Tests
+
+- Backend `test_pro_authority_player_dossier.py`: **64 passed** (was 46)
+- Backend `test_pro_authority_oe_stats.py`: **57 passed**, 1 skipped
+- Backend full `test_pro_*.py`: **1,534 passed**, 1 skipped
+- Frontend `ProPlayMatchupTeam.test.tsx`: **173 passed** (was 162)
+- Frontend all Pro Play: **383 passed** / 7 files
+- `tsc --noEmit`: 11 errors, **identical to the clean-`main` baseline**, none in
+  files touched here (verified by stashing)
+- `vite build`: clean
+
 ## Next recommended slice — Step 5
 
 **The game state, and the per-player table that is the reason to open one.**

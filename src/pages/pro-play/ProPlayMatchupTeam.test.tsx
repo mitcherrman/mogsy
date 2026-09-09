@@ -828,15 +828,34 @@ function dossierResponse(overrides: Record<string, unknown> = {}) {
         rate: 0.5,
       },
     },
-    unavailable_metrics: [
-      {
-        metric: "average_kda",
-        label: "Average KDA",
-        reason:
-          "The professional corpus records who played what, for whom, and whether they won \u2014 it carries no kills, deaths or assists for any game.",
+    // Oracle's Elixir figures. DELIBERATELY PARTIAL: 3 canonical games, 2 of
+    // them enriched, so the coverage note is exercised by the default fixture
+    // rather than only by an override. Every figure is arithmetic —
+    // KDA (8 + 14) / 6 = 3.666..., 480 cs over 50:00 = 9.6/min.
+    statistics: {
+      overall: {
+        coverage: { total_games: 3, stat_games: 2, missing_stat_games: 1 },
+        kda: { kills: 8, deaths: 6, assists: 14, ratio: 22 / 6, perfect: false, games: 2 },
+        cs_per_min: { value: 9.6, games: 2 },
+        gold_per_min: { value: 412.5, games: 2 },
+        damage_per_min: { value: 738.2, games: 2 },
       },
-    ],
+      versus_opponent: {
+        coverage: { total_games: 1, stat_games: 1, missing_stat_games: 0 },
+        kda: { kills: 3, deaths: 2, assists: 5, ratio: 4, perfect: false, games: 1 },
+        cs_per_min: { value: 8.15, games: 1 },
+        gold_per_min: { value: 389, games: 1 },
+        damage_per_min: { value: 651.7, games: 1 },
+      },
+    },
+    // Empty since the Oracle's Elixir promotion: the metric this used to
+    // declare unavailable (average KDA) is now served.
+    unavailable_metrics: [],
     definitions: {
+      statistics:
+        "Kills, deaths, assists, CS, gold and damage come from Oracle's Elixir, aggregated over the games in this scope that carry statistics. Rates are weighted by game length, not averaged per game.",
+      statistics_coverage:
+        "Statistics are available for some of these games rather than all of them. Every figure is computed only over the games it covers.",
       champion_games:
         "Games this player played this champion in the selected scope, over their total games in that scope.",
       versus_opponent:
@@ -2149,14 +2168,186 @@ describe("player x champion dossier", () => {
     expect(drawer.textContent).not.toMatch(/banned because|to deny|targeted|respect ban/i);
   });
 
-  it("names Average KDA as unavailable rather than leaving an empty cell", async () => {
+  // --- Oracle's Elixir figures ----------------------------------------------
+
+  it("renders the four statistics as rows of the existing comparison table",
+    async () => {
+      // Not a second panel: the reader's question is unchanged, so the answer
+      // arrives in the table that already answers it.
+      const drawer = await openDrawer();
+      const table = await within(drawer).findByTestId("dossier-drawer-table");
+      for (const id of ["row-kda", "row-csmin", "row-goldmin", "row-dmgmin"]) {
+        expect(within(table).getByTestId(id)).toBeInTheDocument();
+      }
+      expect(within(drawer).queryByTestId("dossier-drawer-unavailable")).toBeNull();
+    });
+
+  it("formats each statistic at the precision its metric is read at", async () => {
     const drawer = await openDrawer();
-    const note = await within(drawer).findByTestId("dossier-drawer-unavailable");
-    expect(note).toHaveTextContent(/Average KDA is not available/i);
-    expect(note).toHaveTextContent(/no kills, deaths or assists/i);
-    // And no KDA row was invented anywhere.
-    const table = within(drawer).getByTestId("dossier-drawer-table");
-    expect(table.textContent).not.toMatch(/kda/i);
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    const cells = (id: string) =>
+      within(within(table).getByTestId(id)).getAllByRole("cell").map((c) => c.textContent);
+    // (8 + 14) / 6 = 3.666..., to two decimals.
+    expect(cells("row-kda")[0]).toBe("3.67");
+    expect(cells("row-csmin")[0]).toBe("9.6");
+    // Gold and damage per minute are read as magnitudes; a decimal is noise.
+    expect(cells("row-goldmin")[0]).toBe("413");
+    expect(cells("row-dmgmin")[0]).toBe("738");
+  });
+
+  it("fills the opponent column with the opponent's own figures", async () => {
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    const cells = (id: string) =>
+      within(within(table).getByTestId(id)).getAllByRole("cell").map((c) => c.textContent);
+    expect(cells("row-kda")).toEqual(["3.67", "4.00"]);
+    expect(cells("row-csmin")).toEqual(["9.6", "8.2"]);
+    expect(cells("row-goldmin")).toEqual(["413", "389"]);
+  });
+
+  it("keeps the raw components reachable behind the KDA figure", async () => {
+    // The ratio is what is scanned; the components are what make it checkable.
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    const cell = within(within(table).getByTestId("row-kda")).getAllByRole("cell")[0];
+    expect(cell).toHaveAttribute("title", "8 / 6 / 14 over 2 games");
+  });
+
+  it("states the sample when statistics cover fewer games than the record",
+    async () => {
+      // Three games in the record, two of them with statistics. The drawer
+      // must not let a reader assume the KDA covers all three.
+      const drawer = await openDrawer();
+      const note = await within(drawer).findByTestId("dossier-drawer-coverage");
+      expect(note).toHaveTextContent("Statistics available for 2 of 3 games.");
+    });
+
+  it("never explains the source or the pipeline to a scout", async () => {
+    // Engineering limits are the handoff's business. A dossier says what the
+    // sample is, never why the corpus is shaped the way it is.
+    const drawer = await openDrawer();
+    const note = await within(drawer).findByTestId("dossier-drawer-coverage");
+    expect(note.textContent).not.toMatch(
+      /oracle|elixir|leaguepedia|corpus|enrich|pipeline|database|backend|API/i,
+    );
+  });
+
+  it("prints one shared note when every figure covers the same games", async () => {
+    dossier = dossierResponse({
+      statistics: {
+        overall: {
+          coverage: { total_games: 3, stat_games: 3, missing_stat_games: 0 },
+          kda: { kills: 8, deaths: 6, assists: 14, ratio: 22 / 6, perfect: false, games: 3 },
+          cs_per_min: { value: 9.6, games: 3 },
+          gold_per_min: { value: 412.5, games: 3 },
+          damage_per_min: { value: 738.2, games: 3 },
+        },
+        versus_opponent: null,
+      },
+      versus_opponent: null,
+      entity: { ...dossierResponse().entity, opponent_team_key: null, opponent_display_name: null },
+    });
+    const drawer = await openDrawer();
+    await within(drawer).findByTestId("dossier-drawer-table");
+    // Complete coverage says nothing at all — a note on every dossier would
+    // stop being read.
+    expect(within(drawer).queryByTestId("dossier-drawer-coverage")).toBeNull();
+  });
+
+  it("names both denominators when a figure covers fewer games than the rest",
+    async () => {
+      // A row can be enriched and still be missing one column. Gold here
+      // covers 1 of the 2 enriched games.
+      dossier = dossierResponse({
+        statistics: {
+          overall: {
+            coverage: { total_games: 3, stat_games: 2, missing_stat_games: 1 },
+            kda: { kills: 8, deaths: 6, assists: 14, ratio: 22 / 6, perfect: false, games: 2 },
+            cs_per_min: { value: 9.6, games: 2 },
+            gold_per_min: { value: 412.5, games: 1 },
+            damage_per_min: { value: 738.2, games: 2 },
+          },
+          versus_opponent: null,
+        },
+        versus_opponent: null,
+        entity: { ...dossierResponse().entity, opponent_team_key: null, opponent_display_name: null },
+      });
+      const drawer = await openDrawer();
+      const note = await within(drawer).findByTestId("dossier-drawer-coverage");
+      expect(note).toHaveTextContent("Statistics available for 1–2 of 3 games.");
+    });
+
+  it("renders a missing statistic as a dash and never as zero", async () => {
+    // 27 real games with no statistics at all is the state of every pre-2014
+    // slice. A zero would read as a player who dealt no damage.
+    dossier = dossierResponse({
+      statistics: {
+        overall: {
+          coverage: { total_games: 3, stat_games: 0, missing_stat_games: 3 },
+          kda: { kills: null, deaths: null, assists: null, ratio: null, perfect: false, games: 0 },
+          cs_per_min: { value: null, games: 0 },
+          gold_per_min: { value: null, games: 0 },
+          damage_per_min: { value: null, games: 0 },
+        },
+        versus_opponent: null,
+      },
+      versus_opponent: null,
+      entity: { ...dossierResponse().entity, opponent_team_key: null, opponent_display_name: null },
+    });
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    for (const id of ["row-kda", "row-csmin", "row-goldmin", "row-dmgmin"]) {
+      const cells = within(within(table).getByTestId(id)).getAllByRole("cell");
+      expect(cells[0].textContent).toBe("—");
+    }
+    expect(within(drawer).getByTestId("dossier-drawer-coverage")).toHaveTextContent(
+      /not available for these games/i,
+    );
+    // And the canonical record is untouched: the games were still played.
+    expect(
+      within(within(table).getByTestId("row-games")).getAllByRole("cell")[0].textContent,
+    ).toBe("3");
+  });
+
+  it("calls a genuine no-death record Perfect and an empty one a dash", async () => {
+    dossier = dossierResponse({
+      statistics: {
+        overall: {
+          coverage: { total_games: 2, stat_games: 2, missing_stat_games: 0 },
+          kda: { kills: 9, deaths: 0, assists: 11, ratio: null, perfect: true, games: 2 },
+          cs_per_min: { value: 9.6, games: 2 },
+          gold_per_min: { value: 412.5, games: 2 },
+          damage_per_min: { value: 738.2, games: 2 },
+        },
+        // A matchup that never happened. Its ratio is null for a completely
+        // different reason and must not be labelled Perfect.
+        versus_opponent: {
+          coverage: { total_games: 0, stat_games: 0, missing_stat_games: 0 },
+          kda: { kills: null, deaths: null, assists: null, ratio: null, perfect: false, games: 0 },
+          cs_per_min: { value: null, games: 0 },
+          gold_per_min: { value: null, games: 0 },
+          damage_per_min: { value: null, games: 0 },
+        },
+      },
+    });
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    const cells = within(within(table).getByTestId("row-kda")).getAllByRole("cell");
+    expect(cells[0].textContent).toBe("Perfect");
+    expect(cells[1].textContent).toBe("—");
+  });
+
+  it("keeps the record, form and ban pressure exactly as they were", async () => {
+    // The statistics pass must not have moved anything the dossier already
+    // said. These four are the whole of Step 2's original deliverable.
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    expect(within(drawer).getByTestId("dossier-drawer-record")).toHaveTextContent("2–1");
+    expect(within(drawer).getByTestId("dossier-drawer-winrate")).toHaveTextContent("66.7%");
+    expect(within(drawer).getAllByTestId("dossier-drawer-form-glyph")).toHaveLength(3);
+    expect(
+      within(within(table).getByTestId("row-banpressure")).getAllByRole("cell")[0].textContent,
+    ).toBe("7 / 40 · 17.5%");
   });
 
   it("never introduces a player-versus-player reading", async () => {

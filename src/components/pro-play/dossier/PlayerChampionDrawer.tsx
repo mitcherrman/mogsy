@@ -36,7 +36,9 @@ import {
   fetchPlayerChampionDossier,
   MatchupApiError,
   type DossierBanPressure,
+  type DossierRate,
   type DossierRecord,
+  type DossierStatistics,
   type PlayerChampionDossier,
 } from "@/lib/pro-play/matchupApi";
 
@@ -70,6 +72,82 @@ function banPressureText(p: DossierBanPressure | null | undefined): string {
   if (!p) return "—";
   if (!p.drafts_with_ban_record) return "no draft record";
   return `${p.banned_in} / ${p.drafts_with_ban_record} · ${pct(p.rate)}`;
+}
+
+// --- Oracle's Elixir figures -------------------------------------------------
+//
+// FOUR ROWS, NOT A SECOND PANEL. These extend the comparison table the drawer
+// already has, because the reader's question is the same one — "how does this
+// look overall, and how does it look against them" — asked of more columns.
+// Stat cards would double the drawer's height to say nothing extra.
+//
+// PRECISION IS CHOSEN PER METRIC, not applied uniformly. Two decimals on a KDA
+// is the convention every League reader knows; one on CS/min is the difference
+// between 9.1 and 9.2, which is real; gold and damage per minute are read as
+// magnitudes and a decimal on 454.5 is noise.
+
+/** A KDA, or "Perfect", or a dash. Never a number when there are no games. */
+function kdaText(stats: DossierStatistics | null | undefined): string {
+  const kda = stats?.kda;
+  if (!kda || !kda.games) return "—";
+  // Deaths really were zero across games that exist. Substituting 1 — the
+  // other common trick — would report a WORSE figure than was earned.
+  if (kda.perfect) return "Perfect";
+  return kda.ratio === null ? "—" : kda.ratio.toFixed(2);
+}
+
+/** The raw components behind the ratio, for the row's `title`. The figure is
+ *  what is scanned; the components are what make it checkable. */
+function kdaDetail(stats: DossierStatistics | null | undefined): string | undefined {
+  const kda = stats?.kda;
+  if (!kda || !kda.games || kda.kills === null) return undefined;
+  return `${kda.kills} / ${kda.deaths} / ${kda.assists} over ${kda.games} game${
+    kda.games === 1 ? "" : "s"
+  }`;
+}
+
+function rateText(rate: DossierRate | null | undefined, digits: number): string {
+  // A dash, never "0.0". The server sends null precisely so a slice with no
+  // enriched games cannot be rendered as a player who farmed nothing.
+  if (!rate || rate.value === null) return "—";
+  return rate.value.toFixed(digits);
+}
+
+/**
+ * The coverage sentence, or null when there is nothing to say.
+ *
+ * ONE SHARED NOTE, NOT A LABEL PER ROW. In the real corpus the four families
+ * almost always share a denominator — 875,420 of 875,430 enriched rows carry
+ * CS — so repeating "11/13" on four rows would be four ways of saying the same
+ * thing. When they genuinely disagree the widest gap is named and the row's own
+ * `title` carries its exact count, so the truth is reachable without the table
+ * growing a column for it.
+ *
+ * NOT AN ENGINEERING APOLOGY. It says how many games the figures cover. It does
+ * not name Oracle's Elixir, does not explain what a fact table is, and does not
+ * ask a scout to care why.
+ */
+function coverageNote(stats: DossierStatistics | null | undefined): string | null {
+  if (!stats) return null;
+  const { total_games: total, stat_games: covered } = stats.coverage;
+  if (!total) return null;
+  if (!covered) {
+    return `Detailed statistics are not available for ${
+      total === 1 ? "this game" : "these games"
+    }.`;
+  }
+  const counts = [
+    covered,
+    stats.kda.games,
+    stats.cs_per_min.games,
+    stats.gold_per_min.games,
+    stats.damage_per_min.games,
+  ];
+  const narrowest = Math.min(...counts);
+  if (narrowest >= total) return null;
+  return `Statistics available for ${
+    narrowest === covered ? covered : `${narrowest}–${covered}`
+  } of ${total} games.`;
 }
 
 /** The identity strip: who, on what, for whom, against whom, when. */
@@ -194,8 +272,21 @@ function ComparisonTable({
   const overall = data.overall;
   const versus = data.versus_opponent;
   const bans = data.ban_pressure;
+  const statsOverall = data.statistics?.overall ?? null;
+  const statsVersus = data.statistics?.versus_opponent ?? null;
   const hasOpponent = Boolean(opponentLabel && versus);
-  const rows: Array<{ label: string; a: string; b: string; testId: string }> = [
+  type Row = {
+    label: string;
+    a: string;
+    b: string;
+    testId: string;
+    /** Opens the statistics group with a hairline, so a reader can see at a
+     *  glance that the rows below it answer to a different denominator. */
+    group?: boolean;
+    titleA?: string;
+    titleB?: string;
+  };
+  const rows: Row[] = [
     {
       label: "Games",
       a: `${overall?.games ?? 0}`,
@@ -210,31 +301,81 @@ function ComparisonTable({
       testId: "row-winrate",
     },
     {
+      label: "KDA",
+      a: kdaText(statsOverall),
+      b: kdaText(statsVersus),
+      testId: "row-kda",
+      group: true,
+      titleA: kdaDetail(statsOverall),
+      titleB: kdaDetail(statsVersus),
+    },
+    {
+      label: "CS/min",
+      a: rateText(statsOverall?.cs_per_min, 1),
+      b: rateText(statsVersus?.cs_per_min, 1),
+      testId: "row-csmin",
+    },
+    {
+      label: "Gold/min",
+      a: rateText(statsOverall?.gold_per_min, 0),
+      b: rateText(statsVersus?.gold_per_min, 0),
+      testId: "row-goldmin",
+    },
+    {
+      label: "Dmg/min",
+      a: rateText(statsOverall?.damage_per_min, 0),
+      b: rateText(statsVersus?.damage_per_min, 0),
+      testId: "row-dmgmin",
+    },
+    {
       label: "Ban pressure",
       a: banPressureText(bans?.overall),
       b: banPressureText(bans?.versus_opponent),
       testId: "row-banpressure",
+      group: true,
     },
   ];
+  // The opponent column has its own coverage, and it is routinely a smaller
+  // sample than the overall one. Both are named when they differ; one note is
+  // printed when they agree.
+  const noteA = coverageNote(statsOverall);
+  const noteB = hasOpponent ? coverageNote(statsVersus) : null;
+  const note =
+    noteA && noteB && noteA !== noteB
+      ? `${noteA} Against ${opponentLabel}: ${noteB.charAt(0).toLowerCase()}${noteB.slice(1)}`
+      : (noteA ?? noteB);
   return (
-    <table className="dossier-drawer__table" data-testid="dossier-drawer-table">
-      <thead>
-        <tr>
-          <th scope="col">Metric</th>
-          <th scope="col">Overall</th>
-          {hasOpponent ? <th scope="col">vs {opponentLabel}</th> : null}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.label} data-testid={row.testId}>
-            <th scope="row">{row.label}</th>
-            <td>{row.a}</td>
-            {hasOpponent ? <td>{row.b}</td> : null}
+    <>
+      <table className="dossier-drawer__table" data-testid="dossier-drawer-table">
+        <thead>
+          <tr>
+            <th scope="col">Metric</th>
+            <th scope="col">Overall</th>
+            {hasOpponent ? <th scope="col">vs {opponentLabel}</th> : null}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={row.label}
+              data-testid={row.testId}
+              className={row.group ? "dossier-drawer__rowgroup" : undefined}
+            >
+              <th scope="row">{row.label}</th>
+              <td title={row.titleA}>{row.a}</td>
+              {hasOpponent ? <td title={row.titleB}>{row.b}</td> : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Compact and honest, in the drawer's quietest voice. A scout is told
+          what the sample is, never why the corpus is shaped the way it is. */}
+      {note ? (
+        <p className="dossier-drawer__fineprint" data-testid="dossier-drawer-coverage">
+          {note}
+        </p>
+      ) : null}
+    </>
   );
 }
 
