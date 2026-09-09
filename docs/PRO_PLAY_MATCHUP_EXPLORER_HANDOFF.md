@@ -740,6 +740,31 @@ Also absent by design and held by tests: per-player K/D/A, damage, CS, vision
 and gold tables, objective timelines, graphs, `turret_plates` (max 45 against a
 structural ceiling of 25), prediction, win probability and inferred strategy.
 
+## Deploy state — Step 4 (2026-09-09)
+
+| | SHA | Where |
+|---|---|---|
+| Backend | `c827b52f` on `master` | **Deployed.** Railway answers `/api/pro-play/matchup/series` with **403** (gated) while an unregistered sibling under the same prefix answers **404** — which is the discriminator, and the same proof Step 3 used. |
+| Frontend | `6582aa69` on `main` | **Pushed, NOT published.** |
+
+**The published `mogzy.lol` bundle is still Step 3.1.** `ProPlayMatchup-yMee_71D.js`
+contains `explorer_navigable` and `teams_outside_explorer_pool` and contains
+**none** of `Recent Meetings`, `dossier-meeting-shell`, `meeting-row`,
+`single_game` or `Duration not recorded`. Lovable publishes on the owner's
+click; a push is not a publish, and this was checked by fetching the bundle
+rather than assumed.
+
+**There is no deploy-ordering hazard this time.** Everything Step 4 added to
+`/team` is additive — `meetings`, `meetings_total`, `meetings_limit` and one
+new key inside `notes` — and the published client reads named note keys rather
+than enumerating them, so it ignores all four. The live site is simply Step 3.1
+until the owner presses Publish. (Contrast Step 3.1, where `focus: null` on a
+pooled team was a real crash window.)
+
+**Still open from Step 3.1:** delete the `teams_outside_focus_set` mirror once
+a frontend carrying `teams_outside_explorer_pool` is *published*. That
+condition is still not met.
+
 ## Files — Step 4
 
 ### Backend
