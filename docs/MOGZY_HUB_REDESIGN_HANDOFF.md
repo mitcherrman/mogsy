@@ -1,7 +1,9 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 35 (capital/base verified; side-gutter work CLOSED) is at the
-     top of this file. Revision 34 built the mouldings.
+<!-- Revision 36 (Timmy demo-user data-contract audit — APPROVED, owner
+     decisions recorded, nothing seeded) is at the top of this file.
+     Revision 35 verified the capital/base and CLOSED the side-gutter work;
+     Revision 34 built the mouldings.
      Revision 33 verified the side architecture in production; 32 built it.
      Revision 31 verified Academy Bulletin V1 COMPLETE in production;
      Revision 30 was the media-eligibility fix it verifies.
@@ -16,6 +18,520 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-08 — TIMMY: DEMO-USER DATA-CONTRACT AUDIT — **APPROVED, NOTHING SEEDED**
+
+Read-only against the product. No production data was written, no schema
+changed, no migration applied and **no code changed** — this revision is a
+documentation commit and touches one file. Two throwaway worktrees were used so
+the shared
+checkouts were never touched: `/Users/macmoney/lcs-wt-timmy-audit` (backend,
+detached at `origin/master` `29aac67f`) and `/Users/macmoney/mogsy-wt-timmy`
+(frontend, `origin/main` `7e06ae9f`). Commons layout, Bulletin, pilasters and
+Screen 1 are untouched.
+
+**One live probe was made** — four unauthenticated GETs against the production
+API to establish which endpoints exist. All four answered `401`. Nothing else
+was called.
+
+---
+
+### 0a. Owner decisions — **REVIEWED AND APPROVED 2026-09-08**
+
+The audit below was reviewed and passed. These ten decisions are now binding on
+the implementation phase; where they differ from the audit's own wording, they
+win.
+
+**Naming — the two Timmys are separated, and neither is renamed.**
+
+| Name | Subject | What it is | Status |
+|---|---|---|---|
+| **Timmy Demo** | a real Supabase auth uuid | the logged-in demo persona this audit specifies | **not built yet** |
+| **Timmy Analytics Fixture** | `demo::timmy` | PT1.9's master-admin Free-vs-Premium analytics preview subject | **LIVE in production, untouched** |
+
+They are disjoint subjects with disjoint records and disjoint purposes. Every
+later section of this document that says "the two Timmys" means exactly this
+pair, and the two names above are the ones to use from here on.
+
+**The decisions**
+
+1. **Timmy Demo is one real Supabase-authenticated account** with a normal
+   profile and `profiles.is_bot = true`. Confirms §4.1.
+
+2. **Free and Premium are two states of that one account**, toggled through the
+   existing entitlement/grant mechanism (`admin_set_pro_grant`, §5). Not two
+   sibling fixtures. Confirms §4.3.
+
+3. **The PT1.9 `demo::timmy` fixture remains untouched** and continues serving
+   its analytics-preview purpose. It is documented distinctly as the **Timmy
+   Analytics Fixture** and is *not* the logged-in demo persona. Nothing in the
+   implementation phase reads, moves, re-seeds or removes it.
+
+4. **Timmy Demo targets Academy Diamond, not terminal Challenger**, so
+   progression stays visible. Confirms §6.1.
+
+5. **Real production writers generate the quiz record wherever supported** —
+   XP, category counters, streak and achievement state are *derived* by
+   `services/quiz_helpers.py`, never asserted. Confirms §4.1 step 3.
+
+6. **Ranked may be fixture-seeded directly**, because the production rating path
+   intentionally excludes bot matches (§3). **Do not create fake matchmaking
+   just to manufacture Elo** — no synthetic queue entries, no second account
+   queued solely to move a rating, no relaxation of
+   `RATED_CREATION_SOURCES`. The direct seed is the honest option precisely
+   because the rating path's exclusion is deliberate.
+
+7. **No champion mastery and no Combat Lab usage is invented** without a real
+   per-user authority. Both remain absent, as §3 records.
+
+8. **No Timmy-specific frontend branches.** Zero frontend files change.
+   Confirms §8.
+
+9. **Analytics exclusion must be generalized through the existing demo/test
+   containment architecture — a Timmy UUID must not be hardcoded into an
+   exclusion.** This *narrows* §4.1 step 4: the containment must express "this
+   subject is a registered demo/test account", and `exclude_demo_clause()` must
+   stay a general predicate that names no individual. Whether the registry is
+   code-listed beside `DEMO_IDENTITIES` or data-driven is an implementation
+   decision for that phase; what is settled is that no call site may grow a
+   literal uuid, and that PT1.9's `demo::` namespace arm — including its NULL
+   branch for guest-era rows — is preserved intact.
+
+10. **The `/dev/lobby-preview` `total_xp: 48250` impossibility is a separate
+    fidelity issue.** It is recorded (§2) and deliberately **out of scope**.
+    Timmy Demo's scope is not widened to fix it unless the implementation turns
+    out to depend on that fixture.
+
+**Still open, and deliberately so:** the email address Timmy Demo signs up
+with. It must be one the owner controls and should not be the owner's own
+account, for the reason PT1.9 already documented — a second entitlement source
+on the same row is exactly what that phase was built to work around.
+
+---
+
+### 0. The headline, in three sentences
+
+**A bot-only profile cannot be Timmy, and this is provable rather than
+suspected.** `admin_create_bot_profile` inserts `profiles.user_id =
+gen_random_uuid()` with *no* `auth.users` row, so a bot persona can never hold
+a Supabase session; and eight endpoints across the brief (five in §1.2,
+three in §1.3) resolve their subject from the verified JWT `sub` with no id
+parameter at all, as does the `my_pro_entitlement()` RPC.
+
+**There is already a Timmy in production, and it is a different Timmy.** PT1.9
+(`cc7bbcf7`, seeded `2026-09-08T02:08:01Z`) put 302 `quiz_attempts` and 60
+`quiz_sessions` under the subject `demo::timmy` — a deliberately
+**non-authenticatable** id — for a master-admin analytics preview. Its own
+module states the seam: *"a Supabase bot profile may be created for Timmy's
+FACE … and it changes nothing here"*, and *"Timmy is not a login."* The demo
+user this revision audits **is** a login, so it is a second subject wearing the
+same name. §0a settles it: the two are named apart and both are kept.
+
+**The recommended shape is one real Supabase account with
+`profiles.is_bot = true`.** `is_bot` has *zero* consumers that affect the
+owner's own signed-in experience — it only removes the account from community
+search, admin analytics, the CSV user bucket and SEO indexing — so it is
+exactly the containment flag this needs, and an admin session can set it today
+with no migration.
+
+---
+
+### 1. Complete data-contract map
+
+Legend for **Seedable honestly**: **derived** = a real server-side writer
+computes it from seeded events; **direct** = the row is the authority and must
+be written as data; **replay** = only a real gameplay transaction can produce
+it; **blocked** = no durable per-user authority exists.
+
+#### 1.1 Identity and entitlement (Supabase Postgres)
+
+| Visible field | Frontend | API / RPC | Table(s) | Ownership | Seedable | Depends on |
+|---|---|---|---|---|---|---|
+| Display name, avatar | `useProfileIdentity`, `AcademyRecord`, `Profile.tsx` | PostgREST `profiles` select by `user_id` | `public.profiles` | RLS; row keyed on `auth.uid()` | **direct** (ordinary profile edit) | `auth.users` row |
+| Claimed username | `claimUsername`, `Profile.tsx` | AUTH3 `normalize_display_name` + `profiles_display_name_unique_ci` | `public.profiles.display_name` | own row | **direct** | profile row |
+| Premium / Free | `useSitewideTheme().proStatus`, `HubPremiumPanel`, `isEffectivePro` | `public.my_pro_entitlement()` | `profiles.is_pro`, `profiles.pro_grant_*` | `SECURITY DEFINER`, resolves `auth.uid()` — **takes no user argument** | **direct** via `admin_set_pro_grant` | `auth.users` row |
+| Backend entitlement gate | — | `services/pro_status.py` → same RPC with the *caller's* token | same | caller's own JWT + anon key; **no service-role key in the process** | same | a real JWT |
+| Avatar file | `Profile.tsx` | Supabase Storage `profile-photos` | `storage.objects` | `auth.uid()` = first path segment | **direct** | `auth.users` row |
+
+`my_pro_entitlement()` is the whole Free/Premium story and it is
+`WHERE p.user_id = auth.uid()`. There is no id-taking variant. A profile with
+no auth user can be *granted* Premium and will never be able to *read* it.
+
+#### 1.2 Academy record (FastAPI + `/data/lol_calc.db`, keyed on the auth uuid)
+
+| Visible field | Frontend | Endpoint | Table(s) | Ownership | Seedable | Depends on |
+|---|---|---|---|---|---|---|
+| Academy tier + XP bar | `AcademyRecord`, `QuizProfileCard`, Bulletin `personal-standing` | `GET /api/quiz/progress/{user_id}` | `quiz_user_progress.total_xp` | `resolve_profile_read_user_id` — **any verified session may read any uuid**; unverified is 401 | **derived** (`update_quiz_progress`) | attempts |
+| Questions answered, accuracy | same | same | `quiz_user_progress.total_attempts / correct_attempts` | same | **derived** | attempts |
+| Current / best streak | `AcademyRecord`, Bulletin `personal-streak` | same | `quiz_user_progress.current_streak / best_streak` | same | **derived** (ordering of the replay decides it) | attempts, in order |
+| Legacy rank name + icon | `deriveProfileStats` | same | `quiz_ranks` (Unranked…Challenger, `min_xp`) | same | **derived** | `total_xp` |
+| Category knowledge, best category | `CategoryKnowledge`, `pickBestCategory` | `GET /api/quiz/categories/{user_id}` | `quiz_category_progress` | same | **derived** (`update_category_progress`) | attempts |
+| Achievements shelf | `QuizProfileCard`, `LeaguePublicProfile` | `GET /api/quiz/achievements/{user_id}` | `quiz_achievements` (6 rows, global) + `quiz_user_achievements` | same | **derived** (`unlock_quiz_achievements`) | progress totals |
+| Recent activity / quiz history | `LeagueProfileStats`, `/lol/history`, `StudyHistoryLedger` | `GET /api/quiz/history` | `quiz_sessions` | **`identity.user_id` only — no id parameter, 401 without a verified JWT** | **direct** | attempts |
+| Missed-question bank | `MissedQuestionsReview`, `/lol/missed-questions` | `GET /api/quiz/missed-questions` | `quiz_attempts WHERE is_correct = 0` | **self-scoped, and Premium-gated** | **direct** | attempts |
+| Performance trends (PT1.8) | `PerformanceTrendsPane` on `/quiz` | `GET /api/quiz/analytics/capability`, `/trends` | `quiz_attempts` + `quiz_sessions` | **`require_account_identity`, self-scoped** | **direct** | dated attempts |
+| Entitlement echo | — | `GET /api/quiz/entitlement` | Supabase RPC | **self-scoped** | n/a | a real JWT |
+
+The split in the Ownership column is the entire finding. Three reads take the
+id in the URL and will serve any uuid to any verified caller. **Five — in this
+table alone — take no id at all**; §1.3 adds three more.
+
+#### 1.3 Ranked (same SQLite database)
+
+| Visible field | Frontend | Endpoint | Table(s) | Ownership | Seedable | Depends on |
+|---|---|---|---|---|---|---|
+| Ranked standing (tier, rating, bar) | `AcademyRecord` (`showRanked`), `useRankedProgression` | `GET /api/ranked/progression` | `ranked_ratings` | `require_account_identity` — **self-scoped, non-anonymous** | **direct** | nothing; tier is derived on read |
+| Ranked match history | `useRankedMatchHistory`, Bulletin `personal-match`, lobby | `GET /api/ranked/history` | `ranked_results` ⋈ `ranked_matches` ⋈ `ranked_participants` ×2 ⋈ `ranked_rating_events` | **self-scoped** | **direct** | all four tables per match |
+| Per-match rating delta | same | same | `ranked_rating_events` | same | **direct** | a `ranked_results` row |
+| Owned questions | `OwnedQuestionsPane`, `useQuestionLibrary` | `GET /api/ranked/question-library` | `ranked_question_discoveries` | **self-scoped** | **direct** | refs the accepted bank resolves |
+| Match review timeline | `useMatchReviews`, `ReviewPane` | `GET /api/ranked/matches/{id}/…` | `ranked_rounds`, `ranked_resolved_rounds` | participant-only | **direct** (heavy) | a full round ledger |
+
+`load_history_rows` joins the *viewer's own* participant row as its filter, and
+requires a second participant row on the same match — so a history entry costs
+one `ranked_matches` + **two** `ranked_participants` + one `ranked_results`
+row, plus one `ranked_rating_events` row if a delta is to show.
+
+#### 1.4 Commons personal Bulletin — the only three notices that exist
+
+`useAcademyBulletin` gates the whole personal family on
+`isIdentified = !!user?.id && !user.is_anonymous`, so an anonymous session
+produces none. There are exactly three, each with a stated condition:
+
+| Notice | Condition | Source |
+|---|---|---|
+| `personal-match` | `useRankedMatchHistory(5)` returns ≥1 row | Ranked history (self-scoped) |
+| `personal-streak` | `current_streak >= 5` | quiz progress |
+| `personal-standing` | a coherent Academy block **and** `hasAnyQuizActivity` | quiz progress |
+
+Only one of the last two shows on a given day (`seed % 2`). So a fully mature
+Timmy renders **two** personal notices, never three.
+
+#### 1.5 Other per-user surfaces, for completeness
+
+| Surface | Store | Note |
+|---|---|---|
+| Public profile `/user/:id` | `profiles`, `public_profiles`, `quiz_*` by id | Cross-user reads work for a verified viewer |
+| Friends / social | `friendships`, `get_league_profiles` | Bot+disabled pairs are hidden by `useFriends` |
+| Meta Reflex "recent takes" | `league_swipe_results` (Supabase, RLS) | Owner-only by RLS; other profiles get a placeholder by design |
+| Time Trial streak | `dsa_runs` | See §3 — **decays** |
+| Combat Lab | `combat_lab_usage` | A rate/credit meter, not a portfolio |
+| Champion mastery | — | See §3 — **no authority** |
+
+---
+
+### 2. Why the existing bot / demo / E2E infrastructure is not sufficient
+
+Each of these was checked against current code, not assumed.
+
+**`profiles.is_bot` + `admin_create_bot_profile`.** The function body is
+explicit: `INSERT INTO public.profiles (user_id, …) VALUES (gen_random_uuid(),
+…, true, false)`. That uuid satisfies a `NOT NULL` column and nothing else —
+there is no `auth.users` row behind it, so no password, no session, no JWT, no
+`auth.uid()`. Every self-scoped endpoint in §1.2–§1.4 is therefore unreachable
+for a bot persona, and `my_pro_entitlement()` would return no row. **Disproved
+as a complete solution.**
+
+**`admin_update_bot_profile`.** Writes only `display_name`, `avatar_url`,
+`profile_frame`, `is_disabled`, and refuses any target that is not already a
+bot. It cannot promote a real account to a bot, and it cannot create the
+account. Useful for Timmy's *face*, useless for his *record*.
+
+**`is_bot_available`.** `SELECT EXISTS(… is_bot AND NOT is_disabled) AND
+auth.uid() IS NOT NULL`. A bare boolean for seating a bot in Stat Check /
+friendships. It authorises nothing and reads nothing Timmy needs.
+
+**`VITE_E2E_AUTH`.** `e2eEnabled()` is
+`import.meta.env.DEV === true && import.meta.env.VITE_E2E_AUTH === "1"`. Vite
+statically folds `DEV` to `false` in any production build and dead-code-
+eliminates every guarded branch, so **the persona seam does not exist in the
+deployed bundle**. It is a local/CI harness and cannot serve a production demo.
+Its backend half is gated too: `SUPABASE_ALLOW_HS256` must be explicitly on for
+a locally-minted HS256 token to verify, and production runs asymmetric JWKS
+only. **A Timmy token cannot be forged against production.**
+
+**PT1.9 `demo::timmy`.** Live in production, 302 + 60 rows. Its id is outside
+the uuid alphabet *by design*, which is what makes it both un-loggable-in and
+free to exclude from aggregates (`exclude_demo_clause`, used in exactly four
+modules). Its seeder writes `quiz_attempts` and `quiz_sessions` and
+**deliberately nothing else** — no XP, no streak, no achievement, no category
+counter. So it supplies neither an identity nor a record for any surface on
+this brief.
+
+**`/dev/lobby-preview` fixtures.** Frozen literals, no fetch, one importer.
+Exactly the "fake UI values disconnected from database state" this task rules
+out. Worth one correction while it is open: its `TIMMY_PROGRESS` carries
+`total_xp: 48250` against `correct_attempts: 2427` / 991 wrong, and the real XP
+table (`DIFFICULTY_XP` 10–18 correct, `WRONG_ANSWER_XP` 2) caps that record at
+2427 × 18 + 991 × 2 = **45,668**. The frozen fixture states an XP total the
+production economy cannot produce.
+
+**Existing seed / fixture scripts.** `seed_*.py` are all content seeders
+(items, runes, abilities, categories). `dc1_phase*_fixture_support.py` and
+`db_fixture_support.py` are test harnesses. `scripts/seed_demo_analytics.py` is
+PT1.9's, hard-bound to the `demo::` registry. **There is no per-user account
+seeder in either repo.**
+
+---
+
+### 3. Gaps and blocked surfaces — do not invent these
+
+| Surface | Why it is blocked | Consequence for Timmy |
+|---|---|---|
+| **Ranked rating earned honestly** | `evaluate_eligibility` skips any match with `is_bot_match` or a `bot::` participant (`SKIP_BOT_MATCH`), and `RATED_CREATION_SOURCES = {queue, direct}` excludes `bot_playtest` / `admin_test` / `dev_fixture`. A solo demo account **cannot** move its Elo. | Ranked rating must be **direct**-seeded, or a second real account must queue against Timmy. Bot matches give history rows with `rating_delta: null` and leave `ranked_ratings` empty — and `AcademyRecord` hides the Ranked line entirely unless `progression.rated` is true. |
+| **Time Trial streak** | `current_streak` reads `dsa_runs WHERE challenge_date IN (today, yesterday)`. | A seeded streak reads **0** within two days. Not durable. Either accept 0, or re-seed daily — which contradicts "idempotent one-shot". |
+| **Champion mastery progression** | `/api/mastery/progress` is progress through a published *mastery set*, keyed on `mastery_sessions`. There is no per-user *champion* mastery authority. | Do not invent. Nothing on the Commons or the profile shows it today. |
+| **Combat Lab usage** | `combat_lab_usage` is a metered rate/credit table; `combat_battles` are admin-authored public artifacts with no per-user ownership. | The profile's Combat Lab card is a static CTA. Nothing to seed. |
+| **Ranked match *review* depth** | A reviewable match needs a full `ranked_rounds` + `ranked_resolved_rounds` ledger with settlement JSON. | Seed history rows without round ledgers; the review timeline degrades to unavailable rather than lying. Accept it. |
+| **Cross-store reconciliation** | Three disjoint attempt stores (`quiz_attempts`, `ranked_submissions`/`ranked_question_discoveries`, `mastery_session_answers`). | Timmy's quiz record and his Ranked record are independent by construction; they cannot be made to agree, and no surface asks them to. |
+
+---
+
+### 4. Recommended architecture
+
+**ONE persistent real Supabase account, marked `is_bot = true`, with its
+entitlement toggled by an RPC that already ships.**
+
+#### 4.1 The four layers
+
+1. **Auth (Supabase).** A real `auth.users` row created by ordinary email
+   signup, credentials held by the owner. This is not optional: it is the only
+   thing that produces the JWT that the five self-scoped reads require, and the
+   only thing `auth.uid()` will ever resolve to.
+
+2. **Persona (Supabase `profiles`).** Ordinary display name + avatar + claimed
+   username, written the way any user writes them. Then **an admin sets
+   `profiles.is_bot = true`** on that row. This is permitted today with no
+   migration: the `"Admins can update any profile"` policy is `USING
+   (has_role(auth.uid(),'admin'))`, and `protect_profile_premium_fields`
+   exempts admins from the `is_bot` freeze.
+
+   *Why this is the right marker.* Every consumer of `is_bot` in the frontend
+   was enumerated. It appears in admin analytics (`admin-data-sources`,
+   `AdminStats`, `AdminAds`, `AdminData`, the CSV export's user/bot split), the
+   admin directory badge, `useFriends` (hides bot **and** disabled), the
+   `/user/:id` SEO `noindex`, and Postgres `search_league_profiles` (which
+   excludes bots from username discovery). **It appears in nothing that shapes
+   the account holder's own experience.** So Timmy renders identically to a
+   real member while being invisible to analytics and to community search.
+
+3. **Record (FastAPI + `/data/lol_calc.db`, keyed on Timmy's auth uuid).** A
+   new committed, idempotent script — proposed `scripts/seed_demo_account.py`
+   — that seeds by calling the **real server-side writers**:
+   `record_session_answer`, `update_quiz_progress`, `update_category_progress`,
+   `unlock_quiz_achievements` from `services/quiz_helpers.py`. XP, rank,
+   streak, accuracy, category counters and achievements are then *derived by
+   the same code that serves live players*, never asserted. This is the
+   material improvement over PT1.9's raw-SQL seeder, which deliberately wrote
+   none of that.
+
+   Ranked is the exception and must be **direct** (§3): `ranked_matches`,
+   `ranked_participants` ×2, `ranked_results`, `ranked_rating_events`,
+   `ranked_ratings`, `ranked_question_discoveries`.
+
+4. **Exclusion.** Timmy's subject *is* uuid-shaped, so PT1.9's
+   `exclude_demo_clause` — which tests `substr(user_id,1,6) <> 'demo::'` —
+   **does not cover him**. Extend `services/demo_identity.py` with a general
+   registry of demo/test *accounts* and widen the predicate alongside the
+   namespace test. **Per §0a decision 9 this must stay general — no call site
+   may grow a literal Timmy uuid**, and PT1.9's `demo::` arm (NULL branch
+   included) is preserved verbatim. Four call sites:
+   `routes/quiz.py` (×2, behind `/api/quiz/stats`), `quiz/quiz_stats.py`,
+   `quiz/question_performance.py`, `quiz/export_admin_report.py`.
+
+#### 4.2 Against the stated preferences
+
+| Preference | How it is met |
+|---|---|
+| Real coherent identity where auth-bound reads require it | Yes — a genuine `auth.users` row is the only thing that satisfies them |
+| Deterministic | The plan is a literal table in the script; no randomness, dates pinned to integer day offsets from a fixed anchor (PT1.9 learned this the hard way — fractional-day placement straddled PT1.8's window boundaries and flipped a reading from +4 to −7 depending on the hour) |
+| Idempotent / re-runnable | Content fingerprint + `DELETE WHERE user_id = <timmy>` then insert, per PT1.9's proven pattern; derived counters are recomputed from zero each run |
+| Clearly marked demo data | `profiles.is_bot = true`, an entry in the demo registry, and `pro_grant_reason = 'Timmy demo fixture'` when Premium |
+| No Timmy-specific frontend branches | None. Every surface reads Timmy through the identical hook it uses for any member |
+| No fake UI values | Nothing is asserted that a server writer can derive |
+| Free ↔ Premium switch | One RPC call each way (§5) |
+| Safe from leaderboard/community contamination | See §7 |
+| Removable / reseedable | `--remove` deletes by `user_id`; Supabase side is `admin_set_pro_grant(_kind => NULL)` + profile delete |
+
+#### 4.3 One identity, not two — and why
+
+**One.** Free and Premium are not two records here; they are two *presentations
+of the same record*. `/api/quiz/history` returns the same rows and clips them
+to 10 for Free. `/api/quiz/missed-questions` returns the same attempts or a
+locked stub. `PerformanceTrendsPane` renders the same corpus or a paywall.
+Reviewing the split therefore *requires* one record read twice — the exact
+argument PT1.9 already made for its own preview.
+
+Two sibling fixtures would double every seeded row and every Ranked ledger
+entry, and would let the two drift, which is the one failure mode that makes a
+Free-vs-Premium comparison meaningless.
+
+The **one caveat** is timing, not correctness: `services/pro_status.py` caches
+a successful lookup for `CACHE_TTL_SECONDS = 120`, so a toggle takes up to two
+minutes to reach the backend gates. Worth stating in the runbook.
+
+---
+
+### 5. Free / Premium strategy
+
+Both directions already exist and neither needs new code:
+
+```
+-- Premium
+select public.admin_set_pro_grant(
+  '<timmy-auth-uuid>'::uuid, 'manual', null, 'Timmy demo fixture');
+
+-- Free
+select public.admin_set_pro_grant('<timmy-auth-uuid>'::uuid, null);
+```
+
+`admin_set_pro_grant` requires `has_role(auth.uid(),'admin')`, writes only the
+`pro_grant_*` columns, leaves `is_pro` (the Stripe half) untouched — so no
+Stripe re-sync can revoke it — and returns the resolved entitlement. The admin
+UI already exposes this path (PT1.4), so the owner need not touch SQL at all.
+
+`pro_grant_kind = 'playtest'` is the alternative and is already live and
+already used to unblock Combat; `'manual'` is proposed here purely so the grant
+reads as a fixture rather than as a playtester.
+
+---
+
+### 6. Proposed mature-state dataset
+
+Believable, deterministic, and small — **≈ 500 rows total**, roughly PT1.9's
+scale, not thousands.
+
+**Anchor:** a fixed date constant in the script, not `now()`. Attempts land on
+**integer day offsets** from it.
+
+#### 6.1 Academy (derived from a 428-answer replay)
+
+| Field | Value | How it arises |
+|---|---|---|
+| Answered | **428** over 132 days | 428 `quiz_attempts` |
+| Correct | **334** → accuracy **78.0 %** | the plan's per-question correctness |
+| `total_xp` | **≈ 4,200** | `DIFFICULTY_XP` 10–18 / `WRONG_ANSWER_XP` 2, derived |
+| Academy tier | **Diamond** (3,000–5,999) | derived — *deliberately not Challenger* |
+| Legacy rank | **Grandmaster** (4,200) | `quiz_ranks`, derived |
+| `current_streak` | **7** | the last 7 planned answers are correct |
+| `best_streak` | **24** | one designed run mid-corpus |
+| Categories | **6**, from 91 % down to 44 % | `quiz_category_progress`, derived |
+| Best category | **Summoner Spells 91 %** | `pickBestCategory`, derived |
+| Achievements | **all 6 unlocked** | derived — see the note below |
+| `quiz_sessions` | **46** | so Free shows 10 + `limited: true`, Premium shows 46 |
+
+*Deliberate choice:* Academy **Diamond**, not Challenger. Challenger is
+terminal — `parseAcademyProgression` returns `isMaxTier`, the XP bar pins at
+100 % and the Bulletin's `personal-standing` notice loses its "XP to next"
+line. A demo that is meant to show progression must not be finished. Diamond
+keeps 1,800 XP of visible climb.
+
+*Honest limitation:* the achievement set is six rows with thresholds of 1, 5,
+10, 100 XP, 500 XP and 50 attempts. **Any** genuinely mature account has all
+six. A full shelf is the truth about this content, not a flattering choice —
+but it means the shelf cannot demonstrate partial progress until more
+achievements exist.
+
+#### 6.2 Ranked (direct)
+
+| Field | Value | Note |
+|---|---|---|
+| `ranked_ratings.rating` | **1,218** | **Gold** (1,175–1,299), 82 rating below Diamond |
+| `matches_rated` | **31** | |
+| History rows | **22** | 13 W / 8 L / 1 D |
+| of which bot matches | **2** | `rating_delta: null` — proves the null column renders |
+| of which pre-rating | **1** | the legacy shape `load_history_rows` must survive |
+| Terminal variety | 1 forfeit, 1 no-contest | both are real `terminal_reason` values |
+| Rating walk | back-derived so `rating_after − delta` chains to 1,218 | the exact defect the `/dev` fixture had to fix |
+| `ranked_question_discoveries` | **58 refs** | resolvable against the accepted bank |
+
+Row cost: 22 × (1 match + 2 participants + 1 result) + 20 rating events + 1
+rating + 58 discoveries ≈ **167 rows**.
+
+#### 6.3 What renders, end to end
+
+- **Academy Record** — name, avatar, *Academy Diamond*, XP bar mid-tier,
+  428 answered, 78.0 %, streak 7, best category, **Ranked Gold 1218**, member
+  band when Premium.
+- **Bulletin** — `personal-match` ("You won your last Ranked match · +18
+  rating · versus Aeryn · 4 Sep") **plus** `personal-streak` on even day-seeds
+  or `personal-standing` on odd ones.
+- **Profile** — full progress card, 6-category knowledge grid, Recent Activity
+  with 3 stored sessions, all six badges.
+- **`/lol/history`** — 10 rows + upsell as Free, 46 rows as Premium.
+- **`/quiz` workspace** — REVIEW (missed bank locked/open), Owned Questions
+  (58), Trends (paywalled/populated over 428 dated attempts).
+- **`/lol/missed-questions`** — locked as Free, ~94 rows as Premium.
+
+---
+
+### 7. Risks to production analytics, leaderboards and community data
+
+| Risk | Real? | Mitigation |
+|---|---|---|
+| Quiz leaderboard contamination | **No such leaderboard exists.** `/leaderboard` reads `global_elo_snapshots` and `local_rankings` — legacy Mogzy, not quiz XP. Ranked progression is self-scoped with no public board. | none needed |
+| Matchmaking pairing with a real player | **No.** Pairing draws only from `ranked_queue_entries`; a seeded Timmy is never enqueued. | none needed |
+| Supabase-side admin analytics | **Yes without `is_bot`.** Six modules filter `.eq("is_bot", false)`. | `is_bot = true` — closes it entirely |
+| Community username discovery | **Yes without `is_bot`.** `search_league_profiles` excludes bots explicitly. | `is_bot = true` — closes it |
+| SQLite-side aggregates (`/api/quiz/stats`, `question_performance`, `export_admin_report`) | **Yes.** A uuid subject is invisible to `exclude_demo_clause`; 428 attempts at 78 % against a corpus that currently reports 11,224 at 13.02 % would move the stated figure by roughly **+2.4 points**. | §4.1 step 4 — widen the registry. **This is the one code change the architecture requires.** |
+| Public reach of `/api/quiz/stats` | Low — the only frontend consumer is the admin `QuizDiagnostics` page, plus two offline reports. | still fix it |
+| Friend requests / notifications to Timmy | Possible via a direct profile link, not via search. | acceptable; `is_disabled` is the escape hatch |
+| PT1.9 aggregate exclusion regression | Widening the predicate must keep the NULL arm — `quiz_attempts.user_id` is nullable for guest-era rows, and dropping the arm would silently delete every guest row from the platform total. | keep `EXCLUDE_DEMO_SQL`'s NULL branch verbatim |
+| **Two Timmys** | the **Timmy Analytics Fixture** (`demo::timmy`, live) and **Timmy Demo** (the new account). Disjoint subjects, disjoint records. | **Resolved** — §0a: named apart, both kept, the fixture untouched |
+
+---
+
+### 8. Exact files, schema and functions a later implementation would touch
+
+**Backend — new**
+- `scripts/seed_demo_account.py` — plan, `--apply` / `--remove` / dry-run, fingerprint idempotency
+- `services/demo_account_seed.py` — the plan and the writers it drives
+- `quiz/tests/test_demo_account_seed.py`
+
+**Backend — modified (small)**
+- `services/demo_identity.py` — a uuid-shaped demo-account registry beside `DEMO_IDENTITIES`; widen `EXCLUDE_DEMO_SQL`
+- `routes/quiz.py` (2 predicate sites), `quiz/quiz_stats.py`, `quiz/question_performance.py`, `quiz/export_admin_report.py` — no logic change, they already call `exclude_demo_clause()`
+
+**Backend — read and reused, not modified**
+- `services/quiz_helpers.py` — `update_quiz_progress`, `update_category_progress`, `unlock_quiz_achievements`, `get_rank_for_xp`
+- `academy_progression.py` (`ACADEMY_THRESHOLDS`), `ranked_progression.py` (`RANKED_PROMOTION_THRESHOLDS`), `ranked_public/rating.py` (`INITIAL_RATING`, `POLICY_VERSION`), `quiz/taxonomy.py` (`DIFFICULTY_XP`)
+- `ranked_public/persistence.py` — the exact column set `load_history_rows` selects
+
+**Tables written (SQLite, all existing — no migration)**
+`quiz_attempts`, `quiz_sessions`, `quiz_user_progress`, `quiz_category_progress`, `quiz_user_achievements`, `ranked_matches`, `ranked_participants`, `ranked_results`, `ranked_rating_events`, `ranked_ratings`, `ranked_question_discoveries`
+
+**Supabase — no migration**
+`auth.users` (ordinary signup) · `public.profiles` (ordinary edit + one admin `is_bot` update) · `public.admin_set_pro_grant(uuid, text, timestamptz, text)` · optionally `storage.objects` in `profile-photos`
+
+**Frontend — nothing.** Not one file. That is the point: every surface already
+reads Timmy through the hook it uses for any member.
+
+---
+
+### 9. Next implementation step
+
+**§0a has settled every blocking decision but one.** The two Timmys are named
+apart and both kept; the `/dev/lobby-preview` fidelity defect is recorded and
+explicitly out of scope. The single remaining input is **the email address
+Timmy Demo signs up with** — owner-controlled, and not the owner's own account.
+
+Then, in order:
+
+1. Create the auth account and profile; set `is_bot = true`; capture the uuid.
+2. Land the `demo_identity` registry widening **first**, deployed and verified,
+   so no fabricated attempt ever reaches a served aggregate.
+3. Write `seed_demo_account.py` with the §6 plan; prove dry-run, `--apply`,
+   second `--apply` no-op, and `--remove` locally.
+4. Capture a pre-seed fingerprint of every table the seeder must not touch —
+   PT1.9's method, including its row-factory correction — then apply in
+   production over `railway ssh`.
+5. Verify each surface in §6.3 signed in as Timmy, as Free and then as
+   Premium, using the two RPC calls in §5 with a two-minute pause for the
+   entitlement cache.
+
+**Nothing was seeded and no production data was written by this revision.**
+The only thing committed is this document.
+
+---
 
 ## Revision 2026-09-08 — CAPITAL AND BASE **VERIFIED IN PRODUCTION** — side-gutter work CLOSED
 
