@@ -1210,6 +1210,25 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization: "Public — unchanged. Listed so an operator can verify what the pipeline published.",
   },
   {
+    id: "pro-data-coverage",
+    title: "Pro Play Data Coverage",
+    description:
+      "The exact reconciliation of the historical pro corpus: how many canonical games carry Oracle's Elixir statistics, and the mutually exclusive reason every remaining game does not.",
+    area: "game-data",
+    section: "pro-data",
+    kind: "route",
+    path: "/admin/pro-play-coverage",
+    oldLocation: "OE_STATS_HANDOFF.md and hand-run SQL",
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    requiredRole: "master_admin",
+    authorization:
+      "AdminRoute roles={[\"master_admin\"]} + backend require_admin on /api/admin/pro-coverage/*. Read-only; the endpoints perform no writes.",
+    notes:
+      "The league table reads /by-league?limit=500, not summary.by_league, which the server caps at the 60 leagues with the most missing games. Leaguepedia stays canonical for game and result identity; Oracle's Elixir is statistical enrichment and its result disagreements are reported as diagnostics only.",
+  },
+  {
     id: "esports-live",
     title: "Live & Recent Matches",
     description:

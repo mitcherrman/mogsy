@@ -173,6 +173,9 @@ const AdminUserDirectory = lazy(() => import("./pages/admin/AdminUserDirectory")
 // record. Same gate as the user directory; not linked from any consumer nav.
 const AdminDemoAnalytics = lazy(() => import("./pages/admin/AdminDemoAnalytics"));
 
+// Pro Play data coverage — the historical corpus reconciliation, read-only.
+const AdminProCoverage = lazy(() => import("./pages/admin/AdminProCoverage"));
+
 // Combat Sim Battles (CB Phase 3A) — public prediction loop + admin operations.
 const CombatBattlesIndex = lazy(() => import("./pages/CombatBattlesIndex"));
 const CombatBattleDetail = lazy(() => import("./pages/CombatBattleDetail"));
@@ -456,6 +459,10 @@ const App = () => (
                     {/* PT1.9 — synthetic Free/Premium analytics comparison.
                         master_admin only, exactly as the user directory is. */}
                     <Route path="demo-analytics" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminDemoAnalytics /></Suspense></AdminRoute>} />
+                    {/* Pro Play data coverage — read-only reconciliation of the
+                        historical pro corpus. master_admin, as the other
+                        backend-authority admin reads are. */}
+                    <Route path="pro-play-coverage" element={<AdminRoute roles={["master_admin"]}><Suspense fallback={<RouteFallback />}><AdminProCoverage /></Suspense></AdminRoute>} />
                     <Route path="leaguecraft" element={<Suspense fallback={<RouteFallback />}><AdminLeaguecraftPage /></Suspense>} />
                     <Route path="ranked" element={<Suspense fallback={<RouteFallback />}><AdminRankedPage /></Suspense>} />
                     <Route path="simulation" element={<Suspense fallback={<RouteFallback />}><AdminSimulationPage /></Suspense>} />
