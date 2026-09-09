@@ -1,7 +1,9 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 39 (Timmy Demo CREATED, SEEDED AND LIVE in Free; Premium
-     pending one admin action) is at the top of this file.
+<!-- Revision 40 (Timmy Demo v3 — three fixture defects fixed, Premium
+     verified, grant still active) is at the top of this file.
+     Revision 39 created and seeded him; its 4,082 XP / 1,918 figures are
+     superseded by v3's 4,098 / 1,902.
      Revision 38 verified the containment that made it safe to create.
      Revision 37 built the containment and the seed planner it verifies.
      Revision 36 was the data-contract audit it implements — APPROVED, with
@@ -22,6 +24,195 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-09 — TIMMY DEMO **v3 — THREE FIXTURE DEFECTS FIXED, PREMIUM VERIFIED**
+
+Timmy Demo is live, Premium (playtest grant, expires 2026-09-16), and the
+three fixture-quality defects the Premium pass exposed are fixed and reseeded.
+**Premium is deliberately still active** — revocation and the final Free
+confirmation are the next step.
+
+Backend `68e01ddc` · plan `timmy_demo.v3` · fingerprint
+**`e1e0942cae93fa65b95f7bf705326d07…`**
+
+### 1. Why the Free pass missed all three
+
+Every one of these lives on a surface Premium unlocks. The Free verification
+was not negligent; it could not see them. Worth remembering the next time a
+gated feature is signed off from the ungated side.
+
+### 2. The three fixes
+
+**a. Fabricated answers were user-visible.** A wrong answer was manufactured
+as `f"{correct}~alt"`, and the Missed Question Bank rendered it verbatim —
+*"Your answer: 900 gold~alt / Correct answer: 900 gold"* on every row. That
+bank is the headline thing Premium buys, so the demo's main paid feature was
+advertising its own fabrication.
+
+Every question in the plan is `multiple_choice` and stores `choices_json` as a
+plain list of options, one of which is the correct value. A wrong answer is now
+simply **one of the others** — real, plausible, correctly formatted, nothing
+invented and nothing mutated. `bind_questions` over-selects and keeps only
+questions carrying a usable distractor, so one that cannot supply a real
+alternative is replaced rather than faked.
+
+Live result: *"Your answer: 14 seconds / Correct answer: 8 seconds"*,
+*"140 seconds / 130 seconds"*, *"20% / 15%"*.
+
+**b. Quota exhaustion dumped failures at the tail.** Correctness was a purely
+positional script that categories were then poured into, so each category's
+wrong quota drained at whatever rate the script allowed. Once the others were
+exhausted, every remaining failure landed on whichever category still had them:
+**Item Costs ended with 23 consecutive wrong answers**, against a longest run
+of 1–4 everywhere else, and the Trends pane read it at exactly **0.0 %** in
+both recent 30-day windows.
+
+Interleaving from other categories hid it globally — the run is visible only in
+that category's *own* subsequence, which is exactly what a per-category trend
+reads.
+
+Correctness is decided **inside each category** now: the two designed global
+runs are reserved first, then each category spreads its remaining correct
+answers across its remaining positions by Bresenham, which bounds the failure
+run at `ceil(n/k) − 1`. The general planner is fixed; nothing is hand-tuned for
+Item Costs.
+
+The peak run also needed bounding on **both** sides — forcing a miss only to
+its left let it merge rightward and come out at 25 rather than 24.
+
+`ORDINARY_RUN_CAP` is gone. v3 cannot cap global runs, because run length now
+*emerges* from per-category spreading, and a 74 % player genuinely has good
+sittings. The invariant that matters became a measured margin instead —
+`PEAK_CLEARANCE`, asserting the designed peak stays clear of the runner-up
+(24 vs 13).
+
+**c. Future-dated records.** The newest session sat at `day_offset 0`, which
+with the fixed midday time is `as_of` at 12:00 — so a seed run any time before
+noon wrote records in the future. Nine attempts and a session on the run that
+found it. `NEWEST_DAY_OFFSET` pins the newest sitting to yesterday.
+
+Also hardened: `--bank` pointed at a database with no bank (an empty stub,
+which a fresh worktree creates by itself) crashed `_copy_bank`. It degrades to
+unbound now — a dry run must not fail over what the bank *isn't*.
+
+### 3. Regression coverage — seven new tests
+
+No fixture marker in any visible answer (with a real bank built in-test, so it
+cannot pass vacuously) · a wrong answer is one of the question's own options
+and never the correct one · a question with no usable distractor is never bound
+· per-category failure runs bounded, parametrised over all six categories, with
+an explicit no-failure-tail assertion · the designed streaks survive the spread
+· an early-morning `as_of` produces zero future-dated rows and chronological
+ordering.
+
+`quiz/tests` failure set identical to pristine `origin/master` (111 → 111);
+passing 331 → **397**.
+
+### 4. Production v3 state
+
+| | v2 | **v3** |
+|---|---|---|
+| answered / correct / accuracy | 428 / 317 / 74.07 % | **unchanged** |
+| total XP | 4,082 | **4,098** |
+| Academy | Diamond, 1,918 to Challenger | **Diamond, 1,902** (36.6 %) |
+| streak / best | 7 / 24 | **unchanged** |
+| best category | Champion Attack Types 91.38 % | **unchanged** |
+| achievements | 6/6 | **unchanged** |
+| Ranked | 1,218 Gold, 18 rated | **unchanged** |
+| sessions | 46/46 scored | **46/46**, 6 labels + 33 mixed |
+
+XP moved for the same honest reason as before — the allocator changes which
+difficulty cycle each attempt draws. It is an **output**, and was not tuned
+back toward 4,082.
+
+**Longest wrong run per category** — the defect, measured on production:
+
+| category | n | longest wrong run | tail |
+|---|---|---|---|
+| Champion Ability Cooldowns | 132 | 1 | 0 |
+| Item Exact Stats | 84 | 1 | 0 |
+| **Item Costs** | 66 | **3** (was **23**) | 0 |
+| Champion Attack Types | 58 | 1 | 0 |
+| Champion Resources | 51 | 1 | 0 |
+| Runes | 37 | 1 | 0 |
+
+**Timestamps:** newest attempt `2026-09-08 12:59`, newest session
+`2026-09-08 12:09`, server `2026-09-09 05:45` — **0 future attempts, 0 future
+sessions**.
+
+**Distractors:** 428 attempts, **0** containing any fixture marker; **0** wrong
+attempts whose answer equals the correct one.
+
+### 5. Idempotency and containment
+
+Applied once; the immediate re-apply printed *"unchanged — the stored
+fingerprint matches this plan; nothing was written"*.
+
+Every protected table and all four consumer aggregates identical to the
+pre-seed fingerprint. `/api/quiz/stats` still serves **11,224 @ 13.02 %**.
+`demo::timmy` untouched at 302 / 60. The original 63 `ranked_matches` re-hash
+to `026d91e4c4531cd4`, byte-identical.
+
+**Two things the probe flagged that are not containment failures**, both
+verified individually rather than waved away:
+
+* **Two new `ranked_matches`** are `bot_playtest` matches belonging to a
+  *different real account* (`46d66a59-…`), created at 04:10 and 04:21 while
+  this work ran. Timmy is not a participant. The probe snapshots a live table
+  unfiltered, so ordinary production activity shows up in it.
+* **One `ranked_queue_entries` row for Timmy**, status **`cancelled`**,
+  `user_requested`, enqueued 04:09:58 and cancelled 04:09:59 — created by the
+  Playwright visit to `/quiz` during the Premium capture, because the Ranked
+  lobby joins on mount and cancels on unmount. The seeder fabricates none (a
+  test asserts it). He is **not** live in the queue, so he cannot be paired,
+  and all eight queue rows in production are cancelled. Left in place: it is
+  genuine history, not fabrication.
+
+### 6. Premium verification (v3, grant still active)
+
+| surface | Free | **Premium** |
+|---|---|---|
+| `/api/quiz/history` | 10 of 46 + upsell | **46 of 46, `limited=false`** |
+| `/api/quiz/missed-questions` | locked, 0 | **unlocked, 111** |
+| analytics capability | — | **`can_view_trends=true`, [7,30,90], `reason=premium`** |
+| Academy Record band | `ACADEMY RECORD` | **`ACADEMY RECORD · MEMBER`** |
+| Commons mount | `ACADEMY MEMBERSHIP / Explore Premium` | **`MEMBER IN GOOD STANDING / View Premium`** |
+
+**Trends, 30-day window — the pane that read 0.0 %:**
+
+```
+tier=premium   current 99 @ 77.78%   previous 90 @ 70.0%   improving +7.78
+  Item Costs                    6/12   50.00%  prev 33.33%  improving
+  Item Exact Stats             15/21   71.43%  prev 66.67%  steady
+  Runes                         8/10   80.00%  prev 75.00%  insufficient
+  Champion Ability Cooldowns   27/33   81.82%  prev 81.48%  steady
+  Champion Resources            9/10   90.00%  prev 85.71%  steady
+  Champion Attack Types        12/13   92.31%  prev 88.89%  steady
+```
+
+**No fixture marker appears anywhere user-visible** — Missed Question Bank,
+Quiz History and Profile were each scanned for `~alt`/`~fixture`/`PLACEHOLDER`
+in the rendered DOM: none.
+
+### 7. Cleanup / reseed
+
+```bash
+python3 scripts/seed_demo_account.py --remove --db /data/lol_calc.db \
+  --user-id d1f43bfb-a51b-4055-ae83-c790c8ad2348
+python3 scripts/seed_demo_account.py --user-id d1f43bfb-a51b-4055-ae83-c790c8ad2348 \
+  --as-of 2026-09-09 --db /data/lol_calc.db --apply
+```
+
+### 8. Outstanding
+
+* **Premium is still granted** — revoke via the Lovable admin path, then the
+  final Free-state confirmation.
+* One anonymous `auth.users` row from UUID resolution; `purge-anonymous-users`
+  is admin-gated.
+* Timmy's password was shared in plaintext in the working transcript — worth
+  rotating at close-out.
+
+---
 
 ## Revision 2026-09-09 — TIMMY DEMO **CREATED, SEEDED AND LIVE (FREE)** — Premium pending one admin action
 
