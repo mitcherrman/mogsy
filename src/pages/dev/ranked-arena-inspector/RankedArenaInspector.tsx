@@ -881,39 +881,73 @@ const DISCOVERY_FIXTURE = {
 };
 
 // ---- RR1 slice pass fixtures -------------------------------------------
-// Built by the PRODUCTION adapter from real wire-shaped semantics, so these
-// cases cannot drift from what a live slice renders.
-const SLICE_ABILITY_SCENARIO = scenarioSourceForMasteryChallenge({
-  challengeIndex: 0, interactionKind: "atomic_recall",
-  questionFamily: "ability_cooldown_at_rank", prompt: "Ahri Q — ability_cooldown",
-  answerType: "numeric", answerOptions: [], comparisonSemantics: null,
-  promptSemantics: {
-    template: "ability_cooldown_at_rank", champion_display: "Ahri",
-    metric: "ability_cooldown", subject_ref: "Q", ability_name: "Orb of Deception",
-    context: { ability_rank: 3, champion_level: null, form: null },
-  },
+// Fed through the PRODUCTION adapter, from payloads copied VERBATIM out of
+// `ranked_public.presentation_render.presentation_for_question` for the
+// corresponding Mastery family. Since RR1 Stage 1 the media is built on the
+// server, so a hand-written semantics payload here would no longer exercise
+// anything a live slice does — the server's own output is the fixture.
+//
+// Note `ability_name: "Orb of Deception"` and a real `Q_AhriQ.png`: the
+// premise carries only the SLOT, and resolving it to a name and a verified
+// icon is precisely what the client cannot do.
+const sliceChallenge = (challengeIndex: number, interactionKind: string,
+                        presentation: Record<string, unknown>) => ({
+  challengeIndex, interactionKind, questionFamily: "ability_cooldown",
+  prompt: "", answerType: "numeric" as const, answerOptions: [],
+  promptSemantics: null, comparisonSemantics: null, presentation,
 });
-const SLICE_STAT_SCENARIO = scenarioSourceForMasteryChallenge({
-  challengeIndex: 1, interactionKind: "atomic_recall",
-  questionFamily: "champion_stat_at_level", prompt: "Ahri — base_armor",
-  answerType: "numeric", answerOptions: [], comparisonSemantics: null,
-  promptSemantics: {
-    template: "champion_stat_at_level", champion_display: "Ahri",
-    metric: "base_armor", subject_ref: "", ability_name: "",
-    context: { ability_rank: null, champion_level: 9, form: null },
-  },
-});
-const SLICE_MATCHUP_SCENARIO = scenarioSourceForMasteryChallenge({
-  challengeIndex: 2, interactionKind: "comparison_left_right",
-  questionFamily: "compare_ability_cooldown", prompt: "Ahri vs Syndra — W cooldown",
-  answerType: "single_choice", answerOptions: ["Ahri", "Syndra"], promptSemantics: null,
-  comparisonSemantics: {
-    template: "compare_ability_cooldown", champion_a_display: "Ahri",
-    champion_b_display: "Syndra", metric: "ability_cooldown", dimension: "seconds",
-    subject_ref: "W", unit: "s",
-    context: { ability_rank: 1, champion_level: null, form: null },
-  },
-});
+
+const CONTEXT_FLAGS = { role: "context", timing: "question", spoiler: false };
+
+const SLICE_ABILITY_SCENARIO = scenarioSourceForMasteryChallenge(
+  sliceChallenge(0, "atomic_recall", {
+    assets: {
+      subject: {
+        type: "combat_cooldown", champion: "Ahri",
+        champion_icon: "assets/champions/Ahri/icon.png",
+        ability_slot: "Q", ability_name: "Orb of Deception",
+        ability_icon: "assets/champions/Ahri/Q_AhriQ.png",
+        champion_splash: "assets/champions/Ahri/splash/0_default.jpg",
+        champion_loading: "assets/champions/Ahri/loading/0_default.jpg",
+        badge: "Champion Mastery", ability_rank: 3,
+      },
+    },
+    presentation: CONTEXT_FLAGS,
+  }),
+);
+const SLICE_STAT_SCENARIO = scenarioSourceForMasteryChallenge(
+  sliceChallenge(1, "atomic_recall", {
+    assets: {
+      subject: {
+        type: "combat_cooldown", champion: "Ahri",
+        champion_icon: "assets/champions/Ahri/icon.png",
+        champion_splash: "assets/champions/Ahri/splash/0_default.jpg",
+        champion_loading: "assets/champions/Ahri/loading/0_default.jpg",
+        // No ability: a champion-level stat question names none, so the
+        // metric label carries the subject instead.
+        badge: "Base Armor", level: 9,
+      },
+    },
+    presentation: CONTEXT_FLAGS,
+  }),
+);
+const SLICE_MATCHUP_SCENARIO = scenarioSourceForMasteryChallenge(
+  sliceChallenge(2, "comparison_left_right", {
+    assets: {
+      subject: {
+        type: "matchup", champion_a: "Ahri", champion_b: "Syndra",
+        badge: "Matchup",
+        champion_a_splash: "assets/champions/Ahri/splash/0_default.jpg",
+        champion_a_icon: "assets/champions/Ahri/icon.png",
+        champion_b_splash: "assets/champions/Syndra/splash/0_default.jpg",
+        champion_b_icon: "assets/champions/Syndra/icon.png",
+        ability_slot: "W", ability_name: "Ability W",
+        metric_label: "Cooldown", ability_rank: 1,
+      },
+    },
+    presentation: CONTEXT_FLAGS,
+  }),
+);
 
 // The SSM slice, as the backend now emits it. Copied verbatim from
 // `ranked_public.mastery_slices._phase_presentation` output for the

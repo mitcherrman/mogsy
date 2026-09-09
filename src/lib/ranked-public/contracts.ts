@@ -232,6 +232,22 @@ export interface MasterySliceChallengeView {
   /** Raw backend `comparison_semantics` dict, present only for
    *  `comparison_left_right`. */
   comparisonSemantics: Record<string, unknown> | null;
+  /**
+   * The server-built premise media for this challenge, or `null`.
+   *
+   * RR1 Stage 1. The same `{assets: {subject}, presentation: {...}}` blob
+   * every pooled Ranked question carries, built by
+   * `quiz.presentation_contract` and rendered by
+   * `ranked_public.presentation_render` — one registry, one set of rules, one
+   * place a family's media is declared. It is the WHOLE of what the client
+   * knows about how a Mastery question is drawn; nothing here derives media
+   * from the semantics any more.
+   *
+   * `null` for every segment frozen before Stage 1 shipped, and for a premise
+   * the server could not resolve. Both mean "no media", which is the compact
+   * rendering a slice already had.
+   */
+  presentation?: Record<string, unknown> | null;
 }
 
 // ------------------------------------------------- Meta Reflex cards (v4)
@@ -374,6 +390,9 @@ export interface MasterySliceChallengeView {
   answerOptions: string[];
   promptSemantics: Record<string, unknown> | null;
   comparisonSemantics: Record<string, unknown> | null;
+  /** See the copy above — TypeScript MERGES these two declarations, so the
+   *  members have to be kept in step by hand until one of them is deleted. */
+  presentation?: Record<string, unknown> | null;
 }
 
 /**
@@ -963,6 +982,10 @@ function readMasterySliceChallenge(v: unknown, label: string): MasterySliceChall
       ? null : rec(c.prompt_semantics, `${label}.prompt_semantics`),
     comparisonSemantics: c.comparison_semantics === null || c.comparison_semantics === undefined
       ? null : rec(c.comparison_semantics, `${label}.comparison_semantics`),
+    // Absent on every segment frozen before RR1 Stage 1, so it is read as
+    // optional rather than required — a historical round must keep parsing.
+    presentation: c.presentation === null || c.presentation === undefined
+      ? null : rec(c.presentation, `${label}.presentation`),
   };
 }
 
