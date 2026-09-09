@@ -10790,45 +10790,6 @@ html.hub-commons-in-view .hextech-ambience-layer {
   color: #3a3126;
 }
 
-/* The Step 1 selection panel. A statement of what was chosen, not a dossier.
-   Sticky because the board is five lanes tall: a panel pinned under the last
-   lane is no feedback at all for a tile clicked in the first. Step 2 replaces
-   it with the real drawer. */
-.proplay-dossier .dossier-champsel {
-  position: sticky;
-  bottom: 0.5rem;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 0.6rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid rgba(93, 85, 70, 0.28);
-  border-left: 3px solid rgba(26, 96, 104, 0.55);
-  border-radius: 8px;
-  background: rgba(252, 248, 236, 0.97);
-  box-shadow: 0 6px 20px rgba(20, 16, 10, 0.28);
-  backdrop-filter: blur(2px);
-}
-.proplay-dossier .dossier-champsel__id {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
-}
-.proplay-dossier .dossier-champsel__text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-  font-size: 0.72rem;
-  min-width: 0;
-}
-.proplay-dossier .dossier-champsel__note {
-  flex: 1 1 12rem;
-  font-size: 0.62rem;
-  color: var(--dsr-ink-soft);
-}
 
 .proplay-dossier .dossier-player__figures,
 .proplay-dossier .dossier-teamsum__figures {
@@ -11228,45 +11189,6 @@ html.hub-commons-in-view .hextech-ambience-layer {
   color: #3a3126;
 }
 
-/* The Step 1 selection panel. A statement of what was chosen, not a dossier.
-   Sticky because the board is five lanes tall: a panel pinned under the last
-   lane is no feedback at all for a tile clicked in the first. Step 2 replaces
-   it with the real drawer. */
-.proplay-dossier .dossier-champsel {
-  position: sticky;
-  bottom: 0.5rem;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 0.6rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid rgba(93, 85, 70, 0.28);
-  border-left: 3px solid rgba(26, 96, 104, 0.55);
-  border-radius: 8px;
-  background: rgba(252, 248, 236, 0.97);
-  box-shadow: 0 6px 20px rgba(20, 16, 10, 0.28);
-  backdrop-filter: blur(2px);
-}
-.proplay-dossier .dossier-champsel__id {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  min-width: 0;
-}
-.proplay-dossier .dossier-champsel__text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-  font-size: 0.72rem;
-  min-width: 0;
-}
-.proplay-dossier .dossier-champsel__note {
-  flex: 1 1 12rem;
-  font-size: 0.62rem;
-  color: var(--dsr-ink-soft);
-}
 
 .proplay-dossier .dossier-player__figures,
   .proplay-dossier .dossier-teamsum__figures {
@@ -11342,4 +11264,213 @@ html.hub-commons-in-view .hextech-ambience-layer {
 .proplay-dossier .dossier-pool__ornament::after {
   content: " · ";
   letter-spacing: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   The player x champion dossier drawer.
+
+   NAMESPACED THE SAME WAY, AND FOR A SHARPER REASON. A Radix sheet renders in
+   a PORTAL at the document root, so the drawer is not inside the Explorer's
+   subtree at all — the `proplay-dossier` class travels on the sheet's own
+   content element, which is what brings the --dsr-* tokens with it. Without
+   that the drawer would inherit the app shell and none of the folio would
+   apply.
+
+   Parchment, not folio: this is a sheet pulled from the file, so it reuses the
+   warm insert the lane plates use rather than the dark cover.
+--------------------------------------------------------------------------- */
+.proplay-dossier.dossier-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  padding: 1.1rem 1.15rem 1.5rem;
+  border-left: 1px solid var(--dsr-gold-dim);
+  background:
+    linear-gradient(180deg, rgba(252, 248, 236, 0.99), rgba(243, 236, 218, 0.99));
+  color: var(--dsr-ink);
+}
+
+.proplay-dossier .dossier-drawer__id {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-right: 1.75rem; /* clear of the sheet's own close button */
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(93, 85, 70, 0.22);
+}
+.proplay-dossier .dossier-drawer__idtext {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-drawer__name {
+  font-family: var(--dsr-display, inherit);
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-drawer__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-drawer__crest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-weight: 600;
+  color: #3a3126;
+}
+.proplay-dossier .dossier-drawer__crest .dossier-slot {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+}
+.proplay-dossier .dossier-drawer__scope {
+  padding: 0.05rem 0.4rem;
+  border: 1px solid rgba(26, 96, 104, 0.4);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #1a6068;
+}
+
+.proplay-dossier .dossier-drawer__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+/* The summary band. `auto-fit` rather than a fixed count so the four figures
+   sit on one row on a wide drawer and reflow to two on a phone without a
+   second breakpoint. */
+.proplay-dossier .dossier-drawer__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+}
+.proplay-dossier .dossier-drawer__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(93, 85, 70, 0.2);
+  border-left: 3px solid var(--dsr-gold-dim);
+  border-radius: 6px;
+  background: rgba(255, 253, 246, 0.75);
+  min-width: 0;
+}
+.proplay-dossier .dossier-drawer__statlabel {
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-drawer__statvalue {
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: var(--dsr-ink);
+  overflow-wrap: anywhere;
+}
+.proplay-dossier .dossier-drawer__stathint {
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: #1a6068;
+}
+
+/* Recent form. */
+.proplay-dossier .dossier-drawer__form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.proplay-dossier .dossier-drawer__formrow {
+  display: inline-flex;
+  gap: 0.22rem;
+}
+.proplay-dossier .dossier-drawer__formglyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 4px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: help;
+}
+.proplay-dossier .dossier-drawer__formglyph--w {
+  border: 1px solid rgba(26, 96, 104, 0.5);
+  background: rgba(79, 209, 217, 0.18);
+  color: #14555c;
+}
+.proplay-dossier .dossier-drawer__formglyph--l {
+  border: 1px solid rgba(120, 74, 54, 0.4);
+  background: rgba(160, 96, 66, 0.14);
+  color: #7a3f26;
+}
+
+/* The comparison table. Dense on purpose — League readers read tables — but in
+   the folio's own hand rather than a statistics site's. `overflow-x` lives on
+   the table's own wrapper role here: the drawer itself never scrolls
+   sideways. */
+.proplay-dossier .dossier-drawer__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.proplay-dossier .dossier-drawer__table th,
+.proplay-dossier .dossier-drawer__table td {
+  padding: 0.32rem 0.45rem;
+  text-align: right;
+  border-bottom: 1px solid rgba(93, 85, 70, 0.16);
+}
+.proplay-dossier .dossier-drawer__table thead th {
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dsr-ink-soft);
+  border-bottom: 1px solid var(--dsr-gold-dim);
+}
+.proplay-dossier .dossier-drawer__table th[scope="row"],
+.proplay-dossier .dossier-drawer__table thead th:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: #3a3126;
+}
+.proplay-dossier .dossier-drawer__table tbody tr:last-child th,
+.proplay-dossier .dossier-drawer__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.proplay-dossier .dossier-drawer__empty {
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-drawer__fineprint {
+  font-size: 0.62rem;
+  line-height: 1.5;
+  color: var(--dsr-ink-soft);
+}
+
+@media (max-width: 640px) {
+  /* Full width on a phone; the sheet is the page. */
+  .proplay-dossier.dossier-drawer {
+    padding: 0.9rem 0.85rem 1.25rem;
+  }
+  .proplay-dossier .dossier-drawer__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

@@ -57,7 +57,7 @@ import {
   BoardSelectionProvider,
   type ChampionSelection,
 } from "@/components/pro-play/dossier/BoardSelection";
-import { ChampionIcon } from "@/components/pro-play/dossier/DossierMedia";
+import PlayerChampionDrawer from "@/components/pro-play/dossier/PlayerChampionDrawer";
 import {
   type MatchupContract,
   type TeamMatchupResponse,
@@ -159,42 +159,6 @@ function TeamBanBar({
  * Step 2 adds and this step was told not to start. An empty panel promising
  * numbers would be worse than a panel that says what it is.
  */
-function ChampionSelectionShell({
-  selection,
-  onClose,
-}: {
-  selection: ChampionSelection;
-  onClose: () => void;
-}) {
-  return (
-    <div className="dossier-champsel" data-testid="champion-selection-shell" role="status">
-      <div className="dossier-champsel__id">
-        <ChampionIcon champion={selection.champion} />
-        <span className="dossier-champsel__text">
-          <strong>{selection.champion}</strong>
-          <span className="dossier-muted">
-            {selection.display_name} · {selection.team_key} · {selection.lane} ·{" "}
-            {selection.scope_label}
-            {selection.opponent_team_key ? ` · vs ${selection.opponent_team_key}` : ""}
-          </span>
-        </span>
-      </div>
-      <span className="dossier-champsel__note">
-        The player × champion dossier is the next step; this selection is what it
-        will be built from.
-      </span>
-      <button
-        type="button"
-        className="dossier-btn"
-        data-testid="champion-selection-close"
-        onClick={onClose}
-      >
-        Clear
-      </button>
-    </div>
-  );
-}
-
 export function TeamBoard({
   contract,
   data,
@@ -210,11 +174,10 @@ export function TeamBoard({
   const headerB = data.teams.b;
   const configured = Boolean(headerA && headerB);
 
-  // STEP 1 STOPS HERE ON PURPOSE. A champion click settles who/which/against
-  // whom/in what scope and nothing else: no request is made, no contract is
-  // invented, and the panel below states plainly that the detail is not built
-  // yet rather than showing an empty frame that looks broken. Step 2 replaces
-  // the panel and keeps this state.
+  // A champion click settles who/which/against whom/in what scope; the drawer
+  // turns that into one request. The state stays HERE rather than inside the
+  // drawer because the tile's pressed state and the board's clear-on-change
+  // rule both read it.
   const [selectedChampion, setSelectedChampion] = useState<ChampionSelection | null>(null);
 
   // Clearing on a scope or team change is the honest default: a selection made
@@ -304,12 +267,13 @@ export function TeamBoard({
               ))}
             </div>
           </BoardSelectionProvider>
-          {selectedChampion ? (
-            <ChampionSelectionShell
-              selection={selectedChampion}
-              onClose={() => setSelectedChampion(null)}
-            />
-          ) : null}
+          {/* STEP 2: the real dossier. The drawer owns the request; the board
+              owns only which question is being asked. Rendered unconditionally
+              so the sheet can animate closed rather than vanishing. */}
+          <PlayerChampionDrawer
+            selection={selectedChampion}
+            onClose={() => setSelectedChampion(null)}
+          />
           {/* The no-head-to-head guarantee is carried by the section's own
               eyebrow and by this one line, not by a boxed disclaimer above ten
               records. The server's sentence is still printed verbatim — it is

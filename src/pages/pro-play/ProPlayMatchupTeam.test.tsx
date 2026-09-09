@@ -531,8 +531,120 @@ const LANE_RESPONSE = {
 
 let team = teamResponse();
 
+// --- the player x champion dossier -----------------------------------------
+// Ornn for T1's Top laner: 3 of 40 games, 2-1, with one game against the team
+// on the other side of the board. Every figure below is arithmetic, so a test
+// that reads the wrong field reads a number that cannot be confused with
+// another one.
+function dossierResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    contract_version: "pro_comparison_v1",
+    entity: {
+      kind: "player_champion_dossier",
+      player_lp_page: "Doran (Choi Hyeon-joon)",
+      display_name: "Doran",
+      champion_key: "Ornn",
+      teams_in_scope: ["T1"],
+      opponent_team_key: "Bilibili Gaming",
+      opponent_display_name: "Bilibili Gaming",
+    },
+    scope: { scope_id: "current_2026", label: "2026", kind: "season" },
+    league_filter: "curated",
+    head_to_head: false,
+    participation: "participated",
+    player_games_in_scope: 40,
+    player_games_vs_opponent: 6,
+    overall: {
+      games: 3,
+      wins: 2,
+      losses: 1,
+      win_rate: 2 / 3,
+      first_played_at: "2026-02-01 10:00:00",
+      last_played_at: "2026-07-08 08:52:00",
+    },
+    versus_opponent: {
+      games: 1,
+      wins: 1,
+      losses: 0,
+      win_rate: 1,
+      first_played_at: "2026-06-14 08:27:00",
+      last_played_at: "2026-06-14 08:27:00",
+    },
+    champion_share: 3 / 40,
+    recent_form: [
+      {
+        canonical_game_id: "g3",
+        win: false,
+        result: "L",
+        game_date: "2026-07-08 08:52:00",
+        team_key: "T1",
+        opponent_team_key: "G2 Esports",
+        league_slug: "LCK",
+        tournament_id: null,
+      },
+      {
+        canonical_game_id: "g2",
+        win: true,
+        result: "W",
+        game_date: "2026-06-14 08:27:00",
+        team_key: "T1",
+        opponent_team_key: "Bilibili Gaming",
+        league_slug: "LCK",
+        tournament_id: null,
+      },
+      {
+        canonical_game_id: "g1",
+        win: true,
+        result: "W",
+        game_date: "2026-02-01 10:00:00",
+        team_key: "T1",
+        opponent_team_key: "KT Rolster",
+        league_slug: "LCK",
+        tournament_id: null,
+      },
+    ],
+    recent_form_total: 3,
+    ban_pressure: {
+      overall: {
+        banned_in: 7,
+        drafts_with_ban_record: 40,
+        games_without_ban_record: 0,
+        rate: 7 / 40,
+      },
+      versus_opponent: {
+        banned_in: 3,
+        drafts_with_ban_record: 6,
+        games_without_ban_record: 0,
+        rate: 0.5,
+      },
+    },
+    unavailable_metrics: [
+      {
+        metric: "average_kda",
+        label: "Average KDA",
+        reason:
+          "The professional corpus records who played what, for whom, and whether they won \u2014 it carries no kills, deaths or assists for any game.",
+      },
+    ],
+    definitions: {
+      champion_games:
+        "Games this player played this champion in the selected scope, over their total games in that scope.",
+      versus_opponent:
+        "The same record, restricted to this player's games against the other team in the matchup on screen.",
+      recent_form:
+        "This player's most recent games on this champion in the selected scope, newest first. Only games that exist are shown.",
+      ban_pressure:
+        "How often the opposing team banned this champion in games involving this player, out of the games whose opposing-side ban record exists. It is contextual draft behaviour, not a claim about why.",
+    },
+    ...overrides,
+  };
+}
+
+let dossier: ReturnType<typeof dossierResponse>;
+
 beforeEach(() => {
   requests.length = 0;
+  dossier = dossierResponse();
   team = teamResponse();
   vi.stubGlobal(
     "fetch",
@@ -543,6 +655,9 @@ beforeEach(() => {
       let status = 404;
       if (url.includes("/matchup/contract")) {
         body = CONTRACT;
+        status = 200;
+      } else if (url.includes("/matchup/player-champion")) {
+        body = dossier;
         status = 200;
       } else if (url.includes("/matchup/team")) {
         // Reflect the requested bans back, the way the server does, so a test
@@ -1383,23 +1498,39 @@ describe("the unified board", () => {
     expect(screen.getByTestId("lane-drilldown-Top")).toHaveTextContent(/Open lane dossier/i);
   });
 
-  it("settles a player + champion + opponent + scope when a tile is clicked", async () => {
-    // STEP 1'S DELIVERABLE. Not a dossier — the question a dossier would
-    // answer, captured in a shape Step 2 can be written against.
+  it("opens the dossier drawer on the right player, champion, team and scope", async () => {
     await renderBoard();
-    expect(screen.queryByTestId("champion-selection-shell")).toBeNull();
+    expect(screen.queryByTestId("player-champion-drawer")).toBeNull();
 
     const top = screen.getByTestId("lane-card-Top");
     const t1 = within(top).getByTestId("lane-Top-T1");
     fireEvent.click(within(t1).getAllByTestId("champ-chip-Ornn")[0]);
 
-    const shell = await screen.findByTestId("champion-selection-shell");
-    expect(shell).toHaveTextContent("Ornn");
-    expect(shell).toHaveTextContent("T1");
-    expect(shell).toHaveTextContent("Top");
-    expect(shell).toHaveTextContent("2026");
-    // The opponent is what makes the Step 2 question contextual.
-    expect(shell).toHaveTextContent("Bilibili Gaming");
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    const id = within(drawer).getByTestId("dossier-drawer-identity");
+    expect(id).toHaveTextContent("Ornn");
+    expect(id).toHaveTextContent("T1");
+    expect(id).toHaveTextContent("Top");
+    expect(id).toHaveTextContent("2026");
+    // The opponent is what makes the question contextual.
+    expect(id).toHaveTextContent("Bilibili Gaming");
+  });
+
+  it("asks the server for exactly the clicked context", async () => {
+    await renderBoard();
+    const t1 = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(t1).getAllByTestId("champ-chip-Ornn")[0]);
+    await screen.findByTestId("player-champion-drawer");
+
+    await waitFor(() => {
+      const url = requests.find((u) => u.includes("/matchup/player-champion"));
+      expect(url).toBeTruthy();
+      const params = new URLSearchParams(String(url).split("?")[1]);
+      expect(params.get("champion")).toBe("Ornn");
+      expect(params.get("opponent")).toBe("Bilibili Gaming");
+      expect(params.get("scope")).toBe("current_2026");
+      expect(params.get("player")).toBeTruthy();
+    });
   });
 
   it("marks the selected tile and lets it be unselected", async () => {
@@ -1409,9 +1540,12 @@ describe("the unified board", () => {
 
     fireEvent.click(tile);
     expect(tile).toHaveAttribute("aria-pressed", "true");
+    await screen.findByTestId("player-champion-drawer");
     fireEvent.click(tile);
     expect(tile).toHaveAttribute("aria-pressed", "false");
-    expect(screen.queryByTestId("champion-selection-shell")).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId("player-champion-drawer")).toBeNull(),
+    );
   });
 
   it("drops a selection when the scope changes", async () => {
@@ -1420,15 +1554,290 @@ describe("the unified board", () => {
     await renderBoard();
     const t1 = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
     fireEvent.click(within(t1).getAllByTestId("champ-chip-Ornn")[0]);
-    await screen.findByTestId("champion-selection-shell");
+    await screen.findByTestId("player-champion-drawer");
 
     fireEvent.click(screen.getByTestId("dossier-scope-all_time"));
-    await waitFor(() => expect(screen.queryByTestId("champion-selection-shell")).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByTestId("player-champion-drawer")).toBeNull(),
+    );
   });
 
   it("shows a compact pool by default and never names the preview count", async () => {
     await renderBoard();
     const board = screen.getByTestId("lane-board");
     expect(board.textContent).not.toMatch(/top \d+|first \d+|cap \d+/i);
+  });
+});
+
+// --- the player x champion dossier drawer -----------------------------------
+//
+// Step 2's deliverable. Each test pins either a figure the drawer must get
+// right, or a claim it must never make.
+
+describe("player x champion dossier", () => {
+  async function openDrawer(champion = "Ornn", lane = "Top", team = "T1") {
+    await renderBoard();
+    const card = within(screen.getByTestId(`lane-card-${lane}`)).getByTestId(
+      `lane-${lane}-${team}`,
+    );
+    fireEvent.click(within(card).getAllByTestId(`champ-chip-${champion}`)[0]);
+    return screen.findByTestId("player-champion-drawer");
+  }
+
+  it("states the champion games over the player's total games in scope", async () => {
+    // THE RATIO IS THE POINT, and it is not called a share: "3 / 40 total
+    // games" says the relationship directly.
+    const drawer = await openDrawer();
+    expect(await within(drawer).findByTestId("dossier-drawer-ratio")).toHaveTextContent(
+      "3 / 40 total games",
+    );
+  });
+
+  it("never labels the ratio a team, pool or champion share", async () => {
+    // Rejected by the owner as confusing. The words must not come back.
+    const drawer = await openDrawer();
+    await within(drawer).findByTestId("dossier-drawer-summary");
+    expect(drawer.textContent).not.toMatch(/team share|pool share|champion share/i);
+  });
+
+  it("shows the overall record and win rate from the payload", async () => {
+    const drawer = await openDrawer();
+    expect(await within(drawer).findByTestId("dossier-drawer-record")).toHaveTextContent(
+      "2–1",
+    );
+    expect(within(drawer).getByTestId("dossier-drawer-winrate")).toHaveTextContent(
+      "66.7%",
+    );
+    expect(within(drawer).getByTestId("dossier-drawer-recent")).toHaveTextContent(
+      "2026-07-08",
+    );
+  });
+
+  it("renders recent form newest first and never pads it", async () => {
+    const drawer = await openDrawer();
+    const strip = await within(drawer).findByTestId("dossier-drawer-form");
+    const glyphs = within(strip).getAllByTestId("dossier-drawer-form-glyph");
+    // The payload's order is 2026-07-08 (L), 2026-06-14 (W), 2026-02-01 (W).
+    expect(glyphs.map((g) => g.textContent)).toEqual(["L", "W", "W"]);
+    // Three games means three glyphs — not a five-slot strip with two blanks.
+    expect(glyphs).toHaveLength(3);
+    expect(strip).toHaveTextContent("3 games");
+  });
+
+  it("carries each result's date and opponent without printing them", async () => {
+    const drawer = await openDrawer();
+    const strip = await within(drawer).findByTestId("dossier-drawer-form");
+    const [first] = within(strip).getAllByTestId("dossier-drawer-form-glyph");
+    expect(first).toHaveAttribute("title", expect.stringContaining("2026-07-08"));
+    expect(first).toHaveAttribute("title", expect.stringContaining("G2 Esports"));
+  });
+
+  it("says 'last N of M' when the strip is capped", async () => {
+    dossier = dossierResponse({ recent_form_total: 11 });
+    const drawer = await openDrawer();
+    const strip = await within(drawer).findByTestId("dossier-drawer-form");
+    expect(strip).toHaveTextContent("last 3 of 11");
+  });
+
+  it("keeps Overall and the opponent column as distinct aggregates", async () => {
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    // Overall 3 games / 2–1; against this opponent 1 game / 1–0. Two columns
+    // of the same metric, and the figures must not be the same one twice.
+    const games = within(table).getByTestId("row-games");
+    expect(within(games).getAllByRole("cell").map((c) => c.textContent)).toEqual([
+      "3",
+      "1",
+    ]);
+    const record = within(table).getByTestId("row-record");
+    expect(within(record).getAllByRole("cell").map((c) => c.textContent)).toEqual([
+      "2–1",
+      "1–0",
+    ]);
+  });
+
+  it("heads the opponent column with the team on the other side of the board", async () => {
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    expect(within(table).getByRole("columnheader", { name: /vs Bilibili Gaming/i }))
+      .toBeInTheDocument();
+  });
+
+  it("shows ban pressure with its numerator and denominator, not a bare rate", async () => {
+    const drawer = await openDrawer();
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    const row = within(table).getByTestId("row-banpressure");
+    const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
+    expect(cells[0]).toBe("7 / 40 · 17.5%");
+    expect(cells[1]).toBe("3 / 6 · 50.0%");
+  });
+
+  it("never says the opponent banned the champion because of this player", async () => {
+    const drawer = await openDrawer();
+    await within(drawer).findByTestId("dossier-drawer-table");
+    expect(drawer.textContent).toMatch(/ban pressure/i);
+    expect(drawer.textContent).not.toMatch(/banned because|to deny|targeted|respect ban/i);
+  });
+
+  it("names Average KDA as unavailable rather than leaving an empty cell", async () => {
+    const drawer = await openDrawer();
+    const note = await within(drawer).findByTestId("dossier-drawer-unavailable");
+    expect(note).toHaveTextContent(/Average KDA is not available/i);
+    expect(note).toHaveTextContent(/no kills, deaths or assists/i);
+    // And no KDA row was invented anywhere.
+    const table = within(drawer).getByTestId("dossier-drawer-table");
+    expect(table.textContent).not.toMatch(/kda/i);
+  });
+
+  it("never introduces a player-versus-player reading", async () => {
+    // The opponent axis is a TEAM. Champion-v-champion study is a later layer
+    // and must not be implied by anything on this screen.
+    const drawer = await openDrawer();
+    await within(drawer).findByTestId("dossier-drawer-table");
+    expect(drawer.textContent).not.toMatch(
+      /head-to-head|head to head|series score|matchup record|will start|predicted/i,
+    );
+  });
+
+  it("prints the server's own definitions rather than its own wording", async () => {
+    const drawer = await openDrawer();
+    const fine = await within(drawer).findByTestId("dossier-drawer-definitions");
+    expect(fine).toHaveTextContent(
+      "Games this player played this champion in the selected scope",
+    );
+    expect(fine).toHaveTextContent("contextual draft behaviour");
+  });
+
+  it("is honest when the player never played the champion in the scope", async () => {
+    dossier = dossierResponse({
+      overall: {
+        games: 0,
+        wins: 0,
+        losses: 0,
+        win_rate: null,
+        first_played_at: null,
+        last_played_at: null,
+      },
+      versus_opponent: {
+        games: 0,
+        wins: 0,
+        losses: 0,
+        win_rate: null,
+        first_played_at: null,
+        last_played_at: null,
+      },
+      champion_share: 0,
+      recent_form: [],
+      recent_form_total: 0,
+    });
+    const drawer = await openDrawer();
+    const zero = await within(drawer).findByTestId("dossier-drawer-zero");
+    expect(zero).toHaveTextContent("did not play Ornn in any of them");
+    // No fabricated rate, and no empty table pretending to hold figures.
+    expect(drawer.textContent).not.toMatch(/0\.0%/);
+    expect(within(drawer).queryByTestId("dossier-drawer-table")).toBeNull();
+  });
+
+  it("distinguishes 'did not participate' from a record of zeroes", async () => {
+    dossier = dossierResponse({
+      participation: "did_not_participate",
+      player_games_in_scope: 0,
+      overall: null,
+      versus_opponent: null,
+      ban_pressure: null,
+      recent_form: [],
+      recent_form_total: 0,
+    });
+    const drawer = await openDrawer();
+    const dnp = await within(drawer).findByTestId("dossier-drawer-dnp");
+    expect(dnp).toHaveTextContent(/no games in 2026/i);
+    expect(within(drawer).queryByTestId("dossier-drawer-summary")).toBeNull();
+    expect(drawer.textContent).not.toMatch(/0\.0%|0 – 0/);
+  });
+
+  it("omits the opponent column entirely when the board has only one team", async () => {
+    dossier = dossierResponse({
+      entity: {
+        ...dossierResponse().entity,
+        opponent_team_key: null,
+        opponent_display_name: null,
+      },
+      player_games_vs_opponent: null,
+      versus_opponent: null,
+      ban_pressure: { overall: dossierResponse().ban_pressure.overall, versus_opponent: null },
+    });
+    await renderBoard("?mode=team&team_a=T1");
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    const table = await within(drawer).findByTestId("dossier-drawer-table");
+    // Two columns, not three — and no "vs null" heading.
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(2);
+    expect(table.textContent).not.toMatch(/vs\s*(null|undefined)/i);
+  });
+
+  it("switches cleanly to a champion belonging to the other player", async () => {
+    const drawer = await openDrawer();
+    await within(drawer).findByTestId("dossier-drawer-table");
+
+    dossier = dossierResponse({
+      entity: {
+        ...dossierResponse().entity,
+        champion_key: "Ambessa",
+        display_name: "Bin",
+        teams_in_scope: ["Bilibili Gaming"],
+        opponent_team_key: "T1",
+        opponent_display_name: "T1",
+      },
+    });
+    const other = within(screen.getByTestId("lane-card-Top")).getByTestId(
+      "lane-Top-Bilibili Gaming",
+    );
+    fireEvent.click(within(other).getAllByTestId("champ-chip-Ambessa")[0]);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("dossier-drawer-identity")).toHaveTextContent("Ambessa"),
+    );
+    // And the opponent followed the side: the other player's opponent is T1.
+    expect(screen.getByTestId("dossier-drawer-identity")).toHaveTextContent("T1");
+  });
+
+  it("follows a side swap so the opponent context stays correct", async () => {
+    // Nothing may assume blue/red or A/B: swapping the board must swap which
+    // team the drawer asks about.
+    await renderBoard();
+    fireEvent.click(screen.getByTestId("team-swap"));
+    await waitFor(() =>
+      expect(requests.some((u) => u.includes("team_a=Bilibili"))).toBe(true),
+    );
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    await screen.findByTestId("player-champion-drawer");
+    await waitFor(() => {
+      const url = requests.filter((u) => u.includes("/matchup/player-champion")).pop();
+      expect(new URLSearchParams(String(url).split("?")[1]).get("opponent")).toBe(
+        "Bilibili Gaming",
+      );
+    });
+  });
+
+  it("closes cleanly and clears the selection", async () => {
+    const drawer = await openDrawer();
+    fireEvent.click(within(drawer).getByRole("button", { name: /close/i }));
+    await waitFor(() =>
+      expect(screen.queryByTestId("player-champion-drawer")).toBeNull(),
+    );
+    const tile = within(
+      within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1"),
+    ).getAllByTestId("champ-chip-Ornn")[0];
+    expect(tile).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("leaves room for the later matchup study without promising it", async () => {
+    // A slot, not a disabled button: a control that promises a feature the
+    // product does not have is worse than silence.
+    const drawer = await openDrawer();
+    expect(await within(drawer).findByTestId("dossier-drawer-study-slot")).toBeEmptyDOMElement();
+    expect(drawer.textContent).not.toMatch(/coming soon|not yet available|next step/i);
   });
 });

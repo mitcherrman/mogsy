@@ -495,3 +495,172 @@ overflow, no broken media, no runtime errors.
 holds, replacing `ChampionSelectionShell`. That step owns the contextual H2H /
 backend aggregation; Step 1 deliberately made no request and assumed no
 endpoint.
+
+
+---
+
+## Step 2 — the player × champion dossier drawer (2026-09-08)
+
+**Base:** frontend `origin/main` `9aa7017b`; backend `origin/master` `66fbb1de`.
+Both repos changed. This is the step where a champion tile stopped being a
+selection and became a question with an answer.
+
+Clicking Doran's Olaf on **T1 vs Gen.G · 2026** now opens a scouting drawer
+that answers the two things a reader wants immediately — how much of Doran's
+2026 Olaf actually is and how it has gone, and how that looks specifically
+against the team on the other side of the board. Step 1's sticky
+`ChampionSelectionShell` and its CSS are **deleted**, not hidden.
+
+### Backend — one new aggregate, no new authority
+
+`pro_authority/player_dossier.py` + `GET /api/pro-play/matchup/player-champion`
+(a third sibling on the existing admin-gated router).
+
+It is ~180 lines because it reuses everything: the same
+`pro_canonical_player_games` rows, the same in-memory `comparison.GameIndex`,
+the same `admits_game` competition filter and the same `comparison_scope`
+product vocabulary as the board it opens from — so the drawer cannot disagree
+with the board about what "2026" means. **No new table, no ingest, no
+precomputed bank, no schema change.**
+
+The one thing `comparison` could not express is the opponent axis:
+`compare_player_champion` buckets by team-played-**for**, and this needs
+team-played-**against**, which is a property of the game rather than of the
+player row. The opponent is therefore derived per game from the canonical
+sides — a mid-scope transfer works with no special case, and nothing keys off
+blue/red or the board's A/B.
+
+**Performance.** The obvious shape reads every ban row for the champion; that
+index is `(champion_key, event_type)` and carries neither the game id nor the
+team, so each row costs a probe — **1,525 ms** measured for one all-time
+dossier. Reading the drafts of the player's own games instead is served by
+`idx_pro_canonical_picks_bans_game`: **44 ms** for identical figures.
+
+### Exact definitions of everything displayed
+
+| Shown | Definition |
+| --- | --- |
+| `X / Y total games` | X = the player's games on that champion in the scope. Y = the player's **own** total games in the scope (not the team's — a game they sat out is not in their total). Curated competition filter, same as the board. |
+| Record | wins–losses over X. |
+| Win rate | wins / X, or **`—`** over zero games. Never `0.0%`. |
+| Most recent | `last_played_at` of the champion games, date only. |
+| Recent form | The player's last ≤5 games **on that champion** in the scope, **newest first**, sorted by (date, canonical game id) so equal timestamps in a best-of are stable. Never padded: three games render three glyphs and the label says `3 games`; a capped strip says `last 5 of 13`. Date and opponent are in each glyph's `title`/`aria-label`. |
+| vs `<team>` | Every metric above, restricted to the player's games against the board's other team. |
+| Ban pressure | See below. |
+
+**Average KDA is NOT shown, and the drawer says so on screen.** The corpus
+carries no kills, deaths or assists — not in `pro_canonical_player_games`, not
+in the `esports_champion_games` rows it is built from, not in that table's
+`raw_json` (the Leaguepedia Cargo query pulled
+Champion/Name/Role/Side/Team/PlayerWin and nothing else), and **not in any of
+the other 187 tables** of the application database. It is also **rejected by
+design**: the Player × Champion design audit ruled combat statistics out of
+this slice and two pre-existing static guard tests fail the build if the word
+appears in it. So the payload carries an explicit `unavailable_metrics` entry
+naming the metric and the reason, and the drawer prints it — a named absence
+reads as an honest limit; a missing row reads as an oversight.
+
+### Ban pressure — the definition, verbatim
+
+> How often the opposing team banned this champion in games involving this
+> player, out of the games whose opposing-side ban record exists. It is
+> contextual draft behaviour, not a claim about why.
+
+Rendered as **numerator / denominator · rate** (`3 / 8 · 37.5%`), never a bare
+percentage — the ratio is what makes a small sample readable.
+
+* **Numerator**: drafts in which the **opposing team** cast a ban on this
+  champion. Bans the player's own team cast are not ban pressure and are not
+  counted.
+* **Denominator**: the player's own in-scope games (overall), or their games
+  against that team (opponent column), **restricted to games whose opposing
+  side has a ban record at all**. Fail-closed: "we hold no draft record" and
+  "they chose not to ban" are different facts, and folding the first into the
+  second would deflate every rate. `games_without_ban_record` is reported so a
+  genuine 0/8 is distinguishable from an 0/8 that is really 0/2.
+* **Coverage is real**: 113,397 of 113,815 canonical games (**99.6%**) carry
+  ban rows; 100% of Doran's 2026 games do, at exactly 5 opponent bans each.
+* **No motive is implied** anywhere — not in the label, the served definition,
+  or the UI. A test asserts the page never says "banned because", "to deny",
+  "targeted" or "respect ban".
+
+### Frontend
+
+New `src/components/pro-play/dossier/PlayerChampionDrawer.tsx`; changed
+`matchupApi.ts` (types + `fetchPlayerChampionDossier`),
+`ProPlayMatchupTeam.tsx` (shell → drawer), `src/index.css` (drawer stylesheet,
+champsel CSS removed).
+
+Built on the repo's existing Radix `@/components/ui/sheet` — focus trap,
+Escape, overlay dismissal and the close button all come with it. Right-side on
+desktop with the board still visible behind; **full width on a phone**. The
+`proplay-dossier` class travels on the sheet's own content element because a
+Radix sheet renders in a **portal at the document root**, outside the
+Explorer's subtree — without it none of the `--dsr-*` folio tokens would apply.
+
+One request per (player, champion, opponent, scope); a superseded response
+never paints. A tile is still one button (tooltip + `aria-pressed` + action),
+clicking the selected tile clears it, and a scope or team change drops the
+selection rather than re-pointing it at different numbers.
+
+**Zero-sample behaviour is three distinct states**, never flattened: *did not
+participate* (no aggregates at all, `overall` is `null`); *participated, never
+on this champion* (a sentence naming the real total, no table, no percentages);
+and *met this opponent zero times* (a real `0` games with win rate `—`).
+
+**Deliberately absent**: no champion-v-champion record, no "vs Kiin", no
+opposing-player anything. The opponent axis is a **team**. An empty
+`dossier-drawer-study-slot` marks where the later Matchup Study lands — a slot,
+not a disabled button.
+
+### Tests
+
+* Backend: **46 new** in `test_pro_authority_player_dossier.py` — a hand-built
+  fixture proving the opponent axis, the ban denominator and the three
+  participation states arithmetically, 7 relationship tests against the real
+  corpus, and 6 over the wire. Neighbouring Pro Play suites: 298 pass.
+* Frontend: **313 pass** across Pro Play (24 new, 3 Step-1 tests rewritten
+  against the real drawer).
+* `tsc --noEmit -p tsconfig.app.json`: **11 errors = the `origin/main`
+  baseline**, 0 in any pro-play file. `npm run build`: green, sitemap clean.
+
+### Verified against the real corpus
+
+Local backend on this branch over the 5.0 GB DB, browser at 1280px and 375px.
+Every pro-play request 200, no horizontal overflow at either width, no
+pro-play console errors.
+
+| Case | Result |
+| --- | --- |
+| Doran · Jayce, T1 vs Gen.G, 2026 | `13 / 101 total games` 12.9%, 12–1, 92.3%; vs Gen.G 2 games 1–1 50.0%; ban pressure `18 / 101 · 17.8%` overall, `0 / 10 · 0.0%` vs Gen.G; form `W W W W W`, last 5 of 13 |
+| Kiin · Sion, Gen.G vs HLE, 2026 | 11/80, 10–1, 90.9%; **vs HLE 0 games → win rate `—`, not 0.0%**, while ban pressure vs HLE is a real `1 / 8 · 12.5%` — proving the two denominators are independent |
+| Zeus · Gnar, T1 vs Gen.G, All Time | 80/692, 55–25, 68.8%; vs Gen.G 12 games 7–5 58.3%; ban pressure `69 / 692 · 10.0%` and `1 / 100 · 1.0%` |
+| Side switch | Clicking Gen.G's tile flips the header to `Kiin · Sion … vs T1` and the column to `VS T1` |
+| Escape / close | Both close and clear the selection |
+
+Every figure above was cross-checked against an independent SQL walk of the
+same rows before the module existed.
+
+**Two environment notes for the next author.** `Doran (Choi Hyeon-joon)`
+renders with its qualifier because **two real players share the handle
+"Doran"** (the other is Eduardo Henrique) — that is the display policy working,
+not a defect; `Kiin` and `Zeus` render bare. And the tracked `.env` points at
+production Railway, so local backend verification needs a `.env.local` — which
+**vitest also reads**, so delete it before judging a test run.
+
+### Deployment
+
+* Backend `47c4c905` pushed to `master`; Railway deployed. Verified on
+  production: `/api/pro-play/matchup/player-champion` answers **403** (present,
+  admin-gated) where a bogus sibling route answers **404**.
+* Frontend on `main`; **Lovable publication must be confirmed separately — a
+  push is not a deploy.**
+
+### Next task
+
+**Add exact champion-v-champion contextual study and always-available
+alternate pro examples / side journeys.** It lands in the drawer's study slot,
+below the Overall-vs-opponent table. It must not become a fabricated
+head-to-head: joining two independent sides is exactly the reading the whole
+contract has been built to refuse, so any such section has to restrict to games
+the two champions were actually on opposite sides of, and say so.

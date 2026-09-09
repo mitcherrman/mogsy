@@ -637,3 +637,117 @@ export function teamSelectionFromLane(selection: MatchupSelection): TeamSelectio
     scope_id: selection.pool_scope_id,
   };
 }
+
+// --- player x champion dossier ----------------------------------------------
+//
+// The drawer behind a champion tile. A THIRD ROUTE over the same composition:
+// `/explore` is lane-shaped, `/team` returns five lanes, and this returns ONE
+// player-and-champion with an opponent axis neither of them carries.
+//
+// EVERY DEFINITION IS SERVED, NOT WRITTEN HERE. `definitions` and
+// `unavailable_metrics` come from the server for the same reason the contract's
+// notes do: a sentence that lives in the frontend can be reworded by a
+// frontend, and these are the words the semantics are guaranteed in.
+
+/** A record over a set of games. `win_rate` is null over zero games — never
+ *  0.0, which would render as a result. */
+export interface DossierRecord {
+  games: number;
+  wins: number;
+  losses: number;
+  win_rate: number | null;
+  first_played_at: string | null;
+  last_played_at: string | null;
+}
+
+/** One game in the recent-form strip, newest first. */
+export interface DossierFormGame {
+  canonical_game_id: string;
+  win: boolean;
+  result: "W" | "L";
+  game_date: string | null;
+  team_key: string;
+  opponent_team_key: string | null;
+  league_slug: string | null;
+  tournament_id: string | null;
+}
+
+/**
+ * Drafts in which the OPPOSING team banned this champion, over the drafts whose
+ * opposing-side ban record exists. `games_without_ban_record` is the difference,
+ * reported so a reader can tell a genuine 0/8 from an 0/8 that is really 0/2.
+ *
+ * Never a motive: this is contextual draft behaviour, not "banned because of
+ * this player".
+ */
+export interface DossierBanPressure {
+  banned_in: number;
+  drafts_with_ban_record: number;
+  games_without_ban_record: number;
+  rate: number | null;
+}
+
+/** A metric the authority cannot serve, named rather than silently missing. */
+export interface UnavailableMetric {
+  metric: string;
+  label: string;
+  reason: string;
+}
+
+export interface PlayerChampionDossier {
+  contract_version: string;
+  entity: {
+    kind: "player_champion_dossier";
+    player_lp_page: string;
+    display_name: string;
+    champion_key: string;
+    teams_in_scope: string[];
+    opponent_team_key: string | null;
+    opponent_display_name: string | null;
+  };
+  scope: ScopeDescriptor;
+  league_filter: string;
+  /** Always false. Two columns of one player's record is not a score between
+   *  two players, and the drawer renders nothing that implies one. */
+  head_to_head: false;
+  participation: string;
+  /** Y in "X / Y total games". */
+  player_games_in_scope: number;
+  /** The player's games against that opponent on ANY champion; null when no
+   *  opponent was supplied. */
+  player_games_vs_opponent: number | null;
+  /** Null exactly when the player did not participate in the scope — which is
+   *  a different fact from a record of zeroes. */
+  overall: DossierRecord | null;
+  versus_opponent: DossierRecord | null;
+  champion_share: number | null;
+  recent_form: DossierFormGame[];
+  /** The true number of games on the champion; `recent_form` is capped. */
+  recent_form_total: number;
+  ban_pressure: {
+    overall: DossierBanPressure;
+    versus_opponent: DossierBanPressure | null;
+  } | null;
+  unavailable_metrics: UnavailableMetric[];
+  definitions: Record<string, string>;
+}
+
+export interface DossierQuery {
+  player_lp_page: string;
+  champion: string;
+  opponent_team_key: string | null;
+  scope_id: string;
+}
+
+export function fetchPlayerChampionDossier(query: DossierQuery, signal?: AbortSignal) {
+  const params = new URLSearchParams({
+    player: query.player_lp_page,
+    champion: query.champion,
+    scope: query.scope_id,
+  });
+  // Omitted rather than sent empty: the server distinguishes "no opponent
+  // selected" (the column is absent) from "an opponent they never met" (a real
+  // zero record), and an empty string would blur the two.
+  if (query.opponent_team_key) params.set("opponent", query.opponent_team_key);
+  return get<PlayerChampionDossier>(`/player-champion?${params.toString()}`, signal);
+}
