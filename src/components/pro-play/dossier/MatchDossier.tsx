@@ -105,24 +105,28 @@ function TeamChooser({
       className={`dossier-vs__team is-${align}`}
       data-testid={header ? `vs-team-${header.team_key}` : "vs-team-empty"}
     >
+      {/* `shortCode` is optional: a team pooled on measured data has no owner
+          short label, and TeamCrest falls back to a monogram of the real name
+          rather than inventing a code. */}
       <TeamCrest
         name={header?.display_name ?? "?"}
-        shortCode={header?.focus.owner_label ?? "?"}
+        shortCode={header?.focus?.owner_label ?? undefined}
         entityKey={header?.team_key}
       />
       <div className="dossier-vs__names">
         <span className="dossier-vs__name">
           {header ? header.display_name : "Choose a team"}
         </span>
-        {/* The org's own short label and its region. The focus STATUS is not
+        {/* The pool label and its group. The focus STATUS is not
             printed: with no qualification claimed anywhere on this page there
             is nothing for the word "watchlist" to correct, and it read as a
             label on the team rather than on Mogzy's interest. The field is
-            untouched in the payload — see `header.focus`. */}
+            untouched in the payload — see `header.focus`, which is null for a
+            team that is in the pool on measured evidence alone. */}
         <span className="dossier-vs__meta">
           {header
-            ? `${header.focus.owner_label}${header.focus.group ? ` · ${header.focus.group}` : ""}`
-            : "Select from the focus set"}
+            ? `${header.explorer.label}${header.explorer.group ? ` · ${header.explorer.group}` : ""}`
+            : "Select a team…"}
           <span className="dossier-vs__change" aria-hidden="true">
             change
           </span>
@@ -136,9 +140,9 @@ function TeamChooser({
         onChange={(e) => onChange(withTeamSide(selection, side, e.target.value || null))}
       >
         <option value="">Select a team…</option>
-        {contract.focus_set.teams.map((t) => (
+        {contract.explorer_teams.teams.map((t) => (
           <option key={t.team_key} value={t.team_key}>
-            {t.owner_label} — {t.team_key}
+            {t.label} — {t.team_key}
           </option>
         ))}
       </select>
@@ -461,7 +465,7 @@ export function TeamSummaryPlate({ header }: { header: TeamHeader | null }) {
       <div className="dossier-teamsum__head">
         <TeamCrest
           name={header.display_name}
-          shortCode={header.focus.owner_label}
+          shortCode={header.focus?.owner_label ?? undefined}
           size="md"
           entityKey={header.team_key}
         />

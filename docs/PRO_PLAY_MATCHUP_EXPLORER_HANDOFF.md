@@ -16,7 +16,10 @@ cannot actually evidence.
   player on that champion, with a **team** opponent axis.
 * **Step 3** — establish the opposing player and champion: the **exact**
   same-game record, other real professional examples of the same champion
-  matchup, and clickable side journeys into each of them. *(this document)*
+  matchup, and clickable side journeys into each of them.
+* **Step 3.1** — the board's team pool stops being the Worlds focus set, so a
+  side journey lands wherever the corpus can honestly build a board.
+  *(this document)*
 
 ## Important decisions
 
@@ -65,7 +68,30 @@ already reads would have been two sources of truth.
 **The board fetch is decoupled from the study**, or every tile click would
 refetch five lanes to redraw nothing.
 
-**The focus-set limit is reported, not worked around.** See *Known limits*.
+**The team pool is not the Worlds focus set, and that is the fix.** Step 3
+served a real KT Rolster example as evidence with no destination, because the
+board only accepted the sixteen orgs on Mogzy's Worlds watchlist. Those are
+two different questions that had one answer: `worlds_focus` is an editorial
+choice about what Mogzy points a camera at, and the board's limit is "can a
+five-lane board be built for this org honestly". Widening the *watchlist* to
+make a link work would have been a claim about Worlds made for a routing
+reason. `pro_authority.explorer_teams` answers the second question, the focus
+set is a strict subset of it, and `worlds_focus` is untouched.
+
+**A pooled team is admitted on measurement, not on taste.** The focus set is
+in the pool by construction — it is the owner's own entry set, and four of its
+teams would fail the policy today (BLG, Dplus Kia and Cloud9 each have a lane
+with no canonical player rows at all; CTBC Flying Oyster has 8 admitted 2026
+games). Every *other* team must meet `ADMISSION_POLICY` against the real
+corpus. `measure_admission` re-runs the identical policy, and two real-corpus
+tests fail if the shipped registry drifts in either direction — a team that
+qualifies and is not shipped is a bug, not a judgement call.
+
+**`side.focus` is now nullable, and `side.explorer` is not.** A team pooled on
+data alone is on no watchlist, so it carries no focus entry. Null is the
+honest answer to "is Mogzy watching this org for Worlds"; a synthesized status
+would have put a Worlds-shaped word on twenty-two orgs nobody claimed anything
+about.
 
 ## Relevant files
 
@@ -77,7 +103,11 @@ refetch five lanes to redraw nothing.
 | `pro_authority/player_dossier.py` | Step 2 authority. Team opponent axis, ban pressure. Untouched by Step 3. |
 | `pro_authority/comparison.py` | `GameIndex`, `admits_game`, `CURATED`, `CONTRACT_VERSION`. Both of the above read it. |
 | `pro_authority/comparison_scope.py` | The four product scopes and the participation vocabulary. |
-| `pro_authority/matchup.py` | The board, `/contract`, and `worlds_focus` — the focus-set gate. |
+| `pro_authority/matchup.py` | The board, `/contract`, and `_require_explorer_team` — the pool gate. |
+| `pro_authority/explorer_teams.py` | **Step 3.1.** The navigable team pool, the admission policy, the measurement. |
+| `pro_authority/worlds_focus.py` | The Worlds editorial watchlist. Unchanged, and no longer the board's gate. |
+| `scripts/audit_explorer_team_pool.py` | Re-runs the policy over the corpus and prints the diff a human ships. |
+| `test_pro_authority_explorer_teams.py` | 34 tests, 6 against the real corpus. |
 | `routes/pro_play_matchup.py` | All four routes. Admin-gated on the router. |
 | `test_pro_authority_exact_matchup.py` | 42 tests. |
 
@@ -91,7 +121,7 @@ refetch five lanes to redraw nothing.
 | `src/pages/pro-play/ProPlayMatchupTeam.tsx` | The board. Derives the study's selection from the payload. |
 | `src/pages/pro-play/ProPlayMatchup.tsx` | Page shell; owns the URL and the request key. |
 | `src/index.css` | `.dossier-study__*`, after the `.dossier-drawer__*` block. |
-| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 103 board/dossier/study tests. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 128 board/dossier/study tests. |
 
 ## API contract — `GET /api/pro-play/matchup/exact`
 
@@ -155,20 +185,39 @@ drops the study; a side **swap** keeps it.
 
 ## Current state / completed work
 
-Step 3 is **complete and committed**, and covers everything the brief asked
-for: exact same-game semantics, the always-present zero state, Other Pro
-Examples at every sample size, and clickable side journeys.
+**Step 3 is live.** Backend `27eb1b32` is on `master` and deployed — Railway
+answers `/api/pro-play/matchup/exact` with a 403 (gated) rather than a 404.
+Frontend `6052389a` is on `main` **and published**: the deployed
+`ProPlayMatchup` chunk on mogzy.lol contains `explorer_navigable`,
+`teams_outside_focus_set` and Other Pro Examples. Verified 2026-09-08 by
+fetching the bundle, not by assuming a push is a publish.
+
+**Step 3.1 (the team pool) is committed and not yet pushed.**
 
 | | Backend | Frontend |
 |---|---|---|
-| Branch | `proplay/step3-exact-matchup` | `proplay/step3-exact-matchup-fe` |
+| Branch | `proplay/explorer-team-pool` | `proplay/explorer-team-pool-fe` |
 | Worktree | `/Users/macmoney/lcs-wt-proplay-step3` | `/Users/macmoney/mogsy-wt-proplay-step3` |
-| Commit | `3dff01d5` | `58ca533a` |
-| Base | `origin/master` `a972f129` | `origin/main` `38fd0b87` |
+| Base | `origin/master` `7e546192` | `origin/main` `304f3d49` |
+
+`origin/master` moved twice during the task (champdata pass 19, then the
+Oracle's Elixir statistics commit). Re-fetch before every push — this repo's
+`master` moves often and auto-deploys.
 
 ## Tests
 
-**Backend — 42, all passing.** The hand-built fixture writes every *near miss*
+**Step 3.1 backend — 34 new (6 real-corpus), Pro Play regression 1410 passed,
+1 skipped, 0 failed** after rebasing onto `7e546192`. The real-corpus tests are
+the load-bearing ones: every data-admitted team still meets the policy, no
+team meets it without being shipped, Anyone's Legend is excluded on measured
+lane coverage rather than on taste, and a newly supported team's board names a
+starter only where the roster authority already named one.
+
+**Step 3.1 frontend — 128 board/study tests (was 103), 337 Pro Play tests, all
+passing.** Full suite 53 failures, identical to the documented `origin/main`
+baseline, none in pro-play. Typecheck 11 errors, none in pro-play. Build green.
+
+**Step 3 backend — 42, all passing.** The hand-built fixture writes every *near miss*
 as a real row and gives each its own test: the right players on the wrong
 champion, the right champions in two different games, a benched roster member,
 two team-mates, an out-of-scope meeting. Four real-corpus tests cross-check a
@@ -186,17 +235,21 @@ longer empty, and the team selection now round-trips a study.
 
 ## Known limits / real edge cases
 
-* **The focus set bounds side journeys, not the examples.** The board accepts
-  sixteen curated teams; the examples come from the whole corpus. Two of six in
-  the live T1-vs-Gen.G case are outside it. They are served with
-  `explorer_navigable: false` and rendered as evidence rather than hidden —
-  hiding them would quietly redefine "other professional examples" as "other
-  focus-set examples". Widening the board's team selector would close this.
-* **No combat statistics.** The corpus has no kills, deaths, assists, CS, gold
-  or damage, and they were ruled out by design. `unavailable_metrics` names the
-  gap. The Oracle's Elixir enrichment workstream may make richer fields
-  available later; this feature can consume them then, and must not mix
-  partial LIVE1 stats with historical data to simulate completeness.
+* **The team POOL bounds side journeys, not the examples.** The board accepts
+  38 teams; the examples come from the whole corpus, so some will always land
+  outside. Those are served with `explorer_navigable: false` and rendered as
+  evidence rather than hidden — hiding them would quietly redefine "other
+  professional examples" as "other pooled examples". The pool is now a data
+  question rather than a Worlds one, which is what closed the KT case; it will
+  never close every case, and should not.
+* **The Explorer still shows no combat statistics — but the corpus now has
+  them.** `unavailable_metrics` in `/exact` and the dossier says the authority
+  carries no K/D/A. As of master `7e546192` that sentence is **out of date about
+  the corpus and still true about this feature**: Oracle's Elixir statistics
+  landed in `pro_canonical_player_game_stats` / `pro_canonical_team_game_stats`
+  while this task was in flight, and nothing in the Explorer reads them yet.
+  See *Series and game drilldown* below. Do not soften the wording until a
+  payload actually carries a number.
 * **The chooser is bounded by the board's pool fetch.** Pools are fetched for
   the top candidates per lane (`notes.pool_bound`); a candidate with
   `pool_omitted` offers no champions in the study, and the section says so.
@@ -205,19 +258,296 @@ longer empty, and the team selection now round-trips a study.
   placing. The record still counts every qualifying game.
 * **A mirror matchup yields both directions**, which is correct and tested.
 
+## Supported-team policy (Step 3.1)
+
+`pro_authority/explorer_teams.py` is the one place that answers **"can the
+board be pointed at this org"**. It has two halves and they are different
+kinds of statement:
+
+| Source | Who decides | Held to the policy? |
+|---|---|---|
+| `worlds_focus_set` | the owner, editorially | **no** |
+| `data_admitted` | the corpus | **yes** |
+
+The focus half is *derived* from `worlds_focus.focus_teams()` on every call,
+not copied, so adding a team to the watchlist adds it to the pool with no
+second edit. The data half is the shipped `ADDITIONAL_TEAMS` registry.
+
+**`ADMISSION_POLICY`** — every clause is measured, and every one is a floor on
+*evidence*, never on importance:
+
+* scope `current_2026`, league filter `MAJOR_PRO` — the same scope and the
+  same competition universe the board itself reads, so "enough data to build
+  the board" is measured over the games the board will build from;
+* **≥ 30** admitted games — roughly a full competitive split; below it a
+  "current roster" is a handful of games and the lane leaders are noise;
+* **all five lanes** covered by at least one demonstrated player — the board
+  is a five-lane board, and there is no reason to newly admit a team with a
+  structurally missing lane when thirty-odd teams do not have the problem;
+* a live registry row — present, not disbanded, not renamed. A renamed page is
+  a lineage question the Explorer does not answer, and pointing the board at
+  the old page would silently scout the wrong org.
+
+### Newly supported teams — 22, measured 2026-09-08
+
+| Group | Teams |
+|---|---|
+| LCK | BNK FEARX, Kiwoom DRX, DN SOOPers, Nongshim RedForce, **KT Rolster**, HANJIN BRION |
+| LPL | JD Gaming, Weibo Gaming, Ninjas in Pyjamas.CN, LGD Gaming, EDward Gaming, ThunderTalk Gaming, LNG Esports, Oh My God |
+| LEC | Natus Vincere, Fnatic, Shifters, Team Heretics, SK Gaming |
+| LCS | FlyQuest, Sentinels, Disguised |
+
+Pool: **38** (16 focus + 22 admitted). The corpus holds 72 teams with at least
+one admitted 2026 game and 34 that meet the policy — all 34 are shipped.
+
+### Why not every historical team
+
+Because "selectable" is a promise the board has to keep. A team in the pool
+gets five lane rows, a demonstrated roster, a champion pool and a set of side
+journeys pointed at it. The corpus cannot keep that promise for most orgs, and
+the failures are not marginal:
+
+* **Anyone's Legend** — 86 admitted 2026 games, more than most of the pool,
+  and **three** canonical lanes. Two rows of the board would be permanently
+  uncovered.
+* **GIANTX** — 58 games, four lanes.
+* Below the 30-game floor the tail is long and thin: 38 of the 72 active teams,
+  most of them with single-digit game counts in the scope.
+
+Those teams lose nothing. Search and the profiles are global; Step 3 still
+returns them as real evidence with `explorer_navigable: false` and names the
+reason. Admission decides one thing only — whether the board opens.
+
+### How `explorer_navigable` is decided now
+
+`exact_matchup._navigation` asks `explorer_teams.is_explorer_team()` of both
+teams on the example's most recent meeting, and reports the ones that fail in
+`teams_outside_explorer_pool`. It used to ask `worlds_focus.get_focus_team()`.
+That single substitution is the whole behavioural change; the ranking, the
+example population and the exact filter are untouched.
+
+`teams_outside_focus_set` is still served as a **dated, deletable mirror** of
+the same list. The frontend published to mogzy.lol on 2026-09-08 calls `.join`
+on it while merely *rendering* a non-navigable example, Railway auto-deploys
+`master`, and Lovable publishes on the owner's click — so dropping the name in
+the same release that renames it would throw in the live client during that
+window. Delete the field and its test once the new frontend is published.
+
+### The one deploy-ordering hazard
+
+The published frontend reads `header.focus.owner_label` unconditionally. With
+the new backend a pooled team returns `focus: null`, so that read would throw.
+It is **not** reachable from the published selector (which still renders
+`focus_set.teams`), but it **is** reachable by clicking a newly navigable
+example — e.g. one on KT Rolster. The Explorer is admin-gated, so the exposed
+population is the owner. Publish the frontend at the same time as the backend
+push and the window does not exist.
+
+## Series and game drilldown — audit (2026-09-09)
+
+Nothing below is implemented. This is what the corpus can actually support,
+measured, so the next slice is a build rather than a discovery.
+
+### What landed, and where it is
+
+Oracle's Elixir statistics reached `master` as `7e546192` **during this task**
+— see `OE_STATS_HANDOFF.md` for the pipeline. Two additive 1:1 fact tables
+beside the canonical layer, never columns on it:
+
+| Table | Rows | Key |
+|---|---|---|
+| `pro_canonical_player_game_stats` | 859,391 | `(canonical_game_id, player_lp_page)` |
+| `pro_canonical_team_game_stats` | 182,108 | `(canonical_game_id, team_key)` |
+
+`pro_authority/oe_stats_reader.py` is the read surface — aggregates, per-game
+lists, team totals, `series_games()`, `series_score()`. **It has no HTTP
+consumer.** Nothing in `routes/` imports it. A series/game UI needs a route
+before it needs a component.
+
+**Deployment**: the code is on `master`; whether Railway's database has been
+promoted is a separate question from whether the code shipped, and promotion
+is a `scripts/promote_oe_stats.py` run against the production DB. Verify with
+`--status` before believing any number reaches production.
+
+### Series identity — solid, and it is Leaguepedia's
+
+`pro_canonical_games.match_id`, present on **113,815 of 113,815** games, with
+`game_number` on all of them. OE publishes no series identifier at all, so
+nothing was invented. Measured properties that matter to the UI:
+
+* **67,659 distinct series**, and **no match_id spans more than two teams** —
+  so a series *is* a team meeting, and Entry Path 1 is a `GROUP BY match_id`
+  rather than a clustering problem.
+* **39,902 of 67,659 (59%) contain exactly one game.** Bo1 leagues are the
+  majority of the corpus. A series layer that always renders "1–0" would be
+  inventing a series around a single game; a one-game meeting must render as
+  a game.
+* `match_id` is human-readable and already carries the context a header needs:
+  `LCK/2026 Season/Rounds 1-2_Week 7_7`.
+
+Live proof — T1 vs Gen.G since 2025 is **12 meetings**, every one with a
+score, an event, a date, a patch and a game count, and **40 of 40** of their
+games carry OE stats:
+
+```
+2026-06-14  5g  T1 3–2  LCK 2026 Road to MSI
+2026-05-16  3g  T1 2–1  LCK 2026 Rounds 1-2
+2026-04-08  2g  T1 0–2  LCK 2026 Rounds 1-2
+2025-10-18  1g  T1 0–1  Worlds 2025 Main Event
+2025-09-21  5g  T1 2–3  LCK 2025 Season Playoffs
+…
+```
+
+`series_score()` counts `blue_win IS NULL` as `undecided` rather than
+assigning it, which is the posture the rest of the authority uses.
+
+### Game identity — solid
+
+`canonical_game_id`, with `game_number`, `game_date`, `patch` (Leaguepedia's
+scheme) and `oe_patch` (OE's — `26.09` and `16.09` are the same patch),
+`league_name`, `tournament_name`, `blue_team_key` / `red_team_key`,
+`blue_win`, and `game_length_seconds` on **100%** of stat rows.
+
+### Trustworthy per-game facts
+
+Verified end-to-end on one real game (Gen.G vs T1, 2026-05-16, game 3):
+
+* **Per player** — K/D/A, total CS, minion/monster kills, total and earned
+  gold, damage to champions and to towers, vision score, wards placed/killed,
+  control wards, and gold/xp/cs/kills/deaths/assists at 10/15/20/25 *plus the
+  direct lane opponent's value at each*. Side and role travel with them.
+* **Per team** — kills, deaths, dragons, elemental drakes and their types,
+  barons, heralds, void grubs, elders, towers, inhibitors, first blood /
+  tower / dragon / baron / mid tower, total and earned gold, vision, damage.
+* **Picks and bans** — `pro_canonical_picks_bans`, five picks and five bans
+  per side, with `team_key` and `side`.
+
+The strongest evidence the join is right is upstream: `SUM(player kills)`
+equals the team row's `team_kills` on **138,380 of 138,380** team-games, and
+those numbers come from different source rows joined through Mogzy's own
+identity.
+
+### Missing or unsafe — do not render these
+
+1. **Draft ORDER does not exist.** `sequence = -1` on **all 2,235,030**
+   pick/ban rows. Bans are an unordered set of five per side. A UI that lays
+   them out as a draft sequence would be inventing the order, and OE's own
+   `firstPick` was deliberately not promoted for exactly this reason.
+2. **`turret_plates` is not safe to print.** Max is 25 per team by
+   construction (5 outer turrets × 5 plates); the column's maximum is **45**
+   and **6,302 of 80,708** rows exceed 25. Something about it does not mean
+   what its name implies. Leave it out until someone reconciles it.
+3. **Coverage is 80%, not 100%** — 91,054 of 113,815 games. Pre-2014 gets
+   nothing (OE's first year), and the gap is concentrated in regional second
+   divisions. A game with no stat row must say so; a zero would be a lie.
+4. **Damage taken and mitigated exist only as per-minute rates.** No raw
+   totals upstream.
+5. **`monsterkillsownjungle` / `...enemyjungle` collapse after 2021** (55%).
+6. **100 games where OE and Leaguepedia disagree on the winner.** Both are
+   stored, nothing is reconciled, and no code assumes either. A game view must
+   read the canonical `blue_win` and not OE's, or the series score and the
+   game card will disagree with each other.
+7. **Lane-opponent identity is Leaguepedia's, not OE's.** OE gives the
+   opponent's *values* (`opp_gold_at15`), never their name.
+8. **Empty slices render as "Perfect".** `kda_ratio` returns `None` for
+   `deaths == 0`, and a matchup that never happened sums to 0/0/0. Every
+   caller must check `games > 0` first.
+
+### Recommended state model
+
+**No fourth mode.** `mode=team` and `mode=lane` stay the only two. A series and
+a game are *narrowings of the evidence already on screen*, not a new place to
+be, and the product hierarchy the owner described — team → lane → player ×
+champion → exact matchup → series → game — is a drilldown, not a filter stack.
+
+The selection gains two optional keys beside the four the study already
+carries, and they behave exactly like `study` does:
+
+```
+team_a  team_b  scope  lane   (the board)
+focus_player  focus_champion  vs_player  vs_champion   (the study)
+series   game                                          (the evidence)
+```
+
+* `series` is a `match_id`; `game` is a `game_number` within it, never a bare
+  `canonical_game_id` — a number is legible in a URL and the pair is unique.
+* `game` without `series` is meaningless and must be dropped, the same way
+  `boardRequestSelection` already strips `study` before `/team`.
+* A team or scope change drops both. A side swap keeps them. Same rules,
+  same place — `teamSelectionToParams` / `teamSelectionFromParams`.
+* The board fetch stays decoupled: `/team` never sees `series` or `game`.
+
+That is the whole URL/state answer. Pretty URLs remain a rename, not a
+redesign — the state is fully addressable either way.
+
+**Series state — what belongs where**
+
+| Layer | Carries |
+|---|---|
+| Meetings list (on the board) | date · score · event. Three fields, one line each, newest first, bounded to ~8 with a count. |
+| Series summary | event, tournament, date, patch, the two teams, score, game count, and the players actually used — substitutions are a real fact and the roster authority already reports them |
+| Per-game row | game number, side, duration, result, the ten champions, and one economy figure |
+| Expanded game | the full per-player table and the team objective row |
+
+Do **not** put per-player KDA in the meetings list. It is the compact answer to
+"when did these two teams play", and a reader who wants numbers clicks.
+
+**Game state** — the deepest evidence layer, and the terminal one: exact
+rosters used, picks, bans (as an unordered set, see above), side, K/D/A, CS,
+gold, damage, vision, the team objective row, duration, result, patch, date
+and event. Derived figures only where the raw components are stored and the
+denominator is real: CS/min, gold/min, damage share, gold@15 differential.
+No rating, no grade, no prediction.
+
+### Entry points
+
+1. **From the team board.** A compact *Historical meetings* section — the
+   `GROUP BY match_id` above. Clicking one sets `series` and narrows the same
+   Explorer. A one-game meeting sets `series` and `game` together, because
+   there is no series to show.
+2. **From the exact matchup.** `/exact` already returns `exact.meetings` and
+   `exact.most_recent`; each needs `match_id` and `game_number` added to it —
+   which is a column already on `pro_canonical_games` and a change to the
+   projection, not to the query. `1 game · 1–0` then becomes clickable, and
+   the reader moves aggregate → evidence → source game.
+
+Other Pro Examples can reach the same place later through the same two keys.
+
+### The smallest next slice
+
+**`GET /api/pro-play/matchup/series` plus a meetings section on the board.**
+
+* Backend: one route over `oe_stats_reader.series_games` / `series_score`,
+  plus a `team_meetings(conn, team_a, team_b, scope)` function that is the
+  `GROUP BY match_id` measured above. It writes no statistic — same posture as
+  every other module in this workstream.
+* Backend, same slice: add `match_id` and `game_number` to the meeting rows
+  `/exact` already returns. Two columns on a table it already joins.
+* Frontend: the meetings list on the board, and the exact record's meeting
+  line made clickable. Both set `series` (and `game` for a Bo1).
+
+That is one route, one projection change and one section, and it makes both
+entry paths real before any per-game table exists. The series summary, the
+per-game rows and the expanded game detail are the slice *after* it, and they
+should not start until a `series` selection is something the URL can hold.
+
+Explicitly **not** in it: a Gol.gg-style standalone match page, Comparison Lab,
+custom cohorts, prediction, any new ingestion, any new statistics authority,
+and pretty URLs.
+
 ## Next task
 
-Nothing in Step 3 is outstanding. Natural next layers, in rough order:
-
-1. **Widen or explain the board's team selector** so more side journeys land.
-   This is the single biggest limit on the graph the examples imply.
-2. **The pretty-URL architecture** (`/matchup/t1-vs-geng/top/doran-olaf-vs-kiin-ksante`).
-   Deliberately deferred: the study now proves the state is fully addressable,
-   so this is a rename rather than a redesign.
-3. **Consume richer Oracle's Elixir fields** in the study once they are
-   canonical — only historical ones, never mixed with LIVE1.
+1. **The series slice above.** It is the natural continuation of Step 3 and
+   the first thing that lets the Explorer answer "show me the game".
+2. **Delete the `teams_outside_focus_set` mirror** once the frontend carrying
+   `teams_outside_explorer_pool` is published.
+3. **Re-run `scripts/audit_explorer_team_pool.py` each season.** The registry
+   is a cache of a measurement; the real-corpus tests will fail if it drifts,
+   and the script prints the edit.
+4. **The pretty-URL architecture**
+   (`/matchup/t1-vs-geng/top/doran-olaf-vs-kiin-ksante`). Still a rename.
 
 Explicitly **out of scope** for this workstream and still is: Comparison Lab,
 custom opponent cohorts, Champion Archives actions, Combat Lab / Quiz deep
-links, specific-game review UI, monetization or access changes, prediction
-models, and anything in Ranked / RR1 / LIVE1 infrastructure.
+links, monetization or access changes, prediction models, and anything in
+Ranked / RR1 / LIVE1 infrastructure.

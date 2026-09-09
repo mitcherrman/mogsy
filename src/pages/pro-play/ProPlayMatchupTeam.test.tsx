@@ -65,6 +65,8 @@ const SCOPE_LABELS: Record<string, string> = {
 const NOTES = {
   focus:
     "Team selection is limited to Mogzy's curated Worlds 2026 focus set — an editorial watchlist, not a qualification claim.",
+  explorer_pool:
+    "The Explorer's board can be pointed at Mogzy's Worlds focus set plus every team that meets the admission policy on real data. It is not a ranking, and a team outside the pool is still fully visible in Search.",
   pool: "Demonstrated picks: champions this player actually played in the selected scope. Not a statement of what they are able to play, and not filtered by a minimum number of games.",
   side_by_side:
     "Side-by-side record: each player's own results against the whole field over the same scopes. This is not a head-to-head record and does not restrict to games these two played against each other.",
@@ -98,6 +100,64 @@ const FOCUS_TEAMS = [
   },
 ];
 
+
+/** The pool the selector actually renders: the focus set, plus a team
+ *  admitted on measured data alone. KT Rolster is the case the whole split
+ *  exists for — a real historical destination that is not, and should not be,
+ *  on a Worlds watchlist. */
+const EXPLORER_TEAMS = [
+  {
+    team_key: "T1",
+    label: "T1",
+    group: "LCK",
+    source: "worlds_focus_set",
+    in_worlds_focus_set: true,
+    admission: null,
+    note: null,
+  },
+  {
+    team_key: "Bilibili Gaming",
+    label: "BLG",
+    group: "LPL",
+    source: "worlds_focus_set",
+    in_worlds_focus_set: true,
+    admission: null,
+    note: null,
+  },
+  {
+    team_key: "KT Rolster",
+    label: "KT Rolster",
+    group: "LCK",
+    source: "data_admitted",
+    in_worlds_focus_set: false,
+    admission: {
+      games: 70,
+      lanes_covered: 5,
+      league_slug: "LoL Champions Korea",
+      measured_on: "2026-09-08",
+    },
+    note: null,
+  },
+];
+
+const EXPLORER_POOL = {
+  explorer_pool_version: "explorer_pool_v1",
+  sources: ["worlds_focus_set", "data_admitted"],
+  admission_policy: {
+    scope_id: "current_2026",
+    league_filter: "MAJOR_PRO",
+    min_games_in_scope: 30,
+    required_lane_coverage: 5,
+    require_live_registry_row: true,
+  },
+  groups: ["LCK", "LPL"],
+  teams: EXPLORER_TEAMS,
+  team_count: EXPLORER_TEAMS.length,
+  focus_set_count: 2,
+  data_admitted_count: 1,
+  note: "The Explorer's board can be pointed at Mogzy's Worlds focus set plus every team that meets the admission policy on real data. It is not a ranking, and a team outside the pool is still fully visible in Search.",
+};
+
 const CONTRACT = {
   contract_version: "pro_matchup_v1",
   comparison_contract_version: "pro_comparison_v1",
@@ -118,6 +178,7 @@ const CONTRACT = {
     pending_slots: [],
     teams_asserting_qualification: [],
   },
+  explorer_teams: EXPLORER_POOL,
   team_mode: {
     modes: ["lane", "team"],
     lane_states: [LANE_CLEAR_STARTER, LANE_TIMESHARE, LANE_UNCOVERED],
@@ -224,10 +285,14 @@ function laneSide(
 }
 
 function teamHeader(teamKey: string, { missing = [] as string[], champs = [champ("Ornn", 40, 24)] } = {}) {
-  const focus = FOCUS_TEAMS.find((t) => t.team_key === teamKey)!;
+  // `explorer` is always present; `focus` is null for a team the board can be
+  // pointed at on measured data alone, which is exactly KT Rolster here.
+  const explorer = EXPLORER_TEAMS.find((t) => t.team_key === teamKey)!;
+  const focus = FOCUS_TEAMS.find((t) => t.team_key === teamKey) ?? null;
   return {
     team_key: teamKey,
     display_name: teamKey,
+    explorer,
     focus,
     roster: {
       team_key: teamKey,
@@ -658,7 +723,7 @@ const EXACT_DEFINITIONS = {
     "Ordered by relation to the matchup on screen \u2014 the same subject player first, then the same opposing player, then examples involving a team from this board, then the rest \u2014 and within each by number of games, then by most recent meeting.",
   record_orientation: "Wins and losses are counted from the subject player's side.",
   navigation_limit:
-    "The Explorer's team board is limited to Mogzy's curated focus set, so an example played between teams outside it is real evidence that the board cannot currently be pointed at.",
+    "The Explorer's team board can only be pointed at teams in its own pool \u2014 the orgs whose five-lane board the corpus can build honestly \u2014 so an example played between teams outside it is real evidence with no board to open.",
 };
 
 function exactSide(
@@ -717,7 +782,7 @@ function exactExample(
       opposing_player_lp_page: opposing.player_lp_page,
       opposing_champion: opposing.champion_key,
       explorer_navigable: navigable,
-      teams_outside_focus_set: outside,
+      teams_outside_explorer_pool: outside,
     },
   };
 }
@@ -809,13 +874,26 @@ function exactResponse(overrides: Record<string, unknown> = {}) {
         2,
         1,
       ),
+      // Both teams in the pool on measured data alone — this is the case the
+      // team-pool split exists for: real evidence that is now a real
+      // destination, without anyone claiming KT is on a Worlds watchlist.
       exactExample(
         "other_professional_example",
-        exactSide("Oscarinin", "Ornn", "Fnatic"),
+        exactSide("PerfecT", "Ornn", "KT Rolster"),
+        exactSide("Bin", "Ambessa", "Bilibili Gaming"),
+        2,
+        1,
+      ),
+      // And one that genuinely is not: Anyone's Legend has more current games
+      // than most of the pool and only three canonical lanes, so no honest
+      // five-lane board exists for it.
+      exactExample(
+        "other_professional_example",
+        exactSide("Flandre", "Ornn", "Anyone's Legend"),
         exactSide("Myrwn", "Ambessa", "Movistar KOI"),
         2,
         0,
-        { navigable: false, outside: ["Fnatic"] },
+        { navigable: false, outside: ["Anyone's Legend"] },
       ),
     ],
     example_limit: 6,
@@ -1054,15 +1132,26 @@ describe("the five-lane board", () => {
     expect(heading).toHaveTextContent("2026");
   });
 
-  it("offers only focus-set teams", async () => {
+  it("offers the explorer pool, not the focus set", async () => {
     // The VS banner IS the selector now — there is no disclosure to open, and
-    // no second control anywhere on the page.
+    // no second control anywhere on the page. What it offers is the POOL: the
+    // focus set plus every team admitted on measured data.
     await renderBoard();
     expect(screen.queryByTestId("dossier-team-picker")).toBeNull();
     expect(screen.queryByTestId("dossier-team-picker-toggle")).toBeNull();
     const select = screen.getByTestId("team-select-a");
     const values = [...select.querySelectorAll("option")].map((o) => o.getAttribute("value")).filter(Boolean);
-    expect(values).toEqual(["T1", "Bilibili Gaming"]);
+    expect(values).toEqual(["T1", "Bilibili Gaming", "KT Rolster"]);
+    expect(values.length).toBeGreaterThan(CONTRACT.focus_set.teams.length);
+  });
+
+  it("offers a data-admitted team with no watchlist wording on it", async () => {
+    await renderBoard();
+    const option = [...screen.getByTestId("team-select-a").querySelectorAll("option")].find(
+      (o) => o.getAttribute("value") === "KT Rolster",
+    )!;
+    expect(option.textContent).toContain("KT Rolster");
+    expect(option.textContent).not.toMatch(/watchlist|qualified/i);
   });
 });
 
@@ -1648,12 +1737,15 @@ describe("the VS banner is the only team selector", () => {
     });
   });
 
-  it("still offers every focus team and no other", async () => {
+  it("still offers every focus team, and the pooled teams beside them", async () => {
     await renderBoard();
     const values = [...screen.getByTestId("team-select-b").querySelectorAll("option")]
       .map((o) => o.getAttribute("value"))
       .filter(Boolean);
-    expect(values).toEqual(["T1", "Bilibili Gaming"]);
+    // Every original team survives, in its original order, and the widening
+    // is additive rather than a re-shuffle.
+    expect(values.slice(0, 2)).toEqual(["T1", "Bilibili Gaming"]);
+    expect(values).toEqual(CONTRACT.explorer_teams.teams.map((t) => t.team_key));
   });
 });
 
@@ -2255,7 +2347,7 @@ describe("the exact matchup study", () => {
     // A core feature, not an empty-state fallback.
     const { study } = await openStudy();
     expect(within(study).getByTestId("study-record")).toBeInTheDocument();
-    expect(within(study).getAllByTestId("study-example")).toHaveLength(3);
+    expect(within(study).getAllByTestId("study-example")).toHaveLength(4);
   });
 
   it("shows other pro examples when the exact sample IS empty", async () => {
@@ -2269,7 +2361,7 @@ describe("the exact matchup study", () => {
       },
     });
     const { drawer } = await openStudyExpectingZero();
-    expect(within(drawer).getAllByTestId("study-example")).toHaveLength(3);
+    expect(within(drawer).getAllByTestId("study-example")).toHaveLength(4);
   });
 
   it("renders each example's four identities and its record", async () => {
@@ -2327,14 +2419,42 @@ describe("the exact matchup study", () => {
     expect(params.get("opposing_champion")).toBe("Ambessa");
   });
 
+  it("opens a side journey into a team the pool admitted on data alone", async () => {
+    // The exact case the team-pool split was built for. Before it, this
+    // example was real evidence with `explorer_navigable: false` for a reason
+    // that had nothing to do with KT's data — it was not on a Worlds
+    // watchlist. Nothing about the Worlds claim changed; the board's own
+    // pool did.
+    const { study } = await openStudy();
+    const example = within(study).getAllByTestId("study-example")[2];
+    expect(example.tagName).toBe("BUTTON");
+    expect(example).toHaveAttribute("data-navigable", "true");
+    expect(example).toHaveTextContent("KT Rolster");
+    fireEvent.click(example);
+
+    await waitFor(() => {
+      const url = requests.filter((u) => u.includes("/matchup/team")).pop() ?? "";
+      const params = new URLSearchParams(url.split("?")[1]);
+      expect(params.get("team_a")).toBe("KT Rolster");
+      expect(params.get("team_b")).toBe("Bilibili Gaming");
+    });
+    // The study's four keys travel in the same navigation — proven by the
+    // first-example test above, which lands on a board this mock does show a
+    // roster for. What THIS test is about is the destination existing at all:
+    // before the team pool, `KT Rolster` produced no board and this example
+    // rendered as a static row.
+  });
+
   it("renders an example the board cannot open as evidence, not a dead link", async () => {
     // Hiding it would quietly redefine "other professional examples" as
     // "other focus-set examples" — a different and much smaller claim.
     const { study } = await openStudy();
-    const blocked = within(study).getAllByTestId("study-example")[2];
+    const blocked = within(study).getAllByTestId("study-example")[3];
     expect(blocked.tagName).toBe("DIV");
     expect(blocked).not.toHaveAttribute("data-navigable");
-    expect(within(study).getByTestId("study-example-blocked")).toHaveTextContent("Fnatic");
+    expect(within(study).getByTestId("study-example-blocked")).toHaveTextContent(
+      "Anyone's Legend",
+    );
     // And the limit is explained in the server's own words.
     expect(within(study).getByTestId("study-navigation-limit")).toHaveTextContent(
       EXACT_DEFINITIONS.navigation_limit,

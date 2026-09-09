@@ -47,6 +47,45 @@ export interface FocusTeamRow {
   note: string | null;
 }
 
+/**
+ * One team the board can be pointed at.
+ *
+ * NOT a `FocusTeamRow`. The Worlds focus set is an editorial watchlist; this
+ * pool is "can a five-lane board be built for this org honestly", and a team
+ * admitted on measured data carries no focus status at all. Rendering a
+ * `status` here would put a Worlds-shaped word on twenty-two teams nobody
+ * claimed anything about.
+ */
+export interface ExplorerTeamRow {
+  team_key: string;
+  /** The org's registry name. Never an owner short code — "KT" and "DK" each
+   *  match several real orgs. */
+  label: string;
+  group: string;
+  /** "worlds_focus_set" | "data_admitted". */
+  source: string;
+  in_worlds_focus_set: boolean;
+  admission: {
+    games: number;
+    lanes_covered: number;
+    league_slug: string;
+    measured_on: string;
+  } | null;
+  note: string | null;
+}
+
+export interface ExplorerTeamPool {
+  explorer_pool_version: string;
+  sources: string[];
+  admission_policy: Record<string, string | number | boolean>;
+  groups: string[];
+  teams: ExplorerTeamRow[];
+  team_count: number;
+  focus_set_count: number;
+  data_admitted_count: number;
+  note: string;
+}
+
 export interface PendingSlot {
   group: string;
   count: number;
@@ -69,6 +108,7 @@ export interface FocusSet {
 export interface MatchupNotes {
   focus: string;
   pool: string;
+  explorer_pool: string;
   side_by_side: string;
   bans: string;
 }
@@ -84,6 +124,8 @@ export interface MatchupContract {
   default_pool_scope_id: string;
   league_filters: { curated: string; every_competition: string };
   focus_set: FocusSet;
+  /** What the team selector renders. `focus_set` is a strict subset of it. */
+  explorer_teams: ExplorerTeamPool;
   notes: MatchupNotes;
 }
 
@@ -125,6 +167,11 @@ export interface LaneCandidates {
 
 export interface MatchupSide {
   team: { team_key: string; display_name: string } | null;
+  /** Why this team is selectable. Present whenever `team` is. */
+  explorer: ExplorerTeamRow | null;
+  /** The Worlds watchlist entry, or null for a team admitted on data alone.
+   *  Null is the honest answer to "is Mogzy watching this org for Worlds" —
+   *  never render it as a status. */
   focus: FocusTeamRow | null;
   roster: Roster | null;
   lane: Lane | null;
@@ -449,7 +496,9 @@ export interface TeamChampionSummary {
 export interface TeamHeader {
   team_key: string;
   display_name: string;
-  focus: FocusTeamRow;
+  explorer: ExplorerTeamRow;
+  /** Null for a team in the pool on measured evidence alone. */
+  focus: FocusTeamRow | null;
   roster: Roster;
   completeness: Roster["completeness"];
   team_games_in_scope: number;
@@ -839,9 +888,11 @@ export interface ExactPlayerFacts {
  * Where a side journey lands, and whether it can.
  *
  * `explorer_navigable` is false when either team is outside the Explorer's
- * curated focus set. The example is still real evidence — it is served, not
- * filtered — so the UI renders it as a row with the server's reason instead of
- * as a link that would 404.
+ * team pool — the orgs whose five-lane board the corpus can build. That is a
+ * data boundary, not the Worlds watchlist: widening the watchlist to make a
+ * link work would have been a claim about Worlds. The example is still real
+ * evidence — it is served, not filtered — so the UI renders it as a row with
+ * the server's reason instead of as a link that would 404.
  */
 export interface ExampleNavigation {
   team_a: string;
@@ -853,7 +904,7 @@ export interface ExampleNavigation {
   opposing_player_lp_page: string;
   opposing_champion: string;
   explorer_navigable: boolean;
-  teams_outside_focus_set: string[];
+  teams_outside_explorer_pool: string[];
 }
 
 export interface ExampleSide {

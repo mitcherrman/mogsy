@@ -108,10 +108,63 @@ const FOCUS_TEAMS = [
 
 const NOTES = {
   focus: "Team selection is limited to Mogzy's curated Worlds 2026 focus set — an editorial watchlist, not a qualification claim.",
+  explorer_pool:
+    "The Explorer's board can be pointed at Mogzy's Worlds focus set plus every team that meets the admission policy on real data. It is not a ranking, and a team outside the pool is still fully visible in Search.",
   pool: "Demonstrated picks: champions this player actually played in the selected scope. Not a statement of what they are able to play.",
   side_by_side:
     "Side-by-side record: each player's own results against the whole field over the same scopes. This is not a head-to-head record.",
   bans: "Bans remove a champion from what can be selected. No draft model, no inferred opponent bans.",
+};
+
+
+/** The pool the selector actually renders: the focus set, plus a team
+ *  admitted on measured data alone. KT Rolster is the case the whole split
+ *  exists for — a real historical destination that is not, and should not be,
+ *  on a Worlds watchlist. */
+const EXPLORER_TEAMS = [
+  // Derived from the focus set so this file has one list of teams, plus the
+  // one data-admitted team that proves the pool is not the focus set.
+  ...FOCUS_TEAMS.map((t) => ({
+    team_key: t.team_key,
+    label: t.owner_label,
+    group: t.group,
+    source: "worlds_focus_set",
+    in_worlds_focus_set: true,
+    admission: null,
+    note: null,
+  })),
+  {
+    team_key: "KT Rolster",
+    label: "KT Rolster",
+    group: "LCK",
+    source: "data_admitted",
+    in_worlds_focus_set: false,
+    admission: {
+      games: 70,
+      lanes_covered: 5,
+      league_slug: "LoL Champions Korea",
+      measured_on: "2026-09-08",
+    },
+    note: null,
+  },
+];
+
+const EXPLORER_POOL = {
+  explorer_pool_version: "explorer_pool_v1",
+  sources: ["worlds_focus_set", "data_admitted"],
+  admission_policy: {
+    scope_id: "current_2026",
+    league_filter: "MAJOR_PRO",
+    min_games_in_scope: 30,
+    required_lane_coverage: 5,
+    require_live_registry_row: true,
+  },
+  groups: ["LCK", "LPL"],
+  teams: EXPLORER_TEAMS,
+  team_count: EXPLORER_TEAMS.length,
+  focus_set_count: FOCUS_TEAMS.length,
+  data_admitted_count: 1,
+  note: "The Explorer's board can be pointed at Mogzy's Worlds focus set plus every team that meets the admission policy on real data. It is not a ranking, and a team outside the pool is still fully visible in Search.",
 };
 
 const CONTRACT = {
@@ -142,6 +195,7 @@ const CONTRACT = {
     ],
     teams_asserting_qualification: [],
   },
+  explorer_teams: EXPLORER_POOL,
   notes: NOTES,
 };
 
@@ -730,6 +784,9 @@ describe("first paint", () => {
     const options = [...(screen.getByTestId("matchup-team-a") as HTMLSelectElement).options]
       .map((o) => o.value)
       .filter(Boolean);
-    expect(options).toEqual(FOCUS_TEAMS.map((t) => t.team_key));
+    // The POOL: every focus team, in order, and the data-admitted teams
+    // beside them.
+    expect(options).toEqual(EXPLORER_TEAMS.map((t) => t.team_key));
+    expect(options.slice(0, FOCUS_TEAMS.length)).toEqual(FOCUS_TEAMS.map((t) => t.team_key));
   });
 });

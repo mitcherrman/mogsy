@@ -340,7 +340,8 @@ function ExampleRow({
       <div className="dossier-study__example is-static" data-testid="study-example">
         {body}
         <span className="dossier-drawer__stathint" data-testid="study-example-blocked">
-          Outside the Explorer's focus set ({navigation.teams_outside_focus_set.join(", ")})
+          No board for {navigation.teams_outside_explorer_pool.join(" or ")} yet — evidence
+          only
         </span>
       </div>
     );

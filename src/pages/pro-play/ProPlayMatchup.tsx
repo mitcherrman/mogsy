@@ -169,12 +169,15 @@ function TeamPicker({
 }) {
   const options = useMemo(
     () =>
-      contract.focus_set.teams.map((t) => ({
+      // The POOL, not the focus set. A team admitted on measured data is
+      // selectable and is not on any watchlist, so nothing here renders a
+      // focus status — see `ExplorerTeamRow`.
+      contract.explorer_teams.teams.map((t) => ({
         value: t.team_key,
-        // The owner's short label is shown ALONGSIDE the canonical key, never
-        // instead of it: "IG", "DK" and "TL" each match several real orgs, and
-        // the canonical page is the thing being selected.
-        label: `${t.owner_label} — ${t.team_key} (${t.group})`,
+        // The label is shown ALONGSIDE the canonical key, never instead of
+        // it: "IG", "DK" and "TL" each match several real orgs, and the
+        // canonical page is the thing being selected.
+        label: `${t.label} — ${t.team_key} (${t.group})`,
       })),
     [contract],
   );
