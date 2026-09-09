@@ -96,6 +96,47 @@ describe("compact media budget", () => {
     expect(screen.queryByTestId("scenario-hero")).toBeNull();
     expect(screen.getByTestId("scenario-compact")).toBeInTheDocument();
   });
+
+  /**
+   * RR1 pass 1 — the compact plate OWNS the arena's reserved media region.
+   *
+   * The stage reserves `--qs-media-h` (16rem at >=1024px) so consecutive rounds
+   * occupy one physical space. The plate used to be a fixed 64/72px strip, so a
+   * compact round left ~184px of bare parchment under it and read as content
+   * that had failed to load.
+   *
+   * jsdom performs no layout, so the pixel proof is a browser measurement, not
+   * an assertion here (recorded in RR1_HANDOFF.md: region 256 / plate 256 /
+   * empty 0 at >=1024px; unchanged 72px with no stage, 64px on mobile). What IS
+   * checkable — and what actually encodes the contract — is that the plate
+   * declares BOTH halves of it: a growth affordance so it can take the
+   * reserve's free space, and a minimum so that with no reserve it keeps
+   * exactly the intrinsic height it always had. Either alone is a regression:
+   * `grow` without `min-h` collapses the strip outside the arena, and `min-h`
+   * without `grow` restores the empty parchment.
+   */
+  it("the compact plate can fill a reserve and still keep its own floor", () => {
+    mount("competitive", SHORT_Q, null);
+    const plate = screen.getByTestId("scenario-compact");
+    expect(plate.className).toContain("grow");
+    expect(plate.className).toContain("min-h-16");
+    expect(plate.className).toContain("sm:min-h-[4.5rem]");
+    // The fixed heights the plate must NOT go back to — they are what pinned
+    // it to the top of the region.
+    expect(plate.className).not.toMatch(/(^|\s)h-16(\s|$)/);
+    expect(plate.className).not.toContain("sm:h-[4.5rem]");
+  });
+
+  it("fills the reserve with owned chrome, never with invented artwork", () => {
+    // Several families are premise-DENIED because no canonical asset exists
+    // (quiz/presentation_contract.py). The plate must therefore fill the region
+    // with its own asset-free hextech mark and nothing that could 404.
+    mount("competitive", SHORT_Q, null);
+    const watermark = screen.getByTestId("scenario-compact-watermark");
+    expect(watermark).toBeInTheDocument();
+    expect(watermark.querySelector("img")).toBeNull();
+    expect(watermark.getAttribute("aria-hidden")).toBe("true");
+  });
 });
 
 describe("compact answer columns", () => {

@@ -49,7 +49,69 @@ describe("visual QA fixture — coverage", () => {
       // runtime champion splash — and therefore the only one that exercises
       // the Step 5 unresolved-subject-image gate.
       "vq-13",
+      // RR1 pass 1 — the three rows that make the RANKED production
+      // presentation path photographable. vq-14 is the GOLD STANDARD (the
+      // control group for every convergence change), vq-15 is the real thin
+      // Ranked item payload, vq-16 is a declared-denied premise.
+      "vq-14", "vq-15", "vq-16",
     ]);
+  });
+
+  // ---- RR1 pass 1 ---------------------------------------------------------
+
+  it("vq-14 is the Combat Calculation gold standard, cinematic and complete", () => {
+    const subject = (byId.get("vq-14")?.presentation as
+      { assets?: { subject?: Record<string, unknown> } } | undefined)?.assets?.subject;
+    // The DISCRIMINATOR. classify.ts selects CombatCalculationScenarioCard on
+    // this exact string; nothing else in the payload chooses the card.
+    expect(subject?.type).toBe("combat_cooldown");
+    // The full-bleed splash is the single thing that separates the cinematic
+    // card from a dark box — ScenarioCardFrame draws a gradient placeholder
+    // for every card that passes backgroundUrl={null}.
+    expect(subject?.champion_splash).toBeTruthy();
+    expect(subject?.champion).toBe("Aatrox");
+    expect(subject?.ability_name).toBe("Umbral Dash");
+    expect(subject?.ability_slot).toBe("E");
+    expect(subject?.ability_icon).toBeTruthy();
+    // The two ConditionChips. No other production family emits either.
+    expect(subject?.level).toBe(11);
+    expect(subject?.ability_rank).toBe(3);
+    // The "Loadout · Items" section.
+    expect(subject?.item_icons).toHaveLength(1);
+  });
+
+  it("vq-14 carries NO family-band inputs, so it cannot be diverted", () => {
+    // resolveBandProfile checks selectFamilyLayout BEFORE cinematic, and
+    // selectFamilyLayout reads assets.entities / assets.premise_facts. A
+    // payload that grew either would silently stop rendering the gold
+    // standard while every other assertion here still passed.
+    const assets = (byId.get("vq-14")?.presentation as
+      { assets?: Record<string, unknown> } | undefined)?.assets;
+    expect(assets).toBeTruthy();
+    expect(assets).not.toHaveProperty("entities");
+    expect(assets).not.toHaveProperty("premise_facts");
+  });
+
+  it("vq-15 is the THIN Ranked item payload, not the richer Daily shape", () => {
+    const subject = (byId.get("vq-15")?.presentation as
+      { assets?: { subject?: Record<string, unknown> } } | undefined)?.assets?.subject;
+    expect(subject?.type).toBe("item");
+    expect(subject?.icon).toBeTruthy();
+    // What production does NOT send. getItemAnalysisSubject reads all of these
+    // off `metadata`, so their absence is why the dossier and the recipe tree
+    // never populate in a Ranked round — the baseline the next pass measures.
+    const meta = byId.get("vq-15")?.presentation as Record<string, unknown>;
+    for (const key of ["cost", "stats", "known_components", "parent_item_name"]) {
+      expect(meta).not.toHaveProperty(key);
+    }
+  });
+
+  it("vq-16 is a declared-denied premise and carries no presentation at all", () => {
+    // presentation_for_question() returns None for this family
+    // (premise_denied_reason in quiz/presentation_contract.py). The ABSENCE is
+    // the contract: a correct payload, not a missing one.
+    expect(byId.get("vq-16")).toBeTruthy();
+    expect(byId.get("vq-16")?.presentation).toBeUndefined();
   });
 
   it("spans the option counts the CTA has to answer for", () => {

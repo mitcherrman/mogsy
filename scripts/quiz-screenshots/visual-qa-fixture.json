@@ -27,7 +27,29 @@
     "  vq-10  a long-explanation row, for the explanation state",
     "The reveal and explanation cases are STATES over these rows, captured with",
     "--states question,correct,explanation.",
-    "CON1 Step 5: vq-03 was a HAND-AUTHORED row shaped like one of the ~50k legacy stored pro_champion_scope_comparison questions. That population is not the current Pro Play serving architecture -- Pro Play generates on demand (pro_authority.on_demand) and the stored rows carry no `context`, so they can never render the production Pro Play card. vq-03 is now a REAL current specimen emitted by quiz.review_render.resolve_review_item; vq-11 and vq-12 add the team and player anchors. All three payloads are the resolver's own output, copied verbatim, never hand-written. The legacy shape's continued REFUSAL is held by a unit test (presentation.proPlay.test.ts) rather than by a fixture row, because a fixture row that must fail would make every clean run report a failure."
+    "CON1 Step 5: vq-03 was a HAND-AUTHORED row shaped like one of the ~50k legacy stored pro_champion_scope_comparison questions. That population is not the current Pro Play serving architecture -- Pro Play generates on demand (pro_authority.on_demand) and the stored rows carry no `context`, so they can never render the production Pro Play card. vq-03 is now a REAL current specimen emitted by quiz.review_render.resolve_review_item; vq-11 and vq-12 add the team and player anchors. All three payloads are the resolver's own output, copied verbatim, never hand-written. The legacy shape's continued REFUSAL is held by a unit test (presentation.proPlay.test.ts) rather than by a fixture row, because a fixture row that must fail would make every clean run report a failure.",
+    "",
+    "RR1 pass 1 — three rows added so the RANKED production presentation path is",
+    "photographable at all. Every `presentation` below is the VERBATIM output of",
+    "ranked_public.presentation_render.presentation_for_question() for that row's",
+    "family, run against the canonical tables; none is hand-written.",
+    "  vq-14  THE GOLD STANDARD. combat_cooldown -> assets.subject.type",
+    "         'combat_cooldown' with champion_splash + ability + slot + level +",
+    "         ability_rank + item loadout, and deliberately NO assets.entities and",
+    "         NO assets.premise_facts -- their presence would divert the payload to",
+    "         a family band (bandProfile checks familyLayout BEFORE cinematic), so",
+    "         their absence is part of what this row pins. Selects",
+    "         CombatCalculationScenarioCard. This is the control group for every",
+    "         later convergence change.",
+    "  vq-15  The REAL thin Ranked item payload: subject {type,id,name,icon} and",
+    "         nothing else. vq-09 is a DAILY card and is richer than anything",
+    "         Ranked emits, so it could not serve as the Item Analysis baseline.",
+    "         Selects ItemAnalysisScenarioCard with no cost/stats/components.",
+    "  vq-16  A DECLARED-DENIED premise (objective_baron_spawn; see",
+    "         quiz/presentation_contract.py premise_denied_reason). The resolver",
+    "         returns None, so the row carries no `presentation` at all and the",
+    "         surface takes the compact band. The absence is the point: this is a",
+    "         correct payload, not a missing one."
   ],
   "questions": [
     {
@@ -1282,6 +1304,113 @@
         "pro_seasons": [],
         "generated_at": "2026-09-07T23:02:37.233207+00:00"
       }
+    },
+    {
+      "id": "vq-14",
+      "question_key": "combat_cooldown:aatrox:e:rank3:level11:eclipse",
+      "category": "Champion Ability Cooldowns",
+      "question_text": "If Aatrox is level 11 and has Eclipse, what is the cooldown of Aatrox E - Umbral Dash at rank 3?",
+      "format": "multiple_choice",
+      "choices": [
+        "4.3 seconds",
+        "6 seconds",
+        "6.1 seconds",
+        "7 seconds"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "6.1 seconds",
+        "case_sensitive": false
+      },
+      "explanation": "Aatrox E - Umbral Dash has a base cooldown of 7 seconds at rank 3. Eclipse grants 15 ability haste, so the cooldown is 7.0 × 100 / (100 + 15) = 6.09s, displayed as 6.1 seconds.",
+      "difficulty": 4,
+      "source_kind": "stored",
+      "review_key": "stored:combat_cooldown:aatrox:e:rank3:level11:eclipse",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "combat_cooldown",
+            "champion": "Aatrox",
+            "ability_name": "Umbral Dash",
+            "champion_icon": "assets/champions/Aatrox/icon.png",
+            "ability_icon": "assets/champions/Aatrox/E_AatroxE.png",
+            "item_icons": [
+              {
+                "name": "Eclipse",
+                "icon": "assets/items/6692.png"
+              }
+            ],
+            "ability_slot": "E",
+            "champion_splash": "assets/champions/Aatrox/splash/0_default.jpg",
+            "champion_loading": "assets/champions/Aatrox/loading/0_default.jpg",
+            "level": 11,
+            "ability_rank": 3
+          }
+        },
+        "presentation": {
+          "role": "context",
+          "timing": "question",
+          "spoiler": false
+        }
+      }
+    },
+    {
+      "id": "vq-15",
+      "question_key": "item_cost:Abyssal Mask",
+      "category": "Item Costs",
+      "question_text": "How much does Abyssal Mask cost?",
+      "format": "multiple_choice",
+      "choices": [
+        "2450 gold",
+        "2850 gold",
+        "2650 gold",
+        "2950 gold"
+      ],
+      "correct_answer": {
+        "type": "gold_cost",
+        "value": "2650 gold",
+        "raw_value": 2650
+      },
+      "explanation": "Abyssal Mask costs 2650 gold.",
+      "difficulty": 1,
+      "source_kind": "stored",
+      "review_key": "stored:item_cost:Abyssal Mask",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "item",
+            "id": 8020,
+            "name": "Abyssal Mask",
+            "icon": "assets/items/8020.png"
+          }
+        },
+        "presentation": {
+          "role": "context",
+          "timing": "question",
+          "spoiler": false
+        }
+      }
+    },
+    {
+      "id": "vq-16",
+      "question_key": "objective_baron_spawn",
+      "category": "Objective Timers",
+      "question_text": "What time does Baron Nashor spawn?",
+      "format": "multiple_choice",
+      "choices": [
+        "20:00",
+        "14:00",
+        "15:00",
+        "25:00"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "20:00"
+      },
+      "explanation": "Baron Nashor spawns at 20:00.",
+      "difficulty": 1,
+      "source_kind": "stored",
+      "review_key": "stored:objective_baron_spawn"
     }
   ]
 }
