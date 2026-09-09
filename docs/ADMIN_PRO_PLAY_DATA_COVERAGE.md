@@ -113,23 +113,84 @@ navigation exposure.
 
 ## Status
 
-**Merged to `main` (`55b31e2f`) — NOT LIVE.**
+**LIVE AND VERIFIED on mogzy.lol, 2026-09-09.**
 
-Pushed 2026-09-09. Production's main bundle
-(`/assets/index-B9L9ushQ.js`) was polled every 30s for 30 minutes afterwards
-and its hash never changed; it still contains no `pro-play-coverage`
-reference. Lovable did not publish automatically. **The owner must press
-Publish in Lovable** — the same trap this repo has hit before (Graph1 Phase F,
-Pro Play Step 2, the hub Premium module).
+Lovable published after the owner pressed Publish; the push alone did not
+deploy (the bundle sat unchanged for 30+ minutes first).
 
-`https://mogzy.lol/admin/pro-play-coverage` answers 200 today only because it
-is a SPA index; the route does not exist in the deployed bundle.
+**Bundle proof.** Production's entry chunk moved
+`index-B9L9ushQ.js` → **`index-CLIsGg1K.js`** and now references the lazy
+chunk **`AdminProCoverage-D4kXWY0B.js`** (200, 14,965 B). That chunk contains
+`\`/api/admin/pro-coverage/by-league?limit=${w}\`` with `w=500`, the summary
+path, the "Leaguepedia remains canonical" copy and the 503 wording.
 
-Verified so far: 17 new tests green on the `origin/main` base, `vite build`
-clean (`AdminProCoverage-*.js`, 14.94 kB), and the route/gate/registry
-agreement suites green. Live desktop and narrow-viewport verification against
-real production data is BLOCKED until the publish fires, and has not been
-done.
+**Route proof.** `/admin/pro-play-coverage` renders inside the admin shell for
+the owner (master_admin), title `Mogzy Admin · Pro Play Data Coverage`, with
+Game Data selected in the sidebar. The two backend reads answered **200**:
+`/summary` and `/by-league?limit=500`. `/summary` is slow — roughly 25–35 s in
+production — so the page sits on its loading state for a while; `/by-league`
+returns in a couple of seconds. That is the reconciliation query's cost, not a
+frontend defect.
+
+**Production numbers rendered** (these have moved since the backend handoff
+was written — treat that document's figures as of its own pass):
+
+| | live |
+| --- | --- |
+| Canonical games | 118,429 |
+| Enriched games | 94,301 |
+| Missing games | 24,128 |
+| Coverage of canonical | 79.63% |
+| Coverage of OE-eligible | 80.96% |
+| OE-eligible games | 116,480 (2014 onward) |
+| Player stat rows | 896,344 |
+| Team stat rows | 188,602 |
+| Source games | 129,405 |
+| OE upstream games | 99,842 |
+| Source disagreements | **178 games / 314 of 188,602 rows** |
+
+The handoff's 182,108 compared rows and 147 disagreeing games are stale; the
+corpus grew. `unresolved_team` is **0** live, confirming the team-identity
+recovery held.
+
+**The 60-row trap, proved in production.** The league table reports
+**"Showing 40 of 323 leagues"**. Summary would have shown 60. The full
+universe is 323.
+
+Year table: 16 rows, 2011–2026, with `—` for 2011–2013 (pre-OE) and real
+percentages from 2014 (41.30%) to 2026 (90.46%). Buckets: 8 rows. Attribution
+outcomes: 5 rows. Top missing contributors: 20 rows.
+
+**Gating, live.** A session-less browser requesting
+`https://mogzy.lol/admin/pro-play-coverage` is **redirected to `/`** with zero
+coverage nodes in the DOM. Both backend endpoints answer **403** to an
+unauthenticated request. Navigation is correct: Game Data › Pro Data lists the
+tool with its `master_admin` badge, and All Tools includes it.
+
+**Desktop.** 1920×872: no horizontal page scroll, tiles on a 4-column grid,
+every table inside its own scroll frame.
+
+**Narrow viewport.** Chrome would not honour a resize on the owner's window, so
+this was measured with Playwright at a real **390×844** viewport against the
+*same built bundle* served locally, with the session and the coverage payload
+supplied by route interception (production-shaped fixture; the live desktop run
+above is the real-data proof). Result: `documentElement.scrollWidth === 390`,
+**no page-level horizontal scroll**; metric tiles fall back to 2 columns; all
+six tables scroll inside their own frames and the league frame scrolls its full
+308 px extent, so the right-hand columns are reachable; 16 year rows, 8 bucket
+rows, 5 reason rows, 40 league rows all present. Screenshots confirm no
+clipping.
+
+**Console/runtime.** Zero console messages of any level across a full
+production load, and zero `pageerror`/`console.error` in the Playwright run.
+
+**Regressions.** None. `/admin`, `/admin/all-tools` and `/admin/game-data`
+render normally.
+
+**Fixes needed:** none. One inert cosmetic detail was measured and left alone:
+the `-mx-1 px-1` scroll frame makes its wrapper report a 4 px overflow, which
+never clips because the wrapper's overflow is visible and the page itself does
+not scroll horizontally.
 
 ## Next task
 
