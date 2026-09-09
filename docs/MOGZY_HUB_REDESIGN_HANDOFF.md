@@ -1,7 +1,9 @@
 # Mogzy Hub Redesign — Post-LIVE1 IA + Layout Design Prep
 
-<!-- Revision 36 (Timmy demo-user data-contract audit — APPROVED, owner
-     decisions recorded, nothing seeded) is at the top of this file.
+<!-- Revision 37 (Timmy Demo containment + seed planner — BUILT, nothing
+     seeded) is at the top of this file.
+     Revision 36 was the data-contract audit it implements — APPROVED, with
+     the ten binding owner decisions in its §0a.
      Revision 35 verified the capital/base and CLOSED the side-gutter work;
      Revision 34 built the mouldings.
      Revision 33 verified the side architecture in production; 32 built it.
@@ -18,6 +20,299 @@
      19 the Commons visual polish; 18 the painted Commons; 17 the two-screen
      Academy; 16 the Mogzy Premium promotion module; 15 the below-the-fold
      rework. -->
+
+## Revision 2026-09-09 — TIMMY DEMO: CONTAINMENT + SEED PLANNER — **BUILT, NOTHING SEEDED**
+
+Phase A (containment) and Phase B (the deterministic seed planner) of the
+Timmy Demo infrastructure. **No account was created, no production row was
+written, no Premium was granted, and no email was chosen.** Worked from two
+fresh worktrees — `/Users/macmoney/lcs-wt-timmy-impl` (backend, off
+`origin/master` `3fb3b418`) and `/Users/macmoney/mogsy-wt-timmy-infra`
+(frontend, off `origin/main` `a89ccf6e`). Neither shared checkout was touched.
+
+**Zero frontend files changed.** Owner decision 8, kept exactly: every surface
+already reads Timmy through the hook it uses for any member, so there was
+nothing to change.
+
+---
+
+### 1. Phase A — containment, and the one thing that made the choice for us
+
+**`profiles.is_bot` cannot be the containment for these four aggregates, and
+that is a fact about the deployment rather than a preference.** The four
+consumers Revision 36 named are SQLite queries inside the FastAPI backend.
+That process holds **no service-role key** — `services/pro_status.py`
+establishes the posture, the caller's own token plus the public anon key — so
+under RLS it can read the caller's own `profiles` row and nobody else's.
+"Is this uuid a bot?" is a question it has no credential to ask, and the
+SQLite database these aggregates run against has no notion of a bot at all.
+Rewriting them to "exclude all bots" is not a weaker option; it is an
+unimplementable one, and a test now says so.
+
+On the **Supabase** side `is_bot` remains exactly right and unchanged: admin
+analytics, the CSV user/bot split and `search_league_profiles` already exclude
+bots, that split is the intended one, and Timmy Demo will carry the flag.
+
+So containment is expressed where the aggregates actually run.
+
+**`demo_accounts`** — a new table (`migrate_add_demo_accounts.py`, in the
+startup chain) holding `user_id`, `slug`, `label`, `note`, `registered_at`,
+`plan_fingerprint`. Registering a demo/test account is **one INSERT**. No
+analytics query changes, no call site grows an id, and no uuid appears in
+`services/demo_identity.py` or anywhere near a predicate.
+
+`exclude_demo_clause` now emits two arms:
+
+| arm | contains | source |
+|---|---|---|
+| namespace | `demo::<slug>` — the Timmy Analytics Fixture | PT1.9, **verbatim**, NULL branch included |
+| registry | any uuid registered in `demo_accounts` | this phase |
+
+Three deliberate properties:
+
+* **`cur` is a required first argument.** PT1.9's zero-argument form could be
+  called by a future analytics query that then silently skipped registry
+  containment. It now cannot run without a cursor.
+* **It degrades, it never errors.** A database predating the migration — an
+  old snapshot, a test building its own minimal schema — gets the
+  namespace-only predicate, byte-identical to PT1.9's.
+* **Registration is independent of seeding.** `plan_fingerprint` stays NULL
+  until a seeder writes one, so an account can be contained *before* it has a
+  single row to contribute.
+
+#### 1a. A real defect this phase found in its own first draft
+
+The predicate was first written as
+`NOT EXISTS (SELECT 1 FROM demo_accounts _da WHERE _da.user_id = user_id)`.
+That is wrong in a way nothing about it looks wrong. The registry's own column
+is also `user_id`, so inside the subquery the **inner scope wins** and the
+comparison becomes `_da.user_id = _da.user_id` — true for any registry row —
+which means registering **one** account excludes **every** account and the
+platform total silently collapses to the guest rows. No error, no bad-looking
+call site.
+
+Qualifying the outer reference would fix it, but the template cannot: two of
+the four call sites pass a bare `user_id` and two pass `a.user_id`. The
+shipped form uses `IN`, whose left operand is evaluated in the outer scope and
+cannot be shadowed. Its own NULL hazard is closed three ways rather than by
+argument — the leading `IS NULL` arm, a `NOT NULL` column, and an explicit
+`_da.user_id IS NOT NULL` inside the subquery. A test reproduces the trap and
+pins the shape.
+
+---
+
+### 2. Phase B — the seed planner
+
+`services/demo_account_seed.py` (plan + writers) and
+`scripts/seed_demo_account.py` (CLI + report). **The default path writes
+nothing**: it builds a scratch database, replays through the real production
+writers, and prints what they produced.
+
+That is the whole design. A dry run that echoed the plan back would prove
+nothing, because **XP, tier, accuracy, streaks, category counters and
+achievements are not in the plan** — they are computed by
+`services/quiz_helpers.py`. The planner declares an *ordered attempt
+sequence*; everything the owner reads is an output.
+
+Three ways state arrives, and they are not interchangeable:
+
+| | how | why |
+|---|---|---|
+| **Derived** | `update_quiz_progress`, `update_category_progress`, `unlock_quiz_achievements`, `record_session_answer` | owner decision 5 — the same functions that serve live players |
+| **Direct** | Ranked rows | owner decision 6 — the rating path refuses bot matches on purpose |
+| **Omitted** | Time Trial, champion mastery, Combat Lab | nothing durable or authoritative to seed |
+
+**Ranked is fixture-owned in the data, not by convention.** Every match
+carries `creation_source='dev_fixture'` — existing vocabulary that
+`ranked_public.rating` already maps to `SKIP_DEV_FIXTURE`, so these matches are
+ineligible for rating *by the production rules themselves*. **Zero queue
+entries are written**, and a test asserts it. Results are written `applied` or
+`skipped`, **never `pending`**, so the background rating pass never selects a
+fixture match. Opponents live in the `demo::` namespace, so PT1.9's older arm
+already contains them and they need no registry row of their own.
+
+**Time Trial is omitted, not seeded.** `current_streak` reads `dsa_runs WHERE
+challenge_date IN (today, yesterday)`, so a seeded streak becomes false within
+two days. A permanent fixture must not contain a fact with a two-day shelf
+life. A test walks every `dsa_*` table and asserts it is empty.
+
+**The one genuinely time-relative surface is handled explicitly.** PT1.8's
+Trends windows are relative to *now*, so every timestamp is an integer day
+offset from an explicit `--as-of`. Same anchor → byte-identical plan and a
+no-op re-run; a later anchor → a documented, idempotent slide forward.
+Attempts sit at a fixed mid-day time: PT1.9 measured fractional-day placement
+straddling PT1.8's window edges and flipping the same corpus from +4 to −7
+depending on the hour it was read.
+
+---
+
+### 3. The dry run
+
+```
+plan version     timmy_demo.v1
+target user_id   <input>            auth.users row   False (never created here)
+as-of anchor     2026-09-09         question binding bound (6 categories)
+
+-- rows per table -------------------   -- ranked fixture ------------------
+   quiz_attempts               428         rating 1218 -> gold
+   quiz_sessions                46         (next diamond, 82 away)
+   quiz_user_progress            1         history rows 22, rated events 18
+   quiz_category_progress        6         discoveries 58
+   quiz_user_achievements        6         creation_source 'dev_fixture'
+   ranked_rating_events         18         queue entries written 0
+   ranked_results               22
+   ranked_participants          44      -- free vs premium -----------------
+   ranked_matches               22         rows that differ        0
+   ranked_ratings                1         history   free 10 / premium 46
+   ranked_question_discoveries  58         missed    free  0 / premium 111
+   demo_accounts                 1         cache     120s
+
+-- derived by the REAL production writers ----------------------------------
+   answered 428    correct 317    accuracy 74.07 %
+   total_xp 4074   (economy cross-check 4074, agrees=True)
+   Academy tier  diamond  [3000 … 6000)   XP to challenger 1926  (35.8 %)
+   legacy rank   Master
+   current / best streak   7 / 24
+   best category           Champion Attack Types — 91.38 % over 58
+   achievements            6/6
+
+   Champion Ability Cooldowns  107/132  81.06 %   Champion Attack Types 53/58 91.38 %
+   Item Exact Stats             57/84   67.86 %   Champion Resources    44/51 86.27 %
+   Item Costs                   29/66   43.94 %   Runes                 27/37 72.97 %
+```
+
+**653 rows**, against the ~500 Revision 36 estimated.
+
+#### 3a. Why Diamond is a measurement, not a claim
+
+Nothing declares 4074, and nothing declares "diamond". The chain is:
+
+1. The plan declares 428 ordered attempts with per-category difficulty cycles.
+2. `update_quiz_progress` is called once per attempt and accumulates XP from
+   `DIFFICULTY_XP` (10–18 correct) and `WRONG_ANSWER_XP` (2). It returns 4074.
+3. An independent sum over the same sequence gives 4074. The report prints
+   both and whether they agree, and a test fails if they ever diverge.
+4. `ACADEMY_THRESHOLDS` puts 4074 in `diamond` — `[3000, 6000)` — with
+   **1926 XP still to climb**, 35.8 % through the tier.
+
+Owner decision 4 is enforced by a test, not by intent: Challenger is terminal
+(`isMaxTier` pins the bar at 100 % and strips the Bulletin's "XP to next"
+line), and the fixture asserts it is not there and that `xp_to_next > 0`.
+
+**The streaks are the same kind of fact.** 7 and 24 are not written anywhere —
+`update_quiz_progress` counts runs, so the *ordering* has to contain them. The
+sequence builder arranges one run of 24, a tail run of 7, and caps every other
+run at 4 so the maximum is unambiguous.
+
+**One honest limitation.** The achievement set is six rows with thresholds of
+1, 5, 10, 100 XP, 500 XP and 50 attempts. **Any** mature account unlocks all
+six. A full shelf is the truth about this content, not a flattering choice —
+but the shelf cannot demonstrate partial progress until more achievements
+exist.
+
+---
+
+### 4. Free / Premium
+
+One account, one record, **zero duplicated rows** — and the fingerprint
+deliberately excludes entitlement, so toggling never triggers a rewrite.
+
+| surface | mature Free | mature Premium |
+|---|---|---|
+| `/api/quiz/history` | 10 of 46 + upsell | all 46 |
+| `/api/quiz/missed-questions` | locked stub | 111 rows |
+| `/api/quiz/analytics/trends` | recent snapshot | 7/30/90 windows |
+| Premium panel / Record band | promotion | member |
+
+```sql
+select public.admin_set_pro_grant('<uuid>'::uuid, 'manual', null, 'Timmy Demo fixture');
+select public.admin_set_pro_grant('<uuid>'::uuid, null);
+```
+
+`services/pro_status.py` caches for 120 s, so a toggle takes up to two minutes
+to reach the backend gates.
+
+---
+
+### 5. Idempotency, and cleanup
+
+Proven against a throwaway file database, not asserted:
+
+| run | outcome |
+|---|---|
+| `--apply` #1 | 428 attempts, XP 4074 |
+| `--apply` #2 | *"unchanged — the stored fingerprint matches this plan"*, nothing written |
+| `--apply` with a new `--as-of` | rewritten, **not doubled** — identical counts, XP still 4074 |
+| `--remove` | every owned row gone |
+
+Every derived writer is **incremental**, so the rewrite-from-zero is what makes
+a re-run safe: `apply_plan` registers, then deletes, then replays. A test
+asserts the register happens before the first attempt insert, so the account is
+contained from platform figures before it can contribute to one.
+
+Markers: `user_id` across 11 owned tables · `demo_accounts.slug` ·
+`ranked_matches.creation_source='dev_fixture'` · Supabase `profiles.is_bot` and
+`pro_grant_reason`.
+
+---
+
+### 6. Files
+
+**Backend, new** — `migrate_add_demo_accounts.py` ·
+`services/demo_account_seed.py` · `scripts/seed_demo_account.py` ·
+`quiz/tests/test_demo_account_containment.py` (25 tests) ·
+`quiz/tests/test_demo_account_seed.py` (26 tests)
+
+**Backend, modified** — `services/demo_identity.py` (registry + widened
+predicate) · `api_server.py` (one migration call) · `routes/quiz.py`,
+`quiz/quiz_stats.py`, `quiz/question_performance.py`,
+`quiz/export_admin_report.py` (pass a cursor; no logic change) ·
+`quiz/tests/test_demo_analytics_{routes,seed}.py` (PT1.9's, for the signature)
+
+**Frontend** — none. **Supabase** — no migration; the RPCs used at execution
+time already ship.
+
+---
+
+### 7. Verification
+
+| check | result |
+|---|---|
+| New suites | **51 passed** (25 containment + 26 planner) |
+| PT1.9 suites, unchanged behaviour | **75 passed** |
+| `quiz/tests` failure **set** vs pristine `origin/master` | **identical** — 111 → 111, the documented fresh-worktree `lol_calc.db` failures; passing 331 → **382** |
+| Ranked suites (4 files) | **60 passed**, baseline and implementation identical |
+| Backend compile | clean; unused imports swept |
+| Frontend `vitest` | 13 files / 53 tests fail — **the pre-existing baseline on `a89ccf6e`**; zero frontend files changed |
+| Frontend `tsc --noEmit` | **0 errors** |
+| Frontend `eslint` | 708 problems — pre-existing baseline, unchanged |
+| Frontend `npm run build` | **exit 0**, 173 champions prerendered |
+
+One defect found and fixed in this session's own work (§1a), and one avoided:
+importing `init_quiz_achievements` for a constant **creates a stub
+`lol_calc.db` as an import side effect**, because that module opens a database
+at module level. The planner reads the constant with `ast` instead.
+
+---
+
+### 8. What remains before production execution
+
+1. **The email.** Owner-controlled, and not the owner's own account.
+2. **Create the account**, set `profiles.is_bot = true` (an admin session can:
+   the "Admins can update any profile" policy plus the admin exemption in
+   `protect_profile_premium_fields`), capture the uuid.
+3. **Deploy the containment first** and verify `demo_accounts` exists in
+   production, so no fabricated attempt can reach an aggregate.
+4. **Register the uuid**, then `--apply` against `/data/lol_calc.db` over
+   `railway ssh`, with a pre-seed fingerprint of every table the seeder must
+   not touch (PT1.9's method, including its row-factory correction).
+5. **Verify each surface** signed in as Timmy, Free then Premium, allowing the
+   120 s entitlement cache.
+
+Still out of scope by owner decision 10: the `/dev/lobby-preview`
+`total_xp: 48250` impossibility. Nothing built here depends on that fixture.
+
+---
 
 ## Revision 2026-09-08 — TIMMY: DEMO-USER DATA-CONTRACT AUDIT — **APPROVED, NOTHING SEEDED**
 
