@@ -54,7 +54,48 @@ describe("visual QA fixture — coverage", () => {
       // control group for every convergence change), vq-15 is the real thin
       // Ranked item payload, vq-16 is a declared-denied premise.
       "vq-14", "vq-15", "vq-16",
+      // RR1 summoner-spell convergence — the pair that pins BOTH halves of
+      // the family: vq-17 is a spell with a canonical row (resolves), vq-18 is
+      // one with art on disk and NO row (fails closed). The second is the more
+      // valuable of the two, because it is the one a future pass would be
+      // tempted to "fix" by building a path from the spell name.
+      "vq-17", "vq-18",
     ]);
+  });
+
+  // ---- RR1 summoner-spell convergence -------------------------------------
+
+  it("vq-17 is a summoner-spell SUBJECT, not an option-channel entity", () => {
+    const subject = (byId.get("vq-17") as any).presentation.assets.subject;
+    // `summoner_spell` is the OPTION-channel type and routes to the small
+    // collectible card; the subject channel has its own type so an ordinary
+    // summoner-spell question reaches the shared Ranked scenario card.
+    expect(subject.type).toBe("summoner_spell_subject");
+    expect(subject.spell).toBe("Barrier");
+    expect(String(subject.spell_icon)).toContain("summoner_spells/Barrier.png");
+    expect(subject.badge).toBe("Summoner Spell");
+  });
+
+  it("vq-17 exposes the spell and never its cooldown", () => {
+    const row = byId.get("vq-17") as any;
+    // The correct answer is "180 seconds" and it is the ANSWER, so no part of
+    // it may appear anywhere in the frozen presentation.
+    const blob = JSON.stringify(row.presentation);
+    expect(blob).not.toContain("180");
+    expect(blob.toLowerCase()).not.toContain("cooldown");
+    // And the premise carries nothing the SSM slice needs but this question
+    // does not — no sources, no haste total.
+    expect(Object.keys(row.presentation.assets.subject).sort()).toEqual(
+      ["badge", "spell", "spell_icon", "type"],
+    );
+  });
+
+  it("vq-18 proves the registry gap still fails closed", () => {
+    const row = byId.get("vq-18") as any;
+    // Flash.png exists on disk; `summoner_spells` has no Flash row. The
+    // backend must therefore emit NO presentation, and the question renders
+    // the compact band. Four of the nine certified spells are in this state.
+    expect(row.presentation).toBeNull();
   });
 
   // ---- RR1 pass 1 ---------------------------------------------------------

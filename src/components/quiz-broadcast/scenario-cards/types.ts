@@ -60,13 +60,32 @@ export type MatchupSubject = {
  * total the prompt already states. Never a cooldown, because every phase's
  * answer is one.
  */
-export type SummonerSpellHasteSubject = {
+/**
+ * A summoner spell as the SUBJECT of a Ranked question.
+ *
+ * One shape for two families, because they are one kind of question — "this
+ * round is about this summoner spell" — differing only in what else the
+ * premise states:
+ *
+ *   `summoner_spell_haste`   (SSM slice)   spell + haste sources + total
+ *   `summoner_spell_subject` (quiz.v1)     the spell alone
+ *
+ * `sources` and `totalHaste` are therefore OPTIONAL rather than a second type.
+ * A spell-only question is not a degraded haste question; it is the same card
+ * with nothing further to state, which is exactly what the SSM slice's own
+ * base-cooldown phase already renders — its answer IS the base cooldown, so it
+ * arrives with no sources either.
+ */
+export type SummonerSpellSubject = {
   spell: string;
   spellIcon?: string | null;
-  sources: { name: string; icon: string | null; kind: "rune" | "item" }[];
+  sources?: { name: string; icon: string | null; kind: "rune" | "item" }[];
   totalHaste?: number;
   badge?: string;
 };
+
+/** Back-compatible alias for the SSM-era name. */
+export type SummonerSpellHasteSubject = SummonerSpellSubject;
 
 /** Parsed payload for combat cooldown calculation questions. */
 export type CombatCooldownSubject = {
@@ -139,7 +158,7 @@ export type ScenarioSectionData = {
 export type ScenarioSelection =
   | { card: "combat_calculation"; key: string; combat: CombatCooldownSubject }
   | { card: "matchup"; key: string; matchup: MatchupSubject }
-  | { card: "summoner_spell_haste"; key: string; spell: SummonerSpellHasteSubject }
+  | { card: "summoner_spell"; key: string; spell: SummonerSpellSubject }
   | { card: "item_analysis"; key: string; item: ItemAnalysisSubject }
   | { card: "champion_profile"; key: string; champion: string }
   | { card: "collectible"; key: string; iconUrl: string; label?: string; kind: SubjectKind }

@@ -971,6 +971,27 @@ const SSM_SPELL_SCENARIO = {
   },
 } as unknown as QuizQuestion;
 
+// An ORDINARY summoner-spell question — `summoner_spell_cooldown`, live in
+// `easy_game_knowledge` at segments 2 and 12. Copied verbatim from
+// `presentation_render.presentation_for_question("summoner_spell_cooldown", …)`
+// so this control cannot drift from what production emits.
+//
+// The spell alone: no sources, no haste, no cooldown. It shares a card with
+// SSM above rather than getting a second summoner-spell renderer.
+const SPELL_COOLDOWN_SCENARIO = {
+  id: "sc-1", category: "game knowledge", question_text: "", format: "multiple_choice",
+  choices: [] as string[],
+  metadata: {
+    assets: { subject: {
+      type: "summoner_spell_subject",
+      spell: "Barrier",
+      spell_icon: "assets/summoner_spells/Barrier.png",
+      badge: "Summoner Spell",
+    } },
+    presentation: { role: "context", timing: "question", spoiler: false },
+  },
+} as unknown as QuizQuestion;
+
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
@@ -1099,6 +1120,10 @@ const STATES: InspectorState[] = [
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "Barrier has a 180-second base cooldown. You are running Cosmic Insight (18 summoner spell haste) and Ionian Boots of Lucidity (10 summoner spell haste). That is 28 summoner spell haste in total. What is Barrier's cooldown now?" }}
       scenarioSource={SSM_SPELL_SCENARIO} selected={null} /> },
+  { key: "arena-spell-cooldown", label: "Arena — summoner spell cooldown (quiz.v1)",
+    render: () => <ArenaComposition
+      question={{ ...ITEM_Q, prompt: "What is the cooldown of Barrier?" }}
+      scenarioSource={SPELL_COOLDOWN_SCENARIO} selected={null} /> },
   { key: "arena-matchup", label: "Arena — Matchup slice (champion vs champion)",
     render: () => <ArenaComposition
       question={{ ...ITEM_Q, prompt: "Whose W has the longer cooldown at rank 1?" }}

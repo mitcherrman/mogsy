@@ -51,7 +51,7 @@ function renderCard(selection: ScenarioSelection, revealed: boolean) {
       return <CombatCalculationScenarioCard subject={selection.combat} />;
     case "matchup":
       return <MatchupScenarioCard subject={selection.matchup} />;
-    case "summoner_spell_haste":
+    case "summoner_spell":
       return <SummonerSpellScenarioCard subject={selection.spell} />;
     case "item_analysis":
       return <ItemAnalysisScenarioCard item={selection.item} revealed={revealed} />;

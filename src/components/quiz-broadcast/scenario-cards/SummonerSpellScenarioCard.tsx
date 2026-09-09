@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ScenarioSectionData, SummonerSpellHasteSubject } from "./types";
+import type { ScenarioSectionData, SummonerSpellSubject } from "./types";
 import { ScenarioCardFrame } from "./ScenarioCardFrame";
 import {
   ConditionChip,
@@ -46,14 +46,18 @@ import {
 export function SummonerSpellScenarioCard({
   subject,
 }: {
-  subject: SummonerSpellHasteSubject;
+  subject: SummonerSpellSubject;
 }) {
   const sections = useMemo<ScenarioSectionData[]>(() => {
-    if (!subject.sources.length) return [];
+    // Absent for an ordinary summoner-spell question (`summoner_spell_cooldown`),
+    // whose premise is the spell and nothing else — the same empty case the SSM
+    // slice's base-cooldown phase already produces, and for the same reason.
+    const sources = subject.sources ?? [];
+    if (!sources.length) return [];
     return [
       {
         title: "Haste Sources",
-        entries: subject.sources.map((source) => ({
+        entries: sources.map((source) => ({
           icon: source.icon,
           title: source.name,
           // The kind is DECLARED by the backend rather than guessed from the

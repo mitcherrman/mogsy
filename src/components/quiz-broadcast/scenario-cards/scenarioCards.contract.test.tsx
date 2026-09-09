@@ -415,6 +415,19 @@ describe("SummonerSpellScenarioCard — the live SSM slice", () => {
     total_haste: 28,
   });
 
+  /**
+   * An ORDINARY summoner-spell question — `summoner_spell_cooldown`, live in
+   * `easy_game_knowledge`. Copied verbatim from
+   * `presentation_render.presentation_for_question("summoner_spell_cooldown",
+   * {"spell_name": "Barrier", ...})`, so it cannot drift from what the backend
+   * emits. No sources, no haste, no cooldown: the spell is the whole premise.
+   */
+  const COOLDOWN = spellQuestion({
+    type: "summoner_spell_subject", spell: "Barrier",
+    spell_icon: "assets/summoner_spells/Barrier.png",
+    badge: "Summoner Spell",
+  });
+
   function renderSpell(q: QuizQuestion) {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
@@ -425,8 +438,8 @@ describe("SummonerSpellScenarioCard — the live SSM slice", () => {
   }
 
   it("is the card the classifier selects, on the cinematic band", () => {
-    for (const q of [BASE, SINGLE, COMBINED]) {
-      expect(selectScenario(q, false, null).card).toBe("summoner_spell_haste");
+    for (const q of [BASE, SINGLE, COMBINED, COOLDOWN]) {
+      expect(selectScenario(q, false, null).card).toBe("summoner_spell");
       expect(selectFamilyLayout(q)).toBeNull();
       expect(resolveBandProfile(q, "band", null)).toBe("cinematic");
     }
@@ -483,6 +496,78 @@ describe("SummonerSpellScenarioCard — the live SSM slice", () => {
       type: "summoner_spell_haste",
       sources: [{ name: "Cosmic Insight", icon: "assets/runes/Cosmic_Insight.png", kind: "rune" }],
     });
-    expect(selectScenario(noSpell, false, null).card).not.toBe("summoner_spell_haste");
+    expect(selectScenario(noSpell, false, null).card).not.toBe("summoner_spell");
+  });
+});
+
+describe("an ordinary summoner-spell question (summoner_spell_cooldown)", () => {
+  const COOLDOWN: QuizQuestion = {
+    id: "sc-1", category: "game knowledge",
+    question_text: "What is the cooldown of Barrier?",
+    format: "multiple_choice",
+    choices: ["180 seconds", "240 seconds", "210 seconds", "120 seconds"],
+    metadata: {
+      assets: {
+        subject: {
+          type: "summoner_spell_subject", spell: "Barrier",
+          spell_icon: "assets/summoner_spells/Barrier.png", badge: "Summoner Spell",
+        },
+      },
+      presentation: { role: "context", timing: "question", spoiler: false },
+    } as QuizQuestion["metadata"],
+  };
+
+  function renderCooldown(q: QuizQuestion) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={client}>
+        <ScenarioCard question={q} revealActive={false} correctAnswer={null} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("draws the SHARED summoner-spell card, not the floating collectible", () => {
+    // The regression this pass exists to fix: a resolved summoner spell used
+    // to reach `card: "collectible"` and render as a small floating tile.
+    const selection = selectScenario(COOLDOWN, false, null);
+    expect(selection.card).toBe("summoner_spell");
+    expect(selection.card).not.toBe("collectible");
+  });
+
+  it("takes the cinematic band, like every other gold-standard question", () => {
+    expect(selectFamilyLayout(COOLDOWN)).toBeNull();
+    expect(resolveBandProfile(COOLDOWN, "band", null)).toBe("cinematic");
+  });
+
+  it("states the spell and nothing measured", () => {
+    const { container } = renderCooldown(COOLDOWN);
+    const text = container.textContent ?? "";
+    expect(text.toUpperCase()).toContain("BARRIER");
+    expect(text.toUpperCase()).toContain("SUMMONER SPELL");
+    // The cooldown IS the answer. It must not appear, and neither may the
+    // haste vocabulary this card carries for the SSM slice.
+    expect(text).not.toMatch(/\b180\b/);
+    expect(text.toLowerCase()).not.toContain("cooldown");
+    expect(text.toLowerCase()).not.toContain("haste");
+    expect(text.toLowerCase()).not.toContain("sources");
+  });
+
+  it("renders the spell art through the shared asset resolver", () => {
+    const { container } = renderCooldown(COOLDOWN);
+    const imgs = [...container.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? "");
+    expect(imgs.some((src) => src.includes("Barrier.png"))).toBe(true);
+  });
+
+  it("falls back to no media when the backend sent none (registry gap)", () => {
+    // Flash/Teleport/Cleanse/Smite have art on disk and no canonical row, so
+    // the backend emits no subject at all. That must stay a compact band, not
+    // a card reconstructed from the spell name.
+    const noSubject: QuizQuestion = {
+      ...COOLDOWN, id: "sc-2",
+      question_text: "What is the cooldown of Flash?",
+      metadata: {} as QuizQuestion["metadata"],
+    };
+    expect(selectScenario(noSubject, false, null).card).toBe("empty");
+    expect(resolveBandProfile(noSubject, "band", null)).toBe("compact");
   });
 });

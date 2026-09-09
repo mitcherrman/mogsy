@@ -20,7 +20,7 @@ import type {
   CombatCooldownSubject,
   ItemAnalysisSubject,
   MatchupSubject,
-  SummonerSpellHasteSubject,
+  SummonerSpellSubject,
   ScenarioSelection,
   SubjectKind,
 } from "./types";
@@ -371,21 +371,42 @@ export function getMatchupSubject(question: QuizQuestion): MatchupSubject | null
 }
 
 /**
- * Parse an SSM summoner-spell-haste subject, or null.
+ * Parse a summoner-spell subject, or null.
  *
- * The spell is required: it is the subject of every phase, and a card built
- * from the haste sources alone would state a premise the question does not
- * have. The backend already fails closed the same way (4 of the 9 certified
- * spells have no canonical row), so in practice this guard is belt-and-braces.
+ * TWO BACKEND TYPES, ONE CARD
+ * `summoner_spell_haste` is the SSM slice's payload (spell + haste sources +
+ * the stated total). `summoner_spell_subject` is an ordinary `quiz.v1`
+ * summoner-spell question — today `summoner_spell_cooldown` — where the spell
+ * is the whole premise and there is nothing further to state.
+ *
+ * They are read by ONE reader rather than two because they are one question
+ * shape: "this round is about this spell". A second reader would be a second
+ * place to keep the disclosure rule, and the rule is identical in both — the
+ * measured value is the answer and never appears.
+ *
+ * Deliberately NOT matched by prefix or by "starts with summoner_spell": an
+ * explicit set means a future backend type cannot acquire this card by being
+ * named plausibly.
+ *
+ * The spell is required. A card built from haste sources alone would state a
+ * premise the question does not have, and a card with no spell states nothing.
+ * The backend already fails closed the same way (4 of the 9 certified spells
+ * have no canonical `summoner_spells` row), so this guard is belt-and-braces.
  */
-export function getSummonerSpellHasteSubject(
+const SUMMONER_SPELL_SUBJECT_TYPES = new Set([
+  "summoner_spell_haste",
+  "summoner_spell_subject",
+]);
+
+export function getSummonerSpellSubject(
   question: QuizQuestion,
-): SummonerSpellHasteSubject | null {
+): SummonerSpellSubject | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
   const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
     | Record<string, unknown>
     | undefined;
-  if (!subject || subject.type !== "summoner_spell_haste") return null;
+  if (!subject || typeof subject.type !== "string") return null;
+  if (!SUMMONER_SPELL_SUBJECT_TYPES.has(subject.type)) return null;
   const spell = subject.spell as string | undefined;
   if (!spell) return null;
   const rawSources = Array.isArray(subject.sources) ? subject.sources : [];
@@ -496,7 +517,7 @@ export function selectScenario(
 
   const combat = getCombatCooldownSubject(question);
   const matchup = getMatchupSubject(question);
-  const spellHaste = getSummonerSpellHasteSubject(question);
+  const spell = getSummonerSpellSubject(question);
   const item = getItemAnalysisSubject(question);
   const explicit = getExplicitScenarioType(question);
 
@@ -523,8 +544,8 @@ export function selectScenario(
   if (matchup && !shouldHide) {
     return { card: "matchup", key: `matchup-${question.id}`, matchup };
   }
-  if (spellHaste && !shouldHide) {
-    return { card: "summoner_spell_haste", key: `spell-${question.id}`, spell: spellHaste };
+  if (spell && !shouldHide) {
+    return { card: "summoner_spell", key: `spell-${question.id}`, spell };
   }
   if (item && !shouldHide) {
     return { card: "item_analysis", key: `item-${question.id}`, item };

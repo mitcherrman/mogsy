@@ -49,7 +49,8 @@
     "         quiz/presentation_contract.py premise_denied_reason). The resolver",
     "         returns None, so the row carries no `presentation` at all and the",
     "         surface takes the compact band. The absence is the point: this is a",
-    "         correct payload, not a missing one."
+    "         correct payload, not a missing one.",
+    "RR1 summoner-spell convergence: vq-17 is a RESOLVED summoner-spell subject, copied verbatim from presentation_render, and must draw the shared summoner-spell scenario card on the cinematic band with no cooldown anywhere in the media. vq-18 is its fail-closed twin -- Flash has art on disk and NO canonical summoner_spells row, so the backend emits no presentation at all and the question must render the compact band. Do not 'fix' vq-18 by constructing a path from the spell name; the missing rows are owned by the media workstream."
   ],
   "questions": [
     {
@@ -1411,6 +1412,64 @@
       "difficulty": 1,
       "source_kind": "stored",
       "review_key": "stored:objective_baron_spawn"
+    },
+    {
+      "id": "vq-17",
+      "question_key": "summoner_spell_cooldown:BARRIER",
+      "category": "Summoner Spells",
+      "question_text": "What is the cooldown of Barrier?",
+      "format": "multiple_choice",
+      "choices": [
+        "180 seconds",
+        "300 seconds",
+        "210 seconds",
+        "90 seconds"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "180 seconds"
+      },
+      "explanation": "Barrier has a cooldown of 180 seconds.",
+      "difficulty": 1,
+      "source_kind": "stored",
+      "review_key": "stored:summoner_spell_cooldown:BARRIER",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "summoner_spell_subject",
+            "spell": "Barrier",
+            "spell_icon": "assets/summoner_spells/Barrier.png",
+            "badge": "Summoner Spell"
+          }
+        },
+        "presentation": {
+          "role": "context",
+          "timing": "question",
+          "spoiler": false
+        }
+      }
+    },
+    {
+      "id": "vq-18",
+      "question_key": "summoner_spell_cooldown:FLASH",
+      "category": "Summoner Spells",
+      "question_text": "What is the cooldown of Flash?",
+      "format": "multiple_choice",
+      "choices": [
+        "300 seconds",
+        "240 seconds",
+        "270 seconds",
+        "330 seconds"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "300 seconds"
+      },
+      "explanation": "Flash has a cooldown of 300 seconds.",
+      "difficulty": 1,
+      "source_kind": "stored",
+      "review_key": "stored:summoner_spell_cooldown:FLASH",
+      "presentation": null
     }
   ]
 }
