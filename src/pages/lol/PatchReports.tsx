@@ -9,6 +9,7 @@ import {
   type PatchReportCard,
 } from "@/lib/patch-reports/api";
 import { PatchReportEntityCard } from "@/components/patch-reports/PatchReportEntityCard";
+import { PatchDataStatusNotice } from "@/components/patch-reports/PatchDataStatusNotice";
 import { STATUS_LABELS, filterCards } from "@/lib/patch-reports/filter";
 
 const GOLD = "#c9a84c";
@@ -161,6 +162,11 @@ const PatchReports = () => {
       {detailQuery.isError && (
         <p className="text-sm text-destructive">Could not load patch {selectedVersion}.</p>
       )}
+
+      {/* Above the cards on purpose. The cards are what Riot changed; this is
+          whether Mogzy absorbed it, and a reader must meet the second claim
+          before spending trust on the first. */}
+      {detail && <PatchDataStatusNotice reconciliation={detail.reconciliation} />}
 
       {detail &&
         TYPE_ORDER.map((t) => {

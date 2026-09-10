@@ -137,6 +137,34 @@ export type PatchReportSummary = {
   cards_by_status: Partial<Record<MogzyStatus, number>>;
 };
 
+/**
+ * What Mogzy DID with the patch, as opposed to what Riot published about it.
+ *
+ * The rest of a patch report is built during `promote-report`, which runs
+ * BEFORE `reconcile-knowledge`, and its per-change vocabulary only ever
+ * described whether Mogzy's data RESEMBLED Riot's value at build time. V26.18
+ * published a complete-looking report six seconds before a reconciliation that
+ * failed, and nothing on the page could have said so.
+ *
+ * Optional because every report built before the reconciliation lane existed
+ * has no block at all — an older backend simply omits it, and the UI treats
+ * that the same way it treats PUBLISHED_NOT_RECONCILED.
+ */
+export type PatchReconciliationStatus =
+  | "PUBLISHED_NOT_RECONCILED"
+  | "RECONCILED"
+  | "RECONCILED_WITH_HELDS"
+  | "RECONCILIATION_FAILED";
+
+export type PatchReconciliation = {
+  status: PatchReconciliationStatus;
+  meaning: string;
+  reconciliation_recorded: boolean;
+  operation_id: string | null;
+  changes_by_terminal_state: Record<string, number>;
+  gameplay_data_may_be_stale: boolean;
+};
+
 export type PatchReportDetail = {
   patch_version: string;
   source_url: string;
@@ -144,6 +172,7 @@ export type PatchReportDetail = {
   section_titles: string[];
   skipped_sections: string[];
   historical_context_summary?: unknown;
+  reconciliation?: PatchReconciliation;
   cards: PatchReportCard[];
 };
 
