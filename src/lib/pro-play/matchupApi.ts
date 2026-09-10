@@ -1463,6 +1463,44 @@ export interface GamePlayerStats {
   data_completeness: string | null;
 }
 
+/** The at-15 lane state, Step 6. Exactly one status, and a number under only
+ *  one of them.
+ *
+ *  THE OPPONENT IS THE ONE THE PLAYER ACTUALLY FACED — the opposing row
+ *  carrying the same Oracle's Elixir lane position in this same game, checked
+ *  against the value OE already recorded for the subject's opponent. No
+ *  roster, no starter, no board, and never Leaguepedia's role label, which
+ *  disagrees with the lane actually played on real games in the corpus.
+ *
+ *  FOUR ABSENCES, AND NONE OF THEM IS ZERO. `gold_diff` and `cs_diff` are
+ *  non-null only under `available`, so a client cannot render a gap as a
+ *  level lane. A `0` here is always a measured tie. */
+export type GameLaneStatus =
+  | "available"
+  | "not_reached"
+  | "unavailable"
+  | "opponent_unresolved";
+
+export interface GameLaneOpponent {
+  player_lp_page: string | null;
+  team_key: string | null;
+  display_name: string | null;
+  champion_key: string | null;
+  oe_position: string | null;
+}
+
+export interface GameLaneCheckpoint {
+  /** Always 15. The other marks are served raw and rendered nowhere. */
+  mark: number;
+  status: GameLaneStatus;
+  gold_diff: number | null;
+  cs_diff: number | null;
+  /** True for the support position, where the server does not publish a CS
+   *  differential. Measured, not assumed — see the payload's own sentence. */
+  cs_diff_suppressed: boolean;
+  opponent: GameLaneOpponent | null;
+}
+
 export interface GamePlayer {
   player_lp_page: string | null;
   team_key: string | null;
@@ -1476,6 +1514,9 @@ export interface GamePlayer {
   win: boolean | null;
   /** Null when this game carries no Oracle's Elixir row. NEVER zeroes. */
   stats: GamePlayerStats | null;
+  /** Present on EVERY player row, including one with no statistics — the
+   *  state is about the row, and a row with nothing to say still says so. */
+  lane_checkpoint: GameLaneCheckpoint;
 }
 
 export interface GameTeamRow {

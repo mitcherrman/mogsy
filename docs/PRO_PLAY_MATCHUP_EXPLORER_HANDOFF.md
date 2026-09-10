@@ -1413,22 +1413,258 @@ Step 5's frontend also repairs Step 4's desktop appearance.
 | `src/index.css` | `.dossier-game*`; **and the unclosed `@media` that had been swallowing the whole Step 4 block**. |
 | `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 193 tests (was 128). |
 
+---
+
+# Step 6 — the 15-minute lane checkpoint
+
+Implemented. Inside a specific Game, every player row now says whether that
+player was ahead or behind **the opponent he actually faced** in gold and CS
+at 15 minutes — and the Game dossier did not become an analytics dashboard to
+do it.
+
+## What @15 answers that the box score does not
+
+The box score answers *what did the player finish with*. The checkpoint
+answers *how was the lane going at 15 minutes*, which for scouting is the more
+useful of the two and is not recoverable from any end-of-game total.
+
+**15 minutes only.** 10/20/25 are served raw by `/game` and still rendered
+nowhere. Three more marks is a progression, which is a different surface and
+a different question.
+
+## The lane opponent — the one semantic that mattered
+
+**The opponent is Oracle's Elixir's own pairing, re-derived so it can be
+named, and then verified against OE's own numbers.**
+
+OE publishes the lane opponent's **value** at each mark (`opp_gold_at15`) and
+**never their identity**. The identity is Leaguepedia's, on the participant
+rows. So the rule is:
+
+1. take the opposing-side row in **this same game** carrying the same
+   `oe_position`;
+2. accept it **only if** its own `gold_at15` equals the `opp_gold_at15`
+   already recorded against the subject (and likewise for CS);
+3. if no row satisfies that, or more than one does, the state is
+   `opponent_unresolved` and **no differential is published**.
+
+Measured over 15,000 real pairs, step 1 and step 2 agree **15,000 times**.
+
+**It is NOT paired on Leaguepedia's `role`, and that is not a style choice.**
+The two authorities disagree on **1,290 rows** in the corpus. A live example
+is in the tests: `Hitpoint Masters/2025 Season/Summer Split_Week 2_8` game 3,
+where Leaguepedia labels **Ace** a *Support* and he played Smolder with 121
+CS@15, while **Jellou** is labelled *Bot* and played Rell with 15. OE's
+positions match what the two actually did. Pairing on the label would have
+published Ace's lane against the other team's **support**.
+
+**Nothing consults a roster, a declared starter, a depth chart, the five-lane
+board, a player profile or a champion's usual role.** Both halves of every
+figure are rows in the one game.
+
+## The differential — one subtraction, so the two halves cannot disagree
+
+```
+gold_diff_15 = subject.gold_at15 - subject.opp_gold_at15
+cs_diff_15   = subject.cs_at15   - subject.opp_cs_at15
+```
+
+Computed **from the subject's own row only**. The opposing player's row is the
+exact inverse **by construction**, not by a second subtraction that could
+drift: OE's pairing is a perfect matching, measured as
+`SUM(gold_at15 - opp_gold_at15) == 0` on **50,187 of 50,187** fully enriched
+games. A real-corpus test re-measures it.
+
+## Four states, and none of them is zero
+
+| status | when | what is rendered |
+|---|---|---|
+| `available` | both values present and the opponent verified | `@15 +899 gold · +26 CS` |
+| `not_reached` | the game's duration is **< 900 s** | nothing per row; **one** sentence above the box scores |
+| `unavailable` | the mark is absent on a game that *was* played past it, or the player has no OE row at all | `@15 —` |
+| `opponent_unresolved` | the opponent's value is real and cannot be attributed to a participant | `@15 —` |
+
+`gold_diff` and `cs_diff` are non-null **only** under `available`, so a client
+cannot render a gap as a level lane. **A `0` in this payload is always a
+measured tie.**
+
+The two absences are genuinely different and the corpus proves it: every
+player row in a sub-900 s game has a NULL `gold_at15` (so the NULL is a fact
+about the *game*), while **~4% of rows in recent years** are NULL on a game
+played well past 15 minutes (a gap in the *record*). Reporting both as one
+would tell a reader a 30-minute game ended early.
+
+`opponent_unresolved` fires on **~4%** of checkpoint rows and is stable across
+years (6.4% in 2016 and 2020, 3.6–4.2% since 2023). Its cause is a game whose
+canonical layer is missing the opposing participant — e.g.
+`TransIP Road Of Legends/2025 Season/Spring Split_Week 2_4` game 3, where
+Myth Esports' bot laner has no row at all and DDan's recorded opponent value
+therefore belongs to nobody nameable.
+
+## Support carries gold and not CS — measured, not assumed
+
+The owner asked for evidence rather than a guess. Measured over 20,000 rows
+per position, 2025+:
+
+| position | median CS@15 | median \|CS diff\| | p90 \|CS diff\| | median \|gold diff\| |
+|---|---|---|---|---|
+| top | 129 | 13 | 33 | 578 |
+| jng | 109 | 11 | 28 | 506 |
+| mid | 140 | 11 | 27 | 534 |
+| bot | 135 | 12 | 30 | 617 |
+| **sup** | **21** | **5** | **11** | **280** |
+
+A support's creep score is **six times smaller** than every other position's
+and is a byproduct of which waves the bot laner left rather than a record of
+the lane. **Gold @15 is published for every position; CS @15 is not published
+for the support position.** The suppression keys on `oe_position == "sup"` —
+the *same* authority that produced the pairing — and never on Leaguepedia's
+`role`, which is exactly the field the corpus shows can be wrong.
+
+The absence is named in `unavailable_metrics` as `cs_diff_15_support`, in the
+server's own words, and the dossier already prints those sentences.
+
+Gold @15 is meaningful for a support and is published: it carries kill and
+assist participation, which is what a support's early game actually is.
+
+## Backend — a projection addition, no new endpoint
+
+`/game` already read every column this needs. **No new route, no new query,
+no second statistics authority, no new ingestion.** Each player row gains one
+`lane_checkpoint` object.
+
+**Derived on the server rather than in the client**, which is a change of
+posture from Step 5's "the presentation is the caller's" — deliberately. The
+subtraction is arithmetic, but *who the opponent is* and *whether four
+absences are the same thing* are authority questions. Two clients answering
+them separately would be two answers.
+
+`stats.checkpoints` at 10/15/20/25 is **untouched** and still served raw.
+
+## Frontend placement
+
+**Inside the identity cell of the existing box-score row**, as a third line
+under the player's name and role:
+
+```
+Doran (Choi Hyeon-joon)
+TOP
+@15  +899 gold · +26 CS
+```
+
+* **No new columns.** Seven is already the most this table carries at 375px,
+  and two more would have forced either a horizontal scrollbar or a rebuild
+  of the mobile treatment. A test asserts each row still has exactly seven
+  cells and that the figure is a child of the `th` the name occupies — the
+  structural property the 375px layout rests on.
+* **No new page, tab, panel, chart or checkpoint table.**
+* **Desktop and mobile are the same composition**, because the cell it lives
+  in is the one that already stacked name over role on both. Step 5's
+  `data-label` mobile treatment is unchanged and applies to `td` only, so the
+  line inside the `th` gains no phantom column heading.
+* **Literal labels.** `@15`, `gold`, `CS`. No lane score, advantage, lead
+  rating, lane power or dominance — a test scans the rendered dossier for all
+  five words.
+* **Signs.** `+899`, `-223`, and `0` — **never `+0`**. A sign is a claim about
+  direction and a tie has no direction.
+* The `title` names the actual opposing participant the figure came from.
+
+## Real corpus examples verified (2026-09-09)
+
+Every case the task asked for was located **by query** and then read through
+the real endpoint:
+
+* **Top / mid / bot / support in one game** — `LCK/2026 Season/Rounds 1-2_Week
+  7_7` game 2. Kiin **+394 g / +13 CS** over Doran; Ruler −1145/−12 to Peyz;
+  Keria +125 gold and no CS. All five lanes invert exactly.
+* **A true zero** — `TransIP Road Of Legends/2025 Season/Spring Split_Week
+  2_4` game 3: Polychiki and Baul both **3375 gold**, `0` both ways, in the
+  same payload as an unresolved lane.
+* **A substantial differential both ways** — `Hitpoint Winter/2025 Season/Main
+  Event_Quarterfinals_4` game 2: BlackSwan **+3542 g / +48 CS**, KNEZA −3542.
+* **A game that never reached 15** — `LCL/2019 Season/Spring Season_Week 3_7`
+  game 1, 784 s. Enriched, decided, and `not_reached` on all ten.
+* **A full-length game missing the mark** — `LSPL/2016 Season/Spring
+  Season_Week 1_1` game 1, 2635 s, seven enriched rows, all `unavailable`.
+* **An unusual participant situation** — the Ace/Jellou role swap above.
+* **A game with no statistics at all** — `Demacia Cup 2023_Semifinals_1`.
+
+## Tests
+
+**Backend — 31 new (12 real-corpus). `test_pro_authority_game_detail.py`:
+87 passed** (was 56). The fixture writes each state as a real game: a fully
+resolved one, a 760 s one, one whose 15-minute columns are simply absent, one
+whose opposing laner has no row, one whose opposing row *contradicts* the
+recorded value, and one where the role labels are swapped against OE's
+positions.
+
+Pro Play backend regression: **1076 passed, 1 skipped, 0 failed** across every
+`test_pro_authority_*` suite.
+
+**Frontend — 15 new. Board suite 218 passed** (was 193); **428 Pro Play tests,
+all passing.** Full suite **58 failed / 10,231 passed across 14 files** — and
+the **identical set of 14 files and 58 tests fails on clean `origin/main`**,
+re-measured in a throwaway worktree during this task. Compare failure SETS,
+never totals. Typecheck **13 errors, none in pro-play**. Build green.
+
+## Deferred, and deliberately
+
+* **@10, @20, @25** — served raw, rendered nowhere. A progression is a
+  different surface.
+* **XP differential** — stored, not rendered.
+* Any checkpoint graph, gold-over-time curve, lane dominance score, derived
+  rating, prediction or win probability.
+* **@15 aggregates anywhere else** — not on the player × champion dossier, the
+  exact matchup, the Meeting list or the five-lane board. Whether the metric
+  is useful enough to aggregate is a question this first version exists to
+  answer.
+
+## Deploy state — Step 6
+
+**No deploy-ordering hazard, in either direction.** The backend change is
+**purely additive** — one new object on an existing player row; no field
+renamed, removed or reshaped. The published frontend never reads it, and the
+new frontend degrades to rendering nothing if it ever meets an old backend
+(`laneCheckpointLine` returns `null` for an absent object). Either side can
+ship first.
+
+## Files — Step 6
+
+### Backend
+
+| File | Role |
+|---|---|
+| `pro_authority/game_detail.py` | `_lane_checkpoints`, `_lane_state`, the four statuses, the support rule, the constants. |
+| `test_pro_authority_game_detail.py` | 31 new tests, 12 against the real corpus. |
+
+### Frontend
+
+| File | Role |
+|---|---|
+| `src/components/pro-play/dossier/GameDetail.tsx` | `signedNumber`, `laneCheckpointLine`, `LaneCheckpoint`, and the one game-level sentence. |
+| `src/lib/pro-play/matchupApi.ts` | `GameLaneCheckpoint`, `GameLaneOpponent`, `GameLaneStatus`. |
+| `src/index.css` | `.dossier-game-player__lane*`. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 218 tests (was 193). |
+
 ## Next recommended slice
 
-**The lane-checkpoint layer, on data this endpoint already returns.** `/game`
-serves `stats.checkpoints` at 10/15/20/25 with the lane opponent's value at
-each and a `reached` flag, and nothing renders them. The honest first cut is
-the **at-15 gold and CS differential per lane**, drawn beside the box score
-rows that already name both players — one derived figure whose two components
-are both stored, no curve, no timeline, and no claim about who "won lane".
+**Decide whether @15 earns an aggregate, using this version.** The honest next
+question is not "add @10 and @20" — it is whether a reader who now sees the
+figure on a game wants it on the *exact matchup* (this player, this champion,
+against this opponent: median gold@15 across their meetings). That is one
+aggregate over a population `/exact` already builds, and it is worth building
+only if the per-game figure proves useful. `games > 0` and the four absence
+states must survive the aggregation: a median over three games, two of which
+never reached 15, is not a median over three games.
 
-Do it after, not before: the raw components are the deliverable and a
-differential is a presentation of them.
+Do **not** add @10/@20/@25 first. More marks is more of the same claim; an
+aggregate is a new one.
 
 ## Next task
 
-1. **The lane-checkpoint layer**, scoped in Step 5's "Next recommended slice"
-   above. Step 5 shipped the game state this list used to name.
+1. **Decide whether @15 earns an aggregate**, scoped in Step 6's "Next
+   recommended slice". Step 6 shipped the lane-checkpoint layer this list
+   used to name.
 2. **Delete the `teams_outside_focus_set` mirror** once the frontend carrying
    `teams_outside_explorer_pool` is published.
 3. **Re-run `scripts/audit_explorer_team_pool.py` each season.** The registry

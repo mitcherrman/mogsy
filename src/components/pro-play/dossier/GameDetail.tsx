@@ -37,6 +37,7 @@ import {
   MatchupApiError,
   fetchGameDetail,
   type GameDetailPayload,
+  type GameLaneCheckpoint,
   type GamePlayer,
   type GameTeamRow,
 } from "@/lib/pro-play/matchupApi";
@@ -87,6 +88,65 @@ export function kdaRatioLabel(player: GamePlayer): string | null {
   if (!s) return null;
   if (s.deaths == null || s.kills == null || s.assists == null) return null;
   return s.kda_ratio == null ? "Perfect" : `${s.kda_ratio.toFixed(2)} KDA`;
+}
+
+// ---------------------------------------------------------------------------
+// The 15-minute lane checkpoint
+// ---------------------------------------------------------------------------
+
+/**
+ * `+899`, `-223`, and `0` — never `+0`.
+ *
+ * A SIGN IS A CLAIM ABOUT DIRECTION, and a tie has no direction. `+0` reads
+ * as a small lead, which is precisely the thing this figure must not invent.
+ */
+export function signedNumber(value: number): string {
+  if (value === 0) return "0";
+  return `${value > 0 ? "+" : "-"}${Math.abs(value).toLocaleString()}`;
+}
+
+/**
+ * The at-15 line for one player, or `null` when there is nothing to draw.
+ *
+ * WHAT THIS FUNCTION IS FOR: keeping four different absences from all
+ * rendering as the same number. `available` is the ONLY state that produces
+ * digits. `not_reached` produces nothing at all here because it is a fact
+ * about the whole game and is said once, above the box scores, rather than
+ * ten times down them. Everything else produces the dossier's own em dash —
+ * the same mark every other missing statistic on this page prints.
+ */
+export function laneCheckpointLine(lane: GameLaneCheckpoint | undefined | null): string | null {
+  if (!lane) return null;
+  if (lane.status === "not_reached") return null;
+  if (lane.status !== "available" || lane.gold_diff == null) return "—";
+  const parts = [`${signedNumber(lane.gold_diff)} gold`];
+  // Absent for the support position by design, and absent for a row whose CS
+  // column is simply not recorded. Both mean "do not print a CS figure", and
+  // neither may be printed as 0.
+  if (lane.cs_diff != null) parts.push(`${signedNumber(lane.cs_diff)} CS`);
+  return parts.join(" · ");
+}
+
+/** LITERAL METRICS, NEVER A RATING. `@15` names the moment and the two
+ *  figures name themselves; there is no lane score, advantage or grade
+ *  anywhere in this component, and a test scans for those words. */
+function LaneCheckpoint({ player }: { player: GamePlayer }) {
+  const line = laneCheckpointLine(player.lane_checkpoint);
+  if (line == null) return null;
+  const opponent = player.lane_checkpoint?.opponent?.player_lp_page ?? null;
+  return (
+    <span
+      className="dossier-game-player__lane"
+      data-testid="game-player-lane"
+      data-status={player.lane_checkpoint?.status}
+      // The opponent both halves of the figure came from, for a reader who
+      // wants to know whose lane this was. It is the actual participant.
+      title={opponent ? `At 15 minutes, against ${opponent}` : "At 15 minutes"}
+    >
+      <span className="dossier-game-player__lane-mark">@15</span>
+      <span className="dossier-game-player__lane-values">{line}</span>
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +233,12 @@ function PlayerRow({ player }: { player: GamePlayer }) {
           <span className="dossier-game-player__names">
             <span className="dossier-game-player__name">{name}</span>
             <span className="dossier-game-player__role">{player.role ?? "—"}</span>
+            {/* INSIDE THE IDENTITY CELL, NOT AS TWO MORE COLUMNS. Seven
+                columns is already the most this table can carry at 375px,
+                and the differential is a fact about this player against one
+                other player — which is what this cell is already about. It
+                therefore costs no width on either viewport. */}
+            <LaneCheckpoint player={player} />
           </span>
         </span>
       </th>
@@ -388,6 +454,17 @@ export function GameDossier({
           <p data-testid="game-stats-unavailable">{payload.stats_note}</p>
         </Parchment>
       )}
+
+      {/* SAID ONCE, ABOUT THE GAME. A game that ended before 15 minutes has
+          no checkpoint for anybody, and ten identical em dashes down the two
+          box scores would be ten times the noise for one fact. Product
+          language: the reader is told what happened, not what the record
+          does or does not contain. */}
+      {payload.players.some((p) => p.lane_checkpoint?.status === "not_reached") ? (
+        <FinePrint testId="game-lane-not-reached">
+          This game ended before the 15-minute mark, so there are no 15-minute lane figures.
+        </FinePrint>
+      ) : null}
 
       <div className="dossier-game__sides">
         {order.map((key) => (

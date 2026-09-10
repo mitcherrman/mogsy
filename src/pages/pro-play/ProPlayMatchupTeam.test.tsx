@@ -236,13 +236,42 @@ const BO1_PAYLOAD = {
 //            and `stats: null` on every row. A zeroed box score would be
 //            indistinguishable from a real one.
 
+/** The at-15 state the server puts on EVERY player row. Defaults to the
+ *  absence a statless row carries, so a fixture that says nothing about the
+ *  checkpoint still says the honest thing rather than an undefined. */
+function laneCheckpoint(
+  status: string,
+  gold: number | null = null,
+  cs: number | null = null,
+  opponent: string | null = null,
+) {
+  return {
+    mark: 15,
+    status,
+    gold_diff: gold,
+    cs_diff: cs,
+    cs_diff_suppressed: status === "available" && cs === null && gold !== null,
+    opponent: opponent
+      ? {
+          player_lp_page: opponent,
+          team_key: opponent.split("-")[0],
+          display_name: opponent.split("-")[0],
+          champion_key: "SomeChampion",
+          oe_position: null,
+        }
+      : null,
+  };
+}
+
 function gamePlayer(
   team: string,
   role: string,
   champion: string,
   stats: Record<string, unknown> | null,
+  lane: ReturnType<typeof laneCheckpoint> = laneCheckpoint("unavailable"),
 ) {
   return {
+    lane_checkpoint: lane,
     player_lp_page: `${team}-${role}`,
     team_key: team,
     display_name: team,
@@ -335,10 +364,46 @@ const GAME_UNAVAILABLE = [
       "the stored plate count exceeds its own structural ceiling of 25 on thousands of rows, so it is not published until the column is reconciled.",
   },
   { metric: "item_builds", reason: "the historical corpus carries no item data." },
+  {
+    metric: "cs_diff_15_support",
+    reason:
+      "CS at 15 minutes is not published for the support position. A support's creep score is incidental to the bot lane rather than a record of it, so a difference between two of them does not describe how the lane was going. The gold difference is published for every position.",
+  },
 ];
 
 const BANS_NOTE =
   "Bans are an unordered set. Pick/ban sequence is -1 on every row in the corpus, so the order in which these champions were banned is not recorded and none is implied by the order they are listed in.";
+
+/** Blue's at-15 figures per lane: one clearly ahead, one behind, one far
+ *  ahead, one behind, and a support pair that is an EXACT TIE in gold and
+ *  publishes no CS at all. Red's are the inverse, from the same pairing. */
+const LANE_MARKS: Record<string, [number, number | null]> = {
+  Top: [899, 26],
+  Jungle: [-223, -13],
+  Mid: [1327, 35],
+  Bot: [-649, -19],
+  Support: [0, null],
+};
+
+/** The at-15 state for one fixture row.
+ *
+ *  Game 1 is fully resolved. Game 2 leaves the BOT LANE unresolved on both
+ *  sides — the shape a game takes when the opposing laner has no row in the
+ *  canonical record, which really happens. Game 3 has no statistics at all,
+ *  so nothing about minute 15 is known either. */
+function laneFor(n: number, statted: boolean, role: string, team: string) {
+  if (!statted) return laneCheckpoint("unavailable");
+  if (n === 2 && role === "Bot") return laneCheckpoint("opponent_unresolved");
+  const [gold, cs] = LANE_MARKS[role];
+  const blue = team === "T1";
+  const opponent = blue ? `Bilibili Gaming-${role}` : `T1-${role}`;
+  return laneCheckpoint(
+    "available",
+    blue ? gold : -gold,
+    cs == null ? null : blue ? cs : -cs,
+    opponent,
+  );
+}
 
 function gameDetail(n: number, statted: boolean) {
   const roles = ["Top", "Jungle", "Mid", "Bot", "Support"];
@@ -363,10 +428,17 @@ function gameDetail(n: number, statted: boolean) {
               ...(n === 2 && role === "Top" ? { vision_score: null } : {}),
             }
           : null,
+        laneFor(n, statted, role, "T1"),
       ),
     ),
     ...roles.map((role) =>
-      gamePlayer("Bilibili Gaming", role, `G${n}R${role}`, statted ? baseStats(1, 2, 3) : null),
+      gamePlayer(
+        "Bilibili Gaming",
+        role,
+        `G${n}R${role}`,
+        statted ? baseStats(1, 2, 3) : null,
+        laneFor(n, statted, role, "Bilibili Gaming"),
+      ),
     ),
   ];
   return {
@@ -440,6 +512,22 @@ const GAME_DETAILS: Record<number, ReturnType<typeof gameDetail>> = {
   2: gameDetail(2, true),
   // The 19% of the corpus with no statistics.
   3: gameDetail(3, false),
+};
+
+/** A REAL SHORT GAME: enriched, decided, and over at 12:40. Its 15-minute
+ *  columns are null because minute 15 never happened, which is a different
+ *  statement from the record being incomplete — and neither is a 0. */
+const SHORT_GAME = {
+  ...gameDetail(1, true),
+  canonical_game_id: "bo1g1",
+  match_id: BO1_ID,
+  game_number: 1,
+  meeting: { kind: "single_game", game_count: 1, game_numbers: [1] },
+  duration_seconds: 760,
+  players: gameDetail(1, true).players.map((player) => ({
+    ...player,
+    lane_checkpoint: laneCheckpoint("not_reached"),
+  })),
 };
 
 const FOCUS_TEAMS = [
@@ -1335,7 +1423,9 @@ beforeEach(() => {
         const found =
           params.get("match_id") === BO3_ID
             ? GAME_DETAILS[Number(params.get("game_number"))]
-            : undefined;
+            : params.get("match_id") === BO1_ID && params.get("game_number") === "1"
+              ? SHORT_GAME
+              : undefined;
         if (found) {
           body = found;
           status = 200;
@@ -3718,6 +3808,176 @@ describe("Step 5 — the game dossier", () => {
 // a position inside a meeting and means nothing without one, so every Step 4
 // clearing rule covers it for free and no path can strand a game. These tests
 // hold that property rather than re-deriving each rule.
+
+// ---------------------------------------------------------------------------
+// Step 6 — the 15-minute lane checkpoint
+// ---------------------------------------------------------------------------
+//
+// One derived figure, drawn beside the box score that already names both
+// players. Everything that can go wrong here is a missing thing rendering as
+// a present one: a game that ended at 12:40 printing 0, an unread minute 15
+// printing 0, `+0` reading as a small lead, or a support's incidental CS
+// being drawn as a lane result.
+
+describe("Step 6 — the at-15 lane differential", () => {
+  async function openGame(gameNumber = 1, matchId = BO3_ID) {
+    await renderBoard();
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    fireEvent.click(rows.find((r) => r.dataset.matchId === matchId)!);
+    const shell = await screen.findByTestId("dossier-meeting-shell");
+    const games = within(shell).getAllByTestId("meeting-game");
+    const row = games.find((g) => g.dataset.gameNumber === String(gameNumber))!;
+    // A SINGLE-GAME MEETING IS ENTERED WITH ITS ONE GAME ALREADY OPEN — the
+    // Step 4 rule. Only a meeting with siblings needs the row clicked.
+    const open = within(row).queryByTestId("meeting-game-open");
+    if (open && row.dataset.selected !== "true") fireEvent.click(open);
+    return screen.findByTestId("game-dossier");
+  }
+
+  function laneValues(dossier: HTMLElement, player: string) {
+    const lane = laneOf(dossier, player);
+    return lane?.querySelector(".dossier-game-player__lane-values")?.textContent ?? null;
+  }
+
+  function laneOf(dossier: HTMLElement, player: string) {
+    const row = within(dossier)
+      .getAllByTestId("game-player")
+      .find((r) => r.dataset.player === player)!;
+    return within(row).queryByTestId("game-player-lane");
+  }
+
+  it("renders a positive gold differential with a plus sign", async () => {
+    const dossier = await openGame(1);
+    const lane = laneOf(dossier, "T1-Top")!;
+    expect(lane).toHaveTextContent("@15");
+    expect(lane).toHaveTextContent("+899 gold");
+  });
+
+  it("renders a negative gold differential with a minus sign", async () => {
+    const lane = laneOf(await openGame(1), "T1-Jungle")!;
+    expect(lane).toHaveTextContent("-223 gold");
+  });
+
+  it("renders a true zero as 0 and never as +0", async () => {
+    // A sign is a claim about direction and a tie has no direction.
+    const lane = laneOf(await openGame(1), "T1-Support")!;
+    expect(lane).toHaveTextContent("0 gold");
+    expect(lane.textContent).not.toContain("+0");
+  });
+
+  it("renders positive and negative CS differentials", async () => {
+    const dossier = await openGame(1);
+    expect(laneOf(dossier, "T1-Mid")).toHaveTextContent("+35 CS");
+    expect(laneOf(dossier, "Bilibili Gaming-Mid")).toHaveTextContent("-35 CS");
+  });
+
+  it("draws the opposing row as the exact inverse", async () => {
+    const dossier = await openGame(1);
+    expect(laneOf(dossier, "T1-Bot")).toHaveTextContent("-649 gold");
+    expect(laneOf(dossier, "Bilibili Gaming-Bot")).toHaveTextContent("+649 gold");
+  });
+
+  it("shows a support's gold and no support CS at all", async () => {
+    const lane = laneOf(await openGame(1), "T1-Support")!;
+    expect(lane).toHaveTextContent("gold");
+    expect(lane.textContent).not.toContain("CS");
+  });
+
+  it("names the absence of support CS in the server's own words", async () => {
+    const dossier = await openGame(1);
+    expect(
+      within(dossier).getByTestId("game-unavailable-cs_diff_15_support"),
+    ).toHaveTextContent("not published for the support position");
+  });
+
+  it("renders an em dash, never a zero, when the checkpoint is missing", async () => {
+    // Game 3 carries no statistics, so nothing about minute 15 is known.
+    const dossier = await openGame(3);
+    const lane = laneOf(dossier, "T1-Top")!;
+    expect(lane.dataset.status).toBe("unavailable");
+    // The VALUES, not the `@15` label, which legitimately contains digits.
+    expect(laneValues(dossier, "T1-Top")).toBe("—");
+  });
+
+  it("renders no differential when the lane opponent is unresolved", async () => {
+    const dossier = await openGame(2);
+    expect(laneOf(dossier, "T1-Bot")!.dataset.status).toBe("opponent_unresolved");
+    expect(laneValues(dossier, "T1-Bot")).toBe("—");
+    // The other four lanes of the same game are unaffected by it.
+    expect(laneOf(dossier, "T1-Mid")).toHaveTextContent("+1,327 gold");
+  });
+
+  it("a game that never reached 15 claims no differential, and says so once", async () => {
+    const dossier = await openGame(1, BO1_ID);
+    // Not ten em dashes down the page: one sentence about the game.
+    expect(within(dossier).getByTestId("game-lane-not-reached")).toHaveTextContent(
+      "ended before the 15-minute mark",
+    );
+    for (const player of within(dossier).getAllByTestId("game-player")) {
+      expect(within(player).queryByTestId("game-player-lane")).toBeNull();
+    }
+  });
+
+  it("names the actual opposing participant the figure came from", async () => {
+    const lane = laneOf(await openGame(1), "T1-Top")!;
+    expect(lane.getAttribute("title")).toContain("Bilibili Gaming-Top");
+  });
+
+  it("uses literal metrics and never a rating", async () => {
+    // No lane score, advantage, lead rating or lane power anywhere.
+    const dossier = await openGame(1);
+    const text = dossier.textContent ?? "";
+    for (const word of ["Lane score", "Advantage", "Lead rating", "Lane power", "Dominance"]) {
+      expect(text).not.toContain(word);
+    }
+  });
+
+  it("adds no columns to the box score", async () => {
+    // The 375px treatment survives precisely because this is not two more
+    // columns; the header is still the seven Step 5 shipped.
+    const dossier = await openGame(1);
+    const headers = within(within(dossier).getAllByTestId("game-side")[0])
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(headers).toEqual([
+      "Player",
+      "Champion",
+      "K / D / A",
+      "CS",
+      "Gold",
+      "Damage",
+      "Vision",
+    ]);
+  });
+
+  it("lives inside the existing identity cell, so no row gains a cell", async () => {
+    // THE STRUCTURAL GUARANTEE AGAINST HORIZONTAL OVERFLOW at 375px. jsdom
+    // does not lay out, so the property that is actually asserted is the one
+    // the layout rests on: the figure is a child of the `th` the player's
+    // name already occupies, and every row still has exactly seven cells.
+    const dossier = await openGame(1);
+    for (const row of within(dossier).getAllByTestId("game-player")) {
+      expect(row.children).toHaveLength(7);
+      const lane = within(row).queryByTestId("game-player-lane");
+      if (!lane) continue;
+      expect(lane.closest("th")).toBe(row.querySelector("th"));
+    }
+  });
+
+  it("leaves the Step 5 box score, objectives and meeting context intact", async () => {
+    const dossier = await openGame(1);
+    expect(within(dossier).getAllByTestId("game-player")).toHaveLength(10);
+    expect(within(dossier).getByTestId("game-objectives")).toBeInTheDocument();
+    expect(within(dossier).getByTestId("game-bans")).toBeInTheDocument();
+    expect(within(dossier).getByTestId("game-result")).toHaveTextContent("T1 victory");
+    // The meeting the reader drilled from never left the screen.
+    const shell = screen.getByTestId("dossier-meeting-shell");
+    expect(shell).toContainElement(dossier);
+    expect(within(shell).getByTestId("meeting-head")).toBeInTheDocument();
+  });
+});
 
 describe("Step 5 — game clearing", () => {
   const OPEN: TeamSelection = {

@@ -12075,6 +12075,39 @@ html.hub-commons-in-view .hextech-ambience-layer {
   text-transform: uppercase;
   color: var(--dsr-ink-soft);
 }
+/* Step 6 — the 15-minute lane line, INSIDE the identity cell.
+   It is a third line under the name and the role rather than two more
+   columns: seven is already the most this table carries at 375px, and the
+   figure is about this player against one other player, which is what this
+   cell is already for. `max-width` is not inherited from the name above it —
+   the name ellipsises at 8rem and this line must be allowed to be longer
+   than that without pushing the table wider, so it wraps instead. */
+.proplay-dossier .dossier-game-player__lane {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+  margin-top: 0.1rem;
+  font-size: 0.55rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-game-player__lane-mark {
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.proplay-dossier .dossier-game-player__lane-values {
+  font-weight: 600;
+  color: var(--dsr-ink);
+}
+/* An em dash is an absence, not a figure, and must not read as one. */
+.proplay-dossier .dossier-game-player__lane[data-status="unavailable"] .dossier-game-player__lane-values,
+.proplay-dossier .dossier-game-player__lane[data-status="opponent_unresolved"] .dossier-game-player__lane-values {
+  font-weight: 400;
+  color: var(--dsr-ink-soft);
+}
 .proplay-dossier .dossier-game-player__champion {
   text-align: left;
 }
