@@ -136,7 +136,7 @@ export interface QueueController {
    * is the SERVER's — an unauthorized account sending it is refused, and this
    * controller shows that refusal like any other join error.
    */
-  joinWithoutClass: (options?: { matchWithBot?: boolean }) => void;
+  joinWithoutClass: (options?: { matchWithBot?: boolean; preset?: string }) => void;
   cancel: () => void;
   /**
    * PLAY1: whether Cancel is a legal action right now. False during the
@@ -412,7 +412,7 @@ export function useRankedQueue(): QueueController {
 
   const join = useCallback(() => joinAs(selectedClass), [joinAs, selectedClass]);
 
-  const joinWithoutClass = useCallback((options?: { matchWithBot?: boolean }) => {
+  const joinWithoutClass = useCallback((options?: { matchWithBot?: boolean; preset?: string }) => {
     if (JOIN_BLOCKED_STATES.has(stateRef.current)) return;
     stateRef.current = "joining";
     setState("joining");

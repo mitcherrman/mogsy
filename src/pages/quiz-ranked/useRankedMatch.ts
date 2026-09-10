@@ -210,7 +210,34 @@ export interface MatchController {
   revealHold: boolean;
 }
 
-export function useRankedMatch(matchId: string | null, viewerUserId: string): MatchController {
+/**
+ * RB3 — options a SESSION PRESET may set. Absent for every ordinary match.
+ */
+export interface RankedMatchOptions {
+  /**
+   * Hold the snapshot poll loop.
+   *
+   * WHY THIS PAUSES THE MATCH, and is not merely a rendering trick. Ranked
+   * advances LAZILY: `ranked_public.service._advance` opens the next round
+   * only when a participant's own request drives it, and the background sweep
+   * is off by default. So while nobody polls, no round is opened, no question
+   * clock is started, and the bot does not act — the match genuinely waits.
+   *
+   * The presence heartbeat keeps running on its own timer, so a held match is
+   * not an absent player and cannot be forfeited for one. That separation
+   * already existed; `service.heartbeat` deliberately does not call `_advance`.
+   *
+   * This is what lets the guided playtest put a page between two segments
+   * without spending the player's answer time on it.
+   */
+  paused?: boolean;
+}
+
+export function useRankedMatch(matchId: string | null, viewerUserId: string,
+                               options: RankedMatchOptions = {}): MatchController {
+  const paused = options.paused === true;
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const [publicRound, setPublicRound] = useState<PublicRoundView | null>(null);
   const [roundNumber, setRoundNumber] = useState<number | null>(null);
   const [privatePlayer, setPrivatePlayer] = useState<PrivatePlayerView | null>(null);
@@ -514,7 +541,11 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
       setActionError(null);
     } finally {
       inFlightRef.current = false;
-      if (!stoppedRef.current) {
+      // HELD: do not re-arm. The loop is restarted by the resume effect below,
+      // which pokes once the hold lifts. Nothing is cancelled mid-flight —
+      // this request finishes and its snapshot is applied, so the arena keeps
+      // showing the state the player paused ON.
+      if (!stoppedRef.current && !pausedRef.current) {
         clearTimer();
         // Re-arm through `pollRef`, never through the captured `poll`. Calling
         // `poll` here pinned every subsequent iteration to the closure that
@@ -533,11 +564,26 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string): Ma
   useEffect(() => { pollRef.current = poll; });
 
   const poke = useCallback(() => {
-    if (!stoppedRef.current) {
+    if (!stoppedRef.current && !pausedRef.current) {
       clearTimer();
       timerRef.current = window.setTimeout(() => void pollRef.current?.(), 0);
     }
   }, []);
+
+  /**
+   * Stop the pending re-arm the moment a hold begins, and kick the loop again
+   * the moment it lifts.
+   *
+   * The clear matters: without it a poll already scheduled for ~1.5s away
+   * would fire once inside the hold and open the next round — which is exactly
+   * the answer time an interstitial exists not to spend.
+   */
+  useEffect(() => {
+    if (paused) { clearTimer(); return; }
+    if (stoppedRef.current || !matchId) return;
+    clearTimer();
+    timerRef.current = window.setTimeout(() => void pollRef.current?.(), 0);
+  }, [paused, matchId]);
 
   /**
    * Restart the loop after a contract error. Explicit and player-initiated:

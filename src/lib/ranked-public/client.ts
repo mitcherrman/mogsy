@@ -242,19 +242,26 @@ export const getRankedProgression = (signal?: AbortSignal): Promise<RankedProgre
  * a refusal. Authorization lives on the server and this flag is a request,
  * not a grant.
  *
- * The field is omitted entirely when false, so an ordinary join sends exactly
- * the body it always sent.
+ * `preset` (RB3) names a SESSION PRESET — the guided playtest is the only one.
+ * It is a second, stricter request on top of `matchWithBot`: the server
+ * re-decides whether this account is a playtest participant, which is a
+ * different question from whether it may use Bot Ranked at all. An ordinary
+ * bot join names no preset and is unchanged.
+ *
+ * Both fields are omitted entirely when unset, so an ordinary join sends
+ * exactly the body it always sent.
  */
 export const joinQueue = (
   classId: string | null,
   signal?: AbortSignal,
-  options?: { matchWithBot?: boolean },
+  options?: { matchWithBot?: boolean; preset?: string },
 ): Promise<QueueStatusView> =>
   request("/api/ranked/queue", readQueueStatus, {
     method: "POST",
     body: {
       ...(classId ? { class_id: classId } : {}),
       ...(options?.matchWithBot ? { match_with_bot: true } : {}),
+      ...(options?.preset ? { preset: options.preset } : {}),
     },
     signal,
   });

@@ -139,6 +139,15 @@ export interface PlaytestMeta {
   questionBankMode: string;
   isPlaceholder: boolean;
   isBotMatch: boolean;
+  /**
+   * RB3 — the SESSION PRESET this match was created under, or null.
+   *
+   * Derived server-side from the match's FROZEN format snapshot, so it is a
+   * durable property of the match rather than something a client remembers:
+   * reload mid-playtest and the same answer comes back. Only `"playtest"`
+   * exists today.
+   */
+  sessionPreset: string | null;
 }
 
 /**
@@ -1332,6 +1341,10 @@ function readPlaytest(v: unknown): PlaytestMeta | null {
     questionBankMode: typeof o.question_bank_mode === "string" ? o.question_bank_mode : "production",
     isPlaceholder: o.is_placeholder === true,
     isBotMatch: o.is_bot_match === true,
+    // Absent on every pre-RB3 payload, which reads as "an ordinary match" —
+    // which is what those matches are.
+    sessionPreset: typeof o.session_preset === "string" && o.session_preset
+      ? o.session_preset : null,
   };
 }
 

@@ -210,6 +210,7 @@ const QuizMatchupPage = lazy(() => import("./pages/quiz-matchup/QuizMatchupPage"
 
 // Dev-only Ranked TUTORIAL prototype — scripted local training match,
 // no auth/API/persistence, not linked from any navigation.
+const QuizPlaytestPage = lazy(() => import("./pages/quiz-ranked/QuizPlaytestPage"));
 const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
 const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
 const RankedShellProbe = lazy(() => import("./pages/dev/ranked-shell-probe/RankedShellProbe"));
@@ -563,6 +564,10 @@ const App = () => (
                   <Route path="/quiz/matchup" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/daily" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/daily-challenge" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense></RequireRankedTutorial>} />
+                  {/* RB3 — the guided playtest. A separate route so canonical
+                      Ranked is untouched and the whole session can be removed
+                      by deleting this line. */}
+                  <Route path="/quiz/playtest" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><QuizPlaytestPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz/ranked" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />

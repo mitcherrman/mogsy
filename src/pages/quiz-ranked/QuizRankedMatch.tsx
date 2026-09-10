@@ -105,10 +105,42 @@ function revealNames(settlement: ResolvedRoundView,
 const AGAIN_HREF = "/quiz?play=1";
 const LOBBY_HREF = "/quiz";
 
-export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
+export function QuizRankedMatch({ matchId, viewerUserId, chrome,
+                                  paused = false, onSessionComplete,
+                                  onProgress }:
 {
   matchId: string;
   viewerUserId: string;
+  /**
+   * RB3 — hold the match while a SESSION PRESET has an informational page on
+   * screen. Forwarded verbatim to `useRankedMatch`, which stops driving the
+   * server so no round opens and no clock starts. False for every ordinary
+   * match, human or bot, and this component is otherwise unchanged.
+   */
+  paused?: boolean;
+  /**
+   * RB3 — where the canonical result screen's primary action goes when this
+   * match belongs to a session preset.
+   *
+   * The result screen itself is NOT replaced: RB2 made the bot end screen a
+   * real Ranked completion and a playtester reads exactly that. This only
+   * changes what the button after it says and does, so the player steps from
+   * their result into the playtest's closing page instead of back to the
+   * lobby. Absent — every ordinary match — and RB2's actions stand untouched.
+   */
+  onSessionComplete?: () => void;
+  /**
+   * RB3 — report the two facts a session preset needs, and nothing else.
+   *
+   * `completedSegments` is the SERVER's settled-segment count, straight off
+   * the snapshot; `matchOver` is the match's own terminal flag. A preset
+   * derives its whole position from these, which is why the guided sequence
+   * survives a refresh: they come back from the server, not from memory.
+   *
+   * A reporting seam, deliberately not a control one — nothing a listener does
+   * here can change what this component renders.
+   */
+  onProgress?: (completedSegments: number, matchOver: boolean) => void;
   /**
    * The route's own chrome, rendered in the shell's header slot.
    *
@@ -119,7 +151,17 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
    */
   chrome?: ReactNode;
 }) {
-  const m = useRankedMatch(matchId, viewerUserId);
+  const m = useRankedMatch(matchId, viewerUserId, { paused });
+  // RB3 — the reporting seam. An effect rather than a render-time call so a
+  // listener's own state update cannot re-enter this render, and keyed on the
+  // two values so a poll that changed neither notifies nothing.
+  const completedSegments = m.publicRound?.completedRounds ?? null;
+  const isOver = m.phase === "match_over";
+  useEffect(() => {
+    if (onProgress && completedSegments !== null) {
+      onProgress(completedSegments, isOver);
+    }
+  }, [onProgress, completedSegments, isOver]);
   // The mode soundtrack, for as long as there is a live match to score.
   const modeSoundtrackActive = m.publicRound !== null
     && m.phase !== "match_over"
@@ -507,10 +549,15 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
        * Identical for a human and a bot match — the record they land on is the
        * one that knows which of the two they may start.
        */
-      primaryAction: {
-        label: "Play Again",
-        onClick: () => { window.location.assign(AGAIN_HREF); },
-      },
+      primaryAction: onSessionComplete
+        // RB3 — a session preset owns what comes after the result. One
+        // button, because a guided playtest has one next step; the exit stays
+        // where it was so a player who wants out is never trapped.
+        ? { label: "Continue", onClick: onSessionComplete }
+        : {
+          label: "Play Again",
+          onClick: () => { window.location.assign(AGAIN_HREF); },
+        },
       secondaryAction: {
         label: "Back to Leaguecraft",
         onClick: () => { window.location.assign(LOBBY_HREF); },
