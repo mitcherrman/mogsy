@@ -494,12 +494,12 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
     free: "The default frame.",
     premium: "Choose any frame.",
     status: "shipped",
-    enforcement: "frontend",
+    enforcement: "backend",
     enforcementNote:
-      "Profile.tsx renders the frame grid only when isPro; the save payload persists `selectedFrame`, which is seeded from the stored profile. A lapsed member therefore keeps the frame they equipped and cannot switch to another — the approved lapse policy, and the same shape the theme picker already had.",
+      "PT2C: `protect_profile_premium_fields`, the BEFORE UPDATE trigger on profiles, refuses a self-service CHANGE of profile_frame to a Premium frame unless `may_equip_profile_frame` says yes — Global Premium Access OR the canonical PT1.4 per-account rule. Profile.tsx still renders the grid only when isPro, but that is now presentation over a server decision rather than the only decision. Acquisition is authorized; the STORED value never is, so a lapsed member keeps the frame they equipped and cannot switch to another — the approved lapse policy, and the same shape the theme picker already had.",
     differentiator: true,
     discrepancy:
-      "FIXED IN PT1.13B. The save payload previously read `profile_frame: isPro ? selectedFrame : \"default\"`, so a lapsed member's stored frame was DESTROYED on their next unrelated profile save. It protected nothing — the picker is already isPro-gated and `selectedFrame` is seeded from the database — and `custom_theme` on the very next line was never clamped, which is what showed the clamp was incidental. Frames were the only cosmetic surface that disagreed with the policy. What remains for a follow-up is the SERVER side: nothing stops a crafted profiles.update() from setting a Premium frame without entitlement, and cosmetics have no backend gate at all.",
+      "CLOSED. PT1.13B fixed the client half: the save payload read `profile_frame: isPro ? selectedFrame : \"default\"`, which DESTROYED a lapsed member's stored frame on their next unrelated profile save. PT2C fixed the server half it named as the follow-up — a crafted profiles.update() could set any Premium frame with no entitlement, because cosmetics had no backend gate at all. Both halves turn on the same distinction: the change is authorized, the stored value is not re-authorized. Themes remain frontend-only and are the next surface of this shape.",
     userFacingSummary: "Profile frames."
   },
   {

@@ -174,12 +174,21 @@ describe("PT1.13B — lapse keeps the equipped cosmetic", () => {
     expect(profile).toMatch(/\{isPro \? \(/);
   });
 
-  it("records the frame row as fixed, and names what is still open", () => {
+  it("records both halves of the frame fix, and no longer claims a gap that is closed", () => {
     const frames = benefitById("profile-frames")!;
-    expect(frames.discrepancy).toMatch(/FIXED IN PT1\.13B/);
-    // Cosmetics are frontend-only. Say so rather than implying a server gate.
-    expect(frames.enforcement).toBe("frontend");
-    expect(frames.discrepancy).toMatch(/no backend gate/);
+    // PT1.13B (the client clamp) and PT2C (the server authority) are one story.
+    expect(frames.discrepancy).toMatch(/PT1\.13B/);
+    expect(frames.discrepancy).toMatch(/PT2C/);
+    // PT2C made this a real server gate, so the row must say so — a stale
+    // "frontend" here would understate the enforcement to every reader.
+    expect(frames.enforcement).toBe("backend");
+    expect(frames.enforcementNote).toMatch(/protect_profile_premium_fields/);
+    expect(frames.enforcementNote).toMatch(/may_equip_profile_frame/);
+    // ...and must not still advertise the hole as open. The row describes the
+    // old gap in the PAST tense, so fence the forward-looking phrasing, which
+    // is what a stale row would actually carry.
+    expect(frames.discrepancy).not.toMatch(/What remains|is the SERVER side|remains for a follow-up/);
+    expect(frames.discrepancy).toMatch(/^CLOSED\b/);
   });
 });
 
