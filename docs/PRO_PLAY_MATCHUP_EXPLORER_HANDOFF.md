@@ -3238,23 +3238,73 @@ installs a real in-memory `localStorage` in `beforeEach` for exactly this
 reason. Any future test that reads a `combat-lab:*` record must do the same, or
 it is testing nothing.
 
-## Deploy state — Step 10 (2026-09-10)
+## Deploy state — Step 10 (reconciled 2026-09-10)
 
 | | SHA | Where |
 |---|---|---|
-| Backend | — | **unchanged**, nothing to deploy |
-| Frontend | see below | branch `proplay/step10-native-actions`, **NOT merged, NOT published** |
+| Backend | `fe4070cc` | **unchanged by Step 10**; Steps 7-9 contracts already on `master` |
+| Frontend | `2b256ac9` | **merged to `main`**, pushed. **NOT published** — Lovable Publish is the owner's click |
 
-**Built on `dca12696`** (Step 9's tip), which is itself **not merged into
-`main`** — Steps 7, 8 and 9 are a branch chain
-(`proplay/exact-aggregate-fe` → `proplay/exact-evidence-fe` →
-`proplay/meeting-enrichment-fe`). Step 10 extends that chain and inherits its
-merge state.
+### The branch chain is closed
+
+An earlier revision of this section said Steps 7, 8 and 9 were an unmerged
+branch chain that Step 10 extended. **That is no longer true and must not be
+repeated.** Measured by `git` ancestry rather than by report:
+
+| Step | Feature | Commit(s) | On `main`? |
+|---|---|---|---|
+| 7 | Exact aggregate scouting stats | `1aa346fd` + `0c01b97a` (docs) | **yes** |
+| 8 | Aggregate → source evidence | `0da421de` + `8d91e971` (docs) | **yes** |
+| 9 | Meeting enrichment | `3c8fd969` + `dca12696` (docs) | **yes** |
+| 10 | Mogzy-native actions | `2b256ac9` | **yes**, this pass |
+
+Step 10's parent **was** `origin/main` exactly — `git log origin/main..
+proplay/step10-native-actions` listed one commit and the reverse listed none —
+so the integration was a **fast-forward with no conflicts and no rebase**.
+The only non-Pro-Play commits that landed on `main` inside the Step 7-10 window
+(`f448f6eb`, `6ce0a89b` Premium; `dc767e21` patch-reports) touch a **disjoint
+file set**, so there was no concurrent Combat Lab, `MatchupStudy.tsx`,
+`matchupApi.ts` or `index.css` work to preserve against.
+
+`src/index.css` was audited after integration rather than assumed: braces
+balance to depth 0 over all 12,570 lines, and Step 10's `.dossier-study__action*`
+rules sit at **nesting depth 0 with an empty media stack** — they are not
+trapped inside a mobile block, which is the historical failure this file has
+had before.
+
+### What is live, checked by fetching the bundle rather than assuming
+
+Production `mogzy.lol` entry chunk `index-B2MUQ3uS.js` →
+`ProPlayMatchup-BVhOD63g.js`. Compared marker-for-marker against this branch's
+own build (`ProPlayMatchup-C0NbiXbG.js`):
+
+| Marker | Step | local build | production |
+|---|---|---|---|
+| `gold_diff_at15` | 7 | present | **present** |
+| `Lineups` | 9 | present | **present** |
+| `Open in Combat Lab` | 10 | present | **absent** |
+| `dossier-study__action` | 10 | present | **absent** |
+| `combat-lab` | 10 | present | **absent** |
+
+**Steps 6-9 are live. Step 10 is pushed and NOT live.** A push is not a
+publish: the owner must press **Publish in Lovable**. Do not claim Step 10 is
+in production until those three markers appear in the deployed chunk.
 
 **No deploy-ordering hazard, in any direction.** There is no backend change,
 and `/combat-lab` ignores query parameters it does not read — the currently
 published Combat Lab would simply open on the reader's last selection if it
 ever met a Step 10 link. Nothing was removed from any payload or any route.
+
+### Backend contracts spot-checked, backend untouched
+
+Verified present on `origin/master` `fe4070cc` and **not modified by this
+pass**: `pro_authority/exact_statistics.py` serves Step 7's `kda`,
+`gold_diff_at15`, `cs_diff_at15` with `coverage.at15_games` and
+`subject_positions`, and Step 8's per-metric `evidence` arrays (including the
+empty-list-not-absent-key shape when `supported` is false);
+`pro_authority/meetings.py` serves Step 9's `_lineups` with `positions_changed`
+and the incomplete-participant count; `pro_authority/game_detail.py` still
+serves Step 5/6 Game detail and `lane_checkpoint`.
 
 ## Files — Step 10
 
@@ -3307,5 +3357,63 @@ this step's exact mistake.
 3. Everything still open from Step 9: the ban summary if it can be made honest,
    per-game side, and the meeting as a destination from the board's own lanes.
 4. **The pretty-URL architecture.** Still a rename.
-5. **Merge the Step 7–10 chain into `main`**, then publish. Four steps are
-   sitting on an unmerged branch chain.
+5. **Press Publish in Lovable.** Steps 7-10 are all merged into `main` and
+   pushed; Steps 6-9 are live and **Step 10 is not**. This is the only
+   remaining deployment action for the whole 7-10 range, and it is the owner's
+   click — nothing in this repository can perform it.
+
+## Integration pass — Steps 7-10 reconciled into `main` (2026-09-10)
+
+A dedicated pass audited whether the Steps 7-10 work was actually represented
+on the canonical deploy branch, because the Step 10 report described an
+unmerged four-step branch chain. **It was not a chain by the time it was
+checked.** Steps 7, 8 and 9 had already been merged; only Step 10 was outside
+`main`, one commit ahead of it with zero divergence.
+
+* **Method: fast-forward.** No rebase, no cherry-pick, no manual
+  reconciliation — none was warranted. `2b256ac9`'s parent *was* `origin/main`.
+* **Conflicts: none.** Not in `index.css`, not in `CombatLab.tsx`, not
+  anywhere. The overlap analysis the pass was told to perform found that every
+  commit touching `MatchupStudy.tsx`, `MeetingDrilldown.tsx`, `matchupApi.ts`,
+  `ProPlayMatchupTeam.test.tsx` or `index.css` since the Step 7 branch point
+  **was itself one of Steps 7-9**.
+* **Behavioural decisions: none were needed.** No Step 7-10 semantics were
+  altered, simplified or renegotiated by this pass. No product behaviour was
+  added.
+* **Backend: untouched**, contracts spot-checked and present (above).
+* **Tests.** Steps 7-10 targeted: `ProPlayMatchupTeam.test.tsx` +
+  `matchup-link.test.ts` + `CombatLab.deeplink.test.tsx` = **303 passed**.
+  Every Combat Lab, Pro Play, League Docs and combat-lab lib suite: **48 files,
+  1221 passed, 0 failed**. Full suite, run **serially**: **58 failed / 10,369
+  passed / 7 skipped** — the *same 58 failures* as the documented clean-`main`
+  baseline, none of them in pro-play, combat-lab or lol-docs. Compare failure
+  SETS, never totals. Typecheck: 13 errors, all pre-existing, none in a Step 10
+  or pro-play file. Build green.
+* **Browser validation, on the integrated branch.** The Matchup Explorer is
+  admin-gated and this pass held no admin key, so Steps 7-9's *rendering* rests
+  on their suites and on the live bundle markers above. Step 10's genuinely new
+  and **ungated** surfaces were driven directly:
+  `?attacker=ksante&defender=dr-mundo` selected **K'Sante** and **Dr Mundo** —
+  which is the cross-authority join proved end to end, since the Explorer
+  spells it `Dr. Mundo` and Combat Lab's table spells it `Dr Mundo` — switched
+  the defender to Champion Defender, and left level 18, `None` items and the
+  5/5/5/3 ability ranks exactly as they were. A refresh landed on the same two
+  champions. `?attacker=<script>&defender=notachampion12345` produced **no
+  error and no change**: the previous selection stood. Both Archives routes
+  resolved (`/lol/docs/champions/ksante`, `/lol/docs/champions/dr-mundo`). At
+  **375px**, the longest name in the game plus a punctuated one
+  (`aurelion-sol` / `ksante`) both applied with **no horizontal overflow**.
+* **Branch cleanup.** The integration branch was `proplay/steps7-10-integration`
+  in worktree `/Users/macmoney/mogsy-wt-s710-int`. The per-step branches
+  (`proplay/exact-aggregate-fe`, `proplay/exact-evidence-fe`,
+  `proplay/meeting-enrichment-fe`, `proplay/step10-native-actions`) are now
+  fully contained in `main` and are safe to delete.
+
+**A trap this pass hit, worth recording.** The local `main` in
+`/Users/macmoney/mogsy` was **diverged** — three unpushed Ranked bot commits
+(`af1bde59`, `ffad79f7`, `e12f5900`) on a base nine commits behind
+`origin/main` — and its working tree held a *different* session's uncommitted
+Pro Stats Explorer work. Reading the handoff from that checkout showed the
+document ending at **Step 6** and would have "confirmed" the unmerged-chain
+story. **Read `origin/main`, never the shared working tree**, when
+establishing branch reality.
