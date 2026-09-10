@@ -38,6 +38,7 @@ import {
   REL_SAME_SUBJECT,
   type ExactMatchupPayload,
   type ExactPlayerFacts,
+  type ExactStatistics,
   type MeetingSelection,
   type ExampleNavigation,
   type LaneSide,
@@ -251,6 +252,154 @@ function ExactZeroState({
   );
 }
 
+/**
+ * STEP 7 — the exact sample's scouting figures.
+ *
+ * WHAT THIS SECTION IS FOR. The record above answers "how often, and who
+ * won". These answer the next question a scout asks of that answer: "and what
+ * did those games typically look like". They are drawn from THE SAME GAMES —
+ * the server measures nothing wider — so they support the record rather than
+ * competing with it.
+ *
+ * IT SUPPORTS THE MATCHUP IDENTITY AND MUST NOT DOMINATE IT. The reader still
+ * reads who, which champions, how many games and the record BEFORE any of
+ * this, so it renders as one compact strip of label-and-value pairs in the
+ * drawer's quietest voice — not a stat-card grid, not a table, not a second
+ * panel, and never at a larger size than the players' names.
+ *
+ * NOTHING HERE IS RENDERED WHEN THE SAMPLE IS EMPTY. The zero state above is
+ * already the whole answer, and a row of em dashes beneath it would suggest
+ * there were figures to be missing.
+ *
+ * SIGNS ARE CLAIMS. `+286` and `-286` say which way the lane went; `0` is a
+ * measured tie and is printed WITHOUT a sign, because a tie has no direction.
+ * This is `signedNumber`'s rule from the game dossier, restated rather than
+ * imported: that module is Step 5's box score and this is a different surface,
+ * so one restyling it should not silently change the other.
+ */
+function signedFigure(value: number): string {
+  if (value === 0) return "0";
+  // A median over an even sample really can land on .5, and the server does
+  // not round. One decimal is kept only when there is one to keep — "+286.0"
+  // would imply a precision the sample does not have.
+  const magnitude = Math.abs(value);
+  const text = Number.isInteger(magnitude)
+    ? magnitude.toLocaleString()
+    : magnitude.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return `${value > 0 ? "+" : "-"}${text}`;
+}
+
+/** The KDA figure, on the dossier's own convention. */
+function exactKdaText(stats: ExactStatistics): string {
+  const { kda } = stats;
+  if (!kda.games) return "—";
+  // Deaths really were zero across games that exist. An empty sample cannot
+  // reach this branch: the server reports `perfect: false` over zero games,
+  // and the block does not render at all.
+  if (kda.perfect) return "Perfect";
+  return kda.ratio === null ? "—" : kda.ratio.toFixed(2);
+}
+
+/**
+ * The coverage sentence, or null when there is nothing worth saying.
+ *
+ * CONCISE PRODUCT LANGUAGE, NOT AN ENGINEERING EXPLANATION. It says how many
+ * games a figure covers. It does not name a data source, a pipeline or a
+ * table, and a test asserts none of those words can reach it.
+ *
+ * SILENT WHEN EVERY FIGURE COVERS EVERY GAME — a note printed on every study
+ * stops being read, and there is nothing to warn about when the denominators
+ * agree.
+ */
+function exactCoverageNote(stats: ExactStatistics): string | null {
+  const total = stats.coverage.exact_games;
+  if (!total) return null;
+  const games = (n: number) => `${n} of ${total} game${total === 1 ? "" : "s"}`;
+  const parts: string[] = [];
+  if (stats.kda.games && stats.kda.games < total) {
+    parts.push(`KDA based on ${games(stats.kda.games)}`);
+  }
+  const at15 = stats.gold_diff_at15.games;
+  if (at15 && at15 < total) {
+    parts.push(`15-minute figures based on ${games(at15)}`);
+  }
+  if (!parts.length) return null;
+  return `${parts.join(". ")}.`;
+}
+
+function ExactSampleStats({ data }: { data: ExactMatchupPayload }) {
+  const stats = data.statistics;
+  // The empty sample renders NOTHING. See the block comment above.
+  if (!stats || !stats.coverage.exact_games) return null;
+
+  const gold = stats.gold_diff_at15;
+  const cs = stats.cs_diff_at15;
+  const note = exactCoverageNote(stats);
+
+  // A figure with no games behind it is left OUT rather than dashed. The
+  // sample is small by nature and three dashes under a two-game record read
+  // as a broken panel; the coverage note carries the fact instead.
+  const rows: Array<{ key: string; label: string; value: string; title?: string }> = [];
+  if (stats.kda.games) {
+    rows.push({
+      key: "kda",
+      label: "KDA",
+      value: exactKdaText(stats),
+      title:
+        stats.kda.kills === null
+          ? undefined
+          : `${stats.kda.kills} / ${stats.kda.deaths} / ${stats.kda.assists} over ${
+              stats.kda.games
+            } game${stats.kda.games === 1 ? "" : "s"}`,
+    });
+  }
+  if (gold.median !== null) {
+    rows.push({
+      key: "gold15",
+      label: "Gold @15",
+      // "median" is stated on the figure rather than left to a legend: the
+      // reader must not read a middle value as a total or an average.
+      value: `${signedFigure(gold.median)} median`,
+      title: data.statistics.definitions.median_at15,
+    });
+  }
+  if (cs.supported && cs.median !== null) {
+    rows.push({
+      key: "cs15",
+      label: "CS @15",
+      value: `${signedFigure(cs.median)} median`,
+      title: data.statistics.definitions.median_at15,
+    });
+  }
+  if (!rows.length && !note) return null;
+
+  return (
+    <div className="dossier-study__sample" data-testid="study-sample-stats">
+      <span className="dossier-drawer__stathint">Exact sample</span>
+      {rows.length ? (
+        <ul className="dossier-study__samplelist">
+          {rows.map((row) => (
+            <li
+              key={row.key}
+              className="dossier-study__samplestat"
+              data-testid={`study-sample-${row.key}`}
+              title={row.title}
+            >
+              <span className="dossier-study__samplelabel">{row.label}</span>
+              <span className="dossier-study__samplevalue">{row.value}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {note ? (
+        <span className="dossier-drawer__stathint" data-testid="study-sample-coverage">
+          {note}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function ExactRecordBand({
   data,
   subjectName,
@@ -296,6 +445,11 @@ function ExactRecordBand({
       <span className="dossier-drawer__stathint">
         {subjectName} vs {opposingName}. {data.definitions.record_orientation}
       </span>
+      {/* The figures sit BELOW the record and the orientation sentence and
+          ABOVE the source meetings, so the reading order stays who -> which
+          champions -> how many games -> the record -> then the scouting
+          figures -> then the evidence they were drawn from. */}
+      <ExactSampleStats data={data} />
       <SourceMeetings data={data} onOpenMeeting={onOpenMeeting} />
     </div>
   );

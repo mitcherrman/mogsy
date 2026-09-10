@@ -11889,6 +11889,48 @@ html.hub-commons-in-view .hextech-ambience-layer {
   gap: 0.2rem;
 }
 /* The exact record's source meetings. */
+/* STEP 7 — the exact sample's scouting figures.
+   SUPPORTING, NEVER DOMINANT. The values sit one notch above the hint text
+   they follow and a notch BELOW the matchup identity above them, so the
+   reading order the section was designed around survives the styling. A
+   wrapping flex row rather than a grid: three pairs at 375px wrap to two
+   lines and stay legible, where a fixed grid would either clip or force a
+   scrollbar into a drawer that has none. */
+.proplay-dossier .dossier-study__sample {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+  padding-top: 0.3rem;
+  /* One hairline, the same device the dossier's statistics group uses, so the
+     different denominator is VISIBLE without a sentence explaining it. */
+  border-top: 1px solid rgba(93, 85, 70, 0.18);
+}
+.proplay-dossier .dossier-study__samplelist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.proplay-dossier .dossier-study__samplestat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.proplay-dossier .dossier-study__samplelabel {
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(93, 85, 70, 0.78);
+}
+.proplay-dossier .dossier-study__samplevalue {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsr-ink);
+}
+
 .proplay-dossier .dossier-study__sources {
   display: flex;
   flex-direction: column;

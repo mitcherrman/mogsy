@@ -1197,7 +1197,39 @@ const EXACT_DEFINITIONS = {
   record_orientation: "Wins and losses are counted from the subject player's side.",
   navigation_limit:
     "The Explorer's team board can only be pointed at teams in its own pool \u2014 the orgs whose five-lane board the corpus can build honestly \u2014 so an example played between teams outside it is real evidence with no board to open.",
+  median_at15:
+    "The middle value of the per-game differences at 15 minutes; with an even number of games, the average of the middle two. A median rather than an average because these samples are small and one one-sided game should not stand for the rest.",
+  at15_orientation:
+    "Differences are read from the subject player's side: a positive number is a lead, a negative number a deficit, and 0 is a measured tie.",
 };
+
+/** The server's own sentence, quoted, so a test that reads it is reading what
+ *  a reader would actually see. */
+const SUPPORT_CS_REASON =
+  "CS at 15 minutes is not published for the support position. A support's creep score is incidental to the bot lane rather than a record of it, so a difference between two of them does not describe how the lane was going. The gold difference is published for every position.";
+
+/**
+ * STEP 7 — the exact sample's figures, over the fixture's TWO games.
+ *
+ * Deliberately a complete-coverage default: the note is the exception and a
+ * fixture that always triggered it would let a regression hide behind it.
+ */
+function exactStatistics(overrides: Record<string, unknown> = {}) {
+  return {
+    coverage: {
+      exact_games: 2,
+      stat_games: 2,
+      missing_stat_games: 0,
+      at15_games: { available: 2 },
+    },
+    kda: { kills: 8, deaths: 4, assists: 9, ratio: 4.25, perfect: false, games: 2 },
+    gold_diff_at15: { median: 286, games: 2 },
+    cs_diff_at15: { median: 7, games: 2, supported: true, unsupported_reason: null },
+    subject_positions: ["top"],
+    definitions: EXACT_DEFINITIONS,
+    ...overrides,
+  };
+}
 
 function exactSide(
   player: string,
@@ -1340,6 +1372,7 @@ function exactResponse(overrides: Record<string, unknown> = {}) {
       },
     },
     champion_matchup_games_in_scope: 9,
+    statistics: exactStatistics(),
     other_pro_examples: [
       exactExample(
         "same_subject_player",
@@ -1379,13 +1412,11 @@ function exactResponse(overrides: Record<string, unknown> = {}) {
     ],
     example_limit: 6,
     board_team_keys: ["Bilibili Gaming", "T1"],
-    unavailable_metrics: [
-      {
-        metric: "average_kda",
-        label: "Average KDA",
-        reason: "The professional corpus carries no combat statistics.",
-      },
-    ],
+    // EMPTY BY DEFAULT SINCE STEP 7. The `average_kda` declaration that used
+    // to sit here was retired when the payload started carrying a KDA — a
+    // sentence saying the figure cannot be served, printed beside the figure,
+    // is worse than no sentence.
+    unavailable_metrics: [],
     definitions: EXACT_DEFINITIONS,
     ...overrides,
   };
@@ -3023,6 +3054,254 @@ describe("the exact matchup study", () => {
     await within(drawer).findByTestId("study-zero");
     return { drawer };
   }
+
+  // --- Step 7: the exact sample's scouting figures --------------------------
+  //
+  // WHAT THESE TESTS ARE ABOUT. Rendering a number is trivial; every real
+  // defect in this section is a number that MEANS something other than what
+  // the heading above it says. So: that a sign is a claim about direction and
+  // a tie is not, that a missing figure is absent rather than zero, that
+  // partial coverage is stated in a scout's language and not an engineer's,
+  // that a support matchup never shows a creep-score difference, and that an
+  // empty sample renders nothing at all rather than a panel of dashes.
+
+  it("renders the exact sample's KDA inside the study", async () => {
+    const { study } = await openStudy();
+    const block = within(study).getByTestId("study-sample-stats");
+    expect(within(block).getByTestId("study-sample-kda")).toHaveTextContent("KDA");
+    expect(within(block).getByTestId("study-sample-kda")).toHaveTextContent("4.25");
+    // The raw components are reachable without the strip growing a column.
+    expect(within(block).getByTestId("study-sample-kda")).toHaveAttribute(
+      "title",
+      "8 / 4 / 9 over 2 games",
+    );
+  });
+
+  it("prints a positive gold difference with a + and names it a median", async () => {
+    const { study } = await openStudy();
+    const gold = within(study).getByTestId("study-sample-gold15");
+    expect(gold).toHaveTextContent("Gold @15");
+    expect(gold).toHaveTextContent("+286 median");
+  });
+
+  it("prints a negative gold difference with a -", async () => {
+    exact = exactResponse({
+      statistics: exactStatistics({ gold_diff_at15: { median: -286, games: 2 } }),
+    });
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-sample-gold15")).toHaveTextContent(
+      "-286 median",
+    );
+  });
+
+  it("prints a measured tie as 0 and never as +0", async () => {
+    // A SIGN IS A CLAIM ABOUT DIRECTION and a tie has no direction. This is
+    // the same rule the game dossier's per-row figure follows.
+    exact = exactResponse({
+      statistics: exactStatistics({
+        gold_diff_at15: { median: 0, games: 2 },
+        cs_diff_at15: { median: 0, games: 2, supported: true, unsupported_reason: null },
+      }),
+    });
+    const { study } = await openStudy();
+    const gold = within(study).getByTestId("study-sample-gold15");
+    expect(gold).toHaveTextContent("0 median");
+    expect(gold.textContent).not.toContain("+0");
+    expect(gold.textContent).not.toContain("-0");
+    expect(within(study).getByTestId("study-sample-cs15").textContent).not.toContain(
+      "+0",
+    );
+  });
+
+  it("keeps a half from an even sample rather than rounding it away", async () => {
+    exact = exactResponse({
+      statistics: exactStatistics({ gold_diff_at15: { median: -89.5, games: 6 } }),
+    });
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-sample-gold15")).toHaveTextContent(
+      "-89.5 median",
+    );
+  });
+
+  it("renders CS @15 for a farming-role matchup", async () => {
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-sample-cs15")).toHaveTextContent(
+      "+7 median",
+    );
+  });
+
+  it("omits CS @15 entirely for a support matchup", async () => {
+    // A support's creep score is a byproduct of which waves the bot laner
+    // left. Gold is still shown, because a support's early game really is
+    // kill and assist participation.
+    exact = exactResponse({
+      statistics: exactStatistics({
+        subject_positions: ["sup"],
+        gold_diff_at15: { median: -89, games: 2 },
+        cs_diff_at15: {
+          median: null,
+          games: 0,
+          supported: false,
+          unsupported_reason: SUPPORT_CS_REASON,
+        },
+      }),
+      unavailable_metrics: [
+        { metric: "cs_diff_15_support", label: "CS at 15 minutes", reason: SUPPORT_CS_REASON },
+      ],
+    });
+    const { study } = await openStudy();
+    const block = within(study).getByTestId("study-sample-stats");
+    expect(within(block).getByTestId("study-sample-gold15")).toHaveTextContent("-89");
+    expect(within(block).queryByTestId("study-sample-cs15")).toBeNull();
+    expect(block.textContent).not.toMatch(/CS @15/);
+  });
+
+  it("shows no 15-minute figure at all when the sample produced none", async () => {
+    // A genuinely cross-lane exact pair: they met six times and never once in
+    // lane. The KDA still stands, because it never needed a lane opponent.
+    exact = exactResponse({
+      statistics: exactStatistics({
+        coverage: {
+          exact_games: 2,
+          stat_games: 2,
+          missing_stat_games: 0,
+          at15_games: { lane_opponent_is_another_player: 2 },
+        },
+        gold_diff_at15: { median: null, games: 0 },
+        cs_diff_at15: { median: null, games: 0, supported: true, unsupported_reason: null },
+      }),
+    });
+    const { study } = await openStudy();
+    const block = within(study).getByTestId("study-sample-stats");
+    expect(within(block).getByTestId("study-sample-kda")).toBeInTheDocument();
+    expect(within(block).queryByTestId("study-sample-gold15")).toBeNull();
+    expect(within(block).queryByTestId("study-sample-cs15")).toBeNull();
+    // And NOT a row of dashes, which would read as a broken panel.
+    expect(block.textContent).not.toContain("—");
+  });
+
+  it("says nothing about coverage when every figure covers every game", async () => {
+    // A note printed on every study stops being read.
+    const { study } = await openStudy();
+    expect(within(study).queryByTestId("study-sample-coverage")).toBeNull();
+  });
+
+  it("communicates partial coverage in a scout's language", async () => {
+    exact = exactResponse({
+      statistics: exactStatistics({
+        coverage: {
+          exact_games: 3,
+          stat_games: 3,
+          missing_stat_games: 0,
+          at15_games: { available: 2, unavailable: 1 },
+        },
+        gold_diff_at15: { median: 286, games: 2 },
+        cs_diff_at15: { median: 7, games: 2, supported: true, unsupported_reason: null },
+        kda: { kills: 8, deaths: 4, assists: 9, ratio: 4.25, perfect: false, games: 3 },
+      }),
+    });
+    const { study } = await openStudy();
+    const note = within(study).getByTestId("study-sample-coverage");
+    expect(note).toHaveTextContent("15-minute figures based on 2 of 3 games");
+    // NO ENGINEERING EXPLANATION REACHES THE SCOUT.
+    for (const word of [
+      "oracle", "elixir", "leaguepedia", "corpus", "enrich", "pipeline",
+      "database", "backend", "api",
+    ]) {
+      expect(note.textContent?.toLowerCase()).not.toContain(word);
+    }
+  });
+
+  it("names the KDA's own coverage when it differs from the record", async () => {
+    exact = exactResponse({
+      statistics: exactStatistics({
+        coverage: {
+          exact_games: 3,
+          stat_games: 2,
+          missing_stat_games: 1,
+          at15_games: { available: 3 },
+        },
+        kda: { kills: 8, deaths: 4, assists: 9, ratio: 4.25, perfect: false, games: 2 },
+        gold_diff_at15: { median: 286, games: 3 },
+        cs_diff_at15: { median: 7, games: 3, supported: true, unsupported_reason: null },
+      }),
+    });
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-sample-coverage")).toHaveTextContent(
+      "KDA based on 2 of 3 games",
+    );
+  });
+
+  it("renders a deathless sample as Perfect rather than as a ratio", async () => {
+    exact = exactResponse({
+      statistics: exactStatistics({
+        kda: { kills: 8, deaths: 0, assists: 9, ratio: null, perfect: true, games: 2 },
+      }),
+    });
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-sample-kda")).toHaveTextContent("Perfect");
+  });
+
+  it("renders no statistics block at all when the exact sample is empty", async () => {
+    // THE ZERO STATE ABOVE IS ALREADY THE WHOLE ANSWER. A strip of figures
+    // beneath it would suggest there were aggregates to be missing.
+    exact = exactResponse({
+      exact: {
+        record: {
+          games: 0, wins: 0, losses: 0, win_rate: null,
+          first_played_at: null, last_played_at: null,
+        },
+        meetings: [],
+        meetings_total: 0,
+        result_sequence: [],
+        most_recent: null,
+      },
+      statistics: exactStatistics({
+        coverage: { exact_games: 0, stat_games: 0, missing_stat_games: 0, at15_games: {} },
+        kda: { kills: null, deaths: null, assists: null, ratio: null, perfect: false, games: 0 },
+        gold_diff_at15: { median: null, games: 0 },
+        cs_diff_at15: { median: null, games: 0, supported: true, unsupported_reason: null },
+        subject_positions: [],
+      }),
+    });
+    const { drawer } = await openStudyExpectingZero();
+    expect(within(drawer).getByTestId("study-zero")).toBeInTheDocument();
+    expect(within(drawer).queryByTestId("study-sample-stats")).toBeNull();
+    expect(within(drawer).queryByTestId("study-sample-kda")).toBeNull();
+  });
+
+  it("keeps the source meetings and the examples beside the new figures", async () => {
+    // THE REGRESSION THIS SLICE COULD MOST EASILY CAUSE: a block inserted in
+    // the middle of the record band that displaces what was already there.
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-sample-stats")).toBeInTheDocument();
+    expect(within(study).getByTestId("study-source-meetings")).toBeInTheDocument();
+    expect(within(study).getAllByTestId("study-source-meeting")).toHaveLength(1);
+    expect(within(study).getAllByTestId("study-example")).toHaveLength(4);
+    expect(within(study).getByTestId("study-record")).toHaveTextContent("2 games");
+  });
+
+  it("reads in the designed order: identity, then record, then figures", async () => {
+    // THE FIGURES SUPPORT THE MATCHUP AND MUST NOT DOMINATE IT. Held as a
+    // DOM-order property rather than as a font size, which is the part a
+    // restyle could not silently break.
+    const { study } = await openStudy();
+    const text = study.textContent ?? "";
+    expect(text.indexOf("2 games")).toBeGreaterThan(-1);
+    expect(text.indexOf("Exact sample")).toBeGreaterThan(text.indexOf("2 games"));
+    expect(text.indexOf("Source meeting")).toBeGreaterThan(text.indexOf("Exact sample"));
+  });
+
+  it("names no rating, grade or prediction anywhere in the study", async () => {
+    const { study } = await openStudy();
+    const text = (study.textContent ?? "").toLowerCase();
+    for (const word of [
+      "dominance", "lane score", "advantage rating", "grade", "prediction",
+      "win probability", "lane power",
+    ]) {
+      expect(text).not.toContain(word);
+    }
+  });
 
   // --- other pro examples ---------------------------------------------------
 

@@ -1012,6 +1012,83 @@ export interface OtherProExample {
   navigation: ExampleNavigation;
 }
 
+/**
+ * STEP 7 — the aggregate scouting figures over the exact sample.
+ *
+ * MEASURED OVER THE SAME GAMES AS `exact.record` AND NO OTHERS. Not this
+ * champion against the opposing team, not these two players regardless of
+ * champion, not this champion matchup played by other people. Each of those
+ * is a bigger and easier number, and each answers a different question from
+ * the heading above it.
+ *
+ * EVERY FIGURE CARRIES ITS OWN DENOMINATOR, because a three-game record can
+ * carry a KDA on three games and a 15-minute figure on two. `null` is never
+ * zero: a lane with no recorded checkpoint is not a level lane.
+ */
+export interface ExactStatCoverage {
+  /** The record's own count. Every other number here is <= this. */
+  exact_games: number;
+  /** Those carrying statistics at all. */
+  stat_games: number;
+  missing_stat_games: number;
+  /**
+   * Why each exact game did or did not yield a 15-minute figure. Sums to
+   * `exact_games`. The keys are the server's, and the four that are not
+   * `available` are four genuinely different absences — none of them a zero.
+   */
+  at15_games: Partial<Record<ExactAt15State, number>>;
+}
+
+export type ExactAt15State =
+  | "available"
+  | "not_reached"
+  | "unavailable"
+  | "opponent_unresolved"
+  /** The subject faced somebody ELSE in lane in this game. Real and not rare:
+   *  a champion played in two positions produces genuinely cross-lane exact
+   *  pairs, and a figure printed under two names whose second half came from
+   *  a third player would be a false sentence. */
+  | "lane_opponent_is_another_player";
+
+/** Raw components and the derived ratio, from TOTALS and never from the mean
+ *  of per-game ratios. `perfect` is true only over games that exist — an empty
+ *  sample also has a null ratio and the two must not render the same way. */
+export interface ExactKda {
+  kills: number | null;
+  deaths: number | null;
+  assists: number | null;
+  ratio: number | null;
+  perfect: boolean;
+  games: number;
+}
+
+/** The MEDIAN per-game difference at 15 minutes, read from the subject's side:
+ *  positive is a lead, negative a deficit, and 0 a measured tie. Null when no
+ *  game in the sample produced one. */
+export interface ExactAt15Median {
+  median: number | null;
+  games: number;
+}
+
+/** CS at 15 minutes, which is not published for every matchup. `supported` is
+ *  false when the server has ruled the figure out — a support matchup, or a
+ *  sample whose positions are not recorded — and `unsupported_reason` is the
+ *  server's own sentence for it. */
+export interface ExactAt15CsMedian extends ExactAt15Median {
+  supported: boolean;
+  unsupported_reason: string | null;
+}
+
+export interface ExactStatistics {
+  coverage: ExactStatCoverage;
+  kda: ExactKda;
+  gold_diff_at15: ExactAt15Median;
+  cs_diff_at15: ExactAt15CsMedian;
+  /** The positions the subject was actually recorded in across the sample. */
+  subject_positions: string[];
+  definitions: Record<string, string>;
+}
+
 export interface ExactMatchupPayload {
   contract_version: string;
   kind: "exact_player_champion_matchup";
@@ -1030,6 +1107,10 @@ export interface ExactMatchupPayload {
     result_sequence: Array<"W" | "L">;
     most_recent: ExactMeeting | null;
   };
+  /** STEP 7. A SIBLING OF `exact`, not a widening of `exact.record`. The
+   *  record covers every exact game; these cover fewer, and the 15-minute
+   *  figures fewer again. */
+  statistics: ExactStatistics;
   /** Every qualifying pair of these two champions in scope, exact included. */
   champion_matchup_games_in_scope: number;
   other_pro_examples: OtherProExample[];

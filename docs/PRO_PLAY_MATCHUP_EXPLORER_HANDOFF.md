@@ -1685,9 +1685,9 @@ aggregate is a new one.
 
 ## Next task
 
-1. **Decide whether @15 earns an aggregate**, scoped in Step 6's "Next
-   recommended slice". Step 6 shipped the lane-checkpoint layer this list
-   used to name.
+1. ~~**Decide whether @15 earns an aggregate.**~~ **Answered by Step 7** (see
+   below): it does, and the aggregate shipped. The next Matchup Explorer
+   candidates are in Step 7's own "Next recommended slice".
 2. **Delete the `teams_outside_focus_set` mirror** once the frontend carrying
    `teams_outside_explorer_pool` is published.
 3. **Re-run `scripts/audit_explorer_team_pool.py` each season.** The registry
@@ -1700,3 +1700,380 @@ Explicitly **out of scope** for this workstream and still is: Comparison Lab,
 custom opponent cohorts, Champion Archives actions, Combat Lab / Quiz deep
 links, monetization or access changes, prediction models, and anything in
 Ranked / RR1 / LIVE1 infrastructure.
+
+---
+
+# Step 7 — what the exact sample typically looked like
+
+Implemented. The exact player-and-champion study now answers the question a
+scout asks of a win-loss record — *and what did those games look like* — with
+three figures over the **same games** and no others.
+
+```
+Olaf vs K'Sante · Doran (Choi Hyeon-joon) vs Kiin
+2 games · 2–0 · 100.0%
+                     Exact sample
+                     KDA 4.25   GOLD @15 +217 median   CS @15 +2.5 median
+```
+
+Step 6's own "next recommended slice" asked whether @15 earns an aggregate.
+It does, and the answer that made it worth building is the coverage machinery
+below rather than the medians themselves.
+
+## The sample is the EXACT sample, and it is never widened for a figure
+
+Every number is measured over the canonical games the Step 3 filter already
+admitted — the subject player on the subject champion, the opposing player on
+the opposing champion, opposing sides, one game, in scope. The game ids come
+from that filter rather than from a second query, so no figure can cover a
+game the record above does not count, and none can miss one.
+
+Three tempting substitutes are all refused, and each has a test with a
+deliberately enormous scoreline written into the near-miss row so a widened
+sample shows up in the *figure* and not only in a count:
+
+* the subject champion against the opposing **team** (that is Step 2);
+* the two players regardless of champion;
+* the champion matchup played by **other people** (that is Other Pro Examples).
+
+## The lane opponent must be the player on screen — measured, not assumed
+
+Step 6's resolver names whoever the subject **actually faced**. In an exact
+matchup that is usually the opposing player. **Not always**, and this is the
+semantic that shaped the slice:
+
+| champion matchup | same lane | cross lane |
+|---|---:|---:|
+| Olaf vs K'Sante | 167 | **21** |
+| Azir vs Orianna | 1,139 | 8 |
+
+Olaf is played in two positions, so genuinely cross-lane exact pairs exist.
+A `+286 gold` printed under the heading *Doran vs Kiin* whose second half came
+from Oner would be a **false sentence**, so a game whose resolved lane opponent
+is somebody else contributes to **no** checkpoint figure and is counted in its
+own bucket, `lane_opponent_is_another_player`.
+
+Verified live: **Delight's Rakan into Gumayusi's Aphelios is six real games and
+ZERO checkpoint games** — a support and a bot laner who met six times and never
+once in lane. Its KDA still covers all six, because a KDA never needed a lane
+opponent.
+
+## One resolver, two callers
+
+`game_detail._lane_checkpoints` was split into
+**`game_detail.resolve_lane_checkpoints(rows, duration_seconds)`** over a flat
+row shape (`LANE_ROW_FIELDS`) plus a thin `/game` adapter. `exact_statistics`
+adapts its own batched read onto the same function.
+
+This is the load-bearing structural choice: **an aggregate cannot be built on a
+different opponent rule from the per-game figure it aggregates.** A test scans
+`exact_statistics` for the shapes of a reimplementation (`oe_position ==`,
+`opp_gold_at15 -`, `by_position`) and fails if any appears. The refactor is
+behaviour-neutral — Step 5 and 6's 87 tests pass unchanged.
+
+## The three figures
+
+### KDA — raw totals, never the mean of ratios
+
+```
+(SUM(kills) + SUM(assists)) / SUM(deaths)
+```
+
+Mogzy's existing zero-death convention (`oe_stats_reader.KDA_ZERO_DEATH_
+CONVENTION`): `None` for `deaths == 0`, rendered **Perfect**. Substituting
+`deaths = 1` reports a worse number than was earned; printing infinity is not a
+number.
+
+**The empty sample never reaches it.** 0/0/0 summed over nothing lands on the
+same branch as a genuinely deathless game, so `games == 0` returns
+`perfect: false` with **null** components — a zero would read as a player who
+took no fights.
+
+Proved on the real corpus: Broxah's Gragas into Jankos's Sejuani is
+**4.364** by totals and **4.875** as the mean of the six per-game ratios. The
+test asserts the *difference*, so a regression to averaging fails loudly rather
+than drifting inside a tolerance.
+
+### Gold @15 and CS @15 — the MEDIAN
+
+```
+median(per-game gold_at15 - opp_gold_at15, over available games)
+```
+
+**Median and not mean, and the reason is the sample size.** Exact samples are
+routinely two or three games; one 4,000-gold stomp moves a mean past anything a
+reader could act on, while the median answers "what did the lane usually look
+like". On the same real six-game sample: median **-300**, mean **-386**.
+
+### The median rule, defined once
+
+`exact_statistics.median` — sorted; the middle value for an odd count, the
+**arithmetic mean of the two middle values** for an even one. `None` over an
+empty list, never `0`.
+
+```
+[100, 200, 300] -> 200      [100, 200] -> 150
+[-50, 100] -> 25            [0] -> 0            [] -> None
+```
+
+**Nothing is rounded in the backend.** An even sample really does land on `.5`
+and the payload carries it — a live example is Doran/Kiin's `+2.5` CS and
+Broxah/Jankos's `8.5`. The client keeps one decimal only when there is one to
+keep, because `+286.0` would imply a precision the sample does not have.
+
+## Subject-perspective sign
+
+`gold_diff = subject.gold_at15 - subject.opp_gold_at15`, computed from the
+subject's own row only. The opposing player's row is the exact inverse **by
+construction** (OE's pairing is a perfect matching), so reversing the study
+inverts the sign for free rather than through a second subtraction that could
+drift.
+
+Verified in the live UI: `Doran Jayce vs Kiin K'Sante` reads
+`+217 median` / `+2.5 median`; the reversed study reads `-217` / `-2.5` and
+`KDA 2.00` — Kiin's own.
+
+**The sign is never taken from blue/red side or from team ordering**, and a
+test writes the same side on every fixture row so a side-derived sign would be
+constant and fail.
+
+## Coverage is per figure
+
+An exact sample of three games can carry KDA on three and a checkpoint on two.
+Printing "3 games" over both would be wrong about one.
+
+```jsonc
+"coverage": {
+  "exact_games": 6,          // the record's own count
+  "stat_games": 6,
+  "missing_stat_games": 0,
+  "at15_games": {            // sums to exact_games BY CONSTRUCTION
+    "available": 3,
+    "unavailable": 3
+  }
+}
+```
+
+`at15_games` is a census in **Step 6's own vocabulary** — `available`,
+`not_reached`, `unavailable`, `opponent_unresolved` — plus this slice's own
+`lane_opponent_is_another_player`. Four genuinely different absences, **none of
+which is a zero**. A missing game never contributes `0` to a median, so a `0`
+in this payload is always a measured tie.
+
+Real example: Bin's Gnar into Breathe's Renekton — **6 exact games, KDA on 6,
+15-minute figures on 3.**
+
+## Support carries gold and not CS
+
+The rule and its sentence are **Step 6's, quoted rather than restated** so the
+two layers cannot drift into two reasons. It keys on the recorded
+`oe_position` — the same authority the pairing rests on — and **never** on
+Leaguepedia's `role`, which the corpus shows is wrong on 1,290 rows, nor on the
+champion's usual lane, nor on the board row the drawer was opened from.
+
+* Both support → **gold shown, CS omitted**, `supported: false` with the
+  server's reason, and `cs_diff_15_support` declared in `unavailable_metrics`.
+  Verified live: `Keria Alistar vs Duro Poppy` renders `KDA 1.89` and
+  `GOLD @15 -148 median` with **no CS row at all**.
+* A player recorded in **two** positions keeps only his farming games in the CS
+  figure — the resolver already drops the support ones one by one, so `games`
+  counts what it should.
+* **Position unresolved** (no stat row, so no recorded position) → `supported:
+  false` with its own reason. Nothing is guessed.
+* **Empty sample** → says nothing at all. "These two never met" is already the
+  answer above, and repeating it as a sentence about creep score would be a
+  worse-worded second copy.
+
+`unavailable_metrics` is **conditional**, unlike `/game`'s. A box score always
+has a support row in it; this route names two players, and a sentence about
+support creep score on a top-lane study is noise a reader has to discard.
+
+## The retired `average_kda` declaration
+
+`exact_matchup.UNAVAILABLE_METRICS` used to declare average KDA unservable.
+That was **true of the corpus as it then was**; the Oracle's Elixir promotion
+made it false, so it is **gone rather than softened** — the same move the Step 2
+enrichment made in `player_dossier`. The tuple is kept, empty, so the next
+unservable metric is declared there rather than left missing.
+
+Its static guard was **inverted, not deleted**. It now holds the property that
+actually mattered — `exact_matchup` is the exact-sample authority and computes
+no statistic of its own; it delegates to `exact_statistics`, which is why there
+is exactly one place a figure over this sample is derived.
+
+## Frontend placement
+
+**Inside the existing record band**, between the orientation sentence and
+Source Meetings. No new drawer, tab, table, chart or stat-card grid.
+
+Reading order, held as a **DOM-order test** rather than as a font size — the
+part a restyle could not silently break:
+
+1. who · 2. which champions · 3. sample size · 4. the record ·
+5. **the figures** · 6. Source Meetings · 7. Other Pro Examples
+
+A wrapping flex row of label-and-value pairs opened by one hairline rule — the
+same device the dossier's statistics group uses, so the different denominator
+is *visible* without a sentence explaining it. Values sit one notch above the
+hint text they follow and a notch below the matchup identity above them.
+
+* **A figure with no games behind it is left OUT, not dashed.** Three em dashes
+  under a two-game record read as a broken panel; the coverage note carries the
+  fact instead.
+* **`0` is printed `0`, never `+0`.** A sign is a claim about direction and a
+  tie has no direction. Same rule as the game dossier's per-row figure,
+  restated rather than imported — that module is Step 5's box score and this is
+  a different surface, so restyling one must not silently change the other.
+* **"median" is on the figure**, not in a legend: a middle value must not be
+  read as a total or an average.
+* **Nothing renders when the exact sample is empty.** The zero state above is
+  already the whole answer.
+
+### Coverage UX
+
+One note, in the drawer's quietest voice, and **silent when every figure covers
+every game** — a note printed on every study stops being read.
+
+> 15-minute figures based on 3 of 6 games.
+
+A test asserts it never contains *oracle*, *elixir*, *leaguepedia*, *corpus*,
+*enrich*, *pipeline*, *database*, *backend* or *api*. Another scans the whole
+rendered study for *dominance*, *lane score*, *advantage rating*, *grade*,
+*prediction*, *win probability* and *lane power*.
+
+## Contract addition — `GET /api/pro-play/matchup/exact`
+
+Same route, parameters, gate and error codes. One key added, one declaration
+retired.
+
+```jsonc
+"statistics": {                    // a SIBLING of `exact`, never inside it
+  "coverage": {
+    "exact_games": 6, "stat_games": 6, "missing_stat_games": 0,
+    "at15_games": { "available": 3, "unavailable": 3 }
+  },
+  "kda": { "kills": 18, "deaths": 6, "assists": 19,
+           "ratio": 6.1667, "perfect": false, "games": 6 },
+  "gold_diff_at15": { "median": 222, "games": 3 },
+  "cs_diff_at15":   { "median": -10, "games": 3,
+                      "supported": true, "unsupported_reason": null },
+  "subject_positions": ["top"],
+  "definitions": { … }
+}
+```
+
+A **top-level sibling** of `exact`, not a key inside it: `exact.record` covers
+every exact game, these cover fewer, and the 15-minute figures fewer again.
+Nesting them would put three denominators under one heading.
+
+`definitions` gains `exact_sample_statistics`, `kda_aggregate`, `median_at15`,
+`at15_orientation` and `at15_opponent`. `unavailable_metrics` is now `[]` on a
+farming matchup.
+
+## Performance
+
+Measured warm against the real 5.6 GB corpus. One batched read of the exact
+games' participant rows, one for their durations, and `oe_stats_reader`'s own
+chunked KDA read — never one query per game.
+
+| Case | Request | of which statistics |
+|---|---:|---:|
+| zero exact games | 1090 ms | **0.01 ms (0.0%)** |
+| one exact game | 647 ms | 0.38 ms (0.1%) |
+| six-game sample | 786 ms | **1.73 ms (0.2%)** |
+| six-game support | 1274 ms | 0.93 ms (0.1%) |
+| six-game partial | 875 ms | 0.60 ms (0.1%) |
+
+The request is dominated by Step 3's pre-existing champion-index pass. **No
+caching was built** — profiling says none is warranted, and building it would
+have been speculative.
+
+## Real corpus examples verified (2026-09-09)
+
+Every one located by query, then read through the real endpoint and, for the
+first five, **rendered in a browser** against the full corpus (local FastAPI +
+vite, throwaway admin key, never the production secret).
+
+| Case | Result |
+|---|---|
+| **Doran Jayce vs Kiin K'Sante**, `recent_2025_2026` | 2 games 2–0. KDA 4.25, gold **+217**, CS **+2.5** — an even sample keeping its half. No coverage note. |
+| **Reversed** (Kiin vs Doran) | 2 games 0–2. KDA 2.00, gold **-217**, CS **-2.5**. |
+| **Keria Alistar vs Duro Poppy** (support) | 2 games. KDA 1.89, gold **-148**, **no CS row rendered at all.** |
+| **Bin Gnar vs Breathe Renekton** (partial) | 6 games 5–1. KDA 6.17 over 6, gold +222 and CS -10 over **3**. Note: *15-minute figures based on 3 of 6 games.* |
+| **Doran Teemo vs Kiin K'Sante** (zero) | Zero state renders; **no statistics block, no dashes.** |
+| **Broxah Gragas vs Jankos Sejuani**, `all_time` | 6 games 4–2. K/D/A 7/11/41 → 4.364 (mean of ratios 4.875). Gold median **-300** (mean -386), CS **8.5**. Every figure matched an independent SQL walk of the same rows exactly. |
+| **Delight Rakan vs Gumayusi Aphelios** | 6 exact games, **0** checkpoint games, all `lane_opponent_is_another_player`. KDA covers all 6. |
+| **Faker Azir vs Broxah Gragas** | 0 exact games; full shape of nulls, `perfect: false`. |
+
+**375 x 812**: `scrollWidth === clientWidth` (no page-level horizontal
+overflow), the strip 324px inside a 375px sheet, all three pairs on one line.
+1280px desktop: hierarchy intact, drawer height essentially unchanged. The only
+console errors on the local page are the pre-existing 401 on
+`/api/stat-check/invites` (no Supabase session in that harness) and a 400 on
+`/api/pro-play/media/resolve` — both unrelated and both present before this
+slice.
+
+## Tests
+
+**Backend — 49 new (13 real-corpus), `test_pro_authority_exact_statistics.py`.**
+The fixture writes each near miss and each absence as a real row with its own
+test: the right players on the wrong champion, two team-mates, a different
+opposing player, a game with no stat row, a game whose mark is simply absent, a
+760-second game, an opponent with no row of his own, a cross-lane pair, a
+support matchup, a player recorded in two positions, and a role label that
+contradicts the recorded position.
+
+Pro Play backend regression: **397 passed, 1 skipped, 0 failed** across the
+seven `test_pro_authority_*` suites, re-run after rebasing onto the moved
+`master`.
+
+**Frontend — 16 new. Board suite 234 passed** (was 218); **444 Pro Play tests
+across 7 files, all passing.** Typecheck (`tsconfig.app.json`) **13 errors,
+none in pro-play** — the documented baseline. Build green.
+
+One Step 3 fixture assertion was **inverted, not deleted**: the payload's
+`unavailable_metrics` no longer carries `average_kda`.
+
+## Deferred, and deliberately
+
+Everything Step 6 deferred stays deferred: **@10 / @20 / @25**, XP
+differential, any curve, timeline, lane-dominance score, rating, prediction or
+win probability. Also **not** added here: damage/min, CS/min, gold/min or
+vision over the exact sample; a per-game statistics table; series aggregates;
+and the same aggregates on the Meeting list or the five-lane board.
+
+## Deploy state — Step 7 (2026-09-09)
+
+| | SHA | Where |
+|---|---|---|
+| Backend | `db9245c9` | `master`, Railway auto-deploys |
+| Frontend | see the commit below | `main`, Lovable publishes on the owner's click |
+
+**No deploy-ordering hazard, in either direction.** The backend change is
+purely additive over the wire — one new key on an existing payload — and the
+published client reads named keys rather than enumerating them, so it ignores
+it. The new frontend degrades to rendering nothing against an old backend
+(`ExactSampleStats` returns `null` for an absent `statistics`). The one
+*removal* is the `average_kda` entry from `unavailable_metrics`; the published
+client renders that array by mapping over whatever is in it, so an empty array
+renders nothing rather than throwing. Either side can ship first.
+
+## Next recommended slice
+
+**Not more marks, and not more metrics.** The honest next question is whether
+the *board* should carry any of this — the five-lane board still shows only
+records, and a reader who now sees a lane state on one exact study will ask it
+of the ten tiles above. That is a much bigger claim (a lane row is a player
+across many opponents, not one exact pairing) and it needs its own sample rule
+before it needs a component.
+
+Two smaller candidates, either of which is a clean single slice:
+
+1. **The `teams_outside_focus_set` mirror deletion.** Still unblocked, still
+   not done — a separate, safe commit.
+2. **Open a checkpoint figure into the game that produced it.** The Source
+   Meetings beneath these figures already carry `match_id` and `game_number`,
+   and Step 6 renders the per-game figure inside the game dossier. Making
+   `+217 median` reachable down to the two games it is the middle of would
+   close aggregate → evidence → source game for a *statistic*, which is the
+   move this workstream makes everywhere else.
