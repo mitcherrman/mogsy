@@ -151,7 +151,7 @@ beforeEach(() => {
     patches: ["26.13", "26.12"],
     champions: ["Ahri", "Jinx"],
     roles: ["Top", "Jungle", "Mid", "Bot", "Support"],
-    years: [2026, 2025, 2013],
+    years: [2026, 2025, 2024, 2013],
   });
 });
 
@@ -206,9 +206,67 @@ describe("rendering", () => {
 
   it("renders the compact aggregate strip", async () => {
     renderExplorer();
-    expect(await screen.findByText("Players")).toBeInTheDocument();
-    expect(screen.getByText("Player-games")).toBeInTheDocument();
-    expect(screen.getByText("With stats")).toBeInTheDocument();
+    // Scoped to the strip: "KDA" and "Gold/min" are also column headers.
+    const strip = within(
+      (await screen.findByText("Players")).closest("div")!
+        .parentElement as HTMLElement,
+    );
+    expect(strip.getByText("Player-games")).toBeInTheDocument();
+    expect(strip.getByText("KDA")).toBeInTheDocument();
+    expect(strip.getByText("Gold/min")).toBeInTheDocument();
+  });
+
+  it("keeps the stat-backed count out of the headline strip", async () => {
+    // It is a caveat, not a statistic about players, and the pager already
+    // states it in words. As a bare tile it read as a data-quality readout.
+    renderExplorer();
+    await screen.findByText("Players");
+    expect(screen.queryByText("With stats")).not.toBeInTheDocument();
+  });
+});
+
+describe("default scope is visible", () => {
+  const withFilters = (over: Record<string, unknown>) =>
+    response([ENRICHED], {
+      filters: {
+        year: null, league: null, patch: null, role: null,
+        player: null, team: null, champion: null, ...over,
+      },
+    } as never);
+
+  it("shows the year the server actually used when the URL names none", async () => {
+    // THE DEFECT THIS GUARDS. An unscoped request is served as the latest
+    // season. Reading the select from the URL alone left it saying "All"
+    // above rows that were a single season -- the control contradicted the
+    // table it sat on.
+    renderExplorer();
+    await screen.findByText("Faker");
+    expect(screen.getByLabelText("Year")).toHaveValue("2026");
+    expect(screen.getByText(/showing the latest season/i)).toBeInTheDocument();
+  });
+
+  it("says nothing when the caller scoped the year itself", async () => {
+    getProPlayerStats.mockResolvedValue(withFilters({ year: 2024 }));
+    renderExplorer("/lol/pro-play?year=2024");
+    await screen.findByText("Faker");
+    expect(screen.getByLabelText("Year")).toHaveValue("2024");
+    expect(
+      screen.queryByText(/showing the latest season/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows All when the server did not narrow the year", async () => {
+    // Reachable: another filter bounds the query, so no default is applied
+    // and every season really is in scope.
+    getProPlayerStats.mockResolvedValue(
+      withFilters({ league: "LoL Champions Korea" }),
+    );
+    renderExplorer("/lol/pro-play?league=LoL%20Champions%20Korea");
+    await screen.findByText("Faker");
+    expect(screen.getByLabelText("Year")).toHaveValue("");
+    expect(
+      screen.queryByText(/showing the latest season/i),
+    ).not.toBeInTheDocument();
   });
 });
 

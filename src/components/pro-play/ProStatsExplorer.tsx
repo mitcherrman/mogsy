@@ -254,19 +254,33 @@ export default function ProStatsExplorer() {
   const coverage = data?.coverage;
   const activeCount = ALL_FILTERS.filter((k) => read(k)).length;
 
+  // An all-time ranking over every player is too expensive to serve, so a
+  // request that names no scope at all comes back scoped to the latest
+  // season. The SELECT MUST SHOW THAT YEAR. Reading it from the URL alone
+  // left the control saying "All" while the rows underneath were one
+  // season — the table then claimed to be something it was not, which is
+  // worse than the restriction it was hiding.
+  const effectiveYear =
+    read("year") || (data?.filters.year ? String(data.filters.year) : "");
+  const yearWasDefaulted = !read("year") && data?.filters.year != null;
+
   return (
     <section className="mt-10" aria-labelledby="pro-stats-heading">
       <header className="mb-4">
         <div className="mb-2 flex items-center gap-3">
+          {/* Deliberately smaller than the page header's 10x10 chip and
+              3xl title. This is a section OF /lol/pro-play, and matching the
+              hub's own heading made it read as a second page that happened to
+              start halfway down. */}
           <span
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/10"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/10"
             aria-hidden="true"
           >
-            <BarChart3 className="h-5 w-5 text-[#c9a84c]" />
+            <BarChart3 className="h-4 w-4 text-[#c9a84c]" />
           </span>
           <h2
             id="pro-stats-heading"
-            className="text-3xl font-bold tracking-tight"
+            className="text-2xl font-bold tracking-tight"
           >
             Player Statistics
           </h2>
@@ -282,7 +296,7 @@ export default function ProStatsExplorer() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
           <FilterSelect
             label="Year"
-            value={read("year")}
+            value={effectiveYear}
             onChange={(v) => setFilter("year", v)}
             options={(options?.years ?? []).map(String)}
           />
@@ -317,15 +331,25 @@ export default function ProStatsExplorer() {
           />
           <FilterText label="Team" value={teamTerm} onChange={setTeamTerm} />
         </div>
-        {activeCount > 0 && (
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              onClick={clearAll}
-              className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
-            >
-              Clear filters
-            </button>
+        {(activeCount > 0 || yearWasDefaulted) && (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            {/* Says why the year filled itself in, and how to look wider.
+                Without this the snap to a season reads as a broken control
+                rather than the deliberate scope it is. */}
+            <p className="text-xs text-muted-foreground">
+              {yearWasDefaulted
+                ? "Showing the latest season. Pick a league, champion, player or team to look across every year."
+                : " "}
+            </p>
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={clearAll}
+                className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -336,14 +360,18 @@ export default function ProStatsExplorer() {
           cell on narrow screens. Each tile carries its own border instead. */}
       {data && (
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          {/* "With stats" used to sit here. It is a caveat, not a headline
+              statistic, and the pager already states it in words whenever
+              anything is actually missing — twice made it look like a
+              data-quality readout rather than a table about players. */}
           <Stat label="Players" value={fmtInt(data.aggregates.players)} />
           <Stat label="Player-games" value={fmtInt(data.aggregates.games)} />
-          <Stat
-            label="With stats"
-            value={fmtInt(data.aggregates.stat_backed_games)}
-          />
           <Stat label="KDA" value={fmt(data.aggregates.kda)} />
           <Stat label="CS/min" value={fmt(data.aggregates.cs_per_min)} />
+          <Stat
+            label="Gold/min"
+            value={fmt(data.aggregates.gold_per_min, 0)}
+          />
         </div>
       )}
 
