@@ -99,12 +99,40 @@ export type ProStatsTeamRow = {
   barons_per_game: number | null;
 };
 
-export type ProStatsView = "players" | "teams";
+export type ProStatsView = "players" | "teams" | "champions";
+
+export type ProStatsChampionRow = {
+  champion: string;
+  /** Player-games: a champion picked by both teams in one game is 2. */
+  picks: number;
+  /** Distinct games it was picked in -- not the same question as `picks`. */
+  picked_games: number;
+  wins: number;
+  losses: number;
+  win_rate: number | null;
+  /** The subset of `picks` carrying statistics. */
+  stat_backed_games: number;
+  kills: number | null;
+  deaths: number | null;
+  assists: number | null;
+  kda: number | null;
+  cs_per_min: number | null;
+  gold_per_min: number | null;
+  damage_per_min: number | null;
+  /** Distinct games banned in. Never a player-game count. */
+  bans: number;
+  /** Distinct games picked OR banned in, counted once. */
+  presence_games: number;
+  /** Games in scope carrying ban data -- the presence denominator. */
+  draft_games: number;
+  /** null when the scope has no draft coverage at all (e.g. 2013). */
+  presence_rate: number | null;
+};
 
 export type ProStatsResponse = {
   schema_version: number;
   view: ProStatsView;
-  rows: ProStatsPlayerRow[] | ProStatsTeamRow[];
+  rows: ProStatsPlayerRow[] | ProStatsTeamRow[] | ProStatsChampionRow[];
   page: number;
   page_size: number;
   total_rows: number;

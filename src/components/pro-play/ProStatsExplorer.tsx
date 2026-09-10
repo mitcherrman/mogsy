@@ -39,10 +39,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { getChampionIcon, useChampionAssets } from "@/hooks/useChampionAssets";
 import {
   getProStats,
   getProStatsFilterOptions,
   type ProStatsPlayerRow,
+  type ProStatsChampionRow,
   type ProStatsTeamRow,
   type ProStatsView,
 } from "@/lib/pro-play/statsApi";
@@ -79,19 +81,25 @@ function fmtPct(value: number | null | undefined): string {
 
 /** deaths === 0 over real games is "Perfect", not missing data. The two are
  *  both null on the wire and only `stat_backed_games` tells them apart. */
-function fmtKda(row: ProStatsPlayerRow): string {
+function fmtKda(row: {
+  kda: number | null;
+  deaths: number | null;
+  stat_backed_games: number;
+}): string {
   if (row.kda !== null && row.kda !== undefined) return fmt(row.kda);
   if (row.stat_backed_games > 0 && row.deaths === 0) return "Perfect";
   return EM_DASH;
 }
 
-type AnyRow = ProStatsPlayerRow | ProStatsTeamRow;
+type AnyRow = ProStatsPlayerRow | ProStatsTeamRow | ProStatsChampionRow;
 
 type Column<R = AnyRow> = {
   key: string;
   label: string;
   numeric: boolean;
   render: (row: R) => string;
+  /** Optional rich cell. Falls back to `render` when absent. */
+  cell?: (row: R) => React.ReactNode;
   /** Title attribute, for the columns whose denominator is not obvious. */
   hint?: string;
 };
@@ -208,6 +216,71 @@ const TEAM_COLUMNS: Column<ProStatsTeamRow>[] = [
   },
 ];
 
+const CHAMPION_COLUMNS: Column<ProStatsChampionRow>[] = [
+  {
+    key: "champion",
+    label: "Champion",
+    numeric: false,
+    render: (r) => r.champion,
+    cell: (r) => <ChampionCell name={r.champion} />,
+  },
+  {
+    key: "picks",
+    label: "Picks",
+    numeric: true,
+    render: (r) => fmtInt(r.picks),
+    hint: "Player-games the champion was picked in",
+  },
+  {
+    key: "wins",
+    label: "W-L",
+    numeric: true,
+    render: (r) => `${nf.format(r.wins)}-${nf.format(r.losses)}`,
+  },
+  {
+    key: "win_rate",
+    label: "Win %",
+    numeric: true,
+    render: (r) => fmtPct(r.win_rate),
+  },
+  {
+    key: "bans",
+    label: "Bans",
+    numeric: true,
+    render: (r) => fmtInt(r.bans),
+    hint: "Games the champion was banned in",
+  },
+  {
+    key: "presence_rate",
+    label: "Presence",
+    numeric: true,
+    render: (r) => fmtPct(r.presence_rate),
+    hint: "Games picked or banned, of games with draft data",
+  },
+  { key: "kda", label: "KDA", numeric: true, render: fmtKda },
+  {
+    key: "cs_per_min",
+    label: "CS/min",
+    numeric: true,
+    render: (r) => fmt(r.cs_per_min),
+    hint: "Over picked games with detailed statistics",
+  },
+  {
+    key: "gold_per_min",
+    label: "Gold/min",
+    numeric: true,
+    render: (r) => fmt(r.gold_per_min, 0),
+    hint: "Over picked games with detailed statistics",
+  },
+  {
+    key: "damage_per_min",
+    label: "Dmg/min",
+    numeric: true,
+    render: (r) => fmt(r.damage_per_min, 0),
+    hint: "Over picked games with detailed statistics",
+  },
+];
+
 /** A strip tile: which aggregate key it reads and how it prints. */
 type StripTile = {
   label: string;
@@ -222,6 +295,11 @@ type StripTile = {
  */
 type ViewConfig = {
   label: string;
+  /** Section heading and its one-line blurb. Derived from the config rather
+   *  than a ternary on the label, which silently mislabelled the third view
+   *  when it was added. */
+  heading: string;
+  blurb: string;
   columns: Column[];
   defaultSort: string;
   /** Stable identity per row, also the React key. */
@@ -234,6 +312,9 @@ type ViewConfig = {
 const VIEWS: Record<ProStatsView, ViewConfig> = {
   players: {
     label: "Players",
+    heading: "Player Statistics",
+    blurb:
+      "Every professional player, filtered and ranked — drawn from real pro match history.",
     columns: PLAYER_COLUMNS as Column[],
     defaultSort: "games",
     rowKey: (r) => (r as ProStatsPlayerRow).player,
@@ -248,6 +329,9 @@ const VIEWS: Record<ProStatsView, ViewConfig> = {
   },
   teams: {
     label: "Teams",
+    heading: "Team Statistics",
+    blurb:
+      "Every professional team, filtered and ranked — drawn from real pro match history.",
     columns: TEAM_COLUMNS as Column[],
     defaultSort: "games",
     rowKey: (r) => (r as ProStatsTeamRow).team,
@@ -260,6 +344,26 @@ const VIEWS: Record<ProStatsView, ViewConfig> = {
       { label: "Team-games", key: "games", format: fmtInt },
       { label: "Kills/G", key: "kills_per_game", format: (v) => fmt(v, 1) },
       { label: "Towers/G", key: "towers_per_game", format: (v) => fmt(v, 1) },
+      { label: "Gold/min", key: "gold_per_min", format: (v) => fmt(v, 0) },
+    ],
+  },
+  champions: {
+    label: "Champions",
+    heading: "Champion Statistics",
+    blurb:
+      "Every champion picked or banned in pro play — drawn from real pro match history.",
+    columns: CHAMPION_COLUMNS as Column[],
+    defaultSort: "picks",
+    rowKey: (r) => (r as ProStatsChampionRow).champion,
+    unit: "champions",
+    // No cohort win rate: champions sit on both sides of games and average
+    // out near 50%, the same reason Teams omits it. Picks and bans are the
+    // two numbers a draft conversation actually starts from.
+    strip: [
+      { label: "Champions", key: "champions", format: fmtInt },
+      { label: "Picks", key: "picks", format: fmtInt },
+      { label: "Bans", key: "bans", format: fmtInt },
+      { label: "KDA", key: "kda", format: (v) => fmt(v) },
       { label: "Gold/min", key: "gold_per_min", format: (v) => fmt(v, 0) },
     ],
   },
@@ -439,14 +543,10 @@ export default function ProStatsExplorer() {
             id="pro-stats-heading"
             className="text-2xl font-bold tracking-tight"
           >
-            {config.label === "Teams" ? "Team" : "Player"} Statistics
+            {config.heading}
           </h2>
         </div>
-        <p className="text-muted-foreground">
-          {view === "teams"
-            ? "Every professional team, filtered and ranked — drawn from real pro match history."
-            : "Every professional player, filtered and ranked — drawn from real pro match history."}
-        </p>
+        <p className="text-muted-foreground">{config.blurb}</p>
       </header>
 
       {/* View switch. A segmented pair rather than another card: it selects
@@ -558,7 +658,11 @@ export default function ProStatsExplorer() {
           hairline "gap-px over a background" grid would paint a phantom sixth
           cell on narrow screens. Each tile carries its own border instead. */}
       {data && (
-        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div
+          className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+          role="group"
+          aria-label={`${config.label} summary`}
+        >
           {/* "With stats" used to sit here. It is a caveat, not a headline
               statistic, and the pager already states it in words whenever
               anything is actually missing — twice made it look like a
@@ -669,7 +773,7 @@ export default function ProStatsExplorer() {
                         col.numeric ? "text-right tabular-nums" : "font-medium"
                       }`}
                     >
-                      {col.render(row)}
+                      {col.cell ? col.cell(row) : col.render(row)}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -806,5 +910,34 @@ function FilterText({
         className="h-9"
       />
     </label>
+  );
+}
+
+/** Champion identity: the icon from the existing Railway asset manifest plus
+ *  the canonical name. No new asset system, and the row still reads if the
+ *  manifest has not loaded or has no entry for this champion. */
+function ChampionCell({ name }: { name: string }) {
+  const { data: manifest } = useChampionAssets();
+  const icon = getChampionIcon(manifest, name);
+  return (
+    <span className="flex items-center gap-2">
+      {icon ? (
+        <img
+          src={icon}
+          alt=""
+          aria-hidden="true"
+          width={20}
+          height={20}
+          loading="lazy"
+          className="h-5 w-5 shrink-0 rounded border border-[#c9a84c]/25"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="h-5 w-5 shrink-0 rounded border border-[#c9a84c]/25 bg-[#c9a84c]/10"
+        />
+      )}
+      {name}
+    </span>
   );
 }

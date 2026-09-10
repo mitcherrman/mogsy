@@ -14,6 +14,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProStatsExplorer from "./ProStatsExplorer";
 import type { ProStatsPlayerRow, ProStatsResponse } from "@/lib/pro-play/statsApi";
 
+vi.mock("@/hooks/useChampionAssets", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/useChampionAssets")>()),
+  useChampionAssets: () => ({
+    data: { ok: true, champions: { Ryze: { icon: "assets/ryze.png" } } },
+  }),
+}));
+
 const getProStats = vi.fn();
 const getProStatsFilterOptions = vi.fn();
 
@@ -217,10 +224,10 @@ describe("rendering", () => {
     // Anchored on "Player-games": "Players" is now also the view-switcher
     // button, and "KDA"/"Gold/min" are also column headers.
     const strip = within(
-      (await screen.findByText("Player-games")).closest("div")!
-        .parentElement as HTMLElement,
+      await screen.findByRole("group", { name: "Players summary" }),
     );
     expect(strip.getByText("Players")).toBeInTheDocument();
+    expect(strip.getByText("Player-games")).toBeInTheDocument();
     expect(strip.getByText("KDA")).toBeInTheDocument();
     expect(strip.getByText("Gold/min")).toBeInTheDocument();
   });
@@ -510,11 +517,15 @@ function teamsResponse(rows = [TEAM_ROW, TEAM_BARE], over = {}) {
 }
 
 describe("teams view", () => {
-  it("renders the view switcher with both views", async () => {
+  it("renders the view switcher with every view", async () => {
     renderExplorer();
     await screen.findByText("Faker");
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual(["Players", "Teams"]);
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "Players",
+      "Teams",
+      "Champions",
+    ]);
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
   });
 
@@ -566,10 +577,10 @@ describe("teams view", () => {
     renderExplorer("/lol/pro-play?view=teams");
     await screen.findByText("T1");
     const strip = within(
-      (await screen.findByText("Team-games")).closest("div")!
-        .parentElement as HTMLElement,
+      await screen.findByRole("group", { name: "Teams summary" }),
     );
     expect(strip.getByText("Teams")).toBeInTheDocument();
+    expect(strip.getByText("Team-games")).toBeInTheDocument();
     expect(screen.queryByText("Player-games")).not.toBeInTheDocument();
     // Win rate is deliberately absent: both sides of every game sit at 50%.
     expect(strip.queryByText("Win %")).not.toBeInTheDocument();
@@ -658,5 +669,215 @@ describe("switching views", () => {
     await screen.findByText("T1");
     expect(screen.getByLabelText("Year")).toHaveValue("2026");
     expect(screen.getByText(/showing the latest season/i)).toBeInTheDocument();
+  });
+});
+
+
+// ----------------------------------------------------------- Champions view
+
+const CHAMP_ROW = {
+  champion: "Ryze",
+  picks: 1566,
+  picked_games: 1566,
+  wins: 784,
+  losses: 782,
+  win_rate: 0.5006,
+  stat_backed_games: 1400,
+  kills: 4200,
+  deaths: 3800,
+  assists: 8400,
+  kda: 3.32,
+  cs_per_min: 8.8,
+  gold_per_min: 402.1,
+  damage_per_min: 640.5,
+  bans: 1586,
+  presence_games: 3152,
+  draft_games: 6394,
+  presence_rate: 0.4930,
+};
+
+/** A pre-draft, pre-statistics champion: picks only. */
+const CHAMP_BARE = {
+  ...CHAMP_ROW,
+  champion: "Urgot",
+  picks: 4,
+  picked_games: 4,
+  wins: 3,
+  losses: 1,
+  win_rate: 0.75,
+  stat_backed_games: 0,
+  kills: null,
+  deaths: null,
+  assists: null,
+  kda: null,
+  cs_per_min: null,
+  gold_per_min: null,
+  damage_per_min: null,
+  bans: 0,
+  presence_games: 4,
+  draft_games: 0,
+  presence_rate: null,
+};
+
+function championsResponse(rows = [CHAMP_ROW, CHAMP_BARE], over = {}) {
+  return {
+    ...response([]),
+    view: "champions",
+    rows,
+    total_rows: rows.length,
+    sort: "picks",
+    aggregates: {
+      champions: rows.length,
+      picks: 1570,
+      bans: 1586,
+      draft_games: 6394,
+      stat_backed_games: 1400,
+      kda: 3.32,
+      cs_per_min: 8.8,
+      gold_per_min: 402,
+      damage_per_min: 640,
+    },
+    ...over,
+  } as never;
+}
+
+describe("champions view", () => {
+  it("selects Champions from the URL and calls that endpoint", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    expect(lastView()).toBe("champions");
+    expect(screen.getByRole("tab", { name: "Champions" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("renders the Champions columns", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    expect(
+      screen.getAllByRole("columnheader").map((h) => h.textContent),
+    ).toEqual([
+      "Champion", "Picks", "W-L", "Win %", "Bans", "Presence",
+      "KDA", "CS/min", "Gold/min", "Dmg/min",
+    ]);
+  });
+
+  it("keeps picks and bans in separate columns", async () => {
+    // The whole point of the view: they have different denominators and are
+    // never merged into one "appearances" number.
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    const cells = within(
+      screen.getByText("Ryze").closest("tr") as HTMLTableRowElement,
+    ).getAllByRole("cell");
+    expect(cells[1]).toHaveTextContent("1,566");   // picks
+    expect(cells[4]).toHaveTextContent("1,586");   // bans
+    expect(cells[5]).toHaveTextContent("49.3%");   // presence
+  });
+
+  it("renders a champion with no draft or statistics as em dashes", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Urgot");
+    const cells = within(
+      screen.getByText("Urgot").closest("tr") as HTMLTableRowElement,
+    ).getAllByRole("cell");
+    expect(cells[3]).toHaveTextContent("75.0%");   // canonical win rate real
+    expect(cells[5]).toHaveTextContent("—");       // no draft coverage
+    expect(cells.slice(6).map((c) => c.textContent)).toEqual([
+      "—", "—", "—", "—",
+    ]);
+  });
+
+  it("renders champion identity with an icon", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    const { container } = renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    const cell = screen.getByText("Ryze").closest("td") as HTMLElement;
+    expect(cell).toHaveTextContent("Ryze");
+    const img = cell.querySelector("img");
+    expect(img).toBeTruthy();
+    // Decorative: the name beside it is the accessible content.
+    expect(img).toHaveAttribute("alt", "");
+    expect(container).toBeTruthy();
+  });
+
+  it("shows the Champions strip", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    const strip = within(
+      await screen.findByRole("group", { name: "Champions summary" }),
+    );
+    expect(strip.getByText("Champions")).toBeInTheDocument();
+    expect(strip.getByText("Picks")).toBeInTheDocument();
+    expect(strip.getByText("Bans")).toBeInTheDocument();
+  });
+
+  it("counts champions in the pager", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    expect(await screen.findByText(/2 champions/)).toBeInTheDocument();
+  });
+
+  it("shows the effective year the endpoint returned", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    expect(screen.getByLabelText("Year")).toHaveValue("2026");
+  });
+
+  it("passes Min Games through", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    fireEvent.change(screen.getByLabelText("Min Games"), {
+      target: { value: "20" },
+    });
+    await waitFor(() => expect(lastQuery()).toMatchObject({ minGames: 20 }));
+    expect(lastView()).toBe("champions");
+  });
+
+  it("sorts by bans", async () => {
+    getProStats.mockResolvedValue(championsResponse());
+    renderExplorer("/lol/pro-play?view=champions");
+    await screen.findByText("Ryze");
+    fireEvent.click(screen.getByRole("button", { name: /^Bans$/i }));
+    await waitFor(() => expect(lastQuery()).toMatchObject({ sort: "bans" }));
+  });
+
+  it("drops a Teams-only sort when switching to Champions", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams&sort=towers_per_game&dir=desc");
+    await screen.findByText("T1");
+    getProStats.mockResolvedValue(championsResponse());
+    fireEvent.click(screen.getByRole("tab", { name: "Champions" }));
+    await waitFor(() => expect(lastSearch).toContain("view=champions"));
+    expect(lastSearch).not.toContain("towers_per_game");
+    await waitFor(() => expect(lastQuery()?.sort).toBe("picks"));
+  });
+
+  it("keeps a sort all three views share", async () => {
+    renderExplorer("/lol/pro-play?sort=win_rate&dir=desc");
+    await screen.findByText("Faker");
+    getProStats.mockResolvedValue(championsResponse());
+    fireEvent.click(screen.getByRole("tab", { name: "Champions" }));
+    await waitFor(() => expect(lastSearch).toContain("view=champions"));
+    expect(lastSearch).toContain("sort=win_rate");
+  });
+
+  it("keeps filters across a switch to Champions", async () => {
+    renderExplorer("/lol/pro-play?year=2025&role=Mid&min_games=10");
+    await screen.findByText("Faker");
+    getProStats.mockResolvedValue(championsResponse());
+    fireEvent.click(screen.getByRole("tab", { name: "Champions" }));
+    await waitFor(() => expect(lastSearch).toContain("view=champions"));
+    expect(lastSearch).toContain("year=2025");
+    expect(lastSearch).toContain("role=Mid");
+    expect(lastSearch).toContain("min_games=10");
   });
 });
