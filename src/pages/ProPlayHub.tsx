@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Trophy, Brain, BarChart3, Radio, Search, Swords } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import HexPanelLink from "@/components/lol/HexPanelLink";
+import ProStatsExplorer from "@/components/pro-play/ProStatsExplorer";
 import {
   PRO_PLAY_GRAPHS_ROUTE,
   PRO_PLAY_LIVE_ROUTE,
@@ -132,6 +133,15 @@ export default function ProPlayHub() {
             />
           ))}
         </div>
+      </div>
+
+      {/* The statistics table is NOT a sixth module: it is content on this
+          page, below the entrances. It gets its own wider container because
+          eleven columns do not fit the max-w-3xl the modules use — widening
+          the whole page instead would stretch the header and tiles for the
+          sake of the table. */}
+      <div className="mx-auto w-full max-w-6xl px-4 pb-12">
+        <ProStatsExplorer />
       </div>
     </div>
   );
