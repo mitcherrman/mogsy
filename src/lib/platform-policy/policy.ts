@@ -30,6 +30,10 @@ export const POLICY_KEYS = {
   // `ACADEMY_UPDATES_ENABLED` source constant WHATSNEW1 shipped: it is the only
   // production control, and it is changed from Admin, not from a commit.
   academyUpdatesEnabled: "academy_updates_enabled",
+  // GLOBAL PREMIUM ACCESS — a temporary, admin-controlled ACCESS override.
+  // Deliberately a POLICY row and not an entitlement column: policy is global
+  // and reversible, entitlement is per-account and owned.
+  globalPremiumAccess: "global_premium_access",
 } as const;
 
 export interface PlatformPolicy {
@@ -116,6 +120,35 @@ export interface PlatformPolicy {
   academy: {
     updatesEnabled: boolean;
   };
+  premium: {
+    /**
+     * Temporarily treat every AUTHENTICATED user as having Premium ACCESS.
+     *
+     * Built for the early-access / Riot-review window, and kept general enough
+     * for playtests, Premium QA and promotions. The distinction it rests on is
+     * the whole design:
+     *
+     *   ACCESS      — what a caller may DO right now. Global, reversible,
+     *                 stored here, owned by nobody.
+     *   ENTITLEMENT — WHY they may. Per-account, stored on `profiles` (the
+     *                 Stripe-derived column plus PT1.4's grant columns) and
+     *                 read only through lib/pro/entitlement.
+     *   OWNERSHIP   — what they have SINCE ACQUIRED. Per-account, stored by
+     *                 whichever feature wrote it, and never derived from
+     *                 either of the above.
+     *
+     * Turning this on writes nothing to any account and touches no Stripe
+     * object, so turning it off is not a revocation — it simply stops adding
+     * this term and each account's real entitlement answers again. Anything
+     * earned or unlocked while it was on was persisted by the feature that
+     * granted it and is unaffected.
+     *
+     * Presentation here mirrors the backend, which applies the same override
+     * in services/pro_status.py; the backend remains the authority for every
+     * gate. It never applies to signed-out visitors.
+     */
+    globalAccess: boolean;
+  };
 }
 
 /**
@@ -150,6 +183,11 @@ export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
   // is the state the Hall has always been in — so an unreadable settings table
   // correctly means "no announcements", never a surface appearing by accident.
   academy: { updatesEnabled: false },
+  // The one default where fail-closed is unmistakable: an unreadable or
+  // unseeded settings table must never hand the entire userbase a paid tier.
+  // False is also what reproduces production — the row has never existed —
+  // so the frontend behaves identically on a deployment that never seeds it.
+  premium: { globalAccess: false },
 };
 
 export interface AppSettingRow {
@@ -179,6 +217,7 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
     community: { ...DEFAULT_PLATFORM_POLICY.community },
     play: { modes: { ...DEFAULT_PLATFORM_POLICY.play.modes } },
     academy: { ...DEFAULT_PLATFORM_POLICY.academy },
+    premium: { ...DEFAULT_PLATFORM_POLICY.premium },
   };
   if (!rows) return policy;
 
@@ -219,6 +258,10 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
       case POLICY_KEYS.academyUpdatesEnabled:
         policy.academy.updatesEnabled = readEnabled(
           row.value, DEFAULT_PLATFORM_POLICY.academy.updatesEnabled);
+        break;
+      case POLICY_KEYS.globalPremiumAccess:
+        policy.premium.globalAccess = readEnabled(
+          row.value, DEFAULT_PLATFORM_POLICY.premium.globalAccess);
         break;
     }
   }

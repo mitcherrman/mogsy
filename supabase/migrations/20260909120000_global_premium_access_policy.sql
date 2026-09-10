@@ -1,0 +1,49 @@
+-- Global Premium Access — a temporary, admin-controlled ACCESS override.
+--
+-- ONE new row in the EXISTING public.app_settings key/value store, alongside the
+-- other global policies. No new table, no new settings system, no new
+-- authorization model, and NO change to any entitlement column:
+--
+--   * reads  — the existing "Settings are publicly readable" SELECT policy
+--   * writes — the existing has_role(auth.uid(),'admin') INSERT/UPDATE policies
+--   * audit  — the existing app_settings_stamp_audit trigger records updated_by
+--
+--   global_premium_access
+--     {"enabled": false} -> normal Free vs Premium evaluation (DEFAULT)
+--     {"enabled": true}  -> every AUTHENTICATED user is answered Premium by the
+--                           canonical entitlement resolvers, and so exercises
+--                           the real Premium code paths.
+--
+-- WHY A POLICY ROW AND NOT AN ENTITLEMENT CHANGE
+-- ----------------------------------------------
+-- Three concepts are kept apart, and this row only touches the first:
+--
+--   ACCESS      what a caller may DO now. Global, reversible, stored here.
+--   ENTITLEMENT WHY they may. Per-account: profiles.is_pro (Stripe-derived,
+--               PT1.4) and profiles.pro_grant_* (manual/playtest/promo/gift).
+--   OWNERSHIP   what they have SINCE ACQUIRED. Per-account, written by
+--               whichever feature granted it, derived from neither of the above.
+--
+-- Turning this ON writes NOTHING to profiles, creates no pro_grant_* rows, and
+-- makes no Stripe API call — no customer, subscription, invoice or price is
+-- created or modified. Stripe remains the sole writer of profiles.is_pro
+-- (check-subscription / stripe-webhook), exactly as PT1.4 left it.
+--
+-- Turning it OFF is therefore NOT a revocation: the term simply stops being
+-- added, pro_entitlement_is_effective answers for each account as before, real
+-- subscribers stay Premium, and Free users return to Free. There is no
+-- clean-up pass, and there deliberately is none to write: anything a user
+-- earned, unlocked, saved or progressed while the window was open was persisted
+-- by the feature they used and is untouched by this row changing.
+--
+-- DEFAULT false reproduces current production behaviour exactly. ON CONFLICT
+-- DO NOTHING makes re-running a no-op and never resets a value an admin set.
+--
+-- Both consumers fail CLOSED to false when this row is absent or unreadable
+-- (services/platform_policy.py, src/lib/platform-policy/policy.ts), so a
+-- deployment that never applies this migration behaves exactly as it does
+-- today, and a settings outage can never hand the userbase a paid tier.
+
+INSERT INTO public.app_settings (key, value) VALUES
+  ('global_premium_access', '{"enabled": false}'::jsonb)
+ON CONFLICT (key) DO NOTHING;

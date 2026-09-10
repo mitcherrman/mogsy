@@ -21,7 +21,7 @@ import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { getTierFromElo } from "@/lib/mock-data";
 import { calculateElo } from "@/lib/elo";
 import { supabase } from "@/integrations/supabase/client";
-import { isEffectivePro } from "@/lib/pro/entitlement";
+import { fetchGlobalPremiumAccess, isEffectiveProForSelf } from "@/lib/pro/entitlement";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
@@ -306,7 +306,8 @@ export default function SwipePreset() {
           .from("user_roles").select("role").eq("user_id", user.id);
         const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
         setIsStaffQa(isStaff);
-        if (isEffectivePro(profile)) setIsPro(true);  // PT1.4: Stripe OR valid grant
+        // PT1.4: Stripe OR valid grant, OR the global Premium access window.
+        if (isEffectiveProForSelf(profile, await fetchGlobalPremiumAccess())) setIsPro(true);
         setMyProfileId(profile.id);
         setMyRewinds(profile.rewinds ?? 0);
         setMyShields(profile.elo_shields ?? 0);

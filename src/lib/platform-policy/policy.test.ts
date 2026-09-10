@@ -9,11 +9,12 @@ import {
 const KEY = POLICY_KEYS;
 
 describe("defaults reproduce current production behaviour", () => {
-  it("is all-on, except bot labels and Academy Updates", () => {
-    // The two FALSE defaults are the two keys that INTRODUCE a path rather than
+  it("is all-on, except bot labels, Academy Updates and global Premium access", () => {
+    // The three FALSE defaults are the keys that INTRODUCE a path rather than
     // suppressing an existing one — there is no user-facing bot label today,
-    // and the Hall has never shown an announcement — so in both cases false is
-    // what reproduces production and cannot be a regression.
+    // the Hall has never shown an announcement, and Premium has never been
+    // globally open — so in all three cases false is what reproduces
+    // production and cannot be a regression.
     expect(DEFAULT_PLATFORM_POLICY).toEqual({
       combatSim: { tokensRequiredForNonPro: true },
       tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
@@ -25,7 +26,15 @@ describe("defaults reproduce current production behaviour", () => {
       // WHATSNEW2: off, so an unreadable settings table never makes an
       // announcement surface appear by accident.
       academy: { updatesEnabled: false },
+      // Global Premium Access: off. The only default on this page where
+      // fail-closed is unmistakable — an unreadable settings table must never
+      // hand the whole userbase a paid tier.
+      premium: { globalAccess: false },
     });
+  });
+
+  it("defaults global Premium access OFF, so an unreadable table never opens Premium", () => {
+    expect(DEFAULT_PLATFORM_POLICY.premium.globalAccess).toBe(false);
   });
 
   it("defaults the navbar to visible, so navigation is never lost by default", () => {

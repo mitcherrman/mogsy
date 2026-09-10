@@ -10,7 +10,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { isEffectivePro } from "@/lib/pro/entitlement";
+import { fetchGlobalPremiumAccess, isEffectiveProForSelf } from "@/lib/pro/entitlement";
 import { useToast } from "@/hooks/use-toast";
 import { claimUsername } from "@/lib/identity/claim-username";
 import { usernameProblem, USERNAME_MESSAGES, USERNAME_MAX, cleanUsername } from "@/lib/identity/username";
@@ -174,7 +174,8 @@ export default function Profile() {
 
     if (profile) {
       setProfileId(profile.id);
-      setIsPro(isEffectivePro(profile));  // PT1.4: Stripe OR valid grant
+      // PT1.4: Stripe OR valid grant, OR the global Premium access window.
+      setIsPro(isEffectiveProForSelf(profile, await fetchGlobalPremiumAccess()));
       setSelectedFrame(profile.profile_frame || "default");
       // Sync sitewide theme to whatever the DB says if it differs from the local active theme.
       const dbTheme = profile.custom_theme || "default";

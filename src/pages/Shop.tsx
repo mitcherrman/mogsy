@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { isEffectivePro } from "@/lib/pro/entitlement";
+import { isEffectiveProForSelf } from "@/lib/pro/entitlement";
+import { useGlobalPremiumAccess } from "@/hooks/useGlobalPremiumAccess";
 import {
   annualSavingsPct,
   formatOfferPrice,
@@ -218,7 +219,9 @@ export default function Shop() {
   // PT1.4: Pro is stripe_pro OR a valid non-Stripe grant. Reading profile.is_pro
   // raw reports a comped playtester as Free, which is the bug PT1.4 fixed — the
   // grant columns are selected above precisely so this resolves correctly.
-  const effectivePro = isEffectivePro(profile);
+  // PT1.4: Stripe OR valid grant, OR the global Premium access window.
+  const globalPremiumAccess = useGlobalPremiumAccess();
+  const effectivePro = isEffectiveProForSelf(profile, globalPremiumAccess);
 
   /** The offer the interval toggle is currently pointing at. */
   const selectedOffer = offerForInterval(billingInterval, pricingMode);

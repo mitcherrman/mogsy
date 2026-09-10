@@ -452,3 +452,106 @@ describe("Phase 1 boundary: the navbar policy is stored, not consumed", () => {
     ]);
   });
 });
+
+/**
+ * GLOBAL PREMIUM ACCESS — the temporary access override.
+ *
+ * The admin surface has three jobs and these cover all three: the switch is
+ * here, its ON state is unmistakable, and only an admin can move it (which
+ * Postgres RLS decides — the panel's job is to report the refusal honestly and
+ * not to show a value the server rejected).
+ */
+describe("Global Premium Access", () => {
+  it("offers the switch, off by default, worded as access and not billing", async () => {
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    const section = screen.getByTestId("policy-globalPremiumAccess");
+    expect(section.querySelector('[role="switch"]')).toHaveAttribute(
+      "aria-checked", "false");
+    expect(section.textContent).toContain("Global Premium Access");
+    expect(section.textContent).toContain(
+      "Temporarily grant Premium access to all users. Does not modify subscriptions.");
+  });
+
+  it("makes the ON state unmistakable with a banner above the switches", async () => {
+    mocks.selectResult.data = [row(POLICY_KEYS.globalPremiumAccess, true)];
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("global-premium-access-banner").textContent)
+        .toContain("Global Premium Access is ON — all users currently receive Premium access."));
+  });
+
+  it("shows no banner while it is off", async () => {
+    mocks.selectResult.data = [row(POLICY_KEYS.globalPremiumAccess, false)];
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    expect(screen.queryByTestId("global-premium-access-banner")).toBeNull();
+  });
+
+  it("spells out that turning it on changes no subscription and revokes nothing", async () => {
+    mocks.selectResult.data = [row(POLICY_KEYS.globalPremiumAccess, true)];
+    renderPanel();
+    const warning = await waitFor(() =>
+      screen.getByTestId("policy-warning-globalPremiumAccess"));
+    expect(warning.textContent).toContain("no subscription is created or changed");
+    expect(warning.textContent).toContain("no profile is marked Premium");
+    expect(warning.textContent).toContain("stays theirs afterwards");
+  });
+
+  it("an admin's change persists server-side, to that one key only", async () => {
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    // The server's confirming read: the panel displays the stored value, not
+    // its own assumption, so "persisted" means the table actually says so.
+    mocks.singleRow = row(POLICY_KEYS.globalPremiumAccess, true);
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() =>
+      expect(mocks.upsertCalls).toEqual([
+        { key: POLICY_KEYS.globalPremiumAccess, value: { enabled: true } },
+      ]));
+    await waitFor(() =>
+      expect(screen.getByTestId("global-premium-access-banner")).toBeTruthy());
+    // No entitlement column, no profile, no Stripe object: one settings row.
+    expect(mocks.upsertCalls).toHaveLength(1);
+  });
+
+  it("turning it back off is a plain settings write, with no clean-up pass", async () => {
+    mocks.selectResult.data = [row(POLICY_KEYS.globalPremiumAccess, true)];
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("global-premium-access-banner")).toBeTruthy());
+    mocks.singleRow = row(POLICY_KEYS.globalPremiumAccess, false);
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("global-premium-access-banner")).toBeNull());
+    // Exactly one write. Nothing sweeps accounts, and nothing revokes.
+    expect(mocks.upsertCalls).toEqual([
+      { key: POLICY_KEYS.globalPremiumAccess, value: { enabled: false } },
+    ]);
+  });
+
+  it("a non-admin is refused by RLS, and the switch does not move", async () => {
+    mocks.upsertResult = { error: { code: "42501", message: "permission denied" } };
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-error-globalPremiumAccess").textContent)
+        .toContain("Not authorized"));
+    // Still off, and no banner: the panel never displays an unaccepted value.
+    expect(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]'),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByTestId("global-premium-access-banner")).toBeNull();
+  });
+});

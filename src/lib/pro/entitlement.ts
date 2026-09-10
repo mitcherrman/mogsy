@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { POLICY_KEYS, DEFAULT_PLATFORM_POLICY } from "@/lib/platform-policy/policy";
 
 /**
  * PT1.4 — the one frontend accessor for effective Pro entitlement.
@@ -15,12 +16,36 @@ import { supabase } from "@/integrations/supabase/client";
  *
  * The frontend is never authoritative: these values drive presentation, while
  * the backend re-resolves entitlement (services/pro_status.py) for every gate.
+ *
+ * GLOBAL PREMIUM ACCESS
+ * ---------------------
+ * A third, admin-controlled term sits above that union:
+ *
+ *     effectiveAccess = globalPremiumAccess || (stripePro || validGrant)
+ *
+ * It is ACCESS, not entitlement. It lives in `app_settings.global_premium_access`
+ * (see lib/platform-policy/policy.ts), applies only to signed-in users, writes
+ * nothing to any account, and is mirrored by the backend in the same shape — so
+ * a gate the client opens is a gate the server also opens, and neither is
+ * pretending. `stripePro` and `grantKind` keep reporting the REAL sources, so a
+ * surface can still say honestly *why* someone has access.
  */
 export type ProGrantKind = "manual" | "playtest" | "promo" | "gift";
 
 export interface ProEntitlement {
-  /** The answer UI should key off. */
+  /**
+   * The answer UI should key off: real entitlement OR global access.
+   *
+   * Read `stripePro` / `grantKind` / `globalAccess` when you need to explain
+   * it. Never persist this value as if it were an entitlement.
+   */
   effectivePro: boolean;
+  /**
+   * Access is currently coming (at least partly) from the admin-controlled
+   * global override rather than from anything this account owns. True here
+   * with `stripePro` false and `grantKind` null means: temporary access.
+   */
+  globalAccess: boolean;
   /** Paid Stripe subscription (active or trialing). */
   stripePro: boolean;
   /** Non-Stripe grant, only when it is currently valid. */
@@ -32,6 +57,7 @@ export interface ProEntitlement {
 
 const FREE: ProEntitlement = {
   effectivePro: false,
+  globalAccess: false,
   stripePro: false,
   grantKind: null,
   grantExpiresAt: null,
@@ -46,21 +72,77 @@ const FREE: ProEntitlement = {
  * than paywalling a Pro user or, worse, unlocking a Free one.
  */
 export async function fetchProEntitlement(): Promise<ProEntitlement | null> {
-  const { data, error } = await (supabase as any).rpc("my_pro_entitlement");
+  // Resolved in parallel and folded in below. A failure to read the policy is
+  // NOT an unknown entitlement — it is fail-closed to "no global access", so a
+  // settings outage degrades to each account's real answer rather than to a
+  // paywall for subscribers or a free-for-all for everyone else.
+  const [rpc, globalAccess] = await Promise.all([
+    (supabase as any).rpc("my_pro_entitlement"),
+    fetchGlobalPremiumAccess(),
+  ]);
+
+  const { data, error } = rpc;
   if (error) return null;
 
   // SETOF-returning RPC: a list, or a bare object on some PostgREST versions.
   const row = Array.isArray(data) ? data[0] : data;
   // No row = the profile does not exist yet. That is a real Free, not unknown.
-  if (!row) return FREE;
+  if (!row) return { ...FREE, globalAccess, effectivePro: globalAccess };
 
   return {
-    effectivePro: !!row.effective_pro,
+    effectivePro: globalAccess || !!row.effective_pro,
+    globalAccess,
     stripePro: !!row.stripe_pro,
     grantKind: (row.grant_kind as ProGrantKind) ?? null,
     grantExpiresAt: row.grant_expires_at ?? null,
     grantReason: row.grant_reason ?? null,
   };
+}
+
+/**
+ * Read the admin-controlled global Premium ACCESS override.
+ *
+ * `app_settings` is publicly readable by RLS and admin-only writable, so this
+ * needs no session and cannot be influenced by the caller. Anything other than
+ * a well-formed `{ "enabled": true }` — an error, a missing row, a malformed
+ * value — is false, matching the backend's fail-closed default exactly.
+ */
+export async function fetchGlobalPremiumAccess(): Promise<boolean> {
+  const fallback = DEFAULT_PLATFORM_POLICY.premium.globalAccess;
+  try {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", POLICY_KEYS.globalPremiumAccess)
+      .maybeSingle();
+    if (error || !data) return fallback;
+    const value = (data as { value?: unknown }).value;
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const enabled = (value as Record<string, unknown>).enabled;
+      if (typeof enabled === "boolean") return enabled;
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * The self-gating answer for a page that already holds its OWN profiles row.
+ *
+ * `isEffectivePro` stays a pure function of a row on purpose: admin tooling
+ * renders OTHER accounts with it, and admin must always see the real, owned
+ * entitlement — a global access window is not something those accounts have.
+ * So the override is applied HERE, at the self-gate, by a caller that has
+ * explicitly read the policy, rather than being smuggled into the pure rule.
+ *
+ * Pass `globalAccess` from `useAppSettings().policy.premium.globalAccess`.
+ */
+export function isEffectiveProForSelf(
+  row: ProEntitlementColumns | null | undefined,
+  globalAccess: boolean,
+): boolean {
+  return !!globalAccess || isEffectivePro(row);
 }
 
 /** The shape of the entitlement columns as they sit on a profiles row. */

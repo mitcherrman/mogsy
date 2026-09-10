@@ -322,7 +322,12 @@ describe("the frontend ships no subscription price, coupon or founder claim", ()
 
   it("resolves the Shop's Pro state through the PT1.4 rule, not raw is_pro", () => {
     const shop = readFileSync(join(SRC, "pages/Shop.tsx"), "utf8");
-    expect(shop).toContain("const effectivePro = isEffectivePro(profile);");
+    // Still the PT1.4 rule; `isEffectiveProForSelf` is that rule plus the
+    // admin-controlled global Premium ACCESS window, which is only ever folded
+    // in at a SELF gate. The pure `isEffectivePro` stays reserved for admin
+    // surfaces rendering other people's rows.
+    expect(shop).toContain(
+      "const effectivePro = isEffectiveProForSelf(profile, globalPremiumAccess);");
     expect(code(shop)).not.toContain("profile?.is_pro");
   });
 

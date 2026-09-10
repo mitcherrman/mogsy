@@ -14,7 +14,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
 import SwipeAnimationPicker from "@/components/SwipeAnimationPicker";
 import { supabase } from "@/integrations/supabase/client";
-import { isEffectivePro } from "@/lib/pro/entitlement";
+import { fetchGlobalPremiumAccess, isEffectiveProForSelf } from "@/lib/pro/entitlement";
 import { useAuth } from "@/hooks/useAuth";
 import { useSwipeSound } from "@/hooks/useSwipeSound";
 import { useAnimationSound } from "@/hooks/useAnimationSound";
@@ -156,7 +156,8 @@ export default function Swipe() {
           .from("user_roles").select("role").eq("user_id", user.id);
         const isStaff = !!roles?.some((r: any) => r.role === "admin" || r.role === "master_admin" || r.role === "moderator");
         setIsStaffQa(isStaff);
-        setIsPro(isEffectivePro(myProfile));  // PT1.4: Stripe OR valid grant
+        // PT1.4: Stripe OR valid grant, OR the global Premium access window.
+        setIsPro(isEffectiveProForSelf(myProfile, await fetchGlobalPremiumAccess()));
         setMyRewinds(myProfile.rewinds || 0);
         setMyShields(myProfile.elo_shields || 0);
         setMyReveals(myProfile.reveals || 0);

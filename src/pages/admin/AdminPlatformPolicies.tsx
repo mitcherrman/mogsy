@@ -14,7 +14,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Loader2, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Crown, Loader2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,7 @@ import {
 export const ADMIN_PLATFORM_POLICIES_PATH = "/admin/platform-policies";
 
 type PolicyField =
+  | "globalPremiumAccess"
   | "combatSimTokens"
   | "tutorialAutoPopup"
   | "tutorialCompletionRequired"
@@ -38,6 +39,8 @@ type PolicyField =
   | "playModeRanked"
   | "playModeDailyChallenge"
   | "playModeInvite";
+
+const GLOBAL_PREMIUM_ACCESS_FIELD: PolicyField = "globalPremiumAccess";
 
 const CONTROLS: {
   field: PolicyField;
@@ -52,6 +55,19 @@ const CONTROLS: {
   warnWhen: "off" | "on";
   warning: string;
 }[] = [
+  // Listed first because it is the widest-reaching switch on this page: it is
+  // the only one that changes what every signed-in account may DO.
+  {
+    field: GLOBAL_PREMIUM_ACCESS_FIELD,
+    settingKey: POLICY_KEYS.globalPremiumAccess,
+    label: "Global Premium Access",
+    description:
+      "Temporarily grant Premium access to all users. Does not modify subscriptions.",
+    // Defaults OFF, so ON is the material change and the state to explain.
+    warnWhen: "on",
+    warning:
+      "Every signed-in user gets the real Premium experience for as long as this is on. Nothing is written to any account: no subscription is created or changed, no billing occurs, and no profile is marked Premium — so turning this off restores normal Free/Premium behaviour immediately, paying subscribers keep their subscription, and no clean-up is needed. Anything a user earns, unlocks or saves while this is on stays theirs afterwards. Signed-out visitors are unaffected.",
+  },
   {
     field: "combatSimTokens",
     settingKey: POLICY_KEYS.combatSimTokensRequiredForNonPro,
@@ -138,6 +154,7 @@ const CONTROLS: {
 
 function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
   return {
+    globalPremiumAccess: policy.premium.globalAccess,
     combatSimTokens: policy.combatSim.tokensRequiredForNonPro,
     tutorialAutoPopup: policy.tutorial.autoPopupEnabled,
     tutorialCompletionRequired: policy.tutorial.completionRequiredForNewUsers,
@@ -274,6 +291,20 @@ export default function AdminPlatformPolicies() {
           </p>
         ) : (
           <div className="space-y-3">
+            {values[GLOBAL_PREMIUM_ACCESS_FIELD] && (
+              <p
+                role="status"
+                data-testid="global-premium-access-banner"
+                className="flex items-start gap-2 rounded-lg border-2 border-amber-500 bg-amber-500/15 px-4 py-3 text-sm font-semibold text-amber-800 dark:text-amber-200"
+              >
+                <Crown className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>
+                  Global Premium Access is ON — all users currently receive Premium
+                  access.
+                </span>
+              </p>
+            )}
+
             {loadError && (
               <p role="alert" data-testid="policies-load-error"
                  className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -353,7 +384,10 @@ export default function AdminPlatformPolicies() {
               <span>
                 Changes are authorized and recorded server-side. The Combat Sim
                 requirement is additionally enforced by the simulation backend, which
-                keeps enforcement ON if the setting cannot be read.
+                keeps enforcement ON if the setting cannot be read. Global Premium
+                Access is enforced by the same backend, which fails the other way —
+                if the setting cannot be read it is treated as OFF, so an outage can
+                never open Premium to everyone.
               </span>
             </p>
           </div>
