@@ -2847,7 +2847,26 @@ any link out of a champion or player name.
 | | SHA | Where |
 |---|---|---|
 | Backend | `a407a091` | **pushed to `master`**, Railway auto-deploys |
-| Frontend | `PENDING` | pushed to `main`, NOT published |
+| Frontend | `3c8fd969` | **pushed to `main`**, NOT published |
+
+### Live state, checked 2026-09-09 by fetching, not assumed
+
+* **`/series` answers 403 on production** while an invented sibling under the
+  same prefix answers 404 — the workstream's usual discriminator, stable
+  across three probes. As in Steps 7 and 8 **this proves nothing new about
+  Step 9**: the route has existed since Step 4 and Step 9 added fields INSIDE
+  its admin-gated payload. This session held no production admin key, so
+  **nobody has read the deployed payload**. Railway auto-deploys `master`;
+  there is still no deployed-SHA endpoint on this service.
+* **Step 9's frontend is NOT published.** The chunk currently served from
+  mogzy.lol, `ProPlayMatchup-BF4KfkED.js`, contains **none** of
+  `meeting-lineups`, `lineup-position`, `lineup-pick`, `positions_changed`,
+  `repeat_picks`, `Champion not recorded` or `PICKS BY GAME`. Publishing is
+  the owner's click in Lovable; a push is not a publish.
+* **What IS live, and it moved:** that same chunk contains `study-evidence`
+  and `gold_diff_at15`, so **Step 8 is now published** — its own note, written
+  earlier the same day, said it was not. `teams_outside_focus_set` is still
+  absent, so Step 8's deletion remains safe.
 
 **No deploy-ordering hazard in either direction.**
 
