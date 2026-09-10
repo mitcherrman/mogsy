@@ -363,6 +363,18 @@ export default function MogzyEntryV2({ seo = "dev" }: MogzyEntryV2Props = {}) {
           <TitleOrnamentBottom width={isPhone ? 210 : 300} />
         </div>
       )}
+      <p
+        className={[
+          "text-center font-normal tracking-[0.04em] text-[#f0d78c]/75",
+          isLandscapePhone
+            ? "mt-1 text-[clamp(0.65rem,1.3vw,0.8rem)]"
+            : isPhone
+              ? "mt-1.5 text-[clamp(0.7rem,1.5vw,0.9rem)]"
+              : "mt-3 text-[clamp(0.8rem,1.4vw,1rem)]",
+        ].join(" ")}
+      >
+        A League of Legends learning and training experience
+      </p>
       </motion.div>
     </div>
   );
