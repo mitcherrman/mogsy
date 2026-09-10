@@ -2432,8 +2432,33 @@ measured figures).
 
 | | SHA | Where |
 |---|---|---|
-| Backend | `PENDING` | `master`, Railway auto-deploys |
-| Frontend | `PENDING` | `main`, Lovable publish is the owner's click |
+| Backend | `1a8b75e4` | **pushed to `master`**, Railway auto-deploys |
+| Frontend | `0da421de` | **pushed to `main`**, NOT published |
+
+`master` moved **twice** while this task was in flight (maa1 objective media,
+then a knowledge-admin fix). It was re-fetched and rebased before each push
+attempt, and the first push was rejected non-fast-forward — re-fetch before
+every push in this repo.
+
+### Live state, checked 2026-09-09 by fetching, not assumed
+
+* **`/exact` answers 403 on production** while an invented sibling under the
+  same prefix answers 404 — the usual discriminator, stable across three
+  probes. As in Step 7, **this proves nothing new about Step 8**: the route
+  has existed since Step 3, and Step 8 added fields INSIDE its admin-gated
+  payload. This session held no production admin key, so **nobody has read
+  the deployed payload**. Railway auto-deploys `master`; there is still no
+  deployed-SHA endpoint on this service (`/api/version` returns a static
+  string and is evidence of nothing).
+* **Step 8's frontend is NOT published.** The chunk currently served from
+  mogzy.lol, `ProPlayMatchup-CW9HOnso.js`, contains **none** of
+  `study-evidence`, `study-sample-toggle`, `evidencegroup`, `subject_kills`
+  or `contributed`. Publishing is the owner's click in Lovable; a push is not
+  a publish.
+* **What IS live:** the same chunk contains `gold_diff_at15` — so **Step 7 is
+  published** (its own note, written earlier the same day, said it was not)
+  — and does **not** contain `teams_outside_focus_set`, which is the
+  measurement that made this slice's deletion safe.
 
 **No deploy-ordering hazard in either direction, and this was checked rather
 than assumed.**
