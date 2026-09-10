@@ -11888,6 +11888,158 @@ html.hub-commons-in-view .hextech-ambience-layer {
   flex-wrap: wrap;
   gap: 0.2rem;
 }
+/* STEP 9 — the meeting's lineups.
+   A PARCHMENT PLATE PER TEAM, the same material as the game rows beneath it,
+   so the summary reads as part of the meeting rather than as a panel bolted
+   on top of it. The position column is fixed and narrow and the picks flow
+   beside it: at 375px the column stays, the champion chips wrap under
+   themselves, and nothing needs a horizontal scroller. */
+.proplay-dossier .dossier-lineups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+.proplay-dossier .dossier-lineups__title {
+  margin: 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(230, 227, 220, 0.55);
+}
+.proplay-dossier .dossier-lineup {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(93, 85, 70, 0.18);
+  border-radius: 5px;
+  background: rgba(255, 253, 246, 0.6);
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-lineup__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(93, 85, 70, 0.14);
+}
+.proplay-dossier .dossier-lineup__team {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.proplay-dossier .dossier-lineup__used {
+  font-size: 0.58rem;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-lineup__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.proplay-dossier .dossier-lineup__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+/* The one fixed column. Small caps and soft ink: the position is the index a
+   reader scans down, not the fact they came for. */
+.proplay-dossier .dossier-lineup__position {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 3.6rem;
+  padding-top: 0.15rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  color: var(--dsr-ink-soft);
+}
+/* A participant change, and the ONLY thing said about it. */
+.proplay-dossier .dossier-lineup__changed {
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  color: rgba(90, 132, 140, 0.95);
+}
+.proplay-dossier .dossier-lineup__players {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.proplay-dossier .dossier-lineup__player {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.45rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-lineup__name {
+  min-width: 6.5rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+.proplay-dossier .dossier-lineup__picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.4rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-lineup__pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  font-size: 0.62rem;
+}
+/* The GAME the champion belongs to. Never a draft position — there is no pick
+   order in the corpus — which is why it is `G1` and not `1.`. */
+.proplay-dossier .dossier-lineup__pickgame {
+  font-size: 0.52rem;
+  letter-spacing: 0.04em;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-lineup__pickname--absent {
+  font-style: italic;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-lineup__repeats {
+  font-size: 0.55rem;
+  letter-spacing: 0.02em;
+  color: var(--dsr-ink-soft);
+}
+.proplay-dossier .dossier-lineup__gap {
+  margin: 0.35rem 0 0;
+  font-size: 0.56rem;
+  color: var(--dsr-ink-soft);
+}
+/* The champion square inside a pick chip. Small enough that five of them in a
+   Bo5 row read as a sequence rather than as a wall of art. */
+.proplay-dossier .dossier-lineup__pick .dossier-media {
+  height: 1.05rem;
+  width: 1.05rem;
+  border-radius: 3px;
+}
+@media (max-width: 480px) {
+  /* THE POSITION MOVES ABOVE THE PLAYERS at phone width. Keeping it as a
+     column would leave the champion sequence about 2.5rem narrower, which is
+     the difference between two chips per line and one. */
+  .proplay-dossier .dossier-lineup__row {
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .proplay-dossier .dossier-lineup__position {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.35rem;
+    width: auto;
+    padding-top: 0;
+  }
+  .proplay-dossier .dossier-lineup__name {
+    min-width: 0;
+  }
+}
 /* The exact record's source meetings. */
 /* STEP 7 — the exact sample's scouting figures.
    SUPPORTING, NEVER DOMINANT. The values sit one notch above the hint text

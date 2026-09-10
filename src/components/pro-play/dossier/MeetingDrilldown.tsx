@@ -13,6 +13,11 @@
  * "Series", and its `1–0` is printed as the factual result it is rather than
  * dressed up as a best-of.
  *
+ * STEP 9 ADDED THE LINEUPS between the two: who ACTUALLY played each position
+ * across the whole meeting, and the champion each of them took game by game.
+ * It is built from the same participant rows the game list below it renders,
+ * so the summary and the games can never name different players.
+ *
  * NOT A MATCH PAGE. There is no per-player K/D/A, CS, gold, damage, vision or
  * objective row here, and no draft order anywhere — `sequence` is -1 on every
  * pick/ban row in the corpus, so an ordered draft would be invented. The
@@ -31,6 +36,9 @@ import {
   MatchupApiError,
   fetchMeeting,
   type MeetingGame,
+  type MeetingLineupPlayer,
+  type MeetingLineupPosition,
+  type MeetingLineupTeam,
   type MeetingPayload,
   type MeetingScoreEntry,
   type MeetingSelection,
@@ -165,6 +173,226 @@ export function RecentMeetings({
       </ul>
       <FinePrint testId="dossier-meetings-note">{note}</FinePrint>
     </DossierSection>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Step 9 — the meeting's lineups
+// ---------------------------------------------------------------------------
+
+/** `Top` → `TOP`. The corpus's own five words, set in the dossier's small
+ *  caps rather than remapped to a vocabulary the payload does not use. */
+function positionLabel(position: string): string {
+  return position.toUpperCase();
+}
+
+/**
+ * One player's champions across the meeting, in game order.
+ *
+ * THE GAME NUMBER IS PRINTED ONLY WHEN THERE IS MORE THAN ONE GAME. On a Bo1
+ * `G1` in front of the only pick is noise; across a Bo5 it is the whole point,
+ * because it is what makes `G1 Olaf · G2 K'Sante · G3 Olaf` a story about
+ * adaptation rather than a bag of three champions. The sequence is NEVER
+ * deduplicated and never sorted here — the server ordered it by `game_number`
+ * and a repeat is a fact, not a duplicate.
+ *
+ * NOTHING HERE IMPLIES A DRAFT. There is no pick order in the corpus
+ * (`sequence` is -1 on all 2,235,030 rows), so these are the champions each
+ * player ended a game on and are labelled by the GAME, never by a position in
+ * a draft.
+ */
+function ChampionSequence({
+  games,
+  showGameNumbers,
+}: {
+  games: MeetingLineupPlayer["games"];
+  showGameNumbers: boolean;
+}) {
+  return (
+    <span className="dossier-lineup__picks" data-testid="lineup-picks">
+      {games.map((entry) => (
+        <span
+          key={entry.game_number}
+          className="dossier-lineup__pick"
+          data-testid="lineup-pick"
+          data-game-number={entry.game_number}
+        >
+          {showGameNumbers ? (
+            <span className="dossier-lineup__pickgame">G{entry.game_number}</span>
+          ) : null}
+          {entry.champion_key ? (
+            <>
+              <ChampionIcon champion={entry.champion_key} size="sm" />
+              <span className="dossier-lineup__pickname">{entry.champion_key}</span>
+            </>
+          ) : (
+            // He played the game; the champion is simply not in the record.
+            // Dropping the entry would shorten a real sequence, and naming a
+            // champion would invent one.
+            <span className="dossier-lineup__pickname dossier-lineup__pickname--absent">
+              Champion not recorded
+            </span>
+          )}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * One position, and every player who actually occupied it.
+ *
+ * TWO PLAYERS IS A PARTICIPANT CHANGE, AND THAT IS ALL IT IS SAID TO BE. The
+ * corpus records who played; it does not record why, so the marker reads
+ * "2 players" and no word here is "substitution reason", "benched" or
+ * "tactical". The two players' own game numbers make the change legible on
+ * their own — `Gloryy G1–G2`, `Aress G3–G5` — which is the honest version of
+ * the same information.
+ */
+function LineupPosition({
+  position,
+  showGameNumbers,
+}: {
+  position: MeetingLineupPosition;
+  showGameNumbers: boolean;
+}) {
+  const changed = position.players.length > 1;
+  return (
+    <li
+      className="dossier-lineup__row"
+      data-testid="lineup-position"
+      data-position={position.position}
+      data-players={position.players.length}
+    >
+      <span className="dossier-lineup__position">
+        {positionLabel(position.position)}
+        {changed ? (
+          <span className="dossier-lineup__changed" data-testid="lineup-changed">
+            {position.players.length} players
+          </span>
+        ) : null}
+      </span>
+      <span className="dossier-lineup__players">
+        {position.players.map((player) => (
+          <span
+            key={player.player_lp_page}
+            className="dossier-lineup__player"
+            data-testid="lineup-player"
+            data-player={player.player_lp_page}
+          >
+            <span className="dossier-lineup__name">{player.player_lp_page}</span>
+            <ChampionSequence games={player.games} showGameNumbers={showGameNumbers} />
+            {/* SECONDARY, AND ONLY WHEN IT REPEATS. The sequence above is the
+                primary fact; this says he came back to it. No percentage — a
+                three-game sample is not a pick rate. */}
+            {player.repeat_picks.length ? (
+              <span className="dossier-lineup__repeats" data-testid="lineup-repeats">
+                {player.repeat_picks
+                  .map((repeat) => `${repeat.champion_key} ×${repeat.count}`)
+                  .join(" · ")}
+              </span>
+            ) : null}
+          </span>
+        ))}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * WHO ACTUALLY PLAYED THIS MEETING, AND WHAT THEY PICKED — the section
+ * between the meeting's result and its list of games.
+ *
+ * ACTUAL PARTICIPANTS ONLY. Every name here has a row in one of this
+ * meeting's own games. Nothing is read from a roster, a starting five, a depth
+ * chart, a player profile or the five-lane board above: those answer "who is
+ * on this team", and this answers "who took the field", which in a Bo5 with a
+ * substitution are two different lists.
+ *
+ * IT DOES NOT REPLACE THE GAMES. The per-game list still sits under it with
+ * its own picks and its own way in to a box score; this is the summary a
+ * reader wants BEFORE choosing which game to open, and it is deliberately
+ * short enough to be read on the way past.
+ *
+ * NO PERFORMANCE FIGURE. There is no K/D/A, gold, CS, vision, rating or
+ * leader here, and there is no ban summary: bans are an unordered set of five
+ * per side and a count of them beside a lineup would be read as draft
+ * priority. The box score inside each game is where performance lives.
+ */
+export function MeetingLineups({
+  lineups,
+  kind,
+  scoreLine,
+}: {
+  lineups: MeetingLineupTeam[] | undefined;
+  kind: string;
+  scoreLine: MeetingScoreEntry[];
+}) {
+  // A SERVER THAT DOES NOT SERVE THIS RENDERS THE MEETING IT ALWAYS DID.
+  // `lineups` is optional and a meeting whose games carry no player rows gets
+  // no empty scaffold — 46,396 of the corpus's games are short of a full ten.
+  if (!lineups?.length) return null;
+  const withPlayers = lineups.filter((team) => team.positions.length);
+  if (!withPlayers.length) return null;
+
+  const showGameNumbers = kind === MEETING_SERIES;
+  // The score already put the two teams in an order a reader has just read.
+  // Following it here means the lineups are not a second, different order.
+  const order = scoreLine.map((entry) => entry.team_key);
+  const teams = [...withPlayers].sort(
+    (a, b) => order.indexOf(a.team_key) - order.indexOf(b.team_key),
+  );
+
+  return (
+    <div className="dossier-lineups" data-testid="meeting-lineups">
+      <p className="dossier-lineups__title">
+        {showGameNumbers ? "Players used · picks by game" : "Lineups"}
+      </p>
+      {teams.map((team) => {
+        const incomplete = team.game_coverage.filter((game) => !game.complete);
+        return (
+          <div
+            className="dossier-lineup"
+            key={team.team_key}
+            data-testid="meeting-lineup-team"
+            data-team-key={team.team_key}
+          >
+            <div className="dossier-lineup__head">
+              <span className="dossier-lineup__team">
+                {team.display_name ?? team.team_key}
+              </span>
+              {/* Only worth saying when it is not the plain five. */}
+              {team.players_used > 5 ? (
+                <span className="dossier-lineup__used" data-testid="lineup-players-used">
+                  {team.players_used} players used
+                </span>
+              ) : null}
+            </div>
+            <ul className="dossier-lineup__rows">
+              {team.positions.map((position) => (
+                <LineupPosition
+                  key={position.position}
+                  position={position}
+                  showGameNumbers={showGameNumbers}
+                />
+              ))}
+            </ul>
+            {/* REPORTED, NOT REPAIRED. A game whose record is short of five
+                players says so, in a product sentence rather than a count of
+                rows, and no name is filled in from anywhere. */}
+            {incomplete.length ? (
+              <p className="dossier-lineup__gap" data-testid="lineup-incomplete">
+                {showGameNumbers
+                  ? `Player records are incomplete for ${incomplete
+                      .map((game) => `Game ${game.game_number}`)
+                      .join(", ")}.`
+                  : "Player records for this game are incomplete."}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -364,6 +592,16 @@ export function MeetingShell({
                 : `Within ${scopeLabel}`}
             </span>
           </div>
+
+          {/* STEP 9. Between the result and the games, because it is what a
+              reader wants BEFORE choosing which game to open — and above the
+              game list rather than instead of it: the games keep their own
+              picks and their own way in to a box score. */}
+          <MeetingLineups
+            lineups={payload.lineups}
+            kind={payload.kind}
+            scoreLine={payload.score_line}
+          />
 
           {/* ORDERED HERE, NOT TRUSTED FROM THE ARRAY. The server orders by
               `game_number` and the client asserts it again: a meeting drawn in

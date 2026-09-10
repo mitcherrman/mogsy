@@ -1419,6 +1419,59 @@ export interface MeetingGame {
   participants: MeetingParticipant[];
 }
 
+/**
+ * STEP 9 — one player's meeting, at one position.
+ *
+ * `games` is the CHAMPION SEQUENCE, ordered by `game_number` and never
+ * deduplicated: `G1 Olaf · G2 K'Sante · G3 Olaf` says he adapted and went
+ * back, which a set of two champions destroys. Only the games this player
+ * actually has a row in are here — a Bo5 substitute carries two entries, not
+ * five with three blanks.
+ */
+export interface MeetingLineupPlayer {
+  player_lp_page: string;
+  games: { game_number: number; champion_key: string | null }[];
+  /** Champions taken MORE THAN ONCE, and only those. A `1×` beside a sequence
+   *  that already shows it once is clutter, and no percentage is published —
+   *  three games are not a pick rate. Empty on a one-game meeting. */
+  repeat_picks: { champion_key: string; count: number }[];
+}
+
+export interface MeetingLineupPosition {
+  /** Leaguepedia's `role`. See `MeetingLineupTeam`. */
+  position: string;
+  /** Every player who occupied this position across the meeting, earliest
+   *  appearance first. More than one is a real participant change — and never
+   *  two players in one game, which is measured impossible in any meeting the
+   *  Explorer will open. */
+  players: MeetingLineupPlayer[];
+}
+
+/**
+ * One team's actual participation across the whole meeting.
+ *
+ * THE POSITION AUTHORITY IS LEAGUEPEDIA'S `role`, which is a different choice
+ * from Step 6's and a deliberate one. Step 6 pairs a player against his lane
+ * OPPONENT and must use Oracle's Elixir's `oe_position`, because the two
+ * disagree on 1,290 rows and pairing on the wrong one hands a player the wrong
+ * opponent. Nothing here pairs anything: it needs ONE position for every
+ * participant, and `role` is present on all 1,075,502 canonical rows against
+ * `oe_position`'s 81%.
+ */
+export interface MeetingLineupTeam {
+  team_key: string;
+  display_name: string | null;
+  positions: MeetingLineupPosition[];
+  /** Distinct players who actually took the field for this team. */
+  players_used: number;
+  /** Positions more than one player occupied. The measured fact and nothing
+   *  more — WHY is not in the corpus, so no word may suggest a reason. */
+  positions_changed: string[];
+  /** Per game: how many player rows this team has. Reported, never repaired —
+   *  46,396 of 113,815 canonical games carry fewer than ten. */
+  game_coverage: { game_number: number; participant_count: number; complete: boolean }[];
+}
+
 export interface MeetingPayload {
   match_id: string;
   kind: MeetingKind;
@@ -1440,6 +1493,13 @@ export interface MeetingPayload {
    *  scope would print a score that was never played. */
   in_scope: boolean | null;
   games: MeetingGame[];
+  /** STEP 9. Optional so a client newer than the server renders the meeting it
+   *  always did, with no lineup section — the same deploy-window rule Step 8's
+   *  `evidence` follows. */
+  lineups?: MeetingLineupTeam[];
+  /** The order the server laid the positions out in. Read for nothing but the
+   *  fallback below; the array's own order is what renders. */
+  position_order?: string[];
   unavailable_metrics: UnavailableMetric[];
 }
 

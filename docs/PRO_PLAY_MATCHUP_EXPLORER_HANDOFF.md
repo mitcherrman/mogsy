@@ -2513,3 +2513,377 @@ Two smaller candidates, if a single clean slice is wanted first:
    gold-min / damage-min). Same move, a much larger sample — 30-odd games
    rather than 2 — so it needs a display bound and a "show all", which is why
    it was not folded in here.
+
+# Step 9 — the meeting's lineups
+
+Implemented. A historical Meeting now says **who actually played it, what each
+of them picked game by game, and where the participants changed** — before the
+reader chooses which game to open.
+
+```
+SERIES · 3 GAMES
+SK Telecom T1 2–1 NaJin e-mFire    Champions 2015 Spring · Jan 7, 2015 · Patch 4.21
+
+PLAYERS USED · PICKS BY GAME
+  SK Telecom T1   6 players used
+    TOP        MaRin      G1 Dr Mundo · G2 Maokai · G3 Maokai      Maokai ×2
+    JUNGLE     Bengi      G1 Lee Sin · G2 Lee Sin · G3 Lee Sin     Lee Sin ×3
+    MID        Faker      G1 Xerath · G3 LeBlanc
+    2 players  Easyhoon   G2 Xerath
+    …
+  NaJin e-mFire
+    JUNGLE     Watch      G1 Jarvan IV · G2 Jarvan IV · G3 Kha'Zix  Jarvan IV ×2
+    …
+    Player records are incomplete for Game 1, Game 2, Game 3.
+```
+
+## What it closes
+
+Step 8 made every *number* openable. The **Meeting** was the layer that stayed
+structural: teams, event, score, durations and a list of games. It answered
+*when* and *what the result was*, and nothing about *who*. A reader arriving
+from an aggregate claim had to open games one at a time to find out whether
+the same five players even played them.
+
+## The actual-participant rule
+
+**Every name comes from `pro_canonical_player_games` rows belonging to the
+games this `match_id` contains.** The same rows the game list beneath it
+renders and the same rows `/game`'s box score is driven by — it is a
+**projection of `games`**, computed in the same call, so the lineup and the
+game list can never name different players.
+
+Nothing consults a roster, a declared starter, a depth chart, a player profile
+or the five-lane board above. Those answer *who is on this team*; this answers
+*who took the field*, and in a Bo5 with a substitution they are two different
+lists. A player who appears in one game appears in one game.
+
+`meetings.py` still writes no statistic: nothing here is averaged, totalled,
+ranked or rated.
+
+## Position authority — Leaguepedia's `role`, and NOT Step 6's `oe_position`
+
+This is the one decision worth being explicit about, because Step 6 chose the
+other field for a good reason and the reason does not transfer.
+
+| | `role` (Leaguepedia) | `oe_position` (Oracle's Elixir) |
+|---|---:|---:|
+| coverage of canonical participant rows | **1,075,502 / 1,075,502** | 875,430 (81.4%) |
+| distinct values | exactly 5 | exactly 5 |
+| disagreements, where both exist | — | **1,290 rows** |
+
+**Step 6 pairs; Step 9 does not.** Step 6 resolves a player's *lane opponent*
+and must use `oe_position`, because those 1,290 rows are real games where the
+labelled support played the carry and pairing on the label hands a player the
+wrong opponent. This projection pairs nothing at all. It needs **one position
+for every participant**, and `oe_position` is simply absent for every game
+outside OE's coverage — nearly a fifth of the corpus, and disproportionately
+the older meetings the Explorer supports.
+
+**A fallback from one to the other was rejected**, not deferred: a mixed
+authority could file the same player under two different positions in two
+games of one meeting and manufacture a lineup change that never happened.
+`role` is total and single-sourced, so the position column is one authority
+end to end. A real-corpus test re-measures both columns, so the choice fails
+loudly if the coverage ever inverts.
+
+## Champion sequence semantics
+
+* `games[]` is ordered by **`game_number`**, never alphabetically and never by
+  frequency. `G1 Olaf · G2 K'Sante · G3 Olaf` is a story about adaptation; the
+  set `{Olaf, K'Sante}` is not.
+* **A repeat is preserved as two entries**, because going *back* to a champion
+  is the fact.
+* **Only games the player has a row in are listed.** A substitute in games 3–5
+  carries three entries, not five with two blanks.
+* The champion on the participant row **is** the pick. No second champion
+  normalization layer was added; `champion_key` is the same field Step 4's
+  per-game list and Step 5's box score already render.
+* **The game number labels the GAME, never a draft position.** `sequence` is
+  `-1` on all 2,235,030 pick/ban rows, so `G1` is deliberately not `1.`, and
+  a frontend test fails on the words *first pick*, *counterpick*, *blind*,
+  *draft*, *rotation*, *ban phase* and *priority* appearing in the section.
+
+## Substitution representation — two players, and no word about why
+
+A position occupied by two players across the meeting renders **both**, each
+with the games he actually played. The position is marked `2 players`, the
+team is marked `6 players used`, and `positions_changed` names it in the
+payload.
+
+**No `starter` field exists**, and usage count orders nothing: players are
+sorted by **earliest appearance**, tie-broken on identity. Ordering by "played
+most" would be starter semantics the corpus does not record. A frontend test
+asserts the section contains none of *substitution*, *benched*, *starter*,
+*starting*, *dropped*, *replaced*, *rested* or *tactical*. This task knows
+that participation changed; it does not know why.
+
+**Two players at one position always means different games**, and that is
+measured rather than assumed: all 48 team-games in the corpus carrying two
+rows for one role belong to the seven `blue_team_key = red_team_key`
+match_ids, which `meeting()` has always refused as `MalformedMeeting`. Inside
+any meeting a reader can actually open, the number is **0**. A real-corpus
+test holds it.
+
+**One player can hold two positions**, and does: SAKEN played *three* across
+`Coupe de France 2022_Round 2_3`. He is listed under each, with the games he
+played there. Filing him once would mean choosing which of them to print.
+
+## Contract addition — `GET /api/pro-play/matchup/series`
+
+**No new endpoint.** The meeting a reader already opened is where "who played"
+belongs, and a sibling request could return an answer that disagrees with the
+game list beside it. `team_meetings` — the board's compact eight-row section —
+gained **nothing**: it is a dossier line, not a lineup.
+
+Two keys added to the meeting payload, both additive:
+
+```jsonc
+"position_order": ["Top", "Jungle", "Mid", "Bot", "Support"],
+"lineups": [
+  { "team_key": "GAM Esports", "display_name": "GAM Esports",
+    "players_used": 6,
+    "positions_changed": ["Mid"],
+    "positions": [
+      { "position": "Mid",
+        "players": [
+          { "player_lp_page": "Gloryy",
+            "games": [ {"game_number": 1, "champion_key": "Ryze"},
+                       {"game_number": 2, "champion_key": "Orianna"} ],
+            "repeat_picks": [] },
+          { "player_lp_page": "Aress",
+            "games": [ {"game_number": 3, "champion_key": "Ahri"}, … ],
+            "repeat_picks": [] } ] } ],
+    "game_coverage": [ {"game_number": 1, "participant_count": 5, "complete": true}, … ] } ]
+```
+
+* **Teams are in the meeting's own `teams` order** (the server's), and the
+  client re-lays them in **`score_line` order** — the order the reader has just
+  read in the header, so the lineups are not a second, silently different one.
+* **Positions follow standard League order** — Top, Jungle, Mid, Bot, Support.
+  Anything the corpus ever grows sorts after them alphabetically rather than
+  being dropped or coerced into one of the five.
+* **A player entry carries exactly three keys.** A test pins the set, so a
+  smuggled statistic or a `starter` flag fails.
+* **No Game payload is duplicated.** `/game` owns the box score; this carries
+  a player, a position, a game number and a champion.
+
+### `repeat_picks` — the frequency summary, and why it is this small
+
+Emitted **only for champions taken more than once**, ordered by count then
+name, with **no percentage**. `Olaf ×2` beside a three-game sequence is worth
+saying; `Olaf ×1` beside a sequence that already shows it once is clutter, and
+a percentage over three games would dress three data points as a pick rate.
+A one-game meeting therefore has an empty `repeat_picks` on every player, and
+the UI renders nothing.
+
+**The sequence is primary and the frequency is secondary**, which is why the
+frequency is a trailing annotation on the same line and never a table.
+
+### Missing data
+
+* **`champion_key` is `null` when the row does not record one** — never
+  filled from a neighbouring game, and **the game stays in the sequence**,
+  because dropping it would shorten a real one. The client prints
+  *Champion not recorded*. This is a **shape** guarantee: `champion_key` is
+  `NOT NULL` in the schema and non-empty on all 1,075,502 real rows, and a
+  real-corpus test asserts that so the honest branch is covered by a fixture
+  rather than by the corpus staying clean.
+* **A team-game short of five player rows is reported, never repaired.**
+  46,396 of 113,815 canonical games carry fewer than ten rows. `game_coverage`
+  carries the count per game and the client says *Player records are
+  incomplete for Game 1, Game 2, Game 3.* — a product sentence, not a row
+  count, and no name is filled in from anywhere. NaJin e-mFire's 2015 rows
+  carry four players in every game, so their lineup shows four and has **no
+  Top row at all**.
+* **A meeting whose games carry no player rows renders nothing** — not an
+  empty scaffold and not a fabricated five.
+
+## Single-game meetings
+
+The heading is **`Lineups`**, not `Players used · picks by game`. **No game
+numbers** (`G1` in front of the only pick is noise), **no `×1` frequency**, no
+`N players used` marker, and no series language anywhere. It is simply the ten
+players who played, one champion each. A frontend test asserts the absence of
+`G1`, of any `lineup-repeats` node and of `/series/i`.
+
+## The ban summary — deliberately NOT in this slice
+
+Meeting-level bans were offered as optional and are **omitted**. Two reasons,
+and the first is the real one:
+
+1. **A count is the only honest ban fact available, and a count reads as
+   priority.** `sequence` is `-1` on every pick/ban row, so there is no order,
+   no phase and no target. `Champion A ×2` under a lineup would be read as
+   *they prioritised banning A*, which is precisely the claim the data cannot
+   support. The existing `unavailable_metrics` sentence — bans are "an
+   unordered set of five per side" — already says the honest thing, and the
+   game dossier renders them per game where they can be read against the game.
+2. **Density.** The Bo5 lineup is already ten to twelve rows a team. Ten more
+   ban chips would push the game list — the destination this section exists to
+   make attractive — further down the sheet.
+
+Step 4's `unavailable_metrics` entry for `bans` is unchanged and still
+rendered at the foot of the shell.
+
+## Result context — untouched
+
+Score semantics, `undecided`, `winner_team_key`, `kind`, `single_game_number`,
+duration, event/date/patch, `in_scope`, game ordering and the click into a
+Game dossier are all exactly as Step 4 and Step 5 left them. Four backend
+tests and three frontend tests exist only to hold that: every Step 4 key is
+still served, the game list is still `game_number`-ordered, the listing row
+shape gained nothing, and a Game still opens to its box score from inside the
+enriched shell.
+
+## Frontend placement and design
+
+Reading order inside the shell, held as a DOM-order test:
+
+> meeting identity → **result / event / date / patch / scope** → **lineups** →
+> per-game list → the Game dossier
+
+The lineups sit **above** the game list and replace none of it: each game row
+keeps its result, duration and its own champion icons, and keeps being the way
+into the box score. The point is to make a reader *want* to open a game, not
+to save them from it.
+
+**Visual language.** One parchment plate per team on the same material as the
+game rows beneath it, so the section reads as part of the meeting rather than
+a panel bolted on. The position is a fixed 3.6rem small-caps column in soft
+ink — the index a reader scans down — and the player name is the emphasis. A
+champion chip is a 1.05rem square icon plus the champion's name; icons alone
+would have made a Bo5 row a wall of art with no way to tell Maokai from
+Maokai, and names alone would have lost the scanning speed the rest of the
+dossier has.
+
+**Mobile (375 × 812, real corpus, Bo5 with a substitution).** The position
+label moves **above** the players at ≤480px — keeping it as a column costs the
+sequence ~2.5rem, which is the difference between two chips a line and one.
+Measured: `document.scrollWidth === clientWidth` (**no page-level horizontal
+overflow**), the section is **343px inside a 375px sheet**, and **zero**
+position rows overflow their own box. No horizontal table, no nested scroller,
+and the Game rows below stay full-width and tappable.
+
+**Interaction: none added.** Champion names and player names are not links —
+there is no safe destination for "this player in this meeting" that the
+Explorer already serves, and a dead link would be worse than plain text. No
+hover-only information, so nothing is invisible on a phone.
+
+## Real corpus examples verified (2026-09-09)
+
+Read through the real endpoint and **rendered in a browser** (local FastAPI on
+the full 5.6 GB corpus + vite, throwaway admin key, never the production
+secret).
+
+| Case | What it proved |
+|---|---|
+| **Bo3** `LCK/2026 Season/Rounds 1-2_Week 7_7` (T1 2–1 Gen.G) | Ten players, five a side, three picks each, no repeats, no changes. Doran `Yorick · Ornn · Jayce`. |
+| **Bo1** `2025 Season World Championship/Main Event_Round 3_4` | Heading `LINEUPS`, no `G` numbers, no frequency, no series word. |
+| **Bo5 + substitution** `LCP/2026 Season/Split 2 Playoffs_Round 3_2` | GAM Esports `6 players used`, Mid `2 players`: **Gloryy G1–2, Aress G3–5**. Deep Cross Gaming five players, five picks each. |
+| **Every position changed** `Coupe de France 2022_Round 2_3` | Karmine Corp used six players across **all five** positions, and **SAKEN appears under Mid, Bot AND Support**. Rendered without a special case. |
+| **Repeated picks** the same meeting | Nafkelah `Ziggs · Cassiopeia · Ahri · Ahri · Ahri` → `Ahri ×3`; White `Trundle ×2`; Obstinatus `Nautilus ×2`. |
+| **Older historical** `Champions/2015 Season/Spring Season_Week 1_1` | **Faker G1/G3, Easyhoon G2** at Mid — a real 2015 rotation; Bengi `Lee Sin ×3`. |
+| **Incomplete participants** the same meeting | NaJin e-mFire has **four** rows in every game: four players shown, **no Top row**, and *"Player records are incomplete for Game 1, Game 2, Game 3."* Nothing backfilled. |
+| **Modern 2026** the Bo3 and the Bo5 above | Both current-season. |
+| **Unusual role record** `Upsurge Premier League/2020 Season/Fall Playoffs_Lower Round 2_2` | The 48 duplicate-role team-games all sit in the 7 `Maryville University vs Maryville University`-style match_ids, which `meeting()` **already refuses** as malformed. Unreachable through this layer. |
+| **No player rows at all** | Renders nothing, in a test — the corpus's `meeting` shape allows it. |
+
+## Performance
+
+**No new query and no new endpoint.** The projection runs over rows
+`meeting()` had already read.
+
+| | |
+|---|---:|
+| `_lineups`, 1-game meeting | **0.020 ms** |
+| `_lineups`, 3-game meeting | **0.032 ms** |
+| `_lineups`, 5-game meeting | **0.048 ms** |
+| whole `meeting()` warm, 1/3/5 games | 0.54 / 0.67 / 0.76 ms |
+
+(The first `meeting()` of a process is ~0.9 s, unchanged: it builds
+`comparison.game_index`.)
+
+## Tests
+
+**Backend — 45 new (10 real-corpus)** in `test_pro_authority_meetings.py`:
+**109 passed** (was 64). Pro Play backend regression with the real corpus
+attached: **1656 passed, 1 skipped, 0 failed** (Step 8's baseline was 1611).
+
+Two fixture meetings were added rather than existing ones changed, so no Step
+4 or 5 assertion moved: `ENRICHED`, a Bo3 carrying a repeated pick, a
+substitution, a team-game short one player and a participant whose champion is
+not recorded; and `MULTIROLE`, one player at two positions.
+
+The load-bearing ones: the lineup and the game list name the *same* players;
+a rostered non-participant is absent; positions are in role order; the
+champion sequence follows `game_number`; a repeat survives; a repeat of one is
+not summarised; a null champion is neither invented nor counted nor dropped;
+two players at one position are earliest-appearance first; no key on a player
+entry is a starter or a statistic; `game_coverage` reports the short game and
+nothing backfills it; the one-game meeting is bare; the output is
+deterministic; and every Step 4 key is still served in place.
+
+**Frontend — 20 new.** `ProPlayMatchupTeam.test.tsx` **272 passed** (was 252);
+**482 Pro Play tests across 7 files, all passing** (was 462). Typecheck
+(`tsconfig.app.json`) **13 errors, none in pro-play** — identical to the
+Step 7/8 baseline. Build green.
+
+One test covers the **deploy window explicitly**: against a meeting payload
+with no `lineups` key at all, the shell renders the meeting it always did and
+no section appears.
+
+## Deferred, and deliberately
+
+Everything Steps 4–8 deferred stays deferred. Also **not** added here: the
+meeting-level ban summary (above); any aggregate player performance — KDA
+leader, kills/damage/CS/gold/vision leaders, @15 or XP aggregates, MVP,
+ratings, lane dominance, charts, radars, win probability; per-game statistics
+in the lineup; sorting or filtering it; side (blue/red) in the lineup row; and
+any link out of a champion or player name.
+
+## Deploy state — Step 9 (2026-09-09)
+
+| | SHA | Where |
+|---|---|---|
+| Backend | `a407a091` | **pushed to `master`**, Railway auto-deploys |
+| Frontend | `PENDING` | pushed to `main`, NOT published |
+
+**No deploy-ordering hazard in either direction.**
+
+* Backend → old frontend: `lineups` and `position_order` are **additive** keys
+  on an existing payload, and the published client reads named keys. It
+  ignores them.
+* New frontend → old backend: `lineups` is typed **optional** and the section
+  returns `null` when it is absent. There is a test.
+* Nothing was removed from any payload.
+
+## Files — Step 9
+
+### Backend — `/Users/macmoney/League_Combat_Simulator`
+
+| File | Change |
+|---|---|
+| `pro_authority/meetings.py` | `POSITION_ORDER`, `TEAM_SIZE`, `_position_rank`, `_repeat_picks`, `_lineups`; `meeting()` serves `lineups` and `position_order`. |
+| `test_pro_authority_meetings.py` | Two fixture meetings; 45 new tests, 10 against the real corpus. |
+
+### Frontend — `/Users/macmoney/mogsy`
+
+| File | Change |
+|---|---|
+| `src/lib/pro-play/matchupApi.ts` | `MeetingLineupPlayer` / `MeetingLineupPosition` / `MeetingLineupTeam`; optional `lineups` and `position_order` on `MeetingPayload`. |
+| `src/components/pro-play/dossier/MeetingDrilldown.tsx` | `MeetingLineups`, `LineupPosition`, `ChampionSequence`, `positionLabel`; rendered between the meeting head and the game list. |
+| `src/index.css` | `.dossier-lineups*` and `.dossier-lineup*`, plus the ≤480px stack. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | Lineup fixtures, a swappable `seriesPayloads`, 20 new tests. |
+
+## Remaining Meeting gaps
+
+1. **The ban summary, if it can be made honest.** Not a count. The one shape
+   that might work is *which champions neither side ever let through* — a set,
+   not a ranking — and it still needs a reason a reader benefits from it here
+   rather than in the game.
+2. **Side (blue/red) per game.** It is on the participant row and it is real,
+   but attaching it to a lineup entry implies a side-based read of the picks
+   that this slice does not support.
+3. **The meeting as a destination from the board's own lanes.** Step 8's
+   `Next recommended slice` still stands and is bigger than any of these.

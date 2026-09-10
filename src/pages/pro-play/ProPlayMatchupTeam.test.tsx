@@ -174,6 +174,52 @@ const MEETING_UNAVAILABLE = [
   },
 ];
 
+// --- Step 9 fixtures --------------------------------------------------------
+//
+// THE LINEUP AND THE GAME LIST MUST AGREE, because on the server they are two
+// projections of one read. The champions here are built from the same
+// `G{n}{Role}` naming `meetingGame` uses, so a fixture that drifted from the
+// game rows would be visible in the rendered output.
+//
+// Served in the SERVER'S order — teams sorted by key — so the component's own
+// rule (follow the score line, which the reader has just read) is exercised
+// rather than accidentally satisfied.
+const LINEUP_POSITIONS = ["Top", "Jungle", "Mid", "Bot", "Support"];
+
+function lineupTeam(teamKey: string, prefix: (n: number) => string, gameNumbers: number[]) {
+  return {
+    team_key: teamKey,
+    display_name: teamKey,
+    positions: LINEUP_POSITIONS.map((role) => ({
+      position: role,
+      players: [
+        {
+          player_lp_page: `${teamKey}-${role}`,
+          games: gameNumbers.map((n) => ({
+            game_number: n,
+            champion_key: `${prefix(n)}${role}`,
+          })),
+          repeat_picks: [],
+        },
+      ],
+    })),
+    players_used: 5,
+    positions_changed: [],
+    game_coverage: gameNumbers.map((n) => ({
+      game_number: n,
+      participant_count: 5,
+      complete: true,
+    })),
+  };
+}
+
+function meetingLineups(gameNumbers: number[]) {
+  return [
+    lineupTeam("Bilibili Gaming", (n) => `G${n}R`, gameNumbers),
+    lineupTeam("T1", (n) => `G${n}`, gameNumbers),
+  ];
+}
+
 const BO3_PAYLOAD = {
   match_id: BO3_ID,
   kind: "series",
@@ -201,6 +247,8 @@ const BO3_PAYLOAD = {
     meetingGame(1, "Bilibili Gaming", 1634),
     meetingGame(3, "T1", null),
   ],
+  lineups: meetingLineups([1, 2, 3]),
+  position_order: LINEUP_POSITIONS,
   unavailable_metrics: MEETING_UNAVAILABLE,
 };
 
@@ -220,7 +268,130 @@ const BO1_PAYLOAD = {
   winner_team_key: "Bilibili Gaming",
   in_scope: false,
   games: [meetingGame(1, "Bilibili Gaming", 1800)],
+  lineups: meetingLineups([1]),
 };
+
+/**
+ * A Bo3 carrying every shape at once, so one render covers them all:
+ *
+ *   T1 Top      — Doran, `Olaf · K'Sante · Olaf`: a REPEATED pick.
+ *   T1 Bot      — Gumayusi played games 1 and 2; Poby played game 3. A real
+ *                 participant change, and never two players in one game.
+ *   T1 Support  — Keria's game-3 champion is NOT RECORDED.
+ *   Bilibili    — five players, one of whose games has an incomplete record.
+ */
+const SUB_LINEUPS = [
+  {
+    team_key: "Bilibili Gaming",
+    display_name: "Bilibili Gaming",
+    positions: LINEUP_POSITIONS.map((role) => ({
+      position: role,
+      players: [
+        {
+          player_lp_page: `BLG-${role}`,
+          games: [1, 2, 3].map((n) => ({ game_number: n, champion_key: `G${n}R${role}` })),
+          repeat_picks: [],
+        },
+      ],
+    })),
+    players_used: 5,
+    positions_changed: [],
+    game_coverage: [
+      { game_number: 1, participant_count: 5, complete: true },
+      { game_number: 2, participant_count: 4, complete: false },
+      { game_number: 3, participant_count: 5, complete: true },
+    ],
+  },
+  {
+    team_key: "T1",
+    display_name: "T1",
+    positions: [
+      {
+        position: "Top",
+        players: [
+          {
+            player_lp_page: "Doran (Choi Hyeon-joon)",
+            games: [
+              { game_number: 1, champion_key: "Olaf" },
+              { game_number: 2, champion_key: "K'Sante" },
+              { game_number: 3, champion_key: "Olaf" },
+            ],
+            repeat_picks: [{ champion_key: "Olaf", count: 2 }],
+          },
+        ],
+      },
+      {
+        position: "Jungle",
+        players: [
+          {
+            player_lp_page: "Oner",
+            games: [
+              { game_number: 1, champion_key: "Vi" },
+              { game_number: 2, champion_key: "Xin Zhao" },
+              { game_number: 3, champion_key: "Vi" },
+            ],
+            repeat_picks: [{ champion_key: "Vi", count: 2 }],
+          },
+        ],
+      },
+      {
+        position: "Mid",
+        players: [
+          {
+            player_lp_page: "Faker",
+            games: [
+              { game_number: 1, champion_key: "Azir" },
+              { game_number: 2, champion_key: "Orianna" },
+              { game_number: 3, champion_key: "Taliyah" },
+            ],
+            repeat_picks: [],
+          },
+        ],
+      },
+      {
+        position: "Bot",
+        players: [
+          {
+            player_lp_page: "Gumayusi",
+            games: [
+              { game_number: 1, champion_key: "Varus" },
+              { game_number: 2, champion_key: "Jinx" },
+            ],
+            repeat_picks: [],
+          },
+          {
+            player_lp_page: "Poby",
+            games: [{ game_number: 3, champion_key: "Corki" }],
+            repeat_picks: [],
+          },
+        ],
+      },
+      {
+        position: "Support",
+        players: [
+          {
+            player_lp_page: "Keria",
+            games: [
+              { game_number: 1, champion_key: "Rakan" },
+              { game_number: 2, champion_key: "Nautilus" },
+              { game_number: 3, champion_key: null },
+            ],
+            repeat_picks: [],
+          },
+        ],
+      },
+    ],
+    players_used: 6,
+    positions_changed: ["Bot"],
+    game_coverage: [1, 2, 3].map((n) => ({
+      game_number: n,
+      participant_count: 5,
+      complete: true,
+    })),
+  },
+];
+
+const SUB_PAYLOAD = { ...BO3_PAYLOAD, lineups: SUB_LINEUPS };
 
 // --- Step 5 fixtures --------------------------------------------------------
 //
@@ -1501,8 +1672,14 @@ let exact: ReturnType<typeof exactResponse>;
 
 let dossier: ReturnType<typeof dossierResponse>;
 
+/** Which meeting payloads `/matchup/series` answers with. A Step 9 test that
+ *  needs the substitution meeting swaps the Bo3 for `SUB_PAYLOAD`; the
+ *  `beforeEach` puts it back, so no test can leak its own corpus. */
+let seriesPayloads: unknown[] = [];
+
 beforeEach(() => {
   requests.length = 0;
+  seriesPayloads = [BO3_PAYLOAD, BO1_PAYLOAD];
   dossier = dossierResponse();
   exact = exactResponse();
   team = teamResponse();
@@ -1541,7 +1718,9 @@ beforeEach(() => {
         // here exactly as it is on the wire.
         const params = new URLSearchParams(url.split("?")[1] ?? "");
         const wanted = params.get("match_id");
-        const found = [BO3_PAYLOAD, BO1_PAYLOAD].find((m) => m.match_id === wanted);
+        const found = (seriesPayloads as { match_id: string }[]).find(
+          (m) => m.match_id === wanted,
+        );
         if (found) {
           body = found;
           status = 200;
@@ -4330,6 +4509,234 @@ describe("Step 6 — the at-15 lane differential", () => {
     const shell = screen.getByTestId("dossier-meeting-shell");
     expect(shell).toContainElement(dossier);
     expect(within(shell).getByTestId("meeting-head")).toBeInTheDocument();
+  });
+});
+
+describe("Step 9 — the meeting's lineups", () => {
+  async function openMeeting(matchId = BO3_ID) {
+    await renderBoard();
+    const rows = within(await screen.findByTestId("dossier-meetings")).getAllByTestId(
+      "meeting-row",
+    );
+    fireEvent.click(rows.find((r) => r.dataset.matchId === matchId)!);
+    return screen.findByTestId("dossier-meeting-shell");
+  }
+
+  async function openSubbedMeeting() {
+    seriesPayloads = [SUB_PAYLOAD, BO1_PAYLOAD];
+    return openMeeting();
+  }
+
+  it("renders both teams", async () => {
+    const shell = await openMeeting();
+    const teams = within(shell).getAllByTestId("meeting-lineup-team");
+    expect(teams.map((t) => t.dataset.teamKey)).toEqual(["T1", "Bilibili Gaming"]);
+  });
+
+  it("follows the score line's order, not the payload's", async () => {
+    // The reader has just read `T1 2–1 Bilibili Gaming`. Laying the lineups
+    // out in the server's alphabetical team order would be a second, silently
+    // different order for the same two teams.
+    const shell = await openMeeting(BO1_ID);
+    const teams = within(shell).getAllByTestId("meeting-lineup-team");
+    expect(teams.map((t) => t.dataset.teamKey)).toEqual(["Bilibili Gaming", "T1"]);
+  });
+
+  it("renders the five standard positions, in role order", async () => {
+    const shell = await openMeeting();
+    const team = within(shell).getAllByTestId("meeting-lineup-team")[0];
+    expect(
+      within(team)
+        .getAllByTestId("lineup-position")
+        .map((p) => p.dataset.position),
+    ).toEqual(["Top", "Jungle", "Mid", "Bot", "Support"]);
+  });
+
+  it("names the actual players", async () => {
+    const shell = await openSubbedMeeting();
+    const team = within(shell)
+      .getAllByTestId("meeting-lineup-team")
+      .find((t) => t.dataset.teamKey === "T1")!;
+    expect(team.textContent).toContain("Doran (Choi Hyeon-joon)");
+    expect(team.textContent).toContain("Faker");
+  });
+
+  it("shows each player's champions in game order, labelled by game", async () => {
+    const shell = await openSubbedMeeting();
+    const doran = within(shell)
+      .getAllByTestId("lineup-player")
+      .find((p) => p.dataset.player === "Doran (Choi Hyeon-joon)")!;
+    const picks = within(doran).getAllByTestId("lineup-pick");
+    expect(picks.map((p) => p.dataset.gameNumber)).toEqual(["1", "2", "3"]);
+    expect(picks.map((p) => p.textContent)).toEqual([
+      "G1Olaf",
+      "G2K'Sante",
+      "G3Olaf",
+    ]);
+  });
+
+  it("keeps a repeated pick in both games it was taken in", async () => {
+    // A deduplicated set would erase the fact that he went BACK to it, which
+    // is the whole reason to print a sequence rather than a roster.
+    const shell = await openSubbedMeeting();
+    const doran = within(shell)
+      .getAllByTestId("lineup-player")
+      .find((p) => p.dataset.player === "Doran (Choi Hyeon-joon)")!;
+    expect(
+      within(doran)
+        .getAllByTestId("lineup-pick")
+        .filter((p) => p.textContent?.includes("Olaf")),
+    ).toHaveLength(2);
+    expect(within(doran).getByTestId("lineup-repeats")).toHaveTextContent("Olaf ×2");
+  });
+
+  it("summarises no frequency for a player who repeated nothing", async () => {
+    const shell = await openSubbedMeeting();
+    const faker = within(shell)
+      .getAllByTestId("lineup-player")
+      .find((p) => p.dataset.player === "Faker")!;
+    expect(within(faker).queryByTestId("lineup-repeats")).toBeNull();
+    expect(faker.textContent).not.toMatch(/×1/);
+  });
+
+  it("makes a participant change visible as two players at one position", async () => {
+    const shell = await openSubbedMeeting();
+    const bot = within(shell)
+      .getAllByTestId("lineup-position")
+      .find((p) => p.dataset.position === "Bot" && p.dataset.players === "2")!;
+    const players = within(bot).getAllByTestId("lineup-player");
+    expect(players.map((p) => p.dataset.player)).toEqual(["Gumayusi", "Poby"]);
+    // The change is legible from the game numbers themselves.
+    expect(within(players[0]).getAllByTestId("lineup-pick")).toHaveLength(2);
+    expect(within(players[1]).getAllByTestId("lineup-pick")).toHaveLength(1);
+    expect(within(bot).getByTestId("lineup-changed")).toHaveTextContent("2 players");
+  });
+
+  it("says a team used more than five players, and nothing about why", async () => {
+    const shell = await openSubbedMeeting();
+    const t1 = within(shell)
+      .getAllByTestId("meeting-lineup-team")
+      .find((t) => t.dataset.teamKey === "T1")!;
+    expect(within(t1).getByTestId("lineup-players-used")).toHaveTextContent(
+      "6 players used",
+    );
+  });
+
+  it("uses no substitution, starter or benching language anywhere", async () => {
+    // The corpus records that participation CHANGED. It records nothing about
+    // why, so no word here may suggest a reason.
+    const shell = await openSubbedMeeting();
+    const lineups = within(shell).getByTestId("meeting-lineups");
+    expect(lineups.textContent).not.toMatch(
+      /substitut|benched|starter|starting|dropped|replaced|rested|tactical/i,
+    );
+  });
+
+  it("uses no draft-order language anywhere", async () => {
+    // `sequence` is -1 on all 2,235,030 pick/ban rows. `G1` labels the GAME.
+    const shell = await openSubbedMeeting();
+    const lineups = within(shell).getByTestId("meeting-lineups");
+    expect(lineups.textContent).not.toMatch(
+      /first pick|counterpick|blind pick|draft|rotation|ban phase|priority/i,
+    );
+  });
+
+  it("renders an unrecorded champion honestly, and keeps the game", async () => {
+    const shell = await openSubbedMeeting();
+    const keria = within(shell)
+      .getAllByTestId("lineup-player")
+      .find((p) => p.dataset.player === "Keria")!;
+    const picks = within(keria).getAllByTestId("lineup-pick");
+    expect(picks).toHaveLength(3);
+    expect(picks[2]).toHaveTextContent("Champion not recorded");
+    expect(picks[2].textContent).not.toMatch(/Rakan|Nautilus/);
+  });
+
+  it("says a game's player record is incomplete rather than filling it in", async () => {
+    const shell = await openSubbedMeeting();
+    const blg = within(shell)
+      .getAllByTestId("meeting-lineup-team")
+      .find((t) => t.dataset.teamKey === "Bilibili Gaming")!;
+    expect(within(blg).getByTestId("lineup-incomplete")).toHaveTextContent(
+      "Player records are incomplete for Game 2.",
+    );
+  });
+
+  it("stays compact on a one-game meeting", async () => {
+    // No game numbers, no `1×` frequency, no series language: one game is
+    // simply the ten players who played it.
+    const shell = await openMeeting(BO1_ID);
+    const lineups = within(shell).getByTestId("meeting-lineups");
+    expect(lineups.textContent).toMatch(/^Lineups/);
+    expect(lineups.textContent).not.toMatch(/series/i);
+    expect(lineups.textContent).not.toMatch(/\bG1\b/);
+    expect(within(lineups).getAllByTestId("lineup-pick")).toHaveLength(10);
+    expect(within(lineups).queryAllByTestId("lineup-repeats")).toHaveLength(0);
+    expect(within(lineups).queryAllByTestId("lineup-changed")).toHaveLength(0);
+  });
+
+  it("carries no performance figure", async () => {
+    const shell = await openSubbedMeeting();
+    const lineups = within(shell).getByTestId("meeting-lineups");
+    expect(lineups.textContent).not.toMatch(
+      /kda|kills|deaths|assists|damage|gold|vision|cs\b|mvp|rating/i,
+    );
+  });
+
+  it("sits between the result and the games, and buries neither", async () => {
+    const shell = await openSubbedMeeting();
+    const order = ["meeting-head", "meeting-lineups", "meeting-games"].map((id) =>
+      within(shell).getByTestId(id),
+    );
+    expect(order[0].compareDocumentPosition(order[1])).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(order[1].compareDocumentPosition(order[2])).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("leaves the meeting's own result, event and scope untouched", async () => {
+    const shell = await openSubbedMeeting();
+    expect(within(shell).getByTestId("meeting-score").textContent).toContain("2");
+    expect(within(shell).getByTestId("meeting-head").textContent).toContain(
+      "LCK 2026 Rounds 1-2",
+    );
+    expect(within(shell).getByTestId("meeting-head").textContent).toContain("Patch 26.09");
+    expect(within(shell).getByTestId("meeting-scope")).toHaveTextContent("Within");
+  });
+
+  it("leaves every game row, and its way into the box score, in place", async () => {
+    const shell = await openSubbedMeeting();
+    const games = within(shell).getAllByTestId("meeting-game");
+    expect(games.map((g) => g.dataset.gameNumber)).toEqual(["1", "2", "3"]);
+    fireEvent.click(within(games[0]).getByTestId("meeting-game-open"));
+    expect((await screen.findAllByTestId("game-side")).length).toBe(2);
+  });
+
+  it("renders nothing at all when the server does not serve lineups", async () => {
+    // THE DEPLOY WINDOW. A client ahead of Railway reads the meeting it always
+    // did; it does not render an empty scaffold and it does not throw.
+    const { lineups: _omitted, ...withoutLineups } = SUB_PAYLOAD as Record<string, unknown>;
+    seriesPayloads = [withoutLineups, BO1_PAYLOAD];
+    const shell = await openMeeting();
+    expect(within(shell).queryByTestId("meeting-lineups")).toBeNull();
+    expect(within(shell).getAllByTestId("meeting-game")).toHaveLength(3);
+  });
+
+  it("renders nothing when the meeting's games carry no player rows", async () => {
+    const empty = {
+      ...SUB_PAYLOAD,
+      lineups: SUB_LINEUPS.map((team) => ({
+        ...team,
+        positions: [],
+        players_used: 0,
+        positions_changed: [],
+      })),
+    };
+    seriesPayloads = [empty, BO1_PAYLOAD];
+    const shell = await openMeeting();
+    expect(within(shell).queryByTestId("meeting-lineups")).toBeNull();
   });
 });
 
