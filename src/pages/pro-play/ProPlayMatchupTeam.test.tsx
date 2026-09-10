@@ -3677,6 +3677,183 @@ describe("the exact matchup study", () => {
     );
   });
 
+  // --- Step 10: where the matchup continues ---------------------------------
+  //
+  // WHAT THESE TESTS ARE ABOUT. Not that three links render — that the links
+  // CARRY THE MATCHUP, that they carry nothing else, and that neither of the
+  // two destinations Mogzy cannot yet hand this context to has quietly grown a
+  // button. A generic action is the failure mode this whole section exists to
+  // prevent, so its absence is asserted as hard as the presence of the rest.
+
+  it("offers Combat Lab with BOTH champions of the exact matchup", async () => {
+    const { study } = await openStudy();
+    const action = within(study).getByTestId("study-action-combat-lab");
+    expect(action).toHaveTextContent("Open in Combat Lab");
+    // Ornn is the subject, Ambessa the opponent — attacker then defender, in
+    // that order, because the study is written from the subject's side.
+    expect(action).toHaveAttribute("href", "/combat-lab?attacker=ornn&defender=ambessa");
+  });
+
+  it("names the champion in each Archives action", async () => {
+    const { study } = await openStudy();
+    const actions = within(study).getAllByTestId("study-action-mechanics");
+    expect(actions).toHaveLength(2);
+    expect(actions[0]).toHaveTextContent("Study Ornn Mechanics");
+    expect(actions[0]).toHaveAttribute("href", "/lol/docs/champions/ornn");
+    expect(actions[1]).toHaveTextContent("Study Ambessa Mechanics");
+    expect(actions[1]).toHaveAttribute("href", "/lol/docs/champions/ambessa");
+  });
+
+  it("carries a punctuation-heavy champion into every destination", async () => {
+    // The apostrophe is where a champion is silently lost. "K'Sante" must
+    // reach both surfaces as `ksante`, not as `k'sante` or `k-sante`.
+    exact = exactResponse({
+      subject: {
+        player_lp_page: "Doran",
+        display_name: "Doran",
+        champion_key: "K'Sante",
+        participation: "participated",
+        games_in_scope: 101,
+        champion_games_in_scope: 30,
+        teams_in_qualifying_games: ["T1"],
+      },
+      opposing: {
+        player_lp_page: "Bin",
+        display_name: "Bin",
+        champion_key: "Cho'Gath",
+        participation: "participated",
+        games_in_scope: 125,
+        champion_games_in_scope: 40,
+        teams_in_qualifying_games: ["Bilibili Gaming"],
+      },
+    });
+    const { study } = await openStudy();
+    expect(within(study).getByTestId("study-action-combat-lab")).toHaveAttribute(
+      "href",
+      "/combat-lab?attacker=ksante&defender=chogath",
+    );
+    const actions = within(study).getAllByTestId("study-action-mechanics");
+    expect(actions[0]).toHaveAttribute("href", "/lol/docs/champions/ksante");
+    expect(actions[0]).toHaveTextContent("Study K'Sante Mechanics");
+    expect(actions[1]).toHaveAttribute("href", "/lol/docs/champions/chogath");
+  });
+
+  it("offers one mechanics action for a mirror matchup", async () => {
+    // Two identical links is a bug the reader has to read twice to notice.
+    exact = exactResponse({
+      opposing: {
+        player_lp_page: "Bin",
+        display_name: "Bin",
+        champion_key: "Ornn",
+        participation: "participated",
+        games_in_scope: 125,
+        champion_games_in_scope: 40,
+        teams_in_qualifying_games: ["Bilibili Gaming"],
+      },
+    });
+    const { study } = await openStudy();
+    expect(within(study).getAllByTestId("study-action-mechanics")).toHaveLength(1);
+    // Combat Lab still takes both sides: a mirror is a real matchup.
+    expect(within(study).getByTestId("study-action-combat-lab")).toHaveAttribute(
+      "href",
+      "/combat-lab?attacker=ornn&defender=ornn",
+    );
+  });
+
+  it("still offers the actions when the pro record is empty", async () => {
+    // "Compare these two champions mechanically" is the same question whether
+    // they met four times or never — and it is the MORE useful offer when the
+    // historical answer is nothing.
+    exact = exactResponse({
+      exact: {
+        record: {
+          games: 0,
+          wins: 0,
+          losses: 0,
+          win_rate: null,
+          first_played_at: null,
+          last_played_at: null,
+        },
+        meetings: [],
+        meetings_total: 0,
+        result_sequence: [],
+        most_recent: null,
+      },
+    });
+    const { drawer } = await openStudyExpectingZero();
+    const study = within(drawer).getByTestId("dossier-study");
+    expect(within(study).getByTestId("study-action-combat-lab")).toBeInTheDocument();
+    expect(within(study).getAllByTestId("study-action-mechanics")).toHaveLength(2);
+  });
+
+  it("renders no action until both champions are known", async () => {
+    const { study } = await openStudy({ pick: false });
+    expect(within(study).queryByTestId("study-actions")).toBeNull();
+  });
+
+  it("offers NO quiz and NO pro-graph action", async () => {
+    // Neither destination can currently be handed this matchup, and a link
+    // that drops the champions on the way is worse than no link. There is no
+    // disabled button and no "coming soon" — the row simply does not carry
+    // them. This test is the guard on that promise.
+    const { study } = await openStudy();
+    const row = within(study).getByTestId("study-actions");
+    for (const href of row.querySelectorAll("a")) {
+      const to = href.getAttribute("href") ?? "";
+      expect(to.startsWith("/combat-lab") || to.startsWith("/lol/docs/champions/")).toBe(
+        true,
+      );
+    }
+    expect(row.textContent).not.toMatch(/quiz/i);
+    expect(row.textContent).not.toMatch(/graph/i);
+    expect(row.textContent).not.toMatch(/coming soon/i);
+    expect(row.querySelectorAll("button")).toHaveLength(0);
+    expect(row.querySelectorAll("[disabled]")).toHaveLength(0);
+  });
+
+  it("never implies the simulation recreates the pro game", async () => {
+    // Historical Pro Play evidence and mechanical simulation are two
+    // authorities. The action row must not blur them, and it must not carry a
+    // player, a team, a patch or a build into the simulator's URL.
+    const { study } = await openStudy();
+    const row = within(study).getByTestId("study-actions");
+    for (const word of [
+      "recreate",
+      "replay",
+      "rebuild",
+      "their build",
+      "this game",
+      "predict",
+      "simulate the",
+    ]) {
+      expect(row.textContent?.toLowerCase()).not.toContain(word);
+    }
+    const href =
+      within(study).getByTestId("study-action-combat-lab").getAttribute("href") ?? "";
+    const params = new URLSearchParams(href.split("?")[1]);
+    expect([...params.keys()].sort()).toEqual(["attacker", "defender"]);
+    // No player, team, patch, date or item rides along.
+    for (const leak of ["Doran", "Bin", "T1", "Bilibili"]) {
+      expect(href).not.toContain(leak);
+    }
+  });
+
+  it("keeps the actions quieter than the matchup itself", async () => {
+    // A continuation, not a conversion banner: the row must sit AFTER the
+    // record it continues from, and must not be a heading or a filled button.
+    const { study } = await openStudy();
+    const row = within(study).getByTestId("study-actions");
+    const record = within(study).getByTestId("study-record");
+    expect(record.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // And BEFORE the wider exploration, which is the less central question.
+    const examples = within(study).getByTestId("study-examples");
+    expect(row.compareDocumentPosition(examples) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const link of row.querySelectorAll("a")) {
+      expect(link.className).toContain("dossier-study__action");
+      expect(link.tagName).toBe("A");
+    }
+  });
+
   // --- the study lives in the URL -------------------------------------------
 
   it("restores a whole study from a pasted link", async () => {

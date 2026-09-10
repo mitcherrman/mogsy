@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AdSlot from "@/components/ads/AdSlot";
 import {
@@ -37,6 +37,10 @@ import {
   ArrowLeft,
   Users,
 } from "lucide-react";
+import {
+  parseCombatLabMatchup,
+  resolveCombatLabChampion,
+} from "@/lib/combat-lab/matchup-link";
 import SEOHead from "@/components/SEOHead";
 import ChampionVisual from "@/components/combat-lab/ChampionVisual";
 import CombatSidePanel, { ConfigRow, MoreSection } from "@/components/combat-lab/CombatSidePanel";
@@ -740,6 +744,53 @@ export default function CombatLab() {
     }
   }, [critModes, config.crit_mode]);
 
+  /* ------------------------------------------------------------------------
+     The champion deep link — /combat-lab?attacker=<slug>&defender=<slug>.
+
+     WHY THE URL AND NOT localStorage. Combat Lab's selection has always lived
+     in `combat-lab:last-config` and `combat-lab:target-setup`, which no other
+     page can address. Matchup Explorer needed to hand this page two named
+     champions, so the URL — the one piece of state a link, a refresh and the
+     Back button all agree on — is where the request arrives.
+
+     IT SETS CHAMPIONS AND NOTHING ELSE. Level, items, runes, ability ranks,
+     the sequence and every dummy value are left exactly as this reader last
+     left them. The link means "compare these two champions", never "recreate
+     the game they came from" — no build, level or patch crosses the seam from
+     historical evidence into mechanical simulation.
+
+     APPLIED ONCE PER REQUEST, and keyed on the request itself: changing the
+     champions by hand afterwards is not undone by a re-render. A refresh
+     re-reads the same URL and lands on the same two champions, which is what
+     makes a shared link mean one thing.
+
+     TOTAL. An unknown, malformed or absent slug resolves to null and the
+     current selection is left untouched — there is no error state to land in.
+     ---------------------------------------------------------------------- */
+  const [searchParams] = useSearchParams();
+  const linkedMatchup = useMemo(
+    () => parseCombatLabMatchup(searchParams),
+    [searchParams]
+  );
+  const linkedAttacker = useMemo(
+    () => resolveCombatLabChampion(champions, linkedMatchup.attacker),
+    [champions, linkedMatchup.attacker]
+  );
+  /* Resolved here, applied by the sandbox — the defender lives in that
+     component's own state, and resolving it twice against two copies of the
+     manifest is how the two halves of one link drift apart. */
+  const linkedDefender = useMemo(
+    () => resolveCombatLabChampion(champions, linkedMatchup.defender),
+    [champions, linkedMatchup.defender]
+  );
+  const appliedAttackerRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!linkedAttacker) return;
+    if (appliedAttackerRef.current === linkedAttacker) return;
+    appliedAttackerRef.current = linkedAttacker;
+    setConfig((c) => (c.champion === linkedAttacker ? c : { ...c, champion: linkedAttacker }));
+  }, [linkedAttacker]);
+
   const update = <K extends keyof SimulateRequest>(key: K, val: SimulateRequest[K]) =>
     setConfig((c) => ({ ...c, [key]: val }));
 
@@ -1274,6 +1325,7 @@ export default function CombatLab() {
             devMode={devMode}
             setDevMode={setDevMode}
             onCreditsChange={setCreditStatus}
+            linkedDefender={linkedDefender}
           />
         </TabsContent>
       </Tabs>
@@ -1925,6 +1977,10 @@ type SandboxProps = {
   setDevMode: React.Dispatch<React.SetStateAction<boolean>>;
   /** Reports the daily credit status upward so the page header can show it. */
   onCreditsChange?: (credits: CombatLabCreditStatus | null) => void;
+  /** The defender half of `?defender=`, already resolved against the champion
+   *  manifest by the page. Null when the URL named nobody, or named a champion
+   *  this build does not carry. */
+  linkedDefender?: string | null;
 };
 
 function buildAttackerStats(config: SimulateRequest): Record<string, number> {
@@ -1968,6 +2024,7 @@ function InteractiveSandbox({
   devMode,
   setDevMode,
   onCreditsChange,
+  linkedDefender,
 }: SandboxProps) {
   const [state, setState] = useState<Record<string, unknown> | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -2127,6 +2184,30 @@ function InteractiveSandbox({
       // Storage unavailable (private mode / disabled / quota); target setup simply won't persist.
     }
   }, [targetSetup]);
+  /* The defender half of the champion deep link.
+
+     IT ALSO SWITCHES THE TARGET MODE, and that is deliberate rather than
+     incidental. The default target is the dummy, and `targetChampionName` is
+     simply not read in that mode — writing a defender without switching would
+     store a selection the simulator never uses and show the reader a champion
+     it is not fighting. Setting a defender champion IS asking for
+     `target_champion`; nothing else about the target changes, so the level,
+     items, runes and every dummy figure are the ones already on screen.
+
+     Applied once per requested champion, so a reader who picks a different
+     defender afterwards keeps it. */
+  const appliedDefenderRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!linkedDefender) return;
+    if (appliedDefenderRef.current === linkedDefender) return;
+    appliedDefenderRef.current = linkedDefender;
+    setTargetSetup((s) =>
+      s.targetMode === "target_champion" && s.targetChampionName === linkedDefender
+        ? s
+        : { ...s, targetMode: "target_champion", targetChampionName: linkedDefender }
+    );
+  }, [linkedDefender]);
+
   const updateTargetSetup = <K extends keyof TargetSetupState>(
     key: K,
     value: TargetSetupState[K]

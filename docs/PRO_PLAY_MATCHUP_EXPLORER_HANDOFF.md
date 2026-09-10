@@ -2906,3 +2906,406 @@ any link out of a champion or player name.
    that this slice does not support.
 3. **The meeting as a destination from the board's own lanes.** Step 8's
    `Next recommended slice` still stands and is bigger than any of these.
+
+# Step 10 — Mogzy-native actions
+
+Implemented. From an exact matchup study, the reader can now continue into
+**Combat Lab** with both champions, or into the **Archives** with either one —
+without losing the champions they were investigating.
+
+```
+MATCHUP STUDY
+Ornn vs Ambessa · Doran vs Bin
+
+1–1  ·  2 games  ·  W L
+KDA 4.25   Gold @15 +286 median   CS @15 +7 median
+Games in which this player, on this champion, faced that player on that champion.
+
+Open in Combat Lab   Study Ornn Mechanics   Study Ambessa Mechanics
+                                            ↑ a quiet row of text links
+
+OTHER PRO EXAMPLES
+…
+```
+
+## What it closes
+
+Steps 1–9 built a complete chain of **evidence**: a board, a dossier, an exact
+matchup, its scouting figures, the games behind them, the meeting, the game and
+its 15-minute lane state. Every link in that chain answers a question about the
+record, and the chain terminates. A reader who has just read *"Doran's Olaf,
+against Kiin's K'Sante"* has one obvious next question the Explorer cannot
+answer — **and what actually happens when those two champions fight** — and
+Mogzy already owns the surfaces that answer it. Nothing connected them.
+
+## The audit — all four destinations, before any of them was wired
+
+The task was explicitly two-phase, and the audit is the part worth keeping:
+two of the four destinations were rejected on evidence, not on effort.
+
+| Destination | Route | Champion context today | Player / team | Deep link survives refresh | Backend needed | Gated | Small safe extension? | **Ship** |
+|---|---|---|---|---|---|---|---|---|
+| **Combat Lab** | `/combat-lab` | **none** — selection is localStorage-only | no | n/a (no URL state at all) | **no** | no (see below) | **yes** — two read-only query params | **YES** |
+| **Archives** | `/lol/docs/champions/:slug` | **one, complete** — path param | no | yes | **no** | no | none needed | **YES** |
+| **Quiz** | `/quiz` | **none** | no | n/a | would be needed | tutorial gate | **no** | **NO** |
+| **Pro Play graphs** | `/lol/pro-play/graphs` | **one** — `?focus=champion&e=<slug>` | player focus exists separately | yes | no | no | none needed | **NO** (deferred) |
+
+### Combat Lab — audited, then extended
+
+* **Route** `/combat-lab`; `/combat-lab/diagnostics` is a sibling, not a mode.
+* **Champion state is two separate localStorage records** and nothing else:
+  the attacker is `config.champion` in `combat-lab:last-config`, the defender
+  is `targetSetup.targetChampionName` in `combat-lab:target-setup`. They live
+  in **two different components** — the page owns the attacker, the sandbox
+  owns the defender — which is why the link is applied in two places over one
+  parsed value.
+* **There was no URL contract of any kind.** A link could name the page and not
+  the matchup. This is the one destination that needed an extension, and it is
+  the one destination that can hold a *matchup* rather than a champion.
+* **A matchup mode already exists** — `targetMode: "target_champion"` — so
+  nothing was designed; the link selects a mode the product already had.
+* **Champion vocabulary is `/api/meta/champions`**, which is `SELECT name FROM
+  champions` verbatim — the same 173-row table the Archives resolve against.
+* **Not gated.** The 1v1 sandbox is open to everyone (the page signs in
+  anonymously); daily credits meter *running a simulation*, and Premium gates
+  **Team Sim (up to 5v5)**, which this link does not touch. Arriving,
+  selecting two champions and reading their stats needs no entitlement, so no
+  Premium marker is shown and no gate was altered.
+* **The sandbox is the default tab** and its tab strip is hidden, so a linked
+  defender lands where the reader is looking.
+
+### Archives — audited, wired as-is
+
+* `/lol/docs/champions/:slug` renders the full champion document: base stats
+  and growth, a level projection, every ability with its formulas, and the
+  verification state. It is **not** a landing page, and `/lol/docs` root was
+  never a candidate.
+* The backend's `_resolve_champion` is already **slug-based and
+  punctuation-tolerant** (`routes/docs.py`), matching the frontend's
+  `championSlug`. `ksante` was loaded live and returned K'Sante's real page.
+* No query state, nothing to add, nothing to gate. **Zero lines of Archives
+  code were changed.**
+
+### Quiz — deferred, and it is a real gap, not an oversight
+
+`/quiz` accepts **no champion, matchup, family or category parameter**. Its
+only query params are `role_return` and `play_return` — both navigation
+bookkeeping. Practice subjects are chosen *in the page* from the category rail,
+and the categories are subject families ("Champion Basics", "Cooldowns"), not
+champions. There is no "questions about Olaf" pool to address and no
+matchup-shaped question family.
+
+Shipping `Quiz This Matchup` would therefore have meant either dropping the
+champions at the door — the exact failure this step exists to avoid — or
+building a question-context architecture, which the task placed out of scope.
+**Deferred.** It becomes possible the day the quiz runtime accepts a champion
+filter, and not before.
+
+### Pro Play graphs — deferred deliberately, though it would have worked
+
+This is the one that was rejected on **product** grounds rather than technical
+ones, so the reasoning is recorded rather than summarized.
+
+* It **would** work. `/lol/pro-play/graphs` is fully URL-driven
+  (`?focus=champion&e=<slug>`), champion entity ids are the **same slug** this
+  step already computes, and the entity index carries **172 champions — every
+  champion key in the pro corpus**. `champion-players:ksante` was built locally
+  and returned a real dataset. It is not gated.
+* It was still not shipped, for three reasons:
+  1. **It is a lateral move, not a continuation.** The reader is already inside
+     Pro Play. "Open in Combat Lab" crosses into a different Mogzy capability;
+     this stays in the same one.
+  2. **The question it answers is one the Explorer answers better.** The
+     champion focus graphs *which players play this champion over time* — and
+     the reader is two clicks from a dossier that answers that about the exact
+     players they care about.
+  3. **It is single-champion.** It would drop half of the matchup, which is
+     precisely the context this step exists to preserve.
+* A **cold champion dataset took 4.2 s to build** locally, and the route can
+  answer `503 BuildCapacityError` under load. That is acceptable for a page a
+  reader chose; it is a poor first impression for an action offered mid-read.
+
+**This is the strongest deferred candidate and the recommended next slice** —
+but it should arrive as a *matchup-shaped* graph, not as a link that keeps one
+champion.
+
+## The Combat Lab deep link — the one contract added
+
+```
+/combat-lab?attacker=<champion-slug>&defender=<champion-slug>
+```
+
+`src/lib/combat-lab/matchup-link.ts` owns it end to end: build, parse, resolve.
+
+**It says which champions, and nothing else.** Level, items, runes, ability
+ranks, the sequence, the crit mode, the target profile and every dummy figure
+are left exactly as the reader last left them. A test reads all of them back
+after applying a link and asserts each is still its default.
+
+**It also switches the target mode**, and that is the one non-obvious part.
+The stock target is `target_dummy`, in which `targetChampionName` is simply
+never read — writing a defender without switching would store a selection the
+simulator never uses and paint a portrait of a champion it is not fighting.
+Setting a defender champion **is** asking for `target_champion`; nothing else
+about the target changes.
+
+**Applied once per requested champion**, keyed on the resolved name. A reader
+who changes champions by hand afterwards is not overridden by a re-render.
+
+**The URL is the state, so a refresh is the same screen.** Verified in a real
+browser: reload at `?attacker=olaf&defender=ksante` and both records still say
+Olaf and K'Sante. The consequence — worth stating rather than discovering — is
+that a reader who edits the champions *and then refreshes* gets the linked pair
+back, because the address bar is what a shared link means.
+
+**Totally fail-safe.** Every malformed, unknown, over-long or absent value
+resolves to "no champion requested" and the current selection is untouched.
+There is no error state to land in. `<script>`, `../../etc/passwd`,
+`olaf%2Cksante`, `-olaf`, `olaf--sol`, a 41-character slug and a raw
+`K'Sante` are each pinned by a test; casing and stray whitespace are **not**
+rejected, because neither is identity.
+
+## Champion identity — the slug, and the reason it matters
+
+The Explorer speaks Leaguepedia's `champion_key`. Combat Lab and the Archives
+both key off the `champions` table. **They are not the same strings**, and a
+naive comparison drops a champion:
+
+| | Explorer (`champion_key`) | `champions` table | slug |
+|---|---|---|---|
+| | `Dr. Mundo` | `Dr Mundo` | **`dr-mundo`** |
+
+`championSlug` (`src/lib/league-docs/api.ts`) — the mapper the League Docs
+pages and the backend's own `champion_slug` already share — is the single
+join. **No new mapper was written**, and no string matching was added.
+
+The mapping was **measured, not assumed**, against the real corpus:
+
+* **172 distinct `champion_key` values** in `pro_canonical_player_games`.
+* **172 of 172 resolve** into the 173-champion table by slug. Unmapped: **0**.
+* **Slug collisions across all 173 champions: 0.**
+* Graph1's champion entity index uses the **same 172 slugs**, so the deferred
+  fourth destination needs no new identity work whenever it is picked up.
+* Both stores use the short spellings — `Nunu`, `Renata`, `Wukong` (never
+  `MonkeyKing`). Verified by query, not by memory.
+
+`Dr. Mundo → dr-mundo → "Dr Mundo"` was then driven end to end in a real
+browser, which is the case a unit test alone would not have proved.
+
+## Where the actions are, and what they look like
+
+**One placement, and only one.** Inside the exact matchup study, after the
+record, the sample figures and the served definition, and **before** "other pro
+examples". The reader finishes the matchup they asked about before anything
+offers to take them elsewhere, and the wider exploration stays after the
+narrower continuation. A test asserts both orderings from the DOM.
+
+**Nothing was added to the board, the dossier, the Meeting or the Game.** The
+exact study is where both champions are known *and* the reader has expressed a
+specific matchup intent. The player × champion dossier was considered for a
+single-champion `Study Ornn` and rejected for this slice: the dossier's
+question is "this player on this champion against these teams", and a champion
+mechanics link there answers a question nobody asked at that depth.
+
+**It is a row of text links, not a button bar.** One wrapping flex row,
+0.66 rem, the dossier's own antique gold, an underline, no fill, no radius, no
+shadow, no icon and no colour the drawer does not already use. Lighter than the
+players' names, which the section's own contract requires. A test asserts the
+row contains **zero `<button>` elements** and that every link carries the
+action class.
+
+**Only supported destinations render.** There are no disabled buttons, no
+"coming soon" and no fourth greyed-out action. A test walks every `<a>` in the
+row and fails if its href is anything but `/combat-lab` or
+`/lol/docs/champions/`, and separately fails on the words *quiz*, *graph* and
+*coming soon*.
+
+**Labels name the champion.** `Open in Combat Lab`, `Study Ornn Mechanics`,
+`Study Ambessa Mechanics`. Never *Learn more*, *Explore* or *Analyze*.
+
+**A mirror matchup renders one mechanics action, not two identical links** —
+and still offers Combat Lab with both sides, because a mirror is a real
+matchup.
+
+**They render on the zero state too.** "Compare these two champions
+mechanically" is the same question whether the players met four times or never,
+and it is arguably the *more* useful offer when the pro record is empty.
+
+## The seam this row is careful not to blur
+
+Historical Pro Play evidence and mechanical simulation are **two authorities**,
+and the link is written so it cannot be read as one determining the other.
+
+* The Combat Lab URL carries **exactly two keys**, `attacker` and `defender`.
+  A test enumerates them and separately asserts the href contains none of
+  `Doran`, `Bin`, `T1` or `Bilibili`.
+* **No build, item, rune, level, patch or date crosses.** No pro build is
+  imported, no level is inferred from a source game, and the historical game's
+  item state is never used.
+* **No player-specific simulation is implied.** The action means *compare these
+  champions*; it does not mean *recreate this game*. A test fails on
+  *recreate*, *replay*, *rebuild*, *their build*, *this game*, *predict* and
+  *simulate the* appearing in the row.
+
+Recreating a historical game state remains a **separate future feature**, and a
+much larger one.
+
+## Navigation, history and mobile
+
+* **React Router `<Link>`, same tab.** No `target="_blank"`, matching every
+  other navigation in the Explorer.
+* **Back returns to the whole study.** Verified live: `/lol/pro-play/matchup
+  ?mode=team&team_a=T1&team_b=Gen.G&focus_player=Doran&focus_champion=Olaf
+  &vs_player=Kiin&vs_champion=K%27Sante` → Combat Lab → Back → **byte-identical
+  URL, study restored**. This works because Step 3 already put the open study
+  in the address bar; Step 10 added no history handling of its own.
+* **375 px.** Measured in a real browser with the roster's longest label
+  (`Study Aurelion Sol Mechanics`): the row wraps to **2 lines, 46 px tall, no
+  label truncated, no horizontal page overflow**. Half a champion's name is not
+  a destination, so the row wraps rather than scrolls or ellipsizes.
+
+## Analytics — deliberately none
+
+`trackFunnelEvent` exists and is the house helper, but **no Pro Play surface
+has ever emitted an event** — not the board, the dossier, the exact study, the
+evidence drilldown, the Meeting or the Game. Instrumenting only these two
+actions would produce a dataset that reads as "the Explorer's only navigation"
+and would break this surface's own consistency for one row of links. Whether
+Pro Play should be instrumented at all is a product-wide decision, not a
+side effect of adding an action. **No analytics system was introduced.**
+
+## Backend
+
+**None. Zero backend files changed.** Step 10 is entirely frontend routing and
+context. Both live destinations already served everything they needed.
+
+## Real flows validated (2026-09-10)
+
+Driven in a real browser against the dev server (production backend):
+
+1. **`?attacker=olaf&defender=ksante`** — Attacker **Olaf**, Defender
+   **K'Sante**, header reads `Olaf vs K'Sante`, defender mode **Champion
+   Defender**, both at level 18.
+2. **Refresh** — both records re-read from the URL, unchanged; every default
+   still default.
+3. **Punctuation, both sides** — `?attacker=dr-mundo&defender=chogath` resolved
+   to **`Dr Mundo`** and **`Cho'Gath`**. This is the cross-authority spelling
+   case, live.
+4. **`?attacker=kaisa`** alone — attacker **`Kai'Sa`**, target left on the
+   dummy. One champion is still a destination.
+5. **Malformed** — `?attacker=%3Cscript%3E&defender=olaf%2Cksante` left the
+   champion empty and the target on the dummy. Page rendered normally.
+6. **Archives** — `/lol/docs/champions/ksante` returned K'Sante's real
+   document (stats, growth, abilities), not a landing page.
+7. **Back** — the full Doran · Olaf vs Kiin · K'Sante round trip above.
+8. **375 px** — measured, above.
+
+**Not driven live: the action row inside a real study.** The Explorer's
+`/matchup/*` routes are admin-gated (`403`, confirmed by fetching), this
+session held no production admin key, and the Explorer's backend routes are not
+on the backend branch this session was on. The row is covered by 20 jsdom tests
+against the real component and the real payload shape, and the two destinations
+it points at were both opened for real. Nobody has seen the row rendered
+against live data — do not claim otherwise until someone with a key has.
+
+## Tests
+
+**Frontend — 42 new, no backend tests (no backend change).**
+
+| File | Tests |
+|---|---|
+| `src/lib/combat-lab/matchup-link.test.ts` | **12 new.** Slug normalization for every awkward roster name, the both-spellings `Dr. Mundo` / `Dr Mundo` bridge, "only these two keys", round trip, 10 malformed inputs, manifest resolution, unknown/absent. |
+| `src/pages/CombatLab.deeplink.test.tsx` | **10 new.** Both champions selected, target mode switched, **every other default asserted untouched**, punctuation both sides, the cross-authority name, refresh, and four fail-safe cases. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | **20 new** (261 → **281 passed**). Both champions in the Combat Lab href, champion-named Archives labels, punctuation, mirror matchup, the zero state, nothing before both champions are known, **no quiz/graph/disabled action**, **no recreate-the-game claim and no player/team leak**, and the DOM ordering of the row. |
+
+**Suites re-run, all green:**
+
+* Board suite **281 passed** (was 261).
+* All Pro Play + Combat Lab + League Docs + Graph1 page suites: **31 files,
+  1082 passed, 0 failed**.
+* All seven Combat Lab suites together: **74 passed** — the six pre-existing
+  ones unchanged.
+* Typecheck: **no error in any file this step touched.** The repo's 13
+  pre-existing errors are unchanged.
+* Build: green.
+
+### A trap worth recording
+
+**jsdom in this repo exposes a `localStorage` object with no methods on it.**
+Every `setItem` in Combat Lab hits its own try/catch and is silently dropped,
+so a test that asserts persisted state passes *vacuously*. `CombatLab.deeplink.test.tsx`
+installs a real in-memory `localStorage` in `beforeEach` for exactly this
+reason. Any future test that reads a `combat-lab:*` record must do the same, or
+it is testing nothing.
+
+## Deploy state — Step 10 (2026-09-10)
+
+| | SHA | Where |
+|---|---|---|
+| Backend | — | **unchanged**, nothing to deploy |
+| Frontend | see below | branch `proplay/step10-native-actions`, **NOT merged, NOT published** |
+
+**Built on `dca12696`** (Step 9's tip), which is itself **not merged into
+`main`** — Steps 7, 8 and 9 are a branch chain
+(`proplay/exact-aggregate-fe` → `proplay/exact-evidence-fe` →
+`proplay/meeting-enrichment-fe`). Step 10 extends that chain and inherits its
+merge state.
+
+**No deploy-ordering hazard, in any direction.** There is no backend change,
+and `/combat-lab` ignores query parameters it does not read — the currently
+published Combat Lab would simply open on the reader's last selection if it
+ever met a Step 10 link. Nothing was removed from any payload or any route.
+
+## Files — Step 10
+
+### Backend
+
+None.
+
+### Frontend — `/Users/macmoney/mogsy`
+
+| File | Change |
+|---|---|
+| `src/lib/combat-lab/matchup-link.ts` | **New.** `buildCombatLabMatchupUrl`, `parseCombatLabMatchup`, `resolveCombatLabChampion`, `COMBAT_LAB_PARAM`. |
+| `src/lib/combat-lab/matchup-link.test.ts` | **New.** 12 tests. |
+| `src/pages/CombatLab.tsx` | `useSearchParams`; `linkedMatchup` / `linkedAttacker` / `linkedDefender`; the attacker effect in the page, the defender effect in the sandbox; one new `SandboxProps` field. |
+| `src/pages/CombatLab.deeplink.test.tsx` | **New.** 10 tests. |
+| `src/components/pro-play/dossier/MatchupStudy.tsx` | `StudyActions`, rendered between the definition and "other pro examples". |
+| `src/index.css` | `.dossier-study__actions`, `.dossier-study__action`. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 20 new tests. |
+
+## Deliberately not done
+
+* Any **fourth action**, disabled placeholder or "coming soon".
+* **Actions on the board, the dossier, the Meeting or the Game.**
+* **Importing pro builds, runes, items or levels** into Combat Lab.
+* **Historical game reconstruction** in the simulator.
+* Any **new question generation, graph or analytics system**.
+* Any **subscription, entitlement or gating change**.
+* Any **Ranked, Daily, RR1 or LIVE1** wiring.
+* Any **pretty-URL** work.
+
+## Next recommended slice
+
+**A matchup-shaped Pro Play graph, and only then the action that opens it.**
+The graphs page is the strongest deferred destination and needs no identity
+work — the slugs already line up — but linking it today would hand it one
+champion and drop the other. The slice worth doing is the one that makes
+`focus=champion` accept a *pair*, or that gives the champion-vs-champion
+matchup its own family. Then `Explore Pro Data` is a continuation rather than a
+lateral step, and it ships in an afternoon.
+
+Do **not** ship a single-champion graph link first. It is the cheap version of
+this step's exact mistake.
+
+## Next task
+
+1. **The matchup-shaped graph**, above.
+2. **A champion filter in the quiz runtime**, which is the single thing
+   standing between the Explorer and `Quiz This Matchup`. Small, and it belongs
+   to the quiz workstream, not this one.
+3. Everything still open from Step 9: the ban summary if it can be made honest,
+   per-game side, and the meeting as a destination from the board's own lanes.
+4. **The pretty-URL architecture.** Still a rename.
+5. **Merge the Step 7–10 chain into `main`**, then publish. Four steps are
+   sitting on an unmerged branch chain.

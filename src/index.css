@@ -12155,6 +12155,41 @@ html.hub-commons-in-view .hextech-ambience-layer {
   font-variant-numeric: tabular-nums;
 }
 
+/* Step 10 — the continuation row.
+
+   A ROW OF TEXT, NOT A ROW OF BUTTONS. It borrows the dossier's own gold for
+   the link colour and takes no fill, no shadow and no radius large enough to
+   read as a control. At 0.66rem it sits between the fineprint it follows and
+   the record above it, so it is findable and never the loudest thing in the
+   drawer — the matchup stays primary.
+
+   IT WRAPS RATHER THAN SCROLLS. Three actions and a long champion name
+   ("Study Aurelion Sol Mechanics") overflow 375px in one line, so the row is a
+   wrapping flex and each action keeps its whole label. Nothing here is
+   truncated: half a champion's name is not a destination. */
+.proplay-dossier .dossier-study__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.85rem;
+  margin-top: 0.1rem;
+}
+.proplay-dossier .dossier-study__action {
+  font-size: 0.66rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--dsr-gold, #9a7b3f);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(154, 123, 63, 0.35);
+  /* A touch target that clears 375px thumbs without giving the row the height
+     of a button bar. */
+  padding: 0.15rem 0;
+}
+.proplay-dossier .dossier-study__action:hover,
+.proplay-dossier .dossier-study__action:focus-visible {
+  color: var(--dsr-ink);
+  border-bottom-color: var(--dsr-gold, #9a7b3f);
+}
+
 .proplay-dossier .dossier-study__sources {
   display: flex;
   flex-direction: column;

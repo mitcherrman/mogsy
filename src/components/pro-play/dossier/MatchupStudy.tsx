@@ -29,6 +29,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   fetchExactMatchup,
@@ -46,6 +47,9 @@ import {
   type OtherProExample,
   type PoolChampion,
 } from "@/lib/pro-play/matchupApi";
+
+import { championSlug } from "@/lib/league-docs/api";
+import { buildCombatLabMatchupUrl } from "@/lib/combat-lab/matchup-link";
 
 import type { ChampionSelection } from "./BoardSelection";
 import { ChampionIcon, PlayerPortrait } from "./DossierMedia";
@@ -326,6 +330,101 @@ function exactCoverageNote(stats: ExactStatistics): string | null {
   }
   if (!parts.length) return null;
   return `${parts.join(". ")}.`;
+}
+
+/**
+ * STEP 10 — where this matchup continues, in the rest of Mogzy.
+ *
+ * WHAT THIS IS FOR. Every layer above answers a question about the RECORD:
+ * who played it, how often, what the sample looked like, which games it was
+ * measured over. None of them answers "and what actually happens when these
+ * two champions fight", which is the question a reader who has just read
+ * "Doran's Olaf, 3-1 against Kiin's K'Sante" tends to ask next. Mogzy already
+ * has the surfaces that answer it. This is the seam.
+ *
+ * A CONTINUATION, NOT A CALL TO ACTION. It is one quiet row of text links in
+ * the drawer's own voice, placed after the record, the sample and the
+ * definition and BEFORE "other pro examples" — a reader still reads who,
+ * which champions and how the matchup went before anything offers to take
+ * them elsewhere. No card, no filled button, no colour this dossier does not
+ * already use, and nothing here is heavier than the players' names.
+ *
+ * ONLY DESTINATIONS THAT KEEP THE CHAMPIONS ARE HERE. Combat Lab takes both
+ * (`?attacker=&defender=`); the Archives take one each
+ * (`/lol/docs/champions/:slug`). Quiz and the Pro Play graphs are absent on
+ * purpose — neither can currently be handed this matchup, and a link that
+ * drops the champions on the way is worse than no link. There are no
+ * disabled buttons and no "coming soon".
+ *
+ * THE CHAMPIONS ARE THE ONLY THING THAT CROSSES. No player, no team, no
+ * patch, no date, no build, no statistic. Historical pro evidence and
+ * mechanical simulation are two authorities and this row is careful not to
+ * imply one determines the other: the Combat Lab link means "compare these
+ * champions", never "recreate this game". A test asserts the words that would
+ * make the other claim cannot appear here.
+ *
+ * IDENTITY IS THE SLUG, NEVER THE DISPLAY STRING. `champion_key` is
+ * Leaguepedia's spelling; the Archives and Combat Lab both key off the
+ * `champions` table, which really does spell one champion differently
+ * ("Dr. Mundo" / "Dr Mundo"). `championSlug` — the mapper League Docs and the
+ * backend's own `champion_slug` already share — collapses both to `dr-mundo`,
+ * and every champion key in the pro corpus resolves through it. A key that
+ * somehow produces no slug simply renders no action for that side.
+ */
+function StudyActions({
+  subjectChampion,
+  opposingChampion,
+}: {
+  /** The server's confirmed champion keys, not the local selection — the row
+   *  must name the matchup that was actually measured. */
+  subjectChampion: string;
+  opposingChampion: string;
+}) {
+  const subjectSlug = subjectChampion ? championSlug(subjectChampion) : "";
+  const opposingSlug = opposingChampion ? championSlug(opposingChampion) : "";
+
+  // Both champions are needed to state a matchup; one of them is enough to
+  // study a champion. Neither is a row worth rendering.
+  const combatLabUrl =
+    subjectSlug && opposingSlug
+      ? buildCombatLabMatchupUrl({
+          attacker: subjectChampion,
+          defender: opposingChampion,
+        })
+      : null;
+
+  // A mirror matchup is one champion, not two identical links.
+  const mechanics: { slug: string; name: string }[] = [];
+  if (subjectSlug) mechanics.push({ slug: subjectSlug, name: subjectChampion });
+  if (opposingSlug && opposingSlug !== subjectSlug) {
+    mechanics.push({ slug: opposingSlug, name: opposingChampion });
+  }
+
+  if (!combatLabUrl && !mechanics.length) return null;
+
+  return (
+    <div className="dossier-study__actions" data-testid="study-actions">
+      {combatLabUrl ? (
+        <Link
+          className="dossier-study__action"
+          data-testid="study-action-combat-lab"
+          to={combatLabUrl}
+        >
+          Open in Combat Lab
+        </Link>
+      ) : null}
+      {mechanics.map((champion) => (
+        <Link
+          key={champion.slug}
+          className="dossier-study__action"
+          data-testid="study-action-mechanics"
+          to={`/lol/docs/champions/${encodeURIComponent(champion.slug)}`}
+        >
+          Study {champion.name} Mechanics
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 /**
@@ -941,6 +1040,18 @@ export default function MatchupStudy({
           <p className="dossier-drawer__fineprint" data-testid="study-definition">
             {data.definitions.exact_matchup}
           </p>
+          {/* STEP 10. Placed after the definition and before "other pro
+              examples": the reader has finished the matchup they asked about
+              and has not yet started a wider one. NOT conditioned on the
+              sample size — "compare these two champions mechanically" is the
+              same question whether they met four times or never, and it is
+              arguably the more useful offer when the pro record is empty. The
+              server's champion keys, so the row names the matchup that was
+              actually measured. */}
+          <StudyActions
+            subjectChampion={data.subject.champion_key}
+            opposingChampion={data.opposing.champion_key}
+          />
           {/* NOT conditioned on the sample size. "Who else has played this
               matchup" is a question in its own right, not a consolation for an
               empty one. */}
