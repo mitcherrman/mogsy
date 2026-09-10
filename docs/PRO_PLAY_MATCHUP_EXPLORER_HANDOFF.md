@@ -2046,8 +2046,27 @@ and the same aggregates on the Meeting list or the five-lane board.
 
 | | SHA | Where |
 |---|---|---|
-| Backend | `db9245c9` | `master`, Railway auto-deploys |
-| Frontend | see the commit below | `main`, Lovable publishes on the owner's click |
+| Backend | `db9245c9` | **pushed to `master`**, Railway auto-deploys |
+| Frontend | `1aa346fd` | **pushed to `main`**, NOT published |
+
+### Live state, checked 2026-09-09 by fetching, not assumed
+
+* **`/exact` answers 403 on production** while an invented sibling under the
+  same prefix answers 404 — the usual discriminator. **This proves nothing new
+  about Step 7.** `/exact` has been a registered route since Step 3; Step 7
+  added a FIELD INSIDE its admin-gated payload, and this session held no
+  production admin key. The backend is pushed and Railway auto-deploys
+  `master`; **nobody has read the deployed payload.** Do not claim otherwise
+  until someone with a key does. There is still no deployed-SHA endpoint on
+  this service — `/api/version` returns a static string and is evidence of
+  nothing.
+* **Step 6's frontend IS now published**, which supersedes Step 6's own note.
+  `mogzy.lol`'s current chunk `ProPlayMatchup-DNVkzkZs.js` contains
+  `lane_checkpoint`, `not_reached`, `game-dossier` and `Recent Meetings`.
+* **Step 7's frontend is NOT published.** The same chunk contains **none** of
+  `study-sample-stats`, `Exact sample`, `gold_diff_at15`, `cs_diff_at15` or
+  `study-sample-coverage`. Publishing is the owner's click in Lovable; a push
+  is not a publish.
 
 **No deploy-ordering hazard, in either direction.** The backend change is
 purely additive over the wire — one new key on an existing payload — and the
