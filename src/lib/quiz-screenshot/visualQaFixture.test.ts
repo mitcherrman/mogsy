@@ -60,8 +60,54 @@ describe("visual QA fixture — coverage", () => {
       // valuable of the two, because it is the one a future pass would be
       // tempted to "fix" by building a path from the spell name.
       "vq-17", "vq-18",
+      // MAA1 Phase 4 — the LANE MINION subject, the first depictable subject
+      // whose family also asks how many of the thing there are. vq-19 melee
+      // and vq-20 caster are ordinary class-stat rows; vq-21 (cannon wave
+      // size) and vq-22 (super-minion wave size) are the answer-leak cases and
+      // are the reason the art is a single-unit portrait. vq-23 (a generic
+      // wave) and vq-24 (a STRUCTURE row in the same key prefix) carry no
+      // presentation at all — both are declared refusals, not gaps.
+      "vq-19", "vq-20", "vq-21", "vq-22", "vq-23", "vq-24",
     ]);
   });
+
+  // ---- MAA1 Phase 4 — the lane minion -------------------------------------
+
+  it.each([
+    ["vq-19", "melee", "Melee Minion"],
+    ["vq-20", "caster", "Caster Minion"],
+    ["vq-21", "siege", "Cannon Minion"],
+    ["vq-22", "super", "Super Minion"],
+  ])("%s carries a minion CLASS subject and nothing countable", (id, canonicalId, name) => {
+    const subject = (byId.get(id) as any).presentation.assets.subject;
+    expect(subject.type).toBe("minion");
+    expect(subject.id).toBe(canonicalId);
+    expect(subject.name).toBe(name);
+    expect(subject.icon).toBe(`assets/minions/${canonicalId}.png`);
+    // Identity only. A number in this blob would be a wave size or a stat.
+    expect(Object.keys(subject).sort()).toEqual(["icon", "id", "name", "type"]);
+  });
+
+  it.each([
+    ["vq-21", "7"],
+    ["vq-22", "8"],
+  ])("%s asks for a minion COUNT and its payload holds no count", (id, answer) => {
+    const row = byId.get(id) as any;
+    expect(row.question_text.toLowerCase()).toContain("how many total minions");
+    expect(row.choices).toContain(answer);
+    expect(JSON.stringify(row.presentation)).not.toContain(answer);
+  });
+
+  it.each([["vq-23"], ["vq-24"]])(
+    "%s is a DECLARED refusal and carries no presentation",
+    (id) => {
+      // vq-23: a generic wave — the approved wiki's only whole-wave image is a
+      // countable lane scene. vq-24: a turret row, which shares the
+      // environment_mechanic key prefix with minions and is still denied.
+      // Neither absence is a gap to be filled by inferring a subject.
+      expect((byId.get(id) as any).presentation).toBeUndefined();
+    },
+  );
 
   // ---- RR1 summoner-spell convergence -------------------------------------
 

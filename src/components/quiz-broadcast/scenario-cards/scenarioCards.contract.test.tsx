@@ -571,3 +571,98 @@ describe("an ordinary summoner-spell question (summoner_spell_cooldown)", () => 
     expect(resolveBandProfile(noSubject, "band", null)).toBe("compact");
   });
 });
+
+// ======================================= MAA1 Phase 4 — the lane minion
+
+/**
+ * The minion subject (vq-19 … vq-24).
+ *
+ * Every payload below is VERBATIM `presentation_for_question()` output for a
+ * real `environment_mechanic` row, so a backend contract change fails here.
+ *
+ * WHAT MAKES THIS FAMILY DIFFERENT FROM EVERY OTHER SUBJECT
+ * Four of these questions ask HOW MANY MINIONS A WAVE HOLDS. The art is a
+ * single-unit 128×128 portrait and the answer is a count, so the picture
+ * cannot carry it — the same rule MAA1 Phase 3 shipped for the Ancient Krug
+ * against "how many monsters must be killed to clear the Krug camp?". The
+ * assertions therefore check both halves: the class IS named, and the number
+ * is NOT.
+ */
+describe("MinionScenarioSubject — MAA1 Phase 4", () => {
+  const source = (id: string) => asScenarioSource(fixture(id));
+
+  it.each([
+    ["vq-19", "Melee Minion", "assets/minions/melee.png"],
+    ["vq-20", "Caster Minion", "assets/minions/caster.png"],
+    ["vq-21", "Cannon Minion", "assets/minions/siege.png"],
+    ["vq-22", "Super Minion", "assets/minions/super.png"],
+  ])("%s classifies as a minion and resolves its portrait", (id, label, icon) => {
+    const selection = selectScenario(source(id), false, null);
+    expect(selection.card).toBe("collectible");
+    if (selection.card !== "collectible") return;
+    expect(selection.kind).toBe("minion");
+    expect(selection.label).toBe(label);
+    expect(selection.iconUrl).toContain(icon);
+  });
+
+  it.each([
+    ["vq-19", "Melee Minion"],
+    ["vq-20", "Caster Minion"],
+    ["vq-21", "Cannon Minion"],
+    ["vq-22", "Super Minion"],
+  ])("%s renders the shared collectible frame labelled MINION", (id, label) => {
+    const { container } = renderCard(fixture(id));
+    const text = container.textContent ?? "";
+    expect(text.toUpperCase()).toContain("MINION");
+    expect(text).toContain(label);
+    const imgs = [...container.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? "");
+    expect(imgs.some((src) => src.includes("assets/minions/"))).toBe(true);
+  });
+
+  it.each([
+    ["vq-19", "430"],
+    ["vq-20", "19.5"],
+    ["vq-21", "7"],
+    ["vq-22", "8"],
+  ])("%s never prints its answer, before or at the reveal", (id, answer) => {
+    for (const reveal of [false, true]) {
+      const { container, unmount } = renderCard(fixture(id), reveal, answer);
+      expect(container.textContent ?? "").not.toContain(answer);
+      unmount();
+    }
+  });
+
+  it("is premise art, so the spoiler gate never hides it", () => {
+    // `presentation.spoiler === false` short-circuits isSpoilerSubject before
+    // any of its text heuristics run — which matters here, because "how many
+    // total minions…" would otherwise meet the identification-intent pattern.
+    for (const id of ["vq-19", "vq-21", "vq-22"]) {
+      expect(selectScenario(source(id), false, "7").card).toBe("collectible");
+    }
+  });
+
+  it("a generic wave carries no presentation and stays a compact band", () => {
+    // quiz.minion_assets declares this row media-free: the approved wiki's only
+    // whole-wave image is a lane scene whose units can be counted, which is the
+    // answer of vq-21 next door. The absence is a decision, not a gap.
+    const wave = source("vq-23");
+    expect(wave.metadata).toBeUndefined();
+    expect(selectScenario(wave, false, null).card).toBe("empty");
+    expect(resolveBandProfile(wave, "band", null)).toBe("compact");
+  });
+
+  it("a STRUCTURE row in the same family is still denied", () => {
+    // environment_mechanic is one key prefix over twenty-one generation
+    // families. Phase 4 gave the minion half a subject and left the structure
+    // half exactly as it was.
+    const turrets = source("vq-24");
+    expect(turrets.metadata).toBeUndefined();
+    expect(selectScenario(turrets, false, null).card).toBe("empty");
+  });
+
+  it("does not disturb the Combat Calculation control group", () => {
+    expect(selectScenario(source("vq-14"), false, null).card).toBe("combat_calculation");
+    expect(selectScenario(source("vq-15"), false, null).card).toBe("item_analysis");
+    expect(selectScenario(source("vq-17"), false, null).card).toBe("summoner_spell");
+  });
+});

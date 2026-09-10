@@ -4,7 +4,7 @@ import type { SubjectKind } from "./types";
 
 /**
  * Fallback scenario cards, moved verbatim from BroadcastRenderer:
- * - CollectibleCard: premium framed icon card (item/rune/spell/objective)
+ * - CollectibleCard: premium framed icon card (item/rune/spell/objective/minion)
  * - SubjectPlaceholderCard: neutral "?" card shown while a spoiler subject is hidden
  * - SubjectPlaceholder: bare "Mogsy" box when there is nothing to show
  * These keep their own float animation (not the Ken Burns frame).
@@ -29,7 +29,9 @@ export function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; lab
             ? "Ability"
             : kind === "objective"
               ? "Objective"
-              : "Subject";
+              : kind === "minion"
+                ? "Minion"
+                : "Subject";
   const [errored, setErrored] = useState(false);
   return (
     <motion.div
@@ -101,7 +103,9 @@ export function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; 
             ? { ring: "ring-cyan-300/30", glow: "bg-cyan-400/15", label: "Ability" }
             : kind === "objective"
               ? { ring: "ring-rose-300/30", glow: "bg-rose-400/15", label: "Objective" }
-              : { ring: "ring-white/15", glow: "bg-white/10", label: "Mystery" };
+              : kind === "minion"
+                ? { ring: "ring-emerald-300/30", glow: "bg-emerald-400/15", label: "Minion" }
+                : { ring: "ring-white/15", glow: "bg-white/10", label: "Mystery" };
 
   return (
     <motion.div

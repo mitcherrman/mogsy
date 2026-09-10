@@ -92,6 +92,18 @@ export function classifySubject(question: QuizQuestion): ClassifiedSubject {
           label: subject.name as string | undefined,
           iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
+
+      // MAA1 Phase 4. Same shape as "objective" and deliberately so: the
+      // backend emits identity (id, name, icon) and no numbers, and this
+      // renders through the same CollectibleCard treatment. There is no
+      // minion-specific card, because "one framed portrait plus a label" is
+      // already the right card for it.
+      case "minion":
+        return {
+          kind: "minion",
+          label: subject.name as string | undefined,
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
+        };
     }
   }
 

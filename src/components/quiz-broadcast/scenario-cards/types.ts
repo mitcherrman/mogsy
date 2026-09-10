@@ -1,8 +1,17 @@
 import type { QuizQuestion } from "@/lib/quiz/api";
 import type { QuestionMediaEntities } from "./questionMediaEntities";
 
-/** Legacy subject classification kinds (classifySubject output). */
-export type SubjectKind = "champion" | "item" | "rune" | "spell" | "objective" | "none";
+/**
+ * Legacy subject classification kinds (classifySubject output).
+ *
+ * `minion` is MAA1 Phase 4 — one lane-minion CLASS (melee, caster, cannon,
+ * super), never a wave and never a count. The backend resolves it from
+ * `quiz.minion_assets` and emits `assets.subject.type === "minion"` with a
+ * single-unit 128x128 portrait; several of these questions ask how many
+ * minions a wave holds, so the art must stay a class portrait and nothing
+ * here may assemble one into a group.
+ */
+export type SubjectKind = "champion" | "item" | "rune" | "spell" | "objective" | "minion" | "none";
 
 export type ClassifiedSubject = {
   kind: SubjectKind;

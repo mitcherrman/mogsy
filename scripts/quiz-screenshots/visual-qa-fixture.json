@@ -50,7 +50,8 @@
     "         returns None, so the row carries no `presentation` at all and the",
     "         surface takes the compact band. The absence is the point: this is a",
     "         correct payload, not a missing one.",
-    "RR1 summoner-spell convergence: vq-17 is a RESOLVED summoner-spell subject, copied verbatim from presentation_render, and must draw the shared summoner-spell scenario card on the cinematic band with no cooldown anywhere in the media. vq-18 is its fail-closed twin -- Flash has art on disk and NO canonical summoner_spells row, so the backend emits no presentation at all and the question must render the compact band. Do not 'fix' vq-18 by constructing a path from the spell name; the missing rows are owned by the media workstream."
+    "RR1 summoner-spell convergence: vq-17 is a RESOLVED summoner-spell subject, copied verbatim from presentation_render, and must draw the shared summoner-spell scenario card on the cinematic band with no cooldown anywhere in the media. vq-18 is its fail-closed twin -- Flash has art on disk and NO canonical summoner_spells row, so the backend emits no presentation at all and the question must render the compact band. Do not 'fix' vq-18 by constructing a path from the spell name; the missing rows are owned by the media workstream.",
+    "MAA1 Phase 4 — the LANE MINION subject. vq-19 to vq-24 are verbatim ranked_public.presentation_render.presentation_for_question() output for six real environment_mechanic rows, none hand-written. vq-19 melee stat, vq-20 caster stat, vq-21 the answer-leak case (the prompt asks how many minions a cannon wave holds; the art is ONE cannon minion and the answer 7 appears nowhere), vq-22 the super-minion wave (answer 8, same rule). vq-23 and vq-24 carry NO presentation and that is the point, twice over: vq-23 is a generic wave, which quiz.minion_assets declares media-free because the wiki's only whole-wave image is a scene whose units can be counted, and vq-24 is a STRUCTURE row, which shares the environment_mechanic key prefix with minions and is still denied. Do not 'fix' either by inventing a subject."
   ],
   "questions": [
     {
@@ -1470,6 +1471,192 @@
       "source_kind": "stored",
       "review_key": "stored:summoner_spell_cooldown:FLASH",
       "presentation": null
+    },
+    {
+      "id": "vq-19",
+      "question_key": "environment_mechanic:minion_base_stats:health_start:melee",
+      "category": "Minion Waves",
+      "question_text": "How much health does a melee minion spawn with at the start of the game?",
+      "format": "multiple_choice",
+      "choices": [
+        "275",
+        "430",
+        "750",
+        "1500"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "430"
+      },
+      "explanation": "A melee minion starts the game with 430 health (patch 26.15).",
+      "difficulty": 2,
+      "source_kind": "stored",
+      "review_key": "stored:environment_mechanic:minion_base_stats:health_start:melee",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "minion",
+            "id": "melee",
+            "name": "Melee Minion",
+            "icon": "assets/minions/melee.png"
+          }
+        },
+        "presentation": {
+          "role": "context",
+          "timing": "question",
+          "spoiler": false
+        }
+      }
+    },
+    {
+      "id": "vq-20",
+      "question_key": "environment_mechanic:minion_base_stats:ad_start:caster",
+      "category": "Minion Waves",
+      "question_text": "How much attack damage does a caster minion start with?",
+      "format": "multiple_choice",
+      "choices": [
+        "11",
+        "180",
+        "19.5",
+        "39"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "19.5"
+      },
+      "explanation": "A caster minion starts the game with 19.5 attack damage (patch 26.15).",
+      "difficulty": 2,
+      "source_kind": "stored",
+      "review_key": "stored:environment_mechanic:minion_base_stats:ad_start:caster",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "minion",
+            "id": "caster",
+            "name": "Caster Minion",
+            "icon": "assets/minions/caster.png"
+          }
+        },
+        "presentation": {
+          "role": "context",
+          "timing": "question",
+          "spoiler": false
+        }
+      }
+    },
+    {
+      "id": "vq-21",
+      "question_key": "environment_mechanic:wave_mechanics:composition_total:before_14:cannon",
+      "category": "Minion Waves",
+      "question_text": "How many total minions are in a cannon wave before 14 minutes?",
+      "format": "multiple_choice",
+      "choices": [
+        "8",
+        "6",
+        "9",
+        "7"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "7"
+      },
+      "explanation": "Wave 12 (6:00) is 3 melee + 3 caster + 1 cannon = 7 total, no inhibitors down (patch 26.15).",
+      "difficulty": 3,
+      "source_kind": "stored",
+      "review_key": "stored:environment_mechanic:wave_mechanics:composition_total:before_14:cannon",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "minion",
+            "id": "siege",
+            "name": "Cannon Minion",
+            "icon": "assets/minions/siege.png"
+          }
+        },
+        "presentation": {
+          "role": "context",
+          "timing": "question",
+          "spoiler": false
+        }
+      }
+    },
+    {
+      "id": "vq-22",
+      "question_key": "environment_mechanic:super_minions:composition_inhib3:before_30",
+      "category": "Minion Waves",
+      "question_text": "All three inhibitors are down. How many total minions are in each enemy wave before 30 minutes?",
+      "format": "multiple_choice",
+      "choices": [
+        "7",
+        "10",
+        "8",
+        "9"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "8"
+      },
+      "explanation": "Wave 31 (15:15) is 3 melee + 3 caster + 0 cannon + 2 super = 8 total, with 3 inhibitor(s) down including this lane (patch 26.15).",
+      "difficulty": 4,
+      "source_kind": "stored",
+      "review_key": "stored:environment_mechanic:super_minions:composition_inhib3:before_30",
+      "presentation": {
+        "assets": {
+          "subject": {
+            "type": "minion",
+            "id": "super",
+            "name": "Super Minion",
+            "icon": "assets/minions/super.png"
+          }
+        },
+        "presentation": {
+          "role": "context",
+          "timing": "question",
+          "spoiler": false
+        }
+      }
+    },
+    {
+      "id": "vq-23",
+      "question_key": "environment_mechanic:wave_mechanics:first_wave_spawn_time",
+      "category": "Minion Waves",
+      "question_text": "At what game time does the first minion wave spawn?",
+      "format": "multiple_choice",
+      "choices": [
+        "1:30",
+        "2:00",
+        "0:30",
+        "1:00"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "0:30"
+      },
+      "explanation": "The first minion wave spawns at 0:30 (patch 26.15).",
+      "difficulty": 2,
+      "source_kind": "stored",
+      "review_key": "stored:environment_mechanic:wave_mechanics:first_wave_spawn_time"
+    },
+    {
+      "id": "vq-24",
+      "question_key": "environment_mechanic:structure_stats:review:count:turrets_total",
+      "category": "Game Fundamentals",
+      "question_text": "How many turrets does each team have on Summoner's Rift?",
+      "format": "multiple_choice",
+      "choices": [
+        "1",
+        "2",
+        "3",
+        "11"
+      ],
+      "correct_answer": {
+        "type": "text",
+        "value": "11"
+      },
+      "explanation": "Each team has 11 turrets: 3 outer turrets, 3 inner turrets, 3 inhibitor turrets, 2 Nexus turrets (patch 26.15; rule effective 26.01, verified through 26.15).",
+      "difficulty": 2,
+      "source_kind": "stored",
+      "review_key": "stored:environment_mechanic:structure_stats:review:count:turrets_total"
     }
   ]
 }
