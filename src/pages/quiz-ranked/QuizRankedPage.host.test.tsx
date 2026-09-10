@@ -172,3 +172,52 @@ describe("the bot system has one entry point: the ordinary join", () => {
     expect(client).toContain("matchWithBot");
   });
 });
+
+/**
+ * RB1 — THE PARITY INVARIANT.
+ *
+ *     Ranked match ID  ->  the same Ranked match host  ->  the same arena
+ *
+ * A bot match is not a separate game. It is canonical Ranked with a
+ * server-controlled opponent and no rating, so bot-ness may steer the
+ * opponent, the lifecycle and the rating policy — and may NOT steer which
+ * component renders the match. The moment it picks a renderer, every later
+ * change to Ranked has to be made twice, and the two copies drift.
+ *
+ * This is cheap to keep true and expensive to notice once it is not, so it is
+ * pinned two ways: behaviourally (a bot match id enters the same host and
+ * reaches the same view) and structurally (the host holds no bot branch).
+ */
+describe("a bot match enters the SAME Ranked host as a human match", () => {
+  it("renders the same match view for a bot match id", async () => {
+    h.getActiveMatch.mockReturnValue(new Promise(() => {}));
+    renderRoute({ matchId: "rkb_botmatch" });
+    await waitFor(() =>
+      expect(screen.getByTestId("match-view")).toHaveTextContent("rkb_botmatch"));
+    // `match-view` IS the QuizRankedMatch mock — the one arena/question/result
+    // component. Nothing about the id changed which component answered.
+    expect(screen.getByTestId("match-view").getAttribute("data-viewer"))
+      .toBe("owner-uuid");
+  });
+
+  it("recovers a live bot match through the ordinary discovery path", async () => {
+    h.getActiveMatch.mockResolvedValue({ matchId: "rkb_live", isBotMatch: true });
+    renderRoute();
+    await waitFor(() =>
+      expect(screen.getByTestId("match-view")).toHaveTextContent("rkb_live"));
+  });
+
+  it("holds no bot branch in the host at all", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = stripComments(readFileSync(
+      resolve(process.cwd(), "src/pages/quiz-ranked/QuizRankedPage.tsx"), "utf8",
+    ));
+    // The host never reads bot-ness, and there is no second renderer for it
+    // to choose. If a bot-specific presentation is ever wanted, it belongs
+    // INSIDE the one match view, keyed off match data — not here.
+    expect(source).not.toMatch(/isBotMatch/);
+    expect(source).not.toMatch(/BotMatch(View|Page|Host|Arena)/);
+    expect(source).toContain("QuizRankedMatch");
+  });
+});

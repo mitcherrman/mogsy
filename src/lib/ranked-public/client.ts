@@ -230,14 +230,17 @@ export const getRankedProgression = (signal?: AbortSignal): Promise<RankedProgre
  * carries is read server-side from the account's stored preference, so it
  * cannot be spoofed or accidentally set by a queue request.
  *
- * `matchWithBot` is the ADMIN TESTING path and the only thing that changes
- * the shape of the answer: the backend verifies admin authorization from the
- * caller's own verified session, creates an unrated Ranked match against a
- * bot, and replies with a `matched` status carrying its id — so the ordinary
- * matched -> handoff path runs unchanged and there is no bot-specific state
- * anywhere in the controller. A non-admin sending it is REFUSED
- * (`RANKED_BOT_NOT_AUTHORIZED`), never silently queued: authorization lives
- * on the server and this flag is a request, not a grant.
+ * `matchWithBot` is the only thing that changes the shape of the answer: the
+ * backend verifies authorization from the caller's own verified session
+ * (Premium entitlement, or an admin operator override), creates an unrated
+ * Ranked match against a server-controlled opponent, and replies with a
+ * `matched` status carrying its id — so the ordinary matched -> handoff path
+ * runs unchanged and there is no bot-specific state anywhere in the
+ * controller. An unauthorized account sending it is REFUSED
+ * (`RANKED_BOT_NOT_AUTHORIZED`), never silently queued; an entitlement the
+ * server cannot resolve is `RANKED_ENTITLEMENT_UNAVAILABLE` (503) rather than
+ * a refusal. Authorization lives on the server and this flag is a request,
+ * not a grant.
  *
  * The field is omitted entirely when false, so an ordinary join sends exactly
  * the body it always sent.
@@ -335,7 +338,7 @@ export const forfeitMatch = (matchId: string, signal?: AbortSignal): Promise<For
  * carrying a difficulty and a bot class — is retired on the backend and its
  * client is gone with it.
  *
- * A bot match is now an ADMIN TESTING request on the ordinary join:
+ * A bot match is now a flag on the ordinary join:
  * `joinQueue(null, signal, { matchWithBot: true })`. That keeps one creation
  * path, one transport, and one place where authorization is decided (the
  * server, from the verified session).

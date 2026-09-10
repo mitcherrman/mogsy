@@ -122,18 +122,24 @@ const RECONNECT_BEAT: Beat = {
     + "with. Leaving it unattended forfeits it.",
 };
 
-/** What the ready beat says INSTEAD while the admin's bot switch is on. It
- *  replaces two claims that would otherwise be false: that an opponent is
- *  being looked for, and that rating is at stake. */
+/** What the ready beat says INSTEAD while the bot switch is on. It replaces
+ *  two claims that would otherwise be false: that an opponent is being looked
+ *  for, and that rating is at stake.
+ *
+ *  RB1 — this used to open with "Admin test:". Premium accounts see this
+ *  control now, and telling a subscriber they are running a staff test is
+ *  wrong twice: it is not a test, and they are not staff. It says what the
+ *  match IS instead. Premium is the entitlement that opens the switch, not the
+ *  name of the thing it starts — so the copy never says "Premium Bot" either. */
 const BOT_READY_NOTE =
-  "Admin test: a bot opponent, starting immediately. Unrated.";
+  "A bot opponent, starting immediately. Ordinary Ranked, unrated.";
 
 export default function RankedQueueView({
   queue,
   role,
   onJoin,
   onBack,
-  isAdmin = false,
+  canPlayRankedBot = false,
 }: {
   queue: QueueController;
   /** The account's stored role, used only until the server confirms one. */
@@ -142,8 +148,17 @@ export default function RankedQueueView({
   /** Leave Ranked and go back to the record's three clauses. Only offered
    *  when leaving is actually safe — see `RankedPlayScroll`. */
   onBack: () => void;
-  /** Whether to OFFER the admin bot-testing switch. Never authorization. */
-  isAdmin?: boolean;
+  /**
+   * Whether to OFFER the Match-with-Bot switch. A CAPABILITY, resolved at the
+   * wired boundary (`RankedPlayScroll`) — this view is deliberately never told
+   * which tier the viewer is in or why they qualify, so a future rule that
+   * opens the switch some other way changes nothing here.
+   *
+   * Never authorization. The server re-decides on every join, and an
+   * unresolved or failed lookup arrives here as `false`, so the control is
+   * never drawn on a guess and never flashes before the answer lands.
+   */
+  canPlayRankedBot?: boolean;
 }) {
   const state = queue.state;
   const sfx = usePlaySfx();
@@ -153,7 +168,7 @@ export default function RankedQueueView({
     onBack();
   };
   /**
-   * The admin's bot switch. Local, and local is the point: this component is
+   * The bot switch. Local, and local is the point: this component is
    * mounted only while Ranked is the open view, so the switch is OFF again on
    * every open of the record with no reset logic to get wrong.
    */
@@ -215,7 +230,7 @@ export default function RankedQueueView({
   // The switch may only be OFFERED while the account is idle. Once the server
   // has an entry — or a match — there is nothing left for it to change, and a
   // control that cannot do anything is worse than no control.
-  const showBotToggle = isAdmin && idle;
+  const showBotToggle = canPlayRankedBot && idle;
   const botArmed = showBotToggle && matchWithBot;
 
   return (
@@ -330,9 +345,10 @@ export default function RankedQueueView({
           </button>
         )}
 
-        {/* THE ADMIN SWITCH. Under the action, in the record's faint ink, and
+        {/* THE BOT SWITCH. Under the action, in the record's faint ink, and
             drawn as one line of the page rather than as a panel — it is a
-            testing lever on the Ranked entry, not a second choice beside it. */}
+            modifier on the Ranked entry, not a second choice beside it. The
+            human queue above stays the primary action. */}
         {showBotToggle && (
           <label
             data-testid="play-ranked-bot-toggle"
@@ -347,9 +363,11 @@ export default function RankedQueueView({
               className="h-3.5 w-3.5 cursor-pointer accent-[#7a5c2e]"
             />
             Match with Bot
+            <span aria-hidden="true" style={{ opacity: 0.75 }}>
+              · Starts immediately · Unrated
+            </span>
             <span className="sr-only">
-              {" "}(admin testing: starts an unrated Ranked match against a bot
-              immediately)
+              {" "}starts an unrated Ranked match against a bot immediately
             </span>
           </label>
         )}

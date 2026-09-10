@@ -128,13 +128,13 @@ export interface QueueController {
    * inside the join transaction. The client therefore never picks a class on
    * the player's behalf and — critically — never derives one from the role.
    *
-   * `matchWithBot` is the ADMIN TESTING request. It changes nothing about
-   * this state machine: the backend answers `matched` with a match id
-   * immediately instead of `waiting`, so the existing matched -> handoff beat
-   * carries the player into the arena with no extra state, no polling, and no
-   * bot-specific branch. Authorization is the SERVER's — a non-admin sending
-   * it is refused, and this controller shows that refusal like any other join
-   * error.
+   * `matchWithBot` changes nothing about this state machine: the backend
+   * answers `matched` with a match id immediately instead of `waiting`, so the
+   * existing matched -> handoff beat carries the player into the arena with no
+   * extra state, no polling, and no bot-specific branch — and therefore into
+   * the SAME Ranked match host and arena a human match enters. Authorization
+   * is the SERVER's — an unauthorized account sending it is refused, and this
+   * controller shows that refusal like any other join error.
    */
   joinWithoutClass: (options?: { matchWithBot?: boolean }) => void;
   cancel: () => void;

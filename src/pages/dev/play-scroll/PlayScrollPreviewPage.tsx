@@ -114,23 +114,24 @@ export default function PlayScrollPreviewPage() {
   const [open, setOpen] = useState(true);
   const [dailyDone, setDailyDone] = useState(false);
   /**
-   * Whether the record is drawn for an ADMIN.
+   * Whether the record is drawn for a viewer who MAY use Bot Ranked — a
+   * Premium account, or an admin. The record does not distinguish them.
    *
    * The Match-with-Bot switch is otherwise unreviewable here for the usual
-   * reason: it needs an account with an admin role, which a preview has no
+   * reason: it needs a real entitlement or role, which a preview has no
    * business asking for. This chip stands in for that answer, and — like the
    * beat chips — it changes only what is DRAWN. Nothing on this route can
    * create a bot match: the controller below is a plain object, and its
    * `joinWithoutClass` moves this page's own selector and nothing else.
    */
-  const [admin, setAdmin] = useState(false);
+  const [botAccess, setBotAccess] = useState(false);
 
   /**
    * RG1 — draw the RECONNECT beat: the account already has a live match.
    *
    * The real trigger is a join the server answered
    * `RANKED_ACTIVE_MATCH_EXISTS`, which a preview cannot produce. Like the
-   * admin chip above, this changes only what is DRAWN.
+   * bot-access chip above, this changes only what is DRAWN.
    */
   const [resumed, setResumed] = useState(false);
 
@@ -213,16 +214,16 @@ export default function PlayScrollPreviewPage() {
         ))}
         <button
           type="button"
-          data-testid="play-scroll-preview-admin"
-          aria-pressed={admin}
-          onClick={() => { setAdmin((v) => !v); setOpen(true); }}
+          data-testid="play-scroll-preview-bot-access"
+          aria-pressed={botAccess}
+          onClick={() => { setBotAccess((v) => !v); setOpen(true); }}
           className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
-            admin
+            botAccess
               ? "border-primary bg-primary/15 text-primary"
               : "border-primary/25 text-muted-foreground hover:border-primary/60"
           }`}
         >
-          Admin
+          Bot access
         </button>
         <button
           type="button"
@@ -354,7 +355,7 @@ export default function PlayScrollPreviewPage() {
           modes={{ ranked: true, daily: true, invite: true }}
           daily={dailyDone ? DAILY_DONE : DAILY}
           signedIn
-          isAdmin={admin}
+          canPlayRankedBot={botAccess}
           onEnterMatch={noop}
           /* The page's own role state, so the preview's role chips and the
              record's arrows move the same value — the same relationship the

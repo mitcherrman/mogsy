@@ -12,8 +12,9 @@
  *   · Invite & Play is a finished frontend that refuses to claim a Ranked
  *     invite backend it does not have;
  *   · admin policy decides which entries appear;
- *   · the admin's Match-with-Bot switch is admin-only, starts OFF on every
- *     open, and changes exactly one thing about the join it modifies.
+ *   · RB1 — the Match-with-Bot switch is offered to Premium accounts AND to
+ *     admins and to nobody else, starts OFF on every open, and changes
+ *     exactly one thing about the join it modifies.
  */
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,6 +64,18 @@ const h = vi.hoisted(() => ({
     isMasterAdmin: false,
     isModerator: false,
   },
+  /**
+   * RB1 — PT1.4 effective entitlement, as `useRankedBotAccess` reads it.
+   *
+   * `null` is the module's UNKNOWN answer (RPC unavailable, network failure,
+   * signed out mid-flight), which is deliberately not the same value as a
+   * resolved Free — and both must fail closed. Mocked here because the real
+   * accessor constructs the Supabase client, which the pinned jsdom cannot
+   * give working Storage.
+   */
+  entitlement: {
+    value: null as { effectivePro: boolean } | null,
+  },
 }));
 
 vi.mock("@/pages/quiz-ranked/useRankedQueue", () => ({
@@ -73,6 +86,9 @@ vi.mock("@/hooks/useFriends", () => ({
 }));
 vi.mock("@/hooks/useAdminRoles", () => ({
   useAdminRoles: () => h.roles,
+}));
+vi.mock("@/lib/pro/entitlement", () => ({
+  fetchProEntitlement: () => Promise.resolve(h.entitlement.value),
 }));
 vi.mock("@/lib/quiz/api", () => ({
   resolveQuizAssetUrl: (p?: string) => (p ? `http://assets.local/${p}` : undefined),
@@ -208,6 +224,9 @@ beforeEach(() => {
   h.friends.loading = false;
   h.roles.isAdmin = false;
   h.roles.loading = false;
+  // The default viewer is a resolved FREE account: signed in, not Premium,
+  // not staff. Every bot-control case below states its own departure from it.
+  h.entitlement.value = { effectivePro: false };
   vi.clearAllMocks();
 });
 afterEach(cleanup);
@@ -1205,53 +1224,102 @@ describe("bots are not part of the primary PLAY experience", () => {
     expect(screen.getByTestId("play-ranked")).toBeTruthy();
     expect(screen.queryByTestId("play-ranked-bot-toggle")).toBeNull();
   });
+
+  it("shows nothing while ENTITLEMENT is still unknown", async () => {
+    // RB1 — the second half of the same rule. A failed or in-flight
+    // entitlement lookup is UNKNOWN, and unknown is not Premium. It must not
+    // open the control, and it must not flash it either.
+    h.entitlement.value = null;
+    renderScroll();
+    await openRanked();
+    expect(screen.getByTestId("play-ranked")).toBeTruthy();
+    expect(screen.queryByTestId("play-ranked-bot-toggle")).toBeNull();
+    // Held across further settling, not merely absent on the first frame.
+    await waitFor(() =>
+      expect(screen.queryByTestId("play-ranked-bot-toggle")).toBeNull());
+  });
 });
 
 /**
- * MATCH WITH BOT — the admin's Ranked testing lever.
+ * MATCH WITH BOT — RB1.
  *
  * It is one switch on the existing Ranked entry: no mode, no card, no
- * difficulty, no class, no bot identity. Everything below is about it staying
- * that small, and about it never reaching an ordinary player.
+ * difficulty, no class, no bot identity, no route. Everything below is about
+ * it staying that small, and about who is offered it.
+ *
+ * WHO. Two independent answers open it — a Premium entitlement, or an admin
+ * override — and the view is told neither: it receives one capability,
+ * `canPlayRankedBot`, resolved at the wired boundary. That is why the two
+ * cases below are IDENTICAL apart from which fact is true, and why the copy
+ * never says "admin" or "Premium".
  *
  * Entering matchmaking goes through `openRanked`, because pressing Ranked is
  * no longer a synchronous view change — the record commits the role it is
  * previewing first and moves only when that write holds.
  */
-describe("the admin Match-with-Bot switch", () => {
-  const openRankedAsAdmin = async (
+describe("the Match-with-Bot switch", () => {
+  /** The default viewer here is PREMIUM and NOT staff: the case RB1 added,
+   *  and the one every shape assertion below should hold for. */
+  const openRankedWithBot = async (
     over: Partial<React.ComponentProps<typeof RankedPlayScroll>> = {},
   ) => {
-    h.roles.isAdmin = true;
+    h.entitlement.value = { effectivePro: true };
     const utils = renderScroll(over);
     await openRanked();
+    await screen.findByTestId("play-ranked-bot-toggle");
     return utils;
   };
 
-  it("is offered to an admin, and is OFF when the record opens", async () => {
-    await openRankedAsAdmin();
+  it("is offered to a PREMIUM non-admin, and is OFF when the record opens", async () => {
+    await openRankedWithBot();
+    expect(h.roles.isAdmin).toBe(false);
     const input = screen.getByTestId("play-ranked-bot-toggle-input") as HTMLInputElement;
     expect(input.checked).toBe(false);
     expect(screen.getByTestId("play-ranked-bot-toggle").textContent)
       .toContain("Match with Bot");
   });
 
+  it("is still offered to an ADMIN who is not Premium", async () => {
+    // The operator override, preserved exactly. A Free admin keeps the access
+    // they had before RB1 existed.
+    h.roles.isAdmin = true;
+    h.entitlement.value = { effectivePro: false };
+    renderScroll();
+    await openRanked();
+    expect(await screen.findByTestId("play-ranked-bot-toggle")).toBeTruthy();
+  });
+
+  it("says nothing about tiers, staff or testing", async () => {
+    // RB1 removed "Admin test" — Premium accounts read this copy now, and it
+    // is neither a test nor staff-only. It did NOT replace it with "Premium
+    // Bot": Premium is the entitlement that opens the switch, not the name of
+    // the match it starts.
+    await openRankedWithBot();
+    fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
+    const text = screen.getByTestId("play-ranked").textContent ?? "";
+    expect(text).not.toMatch(/admin/i);
+    expect(text).not.toMatch(/premium/i);
+    expect(text).not.toMatch(/\btest(ing)?\b/i);
+    expect(text).toMatch(/starts immediately/i);
+    expect(text).toMatch(/unrated/i);
+  });
+
   it("joins normally while it is off", async () => {
-    await openRankedAsAdmin();
+    await openRankedWithBot();
     fireEvent.click(screen.getByTestId("play-ranked-join"));
     expect(h.queue.joinWithoutClass).toHaveBeenCalledTimes(1);
     expect(h.queue.joinWithoutClass.mock.calls[0][0]).toBeUndefined();
   });
 
   it("asks for a bot ONLY when it is on", async () => {
-    await openRankedAsAdmin();
+    await openRankedWithBot();
     fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
     fireEvent.click(screen.getByTestId("play-ranked-join"));
     expect(h.queue.joinWithoutClass).toHaveBeenCalledWith({ matchWithBot: true });
   });
 
   it("says what pressing Play will now do, without shouting about it", async () => {
-    await openRankedAsAdmin();
+    await openRankedWithBot();
     fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
     // The two claims that would otherwise be false are withdrawn: that an
     // opponent is being searched for, and that rating is at stake.
@@ -1262,7 +1330,7 @@ describe("the admin Match-with-Bot switch", () => {
   });
 
   it("forgets it between opens — there is no sticky bot mode", async () => {
-    const { unmount } = await openRankedAsAdmin();
+    const { unmount } = await openRankedWithBot();
     fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
     expect((screen.getByTestId("play-ranked-bot-toggle-input") as HTMLInputElement)
       .checked).toBe(true);
@@ -1273,7 +1341,7 @@ describe("the admin Match-with-Bot switch", () => {
       .checked).toBe(false);
     // And across a fresh open of the whole record.
     unmount();
-    await openRankedAsAdmin();
+    await openRankedWithBot();
     expect((screen.getByTestId("play-ranked-bot-toggle-input") as HTMLInputElement)
       .checked).toBe(false);
   });
@@ -1281,7 +1349,11 @@ describe("the admin Match-with-Bot switch", () => {
   it("is withdrawn once the server has an entry — it can change nothing then", async () => {
     h.queue.state = "waiting";
     h.queue.canCancel = true;
-    await openRankedAsAdmin();
+    // Not via the helper: it waits for the control to appear, and the point
+    // here is that a viewer who WOULD be offered it is not, mid-queue.
+    h.entitlement.value = { effectivePro: true };
+    renderScroll();
+    await openRanked();
     // The view IS open and IS mid-queue; the control is absent from that, not
     // absent because nothing rendered.
     expect(screen.getByTestId("play-ranked").getAttribute("data-queue-state"))
@@ -1290,7 +1362,7 @@ describe("the admin Match-with-Bot switch", () => {
   });
 
   it("adds no difficulty, class, speed or bot-identity choice", async () => {
-    await openRankedAsAdmin();
+    await openRankedWithBot();
     fireEvent.click(screen.getByTestId("play-ranked-bot-toggle-input"));
     const text = screen.getByRole("dialog").textContent ?? "";
     expect(text).not.toMatch(/\b(easy|standard|hard)\b/i);
