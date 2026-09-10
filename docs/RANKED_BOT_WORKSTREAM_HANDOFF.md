@@ -1,6 +1,6 @@
 # Ranked Bot workstream — handoff
 
-Status: **RB1 and RB2 complete** (backend + frontend, tested, not yet published/deployed).
+Status: **RB1, RB2 and RB2.1 complete** (backend + frontend, tested, not published, not deployed).
 
 ## Objective
 
@@ -171,7 +171,7 @@ is no bot-specific component anywhere.
 | `rankedViews.opponentLabelFor` | `isBotMatch` → `"Bot"` not `"Opponent"` | **Required** (added by RB2) |
 | `roleIdentity` / `projectCombatants` | role-less participant gets the neutral `Duelist` label and crest | **Required** — a bot has no League role and the backend refuses to invent one |
 | `RankedMatchHistory.opponentLabel` | `opponentIsBot` → literal `"Bot"` | **Accidental drift**, left alone — see open items |
-| `service.create_bot_match` | format resolves against the `admin_bot` config target | **Required-turned-hazard** — see below |
+| ~~`service.create_bot_match`~~ | ~~format resolves against the `admin_bot` config target~~ | **Removed in RB2.1** — both lanes resolve `public` |
 | `discovery.is_discoverable_user` | `bot::` uids build no library | **Required** — the *human* in a bot match still does |
 | `rating.evaluate_eligibility` | bot flag / `bot::` participant / `bot_playtest` provenance → skipped | **Required** |
 | `useRankedQueue.reconnectMatch.isBotMatch` | carried, never read | Dead field, harmless, left alone |
@@ -242,7 +242,7 @@ code would be exactly the drift RB2 exists to remove.
 * `BOT_DISPLAY_NAMES` contains `"Test Summoner"`. Never rendered today. RB3 may
   actually want it.
 
-## ⚠ The one real hazard RB1 created
+## ⚠ The one real hazard RB1 created — CLOSED by RB2.1, kept here for history
 
 `service.create_bot_match` resolves its format against the **`admin_bot`**
 configuration target; the public queue uses **`public`**. There is no
@@ -254,10 +254,9 @@ now shipping a different Ranked to every Premium player, silently.
 
 With no saved config — every normal deployment — both targets fall through to
 the same ladder and the two lanes are identical; that is pinned by
-`test_ranked_bot_result_parity.py`. **Operator invariant: do not save an
-`admin_bot` format config while Premium bot access is live**, or accept that
-Premium players are the staging audience. Whether the staging lane should
-survive RB1 at all is an owner decision, not a code fix.
+`test_ranked_bot_result_parity.py`. **Resolved by owner decision in RB2.1 — see below.** The operator invariant
+this section used to state no longer applies: saving an `admin_bot` config
+now changes nothing a player can reach.
 
 ## Files changed (RB2)
 
@@ -297,6 +296,124 @@ fails identically on a stashed tree (a `pt14EntitlementSources` test mentions
 Backend regression over the RB1 file set plus both new modules:
 **255 passed, 87 failed** — the same 87 as RB1's baseline (the modern format's
 shared-bank pools are not seedable from these fixtures). Zero new failures.
+
+---
+
+# RB2.1 — one base Ranked format, both opponents
+
+## The decision
+
+Owner decision, taken after RB2 surfaced the fork:
+
+```
+                    ┌─ human opponent → rated
+Base Ranked format ─┤
+                    └─ bot opponent   → unrated
+```
+
+**not**
+
+```
+public format    → Human Ranked
+admin_bot format → Bot Ranked
+```
+
+Bot-ness is an **opponent and rating** distinction, never a quiz-format one.
+Ranked is the canonical gameplay engine; Bot, Review, Custom, Playtest and
+eventually Tournament are configurations and orchestration *around* it. Session
+configuration (which questions a Playtest curates, which interstitials it
+inserts) is a separate concern from the base Ranked format, and must not be
+confused with it.
+
+## What `admin_bot` actually was
+
+A **saved-configuration target**, one of two in `ranked_format_configs`
+(`migrate_add_ranked_format_configs.CONFIG_TARGETS = ("admin_bot", "public")`).
+Each target stores the format an admin last saved for that lane; the two are
+fully independent with no cross-target fallback. Its purpose was to let staff
+stage a Ranked format on the bot lane before promoting it to `public`.
+
+Inspection of every reference:
+
+| Question | Answer |
+| --- | --- |
+| Only used by `create_bot_match`? | As a *format target*, **yes** — one call site, `service.py`. (`_create_admin_bot_match` in `routes/ranked_public.py` is a function *name*, not the target.) |
+| Exposed in admin tooling? | **Yes** — `GET`/`PUT /api/ranked/admin/format-config/{target}` accepts it, and `format_config` stores revisions/history for it |
+| Tests relying on it? | **Yes** — `test_ranked_format_config.py` (store-level revisions/history), `test_ranked_format_config_consumption.py` (lane independence), `test_ranked_mastery_on_demand.py` (an internal fixture creating against it via `create_match_rows(config_target=...)`) |
+| Persisted config in schema? | **Yes** — declared in `CONFIG_TARGETS`, rows may exist in `ranked_format_configs` |
+| Would deleting it break unrelated infrastructure? | **Yes** — the store, the admin routes and the mastery fixture all address it |
+
+So it is **retained as dormant legacy infrastructure**, not deleted. It keeps
+its schema row, its admin routes, its store tests and its fixture use. What it
+lost is its product path.
+
+## The change
+
+One argument, in `ranked_public/service.create_bot_match`:
+
+```diff
+-                p1_role=resolved_role, p2_role=resolved_bot_role,
+-                config_target=CONFIG_TARGET_ADMIN_BOT)
++                p1_role=resolved_role, p2_role=resolved_bot_role)
+```
+
+`create_match_rows` defaults `config_target` to `CONFIG_TARGET_PUBLIC`, which
+is exactly what the queue passes. Both entry points now reach the *same*
+existing helper — `service.format_for_creation(..., target="public", cur=cur)`
+— through the same argument list. No new resolver, no extraction, no override
+system. The invariant is structural: there is no argument left for a bot match
+to differ by.
+
+Docstrings updated in `service.py`, `format_config.py`,
+`migrate_add_ranked_format_configs.py` and the admin route to say `admin_bot`
+is dormant.
+
+**No frontend change.** RB2 already proved both paths converge on
+`QuizRankedMatch → CanonicalArena → MatchOverFrame`; the format target is
+purely a creation-time backend concern.
+
+## Proof
+
+`test_ranked_format_config_consumption.py` — six cases rewritten from "the two
+lanes are independent" to the inverted invariant:
+
+* no saved config → human and bot freeze the identical ladder format;
+* saved `public` → **governs the bot match too**;
+* saved `admin_bot` → **ignored by ordinary Bot Ranked**, which stays on
+  `public`/ladder (the regression that stops the fork returning);
+* both saved at once → bot and human matches freeze the *same* snapshot, and
+  it is `public`'s;
+* a *corrupt* dormant `admin_bot` row now breaks neither lane, because nothing
+  reads it;
+* source-level: `create_bot_match` passes no `config_target` at all, while the
+  queue still names `public` explicitly.
+
+The resolver-level rule is unchanged and still pinned: the two targets never
+borrow from each other.
+
+`test_ranked_bot_result_parity.py` gained the required-differences case — a bot
+match still has a synthetic `bot::` opponent, no queue entry,
+`creation_source='bot_playtest'`, no frozen difficulty, and settles to
+`rating_skip_reason='bot_match'` — plus the human control proving rating still
+applies.
+
+## Tests (RB2.1)
+
+```bash
+.venv/bin/python -m pytest test_ranked_format_config_consumption.py -q   # 32 passed
+.venv/bin/python -m pytest test_ranked_bot_result_parity.py -q           # 14 passed
+```
+
+Ranked regression over 13 modules: **183 passed, 77 failed** — the same 77 as
+the stashed-tree baseline (the known fixture limitation: the modern format's
+shared-bank pools are not seedable). Zero new failures.
+
+## Final invariant
+
+> Human and Bot Ranked share the same canonical base Ranked format and the same
+> renderer. Bot differs only where required by opponent orchestration and
+> rating policy: a server-controlled opponent, immediate creation with no queue
+> entry, and an unrated result.
 
 ## Next task — RB3: Playtest layer on Bot Ranked
 
