@@ -19,6 +19,21 @@ const API_BASE_URL =
   "http://127.0.0.1:8000";
 
 /** Sortable columns, mirroring the backend's allow-list. */
+export type ProStatsTeamSort =
+  | "team"
+  | "games"
+  | "wins"
+  | "losses"
+  | "win_rate"
+  | "stat_backed_games"
+  | "kills_per_game"
+  | "deaths_per_game"
+  | "gold_per_min"
+  | "damage_per_min"
+  | "towers_per_game"
+  | "dragons_per_game"
+  | "barons_per_game";
+
 export type ProStatsSort =
   | "player"
   | "games"
@@ -65,26 +80,41 @@ export type ProStatsFilters = {
   min_games: number;
 };
 
+export type ProStatsTeamRow = {
+  team: string;
+  /** Canonical team-games. Always present. */
+  games: number;
+  wins: number;
+  losses: number;
+  /** Over DECIDED games; null when none were decided. */
+  win_rate: number | null;
+  /** The subset of `games` carrying statistics. */
+  stat_backed_games: number;
+  kills_per_game: number | null;
+  deaths_per_game: number | null;
+  gold_per_min: number | null;
+  damage_per_min: number | null;
+  towers_per_game: number | null;
+  dragons_per_game: number | null;
+  barons_per_game: number | null;
+};
+
+export type ProStatsView = "players" | "teams";
+
 export type ProStatsResponse = {
   schema_version: number;
-  view: "players";
-  rows: ProStatsPlayerRow[];
+  view: ProStatsView;
+  rows: ProStatsPlayerRow[] | ProStatsTeamRow[];
   page: number;
   page_size: number;
   total_rows: number;
   total_pages: number;
-  sort: ProStatsSort;
+  sort: string;
   dir: "asc" | "desc";
   /** The EFFECTIVE filters the server used, including any it defaulted. */
   filters: ProStatsFilters;
-  aggregates: {
-    players: number;
-    games: number;
-    stat_backed_games: number;
-    kda: number | null;
-    cs_per_min: number | null;
-    gold_per_min: number | null;
-  };
+  /** Keys differ per view; the view config maps them to strip tiles. */
+  aggregates: Record<string, number | null>;
   coverage: {
     games: number;
     stat_backed_games: number;
@@ -103,7 +133,7 @@ export type ProStatsQuery = {
   champion?: string | null;
   /** Canonical-game floor. 0/absent = no minimum. */
   minGames?: number | null;
-  sort?: ProStatsSort;
+  sort?: string;
   dir?: "asc" | "desc";
   page?: number;
   pageSize?: number;
@@ -169,13 +199,14 @@ export async function getProStatsFilterOptions(
   return (await response.json()) as ProStatsFilterOptions;
 }
 
-export async function getProPlayerStats(
+export async function getProStats(
+  view: ProStatsView,
   query: ProStatsQuery,
   signal?: AbortSignal,
 ): Promise<ProStatsResponse> {
   const params = buildStatsParams(query);
   const response = await fetch(
-    `${API_BASE_URL}/api/pro-play/stats/players?${params.toString()}`,
+    `${API_BASE_URL}/api/pro-play/stats/${view}?${params.toString()}`,
     { signal },
   );
   if (!response.ok) {
@@ -189,4 +220,12 @@ export async function getProPlayerStats(
     );
   }
   return (await response.json()) as ProStatsResponse;
+}
+
+/** Players-only wrapper kept for callers (and tests) that predate Teams. */
+export async function getProPlayerStats(
+  query: ProStatsQuery,
+  signal?: AbortSignal,
+): Promise<ProStatsResponse> {
+  return getProStats("players", query, signal);
 }

@@ -40,10 +40,11 @@ import {
 } from "@/components/ui/table";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
-  getProPlayerStats,
+  getProStats,
   getProStatsFilterOptions,
   type ProStatsPlayerRow,
-  type ProStatsSort,
+  type ProStatsTeamRow,
+  type ProStatsView,
 } from "@/lib/pro-play/statsApi";
 
 const GOLD = "#c9a84c";
@@ -84,16 +85,18 @@ function fmtKda(row: ProStatsPlayerRow): string {
   return EM_DASH;
 }
 
-type Column = {
-  key: ProStatsSort;
+type AnyRow = ProStatsPlayerRow | ProStatsTeamRow;
+
+type Column<R = AnyRow> = {
+  key: string;
   label: string;
   numeric: boolean;
-  render: (row: ProStatsPlayerRow) => string;
+  render: (row: R) => string;
   /** Title attribute, for the columns whose denominator is not obvious. */
   hint?: string;
 };
 
-const COLUMNS: Column[] = [
+const PLAYER_COLUMNS: Column<ProStatsPlayerRow>[] = [
   { key: "player", label: "Player", numeric: false, render: (r) => r.player },
   {
     key: "games",
@@ -146,6 +149,124 @@ const COLUMNS: Column[] = [
   },
 ];
 
+const TEAM_COLUMNS: Column<ProStatsTeamRow>[] = [
+  { key: "team", label: "Team", numeric: false, render: (r) => r.team },
+  {
+    key: "games",
+    label: "Games",
+    numeric: true,
+    render: (r) => fmtInt(r.games),
+    hint: "Canonical games played",
+  },
+  {
+    key: "wins",
+    label: "W-L",
+    numeric: true,
+    render: (r) => `${nf.format(r.wins)}-${nf.format(r.losses)}`,
+  },
+  {
+    key: "win_rate",
+    label: "Win %",
+    numeric: true,
+    render: (r) => fmtPct(r.win_rate),
+    hint: "Over games with a recorded winner",
+  },
+  {
+    key: "kills_per_game",
+    label: "Kills/G",
+    numeric: true,
+    render: (r) => fmt(r.kills_per_game, 1),
+    hint: "Over games with detailed statistics",
+  },
+  {
+    key: "gold_per_min",
+    label: "Gold/min",
+    numeric: true,
+    render: (r) => fmt(r.gold_per_min, 0),
+    hint: "Over games with detailed statistics",
+  },
+  {
+    key: "towers_per_game",
+    label: "Towers/G",
+    numeric: true,
+    render: (r) => fmt(r.towers_per_game, 1),
+    hint: "Over games with detailed statistics",
+  },
+  {
+    key: "dragons_per_game",
+    label: "Dragons/G",
+    numeric: true,
+    render: (r) => fmt(r.dragons_per_game, 1),
+    hint: "Over games with detailed statistics",
+  },
+  {
+    key: "barons_per_game",
+    label: "Barons/G",
+    numeric: true,
+    render: (r) => fmt(r.barons_per_game, 2),
+    hint: "Over games with detailed statistics",
+  },
+];
+
+/** A strip tile: which aggregate key it reads and how it prints. */
+type StripTile = {
+  label: string;
+  key: string;
+  format: (v: number | null) => string;
+};
+
+/**
+ * ONE SHELL, THIN VIEW DEFINITIONS. Everything that differs between Players
+ * and Teams lives here; the filter bar, URL state, sorting, pagination and
+ * coverage line below are written once and read this.
+ */
+type ViewConfig = {
+  label: string;
+  columns: Column[];
+  defaultSort: string;
+  /** Stable identity per row, also the React key. */
+  rowKey: (row: AnyRow) => string;
+  strip: StripTile[];
+  /** Noun for the pager: "2,099 players". */
+  unit: string;
+};
+
+const VIEWS: Record<ProStatsView, ViewConfig> = {
+  players: {
+    label: "Players",
+    columns: PLAYER_COLUMNS as Column[],
+    defaultSort: "games",
+    rowKey: (r) => (r as ProStatsPlayerRow).player,
+    unit: "players",
+    strip: [
+      { label: "Players", key: "players", format: fmtInt },
+      { label: "Player-games", key: "games", format: fmtInt },
+      { label: "KDA", key: "kda", format: (v) => fmt(v) },
+      { label: "CS/min", key: "cs_per_min", format: (v) => fmt(v) },
+      { label: "Gold/min", key: "gold_per_min", format: (v) => fmt(v, 0) },
+    ],
+  },
+  teams: {
+    label: "Teams",
+    columns: TEAM_COLUMNS as Column[],
+    defaultSort: "games",
+    rowKey: (r) => (r as ProStatsTeamRow).team,
+    unit: "teams",
+    // Deliberately NOT led by win rate: a cohort holding both sides of the
+    // same games averages 50% by construction, so it says nothing about the
+    // teams in it. Objective rates do.
+    strip: [
+      { label: "Teams", key: "teams", format: fmtInt },
+      { label: "Team-games", key: "games", format: fmtInt },
+      { label: "Kills/G", key: "kills_per_game", format: (v) => fmt(v, 1) },
+      { label: "Towers/G", key: "towers_per_game", format: (v) => fmt(v, 1) },
+      { label: "Gold/min", key: "gold_per_min", format: (v) => fmt(v, 0) },
+    ],
+  },
+};
+
+const VIEW_KEYS = Object.keys(VIEWS) as ProStatsView[];
+
 /** Text filters are debounced and matched exactly, so they live in local
  *  state until they settle and only then reach the URL. */
 const TEXT_FILTERS = ["player", "team"] as const;
@@ -166,7 +287,16 @@ export default function ProStatsExplorer() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const read = (key: string) => searchParams.get(key) ?? "";
-  const sort = (searchParams.get("sort") as ProStatsSort) || "games";
+  const viewParam = searchParams.get("view") as ProStatsView | null;
+  const view: ProStatsView =
+    viewParam && viewParam in VIEWS ? viewParam : "players";
+  const config = VIEWS[view];
+  // A sort the OTHER view owns would be rejected by the API, so fall back to
+  // this view's default rather than sending something invalid.
+  const sortParam = searchParams.get("sort") ?? "";
+  const sort = config.columns.some((c) => c.key === sortParam)
+    ? sortParam
+    : config.defaultSort;
   const dir = searchParams.get("dir") === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
 
@@ -197,11 +327,11 @@ export default function ProStatsExplorer() {
     if (value) next.set(key, value);
     else next.delete(key);
     next.delete("page");
-    if (!next.get("view")) next.set("view", "players");
+    if (!next.get("view")) next.set("view", view);
     setSearchParams(next);
   };
 
-  const setSort = (key: ProStatsSort) => {
+  const setSort = (key: string) => {
     const next = new URLSearchParams(searchParams);
     next.set("sort", key);
     // First click on a new column sorts descending (biggest first), which is
@@ -210,12 +340,27 @@ export default function ProStatsExplorer() {
       "dir",
       sort === key && dir === "desc"
         ? "asc"
-        : key === "player"
+        : key === "player" || key === "team"
           ? "asc"
           : "desc",
     );
     next.delete("page");
     setSearchParams(next);
+  };
+
+  /** Switching view keeps the filters (they mean the same thing on both
+   *  sides) and drops only what cannot survive: the page, and a sort the new
+   *  view has no column for. */
+  const setView = (next: ProStatsView) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("view", next);
+    params.delete("page");
+    const sortSurvives = VIEWS[next].columns.some((c) => c.key === sortParam);
+    if (!sortSurvives) {
+      params.delete("sort");
+      params.delete("dir");
+    }
+    setSearchParams(params);
   };
 
   const setPage = (nextPage: number) => {
@@ -228,7 +373,7 @@ export default function ProStatsExplorer() {
   const clearAll = () => {
     setPlayerTerm("");
     setTeamTerm("");
-    setSearchParams(new URLSearchParams({ view: "players" }));
+    setSearchParams(new URLSearchParams({ view }));
   };
 
   const query = useMemo(
@@ -250,8 +395,8 @@ export default function ProStatsExplorer() {
   );
 
   const { data, isPending, isFetching, isError, error, refetch } = useQuery({
-    queryKey: ["pro-play-stats", "players", query],
-    queryFn: ({ signal }) => getProPlayerStats(query, signal),
+    queryKey: ["pro-play-stats", view, query],
+    queryFn: ({ signal }) => getProStats(view, query, signal),
     staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
   });
@@ -294,14 +439,44 @@ export default function ProStatsExplorer() {
             id="pro-stats-heading"
             className="text-2xl font-bold tracking-tight"
           >
-            Player Statistics
+            {config.label === "Teams" ? "Team" : "Player"} Statistics
           </h2>
         </div>
         <p className="text-muted-foreground">
-          Every professional player, filtered and ranked — drawn from real pro
-          match history.
+          {view === "teams"
+            ? "Every professional team, filtered and ranked — drawn from real pro match history."
+            : "Every professional player, filtered and ranked — drawn from real pro match history."}
         </p>
       </header>
+
+      {/* View switch. A segmented pair rather than another card: it selects
+          what the section below is about, so it sits with the table, not in
+          the hub's module grid. */}
+      <div
+        className="mb-3 inline-flex rounded-lg border border-[#c9a84c]/30 bg-card/60 p-0.5"
+        role="tablist"
+        aria-label="Statistics view"
+      >
+        {VIEW_KEYS.map((key) => {
+          const active = key === view;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setView(key)}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-[#c9a84c]/15 text-[#c9a84c]"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {VIEWS[key].label}
+            </button>
+          );
+        })}
+      </div>
 
       {/* ---------------------------------------------------------- filters */}
       <div className="mb-4 rounded-xl border border-border bg-card/60 p-3">
@@ -388,11 +563,13 @@ export default function ProStatsExplorer() {
               statistic, and the pager already states it in words whenever
               anything is actually missing — twice made it look like a
               data-quality readout rather than a table about players. */}
-          <Stat label="Players" value={fmtInt(data.aggregates.players)} />
-          <Stat label="Player-games" value={fmtInt(data.aggregates.games)} />
-          <Stat label="KDA" value={fmt(data.aggregates.kda)} />
-          <Stat label="CS/min" value={fmt(data.aggregates.cs_per_min)} />
-          <Stat label="Gold/min" value={fmt(data.aggregates.gold_per_min, 0)} />
+          {config.strip.map((tile) => (
+            <Stat
+              key={tile.label}
+              label={tile.label}
+              value={tile.format(data.aggregates[tile.key] ?? null)}
+            />
+          ))}
         </div>
       )}
 
@@ -406,7 +583,7 @@ export default function ProStatsExplorer() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              {COLUMNS.map((col) => {
+              {config.columns.map((col) => {
                 const active = sort === col.key;
                 return (
                   <TableHead
@@ -446,7 +623,7 @@ export default function ProStatsExplorer() {
             {isPending &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={`skeleton-${i}`}>
-                  {COLUMNS.map((col) => (
+                  {config.columns.map((col) => (
                     <TableCell key={col.key}>
                       <div className="h-4 animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -457,7 +634,7 @@ export default function ProStatsExplorer() {
             {!isPending && isError && (
               <TableRow>
                 <TableCell
-                  colSpan={COLUMNS.length}
+                  colSpan={config.columns.length}
                   className="py-10 text-center"
                 >
                   <p className="mb-3 text-sm text-muted-foreground">
@@ -474,18 +651,18 @@ export default function ProStatsExplorer() {
             {!isPending && !isError && rows.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={COLUMNS.length}
+                  colSpan={config.columns.length}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
-                  No players match these filters.
+                  {`No ${config.unit} match these filters.`}
                 </TableCell>
               </TableRow>
             )}
 
             {!isError &&
               rows.map((row) => (
-                <TableRow key={row.player}>
-                  {COLUMNS.map((col) => (
+                <TableRow key={config.rowKey(row)}>
+                  {config.columns.map((col) => (
                     <TableCell
                       key={col.key}
                       className={`whitespace-nowrap ${
@@ -504,7 +681,7 @@ export default function ProStatsExplorer() {
         {data && data.total_rows > 0 && (
           <nav
             className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-3"
-            aria-label="Player statistics pagination"
+            aria-label={`${config.label} statistics pagination`}
           >
             <p className="text-xs text-muted-foreground" aria-live="polite">
               Page{" "}
@@ -512,7 +689,7 @@ export default function ProStatsExplorer() {
                 {nf.format(data.page)}
               </span>{" "}
               of {nf.format(Math.max(data.total_pages, 1))} ·{" "}
-              {nf.format(data.total_rows)} players
+              {nf.format(data.total_rows)} {config.unit}
               {coverage && coverage.missing_stat_games > 0 && (
                 <>
                   {" · "}

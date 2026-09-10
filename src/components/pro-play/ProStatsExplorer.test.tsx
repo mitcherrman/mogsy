@@ -14,14 +14,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ProStatsExplorer from "./ProStatsExplorer";
 import type { ProStatsPlayerRow, ProStatsResponse } from "@/lib/pro-play/statsApi";
 
-const getProPlayerStats = vi.fn();
+const getProStats = vi.fn();
 const getProStatsFilterOptions = vi.fn();
+
+/** The component calls getProStats(view, query, signal). These helpers keep
+ *  the assertions reading about the QUERY, which is what they are about. */
+const lastQuery = () => getProStats.mock.calls.at(-1)?.[1];
+const firstQuery = () => getProStats.mock.calls[0]?.[1];
+const lastView = () => getProStats.mock.calls.at(-1)?.[0];
 
 vi.mock("@/lib/pro-play/statsApi", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/pro-play/statsApi")>();
   return {
     ...actual,
-    getProPlayerStats: (...args: unknown[]) => getProPlayerStats(...args),
+    getProStats: (...args: unknown[]) => getProStats(...args),
     getProStatsFilterOptions: (...args: unknown[]) => getProStatsFilterOptions(...args),
   };
 });
@@ -143,9 +149,9 @@ function rowFor(player: string) {
 
 beforeEach(() => {
   lastSearch = "";
-  getProPlayerStats.mockReset();
+  getProStats.mockReset();
   getProStatsFilterOptions.mockReset();
-  getProPlayerStats.mockResolvedValue(response([ENRICHED, UNENRICHED]));
+  getProStats.mockResolvedValue(response([ENRICHED, UNENRICHED]));
   getProStatsFilterOptions.mockResolvedValue({
     schema_version: 1,
     leagues: ["LoL Champions Korea", "Tencent LoL Pro League"],
@@ -193,7 +199,7 @@ describe("rendering", () => {
   });
 
   it("distinguishes a perfect KDA from a missing one", async () => {
-    getProPlayerStats.mockResolvedValue(response([PERFECT, UNENRICHED]));
+    getProStats.mockResolvedValue(response([PERFECT, UNENRICHED]));
     renderExplorer();
     await screen.findByText("Chi");
     expect(within(rowFor("Chi")).getByText("Perfect")).toBeInTheDocument();
@@ -208,11 +214,13 @@ describe("rendering", () => {
   it("renders the compact aggregate strip", async () => {
     renderExplorer();
     // Scoped to the strip: "KDA" and "Gold/min" are also column headers.
+    // Anchored on "Player-games": "Players" is now also the view-switcher
+    // button, and "KDA"/"Gold/min" are also column headers.
     const strip = within(
-      (await screen.findByText("Players")).closest("div")!
+      (await screen.findByText("Player-games")).closest("div")!
         .parentElement as HTMLElement,
     );
-    expect(strip.getByText("Player-games")).toBeInTheDocument();
+    expect(strip.getByText("Players")).toBeInTheDocument();
     expect(strip.getByText("KDA")).toBeInTheDocument();
     expect(strip.getByText("Gold/min")).toBeInTheDocument();
   });
@@ -247,7 +255,7 @@ describe("default scope is visible", () => {
   });
 
   it("says nothing when the caller scoped the year itself", async () => {
-    getProPlayerStats.mockResolvedValue(withFilters({ year: 2024 }));
+    getProStats.mockResolvedValue(withFilters({ year: 2024 }));
     renderExplorer("/lol/pro-play?year=2024");
     await screen.findByText("Faker");
     expect(screen.getByLabelText("Year")).toHaveValue("2024");
@@ -259,7 +267,7 @@ describe("default scope is visible", () => {
   it("shows All when the server did not narrow the year", async () => {
     // Reachable: another filter bounds the query, so no default is applied
     // and every season really is in scope.
-    getProPlayerStats.mockResolvedValue(
+    getProStats.mockResolvedValue(
       withFilters({ league: "LoL Champions Korea" }),
     );
     renderExplorer("/lol/pro-play?league=LoL%20Champions%20Korea");
@@ -273,7 +281,7 @@ describe("default scope is visible", () => {
 
 describe("states", () => {
   it("shows an empty state rather than an empty table", async () => {
-    getProPlayerStats.mockResolvedValue(
+    getProStats.mockResolvedValue(
       response([], {
         total_rows: 0,
         total_pages: 0,
@@ -298,14 +306,14 @@ describe("states", () => {
   });
 
   it("surfaces a failure with a retry", async () => {
-    getProPlayerStats.mockRejectedValue(new Error("Pro Play statistics are unavailable."));
+    getProStats.mockRejectedValue(new Error("Pro Play statistics are unavailable."));
     renderExplorer();
     expect(await screen.findByText(/statistics are unavailable/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
   it("renders a loading skeleton before the first response", () => {
-    getProPlayerStats.mockReturnValue(new Promise(() => {}));
+    getProStats.mockReturnValue(new Promise(() => {}));
     const { container } = renderExplorer();
     expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
   });
@@ -314,8 +322,8 @@ describe("states", () => {
 describe("url state", () => {
   it("reads its initial query from the URL", async () => {
     renderExplorer("/lol/pro-play?view=players&year=2025&league=LoL%20Champions%20Korea&role=Mid");
-    await waitFor(() => expect(getProPlayerStats).toHaveBeenCalled());
-    expect(getProPlayerStats.mock.calls[0][0]).toMatchObject({
+    await waitFor(() => expect(getProStats).toHaveBeenCalled());
+    expect(firstQuery()).toMatchObject({
       year: 2025,
       league: "LoL Champions Korea",
       role: "Mid",
@@ -345,10 +353,7 @@ describe("url state", () => {
     await waitFor(() => expect(lastSearch).toContain("sort=kda"));
     expect(lastSearch).toContain("dir=desc");
     await waitFor(() =>
-      expect(getProPlayerStats).toHaveBeenLastCalledWith(
-        expect.objectContaining({ sort: "kda", dir: "desc" }),
-        expect.anything(),
-      ),
+      expect(lastQuery()).toMatchObject({ sort: "kda", dir: "desc" }),
     );
   });
 
@@ -360,7 +365,7 @@ describe("url state", () => {
   });
 
   it("requests the next page without losing the filters", async () => {
-    getProPlayerStats.mockResolvedValue(
+    getProStats.mockResolvedValue(
       response([ENRICHED], { total_rows: 60, total_pages: 3, page: 1 }),
     );
     renderExplorer("/lol/pro-play?role=Mid");
@@ -381,7 +386,7 @@ describe("min games", () => {
     expect(control).toHaveValue("");
     expect(within(control as HTMLSelectElement).getByText("Any")).toBeInTheDocument();
     // Never a silent floor: the request must carry no minimum.
-    expect(getProPlayerStats.mock.calls[0][0].minGames).toBeNull();
+    expect(firstQuery().minGames).toBeNull();
   });
 
   it("offers the documented thresholds", async () => {
@@ -401,10 +406,7 @@ describe("min games", () => {
     });
     await waitFor(() => expect(lastSearch).toContain("min_games=20"));
     await waitFor(() =>
-      expect(getProPlayerStats).toHaveBeenLastCalledWith(
-        expect.objectContaining({ minGames: 20 }),
-        expect.anything(),
-      ),
+      expect(lastQuery()).toMatchObject({ minGames: 20 }),
     );
   });
 
@@ -442,10 +444,219 @@ describe("min games", () => {
 
   it("reads a floor straight out of the URL", async () => {
     renderExplorer("/lol/pro-play?min_games=20&sort=win_rate&dir=desc");
-    await waitFor(() => expect(getProPlayerStats).toHaveBeenCalled());
-    expect(getProPlayerStats.mock.calls[0][0]).toMatchObject({
+    await waitFor(() => expect(getProStats).toHaveBeenCalled());
+    expect(firstQuery()).toMatchObject({
       minGames: 20,
       sort: "win_rate",
     });
+  });
+});
+
+
+// ---------------------------------------------------------------- Teams view
+
+const TEAM_ROW = {
+  team: "T1",
+  games: 101,
+  wins: 70,
+  losses: 31,
+  win_rate: 0.693,
+  stat_backed_games: 101,
+  kills_per_game: 17.78,
+  deaths_per_game: 14.82,
+  gold_per_min: 2024.09,
+  damage_per_min: 3004.8,
+  towers_per_game: 6.9,
+  dragons_per_game: 2.45,
+  barons_per_game: 0.81,
+};
+
+/** A pre-statistics team: canonical record, nothing else. */
+const TEAM_BARE = {
+  ...TEAM_ROW,
+  team: "CGN Esports",
+  games: 43,
+  wins: 37,
+  losses: 6,
+  win_rate: 0.86,
+  stat_backed_games: 0,
+  kills_per_game: null,
+  deaths_per_game: null,
+  gold_per_min: null,
+  damage_per_min: null,
+  towers_per_game: null,
+  dragons_per_game: null,
+  barons_per_game: null,
+};
+
+function teamsResponse(rows = [TEAM_ROW, TEAM_BARE], over = {}) {
+  return {
+    ...response([]),
+    view: "teams",
+    rows,
+    total_rows: rows.length,
+    sort: "games",
+    aggregates: {
+      teams: rows.length,
+      games: 144,
+      stat_backed_games: 101,
+      win_rate: 0.5,
+      kills_per_game: 17.8,
+      towers_per_game: 6.9,
+      gold_per_min: 2024,
+    },
+    ...over,
+  } as never;
+}
+
+describe("teams view", () => {
+  it("renders the view switcher with both views", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((t) => t.textContent)).toEqual(["Players", "Teams"]);
+    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("defaults to Players when the URL names no view", async () => {
+    renderExplorer();
+    await waitFor(() => expect(getProStats).toHaveBeenCalled());
+    expect(lastView()).toBe("players");
+  });
+
+  it("selects Teams from the URL and calls the teams endpoint", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    await screen.findByText("T1");
+    expect(lastView()).toBe("teams");
+    expect(screen.getByRole("tab", { name: "Teams" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("renders the Teams columns", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    await screen.findByText("T1");
+    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual([
+      "Team", "Games", "W-L", "Win %", "Kills/G", "Gold/min",
+      "Towers/G", "Dragons/G", "Barons/G",
+    ]);
+  });
+
+  it("renders a team with no statistics as em dashes, never zero", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    await screen.findByText("CGN Esports");
+    const cells = within(
+      screen.getByText("CGN Esports").closest("tr") as HTMLTableRowElement,
+    ).getAllByRole("cell");
+    expect(cells[1]).toHaveTextContent("43");
+    expect(cells[2]).toHaveTextContent("37-6");
+    expect(cells[3]).toHaveTextContent("86.0%");
+    const rates = cells.slice(4).map((c) => c.textContent);
+    expect(rates).toEqual(["—", "—", "—", "—", "—"]);
+    expect(rates).not.toContain("0");
+  });
+
+  it("shows the Teams strip, not the Players one", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    await screen.findByText("T1");
+    const strip = within(
+      (await screen.findByText("Team-games")).closest("div")!
+        .parentElement as HTMLElement,
+    );
+    expect(strip.getByText("Teams")).toBeInTheDocument();
+    expect(screen.queryByText("Player-games")).not.toBeInTheDocument();
+    // Win rate is deliberately absent: both sides of every game sit at 50%.
+    expect(strip.queryByText("Win %")).not.toBeInTheDocument();
+  });
+
+  it("counts teams, not players, in the pager", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    expect(await screen.findByText(/2 teams/)).toBeInTheDocument();
+  });
+});
+
+describe("switching views", () => {
+  it("writes the view to the URL and resets the page", async () => {
+    renderExplorer("/lol/pro-play?page=4");
+    await screen.findByText("Faker");
+    getProStats.mockResolvedValue(teamsResponse());
+    fireEvent.click(screen.getByRole("tab", { name: "Teams" }));
+    await waitFor(() => expect(lastSearch).toContain("view=teams"));
+    expect(lastSearch).not.toContain("page=4");
+  });
+
+  it("keeps filters that mean the same thing on both sides", async () => {
+    renderExplorer("/lol/pro-play?year=2025&league=LoL%20Champions%20Korea&min_games=20");
+    await screen.findByText("Faker");
+    getProStats.mockResolvedValue(teamsResponse());
+    fireEvent.click(screen.getByRole("tab", { name: "Teams" }));
+    await waitFor(() => expect(lastSearch).toContain("view=teams"));
+    expect(lastSearch).toContain("year=2025");
+    expect(lastSearch).toContain("league=LoL+Champions+Korea");
+    expect(lastSearch).toContain("min_games=20");
+  });
+
+  it("drops a sort the new view has no column for", async () => {
+    // `kda` is Players-only; sending it to /teams would be a 400.
+    renderExplorer("/lol/pro-play?sort=kda&dir=desc");
+    await screen.findByText("Faker");
+    getProStats.mockResolvedValue(teamsResponse());
+    fireEvent.click(screen.getByRole("tab", { name: "Teams" }));
+    await waitFor(() => expect(lastSearch).toContain("view=teams"));
+    expect(lastSearch).not.toContain("sort=kda");
+    await waitFor(() => expect(lastQuery()?.sort).toBe("games"));
+  });
+
+  it("keeps a sort both views share", async () => {
+    renderExplorer("/lol/pro-play?sort=win_rate&dir=desc");
+    await screen.findByText("Faker");
+    getProStats.mockResolvedValue(teamsResponse());
+    fireEvent.click(screen.getByRole("tab", { name: "Teams" }));
+    await waitFor(() => expect(lastSearch).toContain("view=teams"));
+    expect(lastSearch).toContain("sort=win_rate");
+  });
+
+  it("never sends a Players sort to the teams endpoint", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams&sort=kda");
+    await screen.findByText("T1");
+    expect(lastQuery()?.sort).toBe("games");
+  });
+
+  it("sorts by a Teams column", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    await screen.findByText("T1");
+    fireEvent.click(screen.getByRole("button", { name: /Dragons\/G/i }));
+    await waitFor(() => expect(lastSearch).toContain("sort=dragons_per_game"));
+    await waitFor(() =>
+      expect(lastQuery()).toMatchObject({ sort: "dragons_per_game", dir: "desc" }),
+    );
+  });
+
+  it("applies Min Games in the teams request", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    await screen.findByText("T1");
+    fireEvent.change(screen.getByLabelText("Min Games"), {
+      target: { value: "20" },
+    });
+    await waitFor(() => expect(lastQuery()).toMatchObject({ minGames: 20 }));
+    expect(lastView()).toBe("teams");
+  });
+
+  it("shows the effective year the teams endpoint returned", async () => {
+    getProStats.mockResolvedValue(teamsResponse());
+    renderExplorer("/lol/pro-play?view=teams");
+    await screen.findByText("T1");
+    expect(screen.getByLabelText("Year")).toHaveValue("2026");
+    expect(screen.getByText(/showing the latest season/i)).toBeInTheDocument();
   });
 });
