@@ -1214,6 +1214,36 @@ const SUPPORT_CS_REASON =
  * Deliberately a complete-coverage default: the note is the exception and a
  * fixture that always triggered it would let a regression hide behind it.
  */
+/** The identity half of an evidence row — the SAME shape as a source meeting,
+ *  because it is the same game. `x2` is the newer of the two. */
+function exactEvidenceGame(id: "x1" | "x2") {
+  return id === "x2"
+    ? {
+        canonical_game_id: "x2",
+        game_date: "2026-06-14 11:00:00",
+        result: "W" as const,
+        win: true,
+        subject_team_key: "T1",
+        opposing_team_key: "Bilibili Gaming",
+        league_slug: "LoL Champions Korea",
+        tournament_id: null,
+        match_id: BO3_ID,
+        game_number: 3,
+      }
+    : {
+        canonical_game_id: "x1",
+        game_date: "2026-03-01 09:00:00",
+        result: "L" as const,
+        win: false,
+        subject_team_key: "T1",
+        opposing_team_key: "Bilibili Gaming",
+        league_slug: "LoL Champions Korea",
+        tournament_id: null,
+        match_id: BO3_ID,
+        game_number: 1,
+      };
+}
+
 function exactStatistics(overrides: Record<string, unknown> = {}) {
   return {
     coverage: {
@@ -1222,9 +1252,54 @@ function exactStatistics(overrides: Record<string, unknown> = {}) {
       missing_stat_games: 0,
       at15_games: { available: 2 },
     },
-    kda: { kills: 8, deaths: 4, assists: 9, ratio: 4.25, perfect: false, games: 2 },
-    gold_diff_at15: { median: 286, games: 2 },
-    cs_diff_at15: { median: 7, games: 2, supported: true, unsupported_reason: null },
+    // STEP 8 — every figure carries the games it was measured over, NEWEST
+    // FIRST, and the per-game rows really do produce the figure above them:
+    // 5+3 kills, 1+3 deaths, 4+5 assists is 8/4/9 and (8+9)/4 = 4.25; the
+    // gold rows median to 286 and the CS rows to 7.
+    kda: {
+      kills: 8,
+      deaths: 4,
+      assists: 9,
+      ratio: 4.25,
+      perfect: false,
+      games: 2,
+      evidence: [
+        {
+          ...exactEvidenceGame("x2"),
+          subject_kills: 5,
+          subject_deaths: 1,
+          subject_assists: 4,
+          ratio: 9,
+          perfect: false,
+        },
+        {
+          ...exactEvidenceGame("x1"),
+          subject_kills: 3,
+          subject_deaths: 3,
+          subject_assists: 5,
+          ratio: 8 / 3,
+          perfect: false,
+        },
+      ],
+    },
+    gold_diff_at15: {
+      median: 286,
+      games: 2,
+      evidence: [
+        { ...exactEvidenceGame("x2"), value: 899 },
+        { ...exactEvidenceGame("x1"), value: -327 },
+      ],
+    },
+    cs_diff_at15: {
+      median: 7,
+      games: 2,
+      supported: true,
+      unsupported_reason: null,
+      evidence: [
+        { ...exactEvidenceGame("x2"), value: 20 },
+        { ...exactEvidenceGame("x1"), value: -6 },
+      ],
+    },
     subject_positions: ["top"],
     definitions: EXACT_DEFINITIONS,
     ...overrides,
@@ -4320,5 +4395,225 @@ describe("Step 5 — game clearing", () => {
     });
     // A game with no meeting is dropped, not honoured.
     expect(meetingFromParams(new URLSearchParams("game=2"))).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Step 8 — an aggregate statistic, opened into the games that produced it.
+//
+// WHAT CAN BE WRONG HERE, AND IT IS NEVER THE LIST ITSELF. Rendering rows is
+// easy; the defects are all mismatches between a figure and its evidence:
+//
+// * showing every exact game under a figure that covered only some, which
+//   silently re-widens the sample in the one place a reader goes to check it;
+// * an affordance on a figure with nothing behind it, which opens an empty
+//   panel and reads as broken;
+// * a CS drilldown on a support matchup, where there is no CS figure at all;
+// * an evidence click landing somewhere the source meetings do not;
+// * a horizontal scroller at 375px, in a drawer that already scrolls.
+// ---------------------------------------------------------------------------
+
+describe("Step 8 — statistic evidence", () => {
+  async function openStudy() {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    const study = await within(drawer).findByTestId("dossier-study");
+    fireEvent.click(within(study).getByTestId("study-opposing-player"));
+    fireEvent.click(await within(drawer).findByTestId("study-opposing-champion"));
+    await within(drawer).findByTestId("study-record");
+    return within(drawer).getByTestId("dossier-study");
+  }
+
+  async function open(metric: "kda" | "gold15" | "cs15") {
+    const study = await openStudy();
+    fireEvent.click(within(study).getByTestId(`study-sample-toggle-${metric}`));
+    return study;
+  }
+
+  it("reveals the games behind the KDA", async () => {
+    const study = await open("kda");
+    const rows = within(study).getAllByTestId("study-evidence-row");
+    expect(rows).toHaveLength(2);
+  });
+
+  it("renders the real per-game K/D/A, not the aggregate's ratio", async () => {
+    const study = await open("kda");
+    const rows = within(study).getAllByTestId("study-evidence-row");
+    expect(rows[0]).toHaveTextContent("5 / 1 / 4");
+    expect(rows[1]).toHaveTextContent("3 / 3 / 5");
+    // The figure above is still (8 + 9) / 4, not the mean of 9 and 2.67.
+    expect(within(study).getByTestId("study-sample-kda")).toHaveTextContent("4.25");
+  });
+
+  it("reveals the games behind Gold @15, signed from the subject's side", async () => {
+    const study = await open("gold15");
+    const rows = within(study).getAllByTestId("study-evidence-row");
+    expect(rows[0]).toHaveTextContent("+899");
+    expect(rows[1]).toHaveTextContent("-327");
+  });
+
+  it("reveals the games behind CS @15", async () => {
+    const study = await open("cs15");
+    const rows = within(study).getAllByTestId("study-evidence-row");
+    expect(rows[0]).toHaveTextContent("+20");
+    expect(rows[1]).toHaveTextContent("-6");
+  });
+
+  it("labels every evidence row with the game it came from", async () => {
+    const study = await open("gold15");
+    const rows = within(study).getAllByTestId("study-evidence-row");
+    expect(rows[0]).toHaveTextContent("T1 vs Bilibili Gaming");
+    expect(rows[0]).toHaveTextContent("Game 3");
+    expect(rows[1]).toHaveTextContent("Game 1");
+  });
+
+  it("lists BOTH games of one meeting, unlike the source meetings above", async () => {
+    // A source meeting is a meeting to open; an evidence row is a GAME that
+    // contributed. Two games of one best-of are one meeting and two rows.
+    const study = await open("gold15");
+    expect(within(study).getAllByTestId("study-source-meeting")).toHaveLength(1);
+    expect(within(study).getAllByTestId("study-evidence-row")).toHaveLength(2);
+  });
+
+  it("shows only the games that contributed, and says how many", async () => {
+    exact = exactResponse({
+      statistics: exactStatistics({
+        coverage: {
+          exact_games: 3,
+          stat_games: 3,
+          missing_stat_games: 0,
+          at15_games: { available: 2, not_reached: 1 },
+        },
+        gold_diff_at15: {
+          median: 899,
+          games: 1,
+          evidence: [{ ...exactEvidenceGame("x2"), value: 899 }],
+        },
+      }),
+    });
+    const study = await open("gold15");
+    expect(within(study).getAllByTestId("study-evidence-row")).toHaveLength(1);
+    expect(within(study).getByTestId("study-evidence-count")).toHaveTextContent(
+      "1 of 3 exact games contributed",
+    );
+  });
+
+  it("counts the list it actually rendered", async () => {
+    const study = await open("kda");
+    const count = within(study).getByTestId("study-evidence-count");
+    const rows = within(study).getAllByTestId("study-evidence-row");
+    expect(count).toHaveTextContent(`${rows.length} game`);
+  });
+
+  it("opens the meeting AND the game an evidence row names", async () => {
+    const study = await open("gold15");
+    const rows = within(study).getAllByTestId("study-evidence-row");
+    expect(rows[0].dataset.matchId).toBe(BO3_ID);
+    expect(rows[0].dataset.gameNumber).toBe("3");
+    fireEvent.click(rows[0]);
+    const shell = await screen.findByTestId("dossier-meeting-shell");
+    expect(within(shell).getAllByTestId("meeting-game")).toHaveLength(3);
+    const url = requests.filter((u) => u.includes("/matchup/series")).pop() ?? "";
+    expect(new URLSearchParams(url.split("?")[1] ?? "").get("match_id")).toBe(BO3_ID);
+  });
+
+  it("reuses the meeting navigation the source meetings use", async () => {
+    // NOT A SECOND MECHANISM. Both go through the same selection, so Back
+    // behaves the same way from either.
+    const study = await open("gold15");
+    fireEvent.click(within(study).getAllByTestId("study-evidence-row")[0]);
+    await screen.findByTestId("dossier-meeting-shell");
+    // The study is still behind it — the reader arrived through that question.
+    expect(screen.getByTestId("player-champion-drawer")).toBeInTheDocument();
+  });
+
+  it("opens one metric at a time", async () => {
+    const study = await open("gold15");
+    expect(within(study).getByTestId("study-evidence-count")).toHaveTextContent(
+      "Gold @15",
+    );
+    fireEvent.click(within(study).getByTestId("study-sample-toggle-kda"));
+    const groups = within(study).getAllByTestId("study-evidence");
+    expect(groups).toHaveLength(1);
+    expect(within(study).getByTestId("study-evidence-count")).toHaveTextContent("KDA");
+  });
+
+  it("closes a metric when its own figure is clicked again", async () => {
+    const study = await open("cs15");
+    expect(within(study).getByTestId("study-evidence")).toBeInTheDocument();
+    fireEvent.click(within(study).getByTestId("study-sample-toggle-cs15"));
+    expect(within(study).queryByTestId("study-evidence")).toBeNull();
+  });
+
+  it("renders nothing open until a figure is clicked", async () => {
+    const study = await openStudy();
+    expect(within(study).queryByTestId("study-evidence")).toBeNull();
+    expect(within(study).getByTestId("study-sample-stats")).toBeInTheDocument();
+  });
+
+  it("gives a figure with no contributing games NO affordance", async () => {
+    // An empty panel that opens is worse than no control at all.
+    exact = exactResponse({
+      statistics: exactStatistics({
+        gold_diff_at15: { median: 286, games: 2, evidence: [] },
+      }),
+    });
+    const study = await openStudy();
+    expect(within(study).queryByTestId("study-sample-toggle-gold15")).toBeNull();
+    // And the FIGURE is still printed — the number is not the thing missing.
+    expect(within(study).getByTestId("study-sample-gold15")).toHaveTextContent("+286");
+  });
+
+  it("gives a support matchup no CS affordance at all", async () => {
+    exact = exactResponse({
+      statistics: exactStatistics({
+        cs_diff_at15: {
+          median: null,
+          games: 0,
+          supported: false,
+          unsupported_reason: "Creep score at 15 minutes is not published for supports.",
+          evidence: [],
+        },
+        subject_positions: ["sup"],
+      }),
+    });
+    const study = await openStudy();
+    expect(within(study).queryByTestId("study-sample-cs15")).toBeNull();
+    expect(within(study).queryByTestId("study-sample-toggle-cs15")).toBeNull();
+  });
+
+  it("degrades to no affordance against a backend that serves no evidence", async () => {
+    // Railway deploys on push; Lovable publishes on a click. This client can
+    // briefly meet the older payload, and must render the figures rather than
+    // throw on an absent array.
+    exact = exactResponse({
+      statistics: exactStatistics({
+        kda: { kills: 8, deaths: 4, assists: 9, ratio: 4.25, perfect: false, games: 2 },
+        gold_diff_at15: { median: 286, games: 2 },
+        cs_diff_at15: { median: 7, games: 2, supported: true, unsupported_reason: null },
+      }),
+    });
+    const study = await openStudy();
+    expect(within(study).getByTestId("study-sample-kda")).toHaveTextContent("4.25");
+    expect(within(study).queryByTestId("study-sample-toggle-kda")).toBeNull();
+    expect(within(study).queryByTestId("study-evidence")).toBeNull();
+  });
+
+  it("leaves the rest of the study visible while evidence is open", async () => {
+    const study = await open("gold15");
+    expect(within(study).getByTestId("study-source-meetings")).toBeInTheDocument();
+    expect(within(study).getAllByTestId("study-example").length).toBeGreaterThan(0);
+    expect(within(study).getByTestId("study-record")).toBeInTheDocument();
+  });
+
+  it("keeps the evidence rows inside the sheet at 375px", async () => {
+    // No horizontal table, no nested scroller. The rows wrap.
+    const study = await open("gold15");
+    for (const row of within(study).getAllByTestId("study-evidence-row")) {
+      expect(row.className).not.toContain("overflow");
+      expect(getComputedStyle(row).overflowX).not.toBe("scroll");
+    }
   });
 });

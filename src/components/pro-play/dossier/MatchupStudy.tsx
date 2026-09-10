@@ -38,6 +38,7 @@ import {
   REL_SAME_SUBJECT,
   type ExactMatchupPayload,
   type ExactPlayerFacts,
+  type ExactMeeting,
   type ExactStatistics,
   type MeetingSelection,
   type ExampleNavigation,
@@ -327,19 +328,124 @@ function exactCoverageNote(stats: ExactStatistics): string | null {
   return `${parts.join(". ")}.`;
 }
 
-function ExactSampleStats({ data }: { data: ExactMatchupPayload }) {
+/**
+ * STEP 8 — the games one figure was measured over.
+ *
+ * THIS IS THE LAST LINK IN A CHAIN THE REST OF THE EXPLORER ALREADY BUILT.
+ * The board is a claim, the dossier is the sample behind it, the exact study
+ * is the sample behind THAT, and the source meetings are its games. Until now
+ * the STATISTICS were the one thing on screen a reader had to take on trust:
+ * `+217 median` named no game. These rows are the two it is the middle of,
+ * and each one opens in the same meeting-and-game dossier the source meetings
+ * open — no new route, no new state, no modal on a modal.
+ *
+ * THE SERVER DECIDES WHAT CONTRIBUTED. This component renders `evidence` and
+ * never reconstructs it by intersecting the meetings with a coverage count:
+ * a game can be in the exact record and out of the 15-minute figure for four
+ * genuinely different reasons, and a client re-deriving that would be a
+ * second, weaker copy of a rule that is measured on the corpus.
+ *
+ * ONE OPEN AT A TIME. Three lists inside a drawer that already scrolls would
+ * push the source meetings and the other pro examples off the bottom, so
+ * opening one figure closes the others and clicking the open one closes it.
+ * The open figure is LOCAL STATE and deliberately not in the URL: the URL
+ * carries what a link must be able to re-establish — the board, the scope and
+ * the four study keys — and which disclosure a reader last poked is not part
+ * of the study, only of this glance at it.
+ */
+function EvidenceRow({
+  row,
+  value,
+  onOpenMeeting,
+}: {
+  row: ExactMeeting;
+  value: string;
+  onOpenMeeting: (meeting: MeetingSelection) => void;
+}) {
+  const openable = Boolean(row.match_id);
+  const body = (
+    <>
+      <span className="dossier-study__evidenceteams">
+        {row.subject_team_key} vs {row.opposing_team_key}
+      </span>
+      <span className="dossier-study__evidencemeta">
+        {shortDate(row.game_date)}
+        {row.game_number !== null ? ` · Game ${row.game_number}` : ""}
+      </span>
+      <span className="dossier-study__evidencevalue">{value}</span>
+    </>
+  );
+  if (!openable) {
+    // A game with no meeting identity is still the evidence for the figure,
+    // so it is LISTED rather than dropped — but it is not dressed as a link
+    // that would go nowhere.
+    return (
+      <span className="dossier-study__evidence" data-testid="study-evidence-row">
+        {body}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="dossier-study__evidence dossier-study__evidence--open"
+      data-testid="study-evidence-row"
+      data-match-id={row.match_id as string}
+      data-game-number={row.game_number ?? undefined}
+      onClick={() =>
+        onOpenMeeting({
+          match_id: row.match_id as string,
+          // The game number rides along exactly as it does from a source
+          // meeting, so an evidence click lands on the GAME that produced the
+          // number rather than on the meeting that contains it.
+          game_number: row.game_number,
+        })
+      }
+    >
+      {body}
+    </button>
+  );
+}
+
+/** "2 contributing games", or "2 of 6 exact games contributed" when the figure
+ *  covers fewer than the record. The reason a game did not contribute lives at
+ *  game level, where it can be read against the game itself. */
+function evidenceCountText(shown: number, total: number): string {
+  const games = `${shown} game${shown === 1 ? "" : "s"}`;
+  if (shown === total) return `${games} contributed`;
+  return `${shown} of ${total} exact games contributed`;
+}
+
+function ExactSampleStats({
+  data,
+  onOpenMeeting,
+}: {
+  data: ExactMatchupPayload;
+  onOpenMeeting: (meeting: MeetingSelection) => void;
+}) {
   const stats = data.statistics;
+  const [openMetric, setOpenMetric] = useState<string | null>(null);
   // The empty sample renders NOTHING. See the block comment above.
   if (!stats || !stats.coverage.exact_games) return null;
 
   const gold = stats.gold_diff_at15;
   const cs = stats.cs_diff_at15;
   const note = exactCoverageNote(stats);
+  const total = stats.coverage.exact_games;
 
   // A figure with no games behind it is left OUT rather than dashed. The
   // sample is small by nature and three dashes under a two-game record read
   // as a broken panel; the coverage note carries the fact instead.
-  const rows: Array<{ key: string; label: string; value: string; title?: string }> = [];
+  const rows: Array<{
+    key: string;
+    label: string;
+    value: string;
+    title?: string;
+    /** The rendered evidence, or none — a figure with no contributing games
+     *  gets NO affordance at all rather than a control that opens an empty
+     *  panel and reads as broken. */
+    evidence: Array<{ row: ExactMeeting; value: string }>;
+  }> = [];
   if (stats.kda.games) {
     rows.push({
       key: "kda",
@@ -351,6 +457,13 @@ function ExactSampleStats({ data }: { data: ExactMatchupPayload }) {
           : `${stats.kda.kills} / ${stats.kda.deaths} / ${stats.kda.assists} over ${
               stats.kda.games
             } game${stats.kda.games === 1 ? "" : "s"}`,
+      // The per-game line is the RECORDED counts. A deathless game reads
+      // `4 / 0 / 7` here and not "Perfect": the row's whole job is to be the
+      // source the figure above can be checked against.
+      evidence: (stats.kda.evidence ?? []).map((e) => ({
+        row: e,
+        value: `${e.subject_kills} / ${e.subject_deaths} / ${e.subject_assists}`,
+      })),
     });
   }
   if (gold.median !== null) {
@@ -361,6 +474,10 @@ function ExactSampleStats({ data }: { data: ExactMatchupPayload }) {
       // reader must not read a middle value as a total or an average.
       value: `${signedFigure(gold.median)} median`,
       title: data.statistics.definitions.median_at15,
+      evidence: (gold.evidence ?? []).map((e) => ({
+        row: e,
+        value: signedFigure(e.value),
+      })),
     });
   }
   if (cs.supported && cs.median !== null) {
@@ -369,27 +486,69 @@ function ExactSampleStats({ data }: { data: ExactMatchupPayload }) {
       label: "CS @15",
       value: `${signedFigure(cs.median)} median`,
       title: data.statistics.definitions.median_at15,
+      evidence: (cs.evidence ?? []).map((e) => ({
+        row: e,
+        value: signedFigure(e.value),
+      })),
     });
   }
   if (!rows.length && !note) return null;
+
+  const open = rows.find((row) => row.key === openMetric && row.evidence.length);
 
   return (
     <div className="dossier-study__sample" data-testid="study-sample-stats">
       <span className="dossier-drawer__stathint">Exact sample</span>
       {rows.length ? (
         <ul className="dossier-study__samplelist">
-          {rows.map((row) => (
-            <li
-              key={row.key}
-              className="dossier-study__samplestat"
-              data-testid={`study-sample-${row.key}`}
-              title={row.title}
-            >
-              <span className="dossier-study__samplelabel">{row.label}</span>
-              <span className="dossier-study__samplevalue">{row.value}</span>
-            </li>
-          ))}
+          {rows.map((row) => {
+            const expandable = row.evidence.length > 0;
+            const expanded = open?.key === row.key;
+            return (
+              <li
+                key={row.key}
+                className="dossier-study__samplestat"
+                data-testid={`study-sample-${row.key}`}
+                title={row.title}
+              >
+                <span className="dossier-study__samplelabel">{row.label}</span>
+                {expandable ? (
+                  <button
+                    type="button"
+                    className={`dossier-study__samplevalue dossier-study__samplevalue--open${
+                      expanded ? " is-open" : ""
+                    }`}
+                    data-testid={`study-sample-toggle-${row.key}`}
+                    aria-expanded={expanded}
+                    onClick={() => setOpenMetric(expanded ? null : row.key)}
+                  >
+                    {row.value}
+                    <span aria-hidden="true" className="dossier-study__samplecaret">
+                      {expanded ? "▴" : "▾"}
+                    </span>
+                  </button>
+                ) : (
+                  <span className="dossier-study__samplevalue">{row.value}</span>
+                )}
+              </li>
+            );
+          })}
         </ul>
+      ) : null}
+      {open ? (
+        <div className="dossier-study__evidencegroup" data-testid="study-evidence">
+          <span className="dossier-drawer__stathint" data-testid="study-evidence-count">
+            {open.label} · {evidenceCountText(open.evidence.length, total)}
+          </span>
+          {open.evidence.map((item) => (
+            <EvidenceRow
+              key={item.row.canonical_game_id}
+              row={item.row}
+              value={item.value}
+              onOpenMeeting={onOpenMeeting}
+            />
+          ))}
+        </div>
       ) : null}
       {note ? (
         <span className="dossier-drawer__stathint" data-testid="study-sample-coverage">
@@ -449,7 +608,7 @@ function ExactRecordBand({
           ABOVE the source meetings, so the reading order stays who -> which
           champions -> how many games -> the record -> then the scouting
           figures -> then the evidence they were drawn from. */}
-      <ExactSampleStats data={data} />
+      <ExactSampleStats data={data} onOpenMeeting={onOpenMeeting} />
       <SourceMeetings data={data} onOpenMeeting={onOpenMeeting} />
     </div>
   );

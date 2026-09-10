@@ -336,6 +336,8 @@ on it while merely *rendering* a non-navigable example, Railway auto-deploys
 `master`, and Lovable publishes on the owner's click — so dropping the name in
 the same release that renames it would throw in the live client during that
 window. Delete the field and its test once the new frontend is published.
+**Done in Step 8** — the published chunk was fetched and does not contain the
+old name.
 
 ### The one deploy-ordering hazard
 
@@ -765,7 +767,8 @@ pooled team was a real crash window.)
 
 **Still open from Step 3.1:** delete the `teams_outside_focus_set` mirror once
 a frontend carrying `teams_outside_explorer_pool` is *published*. That
-condition is still not met.
+condition is still not met. *(It was met on 2026-09-08, and **Step 8 deleted
+the mirror**.)*
 
 ## Files — Step 4
 
@@ -1385,7 +1388,7 @@ wire.
 **Now unblocked from Step 3.1:** the condition for deleting the
 `teams_outside_focus_set` mirror — "a frontend carrying
 `teams_outside_explorer_pool` is *published*" — is **met**. That deletion is a
-separate, safe commit whenever someone wants it.
+separate, safe commit whenever someone wants it. **Step 8 made it.**
 
 **One thing the published bundle carries is the CSS defect.** The live Step 4
 meeting shell has no desktop styling at all, because its whole CSS block was
@@ -1688,7 +1691,7 @@ aggregate is a new one.
 1. ~~**Decide whether @15 earns an aggregate.**~~ **Answered by Step 7** (see
    below): it does, and the aggregate shipped. The next Matchup Explorer
    candidates are in Step 7's own "Next recommended slice".
-2. **Delete the `teams_outside_focus_set` mirror** once the frontend carrying
+2. ~~**Delete the `teams_outside_focus_set` mirror**~~ **Done in Step 8.** Once the frontend carrying
    `teams_outside_explorer_pool` is published.
 3. **Re-run `scripts/audit_explorer_team_pool.py` each season.** The registry
    is a cache of a measurement; the real-corpus tests will fail if it drifts,
@@ -2088,11 +2091,400 @@ before it needs a component.
 
 Two smaller candidates, either of which is a clean single slice:
 
-1. **The `teams_outside_focus_set` mirror deletion.** Still unblocked, still
-   not done — a separate, safe commit.
+1. ~~**The `teams_outside_focus_set` mirror deletion.**~~ **Done in Step 8.**
 2. **Open a checkpoint figure into the game that produced it.** The Source
    Meetings beneath these figures already carry `match_id` and `game_number`,
    and Step 6 renders the per-game figure inside the game dossier. Making
    `+217 median` reachable down to the two games it is the middle of would
    close aggregate → evidence → source game for a *statistic*, which is the
    move this workstream makes everywhere else.
+
+
+# Step 8 — an aggregate statistic, opened into the games that produced it
+
+Implemented. Step 7's own "next recommended slice" #2, built as written, plus
+Step 3.1's leftover mirror deletion (#1), which the evidence below finally
+proves safe.
+
+```
+Olaf vs K'Sante · Doran (Choi Hyeon-joon) vs Kiin
+2 games · 2–0 · 100.0%
+                     Exact sample
+                     KDA 4.25 ▾   GOLD @15 +217 median ▾   CS @15 +2.5 median ▾
+
+                     Gold @15 · 2 games contributed
+                     T1 vs Gen.G   2026-05-16 · Game 3          -476
+                     T1 vs Gen.G   2025-07-25 · Game 2          +910
+```
+
+`median(-476, +910) = +217`, and each row opens the game it names.
+
+## What this closes
+
+Every other layer of the Explorer could already be opened into the thing
+beneath it. The **statistics** were the one exception: `+217 median` named no
+game, so it was the only claim on screen a reader had to take on trust. The
+chain is now unbroken end to end —
+
+> board → dossier → exact study → **figure → contributing games** → meeting →
+> game → box score and the per-game @15 that produced the figure
+
+— and the last two links agree by construction, because the per-game value in
+the evidence row and the one Step 6 renders inside the game dossier come from
+**the same resolver call**. Verified live: clicking `-476` opened Game 3 of
+`LCK/2026 Season/Rounds 1-2_Week 7_7`, whose box score reads
+`Doran (Choi Hyeon-joon) TOP @15 -476 gold · -18 CS` and `4 / 4 / 14`. Those
+are exactly the three values the study served for that game.
+
+## The backend owns contribution, and that is the whole design
+
+The evidence list is emitted **by the pass that computes the figure, from the
+same rows, at the same moment**. It is not reconstructed anywhere.
+
+The alternative — a client intersecting `exact.meetings` with a coverage count
+— was rejected outright, and not on taste: a game is in the exact record and
+out of the 15-minute figure for **four genuinely different reasons**
+(`not_reached`, `unavailable`, `opponent_unresolved`,
+`lane_opponent_is_another_player`), the last of which is *measured on the
+corpus per game*. A frontend could not derive it, and a frontend that guessed
+would re-widen in the one place a reader goes to check.
+
+Concretely, in `exact_statistics._checkpoint_sample`, every `continue` in the
+loop is a game that does not contribute — and it leaves no evidence row behind
+**because the append is inside the loop, after the guards**, not because a
+second filter agrees with the first.
+
+For KDA the same principle put the rule one level down:
+**`oe_stats_reader.player_kda_rows_for_games`** reads the per-game rows with
+the *identical* guard the totals use (`kills`, `deaths` and `assists` all
+non-NULL — a row missing one is already skipped by `SUM`). So
+`len(evidence) == totals["kda_games"]` is guaranteed by both coming from one
+module, and a test asserts it directly.
+
+## Contract addition — `GET /api/pro-play/matchup/exact`
+
+Same route, parameters, gate and error codes. One key added to each of the
+three figures; **one field removed** (below).
+
+```jsonc
+"statistics": {
+  "kda": { "kills": 11, "deaths": 8, "assists": 23, "ratio": 4.25,
+           "perfect": false, "games": 2,
+           "evidence": [
+             { "canonical_game_id": "355f42ec…", "match_id": "LCK/2026 Season/Rounds 1-2_Week 7_7",
+               "game_number": 3, "game_date": "2026-05-16 10:10:00",
+               "subject_team_key": "T1", "opposing_team_key": "Gen.G",
+               "league_slug": "LoL Champions Korea", "tournament_id": "LCK 2026 Rounds 1-2",
+               "result": "W", "win": true,
+               "subject_kills": 4, "subject_deaths": 4, "subject_assists": 14,
+               "ratio": 4.5, "perfect": false }, … ] },
+  "gold_diff_at15": { "median": 217.0, "games": 2,
+                      "evidence": [ { …the same identity…, "value": -476 }, … ] },
+  "cs_diff_at15":   { "median": 2.5, "games": 2, "supported": true,
+                      "unsupported_reason": null,
+                      "evidence": [ { …, "value": -18 }, … ] }
+}
+```
+
+**An evidence row is an `ExactMeeting` plus its value.** The identity half is
+`exact_statistics.EVIDENCE_IDENTITY_FIELDS` — the exact projection
+`exact._meetings[]` already uses — because the evidence behind a statistic and
+the source meeting beneath it are the **same game**. A separate shape would
+have been a second description of one thing, and would have needed its own
+navigation. A test pins the row's key set in both directions, so neither a
+missing field nor a smuggled box score passes.
+
+**Not a second box score.** `/game` owns the full game payload. Duplicating it
+here would put two answers about one game in one response and multiply the
+size of a study for a list nobody has clicked.
+
+**`meeting_limit` caps what the record DISPLAYS, never what a figure is
+measured over — and now never what it can evidence.** `exact_matchup` passes
+`_meeting_rows(exact, len(exact))`, the whole sample. A test with
+`meeting_limit=2` over five games asserts two meetings and five evidence rows.
+
+**Payload size is bounded by the exact sample itself**, which is 2–6 games in
+every real case measured. No cap was added; a cap would mean a figure whose
+evidence does not add up.
+
+## Per-metric contribution rules
+
+| Figure | A game is listed iff |
+|---|---|
+| **KDA** | it is an exact game **and** the subject has a stat row carrying all three of kills/deaths/assists. The row shows the recorded `subject_kills / subject_deaths / subject_assists`, plus that game's own `ratio` and `perfect`. |
+| **Gold @15** | Step 6's resolver returned `available` for the subject **and** the lane opponent it resolved is the opposing player in the heading. |
+| **CS @15** | the Gold rule, **and** the game's CS difference was not suppressed, **and** the matchup publishes CS at all (`supported`). |
+
+Everything the aggregate excluded, the list excludes, for the same reason and
+in the same pass: a missing checkpoint, a game that never reached 15:00, an
+unresolvable opponent, a cross-lane pair, a game with no stat row, and every
+near miss the exact filter already refused. **A support matchup serves an
+empty `cs_diff_at15.evidence`** — there is no CS figure, so there is nothing
+to evidence.
+
+**The per-game KDA ratio is a convenience on the row, never a term in the
+figure.** The aggregate is `(ΣK + ΣA) / ΣD` and stays so. A test computes the
+mean of the evidence ratios and asserts the aggregate **differs** from it, so
+a regression to averaging fails loudly rather than looking plausible.
+
+## Evidence ordering — stated once, and it is not a new rule
+
+**Newest first, tie-broken on the canonical game id** — i.e. exactly
+`exact_matchup._newest_first`, the total order the Source Meetings list under
+these figures already renders in. The evidence rows arrive in that order
+because `exact_statistics` **preserves the caller's order** rather than
+sorting again, so the two lists can never disagree about which game is first.
+The corpus really does carry several games on one timestamp (a best-of is
+played in one sitting), which is why the tie-break exists at all.
+
+**Deliberately NOT ordered by magnitude.** This is the evidence behind a
+claim, not a ranking of it, and a list that put the biggest lead first would
+read as one. A fixture writes the largest value into the *middle* game and
+asserts the order stays chronological.
+
+## Coverage consistency
+
+`len(figure["evidence"]) == figure["games"]` for all three figures, always —
+they are one pass's two outputs. A test asserts it per figure on a
+deliberately mixed five-game sample (KDA on 4, checkpoints on 3), and again on
+the real corpus.
+
+The panel says `2 games contributed` when the figure covers the whole record
+and `1 of 3 exact games contributed` when it does not. **The games that did
+not contribute are not listed**, and the panel does not explain why — the
+reason is a fact about a specific game and already lives at game level, where
+it can be read against the game itself.
+
+## Frontend — one inline disclosure, inside the strip that already exists
+
+No modal, no tabs, no drawer, no second panel. The figure itself becomes the
+control: it gains a caret and a hover underline and **nothing else**, because
+a statistic that suddenly looked like a button would compete with the matchup
+identity the whole strip is styled not to dominate.
+
+* **One metric open at a time.** Opening one closes the others; clicking the
+  open one closes it. Three lists inside a drawer that already scrolls would
+  push Source Meetings and Other Pro Examples off the bottom.
+* **Local state, deliberately not in the URL.** The URL carries what a link
+  must re-establish — the board, the scope, the four study keys, and (since
+  Step 4) the meeting and game. Which disclosure a reader last poked is not
+  part of the study, only of this glance at it. Adding it would have made two
+  links to the same study unequal.
+* **A figure with no contributing games gets NO affordance.** Not a control
+  that opens an empty panel; the figure prints as plain text. Same rule the
+  strip already follows for a figure with no games at all — that one is left
+  out rather than dashed.
+* **Support: no CS row, therefore no CS control.** Step 7's omission is
+  preserved exactly; nothing was added to explain the absence.
+* **Empty exact sample: nothing renders at all.** Step 3's zero state is
+  already the whole answer.
+* **No tutorial about medians.** The label still says `median` on the figure,
+  and the list makes the contributing values visible, which is a better
+  explanation than a paragraph.
+
+Reading order (still held as a DOM-order test): who · which champions · sample
+size · the record · the figures · **the open evidence** · Source Meetings ·
+Other Pro Examples.
+
+### Evidence rows vs Source Meetings — a real difference, and it is tested
+
+Source Meetings **dedupe by `match_id`**: two games of one best-of are one
+meeting to open, and listing it twice would read as the pair having met twice.
+Evidence rows are **per game**, because a game is what contributed a value.
+The Doran/Kiin study renders **one** source meeting and **two** evidence rows,
+and a test asserts both counts in the same assertion so the distinction cannot
+be flattened by accident.
+
+### Navigation — the existing one, unchanged
+
+An evidence row calls the same `onOpenMeeting({ match_id, game_number })` a
+source meeting calls. One history entry; the URL gains `meeting=…&game=3`;
+Back returns to the study with the drawer still open. **No new route, no
+second mechanism.** A row whose `match_id` is null is still listed (it is
+still the evidence) but is rendered as a span rather than dressed as a link
+that would go nowhere.
+
+Verified live in the browser: click → `?…&meeting=LCK/2026 Season/Rounds
+1-2_Week 7_7&game=3` → the Step 5 game dossier for **Game 3** → `history.back()`
+→ study restored, meeting shell gone, evidence panel still open.
+
+### Mobile
+
+375 × 812, real corpus, evidence open: `scrollWidth === clientWidth` (**no
+page-level horizontal overflow**), rows **323.6px inside a 375px sheet**,
+`overflow-x: visible` on every row — no horizontal table, no tiny stat
+columns, no nested scroller. The rows wrap: teams first, then date and game
+number, with the value taking the tail where there is room and joining the
+flow where there is not. 1280 × 900: rows are 500px and a single line, and the
+drawer's height is unchanged.
+
+*(The Browser pane was hidden during measurement, so the Radix sheet's entry
+transform never ran and the drawer sits at `left: 375`. Widths and
+`scrollWidth` are unaffected and were read directly; the screenshot was taken
+with the transform cleared by hand.)*
+
+## The `teams_outside_focus_set` mirror — DELETED
+
+Step 3.1 left it as a **dated, deletable mirror** of
+`teams_outside_explorer_pool`, kept for one reason only: the frontend
+published on 2026-09-08 called `.join` on the old name while merely
+*rendering* a non-navigable example, and Railway deploys `master` before the
+owner presses Publish in Lovable.
+
+**That window is measured shut.** The chunk served from mogzy.lol on
+2026-09-09, `ProPlayMatchup-CuSBrXtS.js`, was fetched and grepped:
+
+| name | occurrences in the live chunk |
+|---|---:|
+| `teams_outside_explorer_pool` | **1** |
+| `teams_outside_focus_set` | **0** |
+
+So the field is gone from `exact_matchup._navigation`, and its test is
+**inverted rather than deleted** — `"teams_outside_focus_set" not in nav` —
+because a field that quietly comes back is a regression that should have a
+name. No other reference existed in either repo.
+
+**That same fetch supersedes Step 7's own deploy note:** the live chunk also
+contains `Exact sample`, `study-sample-stats`, `gold_diff_at15`,
+`cs_diff_at15` and `study-sample-coverage`. **Step 7's frontend IS published.**
+Its note, written earlier the same day, said it was not.
+
+## Performance
+
+The slice adds **one** indexed read — the per-game K/D/A rows — and one
+projection. Measured warm against the real 5.6 GB corpus:
+
+| | |
+|---|---:|
+| `player_kda_rows_for_games`, 6 ids | **0.014 ms** |
+| whole `exact_statistics` block, 6-game sample | 0.27–0.34 ms |
+| the `/exact` request it sits inside | 0.6–1.3 s |
+
+The request is still dominated by Step 3's champion-index pass, exactly as
+Step 7 measured. No caching was built, for the same reason as before.
+
+## Real corpus examples verified (2026-09-09)
+
+Read through the real endpoint (local FastAPI + vite against the full corpus,
+throwaway admin key, never the production secret) and, for the first two,
+**rendered and clicked in a browser**.
+
+| Case | Result |
+|---|---|
+| **Doran Jayce vs Kiin K'Sante**, `recent_2025_2026` | KDA `4.25` opens to `4 / 4 / 14` and `7 / 4 / 9` (sums 11/8/23 ✓). Gold `+217 median` opens to `-476` and `+910` (median ✓). CS `+2.5 median` opens to `-18` and `+23` ✓. Two evidence rows, **one** source meeting. |
+| **…clicked through** | `-476` → meeting `LCK/2026 Season/Rounds 1-2_Week 7_7`, **Game 3**, box score reads `Doran TOP @15 -476 gold · -18 CS`, `4 / 4 / 14`. Back returns. |
+| **Keria Alistar vs Duro Poppy** (support) | `KDA 1.89 ▾` and `GOLD @15 -148 median ▾`. **No CS row and no CS control.** Gold opens to `-140` and `-156` (median ✓). |
+| **Broxah Gragas vs Jankos Sejuani**, `all_time` | 6 games; evidence 6/6/6; the gold rows sorted equal an independent SQL walk exactly, and sum to the aggregate's own K/D/A. |
+| **Bin Gnar vs Breathe Renekton** (partial) | KDA evidence 6 rows, checkpoint evidence **3** — and the checkpoint set is a strict subset of the KDA set. |
+| **Delight Rakan vs Gumayusi Aphelios** (cross-lane) | 6 exact games. Checkpoint evidence **empty on both figures**; KDA evidence 6. |
+| **Faker Azir vs Broxah Gragas** (zero) | Every evidence list empty; no affordance renders. |
+
+## Tests
+
+**Backend — 34 new (9 real-corpus)**, all in
+`test_pro_authority_exact_statistics.py`, plus one inverted in
+`test_pro_authority_explorer_teams.py`. Suite: **83 passed**.
+
+The load-bearing ones are the exclusions — each absence the aggregate honours
+is written as a real row and asserted absent from the list: the missing mark,
+the 760-second game, the opponent with no row, the cross-lane pair, the game
+with no stat row, and the three near misses (each carrying a `99/0/99` line
+and a 19,000-gold lead, so a widened sample is as loud in the *list* as in the
+figure). Then: `len(evidence) == games` per figure; the order is chronological
+and not by magnitude; the tie-break is the canonical game id; the row's key
+set is pinned both ways; the aggregate differs from the mean of its own rows;
+`meeting_limit` does not cap it; and `len(kda rows) == totals["kda_games"]`
+straight out of `oe_stats_reader`.
+
+Two fixture changes were needed and are themselves the point: `_game` now
+writes `match_id`/`game_number` instead of NULL (a fixture that left them null
+would let a payload serving null identity pass), and `_pair` can place two
+games in one meeting.
+
+Pro Play backend regression: **1611 passed, 1 skipped, 0 failed** across
+`test_pro_authority_*` and `test_pro_play*`, with the real corpus attached.
+*(Without the corpus, 9 route tests fail on `unable to open database file` —
+that is the harness, not the code. Symlink `lol_calc.db` into the worktree;
+the routes open it `mode=ro`.)*
+
+**Frontend — 18 new.** Board suite **252 passed** (was 234); **462 Pro Play
+tests across 7 files, all passing.** Typecheck (`tsconfig.app.json`) **13
+errors, none in pro-play** — identical to Step 7's documented baseline. Build
+green.
+
+The default `exactStatistics()` fixture now carries evidence whose rows really
+do produce the figures above them (5+3 / 1+3 / 4+5 → 8/4/9 → 4.25; the gold
+rows median to 286; the CS rows to 7), so every existing Step 7 assertion is
+re-checked against a consistent payload rather than an invented one.
+
+One test covers the **deploy window explicitly**: against a payload with no
+`evidence` key at all, the figures still render and no affordance appears.
+
+## Deferred, and deliberately
+
+Everything Steps 6 and 7 deferred stays deferred. Also **not** added here: any
+new statistic; a per-game statistics table; sorting or filtering the evidence;
+the omission reason inside the panel; evidence on the dossier's own figures or
+on the board; and evidence for `other_pro_examples` (those are records, not
+measured figures).
+
+## Deploy state — Step 8 (2026-09-09)
+
+| | SHA | Where |
+|---|---|---|
+| Backend | `PENDING` | `master`, Railway auto-deploys |
+| Frontend | `PENDING` | `main`, Lovable publish is the owner's click |
+
+**No deploy-ordering hazard in either direction, and this was checked rather
+than assumed.**
+
+* Backend → old frontend: the three `evidence` keys are **additive** on an
+  existing payload, and the published client reads named keys. It ignores
+  them.
+* New frontend → old backend: `evidence` is typed **optional** and read as
+  `?? []`, which renders the figures with no affordance. There is a test.
+* The one **removal**, `teams_outside_focus_set`, is safe because the
+  published chunk does not contain the name — fetched and grepped above.
+
+## Files — Step 8
+
+### Backend — `/Users/macmoney/League_Combat_Simulator`
+
+| File | Change |
+|---|---|
+| `pro_authority/exact_statistics.py` | `EVIDENCE_IDENTITY_FIELDS`, `_identity`, `_evidence`; the checkpoint loop collects evidence beside each value; `canonical_game_ids` → `exact_games` (meeting rows, newest first); `exact_sample_evidence` definition. |
+| `pro_authority/oe_stats_reader.py` | `player_kda_rows_for_games` — the per-game rows behind the totals, same guard. |
+| `pro_authority/exact_matchup.py` | passes the whole exact sample as meeting rows; **deletes** `teams_outside_focus_set`. |
+| `test_pro_authority_exact_statistics.py` | 34 new tests; fixture writes source-meeting identity. |
+| `test_pro_authority_explorer_teams.py` | the mirror test, inverted. |
+
+### Frontend — `/Users/macmoney/mogsy`
+
+| File | Change |
+|---|---|
+| `src/lib/pro-play/matchupApi.ts` | `ExactKdaEvidence`, `ExactAt15Evidence`, optional `evidence` on all three figures. |
+| `src/components/pro-play/dossier/MatchupStudy.tsx` | `EvidenceRow`, `evidenceCountText`; `ExactSampleStats` gains the disclosure and `onOpenMeeting`. |
+| `src/index.css` | `.dossier-study__samplevalue--open`, `__samplecaret`, `__evidencegroup`, `__evidence*`. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | `exactEvidenceGame`; evidence in the default fixture; 18 new tests. |
+
+## Next recommended slice
+
+Step 7's #1 is now done and its #2 is this. The honest remaining question is
+still **the one Step 7 named and did not answer**: whether the five-lane board
+should carry any lane state at all. A reader who can now open `+217 median`
+down to two real games will ask the same of the ten tiles above — and a lane
+row is *one player across many opponents*, not one exact pairing, so it needs
+its own sample rule before it needs a component. That is the next real slice,
+and it is a bigger claim than anything Steps 6–8 made.
+
+Two smaller candidates, if a single clean slice is wanted first:
+
+1. **The omission reason, at the point of omission.** The coverage note says
+   `15-minute figures based on 3 of 6 games` and the evidence lists the 3. The
+   remaining 3 have four different reasons and the payload already counts them
+   by name in `coverage.at15_games`. Naming them *without* turning the panel
+   into an explanation is the design problem, and it is a real one.
+2. **Evidence on the dossier's own statistics** (Step 2's KDA / CS-min /
+   gold-min / damage-min). Same move, a much larger sample — 30-odd games
+   rather than 2 — so it needs a display bound and a "show all", which is why
+   it was not folded in here.

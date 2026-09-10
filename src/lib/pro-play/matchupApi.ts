@@ -1050,6 +1050,33 @@ export type ExactAt15State =
    *  a third player would be a false sentence. */
   | "lane_opponent_is_another_player";
 
+/**
+ * STEP 8 — one real game behind one figure.
+ *
+ * IT IS AN `ExactMeeting` PLUS A VALUE, and that is deliberate: the evidence
+ * behind a statistic and the source meeting beneath it are the SAME game, so
+ * they carry the same identity and open through the same navigation. A
+ * separate shape would have been a second description of one game.
+ *
+ * NOT A BOX SCORE. `/game` owns the full game payload and stays the place to
+ * read one; an evidence row exists to be checked and clicked.
+ */
+export interface ExactKdaEvidence extends ExactMeeting {
+  subject_kills: number;
+  subject_deaths: number;
+  subject_assists: number;
+  /** This GAME's ratio, on the same zero-death convention as the aggregate.
+   *  It is NOT a term in the figure above — that one is
+   *  (ΣK + ΣA) / ΣD, and averaging these would give a different number. */
+  ratio: number | null;
+  perfect: boolean;
+}
+
+/** One contributing game's own differential, in the subject's direction. */
+export interface ExactAt15Evidence extends ExactMeeting {
+  value: number;
+}
+
 /** Raw components and the derived ratio, from TOTALS and never from the mean
  *  of per-game ratios. `perfect` is true only over games that exist — an empty
  *  sample also has a null ratio and the two must not render the same way. */
@@ -1060,6 +1087,14 @@ export interface ExactKda {
   ratio: number | null;
   perfect: boolean;
   games: number;
+  /**
+   * STEP 8 — the games that produced this figure, newest first, and exactly
+   * as many as `games`. OPTIONAL ONLY BECAUSE OF THE DEPLOY WINDOW: Railway
+   * deploys `master` on push and Lovable publishes on the owner's click, so
+   * this client can briefly meet a backend that predates the field. Absent
+   * and empty are read the same way — no evidence, therefore no affordance.
+   */
+  evidence?: ExactKdaEvidence[];
 }
 
 /** The MEDIAN per-game difference at 15 minutes, read from the subject's side:
@@ -1068,6 +1103,11 @@ export interface ExactKda {
 export interface ExactAt15Median {
   median: number | null;
   games: number;
+  /** STEP 8 — the contributing games and what each one contributed. Only the
+   *  games the figure counted: a cross-lane pair, a missing mark, a short
+   *  game and an unresolved opponent are all absent here for the same reasons
+   *  they are absent from the median. */
+  evidence?: ExactAt15Evidence[];
 }
 
 /** CS at 15 minutes, which is not published for every matchup. `supported` is

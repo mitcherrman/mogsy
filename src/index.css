@@ -11930,6 +11930,78 @@ html.hub-commons-in-view .hextech-ambience-layer {
   font-variant-numeric: tabular-nums;
   color: var(--dsr-ink);
 }
+/* STEP 8 — a figure that can be opened into the games behind it.
+   THE FIGURE IS STILL THE FIGURE. It gains a caret and a hover underline and
+   nothing else: no button chrome, no box, no colour change. A statistic that
+   suddenly looked like a control would compete with the matchup identity
+   above it, which the whole strip is styled not to do. */
+.proplay-dossier .dossier-study__samplevalue--open {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsr-ink);
+  cursor: pointer;
+}
+.proplay-dossier .dossier-study__samplevalue--open:hover,
+.proplay-dossier .dossier-study__samplevalue--open.is-open {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.proplay-dossier .dossier-study__samplecaret {
+  font-size: 0.55rem;
+  color: rgba(93, 85, 70, 0.7);
+}
+/* The open figure's contributing games. Stacked rows in the SAME language as
+   the source meetings beneath them, because they are the same games — a
+   reader who learns the shape once reads both. */
+.proplay-dossier .dossier-study__evidencegroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.2rem;
+}
+/* WRAPPING, NEVER SCROLLING. At 375px the teams take the first line and the
+   date and value follow; a horizontal table or a nested scroller inside a
+   drawer that already scrolls would trap the gesture. */
+.proplay-dossier .dossier-study__evidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.4rem;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid rgba(93, 85, 70, 0.16);
+  border-radius: 4px;
+  background: rgba(255, 253, 246, 0.55);
+  font-size: 0.62rem;
+  text-align: left;
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-study__evidence--open {
+  cursor: pointer;
+}
+.proplay-dossier .dossier-study__evidence--open:hover {
+  border-color: rgba(93, 85, 70, 0.42);
+}
+.proplay-dossier .dossier-study__evidencemeta {
+  color: rgba(93, 85, 70, 0.78);
+}
+/* The value takes the tail of the row where there is room, and simply joins
+   the flow where there is not. `min-width: 0` keeps a long team name from
+   pushing the row past the sheet. */
+.proplay-dossier .dossier-study__evidenceteams {
+  min-width: 0;
+}
+.proplay-dossier .dossier-study__evidencevalue {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
 
 .proplay-dossier .dossier-study__sources {
   display: flex;
