@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   },
   upsertResult: { error: null as { code?: string; message?: string } | null },
   upsertCalls: [] as { key: string; value: unknown }[],
+  /** Recorded separately so the payload assertions above stay exact. */
+  upsertOptions: [] as unknown[],
   singleRow: null as unknown,
   /** Optional latch: hold the write open to observe the in-flight state. */
   upsertGate: null as Promise<void> | null,
@@ -44,8 +46,9 @@ vi.mock("@/integrations/supabase/client", () => ({
         };
         return result;
       },
-      upsert: async (row: { key: string; value: unknown }) => {
+      upsert: async (row: { key: string; value: unknown }, options?: unknown) => {
         mocks.upsertCalls.push(row);
+        mocks.upsertOptions.push(options);
         if (mocks.upsertGate) await mocks.upsertGate;
         return mocks.upsertResult;
       },
@@ -84,6 +87,7 @@ beforeEach(() => {
   };
   mocks.upsertResult = { error: null };
   mocks.upsertCalls = [];
+  mocks.upsertOptions = [];
   mocks.singleRow = null;
   mocks.upsertGate = null;
 });
@@ -553,5 +557,117 @@ describe("Global Premium Access", () => {
       screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]'),
     ).toHaveAttribute("aria-checked", "false");
     expect(screen.queryByTestId("global-premium-access-banner")).toBeNull();
+  });
+});
+
+/**
+ * PT2B — FIRST ACTIVATION FROM AN ABSENT ROW.
+ *
+ * `app_settings.global_premium_access` may genuinely not exist in production:
+ * a Lovable publish does not run repo migrations, so the seed may never have
+ * been applied. The absent state must therefore be operable, not merely safe.
+ *
+ * It is, because the mutation is an UPSERT on the key. That is not a new
+ * mechanism: `app_settings` has carried an admin-only INSERT policy since the
+ * table was created, alongside the admin-only UPDATE policy, so creating the
+ * row on first activation is authorized by exactly the same `has_role` check
+ * that authorizes changing it afterwards. Nothing about RLS moves for this.
+ */
+describe("Global Premium Access · first activation with no stored row", () => {
+  beforeEach(() => {
+    // Production-as-it-may-be: the settings table has no such key at all.
+    mocks.selectResult = { data: [], error: null };
+  });
+
+  it("reads an absent row as OFF, with no banner and no error", async () => {
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    expect(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]'),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByTestId("global-premium-access-banner")).toBeNull();
+    // Absent is a real answer, not a failure: no load error is shown.
+    expect(screen.queryByTestId("policies-load-error")).toBeNull();
+  });
+
+  it("an admin enabling it CREATES the row and access becomes ON", async () => {
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    // The server's confirming read: the row now exists and says enabled.
+    mocks.singleRow = row(POLICY_KEYS.globalPremiumAccess, true);
+
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+
+    await waitFor(() =>
+      expect(mocks.upsertCalls).toEqual([
+        { key: POLICY_KEYS.globalPremiumAccess, value: { enabled: true } },
+      ]));
+    // An UPSERT keyed on `key` — which is what makes a missing row creatable
+    // rather than a silent no-op, as a bare UPDATE would have been.
+    expect(mocks.upsertOptions).toEqual([{ onConflict: "key" }]);
+    await waitFor(() =>
+      expect(screen.getByTestId("global-premium-access-banner")).toBeTruthy());
+  });
+
+  it("creates only that one row, leaving every other policy unseeded", async () => {
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    mocks.singleRow = row(POLICY_KEYS.globalPremiumAccess, true);
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() => expect(mocks.upsertCalls).toHaveLength(1));
+    expect(mocks.upsertCalls[0].key).toBe(POLICY_KEYS.globalPremiumAccess);
+  });
+
+  it("a non-admin creating the row is refused, and it stays OFF", async () => {
+    // RLS: the INSERT policy is has_role(auth.uid(),'admin'), same as UPDATE.
+    // The absent-row path is not a hole in the authorization — it is the same
+    // check on a different verb.
+    mocks.upsertResult = { error: { code: "42501", message: "permission denied" } };
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-globalPremiumAccess")).toBeTruthy());
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("policy-error-globalPremiumAccess").textContent)
+        .toContain("Not authorized"));
+    expect(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]'),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(screen.queryByTestId("global-premium-access-banner")).toBeNull();
+  });
+
+  it("once created, ordinary ON/OFF updates keep working", async () => {
+    // Second half of the lifecycle: the row now exists.
+    mocks.selectResult = { data: [row(POLICY_KEYS.globalPremiumAccess, true)], error: null };
+    renderPanel();
+    await waitFor(() =>
+      expect(screen.getByTestId("global-premium-access-banner")).toBeTruthy());
+
+    mocks.singleRow = row(POLICY_KEYS.globalPremiumAccess, false);
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("global-premium-access-banner")).toBeNull());
+
+    mocks.upsertCalls = [];
+    mocks.singleRow = row(POLICY_KEYS.globalPremiumAccess, true);
+    fireEvent.click(
+      screen.getByTestId("policy-globalPremiumAccess").querySelector('[role="switch"]')!,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("global-premium-access-banner")).toBeTruthy());
+    expect(mocks.upsertCalls).toEqual([
+      { key: POLICY_KEYS.globalPremiumAccess, value: { enabled: true } },
+    ]);
   });
 });

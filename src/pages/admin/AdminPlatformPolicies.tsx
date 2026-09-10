@@ -211,8 +211,11 @@ export default function AdminPlatformPolicies() {
     setSaved(null);
     setSaveError(null);
 
-    // upsert, not update: a deployment that never ran the seed still works, and
-    // the row is keyed so this can only ever touch this one known setting.
+    // upsert, not update: a deployment that never ran the seed still works —
+    // first activation CREATES the row, authorized by app_settings' admin-only
+    // INSERT policy (the same has_role check that guards UPDATE), so an absent
+    // row is operable rather than a silent no-op. The row is keyed, so this can
+    // only ever touch this one known setting.
     const { error } = await supabase
       .from("app_settings")
       .upsert({ key: settingKey, value: { enabled: next } }, { onConflict: "key" });

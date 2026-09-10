@@ -43,6 +43,17 @@
 -- (services/platform_policy.py, src/lib/platform-policy/policy.ts), so a
 -- deployment that never applies this migration behaves exactly as it does
 -- today, and a settings outage can never hand the userbase a paid tier.
+--
+-- THIS SEED IS A CONVENIENCE, NOT A PREREQUISITE (PT2B).
+-- The absent state is not merely safe, it is OPERABLE: the admin panel writes
+-- with an UPSERT keyed on `key`, so first activation CREATES this row. That is
+-- authorized by the table's admin-only INSERT policy — the same has_role check
+-- that guards UPDATE — so the absent-row path is the same authorization on a
+-- different verb, never a hole in it. A non-admin is refused by RLS whether
+-- the row exists or not.
+--
+-- What the seed buys is only that the row is visible in app_settings, with a
+-- stated default and an audit stamp, before anyone first touches the switch.
 
 INSERT INTO public.app_settings (key, value) VALUES
   ('global_premium_access', '{"enabled": false}'::jsonb)
