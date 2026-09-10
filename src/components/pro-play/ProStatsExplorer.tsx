@@ -52,6 +52,10 @@ const EM_DASH = "—";
 
 const nf = new Intl.NumberFormat("en-US");
 
+/** Sample-size floors offered in the UI. The API accepts any value up to
+ *  its own ceiling, so a shared link carrying 30 still works. */
+const MIN_GAMES_OPTIONS = ["5", "10", "20", "50"];
+
 /** The single place a missing statistic becomes visible text. Null means "we
  *  have no data", which is not zero and must never be shown as zero. */
 function fmt(value: number | null | undefined, digits = 2): string {
@@ -146,7 +150,14 @@ const COLUMNS: Column[] = [
  *  state until they settle and only then reach the URL. */
 const TEXT_FILTERS = ["player", "team"] as const;
 /** Filters backed by an option list. */
-const LIST_FILTERS = ["year", "league", "patch", "role", "champion"] as const;
+const LIST_FILTERS = [
+  "year",
+  "league",
+  "patch",
+  "role",
+  "champion",
+  "min_games",
+] as const;
 const ALL_FILTERS = [...LIST_FILTERS, ...TEXT_FILTERS] as const;
 
 type FilterKey = (typeof ALL_FILTERS)[number];
@@ -227,6 +238,7 @@ export default function ProStatsExplorer() {
       patch: read("patch") || null,
       role: read("role") || null,
       champion: read("champion") || null,
+      minGames: read("min_games") ? Number(read("min_games")) : null,
       player: debouncedPlayer || null,
       team: debouncedTeam || null,
       sort,
@@ -293,7 +305,7 @@ export default function ProStatsExplorer() {
 
       {/* ---------------------------------------------------------- filters */}
       <div className="mb-4 rounded-xl border border-border bg-card/60 p-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
           <FilterSelect
             label="Year"
             value={effectiveYear}
@@ -323,6 +335,18 @@ export default function ProStatsExplorer() {
             value={read("champion")}
             onChange={(v) => setFilter("champion", v)}
             options={options?.champions ?? []}
+          />
+          {/* Explicit, never automatic. Every rate column ranked 1-3 game
+              players above established ones, but a hidden floor would have
+              made the table quietly disagree with its own row count -- so
+              the user sets the sample size and can always see it. */}
+          <FilterSelect
+            label="Min Games"
+            value={read("min_games")}
+            onChange={(v) => setFilter("min_games", v)}
+            options={MIN_GAMES_OPTIONS}
+            anyLabel="Any"
+            optionLabel={(v) => `${v}+`}
           />
           <FilterText
             label="Player"
@@ -368,10 +392,7 @@ export default function ProStatsExplorer() {
           <Stat label="Player-games" value={fmtInt(data.aggregates.games)} />
           <Stat label="KDA" value={fmt(data.aggregates.kda)} />
           <Stat label="CS/min" value={fmt(data.aggregates.cs_per_min)} />
-          <Stat
-            label="Gold/min"
-            value={fmt(data.aggregates.gold_per_min, 0)}
-          />
+          <Stat label="Gold/min" value={fmt(data.aggregates.gold_per_min, 0)} />
         </div>
       )}
 
@@ -554,11 +575,15 @@ function FilterSelect({
   value,
   onChange,
   options,
+  anyLabel = "All",
+  optionLabel = (v: string) => v,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: string[];
+  anyLabel?: string;
+  optionLabel?: (value: string) => string;
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -571,10 +596,10 @@ function FilterSelect({
         aria-label={label}
         className="h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
-        <option value="">All</option>
+        <option value="">{anyLabel}</option>
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {optionLabel(option)}
           </option>
         ))}
       </select>

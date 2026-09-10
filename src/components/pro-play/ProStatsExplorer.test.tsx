@@ -87,6 +87,7 @@ function response(rows: ProStatsPlayerRow[], overrides: Partial<ProStatsResponse
       player: null,
       team: null,
       champion: null,
+      min_games: 0,
     },
     aggregates: {
       players: rows.length,
@@ -230,7 +231,7 @@ describe("default scope is visible", () => {
     response([ENRICHED], {
       filters: {
         year: null, league: null, patch: null, role: null,
-        player: null, team: null, champion: null, ...over,
+        player: null, team: null, champion: null, min_games: 0, ...over,
       },
     } as never);
 
@@ -367,5 +368,84 @@ describe("url state", () => {
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
     await waitFor(() => expect(lastSearch).toContain("page=2"));
     expect(lastSearch).toContain("role=Mid");
+  });
+});
+
+
+describe("min games", () => {
+  it("renders the control and defaults to Any", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    const control = screen.getByLabelText("Min Games");
+    expect(control).toBeInTheDocument();
+    expect(control).toHaveValue("");
+    expect(within(control as HTMLSelectElement).getByText("Any")).toBeInTheDocument();
+    // Never a silent floor: the request must carry no minimum.
+    expect(getProPlayerStats.mock.calls[0][0].minGames).toBeNull();
+  });
+
+  it("offers the documented thresholds", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    const control = within(screen.getByLabelText("Min Games") as HTMLSelectElement);
+    for (const label of ["5+", "10+", "20+", "50+"]) {
+      expect(control.getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("sends the floor and records it in the URL", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    fireEvent.change(screen.getByLabelText("Min Games"), {
+      target: { value: "20" },
+    });
+    await waitFor(() => expect(lastSearch).toContain("min_games=20"));
+    await waitFor(() =>
+      expect(getProPlayerStats).toHaveBeenLastCalledWith(
+        expect.objectContaining({ minGames: 20 }),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it("resets to page 1 when the floor changes", async () => {
+    renderExplorer("/lol/pro-play?page=4");
+    await screen.findByText("Faker");
+    fireEvent.change(screen.getByLabelText("Min Games"), {
+      target: { value: "10" },
+    });
+    await waitFor(() => expect(lastSearch).not.toContain("page=4"));
+    expect(lastSearch).toContain("min_games=10");
+  });
+
+  it("clears back to Any", async () => {
+    renderExplorer("/lol/pro-play?min_games=50");
+    await screen.findByText("Faker");
+    expect(screen.getByLabelText("Min Games")).toHaveValue("50");
+    fireEvent.change(screen.getByLabelText("Min Games"), {
+      target: { value: "" },
+    });
+    await waitFor(() => expect(lastSearch).not.toContain("min_games"));
+  });
+
+  it("keeps the other filters when the floor changes", async () => {
+    renderExplorer("/lol/pro-play?year=2025&role=Mid&sort=kda&dir=desc");
+    await screen.findByText("Faker");
+    fireEvent.change(screen.getByLabelText("Min Games"), {
+      target: { value: "20" },
+    });
+    await waitFor(() => expect(lastSearch).toContain("min_games=20"));
+    expect(lastSearch).toContain("year=2025");
+    expect(lastSearch).toContain("role=Mid");
+    expect(lastSearch).toContain("sort=kda");
+  });
+
+  it("reads a floor straight out of the URL", async () => {
+    renderExplorer("/lol/pro-play?min_games=20&sort=win_rate&dir=desc");
+    await waitFor(() => expect(getProPlayerStats).toHaveBeenCalled());
+    expect(getProPlayerStats.mock.calls[0][0]).toMatchObject({
+      minGames: 20,
+      sort: "win_rate",
+    });
   });
 });

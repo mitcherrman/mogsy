@@ -15,7 +15,8 @@
  */
 
 const API_BASE_URL =
-  (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) || "http://127.0.0.1:8000";
+  (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) ||
+  "http://127.0.0.1:8000";
 
 /** Sortable columns, mirroring the backend's allow-list. */
 export type ProStatsSort =
@@ -60,6 +61,8 @@ export type ProStatsFilters = {
   player: string | null;
   team: string | null;
   champion: string | null;
+  /** The floor the server applied; 0 when none. */
+  min_games: number;
 };
 
 export type ProStatsResponse = {
@@ -98,6 +101,8 @@ export type ProStatsQuery = {
   player?: string | null;
   team?: string | null;
   champion?: string | null;
+  /** Canonical-game floor. 0/absent = no minimum. */
+  minGames?: number | null;
   sort?: ProStatsSort;
   dir?: "asc" | "desc";
   page?: number;
@@ -128,6 +133,7 @@ export function buildStatsParams(query: ProStatsQuery): URLSearchParams {
   put("player", query.player);
   put("team", query.team);
   put("champion", query.champion);
+  if (query.minGames) put("min_games", query.minGames);
   put("sort", query.sort);
   put("dir", query.dir);
   if (query.page && query.page > 1) put("page", query.page);
@@ -151,9 +157,14 @@ export type ProStatsFilterOptions = {
 export async function getProStatsFilterOptions(
   signal?: AbortSignal,
 ): Promise<ProStatsFilterOptions> {
-  const response = await fetch(`${API_BASE_URL}/api/pro-play/stats/filters`, { signal });
+  const response = await fetch(`${API_BASE_URL}/api/pro-play/stats/filters`, {
+    signal,
+  });
   if (!response.ok) {
-    throw new ProStatsApiError("PPS_FILTERS_FAILED", "Filter options are unavailable.");
+    throw new ProStatsApiError(
+      "PPS_FILTERS_FAILED",
+      "Filter options are unavailable.",
+    );
   }
   return (await response.json()) as ProStatsFilterOptions;
 }
