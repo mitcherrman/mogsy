@@ -1621,12 +1621,35 @@ never totals. Typecheck **13 errors, none in pro-play**. Build green.
 
 ## Deploy state — Step 6
 
+| | SHA | Where |
+|---|---|---|
+| Backend | `3a1ff48b` | **pushed to `master`**, Railway auto-deploys |
+| Frontend | `25267474` | **pushed to `main`**, NOT published |
+
 **No deploy-ordering hazard, in either direction.** The backend change is
 **purely additive** — one new object on an existing player row; no field
 renamed, removed or reshaped. The published frontend never reads it, and the
 new frontend degrades to rendering nothing if it ever meets an old backend
 (`laneCheckpointLine` returns `null` for an absent object). Either side can
 ship first.
+
+### Live state, checked 2026-09-09 by fetching, not assumed
+
+* **`/game` answers 403 on production** (`web-production-83e53.up.railway.app`)
+  while an invented sibling under the same prefix answers 404 — the route is
+  registered and admin-gated. That proves **Step 5's route** is live; it does
+  **not** prove Step 6's field is, because the field lives inside an
+  admin-gated payload and this session held no admin key. **Step 6's backend
+  is pushed and Railway auto-deploys `master`; nobody has read the deployed
+  payload.** Do not claim otherwise until someone with a key does.
+  There is no deployed-SHA endpoint on this service — `/api/version` returns a
+  static string (`hp-source-fix-local-001`) and is not evidence of anything.
+* **Step 5's frontend IS now published**, which supersedes Step 5's own note.
+  `mogzy.lol`'s current chunk `ProPlayMatchup-DCFQHxZ0.js` contains
+  `game-dossier`, `stats_available` and `Recent Meetings`.
+* **Step 6's frontend is NOT published.** The same chunk contains none of
+  `lane_checkpoint`, `not_reached` or `opponent_unresolved`. Publishing is the
+  owner's click in Lovable; a push is not a publish.
 
 ## Files — Step 6
 
