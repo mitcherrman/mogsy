@@ -106,6 +106,27 @@ function matchIdentityMode(pub: PublicRoundView): "role" | "legacy_class" {
 }
 
 /**
+ * What the OTHER duelist is called, from the viewer's side.
+ *
+ * RB2 — Ranked's live views carry no display names at all. Participant names
+ * exist in the database and reach match HISTORY, but the live projection
+ * redacts identity by design (`ranked_public/identity_redaction.py`), so both
+ * duelists' names are withheld and the opponent column has always read
+ * "Opponent". That is symmetric between a human match and a bot match and is
+ * NOT this phase's to change.
+ *
+ * What it got wrong is the ONE case where "Opponent" is not merely anonymous
+ * but inaccurate: there is no other player. A bot match says so in the arena
+ * header the whole way through, and then labelled its opponent with the
+ * human-only word anyway. "Bot" is the smallest honest correction available
+ * from data the client already holds — no name is invented, no profile is
+ * faked, and nothing about a human match moves.
+ */
+export function opponentLabelFor(pub: PublicRoundView): string {
+  return pub.playtest?.isBotMatch ? "Bot" : "Opponent";
+}
+
+/**
  * Combatant views (viewer perspective) with authoritative frozen max HP.
  *
  * R1: the identity TAG names the player's League role, and nothing else. It is
@@ -134,11 +155,12 @@ export function projectCombatants(pub: PublicRoundView, viewerUserId: string): C
   const scoreByPlayerId: Record<string, number> = {};
   const points = isPointsMatch(pub);
   const identityMode = matchIdentityMode(pub);
+  const otherLabel = opponentLabelFor(pub);
   for (const p of pub.players) {
     // Phase 11: the ROLE ID travels alongside the label so the arena can pick
     // the role crest without re-parsing the label back into an id.
     identities[p.playerId] = {
-      name: p.playerId === viewerUserId ? "You" : "Opponent",
+      name: p.playerId === viewerUserId ? "You" : otherLabel,
       // Undefined, never a class, when this participant has no role. On a
       // role match the panel fills the slot with the neutral role label; on a
       // legacy match the class is the identity and is used verbatim.

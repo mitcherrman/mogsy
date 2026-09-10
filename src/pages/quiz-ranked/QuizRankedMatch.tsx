@@ -47,7 +47,7 @@ import { RankedScoreline } from "./RankedScoreline";
 import { useRankedMatchHistory } from "./useRankedMatchHistory";
 import {
   abilityTrayIsUseful, isPointsMatch, moduleProgressLabel,
-  opponentPresenceLabel, projectAbilities,
+  opponentLabelFor, opponentPresenceLabel, projectAbilities,
   projectAbilityPermissions, projectCombatants,
   projectPermissions, projectTimer,
 } from "./rankedViews";
@@ -71,12 +71,39 @@ function segmentKey(round: PublicRoundView): string {
  * settlement means a mismatch can never render an empty opponent title again
  * (RevealPanel falls back to the raw player id, which used to be "").
  */
-function revealNames(settlement: ResolvedRoundView): Record<string, string> {
+/**
+ * `p1` is ALWAYS the viewer in this client (see `useRankedMatch`'s
+ * `p1PlayerId: viewerUserId` mapping), so the slots are the two sides of the
+ * arena and not a server ordering.
+ *
+ * RB2: the other side takes the same label the duelist columns take, so the
+ * reveal panel and the combatant panels cannot disagree about what the
+ * opponent is called on a bot match.
+ */
+function revealNames(settlement: ResolvedRoundView,
+                     otherLabel: string): Record<string, string> {
   return {
     [settlement.players.p1.playerId]: "You",
-    [settlement.players.p2.playerId]: "Opponent",
+    [settlement.players.p2.playerId]: otherLabel,
   };
 }
+
+/**
+ * RB2 — where the player goes when the duel is over.
+ *
+ * `/quiz?play=1` is the lobby with the match-entry record already open (see
+ * `PLAY_RETURN_PARAM` in `pages/Quiz`), which is the SAME arrival the route
+ * already produces for a menuless visitor. Playing again is therefore the
+ * existing entry path with one navigation removed, not a rematch endpoint —
+ * there is no second creation call, and a bot player re-arms the same switch
+ * on the same record a human player uses to queue.
+ *
+ * A full document load rather than a router push, matching what this screen
+ * has always done: a finished match is exactly the moment it is cheapest to
+ * drop every piece of arena state on the floor.
+ */
+const AGAIN_HREF = "/quiz?play=1";
+const LOBBY_HREF = "/quiz";
 
 export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
 {
@@ -394,6 +421,18 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
    * hides nothing.
    */
   const progressionEnabled = m.publicRound.progressionEnabled;
+  /**
+   * RB2 — is the opponent server-controlled?
+   *
+   * Read off the match's own frozen projection, the same field the live
+   * header has always used for its "· vs Bot" note. It is the ONE bot signal
+   * this component consults, and everything downstream of it is a LABEL: the
+   * match host, the arena, the question renderers, the scoring, the
+   * settlement and this terminal frame are the same code either way.
+   */
+  const isBotMatch = m.publicRound.playtest?.isBotMatch === true;
+  /** What the other duelist is called. See `opponentLabelFor`. */
+  const otherLabel = opponentLabelFor(m.publicRound);
 
   if (m.phase === "match_over") {
     const reason = m.result?.terminalReason ?? "combat";
@@ -438,11 +477,44 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
           modulesPlayed={m.result?.scoring?.modulesPlayed ?? null}
           ratingDelta={ratingDelta} />
       ) : undefined,
+      /**
+       * RB2 — the ONE thing the end screen says differently about a bot match.
+       *
+       * A bot match is unrated, and until now the end screen said nothing at
+       * all about it: the frame carries no rating figure for ANY match, so
+       * there was no misleading Elo to remove — but there was also nothing
+       * telling a player who had just fought twelve rounds that the ladder had
+       * not moved. One word in the eyebrow the frame already draws. No banner,
+       * no explanation, no second layout: the player chose Match with Bot and
+       * only needs the consequence confirmed.
+       *
+       * A human match keeps the frame's own default and is untouched.
+       */
+      eyebrow: isBotMatch ? "Match Complete · Unrated" : undefined,
       subheading: reason === "forfeit"
-        ? (won ? "Opponent forfeited." : "You forfeited.")
+        ? (won ? `${otherLabel} forfeited.` : "You forfeited.")
         : reason === "no_contest" ? "No contest — both players left." : undefined,
       progressionEnabled,
-      primaryAction: { label: "Back to Quiz", onClick: () => { window.location.assign("/quiz"); } },
+      /**
+       * RB2 — playing again is the PRIMARY action, and leaving is the quiet
+       * one. Both matches end here and both used to offer only the exit, which
+       * made every duel a dead end: the player was returned to the hub with
+       * the record closed and had to re-open it before they could do the thing
+       * they had just chosen to do. That was always wrong; RB1 sharpened it,
+       * because a Premium player using Bot Ranked as their Ranked substitute
+       * pays the whole cost again on every match.
+       *
+       * Identical for a human and a bot match — the record they land on is the
+       * one that knows which of the two they may start.
+       */
+      primaryAction: {
+        label: "Play Again",
+        onClick: () => { window.location.assign(AGAIN_HREF); },
+      },
+      secondaryAction: {
+        label: "Back to Leaguecraft",
+        onClick: () => { window.location.assign(LOBBY_HREF); },
+      },
       // PT1.3 rides the frame's EXISTING summary slot, so the outcome, the
       // combatant panels and any progression this match carried are all read
       // first and the reward follows them. Left undefined — and the frame
@@ -457,7 +529,7 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
       reveal: m.lastResolved ? {
         settlement: m.lastResolved,
         viewerSlot: "p1",
-        namesByPlayerId: revealNames(m.lastResolved),
+        namesByPlayerId: revealNames(m.lastResolved, otherLabel),
         showAbilities: progressionEnabled,
       } : null,
     };

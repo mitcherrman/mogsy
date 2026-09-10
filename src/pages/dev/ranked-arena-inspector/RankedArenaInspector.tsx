@@ -60,6 +60,12 @@ import { RANKED_ROLE_LABELS, RANKED_ROLES, type RankedRole } from "@/lib/ranked-
 
 // --------------------------------------------------------------- fixtures
 
+/** RB2 — what `QuizRankedMatch` puts on every finished Ranked match. */
+const END_ACTIONS = {
+  primaryAction: { label: "Play Again", onClick: () => {} },
+  secondaryAction: { label: "Back to Leaguecraft", onClick: () => {} },
+};
+
 function player(over: Partial<CombatantView> = {}): CombatantView {
   return {
     playerId: "you", name: "You", tag: "Tank", side: "player", classId: "tank",
@@ -1124,16 +1130,18 @@ const STATES: InspectorState[] = [
   { key: "low-hp", label: "Low HP tension",
     render: () => <Combatants p={player({ hp: 20, xp: 66, level: 3, nextLevelThreshold: null, currentLevelThreshold: 66 })}
       o={opponent({ hp: 10, xp: 54, level: 2, nextLevelThreshold: 66, currentLevelThreshold: 30 })} /> },
+  // RB2 — the actions the REAL Ranked end screen passes. Kept as one constant
+  // so the inspector cannot drift from the product it is previewing.
   { key: "victory", label: "Match over — victory",
     render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+      {...END_ACTIONS} /> },
   { key: "defeat", label: "Match over — defeat",
     render: () => <MatchOverFrame result="defeat" player={player({ hp: 0 })} opponent={opponent({ hp: 30 })}
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+      {...END_ACTIONS} /> },
   { key: "draw", label: "Match over — draw",
     render: () => <MatchOverFrame result="draw" player={player({ hp: 0 })} opponent={opponent({ hp: 0 })}
       subheading="No contest — both players left."
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+      {...END_ACTIONS} /> },
   // --- RP1 Step 4: points settlement feedback and the scored result ---
   { key: "points-correct", label: "RP1 — CORRECT +2",
     render: () => <PointsSettlement
@@ -1165,32 +1173,51 @@ const STATES: InspectorState[] = [
       progressionEnabled={false}
       scoreline={<RankedScoreline you={21} opponent={18} result="victory"
         modulesPlayed={10} ratingDelta={18} />}
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+      {...END_ACTIONS} /> },
   { key: "points-defeat", label: "RP1 — result: defeat",
     render: () => <MatchOverFrame result="defeat"
       player={scoredPlayer(14)} opponent={scoredOpponent(22)}
       progressionEnabled={false}
       scoreline={<RankedScoreline you={14} opponent={22} result="defeat"
         modulesPlayed={10} ratingDelta={-14} />}
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+      {...END_ACTIONS} /> },
   { key: "points-draw", label: "RP1 — result: draw (unrated)",
     render: () => <MatchOverFrame result="draw"
       player={scoredPlayer(18)} opponent={scoredOpponent(18)}
       progressionEnabled={false}
       scoreline={<RankedScoreline you={18} opponent={18} result="draw"
         modulesPlayed={10} ratingDelta={null} />}
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
-
+      {...END_ACTIONS} /> },
+  /**
+   * RB2 — THE BOT END SCREEN, next to the human one so they can be read
+   * side by side.
+   *
+   * Exactly two things differ, and both are visible here: the eyebrow states
+   * `Unrated`, and the opponent column is called "Bot" rather than the
+   * human-only "Opponent". Same frame, same panels, same actions, same
+   * everything else. In production both come from the match's own
+   * `playtest.is_bot_match` field — nothing is chosen here.
+   */
+  { key: "victory-bot", label: "Match over — victory vs Bot (unrated)",
+    render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })}
+      opponent={opponent({ hp: 0, name: "Bot", tag: "Duelist" })}
+      eyebrow="Match Complete · Unrated"
+      {...END_ACTIONS} /> },
+  { key: "defeat-bot", label: "Match over — defeat vs Bot (unrated)",
+    render: () => <MatchOverFrame result="defeat" player={player({ hp: 0 })}
+      opponent={opponent({ hp: 30, name: "Bot", tag: "Duelist" })}
+      eyebrow="Match Complete · Unrated"
+      {...END_ACTIONS} /> },
   { key: "discovery-reveal", label: "Match over — new questions discovered",
     render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
       summary={<DiscoveryReveal view={DISCOVERY_FIXTURE} onReview={() => {}} />}
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+      {...END_ACTIONS} /> },
   { key: "discovery-none", label: "Match over — no new discoveries",
     render: () => <MatchOverFrame result="defeat" player={player({ hp: 0 })} opponent={opponent({ hp: 30 })}
       summary={<DiscoveryReveal onReview={() => {}}
         view={{ ...DISCOVERY_FIXTURE, newDiscoveries: [], newCount: 0,
           collectionTotalBefore: 423 }} />}
-      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+      {...END_ACTIONS} /> },
 
   // --- full arena composition (layout QA) ---
   // RA10: one state per representative question surface, so centre prominence,

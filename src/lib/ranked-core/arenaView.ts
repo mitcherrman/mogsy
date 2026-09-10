@@ -318,6 +318,19 @@ export interface ArenaTerminalView {
   summary?: ReactNode;
   progressionEnabled: boolean;
   primaryAction: { label: string; onClick: () => void };
+  /**
+   * The quieter second action, or absent.
+   *
+   * `MatchOverFrame` has rendered a secondary button since it was written; the
+   * view model simply never exposed it, so every mode's end screen was a
+   * single button and a mode with two things to offer had to pick one. Ranked
+   * is that mode — playing again and leaving are both ordinary next steps
+   * after a duel, and making the player navigate for one of them is what a
+   * dead end IS.
+   *
+   * Left undefined the frame renders one button, exactly as before.
+   */
+  secondaryAction?: { label: string; onClick: () => void };
   /** The final settlement, rendered in full below the frame. */
   reveal: {
     settlement: ResolvedRoundView;

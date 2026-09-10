@@ -130,7 +130,12 @@ describe("the Ranked terminal frame with new discoveries", () => {
     await screen.findByTestId("ranked-match-over");
     // Everything the terminal frame already carried is untouched.
     expect(screen.getByTestId("match-over-heading")).toBeInTheDocument();
-    expect(screen.getByTestId("match-over-primary")).toHaveTextContent("Back to Quiz");
+    // RB2 moved the exit to the SECONDARY slot and put Play Again in front of
+    // it; the frame's ordering — outcome, then reward, then the actions — is
+    // what this case is about and is unchanged.
+    expect(screen.getByTestId("match-over-primary")).toHaveTextContent("Play Again");
+    expect(screen.getByTestId("match-over-secondary"))
+      .toHaveTextContent("Back to Leaguecraft");
     // ...and the reveal is INSIDE the frame's own summary slot, below them.
     const reveal = await screen.findByTestId("discovery-reveal");
     expect(screen.getByTestId("match-over-summary")).toContainElement(reveal);

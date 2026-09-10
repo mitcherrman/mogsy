@@ -122,7 +122,8 @@ export function CanonicalArena({
             scoreline={terminal.scoreline}
             summary={terminal.summary}
             progressionEnabled={terminal.progressionEnabled}
-            primaryAction={terminal.primaryAction} />
+            primaryAction={terminal.primaryAction}
+            secondaryAction={terminal.secondaryAction} />
           {terminal.reveal && (
             <RevealPanel settlement={terminal.reveal.settlement}
               viewerSlot={terminal.reveal.viewerSlot}
