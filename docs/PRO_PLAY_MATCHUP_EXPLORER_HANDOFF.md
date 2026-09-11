@@ -3947,6 +3947,15 @@ computations:
 1. **One question per (slot, rank) pair**, and rank 1 and max rank are the
    only ranks considered. Olaf Q is 9 s at every rank and K'Sante Q is 3.5 s
    at every rank: that is **one** question, not five.
+   **The two shapes exhaust independently, and production taught this module
+   that.** "Which comes back up first" asks for a WINNER; "what is the
+   difference" asks for a GAP. Olaf W against K'Sante W is 16-vs-14 at rank 1
+   and 12-vs-10 at rank 5 — two different stored value pairs, the same winner
+   AND the same 2 s gap, so rank 5 asks nothing. Kai'Sa W against LeBlanc W
+   keeps the winner and changes the gap, so rank 5 may still ask the gap and
+   must not ask the winner again. The first deployed build signed a rank by
+   its stored value PAIR, saw two different pairs, and a live session asked
+   the same difference twice. Fixed in `6324c95d`.
 2. **"Which is shorter" and "by how much" share a subject key.** They are two
    shapes over one fact, and the second gives the first away — a player told
    the gap between Olaf R and K'Sante R is 20 s has been told which is longer.
@@ -4111,8 +4120,27 @@ was left alone rather than half-fixed here.
 
 | | SHA | Where |
 |---|---|---|
-| Backend | `7a0bf439` | branch `proplay/step12-matchup-quiz` off `4b5a83c0`, **committed, NOT pushed** |
-| Frontend | `efda8f10` | branch `proplay/step12-matchup-quiz` off `744102b8` (= `origin/main`), **committed, NOT pushed** |
+| Backend | `7a0bf439` + `6324c95d` | **pushed to `master`**, Railway auto-deployed, **verified live by real requests** |
+| Frontend | `04519a64` | rebased onto `d2cc436d`, **pushed to `main`** |
+
+### Verified in production, by playing it — not by a route probe
+
+`POST /api/quiz/matchup/sessions` on `web-production-83e53.up.railway.app`
+answered 200 in **0.34–0.40 s** and three sessions were played to completion:
+
+* **Olaf vs K'Sante** — 8 questions, 5 true-pair naming both champions, then
+  K'Sante / Olaf / K'Sante. No repeat.
+* **Gnar vs Jayce** — 6 questions, `paired_study`, nothing outside the pair.
+* **Dr. Mundo vs Cho'Gath** — 8 questions, the alias spelling resolved, 7
+  true-pair.
+
+`MATCHUP_SAME_CHAMPION`, `MATCHUP_UNKNOWN_CHAMPION` and
+`MATCHUP_INCOMPLETE_PAIR` each returned their own status and code.
+`/api/quiz/sets`, `/api/quiz/questions?category=` and `/api/quiz/taxonomy`
+all still answer 200 — Practice, Ranked and Daily are untouched.
+
+**The first production play-through is what found the duplicate-shape
+defect.** A route probe would have reported success. Play the questions.
 
 **DEPLOY ORDER IS NOT OPTIONAL HERE, unlike Step 6.** The frontend route calls
 an endpoint that does not exist yet. `POST /api/quiz/matchup/sessions` must be
@@ -4121,8 +4149,11 @@ leads to "Matchup study is unavailable right now." The backend change is
 purely additive — one new router, one new package, no existing route, table or
 payload touched — so it is safe to ship first and safe to sit alone.
 
-Publishing the frontend is the owner's click in Lovable. A push is not a
-publish.
+**The frontend is pushed to `main` and NOT PUBLISHED.** Publishing is the
+owner's click in Lovable; a push is not a publish. Until that click,
+`Quiz This Matchup` does not appear on `mogzy.lol` — the backend it needs is
+already live, so the click is the only remaining step and there is no
+ordering hazard left in either direction.
 
 ## Next recommended slice
 
