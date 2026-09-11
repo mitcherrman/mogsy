@@ -116,19 +116,56 @@ function graphScope(scope: ProStatsScope): Graph1Scope {
  * `null` is a product answer, not a failure: it is what keeps the action from
  * appearing over a ranking that has no single subject to graph.
  */
+/**
+ * The graph URL for one explicit destination.
+ *
+ * EXTRACTED, NOT NEW. `graphHandoff` below chooses a focus from a table scope
+ * and then builds a URL; the canonical profiles already KNOW their focus, so
+ * they need the second half without the first. Both now go through this, so
+ * there is exactly one place the graph's parameter names and scope
+ * serialization are written, and the existing hand-off tests cover it.
+ *
+ * `entityId` must already be in the graph's own vocabulary — for a champion
+ * that means the SLUG, via `championSlug`; `graphEntityId` does that
+ * conversion so no caller has to remember it.
+ */
+export function graphUrl(
+  focus: Graph1FocusKind,
+  compare: Graph1CompareKind,
+  entityId: string,
+  scope?: Graph1Scope,
+): string {
+  const params = new URLSearchParams();
+  params.set(GRAPH_PARAM.focus, focus);
+  params.set(GRAPH_PARAM.compare, compare);
+  params.set(GRAPH_PARAM.entity, entityId);
+  if (scope) writeScope(params, scope);
+  return `${GRAPH_ROUTE}?${params.toString()}`;
+}
+
+/**
+ * An entity id in the graph's vocabulary.
+ *
+ * Players and teams carry verbatim — the stats layer, the profile routes and
+ * the graph all key them the same way. CHAMPION IS THE ONE CONVERSION: the
+ * canonical key is a name ("Lee Sin") and the graph entity id is a slug
+ * ("lee-sin"). `championSlug` is the app's existing converter and was
+ * verified equal to the backend's own `champion_slug` for all 172 corpus
+ * champions — do not write a second slugifier.
+ */
+export function graphEntityId(kind: "player" | "team" | "champion", key: string): string {
+  return kind === "champion" ? championSlug(key) : key;
+}
+
 export function graphHandoff(scope: ProStatsScope): GraphHandoff | null {
   const choice = FOCUS_ORDER[scope.view]?.find((c) => scope[c.key]);
   if (!choice) return null;
 
   const value = scope[choice.key] as string;
-  const entityId = choice.key === "champion" ? championSlug(value) : value;
+  const entityId = graphEntityId(choice.key, value);
   if (!entityId) return null;
 
-  const params = new URLSearchParams();
-  params.set(GRAPH_PARAM.focus, choice.key);
-  params.set(GRAPH_PARAM.compare, choice.compare);
-  params.set(GRAPH_PARAM.entity, entityId);
-  writeScope(params, graphScope(scope));
+  const href = graphUrl(choice.key, choice.compare, entityId, graphScope(scope));
 
   const transferred = [ENTITY_LABEL[choice.key]];
   if (scope.year != null) transferred.push(`Year ${scope.year}`);
@@ -148,7 +185,7 @@ export function graphHandoff(scope: ProStatsScope): GraphHandoff | null {
   if (scope.minGames) dropped.push(`Min games ${scope.minGames}`);
 
   return {
-    href: `${GRAPH_ROUTE}?${params.toString()}`,
+    href,
     focus: choice.key,
     compare: choice.compare,
     entityId,

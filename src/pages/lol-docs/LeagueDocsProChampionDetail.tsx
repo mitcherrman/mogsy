@@ -514,6 +514,23 @@ function ChampionContent({
               stats, import status, and sources. Imported coverage doesn't guarantee every
               historical match is represented, and historical imports may still be in progress.
             </p>
+            {/* NAVIGATION ONLY — the single line this consolidation adds to
+                League Docs. This page is the REFERENCE/ARCHIVE surface for a
+                champion's professional data; the canonical competitive
+                identity page is /lol/pro-play/champion/:champion_key. Saying
+                so here is what keeps two public champion pages from reading
+                as rivals. `data.champion` is the canonical champion_key, so
+                the link is verbatim identity. Nothing else on this page is
+                changed. */}
+            <p className="mt-2 text-xs">
+              <Link
+                to={`/lol/pro-play/champion/${encodeURIComponent(data.champion)}`}
+                className="text-muted-foreground hover:text-foreground hover:underline"
+                data-testid="canonical-profile-backlink"
+              >
+                {data.champion}'s Pro Play profile — picks, bans, presence and who plays it &rarr;
+              </Link>
+            </p>
           </div>
         </div>
       </div>

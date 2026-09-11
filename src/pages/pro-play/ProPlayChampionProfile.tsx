@@ -1,10 +1,31 @@
 // ---------------------------------------------------------------------------
-// /lol/pro-play/champion/:key — the champion's PRO PLAY profile.
+// /lol/pro-play/champion/:key — THE canonical competitive Champion profile.
 //
-// NOT THE CHAMPION DOC PAGE. Abilities, ratios and base stats belong to
-// /lol/docs/champions and are a separate authority with a separate owner.
-// This page answers one question: how does this champion appear in
-// professional drafts. It links across rather than restating.
+// THREE CHAMPION SURFACES, THREE JOBS. This one is the primary competitive
+// identity page. The other two are deliberately NOT merged into it:
+//
+//   /lol/docs/champions/:slug      abilities, ratios, base stats — a
+//                                  different authority, different owner.
+//   /lol/docs/pro/champions/:slug  the REFERENCE/ARCHIVE surface: imported
+//                                  rows by year, import status, scoped stats,
+//                                  recent games WITH SOURCE URLS, data-quality
+//                                  caveats.
+//
+// WHY THE DOCS YEARLY TABLE IS NOT COPIED HERE, THOUGH IT IS THE RICHEST
+// THING ON EITHER PAGE. It is drawn from a DIFFERENT CORPUS
+// (`esports_champion_yearly_stats`, the Leaguepedia broad import, 2.53M game
+// rows) than everything else on this page (`pro_canonical_*`, 1.08M rows),
+// and the two disagree materially — Azir 2016 reads 902 picks there and 807
+// here; 2015, 486 against 431. Both are right in their own terms. Putting
+// them in one page would print two contradicting pick counts under one
+// heading, which is a worse version of the duplication this consolidation
+// exists to end. The competitive history here therefore comes from the
+// canonical draft record, and the import history stays in Docs behind a
+// named link.
+//
+// PICK RATE, BAN RATE AND PRESENCE SHARE ONE DENOMINATOR — every canonical
+// game in the scope — so they are comparable. They are not summed: a game
+// where the champion was picked is not also a game where it was banned.
 //
 // PICK RATE, BAN RATE AND PRESENCE SHARE ONE DENOMINATOR — every canonical
 // game in the scope — so they are comparable. They are not summed: a game
@@ -15,6 +36,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import SEOHead from "@/components/SEOHead";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   EmptyRow,
   EntityTable,
@@ -22,12 +44,24 @@ import {
   LoadingBlock,
   Note,
   Panel,
+  PerformancePanel,
+  ProfileAction,
   ProfileHeader,
   ResearchBreadcrumb,
   ResearchPage,
   ScopeTabs,
   TableScroll,
+  type PerformanceMetric,
 } from "@/components/pro-play/ResearchShell";
+import { championSlug } from "@/lib/league-docs/api";
+import { buildProChampionUrl } from "@/lib/league-docs/pro-data-links";
+import {
+  statsExplorerUrl,
+  statsScopeLabel,
+  useEntityStats,
+} from "@/lib/pro-play/entityStats";
+import { graphEntityId, graphUrl } from "@/lib/pro-play/graphHandoff";
+import type { ProStatsChampionRow } from "@/lib/pro-play/statsApi";
 import {
   fetchChampionProfile,
   formatRate,
@@ -36,6 +70,140 @@ import {
   ResearchApiError,
   type ChampionProfile,
 } from "@/lib/pro-play/researchApi";
+
+// ---------------------------------------------------------------------------
+// Competitive performance — the public statistics contract.
+// Same panel as Player and Team; the UNIT is what differs and it matters.
+// ---------------------------------------------------------------------------
+
+const NUM = new Intl.NumberFormat("en-US");
+
+function num(value: number | null, digits: number): string | null {
+  return value == null ? null : value.toFixed(digits);
+}
+
+function pct(value: number | null): string | null {
+  return value == null ? null : `${(value * 100).toFixed(1)}%`;
+}
+
+/**
+ * THE CHAMPION POPULATION UNIT IS **PICKS**, NOT GAMES.
+ *
+ * A champion picked by both teams in one game is TWO picks and ONE game, and
+ * the backend serves both numbers for exactly that reason. Every count below
+ * is over `picks` (canonical player-games), except `bans` and the presence
+ * numerator/denominator, which are DISTINCT GAMES — a champion banned by both
+ * sides of one game is one banned game, not two.
+ *
+ * Nothing here is recomputed: every value is served by
+ * /api/pro-play/stats/champions with the Stats Explorer's own semantics.
+ */
+function championMetrics(row: ProStatsChampionRow): PerformanceMetric[] {
+  return [
+    { label: "Picks", value: NUM.format(row.picks), hint: "Canonical player-games. Both sides picking it in one game counts twice." },
+    {
+      label: "W-L",
+      value: `${NUM.format(row.wins)}–${NUM.format(row.losses)}`,
+      hint: "Canonical, over picks.",
+    },
+    { label: "Win %", value: pct(row.win_rate), hint: "Wins over picks." },
+    { label: "Bans", value: NUM.format(row.bans), hint: "DISTINCT games it was banned in — never a player-game count." },
+    {
+      label: "Presence",
+      value: pct(row.presence_rate),
+      hint: "Distinct games picked OR banned in, over the games in scope that carry draft data. Null where no draft data exists at all.",
+    },
+    { label: "KDA", value: num(row.kda, 2), hint: "(Kills + assists) / deaths over picks carrying statistics. Null when deaths are zero." },
+    { label: "CS/min", value: num(row.cs_per_min, 2), hint: "Over picks carrying statistics." },
+    { label: "Gold/min", value: num(row.gold_per_min, 0), hint: "Over picks carrying statistics." },
+    { label: "Dmg/min", value: num(row.damage_per_min, 0), hint: "Over picks carrying statistics." },
+  ];
+}
+
+function ChampionPerformance({ championKey }: { championKey: string }) {
+  const stats = useEntityStats("champions", championKey);
+
+  // BOTH graph families, because a champion genuinely has two. The entity id
+  // is the SLUG — the one conversion in the whole identity vocabulary — and
+  // `graphEntityId` applies the app's existing `championSlug`, verified equal
+  // to the backend's `champion_slug` for all 172 corpus champions. No scope is
+  // transferred: this panel is career-wide, so a year or league here would
+  // scope the graph to a span the numbers beside it were not computed over.
+  const entityId = graphEntityId("champion", championKey);
+
+  const actions = (
+    <>
+      <ProfileAction
+        to={statsExplorerUrl("champions", championKey)}
+        title="This champion as a row in the public statistics table"
+      >
+        View in Pro Stats
+      </ProfileAction>
+      <ProfileAction to={graphUrl("champion", "players", entityId)} title="Race the players who pick it">
+        Graph top players
+      </ProfileAction>
+      <ProfileAction to={graphUrl("champion", "teams", entityId)} title="Race the teams that pick it">
+        Graph top teams
+      </ProfileAction>
+      {/* NO MATCHUP ACTION. The Explorer has no champion-only entry point --
+          `champion_a` is meaningful only inside a configured lane matchup --
+          so there is nothing honest to link to. Not a disabled teaser either. */}
+      <ProfileAction
+        to={buildProChampionUrl({ slug: championSlug(championKey) })}
+        title="Imported rows by year, scoped stats, recent games and their sources"
+      >
+        Open reference history
+      </ProfileAction>
+    </>
+  );
+
+  if (stats.status === "loading") {
+    return (
+      <Panel title="All-Competition Performance">
+        <Skeleton className="h-16 w-full" />
+      </Panel>
+    );
+  }
+  if (stats.status === "error") {
+    return (
+      <Panel title="All-Competition Performance" note={stats.message}>
+        <EmptyRow label="Performance statistics could not be loaded. The draft record and the players and teams above are unaffected." />
+        <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
+      </Panel>
+    );
+  }
+  if (stats.status === "absent") {
+    return (
+      <Panel title="All-Competition Performance">
+        <EmptyRow label="No rows for this champion in the public statistics table." />
+        <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
+      </Panel>
+    );
+  }
+
+  const row = stats.row as ProStatsChampionRow;
+  return (
+    <PerformancePanel
+      title="All-Competition Performance"
+      scopeLabel={statsScopeLabel(stats.response)}
+      metrics={championMetrics(row)}
+      // `picks`, NOT `picked_games`: the rates above are over picks, so the
+      // coverage line must count the same population it describes.
+      games={row.picks}
+      statBackedGames={row.stat_backed_games}
+      unit="picks"
+      actions={actions}
+      note={
+        <>
+          A different slice from the draft record above, which counts curated
+          major-league games over four product scopes. This is every
+          competition, all seasons, and is the same slice the Pro Stats table
+          shows.
+        </>
+      }
+    />
+  );
+}
 
 function DraftTable({ profile }: { profile: ChampionProfile }) {
   const order = profile.comparison?.scope_order ?? Object.keys(profile.draft);
@@ -139,14 +307,24 @@ function Body({ championKey }: { championKey: string }) {
         title={profile.entity.display_name}
         subtitle="Pro Play"
         meta={
-          <Link
-            to={`/lol/docs/champions/${encodeURIComponent(
-              profile.entity.key.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-            )}`}
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-          >
-            Champion abilities and stats →
-          </Link>
+          <>
+            {/* ONE SLUGIFIER. This link used to inline its own
+                `.replace(/[^a-z0-9]+/g,"-")`, which is a second implementation
+                that silently disagrees with the app's on every apostrophe —
+                "Bel'Veth" became "bel-veth" where the corpus says "belveth".
+                MEASURED: the two disagreed for 8 champions (Bel'Veth,
+                Cho'Gath, K'Sante, Kai'Sa, Kha'Zix, Kog'Maw, Rek'Sai,
+                Vel'Koz) and /api/docs/champions/bel-veth really does 404
+                while /belveth is 200 — a live broken link, fixed here.
+                `championSlug` matches the backend's own `champion_slug`
+                for all 172 corpus champions. */}
+            <Link
+              to={`/lol/docs/champions/${encodeURIComponent(championSlug(profile.entity.key))}`}
+              className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Champion abilities and stats →
+            </Link>
+          </>
         }
       />
 
@@ -160,9 +338,14 @@ function Body({ championKey }: { championKey: string }) {
         </Panel>
       ) : null}
 
-      <Panel title="Draft presence" note={profile.draft_note}>
+      <Panel title="Career Draft Record" note={profile.draft_note}>
         <DraftTable profile={profile} />
+        <Note>
+          Canonical games over four product scopes, curated major leagues only.
+        </Note>
       </Panel>
+
+      <ChampionPerformance championKey={profile.entity.key} />
 
       {profile.comparison && active && scope ? (
         <>

@@ -308,32 +308,48 @@ describe("team record and performance", () => {
 // THE MATCHUP EXPLORER GATE — the Team-only hazard
 // ---------------------------------------------------------------------------
 
-describe("matchup explorer action", () => {
-  it("offers the action for a pool team that is NOT in the Worlds focus set", async () => {
-    // KT Rolster: worlds_focus null, in_explorer_pool true. This is the exact
-    // case a worlds_focus gate gets wrong, for 22 of 38 pool teams.
+describe("matchup explorer — navigation deferred, contract retained", () => {
+  it("renders NO Matchup action while the Explorer is admin-gated", async () => {
+    // NAVIGATION DEFERRED. The profile is public and the Explorer is not, so
+    // the action would have dead-ended every signed-out reader on
+    // "Sign in required" -- verified in the browser before it was removed.
+    ok(teamPayload());
+    renderProfile();
+    await screen.findByTestId("performance-panel");
+    expect(screen.queryByText("Open in Matchup Explorer")).toBeNull();
+    // And not replaced by a disabled teaser either.
+    expect(screen.queryByText(/matchup/i)).toBeNull();
+  });
+
+  it("still publishes the pool marker, so the eligibility contract stays wired", async () => {
+    // THE CONTRACT IS RETAINED, ONLY THE NAVIGATION IS DEFERRED. KT Rolster
+    // is in the pool and NOT in the focus set -- the case a worlds_focus gate
+    // gets wrong for 22 of 38 pool teams -- and the marker must still say so.
     const payload = teamPayload();
     expect(payload.worlds_focus).toBeNull();
     ok(payload);
     renderProfile();
-    const link = await screen.findByText("Open in Matchup Explorer");
-    expect(link.closest("a")).toHaveAttribute("href", matchupExplorerUrl(KEY));
+    const marker = await screen.findByTestId("performance-panel");
+    expect(marker.querySelector("[data-explorer-pool]")).toHaveAttribute(
+      "data-explorer-pool",
+      "true",
+    );
   });
 
-  it("withholds the action for a team outside the pool", async () => {
+  it("publishes false for a team outside the pool", async () => {
     ok(teamPayload({
       explorer_pool: { in_explorer_pool: false, pool_version: "explorer_pool_v1", meaning: "…" },
     }));
     renderProfile();
-    await screen.findByTestId("performance-panel");
-    // Absent entirely -- not a disabled control needing an explanation.
-    expect(screen.queryByText("Open in Matchup Explorer")).toBeNull();
-    expect(screen.queryByText(/not available|unsupported|disabled/i)).toBeNull();
+    const panel = await screen.findByTestId("performance-panel");
+    expect(panel.querySelector("[data-explorer-pool]")).toHaveAttribute(
+      "data-explorer-pool",
+      "false",
+    );
   });
 
-  it("withholds the action when a team is in the FOCUS SET but not the pool", async () => {
-    // The inverse wiring. If the gate read worlds_focus, this would wrongly
-    // offer a link that lands on TeamNotInExplorerPool.
+  it("publishes false when a team is in the FOCUS SET but not the pool", async () => {
+    // The inverse wiring. If the marker read worlds_focus, this would be true.
     ok(teamPayload({
       worlds_focus: {
         team_key: KEY, owner_label: KEY, group: "LCK", status: "watchlist",
@@ -343,26 +359,39 @@ describe("matchup explorer action", () => {
       explorer_pool: { in_explorer_pool: false, pool_version: "explorer_pool_v1", meaning: "…" },
     }));
     renderProfile();
-    await screen.findByTestId("performance-panel");
-    expect(screen.queryByText("Open in Matchup Explorer")).toBeNull();
+    const panel = await screen.findByTestId("performance-panel");
+    expect(panel.querySelector("[data-explorer-pool]")).toHaveAttribute(
+      "data-explorer-pool",
+      "false",
+    );
   });
 
-  it("withholds the action when the payload carries no marker at all", async () => {
-    // An older payload must withhold, never guess.
+  it("publishes false when the payload carries no marker at all", async () => {
+    // An older payload must never guess.
     const payload = teamPayload();
     delete (payload as Record<string, unknown>).explorer_pool;
     ok(payload);
     renderProfile();
-    await screen.findByTestId("performance-panel");
-    expect(screen.queryByText("Open in Matchup Explorer")).toBeNull();
+    const panel = await screen.findByTestId("performance-panel");
+    expect(panel.querySelector("[data-explorer-pool]")).toHaveAttribute(
+      "data-explorer-pool",
+      "false",
+    );
   });
 
   it("never reads worlds_focus as the gate", () => {
     const src = SRC("pages/pro-play/ProPlayTeamProfile.tsx");
-    // The focus block is still RENDERED (ProfileHeader takes it); it must
-    // simply never decide the Explorer action.
     expect(src).toContain("explorer_pool?.in_explorer_pool");
     expect(src).not.toMatch(/worlds_focus[^\n]*\?[^\n]*Matchup/);
+  });
+
+  it("keeps the URL builder and its LIVE4 serializer for when the gate lifts", () => {
+    const url = matchupExplorerUrl(KEY);
+    const params = new URLSearchParams(url.split("?")[1]);
+    expect(url.startsWith("/lol/pro-play/matchup")).toBe(true);
+    expect(params.get("mode")).toBe("team");
+    expect(params.get("team_a")).toBe(KEY);
+    expect(params.get("team_b")).toBeNull();
   });
 
   it("builds the destination with LIVE4's own serializer", () => {

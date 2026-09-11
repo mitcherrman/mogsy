@@ -49,7 +49,6 @@ import {
   useEntityStats,
 } from "@/lib/pro-play/entityStats";
 import { graphHandoff } from "@/lib/pro-play/graphHandoff";
-import { matchupExplorerUrl } from "@/lib/pro-play/matchupHandoff";
 import type { ProStatsTeamRow } from "@/lib/pro-play/statsApi";
 import {
   fetchTeamProfile,
@@ -219,7 +218,10 @@ function TeamPerformance({
   });
 
   const actions = (
-    <>
+    // The pool marker is published on the DOM even while the action is
+    // deferred, so the plumbing from backend field to profile stays covered
+    // by a test instead of decaying into an unused prop.
+    <span className="contents" data-explorer-pool={String(explorerPool)}>
       <ProfileAction
         to={statsExplorerUrl("teams", teamKey)}
         title="This team as a row in the public statistics table"
@@ -231,22 +233,32 @@ function TeamPerformance({
           Graph champion pool
         </ProfileAction>
       ) : null}
-      {/* GATED ON THE EXPLORER POOL, NEVER ON worlds_focus. The pool is the
-          focus set plus 22 data-admitted teams; gating on the editorial set
-          would hide a working board for every one of them. Out of pool means
-          NO action at all -- a disabled control would need to explain a
-          distinction the reader has no reason to care about, and a live link
-          would land on TeamNotInExplorerPool, which reads as a broken
-          profile. */}
-      {explorerPool ? (
-        <ProfileAction
-          to={matchupExplorerUrl(teamKey)}
-          title="Open the five-lane comparison board with this team on one side"
-        >
-          Open in Matchup Explorer
-        </ProfileAction>
-      ) : null}
-    </>
+      {/* NAVIGATION DEFERRED — ELIGIBILITY CONTRACT RETAINED.
+          =====================================================
+          The Matchup Explorer action is NOT rendered, because this profile is
+          public and the Explorer is still admin-gated: every signed-out
+          reader who clicked it landed on "Sign in required". A public entry
+          point that dead-ends in an auth wall is the exact defect this whole
+          workstream exists to remove.
+
+          NOTHING ABOUT THE ELIGIBILITY WORK IS THROWN AWAY. The backend still
+          serves `explorer_pool.in_explorer_pool` (LIVE4's own
+          `is_explorer_team`, NOT `worlds_focus` -- pool 38 vs focus set 16,
+          and the 22 in between are why that distinction matters), the
+          discriminating backend tests still run, `matchupHandoff.ts` still
+          builds the URL from LIVE4's own serializer, and `explorerPool` is
+          still plumbed to this component and asserted.
+
+          TO RESTORE, once the Explorer is public: render the action below
+          under `explorerPool`. That is the whole change.
+
+            {explorerPool ? (
+              <ProfileAction to={matchupExplorerUrl(teamKey)}>   // from matchupHandoff
+                Open in Matchup Explorer
+              </ProfileAction>
+            ) : null}
+      */}
+    </span>
   );
 
   if (stats.status === "loading") {
