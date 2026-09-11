@@ -83,8 +83,15 @@ export function statsScopeLabel(response: ProStatsResponse): string {
 
 /** The Stats Explorer URL showing exactly this slice as a table row. Uses the
  *  Explorer's own query contract on the hub route; no new path. */
-export function statsExplorerUrl(view: ProStatsView, key: string): string {
+export function statsExplorerUrl(
+  view: ProStatsView,
+  key: string,
+  year?: number | null,
+): string {
   const params = new URLSearchParams({ view, [FILTER_KEY[view]]: key });
+  // Carry the panel's own bound, so the table the reader lands on shows the
+  // same slice the numbers beside the link were computed over.
+  if (year != null) params.set("year", String(year));
   return `/lol/pro-play?${params.toString()}`;
 }
 
@@ -95,13 +102,48 @@ export function statsExplorerUrl(view: ProStatsView, key: string): string {
  * the profile has no use for a second; it keeps the response a few hundred
  * bytes rather than a page of the leaderboard.
  */
-export function useEntityStats(view: ProStatsView, key: string): EntityStatsState {
+export function useEntityStats(
+  view: ProStatsView,
+  key: string,
+  /**
+   * A season to bound the request to, or `null` for the entity's whole career.
+   *
+   * PLAYER AND TEAM PASS NOTHING and get career, which is both correct and
+   * fast: their filters reach the date index and the request is ~250-310ms in
+   * production.
+   *
+   * CHAMPION MUST BOUND IT, AND THE REASON IS STRUCTURAL, NOT A TUNING
+   * PREFERENCE. `presence_rate`'s denominator is every DRAFTED GAME IN SCOPE,
+   * not the champion's own games, so an unbounded champion request counts
+   * DISTINCT over the entire corpus's 113,397 drafted games no matter which
+   * champion was asked for. That work does not shrink with the filter, and
+   * the Stats Explorer already contains exactly this class of problem the
+   * same way: its route defaults `year` to the latest season rather than
+   * serve an unbounded scan (see `_resolve_scope`, "an availability problem,
+   * not a slow page"). A champion filter suppresses that default, so the
+   * profile supplies the bound itself.
+   *
+   * The bound is VISIBLE, never silent: `statsScopeLabel` reads the server's
+   * echoed filters, so the panel prints the season it actually got, and the
+   * "View in Pro Stats" link carries the same year so the two agree.
+   */
+  year?: number | null,
+): EntityStatsState {
   const [state, setState] = useState<EntityStatsState>({ status: "loading" });
 
   useEffect(() => {
+    // NOT YET ASKABLE. An empty key means the caller is still resolving
+    // something it needs (the champion profile waits for the season list), and
+    // firing anyway would send a filterless request -- the whole-corpus scan
+    // the bound exists to avoid. Stay in `loading`; the effect re-runs.
+    if (!key) return;
     const controller = new AbortController();
     setState({ status: "loading" });
-    getProStats(view, { [FILTER_KEY[view]]: key, pageSize: 1 }, controller.signal)
+    getProStats(
+      view,
+      { [FILTER_KEY[view]]: key, year: year ?? null, pageSize: 1 },
+      controller.signal,
+    )
       .then((response) => {
         const row = response.rows[0];
         if (!row) {
@@ -122,7 +164,7 @@ export function useEntityStats(view: ProStatsView, key: string): EntityStatsStat
         });
       });
     return () => controller.abort();
-  }, [view, key]);
+  }, [view, key, year]);
 
   return state;
 }

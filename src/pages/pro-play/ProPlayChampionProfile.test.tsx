@@ -38,7 +38,7 @@ function statsResponse(row: Record<string, unknown>) {
     schema_version: 1, view: "champions", rows: [row],
     page: 1, page_size: 1, total_rows: 1, total_pages: 1,
     sort: "picks", dir: "desc",
-    filters: { year: null, league: null, patch: null, role: null, player: null, team: null, champion: null, min_games: 0 },
+    filters: { year: 2026, league: null, patch: null, role: null, player: null, team: null, champion: null, min_games: 0 },
     aggregates: {},
     coverage: { games: 0, stat_backed_games: 0, missing_stat_games: 0, stat_coverage_pct: null },
   };
@@ -136,6 +136,9 @@ function installFetch(handlers: Array<[(url: string) => boolean, { status?: numb
 
 const isProfile = (u: string) => u.includes("/api/pro-play/research/champion/");
 const isStats = (u: string) => u.includes("/api/pro-play/stats/champions");
+const isFilters = (u: string) => u.includes("/api/pro-play/stats/filters");
+/** `years` is newest first; the profile bounds itself to years[0]. */
+const FILTERS_BODY = { schema_version: 1, leagues: [], patches: [], champions: [], roles: [], years: [2026, 2025] };
 
 function renderProfile(key = KEY) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -151,7 +154,11 @@ function renderProfile(key = KEY) {
 }
 
 function ok(profile: unknown = championPayload(), row: Record<string, unknown> = FULL_ROW) {
-  installFetch([[isProfile, { body: profile }], [isStats, { body: statsResponse(row) }]]);
+  installFetch([
+    [isFilters, { body: FILTERS_BODY }],
+    [isProfile, { body: profile }],
+    [isStats, { body: statsResponse(row) }],
+  ]);
 }
 
 const SRC = (rel: string) => readFileSync(path.join(process.cwd(), "src", rel), "utf8");
@@ -175,10 +182,13 @@ describe("publicization", () => {
   });
 
   it("shows a clean public not-found for an unknown champion", async () => {
-    installFetch([[isProfile, {
-      status: 404,
-      body: { detail: "champion 'Nope' has no canonical games under league_filter='MAJOR_PRO'" },
-    }]]);
+    installFetch([
+      [isFilters, { body: FILTERS_BODY }],
+      [isProfile, {
+        status: 404,
+        body: { detail: "champion 'Nope' has no canonical games under league_filter='MAJOR_PRO'" },
+      }],
+    ]);
     renderProfile("Nope");
     const err = await screen.findByTestId("research-error");
     expect(err).toHaveTextContent(/No professional record/i);
@@ -222,7 +232,32 @@ describe("statistics semantics", () => {
     await screen.findByTestId("performance-panel");
     const params = new URLSearchParams(requests.find((r) => isStats(r.url))!.url.split("?")[1]);
     expect(params.get("champion")).toBe(KEY);
-    expect(params.get("year")).toBeNull();
+    // BOUNDED, and bounded from the server's own newest-first year list.
+    // `presence_rate`'s denominator is every drafted game in scope, which does
+    // not shrink with the champion filter, so an unbounded champion request
+    // scans the whole corpus. See useEntityStats.
+    expect(params.get("year")).toBe("2026");
+  });
+
+  it("takes the season from the served list, never a hard-coded year", async () => {
+    installFetch([
+      [isFilters, { body: { ...FILTERS_BODY, years: [2031, 2030] } }],
+      [isProfile, { body: championPayload() }],
+      [isStats, { body: statsResponse(FULL_ROW) }],
+    ]);
+    renderProfile();
+    await screen.findByTestId("performance-panel");
+    const params = new URLSearchParams(requests.find((r) => isStats(r.url))!.url.split("?")[1]);
+    expect(params.get("year")).toBe("2031");
+  });
+
+  it("never fires an unbounded champion request", async () => {
+    ok();
+    renderProfile();
+    await screen.findByTestId("performance-panel");
+    for (const r of requests.filter((r) => isStats(r.url))) {
+      expect(new URLSearchParams(r.url.split("?")[1]).get("year")).not.toBeNull();
+    }
   });
 
   it("renders picks, canonical W-L and win rate", async () => {
@@ -279,9 +314,10 @@ describe("statistics semantics", () => {
   it("labels its scope apart from the curated draft record", async () => {
     ok();
     renderProfile();
-    expect(await screen.findByTestId("performance-scope")).toHaveTextContent("All seasons");
+    // The panel prints the season the SERVER echoed, so the bound is visible.
+    expect(await screen.findByTestId("performance-scope")).toHaveTextContent("2026");
     expect(await screen.findByText("Career Draft Record")).toBeInTheDocument();
-    expect(await screen.findByText("All-Competition Performance")).toBeInTheDocument();
+    expect(await screen.findByText("Competitive Performance")).toBeInTheDocument();
     expect(await screen.findByText(/curated major leagues only/i)).toBeInTheDocument();
   });
 
@@ -293,7 +329,11 @@ describe("statistics semantics", () => {
   });
 
   it("survives a statistics failure without taking the profile down", async () => {
-    installFetch([[isProfile, { body: championPayload() }], [isStats, { status: 500, body: {} }]]);
+    installFetch([
+      [isFilters, { body: FILTERS_BODY }],
+      [isProfile, { body: championPayload() }],
+      [isStats, { status: 500, body: {} }],
+    ]);
     renderProfile();
     expect(await screen.findByRole("heading", { name: KEY })).toBeInTheDocument();
     expect(await screen.findByText("Faker")).toBeInTheDocument();
@@ -337,10 +377,13 @@ describe("navigation", () => {
     ok();
     renderProfile();
     const link = await screen.findByText("View in Pro Stats");
-    expect(link.closest("a")).toHaveAttribute("href", statsExplorerUrl("champions", KEY));
-    expect(statsExplorerUrl("champions", KEY)).toContain("view=champions");
+    // Carries the panel's own season, so the table shows the same slice.
+    expect(link.closest("a")).toHaveAttribute("href", statsExplorerUrl("champions", KEY, 2026));
+    const params = new URLSearchParams(link.closest("a")!.getAttribute("href")!.split("?")[1]);
+    expect(params.get("view")).toBe("champions");
     // The table filters by champion KEY, not slug.
-    expect(new URLSearchParams(statsExplorerUrl("champions", KEY).split("?")[1]).get("champion")).toBe(KEY);
+    expect(params.get("champion")).toBe(KEY);
+    expect(params.get("year")).toBe("2026");
   });
 
   it("offers Champion -> Players with no fabricated scope", async () => {

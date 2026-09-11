@@ -53,6 +53,7 @@ import {
   TableScroll,
   type PerformanceMetric,
 } from "@/components/pro-play/ResearchShell";
+import { useQuery } from "@tanstack/react-query";
 import { championSlug } from "@/lib/league-docs/api";
 import { buildProChampionUrl } from "@/lib/league-docs/pro-data-links";
 import {
@@ -61,7 +62,7 @@ import {
   useEntityStats,
 } from "@/lib/pro-play/entityStats";
 import { graphEntityId, graphUrl } from "@/lib/pro-play/graphHandoff";
-import type { ProStatsChampionRow } from "@/lib/pro-play/statsApi";
+import { getProStatsFilterOptions, type ProStatsChampionRow } from "@/lib/pro-play/statsApi";
 import {
   fetchChampionProfile,
   formatRate,
@@ -121,7 +122,19 @@ function championMetrics(row: ProStatsChampionRow): PerformanceMetric[] {
 }
 
 function ChampionPerformance({ championKey }: { championKey: string }) {
-  const stats = useEntityStats("champions", championKey);
+  // THE LATEST SEASON, FROM THE SERVER'S OWN LIST. `years` is newest first and
+  // the same one-hour-cached request the Stats Explorer already makes, so this
+  // costs nothing extra on a warm client and never hard-codes a year that
+  // would quietly rot into the wrong season.
+  const { data: options } = useQuery({
+    queryKey: ["pro-play-stats", "filters"],
+    queryFn: ({ signal }) => getProStatsFilterOptions(signal),
+    staleTime: 60 * 60 * 1000,
+  });
+  const season = options?.years?.[0] ?? null;
+  // Wait for the season rather than firing an unbounded request first: see
+  // `useEntityStats`, where the champion bound is a structural requirement.
+  const stats = useEntityStats("champions", season == null ? "" : championKey, season);
 
   // BOTH graph families, because a champion genuinely has two. The entity id
   // is the SLUG — the one conversion in the whole identity vocabulary — and
@@ -134,7 +147,7 @@ function ChampionPerformance({ championKey }: { championKey: string }) {
   const actions = (
     <>
       <ProfileAction
-        to={statsExplorerUrl("champions", championKey)}
+        to={statsExplorerUrl("champions", championKey, season)}
         title="This champion as a row in the public statistics table"
       >
         View in Pro Stats
@@ -157,16 +170,16 @@ function ChampionPerformance({ championKey }: { championKey: string }) {
     </>
   );
 
-  if (stats.status === "loading") {
+  if (season == null || stats.status === "loading") {
     return (
-      <Panel title="All-Competition Performance">
+      <Panel title="Competitive Performance">
         <Skeleton className="h-16 w-full" />
       </Panel>
     );
   }
   if (stats.status === "error") {
     return (
-      <Panel title="All-Competition Performance" note={stats.message}>
+      <Panel title="Competitive Performance" note={stats.message}>
         <EmptyRow label="Performance statistics could not be loaded. The draft record and the players and teams above are unaffected." />
         <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
       </Panel>
@@ -174,7 +187,7 @@ function ChampionPerformance({ championKey }: { championKey: string }) {
   }
   if (stats.status === "absent") {
     return (
-      <Panel title="All-Competition Performance">
+      <Panel title="Competitive Performance">
         <EmptyRow label="No rows for this champion in the public statistics table." />
         <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
       </Panel>
@@ -184,7 +197,7 @@ function ChampionPerformance({ championKey }: { championKey: string }) {
   const row = stats.row as ProStatsChampionRow;
   return (
     <PerformancePanel
-      title="All-Competition Performance"
+      title="Competitive Performance"
       scopeLabel={statsScopeLabel(stats.response)}
       metrics={championMetrics(row)}
       // `picks`, NOT `picked_games`: the rates above are over picks, so the
@@ -196,9 +209,10 @@ function ChampionPerformance({ championKey }: { championKey: string }) {
       note={
         <>
           A different slice from the draft record above, which counts curated
-          major-league games over four product scopes. This is every
-          competition, all seasons, and is the same slice the Pro Stats table
-          shows.
+          major-league games over four product scopes. This is the current
+          season across every competition, and is the same slice the Pro Stats
+          table shows. For a champion's whole history, open the reference
+          archive.
         </>
       }
     />

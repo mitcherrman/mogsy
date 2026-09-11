@@ -8,6 +8,7 @@
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ProPlaySearch from "./ProPlaySearch";
@@ -161,7 +162,13 @@ function playerPayload() {
 }
 
 function renderAt(path: string) {
+  // The champion profile reads the shared `/stats/filters` list through
+  // react-query (see ChampionPerformance), so this harness needs the same
+  // provider the app root already supplies. A fresh client per render keeps
+  // these tests isolated from each other's caches.
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
+    <QueryClientProvider client={client}>
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/lol/pro-play/search" element={<ProPlaySearch />} />
@@ -169,7 +176,8 @@ function renderAt(path: string) {
         <Route path="/lol/pro-play/team/:key" element={<ProPlayTeamProfile />} />
         <Route path="/lol/pro-play/champion/:key" element={<ProPlayChampionProfile />} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
