@@ -4506,11 +4506,38 @@ the lane drill-down keeps its href and moved after the players; and the
 definitions are still in the document behind a collapsed control.
 
 
-## 19. Deploy state — LIVE4
+## 19. Deploy state — LIVE4 (2026-09-11)
 
-Frontend only. Recorded below once the branch reaches `main`; a push is not a
-publish, and this workstream has checked that by fetching the bundle every
-time. See "Deploy state" under Steps 3, 5, 6, 8, 9, 11 and 12 for the method.
+**Frontend only. No backend change, so no Railway deploy and no `master`
+commit.** The Sion/HLE verification was a read against the real corpus through
+the existing `pro_authority.player_dossier`; nothing was written and no
+endpoint was touched.
+
+**On `main`: yes.** `9f40a2d9`, rebased onto `2c193ad8` (the RB1–RB3 chain
+landed while this was in flight) and pushed. The affected suites were re-run
+after the rebase: 591 passed across the eight pro-play suites and four Layout
+suites.
+
+**Published to mogzy.lol: NO, as of 2026-09-11 00:01.** Checked by fetching the
+live bundle, not assumed. `https://mogzy.lol/` serves
+`assets/index-FCTCB2j8.js`, which lazy-loads
+`assets/ProPlayMatchup-BmwmeCcl.js`; that chunk still contains
+`Open in Combat Lab`, `Explore Pro Data`, `Quiz This Matchup` and
+`of team games`, and contains none of `pool-legend`, `Continue studying`,
+`Wins / games`, `dossier-drawer__versus-empty`, `dossier-study__continue`,
+`Quiz Matchup` or `proplay-matchup-head`.
+
+**The owner must press Publish in Lovable.** A push to `main` is not a publish,
+and this workstream has verified that the same way at every step. Re-check with
+the same two commands after publishing:
+
+```bash
+curl -s https://mogzy.lol/ | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js'
+curl -s https://mogzy.lol/assets/<the ProPlayMatchup chunk>.js | grep -c 'Continue studying'
+```
+
+A published build has `Continue studying` and `pool-legend` present and
+`Open in Combat Lab` absent.
 
 ## 20. Remaining polish — optional, none blocking
 
