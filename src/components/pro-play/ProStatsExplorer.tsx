@@ -171,7 +171,16 @@ const PLAYER_COLUMNS: Column<ProStatsPlayerRow>[] = [
 ];
 
 const TEAM_COLUMNS: Column<ProStatsTeamRow>[] = [
-  { key: "team", label: "Team", numeric: false, render: (r) => r.team },
+  {
+    key: "team",
+    label: "Team",
+    numeric: false,
+    render: (r) => r.team,
+    // Same rule as the Player column: the identity IS the link. `row.team` is
+    // `team_key` verbatim -- the key the profile route takes and the key this
+    // table filters on.
+    cell: (r) => <TeamCell name={r.team} />,
+  },
   {
     key: "games",
     label: "Games",
@@ -998,6 +1007,20 @@ function PlayerCell({ name }: { name: string }) {
       to={proPlayProfileUrl("player", name)}
       className="font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       data-testid="player-profile-link"
+    >
+      {name}
+    </Link>
+  );
+}
+
+/** A team identity, linked to its canonical public profile. See PlayerCell —
+ *  same helper, same verbatim-key reasoning, same public precondition. */
+function TeamCell({ name }: { name: string }) {
+  return (
+    <Link
+      to={proPlayProfileUrl("team", name)}
+      className="font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-testid="team-profile-link"
     >
       {name}
     </Link>
