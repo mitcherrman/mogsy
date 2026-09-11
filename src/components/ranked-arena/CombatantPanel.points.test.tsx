@@ -12,6 +12,12 @@ import { CombatantPanel } from "./CombatantPanel";
 import type {
   CombatantView, RoundHistoryEntry,
 } from "@/lib/ranked-core/viewTypes";
+import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
+
+const feedback = (over: Partial<PointsFeedbackView> = {}): PointsFeedbackView => ({
+  baseLabel: "CORRECT", basePoints: 3, speed: null, pointsAwarded: 3,
+  scoreAfter: 12, ...over,
+});
 
 const base: CombatantView = {
   playerId: "you", name: "You", tag: "Top", roleId: "top", identityMode: "role",
@@ -45,9 +51,11 @@ describe("a scored rail", () => {
 
   it("states the module's award beside the verdict, not a damage figure", () => {
     render(<CombatantPanel combatant={scored(12)} progressionEnabled={false}
-      outcome="correct" damageDealt={3} pointsAwarded={3} />);
+      outcome="correct" damageDealt={3} feedback={feedback()} />);
     expect(screen.getByTestId("outcome-points-you")).toHaveTextContent("+3");
     expect(screen.queryByTestId("outcome-damage-you")).toBeNull();
+    // No bonus was awarded, so the rail carries no bonus chip at all.
+    expect(screen.queryByTestId("outcome-speed-you")).toBeNull();
   });
 
   it("writes the ledger in points and says nothing about HP", () => {

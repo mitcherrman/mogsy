@@ -12,18 +12,30 @@ import { resultConsequence } from "./RoundResultBeat";
 import { segmentScoreline } from "./SegmentResultBeat";
 import type { ResolvedCombatantView } from "@/lib/ranked-core/viewTypes";
 import type { SegmentSettlementView } from "@/lib/ranked-public/contracts";
+import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
+
+const award = (base: number, speedPoints = 0, label = "CORRECT"): PointsFeedbackView => ({
+  baseLabel: label,
+  basePoints: base,
+  speed: speedPoints > 0
+    ? { label: label.includes("/") ? "FINISHED FIRST" : "FIRST", points: speedPoints }
+    : null,
+  pointsAwarded: base + speedPoints,
+  scoreAfter: base + speedPoints,
+});
 
 const viewer = {
   finalDamageDealt: 12, finalDamageReceived: 0, shieldAbsorbed: 0,
 } as unknown as ResolvedCombatantView;
 
 describe("the round plate's consequence line", () => {
-  it("states the award in a points match", () => {
-    expect(resultConsequence(viewer, 3)).toBe("+3 POINTS");
+  it("carries the SPEED bonus in a points match — the base is the loud line", () => {
+    expect(resultConsequence(viewer, award(2, 1))).toBe("FIRST +1");
   });
 
-  it("says NO POINTS for a module that awarded none — never a damage figure", () => {
-    expect(resultConsequence(viewer, 0)).toBe("NO POINTS");
+  it("says nothing at all when no bonus was earned", () => {
+    expect(resultConsequence(viewer, award(2))).toBe("");
+    expect(resultConsequence(viewer, award(0, 0, "INCORRECT"))).toBe("");
   });
 
   it("is the unchanged damage line when there is no award (hp)", () => {
@@ -43,14 +55,14 @@ describe("the block plate's scoreline", () => {
     damageByPlayerId: { you: 7 },
   } as unknown as SegmentSettlementView;
 
-  it("keeps both card counts and states the award", () => {
-    expect(segmentScoreline(settlement, "you", "them", 6))
-      .toBe("YOU 5/5 · OPP 3/5 · +6 PTS");
+  it("keeps both card counts and states base and bonus separately", () => {
+    expect(segmentScoreline(settlement, "you", "them", award(5, 1, "5 / 5")))
+      .toBe("YOU 5/5 · OPP 3/5 · +5 · FINISHED FIRST +1");
   });
 
-  it("omits the award clause rather than printing +0", () => {
-    expect(segmentScoreline(settlement, "you", "them", 0))
-      .toBe("YOU 5/5 · OPP 3/5");
+  it("states a base of zero rather than implying a loss of anything", () => {
+    expect(segmentScoreline(settlement, "you", "them", award(0, 0, "0 / 5")))
+      .toBe("YOU 5/5 · OPP 3/5 · +0");
   });
 
   it("is the unchanged DMG scoreline on an hp match", () => {

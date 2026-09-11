@@ -329,7 +329,11 @@ export interface RoundHistoryEntry {
 
 /** One mascot reaction: what to play, and the id that makes it retriggerable. */
 export interface MascotReaction {
-  action: "attack" | "hit";
+  /**
+   * RP1 added `cheer`: a points match has no attacker and no victim, and its
+   * mascot reacts to its OWN player's award. See `projectPointsMascotReactions`.
+   */
+  action: "attack" | "hit" | "cheer";
   /** The settled round this reaction belongs to. A round settles exactly once,
    *  so the round number is a stable, monotonic event id — which is precisely
    *  what `RoleMascot`'s edge-triggered playback needs. */

@@ -102,27 +102,6 @@ export function projectRevealDamage(
 }
 
 /**
- * RP1 — points each player was AWARDED in the settlement being revealed, keyed
- * by player id, or an empty map when there is no reveal in progress and on
- * every hp settlement.
- *
- * The exact sibling of `projectRevealDamage` above, gated on the same reveal
- * hold, reading the same authoritative settlement. It computes nothing: the
- * backend banked these numbers and cross-checked them against the module's own
- * explanation before publishing them.
- */
-export function projectRevealPoints(
-  settlement: ResolvedRoundView | null, revealing: boolean,
-): Record<string, number> {
-  if (!settlement || !revealing || !settlement.modulePoints) return {};
-  const out: Record<string, number> = {};
-  for (const [playerId, award] of Object.entries(settlement.modulePoints)) {
-    out[playerId] = award.pointsAwarded;
-  }
-  return out;
-}
-
-/**
  * The reveal handed to a normal question's answer tablets, or null.
  *
  * THE DISCLOSURE GATE, and the reason it is a pure function rather than three

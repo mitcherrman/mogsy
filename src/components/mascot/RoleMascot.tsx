@@ -72,7 +72,7 @@ export type RoleMascotFacing = "left" | "right";
  * INTENTS, not a motion vocabulary: adding "what a hit looks like" is a change
  * to this file, never to a host.
  */
-export type RoleMascotAction = "attack" | "hit";
+export type RoleMascotAction = "attack" | "hit" | "cheer";
 
 /**
  * Everything the action layer can play, including the one motion no host can
@@ -85,13 +85,30 @@ type PlayableAction = RoleMascotAction | "react";
 const ACTION_CLASS: Record<PlayableAction, string> = {
   attack: "role-mascot-attack",
   hit: "role-mascot-hit",
+  // RP1 — a match that scores points has nothing to attack and nobody to be
+  // hurt by, so its one reaction is a hop: the mascot is pleased with ITS OWN
+  // player's score. It reuses the click reaction's keyframes rather than
+  // adding a fourth motion, because that motion is already exactly this — a
+  // squash, a hop and a settle — and a celebration nobody can tell apart from
+  // the existing delight is the right amount of new vocabulary.
+  cheer: "role-mascot-react",
   react: "role-mascot-react",
 };
 
-const ALL_ACTION_CLASSES = Object.values(ACTION_CLASS);
+// DEDUPED: two intents deliberately share one class (`cheer` reuses the click
+// reaction's hop), and a class listed twice would be REMOVED twice — which is
+// harmless to the DOM but makes "how many times did a playback drop its class"
+// unanswerable, and that count is exactly how the retrigger contract is
+// proven. One class, one removal.
+const ALL_ACTION_CLASSES = [...new Set(Object.values(ACTION_CLASS))];
 
-/** Combat outranks the click reaction; see COMBAT BEATS COSMETICS above. */
-const COMBAT_ACTIONS: readonly string[] = ["attack", "hit"];
+/**
+ * A HOST-REQUESTED action outranks the click reaction; see COMBAT BEATS
+ * COSMETICS above. Named for combat because combat was all there was; a cheer
+ * is the same KIND of thing — something that happened in the match, as opposed
+ * to something the player did to the picture — and takes the same precedence.
+ */
+const COMBAT_ACTIONS: readonly string[] = ["attack", "hit", "cheer"];
 
 function prefersReducedMotion(): boolean {
   return (

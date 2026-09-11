@@ -26,7 +26,12 @@ type Points = {
 
 let points: Points;
 /** Serve a completed match, with the result row a terminal frame reads. */
-let finished: { finalScores: Record<string, number>; winner: string | null } | null;
+let finished: {
+  finalScores: Record<string, number>;
+  winner: string | null;
+  /** What the account's history row reports for THIS match; null = unrated. */
+  ratingDelta?: number | null;
+} | null;
 
 const json = (body: unknown) => new Response(JSON.stringify(body), {
   status: 200, headers: { "Content-Type": "application/json" },
@@ -66,9 +71,32 @@ beforeEach(() => {
         },
       });
     }
+    if (u.includes("/history")) {
+      return json({
+        schema_version: "ranked_duel.match_history.v1",
+        projection_type: "match_history", match_id: null, round_number: null,
+        server_time: "2026-07-18T12:00:00+00:00",
+        payload: {
+          count: finished ? 1 : 0,
+          entries: finished ? [{
+            match_id: "m1", viewer_outcome: finished.winner === "userA" ? "win" : "loss",
+            terminal_reason: "combat", completion_reason: "knockout",
+            final_round_number: 10, completed_at: "2026-07-18T12:00:00+00:00",
+            is_bot_match: false, viewer_class: "tank", opponent_class: "mage",
+            viewer_role: "top", opponent_role: null,
+            opponent_display_name: "Opponent", opponent_is_bot: false,
+            rating_delta: finished.ratingDelta ?? null,
+            rating_after: finished.ratingDelta != null ? 1000 + finished.ratingDelta : null,
+          }] : [],
+        },
+      });
+    }
     if (u.endsWith("/result")) {
       return json(finished
-        ? matchResultPointsV1(finished.finalScores, { winner: finished.winner })
+        ? matchResultPointsV1(finished.finalScores, {
+          winner: finished.winner,
+          outcome: finished.winner === null ? "draw" : "decisive",
+        })
         : {});
     }
     if (u.endsWith("/private")) return json(privateBody());
@@ -163,6 +191,56 @@ describe("a points match presents a SCORE", () => {
 });
 
 describe("the terminal frame carries the final scoreline", () => {
+  it("prints the scoreline, the rating movement and the modules played", async () => {
+    points = {
+      moduleNumber: 10, matchLength: 10, modulesCompleted: 10,
+      scores: { userA: 21, userB: 18 },
+    };
+    finished = {
+      finalScores: { userA: 21, userB: 18 }, winner: "userA", ratingDelta: 18,
+    };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" />);
+    await screen.findByTestId("ranked-match-over");
+    await waitFor(() =>
+      expect(screen.getByTestId("final-score-you")).toHaveTextContent("21"));
+    expect(screen.getByTestId("final-score-opponent")).toHaveTextContent("18");
+    expect(screen.getByTestId("match-over-heading")).toHaveTextContent(/victory/i);
+    await waitFor(() =>
+      expect(screen.getByTestId("ranked-rating-delta")).toHaveTextContent("+18 Rating"));
+    expect(screen.getByTestId("ranked-modules-played"))
+      .toHaveTextContent("10 modules complete");
+  });
+
+  it("shows NO rating for an unrated match, and invents no zero", async () => {
+    points = {
+      moduleNumber: 10, matchLength: 10, modulesCompleted: 10,
+      scores: { userA: 12, userB: 20 },
+    };
+    finished = {
+      finalScores: { userA: 12, userB: 20 }, winner: "userB", ratingDelta: null,
+    };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" />);
+    await screen.findByTestId("ranked-match-over");
+    await waitFor(() =>
+      expect(screen.getByTestId("final-score-you")).toHaveTextContent("12"));
+    expect(screen.getByTestId("match-over-heading")).toHaveTextContent(/defeat/i);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByTestId("ranked-rating-delta")).toBeNull();
+  });
+
+  it("shows a draw as two equal numbers under the backend's own word", async () => {
+    points = {
+      moduleNumber: 10, matchLength: 10, modulesCompleted: 10,
+      scores: { userA: 18, userB: 18 },
+    };
+    finished = { finalScores: { userA: 18, userB: 18 }, winner: null };
+    render(<QuizRankedMatch matchId="m1" viewerUserId="userA" />);
+    await screen.findByTestId("ranked-match-over");
+    await waitFor(() =>
+      expect(screen.getByTestId("final-score-you")).toHaveTextContent("18"));
+    expect(screen.getByTestId("final-score-opponent")).toHaveTextContent("18");
+  });
+
   it("shows each player's final score, read from the RESULT row", async () => {
     // The live snapshot is deliberately STALE here (7–5): the result row is
     // the authority on what the match finished at, and the frame must read it

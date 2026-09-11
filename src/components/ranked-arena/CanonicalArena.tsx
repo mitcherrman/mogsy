@@ -76,7 +76,7 @@ function Rail({ rail, progressionEnabled }:
       damage={rail.damage}
       outcome={rail.outcome}
       damageDealt={rail.damageDealt}
-      pointsAwarded={rail.pointsAwarded ?? null}
+      feedback={rail.feedback ?? null}
       reaction={rail.reaction} />
   );
 }
@@ -119,6 +119,7 @@ export function CanonicalArena({
             eyebrow={terminal.eyebrow}
             heading={terminal.heading}
             subheading={terminal.subheading}
+            scoreline={terminal.scoreline}
             summary={terminal.summary}
             progressionEnabled={terminal.progressionEnabled}
             primaryAction={terminal.primaryAction} />
@@ -261,13 +262,13 @@ export function CanonicalArena({
             viewerUserId={segmentSettlement.viewerUserId}
             opponentUserId={segmentSettlement.opponentUserId}
             roundNumber={segmentSettlement.roundNumber}
-            pointsAwarded={segmentSettlement.pointsAwarded ?? null}
+            feedback={segmentSettlement.feedback ?? null}
             detailsOpen={detailsOpen} onToggleDetails={setDetailsOpen}
             className="hidden md:flex" />
         ) : view.roundBeat ? (
           <RoundResultBeat key={view.roundBeat.settlement.roundNumber}
             settlement={view.roundBeat.settlement} viewerSlot={view.roundBeat.viewerSlot}
-            pointsAwarded={view.roundBeat.pointsAwarded ?? null}
+            feedback={view.roundBeat.feedback ?? null}
             className="hidden md:flex" />
         ) : null}
         {/* RA10: the timer block sits behind a brass hairline, scoreboard-style,

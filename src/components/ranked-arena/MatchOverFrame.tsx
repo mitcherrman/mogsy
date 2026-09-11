@@ -39,6 +39,15 @@ export interface MatchOverFrameProps {
   heading?: string;
   /** e.g. backend completion reason, round count — rendered verbatim. */
   subheading?: string;
+  /**
+   * RP1 Step 4 — the mode's HEADLINE, between the result word and the
+   * duelists, or absent (every caller that had none).
+   *
+   * A slot rather than a scoreline API: a scored match has a scoreline, an hp
+   * match has nothing to put here, and a solo run would have something else
+   * again. The frame reserves the position and the mode writes the sentence.
+   */
+  scoreline?: ReactNode;
   /** Optional statistics/summary content slot. */
   summary?: ReactNode;
   primaryAction?: MatchOverAction;
@@ -75,6 +84,7 @@ export function MatchOverFrame({
   eyebrow,
   heading,
   subheading,
+  scoreline,
   summary,
   primaryAction,
   secondaryAction,
@@ -104,6 +114,8 @@ export function MatchOverFrame({
           </p>
         )}
       </header>
+
+      {scoreline && <div data-testid="match-over-scoreline">{scoreline}</div>}
 
       {/* Two columns when there are two duelists; ONE COLUMN, at a duelist
           column's width, when there is one.

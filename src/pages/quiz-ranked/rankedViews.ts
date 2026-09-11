@@ -310,6 +310,6 @@ export function opponentPresenceLabel(presence: PresenceView | null): string | n
 // mode outside this page from coming here for them.
 export {
   projectMascotReactions, projectRevealDamage, projectRevealOutcomes,
-  projectRevealPoints, projectRoundHistory, projectSurfaceReveal,
+  projectRoundHistory, projectSurfaceReveal,
 } from "@/lib/ranked-core/settlementViews";
 export type { MascotReaction, RoundHistoryEntry } from "@/lib/ranked-core/viewTypes";

@@ -987,6 +987,36 @@
   }
 }
 
+/* RP1 Step 4 — THE CUMULATIVE SCORE MOVING.
+   11 -> 14 has to be noticed without becoming a ceremony: one short swell on
+   the digits themselves, and nothing else on the page. The span is remounted
+   by its own value (see `ScoreTally`), so this plays once per settled module
+   and never loops.
+
+   Transform and colour only. The tally sits above the rail's ledger and beside
+   the question, and a score that reflowed either of them would be a layout
+   shift on every module of a ten-module match. */
+.ranked-score-bump {
+  animation: ranked-score-bump 520ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+@keyframes ranked-score-bump {
+  0%   { transform: scale(1);    text-shadow: none; }
+  35%  { transform: scale(1.14); text-shadow: 0 0 18px rgba(232, 201, 122, 0.55); }
+  100% { transform: scale(1);    text-shadow: none; }
+}
+/* Reduced motion: the number still ARRIVES lit, it simply does not grow. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ranked-score-bump {
+    0%   { opacity: 0.55; }
+    100% { opacity: 1; }
+  }
+  .ranked-score-bump {
+    animation-duration: 200ms;
+    transform: none;
+    text-shadow: none;
+  }
+}
+
 /* ===== RG — the round timeline (the arena's BOTTOM region) =================
    An adaptive moving viewport over an indefinite sequence of rounds. A Ranked
    match ends on HP, not on a round count, so there is no cycle here, nothing

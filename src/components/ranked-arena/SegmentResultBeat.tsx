@@ -47,6 +47,7 @@ import { ChevronDown, Gauge, Star } from "lucide-react";
 import type {
   SegmentResult, SegmentSettlementView,
 } from "@/lib/ranked-public/contracts";
+import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import { segmentTitle } from "./SegmentTranscript";
 import { BeatBody, BeatPlate, type ResultKind } from "./RoundResultBeat";
 
@@ -81,10 +82,14 @@ export function segmentScoreline(
   opponentUserId: string | null,
   /**
    * RP1 — the viewer's award for the block, or null on an hp match. Present
-   * (including 0) replaces the damage clause, for the same reason the round
-   * plate's consequence line does: in a points match the damage IS the award.
+   * replaces the damage clause, for the same reason the round plate's
+   * consequence line does: in a points match the damage IS the award.
+   *
+   * Step 4 keeps this function for the ACCESSIBLE sentence, which still wants
+   * both players' counts in one line. What the plate DRAWS in a points match
+   * is the two-line base/bonus split instead — see the component below.
    */
-  pointsAwarded: number | null = null,
+  feedback: PointsFeedbackView | null = null,
 ): string {
   const { reveal } = settlement;
   const total = reveal.challengeCount;
@@ -92,8 +97,11 @@ export function segmentScoreline(
   const them = opponentUserId ? reveal.players[opponentUserId] : undefined;
   const parts = [`YOU ${you?.correct ?? 0}/${total}`];
   if (them) parts.push(`OPP ${them.correct}/${total}`);
-  if (pointsAwarded !== null) {
-    if (pointsAwarded > 0) parts.push(`+${pointsAwarded} PTS`);
+  if (feedback !== null) {
+    parts.push(`+${feedback.basePoints}`);
+    if (feedback.speed) {
+      parts.push(`${feedback.speed.label} +${feedback.speed.points}`);
+    }
     return parts.join(" · ");
   }
   const damage = settlement.damageByPlayerId[viewerUserId] ?? 0;
@@ -142,7 +150,7 @@ export function SegmentResultBeat({
   viewerUserId,
   opponentUserId,
   roundNumber,
-  pointsAwarded = null,
+  feedback = null,
   detailsOpen,
   onToggleDetails,
   className = "",
@@ -150,8 +158,8 @@ export function SegmentResultBeat({
   settlement: SegmentSettlementView;
   viewerUserId: string;
   opponentUserId: string | null;
-  /** RP1 — the viewer's award for the block; null = an hp match. */
-  pointsAwarded?: number | null;
+  /** RP1 — the viewer's award for the block, and why; null = an hp match. */
+  feedback?: PointsFeedbackView | null;
   /** The round the block settled on; null before one is known. */
   roundNumber: number | null;
   /**
@@ -174,7 +182,7 @@ export function SegmentResultBeat({
   const kind = result ? KIND_FOR_RESULT[result] : "both-correct";
   const word = result ? RESULT_WORD[result] : "Resolved";
   const scoreline = segmentScoreline(settlement, viewerUserId, opponentUserId,
-    pointsAwarded);
+    feedback);
   return (
     <BeatPlate
       kind={kind}
@@ -196,15 +204,31 @@ export function SegmentResultBeat({
             <>
               {/* The module name is context the player already has — they have
                   just played five of its cards — so it is the first thing to
-                  give up where the strip is narrow. The result word never is. */}
+                  give up where the strip is narrow. The result never is. */}
               <span className="hidden text-muted-foreground lg:inline">{title}</span>
               <span aria-hidden className="hidden text-muted-foreground/50 lg:inline"> · </span>
-              <span>{word}</span>
+              {/* RP1 — the block's result IS its count and what that count
+                  earned. The win/loss word is retired for a points match: a
+                  module is not won, it is scored, and "Loss · 4/5 +4" tells a
+                  player they lost something they in fact banked four points
+                  for. An hp block keeps the word it has always had. */}
+              <span>{feedback
+                ? `${feedback.baseLabel} +${feedback.basePoints}` : word}</span>
             </>
           }
-          consequence={scoreline}
-          trailing={<BonusChips perfect={you?.perfect === true}
-            speedBonus={you?.speedBonus ?? 0} />}
+          consequence={feedback
+            ? (feedback.speed
+              ? `${feedback.speed.label} +${feedback.speed.points}` : "")
+            : scoreline}
+          // RP1 — NO BONUS CHIPS in a points match, and the absence is the
+          // point. "Perfect" is a fact about the block and not a reward: RP1
+          // pays nothing for perfection alone, and a chip sitting beside two
+          // award figures would read as a third one. The single bonus this
+          // game has is stated in full, with its number, on the line above.
+          trailing={feedback ? null : (
+            <BonusChips perfect={you?.perfect === true}
+              speedBonus={you?.speedBonus ?? 0} />
+          )}
         />
       }
       secondary={scoreline}

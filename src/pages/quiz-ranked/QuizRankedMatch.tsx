@@ -38,8 +38,13 @@ import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 // Ranked calls the same functions it always did, from where they now live.
 import {
   projectMascotReactions, projectRevealDamage, projectRevealOutcomes,
-  projectRevealPoints, projectRoundHistory, projectSurfaceReveal,
+  projectRoundHistory, projectSurfaceReveal,
 } from "@/lib/ranked-core/settlementViews";
+import {
+  projectPointsMascotReactions, projectRevealFeedback,
+} from "@/lib/ranked-core/pointsFeedback";
+import { RankedScoreline } from "./RankedScoreline";
+import { useRankedMatchHistory } from "./useRankedMatchHistory";
 import {
   abilityTrayIsUseful, isPointsMatch, moduleProgressLabel,
   opponentPresenceLabel, projectAbilities,
@@ -103,6 +108,23 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
    * answer is final.
    */
   const discoveries = useMatchDiscoveries(matchId, m.phase === "match_over");
+  /**
+   * RP1 Step 4 — THE RATING MOVEMENT THIS MATCH APPLIED, or nothing.
+   *
+   * The live result projection carries `rating_application_status` but no
+   * delta; the account's own history row is where the applied number lives, so
+   * that is what is read — the same endpoint and the same parsed contract the
+   * lobby's history widget already uses, gated to the terminal phase so a live
+   * match never spends the request.
+   *
+   * NOTHING IS FABRICATED. A bot or otherwise unrated match, a rating that has
+   * not been applied yet, a history read that fails or lags — all of them end
+   * with `ratingDelta: null` and the scoreline simply has no rating chip. The
+   * one number this can show is a number the backend applied.
+   */
+  const history = useRankedMatchHistory(5, { enabled: m.phase === "match_over" });
+  const ratingDelta = history.entries
+    .find((e) => e.matchId === matchId)?.ratingDelta ?? null;
   const [tick, setTick] = useState(0);
   const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
 
@@ -165,30 +187,37 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
     () => projectRevealDamage(m.lastResolved, m.revealHold),
     [m.lastResolved, m.revealHold]);
   /**
-   * RP1 — the settled module's award per player, for the same reveal beat.
+   * RP1 — the settled module's award per player, and WHY, for the same reveal
+   * beat.
    *
    * Read off the settlement's own `module_points`, which the backend publishes
    * only for a module it scored. It is therefore empty on an hp match without
    * this file asking, and a points rail shows an award exactly when the
-   * backend banked one.
+   * backend banked one. The block transcript rides along so a slice's base
+   * line can be its own count ("4 / 5") rather than a single verdict word.
    */
-  const revealPoints = useMemo(
-    () => projectRevealPoints(m.lastResolved, m.revealHold),
-    [m.lastResolved, m.revealHold]);
+  const revealFeedback = useMemo(
+    () => projectRevealFeedback(m.lastResolved, m.revealHold,
+      m.lastSegmentSettlement
+        ? { settlement: m.lastSegmentSettlement, roundNumber: m.lastSegmentRoundNumber }
+        : null),
+    [m.lastResolved, m.revealHold, m.lastSegmentSettlement, m.lastSegmentRoundNumber]);
   // AI1 Phase 2 — the two duelist mascots' reactions to the settled round.
   // Same settlement, same reveal gate as the verdicts above: the attacker's
   // mascot lunges and the damaged mascot recoils on the beat the round
   // resolves. Nothing here is timed or simulated.
-  // RP1: a points match is silent here, and deliberately. The projection reads
-  // the settlement's damage fields, which in a points match are the AWARD
-  // travelling through the engine's damage channel — so scoring two points
-  // would make the opponent's mascot recoil as though it had been hurt, which
-  // is the HP battle this redesign removes, animated. Step 4 owns whatever
-  // celebrates a score; until then nothing claims to.
+  // RP1 Step 4 — a points match reacts to ITS OWN SCORE, never to the
+  // opponent's. `projectMascotReactions` reads the settlement's damage fields,
+  // which in a points match are the award travelling through the engine's
+  // damage channel — so scoring two points made the opponent's mascot recoil
+  // as though it had been hurt. Step 3 silenced that; this replaces it with a
+  // cheer the mascot already knew how to perform.
   const pointsMatch = m.publicRound !== null && isPointsMatch(m.publicRound);
   const mascotReactions = useMemo(
-    () => (pointsMatch ? {} : projectMascotReactions(m.lastResolved, m.revealHold)),
-    [pointsMatch, m.lastResolved, m.revealHold]);
+    () => (pointsMatch
+      ? projectPointsMascotReactions(revealFeedback, m.lastResolved)
+      : projectMascotReactions(m.lastResolved, m.revealHold)),
+    [pointsMatch, revealFeedback, m.lastResolved, m.revealHold]);
   /**
    * RG — WHAT THE SERVER HAS SAID EACH ROUND'S SEGMENT IS.
    *
@@ -389,10 +418,26 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
     const withFinalScore = (c: typeof combatants.player) => (
       finalScores && finalScores[c.playerId] !== undefined
         ? { ...c, score: finalScores[c.playerId] } : c);
+    const result: "victory" | "defeat" | "draw" =
+      draw ? "draw" : won ? "victory" : "defeat";
     const terminal: ArenaTerminalView = {
-      result: draw ? "draw" : won ? "victory" : "defeat",
+      result,
       player: withFinalScore(combatants.player),
       opponent: withFinalScore(combatants.opponent),
+      /**
+       * RP1 Step 4 — a scored match ends on a SCORELINE, and says so directly
+       * under the result word. An hp match passes none and its frame is
+       * unchanged: it ends on a knockout, and "170 — 0" is not the sentence
+       * that match was about.
+       */
+      scoreline: finalScores ? (
+        <RankedScoreline
+          you={finalScores[combatants.player.playerId] ?? 0}
+          opponent={finalScores[combatants.opponent.playerId] ?? null}
+          result={result}
+          modulesPlayed={m.result?.scoring?.modulesPlayed ?? null}
+          ratingDelta={ratingDelta} />
+      ) : undefined,
       subheading: reason === "forfeit"
         ? (won ? "Opponent forfeited." : "You forfeited.")
         : reason === "no_contest" ? "No contest — both players left." : undefined,
@@ -479,9 +524,10 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
       outcome: revealOutcomes[c.playerId] ?? null,
       damageDealt: revealDamage[c.playerId] ?? null,
       // RP1 — present only while a points module's settlement is being
-      // revealed, which is what makes the verdict row say "+2" instead of a
-      // damage figure without either side learning a mode flag.
-      pointsAwarded: revealPoints[c.playerId] ?? null,
+      // revealed, which is what makes the verdict row say "CORRECT +2" (and,
+      // when the server awarded one, a speed chip) instead of a damage figure,
+      // without either side learning a mode flag.
+      feedback: revealFeedback[c.playerId] ?? null,
       reaction: mascotReactions[c.playerId] ?? null,
     };
   };
@@ -505,14 +551,13 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
       // The viewer's own award, by id, from the SAME settlement the plate is
       // describing. Null on an hp match, which leaves the plate's damage
       // consequence line exactly as it has always been.
-      pointsAwarded: m.lastResolved.modulePoints?.[viewerUserId]?.pointsAwarded ?? null,
+      feedback: revealFeedback[viewerUserId] ?? null,
     } : null,
     segmentBeat: m.lastSegmentSettlement ? {
       settlement: m.lastSegmentSettlement,
       roundNumber: m.lastSegmentRoundNumber,
-      pointsAwarded: m.lastResolved?.roundNumber === m.lastSegmentRoundNumber
-        ? m.lastResolved?.modulePoints?.[viewerUserId]?.pointsAwarded ?? null
-        : null,
+      feedback: m.lastResolved?.roundNumber === m.lastSegmentRoundNumber
+        ? revealFeedback[viewerUserId] ?? null : null,
       viewerUserId,
       opponentUserId: m.opponentUserId,
     } : null,

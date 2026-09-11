@@ -22,6 +22,7 @@ import type {
   PublicRoundView, SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleSegmentActions } from "./modules/types";
+import type { PointsFeedbackView } from "./pointsFeedback";
 import type {
   AbilityView, CombatantView, InteractionPermissions, LevelUpOptionView,
   MascotReaction, PlayerSlot, ResolvedCombatantView, ResolvedRoundView,
@@ -54,15 +55,18 @@ export type ArenaRail =
     /** Damage this side DEALT in the settlement being revealed, else null. */
     damageDealt: number | null;
     /**
-     * RP1 — points this side was AWARDED in the settlement being revealed, or
-     * null (an hp match, or no settlement being revealed).
+     * RP1 — what the settled module AWARDED this side, and why, or null (an hp
+     * match, or no settlement being revealed).
      *
      * Present WINS over `damageDealt` in the rail's verdict row: a points
      * match's damage figure is the engine's transport for that same award, so
      * showing both would be one number under two names, one of which is a
      * mechanic this match does not have.
+     *
+     * Step 4 widened this from a bare total to the base/bonus split, because
+     * the split IS the thing the player has to learn — see `pointsFeedback`.
      */
-    pointsAwarded?: number | null;
+    feedback?: PointsFeedbackView | null;
     /** Mascot reaction for the settled round, else null. */
     reaction: MascotReaction | null;
   }
@@ -113,10 +117,10 @@ export interface ArenaSegmentBeat {
   settlement: SegmentSettlementView;
   /**
    * RP1 — the viewer's award for the settled BLOCK, or absent/null on an hp
-   * match. Same substitution as `roundBeat.pointsAwarded`, for the scoreline
-   * a multi-challenge block prints instead ("YOU 5/5 · OPP 3/5 · …").
+   * match. Same substitution as `roundBeat.feedback`, for the scoreline a
+   * multi-challenge block prints instead ("YOU 5/5 · OPP 3/5 · …").
    */
-  pointsAwarded?: number | null;
+  feedback?: PointsFeedbackView | null;
   /** The round the block settled on, for the beat's remount key. */
   roundNumber: number | null;
   viewerUserId: string;
@@ -232,7 +236,7 @@ export interface ArenaViewModel {
      * match. It replaces the plate's damage consequence line, which is the one
      * place a settled Ranked round still shouted a damage number.
      */
-    pointsAwarded?: number | null;
+    feedback?: PointsFeedbackView | null;
   } | null;
   segmentBeat: ArenaSegmentBeat | null;
   left: ArenaRail;
@@ -288,6 +292,17 @@ export interface ArenaTerminalView {
   /** Overrides the frame's own "Victory / Defeat / Draw" headline. */
   heading?: string;
   subheading?: string;
+  /**
+   * RP1 Step 4 — THE HEADLINE SCORELINE, directly under the result word, or
+   * absent (every mode that does not score a match).
+   *
+   * A slot and not a `{you, them}` API, for the same reason the summary below
+   * is one: what a mode puts between its result and its duelists is the mode's
+   * sentence, and the frame must not learn Ranked's. Ranked fills it with its
+   * points scoreline; the Tutorial and the Daily fill nothing and their frame
+   * is byte-identical.
+   */
+  scoreline?: ReactNode;
   /**
    * Extra content INSIDE the frame, under the two duelists.
    *

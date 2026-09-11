@@ -29,7 +29,8 @@
  *    reserved row the neutral status chips occupy, so nothing moves.
  */
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Hourglass, Lock, ShieldCheck, Swords, XCircle } from "lucide-react";
+import { CheckCircle2, Hourglass, Lock, ShieldCheck, Swords, XCircle, Zap } from "lucide-react";
+import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import type {
   CombatantView, MascotReaction, ResolvedCombatantView, RoundHistoryEntry,
 } from "@/lib/ranked-core/viewTypes";
@@ -93,11 +94,17 @@ export function ScoreTally({ combatant }: { combatant: CombatantView }) {
   return (
     <div data-testid={`score-${combatant.playerId}`} data-score={String(score ?? 0)}
       className={`flex flex-col leading-none ${mirrored ? "items-end text-right" : "items-start"}`}>
+      {/* `key` on the VALUE is the whole of the update treatment: a new score
+          remounts this span, which replays the one-shot bump keyframes in
+          `.ranked-score-bump`. No state, no timer, no animation engine — and
+          because the keyframes are transform/opacity only, 11 → 14 cannot
+          move anything around it. Reduced motion drops to a plain swap. */}
       <span
+        key={score ?? 0}
         role="status"
         aria-label={`${name} ${label.toLowerCase()} ${score ?? 0}`}
-        className="text-4xl font-black tabular-nums tracking-tight text-[#e8c97a]
-          min-[1500px]:text-5xl"
+        className="ranked-score-bump text-4xl font-black tabular-nums tracking-tight
+          text-[#e8c97a] min-[1500px]:text-5xl"
       >
         {score ?? 0}
       </span>
@@ -488,7 +495,7 @@ export function RoundLedger({
 function OutcomeState({
   outcome,
   damageDealt,
-  pointsAwarded = null,
+  feedback = null,
   playerId,
   name,
   mirrored,
@@ -496,11 +503,19 @@ function OutcomeState({
   outcome: ResolvedCombatantView["outcome"];
   damageDealt: number | null;
   /**
-   * RP1 — the module's award for this player. Present (including 0) REPLACES
-   * the damage figure: it is the same event stated in the vocabulary this
-   * match actually plays in.
+   * RP1 — the module's award for this player, and why. Present REPLACES the
+   * damage figure: it is the same event stated in the vocabulary this match
+   * actually plays in.
+   *
+   * THIS ROW IS THE WHOLE OF THE FEEDBACK ON A PHONE. The header's result
+   * plate — which carries the same two lines with room to breathe — is
+   * `hidden md:flex`, so below that width the rail is the only surface that
+   * says what a module was worth. Both figures therefore have to fit here, in
+   * ONE already-reserved row, which is why the bonus is a compact bolt chip
+   * rather than a second line: a second line would change the row's height
+   * and move the question under the player's thumb mid-match.
    */
-  pointsAwarded?: number | null;
+  feedback?: PointsFeedbackView | null;
   playerId: string;
   name: string;
   /** From `isMirroredSide` — the verdict reflects with everything else. */
@@ -508,25 +523,50 @@ function OutcomeState({
 }) {
   const state = OUTCOME_STATE[outcome];
   const { Icon } = state;
+  // The slice's own count replaces the verdict word: "4 / 5" IS the verdict
+  // for a block, and a block has no single correct/incorrect.
+  const label = feedback ? feedback.baseLabel : state.label;
   return (
     <div
       role="status"
-      aria-label={`${name} ${state.label.toLowerCase()}`}
+      aria-label={feedback
+        ? `${name} ${label.toLowerCase()}, ${feedback.basePoints} points${
+          feedback.speed ? `, ${feedback.speed.label.toLowerCase()} bonus `
+            + `${feedback.speed.points} point` : ""}`
+        : `${name} ${state.label.toLowerCase()}`}
       data-testid={`outcome-${playerId}`}
       data-outcome={outcome}
-      className={`flex min-h-7 items-center gap-1.5 rounded-md border px-1.5 py-0.5 ${
+      // `gap-1` and not `gap-1.5` since RP1 Step 4: the row now carries a
+      // verdict, a base award AND a bonus chip, and at a 375px viewport the
+      // two rails are ~145px each. The 2px a looser gap costs is the
+      // difference between "CORRECT" and "CORRE…" there.
+      className={`flex min-h-7 items-center gap-1 rounded-md border px-1.5 py-0.5 ${
         mirrorRow(mirrored)} ${state.className}`}
     >
       <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
-      <span className="text-[11px] font-black uppercase tracking-[0.12em]">
-        {state.label}
+      <span aria-hidden className="truncate text-[11px] font-black uppercase tracking-[0.12em]">
+        {label}
       </span>
-      {pointsAwarded !== null ? (
-        <span
+      {feedback !== null ? (
+        <span aria-hidden
           data-testid={`outcome-points-${playerId}`}
-          className={`${mirrored ? "mr-auto" : "ml-auto"} whitespace-nowrap text-[11px] font-black tabular-nums text-[#e8c97a]`}
+          className={`${mirrored ? "mr-auto flex-row-reverse" : "ml-auto"} flex shrink-0 items-center gap-0.5 whitespace-nowrap tabular-nums`}
         >
-          {pointsAwarded > 0 ? `+${pointsAwarded}` : "+0"}
+          {/* Base first and loudest — it is what knowing the answer earned. */}
+          <span className="text-[11px] font-black text-[#e8c97a]">
+            {`+${feedback.basePoints}`}
+          </span>
+          {/* The premium, and only when the SERVER awarded one. Smaller, and
+              carrying its own mark, so it reads as something extra rather
+              than as part of the base figure. */}
+          {feedback.speed && (
+            <span data-testid={`outcome-speed-${playerId}`}
+              className="inline-flex items-center gap-0.5 rounded bg-[#e8c97a]/15 px-0.5
+                text-[10px] font-black text-[#e8c97a]">
+              <Zap aria-hidden className="h-2.5 w-2.5 shrink-0" />
+              {`+${feedback.speed.points}`}
+            </span>
+          )}
         </span>
       ) : damageDealt !== null && damageDealt > 0 && (
         <span
@@ -551,7 +591,7 @@ export function CombatantPanel({
   damage,
   outcome = null,
   damageDealt = null,
-  pointsAwarded = null,
+  feedback = null,
   reaction = null,
 }: {
   combatant: CombatantView;
@@ -570,11 +610,11 @@ export function CombatantPanel({
   /** Damage this player DEALT in the revealed round; shown beside the verdict. */
   damageDealt?: number | null;
   /**
-   * RP1 — points this player was AWARDED in the revealed module. Present wins
+   * RP1 — what the revealed module awarded this player, and why. Present wins
    * over `damageDealt` beside the verdict; null leaves every existing caller
    * byte-identical.
    */
-  pointsAwarded?: number | null;
+  feedback?: PointsFeedbackView | null;
   /**
    * AI1 Phase 2 — the mascot reaction for the round being revealed, or null.
    *
@@ -735,7 +775,7 @@ export function CombatantPanel({
           place, so resolving a round shifts nothing. */}
       {outcome !== null ? (
         <OutcomeState outcome={outcome} damageDealt={damageDealt}
-          pointsAwarded={scored ? pointsAwarded : null}
+          feedback={scored ? feedback : null}
           playerId={combatant.playerId} name={name} mirrored={mirrored} />
       ) : (
         showRoundStatus && (

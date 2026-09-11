@@ -27,6 +27,9 @@ import {
 } from "@/lib/ranked-core/roundTimeline";
 import type { TimelineTopic } from "@/components/quiz/timeline/timelineNodeModel";
 import { RevealPanel } from "@/components/ranked-arena/RevealPanel";
+import { RoundResultBeat } from "@/components/ranked-arena/RoundResultBeat";
+import { RankedScoreline } from "@/pages/quiz-ranked/RankedScoreline";
+import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import { SubmissionReview } from "@/components/ranked-arena/SubmissionReview";
 import { TimerDisplay } from "@/components/ranked-arena/TimerDisplay";
 import { InteractiveScenarioSurface } from "@/components/question-surface/InteractiveScenarioSurface";
@@ -112,6 +115,58 @@ const NAMES = { [FIXTURE_P1_ID]: "You", [FIXTURE_P2_ID]: "Opponent" };
 const settlement = (key: string) =>
   adaptBackendSettlement(getScenario(key)!.settlement,
     { p1PlayerId: FIXTURE_P1_ID, p2PlayerId: FIXTURE_P2_ID });
+
+// ------------------------------------------------------------ RP1 (points)
+//
+// A match that scores points, at the moment a module settles. Everything below
+// is a FIXTURE of what the backend published — the award, the running score —
+// so the bench exercises exactly the props the live arena passes and invents
+// no scoring of its own.
+
+const pointsFeedback = (
+  baseLabel: string, basePoints: number,
+  speed: { label: string; points: number } | null = null,
+  scoreAfter = 0,
+): PointsFeedbackView => ({
+  baseLabel, basePoints, speed,
+  pointsAwarded: basePoints + (speed?.points ?? 0), scoreAfter,
+});
+
+const scoredPlayer = (score: number, over: Partial<CombatantView> = {}) =>
+  player({ score, roleId: "top", identityMode: "role", tag: "Top", ...over });
+const scoredOpponent = (score: number, over: Partial<CombatantView> = {}) =>
+  opponent({ score, roleId: "jungle", identityMode: "role", tag: "Jungle", ...over });
+
+/**
+ * A SETTLED MODULE, as a player meets it: the header plate above, the two
+ * rails below, both carrying the same award from the same fixture.
+ */
+function PointsSettlement({
+  you, them, yourScore = 12, theirScore = 9,
+}: {
+  you: PointsFeedbackView; them: PointsFeedbackView;
+  yourScore?: number; theirScore?: number;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="ranked-panel ranked-header-plate flex min-h-[3.5rem] items-center
+        justify-between gap-4 px-4 py-1.5">
+        <div>
+          <div className="ranked-eyebrow">Ranked Duel</div>
+          <h3 className="ranked-title text-lg font-bold leading-tight">Module 6 / 10</h3>
+        </div>
+        <RoundResultBeat settlement={settlement("both-correct-faster")}
+          viewerSlot="p1" feedback={you} className="flex" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <CombatantPanel combatant={scoredPlayer(yourScore)} progressionEnabled={false}
+          outcome={you.basePoints > 0 ? "correct" : "incorrect"} feedback={you} />
+        <CombatantPanel combatant={scoredOpponent(theirScore)} progressionEnabled={false}
+          outcome={them.basePoints > 0 ? "correct" : "incorrect"} feedback={them} />
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------- shared surface fixtures
 
@@ -1079,6 +1134,53 @@ const STATES: InspectorState[] = [
     render: () => <MatchOverFrame result="draw" player={player({ hp: 0 })} opponent={opponent({ hp: 0 })}
       subheading="No contest — both players left."
       primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+  // --- RP1 Step 4: points settlement feedback and the scored result ---
+  { key: "points-correct", label: "RP1 — CORRECT +2",
+    render: () => <PointsSettlement
+      you={pointsFeedback("CORRECT", 2, null, 12)}
+      them={pointsFeedback("INCORRECT", 0, null, 9)} /> },
+  { key: "points-first", label: "RP1 — CORRECT +2 · FIRST +1",
+    render: () => <PointsSettlement
+      you={pointsFeedback("CORRECT", 2, { label: "FIRST", points: 1 }, 13)}
+      them={pointsFeedback("CORRECT", 2, null, 11)} /> },
+  { key: "points-hard-first", label: "RP1 — hard CORRECT +3 · FIRST +1",
+    render: () => <PointsSettlement
+      you={pointsFeedback("CORRECT", 3, { label: "FIRST", points: 1 }, 14)}
+      them={pointsFeedback("TIMED OUT", 0, null, 9)} /> },
+  { key: "points-zero", label: "RP1 — INCORRECT +0",
+    render: () => <PointsSettlement
+      you={pointsFeedback("INCORRECT", 0, null, 9)}
+      them={pointsFeedback("CORRECT", 2, { label: "FIRST", points: 1 }, 12)} /> },
+  { key: "points-slice-perfect", label: "RP1 — slice 5 / 5 +5 · FINISHED FIRST +1",
+    render: () => <PointsSettlement
+      you={pointsFeedback("5 / 5", 5, { label: "FINISHED FIRST", points: 1 }, 18)}
+      them={pointsFeedback("3 / 5", 3, null, 12)} /> },
+  { key: "points-slice-partial", label: "RP1 — slice 4 / 5 +4 (no bonus)",
+    render: () => <PointsSettlement
+      you={pointsFeedback("4 / 5", 4, null, 16)}
+      them={pointsFeedback("5 / 5", 5, { label: "FINISHED FIRST", points: 1 }, 15)} /> },
+  { key: "points-victory", label: "RP1 — result: victory",
+    render: () => <MatchOverFrame result="victory"
+      player={scoredPlayer(21)} opponent={scoredOpponent(18)}
+      progressionEnabled={false}
+      scoreline={<RankedScoreline you={21} opponent={18} result="victory"
+        modulesPlayed={10} ratingDelta={18} />}
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+  { key: "points-defeat", label: "RP1 — result: defeat",
+    render: () => <MatchOverFrame result="defeat"
+      player={scoredPlayer(14)} opponent={scoredOpponent(22)}
+      progressionEnabled={false}
+      scoreline={<RankedScoreline you={14} opponent={22} result="defeat"
+        modulesPlayed={10} ratingDelta={-14} />}
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+  { key: "points-draw", label: "RP1 — result: draw (unrated)",
+    render: () => <MatchOverFrame result="draw"
+      player={scoredPlayer(18)} opponent={scoredOpponent(18)}
+      progressionEnabled={false}
+      scoreline={<RankedScoreline you={18} opponent={18} result="draw"
+        modulesPlayed={10} ratingDelta={null} />}
+      primaryAction={{ label: "Back to Quiz", onClick: () => {} }} /> },
+
   { key: "discovery-reveal", label: "Match over — new questions discovered",
     render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
       summary={<DiscoveryReveal view={DISCOVERY_FIXTURE} onReview={() => {}} />}

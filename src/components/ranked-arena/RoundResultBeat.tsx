@@ -41,6 +41,7 @@ import type {
   PlayerSlot, ResolvedCombatantView, ResolvedRoundView, ResultKind,
 } from "@/lib/ranked-core/viewTypes";
 import { resultKind } from "@/lib/ranked-core/resultKind";
+import type { PointsFeedbackView } from "@/lib/ranked-core/pointsFeedback";
 import { resultHeadline } from "./RevealBanner";
 
 /**
@@ -116,15 +117,22 @@ export function resultConsequence(
   /**
    * RP1 — what the module AWARDED this viewer, or null on an hp match.
    *
-   * Present (including 0) replaces the damage clauses entirely. In a points
-   * match the damage figures below ARE the award, transported through the
-   * engine's damage channel; "2 DAMAGE" would therefore be the right number
-   * under a mechanic the match does not have, which is worse than a wrong one.
+   * Present replaces the damage clauses entirely. In a points match the damage
+   * figures below ARE the award, transported through the engine's damage
+   * channel; "2 DAMAGE" would therefore be the right number under a mechanic
+   * the match does not have, which is worse than a wrong one.
+   *
+   * Step 4 — this is now the BONUS line only. The base award moved up beside
+   * the verdict, because the plate's two lines are exactly the two facts the
+   * player has to separate: what knowing earned, and what being quick added.
+   * A module that earned no bonus says nothing here rather than repeating the
+   * base figure in a quieter font.
    */
-  pointsAwarded: number | null = null,
+  feedback: PointsFeedbackView | null = null,
 ): string {
-  if (pointsAwarded !== null) {
-    return pointsAwarded > 0 ? `+${pointsAwarded} POINTS` : "NO POINTS";
+  if (feedback !== null) {
+    return feedback.speed
+      ? `${feedback.speed.label} +${feedback.speed.points}` : "";
   }
   const { finalDamageDealt: dealt, finalDamageReceived: taken,
     shieldAbsorbed: absorbed } = viewer;
@@ -258,13 +266,13 @@ export function BeatBody({
 export function RoundResultBeat({
   settlement,
   viewerSlot,
-  pointsAwarded = null,
+  feedback = null,
   className = "",
 }: {
   settlement: ResolvedRoundView;
   viewerSlot: PlayerSlot;
-  /** RP1 — the viewer's award for this module; null = an hp match. */
-  pointsAwarded?: number | null;
+  /** RP1 — the viewer's award for this module, and why; null = an hp match. */
+  feedback?: PointsFeedbackView | null;
   className?: string;
 }) {
   const opponentSlot: PlayerSlot = viewerSlot === "p1" ? "p2" : "p1";
@@ -274,21 +282,30 @@ export function RoundResultBeat({
   // any other result surface can never disagree about what a round was called.
   const { verdict } = resultHeadline(viewer, opponent);
   const kind = resultKind(viewer, opponent);
-  const consequence = resultConsequence(viewer, pointsAwarded);
+  const consequence = resultConsequence(viewer, feedback);
+  /**
+   * THE LOUD LINE. In a points match it is the verdict AND what that verdict
+   * earned — "CORRECT +2" — because those two facts are one sentence and
+   * splitting them across the plate's two lines would put the base award in
+   * the same quiet register as the bonus, which is precisely the distinction
+   * this beat exists to draw.
+   */
+  const headline = feedback
+    ? `${feedback.baseLabel} +${feedback.basePoints}` : verdict;
   return (
     <BeatPlate
       kind={kind}
       mode="round"
       ariaLabel={
-        `${pointsAwarded !== null ? "Module" : "Round"} ${settlement.roundNumber} `
-        + `result: ${verdict}, ${consequence.toLowerCase()}`}
+        `${feedback !== null ? "Module" : "Round"} ${settlement.roundNumber} `
+        + `result: ${headline}${consequence ? `, ${consequence.toLowerCase()}` : ""}`}
       marker={`R${settlement.roundNumber}`}
       dataAttributes={{
         "data-outcome": viewer.outcome,
         "data-round": String(settlement.roundNumber),
       }}
       className={className}
-      primary={<BeatBody kind={kind} verdict={verdict} consequence={consequence} />}
+      primary={<BeatBody kind={kind} verdict={headline} consequence={consequence} />}
       secondary={consequence}
     />
   );
