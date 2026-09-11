@@ -277,13 +277,30 @@ describe("canonical player identity", () => {
 
   it("shows a clean public not-found state for an unknown player", async () => {
     installFetch([
-      [isProfile, { status: 404, body: { detail: "No canonical professional games for this page." } }],
+      [
+        isProfile,
+        {
+          status: 404,
+          // The server's real detail, written for an operator audience.
+          body: { detail: "player 'Nope' has no canonical games under league_filter='MAJOR_PRO'" },
+        },
+      ],
     ]);
     renderProfile();
     const err = await screen.findByTestId("research-error");
-    expect(err).toHaveTextContent(/no canonical professional games/i);
+    expect(err).toHaveTextContent(/No professional record/i);
     // Not an auth prompt, not a sign-in wall.
     expect(err.textContent).not.toMatch(/admin|sign in|403|forbidden/i);
+    // AND no internal vocabulary: these pages are public now, so the
+    // operator-facing detail string must not be what a reader sees.
+    expect(err.textContent).not.toMatch(/league_filter|MAJOR_PRO|registry/i);
+  });
+
+  it("still surfaces the server's message for a real failure", async () => {
+    // Only the clean 404 is rewritten. A 500 keeps the accurate detail.
+    installFetch([[isProfile, { status: 500, body: { detail: "Upstream unavailable." } }]]);
+    renderProfile();
+    expect(await screen.findByTestId("research-error")).toHaveTextContent("Upstream unavailable.");
   });
 });
 
@@ -333,6 +350,9 @@ describe("performance statistics", () => {
       expect(within(panel).getByTestId(`metric-${label}`)).toHaveTextContent("—");
       expect(within(panel).getByTestId(`metric-${label}`)).not.toHaveTextContent("0");
     }
+    // ...and the reason is stated, so four em dashes do not read as a defect.
+    expect(panel).toHaveTextContent(/absent rather than zero/);
+    expect(panel).toHaveTextContent(/record is real and covers all 28 games/);
   });
 
   it("labels its own scope, which is NOT the comparison block's scope", async () => {

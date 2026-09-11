@@ -451,6 +451,7 @@ export function PerformancePanel({
   note?: ReactNode;
 }) {
   const noun = unit ?? "games";
+  const none = statBackedGames === 0;
   const partial = statBackedGames < games;
   return (
     <Card className="mb-6 p-4 md:p-5" data-testid="performance-panel">
@@ -482,7 +483,16 @@ export function PerformancePanel({
           dashes here, and this line is what explains that rather than leaving
           it looking broken. */}
       <Note>
-        {partial ? (
+        {none ? (
+          // The pre-2014 case. "0 of 35 carry statistics" is arithmetically
+          // true and reads as a defect; the reader needs to know the record is
+          // real and the rates were never recorded.
+          <>
+            No {noun.replace(/s$/, "")} in this career carries detailed
+            statistics, so every rate above is absent rather than zero. The
+            record is real and covers all {nf(games)} {noun}.
+          </>
+        ) : partial ? (
           <>
             Rates are over the {nf(statBackedGames)} of {nf(games)} {noun} that
             carry detailed statistics. The record is over all {nf(games)}.

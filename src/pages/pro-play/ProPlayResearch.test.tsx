@@ -248,7 +248,11 @@ describe("player profile", () => {
     expect(link.textContent).toMatch(/League Docs/i);
   });
 
-  it("explains a 404 as 'no canonical games', not a missing page", async () => {
+  it("explains a 404 as 'no professional record', not a missing page", async () => {
+    // SAME INTENT AS BEFORE THE PAGES WENT PUBLIC — a 404 here means the
+    // entity has no canonical games, never that the URL is broken. Only the
+    // wording moved: a public reader gets notFoundMessage() rather than the
+    // server's operator-facing detail.
     installFetch([
       [
         (u) => u.includes("/research/player/"),
@@ -257,7 +261,9 @@ describe("player profile", () => {
     ]);
     renderAt("/lol/pro-play/player/Nobody");
     const err = await screen.findByTestId("research-error");
-    expect(err).toHaveTextContent(/no canonical games/i);
+    expect(err).toHaveTextContent(/No professional record/i);
+    expect(err).toHaveTextContent(/no games in the major professional competitions/i);
+    expect(err.textContent).not.toMatch(/not found|missing page|404/i);
   });
 
   it("encodes a punctuation-heavy Leaguepedia page in the request", async () => {

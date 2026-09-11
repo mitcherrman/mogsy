@@ -41,6 +41,7 @@ import {
   fetchTeamProfile,
   formatDate,
   formatRate,
+  notFoundMessage,
   ResearchApiError,
   type Roster,
   type TeamProfile,
@@ -156,12 +157,13 @@ function Body({ teamKey }: { teamKey: string }) {
       .catch((err) => {
         if ((err as Error)?.name === "AbortError") return;
         const notFound = err instanceof ResearchApiError && err.status === 404;
-        setError({
-          message: (err as Error).message,
-          hint: notFound
-            ? "This team page exists in the registry but has no canonical professional games under the current competition filter."
-            : undefined,
-        });
+        // A PUBLIC not-found state. The server's detail names an internal
+        // filter parameter and is shown only for real failures.
+        setError(
+          notFound
+            ? notFoundMessage("team", teamKey)
+            : { message: (err as Error).message },
+        );
       });
     return () => controller.abort();
   }, [teamKey]);

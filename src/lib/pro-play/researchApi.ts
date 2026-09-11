@@ -389,3 +389,28 @@ export function formatRecord(wins: number | null | undefined, losses: number | n
   if (wins === null || wins === undefined || losses === null || losses === undefined) return "—";
   return `${wins}–${losses}`;
 }
+
+/**
+ * The PUBLIC not-found message for an entity with no canonical games.
+ *
+ * The server's own `detail` is the accurate thing to show an operator and the
+ * wrong thing to show a reader: it names the internal filter parameter
+ * (`league_filter='MAJOR_PRO'`) and, for a key that is simply mistyped, would
+ * assert the page "exists in the roster registry" when it does not. These
+ * pages were admin-only when that was written. They are public now, so a 404
+ * renders this instead, and the server detail is surfaced only for the errors
+ * that are not a clean not-found.
+ *
+ * It says what IS true in every 404 case: this surface profiles entities with
+ * canonical professional games, and this key has none.
+ */
+export function notFoundMessage(kind: EntityKind, key: string): { message: string; hint: string } {
+  const noun = { player: "player", team: "team", champion: "champion" }[kind];
+  return {
+    message: `No professional record for “${key}”.`,
+    hint:
+      kind === "champion"
+        ? "This champion has not been picked or banned in the professional games this profile draws from. Check the spelling, or search for it."
+        : `This ${noun} has no games in the major professional competitions these profiles cover. The name may be spelled differently — try searching for it.`,
+  };
+}

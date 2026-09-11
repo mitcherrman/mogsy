@@ -32,6 +32,7 @@ import {
   fetchChampionProfile,
   formatRate,
   formatRecord,
+  notFoundMessage,
   ResearchApiError,
   type ChampionProfile,
 } from "@/lib/pro-play/researchApi";
@@ -102,10 +103,13 @@ function Body({ championKey }: { championKey: string }) {
       .catch((err) => {
         if ((err as Error)?.name === "AbortError") return;
         const notFound = err instanceof ResearchApiError && err.status === 404;
-        setError({
-          message: (err as Error).message,
-          hint: notFound ? "No canonical professional games for this champion." : undefined,
-        });
+        // A PUBLIC not-found state. The server's detail names an internal
+        // filter parameter and is shown only for real failures.
+        setError(
+          notFound
+            ? notFoundMessage("champion", championKey)
+            : { message: (err as Error).message },
+        );
       });
     return () => controller.abort();
   }, [championKey]);
