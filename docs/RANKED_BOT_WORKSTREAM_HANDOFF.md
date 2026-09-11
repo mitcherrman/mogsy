@@ -852,3 +852,221 @@ the one remaining action on this regression, and it is owner-only.
 **RB4 — the playtest content and copy pass**, unchanged: the six owner
 decisions above it, then the real copy, the outro's offer/feedback slot, and a
 walk of the sequence on a deployment that can generate the three Mastery sets.
+
+---
+
+# RB3.2 — entry is not recovery, and global Premium reaches Bot Ranked
+
+Status: **fixed and pushed.** Frontend `main` **5f903f40**, backend `master`
+**b8329c0c**. Backend deployed; frontend needs a Lovable Publish. RB4 next.
+
+## The report
+
+As admin: the Bot Ranked access point appears (RB3.1 shipped), pressing it
+creates the match — and then the UI sits on **`Recovering match`** for an
+unreasonable time before entering.
+
+## Root cause — why a brand-new match "recovered"
+
+Nothing was being recovered. `POST /api/ranked/queue { match_with_bot: true }`
+creates the match inside that request and answers `matched` **with its id**, so
+the client arrives knowing exactly which match it wants. Measured against the
+real API, the whole server side of a fresh entry is two fast calls:
+
+```
+JOIN   → 200 {"status":"matched","match_id":"rkb_…"}
+RESUME → 200 in ~10ms, already carrying round 1: two players, an
+         active_round with its deadline, and the question
+```
+
+Three separate layers nevertheless treated that arrival as a rediscovery.
+
+| Layer | What it did on a fresh entry | Why it is wrong |
+| --- | --- | --- |
+| `QuizRankedPage.RankedMatchHost` | called `getActiveMatch` on **every** mount, including when the scroll had just handed it an id | discovery answers "does this account have a match?" — already answered. It never blocked the render, but it spent a request and a Supabase session read on the entry path of every match |
+| `useRankedMatch` mount effect | made the **recovery round trip** (`POST /resume`) on every mount | resume exists to rebuild a settlement, a reveal, a segment transcript, a finished result and the damage ledger. A one-second-old match has none of those, so it asked the server to reconstruct nothing |
+| `QuizRankedMatch` placeholder | rendered `"Recovering match…"` whenever `!publicRound` | **this is the string the owner saw.** It is not a recovery state at all — it is the ordinary pre-first-snapshot placeholder, and it was the only sentence the player got |
+
+So the arena announced a salvage operation while making three concurrent
+requests — discovery, resume, snapshot — each behind its own
+`supabase.auth.getSession()` in `getBackendAuthHeaders`, for a match one
+snapshot would have painted.
+
+**Human Ranked hit the identical path**, because none of the three is
+bot-specific: pairing hands over an id exactly as the bot join does. Bot
+Ranked only made it conspicuous, by removing the matchmaking wait that used
+to hide it.
+
+## Every circumstance that produced `Recovering match`, classified
+
+There is exactly one producer — `CanonicalArena` with `view === null`, from
+`QuizRankedMatch`'s `!m.publicRound || !combatants`.
+
+| Circumstance | Class | Now |
+| --- | --- | --- |
+| Fresh bot match from the PLAY record | **ordinary init mislabelled** | `Entering the arena…`, no discovery, no resume |
+| Freshly paired human match | **ordinary init mislabelled** | identical to the above |
+| RB3 playtest match (host creates it) | **ordinary init mislabelled** | `entry="fresh"` |
+| Page refresh / cold load into a live match | **legitimate recovery** | unchanged: discovery, then resume |
+| Back-navigation into a match that has moved on | **legitimate recovery** | recovered on the server's own round count, not the caller's claim |
+| Between-round gap, snapshot in flight | never reached — `publicRound` is sticky once set | unchanged |
+| Contract error / fatal | own branches, above this one | unchanged |
+
+The queue's own `"recovering"` state (`useRankedQueue`) is a **different
+thing** and was not touched: it is the pre-first-poll state of the match-entry
+record and renders as *"Opening the queue…"*. It never says "Recovering match".
+
+## The change
+
+One new prop, carried by the only layer that knows the answer:
+
+```
+entry: "fresh" | "recovered"      // default "recovered"
+```
+
+* **Route.** `getActiveMatch` is skipped entirely when the scroll handed over
+  an id, and the route tells the arena which kind of arrival this is —
+  `"fresh"` for a handoff, `"recovered"` for a discovered id.
+* **Controller.** A fresh entry makes **no** resume call; the ordinary snapshot
+  is the first and only request, and it is what paints the arena. Recovery is
+  extracted into one idempotent `recover()`.
+* **Arena.** The placeholder says `Entering the arena…` on a fresh entry and
+  keeps `Recovering match…` for a real one.
+
+**It is an optimism, never an authority.** The first snapshot re-decides from
+`pub.completedRounds`: a match that has already played rounds recovers its
+transcript immediately — once — from the server's count rather than the
+client's claim. No server authority was removed, no match validation bypassed,
+and nothing on the entry path can create, queue or pair anything (pinned).
+
+Requests on a fresh entry: **3 → 1.** No new mechanism, no bot-specific entry
+code, no second renderer.
+
+## Performance
+
+The measured server cost of a fresh entry was never the problem — join and
+resume are milliseconds. What the entry path spent was **client** cost:
+three concurrent authenticated requests where one was needed, each awaiting
+`supabase.auth.getSession()`, which refreshes the token over the network when
+it has expired. Removing two of the three removes two of those session reads
+from the moment the player is staring at the placeholder.
+
+Genuine recovery is *not* slower: the snapshot and the resume still both run,
+and the arena still paints on whichever lands first. The 800ms
+"opponent found" beat in `PlayScrollRecord` is deliberate, sits before
+navigation and was left alone — it is a legible transition, not a wait.
+
+Honest limit: the exact production millisecond attribution was **not**
+measured. There is no authenticated production session available here.
+
+## Global Premium → Bot Ranked (Task 4) — a real defect, found and fixed
+
+* **Present in canonical code?** Yes. `app_settings.global_premium_access`,
+  composed in `services/pro_status._resolve` **above** the per-user cache:
+  `effective_access = global_premium_access OR (stripe_pro OR valid_grant)`.
+* **Live?** **Yes** — read from production Supabase (the row is publicly
+  readable by RLS): `{"key":"global_premium_access","value":{"enabled":true}}`.
+* **Does an ordinary non-admin therefore resolve `canPlayRankedBot = true`?**
+  **Now yes. Before this pass it raised.**
+
+RB3 gave `_resolve` a `(effective_pro, grant_kind)` contract. The global
+override branch, landed concurrently by the Premium workstream and written
+against the older bool-returning version, kept `return True`. Every caller
+subscripts the result:
+
+```
+get_pro_status()  →  _resolve(...)[0]  →  TypeError: 'bool' object is not subscriptable
+```
+
+With the window **open** — which is production's current state — that broke
+*every* effective-Pro lookup in the backend, not only Bot Ranked: the Builder,
+quiz history and Combat credits read the same resolver. Admin was unaffected
+throughout, because `_authorize_ranked_bot` short-circuits on
+`is_request_admin` before entitlement is consulted, which is exactly why the
+owner could still start bot matches.
+
+Neither commit is wrong alone; they are only wrong together. Bisected:
+
+```
+3bb15733 (RB2.1)  quiz/tests/test_global_premium_access.py  17 passed
+fe936fe7 (RB3)    quiz/tests/test_global_premium_access.py   8 failed, 9 passed
+```
+
+> **Correction to the RB3.1 record.** That pass reported "zero new failures"
+> against a freshly built `origin/master`. That was true of the 12 Ranked
+> modules it compared and **false of the repository**: this file was outside
+> the set, and it had been failing since `fe936fe7` landed. The comparison was
+> too narrow, and the defect it missed reached production.
+
+Fix: `return (True, None)`. `None` is deliberate — global access is a window
+an admin opened, not a grant the account owns, and this branch short-circuits
+above the cache precisely so it still answers while Supabase is unreachable.
+The one consequence is that a playtest **grant** is invisible while the window
+is open, which is the closed direction for the single bit it gates.
+
+## Verification, by tier — do not conflate these
+
+**Code-path verification**
+* Deployed production bundle re-read: `RankedQueueView` now destructures
+  `canPlayRankedBot:o=!1` and gates `_=o&&b`. RB1's fix **is live**, and
+  `"Admin test"` is gone in favour of `"Ordinary Ranked, unrated"`.
+* Production `app_settings` read directly: the global window is open.
+
+**Automated integration proof**
+* Backend `test_ranked_bot_premium_access.py` — **19 passed**, including four
+  new cases that drive the whole chain with **no stub** between the override
+  and the gate: an ordinary Free account with the window open receives the
+  same canonical bot match; the tuple shape is pinned at `_resolve` itself;
+  closing the window takes access back without writing to the account; admin
+  needs neither the window nor a lookup. Reverting the one-line fix fails two
+  of them, so they are not vacuous.
+* `quiz/tests/test_global_premium_access.py` — 8 failed → **17 passed**.
+* Frontend — **124 files / 1646 tests passing**, including 8 new entry cases.
+  Reverting the entry gate fails "never makes the recovery round trip".
+* Backend regression over 13 modules vs a freshly built `origin/master`:
+  **99 failures on both, zero new, 8 fixed** (the global-Premium file).
+* `tsc` byte-identical to the RB3.1 baseline (12 pre-existing, none in a
+  touched file). `vite build` succeeds.
+* The `activeMatch.test.ts` unhandled rejection (jsdom `storage.getItem`) is
+  pre-existing: it reproduces with that file run alone.
+
+**Actual production E2E — NOT performed.** Starting a bot match as a Premium
+non-admin needs an authenticated ordinary-user session, which is not available
+here. The Premium half is proved by code path and by automated integration
+only. **This is the one claim not to make on my behalf.**
+
+## Deployment
+
+* **Backend — deployed.** `/api/health` 200. The rollout that completed after
+  the push serves `/api/pro-play/research/contract`, which bounds it at
+  ≥ `d71a334f`; `b8329c0c` itself changes **no wire surface**, so it cannot be
+  fingerprinted from outside. Railway deploys `master` HEAD and this was the
+  most recent push, but treat the specific commit as *consistent with* rather
+  than *proved by* the probe.
+* **Frontend — NOT live.** The deployed `QuizRankedMatch` chunk still contains
+  `"Recovering match"` and no `"Entering the arena"`. **RB3.2's frontend half
+  needs a Lovable Publish**; RB1/RB2/RB2.1/RB3 are already live.
+
+## Files changed
+
+Frontend: `QuizRankedPage.tsx`, `QuizRankedMatch.tsx`, `useRankedMatch.ts`,
+`PlaytestMatchHost.tsx`, `QuizRankedPage.host.test.tsx`,
+`QuizRankedMatch.entry.test.tsx` (new).
+Backend: `services/pro_status.py`, `test_ranked_bot_premium_access.py`.
+
+## Commits
+
+* frontend `5f903f40` — fix(rb3.2): entering a Ranked match is not recovering one
+* backend `b8329c0c` — fix(rb3.2): global Premium reaches Bot Ranked instead of raising
+
+## Still open
+
+* **Lovable Publish** for the frontend half.
+* HP-based match completion is untouched — another Ranked workstream owns it.
+* Everything RB2 listed as shared-Ranked and not fixed here still stands.
+* The primary `/Users/macmoney/mogsy` checkout still holds another
+  workstream's uncommitted Pro Play work and a stale local `main`.
+
+## Next task
+
+**RB4 — the playtest content and copy pass.**
