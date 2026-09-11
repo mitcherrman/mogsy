@@ -17,15 +17,15 @@
 // canonical Pro Play corpus. Same subject, disjoint data, opposite direction —
 // the same declared-vs-demonstrated split `pro_authority/team_roster.py`
 // already draws. The header links out to the wiki so neither reads as the
-// other's replacement; the wiki does not link back, because it is public and
-// this page is admin-gated.
+// other's replacement. Both pages are now public; whether the wiki links back
+// is the docs owner's call and is not made here.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import SEOHead from "@/components/SEOHead";
-import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChampionPoolTable,
   EmptyRow,
@@ -33,15 +33,25 @@ import {
   LoadingBlock,
   Note,
   Panel,
+  PerformancePanel,
+  ProfileAction,
   ProfileHeader,
   ResearchBreadcrumb,
   ResearchPage,
   ScopeGrid,
   ScopeTabs,
+  type PerformanceMetric,
 } from "@/components/pro-play/ResearchShell";
 import { PlayerPortraitSlot, TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { playerRoute } from "@/lib/league-docs/roster-api";
+import {
+  statsExplorerUrl,
+  statsScopeLabel,
+  useEntityStats,
+} from "@/lib/pro-play/entityStats";
+import { graphHandoff } from "@/lib/pro-play/graphHandoff";
+import type { ProStatsPlayerRow } from "@/lib/pro-play/statsApi";
 import {
   decodeRegistryText,
   fetchPlayerProfile,
@@ -103,6 +113,129 @@ function TeamContext({ profile }: { profile: PlayerProfile }) {
         </div>
       </dl>
     </Panel>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Performance — the public statistics contract, composed onto the profile.
+// ---------------------------------------------------------------------------
+
+const NUM = new Intl.NumberFormat("en-US");
+
+/** null stays null all the way to the panel, which renders the em dash. A
+ *  rate over no statistics is NOT zero, and this is the last place that
+ *  distinction could be lost. */
+function num(value: number | null, digits: number): string | null {
+  return value == null ? null : value.toFixed(digits);
+}
+
+function int(value: number | null): string | null {
+  return value == null ? null : NUM.format(value);
+}
+
+function pct(value: number | null): string | null {
+  return value == null ? null : `${(value * 100).toFixed(1)}%`;
+}
+
+function playerMetrics(row: ProStatsPlayerRow): PerformanceMetric[] {
+  return [
+    // CANONICAL — over `games`, present for every season back to 2013.
+    { label: "Games", value: NUM.format(row.games), hint: "Canonical professional games." },
+    {
+      label: "W-L",
+      value: `${NUM.format(row.wins)}–${NUM.format(row.losses)}`,
+      hint: "Canonical record, over every game.",
+    },
+    { label: "Win %", value: pct(row.win_rate), hint: "Over canonical games." },
+    // STAT-BACKED — over `stat_backed_games`, a subset.
+    {
+      label: "KDA",
+      value: num(row.kda, 2),
+      hint: "(Kills + assists) / deaths, over games carrying statistics. Null when deaths are zero.",
+    },
+    { label: "CS/min", value: num(row.cs_per_min, 2), hint: "Over games carrying statistics." },
+    { label: "Gold/min", value: num(row.gold_per_min, 0), hint: "Over games carrying statistics." },
+    { label: "Dmg/min", value: num(row.damage_per_min, 0), hint: "Over games carrying statistics." },
+  ];
+}
+
+function PlayerPerformance({ playerKey }: { playerKey: string }) {
+  const stats = useEntityStats("players", playerKey);
+
+  // The graph hand-off is the SHIPPED stats-explorer contract, reused rather
+  // than re-derived: Player -> Champions, entity id is the lp_page verbatim.
+  // No scope is transferred because this panel is career-wide, so there is no
+  // year, league or patch to carry.
+  const handoff = graphHandoff({
+    view: "players",
+    year: null,
+    league: null,
+    patch: null,
+    role: null,
+    player: playerKey,
+    team: null,
+    champion: null,
+    minGames: null,
+  });
+
+  const actions = (
+    <>
+      <ProfileAction
+        to={statsExplorerUrl("players", playerKey)}
+        title="This player as a row in the public statistics table"
+      >
+        View in Pro Stats
+      </ProfileAction>
+      {handoff ? (
+        <ProfileAction to={handoff.href} title="Race this player's champions">
+          Graph champion pool
+        </ProfileAction>
+      ) : null}
+    </>
+  );
+
+  if (stats.status === "loading") {
+    return (
+      <Panel title="Performance">
+        <Skeleton className="h-16 w-full" />
+      </Panel>
+    );
+  }
+  if (stats.status === "error") {
+    // Degraded, never fatal: the identity, record and champion pool above
+    // come from a different contract and are unaffected.
+    return (
+      <Panel title="Performance" note={stats.message}>
+        <EmptyRow label="Performance statistics could not be loaded. The record and champion pool above are unaffected." />
+      </Panel>
+    );
+  }
+  if (stats.status === "absent") {
+    return (
+      <Panel title="Performance">
+        <EmptyRow label="No rows for this player in the public statistics table." />
+        <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
+      </Panel>
+    );
+  }
+
+  const row = stats.row as ProStatsPlayerRow;
+  return (
+    <PerformancePanel
+      title="Performance"
+      scopeLabel={statsScopeLabel(stats.response)}
+      metrics={playerMetrics(row)}
+      games={row.games}
+      statBackedGames={row.stat_backed_games}
+      actions={actions}
+      note={
+        <>
+          A different slice from the four scopes above, which count curated
+          major-league games only. This is the whole career across every
+          competition, and is the same slice the Pro Stats table shows.
+        </>
+      }
+    />
   );
 }
 
@@ -220,9 +353,14 @@ function Body({ playerKey }: { playerKey: string }) {
         }
       />
 
-      <Panel title="The four scopes">
+      <Panel title="Career Pro Record">
         <ScopeGrid comparison={profile.comparison} />
+        <Note>
+          Canonical games over four product scopes, curated major leagues only.
+        </Note>
       </Panel>
+
+      <PlayerPerformance playerKey={profile.entity.key} />
 
       <TeamContext profile={profile} />
 
@@ -275,11 +413,8 @@ export default function ProPlayPlayerProfile() {
         title={`${decoded} — Pro Play Research | Mogzy`}
         description={`Professional record, champion pool and competition history for ${decoded}.`}
         path={`/lol/pro-play/player/${key}`}
-        noindex
       />
-      <AdminAuthGate>
-        <Body playerKey={decoded} />
-      </AdminAuthGate>
+      <Body playerKey={decoded} />
     </>
   );
 }

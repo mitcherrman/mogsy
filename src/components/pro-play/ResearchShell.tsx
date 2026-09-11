@@ -400,3 +400,140 @@ export function ScopeTabs({
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// PUBLIC-PROFILE ADDITIONS
+//
+// Shared by all three canonical profiles. Player is the first caller; Team and
+// Champion reuse these unchanged, passing their own metric list.
+// ---------------------------------------------------------------------------
+
+/** One metric in a performance panel. `value` is already formatted, and is
+ *  null ONLY when the underlying number was null — the em dash is applied
+ *  here, once, so no caller can coalesce an absence to zero. */
+export type PerformanceMetric = {
+  label: string;
+  value: string | null;
+  /** Shown as a title attribute where the denominator is not obvious. */
+  hint?: string;
+};
+
+/**
+ * Performance rates for one entity, from the public statistics contract.
+ *
+ * THE SCOPE LINE IS NOT DECORATION. This panel's numbers are computed over a
+ * DIFFERENT slice than the comparison block above it — career across every
+ * competition, rather than four curated product scopes — so the scope and the
+ * panel's own game counts are printed inside it. Two blocks of numbers with
+ * unstated, unequal denominators is the one way this composition misleads.
+ */
+export function PerformancePanel({
+  title,
+  scopeLabel,
+  metrics,
+  games,
+  statBackedGames,
+  unit,
+  actions,
+  note,
+}: {
+  title: string;
+  /** The slice the SERVER said it answered. */
+  scopeLabel: string;
+  metrics: PerformanceMetric[];
+  /** Canonical games — the denominator for the record. */
+  games: number;
+  /** The subset carrying statistics — the denominator for every rate. */
+  statBackedGames: number;
+  /** "games" | "picks" — champions count player-games as picks. */
+  unit?: string;
+  actions?: ReactNode;
+  note?: ReactNode;
+}) {
+  const noun = unit ?? "games";
+  const partial = statBackedGames < games;
+  return (
+    <Card className="mb-6 p-4 md:p-5" data-testid="performance-panel">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+        </h2>
+        <span className="text-xs text-muted-foreground" data-testid="performance-scope">
+          {scopeLabel}
+        </span>
+      </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 lg:grid-cols-7">
+        {metrics.map((m) => (
+          <div key={m.label} title={m.hint}>
+            <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              {m.label}
+            </dt>
+            <dd
+              className="mt-0.5 text-base font-medium tabular-nums"
+              data-testid={`metric-${m.label}`}
+            >
+              {m.value ?? "—"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {/* The rate denominator, always stated when it differs from the record's.
+          A career that predates detailed statistics shows a real W-L and em
+          dashes here, and this line is what explains that rather than leaving
+          it looking broken. */}
+      <Note>
+        {partial ? (
+          <>
+            Rates are over the {nf(statBackedGames)} of {nf(games)} {noun} that
+            carry detailed statistics. The record is over all {nf(games)}.
+          </>
+        ) : (
+          <>
+            Over {nf(games)} {noun}, all of which carry detailed statistics.
+          </>
+        )}
+      </Note>
+      {note ? <Note>{note}</Note> : null}
+      {actions ? <div className="mt-3 flex flex-wrap gap-2">{actions}</div> : null}
+    </Card>
+  );
+}
+
+const NUM = new Intl.NumberFormat("en-US");
+function nf(value: number): string {
+  return NUM.format(value);
+}
+
+/**
+ * An outbound action from a profile to another public Pro Play surface.
+ *
+ * Deliberately a link and not a button: these are navigations, so middle-click
+ * and Back both behave, and a `<Link>` pushes rather than replaces so the
+ * profile keeps its own history entry.
+ */
+export function ProfileAction({
+  to,
+  children,
+  title,
+}: {
+  to: string;
+  children: ReactNode;
+  title?: string;
+}) {
+  return (
+    <Link
+      to={to}
+      title={title}
+      data-testid="profile-action"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {children}
+    </Link>
+  );
+}
+
+/** What a hand-off left behind, named with its value. Never a silent drop. */
+export function DroppedFilters({ dropped }: { dropped: string[] }) {
+  if (!dropped.length) return null;
+  return <Note>Staying with this profile: {dropped.join(", ")}.</Note>;
+}
