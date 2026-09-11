@@ -203,6 +203,22 @@ const subjectSource = (q: QuestionView, subject: Record<string, unknown>): QuizQ
 });
 const ITEM_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Rabadon's Deathcap", icon: "assets/items/3089.png" });
 const CHAMP_SCENARIO = subjectSource(CHAMP_Q, { type: "champion", name: "Ahri", icon: "assets/champions/Ahri.png" });
+// RIV1 — the two item questions whose ARTWORK is actually on screen. The
+// existing ITEM_Q asks "Which item …", so its subject IS the answer and every
+// case built on it renders SubjectPlaceholderCard, never the item. A stat/cost
+// premise (`item_costs`, `item_exact_stats`) is the live family where the item
+// is stated and the number is the answer — `isSpoilerSubject`'s statCue rule.
+const ITEM_COST_Q: QuestionView = {
+  questionId: "sq-item-cost", category: "items",
+  prompt: "How much gold does Rabadon's Deathcap cost to build from its components?",
+  options: [
+    { id: "0", index: 0, label: "3600" }, { id: "1", index: 1, label: "3200" },
+    { id: "2", index: 2, label: "2800" }, { id: "3", index: 3, label: "4000" },
+  ],
+};
+const ITEM_COST_SCENARIO = subjectSource(
+  ITEM_COST_Q, { type: "item", name: "Rabadon's Deathcap", icon: "assets/items/3089.png" });
+
 const BROKEN_SCENARIO = subjectSource(ITEM_Q, { type: "item", name: "Missing Icon", icon: "assets/items/does-not-exist.png" });
 // A source that is PRESENT but classifies to nothing cinematic (unknown subject
 // type, no icon) — must fall to the compact band, not a large empty panel.
@@ -1233,6 +1249,13 @@ const STATES: InspectorState[] = [
   { key: "arena-lifecycle", label: "Arena — item lifecycle band",
     render: () => <ArenaComposition question={RA7.SELL_SWAP_Q}
       scenarioSource={RA7.SELL_SWAP_SCENARIO} selected={null} /> },
+  // RIV1 — item art at the REAL arena's band cap, both item render paths.
+  { key: "arena-item-hero", label: "Arena — item hero (cost premise, no recipe)",
+    render: () => <ArenaComposition question={ITEM_COST_Q}
+      scenarioSource={ITEM_COST_SCENARIO} selected={null} /> },
+  { key: "arena-item-recipe", label: "Arena — item recipe (build path)",
+    render: () => <ArenaComposition question={RECIPE_Q}
+      scenarioSource={RECIPE_SCENARIO} selected={null} /> },
   { key: "arena-compact", label: "Arena — compact fallback (no source)",
     render: () => <ArenaComposition scenarioSource={null} selected={null} /> },
 

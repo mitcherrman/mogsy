@@ -1812,6 +1812,47 @@
   }
 }
 
+/* ---- RIV1: Item recipe-tree media scale -----------------------------------
+   The build-path tree is a TWO-TIER stack inside 57% of the cinematic band —
+   focal node, connector, then a row of component tiles with labels under them.
+   How large those tiles may be is a question about the band's HEIGHT, and
+   `--sc-fit` cannot answer it: it is `min(1rem, 9.09cqh)`, so it saturates at
+   16px for every band 176px tall or more and reports the same 16px for the
+   256px desktop band and the 208px tablet one. Sizing the tree off it alone
+   either leaves the desktop tree tiny or overflows the phone's 145px band.
+
+   A height container query CAN answer it, and the band already declares
+   `container-type: size`, so its height is queryable from inside. Each step is
+   the largest tree that still fits that band with the labels legible; below the
+   first step (a phone) the tree stays at its `cqmin` size, because a 145px band
+   genuinely has no room for a bigger one and pretending otherwise would push
+   the component row through the item title beneath it.
+
+   The `cqmin` term always wins on the 16:9 broadcast stage (10.5cqmin is 105px
+   there against a 40px floor), so the stage renders exactly as before. */
+[data-item-recipe] {
+  --recipe-focal: max(10.5cqmin, calc(1.15 * var(--sc-fit)));
+  --recipe-tile: max(7.2cqmin, calc(0.78 * var(--sc-fit)));
+  --recipe-tile-compact: max(5.6cqmin, calc(0.62 * var(--sc-fit)));
+  --recipe-label: max(0.95cqmin, calc(0.42 * var(--sc-fit)));
+}
+@container (min-height: 190px) {
+  [data-item-recipe] {
+    --recipe-focal: max(10.5cqmin, calc(1.9 * var(--sc-fit)));
+    --recipe-tile: max(7.2cqmin, calc(1.5 * var(--sc-fit)));
+    --recipe-tile-compact: max(5.6cqmin, calc(1.05 * var(--sc-fit)));
+    --recipe-label: max(0.95cqmin, calc(0.46 * var(--sc-fit)));
+  }
+}
+@container (min-height: 240px) {
+  [data-item-recipe] {
+    --recipe-focal: max(10.5cqmin, calc(2.5 * var(--sc-fit)));
+    --recipe-tile: max(7.2cqmin, calc(1.875 * var(--sc-fit)));
+    --recipe-tile-compact: max(5.6cqmin, calc(1.3 * var(--sc-fit)));
+    --recipe-label: max(0.95cqmin, calc(0.5 * var(--sc-fit)));
+  }
+}
+
 /* Custom animation preview keyframes */
 @keyframes fadeIn {
   from { opacity: 0; } to { opacity: 1; }

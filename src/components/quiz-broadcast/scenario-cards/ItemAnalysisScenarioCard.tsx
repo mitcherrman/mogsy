@@ -18,6 +18,33 @@ import { ScenarioBadge, ScenarioDivider, ScenarioSection, ScenarioTitle } from "
  * Spoiler rules: known_components appear verbatim in the question text, so
  * the tree is safe pre-reveal. The missing component's name/icon and the
  * info sections render ONLY when `revealed` (it is the correct answer).
+ *
+ * ── SIZING (RIV1) ──────────────────────────────────────────────────────────
+ * This card was the ONE scenario card the `--sc-fit` pass never reached, and
+ * it is the card whose whole subject IS a piece of item art. Every size below
+ * was bare `cqmin`, so on the 16:9 broadcast stage (cqmin ~10px) it read as
+ * designed while in the Ranked band — capped at `--qs-media-max: 16rem`, so
+ * cqmin is 2.56px — the focal item rendered at 27px and a component at 18px.
+ * That is the "item images are way too small" report: the ARTWORK got better
+ * (MAA1 Phase 2 shipped 512px sources) but the BOX it is drawn in never did.
+ *
+ * The fix is the idiom primitives.tsx already documents and every sibling card
+ * already uses: `max(N cqmin, calc(M * var(--sc-fit)))`. Each M here obeys that
+ * file's rule `M <= 0.625 * N`, which is exactly the condition for the `cqmin`
+ * term to keep winning on the broadcast stage — so the stage is unchanged to
+ * the pixel and only the short band moves. The M values deliberately COMPRESS
+ * the composition's ratios (the stage gives the shrine rings 1.86x the icon's
+ * diameter; the band gives them 1.52x), for the same reason primitives.tsx
+ * compresses the type scale: at 256px tall there is no room to spend on
+ * decoration, and the item is the thing that has to read.
+ *
+ * RecipeTree additionally had the OTHER bug that file describes: its inner
+ * stack's vertical rhythm was `pt-[9%] pb-[3%]`, and a percentage PADDING
+ * resolves against the container's WIDTH. In the band that container is ~896px
+ * wide and 156px tall, so those two rules alone claimed 112px of padding and
+ * forced the tree to overflow its own box by 121px. They are `cqh` now, which
+ * is 1% of the container's HEIGHT and — at 16/9, where 1% of width is 16/9 cqh
+ * — resolves to the identical value on the stage.
  */
 export function ItemAnalysisScenarioCard({
   item,
@@ -60,7 +87,10 @@ export function ItemAnalysisScenarioCard({
       gradientClass="bg-[linear-gradient(to_top,rgba(3,2,2,0.92)_0%,rgba(3,2,2,0.7)_26%,rgba(3,2,2,0.25)_44%,transparent_60%)]"
     >
       {/* Ghost art — oversized, blurred, faded copy of the item art filling
-          the empty space. Slow drift keeps it alive without stealing focus. */}
+          the empty space. Slow drift keeps it alive without stealing focus.
+          Deliberately left on bare `cqmin` by RIV1: this is a background wash
+          sized to the CARD, not a reading of the item, and flooring it would
+          scale a 13%-opacity blur past the band's own edges. */}
       {item.icon && (
         <motion.div
           aria-hidden
@@ -91,14 +121,14 @@ export function ItemAnalysisScenarioCard({
           {/* radial shrine rings */}
           <motion.div
             aria-hidden
-            className="absolute h-[26cqmin] w-[26cqmin] rounded-full border border-[#d4b35a]/25"
+            className="absolute h-[max(26cqmin,calc(8.4*var(--sc-fit)))] w-[max(26cqmin,calc(8.4*var(--sc-fit)))] rounded-full border border-[#d4b35a]/25"
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
             style={{ borderStyle: "dashed" }}
           />
           <motion.div
             aria-hidden
-            className="absolute h-[20cqmin] w-[20cqmin] rounded-full border border-[#7dd3fc]/15"
+            className="absolute h-[max(20cqmin,calc(6.9*var(--sc-fit)))] w-[max(20cqmin,calc(6.9*var(--sc-fit)))] rounded-full border border-[#7dd3fc]/15"
             animate={{ scale: [1, 1.05, 1], opacity: [0.5, 0.9, 0.5] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -106,21 +136,21 @@ export function ItemAnalysisScenarioCard({
           {/* soft hextech glow */}
           <motion.div
             aria-hidden
-            className="absolute h-[15cqmin] w-[15cqmin] rounded-full bg-[#d4b35a]/25 blur-2xl"
+            className="absolute h-[max(15cqmin,calc(5*var(--sc-fit)))] w-[max(15cqmin,calc(5*var(--sc-fit)))] rounded-full bg-[#d4b35a]/25 blur-2xl"
             animate={{ opacity: [0.5, 0.85, 0.5] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
 
           {/* particle specks */}
           {[
-            { left: "-9cqmin", top: "-5cqmin", delay: 0 },
-            { left: "9.5cqmin", top: "-2cqmin", delay: 1.6 },
-            { left: "7cqmin", top: "7cqmin", delay: 3.1 },
+            { left: "max(-9cqmin,calc(-3.5*var(--sc-fit)))", top: "max(-5cqmin,calc(-1.95*var(--sc-fit)))", delay: 0 },
+            { left: "max(9.5cqmin,calc(3.75*var(--sc-fit)))", top: "max(-2cqmin,calc(-0.78*var(--sc-fit)))", delay: 1.6 },
+            { left: "max(7cqmin,calc(2.75*var(--sc-fit)))", top: "max(7cqmin,calc(2.75*var(--sc-fit)))", delay: 3.1 },
           ].map((p, i) => (
             <motion.div
               key={i}
               aria-hidden
-              className="absolute h-[0.45cqmin] w-[0.45cqmin] rounded-full bg-[#f3dca0]"
+              className="absolute h-[max(0.45cqmin,calc(0.28*var(--sc-fit)))] w-[max(0.45cqmin,calc(0.28*var(--sc-fit)))] rounded-full bg-[#f3dca0]"
               style={{ left: p.left, top: p.top }}
               animate={{ y: [0, -8, 0], opacity: [0, 0.8, 0] }}
               transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: p.delay }}
@@ -139,7 +169,7 @@ export function ItemAnalysisScenarioCard({
           {/* pedestal shadow */}
           <motion.div
             aria-hidden
-            className="absolute top-[9.5cqmin] h-[1.6cqmin] w-[11cqmin] rounded-[50%] bg-black/55 blur-md"
+            className="absolute top-[max(9.5cqmin,calc(3.75*var(--sc-fit)))] h-[max(1.6cqmin,calc(0.63*var(--sc-fit)))] w-[max(11cqmin,calc(4.3*var(--sc-fit)))] rounded-[50%] bg-black/55 blur-md"
             animate={{ scaleX: [1, 0.9, 1], opacity: [0.55, 0.4, 0.55] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -172,7 +202,7 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
   const [errored, setErrored] = useState(false);
   if (!iconUrl || errored) {
     return (
-      <div className="flex h-[14cqmin] w-[14cqmin] items-center justify-center rounded-2xl border border-[#d4b35a]/40 bg-black/40 text-[3cqmin] text-white/30">
+      <div className="flex h-[max(14cqmin,calc(5.5*var(--sc-fit)))] w-[max(14cqmin,calc(5.5*var(--sc-fit)))] items-center justify-center rounded-2xl border border-[#d4b35a]/40 bg-black/40 text-[max(3cqmin,calc(1.875*var(--sc-fit)))] text-white/30">
         ?
       </div>
     );
@@ -182,7 +212,7 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
       src={iconUrl}
       alt={alt}
       onError={() => setErrored(true)}
-      className="h-[14cqmin] w-[14cqmin] rounded-2xl border-2 border-[#d4b35a]/60 object-cover shadow-[0_18px_44px_-8px_rgba(0,0,0,0.9)] ring-1 ring-[#f3dca0]/30"
+      className="h-[max(14cqmin,calc(5.5*var(--sc-fit)))] w-[max(14cqmin,calc(5.5*var(--sc-fit)))] rounded-2xl border-2 border-[#d4b35a]/60 object-cover shadow-[0_18px_44px_-8px_rgba(0,0,0,0.9)] ring-1 ring-[#f3dca0]/30"
     />
   );
 }
@@ -205,26 +235,37 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
   // Children: known components in order, mystery/answer slot last.
   const childCount = item.knownComponents.length + 1;
   const compact = childCount >= 4;
-  const tile = compact ? "h-[5.6cqmin] w-[5.6cqmin]" : "h-[7.2cqmin] w-[7.2cqmin]";
-  const labelWidth = compact ? "max-w-[8cqmin]" : "max-w-[10cqmin]";
+  // See index.css "RIV1: Item recipe-tree media scale" — how big a tile may be
+  // is a question about the BAND'S HEIGHT, which --sc-fit alone cannot answer.
+  const tile = compact
+    ? "h-[var(--recipe-tile-compact)] w-[var(--recipe-tile-compact)]"
+    : "h-[var(--recipe-tile)] w-[var(--recipe-tile)]";
+  const labelWidth = compact
+    ? "max-w-[max(8cqmin,calc(3.2*var(--sc-fit)))]"
+    : "max-w-[max(10cqmin,calc(4*var(--sc-fit)))]";
 
   // Connector endpoints as percentages of the row width.
   const childX = Array.from({ length: childCount }, (_, i) => ((i + 0.5) / childCount) * 100);
 
   return (
-    <div className="absolute inset-x-[6%] top-[7%] h-[57%]">
+    <div data-item-recipe className="absolute inset-x-[6%] top-[7%] h-[57%]">
       {/* glass panel */}
       <div className="absolute inset-0 rounded-2xl border border-[#d4b35a]/20 bg-black/35 backdrop-blur-sm" />
-      <div className="absolute left-1/2 top-[2.5%] -translate-x-1/2 text-[0.85cqmin] font-bold uppercase tracking-[0.34em] text-[#e8c97a]/70">
+      <div className="absolute left-1/2 top-[2.5%] -translate-x-1/2 text-[max(0.85cqmin,calc(0.53*var(--sc-fit)))] leading-[min(1.5rem,1.25em)] font-bold uppercase tracking-[0.34em] text-[#e8c97a]/70">
         Build Path
       </div>
 
-      <div className="relative flex h-full flex-col items-center px-[4%] pb-[3%] pt-[9%]">
+      {/* pt/pb in `cqh`, NOT `%` — a percentage padding resolves against the
+          container's WIDTH, which here is ~896px against a 156px height, so
+          these two rules alone claimed 112px and overflowed the tree by 121px.
+          9% and 3% of a stack that is 88% of a 16/9 card wide are 14.08cqh and
+          4.69cqh, so the broadcast stage is unchanged. */}
+      <div className="relative flex h-full flex-col items-center px-[4%] pb-[4.69cqh] pt-[14.08cqh]">
         {/* Final item — focal node */}
         <div className="relative flex flex-col items-center">
           <motion.div
             aria-hidden
-            className="absolute -inset-[1.6cqmin] rounded-2xl bg-[#d4b35a]/20 blur-xl"
+            className="absolute -inset-[max(1.6cqmin,calc(1*var(--sc-fit)))] rounded-2xl bg-[#d4b35a]/20 blur-xl"
             animate={{ opacity: [0.45, 0.8, 0.45] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
@@ -233,13 +274,17 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
             animate={{ y: [0, -4, 0] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <ItemNodeTile iconUrl={item.icon} name={item.name} sizeClass="h-[10.5cqmin] w-[10.5cqmin]" focal />
+            <ItemNodeTile iconUrl={item.icon} name={item.name} sizeClass="h-[var(--recipe-focal)] w-[var(--recipe-focal)]" focal />
           </motion.div>
         </div>
 
         {/* Connectors */}
         <svg
           aria-hidden
+          // Bare `cqmin` on purpose (RIV1): this is the GAP between the focal
+          // node and the component row, not artwork. Flooring it would spend
+          // the band's scarce height on empty space and shrink the tiles the
+          // floors above just grew.
           className="h-[6.5cqmin] w-full shrink-0"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -265,16 +310,16 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
         {/* Component row */}
         <div className="flex w-full flex-1 items-start justify-around">
           {item.knownComponents.map((comp) => (
-            <div key={comp.name} className="flex flex-col items-center gap-[0.7cqmin]">
+            <div key={comp.name} className="flex flex-col items-center gap-[max(0.7cqmin,calc(0.19*var(--sc-fit)))]">
               <ItemNodeTile iconUrl={comp.icon} name={comp.name} sizeClass={tile} />
-              <div className={`${labelWidth} truncate text-center text-[0.95cqmin] font-bold uppercase tracking-[0.08em] text-white/85`}>
+              <div className={`${labelWidth} truncate text-center text-[length:var(--recipe-label)] leading-[min(1.5rem,1.25em)] font-bold uppercase tracking-[0.08em] text-white/85`}>
                 {comp.name}
               </div>
             </div>
           ))}
 
           {/* Mystery / answer node — identical box pre & post reveal */}
-          <div className="flex flex-col items-center gap-[0.7cqmin]">
+          <div className="flex flex-col items-center gap-[max(0.7cqmin,calc(0.19*var(--sc-fit)))]">
             {revealed && item.missingComponent ? (
               <>
                 <motion.div
@@ -285,7 +330,7 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
                 >
                   <motion.div
                     aria-hidden
-                    className="absolute -inset-[0.9cqmin] rounded-xl bg-[#f3dca0]/25 blur-lg"
+                    className="absolute -inset-[max(0.9cqmin,calc(0.56*var(--sc-fit)))] rounded-xl bg-[#f3dca0]/25 blur-lg"
                     animate={{ opacity: [0.5, 0.9, 0.5] }}
                     transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                   />
@@ -296,14 +341,14 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
                     answer
                   />
                 </motion.div>
-                <div className={`${labelWidth} truncate text-center text-[0.95cqmin] font-black uppercase tracking-[0.08em] text-[#f3dca0]`}>
+                <div className={`${labelWidth} truncate text-center text-[length:var(--recipe-label)] leading-[min(1.5rem,1.25em)] font-black uppercase tracking-[0.08em] text-[#f3dca0]`}>
                   {item.missingComponent.name}
                 </div>
               </>
             ) : (
               <>
                 <motion.div
-                  className={`flex ${tile} items-center justify-center rounded-xl border-2 border-dashed border-[#7dd3fc]/60 bg-black/55 text-[2.8cqmin] font-black text-[#7dd3fc]`}
+                  className={`flex ${tile} items-center justify-center rounded-xl border-2 border-dashed border-[#7dd3fc]/60 bg-black/55 text-[max(2.8cqmin,calc(1*var(--sc-fit)))] font-black leading-none text-[#7dd3fc]`}
                   animate={{
                     opacity: [0.6, 1, 0.6],
                     boxShadow: [
@@ -316,7 +361,7 @@ function RecipeTree({ item, revealed }: { item: ItemAnalysisSubject; revealed: b
                 >
                   ?
                 </motion.div>
-                <div className={`${labelWidth} truncate text-center text-[0.95cqmin] font-bold uppercase tracking-[0.12em] text-[#7dd3fc]/80`}>
+                <div className={`${labelWidth} truncate text-center text-[length:var(--recipe-label)] leading-[min(1.5rem,1.25em)] font-bold uppercase tracking-[0.12em] text-[#7dd3fc]/80`}>
                   Missing
                 </div>
               </>
@@ -366,7 +411,7 @@ function ItemNodeTile({
     <div
       className={`flex ${sizeClass} items-center justify-center rounded-xl bg-gradient-to-b from-[#1a1610] to-[#0c0a08] shadow-[0_10px_28px_-8px_rgba(0,0,0,0.9)] ${border}`}
     >
-      <span className="text-[1.9cqmin] font-black tracking-wide text-[#e8c97a]/90">{monogram(name)}</span>
+      <span className="text-[max(1.9cqmin,calc(1*var(--sc-fit)))] font-black leading-none tracking-wide text-[#e8c97a]/90">{monogram(name)}</span>
     </div>
   );
 }
