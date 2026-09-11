@@ -301,8 +301,12 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
  * re-implementing any of them. Three layers, back to front:
  *
  *   1. the warm interior wash, so the panel is not flat black;
- *   2. an oversized, heavily blurred ECHO of `item.icon` — the same dynamic
- *      artwork the foreground draws, at ~3.4x its size and 11% opacity;
+ *   2. an oversized, blurred ECHO of `item.icon` — the same dynamic artwork
+ *      the foreground draws, at 4x its size and 22% opacity, anchored so it
+ *      washes across the LEFT/background of the panel. It is positioned with
+ *      plain `left`/`top` and no `-translate-x-1/2`: framer-motion writes its
+ *      own `transform` for the scale drift, which silently overrides a
+ *      Tailwind translate, so centring it that way never took effect.
  *   3. `item-shopkeeper.png` in the right of frame, masked off at its right
  *      and bottom edges so it reads as presence rather than as a cut-out.
  *
@@ -311,8 +315,8 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
  * descendant — one CSS block, two hosts, no duplicated numbers.
  */
 const SHOPKEEPER_MASK =
-  "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 22%, #000 52%),"
-  + " linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 14%, #000 34%),"
+  "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.45) 18%, #000 44%),"
+  + " linear-gradient(to top, transparent 0%, rgba(0,0,0,0.5) 12%, #000 28%),"
   + " linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, #000 26%)";
 
 function ItemShopBackdrop({ item }: { item: ItemAnalysisSubject }) {
@@ -324,9 +328,9 @@ function ItemShopBackdrop({ item }: { item: ItemAnalysisSubject }) {
         <motion.img
           src={item.icon}
           alt=""
-          className="absolute left-[33%] top-[44%] h-[var(--item-echo)] w-[var(--item-echo)] max-w-none -translate-x-1/2 -translate-y-1/2 rounded-[10%] object-cover opacity-[0.13] blur-[10px] saturate-[1.2]"
+          className="absolute left-[-12%] top-[-47%] h-[var(--item-echo)] w-[var(--item-echo)] max-w-none rounded-[10%] object-cover opacity-[0.22] blur-[8px] saturate-[1.2]"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.13, scale: [1, 1.05, 1] }}
+          animate={{ opacity: 0.22, scale: [1, 1.05, 1] }}
           transition={{
             opacity: { duration: 0.6 },
             scale: { duration: 18, repeat: Infinity, ease: "easeInOut" },
@@ -340,7 +344,7 @@ function ItemShopBackdrop({ item }: { item: ItemAnalysisSubject }) {
       <motion.img
         src={itemShopkeeper}
         alt=""
-        className="absolute bottom-[4%] right-[-6%] h-[160%] w-auto max-w-none object-contain opacity-[0.54] saturate-[0.85]"
+        className="absolute bottom-[-8%] right-[-6%] h-[160%] w-auto max-w-none object-contain opacity-[0.64] saturate-[0.85]"
         style={{
           // Fades into the panel's dark left and bottom rather than ending on
           // a cut-out edge. Two ramps intersected, so a corner gets both.
@@ -350,7 +354,7 @@ function ItemShopBackdrop({ item }: { item: ItemAnalysisSubject }) {
           WebkitMaskComposite: "source-in",
         }}
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.54 }}
+        animate={{ opacity: 0.64 }}
         transition={{ duration: 0.8 }}
       />
     </div>

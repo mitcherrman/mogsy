@@ -1883,7 +1883,7 @@
      constraints binds — the ratio on a tall band, the band on a short one. */
   --item-medallion: min(calc(1.5 * var(--item-hero-icon)), 68cqh);
   --item-medallion-inner: min(calc(1.2 * var(--item-hero-icon)), 54cqh);
-  --item-echo: calc(3.4 * var(--item-hero-icon));
+  --item-echo: calc(4 * var(--item-hero-icon));
 }
 @container (min-height: 190px) {
   [data-item-media] {
