@@ -18,7 +18,7 @@
  * 1.07M player-games, so the client never holds enough rows to sort them.
  */
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
@@ -26,6 +26,7 @@ import {
   BarChart3,
   ChevronLeft,
   ChevronRight,
+  LineChart,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ import {
   type ProStatsTeamRow,
   type ProStatsView,
 } from "@/lib/pro-play/statsApi";
+import { graphHandoff } from "@/lib/pro-play/graphHandoff";
 
 const GOLD = "#c9a84c";
 const PAGE_SIZE = 25;
@@ -525,6 +527,30 @@ export default function ProStatsExplorer() {
     read("year") || (data?.filters.year ? String(data.filters.year) : "");
   const yearWasDefaulted = !read("year") && data?.filters.year != null;
 
+  // Built from the EFFECTIVE filters the server echoed, never from the URL.
+  // The year can be defaulted and the free-text player/team fields settle on
+  // a debounce, so the URL is briefly ahead of the rows; a graph built from
+  // it would be scoped to something the reader is not looking at. Null means
+  // the current scope names no single subject -- a ranking of every player is
+  // not a graph -- and the action is withheld rather than pointed somewhere.
+  const handoff = useMemo(
+    () =>
+      data
+        ? graphHandoff({
+            view,
+            year: data.filters.year,
+            league: data.filters.league,
+            patch: data.filters.patch,
+            role: data.filters.role,
+            player: data.filters.player,
+            team: data.filters.team,
+            champion: data.filters.champion,
+            minGames: data.filters.min_games || null,
+          })
+        : null,
+    [data, view],
+  );
+
   return (
     <section className="mt-10" aria-labelledby="pro-stats-heading">
       <header className="mb-4">
@@ -630,24 +656,52 @@ export default function ProStatsExplorer() {
           />
           <FilterText label="Team" value={teamTerm} onChange={setTeamTerm} />
         </div>
-        {(activeCount > 0 || yearWasDefaulted) && (
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            {/* Says why the year filled itself in, and how to look wider.
-                Without this the snap to a season reads as a broken control
-                rather than the deliberate scope it is. */}
-            <p className="text-xs text-muted-foreground">
-              {yearWasDefaulted
-                ? "Showing the latest season. Pick a league, champion, player or team to look across every year."
-                : " "}
-            </p>
-            {activeCount > 0 && (
-              <button
-                type="button"
-                onClick={clearAll}
-                className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
-              >
-                Clear filters
-              </button>
+        {(activeCount > 0 || yearWasDefaulted || handoff) && (
+          <div className="mt-2 space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {/* Says why the year filled itself in, and how to look wider.
+                  Without this the snap to a season reads as a broken control
+                  rather than the deliberate scope it is. */}
+              <p className="text-xs text-muted-foreground">
+                {yearWasDefaulted
+                  ? "Showing the latest season. Pick a league, champion, player or team to look across every year."
+                  : " "}
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Secondary by construction: a text link beside "Clear
+                    filters", not a button, not a card, and not repeated on
+                    every row. It carries the SCOPE the table is showing, so
+                    it belongs with the filters rather than with the data. */}
+                {handoff && (
+                  <Link
+                    to={handoff.href}
+                    aria-label={`Graph ${handoff.entityLabel} in Explore Pro Data`}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#c9a84c] underline-offset-2 transition-colors hover:underline"
+                  >
+                    <LineChart className="h-3.5 w-3.5" aria-hidden />
+                    Graph this
+                  </Link>
+                )}
+                {activeCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearAll}
+                    className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* The graph is a different product with a narrower vocabulary.
+                Naming what stays behind is the whole reason the action is safe
+                to offer: a reader who sees "Role Mid" listed here knows the
+                graph is not the table with different paint. */}
+            {handoff && handoff.dropped.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Graph this covers {handoff.transferred.join(" · ")}. Staying
+                with the table: {handoff.dropped.join(", ")}.
+              </p>
             )}
           </div>
         )}

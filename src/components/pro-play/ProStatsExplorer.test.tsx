@@ -881,3 +881,103 @@ describe("champions view", () => {
     expect(lastSearch).toContain("min_games=10");
   });
 });
+
+/**
+ * "Graph this" — the hand-off into Explore Pro Data.
+ *
+ * These tests are about the component's CHOICE of scope, not the URL shape
+ * (`graphHandoff.test.ts` owns that). The load-bearing one is the last:
+ * the link is built from the filters the SERVER echoed, so it can never be
+ * scoped to something other than the rows sitting underneath it.
+ */
+describe("Graph this", () => {
+  const link = () => screen.queryByRole("link", { name: /^Graph / });
+
+  it("is absent over a ranking with no single subject", async () => {
+    renderExplorer("/lol/pro-play?view=players&year=2026");
+    await screen.findByText("Faker");
+    expect(link()).toBeNull();
+  });
+
+  it("appears once the scope names a player, and carries the scope", async () => {
+    getProStats.mockResolvedValue(
+      response([ENRICHED], {
+        filters: {
+          year: 2026,
+          league: "LoL Champions Korea",
+          patch: null,
+          role: null,
+          player: "Faker",
+          team: null,
+          champion: null,
+          min_games: 0,
+        },
+      }),
+    );
+    renderExplorer("/lol/pro-play?view=players&year=2026&league=LoL%20Champions%20Korea&player=Faker");
+    const action = await screen.findByRole("link", { name: "Graph Faker in Explore Pro Data" });
+    const href = action.getAttribute("href")!;
+    expect(href.startsWith("/lol/pro-play/graphs?")).toBe(true);
+    const q = new URLSearchParams(href.split("?")[1]);
+    expect(q.get("focus")).toBe("player");
+    expect(q.get("e")).toBe("Faker");
+    expect(q.get("league")).toBe("LoL Champions Korea");
+    expect(q.get("from")).toBe("2026-01-01");
+  });
+
+  it("names the filters that stayed with the table", async () => {
+    getProStats.mockResolvedValue(
+      response([ENRICHED], {
+        filters: {
+          year: 2026,
+          league: null,
+          patch: null,
+          role: "Mid",
+          player: "Faker",
+          team: null,
+          champion: null,
+          min_games: 20,
+        },
+      }),
+    );
+    renderExplorer("/lol/pro-play?view=players&player=Faker&role=Mid&min_games=20");
+    await screen.findByRole("link", { name: /^Graph Faker/ });
+    const note = screen.getByText(/Staying\s+with the table/);
+    expect(note.textContent).toContain("Role Mid");
+    expect(note.textContent).toContain("Min games 20");
+  });
+
+  it("leaves the table in history, so Back returns to the filtered view", async () => {
+    getProStats.mockResolvedValue(
+      response([ENRICHED], {
+        filters: {
+          year: 2026, league: null, patch: null, role: null,
+          player: "Faker", team: null, champion: null, min_games: 0,
+        },
+      }),
+    );
+    renderExplorer("/lol/pro-play?view=players&player=Faker");
+    const action = await screen.findByRole("link", { name: /^Graph Faker/ });
+    // A plain <Link> pushes. `replace` would consume the table's own entry and
+    // strand the reader on the hub with no filters when they went back.
+    expect(action.getAttribute("data-replace")).toBeNull();
+    expect(action.tagName).toBe("A");
+  });
+
+  it("follows the SERVER's filters, not the URL's", async () => {
+    // The URL names a player the request has not been made with yet (the text
+    // field debounces). Building the link from the URL would offer a graph of
+    // someone the table is not showing.
+    getProStats.mockResolvedValue(
+      response([ENRICHED], {
+        filters: {
+          year: 2026, league: null, patch: null, role: null,
+          player: null, team: null, champion: null, min_games: 0,
+        },
+      }),
+    );
+    renderExplorer("/lol/pro-play?view=players&player=Faker");
+    await screen.findByText("Faker");
+    expect(link()).toBeNull();
+  });
+});
