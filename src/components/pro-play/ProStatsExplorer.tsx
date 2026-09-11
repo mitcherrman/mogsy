@@ -731,6 +731,32 @@ export default function ProStatsExplorer() {
       {/* Five tiles never divide evenly into two or three columns, so a
           hairline "gap-px over a background" grid would paint a phantom sixth
           cell on narrow screens. Each tile carries its own border instead. */}
+      {/* THE STRIP USED TO RENDER NOTHING UNTIL `data` ARRIVED. Five tiles'
+          worth of height appeared out of nowhere when the request landed, and
+          until then the space above the table was simply blank — half of why
+          a slow first load read as "broken" rather than "loading". It now
+          holds its own shape and says what it is doing. */}
+      {isPending ? (
+        <div
+          className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+          role="group"
+          aria-label={`${config.label} summary loading`}
+          aria-busy="true"
+          data-testid="stats-strip-loading"
+        >
+          {config.strip.map((tile) => (
+            <div
+              key={tile.label}
+              className="rounded-lg border border-border bg-card/60 p-3"
+            >
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                {tile.label}
+              </div>
+              <div className="mt-1 h-6 w-16 animate-pulse rounded bg-muted-foreground/20" />
+            </div>
+          ))}
+        </div>
+      ) : null}
       {data && (
         <div
           className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
@@ -798,16 +824,32 @@ export default function ProStatsExplorer() {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {/* `bg-muted` is rgb(23,34,48) against a card that resolves to
+                about rgb(11,19,28) on this theme, and `animate-pulse` halves
+                that already-thin contrast twice a second. The bars WERE
+                rendering; they just could not be seen, which is the other
+                half of why the load looked like an empty table.
+                `bg-muted-foreground/20` sits well clear of the card at both
+                ends of the pulse. */}
             {isPending &&
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={`skeleton-${i}`}>
+              Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={`skeleton-${i}`} data-testid="stats-skeleton-row">
                   {config.columns.map((col) => (
                     <TableCell key={col.key}>
-                      <div className="h-4 animate-pulse rounded bg-muted" />
+                      <div className="h-4 animate-pulse rounded bg-muted-foreground/20" />
                     </TableCell>
                   ))}
                 </TableRow>
               ))}
+
+            {/* Screen readers get no signal from a pulsing div. */}
+            {isPending && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={config.columns.length} className="sr-only">
+                  <span role="status">Loading {config.unit}…</span>
+                </TableCell>
+              </TableRow>
+            )}
 
             {!isPending && isError && (
               <TableRow>
