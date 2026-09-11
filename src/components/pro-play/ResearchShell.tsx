@@ -463,7 +463,7 @@ export function PerformancePanel({
           {scopeLabel}
         </span>
       </div>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 lg:grid-cols-7">
+      <dl className={`grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 ${WIDE_COLUMNS[metrics.length] ?? "lg:grid-cols-7"}`}>
         {metrics.map((m) => (
           <div key={m.label} title={m.hint}>
             <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -508,6 +508,23 @@ export function PerformancePanel({
     </Card>
   );
 }
+
+/** One row on a wide screen, whatever the metric count.
+ *
+ *  Player serves 7 metrics and Team serves 8; a fixed `lg:grid-cols-7` put
+ *  Team's eighth (Barons/G) alone on a second row, reading as an afterthought
+ *  rather than one of the set. Spelled as whole literal class names because
+ *  Tailwind scans source text — an interpolated `lg:grid-cols-${n}` produces
+ *  no CSS at all. Player's 7 maps to exactly the class it already had, so its
+ *  rendering is unchanged.
+ */
+const WIDE_COLUMNS: Record<number, string> = {
+  5: "lg:grid-cols-5",
+  6: "lg:grid-cols-6",
+  7: "lg:grid-cols-7",
+  8: "lg:grid-cols-8",
+  9: "lg:grid-cols-9",
+};
 
 const NUM = new Intl.NumberFormat("en-US");
 function nf(value: number): string {
