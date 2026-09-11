@@ -129,7 +129,7 @@ export default function GlobalHud() {
                 redesign. Contain is available whenever the brim tips are worth
                 more than the fill. */}
             <img
-              src="/mascot/mogzy-hat%20Background%20Removed.png"
+              src="/mascot/mogzy-hat-transparent.png"
               alt=""
               draggable={false}
               className="h-full w-full translate-y-[5%] scale-110 object-cover object-center"

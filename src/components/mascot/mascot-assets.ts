@@ -19,19 +19,19 @@ import type { RankedRole } from "@/lib/ranked-public/roles";
 
 export const MOGZY_MASCOT_ASSETS = {
   base: "/mascot/mogzy-mascot-base-v1.png",
-  awkwardSmile: "/mascot/mogzy-awkward-smile%20Background%20Removed.png",
-  cheering: "/mascot/mogzy-cheering%20Background%20Removed.png",
-  chuckling: "/mascot/mogzy-chuckling%20Background%20Removed.png",
-  defeated: "/mascot/mogzy-defeated%20Background%20Removed.png",
-  explaining: "/mascot/mogzy-explaining%20Background%20Removed.png",
-  handUp: "/mascot/mogzy-hand-up%20Background%20Removed.png",
-  holdingBook: "/mascot/mogzy-holding-book%20Background%20Removed.png",
-  peeking: "/mascot/mogzy-peeking%20Background%20Removed.png",
-  raisingHand: "/mascot/mogzy-raising-hand%20Background%20Removed.png",
-  sad: "/mascot/mogzy-sad%20Background%20Removed.png",
-  sleeping: "/mascot/mogzy-sleeping%20Background%20Removed.png",
-  stop: "/mascot/mogzy-stop%20Background%20Removed.png",
-  thinking: "/mascot/mogzy-thinking%20Background%20Removed.png",
+  awkwardSmile: "/mascot/mogzy-awkward-smile-transparent.png",
+  cheering: "/mascot/mogzy-cheering-transparent.png",
+  chuckling: "/mascot/mogzy-chuckling-transparent.png",
+  defeated: "/mascot/mogzy-defeated-transparent.png",
+  explaining: "/mascot/mogzy-explaining-transparent.png",
+  handUp: "/mascot/mogzy-hand-up-transparent.png",
+  holdingBook: "/mascot/mogzy-holding-book-transparent.png",
+  peeking: "/mascot/mogzy-peeking-transparent.png",
+  raisingHand: "/mascot/mogzy-raising-hand-transparent.png",
+  sad: "/mascot/mogzy-sad-transparent.png",
+  sleeping: "/mascot/mogzy-sleeping-transparent.png",
+  stop: "/mascot/mogzy-stop-transparent.png",
+  thinking: "/mascot/mogzy-thinking-transparent.png",
 } as const;
 
 export type MogzyMascotPose = keyof typeof MOGZY_MASCOT_ASSETS;
