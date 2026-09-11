@@ -6,12 +6,21 @@
 // and to effectively-Premium accounts.
 //
 // This hook grants nothing. The backend re-decides authorization on every
-// POST /api/ranked/queue, and it currently still rejects non-admin
-// match_with_bot — see docs/RANKED_BOT_WORKSTREAM_HANDOFF.md.
+// POST /api/ranked/queue — see docs/RANKED_BOT_WORKSTREAM_HANDOFF.md.
 //
-// It fails CLOSED for VISIBILITY: loading, signed out, and a failed
-// entitlement lookup all read `canPlayRankedBot: false`, so the control is
-// never drawn on a guess.
+// TWO INDEPENDENT ROUTES TO YES
+// -----------------------------
+// Admin and Premium are separate answers, and admin does not pass through
+// entitlement. Once the role read has landed and says admin, the control is
+// offered immediately: no entitlement round trip is waited on, and an
+// entitlement lookup that never answers — or that THROWS — cannot take staff
+// access away. The operator override exists precisely for the case where the
+// billing side of the system is the thing that is broken.
+//
+// For everyone else it fails CLOSED for VISIBILITY: loading, signed out, an
+// unresolved lookup and a failed lookup all read `canPlayRankedBot: false`, so
+// the control is never drawn on a guess and never flashes Premium-only access
+// at an account that does not have it.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
@@ -19,7 +28,7 @@ import { useAdminRoles } from "@/hooks/useAdminRoles";
 import { fetchProEntitlement } from "@/lib/pro/entitlement";
 
 export interface RankedBotAccess {
-  /** True until both answers are known. Never treat as access. */
+  /** True until an answer is known. Never treat as access. */
   loading: boolean;
   /** Offer the Match with Bot control. */
   canPlayRankedBot: boolean;
@@ -34,18 +43,29 @@ export function useRankedBotAccess(): RankedBotAccess {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const entitlement = await fetchProEntitlement();
-      if (cancelled) return;
-      // A null answer is UNKNOWN, not Free — but both fail closed here.
-      setPremium(entitlement?.effectivePro === true);
+      let effective = false;
+      try {
+        const entitlement = await fetchProEntitlement();
+        // A null answer is UNKNOWN, not Free — but both fail closed here.
+        effective = entitlement?.effectivePro === true;
+      } catch {
+        // A REJECTED lookup is the same unknown as a null one. It must still
+        // land, or `premium` stays null forever and the hook never leaves
+        // loading — which is how an outage would silently hide the control
+        // from everybody, admin included.
+        effective = false;
+      }
+      if (!cancelled) setPremium(effective);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  const loading = rolesLoading || premium === null;
+  // Admin identity is sufficient on its own, so it also ENDS the wait.
+  const adminKnown = !rolesLoading && isAdmin;
+  const loading = adminKnown ? false : rolesLoading || premium === null;
   return {
     loading,
-    canPlayRankedBot: !loading && (isAdmin || premium === true),
+    canPlayRankedBot: adminKnown || (!loading && premium === true),
     isAdmin,
   };
 }

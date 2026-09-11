@@ -1289,6 +1289,21 @@ describe("the Match-with-Bot switch", () => {
     expect(await screen.findByTestId("play-ranked-bot-toggle")).toBeTruthy();
   });
 
+  it("is still offered to an ADMIN whose entitlement never resolves", async () => {
+    // RB3.1 — the access-point regression, at the surface the owner actually
+    // looks at. Admin is an INDEPENDENT route to yes: an entitlement answer
+    // that is unknown (a Supabase outage, a signed-out RPC) withholds the
+    // control from everyone else, and must not withhold it from staff. This
+    // is the one direction the shared "unknown fails closed" rule must not
+    // apply in, because the override exists for exactly the case where the
+    // entitlement half of the system is what has broken.
+    h.roles.isAdmin = true;
+    h.entitlement.value = null;
+    renderScroll();
+    await openRanked();
+    expect(await screen.findByTestId("play-ranked-bot-toggle")).toBeTruthy();
+  });
+
   it("says nothing about tiers, staff or testing", async () => {
     // RB1 removed "Admin test" — Premium accounts read this copy now, and it
     // is neither a test nor staff-only. It did NOT replace it with "Premium

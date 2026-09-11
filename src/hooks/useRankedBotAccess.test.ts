@@ -98,3 +98,57 @@ describe("it fails closed", () => {
     expect(result.current.canPlayRankedBot).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// RB3.1 — the admin access-point regression.
+//
+// The control disappeared for admin in production. The proximate cause was a
+// prop rename that never reached `RankedQueueView` (pinned in that component's
+// own tests), but the hook carried a second, independent way to lose staff
+// access: it made admin WAIT on — and in one case depend on — an entitlement
+// answer that admin does not need. These cases pin the separation.
+// ---------------------------------------------------------------------------
+describe("admin access does not pass through entitlement", () => {
+  it("is offered before the entitlement lookup has answered at all", () => {
+    h.roles.isAdmin = true;
+    h.entitlement.mockReturnValue(new Promise(() => {}));   // never settles
+    const { result } = renderHook(() => useRankedBotAccess());
+    // No await: the very first render already offers it.
+    expect(result.current.loading).toBe(false);
+    expect(result.current.canPlayRankedBot).toBe(true);
+  });
+
+  it("survives an entitlement lookup that THROWS", async () => {
+    h.roles.isAdmin = true;
+    h.entitlement.mockRejectedValue(new Error("rpc down"));
+    const result = await settle();
+    expect(result.current.canPlayRankedBot).toBe(true);
+  });
+
+  it("survives an entitlement that resolves to a flat Free", async () => {
+    h.roles.isAdmin = true;
+    h.entitlement.mockResolvedValue(FREE);
+    const result = await settle();
+    expect(result.current.canPlayRankedBot).toBe(true);
+  });
+
+  it("does not offer it to a NON-admin whose lookup throws", async () => {
+    // The same rejection that must not cost admin its access must still cost
+    // everyone else theirs: a thrown lookup is unknown, and unknown is closed.
+    h.entitlement.mockRejectedValue(new Error("rpc down"));
+    const result = await settle();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.canPlayRankedBot).toBe(false);
+  });
+
+  it("still waits for the ROLE answer before offering anything", () => {
+    // Admin ends the wait only once it is KNOWN. An unresolved role is not an
+    // admin, so nothing is drawn optimistically and nothing flashes.
+    h.roles.loading = true;
+    h.roles.isAdmin = true;
+    h.entitlement.mockResolvedValue(FREE);
+    const { result } = renderHook(() => useRankedBotAccess());
+    expect(result.current.loading).toBe(true);
+    expect(result.current.canPlayRankedBot).toBe(false);
+  });
+});
