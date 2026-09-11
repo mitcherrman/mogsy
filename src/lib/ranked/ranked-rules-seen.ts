@@ -88,3 +88,40 @@ export function shouldAutoOpenRankedRules(
 ): boolean {
   return readSeenRankedRulesVersion() < version;
 }
+
+/**
+ * Whether the scroll can open BESIDE the arena rather than over it.
+ *
+ * This is the whole of the desktop/mobile difference, and it is a question
+ * about LAYOUT, not about a device. From `sm` up the scroll is a column in the
+ * corner: it covers no question, no timer, neither score and no answer tablet,
+ * so opening it by itself on a first visit costs the player nothing. Below
+ * `sm` the same panel is a full-width sheet, and auto-opening it would lay it
+ * over the lower half of a round that is already on the server's clock.
+ *
+ * So a narrow layout is never auto-opened into. It gets a deliberately
+ * noticeable collapsed tab instead, and the player opens the rules when they
+ * choose to — which also means a narrow-layout player is NOT marked as having
+ * seen the rules merely because a tab was drawn.
+ *
+ * 640px is `sm`, read straight off the panel's own `sm:w-[21rem]`: the
+ * breakpoint where it stops being a sheet is exactly the breakpoint where
+ * auto-opening becomes harmless, so the two must not be able to drift apart.
+ *
+ * Read once, synchronously, at the moment the decision is taken — a state
+ * initializer. A hook that reports `false` on its first render (as
+ * `useIsMobile` does) would auto-open on a phone before correcting itself,
+ * which is the exact behaviour this exists to prevent. A later resize does not
+ * re-open anything, deliberately: rotating a phone is not a request to be
+ * interrupted.
+ */
+export function rulesCanOpenBesideArena(): boolean {
+  try {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    return window.matchMedia("(min-width: 640px)").matches;
+  } catch {
+    // No matchMedia (older jsdom, exotic embedders): fail to the quiet side.
+    // A missed auto-open leaves a visible tab; a wrong one covers a live round.
+    return false;
+  }
+}

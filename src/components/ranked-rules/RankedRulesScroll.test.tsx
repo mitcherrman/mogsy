@@ -15,7 +15,7 @@
  * real match rather than against this component alone.
  */
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // This repo's jsdom pin exposes no working Storage; suites that genuinely
 // exercise persistence opt into the shared stub. See src/test/localStorageStub.
@@ -26,6 +26,7 @@ import {
   RANKED_RULES_VERSION,
   markRankedRulesSeen,
   readSeenRankedRulesVersion,
+  rulesCanOpenBesideArena,
   shouldAutoOpenRankedRules,
 } from "@/lib/ranked/ranked-rules-seen";
 
@@ -34,7 +35,27 @@ const tab = () => screen.getByTestId("ranked-rules-tab");
 
 const resetStorage = installLocalStorageStub();
 
-beforeEach(() => resetStorage());
+/**
+ * The ONE environmental fact that decides auto-open: can the scroll sit beside
+ * the arena, or would it have to lie over it? Stubbed at the media query the
+ * component itself reads, so these tests exercise the real predicate.
+ */
+function setLayout(kind: "wide" | "narrow") {
+  const beside = kind === "wide";
+  vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+    matches: query.includes("min-width: 640px") ? beside : !beside,
+    media: query,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    addListener: vi.fn(), removeListener: vi.fn(),
+    dispatchEvent: vi.fn(), onchange: null,
+  })));
+}
+
+beforeEach(() => {
+  resetStorage();
+  setLayout("wide");
+});
+afterEach(() => vi.unstubAllGlobals());
 afterAll(() => resetStorage());
 
 describe("a first-time player", () => {
@@ -221,5 +242,103 @@ describe("reaching it without a mouse", () => {
     // Non-modal on purpose: the match behind it is live and must stay
     // reachable by keyboard while the rules are open.
     expect(dialog).toHaveAttribute("aria-modal", "false");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* A narrow layout is never opened into                                       */
+/* -------------------------------------------------------------------------- */
+
+describe("a first-time player on a phone", () => {
+  beforeEach(() => setLayout("narrow"));
+
+  it("is NOT interrupted — Module 1 stays uncovered until they ask", () => {
+    render(<RankedRulesScroll />);
+    expect(panel()).toBeNull();
+    expect(tab()).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("gets a tab that is visibly still to be read", () => {
+    render(<RankedRulesScroll />);
+    expect(tab()).toHaveAttribute("data-prominent", "true");
+    expect(tab().className).toContain("mogzy-scroll-tab--calling");
+  });
+
+  it("is NOT marked as having seen the rules merely because a tab was drawn",
+    () => {
+      render(<RankedRulesScroll />);
+      // THE ONE THAT MATTERS. Drawing an affordance proves nothing about
+      // whether anybody read anything; recording it here would silently spend
+      // the single showing this feature gets.
+      expect(readSeenRankedRulesVersion()).toBe(0);
+      expect(shouldAutoOpenRankedRules()).toBe(true);
+    });
+
+  it("stays prominent on a later visit, because it is still unread", () => {
+    const first = render(<RankedRulesScroll />);
+    first.unmount();
+
+    render(<RankedRulesScroll />);
+    expect(tab()).toHaveAttribute("data-prominent", "true");
+    expect(panel()).toBeNull();
+  });
+
+  it("can open the rules, and acknowledging records THIS version", () => {
+    render(<RankedRulesScroll />);
+    fireEvent.click(tab());
+    expect(panel()).not.toBeNull();
+    // The full rules, not a reduced phone variant.
+    expect(screen.getByTestId("ranked-rules-content").textContent)
+      .toMatch(/Perfect module, and first to finish/);
+
+    fireEvent.click(screen.getByTestId("ranked-rules-acknowledge"));
+    expect(panel()).toBeNull();
+    expect(readSeenRankedRulesVersion()).toBe(RANKED_RULES_VERSION);
+  });
+
+  it("drops to the quiet tab the moment it is acknowledged", () => {
+    render(<RankedRulesScroll />);
+    fireEvent.click(tab());
+    fireEvent.click(screen.getByTestId("ranked-rules-acknowledge"));
+    expect(tab()).not.toHaveAttribute("data-prominent");
+  });
+});
+
+describe("a returning player on a phone", () => {
+  beforeEach(() => {
+    setLayout("narrow");
+    markRankedRulesSeen(RANKED_RULES_VERSION);
+  });
+
+  it("gets the ordinary quiet tab — no second introduction", () => {
+    render(<RankedRulesScroll />);
+    expect(panel()).toBeNull();
+    expect(tab()).not.toHaveAttribute("data-prominent");
+  });
+
+  it("can still reopen and close the rules, permanently", () => {
+    render(<RankedRulesScroll />);
+    fireEvent.click(tab());
+    expect(panel()).not.toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(panel()).toBeNull();
+  });
+});
+
+describe("the layout gate itself", () => {
+  it("auto-opens only where the scroll can sit BESIDE the arena", () => {
+    setLayout("wide");
+    expect(rulesCanOpenBesideArena()).toBe(true);
+    setLayout("narrow");
+    expect(rulesCanOpenBesideArena()).toBe(false);
+  });
+
+  it("fails to the quiet side when matchMedia is unavailable", () => {
+    // A missed auto-open leaves a visible tab; a wrong one covers a live
+    // round. Only one of those is recoverable by the player.
+    vi.stubGlobal("matchMedia", undefined);
+    expect(rulesCanOpenBesideArena()).toBe(false);
+    render(<RankedRulesScroll />);
+    expect(panel()).toBeNull();
   });
 });

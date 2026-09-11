@@ -57,6 +57,16 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   resetStorage();
+  // A DESKTOP layout, which is where the scroll auto-opens. The global setup's
+  // matchMedia answers `false` to everything, which would read as a phone and
+  // suppress the auto-open this file is asserting. The narrow case has its own
+  // coverage in `RankedRulesScroll.test`.
+  vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+    matches: query.includes("min-width: 640px"), media: query,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    addListener: vi.fn(), removeListener: vi.fn(),
+    dispatchEvent: vi.fn(), onchange: null,
+  })));
   fetchMock = vi.fn(async (url: string) => {
     const u = String(url);
     if (u.endsWith("/resume")) {
@@ -106,11 +116,29 @@ function matchState() {
 }
 
 describe("the scroll sits beside the arena, and only beside it", () => {
-  it("a first-time player meets a live round with the rules already open", async () => {
+  it("a first-time player on a desktop meets a live round with the rules open",
+    async () => {
     await mount();
     expect(screen.getByTestId("ranked-rules-panel")).toBeInTheDocument();
     // And the match is drawn underneath it, untouched.
     expect(screen.getByTestId("ranked-header-title")).toHaveTextContent("Module 5 / 10");
+  });
+
+  it("a first-time player on a PHONE meets an uncovered module", async () => {
+    // The narrow layout is never auto-opened into: the sheet would lie over a
+    // round already on the server's clock. The tab introduces it instead.
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      matches: false, media: query,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(),
+      dispatchEvent: vi.fn(), onchange: null,
+    })));
+    await mount();
+    expect(screen.queryByTestId("ranked-rules-panel")).toBeNull();
+    expect(screen.getByTestId("ranked-rules-tab"))
+      .toHaveAttribute("data-prominent", "true");
+    // And the live surface is entirely the match's.
+    expect(screen.getByTestId("answer-grid")).toBeInTheDocument();
   });
 
   it("a returning player meets the same round with only the tab", async () => {

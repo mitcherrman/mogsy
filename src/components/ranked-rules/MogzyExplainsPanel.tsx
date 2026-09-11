@@ -45,6 +45,19 @@ export interface MogzyExplainsPanelProps {
   tabLabel: string;
   /** Accessible name for the collapsed tab, e.g. "View Ranked scoring rules". */
   openLabel: string;
+  /**
+   * Draw the collapsed tab as something still to be found.
+   *
+   * The caller's business, not this shell's: it exists because a layout too
+   * narrow to open into cannot rely on the panel itself to introduce the
+   * feature, so the tab has to do that job. Brighter frame, a slow brass
+   * halo, and the mascot looking up rather than peeking — enough to be noticed
+   * beside a live match, small enough not to compete with it. It changes
+   * nothing else: same size, same position, same accessible name, same
+   * action, and no layout of its own, so a prominent tab can no more cover a
+   * question than a quiet one.
+   */
+  prominent?: boolean;
   /** The mode's own explanation. Rows, not paragraphs. */
   children: ReactNode;
   /** Hook prefix, so a mode's tests can address its own instance. */
@@ -53,7 +66,7 @@ export interface MogzyExplainsPanelProps {
 
 export function MogzyExplainsPanel({
   open, onOpen, onClose, title, tabLabel, openLabel, children,
-  testId = "mogzy-explains",
+  prominent = false, testId = "mogzy-explains",
 }: MogzyExplainsPanelProps) {
   const headingId = useId();
   const tabRef = useRef<HTMLButtonElement | null>(null);
@@ -189,14 +202,15 @@ export function MogzyExplainsPanel({
         aria-expanded={open}
         data-testid={`${testId}-tab`}
         data-open={open ? "true" : undefined}
-        className="mogzy-scroll-tab pointer-events-auto flex min-h-11 items-center gap-1.5
-          rounded-full py-1 pl-1 pr-3
+        data-prominent={prominent ? "true" : undefined}
+        className={`mogzy-scroll-tab pointer-events-auto flex min-h-11 items-center gap-1.5
+          rounded-full py-1 pl-1 pr-3 ${prominent ? "mogzy-scroll-tab--calling" : ""}
           focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-          focus-visible:outline-[#c9a84c]"
+          focus-visible:outline-[#c9a84c]`}
       >
         <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full">
           <MogzyMascot
-            pose={open ? "explaining" : "peeking"}
+            pose={open ? "explaining" : prominent ? "raisingHand" : "peeking"}
             decorative
             className="h-full w-full object-cover"
           />
