@@ -1027,11 +1027,20 @@ function TeamCell({ name }: { name: string }) {
   );
 }
 
+/** A champion identity, linked to its canonical public profile.
+ *
+ *  WRAPS the existing icon cell rather than replacing it: the icon and the
+ *  name together are the identity, so the whole thing is one link and one tab
+ *  stop. Same `proPlayProfileUrl` helper as the player and team columns. */
 function ChampionCell({ name }: { name: string }) {
   const { data: manifest } = useChampionAssets();
   const icon = getChampionIcon(manifest, name);
   return (
-    <span className="flex items-center gap-2">
+    <Link
+      to={proPlayProfileUrl("champion", name)}
+      className="flex items-center gap-2 font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-testid="champion-profile-link"
+    >
       {icon ? (
         <img
           src={icon}
@@ -1049,6 +1058,6 @@ function ChampionCell({ name }: { name: string }) {
         />
       )}
       {name}
-    </span>
+    </Link>
   );
 }
