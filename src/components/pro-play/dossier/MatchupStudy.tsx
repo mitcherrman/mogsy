@@ -48,6 +48,7 @@ import {
   type PoolChampion,
 } from "@/lib/pro-play/matchupApi";
 
+import { championMatchupHref } from "@/graph1/championMatchup";
 import { championSlug } from "@/lib/league-docs/api";
 import { buildCombatLabMatchupUrl } from "@/lib/combat-lab/matchup-link";
 
@@ -351,10 +352,19 @@ function exactCoverageNote(stats: ExactStatistics): string | null {
  *
  * ONLY DESTINATIONS THAT KEEP THE CHAMPIONS ARE HERE. Combat Lab takes both
  * (`?attacker=&defender=`); the Archives take one each
- * (`/lol/docs/champions/:slug`). Quiz and the Pro Play graphs are absent on
- * purpose — neither can currently be handed this matchup, and a link that
- * drops the champions on the way is worse than no link. There are no
- * disabled buttons and no "coming soon".
+ * (`/lol/docs/champions/:slug`); and since Step 11 the Pro Play data surface
+ * takes both (`?focus=matchup&a=&b=`). Quiz is still absent on purpose — it
+ * can not be handed this matchup, and a link that drops the champions on the
+ * way is worse than no link. There are no disabled buttons and no
+ * "coming soon".
+ *
+ * `Explore Pro Data` IS A CHANGE OF POPULATION, AND IT SAYS SO. It leaves
+ * this exact record — two named players — for every professional game in
+ * which the two CHAMPIONS met on opposing teams. That destination states the
+ * broader sample in its own words on arrival; what matters here is that the
+ * link carries the champions and NOTHING else: no player, no team, no patch,
+ * no date inferred from the sample the reader is looking at. Carrying any of
+ * them would quietly suggest the broader sample is this one, filtered.
  *
  * THE CHAMPIONS ARE THE ONLY THING THAT CROSSES. No player, no team, no
  * patch, no date, no build, no statistic. Historical pro evidence and
@@ -393,6 +403,13 @@ function StudyActions({
         })
       : null;
 
+  // The broader professional sample for the same two champions. Both slugs
+  // are required — a pair with one side missing is not a matchup.
+  const proDataUrl =
+    subjectSlug && opposingSlug && subjectSlug !== opposingSlug
+      ? championMatchupHref(subjectSlug, opposingSlug)
+      : null;
+
   // A mirror matchup is one champion, not two identical links.
   const mechanics: { slug: string; name: string }[] = [];
   if (subjectSlug) mechanics.push({ slug: subjectSlug, name: subjectChampion });
@@ -400,7 +417,7 @@ function StudyActions({
     mechanics.push({ slug: opposingSlug, name: opposingChampion });
   }
 
-  if (!combatLabUrl && !mechanics.length) return null;
+  if (!combatLabUrl && !mechanics.length && !proDataUrl) return null;
 
   return (
     <div className="dossier-study__actions" data-testid="study-actions">
@@ -423,6 +440,15 @@ function StudyActions({
           Study {champion.name} Mechanics
         </Link>
       ))}
+      {proDataUrl ? (
+        <Link
+          className="dossier-study__action"
+          data-testid="study-action-pro-data"
+          to={proDataUrl}
+        >
+          Explore Pro Data
+        </Link>
+      ) : null}
     </div>
   );
 }

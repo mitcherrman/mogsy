@@ -3417,3 +3417,339 @@ Pro Stats Explorer work. Reading the handoff from that checkout showed the
 document ending at **Step 6** and would have "confirmed" the unmerged-chain
 story. **Read `origin/main`, never the shared working tree**, when
 establishing branch reality.
+
+---
+
+# Step 11 — champion-pair Pro Play data
+
+Implemented. `Explore Pro Data` now joins the Step 10 action row, and it opens
+a real champion-versus-champion professional sample with **both** champions
+preserved.
+
+```
+MATCHUP STUDY
+Ornn vs Ambessa · Doran vs Bin
+…
+Open in Combat Lab   Study Ornn Mechanics   Study Ambessa Mechanics   Explore Pro Data
+                                                                     ↑ new
+                                    ↓
+
+OLAF VS K'SANTE                                     /lol/pro-play/graphs
+All Pro Play                                        ?focus=matchup&a=olaf&b=ksante
+
+[ Champion: Olaf ] [ Opponent: K'Sante ] [ Swap ]
+[ All Pro Play | Major Pro ]  [ League ▾ ]  ▸ More filters
+
+GAMES          OLAF RECORD      OLAF WIN RATE
+62             38–24            61.3%
+both champions,                 against K'Sante
+opposing teams
+────────────────────────────────────────────────
+Professional games in which Olaf and K'Sante appeared on opposing teams.
+This is the broader professional sample — not a specific pair of players.
+```
+
+## What Step 10 deferred, and why the deferral was right
+
+Step 10's audit rejected the Pro Play graphs on **product** grounds: the
+surface took one champion (`?focus=champion&e=<slug>`), so a link from an
+exact matchup would have dropped half of it. Step 11 does not reverse that
+judgement — it removes the reason for it. The surface now takes a pair.
+
+## The pair sample — one definition, four conditions, all required
+
+A professional game is in the sample when:
+
+1. a canonical player row in that game carries champion **A**, and
+2. a canonical player row in the **same** game carries champion **B**, and
+3. those two rows' `team_key` **differ**, and
+4. the game is admitted by the competition policy and falls inside the scope.
+
+Nothing qualifies through both champions appearing anywhere in a draft, one
+picked and one banned, the same team, the same meeting in different games, a
+shared player pool, or an inferred lane assignment. **A ban can never
+qualify**, because a banned champion has no player row at all.
+
+Measured on the real corpus: Olaf and K'Sante have **260** raw opposing rows
+and **62** games after the professional policy — the other 198 are academy,
+challenger and amateur competitions the policy already excludes everywhere
+else in GRAPH1. The refusal is reported, never silent
+(`coverage.excludedGameCount`, plus a warning naming `pro_broad_v2`).
+
+## Orientation — the sample is unordered, the answer is not
+
+`Olaf vs K'Sante` and `K'Sante vs Olaf` read the **identical** set of games.
+`pairId` is the two champion keys sorted and is the sample's identity; the
+subject is what reverses.
+
+* `record`, `subjectPositions` and `subjectSides` are always the **subject's**.
+* Swapping inverts wins and losses **exactly**. That is a guarantee, not a
+  coincidence: `win` is complementary across opposing rows, and a real-corpus
+  test asserts zero games where both sides are marked won.
+* Alphabetical order decides the **cache key** and nothing a reader sees. The
+  two orientations are two cache entries, deliberately — sharing one would
+  print K'Sante's win rate under Olaf's name.
+
+Verified live: Olaf `38–24 · 61.3%`, swapped K'Sante `24–38 · 38.7%`, 62 games
+both ways.
+
+## Route / query contract
+
+```
+/lol/pro-play/graphs?focus=matchup&a=<subject-slug>&b=<opponent-slug>
+  [&major=1&league=…&tournament=…&region=…&patch=…&from=…&to=…]
+```
+
+`focus=` remains the one parameter that says what kind of graph this is, and
+`a`/`b` are visibly two entities. **`e=` was deliberately not overloaded** —
+it means one entity everywhere else on the page, and a second meaning for it
+would make a hand-edited URL ambiguous.
+
+| Case | Behaviour |
+|---|---|
+| Direct load / refresh | The URL is the state. Same screen. |
+| Back | Returns to the previous orientation (a swap **pushes**). |
+| Scope change | **Replaces**, so Back does not walk every filter nudge. |
+| One champion missing | "Pick two champions above." **No request is made.** |
+| Same champion both sides | "A champion cannot be its own opponent." No request. |
+| Malformed slug | Treated as missing. Total parsing — never an error page. |
+| Punctuation-heavy | `ksante`, `dr-mundo`, `chogath`, `kaisa`, `leblanc`, `aurelion-sol`, `belveth` all resolve. |
+| Casing / stray whitespace | Folded. Neither is identity — the same rule Step 10 applied. |
+
+`focus=player|team|champion` is untouched. `parseSelection` never sees
+`focus=matchup`, so **no existing single-champion deep link moves**.
+
+## Champion identity — no new mapper, and it was measured
+
+The frontend action uses `championSlug` — the same mapper Step 10 used. The
+backend resolves that slug through `EntityIndex.champion()`, whose `.name` is
+`champions.name`, and uses it **verbatim** as the SQL predicate against
+`pro_canonical_player_games.champion_key`.
+
+That is only safe because the two stores agree, so it was measured rather than
+assumed: **172 distinct `champion_key` values, 0 of them absent from the
+`champions` table.** A real-corpus test pins it. Note the spelling that
+differs elsewhere in the product does **not** differ here — the canonical pro
+facts carry `Dr Mundo`, not `Dr. Mundo`.
+
+## Scope — the same predicate, not a second time model
+
+Pair mode reuses `Graph1Scope` unchanged: the same parameters, the same
+canonical values from `/api/graph1/scope-values`, the same
+`competition_policy` split between SQL and Python. "Olaf vs K'Sante at Worlds
+2025" is narrowed by exactly the rule that narrows a race, and `Graph1Scope`
+still has no field that can express `apply_policy=False`.
+
+## The graph-family audit — what survives a pair filter
+
+The first principle was *do not add a second entity and leave every chart
+semantically unchanged*. Each existing family was judged on its denominator:
+
+| Family | In pair mode? | Why |
+|---|---|---|
+| `player-champions:<lp_page>` | **no** | The focus is a player. A champion pair is not a filter on it; it is a different question. |
+| `team-champions:<team_key>` | **no** | Same — the focus is an org. |
+| `champion-players:<slug>` (race) | **deferred** | Semantically valid ("players who played Olaf into K'Sante") but a 62-event race is a race with nothing to watch. Not wrong, just not worth animating yet. |
+| `champion-teams:<slug>` (picks) | **deferred** | Same reasoning. |
+| `champion-teams:<slug>:bans` | **INVALID — hidden** | A banned champion was never played, so it can never be in a game opposite another champion. The pair sample is empty by construction and any ban rate over it is nonsense. |
+| Ratio board `share` | **INVALID — hidden** | The denominator is "games in this scope". Under a pair filter that becomes "games in which the pair met", so "champion share" would silently measure something else under the same word. |
+| Ratio board `win_rate` | **replaced** | The subject-oriented record IS the pair's win rate, computed over the pair sample and labelled with the subject's name. |
+
+**No chart was preserved because it exists.** The four families are untouched
+and the pair surface is a summary, which is the shape the useful first answers
+actually have.
+
+## Why a sibling endpoint and not a family key
+
+Every GRAPH1 family is `<family>:<one entity>` and produces a ranked race or
+ranked board over time. A pair is two entities, and encoding it into that key
+space would have collided with the `champion-teams:<slug>:bans` mode token,
+which is parsed off the **last** separator. It is a small sibling read over the
+same canonical tables, the same scope object and the same policy — one truth,
+one filter contract, a different shape.
+
+```
+GET /api/graph1/champion-matchup?a=<slug>&b=<slug>[&scope…]
+```
+
+| Status | Meaning |
+|---|---|
+| 200 | The sample, including `games: 0`. **Zero is an answer, not an error.** |
+| 400 | A champion against itself, or a malformed scope. |
+| 404 | A slug that is no champion in professional play. |
+| 422 | `a` or `b` absent. The frontend never emits this. |
+| 503 | Build capacity / data unavailable, with `Retry-After`. |
+
+Payload: `pairId`, `subject`, `opponent`, `scope`, `games`, `record`,
+`byYear`, `subjectPositions`, `opponentPositions`, `subjectSides`,
+`firstGame`, `latestGame`, `coverage`. ETag + `Cache-Control: max-age=300` +
+304, exactly like a dataset.
+
+## What shipped, and what did not
+
+**Shipped:** games; subject record and win rate; games-by-year with subject
+wins; subject and opponent position splits; subject side split; first and
+latest game.
+
+**By year, not by patch** — and that is the one data decision worth keeping.
+`pro_canonical_games.patch` is nullable by design (real games carry no
+recorded patch), so a patch series would silently drop games the headline
+count includes. `game_date` is `NOT NULL`.
+
+**Position splits are context, not a lane claim.** Olaf appearing in the
+Jungle in six of these 62 games says where he was played. It does **not** say
+he laned against K'Sante — the Explorer owns that semantic and measures it
+(Step 6). The note is on screen, not in this file only.
+
+**Not shipped, deliberately:** player filters, KDA, damage/min, @15
+aggregates, items, runes, draft order, bans, prediction, matchup-strength
+scores, counterpick labels, Comparison Lab.
+
+**No player identity is in the payload at all**, and a test asserts it —
+mixing the two would let the broader sample be read as a player's record.
+
+## Zero, and what it must never do
+
+A pair with no professional meetings renders *"No professional games found for
+this champion matchup in the selected scope."* It does **not** fall back to
+one champion's data and does **not** widen the scope to find something to
+show. Either would answer a question the reader did not ask, under the heading
+of the one they did. A test asserts no dataset request is made in that state.
+
+Missing enrichment cannot erase a game either: the canonical participation and
+the canonical winner are the whole basis of this surface, and no figure here
+depends on Oracle's Elixir.
+
+## Performance — and the one-character fix that mattered
+
+The obvious self-join is **135 seconds** on the production corpus. SQLite
+drives both sides off `idx_pro_canonical_player_games_champion` and
+nested-loops every subject row against every opponent row. Suppressing the
+index on the opponent term (`AND +o.champion_key = ?`) forces that side onto
+the `(canonical_game_id, player_lp_page)` primary key, so each subject row
+probes ~10 rows of its own game.
+
+Measured through the HTTP route, entity index warm:
+
+| Pair | Games | Cold |
+|---|---|---|
+| Bel'Veth vs Naafiri (zero) | 0 | 0.31 s |
+| Dr Mundo vs Cho'Gath | 40 | 0.64 s |
+| Olaf vs K'Sante | 62 | 0.35–1.1 s |
+| LeBlanc vs Aurelion Sol | 6 | 1.27 s |
+| **Thresh vs Nautilus (heaviest sampled)** | **718** | **2.02 s** |
+| any pair, warm | — | ~1 ms |
+
+Payload ~2 KB, against 520 KB–2.25 MB for a race. Pair filtering is therefore
+**cheaper** than the 4.2 s single-champion cold build Step 10 measured, which
+is what makes this defensible as an action offered mid-read. No new cache was
+introduced: it reuses the existing `BoundedPayloadCache` and `SingleFlight`,
+in its own key namespace, carrying the policy version like a dataset key does.
+
+## The action
+
+One text link appended to the Step 10 row, in the same class, same voice:
+
+```
+Open in Combat Lab   Study Ornn Mechanics   Study Ambessa Mechanics   Explore Pro Data
+```
+
+* **The champions are the only thing that crosses.** A test asserts the href's
+  parameter set is exactly `{focus, a, b}` and that no player, team or org
+  string appears in it.
+* **Subject first**, because the study is written from the subject's side and
+  the destination reports the subject's record.
+* **A mirror matchup renders no Pro Data link** — a champion is not its own
+  opponent, and offering a link whose only outcome is a refusal is worse than
+  no link.
+* **Quiz is still absent**, for the reason Step 10 gave: `/quiz` accepts no
+  champion at all. Step 10's guard test was rewritten rather than deleted, so
+  it now pins *three* allowed destinations and still forbids a quiz action.
+
+No CSS was added. The row was already `flex-wrap: wrap`; measured at 375px
+with the longest pair of names in the roster (K'Sante / Aurelion Sol), the
+four links wrap to two rows, 46 px total, **zero horizontal overflow**.
+
+## Mobile
+
+Verified in a real browser at 375×812: `document.scrollWidth === 375`, no
+element's right edge past the viewport. The two champion pickers stack (they
+are side by side only from `sm`), Swap is full width beneath them, the scope
+controls are unchanged, and the three headline figures wrap to two rows.
+
+## Files — Step 11
+
+### Backend (`master`)
+
+| File | Role |
+|---|---|
+| `graph1/champion_matchup.py` | **New.** The pair sample: definition, the `+` join, orientation, the summary. |
+| `routes/graph1.py` | `GET /api/graph1/champion-matchup`, placed above `datasets/{key}` so the literal path is never shadowed. |
+| `test_graph1_champion_matchup.py` | **New.** 31 tests, 7 against the real corpus. |
+
+### Frontend (`main`)
+
+| File | Role |
+|---|---|
+| `src/graph1/championMatchup.ts` | **New.** Types, total URL parsing, the href, the swap. |
+| `src/graph1/useGraph1ChampionMatchup.ts` | **New.** The query hook. |
+| `src/components/graph1/ChampionMatchupPanel.tsx` | **New.** The drawn sample and the zero state. |
+| `src/pages/lol/ProPlayGraphs.tsx` | Split into `BuilderGraphs` and `ChampionMatchupGraphs`; the mode switch sits above every hook. |
+| `src/components/pro-play/dossier/MatchupStudy.tsx` | The `Explore Pro Data` action. |
+| `src/graph1/championMatchup.test.ts` | **New.** 15 tests. |
+| `src/pages/lol/ProPlayGraphsMatchup.test.tsx` | **New.** 14 tests. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | Step 10's "no pro-graph action" guard rewritten; 2 Step 11 tests added. |
+
+## Tests
+
+* Backend `test_graph1_champion_matchup.py` — **31 passed**. Population
+  (same game, opposing teams, same-team excluded, different games of one
+  meeting excluded), orientation (subject record, exact inversion, order-free
+  `pairId`), refusals, scope narrowing, flex-role retention, determinism, the
+  read boundary, and no player identity in the payload. Seven run against the
+  production corpus.
+* Backend regression `test_graph1_*.py` — **677 passed, 0 failed**.
+* Frontend `src/graph1` + `src/components/graph1` + both graph pages +
+  the Combat Lab link — **410 passed, 28 files**.
+* Frontend `ProPlayMatchupTeam.test.tsx` — **283 passed** (Steps 1–11).
+
+Independent cross-check: the pair counts were recomputed with a structurally
+different query (per-champion game sets, intersected, then filtered) and agree
+exactly — Olaf/K'Sante 62 games 38 wins, Thresh/Nautilus 718/392,
+Dr Mundo/Cho'Gath 40/23.
+
+**Pre-existing and unrelated:** four real-corpus tests in
+`test_pro_authority_explorer_teams.py` fail on `master` — the shipped team
+registry has drifted against the corpus, which is exactly what those tests
+exist to catch. `scripts/audit_explorer_team_pool.py` prints the edit. Step 11
+touches nothing in `pro_authority`.
+
+## Real corpus examples verified
+
+| Pair | Scope | Games | Subject record |
+|---|---|---|---|
+| Olaf vs K'Sante | all pro | 62 | 38–24 · 61.3% |
+| K'Sante vs Olaf | all pro | 62 | 24–38 · 38.7% |
+| Olaf vs K'Sante | major pro | 33 | 23–10 · 69.7% |
+| Olaf vs K'Sante | from 2026-01-01 | 6 | 4–2 · 66.7% |
+| Thresh vs Nautilus | all pro | 718 | 392–326 · 54.6% |
+| Dr Mundo vs Cho'Gath | all pro | 40 | 23–17 · 57.5% |
+| LeBlanc vs Aurelion Sol | all pro | 6 | 3–3 · 50.0% |
+| Nidalee vs Elise | to 2014-12-31 | 14 | 5–9 · 35.7% |
+| Bel'Veth vs Naafiri | all pro | 0 | zero state |
+| Naafiri vs Nunu | all pro | 0 | one raw meeting, outside the policy — excluded and reported |
+| Ryze vs Azir | Worlds 2025 Main Event | 0 | zero state, scope respected |
+| Olaf vs Olaf | — | — | 400, refused |
+
+## Next recommended slice
+
+**Decide whether the pair sample earns a race.** `champion-players` filtered to
+a pair is semantically valid and was deferred only because 62 events is a thin
+race. The honest question is whether a reader who now sees "Olaf 38–24 against
+K'Sante" wants *which players* produced it — which is a ranked board over the
+pair sample, not an animation. Build it only if the summary proves useful, and
+keep the denominator labelled with the pair, never with "all games".
+
+Do **not** add KDA, gold@15 or item builds to this surface first. They are
+statistics about games; the pair population is a claim about which games, and
+the claim is the thing worth proving before decorating it.

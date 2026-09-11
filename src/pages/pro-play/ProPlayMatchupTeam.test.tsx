@@ -3791,24 +3791,71 @@ describe("the exact matchup study", () => {
     expect(within(study).queryByTestId("study-actions")).toBeNull();
   });
 
-  it("offers NO quiz and NO pro-graph action", async () => {
-    // Neither destination can currently be handed this matchup, and a link
-    // that drops the champions on the way is worse than no link. There is no
-    // disabled button and no "coming soon" — the row simply does not carry
-    // them. This test is the guard on that promise.
+  it("offers NO quiz action, and every action it does offer keeps the champions", async () => {
+    // STEP 11 CHANGED HALF OF THIS TEST, DELIBERATELY. Until Step 11 the Pro
+    // Play data surface could only be handed ONE champion, so it was absent
+    // for the same reason the quiz still is: a link that drops half the
+    // matchup is worse than no link. It now takes a pair, so it is here — and
+    // the quiz still is not, because `/quiz` accepts no champion at all.
+    // There is still no disabled button and no "coming soon".
     const { study } = await openStudy();
     const row = within(study).getByTestId("study-actions");
     for (const href of row.querySelectorAll("a")) {
       const to = href.getAttribute("href") ?? "";
-      expect(to.startsWith("/combat-lab") || to.startsWith("/lol/docs/champions/")).toBe(
-        true,
-      );
+      expect(
+        to.startsWith("/combat-lab") ||
+          to.startsWith("/lol/docs/champions/") ||
+          to.startsWith("/lol/pro-play/graphs?focus=matchup"),
+      ).toBe(true);
     }
     expect(row.textContent).not.toMatch(/quiz/i);
-    expect(row.textContent).not.toMatch(/graph/i);
     expect(row.textContent).not.toMatch(/coming soon/i);
     expect(row.querySelectorAll("button")).toHaveLength(0);
     expect(row.querySelectorAll("[disabled]")).toHaveLength(0);
+  });
+
+  // --- Step 11: the broader professional sample -----------------------------
+
+  it("offers Explore Pro Data with BOTH champions and no player", async () => {
+    // The destination is a DIFFERENT population — every pro game in which the
+    // two champions met, not these two players' games — so the link must
+    // carry the champions and nothing that would make the broader sample look
+    // like this one, filtered.
+    const { study } = await openStudy();
+    const action = within(study).getByTestId("study-action-pro-data");
+    expect(action).toHaveTextContent("Explore Pro Data");
+    const href = action.getAttribute("href") ?? "";
+    const params = new URLSearchParams(href.split("?")[1]);
+    expect(href.split("?")[0]).toBe("/lol/pro-play/graphs");
+    expect([...params.keys()].sort()).toEqual(["a", "b", "focus"]);
+    expect(params.get("focus")).toBe("matchup");
+    // Subject first: the study is written from the subject's side, and the
+    // destination reports the subject's record.
+    expect(params.get("a")).toBe("ornn");
+    expect(params.get("b")).toBe("ambessa");
+    for (const leak of ["Doran", "Bin", "T1", "Bilibili", "patch"]) {
+      expect(href).not.toContain(leak);
+    }
+  });
+
+  it("offers no Explore Pro Data for a mirror matchup", async () => {
+    // A champion is not its own opponent, and the pair surface refuses it.
+    // Offering a link whose only outcome is a refusal is worse than no link.
+    exact = exactResponse({
+      opposing: {
+        player_lp_page: "Bin",
+        display_name: "Bin",
+        champion_key: "Ornn",
+        participation: "participated",
+        games_in_scope: 125,
+        champion_games_in_scope: 40,
+        teams_in_qualifying_games: ["Bilibili Gaming"],
+      },
+    });
+    const { study } = await openStudy();
+    expect(within(study).queryByTestId("study-action-pro-data")).toBeNull();
+    // The other two actions are unaffected.
+    expect(within(study).getByTestId("study-action-combat-lab")).toBeInTheDocument();
   });
 
   it("never implies the simulation recreates the pro game", async () => {

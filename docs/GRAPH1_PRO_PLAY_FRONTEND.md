@@ -206,3 +206,53 @@ ships. No payload contract changed.
   a family whose ranked entity is a patch.
 - The featured list is a static module. If it grows past ~12 cards it wants a
   backend-served catalog rather than more entries here.
+
+---
+
+## Champion-pair mode (Matchup Explorer Step 11)
+
+`/lol/pro-play/graphs` gained a **second mode**. The builder is unchanged; this
+sits beside it.
+
+```
+?focus=matchup&a=<subject-slug>&b=<opponent-slug>[&scope…]
+```
+
+* `focus=` still decides what kind of graph the page is. `focus=matchup` is a
+  **two-entity** state, and the page splits on it **above every hook**:
+  `ProPlayGraphs` renders either `BuilderGraphs` (everything this document
+  describes) or `ChampionMatchupGraphs`. `parseSelection` never sees
+  `focus=matchup`, so no existing deep link, request or payload moves.
+* **`e=` was not overloaded.** It means one entity everywhere else here.
+* `a` is the SUBJECT — the record, positions and side split are its own. `b`
+  is the opponent. Swap exchanges them (a **push**), reads the identical games
+  and reports the inverse record.
+* Scope is the same `Graph1Scope`, the same parameters and the same
+  `/api/graph1/scope-values` options. There is no second time model.
+
+It is **not** a family. The four families are `<family>:<one entity>` over a
+time axis; a pair is two entities whose useful first answer is a summary, and
+a pair token in the key space would have collided with the
+`champion-teams:<slug>:bans` mode token. It reads
+`GET /api/graph1/champion-matchup`, a sibling over the same canonical tables
+and the same competition policy.
+
+**Families that do NOT appear in pair mode, and why:** `player-champions` and
+`team-champions` (the focus is not a champion); `champion-teams:…:bans` (a
+banned champion has no player row, so the pair sample is empty by
+construction); the `share` ratio board (its denominator silently becomes "games
+in which the pair met" under the same word). `champion-players` and
+`champion-teams` picks are semantically valid under a pair filter and were
+deferred only because the sample is too small to animate.
+
+**States:** zero games is a **200** and a product zero state, never an error and
+never a fallback to one champion. 404 is an unknown champion; 400 is a champion
+against itself or a malformed scope; a missing or malformed slug is handled in
+the client and issues no request at all.
+
+**Cost:** ~2 KB per pair, 0.3–2.0 s cold, ~1 ms warm, against 520 KB–2.25 MB
+and 4.2 s for a cold champion race. Same `BoundedPayloadCache` and
+`SingleFlight`, own key namespace, policy version in the key.
+
+Full contract, sample definition and corpus proofs:
+`docs/PRO_PLAY_MATCHUP_EXPLORER_HANDOFF.md` § Step 11.

@@ -20,6 +20,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ArrowLeft, BarChart3 } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
+import ChampionMatchupPanel from "@/components/graph1/ChampionMatchupPanel";
 import EntityPicker from "@/components/graph1/EntityPicker";
 import FeaturedGraphs from "@/components/graph1/FeaturedGraphs";
 import GraphBuilderControls from "@/components/graph1/GraphBuilderControls";
@@ -44,6 +45,13 @@ import {
   type Graph1MetricChoice,
   type Graph1Mode,
 } from "@/graph1/builder";
+import {
+  championMatchupHref,
+  isMatchupFocus,
+  matchupTitle,
+  parseChampionPair,
+} from "@/graph1/championMatchup";
+import { useGraph1ChampionMatchup } from "@/graph1/useGraph1ChampionMatchup";
 import { resolveDisplayToggles, type Graph1DisplayToggles } from "@/graph1/contract";
 import { defaultCardFor, type Graph1FeaturedCard } from "@/graph1/featured";
 import {
@@ -199,7 +207,29 @@ function Notice({
   );
 }
 
+/**
+ * The page. One of two modes, decided by `focus` alone.
+ *
+ * `focus=matchup` is a TWO-entity state and every other focus is a one-entity
+ * state, so they are two components rather than one component with a pair of
+ * optional parameters — the builder's entity, metric, mode and race controls
+ * mean nothing to a pair sample, and a pair's subject/opponent orientation
+ * means nothing to a race.
+ *
+ * The split is here, above every hook, so the existing builder path is
+ * byte-identical to what it was: `parseSelection` never sees `focus=matchup`
+ * and no single-champion deep link changes.
+ */
 export default function ProPlayGraphs() {
+  const [searchParams] = useSearchParams();
+  return isMatchupFocus(searchParams) ? (
+    <ChampionMatchupGraphs />
+  ) : (
+    <BuilderGraphs />
+  );
+}
+
+function BuilderGraphs() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const selection = useMemo(() => parseSelection(searchParams), [searchParams]);
@@ -617,6 +647,252 @@ function GraphError({
       <Notice tone="error">{message}</Notice>
       {detail && <p className="text-xs text-muted-foreground">{detail}</p>}
       {scoped && (status === 409 || status === 400) && (
+        <Button type="button" size="sm" variant="outline" onClick={onClear}>
+          Show all pro play
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * `focus=matchup` — the champion-pair sample.
+ *
+ * `a` is the SUBJECT and `b` the opponent, and Swap exchanges them. Both
+ * orientations read the identical games; what changes is whose record is
+ * reported. A reversal is a PUSH, so Back returns to the orientation the
+ * reader was looking at.
+ *
+ * Scope is the same server-side predicate the builder uses — the same
+ * control, the same parameters, the same canonical values — so "Olaf vs
+ * K'Sante at Worlds 2025" is narrowed by exactly the rule that narrows a
+ * race. There is no second time model on this page.
+ */
+function ChampionMatchupGraphs() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pair = useMemo(() => parseChampionPair(searchParams), [searchParams]);
+  const scope = useMemo(() => parseScope(searchParams), [searchParams]);
+
+  const subjectSlug = pair.status === "ready" ? pair.subject : "";
+  const opponentSlug = pair.status === "ready" ? pair.opponent : "";
+
+  const scopeValues = useGraph1ScopeValues();
+  const champions = useGraph1Champions(undefined, true);
+  const matchup = useGraph1ChampionMatchup(subjectSlug, opponentSlug, undefined, {
+    enabled: pair.status === "ready",
+    scope,
+  });
+
+  const [query, setQuery] = useState("");
+  const championOptions = useMemo(() => {
+    const all = champions.data?.entities ?? [];
+    const needle = query.trim().toLowerCase();
+    const matches = needle
+      ? all.filter(
+          (c) => c.label.toLowerCase().includes(needle) || c.id.includes(needle),
+        )
+      : all;
+    return {
+      rows: matches.slice(0, MAX_CHAMPION_ROWS),
+      hidden: Math.max(0, matches.length - MAX_CHAMPION_ROWS),
+    };
+  }, [champions.data, query]);
+
+  const commit = useCallback(
+    (
+      next: { subject?: string; opponent?: string; scope?: Graph1Scope },
+      { push = true }: { push?: boolean } = {},
+    ) => {
+      const subject = next.subject ?? subjectSlug;
+      const opponent = next.opponent ?? opponentSlug;
+      const params = new URLSearchParams(
+        championMatchupHref(subject, opponent, next.scope ?? scope).split("?")[1],
+      );
+      setSearchParams(params, { replace: !push });
+    },
+    [subjectSlug, opponentSlug, scope, setSearchParams],
+  );
+
+  // The names to print. The loaded payload is authoritative — it carries the
+  // canonical champion names — and the picker row is the good intermediate,
+  // so the heading reads "Olaf vs K'Sante" rather than "olaf vs ksante" while
+  // the sample is in flight.
+  const nameFor = (slug: string) =>
+    championOptions.rows.find((c) => c.id === slug)?.label ??
+    (champions.data?.entities ?? []).find((c) => c.id === slug)?.label ??
+    slug;
+  const subjectName = matchup.data?.subject.name ?? nameFor(subjectSlug);
+  const opponentName = matchup.data?.opponent.name ?? nameFor(opponentSlug);
+
+  const title =
+    pair.status === "ready"
+      ? matchupTitle(subjectName, opponentName)
+      : "Champion matchup";
+  const subtitle = describeScope(scope, {
+    league: scope.league ? scopeLabelIndex(scopeValues.data)[scope.league] : undefined,
+    tournament: scope.tournament
+      ? scopeLabelIndex(scopeValues.data)[scope.tournament]
+      : undefined,
+    region: scope.region ? scopeLabelIndex(scopeValues.data)[scope.region] : undefined,
+  });
+
+  return (
+    <div className="min-h-screen bg-background">
+      <SEOHead
+        title={`${title} | Pro Play | Mogzy`}
+        description="What one champion matchup looks like across professional League of Legends play — games, record and context from real pro match history."
+        path={PRO_PLAY_GRAPHS_ROUTE}
+      />
+      <div className="mx-auto w-full max-w-4xl px-4 py-8">
+        <Link
+          to="/lol/pro-play"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Back to Pro Play
+        </Link>
+
+        <header className="mb-6">
+          <div className="mb-2 flex items-center gap-3">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-[#c9a84c]/30 bg-[#c9a84c]/10"
+              aria-hidden="true"
+            >
+              <BarChart3 className="h-5 w-5 text-[#c9a84c]" />
+            </span>
+            <h1
+              className="text-2xl font-bold tracking-tight sm:text-3xl"
+              data-testid="matchup-heading"
+            >
+              {title}
+            </h1>
+          </div>
+          <p className="text-muted-foreground">{subtitle}</p>
+        </header>
+
+        <div className="space-y-5 rounded-lg border border-border/60 bg-card/40 p-4">
+          {/* Two pickers and a swap. Stacked below `sm` so a 375px screen
+              never puts two comboboxes side by side. */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="min-w-0 flex-1">
+              <EntityPicker
+                label="Champion"
+                options={championOptions.rows}
+                selectedId={subjectSlug}
+                selectedLabel={subjectSlug ? subjectName : undefined}
+                onSelect={(entity) => commit({ subject: entity.id })}
+                query={query}
+                onQueryChange={setQuery}
+                placeholder="Search champions…"
+                loading={champions.isLoading}
+                error={Boolean(champions.error)}
+                hiddenCount={championOptions.hidden}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <EntityPicker
+                label="Opponent"
+                options={championOptions.rows}
+                selectedId={opponentSlug}
+                selectedLabel={opponentSlug ? opponentName : undefined}
+                onSelect={(entity) => commit({ opponent: entity.id })}
+                query={query}
+                onQueryChange={setQuery}
+                placeholder="Search champions…"
+                loading={champions.isLoading}
+                error={Boolean(champions.error)}
+                hiddenCount={championOptions.hidden}
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              data-testid="matchup-swap"
+              disabled={pair.status !== "ready"}
+              onClick={() =>
+                commit({ subject: opponentSlug, opponent: subjectSlug })
+              }
+            >
+              Swap
+            </Button>
+          </div>
+
+          <ScopeControls
+            scope={scope}
+            values={scopeValues.data}
+            loading={scopeValues.isLoading}
+            error={Boolean(scopeValues.error)}
+            onChange={(next) => commit({ scope: next }, { push: false })}
+          />
+        </div>
+
+        <div className="mt-6 space-y-4">
+          {pair.status === "same-champion" && (
+            <Notice tone="error">
+              A champion cannot be its own opponent. Pick two different
+              champions above.
+            </Notice>
+          )}
+
+          {pair.status === "incomplete" && (
+            <Notice>
+              Pick two champions above to see what their matchup looks like
+              across professional play.
+            </Notice>
+          )}
+
+          {pair.status === "ready" && matchup.isLoading && (
+            <Notice>Loading matchup…</Notice>
+          )}
+
+          {pair.status === "ready" && matchup.error && (
+            <MatchupError
+              error={matchup.error as Error}
+              scoped={isScoped(scope)}
+              onClear={() => commit({ scope: ALL_PRO_SCOPE }, { push: false })}
+            />
+          )}
+
+          {pair.status === "ready" && !matchup.error && matchup.data && (
+            <ChampionMatchupPanel data={matchup.data} />
+          )}
+        </div>
+
+        <div className="mt-10">
+          <FeaturedGraphs hrefFor={selectionHref} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A pair request the backend refused.
+ *
+ * The zero state is NOT here: zero games is a 200 with `games: 0`, and it is
+ * an answer, not a failure. Only a 400/404/5xx reaches this.
+ */
+function MatchupError({
+  error,
+  scoped,
+  onClear,
+}: {
+  error: Error;
+  scoped: boolean;
+  onClear: () => void;
+}) {
+  const status = error instanceof Graph1HttpError ? error.status : undefined;
+  const message =
+    status === 404
+      ? "We could not find one of those champions in professional play. Pick another above."
+      : status === 400
+        ? "That is not a matchup we can look up. Pick two different champions."
+        : "The matchup could not be loaded right now. Please try again in a moment.";
+  return (
+    <div className="space-y-3">
+      <Notice tone="error">{message}</Notice>
+      {scoped && status !== undefined && status < 500 && (
         <Button type="button" size="sm" variant="outline" onClick={onClear}>
           Show all pro play
         </Button>
