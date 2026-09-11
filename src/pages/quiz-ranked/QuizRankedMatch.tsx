@@ -106,11 +106,26 @@ const AGAIN_HREF = "/quiz?play=1";
 const LOBBY_HREF = "/quiz";
 
 export function QuizRankedMatch({ matchId, viewerUserId, chrome,
+                                  entry = "recovered",
                                   paused = false, onSessionComplete,
                                   onProgress }:
 {
   matchId: string;
   viewerUserId: string;
+  /**
+   * RB3.2 — is this match being ENTERED or RECOVERED?
+   *
+   * Both words are load-bearing. It decides whether the controller makes the
+   * recovery round trip at all (see `useRankedMatch`), and it decides what the
+   * pre-first-snapshot placeholder SAYS. Until now that placeholder read
+   * "Recovering match…" for every arrival, including the overwhelmingly
+   * common one — a match created a second ago that has nothing to recover —
+   * which told a player their brand-new duel was being salvaged.
+   *
+   * Defaults to `"recovered"`, the conservative reading: a caller that does
+   * not know how it got here is treated as one that lost its place.
+   */
+  entry?: "fresh" | "recovered";
   /**
    * RB3 — hold the match while a SESSION PRESET has an informational page on
    * screen. Forwarded verbatim to `useRankedMatch`, which stops driving the
@@ -151,7 +166,7 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome,
    */
   chrome?: ReactNode;
 }) {
-  const m = useRankedMatch(matchId, viewerUserId, { paused });
+  const m = useRankedMatch(matchId, viewerUserId, { paused, entry });
   // RB3 — the reporting seam. An effect rather than a render-time call so a
   // listener's own state update cannot re-enter this render, and keyed on the
   // two values so a poll that changed neither notifies nothing.
@@ -443,9 +458,15 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome,
   // Nothing to draw yet. The arena owns the placeholder so the shell, the skin
   // and the geometry are the same ones the match will land in.
   if (!m.publicRound || !combatants) {
+    // The arena has no snapshot yet. WHY it has none is the whole difference:
+    // a fresh entry is one request away from its first round, and a recovery
+    // is rebuilding a match this client had lost. Same panel, same geometry,
+    // honest sentence.
     return (
       <CanonicalArena view={null} chrome={chrome}
-        recovering={{ eyebrow: "Ranked Duel", message: "Recovering match…" }} />
+        recovering={entry === "fresh"
+          ? { eyebrow: "Ranked Duel", message: "Entering the arena…" }
+          : { eyebrow: "Ranked Duel", message: "Recovering match…" }} />
     );
   }
 

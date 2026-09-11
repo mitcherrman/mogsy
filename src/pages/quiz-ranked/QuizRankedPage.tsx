@@ -43,10 +43,14 @@
  * ────────────────────────────────
  *   1. Router state. The scroll hands the match id over directly, so the
  *      handoff does not wait on a round trip and cannot flash the fallback.
+ *      When it is present, step 2 is NOT run at all: the question discovery
+ *      exists to answer has just been answered, and asking again only delays
+ *      the match the player is already being taken to. The id stays a hint —
+ *      the arena's own snapshot is what loads it or fails.
  *   2. Account-bound discovery (`getActiveMatch`). The refresh/reconnect path
  *      and the only one that can find a BOT match, which is never in the
- *      queue. Still authoritative: the id in step 1 is a hint from this
- *      client, and the endpoint is the server's own answer.
+ *      queue. Reached when this client arrives with no id of its own, which
+ *      is precisely the case recovery is for.
  *
  * Requires a verified non-anonymous account; a signed-out visitor gets the
  * account gate rather than a redirect, because sending them to the lobby to
@@ -139,22 +143,37 @@ function RankedMatchHost({ viewerUserId }: { viewerUserId: string }) {
   // active bot match (never in the queue, so queue status alone loses it).
   // Best-effort: a disabled or unreachable backend simply resolves to "no
   // match", and the route then returns the player to the lobby.
+  //
+  // RB3.2 — NOT RUN WHEN THE MATCH IS ALREADY KNOWN. Discovery answers the
+  // question "does this account have a match?", and a handoff has just
+  // answered it with the id of one the server created a moment ago. Asking
+  // anyway spent a request, and a Supabase session read, on the entry path of
+  // every single match — concurrently with the two the arena itself makes.
+  // The id is still only a hint: the arena's own snapshot is the authority
+  // that either loads it or fails, exactly as before.
   useEffect(() => {
+    if (handoffMatchId) { setDiscoveryDone(true); return; }
     const controller = new AbortController();
     getActiveMatch(controller.signal)
       .then((found) => { if (found) setDiscoveredMatchId(found.matchId); })
       .catch(() => { /* not recoverable — fall through to the lobby */ })
       .finally(() => setDiscoveryDone(true));
     return () => controller.abort();
-  }, []);
+  }, [handoffMatchId]);
 
   const liveMatchId = handoffMatchId ?? discoveredMatchId;
 
   if (liveMatchId) {
     // No `Frame` here any more: the arena brings its own shell, so the styling
     // context cannot be forgotten by whoever hosts it next.
+    //
+    // RB3.2 — the route knows WHICH KIND of entry this is, and says so. An id
+    // that came from the handoff is a match the server has just created, so
+    // there is nothing to recover; an id that came from discovery was found
+    // because the client had lost track of it, which is what recovery is for.
     return (
       <QuizRankedMatch matchId={liveMatchId} viewerUserId={viewerUserId}
+        entry={handoffMatchId ? "fresh" : "recovered"}
         chrome={<RankedRouteHeader size="wide" />} />
     );
   }

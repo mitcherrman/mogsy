@@ -129,6 +129,10 @@ export function PlaytestMatchHost({
           matchId={matchId}
           viewerUserId={viewerUserId}
           chrome={chrome}
+          /* RB3.2 — this host CREATED the match a moment ago (see `begin`
+             below), so it is the most certainly-fresh entry there is. It has
+             no transcript to rebuild and must not ask the server for one. */
+          entry="fresh"
           paused={session.paused}
           onSessionComplete={session.advance}
           onProgress={(segments, over) => {

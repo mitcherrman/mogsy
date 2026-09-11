@@ -24,8 +24,10 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: { id: "owner-uuid", is_anonymous: false } }),
 }));
 vi.mock("./QuizRankedMatch", () => ({
-  QuizRankedMatch: ({ matchId, viewerUserId }: { matchId: string; viewerUserId: string }) => (
-    <div data-testid="match-view" data-viewer={viewerUserId}>{matchId}</div>
+  QuizRankedMatch: ({ matchId, viewerUserId, entry }:
+  { matchId: string; viewerUserId: string; entry?: string }) => (
+    <div data-testid="match-view" data-viewer={viewerUserId}
+      data-entry={entry ?? "(unset)"}>{matchId}</div>
   ),
 }));
 vi.mock("@/lib/ranked-public/client", () => ({
@@ -80,6 +82,42 @@ describe("/quiz/ranked — the live-match host", () => {
     renderRoute();
     expect(screen.getByTestId("ranked-loading")).toBeTruthy();
     expect(screen.queryByTestId("lobby")).toBeNull();
+  });
+
+  /**
+   * RB3.2 — RECOVERY IS EXCEPTIONAL, AND A HANDOFF IS NOT IT.
+   *
+   * The bot join answers `matched` with a match id, so by the time this route
+   * mounts the server has already created the match and told this client its
+   * id. Discovery answers the question "does this account have a match?" —
+   * which has just been answered — and it was being asked anyway, on the entry
+   * path of every single match, alongside the two requests the arena makes.
+   */
+  it("asks discovery NOTHING when the scroll handed a match over", async () => {
+    h.getActiveMatch.mockResolvedValue({ matchId: "rkm_other", isBotMatch: false });
+    renderRoute({ matchId: "rkm_fresh" });
+    await waitFor(() =>
+      expect(screen.getByTestId("match-view")).toHaveTextContent("rkm_fresh"));
+    expect(h.getActiveMatch).not.toHaveBeenCalled();
+  });
+
+  it("tells the arena a handed-over match is a FRESH entry", async () => {
+    h.getActiveMatch.mockResolvedValue(null);
+    renderRoute({ matchId: "rkm_fresh" });
+    await waitFor(() => expect(screen.getByTestId("match-view")).toBeTruthy());
+    expect(screen.getByTestId("match-view").getAttribute("data-entry")).toBe("fresh");
+  });
+
+  it("tells the arena a DISCOVERED match is a recovery", async () => {
+    // The refresh/reconnect path: this client arrived with no id of its own,
+    // which is the one circumstance recovery exists for.
+    h.getActiveMatch.mockResolvedValue({ matchId: "rkm_found", isBotMatch: true });
+    renderRoute();
+    await waitFor(() =>
+      expect(screen.getByTestId("match-view")).toHaveTextContent("rkm_found"));
+    expect(screen.getByTestId("match-view").getAttribute("data-entry"))
+      .toBe("recovered");
+    expect(h.getActiveMatch).toHaveBeenCalledTimes(1);
   });
 
   it("sends a matchless visitor to the lobby's match-entry record", async () => {

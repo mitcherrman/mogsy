@@ -231,6 +231,26 @@ export interface RankedMatchOptions {
    * without spending the player's answer time on it.
    */
   paused?: boolean;
+  /**
+   * RB3.2 — is this match being ENTERED, or RECOVERED?
+   *
+   * `"fresh"` is a caller that already holds a match id the server has just
+   * handed it: the bot join that answered `matched`, or the pairing beat that
+   * did. There is nothing to recover for such a match — no settled round, no
+   * result, no transcript — so the recovery round trip is skipped and the
+   * ordinary snapshot, which is what actually paints the arena, is the first
+   * and only request.
+   *
+   * The DEFAULT is `"recovered"`, which is the behaviour every caller had
+   * before this option existed: resume first, then poll.
+   *
+   * It is an OPTIMISM, never an authority. The very first snapshot re-decides:
+   * a match that turns out to have settled rounds (a restored history entry, a
+   * back-navigation into a match that has moved on) recovers its transcript
+   * immediately, from the server's own count rather than from the caller's
+   * claim. See `entryRef` below.
+   */
+  entry?: "fresh" | "recovered";
 }
 
 export function useRankedMatch(matchId: string | null, viewerUserId: string,
@@ -238,6 +258,12 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   const paused = options.paused === true;
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
+  // Read ONCE per mount. A re-render must not turn a match that has already
+  // been recovered back into a fresh one, and must not re-arm the recovery of
+  // one that has already had it.
+  const freshEntryRef = useRef(options.entry === "fresh");
+  /** Has the recovery round trip run for THIS match yet? */
+  const recoveredRef = useRef(false);
   const [publicRound, setPublicRound] = useState<PublicRoundView | null>(null);
   const [roundNumber, setRoundNumber] = useState<number | null>(null);
   const [privatePlayer, setPrivatePlayer] = useState<PrivatePlayerView | null>(null);
@@ -510,6 +536,19 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
       setError(null);
       failuresRef.current = 0;
 
+      // RB3.2 — THE SERVER RE-DECIDES WHETHER THIS WAS A FRESH ENTRY.
+      //
+      // `entry: "fresh"` is the caller's optimism, and this is where it is
+      // checked against the only authority there is: the match's own settled
+      // round count. A match that has already played rounds is one being
+      // returned to — a back-navigation into a live duel, a restored history
+      // entry — so its transcript, reveal and ledger are recovered now, at the
+      // cost of one round trip that a genuinely fresh match never pays.
+      // `recover` is idempotent per match, so this can never double-recover.
+      if (!recoveredRef.current && pub.completedRounds > 0) {
+        void recoverRef.current?.();
+      }
+
       if (pub.matchOver) {
         stoppedRef.current = true;
         try {
@@ -563,6 +602,71 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
   // is populated by the time that effect kicks the loop off.
   useEffect(() => { pollRef.current = poll; });
 
+  /**
+   * THE RECOVERY ROUND TRIP — `POST /resume`.
+   *
+   * Rebuilds what a snapshot alone cannot: the last settlement, its reveal,
+   * the segment transcript, the finished result and the damage ledger. That is
+   * a real need for a player returning to a match already in progress, and no
+   * need at all for one entering a match created a moment ago.
+   *
+   * Runs at most ONCE per match. `recoveredRef` is what stops a fresh entry
+   * whose first snapshot turns out to be mid-match from recovering twice.
+   */
+  const recover = useCallback(async () => {
+    if (!matchId || recoveredRef.current) return;
+    recoveredRef.current = true;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const resume = await api.resumeMatch(matchId, controller.signal);
+      setPublicRound(resume.public);
+      setPrivatePlayer(resume.private);
+      setResult(resume.result);
+      setSkewMs(snapshotSkewMs(resume.serverTime, Date.now()));
+      activeRoundRef.current = resume.public.activeRound?.roundNumber ?? null;
+      if (activeRoundRef.current !== null) setRoundNumber(activeRoundRef.current);
+      if (resume.latestResolved) {
+        const raw = (resume.latestResolved as { payload: unknown }).payload;
+        // Ids from the RESUMED snapshot. This previously used a mapping built
+        // during the mount render, when `publicRound` was still null and the
+        // opponent id was therefore "" — which the adapter rejects, so the
+        // reveal was dropped on every single refresh.
+        const ids = idMappingFromRound(resume.public, viewerUserId);
+        try {
+          if (ids) setLastResolved(adaptBackendSettlement(raw as ResolvedProjection, ids));
+        } catch (e) {
+          console.error("[ranked] resumed settlement failed to adapt", e);
+        }
+        // Recovered separately so a transcript survives a refresh even if
+        // the arena settlement adapter rejects an older payload shape. The
+        // round it settled on comes from the SAME envelope, so the two can
+        // never describe different rounds.
+        try {
+          const segment = readSegmentSettlement(raw);
+          setLastSegmentSettlement(segment);
+          setLastSegmentRoundNumber(
+            segment ? (resume.latestResolved as { round_number?: number })
+              .round_number ?? null : null);
+        } catch { /* a malformed reveal simply shows no transcript */ }
+        // Resume replays a reveal the player has usually already seen, and it
+        // must not hold interactivity hostage on reconnect.
+      }
+      // Background, and deliberately NOT awaited: the poll loop must start on
+      // time whether or not the ledger can be recovered.
+      void backfillDamageLog(resume.public, controller.signal);
+    } catch (e) {
+      if (api.isContractError(e)) { failContract("resume", e); return; }
+      if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
+    }
+  }, [matchId, viewerUserId, backfillDamageLog, failContract]);
+
+  // Held in a ref for the same reason `poll` is: the mount effect and the poll
+  // loop both reach it, and neither may be pinned to the closure that existed
+  // when the match was first mounted.
+  const recoverRef = useRef<(() => Promise<void>) | null>(null);
+  useEffect(() => { recoverRef.current = recover; });
+
   const poke = useCallback(() => {
     if (!stoppedRef.current && !pausedRef.current) {
       clearTimer();
@@ -604,6 +708,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     stoppedRef.current = false;
     activeRoundRef.current = null;
     resolvedRef.current = null;
+    // Per MATCH, not per mount: switching `matchId` inside a mounted
+    // controller must be able to recover the new match too.
+    recoveredRef.current = false;
     setRoundNumber(null);
     // Everything below describes ONE match. The refs above were already reset
     // here; the settlement state was not, so switching `matchId` inside a
@@ -614,49 +721,16 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
     setLastSegmentSettlement(null);
     setLastSegmentRoundNumber(null);
     (async () => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      try {
-        const resume = await api.resumeMatch(matchId, controller.signal);
-        setPublicRound(resume.public);
-        setPrivatePlayer(resume.private);
-        setResult(resume.result);
-        setSkewMs(snapshotSkewMs(resume.serverTime, Date.now()));
-        activeRoundRef.current = resume.public.activeRound?.roundNumber ?? null;
-        if (activeRoundRef.current !== null) setRoundNumber(activeRoundRef.current);
-        if (resume.latestResolved) {
-          const raw = (resume.latestResolved as { payload: unknown }).payload;
-          // Ids from the RESUMED snapshot. This previously used a mapping built
-          // during the mount render, when `publicRound` was still null and the
-          // opponent id was therefore "" — which the adapter rejects, so the
-          // reveal was dropped on every single refresh.
-          const ids = idMappingFromRound(resume.public, viewerUserId);
-          try {
-            if (ids) setLastResolved(adaptBackendSettlement(raw as ResolvedProjection, ids));
-          } catch (e) {
-            console.error("[ranked] resumed settlement failed to adapt", e);
-          }
-          // Recovered separately so a transcript survives a refresh even if
-          // the arena settlement adapter rejects an older payload shape. The
-          // round it settled on comes from the SAME envelope, so the two can
-          // never describe different rounds.
-          try {
-            const segment = readSegmentSettlement(raw);
-            setLastSegmentSettlement(segment);
-            setLastSegmentRoundNumber(
-              segment ? (resume.latestResolved as { round_number?: number })
-                .round_number ?? null : null);
-          } catch { /* a malformed reveal simply shows no transcript */ }
-          // Resume replays a reveal the player has usually already seen, and it
-          // must not hold interactivity hostage on reconnect.
-        }
-        // Background, and deliberately NOT awaited: the poll loop below must
-        // start on time whether or not the ledger can be recovered.
-        void backfillDamageLog(resume.public, controller.signal);
-      } catch (e) {
-        if (api.isContractError(e)) { failContract("resume", e); return; }
-        if (api.isFatal(e)) { setError((e as RankedApiError).message); return; }
-      }
+      // RB3.2 — RECOVERY IS EXCEPTIONAL, and a fresh entry is not it.
+      //
+      // A match id the server has just handed this client — the bot join that
+      // answered `matched`, or the pairing beat that did — describes a match
+      // with no settled round, no result and no transcript. `POST /resume`
+      // exists to rebuild exactly those three things, so running it here asks
+      // the server to reconstruct nothing, on the one request path the player
+      // is actually waiting behind. The snapshot below is what paints the
+      // arena; on a fresh entry it is now the ONLY request that has to.
+      if (!freshEntryRef.current) await recoverRef.current?.();
       void pollRef.current?.();
     })();
     hbRef.current = window.setInterval(() => {
