@@ -1070,3 +1070,348 @@ Backend: `services/pro_status.py`, `test_ranked_bot_premium_access.py`.
 ## Next task
 
 **RB4 — the playtest content and copy pass.**
+
+---
+
+# RB4A — the guided Playtest is a TEMPORARY exhaustive content audit
+
+> **THIS IS NOT THE FINAL PLAYTEST SEQUENCE.** The owner will play the
+> exhaustive version and prune it during **RB4B**, which is the next task in
+> this workstream. Nothing below is a content-quality judgement; it is a
+> census.
+
+## Objective
+
+RB3 shipped a seven-slot demonstration tuned to ten to fifteen minutes. The
+owner replaced that objective for one pass: before any of it is polished, they
+want to personally play **two to four questions of every currently servable
+production question family, every currently published Ranked-compatible static
+Mastery set, and every distinct playable module type**, and prune from there.
+
+Session length was deliberately NOT optimised. One pass is 43 segments and
+**63 gameplay answers**.
+
+## The governing architecture is unchanged
+
+`guided orchestration → canonical Bot Ranked`. Every question is an existing
+module, at a shipped version, resolving an existing production source through
+the renderer Ranked already has. There is no Playtest question bank, no
+Playtest question, no Playtest renderer, no second quiz engine, no copied
+payload and no parallel Mastery implementation.
+
+## The authorities, and what they actually say
+
+| Question | Authority (current source) | Answer |
+| --- | --- | --- |
+| Which quiz families may Ranked serve? | `ranked_public.shared_bank.POOLS` | 8 pools, **16 distinct families** |
+| Which are reachable from a SHIPPED format? | `modern_ranked_format` + `ranked_points_v2_format` | **14** |
+| Which Meta Reflex cards exist? | `ranked_formats.schema._PLAYTEST_META_REFLEX_FAMILIES` | **18** candidate families |
+| Which Mastery sets may `mastery_slice` name? | `mastery.publication_gate.ranked_catalog.COMPATIBLE_MASTERY_SETS` | **3** |
+| Which modules can Ranked render? | `ranked_modules.registry` + `src/lib/ranked-core/modules/registry.ts` | **3** module ids |
+
+### The 14 vs 16 reconciliation
+
+The recent audit's "14 production families" is **correct and is a different
+count from 16**, not a contradiction:
+
+* **16** = every family named by the eight pools in `POOLS`;
+* **14** = the families reachable from a pool that a SHIPPED production format
+  actually names.
+
+The gap is exactly `hard_item_graph` (`item_missing_component_v2`,
+`item_final_from_components_v2`) — a declared, contract-valid, `validate_pools`
+-clean pool that **no shipped format names**. It is reachable Ranked
+*configuration*, not reachable Ranked *gameplay*. RB4A audits it deliberately
+(it is precisely a thing the owner should decide about) and flags it as such,
+rather than folding it in with the seven pools ordinary Ranked plays.
+
+`combat_cooldown` is the other reason a family count and a source count differ:
+it backs both `hard_cooldowns` (tier 3, recall) and `scenario_cooldowns`
+(tiers 4-5, worked under pressure). Those are materially different question
+shapes on different clocks, so RB4A audits them as **two entries**, giving that
+one family 4 questions across 2 prunable entries. 16 families → **17 audited
+quiz sources**.
+
+## Inclusion / exclusion rules
+
+**INCLUDE** — a quiz family named by any pool in `POOLS`. That registry IS the
+Ranked serving authority, and `validate_pools` has already proved every member
+is RANKED-declared, in `SERVEABLE`, and not recognition-only.
+
+**EXCLUDE**, with the reason recorded rather than the family silently dropped:
+
+| Class | Count | Why |
+| --- | --- | --- |
+| RETIRED | 4 | `casts_before_oom`, `champion_ability_cooldown_max`, `champion_ability_cooldown_rank1`, `summoner_spell_cooldown_exact` — withdrawn; `WITHHELD_FROM_SERVING` |
+| HOLD | 2 | `esports_pick_vs_ban`, `esports_top_role` — paused with a named blocker |
+| LEGACY, not served | 5 | `builder`, `item_builds_into`, `item_component`, `item_final_from_components`, `item_missing_component` — superseded by the `_v2` families the pools now name |
+| Recognition-only | 1 | `ability_recognition` — `RECOGNITION_ONLY_FAMILIES` bans it from every quiz pool by product rule; it IS audited, as a Meta Reflex card |
+| **Serveable but in NO pool** | **21** | technically generated, **not currently Ranked-reachable** |
+
+That last row is the prompt's fourth classification and the one real judgement
+call. The families are `ability_cooldown_compare/flat/haste/rank`,
+`champion_highest_base_stat`, `champion_stat_compare`, `champion_stat_level`,
+`combat_scenario`, `item_effect_cooldown`, `minion_xp_level_breakpoint`, the
+three `pro_*_comparison` families and the nine `takedown_*` families. Existing
+policy settles it: a pool is "checked-in configuration" and "a deliberate
+content choice", so making one of these Ranked-reachable means **adding a pool
+to the production registry** — which is normal Ranked content selection (out of
+scope this pass) and would also leak into the Format/Practice Builder catalog,
+which enumerates `POOLS`. They are recorded here as the RB4B/RB5 candidate
+list, not smuggled in.
+
+Also excluded: `quiz.v2` and `item_cost_duel.v5` — not superseded but the
+**points** (Ranked v2) versions of the same two modules. RB4A is an HP-scored
+format, so it uses `quiz.v1` and `item_cost_duel.v4`. `item_cost_duel.v1-v3`
+are superseded and render through a different frontend renderer that no
+production format reaches.
+
+## The seam that makes coverage enforceable
+
+A quiz segment could previously name only a POOL. Pointing two segments at a
+six-family pool and hoping the permutation covers it is not an audit, and
+`SegmentSpec` had no way to say "this slot, that family".
+
+RB4A adds the **generic narrowing** `module_config.families` — the same
+spelling `item_cost_duel.v4` has always used for its candidate list:
+
+```python
+SegmentSpec(module_id="quiz", module_version=1, challenge_count=1,
+            module_config={"pool": "easy_game_knowledge",
+                           "families": ["camp_respawn"]})
+```
+
+It can only ever **narrow**: the value must be a non-empty, non-repeating
+SUBSET of the families the named pool already declares, and a family the pool
+does not declare is refused rather than ignored. Because it subsets an
+already-validated pool, every rule `validate_pools` enforces holds for the
+narrowed view **by construction** — there is no path here to a retired,
+withheld or recognition-only family, and none to content no pool already
+cleared. Absent means the whole pool, which is what every format saved before
+this key existed means and must keep meaning.
+
+No pool was added, no question row was duplicated, and the Builder catalog
+still offers only `module_config.pool`.
+
+### Three corrections the narrowing forced
+
+1. **Readiness iterates SOURCES, not pool ids.** A pool holding thousands of
+   rows can still leave one narrowed segment with nothing to serve;
+   a pool-level size check would have passed that format and then killed the
+   match mid-session with `RANKED_MODULE_DATA_UNAVAILABLE`.
+   `assert_format_servable` now refuses at creation and **names the exact
+   family**. (`required_pool_sources`, `source_label`.)
+2. **`pool_serve_ordinal` counts sources too.** Two segments narrowing one pool
+   differently walk two providers, and one shared counter would have stepped
+   each past questions it had never served. An unnarrowed format is unaffected:
+   its source is `(pool, ())` for every segment.
+3. **The provider cache keys on the narrowing**, for exactly the reason it
+   already keys on the mode.
+
+## Why the owner is guaranteed to reach the end
+
+A Ranked match ends on **HP**, not on running out of pattern. At production
+damage (10-22 a losing exchange against a 150 HP start) a 43-segment sequence
+would settle around a quarter of the way through and the audit would silently
+have shown a quarter of the catalog.
+
+Every zero-sum RB4A segment therefore deals **2 / 1** (`_RB4A_DAMAGE`) — the
+smallest pair that keeps the HP bar a real, visible, auditable thing.
+`_rb4a_worst_case_damage()` states the arithmetic: every exchange lost AND
+every Meta Reflex block conceded perfectly is **115 HP**, against a minimum
+starting HP of **150**. A test pins that inequality, so the guarantee cannot
+rot as entries are pruned in RB4B.
+
+The pattern still cycles; the match settles somewhere in the second pass, after
+the audit is complete.
+
+Timers are the production numbers per tier (easy 20s, medium 25s, hard 35s,
+scenario 40s, Meta Reflex card 6s). Nothing else was softened.
+
+## The exact sequence
+
+**43 segments · 63 answers · every tag unique and `rb4a_`-namespaced**
+
+### 1-34 — ordinary production quiz families, grouped by pool (34 answers)
+
+Two questions each, one segment per question, in `POOLS` declaration order.
+
+| Pool | Families audited | Qs | Tag prefix |
+| --- | --- | --- | --- |
+| `easy_item_cost` | `item_cost` | 2 | `rb4a_q_easy_item_cost_*` |
+| `easy_game_knowledge` | `objective_spawn`, `objective_baron_spawn`, `objective_first_dragon_spawn`, `camp_respawn`, `environment_mechanic`, `summoner_spell_cooldown` | 12 | `rb4a_q_easy_game_knowledge_*` |
+| `medium_item_stats` | `item_exact_stat`, `item_multi_stat`, `item_three_unique_stats` | 6 | `rb4a_q_medium_item_stats_*` |
+| `medium_item_graph` | `item_builds_into_v2`, `item_component_v2` | 4 | `rb4a_q_medium_item_graph_*` |
+| `medium_ability_costs` | `ability_cost_rank` | 2 | `rb4a_q_medium_ability_costs_*` |
+| `hard_item_graph` ⚠ | `item_missing_component_v2`, `item_final_from_components_v2` | 4 | `rb4a_q_hard_item_graph_*` |
+| `hard_cooldowns` | `combat_cooldown` | 2 | `rb4a_q_hard_cooldowns_*` |
+| `scenario_cooldowns` | `combat_cooldown` | 2 | `rb4a_q_scenario_cooldowns_*` |
+
+⚠ = declared pool that no shipped format names (see the 14/16 reconciliation).
+Full tag is `rb4a_q_<pool>_<family>_<1|2>`; the pool is in the tag because
+`combat_cooldown` is audited from two of them.
+
+### 35-38 — Meta Reflex, one block per card group (19 cards)
+
+| Tag | Cards | Candidate families |
+| --- | --- | --- |
+| `rb4a_reflex_item_cost` | 2 | `item_cost` |
+| `rb4a_reflex_champion_stat` | 5 | `champion_stat:` hp, ad, armor, move-speed, attack-range |
+| `rb4a_reflex_item_stat` | 5 | `item_stat:` ad, ap, armor, mr, hp |
+| `rb4a_reflex_recognition` | 7 | `recognition:` champion, item, ability · `attack_type:` melee, ranged · `resource:` mana, energy |
+
+The four groups are exactly `meta_reflex.family_group()`'s four, and together
+exactly the production block's 18 candidates. **Why one group per block:**
+`choose_families` deals round-robin across the groups a candidate list spans
+and cycles within a group, so a single-group block degenerates to a plain cycle
+— `challenge_count == len(families)` therefore deals every declared family
+**exactly once, for every seed**. That is measured over 480 draws in the test
+suite, not assumed. A mixed 5-card block's family set is decided by a seed,
+which is the right production behaviour and the wrong audit instrument; the
+mixed composition is what ordinary Ranked already shows the owner.
+
+### 39-43 — the three published Mastery sets (10 answers)
+
+| Tag | Set | Variant | Qs |
+| --- | --- | --- | --- |
+| `rb4a_mastery_champion_fundamentals` | `playtest.champion.ahri` | `fundamentals` | 2 |
+| `rb4a_mastery_champion_progression` | `playtest.champion.ahri` | `progression` | 2 |
+| `rb4a_mastery_matchup_recall` | `playtest.matchup.ahri.syndra` | `atomic_recall` | 2 |
+| `rb4a_mastery_matchup_comparisons` | `playtest.matchup.ahri.syndra` | `harder_comparisons` | 2 |
+| `rb4a_mastery_combat_chain` | `chain.jarvan.physical_penetration` | (whole set) | 2 |
+
+Real `mastery_set_id`s through the canonical `mastery_slice.v1` module — never
+an on-demand recipe standing in for a published set. `allowed_variants` is the
+EXISTING generation filter, and it is what makes a 2-question sample show a
+shape worth judging: a manifest set's steps are taken in curriculum order, so
+without a filter every sample of every set is its first beat. `reinforcement`
+is deliberately never sampled — both manifest sets declare it as "repeat recall
+on the earlier material", so by its own declaration it is not a distinct shape.
+The chain is unfiltered because its whole set is two steps, one per penetration
+scenario, and a variant filter could only take one of them (and would fall
+under `MIN_CHALLENGE_COUNT = 2` doing it).
+
+The generic on-demand Champion/Matchup synthesis system is **out of scope by
+the owner's own rule**: those are recipes over the same gameplay shape, not a
+finite static content catalog.
+
+## Counts
+
+| | |
+| --- | --- |
+| Included production quiz families (distinct ids) | **16** |
+| Included quiz sources (pool × family entries) | **17** |
+| Included Meta Reflex candidate families | **18** |
+| Included static Ranked-compatible Mastery sets | **3** |
+| Distinct module types | **3** (`quiz`, `item_cost_duel`, `mastery_slice`) |
+| Segments in one pass | **43** |
+| **Gameplay answers in one complete pass** | **63** |
+| Worst-case HP lost in one pass (min start 150) | **115** |
+
+## Files changed
+
+Backend (`League_Combat_Simulator`), master `97e40ef9`:
+
+| File | Change |
+| --- | --- |
+| `ranked_formats/schema.py` | `CONFIG_POOL_FAMILIES`; `_validate_pool_families`; `segment_pool_families` / `segment_pool_source`; `pool_serve_ordinal` keyed on the source; `_RB4A_DAMAGE`, `_rb4a_quiz`, `_rb4a_quiz_pair`, `_RB4A_REFLEX_BLOCKS`, `_rb4a_meta_reflex`, `_rb4a_mastery`, `_rb4a_mastery_whole`, `_rb4a_worst_case_damage`; the rewritten `_guided_playtest_segment_pattern` |
+| `ranked_public/shared_bank.py` | `narrowed_spec`; `families=` on `_load` / `load_pool` / `load_pool_rows` / `pool_provider`; the narrowing in the provider cache key and the provider label |
+| `ranked_public/readiness.py` | `required_pool_sources`, `source_label`; `format_readiness_report` checks narrowed providers |
+| `ranked_public/service.py` | passes the segment's `families` through to `_question_pool_provider` |
+| `scripts/rb4a_playtest_readiness.py` | **new** — read-only operator report of what a given database can serve for this sequence, per source |
+| `test_rb4a_exhaustive_playtest.py` | **new**, 25 cases |
+| `test_ranked_playtest_preset.py` | RB3's seven-slot pin replaced by a shape assertion; content is pinned against the live registries in the new module |
+
+**Frontend: no change.** The sequence uses the three module ids
+`src/lib/ranked-core/modules/registry.ts` already registers, and nothing in the
+frontend is coupled to the sequence's shape. **No Lovable Publish is required
+for RB4A.**
+
+## Tests
+
+```bash
+.venv/bin/python -m pytest test_rb4a_exhaustive_playtest.py -q          # 25 passed
+.venv/bin/python -m pytest test_ranked_playtest_preset.py -q            # 19 passed
+```
+
+The coverage cases derive from the LIVE registries — `POOLS`,
+`_PLAYTEST_META_REFLEX_FAMILIES`, `COMPATIBLE_MASTERY_SETS`,
+`ranked_modules.registry` — never from a second hand-maintained list. **Adding
+a production family or a Ranked-compatible slice later FAILS RB4A coverage
+until someone deliberately places it in the sequence.** What they prove:
+
+1. every servable Ranked quiz family is audited, and only those;
+2. no retired/HOLD/withheld/recognition-only family is reachable from it;
+3. every compatible static Mastery set is audited;
+4. every distinct production module type is represented, at a registered version;
+5. every included family gets 2-4 questions, and so does every included slice;
+6. every segment tag is unique and `rb4a_`-namespaced;
+7. `guided_playtest_format().validate()` passes;
+8. `assert_format_servable` passes when every source holds rows, and names the
+   **exact empty family** when one does not — proved against a real bank read
+   through the real loader, mode gate and override join;
+9. the narrowing can never widen a pool, and refuses an empty/duplicated list
+   and a narrowing with no pool;
+10. both production formats are structurally unchanged and carry no narrowing;
+11. an unnarrowed format's pool ordinals are byte-identical to before;
+12. no Playtest-specific source or renderer exists — every source the sequence
+    names is one production already declares.
+
+Ranked regression over 19 modules, compared as failure **SETS** against a clean
+`origin/master` worktree: **84 failed / 548 passed before, the identical 84
+after.** Zero new failures. (They are the repo's known environment baseline —
+the modern format's shared-bank pools are not seedable from these fixtures.)
+
+## ⚠ Open item for the owner — production bank coverage
+
+`assert_format_servable` fails the **whole** match on the first unservable
+source. That is correct and was kept, but it means a family holding **zero rows
+in production** blocks the entire audit session rather than one segment.
+
+This could not be verified from the development machine: the local
+`lol_calc.db` is stale enough that the **ordinary production format** is also
+unservable against it (`medium_item_graph` and `medium_ability_costs` both read
+0), so it says nothing about production. Run the new script against the
+production database before the first session:
+
+```bash
+.venv/bin/python scripts/rb4a_playtest_readiness.py /path/to/lol_calc.db
+```
+
+It prints one line per source and exits non-zero if the sequence is
+unservable. If a family comes back EMPTY, that is itself an RB4B finding — the
+family is nominally production content that Ranked cannot actually deal — and
+the fix is to prune that entry, not to weaken the gate.
+
+Related, and benign: `objective_baron_spawn` and `objective_first_dragon_spawn`
+hold very few rows. A provider with one row serves the same question for both
+of that family's two slots. That is existing provider behaviour, it still shows
+the owner the family, and it is not worked around here.
+
+## How the owner starts the session
+
+Unchanged from RB3 and deliberately out of RB4A's scope (Playtest
+discovery/entry redesign is excluded):
+
+```
+POST /api/ranked/queue   {"match_with_bot": true, "preset": "playtest"}
+```
+
+from an account holding a playtest grant. Nothing about pressing **Match with
+Bot** in the UI reaches this sequence.
+
+## Preserved
+
+Human Ranked, Bot Ranked **without** a preset, Daily, Practice and Mastery
+sessions are untouched — pinned by tests 10 and 11 above and by
+`test_ranked_playtest_preset.py`'s existing routing cases. RB2.1's invariant
+still holds: the OPPONENT never chooses the format; an explicitly requested,
+explicitly authorized SESSION does.
+
+## Current state
+
+* Backend: **committed and pushed to `master`.** Deploys automatically.
+* Frontend: **no change, no Publish.**
+* Next task: **RB4B — owner content review and pruning.** The table above is
+  the RB4A baseline it prunes from; every entry is named by a unique tag so
+  "remove that one" is unambiguous.
