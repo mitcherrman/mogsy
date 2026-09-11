@@ -233,8 +233,10 @@ describe("champion tiles on the five-lane board", () => {
       const tile = screen.getByTestId(`champ-chip-${key}`);
       expect(tile.textContent).not.toContain(key);
       // What it DOES show is the same shape for every tile, which is what
-      // makes the row a grid: wins over games, then the rate.
-      expect(tile.textContent).toMatch(/\d+\/\d+/);
+      // makes the row a grid: wins over games, then the rate. LIVE4 spaced the
+      // slash — `10/13` at tile size reads as one token, and the pool's own
+      // legend now names what the two numbers are.
+      expect(tile.textContent).toMatch(/\d+ \/ \d+/);
     }
   });
 
@@ -307,7 +309,7 @@ describe("champion tiles on the five-lane board", () => {
     expect(screen.queryByTestId("pool-expand")).toBeNull();
   });
 
-  it("uses wins/games, not an ambiguous games count", () => {
+  it("uses wins / games, not an ambiguous games count", () => {
     render(
       <ChampionPoolSummary
         pool={pool([champ({ key: "Jayce", games: 13, wins: 10, losses: 3, win_rate: 0.769 })])}
@@ -316,9 +318,13 @@ describe("champion tiles on the five-lane board", () => {
       />,
     );
     const tile = screen.getByTestId("champ-chip-Jayce");
-    expect(tile).toHaveTextContent("10/13");
+    expect(tile).toHaveTextContent("10 / 13");
     // `g` reads as gold on a League page.
     expect(tile.textContent).not.toMatch(/13g/);
+    // LIVE4: the grammar is stated once for the grid, not abbreviated on the
+    // tile. The legend is what makes two bare numbers legible.
+    expect(screen.getByTestId("pool-legend")).toHaveTextContent(/wins \/ games/i);
+    expect(tile.textContent).not.toMatch(/\bW\/G\b|\bWR\b/);
   });
 
   it("renders the other orderings as icon-only strips, not a third arsenal", () => {

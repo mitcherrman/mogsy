@@ -1685,7 +1685,6 @@ never reached 15, is not a median over three games.
 
 Do **not** add @10/@20/@25 first. More marks is more of the same claim; an
 aggregate is a new one.
-
 ## Next task
 
 1. ~~**Decide whether @15 earns an aggregate.**~~ **Answered by Step 7** (see
@@ -4189,3 +4188,344 @@ too, and one worth answering once for both rather than twice.
 
 Do **not** add more Tier A families first. One more comparison shape is more
 of the same claim; making the session count is a new one.
+
+*(LIVE4 — the visual scale and hierarchy pass — landed after this and is
+documented at the end of this file. It added no product feature and changed no
+semantics, so nothing above it is superseded.)*
+
+
+
+---
+
+# LIVE4 — the visual scale and information-hierarchy pass
+
+*(2026-09-10. One pass, twelve owner-approved items, no new product feature and
+no change to what the Explorer asserts. Everything here is about how much room
+the existing answers get and in what order a reader meets them.)*
+
+## What the pass was told not to do, and did not do
+
+Nothing was solved by deleting information. Every figure on the board and in
+the drawer before this pass is on the board and in the drawer after it. The
+server's sentences are still printed verbatim; three of them moved behind the
+dossier's own "What this means" control, which renders them into the DOM either
+way, so they are still in the accessibility tree and still quotable. No
+endpoint, no request, no ranking rule, no href and no navigation changed.
+
+## 1. The initial layout audit — measured at 1920x1080, not guessed
+
+| Box | Rule | Measured |
+|---|---|---|
+| shell | `pt-[var(--app-header-h)]` | 56px reserved above everything |
+| `<main>` | `max-w-7xl mx-auto px-0 md:px-4 lg:px-8` | 1280px, 1216px inside the gutters |
+| `ResearchPage` | `mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6` | 1152px, **1104px of content** |
+| breadcrumb | `nav.mb-2`, 12px | top 80px (production; 117px behind the dev fallback bar) |
+| `h1` | `mb-2 text-2xl md:text-[1.75rem]` | 32px + 8px |
+| first lane card | — | **top 500px** |
+| drawer | `SheetContent … w-full sm:max-w-xl` | **576px** |
+
+So: 1104px of scouting board inside a 1920px screen — 57%, with 408px of dead
+gutter on each side — and the first player card starting halfway down the
+viewport.
+
+## 2. The root cause of the top dead space
+
+Three things, and only one of them is the shell's:
+
+1. **The shell reserves 56px for a HUD that is 44px tall and lives in the two
+   corners.** Measured: the home hat occupies x 12–56, the right cluster x
+   1669–1888. The middle of the band is empty at every desktop width.
+2. **The page then added its own 24px** (`py-6`), on top of the shell's
+   reservation, for a reading column this page is not.
+3. **The breadcrumb and the title stacked to 64px** above a hero that names the
+   matchup a third time — the breadcrumb's last crumb and the `h1` are the same
+   words.
+
+**No negative margin was used, and the shell's reservation was not reduced.**
+Once the page is 1600px wide the content's top-right corner reaches x=1760 at
+1920px, which is *inside* the HUD's right cluster — so pulling the page up into
+the band would have put the identity menu on top of the page's own chrome at
+exactly the widths this pass exists to serve. The band stays reserved.
+
+What was actually reclaimed is (2) and (3): the wide variant of `ResearchPage`
+uses `pt-2` instead of `py-6`, and the breadcrumb and title share one baseline
+row above `lg` (title left, trail right, source order unchanged). The first
+lane card now starts at **~310px** instead of 500px, and the hero is visible
+without scrolling on a 900px-tall laptop.
+
+*(The `Admin-key fallback access is active` bar in a local session adds a
+further 37px. It is a development artefact of the admin-key path and does not
+render for an operator signed in with an admin account.)*
+
+## 3. Width
+
+`Layout.isFullBleed` gained `PRO_PLAY_MATCHUP_ROUTE`, on the same argument the
+Admin Quiz Review console is on that list for and with the measurement written
+beside it. `ResearchPage` gained a `wide` variant:
+
+```
+mx-auto w-full max-w-[1600px] px-4 pb-6 pt-2 md:px-6 md:pb-8
+```
+
+The three research profiles and the search page pass nothing and are byte-for-
+byte unchanged. Content at 1920px went **1104px → 1552px**; a lane half went
+**~520px → 731px**.
+
+## 4. Board scale (`@media (min-width: 1280px)`, CSS only)
+
+Portraits, lane names, player names, figure values and labels, section tabs,
+parchment padding and lane gaps all go up one step above 1280px. Nothing below
+1280px changed: a phone is short of width, not of density.
+
+## 5. The champion pool card
+
+Was an icon stacked over `10/11` over `90.9%` in a 3.15rem column. Now a
+horizontal card: **icon left, `10 / 11` right, `90.9%` beneath it**, fixed
+internal alignment, cards laid out on an explicit grid.
+
+**The grammar is stated once, for the whole grid.** Under `MOST PLAYED` sits a
+quiet `WINS / GAMES · WIN RATE` legend (`data-testid="pool-legend"`). No tile
+carries `W/G` or `WR`. The spaces around the slash are load-bearing: `10/11` at
+tile size reads as one token.
+
+**Why an explicit grid and not a wrapping row of fixed-width cards.** The
+collapsed cap is 12 and the two halves of a lane must end at the same height,
+which means the number of ROWS 12 cards take has to be *known*, not discovered
+at paint time. A fixed-width flex wrap gave 5 across at 1920 and 4 at 1440, so
+the reserved floor could not be right at both. Columns are declared per
+breakpoint, always a divisor of 12, and the floor is `12 / cols × row-height`
+from the same two numbers.
+
+| Viewport | Columns | Rows for 12 | Card |
+|---|---|---|---|
+| < 520px | 3 | 4 | ~113px |
+| 520–767px | 4 | 3 | ~135px |
+| 768–1279px | 3 | 4 | ~107–187px |
+| 1280–1499px | 4 | 3 | ~130–155px |
+| ≥ 1500px | 6 | 2 | ~103–116px |
+
+The 6-across breakpoint is set from the widest card this grid can produce
+(2.2rem icon + `10 / 11` at 0.78rem + padding ≈ 103px), not from taste.
+
+Preserved unchanged: champion order, Most Played / Most Recent / Best Record
+5g+, Show all N / Show fewer, and the record table behind `View record table`
+with all six of its columns.
+
+## 6. `POOL 21 · 100.0% of team games`
+
+Two unrelated facts in one figure. Split:
+
+```
+GAMES               CHAMPIONS
+80                  21
+80 / 80 team games
+```
+
+Participation is a property of *games*, so it annotates Games; the pool size is
+a count of champions, so the figure is called Champions. **Neither number
+changed.** The denominator is `TeamHeader.team_games_in_scope` off the board
+payload — literally the number `team_roster.py` divides by to produce
+`share_of_team_games` — carried down through `BoardSelection.teamGamesIn`, so
+the ratio on screen cannot disagree with the rate it replaces. Off the board
+(the lane view renders the same card) the server's rate is printed instead.
+
+## 7. Kiin's Sion versus HLE — verified before anything was restyled
+
+Run against the real corpus through `pro_authority.player_dossier`, the same
+module the endpoint calls:
+
+* **Kiin, Sion, 2026: 11 games, 10–1, 90.9%.** Confirmed.
+* **Zero of them against Hanwha Life Esports.** Confirmed. The eleven were vs
+  KT Rolster ×3, BNK FEARX ×2, T1 ×2, HANJIN BRION, Nongshim RedForce,
+  Dplus Kia, Kiwoom DRX.
+* **Gen.G played HLE eight times in 2026** and Kiin's champions in those games
+  were Aurora, Gnar, Ornn, Jayce, Ambessa, Gnar, Yorick, Vayne. No Sion.
+* **Sion ban pressure:** overall `3 / 80 · 3.8%`; vs HLE `1 / 8 · 12.5%`.
+* **Kiin, Ambessa, 2026: 10 games, 8–2, 80%**; vs HLE **1 game, 0–1**
+  (2026-04-18). Ban pressure overall `7 / 80 · 8.8%`, vs HLE `3 / 8 · 37.5%`.
+
+**No data defect.** Every figure on the screenshots is what the corpus holds.
+It was a presentation problem, and it was treated as one.
+
+## 8. The dossier drawer
+
+`w-full sm:max-w-xl` (576px) → `w-full sm:w-[58vw] sm:max-w-[940px]`. 940px at
+1920, 835px at 1440, 742px at 1280, full width on a phone exactly as before.
+Above 900px the drawer's padding, portraits, title, stat values, table, study
+heading, chooser icons and example icons all go up one step, and the summary
+band holds its four figures on one row instead of reflowing to two.
+
+## 9. Overall versus opponent, when the opponent sample is zero
+
+Both cases are real and both survive:
+
+* **Opponent games > 0** (Kiin's Ambessa vs HLE, 1 game): the two-column
+  comparison table is unchanged, KDA / CS/min / Gold/min / Dmg/min included.
+* **Opponent games = 0** (Kiin's Sion vs HLE): the table renders one column,
+  and beneath it a compact band —
+
+  ```
+  VS HANWHA LIFE ESPORTS
+  No games in this scope.
+  Ban pressure 1 / 8 · 12.5%
+  ```
+
+Ban pressure is kept because it is a **draft** fact with a denominator of its
+own: a champion can be banned against a team the player never played it into.
+Nothing is fabricated and nothing true was dropped — six rows of em dashes
+were.
+
+## 10. Ban-pressure methodology
+
+The metric, its numerator, its denominator and its rate are unchanged and still
+on the table. The two server definition sentences moved behind `FinePrint`
+("What this means"), which renders them hidden-but-present. The toggle itself
+was re-contrasted: at `--dsr-ink-soft` on parchment it had been reading as a
+disabled label, and it is now the only route to three paragraphs.
+
+## 11. The exact zero state
+
+Three equal-weight paragraphs became a headline, one checkable line and the
+guarantee:
+
+```
+No recorded Kiin Sion vs Zeus Jayce games in 2026.
+Kiin: 11 Sion games · Zeus: 10 Jayce games
+No game in the selected scope has both of these players on these champions on
+opposing sides. That is a fact about the record, not a gap in it — no looser
+sample is substituted.
+```
+
+**The three-way fork survives** — "not in the scope at all", "did not play the
+champion", and "played both, never met" are still three different sentences,
+because one sentence covering all three would be wrong two thirds of the time.
+The six-condition definition of "exact" moved behind `FinePrint`.
+
+## 12. Continue studying
+
+The five destinations were bare underlined links in a row — the drawer's
+footer rather than its point. They are now a named group under a quiet
+`CONTINUE STUDYING` label, drawn as restrained bordered chips (no fill, no
+shadow, no accent beyond the dossier's own gold) so they stay lighter than the
+matchup identity above them. The verbs left the labels because "Open in",
+"Study" and "Explore" were three ways of saying the same thing five times:
+
+`Combat Lab` · `Sion Mechanics` · `Jayce Mechanics` · `Pro Data` · `Quiz Matchup`
+
+**Every href, every condition and every test id is unchanged.** The mirror-
+matchup rules, the "both champions or no link" rule and the ban on a generic
+`/quiz` destination are all still asserted by the Step 10–12 tests.
+
+## 13. Other pro examples
+
+Ranking, grouping, relations, counts and navigation are untouched. The section
+is already scoped to one champion matchup, so the subject half of every row was
+the constant a reader scans *past*. Both halves still print — the subject
+genuinely varies in the `same_opposing_player` tier — but the subject reads at
+62% opacity and weight 500, the opposing player and team carry the emphasis,
+and the record became three aligned facts (`1 game` / `1–0` / `2026-06-13`)
+instead of one middot-joined string. `1g` is gone: `g` reads as gold on a
+League page. The population-and-ranking paragraph moved behind `FinePrint`.
+
+## 14. `Open lane dossier` — audited, KEPT, demoted
+
+It is **not** legacy from the old Lane-Explorer split. `mode=lane` still serves
+three things the five-lane board deliberately does not:
+
+1. the **mechanics panel** — abilities, cooldowns, costs and ranges from the
+   public `/api/docs/champions/{slug}` authority. Five of them would bury the
+   board, so the board renders none;
+2. **all four scopes at once**, side by side. The board is one scope;
+3. **roster context**, and the unbounded pool a `pool_omitted` candidate points
+   at by name ("open the lane dossier to see them in full").
+
+What it did not deserve was its weight: a gold underlined call to action on the
+lane name's own baseline, five times down the page. It moved to the plate's
+foot, after the two players it is subordinate to, in the muted voice. Link,
+destination, prefill suffix and test id unchanged. Nothing was deleted.
+
+## 15. Responsive
+
+Verified with Playwright at 375 / 768 / 1024 / 1280 / 1440 / 1520 / 1920.
+`scrollWidth === clientWidth` at every one — no horizontal overflow anywhere.
+The drawer is 375px (full) on a phone and 940px at 1920. The action chips wrap.
+The legend and the card grammar read at every width.
+
+**One deliberate trade:** at 375px the collapsed pool is four rows where it used
+to be two, because a 113px card that states its own numbers is worth more than
+a 50px one that does not. Desktop was not shrunk to avoid it.
+
+## 16. CSS quality
+
+* **The scoping defect was found and fixed.** Three desktop rules —
+  `.dossier-player__meta`, its `.dossier-slot` and `.dossier-player__team` —
+  had been pasted *inside* the `@media (max-width: 640px)` block, unindented
+  and byte-identical to their section-7 declarations. They are deleted, not
+  moved: section 7 already states them for every width.
+* Every LIVE4 rule is in one appended, delimited block (`L1`–`L10`) at the end
+  of `index.css`, each rule top-level or inside a media query it opens and
+  closes itself, and every rule namespaced under `.proplay-dossier` or the
+  route's own `.proplay-matchup-*`.
+* Brace balance verified programmatically: final depth 0, minimum depth 0.
+* No absolute positioning was used for width or layout.
+
+## 17. Files changed (frontend only)
+
+| File | Change |
+|---|---|
+| `src/components/Layout.tsx` | the matchup route joins `isFullBleed` |
+| `src/components/pro-play/ResearchShell.tsx` | `ResearchPage` gains `wide` |
+| `src/pages/pro-play/ProPlayMatchup.tsx` | `wide`, one-row route header |
+| `src/pages/pro-play/ProPlayMatchupTeam.tsx` | provides `teamGamesIn` |
+| `src/components/pro-play/dossier/BoardSelection.tsx` | `teamGamesIn` on the context |
+| `src/components/pro-play/dossier/MatchDossier.tsx` | Games hint + Champions, lane foot |
+| `src/components/pro-play/dossier/ChampionPool.tsx` | horizontal card, shared legend |
+| `src/components/pro-play/dossier/PlayerChampionDrawer.tsx` | width, empty-opponent band, definitions behind help |
+| `src/components/pro-play/dossier/MatchupStudy.tsx` | zero state, Continue studying, examples, methodology |
+| `src/index.css` | scoping fix + the LIVE4 block |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 13 new tests, 6 copy updates |
+| `src/components/pro-play/dossier/Dossier.test.tsx` | 2 copy updates |
+
+**No backend change.** The Sion/HLE verification was a read against the real
+corpus through the existing authority module; nothing was written and no
+endpoint was touched.
+
+## 18. Tests
+
+`ProPlayMatchupTeam.test.tsx` 299 (was 286), `Dossier.test.tsx` 29, all eight
+pro-play suites **569 passed / 0 failed**. Four Layout suites plus
+`App.startupFallbacks` and `AdminProCoverage.route`: **42 passed**.
+`tsc --noEmit` reports nothing in any touched file.
+
+The thirteen new tests pin semantics, not pixels: the legend exists and the
+tiles do not repeat it; a tile carries the right three numbers, spaced; the
+order and the record table are unchanged; participation annotates Games and the
+pool count is called Champions; the empty opponent column is one sentence and a
+real one is still two columns; opponent ban pressure survives a zero sample;
+the lane drill-down keeps its href and moved after the players; and the
+definitions are still in the document behind a collapsed control.
+
+
+## 19. Deploy state — LIVE4
+
+Frontend only. Recorded below once the branch reaches `main`; a push is not a
+publish, and this workstream has checked that by fetching the bundle every
+time. See "Deploy state" under Steps 3, 5, 6, 8, 9, 11 and 12 for the method.
+
+## 20. Remaining polish — optional, none blocking
+
+1. **The folio-coloured `FinePrint` toggle in lane mode** is still the original
+   low-contrast one. Only the parchment and drawer variants were re-contrasted,
+   because those are the two this pass moved methodology behind.
+2. **The two ordering strips** ("Most recent", "Best record 5g+") still wrap
+   their icons to a second row on a phone, because the label reserves 5.3rem of
+   a 343px half. Pre-existing; untouched.
+3. **The shell's background "stage" is `max-w-[88rem]`** (1408px), so at the
+   board's new 1600px the outer ~96px each side fall on the body colour behind
+   the mask fade rather than on the lit column. It reads as a vignette. It was
+   left alone on purpose: that element is on every page, and widening it for
+   one route would move all of them.
+4. **At 375px the collapsed pool is four rows** where it used to be two. A
+   deliberate trade — a 113px card that states its own numbers is worth more
+   than a 50px one that does not — recorded here so the next pass knows it was
+   chosen rather than missed.

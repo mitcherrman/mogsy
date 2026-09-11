@@ -55,6 +55,7 @@ import { matchupStudyHref } from "@/lib/quiz/matchupApi";
 
 import type { ChampionSelection } from "./BoardSelection";
 import { ChampionIcon, PlayerPortrait } from "./DossierMedia";
+import { FinePrint } from "./DossierChrome";
 
 const DID_NOT_PARTICIPATE = "did_not_participate";
 
@@ -163,8 +164,11 @@ function OpposingChooser({
                     }
                   >
                     <ChampionIcon champion={champion.key} size="sm" />
+                    {/* Spaced, like the board's tiles: the same two numbers
+                        mean the same thing in both places, and `10/10` at
+                        0.58rem reads as one token in neither. */}
                     <span className="dossier-study__championrec">
-                      {champion.wins}/{champion.games}
+                      {champion.wins} / {champion.games}
                     </span>
                   </button>
                 );
@@ -226,6 +230,11 @@ function ExactZeroState({
     opposing.participation === DID_NOT_PARTICIPATE ? opposingName : null,
   ].filter(Boolean) as string[];
 
+  // WHICH ZERO THIS IS STILL FORKS THREE WAYS. What changed in the LIVE4 pass
+  // is the length of each branch, not the number of them: a headline a reader
+  // takes in at a glance, then the two counts that make it checkable on one
+  // line, then the server's guarantee. One sentence covering all three would
+  // still be wrong two thirds of the time.
   let sentence: string;
   if (absent.length) {
     sentence = `${absent.join(" and ")} ${
@@ -244,16 +253,21 @@ function ExactZeroState({
 
   return (
     <div className="dossier-study__zero" data-testid="study-zero">
-      <p className="dossier-drawer__empty">{sentence}</p>
-      {/* The counts that make the sentence checkable rather than assertable. */}
+      <p className="dossier-study__zeroline">{sentence}</p>
+      {/* The counts that make the sentence checkable rather than assertable —
+          one line with a middot between the two halves, where there were two
+          full sentences. */}
       <p className="dossier-drawer__fineprint" data-testid="study-zero-counts">
-        {subjectName}: {subject.champion_games_in_scope} game
-        {subject.champion_games_in_scope === 1 ? "" : "s"} on{" "}
-        {subject.champion_key}. {opposingName}:{" "}
-        {opposing.champion_games_in_scope} game
-        {opposing.champion_games_in_scope === 1 ? "" : "s"} on{" "}
-        {opposing.champion_key}.
+        {subjectName}: {subject.champion_games_in_scope} {subject.champion_key} game
+        {subject.champion_games_in_scope === 1 ? "" : "s"}
+        {" · "}
+        {opposingName}: {opposing.champion_games_in_scope} {opposing.champion_key} game
+        {opposing.champion_games_in_scope === 1 ? "" : "s"}
       </p>
+      {/* The guarantee stays on screen, unedited. It is the one sentence in
+          this block that says no looser sample was substituted, and hiding it
+          behind a control would be hiding exactly the claim this layer exists
+          to make. */}
       <p className="dossier-drawer__fineprint">{data.definitions.no_exact_games}</p>
     </div>
   );
@@ -437,45 +451,55 @@ function StudyActions({
 
   if (!combatLabUrl && !mechanics.length && !proDataUrl && !quizUrl) return null;
 
+  // A NAMED GROUP, NOT FIVE LOOSE LINKS. These are the four Mogzy-native
+  // destinations this matchup can continue into, and as bare underlined text
+  // in a row they read as page furniture — the footer links of the drawer
+  // rather than the point of it. The label says what the group is for; the
+  // verbs come out of the individual items, because "Open in", "Study" and
+  // "Explore" were three different ways of saying the same thing five times.
+  // Every href, every condition and every test id is unchanged.
   return (
-    <div className="dossier-study__actions" data-testid="study-actions">
-      {combatLabUrl ? (
-        <Link
-          className="dossier-study__action"
-          data-testid="study-action-combat-lab"
-          to={combatLabUrl}
-        >
-          Open in Combat Lab
-        </Link>
-      ) : null}
-      {mechanics.map((champion) => (
-        <Link
-          key={champion.slug}
-          className="dossier-study__action"
-          data-testid="study-action-mechanics"
-          to={`/lol/docs/champions/${encodeURIComponent(champion.slug)}`}
-        >
-          Study {champion.name} Mechanics
-        </Link>
-      ))}
-      {proDataUrl ? (
-        <Link
-          className="dossier-study__action"
-          data-testid="study-action-pro-data"
-          to={proDataUrl}
-        >
-          Explore Pro Data
-        </Link>
-      ) : null}
-      {quizUrl ? (
-        <Link
-          className="dossier-study__action"
-          data-testid="study-action-quiz"
-          to={quizUrl}
-        >
-          Quiz This Matchup
-        </Link>
-      ) : null}
+    <div className="dossier-study__continue" data-testid="study-continue">
+      <span className="dossier-study__continuelabel">Continue studying</span>
+      <div className="dossier-study__actions" data-testid="study-actions">
+        {combatLabUrl ? (
+          <Link
+            className="dossier-study__action"
+            data-testid="study-action-combat-lab"
+            to={combatLabUrl}
+          >
+            Combat Lab
+          </Link>
+        ) : null}
+        {mechanics.map((champion) => (
+          <Link
+            key={champion.slug}
+            className="dossier-study__action"
+            data-testid="study-action-mechanics"
+            to={`/lol/docs/champions/${encodeURIComponent(champion.slug)}`}
+          >
+            {champion.name} Mechanics
+          </Link>
+        ))}
+        {proDataUrl ? (
+          <Link
+            className="dossier-study__action"
+            data-testid="study-action-pro-data"
+            to={proDataUrl}
+          >
+            Pro Data
+          </Link>
+        ) : null}
+        {quizUrl ? (
+          <Link
+            className="dossier-study__action"
+            data-testid="study-action-quiz"
+            to={quizUrl}
+          >
+            Quiz Matchup
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -839,21 +863,35 @@ function ExampleRow({
   onNavigate: (navigation: ExampleNavigation) => void;
 }) {
   const { subject, opposing, record, navigation } = example;
+  // HIERARCHY, NOT DELETION. This list is already scoped to one champion
+  // matchup, so "Kiin · Gen.G vs" on all six rows is the constant the reader
+  // is scanning PAST to reach the variable. Both halves are still printed —
+  // the subject genuinely changes in the "same opposing player" tier, and a
+  // row that dropped it would be a different claim — but the subject half now
+  // reads in the quiet voice and the opposing half is the emphasis.
   const body = (
     <>
-      <span className="dossier-study__exampleside">
+      <span className="dossier-study__exampleside is-subject">
         <ChampionIcon champion={subject.champion_key} size="sm" />
         <span className="dossier-study__examplename">{subject.display_name}</span>
         <span className="dossier-muted">{subject.team_display_name}</span>
       </span>
       <span className="dossier-study__examplevs">vs</span>
-      <span className="dossier-study__exampleside">
+      <span className="dossier-study__exampleside is-opposing">
         <ChampionIcon champion={opposing.champion_key} size="sm" />
         <span className="dossier-study__examplename">{opposing.display_name}</span>
-        <span className="dossier-muted">{opposing.team_display_name}</span>
+        <span className="dossier-study__exampleteam">{opposing.team_display_name}</span>
       </span>
       <span className="dossier-study__examplerecord">
-        {record.games}g · {record.wins}–{record.losses} · {shortDate(record.last_played_at)}
+        {/* "1 game", not "1g": `g` is gold on a League page, and this column is
+            the one the reader compares rows on. */}
+        <span className="dossier-study__examplegames">
+          {record.games} game{record.games === 1 ? "" : "s"}
+        </span>
+        <span className="dossier-study__exampleresult">
+          {record.wins}–{record.losses}
+        </span>
+        <span className="dossier-study__exampledate">{shortDate(record.last_played_at)}</span>
       </span>
     </>
   );
@@ -924,9 +962,13 @@ function OtherProExamples({
               );
             })}
           </ul>
-          <p className="dossier-drawer__fineprint" data-testid="study-examples-note">
-            {data.definitions.other_pro_examples} {data.definitions.ranking}
-          </p>
+          {/* The population and the ranking rule, in the server's words, behind
+              the same control the rest of this drawer's methodology is behind.
+              A reader scanning six rows for an opponent does not need the
+              four-tier ordering explained above every one of them. */}
+          <FinePrint testId="study-examples-note">
+            {`${data.definitions.other_pro_examples} ${data.definitions.ranking}`}
+          </FinePrint>
         </>
       ) : (
         <p className="dossier-drawer__fineprint" data-testid="study-examples-empty">
@@ -1090,9 +1132,12 @@ export default function MatchupStudy({
               opposingName={opposingName}
             />
           )}
-          <p className="dossier-drawer__fineprint" data-testid="study-definition">
-            {data.definitions.exact_matchup}
-          </p>
+          {/* The six conditions that make a meeting "exact", behind the
+              dossier's own control. Rendered into the DOM either way by
+              `FinePrint`, so nothing about what the page asserts changed —
+              only whether a reader who has read it once reads it again under
+              every champion. */}
+          <FinePrint testId="study-definition">{data.definitions.exact_matchup}</FinePrint>
           {/* STEP 10. Placed after the definition and before "other pro
               examples": the reader has finished the matchup they asked about
               and has not yet started a wider one. NOT conditioned on the

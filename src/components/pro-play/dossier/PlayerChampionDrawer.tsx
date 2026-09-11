@@ -45,6 +45,7 @@ import {
 import type { ExampleNavigation, LaneSide, MeetingSelection } from "@/lib/pro-play/matchupApi";
 
 import type { ChampionSelection } from "./BoardSelection";
+import { FinePrint } from "./DossierChrome";
 import { ChampionIcon, PlayerPortrait, TeamCrest } from "./DossierMedia";
 import MatchupStudy from "./MatchupStudy";
 
@@ -275,6 +276,12 @@ function ComparisonTable({
   const statsOverall = data.statistics?.overall ?? null;
   const statsVersus = data.statistics?.versus_opponent ?? null;
   const hasOpponent = Boolean(opponentLabel && versus);
+  // An opponent axis exists, and it has no games in it. `0` and `0–0` are real
+  // facts and are kept — as one sentence beneath the table, not as a column of
+  // dashes beside it. `versus === null` is a different case (no opponent was
+  // asked about at all) and still renders a one-column table.
+  const emptyVersus = hasOpponent && (versus?.games ?? 0) === 0;
+  const twoColumn = hasOpponent && !emptyVersus;
   type Row = {
     label: string;
     a: string;
@@ -339,7 +346,7 @@ function ComparisonTable({
   // sample than the overall one. Both are named when they differ; one note is
   // printed when they agree.
   const noteA = coverageNote(statsOverall);
-  const noteB = hasOpponent ? coverageNote(statsVersus) : null;
+  const noteB = hasOpponent && emptyVersus ? null : hasOpponent ? coverageNote(statsVersus) : null;
   const note =
     noteA && noteB && noteA !== noteB
       ? `${noteA} Against ${opponentLabel}: ${noteB.charAt(0).toLowerCase()}${noteB.slice(1)}`
@@ -351,7 +358,7 @@ function ComparisonTable({
           <tr>
             <th scope="col">Metric</th>
             <th scope="col">Overall</th>
-            {hasOpponent ? <th scope="col">vs {opponentLabel}</th> : null}
+            {twoColumn ? <th scope="col">vs {opponentLabel}</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -363,11 +370,30 @@ function ComparisonTable({
             >
               <th scope="row">{row.label}</th>
               <td title={row.titleA}>{row.a}</td>
-              {hasOpponent ? <td title={row.titleB}>{row.b}</td> : null}
+              {twoColumn ? <td title={row.titleB}>{row.b}</td> : null}
             </tr>
           ))}
         </tbody>
       </table>
+      {/* THE EMPTY OPPONENT COLUMN, SAID ONCE INSTEAD OF SEVEN TIMES.
+          Everything true about a zero opponent sample is here — the count, the
+          scope, and the ban pressure, which is a DRAFT fact with its own
+          denominator and exists whether or not the champion was played. What
+          is gone is six rows of em dashes, which said nothing seven ways and
+          cost the reader the whole width of a column to scan. */}
+      {emptyVersus ? (
+        <div className="dossier-drawer__versus-empty" data-testid="dossier-drawer-versus-empty">
+          <span className="dossier-drawer__statlabel">vs {opponentLabel}</span>
+          <p className="dossier-drawer__versus-empty-line">
+            No games in this scope.
+          </p>
+          {bans?.versus_opponent?.drafts_with_ban_record ? (
+            <p className="dossier-drawer__stathint" data-testid="dossier-drawer-versus-empty-bans">
+              Ban pressure {banPressureText(bans.versus_opponent)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {/* Compact and honest, in the drawer's quietest voice. A scout is told
           what the sample is, never why the corpus is shaped the way it is. */}
       {note ? (
@@ -471,10 +497,16 @@ function DossierBody({
       ) : null}
 
       {/* The server's own sentences, verbatim — these are the words the
-          semantics are guaranteed in. */}
-      <p className="dossier-drawer__fineprint" data-testid="dossier-drawer-definitions">
-        {data.definitions.champion_games} {data.definitions.ban_pressure}
-      </p>
+          semantics are guaranteed in — now behind the dossier's own
+          "What this means" control rather than three lines of standing
+          methodology under every table. NOT AN EDIT AND NOT A DELETION:
+          `FinePrint` renders the sentence into the DOM either way, so it stays
+          in the accessibility tree and in anything that reads the page; the
+          only change is that a reader who already knows what ban pressure is
+          no longer reads the definition of it on every champion. */}
+      <FinePrint testId="dossier-drawer-definitions">
+        {`${data.definitions.champion_games} ${data.definitions.ban_pressure}`}
+      </FinePrint>
 
       {/* Step 3 lands here — the slot Step 2 left, now filled. It is a
           separate section reading a separate payload, and it is the only thing
@@ -587,7 +619,15 @@ export default function PlayerChampionDrawer({
         // `proplay-dossier` travels with the content because a Radix sheet
         // renders in a PORTAL at the document root, outside the Explorer's own
         // subtree — without it none of the dossier's tokens would apply.
-        className="proplay-dossier dossier-drawer w-full sm:max-w-xl"
+        // WIDTH IS A PRODUCT DECISION, NOT A DEFAULT. `sm:max-w-xl` gave this
+        // 576px — a sidebar for a two-column comparison table, an opposing
+        // chooser, an exact record, a statistics strip and an evidence list.
+        // The page behind it is already dimmed and unusable, so preserving 70%
+        // of a 1920px screen for content nobody can read bought nothing. It is
+        // still a drawer, not a takeover: 58vw, capped so it never exceeds
+        // 940px on the widest desktops, and full-width on a phone exactly as
+        // before.
+        className="proplay-dossier dossier-drawer w-full sm:w-[58vw] sm:max-w-[940px]"
         data-testid="player-champion-drawer"
         aria-label={heading}
       >

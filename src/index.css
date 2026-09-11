@@ -11198,29 +11198,14 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .proplay-dossier .dossier-vs__watermark {
     display: none;
   }
-  /* Team and scope, so a lane card read on its own says whose player this is and
-   over what span. Restrained by design — the hero already carries the matchup
-   identity at full size, and this must not compete with it. */
-.proplay-dossier .dossier-player__meta {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-top: 0.15rem;
-  font-size: 0.62rem;
-  color: var(--dsr-ink-soft);
-}
-.proplay-dossier .dossier-player__meta .dossier-slot {
-  width: 1.1rem;
-  height: 1.1rem;
-  flex: none;
-}
-.proplay-dossier .dossier-player__team {
-  font-weight: 600;
-  color: #3a3126;
-}
-
-
-.proplay-dossier .dossier-player__figures,
+  /* THE SCOPING DEFECT THAT WAS HERE. Three desktop rules —
+     `.dossier-player__meta`, its `.dossier-slot` and `.dossier-player__team` —
+     had been pasted into this mobile block, byte-identical to their
+     declarations in section 7 and unindented, so a phone re-declared three
+     rules it already had and the block read as if it changed them. They are
+     deleted, not moved: section 7 already states them, unconditionally, for
+     every width. */
+  .proplay-dossier .dossier-player__figures,
   .proplay-dossier .dossier-teamsum__figures {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -12596,4 +12581,523 @@ html.hub-commons-in-view .hextech-ambience-layer {
   .proplay-dossier .dossier-game__result {
     margin-left: 0;
   }
+}
+
+/* ===========================================================================
+   LIVE4 — Matchup Explorer visual scale and information hierarchy.
+
+   ONE APPENDED BLOCK, ON PURPOSE. Every rule here is a LIVE4 decision about
+   scale, width or grouping, and keeping them together means the pass can be
+   read, reviewed and reverted as one thing rather than hunted for across
+   fourteen sections. Each rule still carries `.proplay-dossier` (or the
+   route's own `.proplay-matchup-*` prefix) so nothing leaks, and every rule
+   here is a top-level rule or lives inside a media query it opens and closes
+   itself — the scoping defect this page has had before is not reintroduced
+   by appending at the end of the file.
+
+   Read with `Layout.isFullBleed` and `ResearchPage wide`: those two give the
+   page 1600px and this gives the page something to do with it.
+   =========================================================================== */
+
+/* ---- L1. The route header ------------------------------------------------
+   Breadcrumb and title stacked to 64px of chrome above a hero that already
+   names the matchup. On desktop they share a baseline row. */
+.proplay-matchup-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-bottom: 0.5rem;
+}
+.proplay-matchup-head > nav {
+  margin-bottom: 0;
+}
+.proplay-matchup-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin: 0;
+}
+@media (min-width: 1024px) {
+  /* The TITLE owns the column's left edge and the trail becomes the row's
+     tail. Source order is trail-then-title because that is the reading order
+     a screen reader and a narrow viewport both want; `order` swaps only the
+     painted row, which is the one place the title should lead. */
+  .proplay-matchup-head {
+    flex-direction: row;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.15rem 1rem;
+    margin-bottom: 0.55rem;
+  }
+  .proplay-matchup-head > nav {
+    order: 2;
+    margin-left: auto;
+  }
+  .proplay-matchup-title {
+    order: 1;
+    font-size: 1.5rem;
+  }
+}
+
+/* ---- L2. Board scale -----------------------------------------------------
+   Everything below is the same content one step larger, and only above
+   1280px: a phone is not short of information density, it is short of width.
+   The numbers are the board's own (figures, lane names, player names); the
+   spacing is what keeps them from touching now that there is room. */
+@media (min-width: 1280px) {
+  .proplay-dossier .dossier-vs {
+    padding: 1.05rem 1.35rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .proplay-dossier .dossier-vs__eyebrow {
+    font-size: 0.68rem;
+    margin-bottom: 0.7rem;
+  }
+  .proplay-dossier .dossier-lanes {
+    gap: 1.15rem;
+  }
+  .proplay-dossier .dossier-parchment {
+    padding: 1.15rem 1.25rem;
+  }
+  .proplay-dossier .dossier-lane__body {
+    gap: 1.5rem;
+  }
+  .proplay-dossier .dossier-lane__name {
+    font-size: 1.25rem;
+  }
+  .proplay-dossier .dossier-player__name {
+    font-size: 1.12rem;
+  }
+  .proplay-dossier .dossier-player__meta {
+    font-size: 0.7rem;
+  }
+  .proplay-dossier .dossier-player__id {
+    gap: 0.8rem;
+    margin-bottom: 0.7rem;
+  }
+  .proplay-dossier .dossier-player__figures,
+  .proplay-dossier .dossier-teamsum__figures {
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    gap: 0.45rem;
+    margin-bottom: 0.65rem;
+  }
+  .proplay-dossier .dossier-figure {
+    padding: 0.35rem 0.55rem;
+  }
+  .proplay-dossier .dossier-figure__label {
+    font-size: 0.6rem;
+  }
+  .proplay-dossier .dossier-figure__value {
+    font-size: 1.05rem;
+  }
+  .proplay-dossier .dossier-figure__hint {
+    font-size: 0.6rem;
+  }
+  .proplay-dossier .dossier-section {
+    margin-bottom: 1.5rem;
+  }
+  .proplay-dossier .dossier-tab__title {
+    font-size: 1.05rem;
+  }
+}
+
+/* ---- L3. The champion tile ----------------------------------------------
+   A MEDIUM-WIDTH HORIZONTAL CARD, NOT A SKINNY COLUMN. The old tile stacked
+   an icon over `10/11` over `90.9%` in 3.15rem, which made the two numbers a
+   caption on a picture and gave the reader nothing to align down. The card is
+   fixed-width so a wrapped row is still a grid, the icon stays the primary
+   identifier on the left, and the two figures form a column on the right that
+   every other card in the row lines up with. The grammar is stated once by
+   `.dossier-pool__legend`, never per tile. */
+.proplay-dossier .dossier-champ-chip {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  width: auto;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  border-radius: 8px;
+}
+.proplay-dossier .dossier-champ-chip .dossier-media {
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+}
+.proplay-dossier .dossier-champ-chip__figures {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.02rem;
+  min-width: 0;
+}
+.proplay-dossier .dossier-champ-chip__stat {
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.proplay-dossier .dossier-champ-chip__rate {
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+/* AN EXPLICIT GRID, NOT A WRAPPING ROW.
+   The collapsed cap is 12 cards and the two halves of a lane must end at the
+   same height, which means the number of ROWS those 12 take has to be known
+   rather than discovered at paint time. A fixed-width flex wrap leaves it to
+   whatever the half happens to measure — 5 per row at 1920, 4 at 1440 — so
+   the reserved floor below could not be right at both. Columns are declared
+   per breakpoint, always a divisor of 12, and the floor is `rows x row-height`
+   from the same two numbers. Cards remain identical in width to each other
+   within a lane, which is what makes a wrapped row read as a grid. */
+.proplay-dossier .dossier-pool__grid {
+  --pool-cols: 3;
+  --pool-rowh: 3.35rem;
+  display: grid;
+  grid-template-columns: repeat(var(--pool-cols), minmax(0, 1fr));
+  gap: 0.35rem;
+  min-height: calc(12 / var(--pool-cols) * var(--pool-rowh));
+}
+/* Expanded, the pool is as long as the pool is. */
+.proplay-dossier .dossier-pool__grid.is-expanded {
+  min-height: 0;
+}
+/* The grammar, once. It rides the "Most played" label rather than taking a
+   line of its own, and it is the quietest thing on the card. */
+.proplay-dossier .dossier-pool__cat-label {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.proplay-dossier .dossier-pool__legend {
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(93, 85, 70, 0.6);
+}
+/* Below 768px a lane is one column, so each half has the whole plate and can
+   afford four cards across. */
+@media (min-width: 520px) and (max-width: 767px) {
+  .proplay-dossier .dossier-pool__grid {
+    --pool-cols: 4;
+  }
+}
+/* 768–1279px is the tight case: the lane has split into two halves and the
+   page has not yet reached its wide tier, so a half is 320–560px. Three. */
+@media (min-width: 1280px) {
+  .proplay-dossier .dossier-pool__grid {
+    --pool-cols: 4;
+    --pool-rowh: 3.8rem;
+    gap: 0.4rem;
+  }
+  .proplay-dossier .dossier-champ-chip {
+    gap: 0.5rem;
+    padding: 0.32rem 0.45rem;
+  }
+  .proplay-dossier .dossier-champ-chip .dossier-media {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+  .proplay-dossier .dossier-champ-chip__stat {
+    font-size: 0.78rem;
+  }
+  .proplay-dossier .dossier-champ-chip__rate {
+    font-size: 0.64rem;
+  }
+  .proplay-dossier .dossier-pool__cat-label,
+  .proplay-dossier .dossier-pool__strip-label {
+    font-size: 0.6rem;
+  }
+  .proplay-dossier .dossier-pool__legend {
+    font-size: 0.54rem;
+  }
+  .proplay-dossier .dossier-pool__strip-label {
+    width: 6.2rem;
+  }
+}
+/* Six across needs a lane half of ~650px, which is where the page arrives at
+   about 1500px of viewport — measured against the widest card this grid can
+   produce (2.2rem icon + `10 / 11` at 0.78rem + its padding), not guessed.
+   Below this the same 12 cards are four across and three deep. */
+@media (min-width: 1500px) {
+  .proplay-dossier .dossier-pool__grid {
+    --pool-cols: 6;
+  }
+}
+
+/* ---- L4. The lane plate's foot ------------------------------------------
+   "Open lane dossier" audited and KEPT (mechanics, all four scopes, roster
+   context and the unbounded pool live only down there) but demoted out of the
+   lane's heading, where it competed with the lane name five times a page. */
+.proplay-dossier .dossier-lane__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(93, 85, 70, 0.16);
+}
+.proplay-dossier .dossier-lane__foot .dossier-lane__cta {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--dsr-ink-soft);
+  border-bottom-color: transparent;
+}
+.proplay-dossier .dossier-lane__foot .dossier-lane__cta:hover,
+.proplay-dossier .dossier-lane__foot .dossier-lane__cta:focus-visible {
+  color: #40361a;
+  border-bottom-color: rgba(107, 90, 42, 0.5);
+}
+
+/* ---- L5. The drawer, at its new width -----------------------------------
+   The width itself is on the sheet (`sm:w-[58vw] sm:max-w-[940px]`); this is
+   what the extra 360px is spent on. Portraits and type go up one step, and the
+   summary band stops reflowing to two rows at the width four figures fit. */
+@media (min-width: 900px) {
+  .proplay-dossier.dossier-drawer {
+    padding: 1.5rem 1.75rem 2rem;
+    gap: 0.95rem;
+  }
+  .proplay-dossier .dossier-drawer__id {
+    gap: 0.9rem;
+    padding-bottom: 0.85rem;
+  }
+  .proplay-dossier .dossier-drawer__id .dossier-media {
+    width: 4.25rem;
+    height: 4.25rem;
+  }
+  .proplay-dossier .dossier-drawer__name {
+    font-size: 1.4rem;
+  }
+  .proplay-dossier .dossier-drawer__meta {
+    font-size: 0.78rem;
+  }
+  .proplay-dossier .dossier-drawer__crest .dossier-slot,
+  .proplay-dossier .dossier-drawer__crest .dossier-media {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+  .proplay-dossier .dossier-drawer__body {
+    gap: 1rem;
+  }
+  .proplay-dossier .dossier-drawer__stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+  .proplay-dossier .dossier-drawer__stat {
+    padding: 0.6rem 0.7rem;
+  }
+  .proplay-dossier .dossier-drawer__statlabel {
+    font-size: 0.62rem;
+  }
+  .proplay-dossier .dossier-drawer__statvalue {
+    font-size: 1.05rem;
+  }
+  .proplay-dossier .dossier-drawer__stathint {
+    font-size: 0.68rem;
+  }
+  .proplay-dossier .dossier-drawer__table {
+    font-size: 0.82rem;
+  }
+  .proplay-dossier .dossier-drawer__table th,
+  .proplay-dossier .dossier-drawer__table td {
+    padding: 0.4rem 0.6rem;
+  }
+  .proplay-dossier .dossier-drawer__table thead th {
+    font-size: 0.62rem;
+  }
+  .proplay-dossier .dossier-drawer__fineprint,
+  .proplay-dossier .dossier-drawer__empty {
+    font-size: 0.76rem;
+  }
+  .proplay-dossier .dossier-study__title {
+    font-size: 0.74rem;
+  }
+  .proplay-dossier .dossier-study__subject {
+    font-size: 1.05rem;
+  }
+  .proplay-dossier .dossier-study__subject .dossier-muted {
+    font-size: 0.78rem;
+  }
+  .proplay-dossier .dossier-study__chooser {
+    padding: 0.7rem 0.8rem;
+    gap: 0.55rem;
+  }
+  .proplay-dossier .dossier-study__player {
+    font-size: 0.76rem;
+  }
+  .proplay-dossier .dossier-study__player .dossier-media {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .proplay-dossier .dossier-study__champion .dossier-media {
+    width: 2.1rem;
+    height: 2.1rem;
+  }
+  .proplay-dossier .dossier-study__championrec {
+    font-size: 0.62rem;
+  }
+  .proplay-dossier .dossier-study__headline {
+    font-size: 1.05rem;
+  }
+  .proplay-dossier .dossier-study__example .dossier-media {
+    width: 1.85rem;
+    height: 1.85rem;
+  }
+}
+
+/* ---- L6. Overall vs opponent, when the opponent sample is zero -----------
+   Seven rows of em dashes replaced by the three things that are actually
+   true: which opponent, that there are no games, and the ban pressure, which
+   is a draft fact with a denominator of its own. */
+.proplay-dossier .dossier-drawer__versus-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px dashed rgba(93, 85, 70, 0.35);
+  border-radius: 6px;
+  background: rgba(255, 253, 246, 0.5);
+}
+.proplay-dossier .dossier-drawer__versus-empty-line {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--dsr-ink);
+}
+
+/* ---- L7. The exact zero state -------------------------------------------
+   A headline the reader takes in at a glance, then one checkable line, then
+   the guarantee. Three paragraphs of equal weight became one of each. */
+.proplay-dossier .dossier-study__zeroline {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--dsr-ink);
+}
+@media (min-width: 900px) {
+  .proplay-dossier .dossier-study__zeroline {
+    font-size: 1rem;
+  }
+}
+
+/* ---- L8. Continue studying ----------------------------------------------
+   The four Mogzy-native destinations, named as a group and drawn as quiet
+   bordered chips. Deliberately NOT buttons: they must stay lighter than the
+   matchup identity above them, which is why there is no fill, no shadow and
+   no accent colour beyond the gold the dossier already uses. */
+.proplay-dossier .dossier-study__continue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(93, 85, 70, 0.2);
+}
+.proplay-dossier .dossier-study__continuelabel {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(107, 90, 42, 0.85);
+}
+.proplay-dossier .dossier-study__continue .dossier-study__actions {
+  gap: 0.35rem;
+  margin-top: 0;
+}
+.proplay-dossier .dossier-study__continue .dossier-study__action {
+  padding: 0.28rem 0.6rem;
+  border: 1px solid rgba(107, 90, 42, 0.32);
+  border-radius: 6px;
+  background: rgba(255, 253, 246, 0.6);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b5a2a;
+}
+.proplay-dossier .dossier-study__continue .dossier-study__action:hover,
+.proplay-dossier .dossier-study__continue .dossier-study__action:focus-visible {
+  color: #3d3212;
+  border-color: rgba(107, 90, 42, 0.7);
+  background: rgba(255, 253, 246, 0.95);
+}
+@media (min-width: 900px) {
+  .proplay-dossier .dossier-study__continuelabel {
+    font-size: 0.6rem;
+  }
+  .proplay-dossier .dossier-study__continue .dossier-study__action {
+    font-size: 0.76rem;
+    padding: 0.32rem 0.7rem;
+  }
+}
+
+/* ---- L9. Other pro examples ---------------------------------------------
+   The section is already scoped to one champion matchup, so the subject half
+   of every row is the constant the reader scans past. Both halves still
+   print; the emphasis moved to the half that varies, and the record became
+   three aligned facts instead of one middot-joined string. */
+.proplay-dossier .dossier-study__exampleside.is-subject {
+  opacity: 0.62;
+}
+.proplay-dossier .dossier-study__exampleside.is-subject .dossier-study__examplename {
+  font-weight: 500;
+}
+.proplay-dossier .dossier-study__exampleside.is-opposing .dossier-study__examplename {
+  font-weight: 700;
+}
+.proplay-dossier .dossier-study__exampleteam {
+  font-size: 0.66rem;
+  color: var(--dsr-ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.proplay-dossier .dossier-study__examplerecord {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.proplay-dossier .dossier-study__examplegames {
+  font-weight: 600;
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-study__exampleresult {
+  color: var(--dsr-ink);
+}
+.proplay-dossier .dossier-study__exampledate {
+  color: var(--dsr-ink-soft);
+}
+@media (min-width: 900px) {
+  .proplay-dossier .dossier-study__examplerecord {
+    font-size: 0.74rem;
+  }
+  .proplay-dossier .dossier-study__exampleteam {
+    font-size: 0.7rem;
+  }
+}
+
+/* ---- L10. "What this means" is a control, not a watermark ----------------
+   Three methodology paragraphs moved behind `FinePrint` in this pass, which
+   made the toggle the only way to reach them — and on parchment, at
+   `--dsr-ink-soft` and 0.68rem, it was reading as a disabled label. It is the
+   quietest control in the dossier and it still has to look like one. */
+.proplay-dossier .dossier-parchment .dossier-fineprint__toggle,
+.proplay-dossier.dossier-drawer .dossier-fineprint__toggle {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b5a2a;
+  border-bottom: 1px solid rgba(107, 90, 42, 0.3);
+  padding-bottom: 0.05rem;
+}
+.proplay-dossier .dossier-parchment .dossier-fineprint__toggle:hover,
+.proplay-dossier.dossier-drawer .dossier-fineprint__toggle:hover,
+.proplay-dossier .dossier-parchment .dossier-fineprint__toggle:focus-visible,
+.proplay-dossier.dossier-drawer .dossier-fineprint__toggle:focus-visible {
+  color: #40361a;
+  border-bottom-color: rgba(107, 90, 42, 0.75);
+}
+.proplay-dossier.dossier-drawer .dossier-fineprint__body {
+  max-width: 78ch;
 }

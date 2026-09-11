@@ -40,6 +40,15 @@ export interface BoardSelectionValue {
   scopeLabel: string;
   scopeId: string;
   opponentOf: (teamKey: string) => string | null;
+  /**
+   * The team's own games in this scope — the DENOMINATOR of a player's
+   * participation, not a new fact. It is the same `team_games_in_scope` the
+   * server already put on the board header and the same number
+   * `share_of_team_games` is divided by (`team_roster.py`), so naming it on
+   * the card cannot disagree with the rate it replaces. Null off the board and
+   * for a team the header does not carry.
+   */
+  teamGamesIn: (teamKey: string) => number | null;
   selected: ChampionSelection | null;
   onSelect: (selection: ChampionSelection) => void;
 }
@@ -48,6 +57,7 @@ const NOOP: BoardSelectionValue = {
   scopeLabel: "",
   scopeId: "",
   opponentOf: () => null,
+  teamGamesIn: () => null,
   selected: null,
   onSelect: () => {},
 };

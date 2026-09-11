@@ -3238,8 +3238,11 @@ describe("the exact matchup study", () => {
     );
     // The counts that make the sentence checkable, and the server's own
     // sentence saying no looser sample was substituted.
+    // LIVE4 compressed two sentences into one line with a middot. Both counts
+    // and both champion keys still print — the claim is unchanged, the
+    // reading of it is one glance instead of two.
     expect(within(drawer).getByTestId("study-zero-counts")).toHaveTextContent(
-      "Doran: 30 games on Ornn. Bin: 40 games on Ambessa.",
+      "Doran: 30 Ornn games · Bin: 40 Ambessa games",
     );
     expect(zero.textContent).toContain("no looser sample is substituted");
     // A rate over zero games is never rendered as a result.
@@ -3587,7 +3590,11 @@ describe("the exact matchup study", () => {
     expect(first).toHaveTextContent("T1");
     expect(first).toHaveTextContent("Zeus");
     expect(first).toHaveTextContent("Gen.G");
-    expect(first).toHaveTextContent("3g · 2–1");
+    // LIVE4: the count is spelled out and the three facts are three elements
+    // rather than one middot-joined string, so the column can be scanned down
+    // rather than read across. The facts themselves are the same three.
+    expect(first).toHaveTextContent("3 games");
+    expect(first).toHaveTextContent("2–1");
   });
 
   it("groups the examples by the server's relation, in the server's order", async () => {
@@ -3688,7 +3695,9 @@ describe("the exact matchup study", () => {
   it("offers Combat Lab with BOTH champions of the exact matchup", async () => {
     const { study } = await openStudy();
     const action = within(study).getByTestId("study-action-combat-lab");
-    expect(action).toHaveTextContent("Open in Combat Lab");
+    // LIVE4 named the GROUP ("Continue studying") and let the items be their
+    // destinations, so "Open in" left the label and the href did not move.
+    expect(action).toHaveTextContent("Combat Lab");
     // Ornn is the subject, Ambessa the opponent — attacker then defender, in
     // that order, because the study is written from the subject's side.
     expect(action).toHaveAttribute("href", "/combat-lab?attacker=ornn&defender=ambessa");
@@ -3698,9 +3707,9 @@ describe("the exact matchup study", () => {
     const { study } = await openStudy();
     const actions = within(study).getAllByTestId("study-action-mechanics");
     expect(actions).toHaveLength(2);
-    expect(actions[0]).toHaveTextContent("Study Ornn Mechanics");
+    expect(actions[0]).toHaveTextContent("Ornn Mechanics");
     expect(actions[0]).toHaveAttribute("href", "/lol/docs/champions/ornn");
-    expect(actions[1]).toHaveTextContent("Study Ambessa Mechanics");
+    expect(actions[1]).toHaveTextContent("Ambessa Mechanics");
     expect(actions[1]).toHaveAttribute("href", "/lol/docs/champions/ambessa");
   });
 
@@ -3734,7 +3743,7 @@ describe("the exact matchup study", () => {
     );
     const actions = within(study).getAllByTestId("study-action-mechanics");
     expect(actions[0]).toHaveAttribute("href", "/lol/docs/champions/ksante");
-    expect(actions[0]).toHaveTextContent("Study K'Sante Mechanics");
+    expect(actions[0]).toHaveTextContent("K'Sante Mechanics");
     expect(actions[1]).toHaveAttribute("href", "/lol/docs/champions/chogath");
   });
 
@@ -3830,7 +3839,7 @@ describe("the exact matchup study", () => {
     // like this one, filtered.
     const { study } = await openStudy();
     const action = within(study).getByTestId("study-action-pro-data");
-    expect(action).toHaveTextContent("Explore Pro Data");
+    expect(action).toHaveTextContent("Pro Data");
     const href = action.getAttribute("href") ?? "";
     const params = new URLSearchParams(href.split("?")[1]);
     expect(href.split("?")[0]).toBe("/lol/pro-play/graphs");
@@ -3855,7 +3864,7 @@ describe("the exact matchup study", () => {
     // a session about that match, which this is not.
     const { study } = await openStudy();
     const action = within(study).getByTestId("study-action-quiz");
-    expect(action).toHaveTextContent("Quiz This Matchup");
+    expect(action).toHaveTextContent("Quiz Matchup");
     const href = action.getAttribute("href") ?? "";
     expect(href.split("?")[0]).toBe("/quiz/matchup");
     const params = new URLSearchParams(href.split("?")[1]);
@@ -5303,5 +5312,201 @@ describe("Step 8 — statistic evidence", () => {
       expect(row.className).not.toContain("overflow");
       expect(getComputedStyle(row).overflowX).not.toBe("scroll");
     }
+  });
+});
+
+// --- LIVE4 — visual scale and information hierarchy --------------------------
+//
+// WHAT THESE TESTS ARE ABOUT, AND WHAT THEY DELIBERATELY ARE NOT. LIVE4 was a
+// scale-and-hierarchy pass: wider page, larger board, redesigned champion
+// cards, a substantially wider dossier, and methodology moved behind controls
+// instead of standing in the reading flow. Almost none of that is testable in
+// jsdom without pinning pixel values that would break the next time somebody
+// nudges a padding, and a suite full of those is worse than no suite.
+//
+// So these pin the SEMANTICS the pass changed:
+//   * the wins/games grammar is stated, once, where a reader can find it;
+//   * a champion card still carries the right three numbers;
+//   * participation annotates GAMES and the pool count is called Champions;
+//   * the empty opponent column became one honest sentence, and a real one
+//     did not;
+//   * the compressed copy still carries every claim the long copy did;
+//   * every destination the drawer offers still goes exactly where it did.
+// Order, counts, expansion and navigation are covered by the suites above and
+// are asserted here only where LIVE4 touched the markup around them.
+
+describe("LIVE4 — pool card grammar", () => {
+  it("states wins / games · win rate once, for the whole grid", async () => {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    const legend = within(card).getAllByTestId("pool-legend")[0];
+    expect(legend).toHaveTextContent(/wins \/ games/i);
+    expect(legend).toHaveTextContent(/win rate/i);
+  });
+
+  it("does not repeat the grammar inside every tile", async () => {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    const tile = within(card).getAllByTestId("champ-chip-Ornn")[0];
+    // The abbreviations the legend exists to make unnecessary.
+    expect(tile.textContent).not.toMatch(/\bW\/G\b|\bWR\b/);
+  });
+
+  it("prints wins, games and win rate on the tile, spaced", async () => {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    const tile = within(card).getAllByTestId("champ-chip-Ornn")[0];
+    // The fixture's T1 Top pool opens on Ornn at 18 wins of 30 games, and the
+    // rate comes from the payload, never from a division here.
+    expect(tile).toHaveTextContent("18 / 30");
+    expect(tile).toHaveTextContent("60.0%");
+    expect(tile.textContent).not.toContain("18/30");
+  });
+
+  it("keeps the champion order and the record table it always had", async () => {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    const grid = within(card).getByTestId("pool-cat-played");
+    // Games descending, as `poolCategories` has always ordered it: Ornn 30,
+    // Jayce 20, Rumble 1.
+    const keys = [...grid.querySelectorAll("[data-testid^='champ-chip-']")].map((e) =>
+      e.getAttribute("data-testid"),
+    );
+    expect(keys).toEqual(["champ-chip-Ornn", "champ-chip-Jayce", "champ-chip-Rumble"]);
+    expect(within(card).queryByTestId("pool-disclosure")).toBeInTheDocument();
+  });
+});
+
+describe("LIVE4 — participation is a fact about games", () => {
+  it("annotates GAMES with the player's games over the team's", async () => {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    const figures = within(card).getAllByTestId("candidate-record")[0];
+    // Both halves of the ratio come from the payload — the player's games from
+    // their own record, the denominator from the board header's
+    // `team_games_in_scope`. Nothing here divides anything.
+    expect(figures).toHaveTextContent("101 / 100 team games");
+  });
+
+  it("calls the pool size Champions and gives it no participation hint", async () => {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    const figures = within(card).getAllByTestId("candidate-record")[0];
+    expect(figures).toHaveTextContent(/champions/i);
+    // "POOL" said one thing and its hint said another; neither survives.
+    expect(figures.textContent).not.toMatch(/\bPOOL\b/);
+    expect(figures.textContent).not.toMatch(/% of team games/);
+  });
+});
+
+describe("LIVE4 — the lane dossier keeps its destination", () => {
+  it("still offers the lane drill-down, with the same link", async () => {
+    // AUDITED AND KEPT. `mode=lane` is the only surface carrying the mechanics
+    // panel, all four scopes at once and roster context, and a `pool_omitted`
+    // candidate points at it by name. LIVE4 reduced its weight and moved it to
+    // the plate's foot; it did not remove a capability.
+    await renderBoard();
+    const link = screen.getByTestId("lane-drilldown-Top");
+    expect(link).toHaveTextContent(/Open lane dossier/i);
+    expect(link.getAttribute("href")).toContain("mode=lane");
+    expect(link.getAttribute("href")).toContain("lane=Top");
+  });
+
+  it("puts it after both players rather than beside the lane's name", async () => {
+    await renderBoard();
+    const plate = screen.getByTestId("lane-card-Top");
+    const body = plate.querySelector(".dossier-lane__body")!;
+    const link = screen.getByTestId("lane-drilldown-Top");
+    expect(
+      body.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});
+
+describe("LIVE4 — overall versus an opponent with no games", () => {
+  async function openWithEmptyOpponent() {
+    dossier = dossierResponse({
+      versus_opponent: {
+        games: 0,
+        wins: 0,
+        losses: 0,
+        win_rate: null,
+        first_played_at: null,
+        last_played_at: null,
+      },
+    });
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    await within(drawer).findByTestId("dossier-drawer-table");
+    return drawer;
+  }
+
+  it("replaces the column of dashes with one sentence naming the opponent", async () => {
+    const drawer = await openWithEmptyOpponent();
+    const band = within(drawer).getByTestId("dossier-drawer-versus-empty");
+    expect(band).toHaveTextContent("vs Bilibili Gaming");
+    expect(band).toHaveTextContent(/no games in this scope/i);
+  });
+
+  it("drops the opponent column from the table rather than dashing it", async () => {
+    const drawer = await openWithEmptyOpponent();
+    const table = within(drawer).getByTestId("dossier-drawer-table");
+    expect(
+      within(table).queryByRole("columnheader", { name: /vs Bilibili Gaming/i }),
+    ).toBeNull();
+    // The overall figures are untouched.
+    const games = within(table).getByTestId("row-games");
+    expect(within(games).getAllByRole("cell").map((c) => c.textContent)).toEqual(["3"]);
+  });
+
+  it("keeps opponent ban pressure, which is a draft fact with its own sample", async () => {
+    // The champion can be banned in a draft against a team the player never
+    // played it into. Dropping it with the empty column would have deleted a
+    // true figure.
+    const drawer = await openWithEmptyOpponent();
+    expect(
+      within(drawer).getByTestId("dossier-drawer-versus-empty-bans"),
+    ).toHaveTextContent("3 / 6");
+  });
+
+  it("still renders two columns when the opponent sample is real", async () => {
+    const drawer = await openDrawerAtTop();
+    const table = within(drawer).getByTestId("dossier-drawer-table");
+    expect(
+      within(table).getByRole("columnheader", { name: /vs Bilibili Gaming/i }),
+    ).toBeInTheDocument();
+    expect(within(drawer).queryByTestId("dossier-drawer-versus-empty")).toBeNull();
+    const games = within(table).getByTestId("row-games");
+    expect(within(games).getAllByRole("cell").map((c) => c.textContent)).toEqual([
+      "3",
+      "1",
+    ]);
+  });
+
+  async function openDrawerAtTop() {
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    await within(drawer).findByTestId("dossier-drawer-table");
+    return drawer;
+  }
+});
+
+describe("LIVE4 — methodology is reachable, not resident", () => {
+  it("keeps the ban-pressure and champion-games definitions in the document", async () => {
+    // Behind a control, never deleted: `FinePrint` renders the sentence either
+    // way, so it stays in the accessibility tree and in anything reading the
+    // page. The words are still the server's, verbatim.
+    await renderBoard();
+    const card = within(screen.getByTestId("lane-card-Top")).getByTestId("lane-Top-T1");
+    fireEvent.click(within(card).getAllByTestId("champ-chip-Ornn")[0]);
+    const drawer = await screen.findByTestId("player-champion-drawer");
+    const fine = await within(drawer).findByTestId("dossier-drawer-definitions");
+    expect(fine).toHaveTextContent("Games this player played this champion in the selected scope");
+    expect(fine).toHaveTextContent("contextual draft behaviour");
+    expect(within(fine).getByRole("button")).toHaveAttribute("aria-expanded", "false");
   });
 });

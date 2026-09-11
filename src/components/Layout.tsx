@@ -15,6 +15,7 @@ import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
+import { PRO_PLAY_MATCHUP_ROUTE } from "@/lib/pro-play/routes";
 import { StartupSurface } from "@/components/startup/StartupShells";
 
 export default function Layout() {
@@ -82,9 +83,16 @@ export default function Layout() {
   // 1920px the max-w-7xl cap left it 1216px wide — 63% of the viewport — and
   // the question list and detail panel both paid for gutters nobody reads. It
   // brings its own header, gutters and background, exactly like the others.
+  // The Pro Play Matchup Explorer qualifies on exactly that argument, measured
+  // rather than asserted: it is a five-lane scouting board read two players at
+  // a time across, not a reading column. At 1920px the max-w-7xl cap gave
+  // `<main>` 1216px and the page's own max-w-6xl narrowed that to 1104px of
+  // content — 57% of the viewport, with 408px of dead gutter each side. It
+  // brings its own max-width and gutters (ResearchPage `wide`), like the rest.
   const isFullBleed = isStatCheckSurface || pathname === "/lol" || pathname === "/quiz"
     || pathname === "/quiz/ranked" || pathname === "/dev/ranked-arena-inspector"
-    || pathname === "/dev/ranked-shell-probe" || pathname === "/admin/quiz-content";
+    || pathname === "/dev/ranked-shell-probe" || pathname === "/admin/quiz-content"
+    || pathname === PRO_PLAY_MATCHUP_ROUTE;
 
   // The friends drawer is a floating overlay. On the full-bleed Stat Check
   // gameplay surface it would sit on top of the tabletop and its trigger would

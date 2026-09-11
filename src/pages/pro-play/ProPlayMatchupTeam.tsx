@@ -260,6 +260,15 @@ export function TeamBoard({
           : teamKey === headerB?.team_key
             ? headerA?.team_key ?? null
             : null,
+      // The participation denominator, read off the header the board already
+      // has. No second source: `team_games_in_scope` is the very number the
+      // server divides by to produce `share_of_team_games`.
+      teamGamesIn: (teamKey: string) =>
+        teamKey === headerA?.team_key
+          ? headerA?.team_games_in_scope ?? null
+          : teamKey === headerB?.team_key
+            ? headerB?.team_games_in_scope ?? null
+            : null,
       selected: selectedChampion,
       onSelect: (next: ChampionSelection) => {
         // Clicking the selected tile again clears it, so the tile is a toggle

@@ -28,9 +28,39 @@ import {
   type ScopePayload,
 } from "@/lib/pro-play/researchApi";
 
-export function ResearchPage({ children }: { children: ReactNode }) {
+/**
+ * The research reading column.
+ *
+ * `wide` IS A DIFFERENT KIND OF PAGE, NOT A BIGGER ONE. The three profiles and
+ * the search page are reading columns and stay at max-w-6xl. The Matchup
+ * Explorer is a five-lane scouting board read two players at a time across; it
+ * escapes the shell's max-w-7xl as well (see Layout's `isFullBleed`) and
+ * supplies the cap and gutters itself, so the board gets ~1552px of content at
+ * 1920px instead of 1104px.
+ *
+ * The top padding differs deliberately. A reading column wants air above its
+ * first line; a board wants its first lane on screen. The shell already keeps
+ * `--app-header-h` clear above both, so a second 24px of page padding was all
+ * that stood between the HUD band and the breadcrumb.
+ */
+export function ResearchPage({
+  children,
+  wide,
+}: {
+  children: ReactNode;
+  wide?: boolean;
+}) {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6">{children}</div>
+    <div
+      className={
+        wide
+          ? "mx-auto w-full max-w-[1600px] px-4 pb-6 pt-2 md:px-6 md:pb-8"
+          : "mx-auto w-full max-w-6xl px-4 py-4 md:px-6 md:py-6"
+      }
+      data-research-page={wide ? "wide" : "column"}
+    >
+      {children}
+    </div>
   );
 }
 

@@ -143,14 +143,19 @@ function ChampionChip({
       ].join(" ")}
     >
       <ChampionIcon champion={champion.key} muted={champion.banned} />
-      {/* "10/13" rather than "13g": `g` reads as gold on a League page, and
-          wins-over-games says in the same width what games-plus-rate needed
-          two numbers to say. */}
-      <span className="dossier-champ-chip__stat tabular-nums">
-        {champion.wins}/{champion.games}
-      </span>
-      <span className="dossier-champ-chip__rate tabular-nums">
-        {formatRate(champion.win_rate)}
+      {/* `10 / 11` over `90.9%`, spaced, in a fixed column to the right of the
+          icon. The two numbers are wins and games and the one below is the
+          rate — stated once for the whole grid by the legend under "Most
+          played", never abbreviated into `W/G` and `WR` on every tile. The
+          spaces around the slash are load-bearing: `10/11` at 0.6rem reads as
+          one token, and a reader has to be told what it is. */}
+      <span className="dossier-champ-chip__figures">
+        <span className="dossier-champ-chip__stat tabular-nums">
+          {champion.wins} / {champion.games}
+        </span>
+        <span className="dossier-champ-chip__rate tabular-nums">
+          {formatRate(champion.win_rate)}
+        </span>
       </span>
     </ProPlayTooltip>
   );
@@ -320,7 +325,17 @@ export function ChampionPoolSummary({
       {/* THE POOL ITSELF, not a sample of it. Ordered by games, and showing
           every champion up to a cap that only fires on the largest pools. */}
       <div className="dossier-pool__cat" data-testid="pool-cat-played">
-        <span className="dossier-pool__cat-label">Most played</span>
+        {/* THE GRAMMAR IS STATED ONCE, FOR THE WHOLE GRID. Every tile used to
+            print two unlabelled numbers and a percentage and leave the reader
+            to infer that `10/11` was wins over games. The inference is now
+            made for them here, in the quietest voice on the card, and no tile
+            repeats it. */}
+        <span className="dossier-pool__cat-label">
+          Most played
+          <span className="dossier-pool__legend" data-testid="pool-legend">
+            Wins / games · win rate
+          </span>
+        </span>
         {/* Collapsed, the grid holds two rows whether the player has six picks
             or twenty-four, which is what keeps a lane's two halves level. */}
         <div

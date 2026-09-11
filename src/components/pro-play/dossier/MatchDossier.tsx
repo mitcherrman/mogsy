@@ -49,6 +49,24 @@ import {
 import { PRO_PLAY_MATCHUP_ROUTE } from "@/lib/pro-play/routes";
 
 import { ChampionPoolSummary } from "./ChampionPool";
+
+/**
+ * "80 / 80 team games" — the player's games over the team's, which is exactly
+ * the ratio `share_of_team_games` is. The ratio is printed when both halves
+ * are known because a ratio is checkable and a percentage is not; when the
+ * board carries no team header (the lane view renders these cards too) the
+ * server's rate is printed instead, unchanged. Neither is invented here.
+ */
+export function participationHint(
+  playerGames: number,
+  teamGames: number | null,
+  share: number | null,
+): string | undefined {
+  if (teamGames !== null) return `${playerGames} / ${teamGames} team games`;
+  if (share !== null) return `${formatRate(share)} of team games`;
+  return undefined;
+}
+
 import { Disclosure, DossierSection, Figure, Parchment } from "./DossierChrome";
 import { useBoardSelection } from "./BoardSelection";
 import { ChampionIcon, PlayerPortrait, TeamCrest } from "./DossierMedia";
@@ -248,6 +266,7 @@ function CandidateFace({
 }) {
   const rec = candidate.record;
   const board = useBoardSelection();
+  const teamGames = board.teamGamesIn(teamKey);
   return (
     <div className="dossier-player" data-testid={`candidate-${candidate.player_lp_page}`}>
       <div className={`dossier-player__id is-${align}`}>
@@ -296,18 +315,19 @@ function CandidateFace({
 
       {rec ? (
         <div className="dossier-player__figures" data-testid="candidate-record">
-          <Figure label="Games" value={rec.games} />
+          {/* TWO FACTS, TWO FIGURES. "POOL 21 / 100.0% of team games" mixed a
+              count of unique champions with a participation rate that has
+              nothing to do with it. Participation is a property of GAMES, so
+              it annotates Games; the pool size is a count of champions, so the
+              figure is called Champions. Neither number changed. */}
+          <Figure
+            label="Games"
+            value={rec.games}
+            hint={participationHint(rec.games, teamGames, candidate.share_of_team_games)}
+          />
           <Figure label="Record" value={formatRecord(rec.wins, rec.losses)} />
           <Figure label="Win rate" value={formatRate(rec.win_rate)} />
-          <Figure
-            label="Pool"
-            value={rec.champion_pool_size}
-            hint={
-              candidate.share_of_team_games !== null
-                ? `${formatRate(candidate.share_of_team_games)} of team games`
-                : undefined
-            }
-          />
+          <Figure label="Champions" value={rec.champion_pool_size} />
         </div>
       ) : (
         <div className="dossier-player__figures" data-testid="candidate-record">
@@ -423,11 +443,40 @@ function LaneHalf({
   );
 }
 
+/**
+ * One lane, both sides.
+ *
+ * "OPEN LANE DOSSIER" WAS AUDITED IN THE LIVE4 PASS AND KEPT — DEMOTED, NOT
+ * DELETED. It is not legacy from the old Lane-Explorer split: `mode=lane`
+ * still serves three things this board deliberately does not, and each is
+ * named in `ProPlayMatchup.tsx` where it is built —
+ *
+ *   1. the MECHANICS PANEL (abilities, cooldowns, costs, ranges from the
+ *      public champion docs authority). Five of them would bury the board, so
+ *      the board renders none;
+ *   2. ALL FOUR SCOPES AT ONCE, side by side. The board is one scope;
+ *   3. ROSTER CONTEXT, and the unbounded pool a `pool_omitted` candidate
+ *      points at in its own words ("open the lane dossier to see them in
+ *      full").
+ *
+ * What it does NOT deserve is the weight it had: a gold, underlined call to
+ * action on the same baseline as the lane's name, five times down the page,
+ * competing with the thing the reader came for. It moves to the plate's foot,
+ * in the muted voice, after the two players it is subordinate to. The link,
+ * its destination, its prefill suffix and its test id are unchanged.
+ */
 export function LanePlate({ row, preview }: { row: LaneRow; preview: number }) {
   return (
     <Parchment className="dossier-lane" testId={`lane-card-${row.lane}`}>
       <div className="dossier-lane__head">
         <h3 className="dossier-lane__name">{row.lane}</h3>
+      </div>
+      <div className="dossier-lane__body">
+        <LaneHalf side={row.a} preview={preview} align="left" />
+        <span className="dossier-lane__divider" aria-hidden="true" />
+        <LaneHalf side={row.b} preview={preview} align="right" />
+      </div>
+      <div className="dossier-lane__foot">
         {row.drilldown ? (
           <Link
             className="dossier-lane__cta"
@@ -438,16 +487,11 @@ export function LanePlate({ row, preview }: { row: LaneRow; preview: number }) {
             {row.drilldown.player_a_prefilled && row.drilldown.player_b_prefilled
               ? ""
               : " (choose players)"}
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            <ArrowRight className="h-3 w-3" aria-hidden="true" />
           </Link>
         ) : (
           <span className="dossier-muted">Select both teams to open this lane.</span>
         )}
-      </div>
-      <div className="dossier-lane__body">
-        <LaneHalf side={row.a} preview={preview} align="left" />
-        <span className="dossier-lane__divider" aria-hidden="true" />
-        <LaneHalf side={row.b} preview={preview} align="right" />
       </div>
     </Parchment>
   );

@@ -827,14 +827,22 @@ export function MatchupBody() {
   if (!contract || !ready) return <LoadingBlock />;
 
   return (
-    <ResearchPage>
-      <ResearchBreadcrumb trail={[{ label: "Matchup Explorer" }]} />
-      {/* EVERGREEN. The event this dossier is curated for is a kicker inside
-          the VS banner, not the product's name — a title with a year in it
-          goes stale on a schedule, and the Explorer does not. */}
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight md:text-[1.75rem]">
-        League of Legends Esports Matchup Explorer
-      </h1>
+    <ResearchPage wide>
+      {/* ONE HEADER ROW, NOT THREE STACKED ONES. The breadcrumb's last crumb
+          and the title said the same word, one above the other, above a hero
+          that says it a third time. On desktop they share a baseline row — the
+          trail on the left, the evergreen product title beside it — which
+          returns ~40px to the board without deleting either. Below `lg` they
+          stack exactly as before, because the title wraps there. */}
+      <div className="proplay-matchup-head">
+        <ResearchBreadcrumb trail={[{ label: "Matchup Explorer" }]} />
+        {/* EVERGREEN. The event this dossier is curated for is a kicker inside
+            the VS banner, not the product's name — a title with a year in it
+            goes stale on a schedule, and the Explorer does not. */}
+        <h1 className="proplay-matchup-title">
+          League of Legends Esports Matchup Explorer
+        </h1>
+      </div>
 
       {/* The focus-set caveat used to sit here, correcting a "watchlist" badge
           the page no longer prints. With no qualification claimed anywhere on
