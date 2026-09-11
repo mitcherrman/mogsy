@@ -145,14 +145,13 @@ export function MogzyExplainsPanel({
           <header className="flex items-start gap-3">
             {/* Mogzy holds the scroll rather than standing over the arena: he
                 is INSIDE the panel's own header, so he cannot reach the
-                question, the timer or either score at any width. The frame is
-                not decoration — see `.mogzy-scroll-portrait`. */}
+                question, the timer or either score at any width. */}
             <span className="mogzy-scroll-portrait -mt-0.5 block h-14 w-14 shrink-0">
               <MogzyMascot
                 pose="explaining"
                 decorative
                 loading="eager"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
               />
             </span>
             <div className="min-w-0 flex-1 pt-1">

@@ -46,7 +46,9 @@ describe("BlogRenderer empty state", () => {
     const { container } = render(<BlogRenderer content={{}} showEmptyMascot />);
     const img = container.querySelector("img")!;
     const src = img.getAttribute("src")!;
-    const fullPath = path.join(process.cwd(), "public", src);
+    // `src` is a URL: the mascot art is registered percent-encoded because its
+    // filename contains spaces. Decode before hitting the filesystem.
+    const fullPath = path.join(process.cwd(), "public", decodeURIComponent(src));
     expect(fs.existsSync(fullPath)).toBe(true);
   });
 

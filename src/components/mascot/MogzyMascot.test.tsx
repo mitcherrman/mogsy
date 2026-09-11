@@ -35,7 +35,14 @@ const ALL_PATHS = [
 describe("mascot-assets registry", () => {
   it("resolves every registered path to a real file with exact casing", () => {
     for (const assetPath of ALL_PATHS) {
-      const fullPath = path.join(process.cwd(), "public", assetPath);
+      // A registered path is a URL, not a filename: the background-removed art
+      // has spaces in its name and is registered percent-encoded, which is what
+      // the browser must be handed. Decode before touching the filesystem — and
+      // decode ONLY here, so the exact-casing check below still compares the
+      // real bytes of the real directory entry. That check is the one that
+      // catches an asset macOS resolves case-insensitively and Linux 404s.
+      const fullPath = path.join(
+        process.cwd(), "public", decodeURIComponent(assetPath));
       expect(fs.existsSync(fullPath), assetPath).toBe(true);
       const dirEntries = fs.readdirSync(path.dirname(fullPath));
       expect(dirEntries, assetPath).toContain(path.basename(fullPath));

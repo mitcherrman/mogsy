@@ -13228,23 +13228,18 @@ html.hub-commons-in-view .hextech-ambience-layer {
   white-space: nowrap;
 }
 
-/* Mogzy's portrait, MOUNTED on the sheet rather than printed into it.
+/* Mogzy standing ON the sheet.
 
-   The mascot art is colour-type 2 — RGB with no alpha channel — so every pose
-   carries an opaque near-black ground. Every other surface in the app places
-   it on a dark panel, where that ground is invisible; on vellum it is a black
-   rectangle. So the portrait gets the frame the sheet's other dark inserts
-   already have (the scenario band does exactly this): opaque navy, a brass
-   ring, and a shadow that lifts it off the paper. A future pose exported with
-   transparency loses nothing by keeping the frame. */
+   This was a navy plate with a brass ring — a frame, because the mascot art
+   was colour-type 2 (RGB, no alpha) and carried an opaque near-black ground
+   that read as a black rectangle on vellum. The art is transparent now, so the
+   frame has become the very thing it was hiding: a dark square on parchment.
+
+   So there is no plate. Mogzy sits directly on the sheet with a warm shadow
+   under him, which is what the art was always drawn for. Geometry is
+   unchanged — same 3.5rem box, same place in the header. */
 .mogzy-scroll-portrait {
-  border-radius: 0.5rem;
-  border: 1px solid rgba(185,147,76,0.55);
-  background-color: #0a1428;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,248,226,0.10),
-    0 6px 14px -8px rgba(60,44,12,0.7);
-  overflow: hidden;
+  filter: drop-shadow(0 4px 6px rgba(60, 44, 12, 0.38));
 }
 
 /* The collapsed tab. Its fill lives here, NOT in a Tailwind arbitrary value:

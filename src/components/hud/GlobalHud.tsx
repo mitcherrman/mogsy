@@ -121,11 +121,15 @@ export default function GlobalHud() {
                 it, at the cost of only the outermost pixels of the brim tips.
                 Both are pure transforms over a square-in-square `object-cover`:
                 the aspect ratio is never touched, and the asset itself is
-                untouched. Cover rather than contain because the PNG's
-                background is opaque black — contain would float a black square
-                on the navy glass. */}
+                untouched. Cover was originally chosen because the PNG's
+                background was opaque black and contain would have floated a
+                black square on the navy glass. The art is transparent now, so
+                that reason is gone — the framing is kept because it is the
+                framing that ships and this pass is a reference swap, not a
+                redesign. Contain is available whenever the brim tips are worth
+                more than the fill. */}
             <img
-              src="/mascot/mogzy-hat.png"
+              src="/mascot/mogzy-hat%20Background%20Removed.png"
               alt=""
               draggable={false}
               className="h-full w-full translate-y-[5%] scale-110 object-cover object-center"
