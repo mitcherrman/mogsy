@@ -1853,6 +1853,49 @@
   }
 }
 
+/* ---- RIV2: Item-primary media composition scale ---------------------------
+   The item-primary card's subject IS one piece of art, and the approved
+   concept makes that art the focal object of a shop scene rather than a small
+   badge floating in an empty panel. Everything in the composition — medallion,
+   background echo, flourishes, specks, pedestal — is a MULTIPLE of the item,
+   so there is exactly one number to tune and the ratios can never drift apart.
+
+   The item's own size steps with the BAND'S HEIGHT for the same reason RIV1's
+   recipe tree does: `--sc-fit` is `min(1rem, 9.09cqh)`, so it saturates at 16px
+   and reports the same value for a 306px desktop band and a 208px tablet one,
+   which is precisely the distinction this card needs. The band already declares
+   `container-type: size`, so its height is queryable from inside.
+
+   The `cqmin` term still wins on the 16:9 broadcast stage (15.2cqmin is 152px
+   there against a 152px floor), which keeps primitives.tsx's `M <= 0.625 * N`
+   rule intact: the stage and the band land on the same number rather than the
+   band overtaking it.
+
+   Declared on `[data-item-media]`, which the card puts on BOTH the hero zone
+   and the backdrop — they are siblings, not ancestor and descendant, and a
+   custom property only inherits downwards. */
+[data-item-media] {
+  --item-hero-icon: max(15.2cqmin, calc(6 * var(--sc-fit)));
+  /* The medallion is a multiple of the ITEM, capped by the BAND so it can
+     never be clipped by the panel's own top and bottom edges: 1.62x the item
+     is the concept's ratio, and 76cqh is the tallest ring that still leaves
+     the item name its block underneath. The `min()` is which of the two
+     constraints binds — the ratio on a tall band, the band on a short one. */
+  --item-medallion: min(calc(1.5 * var(--item-hero-icon)), 68cqh);
+  --item-medallion-inner: min(calc(1.2 * var(--item-hero-icon)), 54cqh);
+  --item-echo: calc(3.4 * var(--item-hero-icon));
+}
+@container (min-height: 190px) {
+  [data-item-media] {
+    --item-hero-icon: max(15.2cqmin, calc(7.6 * var(--sc-fit)));
+  }
+}
+@container (min-height: 240px) {
+  [data-item-media] {
+    --item-hero-icon: max(15.2cqmin, calc(9.5 * var(--sc-fit)));
+  }
+}
+
 /* Custom animation preview keyframes */
 @keyframes fadeIn {
   from { opacity: 0; } to { opacity: 1; }

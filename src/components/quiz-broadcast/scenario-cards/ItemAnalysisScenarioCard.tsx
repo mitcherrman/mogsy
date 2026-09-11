@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import type { ItemAnalysisSubject, ScenarioSectionData } from "./types";
 import { ScenarioCardFrame } from "./ScenarioCardFrame";
 import { ScenarioBadge, ScenarioDivider, ScenarioSection, ScenarioTitle } from "./primitives";
+import itemShopkeeper from "@/assets/ranked/item-shopkeeper.png";
 
 /**
  * Item Analysis card.
@@ -12,8 +13,13 @@ import { ScenarioBadge, ScenarioDivider, ScenarioSection, ScenarioTitle } from "
  * card's main visual, since the recipe is the teaching object. The unknown
  * component is a pulsing "?" node that fills with the answer at reveal.
  *
- * Non-recipe item questions keep the "artifact dossier" hero treatment
- * (ghost art + shrine rings + floating icon).
+ * Non-recipe item questions render the SHOP COMPOSITION (RIV2): a layered
+ * media panel — warm shop interior, an oversized faint echo of the item's own
+ * artwork, the shopkeeper standing in the right of frame, a gold academy
+ * medallion, and the item itself as a large foreground focal object. Every
+ * layer but the shopkeeper is driven by the SAME `item.icon` the card is
+ * already given, so the composition is dynamic for every item question and
+ * there is not one line of per-item styling anywhere in it.
  *
  * Spoiler rules: known_components appear verbatim in the question text, so
  * the tree is safe pre-reveal. The missing component's name/icon and the
@@ -84,14 +90,25 @@ export function ItemAnalysisScenarioCard({
     <ScenarioCardFrame
       backgroundUrl={null}
       backgroundAlt={item.name}
-      gradientClass="bg-[linear-gradient(to_top,rgba(3,2,2,0.92)_0%,rgba(3,2,2,0.7)_26%,rgba(3,2,2,0.25)_44%,transparent_60%)]"
+      // RIV2 — the item-primary card is the one scenario card with no
+      // background photograph of its own, which is why it read as an empty
+      // box. It now composes one from what it already has. The recipe path is
+      // deliberately untouched: its tree IS the picture and a shopkeeper
+      // behind it would compete with the thing being taught.
+      backgroundSlot={hasRecipe ? undefined : <ItemShopBackdrop item={item} />}
+      gradientClass={
+        hasRecipe
+          ? "bg-[linear-gradient(to_top,rgba(3,2,2,0.92)_0%,rgba(3,2,2,0.7)_26%,rgba(3,2,2,0.25)_44%,transparent_60%)]"
+          : "bg-[linear-gradient(to_top,rgba(4,3,2,0.94)_0%,rgba(4,3,2,0.66)_30%,rgba(4,3,2,0.12)_58%,transparent_78%)]"
+      }
     >
-      {/* Ghost art — oversized, blurred, faded copy of the item art filling
-          the empty space. Slow drift keeps it alive without stealing focus.
-          Deliberately left on bare `cqmin` by RIV1: this is a background wash
-          sized to the CARD, not a reading of the item, and flooring it would
-          scale a 13%-opacity blur past the band's own edges. */}
-      {item.icon && (
+      {/* The ghost/echo layer used to live here, in FRONT of the frame's
+          vignette. On the item-primary path it is now the echo inside
+          `ItemShopBackdrop` — behind the vignette and behind the gradient,
+          which is what lets it stay faint at the size the concept asks for.
+          The recipe path keeps the ghost it always had, so its panel is not
+          drawn on flat black. */}
+      {hasRecipe && item.icon && (
         <motion.div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -114,44 +131,88 @@ export function ItemAnalysisScenarioCard({
       {/* Build-path questions: the recipe tree IS the hero */}
       {hasRecipe && <RecipeTree item={item} revealed={revealed} />}
 
-      {/* Hero artifact zone: shrine rings + glow + crisp floating icon */}
+      {/* Hero artifact zone — gold medallion + large foreground item (RIV2).
+          `data-item-media` is the sizing-token host; see index.css. */}
       {!hasRecipe && (
-      <div className="absolute inset-x-0 top-[8%] flex h-[42%] items-center justify-center">
+      <div
+        data-item-media
+        className="pointer-events-none absolute inset-x-0 top-0 flex h-[80cqh] items-center justify-center"
+      >
         <div className="relative flex items-center justify-center">
-          {/* radial shrine rings */}
+          {/* warm pool of light the medallion sits in */}
+          <div
+            aria-hidden
+            className="absolute h-[calc(2.6*var(--item-hero-icon))] w-[calc(2.6*var(--item-hero-icon))] rounded-full bg-[radial-gradient(circle,rgba(212,179,90,0.22)_0%,rgba(212,179,90,0.07)_42%,transparent_70%)]"
+          />
+
+          {/* medallion — outer dashed ring, slow rotation */}
           <motion.div
             aria-hidden
-            className="absolute h-[max(26cqmin,calc(8.4*var(--sc-fit)))] w-[max(26cqmin,calc(8.4*var(--sc-fit)))] rounded-full border border-[#d4b35a]/25"
+            className="absolute h-[var(--item-medallion)] w-[var(--item-medallion)] rounded-full border border-[#d4b35a]/45"
             animate={{ rotate: 360 }}
             transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
             style={{ borderStyle: "dashed" }}
           />
+          {/* medallion — solid inner ring */}
           <motion.div
             aria-hidden
-            className="absolute h-[max(20cqmin,calc(6.9*var(--sc-fit)))] w-[max(20cqmin,calc(6.9*var(--sc-fit)))] rounded-full border border-[#7dd3fc]/15"
-            animate={{ scale: [1, 1.05, 1], opacity: [0.5, 0.9, 0.5] }}
+            className="absolute h-[var(--item-medallion-inner)] w-[var(--item-medallion-inner)] rounded-full border border-[#e8c97a]/40 bg-[radial-gradient(circle,rgba(232,201,122,0.10)_0%,transparent_68%)]"
+            animate={{ scale: [1, 1.03, 1], opacity: [0.7, 1, 0.7] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           />
+          {/* medallion cardinal points — four small gold diamonds on the ring */}
+          {["top", "right", "bottom", "left"].map((side, i) => (
+            <div
+              key={side}
+              aria-hidden
+              className="absolute h-[var(--item-medallion)] w-[var(--item-medallion)]"
+              style={{ transform: `rotate(${i * 90}deg)` }}
+            >
+              <div className="absolute left-1/2 top-0 h-[calc(0.042*var(--item-hero-icon))] w-[calc(0.042*var(--item-hero-icon))] -translate-x-1/2 -translate-y-1/2 rotate-45 bg-[#e8c97a]/65" />
+            </div>
+          ))}
 
-          {/* soft hextech glow */}
+          {/* gold flourishes reaching out of the medallion, left and right —
+              the concept's "divider/detailing", drawn as two mirrored rules
+              that start where the medallion ends. */}
+          {/* Both classes are written out in full rather than interpolated:
+              Tailwind extracts class names by scanning the source text, so a
+              `bg-[linear-gradient(${dir},…)]` template would compile to no
+              rule at all and these would silently render as nothing. */}
+          {([
+            ["right", "absolute top-1/2 h-px w-[calc(0.9*var(--item-hero-icon))] -translate-y-1/2 bg-[linear-gradient(to_right,rgba(212,179,90,0.7),transparent)]"],
+            ["left", "absolute top-1/2 h-px w-[calc(0.9*var(--item-hero-icon))] -translate-y-1/2 bg-[linear-gradient(to_left,rgba(212,179,90,0.7),transparent)]"],
+          ] as const).map(([side, cls]) => (
+            <div
+              key={side}
+              aria-hidden
+              className={cls}
+              style={{ [side]: "calc(50% + 0.56 * var(--item-medallion))" } as CSSProperties}
+            />
+          ))}
+
+          {/* soft hextech glow directly behind the item */}
           <motion.div
             aria-hidden
-            className="absolute h-[max(15cqmin,calc(5*var(--sc-fit)))] w-[max(15cqmin,calc(5*var(--sc-fit)))] rounded-full bg-[#d4b35a]/25 blur-2xl"
+            className="absolute h-[calc(1.05*var(--item-hero-icon))] w-[calc(1.05*var(--item-hero-icon))] rounded-full bg-[#d4b35a]/30 blur-2xl"
             animate={{ opacity: [0.5, 0.85, 0.5] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
 
-          {/* particle specks */}
+          {/* particle specks — kept proportional to the item, not to the card */}
           {[
-            { left: "max(-9cqmin,calc(-3.5*var(--sc-fit)))", top: "max(-5cqmin,calc(-1.95*var(--sc-fit)))", delay: 0 },
-            { left: "max(9.5cqmin,calc(3.75*var(--sc-fit)))", top: "max(-2cqmin,calc(-0.78*var(--sc-fit)))", delay: 1.6 },
-            { left: "max(7cqmin,calc(2.75*var(--sc-fit)))", top: "max(7cqmin,calc(2.75*var(--sc-fit)))", delay: 3.1 },
+            { x: -0.62, y: -0.34, delay: 0 },
+            { x: 0.66, y: -0.14, delay: 1.6 },
+            { x: 0.48, y: 0.5, delay: 3.1 },
           ].map((p, i) => (
             <motion.div
               key={i}
               aria-hidden
-              className="absolute h-[max(0.45cqmin,calc(0.28*var(--sc-fit)))] w-[max(0.45cqmin,calc(0.28*var(--sc-fit)))] rounded-full bg-[#f3dca0]"
-              style={{ left: p.left, top: p.top }}
+              className="absolute h-[calc(0.032*var(--item-hero-icon))] w-[calc(0.032*var(--item-hero-icon))] rounded-full bg-[#f3dca0]"
+              style={{
+                left: `calc(50% + ${p.x} * var(--item-hero-icon))`,
+                top: `calc(50% + ${p.y} * var(--item-hero-icon))`,
+              }}
               animate={{ y: [0, -8, 0], opacity: [0, 0.8, 0] }}
               transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: p.delay }}
             />
@@ -169,13 +230,17 @@ export function ItemAnalysisScenarioCard({
           {/* pedestal shadow */}
           <motion.div
             aria-hidden
-            className="absolute top-[max(9.5cqmin,calc(3.75*var(--sc-fit)))] h-[max(1.6cqmin,calc(0.63*var(--sc-fit)))] w-[max(11cqmin,calc(4.3*var(--sc-fit)))] rounded-[50%] bg-black/55 blur-md"
+            className="absolute top-[calc(0.68*var(--item-hero-icon))] h-[calc(0.115*var(--item-hero-icon))] w-[calc(0.79*var(--item-hero-icon))] rounded-[50%] bg-black/55 blur-md"
             animate={{ scaleX: [1, 0.9, 1], opacity: [0.55, 0.4, 0.55] }}
             transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut" }}
           />
         </div>
       </div>
       )}
+
+      {/* Gold panel detailing — corner brackets and the bottom-edge ornament
+          the concept frames the media with. Item-primary only. */}
+      {!hasRecipe && <PanelFiligree />}
 
       {/* Bottom label + reveal-gated sections */}
       {/* pb in `cqh` — see CombatCalculationScenarioCard; same 5% on 16:9. */}
@@ -198,11 +263,21 @@ export function ItemAnalysisScenarioCard({
   );
 }
 
+/**
+ * The foreground focal item — the one thing on this card that must read at a
+ * glance. Sized off `--item-hero-icon` (index.css), which steps with the
+ * BAND'S HEIGHT exactly the way the recipe tree's tokens do, so a phone and a
+ * desktop each get the largest item their band can actually seat.
+ */
 function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
   const [errored, setErrored] = useState(false);
+  const box = "h-[var(--item-hero-icon)] w-[var(--item-hero-icon)]";
   if (!iconUrl || errored) {
     return (
-      <div className="flex h-[max(14cqmin,calc(5.5*var(--sc-fit)))] w-[max(14cqmin,calc(5.5*var(--sc-fit)))] items-center justify-center rounded-2xl border border-[#d4b35a]/40 bg-black/40 text-[max(3cqmin,calc(1.875*var(--sc-fit)))] text-white/30">
+      <div
+        data-item-hero-icon
+        className={`flex ${box} items-center justify-center rounded-[18%] border border-[#d4b35a]/40 bg-black/40 text-[calc(0.22*var(--item-hero-icon))] text-white/30`}
+      >
         ?
       </div>
     );
@@ -211,9 +286,104 @@ function HeroIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
     <img
       src={iconUrl}
       alt={alt}
+      data-item-hero-icon
       onError={() => setErrored(true)}
-      className="h-[max(14cqmin,calc(5.5*var(--sc-fit)))] w-[max(14cqmin,calc(5.5*var(--sc-fit)))] rounded-2xl border-2 border-[#d4b35a]/60 object-cover shadow-[0_18px_44px_-8px_rgba(0,0,0,0.9)] ring-1 ring-[#f3dca0]/30"
+      className={`${box} rounded-[18%] border-2 border-[#d4b35a]/70 object-cover shadow-[0_22px_52px_-6px_rgba(0,0,0,0.95),0_0_0_1px_rgba(0,0,0,0.5)] ring-1 ring-[#f3dca0]/35`}
     />
+  );
+}
+
+/**
+ * The shop the item is being sold in — every layer behind the gradient.
+ *
+ * Sits in `ScenarioCardFrame`'s `backgroundSlot`, so it inherits the frame's
+ * Ken Burns pan, its vignette and its readability gradient rather than
+ * re-implementing any of them. Three layers, back to front:
+ *
+ *   1. the warm interior wash, so the panel is not flat black;
+ *   2. an oversized, heavily blurred ECHO of `item.icon` — the same dynamic
+ *      artwork the foreground draws, at ~3.4x its size and 11% opacity;
+ *   3. `item-shopkeeper.png` in the right of frame, masked off at its right
+ *      and bottom edges so it reads as presence rather than as a cut-out.
+ *
+ * `data-item-media` is repeated here because the sizing tokens are declared on
+ * that attribute and this subtree is a SIBLING of the hero zone, not a
+ * descendant — one CSS block, two hosts, no duplicated numbers.
+ */
+const SHOPKEEPER_MASK =
+  "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 22%, #000 52%),"
+  + " linear-gradient(to top, transparent 0%, rgba(0,0,0,0.4) 14%, #000 34%),"
+  + " linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, #000 26%)";
+
+function ItemShopBackdrop({ item }: { item: ItemAnalysisSubject }) {
+  return (
+    <div data-item-media aria-hidden className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(125%_150%_at_46%_36%,#241a12_0%,#150f0a_46%,#070505_100%)]" />
+
+      {item.icon && (
+        <motion.img
+          src={item.icon}
+          alt=""
+          className="absolute left-[33%] top-[44%] h-[var(--item-echo)] w-[var(--item-echo)] max-w-none -translate-x-1/2 -translate-y-1/2 rounded-[10%] object-cover opacity-[0.13] blur-[10px] saturate-[1.2]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.13, scale: [1, 1.05, 1] }}
+          transition={{
+            opacity: { duration: 0.6 },
+            scale: { duration: 18, repeat: Infinity, ease: "easeInOut" },
+          }}
+        />
+      )}
+
+      {/* lantern light the shopkeeper is lit by */}
+      <div className="absolute right-0 top-0 h-full w-[46%] bg-[radial-gradient(75%_85%_at_78%_45%,rgba(214,150,74,0.20)_0%,transparent_72%)]" />
+
+      <motion.img
+        src={itemShopkeeper}
+        alt=""
+        className="absolute bottom-[4%] right-[-6%] h-[160%] w-auto max-w-none object-contain opacity-[0.54] saturate-[0.85]"
+        style={{
+          // Fades into the panel's dark left and bottom rather than ending on
+          // a cut-out edge. Two ramps intersected, so a corner gets both.
+          maskImage: SHOPKEEPER_MASK,
+          maskComposite: "intersect",
+          WebkitMaskImage: SHOPKEEPER_MASK,
+          WebkitMaskComposite: "source-in",
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.54 }}
+        transition={{ duration: 0.8 }}
+      />
+    </div>
+  );
+}
+
+/**
+ * The gold detailing the concept frames the media panel with: a bracket in
+ * each corner and one ornament centred on the bottom edge. Purely decorative,
+ * expressed in `cqmin`/`cqh` so it thins out with the band instead of
+ * crowding a phone.
+ */
+function PanelFiligree() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      {([
+        ["left-[2.2%] top-[5cqh]", "border-l border-t rounded-tl-md"],
+        ["right-[2.2%] top-[5cqh]", "border-r border-t rounded-tr-md"],
+        ["left-[2.2%] bottom-[5cqh]", "border-l border-b rounded-bl-md"],
+        ["right-[2.2%] bottom-[5cqh]", "border-r border-b rounded-br-md"],
+      ] as const).map(([pos, edges]) => (
+        <div
+          key={pos}
+          className={`absolute ${pos} ${edges} h-[max(2.4cqmin,calc(0.7*var(--sc-fit)))] w-[max(2.4cqmin,calc(0.7*var(--sc-fit)))] border-[#d4b35a]/35`}
+        />
+      ))}
+
+      <div className="absolute bottom-[2.4cqh] left-1/2 flex -translate-x-1/2 items-center gap-[max(0.8cqmin,calc(0.25*var(--sc-fit)))]">
+        <div className="h-px w-[max(6cqmin,calc(1.9*var(--sc-fit)))] bg-[linear-gradient(to_right,transparent,rgba(212,179,90,0.55))]" />
+        <div className="h-[max(0.9cqmin,calc(0.28*var(--sc-fit)))] w-[max(0.9cqmin,calc(0.28*var(--sc-fit)))] rotate-45 bg-[#e8c97a]/75" />
+        <div className="h-px w-[max(6cqmin,calc(1.9*var(--sc-fit)))] bg-[linear-gradient(to_left,transparent,rgba(212,179,90,0.55))]" />
+      </div>
+    </div>
   );
 }
 
