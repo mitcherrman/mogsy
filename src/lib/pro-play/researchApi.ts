@@ -444,15 +444,39 @@ export function notFoundMessage(kind: EntityKind, key: string): { message: strin
  * (~12,000) or teams (~2,500) — it never has — so pulling a list to filter
  * locally was never an option and is not one now.
  */
+export interface AutocompleteResponse {
+  contract_version: string;
+  query: string;
+  kind: EntityKind;
+  limit: number;
+  results: SearchResult[];
+  total_matches: number;
+  truncated: boolean;
+}
+
+/**
+ * The FIRST-CHARACTER minimum. `/search` refuses one character and is right
+ * to — its substring tier would answer "most of 20,624 players" — so the
+ * type-ahead has its own prefix-only endpoint instead. Read
+ * `contract.search.autocomplete.min_query_chars` to confirm; hard-coded here
+ * because a control cannot wait for a contract fetch to decide whether to
+ * ask, and 1 is the floor below which there is nothing to ask.
+ */
+export const ENTITY_AUTOCOMPLETE_MIN_CHARS = 1;
+
 export async function searchEntitySuggestions(
   kind: EntityKind,
   query: string,
   limit = 12,
   signal?: AbortSignal,
 ): Promise<SearchResult[]> {
-  const response = await searchEntities(query, { kinds: [kind], limit }, signal);
-  // The API ranks across kinds; keep only the one this filter means, in case
-  // a future contract widens what a kind-scoped query may return.
+  const params = new URLSearchParams({ q: query, kind, limit: String(limit) });
+  const response = await get<AutocompleteResponse>(
+    `/autocomplete?${params}`,
+    signal,
+  );
+  // One kind per call is the endpoint's own contract; filtering again costs
+  // nothing and keeps a Player box from ever showing a team if that widens.
   return response.results.filter((r) => r.kind === kind);
 }
 

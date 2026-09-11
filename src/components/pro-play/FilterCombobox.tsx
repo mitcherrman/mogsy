@@ -80,27 +80,85 @@ export function rankOptions(options: ComboOption[], query: string): ComboOption[
   return [...prefix, ...contains];
 }
 
-/** The popover panel. Bounded so it can never grow to the corpus height. */
-function Panel({ children }: { children: React.ReactNode }) {
+/** Nominal panel width; matches the `w-[min(20rem,...)]` class below. */
+const PANEL_WIDTH = 320;
+const EDGE_GAP = 8;
+
+/**
+ * Which end of the trigger the panel hangs from.
+ *
+ * `align="start"` puts the panel's LEFT edge on the trigger's, which overflows
+ * when the trigger sits within a panel-width of the right edge — the Team
+ * filter at 375px. `align="end"` hangs it from the right edge instead, so it
+ * extends leftward. Choosing between them from the trigger's measured
+ * position is the whole horizontal fix.
+ */
+export function alignFor(trigger: HTMLElement | null): "start" | "end" {
+  if (!trigger || typeof window === "undefined") return "start";
+  const rect = trigger.getBoundingClientRect();
+  const overflowsRight = rect.left + PANEL_WIDTH > window.innerWidth - EDGE_GAP;
+  // Only worth flipping if the other end actually has room.
+  return overflowsRight && rect.right >= PANEL_WIDTH + EDGE_GAP ? "end" : "start";
+}
+
+/**
+ * The popover panel.
+ *
+ * DOWNWARD ONLY — `avoidCollisions={false}` is deliberate and is the ONLY way
+ * Radix guarantees it. With collisions on, `side="bottom"` is a preference:
+ * floating-ui flips the panel above the trigger as soon as the space below is
+ * short, which is exactly what the owner asked never to happen.
+ *
+ * THE COST OF THAT FLAG IS THAT IT GOVERNS BOTH AXES, and an earlier pass hit
+ * it: with collisions off, the 375px Team menu ran to x=512. So horizontal
+ * containment is handled here instead of by floating-ui — `alignFor` picks the
+ * end of the trigger to hang from — and the vertical case is handled by
+ * SHRINKING rather than flipping: `--stats-combo-max` below is the real space
+ * beneath the trigger, so a cramped viewport gets a shorter, still-scrollable
+ * menu.
+ */
+function Panel({
+  children,
+  align,
+  maxListPx,
+}: {
+  children: React.ReactNode;
+  align: "start" | "end";
+  maxListPx: number;
+}) {
   return (
     <PopoverContent
-      align="start"
-      // DOWNWARD IS A PREFERENCE, NOT A PROHIBITION. `side="bottom"` already
-      // opens it under the control. An earlier attempt forced that with
-      // `avoidCollisions={false}`, which was wrong: that flag governs BOTH
-      // axes, so it also switched off horizontal containment and at 375px the
-      // Team menu ran to x=512 on a 375px screen. Collision handling is back
-      // on, so the panel shifts sideways to stay on screen and only flips
-      // upward when there is genuinely no room below — which beats rendering
-      // it off the edge.
+      align={align}
       side="bottom"
+      avoidCollisions={false}
+      // Published so the guarantee is observable. jsdom has no layout, so a
+      // test cannot catch a flip by measuring one; it can catch the prop that
+      // forbids flipping going missing.
+      data-downward-only="true"
       sideOffset={4}
-      collisionPadding={8}
+      style={{ ["--stats-combo-max" as string]: `${maxListPx}px` }}
       className="w-[min(20rem,calc(100vw-2rem))] border-[#c9a84c]/30 bg-[#0b1622] p-0"
     >
       {children}
     </PopoverContent>
   );
+}
+
+/**
+ * Space actually available beneath the trigger, clamped.
+ *
+ * This is what replaces the flip. Radix will not shrink the panel for us once
+ * `avoidCollisions` is off, so the height is computed from the trigger's own
+ * rect: never more than 20rem (the cap that fixed the original "covers the
+ * viewport" complaint), never less than 8rem (below which a menu is not worth
+ * opening and the page can scroll to it).
+ */
+export function availableBelow(trigger: HTMLElement | null): number {
+  if (!trigger || typeof window === "undefined") return 320;
+  const rect = trigger.getBoundingClientRect();
+  // 56px covers the search input and the panel's own border/padding.
+  const room = window.innerHeight - rect.bottom - EDGE_GAP - 56;
+  return Math.max(128, Math.min(320, Math.round(room)));
 }
 
 /**
@@ -113,8 +171,7 @@ function Panel({ children }: { children: React.ReactNode }) {
  * the 300-400px the owner asked for on a tall desktop, where the available
  * height would otherwise be most of the screen — the original complaint.
  */
-const LIST_MAX =
-  "max-h-[min(20rem,45vh,var(--radix-popover-content-available-height,20rem))]";
+const LIST_MAX = "max-h-[var(--stats-combo-max,20rem)] overflow-y-auto";
 
 function TriggerButton({
   field,
@@ -122,7 +179,10 @@ function TriggerButton({
   selected,
   onClear,
   open,
+  anchorRef,
 }: {
+  /** The trigger's own node, measured to place the panel. */
+  anchorRef?: React.RefObject<HTMLSpanElement>;
   /** The FIELD name ("League"), which is what names the control. */
   field: string;
   /** The current VALUE, which is what the control reads out. */
@@ -132,7 +192,7 @@ function TriggerButton({
   open: boolean;
 }) {
   return (
-    <span className="relative flex">
+    <span className="relative flex" ref={anchorRef}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -178,6 +238,29 @@ function FieldShell({ label, children }: { label: string; children: React.ReactN
   );
 }
 
+/**
+ * Placement measured at open time.
+ *
+ * Both comboboxes need the same two numbers, and both need them recomputed on
+ * every open rather than once: the filter bar moves as the page scrolls, so a
+ * value captured at mount would place the menu against a stale rect.
+ */
+function usePlacement(open: boolean) {
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [placement, setPlacement] = useState<{
+    align: "start" | "end";
+    maxListPx: number;
+  }>({ align: "start", maxListPx: 320 });
+
+  useEffect(() => {
+    if (!open) return;
+    const node = anchorRef.current;
+    setPlacement({ align: alignFor(node), maxListPx: availableBelow(node) });
+  }, [open]);
+
+  return { anchorRef, ...placement };
+}
+
 // ---------------------------------------------------------------------------
 // Static list — League
 // ---------------------------------------------------------------------------
@@ -202,6 +285,7 @@ export function FilterCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const { anchorRef, align, maxListPx } = usePlacement(open);
 
   // The query is per-opening. Reopening the menu with the last search still
   // applied hides most of the corpus for no reason the reader can see.
@@ -216,13 +300,14 @@ export function FilterCombobox({
     <FieldShell label={label}>
       <Popover open={open} onOpenChange={setOpen}>
         <TriggerButton
+          anchorRef={anchorRef}
           field={label}
           open={open}
           label={selected?.label ?? (value || anyLabel)}
           selected={Boolean(value)}
           onClear={() => onChange("")}
         />
-        <Panel>
+        <Panel align={align} maxListPx={maxListPx}>
           {/* cmdk's own filter is off: `rankOptions` decides order AND
               membership, so two filters would fight and the prefix ranking
               would be discarded. */}
@@ -325,6 +410,7 @@ export function EntityFilterCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const { anchorRef, align, maxListPx } = usePlacement(open);
   const [results, setResults] = useState<ComboOption[]>([]);
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -380,13 +466,14 @@ export function EntityFilterCombobox({
     <FieldShell label={label}>
       <Popover open={open} onOpenChange={setOpen}>
         <TriggerButton
+          anchorRef={anchorRef}
           field={label}
           open={open}
           label={value ? displayLabel || value : anyLabel}
           selected={Boolean(value)}
           onClear={() => onChange("")}
         />
-        <Panel>
+        <Panel align={align} maxListPx={maxListPx}>
           <Command shouldFilter={false}>
             <CommandInput
               value={query}

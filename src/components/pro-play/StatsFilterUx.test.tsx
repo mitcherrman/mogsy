@@ -346,15 +346,50 @@ describe("entity autocomplete", () => {
     );
   });
 
-  it("says 'keep typing' below the contract minimum, never 'none found'", async () => {
+  it("suggests from ONE character — the owner's D -> Doran", async () => {
+    searchEntitySuggestions.mockResolvedValue([
+      entity("player", "Deft", "Deft", { games: 900 }),
+      entity("player", "Doran (Choi Hyeon-joon)", "Doran", { games: 893 }),
+    ]);
     renderExplorer();
     await screen.findByText("Faker");
     await openFilter("Player");
     typeInto(within(menu()).getByPlaceholderText(/Search player/i), "D");
-    expect(await within(menu()).findByText(/Keep typing/i)).toBeInTheDocument();
-    // The search refuses one character; an empty set there is "not asked",
-    // and calling it "no players" would be a false claim about 12,000 of them.
-    expect(within(menu()).queryByText(/No players found/i)).not.toBeInTheDocument();
+    // The old two-character floor showed "Keep typing" here. It must not.
+    expect(await within(menu()).findByText("Doran")).toBeInTheDocument();
+    expect(within(menu()).queryByText(/Keep typing/i)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(searchEntitySuggestions.mock.calls.at(-1)?.[1]).toBe("D"),
+    );
+  });
+
+  it("suggests Faker from 'F' and Gen.G from 'G'", async () => {
+    searchEntitySuggestions.mockResolvedValue([entity("player", "Faker", "Faker")]);
+    renderExplorer();
+    await screen.findByText("Faker");
+    await openFilter("Player");
+    typeInto(within(menu()).getByPlaceholderText(/Search player/i), "F");
+    expect(await within(menu()).findByRole("option", { name: /Faker/ })).toBeInTheDocument();
+  });
+
+  it("caps the request so one character cannot pull a directory page", async () => {
+    searchEntitySuggestions.mockResolvedValue([entity("team", "Gen.G", "Gen.G")]);
+    renderExplorer();
+    await screen.findByText("Faker");
+    await openFilter("Team");
+    typeInto(within(menu()).getByPlaceholderText(/Search team/i), "G");
+    await waitFor(() => expect(searchEntitySuggestions).toHaveBeenCalled());
+    const [kind, q, limit] = searchEntitySuggestions.mock.calls.at(-1)!;
+    expect(kind).toBe("team");
+    expect(q).toBe("G");
+    expect(limit).toBeLessThanOrEqual(20);
+  });
+
+  it("still asks nothing for an empty box", async () => {
+    renderExplorer();
+    await screen.findByText("Faker");
+    await openFilter("Player");
+    expect(within(menu()).getByText(/Type to search players/i)).toBeInTheDocument();
     expect(searchEntitySuggestions).not.toHaveBeenCalled();
   });
 

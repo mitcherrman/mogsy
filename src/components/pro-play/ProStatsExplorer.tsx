@@ -26,6 +26,7 @@ import {
   type EntitySearcher,
 } from "@/components/pro-play/FilterCombobox";
 import {
+  ENTITY_AUTOCOMPLETE_MIN_CHARS,
   searchEntitySuggestions,
   suggestionHint,
 } from "@/lib/pro-play/researchApi";
@@ -71,10 +72,10 @@ const nf = new Intl.NumberFormat("en-US");
  *  its own ceiling, so a shared link carrying 30 still works. */
 const MIN_GAMES_OPTIONS = ["5", "10", "20", "50"];
 
-/** The canonical entity search refuses shorter queries (`min_query_chars` on
- *  its own /contract). Asking anyway returns an empty set that would read as
- *  "no such player" rather than "not asked yet". */
-const ENTITY_MIN_CHARS = 2;
+/** ONE CHARACTER. The prefix type-ahead answers from the first keystroke; it
+ *  is a different endpoint from `/search`, whose two-character floor stays
+ *  where it is for good reason. */
+const ENTITY_MIN_CHARS = ENTITY_AUTOCOMPLETE_MIN_CHARS;
 
 /** Enough to choose from without turning the menu into a second table. */
 const ENTITY_SUGGESTION_LIMIT = 12;
