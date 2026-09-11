@@ -653,3 +653,202 @@ npx vitest run --no-file-parallelism src/pages/quiz-ranked src/components/ranked
 **RB4 — playtest content and copy pass**, once the owner decisions above land:
 fill the real copy, wire the outro's offer/feedback slot, and walk the sequence
 end to end on a deployment that can actually generate the three Mastery sets.
+
+---
+
+# RB3.1 — the lost admin access point, and the RB1–RB3 integration
+
+Status: **fixed, integrated and pushed to both canonical branches.** RB4 is
+next. Frontend `main` **f5c96fbe**, backend `master` **fe936fe7**.
+
+## The regression
+
+The owner reported that admin no longer had any way to launch Bot Ranked: the
+access point that existed before this workstream was simply gone from the app.
+
+**It was live on `origin/main` the whole time, and no RB commit caused it** —
+every RB commit was still unpushed. The cause was the *partial earlier change*
+RB1's notes already described, sitting in production:
+
+| Layer, as deployed | What it did |
+| --- | --- |
+| `useRankedBotAccess` | resolved `canPlayRankedBot` correctly |
+| `RankedPlayScroll` | passed `canPlayRankedBot` to `PlayScrollRecord` |
+| `PlayScrollRecord` | passed `canPlayRankedBot` to `RankedQueueView` |
+| `RankedQueueView` | **still declared `isAdmin = false`** and gated on it |
+
+The boundary had been renamed everywhere except in the one component that
+reads it. `showBotToggle = isAdmin && idle` therefore evaluated `false` for
+every viewer — admin, Premium and Free alike — because nothing passed
+`isAdmin` any more. The switch was not hidden from admin; it was unreachable
+for everybody, and `extra` props being silently ignored in React is why it
+failed in complete silence.
+
+Confirmed **in the deployed bundle**, not only in source. From
+`https://mogzy.lol/assets/PlayScrollRecord-iEgB_bau.js`:
+
+```js
+function ma({queue:a,role:s,onJoin:l,onBack:n,isAdmin:o=!1})   // RankedQueueView
+  ..., _=o&&b,                                                 // showBotToggle
+function Fa({..., canPlayRankedBot:_=!1, ...})                 // PlayScrollRecord
+  ... e.jsx(ma,{queue:..., canPlayRankedBot:_, ...})            // ignored by ma
+```
+
+And reproduced under test: restoring `origin/main`'s `RankedQueueView` into
+this branch fails **9** of `RankedPlayScroll.test.tsx`'s cases, including both
+admin ones. Putting RB1's version back passes all of them.
+
+**The backend never regressed.** `origin/master`'s
+`POST /api/ranked/queue` still ran `if body.match_with_bot: if not
+is_request_admin(...)`, so an admin bot queue was authorized in production
+throughout. This was a **frontend-only visibility regression**.
+
+## The fix
+
+Two parts, smallest first.
+
+1. **The root cause is RB1**, already written and now landed: `RankedQueueView`
+   takes `canPlayRankedBot` and gates on it. Nothing else was needed to give
+   admin the access point back.
+2. **RB3.1 closed the second, independent way to lose it** —
+   `useRankedBotAccess` made admin depend on the Premium answer it does not
+   need:
+   * `loading` was the union of both answers, so admin *waited* on an
+     entitlement round trip before the control could be drawn; and
+   * a `fetchProEntitlement()` that **rejected** never called `setPremium`, so
+     `premium` stayed `null` forever, `loading` never ended and the control was
+     hidden from admin **by an outage in the billing half of the system** —
+     exactly the case the operator override exists for.
+
+   Admin and Premium are now two independent routes to yes: a known admin role
+   ends the wait on its own, and a thrown lookup lands as the same closed
+   unknown a `null` one does so it can never strand the hook. Nothing opened
+   for anyone else — an unresolved, failed or Free entitlement still withholds
+   the control, and an unresolved **role** still withholds it from a would-be
+   admin, so nothing is drawn optimistically and nothing flashes.
+
+Entitlement architecture was **not** touched. The trace did not call for it.
+
+### Files changed (RB3.1)
+
+* `src/hooks/useRankedBotAccess.ts` — the admin short-circuit and the `catch`
+* `src/hooks/useRankedBotAccess.test.ts` — five cases: offered before the
+  lookup answers at all, survives a lookup that throws, survives a flat Free,
+  a non-admin whose lookup throws is still refused, and the role answer is
+  still waited on
+* `src/components/quiz/play-scroll/RankedPlayScroll.test.tsx` — the same
+  invariant at the surface the owner actually looks at: an admin whose
+  entitlement never resolves still sees the control, through the real
+  component chain
+
+## Integration
+
+Both RB chains were rebased onto the current canonical tips rather than merged
+over them, and every concurrent workstream that had moved the same files was
+preserved by hand.
+
+| Conflict | Concurrent work | Resolution |
+| --- | --- | --- |
+| `QuizRankedMatch.tsx` imports | RP1 points feedback / scoreline | both import lists merged; `opponentLabelFor` kept |
+| `QuizRankedMatch.tsx` terminal view | RP1's `scoreline`, `withFinalScore`, `result` | RP1's block kept **whole**, RB2's `eyebrow` added beside it |
+| `RankedArenaInspector.tsx` | RP1's nine points-settlement previews | both entry sets kept; RP1's now-removed `"Back to Quiz"` action converted to RB2's `END_ACTIONS`, which is the only end-screen action the product still has |
+| `ranked_formats/schema.py` | RP1's `ranked_points_v2_format` | both formats kept, each closing its own `RankedFormat(...)` |
+| `ranked_public/service.py` | RP1 resolving the format before the engine | RB3's `format_override` folded **into** RP1's earlier resolution point, not around it |
+
+Nothing was overwritten and nothing was dropped. Ranked scoring (RP1), Ranked
+visuals, Pro Play, Premium and Welcome work all came through untouched, and no
+unrelated dirty worktree was disturbed.
+
+## Verification
+
+**Backend** (`.venv/bin/python`, from `/Users/macmoney/lcs-wt-rb1`)
+
+```bash
+.venv/bin/python -m pytest test_ranked_bot_premium_access.py \
+  test_ranked_bot_result_parity.py test_ranked_format_config_consumption.py \
+  test_ranked_playtest_preset.py -q          # 80 passed
+```
+
+Every required proof is a named passing test: `test_admin_still_gets_a_bot_
+match_immediately`, `test_admin_access_never_depends_on_the_entitlement_
+service`, `test_a_premium_non_admin_gets_the_same_bot_match`, `test_a_free_
+account_is_refused_and_is_not_quietly_queued`, `test_forging_the_request_does_
+not_bypass_the_gate`, `test_an_unresolvable_entitlement_never_authorizes`,
+`test_an_outage_is_not_reported_as_a_free_account`, `test_the_ordinary_join_
+never_asks_about_entitlement`, the `rating_skip_reason='bot_match'` parity
+case, the dormant-`admin_bot` cases, and RB3's canonical-bot-match creation.
+
+Regression, 12 Ranked/entitlement modules, compared as failure **sets** against
+a freshly built `origin/master` worktree rather than a remembered number:
+
+```
+rebased branch : 87 failed, 186 passed, 43 skipped   (99 FAILED/ERROR lines)
+origin/master  : 87 failed, 186 passed, 43 skipped   (99 FAILED/ERROR lines)
+diff of the two failure sets: EMPTY, both directions
+```
+
+The 99 are the repo's known fixture baseline (the modern format's shared-bank
+pools are not seedable here). **Zero new, zero fixed.**
+
+**Frontend** (`/Users/macmoney/mogsy-wt-rb3`)
+
+```bash
+npx vitest run --no-file-parallelism src/pages/quiz-ranked src/components/ranked-arena \
+  src/lib/ranked-core src/lib/ranked-public src/lib/playtest src/components/playtest \
+  src/components/quiz/play-scroll src/hooks
+# 123 files / 1635 tests, ALL PASSING
+npx tsc --noEmit -p tsconfig.app.json   # 12 errors, none in any RB-touched file
+npx vite build                          # ✓ built in 59.77s
+```
+
+`tsc`'s 12 errors are all pre-existing and live in `AdminBots`, `admin-users`,
+`team-sim`, `LeaguecraftWorkspace`, `social-result`, `diagnostics`,
+`ComboPlanner` and a `pglite` import — the RB diff intersects none of them.
+
+## Deployment
+
+> Push is not deploy. Both of these were checked against the running
+> deployments, not inferred from a successful push.
+
+**Backend — Railway.** `/api/health` 200. Rollout of `fe936fe7` is verified by
+reading the deployed schema rather than a version string (`/api/version`
+returns a hand-set literal and proves nothing): RB3 adds `preset` to
+`QueueJoinIn`, so
+
+```bash
+curl -s https://web-production-83e53.up.railway.app/openapi.json \
+  | python3 -c "import json,sys;print(list(json.load(sys.stdin)['components']['schemas']['QueueJoinIn']['properties']))"
+```
+
+printing `['class_id','queue_version','match_with_bot','preset']` is the
+deployment consuming this commit. Before the push it printed the same list
+**without** `preset`.
+
+**Frontend — Lovable. NOT LIVE, and the owner must press Publish.** A push to
+`main` does not deploy mogzy.lol. The bundle serving production is pre-RB
+throughout — its end screen still says `"Back to Quiz"` (which RB2 removed),
+carries no `"Play Again"`, no `"Back to Leaguecraft"` and no `"Unrated"`, and
+its `RankedQueueView` still reads the dead `isAdmin` prop. **Until Publish is
+pressed, admin still has no Bot Ranked access point in production.** That is
+the one remaining action on this regression, and it is owner-only.
+
+## Known issues left open
+
+* **Lovable Publish is outstanding** (above). It also carries the Pro Play and
+  RP1 work already merged to `main` by other workstreams.
+* The primary frontend checkout `/Users/macmoney/mogsy` still has local `main`
+  pointing at the **pre-rebase** RB1/RB2/RB2.1 commits and holds another
+  workstream's uncommitted Pro Play changes. It was deliberately left alone.
+  Its owner should commit or stash that work and then reset `main` to
+  `origin/main`; the three local commits are superseded by the rebased ones.
+* Everything RB2 recorded as shared-Ranked and NOT fixed here still stands:
+  live views have no participant names, `RankedMatchHistory` prints a literal
+  `"Bot"`, and `playtestNote` is the last testing vocabulary a player could
+  meet.
+* HP-based match completion is untouched — another Ranked workstream owns it.
+
+## Next task
+
+**RB4 — the playtest content and copy pass**, unchanged: the six owner
+decisions above it, then the real copy, the outro's offer/feedback slot, and a
+walk of the sequence on a deployment that can generate the three Mastery sets.
