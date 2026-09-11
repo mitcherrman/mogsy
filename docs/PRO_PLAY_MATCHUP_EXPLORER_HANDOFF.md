@@ -4121,7 +4121,28 @@ was left alone rather than half-fixed here.
 | | SHA | Where |
 |---|---|---|
 | Backend | `7a0bf439` + `6324c95d` | **pushed to `master`**, Railway auto-deployed, **verified live by real requests** |
-| Frontend | `04519a64` | rebased onto `d2cc436d`, **pushed to `main`** |
+| Frontend | `b29ebaa7` | rebased onto `3c087a0d`, **pushed to `main`**, **NOT published** |
+
+**How the deployed backend was verified, since this service has no
+deployed-SHA endpoint.** `/api/version` returns a static string and proves
+nothing. Two independent checks instead:
+
+1. `railway ssh` into the running container and read the source —
+   `quiz/matchup/provider.py` contains `may_ask_winner`, which exists only in
+   `6324c95d`. `6324c95d` is an ancestor of `origin/master`.
+2. A behavioural marker that separates the two builds. Dr. Mundo W against
+   Cho'Gath W repeats BOTH its winner and its 6-second gap across ranks 1 and
+   5, so the pre-fix build offered a rank-5 W comparison and the fixed build
+   must not. Over six production sessions: **rank 5 absent, every time.** And
+   across sixteen sessions over four pairs, **no session asked the same
+   (shape, ability, answer) twice.**
+
+**A caution for whoever verifies this next.** The first probe written for
+this reported the duplicate as still present, and it was wrong: it matched on
+shape and ability and ignored the ANSWER, so it flagged Dr. Mundo E at rank 1
+(gap 1 s) beside rank 5 (gap 2 s) — two different facts the fix deliberately
+keeps. A duplicate here means the same ANSWER twice, not the same ability
+twice.
 
 ### Verified in production, by playing it — not by a route probe
 
