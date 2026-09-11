@@ -16,15 +16,12 @@ import ProPlayTeamProfile from "./ProPlayTeamProfile";
 import ProPlayChampionProfile from "./ProPlayChampionProfile";
 import { formatRate } from "@/lib/pro-play/researchApi";
 
-// The admin gate is not what these tests are about; it has its own suite.
-vi.mock("@/components/admin/AdminAuthGate", () => ({
-  AdminAuthGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
+// NO AdminAuthGate MOCK, AND THAT IS THE POINT. These pages are public; a
+// mock here would hide a gate if one were ever reintroduced, which is exactly
+// the regression the publicization must not suffer. The adminCredentials mock
+// is gone for the same reason — researchApi no longer imports that module at
+// all, so stubbing it would prove nothing.
 vi.mock("@/components/SEOHead", () => ({ default: () => null }));
-vi.mock("@/lib/admin-auth/adminCredentials", () => ({
-  ADMIN_API_BASE_URL: "https://backend.test",
-  buildAdminHeaders: async () => ({}),
-}));
 
 const requests: string[] = [];
 

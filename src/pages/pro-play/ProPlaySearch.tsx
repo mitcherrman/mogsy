@@ -15,7 +15,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Search as SearchIcon } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -282,11 +281,8 @@ export default function ProPlaySearch() {
         title="Pro Play Research — Search | Mogzy"
         description="Search professional League of Legends players, teams and champions across the canonical Pro Play corpus."
         path="/lol/pro-play/search"
-        noindex
       />
-      <AdminAuthGate>
-        <SearchBody />
-      </AdminAuthGate>
+      <SearchBody />
     </>
   );
 }

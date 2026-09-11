@@ -1,11 +1,16 @@
 // ---------------------------------------------------------------------------
 // Typed client for the Pro Play research API (/api/pro-play/research/*).
 //
-// AUTHORIZATION: unchanged. Every request goes through the same
-// buildAdminHeaders() path every other admin client uses, against the same
-// backend require_admin. This module introduces no gate of its own and no new
-// credential handling; if the surface is later widened to Free or Premium the
-// only change here is dropping the header call.
+// AUTHORIZATION: NONE, DELIBERATELY. This is the public Pro Play identity
+// layer — Search and the three canonical entity profiles — and the backend
+// router carries no gate either (see routes/pro_play_search.py). It previously
+// sent buildAdminHeaders(); that import is gone rather than left inert,
+// because a public page must not pull the admin-credential module into its
+// bundle or read a stored admin key it has no use for.
+//
+// The base URL is declared here rather than imported from the admin module
+// for the same reason, and matches `statsApi.ts` exactly — the two public Pro
+// Play clients now resolve the same backend the same way.
 //
 // LABELS COME FROM THE SERVER. Scope labels, match-type labels and ambiguity
 // reasons are served by /contract and rendered verbatim. Nothing in this file
@@ -15,7 +20,10 @@
 
 import { proPlayProfileUrl } from "@/lib/pro-play/routes";
 
-import { ADMIN_API_BASE_URL, buildAdminHeaders } from "@/lib/admin-auth/adminCredentials";
+const API_BASE_URL = (
+  (import.meta.env?.VITE_COMBAT_API_URL as string | undefined) ||
+  "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
 
 export type EntityKind = "player" | "team" | "champion";
 
@@ -274,12 +282,14 @@ export class ResearchApiError extends Error {
   }
 }
 
-const BASE = `${ADMIN_API_BASE_URL}/api/pro-play/research`;
+const BASE = `${API_BASE_URL}/api/pro-play/research`;
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
   const url = `${BASE}${path}`;
-  const headers = await buildAdminHeaders(url);
-  const res = await fetch(url, { method: "GET", headers, signal });
+  // No headers: a signed-out reader must get exactly what a signed-in one
+  // does. Sending credentials here would also make the response vary by
+  // viewer for data that does not.
+  const res = await fetch(url, { method: "GET", signal });
   if (!res.ok) {
     // The backend's own detail string is the most accurate thing we can show —
     // a 404 here means "no canonical games", not "page missing".

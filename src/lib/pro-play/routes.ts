@@ -54,13 +54,17 @@ export function proPlayLiveGameUrl(gameId: string): string {
  * The Pro Play research surface: global search over players, teams and
  * champions, and the three profiles it resolves to.
  *
- * Admin-gated for now, which is why the hub carries no tile for it — a public
- * tile would send ordinary readers to a 403. It is deliberately NOT the same
- * thing as `/lol/docs/pro/...`: those pages are the DECLARED roster (wiki
- * history, aliases, lineups as announced), while these are DEMONSTRATED
- * performance drawn from the match corpus. The two disagree often and on
- * purpose. Research pages link out to the docs pages for roster history;
- * the docs pages must never link back here while this is admin-only.
+ * PUBLIC. Search and the three profiles are the canonical public Pro Play
+ * identity layer: signed-out readable, indexable, and the destination every
+ * other Pro Play surface links its identities to. Do not add a second set of
+ * public profile paths — these are it.
+ *
+ * Deliberately NOT the same thing as `/lol/docs/pro/...`: those pages are the
+ * DECLARED roster (wiki history, aliases, lineups as announced), while these
+ * are DEMONSTRATED performance drawn from the match corpus. The two disagree
+ * often and on purpose, and both stay. Research pages link out to the docs
+ * pages for roster history; the docs pages linking back is now permissible
+ * (it was not while this was admin-only) but is the docs owner's call.
  */
 export const PRO_PLAY_SEARCH_ROUTE = "/lol/pro-play/search";
 

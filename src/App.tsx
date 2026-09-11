@@ -618,11 +618,11 @@ const App = () => (
                   {/* GRAPH1 as a product surface. /dev/graph1 stays as the
                       operator route: fixed races, stat families, ?api=. */}
                   <Route path="/lol/pro-play/graphs" element={<Suspense fallback={<RouteFallback />}><ProPlayGraphs /></Suspense>} />
-                  {/* Pro Play research: global search and the three profiles.
-                      Admin-gated at the page (AdminAuthGate), which is why the
-                      hub above carries no tile for them — a public tile would
-                      lead ordinary readers to a 403. Demonstrated performance,
-                      as opposed to the declared roster at /lol/docs/pro/... */}
+                  {/* Pro Play research: global search and the three canonical
+                      entity profiles. PUBLIC — no AdminAuthGate, no noindex;
+                      the backend router is ungated to match. Demonstrated
+                      performance, as opposed to the declared roster at
+                      /lol/docs/pro/..., which stays as the reference wiki. */}
                   <Route path={PRO_PLAY_SEARCH_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlaySearch /></Suspense>} />
                   <Route path={PRO_PLAY_PLAYER_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayPlayerProfile /></Suspense>} />
                   <Route path={PRO_PLAY_TEAM_ROUTE} element={<Suspense fallback={<RouteFallback />}><ProPlayTeamProfile /></Suspense>} />

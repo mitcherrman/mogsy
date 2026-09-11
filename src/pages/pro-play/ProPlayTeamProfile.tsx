@@ -19,7 +19,6 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
-import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import { Badge } from "@/components/ui/badge";
 import {
   ChampionPoolTable,
@@ -279,11 +278,8 @@ export default function ProPlayTeamProfile() {
         title={`${decoded} — Pro Play Research | Mogzy`}
         description={`Professional record, roster and champion usage for ${decoded}.`}
         path={`/lol/pro-play/team/${key}`}
-        noindex
       />
-      <AdminAuthGate>
-        <Body teamKey={decoded} />
-      </AdminAuthGate>
+      <Body teamKey={decoded} />
     </>
   );
 }

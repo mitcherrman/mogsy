@@ -14,7 +14,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import SEOHead from "@/components/SEOHead";
-import { AdminAuthGate } from "@/components/admin/AdminAuthGate";
 import { Badge } from "@/components/ui/badge";
 import {
   EmptyRow,
@@ -214,11 +213,8 @@ export default function ProPlayChampionProfile() {
         title={`${decoded} in pro play — Pro Play Research | Mogzy`}
         description={`Professional pick, ban and presence data for ${decoded}.`}
         path={`/lol/pro-play/champion/${key}`}
-        noindex
       />
-      <AdminAuthGate>
-        <Body championKey={decoded} />
-      </AdminAuthGate>
+      <Body championKey={decoded} />
     </>
   );
 }
