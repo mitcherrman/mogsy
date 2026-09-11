@@ -26,6 +26,7 @@ import {
   DiscoveryReveal, discoveryRevealHasContent,
 } from "@/components/ranked-arena/DiscoveryReveal";
 import { ForfeitControl } from "@/components/ranked-arena/ForfeitControl";
+import { RankedRulesScroll } from "@/components/ranked-rules/RankedRulesScroll";
 import { rendererForSegment } from "@/lib/ranked-core/modules/registry";
 import { abilityDescription, abilityName } from "@/lib/ranked-core/abilityDisplay";
 import { SubmissionPhase } from "@/lib/ranked-core/viewTypes";
@@ -105,11 +106,7 @@ function revealNames(settlement: ResolvedRoundView,
 const AGAIN_HREF = "/quiz?play=1";
 const LOBBY_HREF = "/quiz";
 
-export function QuizRankedMatch({ matchId, viewerUserId, chrome,
-                                  entry = "recovered",
-                                  paused = false, onSessionComplete,
-                                  onProgress }:
-{
+export interface QuizRankedMatchProps {
   matchId: string;
   viewerUserId: string;
   /**
@@ -165,7 +162,31 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome,
    * assert. The route supplies it; the arena renders it.
    */
   chrome?: ReactNode;
-}) {
+}
+
+/**
+ * THE RANKED ROUTE'S RENDERED SURFACE — the arena, plus Ranked's own scroll.
+ *
+ * `RankedRulesScroll` is a sibling of the arena and never a child of it: it is
+ * a `position: fixed` control that enters no layout, so it cannot move, clip
+ * or remount a question, and the arena stays the one thing that draws a match.
+ * It is mounted here rather than on the route because the explanation is
+ * Ranked's copy about Ranked's scoring, which is exactly the kind of thing
+ * this file already owns ("vs Bot", "waiting for opponent…", "Back to Quiz").
+ */
+export function QuizRankedMatch(props: QuizRankedMatchProps) {
+  return (
+    <>
+      <RankedMatchArena {...props} />
+      <RankedRulesScroll />
+    </>
+  );
+}
+
+function RankedMatchArena({ matchId, viewerUserId, chrome,
+                            entry = "recovered",
+                            paused = false, onSessionComplete,
+                            onProgress }: QuizRankedMatchProps) {
   const m = useRankedMatch(matchId, viewerUserId, { paused, entry });
   // RB3 — the reporting seam. An effect rather than a render-time call so a
   // listener's own state update cannot re-enter this render, and keyed on the
