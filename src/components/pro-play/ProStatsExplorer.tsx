@@ -19,6 +19,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { proPlayProfileUrl } from "@/lib/pro-play/routes";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
@@ -107,7 +108,17 @@ type Column<R = AnyRow> = {
 };
 
 const PLAYER_COLUMNS: Column<ProStatsPlayerRow>[] = [
-  { key: "player", label: "Player", numeric: false, render: (r) => r.player },
+  {
+    key: "player",
+    label: "Player",
+    numeric: false,
+    render: (r) => r.player,
+    // THE IDENTITY ITSELF IS THE LINK — not a separate per-row button in a
+    // twelfth column. The name already IS the identity, the row already holds
+    // the canonical key, and a per-row button would cost width the eleven
+    // data columns need and add a second tab stop to every row.
+    cell: (r) => <PlayerCell name={r.player} />,
+  },
   {
     key: "games",
     label: "Games",
@@ -970,6 +981,29 @@ function FilterText({
 /** Champion identity: the icon from the existing Railway asset manifest plus
  *  the canonical name. No new asset system, and the row still reads if the
  *  manifest has not loaded or has no entry for this champion. */
+/**
+ * A player identity, linked to its canonical public profile.
+ *
+ * `row.player` IS `player_lp_page` — the same key the profile route takes and
+ * the same key this table filters on — so the link is verbatim identity, not
+ * a lookup. `proPlayProfileUrl` encodes it; Leaguepedia pages carry spaces
+ * and parentheses ("Knight (Zhuo Ding)").
+ *
+ * The profile is PUBLIC. Do not reintroduce this link while any profile is
+ * gated: every row would point a signed-out reader at a 403.
+ */
+function PlayerCell({ name }: { name: string }) {
+  return (
+    <Link
+      to={proPlayProfileUrl("player", name)}
+      className="font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-testid="player-profile-link"
+    >
+      {name}
+    </Link>
+  );
+}
+
 function ChampionCell({ name }: { name: string }) {
   const { data: manifest } = useChampionAssets();
   const icon = getChampionIcon(manifest, name);
