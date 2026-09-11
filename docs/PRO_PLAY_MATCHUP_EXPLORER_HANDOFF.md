@@ -3753,3 +3753,49 @@ keep the denominator labelled with the pair, never with "all games".
 Do **not** add KDA, gold@15 or item builds to this surface first. They are
 statistics about games; the pair population is a claim about which games, and
 the claim is the thing worth proving before decorating it.
+
+## Deploy state — Step 11 (2026-09-10)
+
+| Half | SHA | State |
+|---|---|---|
+| Backend `master` | `ad0716a3` | **LIVE on Railway.** Verified by calling it, not assumed. |
+| Frontend `main` | `a9aeb5ef` | Pushed. **NOT published** — pair mode is not live on mogzy.lol. |
+
+Backend went first because the contract is purely additive; the frontend is
+useless without it and harmless before it.
+
+### Live backend, checked by fetching
+
+```
+GET /api/graph1/champion-matchup?a=olaf&b=ksante   200  67 games  Olaf 41–26  61.2%
+GET /api/graph1/champion-matchup?a=ksante&b=olaf   200  67 games  K'Sante 26–41  38.8%
+GET .../?a=thresh&b=nautilus                       200  744 games Thresh 406–338 54.6%
+GET .../?a=dr-mundo&b=chogath                      200  46 games  Dr Mundo 27–19 58.7%
+GET .../?a=belveth&b=naafiri                       200  0 games   zero state
+GET .../?a=olaf&b=olaf                             400  refused
+GET .../?a=olaf&b=nope                             404  unknown champion
+```
+
+Production latency 0.18–1.30 s.
+
+**Production counts are HIGHER than the local-snapshot figures elsewhere in
+this document, and that is corpus freshness, not a semantic difference.** The
+local `lol_calc.db` is a stale partial snapshot: policy-filtered Olaf is 2,835
+games locally against 3,074 in production, Thresh 5,610 against 6,623,
+K'Sante 3,820 against 4,035 — a uniform shortfall across unrelated champions.
+The *ratios* agree to a tenth of a percent (61.3% local vs 61.2% live;
+Thresh/Nautilus 54.6% in both), and reversal is exact in production
+(41–26 ↔ 26–41 over the same 67 games). **Always re-measure a headline figure
+against production before quoting it.**
+
+### Frontend, checked by fetching the live bundle
+
+`ProPlayMatchup-BfkDrv2O.js` contains `Open in Combat Lab` (Step 10) and **no**
+`Explore Pro Data`; `ProPlayGraphs-BxfLD3E-.js` contains no `focus=matchup`.
+mogzy.lol publishes through Lovable (Share → Publish) and **a git push does not
+trigger it**. Until the owner publishes:
+
+* the `Explore Pro Data` action does not appear in the exact matchup study, and
+* `/lol/pro-play/graphs?focus=matchup&a=…&b=…` renders the ordinary builder.
+
+Neither is a failure state — the backend is ready and nothing regressed.
