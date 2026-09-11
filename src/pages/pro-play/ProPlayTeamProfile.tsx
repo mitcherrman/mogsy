@@ -8,6 +8,8 @@
 // not fill and this page prints them. It never pads a lineup from the declared
 // registry to make five, and it never breaks a timeshare tie into a starter.
 //
+// PUBLIC. The canonical competitive identity page for a team.
+//
 // NOT A DUPLICATE OF /lol/docs/pro/teams/:lpPage — see the player profile's
 // header for the full split. In one line: that page lists DECLARED membership
 // history with sources, this one shows the DEMONSTRATED roster and record.
@@ -20,6 +22,7 @@ import { Link, useParams } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChampionPoolTable,
   EmptyRow,
@@ -27,16 +30,27 @@ import {
   LoadingBlock,
   Note,
   Panel,
+  PerformancePanel,
+  ProfileAction,
   ProfileHeader,
   ResearchBreadcrumb,
   ResearchPage,
   ScopeGrid,
   ScopeTabs,
   TableScroll,
+  type PerformanceMetric,
 } from "@/components/pro-play/ResearchShell";
 import { TeamCrest } from "@/components/pro-play/media/EntityCrest";
 import { ProPlayMediaProvider } from "@/components/pro-play/media/ProPlayMediaProvider";
 import { teamRoute } from "@/lib/league-docs/roster-api";
+import {
+  statsExplorerUrl,
+  statsScopeLabel,
+  useEntityStats,
+} from "@/lib/pro-play/entityStats";
+import { graphHandoff } from "@/lib/pro-play/graphHandoff";
+import { matchupExplorerUrl } from "@/lib/pro-play/matchupHandoff";
+import type { ProStatsTeamRow } from "@/lib/pro-play/statsApi";
 import {
   fetchTeamProfile,
   formatDate,
@@ -140,6 +154,148 @@ function RosterPanel({ roster, note, error }: { roster: Roster | null; note: str
   );
 }
 
+// ---------------------------------------------------------------------------
+// Performance — the public statistics contract, composed onto the profile.
+// Same shape as the player profile's; only the metric list differs.
+// ---------------------------------------------------------------------------
+
+const NUM = new Intl.NumberFormat("en-US");
+
+/** null stays null all the way to the panel, which renders the em dash. Each
+ *  team metric has its OWN non-null denominator on the backend (COUNT(col)
+ *  skips nulls), so one absent column never blanks its neighbours. */
+function num(value: number | null, digits: number): string | null {
+  return value == null ? null : value.toFixed(digits);
+}
+
+function pct(value: number | null): string | null {
+  return value == null ? null : `${(value * 100).toFixed(1)}%`;
+}
+
+function teamMetrics(row: ProStatsTeamRow): PerformanceMetric[] {
+  return [
+    // CANONICAL. `win` per team-game is the game's own blue_win, inverted for
+    // the red side; the statistics row's own win flag is never read -- it
+    // disagrees with canonical on 308 team-rows live.
+    { label: "Games", value: NUM.format(row.games), hint: "Canonical team-games." },
+    {
+      label: "W-L",
+      value: `${NUM.format(row.wins)}–${NUM.format(row.losses)}`,
+      hint: "Canonical record. An undecided game counts in Games and in neither column.",
+    },
+    { label: "Win %", value: pct(row.win_rate), hint: "Over canonical DECIDED games." },
+    // STAT-BACKED, each over its own non-null denominator.
+    { label: "Kills/G", value: num(row.kills_per_game, 1), hint: "Over games recording team kills." },
+    { label: "Gold/min", value: num(row.gold_per_min, 0), hint: "Team gold over the duration of games recording it." },
+    { label: "Towers/G", value: num(row.towers_per_game, 1), hint: "Over games recording towers." },
+    { label: "Dragons/G", value: num(row.dragons_per_game, 1), hint: "Over games recording dragons." },
+    { label: "Barons/G", value: num(row.barons_per_game, 2), hint: "Over games recording barons." },
+  ];
+}
+
+function TeamPerformance({
+  teamKey,
+  explorerPool,
+}: {
+  teamKey: string;
+  explorerPool: boolean;
+}) {
+  const stats = useEntityStats("teams", teamKey);
+
+  // The SHIPPED hand-off, reused: Team -> Champions, entity id is the
+  // team_key verbatim. No scope is transferred because this panel is
+  // career-wide -- fabricating a year or league here would scope the graph to
+  // a span the numbers beside it were not computed over.
+  const handoff = graphHandoff({
+    view: "teams",
+    year: null,
+    league: null,
+    patch: null,
+    role: null,
+    player: null,
+    team: teamKey,
+    champion: null,
+    minGames: null,
+  });
+
+  const actions = (
+    <>
+      <ProfileAction
+        to={statsExplorerUrl("teams", teamKey)}
+        title="This team as a row in the public statistics table"
+      >
+        View in Pro Stats
+      </ProfileAction>
+      {handoff ? (
+        <ProfileAction to={handoff.href} title="Race this team's champions">
+          Graph champion pool
+        </ProfileAction>
+      ) : null}
+      {/* GATED ON THE EXPLORER POOL, NEVER ON worlds_focus. The pool is the
+          focus set plus 22 data-admitted teams; gating on the editorial set
+          would hide a working board for every one of them. Out of pool means
+          NO action at all -- a disabled control would need to explain a
+          distinction the reader has no reason to care about, and a live link
+          would land on TeamNotInExplorerPool, which reads as a broken
+          profile. */}
+      {explorerPool ? (
+        <ProfileAction
+          to={matchupExplorerUrl(teamKey)}
+          title="Open the five-lane comparison board with this team on one side"
+        >
+          Open in Matchup Explorer
+        </ProfileAction>
+      ) : null}
+    </>
+  );
+
+  if (stats.status === "loading") {
+    return (
+      <Panel title="All-Competition Performance">
+        <Skeleton className="h-16 w-full" />
+      </Panel>
+    );
+  }
+  if (stats.status === "error") {
+    // Degraded, never fatal: the record, roster and champion usage come from
+    // a different contract and are unaffected.
+    return (
+      <Panel title="All-Competition Performance" note={stats.message}>
+        <EmptyRow label="Performance statistics could not be loaded. The record, roster and champion usage above are unaffected." />
+        <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
+      </Panel>
+    );
+  }
+  if (stats.status === "absent") {
+    return (
+      <Panel title="All-Competition Performance">
+        <EmptyRow label="No rows for this team in the public statistics table." />
+        <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
+      </Panel>
+    );
+  }
+
+  const row = stats.row as ProStatsTeamRow;
+  return (
+    <PerformancePanel
+      title="All-Competition Performance"
+      scopeLabel={statsScopeLabel(stats.response)}
+      metrics={teamMetrics(row)}
+      games={row.games}
+      statBackedGames={row.stat_backed_games}
+      unit="team-games"
+      actions={actions}
+      note={
+        <>
+          A different slice from the four scopes above, which count curated
+          major-league games only. This is every competition, all seasons, and
+          is the same slice the Pro Stats table shows.
+        </>
+      }
+    />
+  );
+}
+
 function Body({ teamKey }: { teamKey: string }) {
   const [profile, setProfile] = useState<TeamProfile | null>(null);
   const [error, setError] = useState<{ message: string; hint?: string } | null>(null);
@@ -219,8 +375,9 @@ function Body({ teamKey }: { teamKey: string }) {
               </Badge>
             ))}
             {/* See the player profile: declared roster history lives in the
-                public wiki, demonstrated performance lives here. One-way,
-                because this page is gated and that one is not. */}
+                public wiki, demonstrated performance lives here. Both are
+                public now; whether the wiki links back is the docs owner's
+                call and is not made here. */}
             <Link
               to={teamRoute(profile.entity.key)}
               className="text-xs text-muted-foreground hover:text-foreground hover:underline"
@@ -231,9 +388,17 @@ function Body({ teamKey }: { teamKey: string }) {
         }
       />
 
-      <Panel title="The four scopes">
+      <Panel title="Career Pro Record">
         <ScopeGrid comparison={profile.comparison} />
+        <Note>
+          Canonical games over four product scopes, curated major leagues only.
+        </Note>
       </Panel>
+
+      <TeamPerformance
+        teamKey={profile.entity.key}
+        explorerPool={profile.explorer_pool?.in_explorer_pool ?? false}
+      />
 
       <RosterPanel roster={profile.roster} note={profile.roster_note} error={profile.roster_error} />
 

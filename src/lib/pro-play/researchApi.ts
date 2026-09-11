@@ -223,11 +223,27 @@ export interface PlayerProfile {
   comparison: ComparisonPayload;
 }
 
+/** Whether the Matchup Explorer's board can be pointed at this team.
+ *
+ *  NOT `worlds_focus`. The focus set is editorial (which orgs Mogzy is
+ *  watching for Worlds) and the Explorer pool is that set PLUS every team
+ *  admitted on measured data — 38 against 16 on the live registry. Gating an
+ *  "open in the Explorer" action on `worlds_focus` hides it for the 22 teams
+ *  in between, all of which the board serves. */
+export interface ExplorerPoolMarker {
+  in_explorer_pool: boolean;
+  pool_version: string;
+  meaning: string;
+}
+
 export interface TeamProfile {
   contract_version: string;
   entity: { kind: "team"; key: string; display_name: string };
   identity: Record<string, unknown> & { in_registry: boolean; registry_available: boolean };
   worlds_focus: FocusBlock | null;
+  /** Absent on an older payload; treated as "not in the pool", so the action
+   *  is withheld rather than offered on a guess. */
+  explorer_pool?: ExplorerPoolMarker;
   roster: Roster | null;
   roster_error: string | null;
   roster_note: string;
