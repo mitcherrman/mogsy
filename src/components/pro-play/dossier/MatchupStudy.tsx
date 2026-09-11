@@ -51,6 +51,7 @@ import {
 import { championMatchupHref } from "@/graph1/championMatchup";
 import { championSlug } from "@/lib/league-docs/api";
 import { buildCombatLabMatchupUrl } from "@/lib/combat-lab/matchup-link";
+import { matchupStudyHref } from "@/lib/quiz/matchupApi";
 
 import type { ChampionSelection } from "./BoardSelection";
 import { ChampionIcon, PlayerPortrait } from "./DossierMedia";
@@ -352,11 +353,19 @@ function exactCoverageNote(stats: ExactStatistics): string | null {
  *
  * ONLY DESTINATIONS THAT KEEP THE CHAMPIONS ARE HERE. Combat Lab takes both
  * (`?attacker=&defender=`); the Archives take one each
- * (`/lol/docs/champions/:slug`); and since Step 11 the Pro Play data surface
- * takes both (`?focus=matchup&a=&b=`). Quiz is still absent on purpose — it
- * can not be handed this matchup, and a link that drops the champions on the
- * way is worse than no link. There are no disabled buttons and no
- * "coming soon".
+ * (`/lol/docs/champions/:slug`); since Step 11 the Pro Play data surface takes
+ * both (`?focus=matchup&a=&b=`); and since Step 12 so does Leaguecraft
+ * (`/quiz/matchup?a=&b=`). There are no disabled buttons and no "coming
+ * soon".
+ *
+ * QUIZ IS HERE NOW BECAUSE ITS DESTINATION IS REAL. Step 10 left it out and
+ * said why: `/quiz` had no champion context, so the link would have dropped
+ * the matchup on the way and a link that lies is worse than no link. Step 12
+ * did not add a parameter to a generic quiz — it added a pair-aware question
+ * source, which composes true Olaf-versus-K'Sante comparisons from the same
+ * ability authority the stored cooldown families use and falls back only as
+ * far as those two champions' own questions. The rule that kept the link out
+ * is the same rule that lets it in: the destination must USE both champions.
  *
  * `Explore Pro Data` IS A CHANGE OF POPULATION, AND IT SAYS SO. It leaves
  * this exact record — two named players — for every professional game in
@@ -410,6 +419,15 @@ function StudyActions({
       ? championMatchupHref(subjectSlug, opposingSlug)
       : null;
 
+  // The contextual Leaguecraft study. Same condition as Pro Data — two
+  // resolvable, distinct champions — because that is exactly what the
+  // session needs; it carries the slugs and nothing else. No player, no
+  // team, no game: this is champion learning, not a quiz about that match.
+  const quizUrl =
+    subjectSlug && opposingSlug && subjectSlug !== opposingSlug
+      ? matchupStudyHref(subjectSlug, opposingSlug)
+      : null;
+
   // A mirror matchup is one champion, not two identical links.
   const mechanics: { slug: string; name: string }[] = [];
   if (subjectSlug) mechanics.push({ slug: subjectSlug, name: subjectChampion });
@@ -417,7 +435,7 @@ function StudyActions({
     mechanics.push({ slug: opposingSlug, name: opposingChampion });
   }
 
-  if (!combatLabUrl && !mechanics.length && !proDataUrl) return null;
+  if (!combatLabUrl && !mechanics.length && !proDataUrl && !quizUrl) return null;
 
   return (
     <div className="dossier-study__actions" data-testid="study-actions">
@@ -447,6 +465,15 @@ function StudyActions({
           to={proDataUrl}
         >
           Explore Pro Data
+        </Link>
+      ) : null}
+      {quizUrl ? (
+        <Link
+          className="dossier-study__action"
+          data-testid="study-action-quiz"
+          to={quizUrl}
+        >
+          Quiz This Matchup
         </Link>
       ) : null}
     </div>

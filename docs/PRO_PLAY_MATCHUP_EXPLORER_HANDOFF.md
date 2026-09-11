@@ -3799,3 +3799,341 @@ trigger it**. Until the owner publishes:
 * `/lol/pro-play/graphs?focus=matchup&a=…&b=…` renders the ordinary builder.
 
 Neither is a failure state — the backend is ready and nothing regressed.
+
+---
+
+# Step 12 — contextual Quiz
+
+`Doran · Olaf vs Kiin · K'Sante` continues into a Leaguecraft study about
+**Olaf and K'Sante**. The action is `Quiz This Matchup`, and it exists only
+because the destination genuinely uses both champions.
+
+## What the audit found, and why it decided the architecture
+
+Step 10 left Quiz out and said why: `/quiz` had no champion context, so the
+link would have dropped the matchup on the way. Step 12 began by measuring
+whether that was still true.
+
+**The stored bank has one family that depends on two champions**, and it
+cannot serve an arbitrary pair. `ability_cooldown_compare` holds **110 live
+rows**, and its generator
+(`quiz/generate_ability_cooldown_family._generate_comparisons`) pairs
+champions by **alphabetical adjacency** — `zip(ults, ults[1:])`. The stored
+pairs are therefore Aatrox–Ahri, Ahri–Akali, … : 110 of the 14,878 possible
+pairs, and essentially never the pair a reader actually opened. Measured:
+
+| pair | stored true-pair rows |
+|---|---|
+| Olaf vs K'Sante | **0** |
+| Ahri vs Syndra | **0** |
+| Jinx vs Caitlyn | **0** |
+| Dr. Mundo vs Cho'Gath | **0** |
+| Kai'Sa vs LeBlanc | **0** |
+| Aurelion Sol vs Zeri | **0** |
+| Gnar vs Jayce | **0** |
+| Yone vs Sylas | **0** |
+| Bel'Veth vs Rell | **0** |
+| Aatrox vs Ahri | 1 *(alphabetically adjacent)* |
+
+**A filter over the stored bank therefore cannot produce a matchup session.**
+It can only produce two champions' questions side by side. That is the honest
+fallback, not the product.
+
+**The DATA for a real comparison exists for every champion.** The same
+`champion_abilities` rows and the same `classify_cooldown` gate the stored
+family already trusts cover the whole roster. So Step 12 **composes** the
+comparison for the requested pair at request time from that authority, rather
+than hoping someone pre-generated it — which is the pattern this codebase
+already uses for Pro Play (`pro_authority.on_demand` +
+`pro_play.quiz_session`): no bank, generate on demand, freeze on serve, grade
+against the frozen instance.
+
+**Mastery was inspected and is not the vehicle.** Its certified chains cover a
+handful of champions (Ahri, Syndra, Lux, Jarvan, Olaf, Maokai); it cannot
+compose an Olaf-versus-K'Sante comparison and was not bent into trying.
+
+## The tiers
+
+* **Tier A — true pair.** The question cannot be answered without knowing
+  something about both champions. Composed.
+* **Tier B — paired study.** Stored questions about champion A or champion B,
+  one at a time, restricted to families where the champion is the question's
+  **subject**.
+* **Tier C — generic.** Not reachable. Every served question names A, B or
+  both, and the session reports which tier it reached so the page can say so.
+
+## Measured inventory, per pair
+
+`TierA` is composed and deduplicated; `A-side`/`B-side` are stored subject
+questions; `served` is the session length; `pairSrv` is how many of the served
+questions were true-pair.
+
+| pair | TierA | A-side | B-side | served | pairSrv | tier |
+|---|---|---|---|---|---|---|
+| Olaf vs K'Sante | 10 | 18 | 18 | 8 | 5 | pair_comparison |
+| Ahri vs Syndra | 10 | 14 | 12 | 8 | 5 | pair_comparison |
+| Jinx vs Caitlyn | 8 | 17 | 13 | 8 | 4 | pair_comparison |
+| Aatrox vs Ahri | 16 | 27 | 14 | 8 | 8 | pair_comparison |
+| Yone vs Sylas | 8 | 13 | 15 | 8 | 4 | pair_comparison |
+| Dr. Mundo vs Cho'Gath | 14 | 14 | 19 | 8 | 7 | pair_comparison |
+| Kai'Sa vs LeBlanc | 12 | 21 | 18 | 8 | 6 | pair_comparison |
+| Aurelion Sol vs Zeri | 8 | 11 | 18 | 8 | 4 | pair_comparison |
+| Bel'Veth vs Rell | 8 | 13 | 18 | 8 | 4 | pair_comparison |
+| **Gnar vs Jayce** | **0** | 7 | 2 | **6** | 0 | **paired_study** |
+
+Over 200 random roster pairs: **median session 8, minimum 8, none short**.
+Gnar vs Jayce is the real sparse case — Gnar's transform kit passes no
+comparison gate and Jayce has two stored subject questions — and it is
+labelled **Two-Champion Study**, not a matchup.
+
+## The route contract
+
+`/quiz/matchup?a=<slug>&b=<slug>` — **two slugs and nothing else.**
+
+No player, no team, no `match_id`, no game, no patch, no record. A parameter
+the destination ignored would be a claim the session does not honour, and a
+test asserts the query carries exactly `a` and `b`.
+
+* Direct URL, refresh and a copied link all work: the pair is read from the
+  URL on every mount.
+* Back leaves the study cleanly and returns to the Explorer.
+* The **session id is deliberately not in the URL** — a session is transient
+  server state, and a shared link that resumed a stranger's half-finished
+  session would be worse than one that starts fresh. Back to the same pair
+  therefore starts a new session, by design.
+* Malformed, missing, unknown and mirror pairs each fail with their own
+  message and never fall back to a generic quiz.
+* Existing `/quiz`, `/quiz/daily`, `/quiz/ranked`, `/quiz/daily-challenge`
+  URLs are untouched.
+
+## Identity is the slug, and there is still only one mapper
+
+`championSlug` on the way out, `services.champion_docs` on the way in — the
+mapper the Archives, Combat Lab, League Docs and the Explorer's own action row
+already share. K'Sante, Dr. Mundo, Cho'Gath, Kai'Sa, LeBlanc and Aurelion Sol
+all round-trip, each with a test.
+
+**The three-way spelling difference is the trap this slice nearly fell into.**
+`champions.name` says `Dr Mundo`; both the live bank and `champion_abilities`
+say `Dr. Mundo` (likewise `Nunu & Willump` and `Renata Glasc`). Resolving to
+the canonical spelling yields a session with **zero questions and no error** —
+the quietest possible failure. The provider resolves through
+`related_table_names` / `canonical_table_name`, and two tests exist purely to
+keep it that way.
+
+## Selection semantics
+
+* Eligibility is read from **structured metadata**, never from rendered
+  question text. `champion_name` for most families, `champion` for
+  `combat_cooldown`.
+* Tier B draws from an **allow-list** of five subject families:
+  `ability_cooldown_rank`, `ability_cooldown_flat`, `combat_cooldown`,
+  `champion_resource`, `champion_attack_type`.
+* Beside it sits an explicit **deny-list** of champion-as-ANSWER families —
+  `ability_recognition`, `which_champion_is_melee`, `which_champion_is_ranged`,
+  `champion_highest_base_stat`. "Which champion is melee?" answers itself
+  inside a session the player has been told is about two champions. The
+  deny-list is written out rather than left implicit so a new
+  champion-as-answer family cannot leak in by inheriting the allow-list.
+* The **practice family gate and `is_active`** predicate are imported from
+  `quiz.mode_gate`, not restated, so a family retired for Practice is retired
+  here the same day.
+
+## Duplicate-family prevention
+
+Two rules, both measured against the owner directive on duplicate
+computations:
+
+1. **One question per (slot, rank) pair**, and rank 1 and max rank are the
+   only ranks considered. Olaf Q is 9 s at every rank and K'Sante Q is 3.5 s
+   at every rank: that is **one** question, not five.
+2. **"Which is shorter" and "by how much" share a subject key.** They are two
+   shapes over one fact, and the second gives the first away — a player told
+   the gap between Olaf R and K'Sante R is 20 s has been told which is longer.
+   A session serves one of them per (slot, rank) and takes the other rank
+   instead.
+
+Stored Tier B dedupes on `(family, champion, slot)`, so a session never asks
+two ranks of the same ability.
+
+## Fallback hierarchy and the sparse rule
+
+True pair → paired study, alternating A/B. **There is no third step.** Nothing
+outside the two champions is ever drawn, which is why Tier C is unreachable
+rather than merely unlikely.
+
+* Target session: **8** questions (`SESSION_TARGET`).
+* Below **4** (`SESSION_MINIMUM`) the pool reports `below_minimum` so a caller
+  can say so; a pool of zero raises `MATCHUP_NO_QUESTIONS` rather than opening
+  an empty study.
+* A sparse pair gets a **shorter session**, never a padded one.
+* Balance is round-robin with a randomised start. It is not 50/50 when the
+  inventory makes that impossible — Gnar vs Jayce runs 4/2 because Jayce has
+  only two eligible questions — but one side cannot take a session over
+  purely for having a larger bank.
+
+## Two guards on comparison quality
+
+* `MIN_COMPARE_RATIO` (imported from the stored family) drops a comparison
+  that is a coin flip dressed as knowledge.
+* `MAX_COMPARE_MULTIPLE = 10` drops one where the larger value is more than
+  ten times the smaller. Bel'Veth R stores `1 / 1 / 1`; "is Bel'Veth R (1 s)
+  or Rell R (120 s) shorter" is a champion-data defect wearing a question's
+  clothes. The underlying row is not this module's to fix — the comparison
+  simply declines it.
+
+## Gate and entitlement behaviour — measured, not assumed
+
+* `/quiz/matchup` is wrapped in `RequireRankedTutorial`, **exactly like its
+  `/quiz` siblings**. A contextual study is ordinary free practice and
+  inherits the policy rather than stepping around it. Nothing about the gate
+  was changed.
+* **A guest is never gated.** `evaluateRankedTutorial` returns
+  `required: false` without a user, so the deep link works for a signed-out
+  visitor — verified in a browser.
+* **KNOWN GAP, deliberately not fixed.** A signed-in account with no
+  `ranked_tutorial_completed_at`, while the admin setting
+  `tutorial_completion_required_for_new_users` is on, is redirected by
+  `<Navigate replace>` — which **drops the query string, and with it the
+  pair**. There is no route-return infrastructure on that guard today, and
+  adding one would change tutorial semantics for Ranked and Daily as well.
+  That is out of this workstream's scope. The fix, when someone owns it, is a
+  return parameter on the guard, not a second gate here.
+* **Monetization is untouched.** The session is free, open to guests, reads no
+  entitlement and writes none. No Premium-gated family is in the allow-list.
+
+## Attempts, XP and history — stated plainly
+
+A matchup study **does not record `quiz_attempts`, XP, streak or category
+progress.** Half its questions have no `quiz_questions.id` to attribute an
+attempt to, and giving a composed question a row would reintroduce exactly the
+materialization the on-demand architecture removed. This is the same position
+Pro Play Quiz already holds. It is a real product gap, not an oversight — see
+"Next recommended slice".
+
+## Files — Step 12
+
+### Backend
+
+| File | Role |
+|---|---|
+| `quiz/matchup/__init__.py` | The tier vocabulary and why a provider, not a filter. |
+| `quiz/matchup/provider.py` | Pair resolution, composition, the stored allow/deny lists, the pool and its balance. |
+| `quiz/matchup/session.py` | Freeze-on-serve, one grading rule, the TTL'd store. |
+| `routes/quiz_matchup.py` | Three endpoints under `/api/quiz/matchup/`. |
+| `api_server.py` | One `include_router`. |
+| `test_quiz_matchup.py` | 42 tests against the real bank. |
+
+### Frontend
+
+| File | Role |
+|---|---|
+| `src/lib/quiz/matchupApi.ts` | The client, the typed error codes, `matchupStudyHref`. |
+| `src/pages/quiz-matchup/QuizMatchupPage.tsx` | The study. Reuses `QuizAnswerOptions` / `QuizAnswerFeedback`. |
+| `src/pages/quiz-matchup/QuizMatchupPage.test.tsx` | 15 tests. |
+| `src/App.tsx` | One gated route. |
+| `src/components/pro-play/dossier/MatchupStudy.tsx` | `Quiz This Matchup` in the action row. |
+| `src/pages/pro-play/ProPlayMatchupTeam.test.tsx` | 3 new tests; the Step 10/11 "no quiz here" test updated with its reason. |
+
+## Presentation
+
+The contextual layer is **one line**: the two champion icons, `Olaf vs
+K'Sante`, and a `Matchup Study` / `Two-Champion Study` badge. Everything below
+it is the production quiz — the same answer grid, the same locked selection,
+the same correct/incorrect reveal. There is no bespoke dashboard, because a
+different content source should still produce an excellent NORMAL question.
+
+The tier badge is not decoration: it prints what the **server actually did**,
+so a session that could only draw one champion at a time can never be
+described as a matchup.
+
+Champion icons are resolved **server-side** by
+`quiz.asset_metadata.resolve_champion_dir_by_name` and sent as paths, never
+assembled from a display name by the client — macOS hides a case-wrong asset
+directory that 404s on Linux, and two of the three alias spellings match no
+directory at all.
+
+## Tests and results
+
+**Backend — 42 new, all passing** (`test_quiz_matchup.py`). Adjacent quiz
+suites green: 165 passed across `test_quiz_matchup`, `test_dc1_phase8_promotion`,
+`test_dc1_policy_reconciliation`, `test_pro_play_quiz`. Ranked/Daily isolation
+measured as a failure SET: **20 failed / 207 passed, byte-identical to clean
+`origin/master`** across the ranked, daily and quiz-integration suites.
+
+**Frontend — 18 new.** Board suite **286 passed** (was 283). Full suite
+**16 files / 71 tests failed, 10,484 passed** — and the **failure set is
+byte-identical to clean `744102b8`**, re-measured in this worktree by
+stashing. Compare failure SETS, never totals. Typecheck: **14 errors, none in
+Step 12 files**. Build green.
+
+## Real flows tested
+
+Against a local backend on the real 1.07M-row corpus and the live bank:
+
+* **Olaf vs K'Sante** played to completion, **every delivered question read
+  and checked**: five true-pair comparisons, then Olaf / K'Sante / Olaf. The
+  reveal is the production reveal, and the facts are right (Olaf W 16 s,
+  K'Sante W 14 s at rank 1).
+* **Gnar vs Jayce** (sparse) — 6 questions, correctly labelled
+  `TWO-CHAMPION STUDY`, no unrelated question.
+* Ahri vs Syndra, Dr. Mundo vs Cho'Gath, Kai'Sa vs LeBlanc, Aurelion Sol vs
+  Zeri, Ornn vs Ambessa — all open a real pair session.
+* Direct URL, refresh, Back, mirror pair, unknown champion, missing opponent.
+* **Mobile 375 px**: no horizontal overflow (`scrollWidth === clientWidth`),
+  header wraps, options full width.
+
+**NOT tested end-to-end in a browser: the click itself.** The Matchup Explorer
+is admin-gated and this session held no admin credentials, so the
+Explorer → Quiz click could not be driven live. The action row's rendering,
+its href, its exact query keys and its mirror refusal are covered by the board
+suite, and the destination that href points at was opened and played in a real
+browser. Somebody with a key should click it once.
+
+## Performance
+
+Session start: **0.118–0.124 s** for every pair measured, cold. The pair
+filter is a single gated scan of the ability rows plus one indexed bank read;
+no pathological scan, and no cache was added because none was needed.
+
+## A defect this audit surfaced and did NOT fix
+
+The live `champion_resource` family contradicts `champion_metadata.resource_type`
+for **23 of 172 champions** — Gnar is answered "Mana" (authority: Rage), Shen
+"Mana" (Energy), Renekton / Tryndamere / Shyvana / Rek'Sai "Mana" (Fury). The
+generator appears to key off `champion_stats.mp` instead of the resource
+authority. **This is already live in ordinary Practice today**; Step 12 only
+makes it visible in one more place. It belongs to the CHAMPDATA correction
+lane, which has an established blast-radius procedure for frozen copies, and
+was left alone rather than half-fixed here.
+
+## Deploy state — Step 12
+
+| | SHA | Where |
+|---|---|---|
+| Backend | see below | branch `proplay/step12-matchup-quiz`, **not pushed** |
+| Frontend | see below | branch `proplay/step12-matchup-quiz`, **not pushed** |
+
+**DEPLOY ORDER IS NOT OPTIONAL HERE, unlike Step 6.** The frontend route calls
+an endpoint that does not exist yet. `POST /api/quiz/matchup/sessions` must be
+live on Railway **before** the frontend is published, or `Quiz This Matchup`
+leads to "Matchup study is unavailable right now." The backend change is
+purely additive — one new router, one new package, no existing route, table or
+payload touched — so it is safe to ship first and safe to sit alone.
+
+Publishing the frontend is the owner's click in Lovable. A push is not a
+publish.
+
+## Next recommended slice
+
+**Decide whether a contextual study should count.** The honest next question
+is not "more question families" — it is whether finishing an Olaf vs K'Sante
+study should move the player's XP, streak and category mastery the way ten
+Practice questions do. Today it does not, and cannot, because half its
+questions have no row to attribute an attempt to. Answering that means
+deciding whether `quiz_attempts` can accept a question identified by a frozen
+instance rather than a `quiz_questions.id` — a question Pro Play Quiz has open
+too, and one worth answering once for both rather than twice.
+
+Do **not** add more Tier A families first. One more comparison shape is more
+of the same claim; making the session count is a new one.

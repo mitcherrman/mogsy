@@ -205,6 +205,8 @@ const QuizDailyChallengePage = lazy(() => import("./pages/quiz-daily-challenge/Q
 // Public Ranked route (F1.5) — allowlisted/feature-gated server-side; the
 // page fails closed on backend disabled/ineligible via typed error codes.
 const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
+// Step 12 — Leaguecraft addressed by champion PAIR, from the Matchup Explorer.
+const QuizMatchupPage = lazy(() => import("./pages/quiz-matchup/QuizMatchupPage"));
 
 // Dev-only Ranked TUTORIAL prototype — scripted local training match,
 // no auth/API/persistence, not linked from any navigation.
@@ -555,6 +557,10 @@ const App = () => (
                       tutorial route with the tutorial gate is a redirect loop. */}
                   <Route path="/quiz/tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
                   <Route path="/quiz" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><Quiz /></Suspense></RequireRankedTutorial>} />
+                  {/* Gated exactly like its /quiz siblings. A contextual
+                      study is ordinary free practice and inherits the
+                      tutorial policy rather than stepping around it. */}
+                  <Route path="/quiz/matchup" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/daily" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/daily-challenge" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense></RequireRankedTutorial>} />
                   <Route path="/quiz/ranked" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense></RequireRankedTutorial>} />

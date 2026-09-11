@@ -3792,12 +3792,13 @@ describe("the exact matchup study", () => {
   });
 
   it("offers NO quiz action, and every action it does offer keeps the champions", async () => {
-    // STEP 11 CHANGED HALF OF THIS TEST, DELIBERATELY. Until Step 11 the Pro
-    // Play data surface could only be handed ONE champion, so it was absent
-    // for the same reason the quiz still is: a link that drops half the
-    // matchup is worse than no link. It now takes a pair, so it is here — and
-    // the quiz still is not, because `/quiz` accepts no champion at all.
-    // There is still no disabled button and no "coming soon".
+    // STEPS 11 AND 12 EACH CHANGED HALF OF THIS TEST, DELIBERATELY. The rule
+    // has never moved: a destination is in this row only when it KEEPS both
+    // champions, and a link that drops half the matchup is worse than no
+    // link. Step 11 admitted the Pro Play data surface once it took a pair;
+    // Step 12 admits the quiz once Leaguecraft grew a pair-aware question
+    // source. What is still forbidden is a destination that would ignore
+    // them — and there is still no disabled button and no "coming soon".
     const { study } = await openStudy();
     const row = within(study).getByTestId("study-actions");
     for (const href of row.querySelectorAll("a")) {
@@ -3805,10 +3806,16 @@ describe("the exact matchup study", () => {
       expect(
         to.startsWith("/combat-lab") ||
           to.startsWith("/lol/docs/champions/") ||
-          to.startsWith("/lol/pro-play/graphs?focus=matchup"),
+          to.startsWith("/lol/pro-play/graphs?focus=matchup") ||
+          to.startsWith("/quiz/matchup?"),
       ).toBe(true);
     }
-    expect(row.textContent).not.toMatch(/quiz/i);
+    // A bare /quiz — the generic destination Step 10 refused — must never
+    // appear here, whatever else does.
+    for (const href of row.querySelectorAll("a")) {
+      const to = href.getAttribute("href") ?? "";
+      if (to.startsWith("/quiz")) expect(to).toMatch(/^\/quiz\/matchup\?a=[^&]+&b=[^&]+$/);
+    }
     expect(row.textContent).not.toMatch(/coming soon/i);
     expect(row.querySelectorAll("button")).toHaveLength(0);
     expect(row.querySelectorAll("[disabled]")).toHaveLength(0);
@@ -3836,6 +3843,56 @@ describe("the exact matchup study", () => {
     for (const leak of ["Doran", "Bin", "T1", "Bilibili", "patch"]) {
       expect(href).not.toContain(leak);
     }
+  });
+
+  // --- Step 12: the contextual quiz ----------------------------------------
+
+  it("offers Quiz This Matchup with BOTH champion slugs and nothing else", async () => {
+    // The destination is a Leaguecraft study that USES the pair: it composes
+    // true Ornn-versus-Ambessa comparisons and falls back only as far as
+    // those two champions' own questions. It therefore needs the champions
+    // and nothing else — a player, a team or a game in this URL would claim
+    // a session about that match, which this is not.
+    const { study } = await openStudy();
+    const action = within(study).getByTestId("study-action-quiz");
+    expect(action).toHaveTextContent("Quiz This Matchup");
+    const href = action.getAttribute("href") ?? "";
+    expect(href.split("?")[0]).toBe("/quiz/matchup");
+    const params = new URLSearchParams(href.split("?")[1]);
+    expect([...params.keys()].sort()).toEqual(["a", "b"]);
+    expect(params.get("a")).toBe("ornn");
+    expect(params.get("b")).toBe("ambessa");
+  });
+
+  it("carries no player, team or game into the quiz", async () => {
+    const { study } = await openStudy();
+    const href =
+      within(study).getByTestId("study-action-quiz").getAttribute("href") ?? "";
+    // Checked over the QUERY, not the whole href: the path itself is
+    // `/quiz/matchup`, and "matchup" is the route's own name, not a leak.
+    const query = href.split("?")[1] ?? "";
+    for (const leak of ["Doran", "Bin", "T1", "Bilibili", "patch", "game",
+                        "match_id", "player", "team"]) {
+      expect(query).not.toContain(leak);
+    }
+  });
+
+  it("offers no Quiz This Matchup for a mirror matchup", async () => {
+    // One champion is not a matchup, and the study refuses a mirror pair.
+    exact = exactResponse({
+      opposing: {
+        player_lp_page: "Bin",
+        display_name: "Bin",
+        champion_key: "Ornn",
+        participation: "participated",
+        games_in_scope: 125,
+        champion_games_in_scope: 40,
+        teams_in_qualifying_games: ["Bilibili Gaming"],
+      },
+    });
+    const { study } = await openStudy();
+    expect(within(study).queryByTestId("study-action-quiz")).toBeNull();
+    expect(within(study).getByTestId("study-action-combat-lab")).toBeInTheDocument();
   });
 
   it("offers no Explore Pro Data for a mirror matchup", async () => {
