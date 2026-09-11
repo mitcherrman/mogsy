@@ -423,30 +423,28 @@ describe("sign-out and account actions", () => {
 });
 
 describe("theme picker hand-off", () => {
-  it("offers Theme only where a picker is mounted", async () => {
-    locationState.pathname = "/profile";
-    render(<MogzyIdentityMenu />);
-    fireEvent.click(chevron());
-    expect(await screen.findByTestId("hud-theme-item")).toBeTruthy();
+  // PT2E retired FloatingThemeSwitcher and the `open-theme-picker` event with
+  // it. The menu no longer offers a Theme item anywhere; the profile theme is
+  // chosen on the Profile page, which this menu links to directly.
+  it("offers no Theme item, inside or outside the LoL section", async () => {
+    for (const pathname of ["/profile", "/lol"]) {
+      locationState.pathname = pathname;
+      render(<MogzyIdentityMenu />);
+      fireEvent.click(chevron());
+      await screen.findByTestId("notification-panel");
+      expect(screen.queryByTestId("hud-theme-item")).toBeNull();
+      cleanup();
+    }
   });
 
-  it("hides Theme inside the LoL section, where no picker is mounted", async () => {
-    locationState.pathname = "/lol";
-    render(<MogzyIdentityMenu />);
-    fireEvent.click(chevron());
-    await screen.findByTestId("notification-panel");
-    expect(screen.queryByTestId("hud-theme-item")).toBeNull();
-  });
-
-  it("dispatches the existing event and closes", async () => {
+  it("dispatches no open-theme-picker event", async () => {
     locationState.pathname = "/profile";
     const heard = vi.fn();
     window.addEventListener("open-theme-picker", heard);
     render(<MogzyIdentityMenu />);
     fireEvent.click(chevron());
-    fireEvent.click(await screen.findByTestId("hud-theme-item"));
-    expect(heard).toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByTestId("notification-panel")).toBeNull());
+    await screen.findByTestId("notification-panel");
+    expect(heard).not.toHaveBeenCalled();
     window.removeEventListener("open-theme-picker", heard);
   });
 });

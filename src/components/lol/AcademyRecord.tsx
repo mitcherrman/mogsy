@@ -44,7 +44,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
-import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { usePremiumSession } from "@/hooks/usePremiumSession";
 import { useRankedProgression } from "@/pages/quiz-ranked/useRankedProgression";
 import { categoryLabel, quizApi } from "@/lib/quiz/api";
 import { deriveProfileStats, pickBestCategory } from "@/lib/profile/view-model";
@@ -81,7 +81,7 @@ export default function AcademyRecord() {
   const isAnonymous = !!(user as { is_anonymous?: boolean } | null)?.is_anonymous;
   const isIdentified = !!userId && !isAnonymous;
 
-  const { proStatus } = useSitewideTheme();
+  const { proStatus } = usePremiumSession();
   const { displayName, avatarUrl } = useProfileIdentity(isIdentified ? userId : null);
 
   // Same query keys as LeagueProfileStats — one cache, two surfaces.

@@ -6,48 +6,51 @@ import { useAuth } from "@/hooks/useAuth";
 import OnboardingWelcome from "./onboarding/OnboardingWelcome";
 import OnboardingProfile from "./onboarding/OnboardingProfile";
 import OnboardingCategories from "./onboarding/OnboardingCategories";
-import OnboardingTheme from "./onboarding/OnboardingTheme";
 
-type Step = "welcome" | "profile" | "pick" | "theme";
+/**
+ * PT2E retired the fourth step, "Choose Your Vibe", which offered every new
+ * account one Premium theme to try for free. It was a legacy Mogsy grant for a
+ * cosmetic that recoloured the whole application — the only part of the product
+ * that ever made the offer meaningful. Its "entitlement" was a localStorage key
+ * (`mogsy-chosen-free-theme`) that any visitor could write, so it was never a
+ * grant the server could honour, and keeping it would have forced a
+ * once-per-account carve-out into the new server authority purely to preserve
+ * an obsolete giveaway. Onboarding now ends on the categories step; a profile
+ * theme is chosen on the Profile page, where it belongs.
+ */
+type Step = "welcome" | "profile" | "pick";
 
 interface OnboardingFlowProps {
   onComplete: (categories: string[]) => void;
-  skipToTheme?: boolean;
 }
 
-export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFlowProps) {
+export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>(skipToTheme ? "theme" : "welcome");
+  const [step, setStep] = useState<Step>("welcome");
   const [selected, setSelected] = useState<string[]>([]);
-  const [chosenTheme, setChosenTheme] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const handleFinish = async () => {
-    if (!skipToTheme && (selected.length < 3 || !user)) return;
+    if (selected.length < 3 || !user) return;
     setSaving(true);
 
-    if (chosenTheme) {
-      localStorage.setItem("mogsy-chosen-free-theme", chosenTheme);
-      localStorage.setItem("mogsy-active-theme", chosenTheme);
-    }
+    // `custom_theme` is no longer written here. Onboarding does not hand out a
+    // cosmetic, so the profile keeps the column's default and the account
+    // starts on the default profile theme like every other free account.
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        onboarding_completed: true,
+        preferred_categories: selected,
+      })
+      .eq("user_id", user.id);
 
-    if (!skipToTheme && user) {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          onboarding_completed: true,
-          preferred_categories: selected,
-          custom_theme: chosenTheme || "default",
-        })
-        .eq("user_id", user.id);
-
-      // Surface the failure and stay on this step so the user can retry — never
-      // advance (or hand off to the tutorial) on an unpersisted write.
-      if (error) {
-        setSaving(false);
-        toast.error("We couldn't save your setup. Please check your connection and try again.");
-        return;
-      }
+    // Surface the failure and stay on this step so the user can retry — never
+    // advance (or hand off to the tutorial) on an unpersisted write.
+    if (error) {
+      setSaving(false);
+      toast.error("We couldn't save your setup. Please check your connection and try again.");
+      return;
     }
 
     setSaving(false);
@@ -67,16 +70,8 @@ export default function OnboardingFlow({ onComplete, skipToTheme }: OnboardingFl
           <OnboardingCategories
             selected={selected}
             setSelected={setSelected}
-            onNext={() => setStep("theme")}
-          />
-        )}
-        {step === "theme" && (
-          <OnboardingTheme
-            chosenTheme={chosenTheme}
-            setChosenTheme={setChosenTheme}
-            onFinish={handleFinish}
+            onNext={handleFinish}
             saving={saving}
-            skipToTheme={skipToTheme}
           />
         )}
       </AnimatePresence>

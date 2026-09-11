@@ -19,7 +19,7 @@
 import { AD_PLACEMENTS, isKnownPlacement, type AdPlacement } from "./placements";
 import type { AdsConfig } from "./config";
 
-/** Premium entitlement as exposed by SitewideThemeContext.proStatus. */
+/** Premium entitlement as exposed by PremiumSessionContext.proStatus. */
 export type ProStatus = "unknown" | "pro" | "free";
 
 export interface AdPolicyContext {

@@ -19,8 +19,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/ads/config", () => ({ getAdsConfig: () => ({ ...mocks.config }) }));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ proStatus: mocks.proStatus }),
+vi.mock("@/hooks/usePremiumSession", () => ({
+  usePremiumSession: () => ({ proStatus: mocks.proStatus }),
 }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mocks.user, loading: false }) }));
 vi.mock("@/lib/ads/googleLoader", () => ({

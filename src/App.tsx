@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LEAGUE_ONLY_MODE, LEAGUE_HOME_ROUTE } from "@/lib/site-config";
 import { AuthProvider } from "./hooks/useAuth";
 import { AdminAuthProvider } from "./lib/admin-auth/AdminAuthProvider";
-import { SitewideThemeProvider } from "./hooks/useSitewideTheme";
+import { PremiumSessionProvider } from "./hooks/usePremiumSession";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import { useAcademyIdentitySync } from "./hooks/useAcademyIdentitySync";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -370,7 +370,7 @@ const App = () => (
       <AuthQuerySyncBridge />
       <AcademyIdentityBridge />
       <AdminAuthProvider>
-      <SitewideThemeProvider>
+      <PremiumSessionProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -703,7 +703,7 @@ const App = () => (
               </Routes>
           </BrowserRouter>
         </TooltipProvider>
-      </SitewideThemeProvider>
+      </PremiumSessionProvider>
       </AdminAuthProvider>
     </AuthProvider>
   </QueryClientProvider>

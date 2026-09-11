@@ -41,7 +41,7 @@
  * `/lol/premium` owns pricing AND states availability in the same view.
  *
  * ### Subscription state costs nothing extra
- * `useSitewideTheme().proStatus` is already resolved for this page by the
+ * `usePremiumSession().proStatus` is already resolved for this page by the
  * app-wide provider. "unknown" renders the promotional variant: this is a
  * promo module, not a gate, so an unresolved read costs a member a moment of
  * the wrong eyebrow rather than costing a free user access to something.
@@ -49,10 +49,10 @@
 import { Link } from "react-router-dom";
 import { Crown, ArrowRight, Check } from "lucide-react";
 import { PREMIUM_ROUTE } from "@/lib/premium-routes";
-import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { usePremiumSession } from "@/hooks/usePremiumSession";
 
 export default function HubPremiumPanel() {
-  const { proStatus } = useSitewideTheme();
+  const { proStatus } = usePremiumSession();
   const isMember = proStatus === "pro";
 
   return (

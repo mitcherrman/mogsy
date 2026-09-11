@@ -12,8 +12,16 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import UserProfile from "./UserProfile";
 
-/** Every column name a League profile must never ask for or expose. */
-const LEGACY_DATING_FIELDS = ["age", "location", "status_message", "socials", "custom_theme"];
+/**
+ * Every column name a League profile must never ask for or expose.
+ *
+ * PT2E removed `custom_theme` from this list. It belonged here while the value
+ * was a SITEWIDE theme — legacy Mogsy behaviour that recoloured the whole
+ * application and was not profile content at all. It is now the profile's own
+ * theme, the direct analogue of `profile_frame`, and is published on the
+ * League contract for the same reason. The other four keep their exclusion.
+ */
+const LEGACY_DATING_FIELDS = ["age", "location", "status_message", "socials"];
 
 type JsonLdPerson = { name?: string; description?: string; address?: string };
 type CapturedSeoProps = { description: string; jsonLd: { mainEntity: JsonLdPerson } };
@@ -41,7 +49,9 @@ const db = vi.hoisted(() => ({
     location: "Freljord",
     status_message: "looking for a duo",
     socials: { instagram: "https://instagram.com/ashe" },
-    custom_theme: null,
+    // PT2E: a profile theme is League profile content now, and the page is
+    // expected to render it rather than ignore it.
+    custom_theme: "royal",
   } as Record<string, unknown>,
 }));
 

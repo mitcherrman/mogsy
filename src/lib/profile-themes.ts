@@ -1,6 +1,23 @@
+/**
+ * PROFILE THEMES — the visual theme of a user's PROFILE, and nothing else.
+ *
+ * These definitions are legacy Mogsy artwork, and they used to recolour the
+ * whole application: `useSitewideTheme` wrote `theme-<id>` onto <html> and
+ * every surface outside the League section inherited it. Current Mogzy has
+ * dedicated visual systems per surface — `theme-lol` for Leaguecraft, Ranked,
+ * Quiz, Combat Lab, Meta Reflex and the Archives; the Academy rooms for the
+ * entrance — and a user-chosen recolour on top of those was never the
+ * intention. PT2E retired the sitewide application and kept the artwork for
+ * the one place it still reads as a personalisation: the profile card.
+ *
+ * `styles` is therefore a set of PROFILE tokens (hero, card, ring, stat, name,
+ * heading, inner). Nothing here is a document-level or CSS-variable theme, and
+ * no consumer may mutate the root element from these values.
+ */
 export interface ProfileTheme {
   id: string;
   label: string;
+  /** Requires effective Premium to SELECT. See `profileThemeRequiresPremium`. */
   isPro: boolean;
   preview: string; // gradient/color for preview swatch
   styles: {
@@ -34,26 +51,6 @@ export interface ProfileTheme {
 }
 
 export const profileThemes: ProfileTheme[] = [
-  {
-    id: "cycle",
-    label: "Cycle All",
-    isPro: true,
-    preview: "bg-gradient-to-r from-[hsl(0,80%,60%)] via-[hsl(120,60%,50%)] via-[hsl(240,70%,60%)] to-[hsl(0,80%,60%)]",
-    styles: {
-      heroBg: "",
-      cardBg: "",
-      accentRing: "",
-      textAccent: "",
-      iconAccent: "",
-      statBg: "",
-      headingColor: "",
-      nameColor: "",
-      textColor: "",
-      mutedColor: "",
-      innerBg: "",
-      innerBorder: "",
-    },
-  },
   {
     id: "default",
     label: "Default",
@@ -328,6 +325,53 @@ export const profileThemes: ProfileTheme[] = [
   },
 ];
 
+/**
+ * The free profile themes — an explicit, static list.
+ *
+ * This replaces `app_settings.theme_config.free_themes`, which let an admin
+ * move a theme between tiers at runtime. That dynamism existed to tune a
+ * sitewide cosmetic and bought nothing once themes became profile-only; worse,
+ * the shipped default config disagreed with the `isPro` flags in this file
+ * (it listed neither `light` nor `dark` as free), so the two halves of the
+ * product could show a user a lock the other half did not believe in.
+ *
+ * Five free themes is what `src/lib/premium/matrix.ts` has always promised
+ * Free accounts, so nothing is taken away here. `default` alone would have
+ * been simpler still and is the shape profile FRAMES use, but it would have
+ * been a live takeaway from existing Free users, which this rework has no
+ * reason to make.
+ *
+ * The server restates this list in `profile_theme_requires_premium` (migration
+ * 20260911130000). The two must agree theme for theme, which
+ * `src/test/security/pt2eProfileThemeAuthority.test.ts` pins against a real
+ * Postgres; `profile-themes.catalogue.test.ts` pins that the `isPro` flags in
+ * this file agree with it too.
+ */
+export const FREE_PROFILE_THEMES = ["default", "light", "dark", "midnight", "forest"] as const;
+
+/**
+ * Whether selecting `id` requires effective Premium.
+ *
+ * Fail-closed on anything the catalogue does not know: an id that is not a
+ * shipped theme is treated as Premium rather than free, matching the server,
+ * so an invented string can never be the cheap way past the gate.
+ */
+export function profileThemeRequiresPremium(id: string | null | undefined): boolean {
+  if (id == null) return false;
+  const key = id.trim().toLowerCase();
+  if (key === "") return false;
+  return !(FREE_PROFILE_THEMES as readonly string[]).includes(key);
+}
+
+/** The default profile theme — the one every account starts on. */
+export const DEFAULT_PROFILE_THEME = "default";
+
 export function getThemeById(id: string): ProfileTheme {
-  return profileThemes.find((t) => t.id === id) || profileThemes[0];
+  return (
+    profileThemes.find((t) => t.id === id) ||
+    // Falls back to `default` BY NAME. This used to be `profileThemes[0]`,
+    // which was the `cycle` entry — so an unknown id resolved to a theme whose
+    // style tokens are all empty strings.
+    profileThemes.find((t) => t.id === DEFAULT_PROFILE_THEME)!
+  );
 }

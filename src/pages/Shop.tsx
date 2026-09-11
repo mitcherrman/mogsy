@@ -478,7 +478,7 @@ export default function Shop() {
               </motion.div>
               <div>
                 <p className="text-sm font-bold text-foreground">{shopAdConfig.headline || "Upgrade to Premium!"}</p>
-                <p className="text-xs text-muted-foreground">{shopAdConfig.subtext || "Unlock themes, animations, and more."}</p>
+                <p className="text-xs text-muted-foreground">{shopAdConfig.subtext || "Unlock profile themes, animations, and more."}</p>
               </div>
               <ExternalLink className="h-4 w-4 text-muted-foreground ml-auto shrink-0" />
             </div>

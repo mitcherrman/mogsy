@@ -231,7 +231,7 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
     body: (
       <>
         <div className="rounded-lg border border-border bg-card/40 p-4 space-y-1 mb-3">
-          <Row k="Mogzy Premium" v="$9.99/mo or annual. Ad-free, exclusive themes + cosmetics, Premium badge, premium animations." />
+          <Row k="Mogzy Premium" v="$9.99/mo or annual. Ad-free, exclusive profile themes + cosmetics, Premium badge, premium animations." />
           <Row k="Diamond packs" v="One-time Stripe IAP. Various 💎 amounts." />
           <Row k="Exposure Boost" v="50 💎 — 2× visibility in swipe queues for 24h." />
           <Row k="ELO Shield" v="30 💎 — protects from next 3 Elo losses." />
@@ -250,7 +250,7 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
   {
     id: "profiles",
     title: "9. Profiles",
-    keywords: "profile own public favorites auto manual photo circles top comments premium cosmetics pro themes public profiles view friend actions",
+    keywords: "profile own public favorites auto manual photo circles top comments premium cosmetics premium profile themes public profiles view friend actions",
     body: (
       <UL>
         <li><strong>Own (<Tag>/profile</Tag>) vs Public (<Tag>/user/:id</Tag>)</strong> — same shape, different edit permissions.</li>
@@ -282,16 +282,20 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
   {
     id: "onboarding",
     title: "11. Onboarding Flow",
-    keywords: "onboarding welcome profile categories theme preferred categories retry",
+    keywords: "onboarding welcome profile categories preferred categories retry",
     body: (
       <>
-        <P>Triggers for new accounts via <Tag>OnboardingFlow</Tag>; four sequential steps:</P>
+        <P>Triggers for new accounts via <Tag>OnboardingFlow</Tag>; three sequential steps:</P>
         <UL>
           <li><strong>Welcome</strong> — brand intro + CTA.</li>
           <li><strong>Profile</strong> — display name + avatar upload (with retry logic for initial profile creation).</li>
           <li><strong>Categories</strong> — pick 1–5 interest categories → saved to <Tag>preferred_categories</Tag> on profile.</li>
-          <li><strong>Theme</strong> — pick free starting theme → persisted to <Tag>custom_theme</Tag> + localStorage.</li>
         </UL>
+        <P>
+          A fourth step, <em>Choose Your Vibe</em>, offered one Premium theme free.
+          PT2E removed it: it granted a sitewide cosmetic that no longer exists, and
+          its only record was a localStorage key any visitor could write.
+        </P>
         <P>On completion <Tag>onboarding_completed</Tag> is set <Tag>true</Tag>, suppressing future runs.</P>
       </>
     ),
@@ -299,15 +303,30 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
   {
     id: "themes",
     title: "12. Themes",
-    keywords: "themes light dark pro sitewide profile floating switcher fts overlay",
+    keywords: "themes profile theme premium cosmetic overlay custom_theme",
     body: (
-      <UL>
-        <li><strong>Light / Dark / Premium</strong> — Premium themes unlocked by subscription.</li>
-        <li><strong>Sitewide theme</strong> — global CSS variables via <Tag>useSitewideTheme</Tag>; configurable by master_admin in <Tag>AdminThemes</Tag>.</li>
-        <li><strong>Profile theming</strong> — per-profile display theme affecting public profile background/cards (<Tag>src/lib/profile-themes.ts</Tag>).</li>
-        <li><strong>Floating switcher (FTS)</strong> — persistent FAB on every page; anchors above bottom nav on mobile; cross-tab sync via custom events.</li>
-        <li><strong>ThemeOverlay</strong> — animated background effects (particles, gradients) for Premium themes.</li>
-      </UL>
+      <>
+        <P>
+          Themes are <strong>profile themes</strong>. They style a user's profile card and
+          nothing else. PT2E retired the sitewide system, in which the same value was
+          written onto <Tag>&lt;html&gt;</Tag> and recoloured every surface outside the
+          League section.
+        </P>
+        <UL>
+          <li><strong>Catalogue</strong> — <Tag>src/lib/profile-themes.ts</Tag>. Five free
+            (<Tag>default</Tag>, light, dark, midnight, forest), the rest Premium. The free
+            list is static; <Tag>app_settings.theme_config</Tag> no longer governs it.</li>
+          <li><strong>Stored on</strong> <Tag>profiles.custom_theme</Tag>, chosen on the
+            Profile page, published to other viewers by <Tag>get_league_profiles()</Tag>.</li>
+          <li><strong>Authorization</strong> — the <Tag>protect_profile_premium_fields</Tag>
+            BEFORE UPDATE trigger. A CHANGE to a Premium theme needs Global Premium Access
+            or the canonical PT1.4 entitlement; a retained theme is never re-authorized.</li>
+          <li><strong>ThemeOverlay</strong> — animated profile-page background effects
+            (particles, gradients) for Premium themes.</li>
+          <li><strong>Removed</strong> — the sitewide root theme class, the Cycle All theme,
+            the floating switcher FAB, and the <Tag>AdminThemes</Tag> panel.</li>
+        </UL>
+      </>
     ),
   },
   {
@@ -349,7 +368,6 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
           <Row k="Feedback" v="Read user-submitted feedback." />
           <Row k="Mod Config" v="Define moderator permissions + visibility scope." />
           <Row k="Directory" v="Browse all public profiles; bulk operations." />
-          <Row k="Themes *" v="Edit global sitewide theme + Premium theme definitions." />
           <Row k="Ranks *" v="Configure percentile tier thresholds (Iron → Diamond)." />
           <Row k="Onboarding *" v="Edit onboarding step content + category options." />
           <Row k="Settings *" v="Global feature flags + config values." />

@@ -40,7 +40,7 @@ export default function AdminSettings() {
     shop_ad_enabled: false,
     shop_ad_type: "pro",
     shop_ad_headline: "Upgrade to Premium!",
-    shop_ad_subtext: "Unlock premium themes, animations, and more.",
+    shop_ad_subtext: "Unlock premium profile themes, animations, and more.",
     show_match_count: true,
     show_swipe_progress: true,
     card_bg_opacity: 20,
@@ -66,7 +66,7 @@ export default function AdminSettings() {
               case "allow_anonymous_browsing": s.allow_anonymous_browsing = val?.enabled ?? true; break;
               case "favorites_mode": s.favorites_mode = val?.mode ?? "auto"; break;
               case "swipe_timer": s.swipe_timer_enabled = val?.enabled ?? false; s.swipe_timer_duration = val?.duration_seconds ?? 10; break;
-              case "shop_ad_config": s.shop_ad_enabled = val?.enabled ?? false; s.shop_ad_type = val?.type ?? "pro"; s.shop_ad_headline = val?.headline ?? "Upgrade to Premium!"; s.shop_ad_subtext = val?.subtext ?? "Unlock premium themes, animations, and more."; break;
+              case "shop_ad_config": s.shop_ad_enabled = val?.enabled ?? false; s.shop_ad_type = val?.type ?? "pro"; s.shop_ad_headline = val?.headline ?? "Upgrade to Premium!"; s.shop_ad_subtext = val?.subtext ?? "Unlock premium profile themes, animations, and more."; break;
               case "show_match_count": s.show_match_count = val?.enabled ?? true; break;
               case "show_swipe_progress": s.show_swipe_progress = val?.enabled ?? true; break;
               case "card_bg_opacity": s.card_bg_opacity = val?.opacity ?? 20; break;

@@ -20,8 +20,8 @@ vi.mock("@/lib/ads/config", () => ({
   getAdsConfig: () => ({ ...mocks.config }),
 }));
 
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ proStatus: mocks.proStatus }),
+vi.mock("@/hooks/usePremiumSession", () => ({
+  usePremiumSession: () => ({ proStatus: mocks.proStatus }),
 }));
 
 vi.mock("@/hooks/useAuth", () => ({

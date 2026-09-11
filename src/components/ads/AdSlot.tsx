@@ -14,7 +14,7 @@
 import { Component, useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { usePremiumSession } from "@/hooks/usePremiumSession";
 import { cn } from "@/lib/utils";
 import { AD_PLACEMENTS, isKnownPlacement, type AdPlacement } from "@/lib/ads/placements";
 import { resolveAdPolicy, type AdPolicyDecision } from "@/lib/ads/policy";
@@ -44,7 +44,7 @@ function AdSlotInner({
   // collapses the slot to null — ads never take a page down.
   const { user } = useAuth();
   const isSignedIn = !!user && !(user as { is_anonymous?: boolean }).is_anonymous;
-  const { proStatus } = useSitewideTheme();
+  const { proStatus } = usePremiumSession();
   // Reactive: mid-session consent changes (grant/deny/withdraw) recompute
   // eligibility immediately.
   const consent = useConsentState();

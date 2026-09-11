@@ -81,9 +81,6 @@ const mocks = vi.hoisted(() => {
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: mocks.authUser, session: null, loading: false }),
 }));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ themeId: "default", setActiveTheme: vi.fn(), chosenFreeTheme: null }),
-}));
 vi.mock("@/components/profile/LeagueProfileStats", () => ({
   default: () => <div data-testid="league-stats" />,
 }));

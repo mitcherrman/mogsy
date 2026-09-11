@@ -17,9 +17,12 @@ import { usernameProblem, USERNAME_MESSAGES, USERNAME_MAX, cleanUsername } from 
 import { searchCities } from "@/lib/cities-data";
 import { validateSocialLink } from "@/lib/social-validators";
 import SEOHead from "@/components/SEOHead";
-import { profileThemes } from "@/lib/profile-themes";
+import {
+  profileThemes,
+  profileThemeRequiresPremium,
+  DEFAULT_PROFILE_THEME,
+} from "@/lib/profile-themes";
 import FavoritesEditor from "@/components/FavoritesEditor";
-import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { useProfileConfig } from "@/hooks/useProfileConfig";
 import LeagueProfileStats from "@/components/profile/LeagueProfileStats";
@@ -35,12 +38,6 @@ const frameOptions = [
   { id: "fire", label: "Fire", preview: "ring-4 ring-orange-500/60 shadow-[0_0_15px_hsl(25_100%_50%/0.4)]" },
   { id: "diamond", label: "Diamond", preview: "ring-4 ring-cyan-300/60 shadow-[0_0_15px_hsl(180_80%_70%/0.4)]" },
 ];
-
-interface ThemeConfig {
-  free_themes: string[];
-  pro_themes: string[];
-  disabled_themes: string[];
-}
 
 const SOCIAL_PLACEHOLDERS: Record<string, string> = {
   instagram: "https://instagram.com/yourname",
@@ -61,8 +58,12 @@ export default function Profile() {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isPro, setIsPro] = useState(false);
   const [selectedFrame, setSelectedFrame] = useState("default");
-  const { themeId: activeThemeId, setActiveTheme, chosenFreeTheme } = useSitewideTheme();
-  const [themeConfig, setThemeConfig] = useState<ThemeConfig | null>(null);
+  // PT2E: the profile theme is PROFILE state, held here and seeded from this
+  // account's own row. It used to live in the sitewide theme provider, which
+  // also wrote it onto <html> — so choosing "Cyberpunk" for your profile card
+  // recoloured the Academy entrance and every non-League page. The provider no
+  // longer knows about themes at all.
+  const [activeThemeId, setActiveThemeId] = useState(DEFAULT_PROFILE_THEME);
   const [boostActive, setBoostActive] = useState(false);
   const [boostCredits, setBoostCredits] = useState(0);
   const [nameError, setNameError] = useState("");
@@ -89,24 +90,6 @@ export default function Profile() {
     enabled: !isGuest,
   });
   const headerStats = deriveProfileStats(quizProgress ?? null, null, null);
-
-  // Load + listen for theme config so locks stay in sync with the FAB
-  useEffect(() => {
-    supabase
-      .from("app_settings")
-      .select("value")
-      .eq("key", "theme_config")
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value) setThemeConfig(data.value as any);
-      });
-    const handler = (e: Event) => {
-      const cfg = (e as CustomEvent).detail;
-      if (cfg) setThemeConfig(cfg);
-    };
-    window.addEventListener("theme-config-updated", handler);
-    return () => window.removeEventListener("theme-config-updated", handler);
-  }, []);
 
   const [form, setForm] = useState({
     displayName: "",
@@ -177,9 +160,7 @@ export default function Profile() {
       // PT1.4: Stripe OR valid grant, OR the global Premium access window.
       setIsPro(isEffectiveProForSelf(profile, await fetchGlobalPremiumAccess()));
       setSelectedFrame(profile.profile_frame || "default");
-      // Sync sitewide theme to whatever the DB says if it differs from the local active theme.
-      const dbTheme = profile.custom_theme || "default";
-      if (dbTheme !== activeThemeId) setActiveTheme(dbTheme);
+      setActiveThemeId(profile.custom_theme || DEFAULT_PROFILE_THEME);
       setBoostCredits(profile.boost_credits || 0);
       setBoostActive(profile.active_boost_until ? new Date(profile.active_boost_until) > new Date() : false);
       const socials = (profile.socials as any) || {};
@@ -374,6 +355,38 @@ export default function Profile() {
 
   const hasFormErrors = !!nameError || Object.values(socialErrors).some(Boolean);
 
+  /**
+   * Select a profile theme.
+   *
+   * Persisted immediately, like the frame grid above, so every surface that
+   * reads `custom_theme` reflects the choice without waiting for a full
+   * profile save. The button is already disabled for a locked theme; this
+   * still handles a refusal, because the real gate is the BEFORE UPDATE
+   * trigger on `profiles` and a client that has drifted from it (a stale
+   * entitlement read, a Global Premium window that closed mid-session) must
+   * not leave the UI claiming a theme the database rejected.
+   */
+  const selectProfileTheme = async (id: string, label: string) => {
+    if (!profileId || id === activeThemeId) return;
+    const previous = activeThemeId;
+    setActiveThemeId(id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ custom_theme: id })
+      .eq("id", profileId);
+    if (error) {
+      setActiveThemeId(previous);
+      toast({
+        title: profileThemeRequiresPremium(id)
+          ? `${label} is a Mogzy Premium profile theme`
+          : "Failed to save theme",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: `Profile theme changed to ${label}` });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) return;
@@ -430,11 +443,10 @@ export default function Profile() {
       // exactly what is in the database and there is no way for them to
       // have chosen anything else.
       //
-      // `custom_theme` on the next line was never clamped and the theme
-      // picker disables locked entries rather than resetting the active one
-      // — which is the approved policy (keep what you equipped, lose the
-      // ability to switch, resubscribe restores the choice) already
-      // implemented. Frames were the only surface that disagreed.
+      // `custom_theme` on the next line is the same shape: seeded from the
+      // row and never clamped, so this resend is a no-op for a lapsed member
+      // and cannot destroy a theme they legitimately chose. The server agrees
+      // — its check fires only when the value CHANGES.
       profile_frame: selectedFrame,
       custom_theme: activeThemeId,
     };
@@ -1057,76 +1069,53 @@ export default function Profile() {
                 </div>
                 )}
 
-                {/* Profile Theme */}
+                {/* Profile Theme — how THIS PROFILE looks to anyone who
+                    opens it. It is not an application theme: the League
+                    surfaces, the Academy rooms and the admin console all keep
+                    their own design regardless of what is chosen here. */}
                 <div className={`sticky ${showLegacy ? "top-[22rem] mt-4" : "top-20"} rounded-2xl border border-border bg-card p-4 space-y-3`}>
                   <div className="flex items-center gap-2">
                     <Palette className="h-5 w-5 text-primary" />
-                    <h3 className="font-bold text-sm text-foreground">Theme</h3>
+                    <h3 className="font-bold text-sm text-foreground">Profile Theme</h3>
                   </div>
+                  <p className="text-[10px] leading-snug text-muted-foreground">
+                    Styles your profile card. The rest of Mogzy keeps its own look.
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {(() => {
-                      // Mirror FloatingThemeSwitcher visibility/lock rules so all entry points stay in sync.
-                      const visible = profileThemes.filter((t) => {
-                        if (t.id === "default") return true;
-                        return !themeConfig?.disabled_themes?.includes(t.id);
-                      });
-                      // Move cycle to the end
-                      const cycleIdx = visible.findIndex((t) => t.id === "cycle");
-                      if (cycleIdx > -1) {
-                        const [c] = visible.splice(cycleIdx, 1);
-                        visible.push(c);
-                      }
-                      const isThemePro = (id: string) => {
-                        if (id === "default") return false;
-                        if (themeConfig) return themeConfig.pro_themes?.includes(id) ?? false;
-                        return profileThemes.find((t) => t.id === id)?.isPro ?? false;
-                      };
-                      const canUse = (id: string) => {
-                        if (id === "default") return true;
-                        if (isPro) return true;
-                        if (chosenFreeTheme === id) return true;
-                        if (themeConfig) return themeConfig.free_themes?.includes(id) ?? false;
-                        return !(profileThemes.find((t) => t.id === id)?.isPro ?? false);
-                      };
-                      return visible.map((t) => {
-                        const locked = !canUse(t.id);
-                        const isActive = activeThemeId === t.id;
-                        const pro = isThemePro(t.id);
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            disabled={locked}
-                            onClick={() => {
-                              if (locked) return;
-                              // Routed through the sitewide hook so the FAB, navbar and
-                              // page theme all update together (and DB stays consistent).
-                              setActiveTheme(t.id);
-                              toast({ title: `Theme changed to ${t.label}` });
-                            }}
-                            className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
-                              isActive
-                                ? "border-primary bg-primary/5 ring-2 ring-primary/30"
-                                : locked
-                                ? "border-border opacity-50 cursor-not-allowed"
-                                : "border-border hover:border-primary/30"
-                            }`}
-                          >
-                            <div
-                              className={`w-full h-6 rounded-md ${t.preview}`}
-                              style={t.id === "cycle" && isActive ? { animation: "spin 4s linear infinite" } : undefined}
-                            />
-                            <span className="text-[9px] font-medium text-muted-foreground">{t.label}</span>
-                            {locked && (
-                              <Lock className="absolute top-1 right-1 h-3 w-3 text-muted-foreground" />
-                            )}
-                            {pro && !locked && !isActive && (
-                              <Crown className="absolute top-1 right-1 h-3 w-3 text-[hsl(45,100%,55%)]" />
-                            )}
-                          </button>
-                        );
-                      });
-                    })()}
+                    {profileThemes.map((t) => {
+                      const pro = profileThemeRequiresPremium(t.id);
+                      // The lock is presentation over a SERVER decision
+                      // (migration 20260911130000). A retained Premium theme
+                      // stays selected for a lapsed member — it is simply no
+                      // longer one of the entries they may switch TO.
+                      const locked = pro && !isPro;
+                      const isActive = activeThemeId === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          disabled={locked}
+                          data-testid={`profile-theme-${t.id}`}
+                          onClick={() => selectProfileTheme(t.id, t.label)}
+                          className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                            isActive
+                              ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                              : locked
+                              ? "border-border opacity-50 cursor-not-allowed"
+                              : "border-border hover:border-primary/30"
+                          }`}
+                        >
+                          <div className={`w-full h-6 rounded-md ${t.preview}`} />
+                          <span className="text-[9px] font-medium text-muted-foreground">{t.label}</span>
+                          {locked && (
+                            <Lock className="absolute top-1 right-1 h-3 w-3 text-muted-foreground" />
+                          )}
+                          {pro && !locked && !isActive && (
+                            <Crown className="absolute top-1 right-1 h-3 w-3 text-[hsl(45,100%,55%)]" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

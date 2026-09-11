@@ -11,12 +11,14 @@ const DEFAULT_CATEGORY_EMOJIS: Record<string, string> = {
 };
 
 interface Props {
+  /** True while the finishing write is in flight. */
+  saving?: boolean;
   selected: string[];
   setSelected: React.Dispatch<React.SetStateAction<string[]>>;
   onNext: () => void;
 }
 
-export default function OnboardingCategories({ selected, setSelected, onNext }: Props) {
+export default function OnboardingCategories({ selected, setSelected, onNext, saving = false }: Props) {
   const [categories, setCategories] = useState<{ name: string; emoji: string }[]>([]);
 
   useEffect(() => {
@@ -84,8 +86,8 @@ export default function OnboardingCategories({ selected, setSelected, onNext }: 
       </div>
 
       <div className="flex flex-col items-center gap-2">
-        <Button onClick={onNext} disabled={selected.length < 3} className="gap-2 rounded-full px-8" size="lg">
-          Continue <ChevronRight className="h-4 w-4" />
+        <Button onClick={onNext} disabled={selected.length < 3 || saving} className="gap-2 rounded-full px-8" size="lg">
+          {saving ? "Saving..." : "Let's Go!"} <ChevronRight className="h-4 w-4" />
         </Button>
         {selected.length < 3 && (
           <p className="text-xs text-muted-foreground">{selected.length}/3 selected</p>

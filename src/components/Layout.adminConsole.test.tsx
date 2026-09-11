@@ -17,13 +17,9 @@ import Layout from "./Layout";
 vi.mock("./FloatingFriendsButton", () => ({
   default: () => <div data-testid="friends-drawer" />,
 }));
-vi.mock("./FloatingThemeSwitcher", () => ({
-  default: () => <div data-testid="theme-switcher" />,
-}));
 
 vi.mock("./hud/GlobalHud", () => ({ default: () => null }));
 vi.mock("./Footer", () => ({ default: () => null }));
-vi.mock("./ThemeOverlay", () => ({ default: () => null }));
 vi.mock("./HextechAmbience", () => ({ default: () => null }));
 vi.mock("./TutorialTipPopup", () => ({ default: () => null }));
 
@@ -32,15 +28,6 @@ vi.mock("@/hooks/useSocialSync", () => ({ useSocialSync: () => {} }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null, loading: false }) }));
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { require_auth: false }, loading: false }),
-}));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({
-    theme: { styles: {} },
-    themeId: "default",
-    visualThemeId: "default",
-    isEnabled: false,
-    isCycleFading: false,
-  }),
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchLikelyRoutes: () => {} }));
 
@@ -71,15 +58,21 @@ describe("Admin Quiz Review console shell", () => {
     expect(main().className).toContain("max-w-7xl");
   });
 
-  it("suppresses both floating overlays over the console", () => {
+  it("suppresses the floating overlay over the console", () => {
     renderAt("/admin/quiz-content");
     expect(screen.queryByTestId("friends-drawer")).toBeNull();
-    expect(screen.queryByTestId("theme-switcher")).toBeNull();
   });
 
-  it("keeps both overlays on an ordinary admin page", () => {
+  it("keeps the floating overlay on an ordinary admin page", () => {
     renderAt("/admin/people");
     expect(screen.queryByTestId("friends-drawer")).not.toBeNull();
-    expect(screen.queryByTestId("theme-switcher")).not.toBeNull();
+  });
+
+  it("mounts no theme switcher anywhere — PT2E deleted it", () => {
+    for (const path of ["/admin/quiz-content", "/admin/people", "/profile"]) {
+      renderAt(path);
+      expect(screen.queryByTestId("theme-switcher")).toBeNull();
+      cleanup();
+    }
   });
 });

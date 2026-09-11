@@ -26,8 +26,6 @@ vi.mock("./FloatingFriendsButton", () => ({
 }));
 vi.mock("./hud/GlobalHud", () => ({ default: () => null }));
 vi.mock("./Footer", () => ({ default: () => null }));
-vi.mock("./ThemeOverlay", () => ({ default: () => null }));
-vi.mock("./FloatingThemeSwitcher", () => ({ default: () => null }));
 vi.mock("./HextechAmbience", () => ({ default: () => null }));
 vi.mock("./TutorialTipPopup", () => ({ default: () => null }));
 
@@ -36,15 +34,6 @@ vi.mock("@/hooks/useSocialSync", () => ({ useSocialSync: () => {} }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null, loading: false }) }));
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: { require_auth: false }, loading: false }),
-}));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({
-    theme: { styles: {} },
-    themeId: "default",
-    visualThemeId: "default",
-    isEnabled: false,
-    isCycleFading: false,
-  }),
 }));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchLikelyRoutes: () => {} }));
 

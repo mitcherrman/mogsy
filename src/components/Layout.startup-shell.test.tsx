@@ -15,8 +15,6 @@ const prefetched = vi.hoisted(() => ({ calls: [] as string[][] }));
 
 vi.mock("./hud/GlobalHud", () => ({ default: () => <nav data-testid="navbar" /> }));
 vi.mock("./Footer", () => ({ default: () => null }));
-vi.mock("./ThemeOverlay", () => ({ default: () => null }));
-vi.mock("./FloatingThemeSwitcher", () => ({ default: () => null }));
 vi.mock("./FloatingFriendsButton", () => ({ default: () => null }));
 vi.mock("./HextechAmbience", () => ({ default: () => null }));
 vi.mock("./TutorialTipPopup", () => ({ default: () => null }));
@@ -27,15 +25,6 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 vi.mock("@/hooks/useAppSettings", () => ({
   useAppSettings: () => ({ settings: {}, loading: state.settingsLoading }),
-}));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({
-    theme: { styles: {} },
-    themeId: "default",
-    visualThemeId: "default",
-    isEnabled: false,
-    isCycleFading: false,
-  }),
 }));
 vi.mock("@/lib/route-prefetch", () => ({
   prefetchLikelyRoutes: (paths: string[]) => prefetched.calls.push(paths),

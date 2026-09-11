@@ -477,15 +477,17 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
   {
     id: "profile-themes",
     group: "profile",
-    label: "Premium site themes",
-    free: "Five themes.",
-    premium: "Nine further themes, including the cycling theme.",
+    label: "Premium profile themes",
+    free: "Five profile themes.",
+    premium: "Eight further profile themes.",
     status: "shipped",
-    enforcement: "frontend",
+    enforcement: "backend",
     enforcementNote:
-      "src/lib/profile-themes.ts isPro flags, applied by FloatingThemeSwitcher and Profile.tsx. Client-side only, and correctly so — a cosmetic is not a security boundary. The switcher is mounted OUTSIDE the LoL section, so /profile is the reachable entry.",
+      "PT2E: `protect_profile_premium_fields`, the BEFORE UPDATE trigger on profiles, refuses a self-service CHANGE of custom_theme to a Premium theme unless `may_equip_profile_theme` says yes — Global Premium Access OR the canonical PT1.4 per-account rule. Exactly the shape PT2C gave frames, and composed from the same two terms. Acquisition is authorized; the STORED value never is, so a lapsed member keeps the theme they chose and simply cannot switch to another. The free list is STATIC (`FREE_PROFILE_THEMES` in src/lib/profile-themes.ts, restated by `profile_theme_requires_premium`), replacing app_settings.theme_config.free_themes, which let the two halves of the product disagree about which themes were locked.",
     differentiator: true,
-    userFacingSummary: "Nine more site themes.",
+    discrepancy:
+      "CLOSED, and the feature it gated was redefined at the same time. A profile theme used to be a SITEWIDE theme: `useSitewideTheme` wrote `theme-<custom_theme>` onto <html>, so a paid cosmetic recoloured the Academy entrance, /welcome, /profile, the Ranked tutorial and the admin console, while the modern League surfaces excluded themselves by path. PT2E scoped it to the profile card — the one place it reads as personalisation — and only then added the server gate PT2C named as the next surface of its shape. The onboarding 'pick 1 premium theme to try for free' grant went with it; its whole entitlement was a localStorage key any visitor could write, so it was never a grant a server could honour.",
+    userFacingSummary: "Eight more profile themes.",
   },
   {
     id: "profile-frames",
@@ -499,7 +501,7 @@ export const PREMIUM_MATRIX: readonly PremiumBenefit[] = [
       "PT2C: `protect_profile_premium_fields`, the BEFORE UPDATE trigger on profiles, refuses a self-service CHANGE of profile_frame to a Premium frame unless `may_equip_profile_frame` says yes — Global Premium Access OR the canonical PT1.4 per-account rule. Profile.tsx still renders the grid only when isPro, but that is now presentation over a server decision rather than the only decision. Acquisition is authorized; the STORED value never is, so a lapsed member keeps the frame they equipped and cannot switch to another — the approved lapse policy, and the same shape the theme picker already had.",
     differentiator: true,
     discrepancy:
-      "CLOSED. PT1.13B fixed the client half: the save payload read `profile_frame: isPro ? selectedFrame : \"default\"`, which DESTROYED a lapsed member's stored frame on their next unrelated profile save. PT2C fixed the server half it named as the follow-up — a crafted profiles.update() could set any Premium frame with no entitlement, because cosmetics had no backend gate at all. Both halves turn on the same distinction: the change is authorized, the stored value is not re-authorized. Themes remain frontend-only and are the next surface of this shape.",
+      "CLOSED. PT1.13B fixed the client half: the save payload read `profile_frame: isPro ? selectedFrame : \"default\"`, which DESTROYED a lapsed member's stored frame on their next unrelated profile save. PT2C fixed the server half it named as the follow-up — a crafted profiles.update() could set any Premium frame with no entitlement, because cosmetics had no backend gate at all. Both halves turn on the same distinction: the change is authorized, the stored value is not re-authorized. PT2E did the same for themes.",
     userFacingSummary: "Profile frames."
   },
   {

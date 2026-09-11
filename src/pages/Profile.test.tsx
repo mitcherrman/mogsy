@@ -56,6 +56,11 @@ const mocks = vi.hoisted(() => {
       app_settings: null,
     } as Record<string, unknown>,
     updateCalls: [] as Array<{ table: string; payload: unknown }>,
+    /** Every table the page reads, and every `.eq()` filter it applies, so a
+     *  retired source can be pinned gone even when the TABLE is still used for
+     *  something else. */
+    tablesRead: [] as string[],
+    eqFilters: [] as Array<{ table: string; column: unknown; value: unknown }>,
     getProgress: vi.fn(),
   };
 });
@@ -64,9 +69,6 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: mocks.authUser, session: null, loading: false }),
 }));
 
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ themeId: "default", setActiveTheme: vi.fn(), chosenFreeTheme: null }),
-}));
 
 vi.mock("@/components/profile/LeagueProfileStats", () => ({
   default: () => <div data-testid="league-stats" />,
@@ -79,12 +81,16 @@ vi.mock("@/lib/quiz/api", async (importOriginal) => {
 
 vi.mock("@/integrations/supabase/client", () => {
   function builder(table: string) {
+    mocks.tablesRead.push(table);
     const result = () => ({ data: mocks.tableData[table] ?? null, error: null });
     const b: Record<string, unknown> = {};
     const chain = () => b;
     Object.assign(b, {
       select: chain,
-      eq: chain,
+      eq: (column: unknown, value: unknown) => {
+        mocks.eqFilters.push({ table, column, value });
+        return b;
+      },
       order: chain,
       update: (payload: unknown) => {
         mocks.updateCalls.push({ table, payload });
@@ -122,6 +128,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   claim.mockResolvedValue({ ok: true, code: "set", username: "RiftMaster" });
   mocks.updateCalls.length = 0;
+  mocks.tablesRead.length = 0;
+  mocks.eqFilters.length = 0;
   mocks.authUser = { id: "u1", is_anonymous: false };
   mocks.getProgress.mockResolvedValue({
     total_xp: 120,
@@ -221,14 +229,14 @@ describe("Profile — signed in", () => {
     expect(screen.getByRole("button", { name: /Edit profile/ })).toBeTruthy();
   });
 
-  it("reveals Photos, Theme, Basic Info, Social Links, and save controls in edit mode", async () => {
+  it("reveals Photos, Profile Theme, Basic Info, Social Links, and save controls in edit mode", async () => {
     renderProfile();
     const editBtn = await screen.findByRole("button", { name: /Edit profile/ });
     fireEvent.click(editBtn);
     expect(await screen.findByText("Basic Info")).toBeTruthy();
     expect(screen.getByText("Photos")).toBeTruthy();
     expect(screen.getByText("Social Links")).toBeTruthy();
-    expect(screen.getByText("Theme")).toBeTruthy();
+    expect(screen.getByText("Profile Theme")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Save Profile/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
     // The edit toggle exposes expanded state.
@@ -330,13 +338,85 @@ describe("Profile — signed in", () => {
     expect(mocks.updateCalls.filter((c) => c.table === "profiles")).toHaveLength(0);
   });
 
-  it("keeps the theme selector intact inside edit mode (options + lock state)", async () => {
+  it("keeps the profile theme selector intact inside edit mode (options + lock state)", async () => {
     renderProfile();
     fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
-    await screen.findByText("Theme");
+    await screen.findByText("Profile Theme");
     // Default theme option is always present and usable.
-    const defaultBtn = screen.getByRole("button", { name: /Default/ });
+    const defaultBtn = screen.getByTestId("profile-theme-default");
     expect(defaultBtn).toBeTruthy();
     expect((defaultBtn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // ── PT2E: the picker is PROFILE personalisation, gated on Premium ──
+
+  it("offers the five free themes unlocked to a Free account", async () => {
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Profile Theme");
+    for (const id of ["default", "light", "dark", "midnight", "forest"]) {
+      expect((screen.getByTestId(`profile-theme-${id}`) as HTMLButtonElement).disabled)
+        .toBe(false);
+    }
+  });
+
+  it("locks every Premium theme for a Free account", async () => {
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Profile Theme");
+    for (const id of ["sunset", "aurora", "royal", "lol", "cyberpunk", "mogged", "amongus", "water"]) {
+      expect((screen.getByTestId(`profile-theme-${id}`) as HTMLButtonElement).disabled)
+        .toBe(true);
+    }
+  });
+
+  it("no longer offers the retired Cycle All theme", async () => {
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Profile Theme");
+    expect(screen.queryByTestId("profile-theme-cycle")).toBeNull();
+  });
+
+  it("persists a free theme immediately, without waiting for a profile save", async () => {
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Profile Theme");
+    fireEvent.click(screen.getByTestId("profile-theme-midnight"));
+    await waitFor(() =>
+      expect(mocks.updateCalls.some(
+        (c) => c.table === "profiles" &&
+          (c.payload as Record<string, unknown>).custom_theme === "midnight",
+      )).toBe(true),
+    );
+  });
+
+  it("mutates no root theme class when a profile theme is chosen", async () => {
+    // The whole point of PT2E. A profile theme is profile decoration; it must
+    // not reach <html>, where it would recolour every surface in the product.
+    document.documentElement.className = "dark";
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Profile Theme");
+    fireEvent.click(screen.getByTestId("profile-theme-midnight"));
+    await waitFor(() =>
+      expect(mocks.updateCalls.some((c) => c.table === "profiles")).toBe(true));
+    expect(document.documentElement.className).toBe("dark");
+  });
+
+  it("reads no theme configuration from app_settings", async () => {
+    // `theme_config.free_themes` was a live, admin-editable second opinion on
+    // which themes are free, and it disagreed with the catalogue. The free list
+    // is static now, so the page must not consult it at all.
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: /Edit profile/ }));
+    await screen.findByText("Profile Theme");
+    // `app_settings` itself is still read — Global Premium Access lives there —
+    // so the assertion is on the KEY the retired theme system used.
+    expect(mocks.eqFilters.filter(
+      (f) => f.table === "app_settings" && f.value === "theme_config",
+    )).toHaveLength(0);
+    expect(mocks.eqFilters.filter(
+      (f) => f.table === "app_settings" && f.value === "sitewide_themes_enabled",
+    )).toHaveLength(0);
   });
 });

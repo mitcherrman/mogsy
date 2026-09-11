@@ -18,8 +18,8 @@ const mocks = vi.hoisted(() => ({
   proStatus: "free" as "unknown" | "pro" | "free",
 }));
 
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ proStatus: mocks.proStatus }),
+vi.mock("@/hooks/usePremiumSession", () => ({
+  usePremiumSession: () => ({ proStatus: mocks.proStatus }),
 }));
 
 function renderPanel(proStatus: "unknown" | "pro" | "free") {

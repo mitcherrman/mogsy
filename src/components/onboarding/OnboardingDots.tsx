@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 
-const STEPS = ["welcome", "profile", "pick", "theme"] as const;
+// PT2E removed the "theme" step — onboarding no longer grants a Premium
+// cosmetic. Three dots, three steps.
+const STEPS = ["welcome", "profile", "pick"] as const;
 
 interface OnboardingDotsProps {
   current: string;

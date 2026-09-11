@@ -1,8 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { Suspense, useEffect, useLayoutEffect } from "react";
 import GlobalHud from "./hud/GlobalHud";
-import ThemeOverlay from "./ThemeOverlay";
-import FloatingThemeSwitcher from "./FloatingThemeSwitcher";
 import FloatingFriendsButton from "./FloatingFriendsButton";
 import HextechAmbience from "./HextechAmbience";
 import TutorialTipPopup from "./TutorialTipPopup";
@@ -11,7 +9,6 @@ import { useTrackActivity } from "@/hooks/useTrackActivity";
 import { useSocialSync } from "@/hooks/useSocialSync";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { prefetchLikelyRoutes } from "@/lib/route-prefetch";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
 import { isLolSectionPath, baseBackgroundForPath } from "@/lib/startup-shell";
@@ -30,40 +27,47 @@ export default function Layout() {
   useSocialSync();
   const { loading } = useAuth();
   const { loading: settingsLoading } = useAppSettings();
-  const { theme, themeId, visualThemeId, isEnabled, isCycleFading } = useSitewideTheme();
   const { pathname } = useLocation();
 
-  // League of Legends section uses its own LoLdle-inspired theme and overrides
-  // any sitewide Mogsy theme so the visual language stays cohesive across the
-  // /lol, /combat-lab and /quiz surface area.
+  // League of Legends section uses its own LoLdle-inspired theme.
   const isLolSection = isLolSectionPath(pathname);
 
+  // The ONLY root theme class in the application.
+  //
+  // PT2E: this effect used to share <html> with the sitewide theme provider,
+  // which wrote `theme-<profiles.custom_theme>` onto the root for every path
+  // outside the League section — so a visitor's legacy Mogsy theme recoloured
+  // the Academy entrance, /welcome, the Ranked tutorial, /profile and the
+  // admin console, and the two writers had to be sequenced against each other
+  // so the League palette survived. Profile themes are profile-only now, the
+  // other writer is gone, and the theme class is decided from the PATH alone:
+  // `theme-lol` inside the League section, nothing outside it.
+  //
+  // `dark` IS NOT PART OF THAT CHANGE. Its pre-PT2E behaviour is preserved
+  // exactly: forced on inside the League section, and outside it toggled from
+  // `prefers-color-scheme` — which is what the retired provider did on the
+  // `default` theme, and `default` is the only theme any surface outside the
+  // League section ever resolved to once user themes stopped applying here.
+  // Light-OS visitors keep the light general surfaces they have today. This
+  // does disagree with `baseBackgroundForPath`, which paints a dark ground on
+  // every path before any module runs, so a light-OS visitor sees a dark first
+  // paint and then a light page — that is a pre-existing startup-shell
+  // question, deliberately left alone rather than settled here.
+  //
   // Layout-timed so the class lands before the browser paints the new route:
-  // client-side navigation into /lol must not flash a frame of the general dark
-  // theme. The sitewide theme provider deliberately skips className mutations
-  // while the path is in the LoL section (see useSitewideTheme), so running
-  // earlier than its effect does not cost the LoL palette its precedence.
+  // client-side navigation into /lol must not flash a frame of the general
+  // dark theme.
   useLayoutEffect(() => {
     const root = document.documentElement;
+    root.className = root.className.replace(/theme-\S+/g, "").trim();
     if (isLolSection) {
-      root.className = root.className.replace(/theme-\S+/g, "").trim();
       root.classList.add("dark");
       root.classList.add("theme-lol");
     } else {
-      root.classList.remove("theme-lol");
-      // Re-apply the sitewide theme class when leaving the LoL section, since
-      // the provider effect skips className mutations while inside it.
-      root.className = root.className.replace(/theme-\S+/g, "").trim();
-      if (visualThemeId && visualThemeId !== "default") {
-        root.classList.add("dark");
-        root.classList.add(`theme-${visualThemeId}`);
-      }
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      root.classList.toggle("dark", prefersDark);
     }
-  }, [isLolSection, visualThemeId, themeId]);
-
-  // While the LoL section is active, disable all sitewide overlays/backgrounds
-  // so nothing competes with the dedicated theme.
-  const themingActive = isEnabled && !isLolSection;
+  }, [isLolSection]);
 
   // Full-bleed routes escape the centered max-w-7xl reading column so a game
   // table can use the whole viewport. The page supplies its own background
@@ -141,9 +145,6 @@ export default function Layout() {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-full max-w-[88rem] bg-background mask-fade-x z-0"
-        style={{
-          ...(themingActive && theme.styles.pageBg ? { background: theme.styles.pageBg } : {}),
-        }}
       />
       {/* Ambient halo so the column feels lit rather than cut */}
       <div
@@ -154,18 +155,12 @@ export default function Layout() {
             "radial-gradient(ellipse 60% 80% at 50% 50%, hsl(var(--background) / 0.35), transparent 70%)",
         }}
       />
-      {/* Fade-to-black overlay for cycle theme transitions */}
-      <div
-        className="fixed inset-0 bg-black pointer-events-none z-[15] transition-opacity duration-700 ease-in-out"
-        style={{ opacity: themingActive && isCycleFading ? 1 : 0 }}
-      />
       {/* Global HUD — replaces the traditional navbar (top bar + mobile bottom
           bar). It floats in the band `pt-[var(--app-header-h)]` above already
           reserves, so no page geometry changes. It also supersedes the shell's
           old floating "League Hub" back pill: the HUD's Mogzy home control is
           the same destination on every page. */}
       <GlobalHud />
-      {themingActive && <ThemeOverlay themeId={visualThemeId} />}
       {isLolSection && <HextechAmbience />}
       {/* Bottom-nav clearance lives once on the shell (.pb-bottom-nav above) so
           the footer clears the fixed bar too — never re-apply it per page. */}
@@ -188,14 +183,13 @@ export default function Layout() {
             and `min-h-dvh` under the fixed header would overflow the document
             by the header height for the duration of the load. */}
         <Suspense fallback={<div aria-hidden className="min-h-[50vh]" />}>
-          <Outlet context={{ sitewideTheme: themingActive ? theme : null, sitewideThemeId: themingActive ? visualThemeId : null }} />
+          <Outlet />
         </Suspense>
       </main>
       {/* Footer renders sitewide (incl. /lol) so trust/legal links and the
           Riot disclaimer stay visible; it self-hides on gameplay routes. */}
       <Footer />
       {showFriendsDrawer && <FloatingFriendsButton />}
-      {!isLolSection && !isAdminConsole && <FloatingThemeSwitcher />}
       {/* COM1-2B: <FloatingScrollButton /> was here. It was a legacy Mogzy
           page-scroll control pinned to `fixed bottom-6 left-6 z-[60]` — the
           Community trigger's exact coordinates, one stacking layer above it —

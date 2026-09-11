@@ -19,7 +19,6 @@ import AdminComments from "@/components/admin/AdminComments";
 import AdminInviteLinks from "@/components/admin/AdminInviteLinks";
 import AdminBanners from "@/components/admin/AdminBanners";
 import AdminPushNotifications from "@/components/admin/AdminPushNotifications";
-import AdminThemes from "@/components/admin/AdminThemes";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
 
 import AdminTutorialTips from "@/components/admin/AdminTutorialTips";
@@ -43,7 +42,6 @@ const allTabs = [
   { value: "feedback", label: "Feedback", masterOnly: false },
   { value: "mod-config", label: "Mod Config", masterOnly: false },
   { value: "directory", label: "Directory", masterOnly: false },
-  { value: "themes", label: "Themes", masterOnly: true },
   { value: "ranks", label: "Ranks", masterOnly: true },
   { value: "onboard", label: "Onboard", masterOnly: true },
   { value: "settings", label: "Settings", masterOnly: true },
@@ -249,7 +247,6 @@ export default function Admin() {
           <TabsContent value="feedback"><AdminFeedback /></TabsContent>
           <TabsContent value="mod-config"><AdminModeratorConfig /></TabsContent>
           <TabsContent value="directory"><AdminProfileDirectory /></TabsContent>
-          {isMasterAdmin && <TabsContent value="themes"><AdminThemes /></TabsContent>}
           {isMasterAdmin && <TabsContent value="ranks"><AdminRankSettings /></TabsContent>}
           {isMasterAdmin && <TabsContent value="onboard"><AdminOnboarding /></TabsContent>}
           {isMasterAdmin && <TabsContent value="settings"><AdminSettings /></TabsContent>}

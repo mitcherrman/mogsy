@@ -24,9 +24,9 @@
  *
  * PLACEMENT. Bottom-right, `fixed`. The bottom-LEFT slot on this route is
  * already owned by the Community trigger (`FloatingFriendsButton`), and both
- * top corners are `GlobalHud`'s chips. Bottom-right is free on every League
- * route: `FloatingThemeSwitcher`, which would otherwise sit there, is mounted
- * only when `!isLolSection`.
+ * top corners are `GlobalHud`'s chips. Bottom-right is free on every route:
+ * `FloatingThemeSwitcher`, the theme FAB that used to sit there outside the
+ * League section, was deleted with the sitewide theme system (PT2E).
  */
 import { useCallback, useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";

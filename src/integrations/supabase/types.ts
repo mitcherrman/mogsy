@@ -3786,6 +3786,7 @@ export type Database = {
         Returns: {
           avatar_url: string
           created_at: string
+          custom_theme: string
           display_name: string
           id: string
           is_anonymous: boolean

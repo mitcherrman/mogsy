@@ -294,7 +294,7 @@ const CLASSIFIED = [
   "src/components/blog/data-blocks/ProfileCardBlock.tsx",  // (c) blog profile badge
   "src/hooks/blog/useBlogData.ts",                  // (c) blog profile select
   "src/hooks/useFriends.ts",                        // (c) friend list badge
-  "src/hooks/useSitewideTheme.tsx",                 // (d) comment
+  "src/hooks/usePremiumSession.tsx",                // (d) comment
   "src/lib/admin-auth/AdminAuthProvider.tsx",       // (d) comment
   "src/lib/admin-csv-export.ts",                    // (a) admin export count
   "src/lib/admin-data-sources.ts",                  // (a) admin Pro count

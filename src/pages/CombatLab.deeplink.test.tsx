@@ -23,8 +23,8 @@ import CombatLab from "./CombatLab";
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: null, loading: false }),
 }));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ proStatus: "free" }),
+vi.mock("@/hooks/usePremiumSession", () => ({
+  usePremiumSession: () => ({ proStatus: "free" }),
 }));
 
 /** The `champions` table's own spellings, as /api/meta/champions serves them. */

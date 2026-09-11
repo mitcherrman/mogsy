@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
  */
 
 /**
- * The 8-column League contract. There is deliberately NO `user_id`: seven
+ * The League contract. There is deliberately NO `user_id`: seven
  * `/api/quiz/*` endpoints adopt a client-supplied user id as the caller
  * identity when no verified JWT is present, so publishing auth uids
  * cross-user would supply the identifier that makes that exploitable. See the
@@ -36,6 +36,18 @@ export interface LeagueProfile {
    * through to its "Unknown" placeholder and render a ghost entry.
    */
   is_disabled: boolean | null;
+  /**
+   * The PROFILE theme (PT2E, migration 20260911130000). An id from the
+   * catalogue in `src/lib/profile-themes.ts`, styling this profile's card and
+   * nothing else — it is not, and since PT2E cannot be, an application theme.
+   *
+   * Published for the same reason `profile_frame` is: a chosen cosmetic from a
+   * fixed catalogue is what a profile card is FOR, and one nobody else can see
+   * is not a cosmetic. Before PT2E the column was absent from this contract, so
+   * `/user/:profileId` rendered every visitor's profile on `default` however
+   * carefully they had chosen.
+   */
+  custom_theme: string | null;
 }
 
 /**

@@ -6,12 +6,12 @@
  * ad_events analytics; this gate only answers "may an ad be shown here, to
  * this viewer, right now?" using the same pure policy resolver as <AdSlot>.
  * It performs no script injection and no data fetching (Pro status comes
- * from the shared SitewideThemeContext — no second entitlement query).
+ * from the shared PremiumSessionContext — no second entitlement query).
  */
 
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useSitewideTheme } from "@/hooks/useSitewideTheme";
+import { usePremiumSession } from "@/hooks/usePremiumSession";
 import { getAdsConfig, type AdsConfig } from "./config";
 import { useConsentState, type ConsentState } from "./consent";
 import { resolveAdPolicy, type AdSuppressionReason, type ProStatus } from "./policy";
@@ -123,7 +123,7 @@ export function useLegacyAdGate(
 ): LegacyAdGateDecision {
   const location = useLocation();
   const { user } = useAuth();
-  const { proStatus } = useSitewideTheme();
+  const { proStatus } = usePremiumSession();
   const isSignedIn = !!user && !(user as { is_anonymous?: boolean }).is_anonymous;
   // Reactive: consent changes mid-session recompute the gate immediately.
   const consent = useConsentState();

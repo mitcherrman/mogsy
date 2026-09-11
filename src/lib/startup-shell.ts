@@ -29,9 +29,10 @@ export const DEFAULT_BASE_BG = "#0a0a1a";
 /**
  * Routes that own the LoLdle-inspired League theme.
  *
- * This is now the SINGLE definition. `useSitewideTheme` previously carried a
- * hand-copied duplicate of this list, which is exactly the drift the old
- * comment here warned about — it now imports this function instead.
+ * This is the SINGLE definition. The retired sitewide theme provider once
+ * carried a hand-copied duplicate, which is exactly the drift the old comment
+ * here warned about. Since PT2E `Layout` is the only consumer that writes a
+ * root theme class at all, and it reads this.
  */
 export function isLolSectionPath(pathname: string): boolean {
   return (

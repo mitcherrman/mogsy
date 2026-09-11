@@ -4,23 +4,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Plus, Trash2, GripVertical, Eye, RotateCcw, Type, MessageSquare, User, Calendar, MapPin, Mail, Palette } from "lucide-react";
+import { Sparkles, Plus, Trash2, GripVertical, Eye, RotateCcw, Type, MessageSquare, User, Calendar, MapPin, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { profileThemes } from "@/lib/profile-themes";
 import OnboardingFlow from "@/components/OnboardingFlow";
-
-const THEME_COLORS: Record<string, [string, string]> = {
-  light: ["hsl(209,40%,96%)", "hsl(210,80%,60%)"],
-  dark: ["hsl(222,47%,11%)", "hsl(210,80%,65%)"],
-  midnight: ["hsl(250,50%,25%)", "hsl(260,60%,50%)"],
-  forest: ["hsl(150,40%,25%)", "hsl(130,50%,35%)"],
-  sunset: ["hsl(20,80%,50%)", "hsl(340,70%,50%)"],
-  aurora: ["hsl(170,60%,40%)", "hsl(220,60%,50%)"],
-  royal: ["hsl(45,90%,50%)", "hsl(280,40%,30%)"],
-  lol: ["hsl(45,100%,50%)", "hsl(200,60%,40%)"],
-  cyberpunk: ["hsl(320,100%,50%)", "hsl(180,100%,50%)"],
-};
 
 interface ProfileFieldConfig {
   display_name: { enabled: boolean; required: boolean };
@@ -28,10 +15,6 @@ interface ProfileFieldConfig {
   location: { enabled: boolean; required: boolean };
   photo: { enabled: boolean; required: boolean };
   email_link: { enabled: boolean; required: boolean };
-}
-
-interface ThemeIconOverride {
-  [themeId: string]: string; // emoji or icon
 }
 
 interface OnboardingConfig {
@@ -42,11 +25,7 @@ interface OnboardingConfig {
   category_title: string;
   category_subtitle: string;
   min_categories: number;
-  show_theme_step: boolean;
-  theme_title: string;
-  theme_subtitle: string;
   profile_fields: ProfileFieldConfig;
-  theme_icons: ThemeIconOverride;
 }
 
 const DEFAULT_PROFILE_FIELDS: ProfileFieldConfig = {
@@ -65,11 +44,7 @@ const DEFAULT_CONFIG: OnboardingConfig = {
   category_title: "What are you into?",
   category_subtitle: "Pick at least {min} categories to personalize your experience.",
   min_categories: 3,
-  show_theme_step: true,
-  theme_title: "Choose Your Vibe",
-  theme_subtitle: "Pick 1 premium theme to try for free.",
   profile_fields: DEFAULT_PROFILE_FIELDS,
-  theme_icons: {},
 };
 
 const FIELD_META: { key: keyof ProfileFieldConfig; label: string; icon: typeof User; description: string }[] = [
@@ -88,7 +63,6 @@ export default function AdminOnboarding() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
-  const [showThemePreview, setShowThemePreview] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -113,7 +87,6 @@ export default function AdminOnboarding() {
                 ...val,
                 categories: cfg.categories,
                 profile_fields: { ...DEFAULT_PROFILE_FIELDS, ...(val.profile_fields || {}) },
-                theme_icons: val.theme_icons || {},
               };
             }
           }
@@ -171,20 +144,12 @@ export default function AdminOnboarding() {
     }));
   };
 
-  const updateThemeIcon = (themeId: string, icon: string) => {
-    setConfig((c) => ({
-      ...c,
-      theme_icons: { ...c.theme_icons, [themeId]: icon },
-    }));
-  };
-
   if (loading) return null;
 
   const unusedCategories = availableCategories.filter(
     (c) => !config.categories.some((oc) => oc.name === c)
   );
 
-  const proThemes = profileThemes.filter((t) => t.isPro && t.id !== "cycle");
 
   return (
     <div className="space-y-6">
@@ -193,9 +158,6 @@ export default function AdminOnboarding() {
           <Sparkles className="h-4 w-4" /> Onboarding Customization
         </h3>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowThemePreview(true)}>
-            <Palette className="h-3 w-3" /> Theme Picker
-          </Button>
           <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowFullPreview(true)}>
             <Eye className="h-3 w-3" /> Full Preview
           </Button>
@@ -314,77 +276,6 @@ export default function AdminOnboarding() {
         </div>
       </div>
 
-      {/* Theme Step */}
-      <div className="space-y-3">
-        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-          <Palette className="h-3 w-3" /> Theme Selection Step
-        </h4>
-        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-          <div>
-            <Label className="text-sm font-medium">Show Theme Step</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">Include the "Choose Your Vibe" step in onboarding</p>
-          </div>
-          <Switch
-            checked={config.show_theme_step}
-            onCheckedChange={(v) => setConfig((c) => ({ ...c, show_theme_step: v }))}
-          />
-        </div>
-        {config.show_theme_step && (
-          <>
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              <div>
-                <Label className="text-xs text-muted-foreground">Title</Label>
-                <Input
-                  value={config.theme_title}
-                  onChange={(e) => setConfig((c) => ({ ...c, theme_title: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Subtitle</Label>
-                <Input
-                  value={config.theme_subtitle}
-                  onChange={(e) => setConfig((c) => ({ ...c, theme_subtitle: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {/* Theme Icons */}
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              <div>
-                <Label className="text-sm font-medium">Theme Icons</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Customize the emoji/icon shown under each theme bubble in the picker
-                </p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {proThemes.map((theme) => {
-                  const colors = THEME_COLORS[theme.id] || ["#333", "#555"];
-                  const currentIcon = config.theme_icons[theme.id] || "";
-                  return (
-                    <div key={theme.id} className="flex items-center gap-2 rounded-lg border border-border bg-background p-2">
-                      <div
-                        className="w-8 h-8 rounded-full shrink-0"
-                        style={{ background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]})` }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-semibold text-foreground truncate">{theme.label}</p>
-                        <Input
-                          value={currentIcon}
-                          onChange={(e) => updateThemeIcon(theme.id, e.target.value)}
-                          placeholder="🎨"
-                          className="h-7 text-center text-sm px-1 mt-0.5"
-                          maxLength={4}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
       {/* Categories Management */}
       <div className="space-y-3">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Onboarding Categories</h4>
@@ -492,9 +383,6 @@ export default function AdminOnboarding() {
 
       {showFullPreview && (
         <OnboardingFlow onComplete={() => setShowFullPreview(false)} />
-      )}
-      {showThemePreview && (
-        <OnboardingFlow skipToTheme onComplete={() => setShowThemePreview(false)} />
       )}
     </div>
   );

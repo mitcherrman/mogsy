@@ -9,7 +9,10 @@ interface ProCinematicAdProps {
   onSubscribe: () => void;
 }
 
-const proThemes = profileThemes.filter(t => t.isPro && t.id !== "cycle");
+// PT2E: these are PROFILE themes. They style the member's profile card — they
+// are not, and since PT2E cannot be, an application-wide skin. The heading
+// below says so; the swatches are unchanged.
+const proThemes = profileThemes.filter(t => t.isPro);
 const proAnimations = CARD_ANIMATIONS.filter(a => a.defaultProOnly);
 
 export default function ProCinematicAd({ onClose, onSubscribe }: ProCinematicAdProps) {
@@ -63,7 +66,7 @@ export default function ProCinematicAd({ onClose, onSubscribe }: ProCinematicAdP
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Palette className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-bold text-foreground">Premium Themes</h3>
+              <h3 className="text-sm font-bold text-foreground">Premium Profile Themes</h3>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {proThemes.slice(0, 8).map((theme, i) => (

@@ -25,10 +25,9 @@ import { useAnimationSound } from "@/hooks/useAnimationSound";
 import MatchupCapture from "@/components/MatchupCapture";
 import CardAnimationRouter from "@/components/animations/CardAnimationRouter";
 import AutoVideo from "@/components/AutoVideo";
-import { profileThemes } from "@/lib/profile-themes";
+import { profileThemes, getThemeById } from "@/lib/profile-themes";
 import { CARD_ANIMATIONS } from "@/lib/card-animations";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useSitewideTheme } from "@/hooks/useSitewideTheme";
 import { toast } from "sonner";
 import React from "react";
 
@@ -203,8 +202,7 @@ export default function AdminDemo() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchTarget, setSearchTarget] = useState<"a" | "b" | null>(null);
 
-  const theme = profileThemes.find(t => t.id === themeId) || profileThemes[0];
-  const { visualThemeId: sitewideThemeId } = useSitewideTheme();
+  const theme = getThemeById(themeId);
   const isPhoneFrame = deviceFrame === "phone";
 
   // Auth guard: allow admin, master_admin, or demo_access roles
@@ -236,7 +234,7 @@ export default function AdminDemo() {
       });
   }, [user, navigate]);
 
-  // Save the sitewide theme classes on mount, restore on unmount
+  // Save the root theme classes on mount, restore on unmount
   const savedClassesRef = useRef<string>("");
   useEffect(() => {
     savedClassesRef.current = document.documentElement.className;
@@ -245,7 +243,7 @@ export default function AdminDemo() {
     };
   }, []);
 
-  // Override <html> with the demo-selected theme, ignoring sitewide cycle changes
+  // Override <html> with the demo-selected theme for this preview surface only
   useEffect(() => {
     const root = document.documentElement;
     root.className = root.className.replace(/theme-\S+/g, "").trim();
@@ -259,25 +257,11 @@ export default function AdminDemo() {
     }
   }, [themeId]);
 
-  // Block sitewide cycle theme from overriding the demo page
-  useEffect(() => {
-    if (!sitewideThemeId || sitewideThemeId === "default") return;
-    // When the cycle changes the root classes, re-apply demo theme
-    const observer = new MutationObserver(() => {
-      const root = document.documentElement;
-      const hasWrongTheme = Array.from(root.classList).some(
-        c => c.startsWith("theme-") && c !== `theme-${themeId}`
-      );
-      if (hasWrongTheme) {
-        root.className = root.className.replace(/theme-\S+/g, "").trim();
-        if (themeId !== "default") {
-          root.classList.add("dark", `theme-${themeId}`);
-        }
-      }
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, [themeId, sitewideThemeId]);
+  // PT2E: a MutationObserver lived here that re-applied the demo theme
+  // whenever the sitewide cycle rewrote <html>'s classes underneath this page.
+  // Nothing writes root theme classes any more except Layout's `theme-lol`, so
+  // there is no competing writer to defend against and the effect below is the
+  // only one that touches the root.
 
   const searchItems = useCallback(async (query: string) => {
     if (!query || query.length < 2) { setSearchResults([]); return; }
@@ -518,7 +502,7 @@ export default function AdminDemo() {
         <Select value={themeId} onValueChange={setThemeId}>
           <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {profileThemes.filter(t => t.id !== "cycle").map(t => (
+            {profileThemes.map(t => (
               <SelectItem key={t.id} value={t.id}>
                 <div className="flex items-center gap-2">
                   <div className={`h-3.5 w-6 rounded-sm shrink-0 ${t.preview}`} />

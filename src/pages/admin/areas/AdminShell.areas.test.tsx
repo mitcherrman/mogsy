@@ -559,7 +559,10 @@ describe("17 · navigation advertises nothing the viewer cannot use", () => {
   it("hides master-only Arena presentation panels from a non-master admin", async () => {
     renderAdmin("/admin/arena?section=presentation");
     expect(await screen.findByTestId("arena-presentation-master-only")).toBeTruthy();
+    // PT2E deleted the Themes panel and its registry entry; Arena Ranks is now
+    // the whole of Presentation, and it is still master-gated.
     expect(screen.queryByTestId("arena-themes")).toBeNull();
+    expect(screen.queryByTestId("arena-ranks")).toBeNull();
   });
 
   it("labels every master-gated registry entry so the rail never over-promises", () => {

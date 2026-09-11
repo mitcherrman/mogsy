@@ -7,7 +7,6 @@ import {
   Info,
   Megaphone,
   MessageSquare,
-  Palette,
   LogIn,
   LogOut,
   Settings as SettingsIcon,
@@ -40,7 +39,6 @@ import { useAdminAuth } from "@/lib/admin-auth/AdminAuthProvider";
 import { ADMIN_HOME_PATH } from "@/lib/admin/admin-registry";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { LEAGUE_ONLY_MODE } from "@/lib/site-config";
-import { isLolSectionPath } from "@/lib/startup-shell";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { playUiSfx } from "@/lib/ui-sfx";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
@@ -230,9 +228,10 @@ export default function MogzyIdentityMenu() {
   // a bell they can never receive anything in.
   const isAccount = Boolean(user && !user.is_anonymous);
 
-  // The theme picker (FloatingThemeSwitcher) is only mounted outside the LoL
-  // section; inside it the footer item would dispatch an event nobody hears.
-  const canOpenThemePicker = !isLolSectionPath(pathname);
+  // PT2E: the `Theme` footer item is gone. It dispatched `open-theme-picker`
+  // at FloatingThemeSwitcher, the global FAB that recoloured the whole
+  // application; both are retired. Themes are now the PROFILE's theme and are
+  // chosen on the Profile page, which this menu already links to directly.
   const signupHref = signupHrefFor(pathname);
 
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
@@ -841,21 +840,6 @@ export default function MogzyIdentityMenu() {
           <Shield className="h-4 w-4 shrink-0" aria-hidden="true" />
           Admin
         </Link>
-      )}
-
-      {canOpenThemePicker && (
-        <button
-          type="button"
-          data-testid="hud-theme-item"
-          onClick={() => {
-            closePanel();
-            window.dispatchEvent(new CustomEvent("open-theme-picker"));
-          }}
-          className={footerItemClass}
-        >
-          <Palette className="h-4 w-4 shrink-0" aria-hidden="true" />
-          Theme
-        </button>
       )}
 
       {/* Legacy full-Mogsy surfaces, carried over from the account menu under

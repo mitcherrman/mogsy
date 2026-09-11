@@ -7,8 +7,8 @@ import CombatLab from "./CombatLab";
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: null, loading: false }),
 }));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ proStatus: "free" }),
+vi.mock("@/hooks/usePremiumSession", () => ({
+  usePremiumSession: () => ({ proStatus: "free" }),
 }));
 
 // The page pings its backend on mount — keep the test offline and fast.

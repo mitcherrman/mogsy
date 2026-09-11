@@ -56,6 +56,34 @@ export interface LolChangeEntry {
 
 export const LOL_CHANGELOG: LolChangeEntry[] = [
   {
+    timestamp: "2026-09-11T00:00:00Z",
+    title: "Themes are profile themes now — the sitewide theme system is retired",
+    type: "refactor",
+    scopes: ["theme", "hub", "combat-lab", "quiz", "navigation"],
+    summary:
+      "profiles.custom_theme used to be a SITEWIDE theme: the theme provider wrote theme-<id> onto <html>, and every surface outside the League section inherited it. The League surfaces escaped only because the provider special-cased their paths — an arrangement that had already failed once when Meta Reflex was missing from that list. custom_theme now means the visual theme of the user's PROFILE and nothing else, so Layout is the only writer of a root theme class and the only class it writes is theme-lol, chosen from the path alone.",
+    details: [
+      "Layout's root-class effect is unconditional: theme-lol inside the League section, no theme class outside it. No user state can reach <html>.",
+      "`dark` is now always on, agreeing with the startup shell, which already painted a dark ground on every path before any module ran.",
+      "FloatingThemeSwitcher — the theme FAB on every non-League page — is deleted, along with the HUD menu's Theme item that opened it. The profile theme is chosen on the Profile page.",
+      "The Cycle All theme is gone: it was an instruction to rotate the root class on a timer, which cannot mean anything for a profile card.",
+      "Onboarding's fourth step, 'Choose Your Vibe' (1 free Premium theme), is removed.",
+      "Admin: the Themes panel is deleted. Its free/pro lists, cycle interval and fade duration only configured the retired sitewide system; the free list is static in code now.",
+      "Selecting a Premium profile theme is authorized on the SERVER (migration 20260911130000), the same shape PT2C gave profile frames. A retained theme survives losing access; it simply cannot be swapped for another.",
+      "get_league_profiles() now publishes custom_theme, so a profile theme is finally visible to other players — it had been silently falling back to `default` for every visitor.",
+    ],
+    files: [
+      "src/components/Layout.tsx",
+      "src/hooks/usePremiumSession.tsx",
+      "src/lib/profile-themes.ts",
+      "src/pages/Profile.tsx",
+      "src/pages/UserProfile.tsx",
+      "src/components/OnboardingFlow.tsx",
+      "supabase/migrations/20260911130000_pt2e_profile_theme_server_authority.sql",
+    ],
+    routes: ["/lol", "/combat-lab", "/quiz", "/league-swipe", "/profile", "/user/:profileId"],
+  },
+  {
     timestamp: "2026-07-11T00:00:00Z",
     title: "League Docs champion pages: abilities, formulas, and real trust metadata",
     type: "feature",

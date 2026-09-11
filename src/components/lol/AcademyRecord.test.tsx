@@ -36,8 +36,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: mocks.authUser }) }));
-vi.mock("@/hooks/useSitewideTheme", () => ({
-  useSitewideTheme: () => ({ proStatus: mocks.proStatus }),
+vi.mock("@/hooks/usePremiumSession", () => ({
+  usePremiumSession: () => ({ proStatus: mocks.proStatus }),
 }));
 vi.mock("@/hooks/useProfileIdentity", () => ({
   useProfileIdentity: () => mocks.identity,

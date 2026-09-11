@@ -16,7 +16,6 @@ import { useState } from "react";
 import AdminCollections from "@/components/admin/AdminCollections";
 import AdminBots from "@/components/admin/AdminBots";
 import AdminPromotedLeagues from "@/components/admin/AdminPromotedLeagues";
-import AdminThemes from "@/components/admin/AdminThemes";
 import AdminRankSettings from "@/components/admin/AdminRankSettings";
 import {
   AdminAreaHeader,
@@ -68,7 +67,6 @@ export default function AdminArenaPage() {
   const [section, setSection] = useAreaSection(area);
   const { isMasterAdmin } = useAdminRoles();
   const [collectionsView, setCollectionsView] = useState("collections");
-  const [presentationView, setPresentationView] = useState("themes");
 
   return (
     <div data-testid="admin-area-arena">
@@ -119,26 +117,15 @@ export default function AdminArenaPage() {
       {section.id === "presentation" && (
         <div className="space-y-4">
           {isMasterAdmin ? (
-            <>
-              <SubTabs
-                testId="arena-presentation-subtabs"
-                value={presentationView}
-                onChange={setPresentationView}
-                options={[
-                  { id: "themes", label: "Themes" },
-                  { id: "ranks", label: "Arena Ranks" },
-                ]}
-              />
-              {presentationView === "themes" ? (
-                <div data-testid="arena-themes">
-                  <AdminThemes />
-                </div>
-              ) : (
-                <div data-testid="arena-ranks">
-                  <AdminRankSettings />
-                </div>
-              )}
-            </>
+            // PT2E deleted the Themes sub-tab. AdminThemes configured the
+            // retired SITEWIDE theme system: which themes were free, the cycle
+            // interval and fade, and the master switch. Profile themes have a
+            // static free list in src/lib/profile-themes.ts and a server rule
+            // that restates it, so there is nothing left to configure. Arena
+            // Ranks is now the whole of Presentation.
+            <div data-testid="arena-ranks">
+              <AdminRankSettings />
+            </div>
           ) : (
             <p
               className="rounded-md border border-dashed border-border p-3 text-[11px] text-muted-foreground"
