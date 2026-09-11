@@ -430,3 +430,45 @@ export function notFoundMessage(kind: EntityKind, key: string): { message: strin
         : `This ${noun} has no games in the major professional competitions these profiles cover. The name may be spelled differently — try searching for it.`,
   };
 }
+
+/**
+ * Entity suggestions for the public Stats Explorer's Player and Team filters.
+ *
+ * REUSES THE CANONICAL SEARCH THIS WORKSTREAM ALREADY MADE PUBLIC. No new
+ * endpoint and no new ingestion: `/api/pro-play/research/search` returns
+ * `key` = `player_lp_page` / `team_key`, which are exactly the values the
+ * stats API filters on and the profile routes take. The identity vocabulary
+ * is shared, which is the whole reason this is a client-side change.
+ *
+ * The stats `/filters` endpoint deliberately does NOT enumerate players
+ * (~12,000) or teams (~2,500) — it never has — so pulling a list to filter
+ * locally was never an option and is not one now.
+ */
+export async function searchEntitySuggestions(
+  kind: EntityKind,
+  query: string,
+  limit = 12,
+  signal?: AbortSignal,
+): Promise<SearchResult[]> {
+  const response = await searchEntities(query, { kinds: [kind], limit }, signal);
+  // The API ranks across kinds; keep only the one this filter means, in case
+  // a future contract widens what a kind-scoped query may return.
+  return response.results.filter((r) => r.kind === kind);
+}
+
+/**
+ * The second line under a suggestion. It exists to DISAMBIGUATE, not to
+ * decorate: the corpus holds two players whose handle is "Doran", and the
+ * canonical keys differ only by a real name in parentheses. Role, current
+ * team and game count are what let a reader pick the right one.
+ */
+export function suggestionHint(result: SearchResult): string | undefined {
+  const parts: string[] = [];
+  if (result.primary_role) parts.push(String(result.primary_role));
+  if (result.declared_current_team) parts.push(String(result.declared_current_team));
+  else if (result.region) parts.push(String(result.region));
+  if (result.games) parts.push(`${result.games.toLocaleString("en-US")} games`);
+  // The key itself only when it says something the display name does not.
+  if (!parts.length && result.key !== result.display_name) parts.push(result.key);
+  return parts.length ? parts.join(" · ") : undefined;
+}

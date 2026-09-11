@@ -17,9 +17,18 @@
  * Sorting and pagination are SERVER-side: the corpus is ~12k players and
  * 1.07M player-games, so the client never holds enough rows to sort them.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { proPlayProfileUrl } from "@/lib/pro-play/routes";
+import {
+  EntityFilterCombobox,
+  FilterCombobox,
+  type EntitySearcher,
+} from "@/components/pro-play/FilterCombobox";
+import {
+  searchEntitySuggestions,
+  suggestionHint,
+} from "@/lib/pro-play/researchApi";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
@@ -61,6 +70,14 @@ const nf = new Intl.NumberFormat("en-US");
 /** Sample-size floors offered in the UI. The API accepts any value up to
  *  its own ceiling, so a shared link carrying 30 still works. */
 const MIN_GAMES_OPTIONS = ["5", "10", "20", "50"];
+
+/** The canonical entity search refuses shorter queries (`min_query_chars` on
+ *  its own /contract). Asking anyway returns an empty set that would read as
+ *  "no such player" rather than "not asked yet". */
+const ENTITY_MIN_CHARS = 2;
+
+/** Enough to choose from without turning the menu into a second table. */
+const ENTITY_SUGGESTION_LIMIT = 12;
 
 /** The single place a missing statistic becomes visible text. Null means "we
  *  have no data", which is not zero and must never be shown as zero. */
@@ -426,25 +443,38 @@ export default function ProStatsExplorer() {
   const dir = searchParams.get("dir") === "asc" ? "asc" : "desc";
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
 
-  // Text filters settle locally before they become a request or a URL entry.
-  const [playerTerm, setPlayerTerm] = useState(read("player"));
-  const [teamTerm, setTeamTerm] = useState(read("team"));
-  const debouncedPlayer = useDebouncedValue(playerTerm.trim());
-  const debouncedTeam = useDebouncedValue(teamTerm.trim());
+  // PLAYER AND TEAM ARE SELECTIONS NOW, NOT FREE TEXT. They used to be typed
+  // strings settling on a debounce before becoming a request; a reader had to
+  // already know the exact canonical spelling ("Doran (Choi Hyeon-joon)") for
+  // the filter to match anything at all. A suggestion carries the canonical
+  // key, so the value reaching the URL is exact the moment it is chosen and
+  // there is nothing to debounce. The URL contract is unchanged: the same
+  // `player=` / `team=` keys, holding the same `player_lp_page` / `team_key`.
+  //
+  // The label is remembered only for DISPLAY. On a cold URL — a refresh, a
+  // shared link, Back — there is no remembered label and the control shows
+  // the canonical key itself, which is a true and readable name for both
+  // kinds ("Gen.G"; "Doran (Choi Hyeon-joon)"). It is never sent anywhere.
+  const [entityLabels, setEntityLabels] = useState<Record<string, string>>({});
+  const rememberLabel = (key: string, label?: string) => {
+    if (!key || !label) return;
+    setEntityLabels((prev) => (prev[key] === label ? prev : { ...prev, [key]: label }));
+  };
 
-  useEffect(() => {
-    const urlPlayer = searchParams.get("player") ?? "";
-    const urlTeam = searchParams.get("team") ?? "";
-    if (debouncedPlayer === urlPlayer && debouncedTeam === urlTeam) return;
-    const next = new URLSearchParams(searchParams);
-    if (debouncedPlayer) next.set("player", debouncedPlayer);
-    else next.delete("player");
-    if (debouncedTeam) next.set("team", debouncedTeam);
-    else next.delete("team");
-    next.delete("page");
-    setSearchParams(next, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedPlayer, debouncedTeam]);
+  const playerSearch = useCallback<EntitySearcher>(
+    async (q, signal) =>
+      (await searchEntitySuggestions("player", q, ENTITY_SUGGESTION_LIMIT, signal)).map(
+        (r) => ({ value: r.key, label: r.display_name || r.key, hint: suggestionHint(r) }),
+      ),
+    [],
+  );
+  const teamSearch = useCallback<EntitySearcher>(
+    async (q, signal) =>
+      (await searchEntitySuggestions("team", q, ENTITY_SUGGESTION_LIMIT, signal)).map(
+        (r) => ({ value: r.key, label: r.display_name || r.key, hint: suggestionHint(r) }),
+      ),
+    [],
+  );
 
   /** Any filter change resets to page 1: page 4 of the old slice is
    *  meaningless in the new one. */
@@ -497,8 +527,8 @@ export default function ProStatsExplorer() {
   };
 
   const clearAll = () => {
-    setPlayerTerm("");
-    setTeamTerm("");
+    // Player and Team live in the URL now, so clearing it clears them; there
+    // is no separate local text state left to reset.
     setSearchParams(new URLSearchParams({ view }));
   };
 
@@ -510,14 +540,14 @@ export default function ProStatsExplorer() {
       role: read("role") || null,
       champion: read("champion") || null,
       minGames: read("min_games") ? Number(read("min_games")) : null,
-      player: debouncedPlayer || null,
-      team: debouncedTeam || null,
+      player: read("player") || null,
+      team: read("team") || null,
       sort,
       dir: dir as "asc" | "desc",
       page,
       pageSize: PAGE_SIZE,
     }),
-    [searchParams, debouncedPlayer, debouncedTeam, sort, dir, page],
+    [searchParams, sort, dir, page],
   );
 
   const { data, isPending, isFetching, isError, error, refetch } = useQuery({
@@ -527,11 +557,19 @@ export default function ProStatsExplorer() {
     placeholderData: (prev) => prev,
   });
 
-  const { data: options } = useQuery({
+  const { data: options, isPending: optionsPending } = useQuery({
     queryKey: ["pro-play-stats", "filters"],
     queryFn: ({ signal }) => getProStatsFilterOptions(signal),
     staleTime: 60 * 60 * 1000,
   });
+
+  // The filters endpoint returns leagues most-played first, and that order is
+  // worth keeping: it is a better default than alphabetical and `rankOptions`
+  // preserves it within each match tier.
+  const leagueOptions = useMemo(
+    () => (options?.leagues ?? []).map((l) => ({ value: l, label: l })),
+    [options],
+  );
 
   const rows = data?.rows ?? [];
   const coverage = data?.coverage;
@@ -633,11 +671,16 @@ export default function ProStatsExplorer() {
             onChange={(v) => setFilter("year", v)}
             options={(options?.years ?? []).map(String)}
           />
-          <FilterSelect
+          {/* 323 leagues. A native <select> renders the whole corpus at
+              whatever height it likes, which covered most of the viewport and
+              offered no way to search it. */}
+          <FilterCombobox
             label="League"
             value={read("league")}
             onChange={(v) => setFilter("league", v)}
-            options={options?.leagues ?? []}
+            options={leagueOptions}
+            loading={optionsPending}
+            searchPlaceholder="Search leagues…"
           />
           <FilterSelect
             label="Patch"
@@ -669,12 +712,30 @@ export default function ProStatsExplorer() {
             anyLabel="Any"
             optionLabel={(v) => `${v}+`}
           />
-          <FilterText
+          <EntityFilterCombobox
             label="Player"
-            value={playerTerm}
-            onChange={setPlayerTerm}
+            value={read("player")}
+            displayLabel={entityLabels[read("player")]}
+            onChange={(v, label) => {
+              rememberLabel(v, label);
+              setFilter("player", v);
+            }}
+            search={playerSearch}
+            minChars={ENTITY_MIN_CHARS}
+            plural="players"
           />
-          <FilterText label="Team" value={teamTerm} onChange={setTeamTerm} />
+          <EntityFilterCombobox
+            label="Team"
+            value={read("team")}
+            displayLabel={entityLabels[read("team")]}
+            onChange={(v, label) => {
+              rememberLabel(v, label);
+              setFilter("team", v);
+            }}
+            search={teamSearch}
+            minChars={ENTITY_MIN_CHARS}
+            plural="teams"
+          />
         </div>
         {(activeCount > 0 || yearWasDefaulted || handoff) && (
           <div className="mt-2 space-y-1">

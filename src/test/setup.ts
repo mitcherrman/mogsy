@@ -20,3 +20,20 @@ Object.defineProperty(window, "matchMedia", {
   }),
 });
 }
+
+// Radix popovers (the Pro Play stats filters, and anything else built on
+// @radix-ui/react-popper) measure their trigger with a ResizeObserver, and
+// jsdom ships none. Without this every popover test dies on
+// "ResizeObserver is not defined" before it can assert anything.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
+// cmdk scrolls the highlighted item into view; jsdom has no layout.
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function scrollIntoView() {};
+}

@@ -236,8 +236,11 @@ describe("rendering", () => {
     // It is a caveat, not a statistic about players, and the pager already
     // states it in words. As a bare tile it read as a data-quality readout.
     renderExplorer();
-    await screen.findByText("Players");
-    expect(screen.queryByText("With stats")).not.toBeInTheDocument();
+    // Scoped to the strip. "Players" is also the view tab's label AND a strip
+    // tile's, so a bare findByText("Players") only ever passed by resolving
+    // in the gap before the strip rendered -- a race the loading strip closed.
+    const strip = await screen.findByRole("group", { name: /Players summary/i });
+    expect(within(strip).queryByText("With stats")).not.toBeInTheDocument();
   });
 });
 
@@ -347,9 +350,15 @@ describe("url state", () => {
   it("resets to page 1 when a filter changes", async () => {
     renderExplorer("/lol/pro-play?page=4");
     await screen.findByText("Faker");
-    fireEvent.change(screen.getByLabelText("League"), {
-      target: { value: "Tencent LoL Pro League" },
-    });
+    // League is a searchable combobox now, not a native <select>: a
+    // fireEvent.change on the trigger would silently do nothing and this test
+    // would pass while asserting about a control that never moved.
+    const league = screen.getByRole("combobox", { name: /League/i });
+    fireEvent.pointerDown(league, { button: 0, pointerType: "mouse" });
+    fireEvent.click(league);
+    const option = await screen.findByRole("option", { name: /Tencent LoL Pro League/ });
+    fireEvent.pointerDown(option, { button: 0, pointerType: "mouse" });
+    fireEvent.click(option);
     await waitFor(() => expect(lastSearch).not.toContain("page=4"));
   });
 
