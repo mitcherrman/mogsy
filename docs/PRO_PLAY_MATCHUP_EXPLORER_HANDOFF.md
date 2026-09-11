@@ -4111,8 +4111,8 @@ was left alone rather than half-fixed here.
 
 | | SHA | Where |
 |---|---|---|
-| Backend | see below | branch `proplay/step12-matchup-quiz`, **not pushed** |
-| Frontend | see below | branch `proplay/step12-matchup-quiz`, **not pushed** |
+| Backend | `7a0bf439` | branch `proplay/step12-matchup-quiz` off `4b5a83c0`, **committed, NOT pushed** |
+| Frontend | `efda8f10` | branch `proplay/step12-matchup-quiz` off `744102b8` (= `origin/main`), **committed, NOT pushed** |
 
 **DEPLOY ORDER IS NOT OPTIONAL HERE, unlike Step 6.** The frontend route calls
 an endpoint that does not exist yet. `POST /api/quiz/matchup/sessions` must be
