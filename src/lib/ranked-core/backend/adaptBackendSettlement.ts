@@ -18,6 +18,7 @@
 import type { PlayerSlot as PlayerId } from "../viewTypes";
 import {
   BackendCompletionReason,
+  BackendModulePoints,
   BackendResolvedPlayer,
   BackendResolvedRoundProjection,
   BackendRoundEndReason,
@@ -47,6 +48,15 @@ export class SettlementAdapterError extends Error {
     super(`Invalid backend resolved projection: ${message}`);
     this.name = "SettlementAdapterError";
   }
+}
+
+/** One module's award for one player. Frontend spelling of the wire shape. */
+export interface ModulePointsAward {
+  basePoints: number;
+  speedBonusPoints: number;
+  pointsAwarded: number;
+  scoreBefore: number;
+  scoreAfter: number;
 }
 
 /** Display model consumed by the prototype UI (never raw backend shapes). */
@@ -134,6 +144,17 @@ export interface AdaptedSettlement {
    * no evidence rather than inventing some.
    */
   questionExplanation: Record<string, unknown> | null;
+  /**
+   * RP1 — what this module awarded each player, keyed by BACKEND PLAYER ID
+   * (not by slot: the rails, the ledger and the result plate all look their
+   * own player up by id), or null for an hp round.
+   *
+   * Pure pass-through. The backend already cross-checked that the module's
+   * explanation adds up to the award the engine banked and refused to project
+   * a settlement that did not, so nothing here re-derives, re-sums or repairs
+   * any of these five numbers.
+   */
+  modulePoints: Record<string, ModulePointsAward> | null;
   /** Null on non-terminal rounds AND on simultaneous-knockout draws. */
   winner: PlayerId | null;
   completionReason: BackendCompletionReason | null;
@@ -230,6 +251,37 @@ const adaptPlayer = (p: BackendResolvedPlayer): AdaptedPlayerSettlement => ({
   consecutiveCorrect: p.carryover.consecutive_correct,
   combatLabUnlockDeltaSeconds: p.combat_lab_unlock_delta_seconds,
 });
+
+/**
+ * Adapt the module's award block, or null when the round published none.
+ *
+ * Fails closed on a malformed entry for the same reason the rest of this
+ * adapter does: a points client reads THIS to learn what a module was worth,
+ * and a half-read award would be rendered as a confident wrong number.
+ */
+const adaptModulePoints = (
+  raw: Record<string, BackendModulePoints> | null | undefined,
+): Record<string, ModulePointsAward> | null => {
+  if (raw === null || raw === undefined) return null;
+  const out: Record<string, ModulePointsAward> = {};
+  for (const [playerId, award] of Object.entries(raw)) {
+    if (!award || typeof award !== "object") {
+      throw new SettlementAdapterError(`module_points.${playerId} is not an award`);
+    }
+    for (const f of ["base_points", "speed_bonus_points", "points_awarded",
+      "score_before", "score_after"] as const) {
+      nonNegative(award[f], `module_points.${playerId}.${f}`);
+    }
+    out[playerId] = {
+      basePoints: award.base_points,
+      speedBonusPoints: award.speed_bonus_points,
+      pointsAwarded: award.points_awarded,
+      scoreBefore: award.score_before,
+      scoreAfter: award.score_after,
+    };
+  }
+  return out;
+};
 
 /** String formatting from backend-resolved values only — no combat math. */
 const buildSummary = (players: Record<PlayerId, AdaptedPlayerSettlement>): string => {
@@ -370,6 +422,7 @@ export function adaptBackendSettlement(
       && raw.question_explanation !== null
       && !Array.isArray(raw.question_explanation)
     ) ? (raw.question_explanation as Record<string, unknown>) : null,
+    modulePoints: adaptModulePoints(raw.module_points),
     winner,
     completionReason: raw.completion_reason,
     summary: buildSummary(players),

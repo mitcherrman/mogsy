@@ -33,6 +33,7 @@ function settlement(p1: Partial<ResolvedCombatantView>,
     sharedTimerDeltaSeconds: 0, matchOver: false, winner: null,
     completionReason: null, summary: "", correctOptionIndex: null,
     questionExplanation: null,
+    modulePoints: null,
     players: { p1: player("userA", p1), p2: player("userB", p2) },
   };
 }

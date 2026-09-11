@@ -30,7 +30,53 @@ import {
   TimerView,
 } from "@/lib/ranked-core/viewTypes";
 import { rankedRoleLabel } from "@/lib/ranked-public/roles";
-import type { PresenceView, PrivatePlayerView, PublicRoundView } from "@/lib/ranked-public/contracts";
+import type {
+  PresenceView, PrivatePlayerView, PublicRoundView, ScoringModel,
+} from "@/lib/ranked-public/contracts";
+
+/**
+ * THE ONE POINTS-VS-HP DECISION IN THE RANKED FRONTEND (RP1).
+ *
+ * Every downstream difference — which meter a rail draws, what the settled
+ * plate's consequence line says, whether a module count is shown, whether the
+ * mascots react to a damage figure that is really an award — is derived from
+ * this single answer, asked of the backend's own discriminator and of nothing
+ * else.
+ *
+ * A snapshot with NO scoring block reads `"hp"`. That is not a guess: the
+ * block is absent exactly when this client is talking to a backend that
+ * predates RP1, and every match such a backend serves is an hp match. Nothing
+ * in this frontend may infer the model from a damage figure, a match length,
+ * a module id, or the presence of a `score` field.
+ */
+export function matchScoringModel(pub: PublicRoundView): ScoringModel {
+  return pub.scoring?.model ?? "hp";
+}
+
+/** Convenience for the branch above. Nothing else decides this question. */
+export function isPointsMatch(pub: PublicRoundView): boolean {
+  return matchScoringModel(pub) === "points";
+}
+
+/**
+ * "Module 6 / 10" — the live progress line, or null for an hp match.
+ *
+ * Both numbers come from the backend's scoring block and neither is derived:
+ * not from the timeline's length, not from `completed_rounds` (during module 6
+ * that reads 5), and not from a constant. An hp match answers null and the
+ * header keeps its "Round N" title — it has no length, and a client that
+ * printed "/ 10" there would be inventing the format.
+ *
+ * A points match whose length is somehow null still names its module rather
+ * than claiming a denominator it was not given.
+ */
+export function moduleProgressLabel(pub: PublicRoundView): string | null {
+  const scoring = pub.scoring;
+  if (!scoring || scoring.model !== "points") return null;
+  return scoring.matchLength === null
+    ? `Module ${scoring.moduleNumber}`
+    : `Module ${scoring.moduleNumber} / ${scoring.matchLength}`;
+}
 
 /**
  * Does this MATCH speak roles?
@@ -81,6 +127,12 @@ function matchIdentityMode(pub: PublicRoundView): "role" | "legacy_class" {
 export function projectCombatants(pub: PublicRoundView, viewerUserId: string): CombatantViews {
   const identities: Record<string, { name: string; tag?: string; roleId?: string | null }> = {};
   const maxHpByPlayerId: Record<string, number> = {};
+  // RP1 — filled ONLY for a points match, so an hp combatant carries no score
+  // at all and its rail keeps the HP meter it has always had. The values are
+  // the backend's settled cumulative totals, passed through: this projection
+  // adds nothing to them and never moves one on a local submission.
+  const scoreByPlayerId: Record<string, number> = {};
+  const points = isPointsMatch(pub);
   const identityMode = matchIdentityMode(pub);
   for (const p of pub.players) {
     // Phase 11: the ROLE ID travels alongside the label so the arena can pick
@@ -96,9 +148,14 @@ export function projectCombatants(pub: PublicRoundView, viewerUserId: string): C
       roleId: p.role,
     };
     if (p.maxHp !== null) maxHpByPlayerId[p.playerId] = p.maxHp;
+    // `?? 0` inside the points branch only: a points backend always publishes
+    // a score, and a points match whose snapshot somehow omitted one still has
+    // to render a tally rather than fall back to an HP bar mid-match.
+    if (points) scoreByPlayerId[p.playerId] = p.score ?? 0;
   }
   return combatantViewsFromPlayers(pub.players, {
     viewerPlayerId: viewerUserId, identities, maxHpByPlayerId, identityMode,
+    scoreByPlayerId: points ? scoreByPlayerId : undefined,
   });
 }
 
@@ -253,6 +310,6 @@ export function opponentPresenceLabel(presence: PresenceView | null): string | n
 // mode outside this page from coming here for them.
 export {
   projectMascotReactions, projectRevealDamage, projectRevealOutcomes,
-  projectRoundHistory, projectSurfaceReveal,
+  projectRevealPoints, projectRoundHistory, projectSurfaceReveal,
 } from "@/lib/ranked-core/settlementViews";
 export type { MascotReaction, RoundHistoryEntry } from "@/lib/ranked-core/viewTypes";

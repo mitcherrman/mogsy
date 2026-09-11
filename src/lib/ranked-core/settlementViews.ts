@@ -55,6 +55,10 @@ export function projectRoundHistory(
     out.push({
       roundNumber: settlement.roundNumber,
       outcome: player.outcome,
+      // RP1 — null whenever the settlement published no award, which is every
+      // hp round and every round settled by a backend that predates RP1. The
+      // ledger renders points ONLY where the backend stated them.
+      pointsAwarded: settlement.modulePoints?.[playerId]?.pointsAwarded ?? null,
       dealt: player.finalDamageDealt,
       taken: player.finalDamageReceived,
       absorbed: player.shieldAbsorbed,
@@ -93,6 +97,27 @@ export function projectRevealDamage(
   const out: Record<string, number> = {};
   for (const player of Object.values(settlement.players)) {
     out[player.playerId] = player.finalDamageDealt;
+  }
+  return out;
+}
+
+/**
+ * RP1 — points each player was AWARDED in the settlement being revealed, keyed
+ * by player id, or an empty map when there is no reveal in progress and on
+ * every hp settlement.
+ *
+ * The exact sibling of `projectRevealDamage` above, gated on the same reveal
+ * hold, reading the same authoritative settlement. It computes nothing: the
+ * backend banked these numbers and cross-checked them against the module's own
+ * explanation before publishing them.
+ */
+export function projectRevealPoints(
+  settlement: ResolvedRoundView | null, revealing: boolean,
+): Record<string, number> {
+  if (!settlement || !revealing || !settlement.modulePoints) return {};
+  const out: Record<string, number> = {};
+  for (const [playerId, award] of Object.entries(settlement.modulePoints)) {
+    out[playerId] = award.pointsAwarded;
   }
   return out;
 }

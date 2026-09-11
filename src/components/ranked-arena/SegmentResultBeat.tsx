@@ -79,6 +79,12 @@ export function segmentScoreline(
   settlement: SegmentSettlementView,
   viewerUserId: string,
   opponentUserId: string | null,
+  /**
+   * RP1 — the viewer's award for the block, or null on an hp match. Present
+   * (including 0) replaces the damage clause, for the same reason the round
+   * plate's consequence line does: in a points match the damage IS the award.
+   */
+  pointsAwarded: number | null = null,
 ): string {
   const { reveal } = settlement;
   const total = reveal.challengeCount;
@@ -86,6 +92,10 @@ export function segmentScoreline(
   const them = opponentUserId ? reveal.players[opponentUserId] : undefined;
   const parts = [`YOU ${you?.correct ?? 0}/${total}`];
   if (them) parts.push(`OPP ${them.correct}/${total}`);
+  if (pointsAwarded !== null) {
+    if (pointsAwarded > 0) parts.push(`+${pointsAwarded} PTS`);
+    return parts.join(" · ");
+  }
   const damage = settlement.damageByPlayerId[viewerUserId] ?? 0;
   if (damage > 0) parts.push(`${damage} DMG`);
   return parts.join(" · ");
@@ -132,6 +142,7 @@ export function SegmentResultBeat({
   viewerUserId,
   opponentUserId,
   roundNumber,
+  pointsAwarded = null,
   detailsOpen,
   onToggleDetails,
   className = "",
@@ -139,6 +150,8 @@ export function SegmentResultBeat({
   settlement: SegmentSettlementView;
   viewerUserId: string;
   opponentUserId: string | null;
+  /** RP1 — the viewer's award for the block; null = an hp match. */
+  pointsAwarded?: number | null;
   /** The round the block settled on; null before one is known. */
   roundNumber: number | null;
   /**
@@ -160,7 +173,8 @@ export function SegmentResultBeat({
   // "Resolved" — never a guessed win or loss.
   const kind = result ? KIND_FOR_RESULT[result] : "both-correct";
   const word = result ? RESULT_WORD[result] : "Resolved";
-  const scoreline = segmentScoreline(settlement, viewerUserId, opponentUserId);
+  const scoreline = segmentScoreline(settlement, viewerUserId, opponentUserId,
+    pointsAwarded);
   return (
     <BeatPlate
       kind={kind}

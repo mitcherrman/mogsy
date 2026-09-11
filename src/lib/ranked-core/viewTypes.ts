@@ -102,6 +102,25 @@ export interface CombatantView {
    * change what the meter DOES by naming it.
    */
   meterLabel?: string | null;
+  /**
+   * RP1 — THE POINTS TALLY, and the one thing a rail branches on.
+   *
+   * Absent/null = this match has no points, which is every existing caller:
+   * the rail draws the HP meter it always has. A number = the match scores
+   * points, and the rail draws THE NUMBER — large, with `meterLabel` (default
+   * "POINTS") under it — and no proportional fill at all.
+   *
+   * No fill, deliberately. A score has no reachable maximum the way HP does;
+   * this format happens to have a mathematical one, but a bar that filled
+   * toward it would read as "how much of your health is left", which is the
+   * exact metaphor RP1 exists to remove. There is no max-score field here and
+   * there must not be one: a client that invented a denominator would be
+   * inventing the format.
+   *
+   * It is the SETTLED cumulative total the backend published. Nothing in this
+   * frontend adds to it, predicts it, or moves it on a submission.
+   */
+  score?: number | null;
   xp: number;
   level: number;
   /**
@@ -286,6 +305,15 @@ export interface RoundHistoryEntry {
   roundNumber: number;
   /** This player's verdict in that round. */
   outcome: ResolvedCombatantView["outcome"];
+  /**
+   * RP1 — what this module awarded this player, or null on an hp round.
+   *
+   * When present the ledger row states THIS and says nothing about damage or
+   * HP: in a points match the damage fields below are the engine's internal
+   * transport for the award (see the RP1 Step 2 contract), and printing them
+   * would put the award on screen twice under the wrong name.
+   */
+  pointsAwarded?: number | null;
   /** Damage this player DEALT. 0 = none. */
   dealt: number;
   /** Damage this player TOOK. 0 = none. */

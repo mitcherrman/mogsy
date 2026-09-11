@@ -396,3 +396,71 @@ export function icdResolvedPayload(over: Partial<Record<string, unknown>> = {}) 
     ...over,
   };
 }
+
+// ------------------------------------------------- RP1 points (Step 2 shapes)
+
+/**
+ * Decorate a public/private round envelope with the RP1 scoring block and the
+ * per-player cumulative scores.
+ *
+ * A DECORATOR rather than a second round fixture: a points match differs from
+ * an hp match in exactly these two places, and two whole fixtures would let
+ * the other forty fields drift apart. Mutates and returns the envelope it was
+ * given, like the probe's other shapers.
+ */
+export function withPointsScoring(
+  env: { payload: Record<string, unknown> },
+  {
+    moduleNumber = 1, matchLength = 10 as number | null, modulesCompleted = 0,
+    scores = {} as Record<string, number>,
+  } = {},
+) {
+  const payload = env.payload;
+  payload.scoring = {
+    model: "points",
+    match_length: matchLength,
+    module_number: moduleNumber,
+    modules_completed: modulesCompleted,
+  };
+  payload.players = (payload.players as Record<string, unknown>[]).map((p) => ({
+    ...p, score: scores[p.player_id as string] ?? 0,
+  }));
+  return env;
+}
+
+/** The per-player award block a settled points module publishes. */
+export function modulePointsBlock(
+  awards: Record<string, { base: number; speed?: number; before?: number }>,
+) {
+  const out: Record<string, Record<string, number>> = {};
+  for (const [playerId, a] of Object.entries(awards)) {
+    const speed = a.speed ?? 0;
+    const before = a.before ?? 0;
+    out[playerId] = {
+      base_points: a.base,
+      speed_bonus_points: speed,
+      points_awarded: a.base + speed,
+      score_before: before,
+      score_after: before + a.base + speed,
+    };
+  }
+  return out;
+}
+
+/** A finished points match's result envelope. */
+export function matchResultPointsV1(
+  finalScores: Record<string, number>,
+  { outcome = "decisive", winner = "userA" as string | null, modulesPlayed = 10 } = {},
+) {
+  const env = matchResultV1("combat");
+  env.payload = {
+    ...env.payload,
+    outcome,
+    winner_user_id: winner,
+    scoring: {
+      model: "points", match_length: 10,
+      modules_played: modulesPlayed, final_scores: finalScores,
+    },
+  } as typeof env.payload;
+  return env;
+}

@@ -38,10 +38,11 @@ import type { PublicRoundView } from "@/lib/ranked-public/contracts";
 // Ranked calls the same functions it always did, from where they now live.
 import {
   projectMascotReactions, projectRevealDamage, projectRevealOutcomes,
-  projectRoundHistory, projectSurfaceReveal,
+  projectRevealPoints, projectRoundHistory, projectSurfaceReveal,
 } from "@/lib/ranked-core/settlementViews";
 import {
-  abilityTrayIsUseful, opponentPresenceLabel, projectAbilities,
+  abilityTrayIsUseful, isPointsMatch, moduleProgressLabel,
+  opponentPresenceLabel, projectAbilities,
   projectAbilityPermissions, projectCombatants,
   projectPermissions, projectTimer,
 } from "./rankedViews";
@@ -163,13 +164,31 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
   const revealDamage = useMemo(
     () => projectRevealDamage(m.lastResolved, m.revealHold),
     [m.lastResolved, m.revealHold]);
+  /**
+   * RP1 — the settled module's award per player, for the same reveal beat.
+   *
+   * Read off the settlement's own `module_points`, which the backend publishes
+   * only for a module it scored. It is therefore empty on an hp match without
+   * this file asking, and a points rail shows an award exactly when the
+   * backend banked one.
+   */
+  const revealPoints = useMemo(
+    () => projectRevealPoints(m.lastResolved, m.revealHold),
+    [m.lastResolved, m.revealHold]);
   // AI1 Phase 2 — the two duelist mascots' reactions to the settled round.
   // Same settlement, same reveal gate as the verdicts above: the attacker's
   // mascot lunges and the damaged mascot recoils on the beat the round
   // resolves. Nothing here is timed or simulated.
+  // RP1: a points match is silent here, and deliberately. The projection reads
+  // the settlement's damage fields, which in a points match are the AWARD
+  // travelling through the engine's damage channel — so scoring two points
+  // would make the opponent's mascot recoil as though it had been hurt, which
+  // is the HP battle this redesign removes, animated. Step 4 owns whatever
+  // celebrates a score; until then nothing claims to.
+  const pointsMatch = m.publicRound !== null && isPointsMatch(m.publicRound);
   const mascotReactions = useMemo(
-    () => projectMascotReactions(m.lastResolved, m.revealHold),
-    [m.lastResolved, m.revealHold]);
+    () => (pointsMatch ? {} : projectMascotReactions(m.lastResolved, m.revealHold)),
+    [pointsMatch, m.lastResolved, m.revealHold]);
   /**
    * RG — WHAT THE SERVER HAS SAID EACH ROUND'S SEGMENT IS.
    *
@@ -351,10 +370,29 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
     const reason = m.result?.terminalReason ?? "combat";
     const won = m.result?.winnerUserId === viewerUserId;
     const draw = m.result?.outcome === "draw";
+    /**
+     * RP1 — THE FINAL SCORELINE, which is the result row's and not the live
+     * projection's.
+     *
+     * `result.scoring.final_scores` is the engine's committed total at the
+     * instant the match completed, seeded with every participant, so it covers
+     * a match that ended before a module settled (a forfeit) where the live
+     * snapshot's own number may never have moved. It is applied to the SAME
+     * `score` field the rails read, so the terminal frame's two columns show
+     * points for exactly the matches the arena did — no second code path, and
+     * no change to `MatchOverFrame` itself.
+     *
+     * The WINNER is still `m.result.outcome` / `winnerUserId` below. Nothing
+     * here compares the two numbers.
+     */
+    const finalScores = m.result?.scoring?.finalScores ?? null;
+    const withFinalScore = (c: typeof combatants.player) => (
+      finalScores && finalScores[c.playerId] !== undefined
+        ? { ...c, score: finalScores[c.playerId] } : c);
     const terminal: ArenaTerminalView = {
       result: draw ? "draw" : won ? "victory" : "defeat",
-      player: combatants.player,
-      opponent: combatants.opponent,
+      player: withFinalScore(combatants.player),
+      opponent: withFinalScore(combatants.opponent),
       subheading: reason === "forfeit"
         ? (won ? "Opponent forfeited." : "You forfeited.")
         : reason === "no_contest" ? "No contest — both players left." : undefined,
@@ -418,6 +456,8 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
   // to "Round —". During that gap (input phases only) we show an intentional
   // "Preparing next round…" transition instead of a malformed header/empty timer.
   const roundLabel = m.roundNumber !== null ? `Round ${m.roundNumber}` : "Preparing match…";
+  // Null on every hp match; "Module 6 / 10" on a v2 points match.
+  const moduleLabel = moduleProgressLabel(m.publicRound);
   // A phased segment in its ability window legitimately has no engine round
   // and therefore no shared timer — that is the phase, not a transition gap.
   const inTransition = !timer && m.phase !== "progression" && !m.segmentState;
@@ -438,6 +478,10 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
       damage: roundHistory[which],
       outcome: revealOutcomes[c.playerId] ?? null,
       damageDealt: revealDamage[c.playerId] ?? null,
+      // RP1 — present only while a points module's settlement is being
+      // revealed, which is what makes the verdict row say "+2" instead of a
+      // damage figure without either side learning a mode flag.
+      pointsAwarded: revealPoints[c.playerId] ?? null,
       reaction: mascotReactions[c.playerId] ?? null,
     };
   };
@@ -445,17 +489,30 @@ export function QuizRankedMatch({ matchId, viewerUserId, chrome }:
   const view: ArenaViewModel = {
     header: {
       eyebrow: `Ranked Duel${m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}`,
-      title: roundLabel,
+      // RP1 — a points match names its MODULE and its length, both read off
+      // the backend's scoring block; an hp match keeps "Round N", because it
+      // has no length and a "/ 10" here would be this client inventing one.
+      title: moduleLabel ?? roundLabel,
       transitionNote: inTransition ? "Preparing next round…" : null,
       playtestNote: m.publicRound.playtest?.isPlaceholder ? "Playtest · Placeholder" : null,
       presenceNote: opponentLabel,
       timer,
       timerLabel: "Shared round timer",
     },
-    roundBeat: m.lastResolved ? { settlement: m.lastResolved, viewerSlot: "p1" } : null,
+    roundBeat: m.lastResolved ? {
+      settlement: m.lastResolved,
+      viewerSlot: "p1",
+      // The viewer's own award, by id, from the SAME settlement the plate is
+      // describing. Null on an hp match, which leaves the plate's damage
+      // consequence line exactly as it has always been.
+      pointsAwarded: m.lastResolved.modulePoints?.[viewerUserId]?.pointsAwarded ?? null,
+    } : null,
     segmentBeat: m.lastSegmentSettlement ? {
       settlement: m.lastSegmentSettlement,
       roundNumber: m.lastSegmentRoundNumber,
+      pointsAwarded: m.lastResolved?.roundNumber === m.lastSegmentRoundNumber
+        ? m.lastResolved?.modulePoints?.[viewerUserId]?.pointsAwarded ?? null
+        : null,
       viewerUserId,
       opponentUserId: m.opponentUserId,
     } : null,

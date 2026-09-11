@@ -111,7 +111,21 @@ export const RESULT_TONE: Record<ResultKind, {
  * own fact, and a round that moved nobody's HP says so rather than showing an
  * empty slot (the plate's height is fixed either way).
  */
-export function resultConsequence(viewer: ResolvedCombatantView): string {
+export function resultConsequence(
+  viewer: ResolvedCombatantView,
+  /**
+   * RP1 — what the module AWARDED this viewer, or null on an hp match.
+   *
+   * Present (including 0) replaces the damage clauses entirely. In a points
+   * match the damage figures below ARE the award, transported through the
+   * engine's damage channel; "2 DAMAGE" would therefore be the right number
+   * under a mechanic the match does not have, which is worse than a wrong one.
+   */
+  pointsAwarded: number | null = null,
+): string {
+  if (pointsAwarded !== null) {
+    return pointsAwarded > 0 ? `+${pointsAwarded} POINTS` : "NO POINTS";
+  }
   const { finalDamageDealt: dealt, finalDamageReceived: taken,
     shieldAbsorbed: absorbed } = viewer;
   // One clause reads as a headline; two must stay labelled or the numbers are
@@ -244,10 +258,13 @@ export function BeatBody({
 export function RoundResultBeat({
   settlement,
   viewerSlot,
+  pointsAwarded = null,
   className = "",
 }: {
   settlement: ResolvedRoundView;
   viewerSlot: PlayerSlot;
+  /** RP1 — the viewer's award for this module; null = an hp match. */
+  pointsAwarded?: number | null;
   className?: string;
 }) {
   const opponentSlot: PlayerSlot = viewerSlot === "p1" ? "p2" : "p1";
@@ -257,13 +274,14 @@ export function RoundResultBeat({
   // any other result surface can never disagree about what a round was called.
   const { verdict } = resultHeadline(viewer, opponent);
   const kind = resultKind(viewer, opponent);
-  const consequence = resultConsequence(viewer);
+  const consequence = resultConsequence(viewer, pointsAwarded);
   return (
     <BeatPlate
       kind={kind}
       mode="round"
       ariaLabel={
-        `Round ${settlement.roundNumber} result: ${verdict}, ${consequence.toLowerCase()}`}
+        `${pointsAwarded !== null ? "Module" : "Round"} ${settlement.roundNumber} `
+        + `result: ${verdict}, ${consequence.toLowerCase()}`}
       marker={`R${settlement.roundNumber}`}
       dataAttributes={{
         "data-outcome": viewer.outcome,

@@ -164,6 +164,8 @@ export function publicRoundFromTutorial(state: TutorialState): PublicRoundView {
       abilitySelectionPhase: c.abilityWindow,
       hasAbilitySelected: c.hasAbilitySelected,
       role: null,
+      // RP1 — the tutorial teaches the HP duel, so it scores no points.
+      score: null,
     })),
     activeRound: null,
     nextRoundDurationSeconds: state.timer.duration,
@@ -182,6 +184,8 @@ export function publicRoundFromTutorial(state: TutorialState): PublicRoundView {
     segmentState: null,
     progressionPendingPlayers: [],
     progressionEnabled: state.track !== "r1",
+    // RP1 — the tutorial is an hp match and publishes no scoring block.
+    scoring: null,
     presence: null,
     playtest: null,
   };
@@ -362,6 +366,8 @@ export function resolvedRoundViewFromResult(
   return {
     matchId: TUTORIAL_MATCH_ID,
     roundNumber: tutorialRoundNumber(result.roundId, track),
+    // RP1 — an hp settlement awards no points, and says so.
+    modulePoints: null,
     questionId: `tutorial-q${fixture.questionIndex}`,
     endReason:
       result.playerTimedOut && result.opponentTimedOut ? "deadline_expired" : "both_answered",

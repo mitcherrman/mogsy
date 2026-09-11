@@ -50,6 +50,13 @@ export interface CombatantViewOptions {
    */
   maxHpByPlayerId?: Record<string, number>;
   /**
+   * RP1 — cumulative POINTS keyed by backend player id, for a match that
+   * scores them. Missing/undefined => `score: null`, i.e. this match has no
+   * points and the rail keeps its HP meter. Like `maxHpByPlayerId` above, this
+   * adapter never infers, observes or invents one.
+   */
+  scoreByPlayerId?: Record<string, number>;
+  /**
    * Backend-derived level thresholds keyed by backend player id, supplied by
    * the controller ({ current, next } XP bounds; next null at max level).
    * Absent => both null (unknown).
@@ -120,6 +127,7 @@ export function combatantViewsFromPlayers(
       classId: p.classId,
       hp: p.hp,
       maxHp: options.maxHpByPlayerId?.[p.playerId] ?? null,
+      score: options.scoreByPlayerId?.[p.playerId] ?? null,
       xp: p.totalXp,
       level: p.level,
       nextLevelThreshold: bounds?.next ?? null,

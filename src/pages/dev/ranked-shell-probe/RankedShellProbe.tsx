@@ -16,6 +16,9 @@
  * `?q=` selects the question state to serve:
  *   short | long | opts2 | opts4 | media | metareflex
  * `?role=` freezes a League role onto the viewer's participant.
+ * `?points=` serves an RP1 v2 POINTS match instead of the hp one, as
+ *   `module:you-them` (e.g. `?points=1:0-0`, `?points=6:11-8`,
+ *   `?points=10:24-24`). Anything unparseable serves module 1 at 0–0.
  *
  * Dev route only — excluded from navigation and the sitemap.
  */
@@ -25,6 +28,7 @@ import { Frame } from "@/pages/quiz-ranked/QuizRankedPage";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
 import {
   metaReflexSegmentMeta, metaReflexState, privatePlayerV2, publicRoundV2,
+  withPointsScoring,
 } from "@/lib/ranked-public/fixtures";
 import {
   CHAMPION_OPTION_QUESTION, ITEM_OPTION_QUESTION,
@@ -120,6 +124,37 @@ function questionFor(state: ProbeState) {
   }
 }
 
+/**
+ * RP1 — the points state this probe is serving, or null for an hp match.
+ *
+ * Parsed from `?points=module:you-them`, so every state Step 3 has to be
+ * looked at (0–0 at module 1, a two-digit mid-match lead, a tie, module 10/10)
+ * is a URL rather than a code change. The numbers are SERVED, exactly as a
+ * backend would serve them — nothing in the arena computes one.
+ */
+function parsePoints(raw: string | null):
+{ module: number; you: number; them: number } | null {
+  if (raw === null) return null;
+  const m = /^(\d+)(?::(\d+)-(\d+))?$/.exec(raw.trim());
+  if (!m) return { module: 1, you: 0, them: 0 };
+  return {
+    module: Number(m[1]) || 1,
+    you: Number(m[2] ?? 0), them: Number(m[3] ?? 0),
+  };
+}
+
+/** Apply the probe's points state to a public/private envelope, or leave it. */
+function applyPoints(env: { payload: Record<string, unknown> }) {
+  const p = probe.points;
+  if (!p) return env;
+  return withPointsScoring(env, {
+    moduleNumber: p.module,
+    matchLength: 10,
+    modulesCompleted: p.module - 1,
+    scores: { userA: p.you, userB: p.them },
+  });
+}
+
 /** The public-round envelope this probe serves, for one probe state. */
 function publicFor(state: ProbeState, role: string | null) {
   const env = publicRoundV2() as ReturnType<typeof publicRoundV2>
@@ -151,7 +186,7 @@ function publicFor(state: ProbeState, role: string | null) {
   } else {
     payload.question = questionFor(state);
   }
-  return env;
+  return applyPoints(env);
 }
 
 function privateFor(state: ProbeState) {
@@ -167,12 +202,14 @@ function privateFor(state: ProbeState) {
   } else {
     payload.question = questionFor(state);
   }
-  return env;
+  return applyPoints(env);
 }
 
 /** Mutable, so switching probe state re-serves without a reload. */
-const probe: { state: ProbeState; role: string | null; legacy: boolean } =
-  { state: "opts4", role: "top", legacy: false };
+const probe: {
+  state: ProbeState; role: string | null; legacy: boolean;
+  points: { module: number; you: number; them: number } | null;
+} = { state: "opts4", role: "top", legacy: false, points: null };
 
 let installed = false;
 function installInterceptor() {
@@ -223,6 +260,7 @@ export default function RankedShellProbe() {
   probe.state = state;
   probe.role = role && role !== "none" ? role : null;
   probe.legacy = params.get("legacy") === "1";
+  probe.points = parsePoints(params.get("points"));
   // Remount the arena when the probe state changes so the canned round is
   // re-read; the controller caches its snapshot for the life of the mount.
   const [, force] = useState(0);
@@ -233,13 +271,22 @@ export default function RankedShellProbe() {
         {PROBE_STATES.map((s) => (
           <button key={s} type="button" data-testid={`probe-${s}`}
             className={`rounded px-1.5 py-0.5 ${s === state ? "bg-white text-black" : "bg-white/20"}`}
-            onClick={() => { setParams({ q: s, role: role ?? "top" }); force((n) => n + 1); }}>
+            onClick={() => {
+              const next: Record<string, string> = { q: s, role: role ?? "top" };
+              // The points state survives a question switch — otherwise every
+              // click drops the match back to hp and the scored states can
+              // only be reached by editing the URL.
+              const points = params.get("points");
+              if (points !== null) next.points = points;
+              setParams(next); force((n) => n + 1);
+            }}>
             {s}
           </button>
         ))}
       </div>
       <Frame size="wide">
-        <QuizRankedMatch key={state} matchId="m1" viewerUserId={VIEWER} />
+        <QuizRankedMatch key={`${state}:${params.get("points") ?? "hp"}`}
+          matchId="m1" viewerUserId={VIEWER} />
       </Frame>
     </div>
   );

@@ -128,4 +128,24 @@ export interface BackendResolvedRoundProjection {
    * and commonly absent — most questions carry no rationale at all.
    */
   question_explanation?: Record<string, unknown> | null;
+  /**
+   * RP1 — what this module was worth to each player, keyed by backend player
+   * id. Absent for an hp round and for a backend that predates RP1.
+   *
+   * ONE SHAPE WHATEVER MODULE SETTLED IT: a quiz round and a five-card block
+   * publish the same five keys, so a client renders both from three numbers
+   * and never learns which module produced them. There is deliberately no
+   * standalone "perfect" figure — RP1's one bonus requires perfection AND
+   * finishing first, and it is already inside `speed_bonus_points`.
+   */
+  module_points?: Record<string, BackendModulePoints> | null;
+}
+
+/** Per-player award for one settled module (RP1 Step 2's public shape). */
+export interface BackendModulePoints {
+  base_points: number;
+  speed_bonus_points: number;
+  points_awarded: number;
+  score_before: number;
+  score_after: number;
 }

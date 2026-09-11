@@ -497,6 +497,73 @@ export interface SegmentStateView {
   revealWindowMs: number | null;
 }
 
+/**
+ * RP1 — HOW THIS MATCH SCORES, and how far through it the viewer is.
+ *
+ * `model` is the ONE discriminator. A client branches on it once instead of
+ * sniffing for points fields, and every other decision in this frontend —
+ * which meter a rail draws, what a settled module's consequence line says,
+ * whether a module count is shown at all — is downstream of that single
+ * answer.
+ *
+ * `matchLength` is `null` for an hp match and the frontend must render its
+ * progress without a denominator there: an hp match ends when a player reaches
+ * 0 HP and genuinely has no length. Nothing in this client may substitute a
+ * convenient finite one, and nothing may hard-code ten for a points match
+ * either — a format is frozen per match and this field is what it froze.
+ *
+ * `moduleNumber` is the module the player is LOOKING AT (the open one, or the
+ * last one that settled); `modulesCompleted` is how many have settled. Both
+ * are published, so a client never reconstructs either from the other and
+ * never renders "5 / 10" during module 6.
+ */
+export interface MatchScoringView {
+  model: ScoringModel;
+  matchLength: number | null;
+  moduleNumber: number;
+  modulesCompleted: number;
+}
+
+/** The two scoring vocabularies. v2 is `points`; legacy v1 is `hp`. */
+export type ScoringModel = "points" | "hp";
+
+/**
+ * RP1 — the finished match's scoreline, or `null` for an hp match.
+ *
+ * NO WINNER IS DECIDED FROM THIS. `MatchResultView.outcome` and
+ * `winnerUserId` remain the authority, exactly as they are today; comparing
+ * these two numbers in the client would be a second winner rule, free to
+ * disagree with the one that already moved the players' rating.
+ */
+export interface ResultScoringView {
+  model: ScoringModel;
+  matchLength: number | null;
+  modulesPlayed: number | null;
+  /** Always covers every participant — a match that scored nothing reads 0. */
+  finalScores: Record<string, number>;
+}
+
+/**
+ * One participant as the PUBLIC round publishes them — the structural
+ * combatant plus the three per-participant facts the public projection adds.
+ *
+ * Named because three declarations needed it (the view, the reader's return
+ * type, and now the tutorial's own adapter) and a fourth spelling of the same
+ * intersection is how one of them ends up missing a field.
+ */
+export type PublicRoundPlayer = PublicCombatantSource & {
+  maxHp: number | null;
+  role: RankedRole | null;
+  /**
+   * RP1 — this participant's CUMULATIVE points over the settled modules, or
+   * `null` when the backend does not publish one (a deployment that predates
+   * RP1, and any hp match served by one). SETTLED STATE ONLY: the backend
+   * moves it when a module settles and never before, which is exactly what
+   * makes showing the OPPONENT's number safe mid-module.
+   */
+  score: number | null;
+};
+
 /** Public round: neutral, pre-reveal. Players satisfy PublicCombatantSource. */
 export interface PublicRoundView {
   schemaVersion: string;
@@ -510,7 +577,7 @@ export interface PublicRoundView {
   /** R1: `role` is the FROZEN League role of each participant. Always
    * present as a key; `null` for every pre-R1 match and for any player the
    * backend has no role for. Never derived from `classId`. */
-  players: (PublicCombatantSource & { maxHp: number | null; role: RankedRole | null })[];
+  players: PublicRoundPlayer[];
   activeRound: PublicActiveRound | null;
   nextRoundDurationSeconds: number;
   question: PublicQuestionSource | null;
@@ -533,6 +600,16 @@ export interface PublicRoundView {
    * the progression UI that legacy matches require rather than hiding it.
    */
   progressionEnabled: boolean;
+  /**
+   * RP1 — the match's scoring block, or `null` when the backend does not send
+   * one at all.
+   *
+   * Null is the COMPATIBILITY answer, not a third model: it is what a
+   * deployment predating RP1 produces, and every such match is an hp match.
+   * `matchScoringModel` is where that is decided once — nothing else in this
+   * frontend may read this field and default on its own.
+   */
+  scoring: MatchScoringView | null;
   presence: PresenceView | null;
   playtest?: PlaytestMeta | null;
 }
@@ -590,6 +667,12 @@ export interface MatchResultView {
   terminalReason: TerminalReason;
   finalRoundNumber: number;
   ratingApplicationStatus: string;
+  /**
+   * RP1 — the points scoreline, or `null` for an hp match (and for every
+   * backend that predates RP1). The winner is still `outcome`/`winnerUserId`
+   * above; this is what each player SCORED, never who won.
+   */
+  scoring: ResultScoringView | null;
 }
 
 export interface HeartbeatView {
@@ -639,8 +722,7 @@ function readProgressionEnabled(value: unknown): boolean {
   return value !== false;
 }
 
-function readPlayer(value: unknown, i: number):
-PublicCombatantSource & { maxHp: number | null; role: RankedRole | null } {
+function readPlayer(value: unknown, i: number): PublicRoundPlayer {
   const p = rec(value, `players[${i}]`);
   return {
     playerId: str(p.player_id, "player_id"),
@@ -653,6 +735,9 @@ PublicCombatantSource & { maxHp: number | null; role: RankedRole | null } {
     hasAbilitySelected: nbool(p.has_ability_selected, "has_ability_selected"),
     maxHp: nnum(p.max_hp, "max_hp"),
     role: readRole(p.role),
+    // RP1. `nnum` so an absent field reads null — "the backend did not say" —
+    // rather than a zero this client made up and could then display.
+    score: nnum(p.score, "score"),
   };
 }
 
@@ -769,6 +854,32 @@ export function readPublicQuestion(value: unknown): PublicQuestionSource | null 
   return readQuestion(value);
 }
 
+/**
+ * The scoring block, or null when the backend sent none.
+ *
+ * FAILS CLOSED ON A MALFORMED DISCRIMINATOR and tolerates only ABSENCE. A
+ * block that is present but claims a model this client has never heard of is
+ * not a compatibility case — it is a client that would then have to guess
+ * which mechanic the match is playing, and guessing wrong renders the wrong
+ * game. The contract-error state already exists for exactly this, and it tells
+ * the player to reload rather than showing them a plausible-looking lie.
+ */
+function readScoring(value: unknown): MatchScoringView | null {
+  if (value === null || value === undefined) return null;
+  const o = rec(value, "scoring");
+  const model = str(o.model, "scoring.model");
+  if (model !== "points" && model !== "hp") {
+    throw new RankedPublicParseError(
+      `scoring.model must be "points" or "hp" (got ${model})`);
+  }
+  return {
+    model,
+    matchLength: nnum(o.match_length, "scoring.match_length"),
+    moduleNumber: num(o.module_number, "scoring.module_number"),
+    modulesCompleted: num(o.modules_completed, "scoring.modules_completed"),
+  };
+}
+
 function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundView,
   "schemaVersion" | "serverTime"> {
   assertNoCorrectness(payload, "public payload");
@@ -791,6 +902,7 @@ function readPublicPayload(payload: Record<string, unknown>): Omit<PublicRoundVi
     progressionPendingPlayers: Array.isArray(payload.progression_pending_players)
       ? strList(payload.progression_pending_players, "progression_pending_players") : [],
     progressionEnabled: readProgressionEnabled(payload.progression_enabled),
+    scoring: readScoring(payload.scoring),
     presence: readPresence(payload.presence),
     playtest: readPlaytest(payload.playtest),
   };
@@ -1561,6 +1673,34 @@ export function readQueueStatus(body: unknown): QueueStatusView {
   };
 }
 
+/**
+ * The result scoreline, or null for an hp match / a pre-RP1 backend.
+ *
+ * Same fail-closed rule as the live block above: absence is tolerated, a
+ * present-but-unreadable block is not. `final_scores` is read as a plain
+ * id→number map because that is what it is — the backend seeds it with every
+ * participant, so a viewer always finds their own id in it.
+ */
+function readResultScoring(value: unknown): ResultScoringView | null {
+  if (value === null || value === undefined) return null;
+  const o = rec(value, "result scoring");
+  const model = str(o.model, "scoring.model");
+  if (model !== "points" && model !== "hp") {
+    throw new RankedPublicParseError(
+      `scoring.model must be "points" or "hp" (got ${model})`);
+  }
+  const finalScores: Record<string, number> = {};
+  for (const [pid, raw] of Object.entries(rec(o.final_scores, "scoring.final_scores"))) {
+    finalScores[pid] = num(raw, `scoring.final_scores.${pid}`);
+  }
+  return {
+    model,
+    matchLength: nnum(o.match_length, "scoring.match_length"),
+    modulesPlayed: nnum(o.modules_played, "scoring.modules_played"),
+    finalScores,
+  };
+}
+
 export function readMatchResult(body: unknown): MatchResultView {
   const env = envelope(body, "match_result", "ranked_duel.match_result.v1");
   const p = env.payload;
@@ -1573,6 +1713,7 @@ export function readMatchResult(body: unknown): MatchResultView {
     terminalReason: (str(p.terminal_reason, "terminal_reason") as TerminalReason),
     finalRoundNumber: num(p.final_round_number, "final_round_number"),
     ratingApplicationStatus: str(p.rating_application_status, "rating_application_status"),
+    scoring: readResultScoring(p.scoring),
   };
 }
 

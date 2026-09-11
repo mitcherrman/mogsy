@@ -68,6 +68,47 @@ const mirrorRow = (mirrored: boolean) => (mirrored ? "flex-row-reverse" : "");
  */
 const mirrorAlign = (mirrored: boolean) => (mirrored ? "justify-end" : "");
 
+/**
+ * THE SCORE TALLY — the primary meter of a match that scores points (RP1).
+ *
+ * A NUMBER, not a bar. The arena's meter is a proportion, and a proportion
+ * needs a maximum that means something: HP has one, the Daily's run has one
+ * (the day's frozen best), and a Ranked points total does not. The format's
+ * mathematical ceiling is not a ceiling a player plays toward, and a bar
+ * creeping along it would read as the one thing RP1 removes — how much health
+ * is left. So the score is rendered the way a scoreboard renders a score: as
+ * large as the column allows, and nothing else.
+ *
+ * `meterLabel` still names it, exactly as it names the bar next door, so a
+ * mode with its own noun ("POINTS", "SCORE") keeps one word to change.
+ *
+ * `tabular-nums` and a reserved line height: the column must not resize when
+ * the score passes 9, and both duelists' numbers must sit on the same
+ * baseline whatever they read.
+ */
+export function ScoreTally({ combatant }: { combatant: CombatantView }) {
+  const { score, name } = combatant;
+  const mirrored = isMirroredSide(combatant);
+  const label = combatant.meterLabel ?? "POINTS";
+  return (
+    <div data-testid={`score-${combatant.playerId}`} data-score={String(score ?? 0)}
+      className={`flex flex-col leading-none ${mirrored ? "items-end text-right" : "items-start"}`}>
+      <span
+        role="status"
+        aria-label={`${name} ${label.toLowerCase()} ${score ?? 0}`}
+        className="text-4xl font-black tabular-nums tracking-tight text-[#e8c97a]
+          min-[1500px]:text-5xl"
+      >
+        {score ?? 0}
+      </span>
+      <span aria-hidden
+        className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 /** HP meter. maxHp null = unknown: absolute number only, no proportion. */
 export function HealthMeter({ combatant }: { combatant: CombatantView }) {
   const { hp, maxHp, name } = combatant;
@@ -322,10 +363,20 @@ export function RoundLedger({
   entries,
   playerId,
   mirrored,
+  scored = false,
 }: {
   entries: RoundHistoryEntry[];
   playerId: string;
   mirrored: boolean;
+  /**
+   * RP1 — this match scores POINTS, so a row's right-hand cell states what the
+   * module awarded and the row says nothing about HP.
+   *
+   * Decided by the panel from the combatant it was handed, never by a mode
+   * flag reaching in here: the ledger is told what KIND of number to print,
+   * and still prints only numbers the settlement produced.
+   */
+  scored?: boolean;
 }) {
   // Newest first. `slice()` because the projection's array is shared with the
   // other column's render and `reverse()` mutates in place.
@@ -334,12 +385,17 @@ export function RoundLedger({
   return (
     <div
       data-testid={`combat-ledger-${playerId}`}
-      aria-label="Recent rounds"
+      aria-label={scored ? "Recent modules" : "Recent rounds"}
       className="flex min-h-[1.5rem] flex-col gap-1"
     >
       <div className={`flex ${mirrorAlign(mirrored)}`}>
         <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/60">
-          {rows.length === 0 ? "No rounds yet" : "Recent rounds"}
+          {/* RP1: a scored match plays MODULES, and the ledger is a list of
+              them. The vocabulary is the only thing that changes — the rows,
+              the bound and the geometry are the ledger's, not the mode's. */}
+          {rows.length === 0
+            ? (scored ? "No modules yet" : "No rounds yet")
+            : (scored ? "Recent modules" : "Recent rounds")}
         </span>
       </div>
       {rows.map((e) => {
@@ -360,11 +416,16 @@ export function RoundLedger({
               e === newest ? "bg-white/[0.06]" : "bg-white/[0.02]"}`}
           >
             <span className="sr-only">
-              Round {e.roundNumber}: {state.word}
-              {e.dealt > 0 && `, dealt ${e.dealt}`}
-              {e.taken > 0 && `, took ${e.taken}`}
-              {e.absorbed > 0 && `, absorbed ${e.absorbed}`}
-              {e.timeExpired && ", time expired"}. HP {e.hpAfter}.
+              {scored ? "Module" : "Round"} {e.roundNumber}: {state.word}
+              {scored ? (
+                <>{e.pointsAwarded ? `, ${e.pointsAwarded} points` : ", no points"}
+                  {e.timeExpired && ", time expired"}.</>
+              ) : (
+                <>{e.dealt > 0 && `, dealt ${e.dealt}`}
+                  {e.taken > 0 && `, took ${e.taken}`}
+                  {e.absorbed > 0 && `, absorbed ${e.absorbed}`}
+                  {e.timeExpired && ", time expired"}. HP {e.hpAfter}.</>
+              )}
             </span>
             <span aria-hidden
               className="shrink-0 tabular-nums font-semibold text-muted-foreground/70">
@@ -380,6 +441,17 @@ export function RoundLedger({
                 instead of across from it. */}
             <span aria-hidden
               className={`${mirrored ? "mr-auto flex-row-reverse" : "ml-auto"} flex shrink-0 items-center gap-1.5 tabular-nums`}>
+              {/* RP1: in a points match the ONLY number a row carries is what
+                  the module awarded. The damage cells below are the same award
+                  travelling through the engine's damage channel, and printing
+                  them would name this match's mechanic twice and wrongly. */}
+              {scored ? (
+                (e.pointsAwarded ?? 0) > 0 ? (
+                  <span className="font-black text-[#e8c97a]">+{e.pointsAwarded}</span>
+                ) : (
+                  <span className="text-muted-foreground/50">—</span>
+                )
+              ) : (<>
               {e.dealt > 0 && (
                 <span className="inline-flex items-center gap-0.5 font-black text-[#e8c97a]">
                   <Swords aria-hidden className="h-3 w-3 shrink-0" />
@@ -398,6 +470,7 @@ export function RoundLedger({
               {e.dealt === 0 && e.taken === 0 && e.absorbed === 0 && (
                 <span className="text-muted-foreground/50">—</span>
               )}
+              </>)}
             </span>
           </div>
         );
@@ -415,12 +488,19 @@ export function RoundLedger({
 function OutcomeState({
   outcome,
   damageDealt,
+  pointsAwarded = null,
   playerId,
   name,
   mirrored,
 }: {
   outcome: ResolvedCombatantView["outcome"];
   damageDealt: number | null;
+  /**
+   * RP1 — the module's award for this player. Present (including 0) REPLACES
+   * the damage figure: it is the same event stated in the vocabulary this
+   * match actually plays in.
+   */
+  pointsAwarded?: number | null;
   playerId: string;
   name: string;
   /** From `isMirroredSide` — the verdict reflects with everything else. */
@@ -441,7 +521,14 @@ function OutcomeState({
       <span className="text-[11px] font-black uppercase tracking-[0.12em]">
         {state.label}
       </span>
-      {damageDealt !== null && damageDealt > 0 && (
+      {pointsAwarded !== null ? (
+        <span
+          data-testid={`outcome-points-${playerId}`}
+          className={`${mirrored ? "mr-auto" : "ml-auto"} whitespace-nowrap text-[11px] font-black tabular-nums text-[#e8c97a]`}
+        >
+          {pointsAwarded > 0 ? `+${pointsAwarded}` : "+0"}
+        </span>
+      ) : damageDealt !== null && damageDealt > 0 && (
         <span
           data-testid={`outcome-damage-${playerId}`}
           // The auto margin has to change SIDE with the row: in a reversed row
@@ -464,6 +551,7 @@ export function CombatantPanel({
   damage,
   outcome = null,
   damageDealt = null,
+  pointsAwarded = null,
   reaction = null,
 }: {
   combatant: CombatantView;
@@ -481,6 +569,12 @@ export function CombatantPanel({
   outcome?: ResolvedCombatantView["outcome"] | null;
   /** Damage this player DEALT in the revealed round; shown beside the verdict. */
   damageDealt?: number | null;
+  /**
+   * RP1 — points this player was AWARDED in the revealed module. Present wins
+   * over `damageDealt` beside the verdict; null leaves every existing caller
+   * byte-identical.
+   */
+  pointsAwarded?: number | null;
   /**
    * AI1 Phase 2 — the mascot reaction for the round being revealed, or null.
    *
@@ -532,9 +626,13 @@ export function CombatantPanel({
   // border and the level badge are blue for you and red for them on both
   // columns, and a mirror must not swap those.
   const mirrored = isMirroredSide(combatant);
+  // RP1 — does this match score points? One question, asked once, off the view
+  // the panel was handed. See `CombatantView.score`.
+  const scored = combatant.score !== null && combatant.score !== undefined;
   return (
     <section
       aria-label={`${name} panel`}
+      data-scoring={scored ? "points" : "hp"}
       data-testid={`combatant-${combatant.playerId}`}
       data-progression={progressionEnabled ? "true" : "false"}
       className={`relative flex h-full flex-col gap-2 rounded-xl border-2 bg-card p-3 ring-1 ring-inset ring-white/5 transition-shadow duration-300 motion-reduce:transition-none ${
@@ -616,13 +714,20 @@ export function CombatantPanel({
           </Badge>
         )}
       </header>
-      <HealthMeter combatant={combatant} />
+      {/* THE PRIMARY METER, and the panel's ONE points-vs-HP branch.
+          A combatant either carries a score — a match that scores points — or
+          it does not. Every other difference below follows from this same
+          value, so a column cannot end up with a score tally and a damage
+          ledger, or an HP bar and a points verdict. */}
+      {scored ? <ScoreTally combatant={combatant} />
+        : <HealthMeter combatant={combatant} />}
       {damage && (
         // `flex-1` is what routes the column's surplus height — the Phase 11
         // grid stretches both rails to the question board's height — into the
         // ledger rather than leaving it dead under the HP bar.
         <div className="flex-1">
-          <RoundLedger entries={damage} playerId={combatant.playerId} mirrored={mirrored} />
+          <RoundLedger entries={damage} playerId={combatant.playerId} mirrored={mirrored}
+            scored={scored} />
         </div>
       )}
       {progressionEnabled && <ExperienceMeter combatant={combatant} />}
@@ -630,6 +735,7 @@ export function CombatantPanel({
           place, so resolving a round shifts nothing. */}
       {outcome !== null ? (
         <OutcomeState outcome={outcome} damageDealt={damageDealt}
+          pointsAwarded={scored ? pointsAwarded : null}
           playerId={combatant.playerId} name={name} mirrored={mirrored} />
       ) : (
         showRoundStatus && (

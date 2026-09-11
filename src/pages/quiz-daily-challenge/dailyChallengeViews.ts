@@ -146,6 +146,10 @@ export function publicRoundFromCard(
     completionReason: null,
     completedRounds: run?.resolvedCount ?? 0,
     players: [],
+    // RP1 — the Daily is not a scored DUEL and plays neither model. It states
+    // that rather than claiming one: its own score lives on the run and
+    // reaches the arena as the combatant's meter, not through this block.
+    scoring: null,
     activeRound: null,
     nextRoundDurationSeconds: 0,
     question: card

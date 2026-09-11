@@ -53,6 +53,16 @@ export type ArenaRail =
     outcome: ResolvedCombatantView["outcome"] | null;
     /** Damage this side DEALT in the settlement being revealed, else null. */
     damageDealt: number | null;
+    /**
+     * RP1 — points this side was AWARDED in the settlement being revealed, or
+     * null (an hp match, or no settlement being revealed).
+     *
+     * Present WINS over `damageDealt` in the rail's verdict row: a points
+     * match's damage figure is the engine's transport for that same award, so
+     * showing both would be one number under two names, one of which is a
+     * mechanic this match does not have.
+     */
+    pointsAwarded?: number | null;
     /** Mascot reaction for the settled round, else null. */
     reaction: MascotReaction | null;
   }
@@ -101,6 +111,12 @@ export interface ArenaHeaderView {
  */
 export interface ArenaSegmentBeat {
   settlement: SegmentSettlementView;
+  /**
+   * RP1 — the viewer's award for the settled BLOCK, or absent/null on an hp
+   * match. Same substitution as `roundBeat.pointsAwarded`, for the scoreline
+   * a multi-challenge block prints instead ("YOU 5/5 · OPP 3/5 · …").
+   */
+  pointsAwarded?: number | null;
   /** The round the block settled on, for the beat's remount key. */
   roundNumber: number | null;
   viewerUserId: string;
@@ -208,7 +224,16 @@ export interface ArenaViewModel {
    * The header's result plate. A settled block WINS the slot when both are
    * present: it describes the same round and says strictly more.
    */
-  roundBeat: { settlement: ResolvedRoundView; viewerSlot: PlayerSlot } | null;
+  roundBeat: {
+    settlement: ResolvedRoundView;
+    viewerSlot: PlayerSlot;
+    /**
+     * RP1 — the viewer's award for the settled module, or absent/null on an hp
+     * match. It replaces the plate's damage consequence line, which is the one
+     * place a settled Ranked round still shouted a damage number.
+     */
+    pointsAwarded?: number | null;
+  } | null;
   segmentBeat: ArenaSegmentBeat | null;
   left: ArenaRail;
   right: ArenaRail;
