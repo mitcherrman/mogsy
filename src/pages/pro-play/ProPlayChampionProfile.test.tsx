@@ -196,6 +196,42 @@ describe("publicization", () => {
   });
 });
 
+describe("the public no-picks state", () => {
+  /** Real champion, never picked in the covered competitions: the backend
+   *  answers 200 with `comparison_error`, not 404. */
+  function noPicks() {
+    return championPayload({
+      comparison: null,
+      comparison_error:
+        "champion 'Nope' has no canonical games under league_filter='MAJOR_PRO'",
+    });
+  }
+
+  it("never shows the operator-facing detail to a public reader", async () => {
+    ok(noPicks());
+    renderProfile();
+    const panel = await screen.findByText(/has not been picked in the major professional/i);
+    expect(panel).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/league_filter|MAJOR_PRO/);
+  });
+
+  it("never prints a raw scope id", async () => {
+    // With no comparison payload the scope labels used to fall back to the
+    // internal key: "current_2026", "recent_2025_2026".
+    ok(noPicks());
+    renderProfile();
+    await screen.findByTestId("draft-table");
+    expect(document.body.textContent).not.toMatch(/current_2026|recent_2025_2026|all_time|worlds_2025/);
+  });
+
+  it("still shows the ban data, which is real", async () => {
+    ok(noPicks());
+    renderProfile();
+    expect(await screen.findByTestId("draft-table")).toBeInTheDocument();
+    expect(await screen.findByText(/can be banned in drafts it was never picked in/i)).toBeInTheDocument();
+  });
+});
+
 describe("picks are the population unit", () => {
   it("counts coverage in PICKS, never generic games", async () => {
     ok();

@@ -219,6 +219,16 @@ function ChampionPerformance({ championKey }: { championKey: string }) {
   );
 }
 
+/** Reader-facing names for the four product scopes, used ONLY when a champion
+ *  has no picks at all and the comparison payload that normally carries the
+ *  server's labels is absent. Kept in the contract's own order and wording. */
+const SCOPE_FALLBACK_LABELS: Record<string, string> = {
+  current_2026: "2026",
+  worlds_2025: "Worlds 2025",
+  recent_2025_2026: "2025\u20132026",
+  all_time: "All Time",
+};
+
 function DraftTable({ profile }: { profile: ChampionProfile }) {
   const order = profile.comparison?.scope_order ?? Object.keys(profile.draft);
   return (
@@ -240,7 +250,16 @@ function DraftTable({ profile }: { profile: ChampionProfile }) {
         <tbody>
           {order.map((id) => {
             const row = profile.draft[id];
-            const label = profile.comparison?.scopes[id]?.scope.label ?? id;
+            // NEVER FALL BACK TO THE RAW SCOPE ID. When a champion has no
+            // picks the comparison payload is absent, and `?? id` printed
+            // "current_2026" and "recent_2025_2026" to a public reader. The
+            // contract's own labels are the only public spelling; without
+            // them the row still has real ban data worth showing, so it is
+            // labelled from the served contract or left blank, not from an
+            // internal key.
+            const label = profile.comparison?.scopes[id]?.scope.label
+              ?? SCOPE_FALLBACK_LABELS[id]
+              ?? "This scope";
             if (!row) return null;
             return (
               <tr key={id} className="border-b border-border/50 last:border-0">
@@ -343,8 +362,15 @@ function Body({ championKey }: { championKey: string }) {
       />
 
       {profile.comparison_error ? (
+        /* A PUBLIC state, not the server's message. `comparison_error` is the
+           operator-facing detail -- it names the internal filter parameter
+           (league_filter='MAJOR_PRO') -- and this page is public. The 404 path
+           already got this treatment; this is the same leak on the 200 path,
+           which a champion reaches by being real but never picked. */
         <Panel title="No professional picks">
-          <EmptyRow label={profile.comparison_error} />
+          <EmptyRow
+            label={`${profile.entity.display_name} has not been picked in the major professional competitions this profile covers.`}
+          />
           <Note>
             Ban data below is still real: a champion can be banned in drafts it
             was never picked in.
