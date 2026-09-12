@@ -5,10 +5,18 @@ import {
   ConditionChip,
   ScenarioBadge,
   ScenarioDivider,
-  ScenarioHeroIcon,
   ScenarioSection,
   ScenarioTitle,
 } from "./primitives";
+import {
+  ATMOSPHERE_WIDE_SCENE,
+  PanelFiligree,
+  SUBJECT_MEDIA_GRADIENT,
+  SubjectFocalZone,
+  SubjectMediaBackdrop,
+  SubjectMediaCaption,
+} from "./SubjectMediaComposition";
+import spellcaster from "@/assets/ranked/Spellcaster.jpg";
 
 /**
  * Summoner Spell card — the SSM mastery slice's subject.
@@ -23,19 +31,25 @@ import {
  * question.
  *
  * WHY IT IS NOT A NEW SYSTEM EITHER
- * It is pure composition of the same primitives the gold standard uses, in the
- * same four slots and the same bottom-anchored geometry:
+ * The media panel is the SHARED subject-media composition the item-primary
+ * card is built from (SubjectMediaComposition.tsx) — the same lit ground, the
+ * same oversized echo of the subject's own icon, the same gold medallion and
+ * focal icon, the same corner filigree and bottom ornament, the same
+ * readability gradient and the same `[data-subject-media]` sizing tokens. It
+ * is not a spell-shaped copy of that card: both cards call the same functions.
  *
- *   ScenarioBadge      SUMMONER SPELL          (type chip, over clean art)
- *   ScenarioHeroIcon   the spell               (WHO — the subject itself)
- *   ScenarioTitle      the spell's name
- *   ConditionChip      Haste                   (UNDER WHAT CONDITIONS)
- *   ScenarioDivider    gold hairline
- *   ScenarioSection    Haste Sources           (USING WHAT — rune and/or boots)
+ * Before this, the spell had the exact problem the item card had before RIV2 —
+ * a 64px icon alone in a ~700x310 panel, over a 12%-opacity ghost, reading as
+ * an empty box. It now gets the same picture.
  *
- * A summoner spell has no splash art, which is exactly the case
- * `ScenarioHeroIcon` was written for — and this is its first consumer, so it
- * was floored in the same commit.
+ * THE ONE DELIBERATE DIFFERENCE
+ * The atmosphere art is `Spellcaster.jpg` rather than the item shopkeeper.
+ * It is seated with ATMOSPHERE_WIDE_SCENE rather than ATMOSPHERE_TALL_CUTOUT
+ * for a reason that is about the ASSET, not the design: the shopkeeper is a
+ * tall alpha cut-out of a figure, and this is an opaque 320x180 landscape.
+ * Seating it by height the way the shopkeeper is seated would upscale a
+ * 320px-wide source past 880px. Same layer, same mask, same opacity, same
+ * role — sized to the art it actually is.
  *
  * DISCLOSURE
  * Every phase's answer is a COOLDOWN, and no cooldown reaches this card: the
@@ -68,49 +82,59 @@ export function SummonerSpellScenarioCard({
     ];
   }, [subject.sources]);
 
+  const badge = subject.badge ?? "Summoner Spell";
+  // Whether the caption carries more than a title: the haste chip, the divider
+  // and the source rows together are what can reach the focal icon on a phone.
+  const hasStack = subject.totalHaste != null || sections.length > 0;
+
   return (
     <ScenarioCardFrame
       // A summoner spell is a small square icon, not a splash. Pushing it
       // through the frame's full-bleed champion crop would be a hugely
       // upscaled photograph of a 64px asset; the icon is the SUBJECT here and
-      // is drawn as one, over the frame's own ground.
+      // is drawn as one, inside the shared subject-media composition.
       backgroundUrl={null}
       backgroundAlt={subject.spell}
-      // The gold standard's scrim, cleared a little earlier: this card stacks
-      // three rows over the art rather than four, and the focal icon sits in
-      // the upper zone where a champion's face would be.
-      gradientClass="bg-[linear-gradient(to_top,rgba(3,2,2,0.95)_0%,rgba(3,2,2,0.8)_26%,rgba(3,2,2,0.35)_44%,transparent_58%)]"
+      // The same panel the item-primary card is built from — see
+      // SubjectMediaComposition.tsx. The echo is the spell's own icon, and the
+      // atmospheric art is the spellcaster's book, seated as a wide scene
+      // because the asset is a 320x180 landscape rather than a tall cut-out.
+      backgroundSlot={
+        <SubjectMediaBackdrop
+          echoIcon={subject.spellIcon}
+          atmosphereSrc={spellcaster}
+          atmosphereSeating={ATMOSPHERE_WIDE_SCENE}
+        />
+      }
+      gradientClass={SUBJECT_MEDIA_GRADIENT}
     >
-      {/* Ground. Without one this card falls to the frame's flat slate
-          gradient, which reads noticeably thinner than the gold standard's
-          full-bleed splash beside it in the same match. The spell's own icon,
-          blurred and faint, gives the card a ground made of its own subject —
-          the technique already shipped elsewhere in this folder, and the only
-          asset the payload has. Decorative: it is `aria-hidden`, and the
-          legible copy is the focal icon and the stack below. */}
-      {subject.spellIcon && (
-        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-          <img
-            src={subject.spellIcon}
-            alt=""
-            className="absolute left-1/2 top-[38%] h-[max(46cqmin,calc(26*var(--sc-fit)))] w-[max(46cqmin,calc(26*var(--sc-fit)))] max-w-none -translate-x-1/2 -translate-y-1/2 rounded-[max(4cqmin,calc(2.5*var(--sc-fit)))] object-cover opacity-[0.12] blur-md saturate-[1.2]"
-          />
-        </div>
-      )}
+      <ScenarioBadge>{badge}</ScenarioBadge>
 
-      <ScenarioBadge>{subject.badge ?? "Summoner Spell"}</ScenarioBadge>
+      {/* A spell with haste sources stacks four rows under the title. That
+          stack is a column running most of the band's height, so the icon is
+          centred in the panel's RIGHT half to sit beside it rather than on top
+          of it. With no sources the caption is a title alone and the card
+          carries the item card's own centred proportions exactly. */}
+      <SubjectFocalZone
+        iconUrl={subject.spellIcon}
+        alt={subject.spell}
+        beside={hasStack}
+      />
 
-      <ScenarioHeroIcon iconUrl={subject.spellIcon} alt={subject.spell} />
+      <PanelFiligree />
 
-      {/* Same stack geometry as CombatCalculationScenarioCard: bottom
-          anchored, 7% gutters, padding in cqh so it resolves against the
-          band's HEIGHT rather than its width. */}
-      <div className="absolute inset-x-0 bottom-0 px-[7%] pb-[8.89cqh]">
-        {/* No "Summoner Spell" sub-label under the title: the badge above
-            already says exactly that, and a caption repeating its own chip
-            reads as a bug. This mirrors the gold standard, where the badge says
-            "Combat Calculation" and the title is the champion name alone. */}
+      <SubjectMediaCaption>
         <ScenarioTitle>{subject.spell}</ScenarioTitle>
+        {/* The caption the item card carries under its title. It is suppressed
+            when the badge above ALREADY says exactly this, because a caption
+            repeating its own chip reads as a bug — the SSM slice can override
+            the badge, and in that case the caption is the only place the
+            subject's kind is stated. */}
+        {badge !== "Summoner Spell" && (
+          <div className="mt-[0.4cqmin] text-[max(0.95cqmin,calc(0.625*var(--sc-fit)))] leading-[min(1.5rem,1.25em)] font-semibold uppercase tracking-[0.24em] text-white/70">
+            Summoner Spell
+          </div>
+        )}
 
         {subject.totalHaste != null && (
           <div className="mt-[5.33cqh] flex flex-wrap gap-[max(0.8cqmin,calc(0.25*var(--sc-fit)))]">
@@ -126,7 +150,7 @@ export function SummonerSpellScenarioCard({
             ))}
           </>
         )}
-      </div>
+      </SubjectMediaCaption>
     </ScenarioCardFrame>
   );
 }

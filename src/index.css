@@ -1871,28 +1871,50 @@
    rule intact: the stage and the band land on the same number rather than the
    band overtaking it.
 
-   Declared on `[data-item-media]`, which the card puts on BOTH the hero zone
+   Declared on `[data-subject-media]`, which the card puts on BOTH the focal zone
    and the backdrop — they are siblings, not ancestor and descendant, and a
    custom property only inherits downwards. */
-[data-item-media] {
-  --item-hero-icon: max(15.2cqmin, calc(6 * var(--sc-fit)));
-  /* The medallion is a multiple of the ITEM, capped by the BAND so it can
-     never be clipped by the panel's own top and bottom edges: 1.62x the item
+[data-subject-media] {
+  --subject-hero-icon: max(15.2cqmin, calc(6 * var(--sc-fit)));
+  /* The medallion is a multiple of the ICON, capped by the BAND so it can
+     never be clipped by the panel's own top and bottom edges: 1.62x the icon
      is the concept's ratio, and 76cqh is the tallest ring that still leaves
-     the item name its block underneath. The `min()` is which of the two
+     the subject's name its block underneath. The `min()` is which of the two
      constraints binds — the ratio on a tall band, the band on a short one. */
-  --item-medallion: min(calc(1.5 * var(--item-hero-icon)), 68cqh);
-  --item-medallion-inner: min(calc(1.2 * var(--item-hero-icon)), 54cqh);
-  --item-echo: calc(4 * var(--item-hero-icon));
+  --subject-medallion: min(calc(1.5 * var(--subject-hero-icon)), 68cqh);
+  --subject-medallion-inner: min(calc(1.2 * var(--subject-hero-icon)), 54cqh);
+  --subject-echo: calc(4 * var(--subject-hero-icon));
 }
 @container (min-height: 190px) {
-  [data-item-media] {
-    --item-hero-icon: max(15.2cqmin, calc(7.6 * var(--sc-fit)));
+  [data-subject-media] {
+    --subject-hero-icon: max(15.2cqmin, calc(7.6 * var(--sc-fit)));
+  }
+}
+
+/* The focal zone for a subject card whose caption is a STACK rather than a
+   footer — the SSM slice's spell, with a haste chip, a divider and its source
+   rows. That stack is a column running most of a short band's height, so a
+   panel-centred icon has to overlap it however short the zone is.
+
+   Below the 190px step the icon is centred in the panel's right half instead,
+   beside the column. At and above it the band is tall enough to seat both, so
+   the zone reverts to the item card's own centred geometry and the two cards
+   are identical again. Same breakpoint the sizing tokens step on. */
+[data-subject-focal="beside"] {
+  left: 52%;
+  right: 0;
+  height: 62cqh;
+}
+@container (min-height: 190px) {
+  [data-subject-focal="beside"] {
+    left: 0;
+    right: 0;
+    height: 80cqh;
   }
 }
 @container (min-height: 240px) {
-  [data-item-media] {
-    --item-hero-icon: max(15.2cqmin, calc(9.5 * var(--sc-fit)));
+  [data-subject-media] {
+    --subject-hero-icon: max(15.2cqmin, calc(9.5 * var(--sc-fit)));
   }
 }
 
