@@ -3786,7 +3786,6 @@ export type Database = {
         Returns: {
           avatar_url: string
           created_at: string
-          custom_theme: string
           display_name: string
           id: string
           is_anonymous: boolean
@@ -3843,6 +3842,7 @@ export type Database = {
         Args: { _target_profile_id: string }
         Returns: Json
       }
+      global_premium_access: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3928,6 +3928,15 @@ export type Database = {
           updated_at: string
         }[]
       }
+      may_equip_profile_frame: {
+        Args: {
+          _frame: string
+          _grant_expires_at: string
+          _grant_kind: string
+          _stripe_pro: boolean
+        }
+        Returns: boolean
+      }
       my_pro_entitlement: {
         Args: never
         Returns: {
@@ -3950,6 +3959,10 @@ export type Database = {
       }
       pro_grant_is_valid: {
         Args: { _expires_at: string; _kind: string }
+        Returns: boolean
+      }
+      profile_frame_requires_premium: {
+        Args: { _frame: string }
         Returns: boolean
       }
       purchase_powerup: {
