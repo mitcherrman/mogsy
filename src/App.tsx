@@ -286,7 +286,7 @@ const MasteryAtomicRecallPrototypePage = lazy(() => import("./pages/dev/mastery/
 // only, proves the two-champion / non-combat comparative interaction end to end.
 const MasteryComparisonPrototypePage = lazy(() => import("./pages/dev/mastery/ComparisonPrototypePage"));
 // Phase 4D2 — dev-only launcher for the generated internal playtest sets.
-const MasteryGeneratedPlaytestLauncherPage = lazy(() => import("./pages/dev/mastery/GeneratedPlaytestLauncherPage"));
+const MasteryGeneratedLauncherPage = lazy(() => import("./pages/dev/mastery/GeneratedMasteryLauncherPage"));
 const MasteryReviewerPage = lazy(() => import("./pages/admin/mastery/MasteryReviewerPage"));
 
 // League of Legends Glossary — public reference module. Lazy so the
@@ -691,7 +691,7 @@ const App = () => (
                   <Route path="/dev/mastery/olaf-cooldown-mana-progression" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryOlafCooldownManaProgressionPage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/atomic-recall-prototype" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryAtomicRecallPrototypePage /></Suspense></ProtectedRoute>} />
                   <Route path="/dev/mastery/comparison-prototype" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryComparisonPrototypePage /></Suspense></ProtectedRoute>} />
-                  <Route path="/dev/mastery-generated" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryGeneratedPlaytestLauncherPage /></Suspense></ProtectedRoute>} />
+                  <Route path="/dev/mastery-generated" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><MasteryGeneratedLauncherPage /></Suspense></ProtectedRoute>} />
                 </Route>
                 <Route path="/secret-room" element={<Suspense fallback={<RouteLoader />}><SecretRoom /></Suspense>} />
                 <Route path="/admin/quiz-broadcast/view" element={<AdminRoute><Suspense fallback={<RouteLoader />}><QuizBroadcastView /></Suspense></AdminRoute>} />

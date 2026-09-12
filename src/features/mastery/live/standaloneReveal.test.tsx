@@ -15,7 +15,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MasteryPlayerLive } from "./MasteryPlayerLive";
 import { MASTERY_REVEAL_DURATION_MS } from "../interactions/revealState";
 import { CAPTURED_CHAMPION_RUN } from "../interactions/capturedPlaytestPayloads";
-import { startGeneratedPlaytestSession } from "./api";
+import { startGeneratedMasterySession } from "./api";
+
+
+/** The dev launcher's own call, with a subject standing in for the one a
+ * developer would type. The captured payloads below are wire-shape fixtures,
+ * so which champion is asked for never reaches an assertion. */
+const _startSession = (_ignoredSetId: string, signal?: AbortSignal) =>
+  startGeneratedMasterySession(
+    { championA: "Ahri", questionCount: 1 }, signal);
 
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({}),
@@ -63,7 +71,7 @@ function installBackend(startIndex = 0, startRevealed = false) {
 
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    if (url.includes("/dev/generated-playtest-session")) return json(envelope());
+    if (url.includes("/dev/generated-mastery-session")) return json(envelope());
     if (url.endsWith("/current")) return json(envelope());
     if (url.endsWith("/answer")) {
       counts.answers += 1;
@@ -87,7 +95,7 @@ function mount() {
   return render(
     <MasteryPlayerLive
       masterySetId={String(RUN.session.mastery_set_id)}
-      startSessionFn={startGeneratedPlaytestSession}
+      startSessionFn={_startSession}
     />,
   );
 }

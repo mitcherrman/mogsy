@@ -17,13 +17,21 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
 import { MasteryPlayerLive } from "../live/MasteryPlayerLive";
-import { startGeneratedPlaytestSession } from "../live/api";
+import { startGeneratedMasterySession } from "../live/api";
 import {
   CAPTURED_CHAMPION_RUN,
   CAPTURED_MATCHUP_RUN,
   type CapturedRun,
 } from "./capturedPlaytestPayloads";
 import { MASTERY_REVEAL_DURATION_MS } from "./revealState";
+
+
+/** The dev launcher's own call, with a subject standing in for the one a
+ * developer would type. The captured payloads below are wire-shape fixtures,
+ * so which champion is asked for never reaches an assertion. */
+const _startSession = (_ignoredSetId: string, signal?: AbortSignal) =>
+  startGeneratedMasterySession(
+    { championA: "Ahri", questionCount: 1 }, signal);
 
 vi.mock("@/lib/backend-auth", () => ({
   getBackendAuthHeaders: async () => ({}),
@@ -64,7 +72,7 @@ function installFakeBackend(run: CapturedRun) {
 
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url.includes("/dev/generated-playtest-session")) {
+    if (url.includes("/dev/generated-mastery-session")) {
       // Assert the launcher asks for a FRESH session, never a resumed one.
       expect(JSON.parse(String(init?.body))).toMatchObject({ resume: false });
       index = 0;
@@ -95,7 +103,7 @@ function mount(run: CapturedRun) {
   return render(
     <MasteryPlayerLive
       masterySetId={String(run.session.mastery_set_id)}
-      startSessionFn={startGeneratedPlaytestSession}
+      startSessionFn={_startSession}
     />,
   );
 }

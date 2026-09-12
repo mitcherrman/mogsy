@@ -79,8 +79,8 @@ export function MasteryPlayerLive({
 }: {
   masterySetId?: string;
   /** Override for how a session gets created. Defaults to the normal
-   * authenticated `startSession`; the dev-only generated-playtest launcher
-   * passes `startGeneratedPlaytestSession` instead. Everything downstream
+   * authenticated `startSession`; the dev-only generated-Mastery launcher
+   * passes a closure over the synthesizer instead. Everything downstream
    * (current/answer/advance, rendering) is unchanged either way. */
   startSessionFn?: (masterySetId: string, signal?: AbortSignal) => Promise<MasterySessionView>;
 }) {
