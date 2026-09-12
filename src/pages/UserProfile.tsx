@@ -89,10 +89,16 @@ const socialConfig: Record<string, { icon: React.ElementType; label: string }> =
  * exactly the approved contract and a caller cannot widen it.
  *
  * The legacy Mogsy profile was a dating profile: `age`, `location`, `socials`,
- * `status_message`, `custom_theme` and `profile_photos` all still exist in
- * storage and are still editable by their owner, but they never reach a League
- * surface — UI, query, metadata, JSON-LD or social preview. The former
+ * `status_message` and `profile_photos` all still exist in storage and are
+ * still editable by their owner, but they never reach a League surface — UI,
+ * query, metadata, JSON-LD or social preview. The former
  * LEAGUE_PROFILE_COLUMNS constant is gone with the view read it belonged to.
+ *
+ * `custom_theme` WAS in that list and no longer is (PT2E). It belonged there
+ * while the value was a sitewide theme, which was not profile content at all.
+ * It is now this profile's own theme — the direct analogue of `profile_frame`,
+ * which the contract has always published — so it is read here and rendered
+ * below, and nothing about it touches the document.
  */
 
 const frameClasses: Record<string, string> = {
