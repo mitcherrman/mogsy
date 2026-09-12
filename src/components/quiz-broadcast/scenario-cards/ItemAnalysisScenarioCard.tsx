@@ -328,7 +328,7 @@ function ItemShopBackdrop({ item }: { item: ItemAnalysisSubject }) {
         <motion.img
           src={item.icon}
           alt=""
-          className="absolute left-[-12%] top-[-47%] h-[var(--item-echo)] w-[var(--item-echo)] max-w-none rounded-[10%] object-cover opacity-[0.22] blur-[8px] saturate-[1.2]"
+          className="absolute left-[-12%] top-[-47%] h-[var(--item-echo)] w-[var(--item-echo)] max-w-none rounded-[10%] object-cover opacity-[0.22] blur-[3px] saturate-[1.2]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.22, scale: [1, 1.05, 1] }}
           transition={{
