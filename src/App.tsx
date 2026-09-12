@@ -289,6 +289,13 @@ const MasteryComparisonPrototypePage = lazy(() => import("./pages/dev/mastery/Co
 const MasteryGeneratedLauncherPage = lazy(() => import("./pages/dev/mastery/GeneratedMasteryLauncherPage"));
 const MasteryReviewerPage = lazy(() => import("./pages/admin/mastery/MasteryReviewerPage"));
 
+// GR1 Phase 5 — the Mastery Generator Lab. Runs the PRODUCTION Mastery
+// generators and renders what they produce through the same components the
+// Ranked arena uses. Deliberately its own route rather than a Quiz Review tab:
+// generated questions are virtual until a match serves them, and putting them
+// in a table of stored, approvable rows would teach a false model.
+const MasteryGeneratorLab = lazy(() => import("./pages/admin/ranked/MasteryGeneratorLab"));
+
 // League of Legends Glossary — public reference module. Lazy so the
 // definitions bundle only loads when the page is visited.
 const LolGlossary = lazy(() => import("./pages/lol/Glossary"));
@@ -491,6 +498,11 @@ const App = () => (
                     <Route path="quiz-video-export" element={<Suspense fallback={<RouteFallback />}><AdminVideoExport /></Suspense>} />
                     <Route path="combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesAdmin /></Suspense>} />
                     <Route path="mastery/:artifactDigest" element={<Suspense fallback={<RouteFallback />}><MasteryReviewerPage /></Suspense>} />
+                    {/* Generated Questions — the Mastery Generator Lab. Read-only:
+                        it generates on demand and stores nothing. Inherits the
+                        /admin layout gate, and its backend endpoints are behind
+                        the same require_admin every other admin read uses. */}
+                    <Route path="ranked/generator-lab" element={<Suspense fallback={<RouteFallback />}><MasteryGeneratorLab /></Suspense>} />
                   </Route>
                   <Route path="/moderator" element={<AdminRoute roles={["moderator", "admin", "master_admin"]}><Suspense fallback={<RouteFallback />}><Moderator /></Suspense></AdminRoute>} />
                   {/* Retired legacy team lobby. Previously leagueGate'd (which

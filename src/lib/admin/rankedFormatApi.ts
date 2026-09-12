@@ -253,6 +253,41 @@ export interface MasterySlicePreviewChallenge {
   answer_options: string[];
   correct_answer: string | number | boolean | null;
   explanation: string | null;
+  // The structural semantics the Mastery interaction renderers draw from, and
+  // the server-authored presentation metadata the media band reads. Present on
+  // the wire since long before the Generator Lab — the preview copies the
+  // public challenge verbatim — and typed here now because the Lab renders a
+  // sample through the REAL renderers rather than as text, and those need
+  // exactly these fields.
+  prompt_semantics?: Record<string, unknown> | null;
+  comparison_semantics?: Record<string, unknown> | null;
+  presentation?: Record<string, unknown> | null;
+}
+
+/**
+ * What a generated slice WAS, as the segment would have frozen it.
+ *
+ * The backend's served-artifact block (`mastery/serving/artifact.py`), through
+ * that module's own redaction. Read verbatim: nothing here is derived,
+ * relabelled or defaulted, because the whole value of a provenance panel is
+ * that it reports the backend's own answer.
+ *
+ * `null` is a legitimate value and means the generator stamped no block —
+ * "absent means unknown", the same compatibility rule every other reader of
+ * this block follows.
+ */
+export interface MasteryGeneratedArtifact {
+  artifact_schema_version: number | null;
+  generator_type: string | null;
+  generator_version: string | null;
+  generator_config: Record<string, unknown>;
+  subject_key: string | null;
+  artifact_instance_id: string | null;
+  mastery_set_id: string | null;
+  artifact_digest: string | null;
+  patch_display: string | null;
+  patch_key_digest: string | null;
+  is_prototype: boolean | null;
 }
 
 export interface MasterySlicePreview {
@@ -263,18 +298,79 @@ export interface MasterySlicePreview {
   prompt: string;
   challenge_count: number;
   module_config: Record<string, unknown>;
+  /** The seed the caller sent back, verbatim. `null` when none was sent. */
+  seed?: string | null;
+  /**
+   * The salt the generator was ACTUALLY run with, derived server-side from the
+   * seed. Echoed rather than recomputed here: a second derivation in this repo
+   * would agree today and drift the first time the backend's changed, and the
+   * screen would then be telling an operator how to reproduce something with
+   * the wrong number.
+   */
+  selection_salt?: string | null;
+  mastery_artifact?: MasteryGeneratedArtifact | null;
   challenges: MasterySlicePreviewChallenge[];
+}
+
+/** One family of the subject's candidate pool, and how deep it is. */
+export interface MasteryCoverageFamily {
+  family: string;
+  count: number;
+}
+
+/**
+ * How much a generator could produce for a subject — a COUNT, never content.
+ *
+ * The question asked BEFORE choosing a question count, which a preview cannot
+ * answer because it reports a ceiling only by hitting it. Fields beyond
+ * `total_candidates` / `families` are per-generator and optional: a matchup
+ * splits its universe, an applied chain states its certification, and a
+ * champion has neither.
+ */
+export interface MasteryGeneratorCoverage {
+  coverage_schema_version: number;
+  generator_type: string;
+  subject_ids: string[];
+  total_candidates: number;
+  families: MasteryCoverageFamily[];
+  comparison_families: MasteryCoverageFamily[];
+  note: string;
+  comparison_candidates?: number;
+  atomic_candidates?: number;
+  ability_key?: string;
+  certified?: boolean;
+  certified_attacker_abilities?: { champion_id: string; ability_key: string }[];
+  certified_target_ids?: string[];
+}
+
+export interface MasterySliceCoverageView {
+  schema_version: string;
+  subject_key: string;
+  subject_label: string;
+  min_challenge_count: number;
+  coverage: MasteryGeneratorCoverage;
 }
 
 export const previewMasterySlice = (
   moduleConfig: Record<string, unknown>, challengeCount: number,
+  seed?: string | null,
 ) =>
   request<MasterySlicePreview>("/api/ranked/admin/mastery-slice/preview", {
     method: "POST",
     body: JSON.stringify({
       module_config: moduleConfig,
       challenge_count: challengeCount,
+      // Omitted rather than sent as null when there is none, so a caller that
+      // never learned about seeds (the Builder's own preview panel) sends the
+      // byte-identical body it always sent and gets the byte-identical sample.
+      ...(seed ? { seed } : {}),
     }),
+  });
+
+export const fetchMasterySliceCoverage = (moduleConfig: Record<string, unknown>) =>
+  request<MasterySliceCoverageView>("/api/ranked/admin/mastery-slice/coverage", {
+    method: "POST",
+    body: JSON.stringify({ module_config: moduleConfig }),
   });
 
 export const saveFormatConfig = (target: ConfigTarget, format: RankedFormatJson) =>

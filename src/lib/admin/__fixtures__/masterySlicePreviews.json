@@ -1,0 +1,451 @@
+{
+  "applied_chain": {
+    "challenge_count": 3,
+    "challenges": [
+      {
+        "answer_options": [
+          "145",
+          "192",
+          "220",
+          "330"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 0,
+        "comparison_semantics": null,
+        "correct_answer": "220",
+        "explanation": "Raw Dragon Strike damage is 329.75. Olaf's level-11 Armor is 71.855; the Bastionbreaker's 22 lethality reduces it to 49.855 effective Armor (percent penetration applied before flat). Mitigating 329.75 raw damage through 49.855 effective Armor deals 220.046 final damage (displayed as 220).",
+        "interaction_kind": "legacy_combat",
+        "prompt": "Jarvan IV is level 11 with Dragon Strike rank 5 and a Bastionbreaker (55 AD, 22 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+        "prompt_semantics": null,
+        "question_family": "post_mitigation_single_type_damage"
+      },
+      {
+        "answer_options": [
+          "145",
+          "162",
+          "176",
+          "279"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 1,
+        "comparison_semantics": null,
+        "correct_answer": "176",
+        "explanation": "Raw Dragon Strike damage is 279. Olaf's level-11 Armor is 71.855; the Last Whisper's 18% armor penetration reduces it to 58.9211 effective Armor (percent penetration applied before flat). Mitigating 279 raw damage through 58.9211 effective Armor deals 175.559 final damage (displayed as 176).",
+        "interaction_kind": "legacy_combat",
+        "prompt": "Jarvan IV is level 11 with Dragon Strike rank 5 and a Last Whisper (20 AD, 18% armor penetration). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+        "prompt_semantics": null,
+        "question_family": "post_mitigation_single_type_damage"
+      },
+      {
+        "answer_options": [
+          "145",
+          "188",
+          "206",
+          "323"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 2,
+        "comparison_semantics": null,
+        "correct_answer": "206",
+        "explanation": "Raw Dragon Strike damage is 322.5. Olaf's level-11 Armor is 71.855; the Edge of Night's 15 lethality reduces it to 56.855 effective Armor (percent penetration applied before flat). Mitigating 322.5 raw damage through 56.855 effective Armor deals 205.604 final damage (displayed as 206).",
+        "interaction_kind": "legacy_combat",
+        "prompt": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Edge of Night (50 AD, 15 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+        "prompt_semantics": null,
+        "question_family": "post_mitigation_single_type_damage"
+      }
+    ],
+    "is_sample": true,
+    "mastery_artifact": {
+      "artifact_digest": "martifact_9f725270eb23a76dd99ff37d13791d05d8d2ec33312c3ec0ce6bdbda1291653a",
+      "artifact_instance_id": "mslice_67fdf4ff25609e797056182b925e3014",
+      "artifact_schema_version": 1,
+      "generator_config": {
+        "ability_key": "Q",
+        "attacker_champion_id": "jarvan",
+        "mastery_mode": "applied_chain",
+        "target_champion_id": "olaf"
+      },
+      "generator_type": "applied_chain",
+      "generator_version": "applied_chain.v1",
+      "is_prototype": true,
+      "mastery_set_id": "mset_65c38b83674e61612440c8467e5672cab313245d704bd9b7ed49d6276938c2b2",
+      "patch_display": "League 26.16",
+      "patch_key_digest": "patchkey_0784955b687f1dd1cff931f7f7cb819ec6ecd71e4902347cfdfbf5fc7440b471",
+      "subject_key": "applied_chain:jarvan:Q:olaf"
+    },
+    "mastery_set_id": "mset_65c38b83674e61612440c8467e5672cab313245d704bd9b7ed49d6276938c2b2",
+    "module_config": {
+      "ability_key": "Q",
+      "attacker_champion_id": "jarvan",
+      "mastery_mode": "applied_chain",
+      "target_champion_id": "olaf"
+    },
+    "note": "Generated now from canonical data. A real match freezes its own copy at segment start; these samples are not stored and are not the questions any played match will hold.",
+    "prompt": "Mastery Slice: Jarvan IV Dragon Strike vs Olaf \u2014 physical penetration",
+    "schema_version": "ranked.mastery_slice_preview.v2",
+    "seed": "lab-fixture",
+    "selection_salt": "lab-fixture:1"
+  },
+  "champion": {
+    "challenge_count": 3,
+    "challenges": [
+      {
+        "answer_options": [
+          "7",
+          "8",
+          "10",
+          "6"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 0,
+        "comparison_semantics": null,
+        "correct_answer": "6",
+        "explanation": "Zed Q: 6 seconds.",
+        "interaction_kind": "atomic_recall",
+        "presentation": {
+          "assets": {
+            "subject": {
+              "ability_icon": "assets/champions/Zed/Q_ZedQ.png",
+              "ability_name": "Razor Shuriken",
+              "ability_slot": "Q",
+              "badge": "Champion Mastery",
+              "champion": "Zed",
+              "champion_icon": "assets/champions/Zed/icon.png",
+              "champion_loading": "assets/champions/Zed/loading/0_default.jpg",
+              "champion_splash": "assets/champions/Zed/splash/0_default.jpg",
+              "type": "combat_cooldown"
+            }
+          },
+          "presentation": {
+            "role": "context",
+            "spoiler": false,
+            "timing": "question"
+          }
+        },
+        "prompt": "Zed Q \u2014 ability_cooldown",
+        "prompt_semantics": {
+          "ability_name": "Q",
+          "champion_display": "Zed",
+          "context": {
+            "ability_rank": null,
+            "champion_level": null,
+            "form": null
+          },
+          "metric": "ability_cooldown",
+          "subject_ref": "Q",
+          "template": "ability_cooldown_flat"
+        },
+        "question_family": "ability_cooldown"
+      },
+      {
+        "answer_options": [
+          "35",
+          "50",
+          "30",
+          "40"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 1,
+        "comparison_semantics": null,
+        "correct_answer": "35",
+        "explanation": "Zed W: 35 energy.",
+        "interaction_kind": "atomic_recall",
+        "presentation": {
+          "assets": {
+            "subject": {
+              "ability_icon": "assets/champions/Zed/W_ZedW.png",
+              "ability_name": "Living Shadow",
+              "ability_rank": 2,
+              "ability_slot": "W",
+              "badge": "Champion Mastery",
+              "champion": "Zed",
+              "champion_icon": "assets/champions/Zed/icon.png",
+              "champion_loading": "assets/champions/Zed/loading/0_default.jpg",
+              "champion_splash": "assets/champions/Zed/splash/0_default.jpg",
+              "type": "combat_cooldown"
+            }
+          },
+          "presentation": {
+            "role": "context",
+            "spoiler": false,
+            "timing": "question"
+          }
+        },
+        "prompt": "Zed W \u2014 ability_cost",
+        "prompt_semantics": {
+          "ability_name": "W",
+          "champion_display": "Zed",
+          "context": {
+            "ability_rank": 2,
+            "champion_level": null,
+            "form": null
+          },
+          "metric": "ability_cost",
+          "subject_ref": "W",
+          "template": "ability_cost_at_rank"
+        },
+        "question_family": "ability_cost"
+      },
+      {
+        "answer_options": [
+          "61",
+          "96",
+          "91",
+          "76"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 2,
+        "comparison_semantics": null,
+        "correct_answer": "76",
+        "explanation": "Zed: 76.43 attack_damage, which rounds to 76 for this question.",
+        "interaction_kind": "atomic_recall",
+        "presentation": {
+          "assets": {
+            "subject": {
+              "badge": "Base AD",
+              "champion": "Zed",
+              "champion_icon": "assets/champions/Zed/icon.png",
+              "champion_loading": "assets/champions/Zed/loading/0_default.jpg",
+              "champion_splash": "assets/champions/Zed/splash/0_default.jpg",
+              "level": 6,
+              "type": "combat_cooldown"
+            }
+          },
+          "presentation": {
+            "role": "context",
+            "spoiler": false,
+            "timing": "question"
+          }
+        },
+        "prompt": "Zed \u2014 base_attack_damage",
+        "prompt_semantics": {
+          "ability_name": "",
+          "champion_display": "Zed",
+          "context": {
+            "ability_rank": null,
+            "champion_level": 6,
+            "form": null
+          },
+          "metric": "base_attack_damage",
+          "subject_ref": "",
+          "template": "champion_stat_at_level"
+        },
+        "question_family": "champion_level_stat"
+      }
+    ],
+    "is_sample": true,
+    "mastery_artifact": {
+      "artifact_digest": "martifact_314f535c468ee702fa41761bcd797786417a89e1f8ce45cd52ddd71c186fd4e3",
+      "artifact_instance_id": "mslice_83c30dabe77da6c1aed34f84c334e518",
+      "artifact_schema_version": 1,
+      "generator_config": {
+        "champion_id": "zed",
+        "mastery_mode": "champion"
+      },
+      "generator_type": "champion",
+      "generator_version": "champion.v1",
+      "is_prototype": true,
+      "mastery_set_id": "mset_8887125232e58f031bba5fc60029d48dc471ea5e128d4da2582e1ea7e0bc4e41",
+      "patch_display": "League 26.16",
+      "patch_key_digest": "patchkey_5625d14af6314d43689957a0e809a5899bcc230b5f8f21054101581ab07ad75f",
+      "subject_key": "champion:zed"
+    },
+    "mastery_set_id": "mset_8887125232e58f031bba5fc60029d48dc471ea5e128d4da2582e1ea7e0bc4e41",
+    "module_config": {
+      "champion_id": "zed",
+      "mastery_mode": "champion"
+    },
+    "note": "Generated now from canonical data. A real match freezes its own copy at segment start; these samples are not stored and are not the questions any played match will hold.",
+    "prompt": "Mastery Slice: Zed \u2014 Champion Mastery",
+    "schema_version": "ranked.mastery_slice_preview.v2",
+    "seed": "lab-fixture",
+    "selection_salt": "lab-fixture:1"
+  },
+  "matchup": {
+    "challenge_count": 3,
+    "challenges": [
+      {
+        "answer_options": [
+          "ahri",
+          "syndra",
+          "tie"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 0,
+        "comparison_semantics": {
+          "champion_a_display": "Ahri",
+          "champion_b_display": "Syndra",
+          "context": {
+            "ability_rank": 1,
+            "champion_level": null,
+            "form": null
+          },
+          "dimension": "duration",
+          "metric": "ability_cooldown",
+          "subject_ref": "R",
+          "template": "compare_ability_cooldown",
+          "unit": "seconds"
+        },
+        "correct_answer": "syndra",
+        "explanation": "Ahri R: 140 seconds. Syndra R: 120 seconds. Syndra wins by 20 seconds.",
+        "interaction_kind": "comparison_left_right",
+        "presentation": {
+          "assets": {
+            "subject": {
+              "ability_name": "Ability R",
+              "ability_rank": 1,
+              "ability_slot": "R",
+              "badge": "Matchup",
+              "champion_a": "Ahri",
+              "champion_a_icon": "assets/champions/Ahri/icon.png",
+              "champion_a_splash": "assets/champions/Ahri/splash/0_default.jpg",
+              "champion_b": "Syndra",
+              "champion_b_icon": "assets/champions/Syndra/icon.png",
+              "champion_b_splash": "assets/champions/Syndra/splash/0_default.jpg",
+              "metric_label": "Cooldown",
+              "type": "matchup"
+            }
+          },
+          "presentation": {
+            "role": "context",
+            "spoiler": false,
+            "timing": "question"
+          }
+        },
+        "prompt": "Ahri R vs Syndra R \u2014 ability_cooldown",
+        "prompt_semantics": null,
+        "question_family": "ability_cooldown"
+      },
+      {
+        "answer_options": [
+          "ahri",
+          "syndra",
+          "tie"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 1,
+        "comparison_semantics": {
+          "champion_a_display": "Ahri",
+          "champion_b_display": "Syndra",
+          "context": {
+            "ability_rank": 1,
+            "champion_level": null,
+            "form": null
+          },
+          "dimension": "duration",
+          "metric": "ability_cooldown",
+          "subject_ref": "W",
+          "template": "compare_ability_cooldown",
+          "unit": "seconds"
+        },
+        "correct_answer": "ahri",
+        "explanation": "Ahri W: 9 seconds. Syndra W: 12 seconds. Ahri wins by 3 seconds.",
+        "interaction_kind": "comparison_left_right",
+        "presentation": {
+          "assets": {
+            "subject": {
+              "ability_name": "Ability W",
+              "ability_rank": 1,
+              "ability_slot": "W",
+              "badge": "Matchup",
+              "champion_a": "Ahri",
+              "champion_a_icon": "assets/champions/Ahri/icon.png",
+              "champion_a_splash": "assets/champions/Ahri/splash/0_default.jpg",
+              "champion_b": "Syndra",
+              "champion_b_icon": "assets/champions/Syndra/icon.png",
+              "champion_b_splash": "assets/champions/Syndra/splash/0_default.jpg",
+              "metric_label": "Cooldown",
+              "type": "matchup"
+            }
+          },
+          "presentation": {
+            "role": "context",
+            "spoiler": false,
+            "timing": "question"
+          }
+        },
+        "prompt": "Ahri W vs Syndra W \u2014 ability_cooldown",
+        "prompt_semantics": null,
+        "question_family": "ability_cooldown"
+      },
+      {
+        "answer_options": [
+          "ahri",
+          "syndra",
+          "tie"
+        ],
+        "answer_type": "single_choice",
+        "challenge_index": 2,
+        "comparison_semantics": {
+          "champion_a_display": "Ahri",
+          "champion_b_display": "Syndra",
+          "context": {
+            "ability_rank": null,
+            "champion_level": null,
+            "form": null
+          },
+          "dimension": "health",
+          "metric": "base_health",
+          "subject_ref": "",
+          "template": "compare_champion_base_stat",
+          "unit": "hitpoints"
+        },
+        "correct_answer": "ahri",
+        "explanation": "Ahri: 590 hitpoints. Syndra: 583 hitpoints. Ahri wins by 7 hitpoints.",
+        "interaction_kind": "comparison_left_right",
+        "presentation": {
+          "assets": {
+            "subject": {
+              "badge": "Matchup",
+              "champion_a": "Ahri",
+              "champion_a_icon": "assets/champions/Ahri/icon.png",
+              "champion_a_splash": "assets/champions/Ahri/splash/0_default.jpg",
+              "champion_b": "Syndra",
+              "champion_b_icon": "assets/champions/Syndra/icon.png",
+              "champion_b_splash": "assets/champions/Syndra/splash/0_default.jpg",
+              "metric_label": "Base Health",
+              "type": "matchup"
+            }
+          },
+          "presentation": {
+            "role": "context",
+            "spoiler": false,
+            "timing": "question"
+          }
+        },
+        "prompt": "Ahri vs Syndra \u2014 base_health",
+        "prompt_semantics": null,
+        "question_family": "champion_base_stat"
+      }
+    ],
+    "is_sample": true,
+    "mastery_artifact": {
+      "artifact_digest": "martifact_573b97690a73ff1a5c3c1ce4ee704df9b059dee1a525dbae0e26209c2fac77e7",
+      "artifact_instance_id": "mslice_46ade05ef0142de46f171380c547986b",
+      "artifact_schema_version": 1,
+      "generator_config": {
+        "champion_a_id": "ahri",
+        "champion_b_id": "syndra",
+        "mastery_mode": "matchup"
+      },
+      "generator_type": "matchup",
+      "generator_version": "matchup.v1",
+      "is_prototype": true,
+      "mastery_set_id": "mset_6620c0b455a1ba44766e0720c8685a5a255a8ebe9fe9c1c607ea4442c189a2e8",
+      "patch_display": "League 26.16",
+      "patch_key_digest": "patchkey_5625d14af6314d43689957a0e809a5899bcc230b5f8f21054101581ab07ad75f",
+      "subject_key": "matchup:ahri:syndra"
+    },
+    "mastery_set_id": "mset_6620c0b455a1ba44766e0720c8685a5a255a8ebe9fe9c1c607ea4442c189a2e8",
+    "module_config": {
+      "champion_a_id": "ahri",
+      "champion_b_id": "syndra",
+      "mastery_mode": "matchup"
+    },
+    "note": "Generated now from canonical data. A real match freezes its own copy at segment start; these samples are not stored and are not the questions any played match will hold.",
+    "prompt": "Mastery Slice: Ahri vs Syndra \u2014 Matchup Mastery",
+    "schema_version": "ranked.mastery_slice_preview.v2",
+    "seed": "lab-fixture",
+    "selection_salt": "lab-fixture:1"
+  }
+}

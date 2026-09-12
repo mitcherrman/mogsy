@@ -688,6 +688,28 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "Path kept rather than renamed: it is linked from /quiz/diagnostics and bookmarked. Its onboarding-gate config is additionally cross-linked from Operations › Configuration, which is the only place all three onboarding stores are visible together.",
   },
   {
+    id: "mastery-generator-lab",
+    title: "Mastery Generator Lab",
+    description:
+      "Run the production Mastery generators — Champion, Matchup and applied combat chain — and inspect what they produce, rendered exactly as a player would see it.",
+    area: "ranked",
+    section: "question-bank",
+    kind: "route",
+    path: "/admin/ranked/generator-lab",
+    oldLocation: "none — generated Mastery content had no admin surface at all",
+    // KEEP, not MOVE: nothing moved here. Generated Mastery content had no
+    // admin surface of any kind before this, so this is a capability gained
+    // rather than a capability relocated, and the ledger should not imply a
+    // predecessor that never existed.
+    disposition: "KEEP",
+    dangerLevel: "none",
+    status: "Production",
+    authorization:
+      "Inherits the /admin layout gate; backend require_admin on /api/ranked/admin/mastery-slice/*.",
+    notes:
+      "GENERATED questions, not stored ones. A mastery_slice question is synthesized when a match opens the segment and frozen onto that one round — it is never a row. This is deliberately NOT a Quiz Review tab: Quiz Review is a table of stored, approvable questions, and generated samples do not belong in it. Read-only — previewing creates no attempt, no history, no match, no round and no stored question, which the backend enforces with a sqlite authorizer rather than by convention. It calls the SAME generator a live match calls and draws the result with the SAME component the Ranked arena draws a challenge with.",
+  },
+  {
     id: "mastery-reviewer",
     title: "Mastery Artifact Reviewer",
     description: "Read-only inspection of a mastery artifact by digest.",

@@ -122,6 +122,26 @@ export function addSegment(
  * other field of the segment, and every sibling key inside module_config,
  * survives unchanged.
  */
+/**
+ * Write the value a catalog's dotted key names, into ONE segment.
+ *
+ * The inverse of `readSegmentField`, and the whole of what a dotted catalog
+ * key means. Split out of `setSegmentField` below so a surface editing a
+ * standalone segment rather than a saved format — the Mastery Generator Lab —
+ * writes it exactly the same way rather than reimplementing the `module_config.`
+ * prefix rule and eventually disagreeing about it.
+ */
+export function setSegmentSpecField(
+  segment: SegmentSpecJson, key: string, value: unknown,
+): SegmentSpecJson {
+  if (key.startsWith("module_config.")) {
+    const name = key.slice("module_config.".length);
+    const existing = (segment.module_config ?? {}) as Record<string, unknown>;
+    return { ...segment, module_config: { ...existing, [name]: value } };
+  }
+  return { ...segment, [key]: value };
+}
+
 export function setSegmentField(
   format: RankedFormatJson,
   index: number,
@@ -131,17 +151,8 @@ export function setSegmentField(
   const segment = format.segment_pattern[index];
   if (!segment) return format;
 
-  let updated: SegmentSpecJson;
-  if (key.startsWith("module_config.")) {
-    const name = key.slice("module_config.".length);
-    const existing = (segment.module_config ?? {}) as Record<string, unknown>;
-    updated = { ...segment, module_config: { ...existing, [name]: value } };
-  } else {
-    updated = { ...segment, [key]: value };
-  }
-
   const next = [...format.segment_pattern];
-  next[index] = updated;
+  next[index] = setSegmentSpecField(segment, key, value);
   return { ...format, segment_pattern: next };
 }
 
@@ -205,13 +216,9 @@ export function fieldApplies(field: CatalogField, segment: SegmentSpecJson): boo
  * invariant that it never drops config it does not understand (a field a
  * newer backend added, say).
  */
-export function normalizeSegmentConfig(
-  format: RankedFormatJson,
-  index: number,
-  fields: CatalogField[],
-): RankedFormatJson {
-  const segment = format.segment_pattern[index];
-  if (!segment) return format;
+export function normalizeSegmentSpecConfig(
+  segment: SegmentSpecJson, fields: CatalogField[],
+): SegmentSpecJson {
   const config = (segment.module_config ?? {}) as Record<string, unknown>;
 
   const prefix = "module_config.";
@@ -229,10 +236,21 @@ export function normalizeSegmentConfig(
     if (declared.has(name) && !visible.has(name)) continue;
     kept[name] = value;
   }
-  if (Object.keys(kept).length === Object.keys(config).length) return format;
+  if (Object.keys(kept).length === Object.keys(config).length) return segment;
+  return { ...segment, module_config: kept };
+}
 
+export function normalizeSegmentConfig(
+  format: RankedFormatJson,
+  index: number,
+  fields: CatalogField[],
+): RankedFormatJson {
+  const segment = format.segment_pattern[index];
+  if (!segment) return format;
+  const normalized = normalizeSegmentSpecConfig(segment, fields);
+  if (normalized === segment) return format;
   const next = [...format.segment_pattern];
-  next[index] = { ...segment, module_config: kept };
+  next[index] = normalized;
   return { ...format, segment_pattern: next };
 }
 
@@ -250,25 +268,48 @@ export function normalizeSegmentConfig(
  * is a deliberate edit meaning "inherit the match config", and re-seeding it
  * would silently undo what the admin just did.
  */
+export function fillVisibleSpecDefaults(
+  segment: SegmentSpecJson, fields: CatalogField[],
+  defaults: SegmentSpecJson | undefined,
+): SegmentSpecJson {
+  let next = segment;
+  for (const field of fields) {
+    if (!fieldApplies(field, next)) continue;
+    const current = readSegmentField(next, field.key);
+    if (current !== undefined && current !== "") continue;
+    const fallback = defaults ? readSegmentField(defaults, field.key) : undefined;
+    // A DEPENDENT field's options live in `options_by`, keyed on the parent's
+    // current value — the applied chain's ability list is a property of the
+    // attacker chosen above it. Resolved through the same helper the renderer
+    // uses, so a dependent field seeds like any other instead of being left
+    // on "Choose…" and producing a save the backend refuses for a missing
+    // required field.
+    const options = field.depends_on
+      ? (typeof readSegmentField(next, field.depends_on) === "string"
+        ? field.options_by?.[readSegmentField(next, field.depends_on) as string]
+        : undefined)
+      : field.options;
+    const seeded =
+      fallback !== undefined && fallback !== null ? fallback : options?.[0]?.value;
+    if (seeded === undefined) continue;
+    next = setSegmentSpecField(next, field.key, seeded);
+  }
+  return next;
+}
+
 export function fillVisibleDefaults(
   format: RankedFormatJson,
   index: number,
   fields: CatalogField[],
   defaults: SegmentSpecJson | undefined,
 ): RankedFormatJson {
-  let next = format;
-  for (const field of fields) {
-    const segment = next.segment_pattern[index];
-    if (!segment || !fieldApplies(field, segment)) continue;
-    const current = readSegmentField(segment, field.key);
-    if (current !== undefined && current !== "") continue;
-    const fallback = defaults ? readSegmentField(defaults, field.key) : undefined;
-    const seeded =
-      fallback !== undefined && fallback !== null ? fallback : field.options?.[0]?.value;
-    if (seeded === undefined) continue;
-    next = setSegmentField(next, index, field.key, seeded);
-  }
-  return next;
+  const segment = format.segment_pattern[index];
+  if (!segment) return format;
+  const filled = fillVisibleSpecDefaults(segment, fields, defaults);
+  if (filled === segment) return format;
+  const next = [...format.segment_pattern];
+  next[index] = filled;
+  return { ...format, segment_pattern: next };
 }
 
 /** Whether two formats differ — the dirty check, by value not identity. */

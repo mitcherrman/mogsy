@@ -1086,7 +1086,18 @@ function readMetaReflexCard(v: unknown, label: string): MetaReflexCard {
  * shape by a lucky field name, and a v4 payload cannot be silently rendered by
  * the item renderer that would then submit an `item_id` the server refuses.
  */
-function readMasterySliceChallenge(v: unknown, label: string): MasterySliceChallengeView {
+/**
+ * One `mastery_slice` challenge, off the wire.
+ *
+ * EXPORTED because the Admin Generator Lab reads a generated challenge out of
+ * the admin preview endpoint, and that challenge is the same public payload
+ * this parses for the arena — `ranked_modules/mastery_slice.py` builds it
+ * once, for both. Parsing it a second way in the Lab would be a second wire
+ * contract, and the Lab's whole claim is that it shows what a player is
+ * served. Its refusals travel with it: a malformed challenge throws here
+ * rather than rendering as a half-question on either surface.
+ */
+export function readMasterySliceChallenge(v: unknown, label: string): MasterySliceChallengeView {
   const c = rec(v, label);
   const answerType = c.answer_type;
   if (answerType !== "single_choice" && answerType !== "numeric" && answerType !== "boolean") {

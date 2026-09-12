@@ -1,0 +1,121 @@
+{
+  "applied_chain": {
+    "coverage": {
+      "ability_key": "Q",
+      "certified": true,
+      "certified_attacker_abilities": [
+        {
+          "ability_key": "Q",
+          "champion_id": "jarvan"
+        },
+        {
+          "ability_key": "R",
+          "champion_id": "jarvan"
+        },
+        {
+          "ability_key": "Q",
+          "champion_id": "olaf"
+        }
+      ],
+      "certified_target_ids": [
+        "ahri",
+        "jarvan",
+        "lux",
+        "maokai",
+        "olaf",
+        "syndra"
+      ],
+      "comparison_families": [],
+      "coverage_schema_version": 1,
+      "families": [
+        {
+          "count": 14,
+          "family": "applied_calculation"
+        }
+      ],
+      "generator_type": "applied_chain",
+      "note": "One question per DISTINCT item mechanic. The 17 canonical penetration items express fewer derivations than that \u2014 items reaching the same answer by the same arithmetic are collapsed \u2014 so this ceiling is a property of the item data, not of the attacker or the target.",
+      "subject_ids": [
+        "jarvan",
+        "olaf"
+      ],
+      "total_candidates": 14
+    },
+    "min_challenge_count": 2,
+    "schema_version": "ranked.mastery_slice_coverage.v1",
+    "subject_key": "applied_chain:jarvan:Q:olaf",
+    "subject_label": "Applied chain (jarvan Q vs olaf)"
+  },
+  "champion": {
+    "coverage": {
+      "comparison_families": [],
+      "coverage_schema_version": 1,
+      "families": [
+        {
+          "count": 18,
+          "family": "champion_level_stat"
+        },
+        {
+          "count": 14,
+          "family": "ability_cooldown"
+        },
+        {
+          "count": 10,
+          "family": "ability_cost"
+        }
+      ],
+      "generator_type": "champion",
+      "note": "Atomic-recall candidates surviving the publication gate and de-duplicated by player-visible question. Comparisons are not available to Champion Mastery.",
+      "subject_ids": [
+        "zed"
+      ],
+      "total_candidates": 42
+    },
+    "min_challenge_count": 2,
+    "schema_version": "ranked.mastery_slice_coverage.v1",
+    "subject_key": "champion:zed",
+    "subject_label": "Champion Mastery (zed)"
+  },
+  "matchup": {
+    "coverage": {
+      "atomic_candidates": 75,
+      "comparison_candidates": 12,
+      "comparison_families": [
+        {
+          "count": 9,
+          "family": "champion_base_stat"
+        },
+        {
+          "count": 3,
+          "family": "ability_cooldown"
+        }
+      ],
+      "coverage_schema_version": 1,
+      "families": [
+        {
+          "count": 41,
+          "family": "champion_level_stat"
+        },
+        {
+          "count": 19,
+          "family": "ability_cooldown"
+        },
+        {
+          "count": 15,
+          "family": "ability_cost"
+        }
+      ],
+      "generator_type": "matchup",
+      "note": "The matchup universe is the comparisons this pair supports PLUS both champions' own atomic banks. Comparisons lead the composed sequence as well as its budget.",
+      "subject_ids": [
+        "ahri",
+        "syndra"
+      ],
+      "total_candidates": 87
+    },
+    "min_challenge_count": 2,
+    "schema_version": "ranked.mastery_slice_coverage.v1",
+    "subject_key": "matchup:ahri:syndra",
+    "subject_label": "Matchup Mastery (ahri vs syndra)"
+  }
+}

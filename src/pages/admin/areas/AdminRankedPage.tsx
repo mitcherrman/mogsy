@@ -259,6 +259,23 @@ export default function AdminRankedPage() {
                   note="filter by source · family · type · export"
                 />
               </AdminPanel>
+              {/* The distinction is stated as a separate panel rather than as a
+                  note on the one above, because it is the distinction that is
+                  easy to get wrong: Quiz Review is a table of STORED questions
+                  with ids you can approve and publish, and a Mastery Slice
+                  question is not one. It is generated when a match opens the
+                  segment and frozen onto that round — so it can be inspected,
+                  but there is nothing to list, approve or edit. */}
+              <AdminPanel
+                title="Generated questions"
+                description="Mastery Slice questions are not rows. They are generated from canonical data when a match reaches the segment and frozen onto that one round, so they never appear in Quiz Review and nothing in Quiz Review is generated. Inspect the production generators — and reproduce any slice from its seed — in the Generator Lab."
+              >
+                <AdminCrossLink
+                  to="/admin/ranked/generator-lab"
+                  label="Open Mastery Generator Lab"
+                  note="champion · matchup · applied chain — generates live, saves nothing"
+                />
+              </AdminPanel>
               <AdminToolGrid tools={toolsForSection("ranked", "question-bank")} />
             </>
           )}
