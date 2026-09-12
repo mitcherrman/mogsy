@@ -1415,3 +1415,98 @@ explicitly authorized SESSION does.
 * Next task: **RB4B — owner content review and pruning.** The table above is
   the RB4A baseline it prunes from; every entry is named by a unique tag so
   "remove that one" is unambiguous.
+
+---
+
+# MC1 — the static-content retirement, and what it changed about RB4A
+
+> Read this before RB4B. The Mastery third of the RB4A sequence above is
+> **superseded**: the three named sets it audited no longer exist.
+
+## The architecture rule, now enforced
+
+> If a question, challenge, Mastery set, matchup, combat/applied chain or other
+> content artifact can be derived from canonical structured data through a
+> current production generator, it must be generated at runtime and must NOT
+> also remain as a separate static production content source.
+
+Full audit, deletion matrix and persisted-data treatment:
+`League_Combat_Simulator/docs/workstreams/MC1_STATIC_CONTENT_RETIREMENT.md`.
+
+## What was removed, and why it was reachable
+
+`mastery.publication_gate.ranked_catalog.COMPATIBLE_MASTERY_SETS` — the closed
+catalog RB4A read as the Mastery census — named three artifacts:
+
+| Retired set | What it actually was | Generator that already produced that shape |
+| --- | --- | --- |
+| `playtest.champion.ahri` | a hand-written manifest over one champion's facts | `mastery.synthesis.synthesize_champion_mastery` |
+| `playtest.matchup.ahri.syndra` | the same, for one pair | `mastery.synthesis.synthesize_matchup_mastery` |
+| `chain.jarvan.physical_penetration` | the certified penetration calculation at fixed champions, ability, levels and two named items | `mastery.synthesis.applied_chain` (new seam, built from the already-deployed chain/capsule/renderer) |
+
+Each was a hardcoded parameterization of a generator production already
+exposes. The catalog, the two static recipe modules and the static chain module
+are **deleted**, along with the two dev Mastery routes and the
+`MASTERY_GENERATED_PLAYTEST` flag that registered the recipes.
+
+`mastery_slice.v1` itself is **unchanged and kept**: it is the runtime carrier,
+and the distinction now reads `generated content → mastery_slice → canonical
+Ranked renderer`, never `static named set → mastery_slice`.
+
+## RB4A's corrected sequence
+
+The quiz-family (1–34) and Meta Reflex (35–38) sections are **unchanged**. The
+Mastery section is now one sample per materially distinct GENERATED shape:
+
+| Tag | Generator | Qs | Subject |
+| --- | --- | --- | --- |
+| `rb4a_mastery_champion` | Champion Mastery synthesis | 2 | derived from the Mastery identity registry |
+| `rb4a_mastery_matchup` | Matchup Mastery composition | 2 | derived, the first two identities |
+| `rb4a_mastery_applied_chain` | certified applied combat chain | 2 | derived from the certified penetration abilities |
+
+No champion is named in the sequence: `rb4a_mastery_subjects()` asks the live
+registries what they can currently generate. Against the production database
+those resolve to `champion:aatrox`, `matchup:aatrox:ahri` and
+`applied_chain:jarvan:Q:ahri`, all servable.
+
+**One pass is now 41 segments / 59 answers** (was 43 / 63). Worst case is 107
+HP against a 150 HP floor, and the "the owner reaches the end" test still pins
+that inequality. Coverage is derived from `SELECTABLE_MODES`, so adding a
+fourth Mastery generator fails RB4A until someone places it in the sequence —
+the same guard the set census had, pointed at the authority that exists.
+
+Start the session exactly as before:
+
+```
+POST /api/ranked/queue   {"match_with_bot": true, "preset": "playtest"}
+```
+
+## What an admin sees in Quiz Admin
+
+The Mastery Slice slot's third source is now **Applied combat chain**
+(Attacker → Ability → Target) instead of **Runtime Mastery Set**. The set
+dropdown and the per-set “Scenario variants” control are gone with the catalog
+they read. The preview button now appears on **every** Mastery slot, not only
+on a slot with a static set chosen.
+
+A format saved before this change keeps working: a stored `mastery_set_id` is
+decoded on read to the generator it was a parameterization of
+(`ranked_formats.retired_mastery_sets`), so the lane runs and the builder shows
+what it will actually run. Saving that id again is refused.
+
+## Frontend changes (this repo)
+
+* `src/lib/admin/rankedFormatApi.ts` — `mastery_sets` and its capability types removed
+* `src/pages/admin/ranked/GenerationPolicyPanel.tsx` — describes a generated SLOT, not a selected set
+* `src/pages/admin/ranked/ModuleConfigFields.tsx` — a dependent `enum` now resolves its options (the applied chain's ability list depends on the attacker; only `multi_enum` was dependent before)
+* `src/pages/admin/ranked/SegmentRow.tsx`, `RankedFormatBuilder.tsx`, `rankedFormatEditing.ts` — the per-set clamp removed
+* `src/lib/admin/__fixtures__/masterySliceCatalogEntry.json` — recaptured from the live backend catalog
+* tests updated to the new contract
+
+**Lovable Publish IS required** for the Quiz Admin change to reach mogzy.lol.
+
+## RB4B
+
+The baseline to prune from is the table above plus RB4A's unchanged quiz/Meta
+Reflex sections. The Mastery entries are now prunable as SHAPES ("drop the
+applied chain"), not as named artifacts.

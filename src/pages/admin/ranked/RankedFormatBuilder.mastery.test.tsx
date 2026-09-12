@@ -4,27 +4,29 @@
 // The Mastery slot names a generation SOURCE, then whatever that source needs,
 // and the backend generates the questions when the segment is reached:
 //
-//   module_config.mastery_mode      enum, required —
-//                                   "champion" | "matchup" | "mastery_set"
-//   module_config.champion_id       enum, visible_when mastery_mode=champion
-//   module_config.champion_a_id     enum, visible_when mastery_mode=matchup
-//   module_config.champion_b_id     enum, visible_when mastery_mode=matchup
-//   module_config.mastery_set_id    enum, visible_when mastery_mode=mastery_set
-//   module_config.allowed_variants  multi_enum, depends_on mastery_set_id,
-//                                   visible_when mastery_mode=mastery_set
-//   challenge_count                 top-level SegmentSpec field, label
-//                                   "Questions" — still the SOLE source of N
+//   module_config.mastery_mode           enum, required —
+//                                        "champion" | "matchup" | "applied_chain"
+//   module_config.champion_id            enum, visible_when champion
+//   module_config.champion_a_id          enum, visible_when matchup
+//   module_config.champion_b_id          enum, visible_when matchup
+//   module_config.attacker_champion_id   enum, visible_when applied_chain
+//   module_config.ability_key            enum, depends_on the attacker,
+//                                        visible_when applied_chain
+//   module_config.target_champion_id     enum, visible_when applied_chain
+//   challenge_count                      top-level SegmentSpec field, label
+//                                        "Questions" — still the SOLE source of N
 //
 // This fixture mirrors the real backend catalog entry
 // (`ranked_public/builder_catalog.py::_mastery_entry`), trimmed to a handful
 // of champions; the live one carries the whole supported roster.
 //
-// Production briefly served a catalog with only the champion/matchup sources,
-// which is why the owner could find no way to configure a registered runtime
-// set (`chain.jarvan.physical_penetration`) in Quiz Admin. NOTHING in the
-// renderer had to change to fix that — `visible_when`, `depends_on` and
-// `options_by` were already generic — so the tests below drive the reconciled
-// catalog through the SAME unchanged components.
+// The third source used to be a REGISTERED static Mastery set from a closed
+// catalog, with a per-set variant filter. Those sets were hardcoded
+// parameterizations of the Mastery generators and were deleted; the third
+// source is now the applied combat chain, which names its subject the same
+// way the other two do. `visible_when`, `depends_on` and `options_by` were
+// already generic, so the renderer itself is unchanged apart from letting a
+// single-choice enum be dependent too.
 //
 // What this file proves: the generic renderer renders a three-branch tagged
 // union with no module knowledge of its own, and the mode switch normalizes
@@ -89,28 +91,27 @@ const mockPreview = vi.mocked(previewMasterySlice);
 
 const MODE_KEY = "module_config.mastery_mode";
 
-// The registered runtime sets, exactly as the backend catalog publishes them:
-// value = the id stored in module_config, label = the human-readable name.
-const JARVAN = "chain.jarvan.physical_penetration";
-const AHRI_SET = "playtest.champion.ahri";
-
-const MASTERY_SETS = [
-  // Ordered by the label an admin reads, which is also the order the backend
-  // sorts them in — so the FIRST option is what a mode switch seeds.
-  { value: AHRI_SET, label: "Ahri — Champion Mastery", max_questions: 15 },
-  { value: JARVAN, label: "Jarvan IV Q — Physical Penetration", max_questions: 2 },
+// The applied chain's subjects, exactly as the backend catalog publishes
+// them: value = what is stored in module_config, label = what an admin reads.
+// Bounded by CERTIFICATION rather than by the Mastery roster, which is why
+// these are their own short lists and not `CHAMPIONS`.
+const ATTACKERS = [
+  { value: "jarvan", label: "Jarvan IV" },
+  { value: "olaf", label: "Olaf" },
 ];
 
-const VARIANTS_BY_SET: Record<string, { value: string; label: string; help: string; max_questions: number }[]> = {
-  [JARVAN]: [
-    { value: "lethality", label: "Flat lethality", help: "Serrated Dirk — flat Armor reduction.", max_questions: 1 },
-    { value: "percent_pen", label: "Percent armor penetration", help: "Lord Dominik's Regards — percent Armor reduction.", max_questions: 1 },
+const ABILITIES_BY_ATTACKER: Record<string, { value: string; label: string }[]> = {
+  jarvan: [
+    { value: "Q", label: "Q — Dragon Strike" },
+    { value: "R", label: "R — Cataclysm" },
   ],
-  [AHRI_SET]: [
-    { value: "fundamentals", label: "Fundamentals", help: "Opening recall.", max_questions: 4 },
-    { value: "abilities", label: "Abilities", help: "Cooldowns and costs.", max_questions: 4 },
-  ],
+  olaf: [{ value: "Q", label: "Q — Undertow" }],
 };
+
+const CHAIN_TARGETS = [
+  { value: "ahri", label: "Ahri" },
+  { value: "olaf", label: "Olaf" },
+];
 
 const CHAMPIONS = [
   { value: "darius", label: "Darius" },
@@ -148,7 +149,7 @@ const MASTERY_MODULE = {
       options: [
         { value: "champion", label: "Champion" },
         { value: "matchup", label: "Matchup" },
-        { value: "mastery_set", label: "Runtime Mastery Set" },
+        { value: "applied_chain", label: "Applied combat chain" },
       ],
     },
     {
@@ -176,22 +177,29 @@ const MASTERY_MODULE = {
       visible_when: { [MODE_KEY]: "matchup" },
     },
     {
-      key: "module_config.mastery_set_id",
-      label: "Mastery set",
+      key: "module_config.attacker_champion_id",
+      label: "Attacker",
       type: "enum" as const,
       required: true,
-      options: MASTERY_SETS,
-      visible_when: { [MODE_KEY]: "mastery_set" },
+      options: ATTACKERS,
+      visible_when: { [MODE_KEY]: "applied_chain" },
     },
     {
-      key: "module_config.allowed_variants",
-      label: "Scenario variants",
-      type: "multi_enum" as const,
-      required: false,
-      min_items: 1,
-      depends_on: "module_config.mastery_set_id",
-      options_by: VARIANTS_BY_SET,
-      visible_when: { [MODE_KEY]: "mastery_set" },
+      key: "module_config.ability_key",
+      label: "Ability",
+      type: "enum" as const,
+      required: true,
+      depends_on: "module_config.attacker_champion_id",
+      options_by: ABILITIES_BY_ATTACKER,
+      visible_when: { [MODE_KEY]: "applied_chain" },
+    },
+    {
+      key: "module_config.target_champion_id",
+      label: "Target",
+      type: "enum" as const,
+      required: true,
+      options: CHAIN_TARGETS,
+      visible_when: { [MODE_KEY]: "applied_chain" },
     },
     {
       key: "challenge_count",
@@ -199,39 +207,6 @@ const MASTERY_MODULE = {
       type: "integer" as const,
       required: true,
       min: 1,
-    },
-  ],
-  // The declared capabilities the generation-policy panel renders from. Same
-  // source as the option lists above, which is why the two cannot disagree.
-  mastery_sets: [
-    {
-      set_id: JARVAN,
-      display_name: "Jarvan IV Q — Physical Penetration",
-      description:
-        "Two certified questions on Jarvan IV's Q against Olaf, one per penetration scenario.",
-      display_revision: "disprev_chain-jarvan-physical-penetration.v1",
-      max_questions: 2,
-      variants: [
-        { variant_id: "lethality", label: "Flat lethality", description: "Serrated Dirk — flat Armor reduction.", max_questions: 1 },
-        { variant_id: "percent_pen", label: "Percent armor penetration", description: "Lord Dominik's Regards — percent Armor reduction.", max_questions: 1 },
-      ],
-      supports_variant_weighting: false,
-      supports_difficulty: false,
-      readiness: { state: "ready" as const, detail: "", available_steps: 2, available_variants: { lethality: 1, percent_pen: 1 } },
-    },
-    {
-      set_id: AHRI_SET,
-      display_name: "Ahri — Champion Mastery",
-      description: "Ahri's own kit, in curriculum order.",
-      display_revision: "disprev_generated-ahri-champion.playtest.v1",
-      max_questions: 15,
-      variants: [
-        { variant_id: "fundamentals", label: "Fundamentals", description: "Opening recall.", max_questions: 4 },
-        { variant_id: "abilities", label: "Abilities", description: "Cooldowns and costs.", max_questions: 4 },
-      ],
-      supports_variant_weighting: false,
-      supports_difficulty: false,
-      readiness: { state: "ready" as const, detail: "", available_steps: 15, available_variants: { fundamentals: 4, abilities: 4 } },
     },
   ],
   fixed: { min_challenge_count: 2 },
@@ -627,26 +602,27 @@ describe("mastery_slice — collapsed summary", () => {
 // because none exists: the set, its label and its variants all arrive as
 // catalog data.
 
-describe("mastery_slice — Runtime Mastery Set", () => {
-  const chooseRuntimeSet = async () => {
+describe("mastery_slice — the applied combat chain", () => {
+  const chooseAppliedChain = async () => {
     await mount();
     const row = await expand(0);
-    await selectOption(within(row).getByLabelText("Mastery type"), "mastery_set");
+    await selectOption(within(row).getByLabelText("Mastery type"), "applied_chain");
     return row;
   };
 
-  it("offers the runtime-set source alongside Champion and Matchup", async () => {
+  it("offers the applied chain alongside Champion and Matchup", async () => {
     await mount();
     const row = await expand(0);
     const mode = within(row).getByLabelText("Mastery type") as HTMLSelectElement;
     expect(Array.from(mode.options).map((o) => o.value)).toEqual([
-      "", "champion", "matchup", "mastery_set",
+      "", "champion", "matchup", "applied_chain",
     ]);
   });
 
-  it("reveals the set selector and hides every champion control", async () => {
-    const row = await chooseRuntimeSet();
-    expect(within(row).getByLabelText("Mastery set")).toBeInTheDocument();
+  it("reveals the chain's subject fields and hides every other champion control", async () => {
+    const row = await chooseAppliedChain();
+    expect(within(row).getByLabelText("Attacker")).toBeInTheDocument();
+    expect(within(row).getByLabelText("Target")).toBeInTheDocument();
     expect(within(row).queryByLabelText("Champion")).not.toBeInTheDocument();
     expect(within(row).queryByLabelText("Champion A")).not.toBeInTheDocument();
     expect(within(row).queryByLabelText("Champion B")).not.toBeInTheDocument();
@@ -654,35 +630,31 @@ describe("mastery_slice — Runtime Mastery Set", () => {
     expect(within(row).getByLabelText("Questions")).toBeInTheDocument();
   });
 
-  it("lists the Jarvan penetration set by its human-readable name", async () => {
-    const row = await chooseRuntimeSet();
-    const select = within(row).getByLabelText("Mastery set") as HTMLSelectElement;
-    const option = Array.from(select.options).find((o) => o.value === JARVAN);
-    expect(option?.textContent).toBe("Jarvan IV Q — Physical Penetration");
-    // The raw id is never what an admin reads.
-    expect(select.textContent).not.toContain("chain.jarvan");
+  it("lists each attacker by its display name, never a raw id", async () => {
+    const row = await chooseAppliedChain();
+    const select = within(row).getByLabelText("Attacker") as HTMLSelectElement;
+    const labels = Array.from(select.options)
+      .filter((o) => o.value).map((o) => o.textContent);
+    expect(labels).toEqual(ATTACKERS.map((a) => a.label));
   });
 
-  it("shows the selected set's variants, from backend metadata", async () => {
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
-
-    const group = within(row).getByRole("group", { name: "Scenario variants" });
-    const labels = within(group).getAllByRole("checkbox").map((b) => b.textContent);
-    // Labels and per-variant ceilings, both declared by the backend.
-    expect(labels).toEqual(["Flat lethality (1)", "Percent armor penetration (1)"]);
+  it("shows the selected attacker's certified abilities, from backend metadata", async () => {
+    const row = await chooseAppliedChain();
+    await selectOption(within(row).getByLabelText("Attacker"), "jarvan");
+    const select = within(row).getByLabelText("Ability") as HTMLSelectElement;
+    expect(Array.from(select.options).filter((o) => o.value)
+      .map((o) => o.textContent)).toEqual(["Q — Dragon Strike", "R — Cataclysm"]);
   });
 
-  it("offers a DIFFERENT set's variants when a different set is chosen", async () => {
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), AHRI_SET);
-    const group = within(row).getByRole("group", { name: "Scenario variants" });
-    expect(within(group).getAllByRole("checkbox").map((b) => b.textContent)).toEqual([
-      "Fundamentals (4)", "Abilities (4)",
-    ]);
+  it("offers a DIFFERENT attacker's different abilities", async () => {
+    const row = await chooseAppliedChain();
+    await selectOption(within(row).getByLabelText("Attacker"), "olaf");
+    const select = within(row).getByLabelText("Ability") as HTMLSelectElement;
+    expect(Array.from(select.options).filter((o) => o.value)
+      .map((o) => o.textContent)).toEqual(["Q — Undertow"]);
   });
 
-  it("renders NO variant control for a set that declares none", async () => {
+  it("renders NO ability control for an attacker the backend certifies none for", async () => {
     // An absent capability must read as an absent control, never an empty one.
     mockCatalog.mockResolvedValue({
       ...CATALOG,
@@ -690,70 +662,38 @@ describe("mastery_slice — Runtime Mastery Set", () => {
         m.module_id !== "mastery_slice" ? m : {
           ...m,
           fields: m.fields.map((f) =>
-            f.key !== "module_config.allowed_variants" ? f : { ...f, options_by: {} }),
+            f.key !== "module_config.ability_key" ? f : { ...f, options_by: {} }),
         }),
     } as ModuleCatalog);
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
-    expect(within(row).queryByRole("group", { name: "Scenario variants" }))
-      .not.toBeInTheDocument();
+    const row = await chooseAppliedChain();
+    await selectOption(within(row).getByLabelText("Attacker"), "jarvan");
+    expect(within(row).queryByLabelText("Ability")).not.toBeInTheDocument();
   });
 
-  it("selects BOTH variants and serializes the backend's config contract", async () => {
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
-    await click(within(row).getByTestId("option-0-lethality"));
-    await click(within(row).getByTestId("option-0-percent_pen"));
-    await setValue(within(row).getByLabelText("Questions"), "2");
-
+  it("serializes the backend's config contract, and nothing else", async () => {
+    const row = await chooseAppliedChain();
+    await selectOption(within(row).getByLabelText("Attacker"), "jarvan");
+    await selectOption(within(row).getByLabelText("Ability"), "Q");
+    await selectOption(within(row).getByLabelText("Target"), "olaf");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
     expect(savedConfig()).toEqual({
-      mastery_mode: "mastery_set",
-      mastery_set_id: JARVAN,
-      allowed_variants: ["lethality", "percent_pen"],
+      mastery_mode: "applied_chain",
+      attacker_champion_id: "jarvan",
+      ability_key: "Q",
+      target_champion_id: "olaf",
     });
-    expect(savedSegment().challenge_count).toBe(2);
-  });
-
-  it("selects ONE variant, and emits it alone", async () => {
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
-    await click(within(row).getByTestId("option-0-lethality"));
-    await click(screen.getByTestId("save-config"));
-    await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    expect(savedConfig().allowed_variants).toEqual(["lethality"]);
-  });
-
-  it("leaves allowed_variants OFF the config when none is chosen", async () => {
-    // Absent means "every variant this set declares", which is a different
-    // and weaker statement than listing today's variants — so an untouched
-    // control must not serialize an empty list.
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
-    await click(screen.getByTestId("save-config"));
-    await waitFor(() => expect(mockSave).toHaveBeenCalled());
-    expect(savedConfig()).toEqual({
-      mastery_mode: "mastery_set", mastery_set_id: JARVAN,
-    });
-  });
-
-  it("clamps Questions to the chosen set's ceiling", async () => {
-    const row = await chooseRuntimeSet();
-    // The saved format asks for 5; the Jarvan set has 2 steps.
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
-    expect(within(row).getByLabelText("Questions")).toHaveValue(2);
   });
 
   it("strands no champion key when switching away from Champion", async () => {
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
+    const row = await chooseAppliedChain();
+    await selectOption(within(row).getByLabelText("Attacker"), "jarvan");
     await click(screen.getByTestId("save-config"));
     await waitFor(() => expect(mockSave).toHaveBeenCalled());
     expect(savedConfig()).not.toHaveProperty("champion_id");
   });
 
-  it("restores the set and its variants when the page reloads", async () => {
+  it("restores the chain's subject when the page reloads", async () => {
     mockConfig.mockResolvedValue(view({
       config: {
         ...SAVED_FORMAT,
@@ -761,21 +701,20 @@ describe("mastery_slice — Runtime Mastery Set", () => {
           ...MASTERY_MODULE.defaults,
           challenge_count: 2,
           module_config: {
-            mastery_mode: "mastery_set",
-            mastery_set_id: JARVAN,
-            allowed_variants: ["percent_pen"],
+            mastery_mode: "applied_chain",
+            attacker_champion_id: "olaf",
+            ability_key: "Q",
+            target_champion_id: "ahri",
           },
         }],
       },
     }));
     await mount();
     const row = await expand(0);
-    expect(within(row).getByLabelText("Mastery type")).toHaveValue("mastery_set");
-    expect(within(row).getByLabelText("Mastery set")).toHaveValue(JARVAN);
-    expect(within(row).getByTestId("option-0-percent_pen"))
-      .toHaveAttribute("aria-checked", "true");
-    expect(within(row).getByTestId("option-0-lethality"))
-      .toHaveAttribute("aria-checked", "false");
+    expect(within(row).getByLabelText("Mastery type")).toHaveValue("applied_chain");
+    expect(within(row).getByLabelText("Attacker")).toHaveValue("olaf");
+    expect(within(row).getByLabelText("Ability")).toHaveValue("Q");
+    expect(within(row).getByLabelText("Target")).toHaveValue("ahri");
   });
 
   it("previews through the real backend endpoint, with the unsaved policy", async () => {
@@ -784,23 +723,29 @@ describe("mastery_slice — Runtime Mastery Set", () => {
       note: "Generated live from current data. Not saved.",
       challenges: [{
         challenge_index: 0,
-        prompt: "Jarvan IV is level 5 with Dragon Strike rank 3 and a Serrated Dirk…",
+        prompt: "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc…",
         answer_options: ["115", "134", "144", "199"],
         correct_answer: "144",
         explanation: "",
       }],
     } as never);
 
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
+    const row = await chooseAppliedChain();
+    await selectOption(within(row).getByLabelText("Attacker"), "jarvan");
+    await selectOption(within(row).getByLabelText("Ability"), "Q");
+    await selectOption(within(row).getByLabelText("Target"), "olaf");
     await click(within(row).getByTestId("preview-generation-0"));
 
     await waitFor(() => expect(mockPreview).toHaveBeenCalled());
     // The policy currently in the editor, not the one last saved.
-    expect(mockPreview).toHaveBeenCalledWith(
-      { mastery_mode: "mastery_set", mastery_set_id: JARVAN }, 2);
+    expect(mockPreview).toHaveBeenCalledWith({
+      mastery_mode: "applied_chain",
+      attacker_champion_id: "jarvan",
+      ability_key: "Q",
+      target_champion_id: "olaf",
+    }, 5);
     expect(await within(row).findByTestId("preview-result-0")).toBeInTheDocument();
-    expect(within(row).getByText(/Serrated Dirk/)).toBeInTheDocument();
+    expect(within(row).getByText(/Axiom Arc/)).toBeInTheDocument();
     // Labelled as a generated sample — on the control ("Generated live. Not
     // saved.") and again on the returned payload's own note, which travels
     // with the samples rather than being restated by the UI.
@@ -808,20 +753,18 @@ describe("mastery_slice — Runtime Mastery Set", () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  it("shows the set's declared capabilities and live readiness", async () => {
-    const row = await chooseRuntimeSet();
-    await selectOption(within(row).getByLabelText("Mastery set"), JARVAN);
-    expect(within(row).getByTestId("generation-policy-0")).toBeInTheDocument();
-    expect(within(row).getByTestId("mastery-readiness"))
-      .toHaveAttribute("data-readiness-state", "ready");
-    // Unsupported capabilities are STATED, not rendered as dead controls.
-    expect(within(row).getByTestId("weighting-unsupported")).toBeInTheDocument();
-    expect(within(row).getByTestId("difficulty-unsupported")).toBeInTheDocument();
-  });
-
-  it("shows no generation-policy panel on the on-demand sources", async () => {
+  it("offers the sample on EVERY generated source, not just this one", async () => {
+    // The panel describes a generated SLOT now, not a selected static set,
+    // so an on-demand champion slot gets the same preview button.
     await mount();
     const row = await expand(0);
-    expect(within(row).queryByTestId("generation-policy-0")).not.toBeInTheDocument();
+    expect(within(row).getByTestId("generation-policy-0")).toBeInTheDocument();
+    expect(within(row).getByTestId("preview-generation-0")).toBeInTheDocument();
+  });
+
+  it("describes no static set, because there is none to describe", async () => {
+    const row = await chooseAppliedChain();
+    expect(within(row).queryByTestId("mastery-readiness")).not.toBeInTheDocument();
+    expect(within(row).queryByTestId("weighting-unsupported")).not.toBeInTheDocument();
   });
 });

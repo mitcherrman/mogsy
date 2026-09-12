@@ -2,7 +2,7 @@
   "module_id": "mastery_slice",
   "module_version": 1,
   "label": "Mastery Slice",
-  "description": "A slice of a generated Mastery set's leading ordered steps, answered head-to-head exactly as the standalone Mastery player would.",
+  "description": "Mastery questions generated on demand \u2014 for a champion, a matchup, or a certified combat calculation \u2014 answered head-to-head exactly as the standalone Mastery player would.",
   "defaults": {
     "module_id": "mastery_slice",
     "module_version": 1,
@@ -13,260 +13,2241 @@
     "reduced_damage": null,
     "ability_phase_seconds": null,
     "module_config": {
-      "mastery_set_id": "playtest.champion.ahri"
+      "mastery_mode": "champion",
+      "champion_id": "aatrox"
     },
     "analytics_tag": null,
     "scoring": "outcome",
-    "card_timer_seconds": null
+    "card_timer_seconds": null,
+    "correct_points": null,
+    "speed_bonus_points": null
   },
   "fields": [
     {
-      "key": "module_config.mastery_set_id",
-      "label": "Mastery set",
+      "key": "module_config.mastery_mode",
+      "label": "Mastery type",
       "type": "enum",
       "required": true,
       "options": [
         {
-          "value": "chain.jarvan.physical_penetration",
-          "label": "Jarvan IV Q \u2014 Physical Penetration",
-          "max_questions": 2
+          "value": "champion",
+          "label": "Champion"
         },
         {
-          "value": "playtest.champion.ahri",
-          "label": "Ahri \u2014 Champion Mastery",
-          "max_questions": 15
+          "value": "matchup",
+          "label": "Matchup"
         },
         {
-          "value": "playtest.matchup.ahri.syndra",
-          "label": "Ahri vs Syndra \u2014 Matchup Mastery",
-          "max_questions": 13
+          "value": "applied_chain",
+          "label": "Applied combat chain"
         }
       ],
-      "help": "Which generated Mastery set this slot draws its ordered steps from. Each option's max_questions is how many steps that set actually has."
+      "help": "Champion Mastery asks about one champion. Matchup Mastery compares two. An applied combat chain asks the player to work out a certified calculation \u2014 damage through a real item's penetration against a real target's Armor."
+    },
+    {
+      "key": "module_config.champion_id",
+      "label": "Champion",
+      "type": "enum",
+      "required": true,
+      "options": [
+        {
+          "value": "aatrox",
+          "label": "Aatrox"
+        },
+        {
+          "value": "ahri",
+          "label": "Ahri"
+        },
+        {
+          "value": "akali",
+          "label": "Akali"
+        },
+        {
+          "value": "akshan",
+          "label": "Akshan"
+        },
+        {
+          "value": "alistar",
+          "label": "Alistar"
+        },
+        {
+          "value": "ambessa",
+          "label": "Ambessa"
+        },
+        {
+          "value": "amumu",
+          "label": "Amumu"
+        },
+        {
+          "value": "anivia",
+          "label": "Anivia"
+        },
+        {
+          "value": "annie",
+          "label": "Annie"
+        },
+        {
+          "value": "aphelios",
+          "label": "Aphelios"
+        },
+        {
+          "value": "ashe",
+          "label": "Ashe"
+        },
+        {
+          "value": "aurelion-sol",
+          "label": "Aurelion Sol"
+        },
+        {
+          "value": "aurora",
+          "label": "Aurora"
+        },
+        {
+          "value": "azir",
+          "label": "Azir"
+        },
+        {
+          "value": "bard",
+          "label": "Bard"
+        },
+        {
+          "value": "belveth",
+          "label": "Bel'Veth"
+        },
+        {
+          "value": "blitzcrank",
+          "label": "Blitzcrank"
+        },
+        {
+          "value": "brand",
+          "label": "Brand"
+        },
+        {
+          "value": "braum",
+          "label": "Braum"
+        },
+        {
+          "value": "briar",
+          "label": "Briar"
+        },
+        {
+          "value": "caitlyn",
+          "label": "Caitlyn"
+        },
+        {
+          "value": "camille",
+          "label": "Camille"
+        },
+        {
+          "value": "cassiopeia",
+          "label": "Cassiopeia"
+        },
+        {
+          "value": "chogath",
+          "label": "Cho'Gath"
+        },
+        {
+          "value": "corki",
+          "label": "Corki"
+        },
+        {
+          "value": "darius",
+          "label": "Darius"
+        },
+        {
+          "value": "diana",
+          "label": "Diana"
+        },
+        {
+          "value": "dr-mundo",
+          "label": "Dr Mundo"
+        },
+        {
+          "value": "draven",
+          "label": "Draven"
+        },
+        {
+          "value": "ekko",
+          "label": "Ekko"
+        },
+        {
+          "value": "elise",
+          "label": "Elise"
+        },
+        {
+          "value": "evelynn",
+          "label": "Evelynn"
+        },
+        {
+          "value": "ezreal",
+          "label": "Ezreal"
+        },
+        {
+          "value": "fiddlesticks",
+          "label": "Fiddlesticks"
+        },
+        {
+          "value": "fiora",
+          "label": "Fiora"
+        },
+        {
+          "value": "fizz",
+          "label": "Fizz"
+        },
+        {
+          "value": "galio",
+          "label": "Galio"
+        },
+        {
+          "value": "gangplank",
+          "label": "Gangplank"
+        },
+        {
+          "value": "garen",
+          "label": "Garen"
+        },
+        {
+          "value": "gnar",
+          "label": "Gnar"
+        },
+        {
+          "value": "gragas",
+          "label": "Gragas"
+        },
+        {
+          "value": "graves",
+          "label": "Graves"
+        },
+        {
+          "value": "gwen",
+          "label": "Gwen"
+        },
+        {
+          "value": "hecarim",
+          "label": "Hecarim"
+        },
+        {
+          "value": "heimerdinger",
+          "label": "Heimerdinger"
+        },
+        {
+          "value": "hwei",
+          "label": "Hwei"
+        },
+        {
+          "value": "illaoi",
+          "label": "Illaoi"
+        },
+        {
+          "value": "irelia",
+          "label": "Irelia"
+        },
+        {
+          "value": "ivern",
+          "label": "Ivern"
+        },
+        {
+          "value": "janna",
+          "label": "Janna"
+        },
+        {
+          "value": "jarvan",
+          "label": "Jarvan IV"
+        },
+        {
+          "value": "jax",
+          "label": "Jax"
+        },
+        {
+          "value": "jayce",
+          "label": "Jayce"
+        },
+        {
+          "value": "jhin",
+          "label": "Jhin"
+        },
+        {
+          "value": "jinx",
+          "label": "Jinx"
+        },
+        {
+          "value": "ksante",
+          "label": "K'Sante"
+        },
+        {
+          "value": "kaisa",
+          "label": "Kai'Sa"
+        },
+        {
+          "value": "kalista",
+          "label": "Kalista"
+        },
+        {
+          "value": "karma",
+          "label": "Karma"
+        },
+        {
+          "value": "karthus",
+          "label": "Karthus"
+        },
+        {
+          "value": "kassadin",
+          "label": "Kassadin"
+        },
+        {
+          "value": "katarina",
+          "label": "Katarina"
+        },
+        {
+          "value": "kayle",
+          "label": "Kayle"
+        },
+        {
+          "value": "kayn",
+          "label": "Kayn"
+        },
+        {
+          "value": "kennen",
+          "label": "Kennen"
+        },
+        {
+          "value": "khazix",
+          "label": "Kha'Zix"
+        },
+        {
+          "value": "kindred",
+          "label": "Kindred"
+        },
+        {
+          "value": "kled",
+          "label": "Kled"
+        },
+        {
+          "value": "kogmaw",
+          "label": "Kog'Maw"
+        },
+        {
+          "value": "leblanc",
+          "label": "LeBlanc"
+        },
+        {
+          "value": "lee-sin",
+          "label": "Lee Sin"
+        },
+        {
+          "value": "leona",
+          "label": "Leona"
+        },
+        {
+          "value": "lillia",
+          "label": "Lillia"
+        },
+        {
+          "value": "lissandra",
+          "label": "Lissandra"
+        },
+        {
+          "value": "locke",
+          "label": "Locke"
+        },
+        {
+          "value": "lucian",
+          "label": "Lucian"
+        },
+        {
+          "value": "lulu",
+          "label": "Lulu"
+        },
+        {
+          "value": "lux",
+          "label": "Lux"
+        },
+        {
+          "value": "malphite",
+          "label": "Malphite"
+        },
+        {
+          "value": "malzahar",
+          "label": "Malzahar"
+        },
+        {
+          "value": "maokai",
+          "label": "Maokai"
+        },
+        {
+          "value": "master-yi",
+          "label": "Master Yi"
+        },
+        {
+          "value": "mel",
+          "label": "Mel"
+        },
+        {
+          "value": "milio",
+          "label": "Milio"
+        },
+        {
+          "value": "miss-fortune",
+          "label": "Miss Fortune"
+        },
+        {
+          "value": "mordekaiser",
+          "label": "Mordekaiser"
+        },
+        {
+          "value": "morgana",
+          "label": "Morgana"
+        },
+        {
+          "value": "naafiri",
+          "label": "Naafiri"
+        },
+        {
+          "value": "nami",
+          "label": "Nami"
+        },
+        {
+          "value": "nasus",
+          "label": "Nasus"
+        },
+        {
+          "value": "nautilus",
+          "label": "Nautilus"
+        },
+        {
+          "value": "neeko",
+          "label": "Neeko"
+        },
+        {
+          "value": "nidalee",
+          "label": "Nidalee"
+        },
+        {
+          "value": "nilah",
+          "label": "Nilah"
+        },
+        {
+          "value": "nocturne",
+          "label": "Nocturne"
+        },
+        {
+          "value": "nunu",
+          "label": "Nunu"
+        },
+        {
+          "value": "olaf",
+          "label": "Olaf"
+        },
+        {
+          "value": "orianna",
+          "label": "Orianna"
+        },
+        {
+          "value": "ornn",
+          "label": "Ornn"
+        },
+        {
+          "value": "pantheon",
+          "label": "Pantheon"
+        },
+        {
+          "value": "poppy",
+          "label": "Poppy"
+        },
+        {
+          "value": "pyke",
+          "label": "Pyke"
+        },
+        {
+          "value": "qiyana",
+          "label": "Qiyana"
+        },
+        {
+          "value": "quinn",
+          "label": "Quinn"
+        },
+        {
+          "value": "rakan",
+          "label": "Rakan"
+        },
+        {
+          "value": "rammus",
+          "label": "Rammus"
+        },
+        {
+          "value": "reksai",
+          "label": "Rek'Sai"
+        },
+        {
+          "value": "rell",
+          "label": "Rell"
+        },
+        {
+          "value": "renata",
+          "label": "Renata"
+        },
+        {
+          "value": "renekton",
+          "label": "Renekton"
+        },
+        {
+          "value": "rengar",
+          "label": "Rengar"
+        },
+        {
+          "value": "riven",
+          "label": "Riven"
+        },
+        {
+          "value": "rumble",
+          "label": "Rumble"
+        },
+        {
+          "value": "ryze",
+          "label": "Ryze"
+        },
+        {
+          "value": "samira",
+          "label": "Samira"
+        },
+        {
+          "value": "sejuani",
+          "label": "Sejuani"
+        },
+        {
+          "value": "senna",
+          "label": "Senna"
+        },
+        {
+          "value": "seraphine",
+          "label": "Seraphine"
+        },
+        {
+          "value": "sett",
+          "label": "Sett"
+        },
+        {
+          "value": "shaco",
+          "label": "Shaco"
+        },
+        {
+          "value": "shen",
+          "label": "Shen"
+        },
+        {
+          "value": "shyvana",
+          "label": "Shyvana"
+        },
+        {
+          "value": "singed",
+          "label": "Singed"
+        },
+        {
+          "value": "sion",
+          "label": "Sion"
+        },
+        {
+          "value": "sivir",
+          "label": "Sivir"
+        },
+        {
+          "value": "skarner",
+          "label": "Skarner"
+        },
+        {
+          "value": "smolder",
+          "label": "Smolder"
+        },
+        {
+          "value": "sona",
+          "label": "Sona"
+        },
+        {
+          "value": "soraka",
+          "label": "Soraka"
+        },
+        {
+          "value": "swain",
+          "label": "Swain"
+        },
+        {
+          "value": "sylas",
+          "label": "Sylas"
+        },
+        {
+          "value": "syndra",
+          "label": "Syndra"
+        },
+        {
+          "value": "tahm-kench",
+          "label": "Tahm Kench"
+        },
+        {
+          "value": "taliyah",
+          "label": "Taliyah"
+        },
+        {
+          "value": "talon",
+          "label": "Talon"
+        },
+        {
+          "value": "taric",
+          "label": "Taric"
+        },
+        {
+          "value": "teemo",
+          "label": "Teemo"
+        },
+        {
+          "value": "thresh",
+          "label": "Thresh"
+        },
+        {
+          "value": "tristana",
+          "label": "Tristana"
+        },
+        {
+          "value": "trundle",
+          "label": "Trundle"
+        },
+        {
+          "value": "tryndamere",
+          "label": "Tryndamere"
+        },
+        {
+          "value": "twisted-fate",
+          "label": "Twisted Fate"
+        },
+        {
+          "value": "twitch",
+          "label": "Twitch"
+        },
+        {
+          "value": "udyr",
+          "label": "Udyr"
+        },
+        {
+          "value": "urgot",
+          "label": "Urgot"
+        },
+        {
+          "value": "varus",
+          "label": "Varus"
+        },
+        {
+          "value": "vayne",
+          "label": "Vayne"
+        },
+        {
+          "value": "veigar",
+          "label": "Veigar"
+        },
+        {
+          "value": "velkoz",
+          "label": "Vel'Koz"
+        },
+        {
+          "value": "vex",
+          "label": "Vex"
+        },
+        {
+          "value": "vi",
+          "label": "Vi"
+        },
+        {
+          "value": "viego",
+          "label": "Viego"
+        },
+        {
+          "value": "viktor",
+          "label": "Viktor"
+        },
+        {
+          "value": "vladimir",
+          "label": "Vladimir"
+        },
+        {
+          "value": "volibear",
+          "label": "Volibear"
+        },
+        {
+          "value": "warwick",
+          "label": "Warwick"
+        },
+        {
+          "value": "wukong",
+          "label": "Wukong"
+        },
+        {
+          "value": "xayah",
+          "label": "Xayah"
+        },
+        {
+          "value": "xerath",
+          "label": "Xerath"
+        },
+        {
+          "value": "xin-zhao",
+          "label": "Xin Zhao"
+        },
+        {
+          "value": "yasuo",
+          "label": "Yasuo"
+        },
+        {
+          "value": "yone",
+          "label": "Yone"
+        },
+        {
+          "value": "yorick",
+          "label": "Yorick"
+        },
+        {
+          "value": "yunara",
+          "label": "Yunara"
+        },
+        {
+          "value": "yuumi",
+          "label": "Yuumi"
+        },
+        {
+          "value": "zaahen",
+          "label": "Zaahen"
+        },
+        {
+          "value": "zac",
+          "label": "Zac"
+        },
+        {
+          "value": "zed",
+          "label": "Zed"
+        },
+        {
+          "value": "zeri",
+          "label": "Zeri"
+        },
+        {
+          "value": "ziggs",
+          "label": "Ziggs"
+        },
+        {
+          "value": "zilean",
+          "label": "Zilean"
+        },
+        {
+          "value": "zoe",
+          "label": "Zoe"
+        },
+        {
+          "value": "zyra",
+          "label": "Zyra"
+        }
+      ],
+      "visible_when": {
+        "module_config.mastery_mode": "champion"
+      },
+      "help": "Which champion this slot generates questions about."
+    },
+    {
+      "key": "module_config.attacker_champion_id",
+      "label": "Attacker",
+      "type": "enum",
+      "required": true,
+      "options": [
+        {
+          "value": "jarvan",
+          "label": "Jarvan IV"
+        },
+        {
+          "value": "olaf",
+          "label": "Olaf"
+        }
+      ],
+      "visible_when": {
+        "module_config.mastery_mode": "applied_chain"
+      },
+      "help": "Which champion casts. Only champions with an ability certified for this calculation are offered."
+    },
+    {
+      "key": "module_config.ability_key",
+      "label": "Ability",
+      "type": "enum",
+      "required": true,
+      "depends_on": "module_config.attacker_champion_id",
+      "options_by": {
+        "jarvan": [
+          {
+            "value": "Q",
+            "label": "Q \u2014 Dragon Strike"
+          },
+          {
+            "value": "R",
+            "label": "R \u2014 Cataclysm"
+          }
+        ],
+        "olaf": [
+          {
+            "value": "Q",
+            "label": "Q \u2014 Undertow"
+          }
+        ]
+      },
+      "visible_when": {
+        "module_config.mastery_mode": "applied_chain"
+      },
+      "help": "The attacker's ability slot, as certified for the physical-penetration operation."
+    },
+    {
+      "key": "module_config.target_champion_id",
+      "label": "Target",
+      "type": "enum",
+      "required": true,
+      "options": [
+        {
+          "value": "ahri",
+          "label": "Ahri"
+        },
+        {
+          "value": "jarvan",
+          "label": "Jarvan IV"
+        },
+        {
+          "value": "lux",
+          "label": "Lux"
+        },
+        {
+          "value": "maokai",
+          "label": "Maokai"
+        },
+        {
+          "value": "olaf",
+          "label": "Olaf"
+        },
+        {
+          "value": "syndra",
+          "label": "Syndra"
+        }
+      ],
+      "visible_when": {
+        "module_config.mastery_mode": "applied_chain"
+      },
+      "help": "Which certified champion takes the damage. Its level-scaled Armor is what the calculation runs against."
+    },
+    {
+      "key": "module_config.champion_a_id",
+      "label": "Champion A",
+      "type": "enum",
+      "required": true,
+      "options": [
+        {
+          "value": "aatrox",
+          "label": "Aatrox"
+        },
+        {
+          "value": "ahri",
+          "label": "Ahri"
+        },
+        {
+          "value": "akali",
+          "label": "Akali"
+        },
+        {
+          "value": "akshan",
+          "label": "Akshan"
+        },
+        {
+          "value": "alistar",
+          "label": "Alistar"
+        },
+        {
+          "value": "ambessa",
+          "label": "Ambessa"
+        },
+        {
+          "value": "amumu",
+          "label": "Amumu"
+        },
+        {
+          "value": "anivia",
+          "label": "Anivia"
+        },
+        {
+          "value": "annie",
+          "label": "Annie"
+        },
+        {
+          "value": "aphelios",
+          "label": "Aphelios"
+        },
+        {
+          "value": "ashe",
+          "label": "Ashe"
+        },
+        {
+          "value": "aurelion-sol",
+          "label": "Aurelion Sol"
+        },
+        {
+          "value": "aurora",
+          "label": "Aurora"
+        },
+        {
+          "value": "azir",
+          "label": "Azir"
+        },
+        {
+          "value": "bard",
+          "label": "Bard"
+        },
+        {
+          "value": "belveth",
+          "label": "Bel'Veth"
+        },
+        {
+          "value": "blitzcrank",
+          "label": "Blitzcrank"
+        },
+        {
+          "value": "brand",
+          "label": "Brand"
+        },
+        {
+          "value": "braum",
+          "label": "Braum"
+        },
+        {
+          "value": "briar",
+          "label": "Briar"
+        },
+        {
+          "value": "caitlyn",
+          "label": "Caitlyn"
+        },
+        {
+          "value": "camille",
+          "label": "Camille"
+        },
+        {
+          "value": "cassiopeia",
+          "label": "Cassiopeia"
+        },
+        {
+          "value": "chogath",
+          "label": "Cho'Gath"
+        },
+        {
+          "value": "corki",
+          "label": "Corki"
+        },
+        {
+          "value": "darius",
+          "label": "Darius"
+        },
+        {
+          "value": "diana",
+          "label": "Diana"
+        },
+        {
+          "value": "dr-mundo",
+          "label": "Dr Mundo"
+        },
+        {
+          "value": "draven",
+          "label": "Draven"
+        },
+        {
+          "value": "ekko",
+          "label": "Ekko"
+        },
+        {
+          "value": "elise",
+          "label": "Elise"
+        },
+        {
+          "value": "evelynn",
+          "label": "Evelynn"
+        },
+        {
+          "value": "ezreal",
+          "label": "Ezreal"
+        },
+        {
+          "value": "fiddlesticks",
+          "label": "Fiddlesticks"
+        },
+        {
+          "value": "fiora",
+          "label": "Fiora"
+        },
+        {
+          "value": "fizz",
+          "label": "Fizz"
+        },
+        {
+          "value": "galio",
+          "label": "Galio"
+        },
+        {
+          "value": "gangplank",
+          "label": "Gangplank"
+        },
+        {
+          "value": "garen",
+          "label": "Garen"
+        },
+        {
+          "value": "gnar",
+          "label": "Gnar"
+        },
+        {
+          "value": "gragas",
+          "label": "Gragas"
+        },
+        {
+          "value": "graves",
+          "label": "Graves"
+        },
+        {
+          "value": "gwen",
+          "label": "Gwen"
+        },
+        {
+          "value": "hecarim",
+          "label": "Hecarim"
+        },
+        {
+          "value": "heimerdinger",
+          "label": "Heimerdinger"
+        },
+        {
+          "value": "hwei",
+          "label": "Hwei"
+        },
+        {
+          "value": "illaoi",
+          "label": "Illaoi"
+        },
+        {
+          "value": "irelia",
+          "label": "Irelia"
+        },
+        {
+          "value": "ivern",
+          "label": "Ivern"
+        },
+        {
+          "value": "janna",
+          "label": "Janna"
+        },
+        {
+          "value": "jarvan",
+          "label": "Jarvan IV"
+        },
+        {
+          "value": "jax",
+          "label": "Jax"
+        },
+        {
+          "value": "jayce",
+          "label": "Jayce"
+        },
+        {
+          "value": "jhin",
+          "label": "Jhin"
+        },
+        {
+          "value": "jinx",
+          "label": "Jinx"
+        },
+        {
+          "value": "ksante",
+          "label": "K'Sante"
+        },
+        {
+          "value": "kaisa",
+          "label": "Kai'Sa"
+        },
+        {
+          "value": "kalista",
+          "label": "Kalista"
+        },
+        {
+          "value": "karma",
+          "label": "Karma"
+        },
+        {
+          "value": "karthus",
+          "label": "Karthus"
+        },
+        {
+          "value": "kassadin",
+          "label": "Kassadin"
+        },
+        {
+          "value": "katarina",
+          "label": "Katarina"
+        },
+        {
+          "value": "kayle",
+          "label": "Kayle"
+        },
+        {
+          "value": "kayn",
+          "label": "Kayn"
+        },
+        {
+          "value": "kennen",
+          "label": "Kennen"
+        },
+        {
+          "value": "khazix",
+          "label": "Kha'Zix"
+        },
+        {
+          "value": "kindred",
+          "label": "Kindred"
+        },
+        {
+          "value": "kled",
+          "label": "Kled"
+        },
+        {
+          "value": "kogmaw",
+          "label": "Kog'Maw"
+        },
+        {
+          "value": "leblanc",
+          "label": "LeBlanc"
+        },
+        {
+          "value": "lee-sin",
+          "label": "Lee Sin"
+        },
+        {
+          "value": "leona",
+          "label": "Leona"
+        },
+        {
+          "value": "lillia",
+          "label": "Lillia"
+        },
+        {
+          "value": "lissandra",
+          "label": "Lissandra"
+        },
+        {
+          "value": "locke",
+          "label": "Locke"
+        },
+        {
+          "value": "lucian",
+          "label": "Lucian"
+        },
+        {
+          "value": "lulu",
+          "label": "Lulu"
+        },
+        {
+          "value": "lux",
+          "label": "Lux"
+        },
+        {
+          "value": "malphite",
+          "label": "Malphite"
+        },
+        {
+          "value": "malzahar",
+          "label": "Malzahar"
+        },
+        {
+          "value": "maokai",
+          "label": "Maokai"
+        },
+        {
+          "value": "master-yi",
+          "label": "Master Yi"
+        },
+        {
+          "value": "mel",
+          "label": "Mel"
+        },
+        {
+          "value": "milio",
+          "label": "Milio"
+        },
+        {
+          "value": "miss-fortune",
+          "label": "Miss Fortune"
+        },
+        {
+          "value": "mordekaiser",
+          "label": "Mordekaiser"
+        },
+        {
+          "value": "morgana",
+          "label": "Morgana"
+        },
+        {
+          "value": "naafiri",
+          "label": "Naafiri"
+        },
+        {
+          "value": "nami",
+          "label": "Nami"
+        },
+        {
+          "value": "nasus",
+          "label": "Nasus"
+        },
+        {
+          "value": "nautilus",
+          "label": "Nautilus"
+        },
+        {
+          "value": "neeko",
+          "label": "Neeko"
+        },
+        {
+          "value": "nidalee",
+          "label": "Nidalee"
+        },
+        {
+          "value": "nilah",
+          "label": "Nilah"
+        },
+        {
+          "value": "nocturne",
+          "label": "Nocturne"
+        },
+        {
+          "value": "nunu",
+          "label": "Nunu"
+        },
+        {
+          "value": "olaf",
+          "label": "Olaf"
+        },
+        {
+          "value": "orianna",
+          "label": "Orianna"
+        },
+        {
+          "value": "ornn",
+          "label": "Ornn"
+        },
+        {
+          "value": "pantheon",
+          "label": "Pantheon"
+        },
+        {
+          "value": "poppy",
+          "label": "Poppy"
+        },
+        {
+          "value": "pyke",
+          "label": "Pyke"
+        },
+        {
+          "value": "qiyana",
+          "label": "Qiyana"
+        },
+        {
+          "value": "quinn",
+          "label": "Quinn"
+        },
+        {
+          "value": "rakan",
+          "label": "Rakan"
+        },
+        {
+          "value": "rammus",
+          "label": "Rammus"
+        },
+        {
+          "value": "reksai",
+          "label": "Rek'Sai"
+        },
+        {
+          "value": "rell",
+          "label": "Rell"
+        },
+        {
+          "value": "renata",
+          "label": "Renata"
+        },
+        {
+          "value": "renekton",
+          "label": "Renekton"
+        },
+        {
+          "value": "rengar",
+          "label": "Rengar"
+        },
+        {
+          "value": "riven",
+          "label": "Riven"
+        },
+        {
+          "value": "rumble",
+          "label": "Rumble"
+        },
+        {
+          "value": "ryze",
+          "label": "Ryze"
+        },
+        {
+          "value": "samira",
+          "label": "Samira"
+        },
+        {
+          "value": "sejuani",
+          "label": "Sejuani"
+        },
+        {
+          "value": "senna",
+          "label": "Senna"
+        },
+        {
+          "value": "seraphine",
+          "label": "Seraphine"
+        },
+        {
+          "value": "sett",
+          "label": "Sett"
+        },
+        {
+          "value": "shaco",
+          "label": "Shaco"
+        },
+        {
+          "value": "shen",
+          "label": "Shen"
+        },
+        {
+          "value": "shyvana",
+          "label": "Shyvana"
+        },
+        {
+          "value": "singed",
+          "label": "Singed"
+        },
+        {
+          "value": "sion",
+          "label": "Sion"
+        },
+        {
+          "value": "sivir",
+          "label": "Sivir"
+        },
+        {
+          "value": "skarner",
+          "label": "Skarner"
+        },
+        {
+          "value": "smolder",
+          "label": "Smolder"
+        },
+        {
+          "value": "sona",
+          "label": "Sona"
+        },
+        {
+          "value": "soraka",
+          "label": "Soraka"
+        },
+        {
+          "value": "swain",
+          "label": "Swain"
+        },
+        {
+          "value": "sylas",
+          "label": "Sylas"
+        },
+        {
+          "value": "syndra",
+          "label": "Syndra"
+        },
+        {
+          "value": "tahm-kench",
+          "label": "Tahm Kench"
+        },
+        {
+          "value": "taliyah",
+          "label": "Taliyah"
+        },
+        {
+          "value": "talon",
+          "label": "Talon"
+        },
+        {
+          "value": "taric",
+          "label": "Taric"
+        },
+        {
+          "value": "teemo",
+          "label": "Teemo"
+        },
+        {
+          "value": "thresh",
+          "label": "Thresh"
+        },
+        {
+          "value": "tristana",
+          "label": "Tristana"
+        },
+        {
+          "value": "trundle",
+          "label": "Trundle"
+        },
+        {
+          "value": "tryndamere",
+          "label": "Tryndamere"
+        },
+        {
+          "value": "twisted-fate",
+          "label": "Twisted Fate"
+        },
+        {
+          "value": "twitch",
+          "label": "Twitch"
+        },
+        {
+          "value": "udyr",
+          "label": "Udyr"
+        },
+        {
+          "value": "urgot",
+          "label": "Urgot"
+        },
+        {
+          "value": "varus",
+          "label": "Varus"
+        },
+        {
+          "value": "vayne",
+          "label": "Vayne"
+        },
+        {
+          "value": "veigar",
+          "label": "Veigar"
+        },
+        {
+          "value": "velkoz",
+          "label": "Vel'Koz"
+        },
+        {
+          "value": "vex",
+          "label": "Vex"
+        },
+        {
+          "value": "vi",
+          "label": "Vi"
+        },
+        {
+          "value": "viego",
+          "label": "Viego"
+        },
+        {
+          "value": "viktor",
+          "label": "Viktor"
+        },
+        {
+          "value": "vladimir",
+          "label": "Vladimir"
+        },
+        {
+          "value": "volibear",
+          "label": "Volibear"
+        },
+        {
+          "value": "warwick",
+          "label": "Warwick"
+        },
+        {
+          "value": "wukong",
+          "label": "Wukong"
+        },
+        {
+          "value": "xayah",
+          "label": "Xayah"
+        },
+        {
+          "value": "xerath",
+          "label": "Xerath"
+        },
+        {
+          "value": "xin-zhao",
+          "label": "Xin Zhao"
+        },
+        {
+          "value": "yasuo",
+          "label": "Yasuo"
+        },
+        {
+          "value": "yone",
+          "label": "Yone"
+        },
+        {
+          "value": "yorick",
+          "label": "Yorick"
+        },
+        {
+          "value": "yunara",
+          "label": "Yunara"
+        },
+        {
+          "value": "yuumi",
+          "label": "Yuumi"
+        },
+        {
+          "value": "zaahen",
+          "label": "Zaahen"
+        },
+        {
+          "value": "zac",
+          "label": "Zac"
+        },
+        {
+          "value": "zed",
+          "label": "Zed"
+        },
+        {
+          "value": "zeri",
+          "label": "Zeri"
+        },
+        {
+          "value": "ziggs",
+          "label": "Ziggs"
+        },
+        {
+          "value": "zilean",
+          "label": "Zilean"
+        },
+        {
+          "value": "zoe",
+          "label": "Zoe"
+        },
+        {
+          "value": "zyra",
+          "label": "Zyra"
+        }
+      ],
+      "visible_when": {
+        "module_config.mastery_mode": "matchup"
+      },
+      "help": "The first side of the matchup."
+    },
+    {
+      "key": "module_config.champion_b_id",
+      "label": "Champion B",
+      "type": "enum",
+      "required": true,
+      "options": [
+        {
+          "value": "aatrox",
+          "label": "Aatrox"
+        },
+        {
+          "value": "ahri",
+          "label": "Ahri"
+        },
+        {
+          "value": "akali",
+          "label": "Akali"
+        },
+        {
+          "value": "akshan",
+          "label": "Akshan"
+        },
+        {
+          "value": "alistar",
+          "label": "Alistar"
+        },
+        {
+          "value": "ambessa",
+          "label": "Ambessa"
+        },
+        {
+          "value": "amumu",
+          "label": "Amumu"
+        },
+        {
+          "value": "anivia",
+          "label": "Anivia"
+        },
+        {
+          "value": "annie",
+          "label": "Annie"
+        },
+        {
+          "value": "aphelios",
+          "label": "Aphelios"
+        },
+        {
+          "value": "ashe",
+          "label": "Ashe"
+        },
+        {
+          "value": "aurelion-sol",
+          "label": "Aurelion Sol"
+        },
+        {
+          "value": "aurora",
+          "label": "Aurora"
+        },
+        {
+          "value": "azir",
+          "label": "Azir"
+        },
+        {
+          "value": "bard",
+          "label": "Bard"
+        },
+        {
+          "value": "belveth",
+          "label": "Bel'Veth"
+        },
+        {
+          "value": "blitzcrank",
+          "label": "Blitzcrank"
+        },
+        {
+          "value": "brand",
+          "label": "Brand"
+        },
+        {
+          "value": "braum",
+          "label": "Braum"
+        },
+        {
+          "value": "briar",
+          "label": "Briar"
+        },
+        {
+          "value": "caitlyn",
+          "label": "Caitlyn"
+        },
+        {
+          "value": "camille",
+          "label": "Camille"
+        },
+        {
+          "value": "cassiopeia",
+          "label": "Cassiopeia"
+        },
+        {
+          "value": "chogath",
+          "label": "Cho'Gath"
+        },
+        {
+          "value": "corki",
+          "label": "Corki"
+        },
+        {
+          "value": "darius",
+          "label": "Darius"
+        },
+        {
+          "value": "diana",
+          "label": "Diana"
+        },
+        {
+          "value": "dr-mundo",
+          "label": "Dr Mundo"
+        },
+        {
+          "value": "draven",
+          "label": "Draven"
+        },
+        {
+          "value": "ekko",
+          "label": "Ekko"
+        },
+        {
+          "value": "elise",
+          "label": "Elise"
+        },
+        {
+          "value": "evelynn",
+          "label": "Evelynn"
+        },
+        {
+          "value": "ezreal",
+          "label": "Ezreal"
+        },
+        {
+          "value": "fiddlesticks",
+          "label": "Fiddlesticks"
+        },
+        {
+          "value": "fiora",
+          "label": "Fiora"
+        },
+        {
+          "value": "fizz",
+          "label": "Fizz"
+        },
+        {
+          "value": "galio",
+          "label": "Galio"
+        },
+        {
+          "value": "gangplank",
+          "label": "Gangplank"
+        },
+        {
+          "value": "garen",
+          "label": "Garen"
+        },
+        {
+          "value": "gnar",
+          "label": "Gnar"
+        },
+        {
+          "value": "gragas",
+          "label": "Gragas"
+        },
+        {
+          "value": "graves",
+          "label": "Graves"
+        },
+        {
+          "value": "gwen",
+          "label": "Gwen"
+        },
+        {
+          "value": "hecarim",
+          "label": "Hecarim"
+        },
+        {
+          "value": "heimerdinger",
+          "label": "Heimerdinger"
+        },
+        {
+          "value": "hwei",
+          "label": "Hwei"
+        },
+        {
+          "value": "illaoi",
+          "label": "Illaoi"
+        },
+        {
+          "value": "irelia",
+          "label": "Irelia"
+        },
+        {
+          "value": "ivern",
+          "label": "Ivern"
+        },
+        {
+          "value": "janna",
+          "label": "Janna"
+        },
+        {
+          "value": "jarvan",
+          "label": "Jarvan IV"
+        },
+        {
+          "value": "jax",
+          "label": "Jax"
+        },
+        {
+          "value": "jayce",
+          "label": "Jayce"
+        },
+        {
+          "value": "jhin",
+          "label": "Jhin"
+        },
+        {
+          "value": "jinx",
+          "label": "Jinx"
+        },
+        {
+          "value": "ksante",
+          "label": "K'Sante"
+        },
+        {
+          "value": "kaisa",
+          "label": "Kai'Sa"
+        },
+        {
+          "value": "kalista",
+          "label": "Kalista"
+        },
+        {
+          "value": "karma",
+          "label": "Karma"
+        },
+        {
+          "value": "karthus",
+          "label": "Karthus"
+        },
+        {
+          "value": "kassadin",
+          "label": "Kassadin"
+        },
+        {
+          "value": "katarina",
+          "label": "Katarina"
+        },
+        {
+          "value": "kayle",
+          "label": "Kayle"
+        },
+        {
+          "value": "kayn",
+          "label": "Kayn"
+        },
+        {
+          "value": "kennen",
+          "label": "Kennen"
+        },
+        {
+          "value": "khazix",
+          "label": "Kha'Zix"
+        },
+        {
+          "value": "kindred",
+          "label": "Kindred"
+        },
+        {
+          "value": "kled",
+          "label": "Kled"
+        },
+        {
+          "value": "kogmaw",
+          "label": "Kog'Maw"
+        },
+        {
+          "value": "leblanc",
+          "label": "LeBlanc"
+        },
+        {
+          "value": "lee-sin",
+          "label": "Lee Sin"
+        },
+        {
+          "value": "leona",
+          "label": "Leona"
+        },
+        {
+          "value": "lillia",
+          "label": "Lillia"
+        },
+        {
+          "value": "lissandra",
+          "label": "Lissandra"
+        },
+        {
+          "value": "locke",
+          "label": "Locke"
+        },
+        {
+          "value": "lucian",
+          "label": "Lucian"
+        },
+        {
+          "value": "lulu",
+          "label": "Lulu"
+        },
+        {
+          "value": "lux",
+          "label": "Lux"
+        },
+        {
+          "value": "malphite",
+          "label": "Malphite"
+        },
+        {
+          "value": "malzahar",
+          "label": "Malzahar"
+        },
+        {
+          "value": "maokai",
+          "label": "Maokai"
+        },
+        {
+          "value": "master-yi",
+          "label": "Master Yi"
+        },
+        {
+          "value": "mel",
+          "label": "Mel"
+        },
+        {
+          "value": "milio",
+          "label": "Milio"
+        },
+        {
+          "value": "miss-fortune",
+          "label": "Miss Fortune"
+        },
+        {
+          "value": "mordekaiser",
+          "label": "Mordekaiser"
+        },
+        {
+          "value": "morgana",
+          "label": "Morgana"
+        },
+        {
+          "value": "naafiri",
+          "label": "Naafiri"
+        },
+        {
+          "value": "nami",
+          "label": "Nami"
+        },
+        {
+          "value": "nasus",
+          "label": "Nasus"
+        },
+        {
+          "value": "nautilus",
+          "label": "Nautilus"
+        },
+        {
+          "value": "neeko",
+          "label": "Neeko"
+        },
+        {
+          "value": "nidalee",
+          "label": "Nidalee"
+        },
+        {
+          "value": "nilah",
+          "label": "Nilah"
+        },
+        {
+          "value": "nocturne",
+          "label": "Nocturne"
+        },
+        {
+          "value": "nunu",
+          "label": "Nunu"
+        },
+        {
+          "value": "olaf",
+          "label": "Olaf"
+        },
+        {
+          "value": "orianna",
+          "label": "Orianna"
+        },
+        {
+          "value": "ornn",
+          "label": "Ornn"
+        },
+        {
+          "value": "pantheon",
+          "label": "Pantheon"
+        },
+        {
+          "value": "poppy",
+          "label": "Poppy"
+        },
+        {
+          "value": "pyke",
+          "label": "Pyke"
+        },
+        {
+          "value": "qiyana",
+          "label": "Qiyana"
+        },
+        {
+          "value": "quinn",
+          "label": "Quinn"
+        },
+        {
+          "value": "rakan",
+          "label": "Rakan"
+        },
+        {
+          "value": "rammus",
+          "label": "Rammus"
+        },
+        {
+          "value": "reksai",
+          "label": "Rek'Sai"
+        },
+        {
+          "value": "rell",
+          "label": "Rell"
+        },
+        {
+          "value": "renata",
+          "label": "Renata"
+        },
+        {
+          "value": "renekton",
+          "label": "Renekton"
+        },
+        {
+          "value": "rengar",
+          "label": "Rengar"
+        },
+        {
+          "value": "riven",
+          "label": "Riven"
+        },
+        {
+          "value": "rumble",
+          "label": "Rumble"
+        },
+        {
+          "value": "ryze",
+          "label": "Ryze"
+        },
+        {
+          "value": "samira",
+          "label": "Samira"
+        },
+        {
+          "value": "sejuani",
+          "label": "Sejuani"
+        },
+        {
+          "value": "senna",
+          "label": "Senna"
+        },
+        {
+          "value": "seraphine",
+          "label": "Seraphine"
+        },
+        {
+          "value": "sett",
+          "label": "Sett"
+        },
+        {
+          "value": "shaco",
+          "label": "Shaco"
+        },
+        {
+          "value": "shen",
+          "label": "Shen"
+        },
+        {
+          "value": "shyvana",
+          "label": "Shyvana"
+        },
+        {
+          "value": "singed",
+          "label": "Singed"
+        },
+        {
+          "value": "sion",
+          "label": "Sion"
+        },
+        {
+          "value": "sivir",
+          "label": "Sivir"
+        },
+        {
+          "value": "skarner",
+          "label": "Skarner"
+        },
+        {
+          "value": "smolder",
+          "label": "Smolder"
+        },
+        {
+          "value": "sona",
+          "label": "Sona"
+        },
+        {
+          "value": "soraka",
+          "label": "Soraka"
+        },
+        {
+          "value": "swain",
+          "label": "Swain"
+        },
+        {
+          "value": "sylas",
+          "label": "Sylas"
+        },
+        {
+          "value": "syndra",
+          "label": "Syndra"
+        },
+        {
+          "value": "tahm-kench",
+          "label": "Tahm Kench"
+        },
+        {
+          "value": "taliyah",
+          "label": "Taliyah"
+        },
+        {
+          "value": "talon",
+          "label": "Talon"
+        },
+        {
+          "value": "taric",
+          "label": "Taric"
+        },
+        {
+          "value": "teemo",
+          "label": "Teemo"
+        },
+        {
+          "value": "thresh",
+          "label": "Thresh"
+        },
+        {
+          "value": "tristana",
+          "label": "Tristana"
+        },
+        {
+          "value": "trundle",
+          "label": "Trundle"
+        },
+        {
+          "value": "tryndamere",
+          "label": "Tryndamere"
+        },
+        {
+          "value": "twisted-fate",
+          "label": "Twisted Fate"
+        },
+        {
+          "value": "twitch",
+          "label": "Twitch"
+        },
+        {
+          "value": "udyr",
+          "label": "Udyr"
+        },
+        {
+          "value": "urgot",
+          "label": "Urgot"
+        },
+        {
+          "value": "varus",
+          "label": "Varus"
+        },
+        {
+          "value": "vayne",
+          "label": "Vayne"
+        },
+        {
+          "value": "veigar",
+          "label": "Veigar"
+        },
+        {
+          "value": "velkoz",
+          "label": "Vel'Koz"
+        },
+        {
+          "value": "vex",
+          "label": "Vex"
+        },
+        {
+          "value": "vi",
+          "label": "Vi"
+        },
+        {
+          "value": "viego",
+          "label": "Viego"
+        },
+        {
+          "value": "viktor",
+          "label": "Viktor"
+        },
+        {
+          "value": "vladimir",
+          "label": "Vladimir"
+        },
+        {
+          "value": "volibear",
+          "label": "Volibear"
+        },
+        {
+          "value": "warwick",
+          "label": "Warwick"
+        },
+        {
+          "value": "wukong",
+          "label": "Wukong"
+        },
+        {
+          "value": "xayah",
+          "label": "Xayah"
+        },
+        {
+          "value": "xerath",
+          "label": "Xerath"
+        },
+        {
+          "value": "xin-zhao",
+          "label": "Xin Zhao"
+        },
+        {
+          "value": "yasuo",
+          "label": "Yasuo"
+        },
+        {
+          "value": "yone",
+          "label": "Yone"
+        },
+        {
+          "value": "yorick",
+          "label": "Yorick"
+        },
+        {
+          "value": "yunara",
+          "label": "Yunara"
+        },
+        {
+          "value": "yuumi",
+          "label": "Yuumi"
+        },
+        {
+          "value": "zaahen",
+          "label": "Zaahen"
+        },
+        {
+          "value": "zac",
+          "label": "Zac"
+        },
+        {
+          "value": "zed",
+          "label": "Zed"
+        },
+        {
+          "value": "zeri",
+          "label": "Zeri"
+        },
+        {
+          "value": "ziggs",
+          "label": "Ziggs"
+        },
+        {
+          "value": "zilean",
+          "label": "Zilean"
+        },
+        {
+          "value": "zoe",
+          "label": "Zoe"
+        },
+        {
+          "value": "zyra",
+          "label": "Zyra"
+        }
+      ],
+      "visible_when": {
+        "module_config.mastery_mode": "matchup"
+      },
+      "help": "The second side. Must differ from Champion A \u2014 a mirror matchup has nothing to compare."
     },
     {
       "key": "challenge_count",
       "label": "Questions",
       "type": "integer",
       "required": true,
-      "min": 2,
-      "help": "How many of the chosen set's leading ordered steps to generate. Must not exceed that set's max_questions, and never fewer than 2 \u2014 a one-question slice is not servable."
-    },
-    {
-      "key": "module_config.allowed_variants",
-      "label": "Scenario variants",
-      "type": "multi_enum",
-      "required": false,
-      "depends_on": "module_config.mastery_set_id",
-      "options_by": {
-        "chain.jarvan.physical_penetration": [
-          {
-            "value": "lethality",
-            "label": "Flat lethality",
-            "help": "Serrated Dirk \u2014 flat Armor reduction.",
-            "max_questions": 1
-          },
-          {
-            "value": "percent_pen",
-            "label": "Percent armor penetration",
-            "help": "Lord Dominik's Regards \u2014 percent Armor reduction.",
-            "max_questions": 1
-          }
-        ],
-        "playtest.champion.ahri": [
-          {
-            "value": "fundamentals",
-            "label": "Fundamentals",
-            "help": "Opening recall on Ahri's core abilities.",
-            "max_questions": 4
-          },
-          {
-            "value": "abilities",
-            "label": "Abilities",
-            "help": "The rest of the kit's cooldowns and costs.",
-            "max_questions": 4
-          },
-          {
-            "value": "progression",
-            "label": "Progression",
-            "help": "Level scaling and per-level stats.",
-            "max_questions": 5
-          },
-          {
-            "value": "reinforcement",
-            "label": "Reinforcement",
-            "help": "Repeat recall on the earlier material.",
-            "max_questions": 2
-          }
-        ],
-        "playtest.matchup.ahri.syndra": [
-          {
-            "value": "fundamentals",
-            "label": "Fundamentals",
-            "help": "Opening recall across both kits.",
-            "max_questions": 2
-          },
-          {
-            "value": "atomic_recall",
-            "label": "Recall",
-            "help": "Single-value recall on each champion.",
-            "max_questions": 2
-          },
-          {
-            "value": "comparisons",
-            "label": "Comparisons",
-            "help": "Which of the two is higher, on cooldowns.",
-            "max_questions": 3
-          },
-          {
-            "value": "harder_comparisons",
-            "label": "Harder comparisons",
-            "help": "The same shape on base stats.",
-            "max_questions": 4
-          },
-          {
-            "value": "reinforcement",
-            "label": "Reinforcement",
-            "help": "Repeat recall on the earlier material.",
-            "max_questions": 2
-          }
-        ]
-      },
-      "min_items": 1,
-      "help": "Which of the set's scenarios generation may draw from. Leave empty for all of them, which is also what a slot saved before this control existed means."
-    }
-  ],
-  "mastery_sets": [
-    {
-      "set_id": "chain.jarvan.physical_penetration",
-      "display_name": "Jarvan IV Q \u2014 Physical Penetration",
-      "description": "Two certified questions on Jarvan IV's Q against Olaf, one per penetration scenario.",
-      "display_revision": "disprev_chain-jarvan-physical-penetration.v1",
-      "max_questions": 2,
-      "variants": [
-        {
-          "variant_id": "lethality",
-          "label": "Flat lethality",
-          "description": "Serrated Dirk \u2014 flat Armor reduction.",
-          "max_questions": 1
-        },
-        {
-          "variant_id": "percent_pen",
-          "label": "Percent armor penetration",
-          "description": "Lord Dominik's Regards \u2014 percent Armor reduction.",
-          "max_questions": 1
-        }
-      ],
-      "supports_variant_weighting": false,
-      "supports_difficulty": false,
-      "readiness": {
-        "state": "ready",
-        "detail": "",
-        "available_steps": 2,
-        "available_variants": {
-          "lethality": 1,
-          "percent_pen": 1
-        }
-      }
-    },
-    {
-      "set_id": "playtest.champion.ahri",
-      "display_name": "Ahri \u2014 Champion Mastery",
-      "description": "Ahri's own kit: cooldowns, costs and level scaling, in the curriculum order the manifest sequences them.",
-      "display_revision": "disprev_generated-ahri-champion.playtest.v1",
-      "max_questions": 15,
-      "variants": [
-        {
-          "variant_id": "fundamentals",
-          "label": "Fundamentals",
-          "description": "Opening recall on Ahri's core abilities.",
-          "max_questions": 4
-        },
-        {
-          "variant_id": "abilities",
-          "label": "Abilities",
-          "description": "The rest of the kit's cooldowns and costs.",
-          "max_questions": 4
-        },
-        {
-          "variant_id": "progression",
-          "label": "Progression",
-          "description": "Level scaling and per-level stats.",
-          "max_questions": 5
-        },
-        {
-          "variant_id": "reinforcement",
-          "label": "Reinforcement",
-          "description": "Repeat recall on the earlier material.",
-          "max_questions": 2
-        }
-      ],
-      "supports_variant_weighting": false,
-      "supports_difficulty": false,
-      "readiness": {
-        "state": "ready",
-        "detail": "",
-        "available_steps": 15,
-        "available_variants": {
-          "fundamentals": 4,
-          "abilities": 4,
-          "progression": 5,
-          "reinforcement": 2
-        }
-      }
-    },
-    {
-      "set_id": "playtest.matchup.ahri.syndra",
-      "display_name": "Ahri vs Syndra \u2014 Matchup Mastery",
-      "description": "The Ahri/Syndra lane: recall on both kits, then side-by-side comparisons between them.",
-      "display_revision": "disprev_generated-ahri-syndra-matchup.playtest.v1",
-      "max_questions": 13,
-      "variants": [
-        {
-          "variant_id": "fundamentals",
-          "label": "Fundamentals",
-          "description": "Opening recall across both kits.",
-          "max_questions": 2
-        },
-        {
-          "variant_id": "atomic_recall",
-          "label": "Recall",
-          "description": "Single-value recall on each champion.",
-          "max_questions": 2
-        },
-        {
-          "variant_id": "comparisons",
-          "label": "Comparisons",
-          "description": "Which of the two is higher, on cooldowns.",
-          "max_questions": 3
-        },
-        {
-          "variant_id": "harder_comparisons",
-          "label": "Harder comparisons",
-          "description": "The same shape on base stats.",
-          "max_questions": 4
-        },
-        {
-          "variant_id": "reinforcement",
-          "label": "Reinforcement",
-          "description": "Repeat recall on the earlier material.",
-          "max_questions": 2
-        }
-      ],
-      "supports_variant_weighting": false,
-      "supports_difficulty": false,
-      "readiness": {
-        "state": "ready",
-        "detail": "",
-        "available_steps": 13,
-        "available_variants": {
-          "fundamentals": 2,
-          "atomic_recall": 2,
-          "comparisons": 3,
-          "harder_comparisons": 4,
-          "reinforcement": 2
-        }
-      }
+      "min": 1,
+      "help": "How many questions to generate for this slot. Checked when the format is saved against what the chosen generator can currently supply."
     }
   ],
   "fixed": {

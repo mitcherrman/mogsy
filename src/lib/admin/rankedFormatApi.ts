@@ -107,32 +107,13 @@ export interface CatalogField {
  * configurable here by being registered on the backend rather than by a change
  * to this repo.
  */
-export interface MasterySetVariant {
-  variant_id: string;
-  label: string;
-  description: string;
-  max_questions: number;
-}
-
-export interface MasterySetReadiness {
-  state: "ready" | "blocked" | "error";
-  detail: string;
-  available_steps?: number;
-  available_variants?: Record<string, number>;
-}
-
-export interface MasterySetCapability {
-  set_id: string;
-  display_name: string;
-  description: string;
-  display_revision: string;
-  max_questions: number;
-  variants: MasterySetVariant[];
-  supports_variant_weighting: boolean;
-  supports_difficulty: boolean;
-  /** Present only when the backend probed liveness for this request. */
-  readiness?: MasterySetReadiness;
-}
+// The catalog used to carry a `mastery_sets` block: the declared
+// capabilities of a closed registry of prebuilt Mastery sets a slot could
+// name (their step ceiling, their scenario variants, their live readiness).
+// Those sets were hardcoded parameterizations of the Mastery generators and
+// were deleted, so the block and its types went with them. A Mastery slot now
+// names a GENERATOR and its subject, described by ordinary catalog fields
+// like every other module's.
 
 export interface CatalogModule {
   module_id: string;
@@ -142,8 +123,6 @@ export interface CatalogModule {
   defaults: SegmentSpecJson;
   fields: CatalogField[];
   fixed?: Record<string, unknown>;
-  /** Runtime-generation capabilities, on the modules that have them. */
-  mastery_sets?: MasterySetCapability[];
 }
 
 export interface ModuleCatalog {

@@ -10,9 +10,14 @@
 // supposed to share.
 //
 // Nothing in these tests, or in the components they exercise, knows which
-// Mastery sets exist, what a variant means, or anything about a champion, an
+// Mastery generators exist, which champions they cover, or anything about an
 // item, an ability or a damage number. Every one of those comes out of the
 // fixture, which came out of the backend.
+//
+// The catalog used to also carry a `mastery_sets` block describing a closed
+// registry of prebuilt sets a slot could name. Those sets were hardcoded
+// parameterizations of the generators and were deleted, so the block, the
+// set dropdown and the per-set variant control are gone with them.
 // ---------------------------------------------------------------------------
 
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -38,15 +43,26 @@ import { GenerationPolicyPanel } from "./GenerationPolicyPanel";
 const mockPreview = vi.mocked(previewMasterySlice);
 const entry = CATALOG_ENTRY as unknown as CatalogModule;
 
-const JARVAN = "chain.jarvan.physical_penetration";
-const AHRI = "playtest.champion.ahri";
+/** A deterministic subject, read from the fixture rather than typed here. */
+const attackerField = (CATALOG_ENTRY as unknown as CatalogModule)
+  .fields.find((f) => f.key === "module_config.attacker_champion_id")!;
+const ATTACKER = String(attackerField.options![0].value);
+const ABILITY = String(
+  attackerField && (CATALOG_ENTRY as unknown as CatalogModule)
+    .fields.find((f) => f.key === "module_config.ability_key")!
+    .options_by![ATTACKER][0].value);
 
 function segment(over: Partial<SegmentSpecJson> = {}): SegmentSpecJson {
   return {
     module_id: "mastery_slice",
     module_version: 1,
     challenge_count: 2,
-    module_config: { mastery_set_id: JARVAN },
+    module_config: {
+      mastery_mode: "applied_chain",
+      attacker_champion_id: ATTACKER,
+      ability_key: ABILITY,
+      target_champion_id: "olaf",
+    },
     ...over,
   };
 }
@@ -58,67 +74,58 @@ beforeEach(() => { vi.clearAllMocks(); });
 // ------------------------------------- the catalog really does declare this
 
 describe("the backend catalog declares the generation contract", () => {
-  it("offers exactly three settings for a runtime-generating slot", () => {
-    expect(entry.fields.map((f) => f.key)).toEqual([
-      "module_config.mastery_set_id",
-      "challenge_count",
-      "module_config.allowed_variants",
-    ]);
+  it("offers a generator and its subject, and never a static set", () => {
+    const keys = entry.fields.map((f) => f.key);
+    expect(keys).toContain("module_config.mastery_mode");
+    expect(keys).not.toContain("module_config.mastery_set_id");
+    expect(keys).not.toContain("module_config.allowed_variants");
+    // One field per key: the renderer addresses a field BY key.
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("declares the variant control as DEPENDENT on the chosen set", () => {
-    const variants = field("module_config.allowed_variants");
-    expect(variants.type).toBe("multi_enum");
-    expect(variants.depends_on).toBe("module_config.mastery_set_id");
-    expect(variants.required).toBe(false);
+  it("declares the ability control as DEPENDENT on the attacker", () => {
+    const ability = field("module_config.ability_key");
+    expect(ability.type).toBe("enum");
+    expect(ability.depends_on).toBe("module_config.attacker_champion_id");
+    expect(ability.options_by).toBeTruthy();
   });
 
-  it("carries each set's capabilities, so the UI declares none of its own", () => {
-    const jarvan = entry.mastery_sets?.find((c) => c.set_id === JARVAN);
-    expect(jarvan).toBeDefined();
-    expect(jarvan!.variants.map((v) => v.variant_id))
-      .toEqual(["lethality", "percent_pen"]);
-    expect(jarvan!.supports_variant_weighting).toBe(false);
-    expect(jarvan!.supports_difficulty).toBe(false);
-    expect(jarvan!.max_questions).toBe(2);
+  it("carries no per-set capability block for the UI to describe", () => {
+    expect((entry as unknown as Record<string, unknown>).mastery_sets)
+      .toBeUndefined();
   });
 
   it("enforces the servable floor through the catalog's own minimum", () => {
-    expect(field("challenge_count").min).toBe(2);
+    expect(field("challenge_count").min).toBe(1);
   });
 });
 
 // ------------------------------------------------- dependent option lookup
 
 describe("a dependent field resolves its options from the parent value", () => {
-  it("offers the selected set's own variants", () => {
+  it("offers the selected attacker's own certified abilities", () => {
     const options = resolveFieldOptions(
-      field("module_config.allowed_variants"), segment());
-    expect(options?.map((o) => o.value)).toEqual(["lethality", "percent_pen"]);
-  });
-
-  it("offers a different set's different variants", () => {
-    const options = resolveFieldOptions(
-      field("module_config.allowed_variants"),
-      segment({ module_config: { mastery_set_id: AHRI } }));
+      field("module_config.ability_key"), segment());
     expect(options?.map((o) => o.value)).toEqual(
-      entry.mastery_sets!.find((c) => c.set_id === AHRI)!
-        .variants.map((v) => v.variant_id));
+      field("module_config.ability_key").options_by![ATTACKER]
+        .map((o) => o.value));
   });
 
-  it("offers NOTHING for a set the backend declares no variants for", () => {
+  it("offers NOTHING for a champion the backend certifies nothing for", () => {
     // Null, not []: an absent capability must read as an absent control.
     expect(resolveFieldOptions(
-      field("module_config.allowed_variants"),
-      segment({ module_config: { mastery_set_id: "some.set.with.no.variants" } }),
+      field("module_config.ability_key"),
+      segment({ module_config: {
+        mastery_mode: "applied_chain",
+        attacker_champion_id: "not-a-certified-champion" } }),
     )).toBeNull();
   });
 
   it("leaves a non-dependent field's options exactly as declared", () => {
-    const options = resolveFieldOptions(field("module_config.mastery_set_id"),
-                                        segment());
-    expect(options?.map((o) => o.value).sort())
-      .toEqual(entry.mastery_sets!.map((c) => c.set_id).sort());
+    const options = resolveFieldOptions(
+      field("module_config.attacker_champion_id"), segment());
+    expect(options?.map((o) => o.value)).toEqual(
+      field("module_config.attacker_champion_id").options!.map((o) => o.value));
   });
 });
 
@@ -131,50 +138,44 @@ function renderFields(seg: SegmentSpecJson, onChange = vi.fn()) {
 }
 
 describe("the form renders from that metadata", () => {
-  it("shows the variant control with the selected set's variants", () => {
+  it("shows the ability control with the selected attacker's abilities", () => {
     renderFields(segment());
-    expect(screen.getByTestId("field-0-module_config.allowed_variants"))
-      .toBeInTheDocument();
-    expect(screen.getByTestId("option-0-lethality")).toBeInTheDocument();
-    expect(screen.getByTestId("option-0-percent_pen")).toBeInTheDocument();
+    const control = screen.getByLabelText("Ability") as HTMLSelectElement;
+    expect(control).toBeInTheDocument();
+    const offered = Array.from(control.options)
+      .map((o) => o.value).filter(Boolean);
+    expect(offered).toEqual(
+      field("module_config.ability_key").options_by![ATTACKER]
+        .map((o) => String(o.value)));
   });
 
-  it("does NOT show the variant control for a set with no variants", () => {
-    renderFields(segment({
-      module_config: { mastery_set_id: "some.set.with.no.variants" } }));
-    expect(screen.queryByTestId("field-0-module_config.allowed_variants"))
-      .toBeNull();
+  it("does NOT show the ability control for an uncertified attacker", () => {
+    renderFields(segment({ module_config: {
+      mastery_mode: "applied_chain",
+      attacker_champion_id: "not-a-certified-champion" } }));
+    expect(screen.queryByTestId("field-0-module_config.ability_key")).toBeNull();
   });
 
-  it("does not show it before a set has been chosen at all", () => {
-    renderFields(segment({ module_config: {} }));
-    expect(screen.queryByTestId("field-0-module_config.allowed_variants"))
-      .toBeNull();
+  it("does not show it before an attacker has been chosen at all", () => {
+    renderFields(segment({ module_config: { mastery_mode: "applied_chain" } }));
+    expect(screen.queryByTestId("field-0-module_config.ability_key")).toBeNull();
   });
 
   it("shows no control for a capability no field declares", () => {
-    // Weighting is declared unsupported, so there is no weighting field and
-    // therefore nothing to render. Asserted so a faked control would fail.
+    // Per-variant weighting was a static set's capability and is declared
+    // nowhere now. Asserted so a faked control would fail.
     expect(entry.fields.some((f) => f.key.includes("weight"))).toBe(false);
+    expect(entry.fields.some((f) => f.key.includes("variant"))).toBe(false);
     renderFields(segment());
     expect(screen.queryByLabelText(/weight/i)).toBeNull();
   });
 
-  it("writes the chosen variants back under the backend's own config key", () => {
+  it("writes the chosen ability back under the backend's own config key", () => {
     const onChange = renderFields(segment());
-    fireEvent.click(screen.getByTestId("option-0-lethality"));
+    fireEvent.change(screen.getByLabelText("Ability"),
+                     { target: { value: ABILITY } });
     expect(onChange).toHaveBeenCalledWith(
-      "module_config.allowed_variants", ["lethality"]);
-  });
-
-  it("round-trips a saved variant policy back into the form", () => {
-    renderFields(segment({
-      module_config: { mastery_set_id: JARVAN, allowed_variants: ["percent_pen"] },
-    }));
-    expect(screen.getByTestId("option-0-percent_pen"))
-      .toHaveAttribute("aria-checked", "true");
-    expect(screen.getByTestId("option-0-lethality"))
-      .toHaveAttribute("aria-checked", "false");
+      "module_config.ability_key", ABILITY);
   });
 });
 
@@ -182,28 +183,27 @@ describe("the form renders from that metadata", () => {
 
 function renderPanel(seg: SegmentSpecJson) {
   return render(<GenerationPolicyPanel segment={seg}
-                                       capabilities={entry.mastery_sets}
+                                       moduleId={seg.module_id}
                                        index={0} />);
 }
 
 describe("the generation policy panel", () => {
-  it("states the selected set's declared description and readiness", () => {
+  it("says the slot generates its questions, and offers a sample", () => {
     renderPanel(segment());
     const panel = screen.getByTestId("generation-policy-0");
-    const jarvan = entry.mastery_sets!.find((c) => c.set_id === JARVAN)!;
-    expect(panel).toHaveTextContent(jarvan.description);
-    expect(screen.getByTestId("mastery-readiness"))
-      .toHaveAttribute("data-readiness-state", "ready");
+    expect(panel).toHaveTextContent(/generates its questions/i);
+    expect(screen.getByTestId("preview-generation-0")).toBeInTheDocument();
   });
 
-  it("says plainly that weighting and difficulty are unsupported", () => {
+  it("describes no set, because there is no set to describe", () => {
     renderPanel(segment());
-    expect(screen.getByTestId("weighting-unsupported")).toBeInTheDocument();
-    expect(screen.getByTestId("difficulty-unsupported")).toBeInTheDocument();
+    expect(screen.queryByTestId("mastery-readiness")).toBeNull();
+    expect(screen.queryByTestId("weighting-unsupported")).toBeNull();
+    expect(screen.queryByTestId("difficulty-unsupported")).toBeNull();
   });
 
-  it("renders nothing at all when no known set is selected", () => {
-    renderPanel(segment({ module_config: { mastery_set_id: "unknown.set" } }));
+  it("renders nothing at all for a module that generates nothing", () => {
+    renderPanel(segment({ module_id: "quiz" }));
     expect(screen.queryByTestId("generation-policy-0")).toBeNull();
   });
 });
@@ -217,7 +217,7 @@ const PREVIEW = {
   mastery_set_id: "mset_abc",
   prompt: "Mastery Slice",
   challenge_count: 1,
-  module_config: { mastery_set_id: JARVAN },
+  module_config: { mastery_mode: "applied_chain" },
   challenges: [{
     challenge_index: 0,
     interaction_kind: "legacy_combat",
@@ -233,16 +233,13 @@ const PREVIEW = {
 describe("preview", () => {
   it("asks the BACKEND to generate from the policy in the editor", async () => {
     mockPreview.mockResolvedValue(PREVIEW);
-    renderPanel(segment({
-      module_config: { mastery_set_id: JARVAN, allowed_variants: ["percent_pen"] },
-      challenge_count: 2,
-    }));
+    const seg = segment({ challenge_count: 2 });
+    renderPanel(seg);
     await act(async () => {
       fireEvent.click(screen.getByTestId("preview-generation-0"));
     });
     // The unsaved policy exactly as edited, not a saved one.
-    expect(mockPreview).toHaveBeenCalledWith(
-      { mastery_set_id: JARVAN, allowed_variants: ["percent_pen"] }, 2);
+    expect(mockPreview).toHaveBeenCalledWith(seg.module_config, 2);
   });
 
   it("shows the backend's own question, options, answer and explanation", async () => {
@@ -274,7 +271,7 @@ describe("preview", () => {
 
   it("surfaces the backend's refusal verbatim rather than guessing", async () => {
     mockPreview.mockRejectedValue(new RankedFormatApiError(
-      "segment mastery_slice: unknown variant 'bogus'", 422,
+      "segment mastery_slice: module_config.mastery_set_id is retired", 422,
       "RANKED_INVALID_CONFIG_FORMAT"));
     renderPanel(segment());
     await act(async () => {
@@ -282,7 +279,7 @@ describe("preview", () => {
     });
     await waitFor(() =>
       expect(screen.getByTestId("preview-error-0"))
-        .toHaveTextContent("unknown variant 'bogus'"));
+        .toHaveTextContent("mastery_set_id is retired"));
     expect(screen.queryByTestId("preview-result-0")).toBeNull();
   });
 
@@ -297,10 +294,8 @@ describe("preview", () => {
 
     // A stale sample shown beside edited settings is worse than none.
     rerender(<GenerationPolicyPanel
-      segment={segment({
-        module_config: { mastery_set_id: JARVAN, allowed_variants: ["lethality"] },
-      })}
-      capabilities={entry.mastery_sets} index={0} />);
+      segment={segment({ challenge_count: 3 })}
+      moduleId="mastery_slice" index={0} />);
     await waitFor(() =>
       expect(screen.queryByTestId("preview-result-0")).toBeNull());
   });

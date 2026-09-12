@@ -62,6 +62,13 @@ function FieldShell({
 
 function EnumField({ field, segment, index, onChange }: FieldProps) {
   const value = readSegmentField(segment, field.key);
+  // An enum can be DEPENDENT too — the applied chain's ability list is a
+  // property of the attacker selected above it. Resolved through the same
+  // helper the multi-enum uses, so a dependent single-choice field behaves
+  // exactly like a dependent multi-choice one: null means the parent offers
+  // nothing here, and the honest rendering of that is no control at all.
+  const options = resolveFieldOptions(field, segment);
+  if (options === null) return null;
   return (
     <FieldShell field={field} index={index}>
       {/* A native <select>: the shadcn Select is a listbox that renders its
@@ -77,7 +84,7 @@ function EnumField({ field, segment, index, onChange }: FieldProps) {
         <option value="" disabled>
           Choose…
         </option>
-        {field.options?.map((option) => (
+        {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

@@ -1,20 +1,17 @@
 // ---------------------------------------------------------------------------
-// What a runtime-generating slot will produce, and a sample of it.
+// What a runtime-generating slot will produce, as a sample of the real thing.
 //
-// Shown beneath the ordinary config fields for a segment whose module declares
-// runtime-generation capabilities. Two things live here, and nothing else:
+// Shown beneath the ordinary config fields for a segment whose content is
+// GENERATED when the match reaches it. One thing lives here: a PREVIEW button
+// that asks the backend to generate samples from the policy currently in the
+// editor.
 //
-//   * the SELECTED set's declared capabilities and its live publication /
-//     readiness state, both read verbatim from the backend catalog;
-//   * a PREVIEW button that asks the backend to generate samples from the
-//     policy currently in the editor.
-//
-// Everything it knows, the backend told it. There is no list of sets, no
-// variant vocabulary, no question-count rule and no notion of what any
-// particular set is about in this file — a set that declares no variants shows
-// no variant line, and a capability that is not supported is stated as
-// unsupported rather than rendered as a disabled control an admin might think
-// is coming.
+// It used to also describe the SELECTED static Mastery set — its step
+// ceiling, its scenario variants, its live publication state — read from a
+// `mastery_sets` block in the catalog. Those sets were hardcoded
+// parameterizations of the Mastery generators and were deleted, so there is
+// no set to describe: what a slot can currently supply is a question about
+// current canonical data, and the honest answer to it is a live sample.
 //
 // The preview calls the REAL backend generation path
 // (`POST /api/ranked/admin/mastery-slice/preview`). Nothing here computes an
@@ -29,51 +26,26 @@ import { Button } from "@/components/ui/button";
 import {
   previewMasterySlice,
   RankedFormatApiError,
-  type MasterySetCapability,
   type MasterySlicePreview,
   type SegmentSpecJson,
 } from "@/lib/admin/rankedFormatApi";
-import { readSegmentField } from "@/lib/admin/rankedFormatEditing";
 
-/** The set this slot names, or undefined when it names none this build knows. */
-export function selectedCapability(
-  segment: SegmentSpecJson, capabilities: MasterySetCapability[] | undefined,
-): MasterySetCapability | undefined {
-  const setId = readSegmentField(segment, "module_config.mastery_set_id");
-  if (typeof setId !== "string") return undefined;
-  return capabilities?.find((c) => c.set_id === setId);
-}
+/** The modules whose content is generated when a match reaches the slot. */
+const GENERATED_MODULE_IDS = new Set(["mastery_slice"]);
 
-function ReadinessLine({ capability }: { capability: MasterySetCapability }) {
-  const readiness = capability.readiness;
-  if (!readiness) return null;
-  const ready = readiness.state === "ready";
-  return (
-    <p
-      className={
-        ready
-          ? "text-[10px] text-emerald-300"
-          : "rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-200"
-      }
-      data-testid="mastery-readiness"
-      data-readiness-state={readiness.state}
-    >
-      {ready
-        ? `Publishable here — ${readiness.available_steps ?? "?"} question${
-            readiness.available_steps === 1 ? "" : "s"} available now.`
-        : `Not servable here: ${readiness.detail || readiness.state}. Saving a slot that names this set will be refused.`}
-    </p>
-  );
+/** Does this slot generate its content, rather than draw it from a bank? */
+export function isGeneratedSlot(moduleId: string | undefined): boolean {
+  return typeof moduleId === "string" && GENERATED_MODULE_IDS.has(moduleId);
 }
 
 export function GenerationPolicyPanel({
-  segment, capabilities, index,
+  segment, moduleId, index,
 }: {
   segment: SegmentSpecJson;
-  capabilities: MasterySetCapability[] | undefined;
+  moduleId: string | undefined;
   index: number;
 }) {
-  const capability = selectedCapability(segment, capabilities);
+  const generated = isGeneratedSlot(moduleId);
   const [preview, setPreview] = useState<MasterySlicePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,7 +57,7 @@ export function GenerationPolicyPanel({
     segment.module_config ?? null, segment.challenge_count ?? null]);
   useEffect(() => { setPreview(null); setError(null); }, [policyKey]);
 
-  if (!capability) return null;
+  if (!generated) return null;
 
   const challengeCount = typeof segment.challenge_count === "number"
     ? segment.challenge_count : null;
@@ -117,33 +89,10 @@ export function GenerationPolicyPanel({
         Generation policy
       </p>
       <p className="text-[10.5px] leading-relaxed text-muted-foreground">
-        {capability.description}
+        This slot generates its questions from current canonical data when a
+        match reaches it. How many it can supply is checked when the format is
+        saved, and again when a match is created.
       </p>
-      <ReadinessLine capability={capability} />
-
-      <ul className="space-y-0.5 text-[10px] text-muted-foreground/80">
-        <li>Up to {capability.max_questions} questions from this set.</li>
-        {capability.variants.length > 0 && (
-          <li>
-            {capability.variants.length} scenario variant
-            {capability.variants.length === 1 ? "" : "s"}; leaving the variant
-            control empty generates from all of them.
-          </li>
-        )}
-        {/* Stated, not offered. An admin should know a control is missing
-            because the generator cannot honour it, not wonder where it went. */}
-        {!capability.supports_variant_weighting && (
-          <li data-testid="weighting-unsupported">
-            Per-variant weighting is not supported by this set — questions are
-            taken in curriculum order.
-          </li>
-        )}
-        {!capability.supports_difficulty && (
-          <li data-testid="difficulty-unsupported">
-            A difficulty target is not supported by this set.
-          </li>
-        )}
-      </ul>
 
       <div className="flex items-center gap-2">
         <Button

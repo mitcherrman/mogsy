@@ -169,12 +169,13 @@ export function SegmentRow({
                 index={index}
                 onChange={onFieldChange}
               />
-              {/* Renders only for a module that DECLARES runtime-generation
-                  capabilities, and only once its set is chosen. A module
-                  without them is unchanged. */}
+              {/* Renders only for a module whose content is GENERATED at
+                  match time, so an admin can sample what a policy will
+                  produce before players do. A module without one is
+                  unchanged. */}
               <GenerationPolicyPanel
                 segment={segment}
-                capabilities={catalogModule.mastery_sets}
+                moduleId={segment.module_id}
                 index={index}
               />
             </>

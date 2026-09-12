@@ -39,7 +39,6 @@ import {
   type RankedFormatJson,
 } from "@/lib/admin/rankedFormatApi";
 import {
-  clampChallengeCountForMasterySet,
   fillVisibleDefaults,
   formatsDiffer,
   insertSegmentAt,
@@ -394,10 +393,12 @@ export default function RankedFormatBuilder() {
                       }}
                       onFieldChange={(key, value) => {
                         let next = setSegmentField(format, index, key, value);
-                        if (key === "module_config.mastery_set_id") {
-                          const setOptions = module?.fields.find((f) => f.key === key)?.options;
-                          next = clampChallengeCountForMasterySet(next, index, setOptions, value);
-                        }
+                        // A Mastery slot used to clamp its question count to
+                        // the chosen static set's published ceiling. A
+                        // generator publishes none — availability depends on
+                        // current canonical data — so the count is checked
+                        // live at Save instead, which is the only place that
+                        // can be right about it.
                         if (module) {
                           // A tagged-union switch (Mastery Champion <-> Matchup)
                           // both reveals fields the config has never held and

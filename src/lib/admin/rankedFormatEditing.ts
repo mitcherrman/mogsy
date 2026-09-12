@@ -172,40 +172,6 @@ export function toggleMultiValue(
   return allOptions.filter((option) => selected.has(option));
 }
 
-/**
- * One-off UX clamp: when the admin picks a Mastery set that carries a
- * `max_questions` ceiling (optional catalog metadata — not every deployment
- * will have it), and the segment's current `challenge_count` exceeds it,
- * pull `challenge_count` down to the ceiling.
- *
- * Presentational only. The backend remains the validation authority and is
- * not consulted here; this exists so the form does not display a value the
- * chosen set cannot support, nothing more. Deliberately NOT a generic
- * dependent-field mechanism — this is the one field pairing that has one
- * today, so it is named for exactly that pairing rather than generalized.
- *
- * LEGACY: on-demand Mastery publishes no `max_questions`, because a generated
- * set has no static ceiling — how many questions a champion can currently
- * supply is resolved live when the format is saved. This therefore no-ops for
- * every current catalog and is retained only for a deployment still serving
- * the older static Mastery Set field.
- */
-export function clampChallengeCountForMasterySet(
-  format: RankedFormatJson,
-  index: number,
-  setOptions: CatalogOption[] | undefined,
-  selectedSetId: unknown,
-): RankedFormatJson {
-  if (typeof selectedSetId !== "string") return format;
-  const maxQuestions = setOptions?.find((option) => option.value === selectedSetId)?.max_questions;
-  if (typeof maxQuestions !== "number") return format;
-
-  const segment = format.segment_pattern[index];
-  const current = segment?.challenge_count;
-  if (typeof current !== "number" || current <= maxQuestions) return format;
-
-  return setSegmentField(format, index, "challenge_count", maxQuestions);
-}
 
 /**
  * Whether a catalog field applies given the segment's current values.
