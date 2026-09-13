@@ -44,7 +44,8 @@
 | **GR1 Matchup Mastery capability audit** | **COMPLETE, 2026-09-13. Audit only — nothing implemented.** Bases: backend `origin/master` **`c4f08761`**, frontend `origin/main` **`33d27b2f`**. See [`gr1-matchup-mastery-capability-audit.md`](./gr1-matchup-mastery-capability-audit.md) and the summary below. |
 | **GR1 Matchup rank identity** | **COMPLETE and verified, 2026-09-13.** Blockers 1, 2, 4 and 5 of that audit. Backend branch `gr1/matchup-rank-identity` @ **`52f5564a`** (base `c4f08761`), frontend @ **`756b6b41`** (base `3ce50045`) — one commit each, both clean fast-forwards. **Neither pushed** (both targets auto-deploy). See [`gr1-matchup-mastery-rank-fix.md`](./gr1-matchup-mastery-rank-fix.md) and the summary below. |
 | **GR1 Matchup rank diversity** | **COMPLETE and MERGED.** `origin/master` contains **`825e2db2`** — the seed now chooses which rank a comparison is asked at. See [`gr1-matchup-mastery-rank-diversity.md`](./gr1-matchup-mastery-rank-diversity.md). |
-| **GR1 Matchup tie policy** | **DESIGN + MEASUREMENT COMPLETE, 2026-09-13. NOTHING IMPLEMENTED — awaiting an owner decision.** Audited backend `origin/master` **`825e2db2`**; frontend `origin/main` **`756b6b41`** read only. Four policies simulated in a throwaway probe layer over **45,144 real generated slices**. Recommendation: **tie deprioritization + a per-slice tie cap; do NOT adopt metric-level suppression.** See [`gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md) and the summary below. |
+| **GR1 Matchup tie policy — design** | **DESIGN + MEASUREMENT COMPLETE, 2026-09-13. Superseded by the implementation row below.** Audited backend `origin/master` **`825e2db2`**; frontend `origin/main` **`756b6b41`** read only. Four policies simulated in a throwaway probe layer over **45,144 real generated slices**. Recommendation: **tie deprioritization + a per-slice tie cap; do NOT adopt metric-level suppression.** See [`gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md) and the summary below. |
+| **GR1 Matchup tie policy — implementation** | **COMPLETE and verified, 2026-09-13.** The approved hybrid — tie deprioritization + a per-slice cap of `max(1, n // 4)` — on branch `gr1/matchup-tie-policy` @ **`afb55d1e`**, base `origin/master` **`087f9a78`**. One commit, clean fast-forward, **not pushed**. **No frontend change.** See [`gr1-matchup-mastery-tie-policy-implementation.md`](./gr1-matchup-mastery-tie-policy-implementation.md) and the summary below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## Commits
@@ -785,6 +786,106 @@ code to read a candidate's *answer* (`outcome.is_tie`).
 **`base_magic_resist` as a comparison metric at all (NEW)**; manaless mana regeneration;
 the dual-form row split (which is also why the tie tail is base-stat-dense); the Lab
 coverage headline.
+
+## Matchup tie policy — IMPLEMENTED on branch (2026-09-13)
+
+Full evidence: [`gr1-matchup-mastery-tie-policy-implementation.md`](./gr1-matchup-mastery-tie-policy-implementation.md).
+Backend `gr1/matchup-tie-policy` @ **`afb55d1e`** on base `origin/master` **`087f9a78`** — one
+commit, a clean fast-forward, **not pushed**. Worktree `/Users/macmoney/lcs-wt-gr1-tie`,
+`git status` clean. **The frontend did not change and did not need to**: `tie_state` already
+travels, the three-option control already renders, and a tie is still a legal correct answer.
+
+```bash
+git -C /Users/macmoney/lcs-wt-gr1-tie push origin gr1/matchup-tie-policy:master
+```
+
+**Base SHA note.** The design pass measured `origin/master` `825e2db2`; `origin/master` has
+since moved to `087f9a78` (two unrelated `item-runtime` commits). `git diff 825e2db2
+087f9a78 -- mastery/` is **empty**, so this sits on the identical Mastery code that was
+measured.
+
+**What shipped: exactly §5 of the design doc, nothing more.** Two opt-in
+`RepetitionPolicy` fields, set only by `synthesize_matchup_manifest`.
+`prefer_discriminating_context` advances the shipped within-pattern rotation to the first
+variant that does **not** tie, cyclically from the seeded offset — a further rotation of one
+fact's own members, so the pool is unchanged as a set, pattern ORDER is untouched, and a
+single-variant pattern (**every base stat**) provably does not move. `max_tie_questions`
+bounds ties per slice at the approved **rule** `max(1, question_count // 4)` — 1 / 1 / 2 at
+n=3 / 5 / 8. **Metric-level suppression was NOT adopted**: the comparison universe is
+byte-identical, 322,026 comparisons over 14,878/14,878 generatable pairs, 0 errors.
+
+**The cap is a preference, and the mechanism is the point.** `_select_for_request` now keeps
+**two** deferral queues and drains the **tie** queue before the already-asked-pattern queue.
+That ordering is the whole difference between the design pass's `B2` and its naive `B`, and
+it is what holds repeated facts at zero: a tie is only ever passed over for a **fresh
+non-tie**, never for a fact the slice already asked. When both queues are exhausted the tie
+is served and `_TieBudget` records the overrun rather than preventing it. **Proved
+exhaustively, not argued: over 2,400 slices on the 40 tie-heaviest pairs plus 160 random
+pairs, 104 (4.33%) exceed the cap and in 0 of them did a fresh deciding alternative exist.**
+
+**The architecture boundary, confirmed deliberately** — the one thing the design pass asked a
+reviewer to look at. One function, `resolver._is_tie`, reads the composer's
+already-computed `outcome.is_tie` and nothing else. Answer correctness stays owned by
+`ComparisonOutcome`; no candidate is removed from any pool; no canonical value moves;
+candidate validity is unchanged; atomic recall has no outcome so both policies are inert
+over it. Both fields are **absent-means-off and additive in `to_dict()`**, so the resolver is
+*not* globally tie-aware — every caller that does not opt in resolves byte for byte as
+before, and every manifest authored earlier keeps its pinned digest. **Champion Mastery
+adopts neither, asserted.**
+
+**Measured before/after, same 420-pair stratified sample, both arms in one process, 10,080
+real generated slices, 0 errors.** (Sample is 420 rather than the design pass's 418 — same
+strata and seed, different tie-break in the tie-heaviest stratum — so deltas are exact and
+absolutes are compared as shape.)
+
+| | n=3 | n=5 | n=8 |
+|---|---|---|---|
+| tie rate (all 420) | 13.23% → **8.49%** | 13.52% → **7.83%** | 13.48% → **10.28%** |
+| tie rate (random stratum, player-facing) | 9.69% → **6.33%** | 10.35% → **6.53%** | 10.72% → **8.38%** |
+| slices ≥2 ties | 7.3% → **0.2%** | 16.4% → **1.7%** | 28.6% → 24.6% |
+| slices **≥3** ties | 0.7% → **0.0%** | 5.2% → **0.0%** | 13.4% → **4.8%** |
+| adjacent tie pairs | 106 → **4** | 203 → **0** | 357 → **160** |
+| **tail (40 tie-heaviest), ≥3** | 6.2% → **0.0%** | 46.2% → **0.0%** | 87.5% → **42.5%** |
+
+**Tie volume by metric shows the two halves separately.** `ability_cooldown` 1,419 → **801**
+(−44%: deprioritization, which only multi-variant facts have). Every base stat falls ~a
+fifth — that is the cap alone, since deprioritization cannot reach a single-variant pattern.
+**No metric rises**, which is the whack-a-mole leak that sank Policy D (`base_mana_regen`
+rose 153 → 190 under it). Total 3,615 → **2,468**.
+
+**Against the simulation: it reproduces, with one gap, and the gap is mostly the sample.**
+n=5 matches digit for digit (7.70% sim vs 7.83%, ≥2 1.7% vs 1.7%, ≥3 0.0% vs 0.0%, adjacent
+0 vs 0); n=3 and n=8 ≥2 are close. The one divergence is the **residual ≥3 at n=8** — sim
+1.9%, measured 4.8%; tail 12.5% vs 42.5%. **This sample's tail stratum is strictly harder**:
+its *baseline* n=8 tie rate is 45.23% against the design pass's 40.94% and its baseline ≥3 is
+87.5% against 71.9%, and the baselines run high in the same direction at every cell. A denser
+tail leaves a bigger residual for the same policy. **No policy change was made to close it** —
+the approved policy is implemented as approved.
+
+**Unchanged and re-verified on the branch:** 14,878/14,878 pairs generatable with 0 errors;
+322,026 comparisons and 30,604 ties, reproduced exactly; **0** repeated `(subject, slot,
+metric)`; **0** repeated slot; **0** under-filled slices; **0** atomic fallback at n ≤ 8;
+longest same-metric run **2**; 4 salts ⇒ 4 distinct slices for **420/420** pairs at every
+length in both arms; same seed ⇒ same slice; `(a,b)` ≡ `(b,a)` identical `artifact_digest`,
+`mastery_set_id` and step order. Rank diversity and the rank-identity fix are both intact —
+their suites pass unchanged. No footprint list moved; all three runtime files were already
+inside `SLICE_FOOTPRINT`, and the 15 guards pass.
+
+**Generated Matchup `mastery_set_id`/`artifact_digest` move**, as in each of the three
+preceding passes. Reachable surface is admin-bot matches and the Generator Lab.
+
+**Tests.** New `mastery/tests/test_gr1_matchup_tie_policy.py`, **23 tests, 0 skipped**, and
+the suite **fails at the defect** — with the two policy lines flipped off, **4 of 23 fail**.
+Focused Matchup + composition arms: **307 passed**. Full `mastery/tests`: **3 failed / 1,722
+passed** on the branch against **3 failed / 1,699 passed** at `afb55d1e~1` — **failure sets
+byte-identical, zero introduced, none repaired**; the three are `test_audit_db.py` (2) and a
+Ranked format-naming drift in `test_phase4f_ranked_mastery_slice.py`, all pre-existing and
+untouched per the brief.
+
+**Still open for Matchup:** unchanged, minus tie policy — the cost and level-stat families;
+`base_magic_resist` as a comparison metric at all; manaless mana regeneration; the dual-form
+row split; the Lab coverage headline. **The broader Matchup structural review was NOT
+started.**
 
 ## Screenshots / artifacts
 
