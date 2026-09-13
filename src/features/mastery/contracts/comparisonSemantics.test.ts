@@ -62,9 +62,31 @@ describe("readComparisonSemantics", () => {
       context: { ability_rank: 3, champion_level: null, form: null },
       unit: "seconds",
     });
+    // The three fields the GR1 rank-identity fix added are structural in the
+    // same sense as every field above: two ability NAMES (identity, exactly
+    // like `metric`) and one boolean saying whether rank is load-bearing.
+    // None is a measured value, a winner or a tie state — `rankIndependent`
+    // is a property of BOTH sides at once by construction, so knowing it
+    // tells a player nothing about which side wins.
     expect(Object.keys(cs).sort()).toEqual(
-      ["championADisplay", "championBDisplay", "context", "dimension", "metric", "subjectRef", "template", "unit"].sort(),
+      [
+        "abilityNameA",
+        "abilityNameB",
+        "championADisplay",
+        "championBDisplay",
+        "context",
+        "dimension",
+        "metric",
+        "rankIndependent",
+        "subjectRef",
+        "template",
+        "unit",
+      ].sort(),
     );
+    // Absent on the wire ⇒ inert, never invented.
+    expect(cs.abilityNameA).toBe("");
+    expect(cs.abilityNameB).toBe("");
+    expect(cs.rankIndependent).toBe(false);
   });
 });
 

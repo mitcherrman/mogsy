@@ -374,6 +374,8 @@ export function getMatchupSubject(question: QuizQuestion): MatchupSubject | null
     championBSplash: resolveQuizAssetUrl(subject.champion_b_splash as string | undefined),
     abilitySlot: subject.ability_slot as string | undefined,
     abilityName: subject.ability_name as string | undefined,
+    abilityNameA: subject.ability_name_a as string | undefined,
+    abilityNameB: subject.ability_name_b as string | undefined,
     abilityIcon: resolveQuizAssetUrl(subject.ability_icon as string | undefined),
     metricLabel: typeof subject.metric_label === "string" ? subject.metric_label : undefined,
     level: subject.level as number | undefined,

@@ -44,6 +44,14 @@ export function MatchupScenarioCard({ subject }: { subject: MatchupSubject }) {
     [failedB, subject.championBSplash, subject.championB, championManifest],
   );
 
+  // Both names or neither: a card that named one side's ability and fell back
+  // to "Ability W" for the other would be the exact emphasis this card refuses.
+  const abilityPair =
+    subject.abilityNameA && subject.abilityNameB
+      ? `${subject.abilityNameA} vs ${subject.abilityNameB}`
+      : null;
+  const abilitySubtitle = subject.abilitySlot ? `Ability ${subject.abilitySlot}` : "Both champions";
+
   return (
     <ScenarioCardFrame
       backgroundUrl={null}
@@ -93,20 +101,24 @@ export function MatchupScenarioCard({ subject }: { subject: MatchupSubject }) {
           <SideTitle name={subject.championB} align="right" />
         </div>
 
-        {/* The ability under comparison, when the premise names one. Both sides
-            share a slot in these families, so it is stated once rather than
-            duplicated — the prompt says "their Q", not "Ahri's Q vs Syndra's Q". */}
-        {subject.abilityName && (
+        {/* The ability under comparison, when the premise names one.
+            Both sides share the SLOT and not the NAME, so when the premise
+            carries both names the title states both — in premise order, drawn
+            identically, so the card still favours neither. When it carries
+            neither (a payload frozen before the pair existed, or a store that
+            does not name the slot) the old single label is the fallback, and
+            the subtitle carries the "whose is it" the title no longer says. */}
+        {(abilityPair || subject.abilityName) && (
           <ScenarioSubject
             iconUrl={subject.abilityIcon}
             slotBadge={subject.abilitySlot}
-            title={subject.abilityName}
-            // NOT "Ability · Slot W" here: the title already reads "Ability W"
-            // for a matchup (both kits share the slot, so there is no single
-            // ability NAME to show), and repeating the slot underneath reads as
-            // a bug. The subtitle says whose it is instead — which is the fact
-            // the single-champion card gets for free and this one does not.
-            subtitle="Both champions"
+            title={abilityPair ?? (subject.abilityName as string)}
+            // With two real names the slot badge is already beside the title,
+            // so the subtitle names the SLOT rather than repeating it. Without
+            // them the title is the literal "Ability W" and the subtitle says
+            // whose it is — which is the fact the single-champion card gets
+            // for free and this one does not.
+            subtitle={abilityPair ? abilitySubtitle : "Both champions"}
           />
         )}
 

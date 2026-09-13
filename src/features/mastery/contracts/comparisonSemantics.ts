@@ -45,6 +45,32 @@ export interface MasteryComparisonSemantics {
   /** The intrinsic axes both sides are stated at — identical on both sides. */
   readonly context: MasteryFactContext;
   readonly unit: string;
+  /**
+   * Canonical name of `subjectRef` on each side, or "".
+   *
+   * Two fields, not one: a same-slot comparison is the one shape where the
+   * slot is shared and the NAME is not — Aatrox W is Infernal Chains, Akali W
+   * is Twilight Shroud. One name would have to belong to one side, which is
+   * the emphasis a comparison premise may never carry. "" means the store
+   * does not name it, and the renderer falls back to the bare slot — exactly
+   * the sentence this build printed before these fields existed.
+   */
+  readonly abilityNameA: string;
+  readonly abilityNameB: string;
+  /**
+   * Does this comparison's answer hold at every rank both kits publish?
+   *
+   * True only for the backend composer's flat pair — neither side's value
+   * moves with rank — which is the one case where stating a rank would be
+   * worse than stating none: the number is real at rank 1, but naming a rank
+   * implies the answer might differ elsewhere when it provably cannot.
+   *
+   * False means the rank is load-bearing and the prompt MUST state it. Absent
+   * on any segment frozen before the backend carried the field, and absent
+   * reads as `false` — an older payload's cooldown comparison was always
+   * drawn at rank 1, so stating that rank is true of it as well.
+   */
+  readonly rankIndependent: boolean;
 }
 
 export function readComparisonSemantics(
@@ -63,6 +89,11 @@ export function readComparisonSemantics(
     context: p.context === undefined ? { abilityRank: null, championLevel: null, form: null }
       : readFactContext(p.context, `${label}.context`),
     unit: p.unit === undefined ? "" : str(p.unit, `${label}.unit`),
+    abilityNameA:
+      p.ability_name_a === undefined ? "" : str(p.ability_name_a, `${label}.ability_name_a`),
+    abilityNameB:
+      p.ability_name_b === undefined ? "" : str(p.ability_name_b, `${label}.ability_name_b`),
+    rankIndependent: p.rank_independent === true,
   };
 }
 

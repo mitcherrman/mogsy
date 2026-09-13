@@ -53,7 +53,20 @@ export type MatchupSubject = {
   championBSplash?: string | null;
   /** Shared slot when the premise compares one ability across both kits. */
   abilitySlot?: string;
+  /**
+   * Fallback label only — the backend's literal `"Ability W"`. Kept because a
+   * payload frozen before the per-side names still sends it and the card still
+   * has to draw something.
+   */
   abilityName?: string;
+  /**
+   * The canonical name of that shared slot on each side. A PAIR, because the
+   * slot is what the two kits share and the name is what they do not: Aatrox W
+   * is Infernal Chains, Akali W is Twilight Shroud. Drawn together or not at
+   * all, so the card can never name one side's ability and not the other's.
+   */
+  abilityNameA?: string;
+  abilityNameB?: string;
   abilityIcon?: string | null;
   /** Human label for the compared metric, e.g. "Cooldown". Never a value. */
   metricLabel?: string;
