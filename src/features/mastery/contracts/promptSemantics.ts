@@ -48,6 +48,17 @@ export interface MasteryPromptSemantics {
   readonly subjectRef: string;
   /** The ability's own name, when one is being asked about. */
   readonly abilityName: string;
+  /**
+   * The resource an ability COST is denominated in — `"mana"`, `"energy"` or
+   * `"health"` — and `""` for every other template.
+   *
+   * Mirrors backend `PromptSemantics.resource`, which is the fact's own unit
+   * and therefore the same certified value the grader and the explanation
+   * use. `""` on a cost question means the backend refused to name it, which
+   * it does by refusing the candidate — so a cost prompt reaching a renderer
+   * without a resource is a contract violation, not a wording choice.
+   */
+  readonly resource: string;
   readonly context: MasteryFactContext;
 }
 
@@ -74,6 +85,7 @@ export function readPromptSemantics(value: unknown, label = "prompt_semantics"):
     metric: str(p.metric, `${label}.metric`),
     subjectRef: p.subject_ref === undefined ? "" : str(p.subject_ref, `${label}.subject_ref`),
     abilityName: p.ability_name === undefined ? "" : str(p.ability_name, `${label}.ability_name`),
+    resource: p.resource === undefined ? "" : str(p.resource, `${label}.resource`),
     context: p.context === undefined ? { abilityRank: null, championLevel: null, form: null }
       : readFactContext(p.context, `${label}.context`),
   };

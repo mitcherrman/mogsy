@@ -73,6 +73,22 @@ export function championForTarget(
 }
 
 /** Title-case a champion id/name for display ("ahri" -> "Ahri"). */
+/**
+ * A unit slug as words a player can read.
+ *
+ * GR1 product readiness. The canonical unit vocabulary is machine-shaped —
+ * `per_5_seconds`, `attacks_per_second`, `magic_resist` — and it never
+ * reached a player on the Ranked slice path because that path discarded the
+ * input contract entirely. Now that the real unit is shown beside the answer
+ * box, it has to be shown as English rather than as a slug. Underscores to
+ * spaces is the whole rule: every unit in the vocabulary reads correctly
+ * under it (`per 5 seconds`, `attacks per second`, `magic resist`), so there
+ * is no per-unit table to keep in step with the backend's.
+ */
+export function unitLabel(unit: string | null | undefined): string {
+  return (unit ?? "").replace(/_/g, " ").trim();
+}
+
 export function championName(id: string | null | undefined): string {
   if (!id) return "";
   return id.charAt(0).toUpperCase() + id.slice(1);

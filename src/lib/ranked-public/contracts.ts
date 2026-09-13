@@ -257,6 +257,26 @@ export interface MasterySliceChallengeView {
    * rendering a slice already had.
    */
   presentation?: Record<string, unknown> | null;
+  /**
+   * The League patch this challenge was generated from, e.g. `"League 26.16"`.
+   *
+   * GR1 product readiness. The Mastery patch badge renders
+   * `patchLabel(patchDisplay)`, and `patchLabel("")` returns the literal
+   * string `"Fixed scenario"` — which is what every generated Mastery
+   * question was badged with, because this field did not exist and the
+   * adapter hardcoded `""`. The label was always computed and always stamped
+   * on the artifact; it just never crossed the wire. `null` for every segment
+   * frozen before this shipped, which renders exactly as those segments
+   * already rendered.
+   */
+  patchDisplay?: string | null;
+  /**
+   * A NUMERIC challenge's real input contract — unit, step, decimal places,
+   * rounding mode, precision instruction — from the same policy the grader
+   * uses. `null` for a question answered by picking an option, and for every
+   * segment frozen before this shipped.
+   */
+  inputConstraints?: Record<string, unknown> | null;
 }
 
 // ------------------------------------------------- Meta Reflex cards (v4)
@@ -402,6 +422,8 @@ export interface MasterySliceChallengeView {
   /** See the copy above — TypeScript MERGES these two declarations, so the
    *  members have to be kept in step by hand until one of them is deleted. */
   presentation?: Record<string, unknown> | null;
+  patchDisplay?: string | null;
+  inputConstraints?: Record<string, unknown> | null;
 }
 
 /**
@@ -1118,6 +1140,14 @@ export function readMasterySliceChallenge(v: unknown, label: string): MasterySli
     // optional rather than required — a historical round must keep parsing.
     presentation: c.presentation === null || c.presentation === undefined
       ? null : rec(c.presentation, `${label}.presentation`),
+    // Both absent on every segment frozen before GR1 product readiness, and
+    // absent is a meaningful answer — "this segment predates the field" — so
+    // both are read as optional and neither is defaulted to a fabricated
+    // value. See the field docs above.
+    patchDisplay: c.patch_display === null || c.patch_display === undefined
+      ? null : str(c.patch_display, `${label}.patch_display`),
+    inputConstraints: c.input_constraints === null || c.input_constraints === undefined
+      ? null : rec(c.input_constraints, `${label}.input_constraints`),
   };
 }
 

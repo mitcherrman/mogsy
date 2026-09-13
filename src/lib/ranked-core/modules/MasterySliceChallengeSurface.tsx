@@ -39,6 +39,8 @@ import type { MasteryQuestionReveal } from "@/features/mastery/interactions/reve
 import type { MasteryPlayerQuestion } from "@/features/mastery/contracts/playerQuestion";
 import { readComparisonSemantics } from "@/features/mastery/contracts/comparisonSemantics";
 import { readPromptSemantics } from "@/features/mastery/contracts/promptSemantics";
+import { readNumericConstraints } from "@/features/mastery/contracts/playerQuestion";
+import { MasteryAssetsProvider } from "@/features/mastery/live/MasteryAssetsProvider";
 import type { PlayerAnswer } from "@/features/mastery/player/useMasteryFixtureSession";
 import type { AnswerOptionView, QuestionView } from "@/lib/ranked-core/viewTypes";
 import type { MasterySliceChallengeView } from "@/lib/ranked-public/contracts";
@@ -100,7 +102,15 @@ export function toPlayerQuestion(
     questionFamily: challenge.questionFamily,
     prompt: challenge.prompt,
     state: null,
-    patchDisplay: "",
+    // GR1 product readiness. This was hardcoded `""`, and `patchLabel("")`
+    // returns the literal string "Fixed scenario" — so every generated
+    // Champion and Matchup Mastery question, in the arena AND in the Lab,
+    // was badged with the opposite of the truth about a question synthesized
+    // minutes earlier from the live patch. The backend computed the label
+    // (Phase 2, canonical `league_patches`) and stamped it on the artifact;
+    // it now also travels on the challenge. `null` means the segment was
+    // frozen before the field existed, and reads as the badge it already had.
+    patchDisplay: challenge.patchDisplay ?? "",
     matchupIdentity: null,
     isReadOnly: true,
     hintAvailable: false,
@@ -124,12 +134,31 @@ export function toPlayerQuestion(
   }
   return {
     ...base, answerType: "numeric", answerOptions: [],
-    inputConstraints: {
-      unit: "", min: 0, max: null, step: null, integerOnly: false,
-      decimalPlaces: null, roundingMode: null, precisionInstruction: null,
-      precisionContractVersion: null,
-    },
+    // GR1 product readiness. The all-empty placeholder below is now the
+    // FALLBACK, not the answer: a challenge frozen before the wire carried
+    // constraints still renders the bare box it always rendered, and one that
+    // carries them shows the real unit and precision instruction the grader
+    // is actually holding the player to. Read with the standalone player's
+    // own reader — see `readNumericConstraints` — so there is exactly one
+    // interpretation of the field. A malformed block degrades to the
+    // placeholder rather than throwing: an input hint is never worth a round.
+    inputConstraints: readSliceConstraints(challenge),
   };
+}
+
+const EMPTY_CONSTRAINTS = {
+  unit: "", min: 0, max: null, step: null, integerOnly: false,
+  decimalPlaces: null, roundingMode: null, precisionInstruction: null,
+  precisionContractVersion: null,
+} as const;
+
+function readSliceConstraints(challenge: MasterySliceChallengeView) {
+  if (!challenge.inputConstraints) return EMPTY_CONSTRAINTS;
+  try {
+    return readNumericConstraints(challenge.inputConstraints, "input_constraints");
+  } catch {
+    return EMPTY_CONSTRAINTS;
+  }
 }
 
 /**
@@ -263,7 +292,21 @@ export function MasterySliceChallengeSurface({
   }
 
   return (
-    <>
+    // GR1 product readiness — the champion portrait.
+    //
+    // `MasteryChampionPortrait` reads its icon URL off `MasteryAssetsContext`,
+    // whose DEFAULT resolver returns null, and the only provider was mounted
+    // exclusively by the standalone `MasteryPlayerLive`. Neither the arena nor
+    // the Lab wrapped it, so every generated question drew the grey
+    // initial-letter disc beside a correct splash.
+    //
+    // Mounted HERE, on the one shared surface, rather than in each caller:
+    // that is the same reason this file exists at all, and it keeps the number
+    // of champion-image loading paths at one. The provider module-caches the
+    // champion manifest across mounts and resolves through the existing
+    // `getChampionIcon`/`resolveAssetUrl`, so this adds no second asset
+    // convention and at most one fetch per app session.
+    <MasteryAssetsProvider>
       {/* THE SHARED RANKED MEDIA REGION.
           A structural Mastery challenge owns its own INPUT — numeric, boolean
           or a left/right comparison — and those renderers stay exactly as they
@@ -293,6 +336,6 @@ export function MasterySliceChallengeSurface({
         onSubmit={onSubmit}
         reveal={reveal}
       />
-    </>
+    </MasteryAssetsProvider>
   );
 }

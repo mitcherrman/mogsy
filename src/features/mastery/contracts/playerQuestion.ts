@@ -171,7 +171,13 @@ function readInteractionKind(value: unknown, label: string): MasteryInteractionK
   return oneOf(value, MASTERY_INTERACTION_KINDS, label);
 }
 
-function readNumericConstraints(value: unknown, label: string): NumericInputConstraints {
+/**
+ * Exported (GR1 product readiness) so the Ranked/Lab slice adapter reads a
+ * numeric input contract with the SAME reader the standalone player uses. It
+ * had no field to read, so it synthesized an all-empty set; now that the wire
+ * carries one there must not be a second way to interpret it.
+ */
+export function readNumericConstraints(value: unknown, label: string): NumericInputConstraints {
   const c = rec(value, label);
   return {
     unit: nonEmptyStr(c.unit, `${label}.unit`),

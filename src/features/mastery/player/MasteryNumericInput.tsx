@@ -8,6 +8,7 @@
  */
 import { useId } from "react";
 import { Input } from "@/components/ui/input";
+import { unitLabel } from "./playerFormat";
 import { Label } from "@/components/ui/label";
 import type { NumericInputConstraints } from "../contracts/playerQuestion";
 
@@ -62,7 +63,7 @@ export function MasteryNumericInput({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id} className="text-sm font-medium">
-        Your answer{constraints.unit ? ` (${constraints.unit})` : ""}
+        Your answer{constraints.unit ? ` (${unitLabel(constraints.unit)})` : ""}
       </Label>
       <Input
         id={id}
