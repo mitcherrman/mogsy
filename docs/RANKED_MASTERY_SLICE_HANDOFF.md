@@ -16,7 +16,11 @@
 > [`docs/gr1-matchup-mastery-capability-audit.md`](./gr1-matchup-mastery-capability-audit.md)
 > (GR1 Matchup Mastery capability audit — audit only) and
 > [`docs/gr1-matchup-mastery-rank-fix.md`](./gr1-matchup-mastery-rank-fix.md)
-> (GR1 Matchup rank identity — implementation over that audit).
+> (GR1 Matchup rank identity — implementation over that audit) and
+> [`docs/gr1-matchup-mastery-rank-diversity.md`](./gr1-matchup-mastery-rank-diversity.md)
+> (GR1 Matchup rank diversity — the seed picks which rank is asked) and
+> [`docs/gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md)
+> (GR1 Matchup tie policy — **design and measurement only, nothing implemented**).
 > Do not paste any of them into a new session; start here and open them for detail.
 >
 > **⚠️ These docs are UNTRACKED and were swept once already.** On 2026-09-13 a concurrent
@@ -39,6 +43,8 @@
 | **GR1 Champion Mastery readiness** | **NOW MERGED IN BOTH REPOS.** Backend landed as **`36cfef96`** (ancestor of `origin/master`); frontend **`84aaf5a1`** is an ancestor of `origin/main`. The "neither is pushed" note further down is superseded. |
 | **GR1 Matchup Mastery capability audit** | **COMPLETE, 2026-09-13. Audit only — nothing implemented.** Bases: backend `origin/master` **`c4f08761`**, frontend `origin/main` **`33d27b2f`**. See [`gr1-matchup-mastery-capability-audit.md`](./gr1-matchup-mastery-capability-audit.md) and the summary below. |
 | **GR1 Matchup rank identity** | **COMPLETE and verified, 2026-09-13.** Blockers 1, 2, 4 and 5 of that audit. Backend branch `gr1/matchup-rank-identity` @ **`52f5564a`** (base `c4f08761`), frontend @ **`756b6b41`** (base `3ce50045`) — one commit each, both clean fast-forwards. **Neither pushed** (both targets auto-deploy). See [`gr1-matchup-mastery-rank-fix.md`](./gr1-matchup-mastery-rank-fix.md) and the summary below. |
+| **GR1 Matchup rank diversity** | **COMPLETE and MERGED.** `origin/master` contains **`825e2db2`** — the seed now chooses which rank a comparison is asked at. See [`gr1-matchup-mastery-rank-diversity.md`](./gr1-matchup-mastery-rank-diversity.md). |
+| **GR1 Matchup tie policy** | **DESIGN + MEASUREMENT COMPLETE, 2026-09-13. NOTHING IMPLEMENTED — awaiting an owner decision.** Audited backend `origin/master` **`825e2db2`**; frontend `origin/main` **`756b6b41`** read only. Four policies simulated in a throwaway probe layer over **45,144 real generated slices**. Recommendation: **tie deprioritization + a per-slice tie cap; do NOT adopt metric-level suppression.** See [`gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md) and the summary below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## Commits
@@ -678,6 +684,107 @@ runtime files were already inside `SLICE_FOOTPRINT`.
 
 **Still open for Matchup:** unchanged from the list above, except that tie policy is now
 scoped to shared base constants and **rank diversity is spent**.
+
+## Matchup tie policy — DESIGN ONLY, owner decision pending (2026-09-13)
+
+Full evidence: [`gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md).
+Audited backend `origin/master` **`825e2db2`** (clean worktree, `git status` clean before
+and after). Frontend `origin/main` **`756b6b41`** read only. **No runtime code changed, no
+policy implemented, nothing pushed to `master`/`main`.** Docs only, on
+`gr1/docs-snapshot`.
+
+**READ THIS FIRST: the previous two docs' tie headlines over-state the problem by ~2.4
+points.** The 418-pair stratified sample deliberately includes the 40 **tie-heaviest**
+pairs on the roster. On the 298 pairs from its random stratum — what a player actually
+meets — the baseline is **9.54% / 10.20% / 10.58%** at n=3/5/8, not 12.4 / 12.9 / 13.0.
+Every slice-level tie number in the rank-fix and rank-diversity docs is a **stress**
+figure. Use §1.4 of the tie-policy doc for the player-facing one.
+
+**The problem is a TAIL, not an average.** Across all 14,878 pairs the tie rate is median
+**8.3%**, p90 21.7%, p99 36.8%, max **63.6%**; **426 pairs (2.9%) run above 30%** and
+8,889 (59.7%) below 10%. On a random pair an 8-question slice carries ≥3 ties **5.5%** of
+the time. On the 40 worst pairs it carries **two ties in 100.0% of slices and three or
+more in 71.9%**. Any policy judged on the average is judged on the wrong number.
+
+**Two universe facts that settle most of the argument.** (a) `base_magic_resist` has
+**ten distinct values across 173 champions** and 32/30 cover **88.5%** of the roster — a
+tie there says "both took the default", which is 39.3% of pairs. (b) Ties are a **U-shape
+over rank**, not a rank-1 artefact: `R` at rank 1 is 17.18% (the shared 120 s convention)
+but rank 5 is the second-worst cell for every basic ability, because cooldowns converge on
+a shared floor. That is why rank diversity bought only 0.24 points — it moved draws from
+one end of the U to the other.
+
+**Four policies, 45,144 real slices, 0 errors, 0 under-filled, 0 order violations.**
+Headline at n=8 on the stratified sample (tie rate / ≥3 ties / cost):
+
+| policy | tie rate | ≥3 ties | atomic slices | repeat fact | universe deleted |
+|---|---|---|---|---|---|
+| A natural | 12.99% | 11.7% | 0 | 0 | — |
+| B cap (naive 1/1/2) | 11.19% | 2.3% | 0 | **6** | — |
+| B2 cap (refined) | 11.31% | 3.2% | 0 | 0 | — |
+| C deprioritize | 10.99% | 9.0% | 0 | 0 | — |
+| **C + cap (recommended)** | **9.70%** | **1.9%** | **0** | **0** | **none** |
+| D suppress MR+MS+range | 7.78% | 4.7% | **64** | **8** | **3.39%, 52.2% of pairs** |
+| Dn suppress MR only | 10.55% | 7.2% | **32** | 0 | 1.82%, 39.3% of pairs |
+
+**RECOMMENDATION — a narrowly defined hybrid: tie deprioritization (C) + a per-slice tie
+cap, `max(1, n // 4)`. Do NOT adopt metric-level suppression.** They fix two different
+defects and neither substitutes for the other. **C** makes the shipped within-pattern
+rotation land on a **discriminating** variant — 9,880 of 43,085 cooldown patterns tie at
+some rank and not others, and asking those at a tying rank is choosing the least
+informative reading of a fact that has a better one; the cap cannot fix that, its only
+move is to drop the question. **The cap** fixes stacking, which is the actual tail
+problem; C is nearly powerless there (≥3 ties 71.9% → 63.1% on the tail) because the tail
+is base-stat-dense and **C provably cannot touch a base stat** — a base stat has exactly
+one candidate per pair, so there is no second variant to prefer, and the measurement
+confirms it byte-exactly (`base_magic_resist` 644 → 644, `attack_range` 373 → 373,
+`movement_speed` 343 → 343).
+
+Together: **≥3 ties 0.5 → 0.0 (n=3), 4.2 → 0.0 (n=5), 11.7 → 1.9 (n=8); adjacent tie
+pairs 87/169/323 → 0/0/127; on the tail at n=8, ≥3 ties 71.9% → 12.5%** — at a measured
+cost of **exactly zero** on every axis: 0 under-filled, 0 atomic fallback, 0 repeated
+facts, 0 repeated slots, identical family mix and metric diversity, rank distribution
+within 1.1 points of the baseline, determinism and reversed-pair symmetry hold, 4 salts ⇒
+4 distinct slices for all 418 pairs.
+
+**Why D is refused, in four measured costs.** It deletes 3.39% of the comparison universe
+and touches 52.2% of pairs; it pushes atomic single-champion recall into 64 of 1,672 n=8
+slices and repeats a fact in 8 — both invariants held at zero since Phase 3; **13% of its
+benefit leaks straight back** (`base_mana_regen` 153 → 190, `base_armor` 80 → 120 under
+it, because freed budget lands on the next metric's shared constants); and it deletes
+legitimate knowledge, since `attack_range` has 19 values and "Aurora 550 vs Elise 550 —
+tie" is a real fact it cannot tell apart from "both in the 32 MR club". **If the MR
+questions should go, the instrument is content, not policy** — `base_magic_resist` is a
+weak comparison even when decisive (32 vs 30) — and that is now open item 3 below, not
+something this pass did.
+
+**Product answers.** One tie in a short slice is **fine** (it is the only answer a player
+cannot guess from priors, and 74% of random-draw n=3 slices have none) — nothing here
+removes the first tie. Ties turn repetitive **at two when they share a family or sit
+adjacent, unambiguously at three**: 31–45% of multi-tie slices repeat a tie metric, 36% of
+n=8 ones are all base-stat, and 323 adjacent tie pairs fall across 1,672 n=8 slices. A tie
+**must stay a valid correct answer** — the alternatives are hiding the question (D) or
+grading a tie as a win, which is the correctness lie the rank-identity pass existed to
+remove. Tie suppression **does** hide legitimate knowledge (D), which the recommendation
+does not: C asks the same fact where it discriminates and the cap defers rather than
+deletes, so every tied comparison stays reachable at some seed. Worth doing? **Split: low
+priority for the median pair, high for the 2.9% tail** — and since the fix costs nothing
+measurable, do it, but scope and review it as a tail fix.
+
+**Footprint if adopted:** `mastery/manifest/contract.py` (two additive `RepetitionPolicy`
+fields, absent-means-off so every pre-existing manifest keeps its pinned digest),
+`mastery/manifest/resolver.py`, `mastery/synthesis/recipe.py`, one new test file. **All
+three runtime files are already inside `SLICE_FOOTPRINT`** — no guard list moves.
+Frontend unchanged; `tie_state` and the three-option control already ship. Zero DDL, no
+migration. Generated Matchup `mastery_set_id`/`artifact_digest` move, as in the previous
+three passes; Champion Mastery must not adopt either flag and should be asserted not to.
+**One boundary for a reviewer to confirm deliberately:** this would be the first resolver
+code to read a candidate's *answer* (`outcome.is_tie`).
+
+**Still open for Matchup:** the tie decision itself; the cost and level-stat families;
+**`base_magic_resist` as a comparison metric at all (NEW)**; manaless mana regeneration;
+the dual-form row split (which is also why the tie tail is base-stat-dense); the Lab
+coverage headline.
 
 ## Screenshots / artifacts
 
