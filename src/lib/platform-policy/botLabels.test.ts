@@ -81,8 +81,6 @@ describe("isolation from the other policies", () => {
       { key: POLICY_KEYS.showBotLabels, value: { enabled: true } },
     ]);
     expect(policy.combatSim.tokensRequiredForNonPro).toBe(true);
-    expect(policy.tutorial.autoPopupEnabled).toBe(true);
-    expect(policy.tutorial.completionRequiredForNewUsers).toBe(true);
     expect(policy.navigation.globalNavbarVisible).toBe(true);
   });
 

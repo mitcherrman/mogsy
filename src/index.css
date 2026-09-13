@@ -792,8 +792,8 @@
    `.ranked-academy`, which is applied by the /quiz/ranked page frame and
    nowhere else — the shared question surface, the shared quiz answer grid and
    the ranked-arena primitives are all reused UNCHANGED and simply look
-   different inside this one route. No other quiz mode, the Ranked Tutorial,
-   and the dev arena inspector are untouched.
+   different inside this one route. No other quiz mode and the dev arena
+   inspector are untouched.
 
    Direction: a dark academy duel chamber (background image) with the question
    presented as a parchment folio and the answers as carved navy tablets.
@@ -1699,8 +1699,8 @@
    band, no prompt and no tablet is ever smaller than it was.
 
    Not mode-specific. It is applied once, by `CanonicalArena`, to the one
-   section every mode's viewport renders into. Ranked, the Tutorial and the
-   Daily Challenge inherit it without a line of their own.
+   section every mode's viewport renders into. Ranked and the Daily Challenge
+   inherit it without a line of their own.
 
    Below `lg` the tokens are simply not set: every region falls back to its
    intrinsic height and the card is exactly what it was. That is deliberate —

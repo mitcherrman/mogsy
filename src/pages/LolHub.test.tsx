@@ -13,19 +13,12 @@ import { HUB_GUIDE_MODES, type HubGuideModeId } from "@/components/lol/hub-guide
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
 // The pinned jsdom does not provide a working Storage — see localStorageStub.
-// Only localStorage is stubbed: the legacy popup's dismissal flag lives in
-// sessionStorage and is left exactly as the existing expectations found it.
 const resetLocalStorage = installLocalStorageStub();
 
 const mocks = vi.hoisted(() => ({
   trackFunnelEvent: vi.fn(),
   authUser: { id: "u1", is_anonymous: false } as { id: string; is_anonymous: boolean } | null,
-  tutorial: { loading: false, error: false, completed: true },
-  // Global tutorial policy. Both default ON = current production behaviour, so
-  // every pre-existing expectation in this file is unchanged.
   settingsLoading: false,
-  autoPopupEnabled: true,
-  completionRequiredForNewUsers: true,
   // WHATSNEW2's master switch. OFF is production, so every pre-existing
   // expectation in this file — including the "renders nothing" ones — holds
   // unchanged.
@@ -59,11 +52,6 @@ vi.mock("@/lib/lol/academy-updates-store", () => ({
 vi.mock("@/components/ads/AdSlot", () => ({
   default: ({ placement }: { placement: string }) => <div data-testid={`ad-${placement}`} />,
 }));
-vi.mock("@/components/lol/LolWelcomeIntro", () => ({
-  default: ({ dismissible }: { dismissible?: boolean }) => (
-    <div data-testid="lol-welcome-popup" data-dismissible={String(!!dismissible)} />
-  ),
-}));
 // Built from the real defaults rather than hand-listed, so a policy field added
 // later cannot leave this mock returning a half-shaped object — which is
 // exactly how a partial mock here broke every test in this file once.
@@ -77,26 +65,12 @@ vi.mock("@/hooks/useAppSettings", async () => {
       settings: {
         policy: {
           ...DEFAULT_PLATFORM_POLICY,
-          tutorial: {
-            autoPopupEnabled: mocks.autoPopupEnabled,
-            completionRequiredForNewUsers: mocks.completionRequiredForNewUsers,
-          },
           academy: { updatesEnabled: mocks.academyUpdatesEnabled },
         },
       },
     }),
   };
 });
-vi.mock("@/hooks/useRankedTutorialStatus", () => ({
-  useRankedTutorialStatus: () => ({
-    loading: mocks.tutorial.loading,
-    error: mocks.tutorial.error,
-    completed: mocks.tutorial.completed,
-    required: !mocks.tutorial.completed,
-    refresh: vi.fn(),
-    completeTutorial: vi.fn(),
-  }),
-}));
 vi.mock("@/components/lol/LolPopoutStyleToggle", () => ({ default: () => null }));
 vi.mock("@/lib/funnel-analytics", () => ({
   trackFunnelEvent: mocks.trackFunnelEvent,
@@ -132,10 +106,7 @@ function renderHub() {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.authUser = { id: "u1", is_anonymous: false };
-  mocks.tutorial = { loading: false, error: false, completed: true };
   mocks.settingsLoading = false;
-  mocks.autoPopupEnabled = true;
-  mocks.completionRequiredForNewUsers = true;
   mocks.academyUpdatesEnabled = false;
   academyStore.listPublishedUpdates.mockReset();
   academyStore.listPublishedUpdates.mockResolvedValue([]);
@@ -648,183 +619,30 @@ describe("LolHub — Mogzy contextual guide", () => {
   });
 });
 
-describe("LolHub — first-visit tutorial popup visibility", () => {
-  const SEEN_KEY = "mogsy.lolWelcome.seen.v1";
-
-  afterEach(() => {
-    try {
-      localStorage.clear();
-    } catch {
-      /* jsdom localStorage always present, guard for safety */
-    }
-  });
-
-  it("shows the popup to an anonymous user who has not completed the tutorial", () => {
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-    renderHub();
-    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
-  });
-
-  it("still shows the popup even if the OLD popup was dismissed (localStorage ignored)", () => {
-    // Correction 5: a guest who dismissed the legacy popup must still be gated.
-    localStorage.setItem(SEEN_KEY, "1");
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-    renderHub();
-    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
-  });
-
-  it("shows the popup again after abandoning the tutorial and returning to the hub", () => {
-    // First visit: popup shown.
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-    const first = renderHub();
-    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
-    // Leave the hub (abandon tutorial) then come back with still-incomplete status.
-    first.unmount();
-    renderHub();
-    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
-  });
-
-  it("hides the popup for an anonymous user who already completed the tutorial", () => {
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: true };
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("hides the popup for a grandfathered / permanent completed account", () => {
-    mocks.authUser = { id: "u1", is_anonymous: false };
-    mocks.tutorial = { loading: false, error: false, completed: true };
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("does not flash the popup while auth/tutorial status is still loading", () => {
-    mocks.authUser = null;
-    mocks.tutorial = { loading: true, error: false, completed: false };
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("fails open (no popup) on a genuine profile-read error", () => {
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: true, completed: false };
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-});
-
-describe("LolHub — the legacy popup never stacks on the HI1 introduction", () => {
+describe("LolHub — TUT1: no first-visit tutorial popup exists", () => {
   afterEach(() => {
     resetLocalStorage();
   });
 
-  // A guest who has just been through /welcome arrives here already onboarded.
-  // Handing them the legacy popup would be two first-run experiences back to
-  // back — the one thing HI1 must not allow while both exist.
-  it("stays hidden for a guest who chose Start Exploring", () => {
-    markAcademyWelcomeHandled("explored");
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("stays hidden for a guest who chose the tutorial but has not finished it", () => {
-    markAcademyWelcomeHandled("tutorial");
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("still shows for a guest who has never seen the introduction", () => {
-    // The suppression must be driven by real HI1 state, not by HI1 merely
-    // existing — otherwise this would silently retire the popup everywhere.
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-    renderHub();
-    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
-  });
-
-  it("still shows when HI1 state is corrupt (treated as never seen)", () => {
-    localStorage.setItem("mogsy.academyWelcome.v1", "{{{");
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-    renderHub();
-    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
-  });
-});
-
-describe("LolHub — automatic tutorial popup under the global policies", () => {
-  const newGuest = () => {
-    mocks.authUser = { id: "anon1", is_anonymous: true };
-    mocks.tutorial = { loading: false, error: false, completed: false };
-  };
-
-  it("popup ON + forced ON → popup appears and is not dismissible", () => {
-    newGuest();
-    renderHub();
-    const popup = screen.getByTestId("lol-welcome-popup");
-    expect(popup.getAttribute("data-dismissible")).toBe("false");
-  });
-
-  it("popup ON + forced OFF → popup appears and IS dismissible", () => {
-    newGuest();
-    mocks.completionRequiredForNewUsers = false;
-    renderHub();
-    const popup = screen.getByTestId("lol-welcome-popup");
-    expect(popup.getAttribute("data-dismissible")).toBe("true");
-  });
-
-  it("popup OFF + forced ON → no popup (the route guard still forces entry)", () => {
-    newGuest();
-    mocks.autoPopupEnabled = false;
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("popup OFF + forced OFF → no popup at all", () => {
-    newGuest();
-    mocks.autoPopupEnabled = false;
-    mocks.completionRequiredForNewUsers = false;
-    renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("never shows the popup to a completed user, whatever the policy", () => {
-    for (const autoPopupEnabled of [true, false]) {
-      for (const completionRequiredForNewUsers of [true, false]) {
-        mocks.authUser = { id: "anon1", is_anonymous: true };
-        mocks.tutorial = { loading: false, error: false, completed: true };
-        mocks.autoPopupEnabled = autoPopupEnabled;
-        mocks.completionRequiredForNewUsers = completionRequiredForNewUsers;
-        const view = renderHub();
-        expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-        view.unmount();
-      }
+  it("never renders a welcome/tutorial overlay, for any visitor", () => {
+    for (const authUser of [
+      null,
+      { id: "anon1", is_anonymous: true },
+      { id: "u1", is_anonymous: false },
+    ]) {
+      mocks.authUser = authUser;
+      const view = renderHub();
+      expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
+      view.unmount();
     }
   });
 
-  it("does not flash the popup while the settings read is still loading", () => {
-    newGuest();
-    mocks.settingsLoading = true;
+  it("reads no tutorial completion state to decide what to show", () => {
+    // The hub used to fetch the profile's tutorial stamp purely to decide
+    // whether to interrupt the visitor. Nothing here depends on it now.
+    mocks.authUser = { id: "anon1", is_anonymous: true };
     renderHub();
     expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-  });
-
-  it("re-enabling the auto-popup restores it for the same incomplete guest", () => {
-    newGuest();
-    mocks.autoPopupEnabled = false;
-    const first = renderHub();
-    expect(screen.queryByTestId("lol-welcome-popup")).toBeNull();
-    first.unmount();
-
-    mocks.autoPopupEnabled = true;
-    renderHub();
-    expect(screen.getByTestId("lol-welcome-popup")).toBeTruthy();
   });
 });
 

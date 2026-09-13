@@ -572,25 +572,31 @@ describe("17 · navigation advertises nothing the viewer cannot use", () => {
   });
 });
 
-// --- 18. Tutorial / onboarding untouched ------------------------------------
+// --- 18. Tutorial surfaces are gone (TUT1) ---------------------------------
 
-describe("18 · no tutorial or onboarding behaviour changed", () => {
-  it("never claims the shipped tutorial routes as an admin surface", () => {
-    // The shipped flow lives at /quiz/tutorial and /onboarding/ranked-tutorial.
-    // No registry entry may target either, in any field.
+describe("18 · no tutorial admin surface survives", () => {
+  it("claims no retired tutorial route, in any field", () => {
     for (const tool of ADMIN_TOOLS) {
       const paths = [tool.path ?? "", ...(tool.legacyRoutes ?? [])];
       for (const path of paths) {
-        expect(path, tool.id).not.toBe("/quiz/tutorial");
-        expect(path, tool.id).not.toBe("/onboarding/ranked-tutorial");
+        expect(path, tool.id).not.toContain("/quiz/tutorial");
+        expect(path, tool.id).not.toContain("/onboarding/ranked-tutorial");
+        expect(path, tool.id).not.toContain("/dev/ranked-tutorial");
       }
     }
-    // The two tutorial-adjacent entries say plainly what they are not.
+  });
+
+  it("no longer registers the tutorial replay or the tutorial prototype", () => {
+    expect(ADMIN_TOOLS.find((t) => t.id === "ranked-tutorial-replay")).toBeUndefined();
+    expect(ADMIN_TOOLS.find((t) => t.id === "dev-ranked-tutorial")).toBeUndefined();
+  });
+
+  it("keeps Tutorial Tips, which is a different feature entirely", () => {
+    // Contextual coach-marks, unrelated to the retired scripted Ranked
+    // tutorial. Removing it would be scope this workstream never had.
     const tips = ADMIN_TOOLS.find((t) => t.id === "tutorial-tips")!;
-    expect(tips.notes).toMatch(/out of scope and untouched/i);
-    const proto = ADMIN_TOOLS.find((t) => t.id === "dev-ranked-tutorial")!;
-    expect(proto.path).toBe("/dev/ranked-tutorial");
-    expect(proto.notes).toMatch(/out of scope and untouched/i);
+    expect(tips).toBeTruthy();
+    expect(tips.notes).toMatch(/TIP CONTENT/i);
   });
 
   it("touches no onboarding store — it only lists them by authority", async () => {

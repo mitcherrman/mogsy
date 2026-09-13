@@ -177,16 +177,15 @@ describe("Leaguecraft hub — top chrome", () => {
     expect(wrapper!.className).not.toMatch(/(^|\s)-mt-/);
   });
 
-  it("demotes the tutorial entry below the lobby without removing it", async () => {
-    // /quiz/tutorial has no other UI entry point, and the platform-policy copy
-    // promises it stays available, so this link may be MOVED but never deleted.
+  it("TUT1: offers no tutorial entry anywhere on the lobby", async () => {
     const { container } = await renderHub();
-    const link = screen.getByTestId("replay-tutorial-link");
-    expect(link.getAttribute("href")).toBe("/quiz/tutorial");
+    expect(screen.queryByTestId("replay-tutorial-link")).toBeNull();
+    expect(container.querySelector('a[href="/quiz/tutorial"]')).toBeNull();
+    expect(container.textContent).not.toMatch(/tutorial/i);
 
+    // The utility line itself survives — it carries Mastery and Diagnostics.
     const utility = container.querySelector('[data-testid="hub-utility-line"]')!;
     expect(utility).not.toBeNull();
-    expect(utility.contains(link)).toBe(true);
 
     // Below the composition, in DOM (= tab) order.
     const ranked = container.querySelector('[data-testid="hub-ranked-section"]')!;
@@ -520,7 +519,7 @@ describe("Leaguecraft hub — Mastery", () => {
   // /quiz is the ONLY entrance to /quiz/mastery in the product, so hiding the
   // Practice panel that used to contain this link had to relocate it, not
   // withhold it with the panel. It is still one quiet line — in the lobby's
-  // utility row now, beside the tutorial entry.
+  // utility row now.
   it("keeps Mastery as one quiet link that still reaches the journeys", async () => {
     const { container } = await renderHub();
     const link = screen.getByTestId("hub-mastery-link");

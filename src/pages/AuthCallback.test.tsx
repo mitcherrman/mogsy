@@ -19,8 +19,6 @@ const mocks = vi.hoisted(() => ({
   profileRow: {
     is_anonymous: false,
     onboarding_completed: false,
-    ranked_tutorial_completed_at: "2026-07-19T00:00:00Z",
-    ranked_tutorial_version: 1,
   } as Record<string, unknown>,
   profileUpdate: vi.fn(),
 }));
@@ -43,7 +41,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         eq: () => ({
           maybeSingle: () =>
             Promise.resolve({
-              data: cols.includes("ranked_tutorial")
+              data: cols.includes("onboarding_completed")
                 ? mocks.profileRow
                 : { is_anonymous: false },
               error: null,
@@ -70,20 +68,17 @@ const renderAt = (search = "?returnTo=%2Fquiz") =>
     </MemoryRouter>,
   );
 
-/** Default: a completed guest, so tutorial eligibility never interferes. */
+/** The converted guest's profile row. */
 const COMPLETED_PROFILE = {
   is_anonymous: false,
   onboarding_completed: false,
-  ranked_tutorial_completed_at: "2026-07-19T00:00:00Z",
-  ranked_tutorial_version: 1,
 };
 
 beforeEach(() => {
   resetStorage();
   vi.clearAllMocks();
-  // Restored explicitly: cases below mutate profileRow to exercise the
-  // tutorial branch, and a leaked mutation would silently change what the
-  // NEXT test is actually asserting.
+  // Restored explicitly so a leaked mutation can never silently change what
+  // the NEXT test is actually asserting.
   mocks.profileRow = { ...COMPLETED_PROFILE };
   mocks.authLoading = false;
   mocks.getUser.mockResolvedValue({ data: { user: convertedUser }, error: null });
@@ -134,7 +129,7 @@ describe("AuthCallback", () => {
     expect(mocks.updateUser).toHaveBeenCalledWith({ password: "hunter2secret" });
     // Profile permanence synced only AFTER verified auth.
     expect(mocks.profileUpdate).toHaveBeenCalledWith({ is_anonymous: false });
-    // Completed-guest profile → routed to returnTo (no tutorial replay).
+    // Routed to returnTo — nothing may override it.
     expect(mocks.navigate).toHaveBeenCalledWith("/quiz", { replace: true });
   });
 
@@ -227,13 +222,7 @@ describe("AuthCallback", () => {
 
   // ---- AUTH1: onboarding must not steal an explicit destination ----
 
-  it("returns an explicit destination even when the tutorial is still owed", async () => {
-    mocks.profileRow = {
-      is_anonymous: false,
-      onboarding_completed: false,
-      ranked_tutorial_completed_at: null, // tutorial required
-      ranked_tutorial_version: null,
-    };
+  it("returns an explicit destination", async () => {
     setPendingWithPassword("anon-1", "/quiz/ranked");
     renderAt("?returnTo=%2Fquiz%2Franked");
     await waitFor(() =>
@@ -241,18 +230,12 @@ describe("AuthCallback", () => {
     );
   });
 
-  it("falls back to the tutorial when NO destination was preserved", async () => {
-    mocks.profileRow = {
-      is_anonymous: false,
-      onboarding_completed: false,
-      ranked_tutorial_completed_at: null,
-      ranked_tutorial_version: null,
-    };
+  it("TUT1: falls back to the default hub — never into a tutorial", async () => {
     setPendingWithPassword("anon-1");
     renderAt(""); // no returnTo at all
-    await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith("/onboarding/ranked-tutorial", { replace: true }),
-    );
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalled());
+    const dest = mocks.navigate.mock.calls.at(-1)![0] as string;
+    expect(dest).not.toMatch(/tutorial/);
   });
 
   it("rejects an unsafe returnTo and falls back to a safe path", async () => {

@@ -153,7 +153,7 @@ export default function AccountUpgradePanel({ returnTo, onSignInInstead }: Props
       <div className="mb-6 text-center">
         <h2 className="text-xl font-bold text-foreground">Save your progress</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Create a free account to keep your XP, streaks, tutorial progress, and history — on the
+          Create a free account to keep your XP, streaks, and history — on the
           same profile you&apos;re using now. You&apos;ll stay right where you are.
         </p>
       </div>

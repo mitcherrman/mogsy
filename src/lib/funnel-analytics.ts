@@ -3,9 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 export type FunnelEventName =
   | "lol_landing_viewed"
   | "lol_start_quiz_clicked"
-  // Welcome overlay CTA (src/components/lol/LolWelcomeIntro.tsx) — the
-  // tutorial-entry sibling of lol_start_quiz_clicked. Payload is the CTA id.
-  | "lol_start_tutorial_clicked"
   | "quiz_guest_started"
   | "quiz_question_answered"
   | "quiz_completed"

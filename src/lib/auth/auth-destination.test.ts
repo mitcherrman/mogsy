@@ -53,7 +53,7 @@ describe("resolvePostAuthDestination — the one precedence", () => {
     expect(
       resolvePostAuthDestination({
         returnTo: resolveReturnTo("/quiz/ranked", "/lol"),
-        onboardingRoute: "/onboarding/ranked-tutorial",
+        onboardingRoute: "/onboarding/example",
       }),
     ).toBe("/quiz/ranked");
   });
@@ -62,9 +62,9 @@ describe("resolvePostAuthDestination — the one precedence", () => {
     expect(
       resolvePostAuthDestination({
         returnTo: resolveReturnTo(null, "/lol"),
-        onboardingRoute: "/onboarding/ranked-tutorial",
+        onboardingRoute: "/onboarding/example",
       }),
-    ).toBe("/onboarding/ranked-tutorial");
+    ).toBe("/onboarding/example");
   });
 
   it("3. the default hub is the last resort", () => {
@@ -77,9 +77,9 @@ describe("resolvePostAuthDestination — the one precedence", () => {
     expect(
       resolvePostAuthDestination({
         returnTo: resolveReturnTo("//evil.com", "/lol"),
-        onboardingRoute: "/onboarding/ranked-tutorial",
+        onboardingRoute: "/onboarding/example",
       }),
-    ).toBe("/onboarding/ranked-tutorial");
+    ).toBe("/onboarding/example");
   });
 });
 

@@ -20,7 +20,6 @@ import { quizApi, categoryLabel, type QuizSet, type QuizQuestion, type QuizAnswe
 import SEOHead from "@/components/SEOHead";
 import { SITE_URL } from "@/lib/site-config";
 import { ensureBackendAuthToken } from "@/lib/backend-auth";
-import LeaguecraftTutorialLink from "@/components/quiz/LeaguecraftTutorialLink";
 import {
   META_REFLEX_NAME,
   META_REFLEX_ROUTE,
@@ -1326,11 +1325,6 @@ export default function Quiz() {
                            /quiz", outlived the pill itself.
               Tagline      Decorative only. Removed from the lobby; /lol still
                            carries it as the Leaguecraft card's subtitle.
-              Tutorial     Demoted, NOT removed: it is the only UI entry to
-                           /quiz/tutorial, so it moves to the quiet utility line
-                           under the lobby (below the fold, out of the top
-                           chrome). The route and the tutorial gate are
-                           untouched.
               Diagnostics  Developer tooling (`developer_route` in the ads
                            policy, "Internal" in the admin registry) that was
                            being shown to every desktop visitor. Now dev-builds
@@ -1358,9 +1352,6 @@ export default function Quiz() {
               Study. Practice. Ascend.
             </p>
             <div className="ml-auto flex items-center gap-3">
-              {/* Permanent tutorial entry: available regardless of the automatic
-                  popup and forced-tutorial policies. */}
-              <LeaguecraftTutorialLink />
               {LOBBY_SHOWS_DIAGNOSTICS && (
                 <Button asChild variant="ghost" size="sm" className="hidden h-7 gap-1 text-xs md:inline-flex [@media(max-height:480px)]:!hidden">
                   <Link to="/quiz/diagnostics">
@@ -1652,11 +1643,9 @@ export default function Quiz() {
                 composition, after the page's real content in both DOM and tab
                 order, and costing the scroll caps nothing.
 
-                The tutorial entry is DEMOTED here, not deleted — this link is
-                the only UI path to /quiz/tutorial, and the platform-policy copy
-                in the admin tools promises the tutorial "stays available at
-                /quiz/tutorial" even with the popup off. Nothing about the
-                forced-tutorial gate is touched by moving where the link sits. */}
+                TUT1: the tutorial entry that used to sit here is gone with the
+                scripted tutorial itself; Bot Ranked is the learn-by-doing
+                path now. */}
             <div
               data-testid="hub-utility-line"
               className="mt-3 flex flex-wrap items-center justify-end gap-x-4 gap-y-1.5 border-t border-[#c9a84c]/12 pt-2"
@@ -1683,7 +1672,6 @@ export default function Quiz() {
                   Mastery Journey
                 </Link>
               )}
-              <LeaguecraftTutorialLink />
               {LOBBY_SHOWS_DIAGNOSTICS && (
                 <Link
                   to="/quiz/diagnostics"

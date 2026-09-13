@@ -37,7 +37,7 @@ export default function Layout() {
   // PT2E: this effect used to share <html> with the sitewide theme provider,
   // which wrote `theme-<profiles.custom_theme>` onto the root for every path
   // outside the League section — so a visitor's legacy Mogsy theme recoloured
-  // the Academy entrance, /welcome, the Ranked tutorial, /profile and the
+  // the Academy entrance, /welcome, /profile and the
   // admin console, and the two writers had to be sequenced against each other
   // so the League palette survived. Profile themes are profile-only now, the
   // other writer is gone, and the theme class is decided from the PATH alone:

@@ -312,9 +312,9 @@ export default function QuizDailyChallengePage() {
    * result beat. What is left is the canonical arena with a mode's view model
    * in it, which is the whole shape this phase was for.
    *
-   * The seam itself is untouched — the Ranked Tutorial's coaching panel is its
-   * real caller, and teaching guidance is a Tutorial policy that this mode
-   * having no use for does not retire.
+   * The seam itself is untouched. It has no caller today — the Ranked
+   * Tutorial's coaching panel was the last one, and TUT1 retired it — but a
+   * mode having no use for guidance is not a reason to delete the seam.
    */
   return (
     <>

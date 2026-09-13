@@ -7,8 +7,8 @@
 //
 // Before AUTH1 the precedence was implicit and split across three places —
 // Auth.tsx navigated to a returnTo that defaulted to the League hub, the
-// confirmation callback let the onboarding tutorial override that returnTo
-// unconditionally, and half the senders never attached a returnTo at all. The
+// confirmation callback let onboarding override that returnTo unconditionally,
+// and half the senders never attached a returnTo at all. The
 // visible symptom: start in Ranked, get prompted to sign in, land in the League
 // hub. Two of those three are addressed here; the third (senders) is a fix at
 // each call site, which now all go through `authHref` below.
@@ -19,10 +19,10 @@
 //   2. contextual continuation carried in that same returnTo (a Ranked lobby,
 //      a Stat Check room, an invite deep link are all just paths);
 //   3. a genuinely mandatory account requirement — today there are NONE.
-//      Email verification is explicitly NOT one (AUTH1 §3), and the forced
-//      Ranked tutorial is enforced by the RequireRankedTutorial ROUTE GUARD,
-//      not here: sending the user to their real destination and letting the
-//      guard bounce them keeps one authority instead of two;
+//      Email verification is explicitly NOT one (AUTH1 §3), and since TUT1 the
+//      forced Ranked tutorial that used to occupy this slot no longer exists at
+//      all. `onboardingRoute` is kept as a parameter, always null today, so a
+//      future requirement has one place to land instead of two;
 //   4. the default hub, only when nothing meaningful was preserved.
 // ---------------------------------------------------------------------------
 

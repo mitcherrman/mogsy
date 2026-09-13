@@ -11,7 +11,6 @@ import { PremiumSessionProvider } from "./hooks/usePremiumSession";
 import { useAuthQuerySync } from "./hooks/useAuthQuerySync";
 import { useAcademyIdentitySync } from "./hooks/useAcademyIdentitySync";
 import ProtectedRoute from "./components/ProtectedRoute";
-import RequireRankedTutorial from "./components/RequireRankedTutorial";
 import AdminRoute from "./components/AdminRoute";
 import QuizContentRedirect from "./pages/admin/QuizContentRedirect";
 import LegacyPremiumRedirect from "./pages/LegacyPremiumRedirect";
@@ -159,7 +158,7 @@ const AdminOperationsPage = lazy(() => import("./pages/admin/areas/AdminOperatio
 const AdminDeveloperPage = lazy(() => import("./pages/admin/areas/AdminDeveloperPage"));
 const AdminArenaPage = lazy(() => import("./pages/admin/areas/AdminArenaPage"));
 
-// Admin Platform Policies — global Combat Sim token + tutorial switches.
+// Admin Platform Policies — the global platform switches.
 const AdminPlatformPolicies = lazy(() => import("./pages/admin/AdminPlatformPolicies"));
 
 // WHATSNEW2 — the owner's Academy Updates desk: write, publish, withdraw, and
@@ -208,10 +207,7 @@ const QuizRankedPage = lazy(() => import("./pages/quiz-ranked/QuizRankedPage"));
 // Step 12 — Leaguecraft addressed by champion PAIR, from the Matchup Explorer.
 const QuizMatchupPage = lazy(() => import("./pages/quiz-matchup/QuizMatchupPage"));
 
-// Dev-only Ranked TUTORIAL prototype — scripted local training match,
-// no auth/API/persistence, not linked from any navigation.
 const QuizPlaytestPage = lazy(() => import("./pages/quiz-ranked/QuizPlaytestPage"));
-const RankedTutorialPage = lazy(() => import("./pages/dev/ranked-tutorial/RankedTutorialPage"));
 const RankedArenaInspector = lazy(() => import("./pages/dev/ranked-arena-inspector/RankedArenaInspector"));
 const RankedShellProbe = lazy(() => import("./pages/dev/ranked-shell-probe/RankedShellProbe"));
 const Graph1RacePage = lazy(() => import("./pages/dev/graph1/Graph1RacePage"));
@@ -242,10 +238,6 @@ const MogzyEntryV2 = lazy(() => import("./pages/dev/mogzy-entry-v2/MogzyEntryV2"
 // entrance and the hub. Full-screen and layout-free like the entrance it
 // follows, so it is mounted OUTSIDE <Layout /> alongside it.
 const AcademyWelcomePage = lazy(() => import("./pages/welcome/AcademyWelcomePage"));
-
-// Production Ranked TUTORIAL onboarding — mandatory for new accounts, replayable
-// for completed ones. Reuses the canonical tutorial with durable completion.
-const RankedTutorialOnboardingPage = lazy(() => import("./pages/onboarding/RankedTutorialOnboardingPage"));
 
 // Screenshot render harness — inert without locally injected data, not
 // linked from any navigation or the sitemap. Mounted OUTSIDE Layout so
@@ -562,25 +554,22 @@ const App = () => (
                   ) : null}
                   <Route path="/lol/combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesIndex /></Suspense>} />
                   <Route path="/lol/combat-battles/:slug" element={<Suspense fallback={<RouteFallback />}><CombatBattleDetail /></Suspense>} />
-                  <Route path="/onboarding/ranked-tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
-                  {/* Permanent Leaguecraft tutorial entry: any authenticated user may start
-                      or replay the tutorial here, regardless of the auto-popup and
-                      forced-tutorial policies. Same page component as the onboarding route,
-                      and deliberately NOT wrapped in RequireRankedTutorial — guarding a
-                      tutorial route with the tutorial gate is a redirect loop. */}
-                  <Route path="/quiz/tutorial" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><RankedTutorialOnboardingPage /></Suspense></ProtectedRoute>} />
-                  <Route path="/quiz" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><Quiz /></Suspense></RequireRankedTutorial>} />
-                  {/* Gated exactly like its /quiz siblings. A contextual
-                      study is ordinary free practice and inherits the
-                      tutorial policy rather than stepping around it. */}
-                  <Route path="/quiz/matchup" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense></RequireRankedTutorial>} />
-                  <Route path="/quiz/daily" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense></RequireRankedTutorial>} />
-                  <Route path="/quiz/daily-challenge" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense></RequireRankedTutorial>} />
+                  {/* TUT1 — the scripted Ranked tutorial is retired. Both of its
+                      old routes are kept ONLY as redirects so a bookmark or an
+                      old link lands on Ranked instead of a blank 404 shell; no
+                      tutorial implementation survives behind either of them.
+                      Learn-by-doing now lives in Bot Ranked / practice. */}
+                  <Route path="/onboarding/ranked-tutorial" element={<Navigate to="/quiz/ranked" replace />} />
+                  <Route path="/quiz/tutorial" element={<Navigate to="/quiz/ranked" replace />} />
+                  <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
+                  <Route path="/quiz/matchup" element={<Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense>} />
+                  <Route path="/quiz/daily" element={<Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense>} />
+                  <Route path="/quiz/daily-challenge" element={<Suspense fallback={<RouteFallback />}><QuizDailyChallengePage /></Suspense>} />
                   {/* RB3 — the guided playtest. A separate route so canonical
                       Ranked is untouched and the whole session can be removed
                       by deleting this line. */}
                   <Route path="/quiz/playtest" element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><QuizPlaytestPage /></Suspense></ProtectedRoute>} />
-                  <Route path="/quiz/ranked" element={<RequireRankedTutorial><Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense></RequireRankedTutorial>} />
+                  <Route path="/quiz/ranked" element={<Suspense fallback={<RouteFallback />}><QuizRankedPage /></Suspense>} />
                   <Route path="/quiz/diagnostics" element={<Suspense fallback={<RouteFallback />}><QuizDiagnostics /></Suspense>} />
                   <Route path="/quiz/admin" element={<AdminRoute><Suspense fallback={<RouteFallback />}><QuizAdmin /></Suspense></AdminRoute>} />
                   {/* Layout is already mounted here and already painting the
@@ -665,7 +654,6 @@ const App = () => (
                   <Route path="/quiz/stat-check/private" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/quiz/stat-check/room/:inviteCode" element={<Suspense fallback={<RouteFallback />}><StatCheckRoomPage /></Suspense>} />
                   <Route path="/dev/daily-score-attack" element={<Suspense fallback={<RouteFallback />}><DailyScoreAttackPage /></Suspense>} />
-                  <Route path="/dev/ranked-tutorial" element={<Suspense fallback={<RouteFallback />}><RankedTutorialPage /></Suspense>} />
                   <Route path="/dev/ranked-arena-inspector" element={<Suspense fallback={<RouteFallback />}><RankedArenaInspector /></Suspense>} />
                   <Route path="/dev/ranked-shell-probe" element={<Suspense fallback={<RouteFallback />}><RankedShellProbe /></Suspense>} />
                   <Route path="/dev/lobby-preview" element={<Suspense fallback={<RouteFallback />}><LobbyPreviewPage /></Suspense>} />

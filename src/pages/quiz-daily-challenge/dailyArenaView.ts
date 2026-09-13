@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
 // THE DAILY ADAPTER — run state → `ArenaViewModel` (ARENA1 Step 5).
 //
-// The mode half of the arena, exactly as `QuizRankedMatch` is Ranked's and
-// `tutorialArenaView` is the Tutorial's. It holds everything true of the DAILY
+// The mode half of the arena, exactly as `QuizRankedMatch` is Ranked's. It
+// holds everything true of the DAILY
 // and of nothing else — that a card has one scored attempt and unlimited
 // learning ones, that a Meta Reflex window is opened by a press, that the plan
 // is finite, that a resolved card is held until the player moves on — and it
-// produces the same view model the other two produce, which `CanonicalArena`
+// produces the same view model Ranked's produces, which `CanonicalArena`
 // draws without being able to tell them apart.
 //
 // WHAT IT MUST NEVER DO

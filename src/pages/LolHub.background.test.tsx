@@ -35,29 +35,20 @@ vi.mock("@/components/lol/broadcast/usePatchBriefFeed", async () => {
   return { usePatchBriefFeed: () => INITIAL_BROADCAST_FEED };
 });
 vi.mock("@/components/ads/AdSlot", () => ({ default: () => null }));
-vi.mock("@/components/lol/LolWelcomeIntro", () => ({ default: () => null }));
 vi.mock("@/components/lol/LolPopoutStyleToggle", () => ({ default: () => null }));
-vi.mock("@/hooks/useAppSettings", () => ({
-  useAppSettings: () => ({
-    loading: false,
-    settings: {
-      policy: {
-        combatSim: { tokensRequiredForNonPro: true },
-        tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
-      },
-    },
-  }),
-}));
-vi.mock("@/hooks/useRankedTutorialStatus", () => ({
-  useRankedTutorialStatus: () => ({
-    loading: false,
-    error: false,
-    completed: true,
-    required: false,
-    refresh: vi.fn(),
-    completeTutorial: vi.fn(),
-  }),
-}));
+// Built from the real defaults rather than hand-listed: a partial policy mock
+// here throws the moment the page reads a field the mock forgot.
+vi.mock("@/hooks/useAppSettings", async () => {
+  const { DEFAULT_PLATFORM_POLICY } = await vi.importActual<
+    typeof import("@/lib/platform-policy/policy")
+  >("@/lib/platform-policy/policy");
+  return {
+    useAppSettings: () => ({
+      loading: false,
+      settings: { policy: DEFAULT_PLATFORM_POLICY },
+    }),
+  };
+});
 vi.mock("@/lib/funnel-analytics", () => ({ trackFunnelEvent: vi.fn() }));
 vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => {

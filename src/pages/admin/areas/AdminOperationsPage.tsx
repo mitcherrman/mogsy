@@ -92,8 +92,7 @@ function ConfigurationSection({ isMasterAdmin }: { isMasterAdmin: boolean }) {
             <code>onboarding_config</code> — legacy Mogsy onboarding. Edited below (master only).
           </li>
           <li>
-            <code>tutorial_auto_popup_enabled</code> / <code>tutorial_completion_required_for_new_users</code>{" "}
-            — the current policy layer. Edited at{" "}
+            The global platform-policy rows — the current policy layer. Edited at{" "}
             <AdminCrossLink to="/admin/platform-policies" label="Platform Policies" />.
           </li>
         </ul>
@@ -108,7 +107,7 @@ function ConfigurationSection({ isMasterAdmin }: { isMasterAdmin: boolean }) {
 
       <AdminPanel
         title="Tutorial tips"
-        description="In-product tutorial tip content. The Ranked tutorial and onboarding flows are out of scope and untouched."
+        description="In-product contextual coach-mark tips. Unrelated to the retired scripted Ranked tutorial."
       >
         <AdminTutorialTips />
       </AdminPanel>

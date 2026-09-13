@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, ChevronLeft, Compass, GraduationCap } from "lucide-react";
+import { ArrowRight, ChevronLeft, Compass } from "lucide-react";
 
 import SEOHead from "@/components/SEOHead";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
-import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 import { markAcademyWelcomeHandled } from "@/lib/welcome/academy-welcome";
 import {
   ACADEMY_SIGN_IN_ROUTE,
@@ -246,19 +245,15 @@ export default function AcademyWelcomePage() {
   // viewports read `snug` instead — see tomeChrome.ts for the arithmetic.
   const { key: chromeKey, spec: chrome, scenePadding } = useTomeChrome(tier);
 
-  const finish = useCallback(
-    (outcome: "explored" | "tutorial") => {
-      markAcademyWelcomeHandled(outcome);
-      // replace: once a choice is made the introduction is behind them — it
-      // should not sit one Back press away from wherever they just landed.
-      navigate(outcome === "tutorial" ? RANKED_TUTORIAL_ROUTE : LEAGUE_HOME_ROUTE, {
-        replace: true,
-      });
-    },
-    [navigate],
-  );
-  const startExploring = useCallback(() => finish("explored"), [finish]);
-  const startTutorial = useCallback(() => finish("tutorial"), [finish]);
+  // TUT1: the introduction has ONE exit now. The second one started the
+  // scripted Ranked tutorial, which is retired — learn-by-doing lives in Bot
+  // Ranked — so there is no longer a choice to record beyond "handled".
+  const startExploring = useCallback(() => {
+    markAcademyWelcomeHandled("explored");
+    // replace: once the choice is made the introduction is behind them — it
+    // should not sit one Back press away from wherever they just landed.
+    navigate(LEAGUE_HOME_ROUTE, { replace: true });
+  }, [navigate]);
 
   /**
    * Physically turn the page. The whole of the staging — the sound as the sheet
@@ -530,14 +525,6 @@ export default function AcademyWelcomePage() {
         Icon={Compass}
         label="Enter the Academy"
         primary
-      />
-      {/* Genuinely a peer, not a trap door: both routes into the product are
-          legitimate, and the tutorial must never read as the price of entry. */}
-      <ExitButton
-        onClick={startTutorial}
-        testId="academy-welcome-tutorial"
-        Icon={GraduationCap}
-        label="Start the tutorial"
       />
     </div>
   );

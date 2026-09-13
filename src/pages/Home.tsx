@@ -20,7 +20,6 @@ import TierBadge from "@/components/TierBadge";
 import UserAvatar from "@/components/UserAvatar";
 import { getTierFromElo } from "@/lib/mock-data";
 import OnboardingFlow from "@/components/OnboardingFlow";
-import { postProfileOnboardingDestination } from "@/lib/ranked-tutorial/onboarding";
 import CategoryBubble from "@/components/CategoryBubble";
 import mogsyLogo from "@/assets/mogsy-text-logo.png";
 import HomeFriendsSection from "@/components/HomeFriendsSection";
@@ -224,17 +223,13 @@ export default function Home() {
     // navigation).
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, is_anonymous, onboarding_completed, ranked_tutorial_completed_at, ranked_tutorial_version")
+      .select("id, is_anonymous, onboarding_completed")
       .eq("user_id", user.id)
       .single();
 
-    // New real accounts hand off straight into the mandatory Ranked Tutorial.
-    // `replace` so browser Back never returns to the completed onboarding form.
-    const dest = postProfileOnboardingDestination(profile ?? null);
-    if (dest) {
-      navigate(dest, { replace: true });
-      return;
-    }
+    // TUT1: profile setup no longer hands off anywhere. The scripted Ranked
+    // tutorial it used to lead into is retired, so a finished setup simply
+    // loads the page the user is already on.
 
     if (profile) await loadData(profile.id, categories);
     else setLoading(false);

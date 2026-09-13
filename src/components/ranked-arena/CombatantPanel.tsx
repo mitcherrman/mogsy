@@ -653,7 +653,7 @@ export function CombatantPanel({
    * The role slot's text. `role.label` is the role's name, or the neutral
    * "Duelist" when there is no role — never a class, never a guess. It is a
    * FALLBACK rather than the value so a controller with its own descriptor
-   * ("Training Golem") keeps it.
+   * keeps it.
    *
    * On a role match this is always a non-empty string, which is what keeps the
    * two columns' identity rows the same shape when only one side has a role.

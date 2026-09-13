@@ -21,7 +21,7 @@
  * justify the change are in `QuizRankedMatch.geometry`'s revised block.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -83,26 +83,19 @@ describe("in-shell loading states never claim a full viewport", () => {
   });
 });
 
-describe("the route guard's loading state", () => {
-  it("sizes to the shell viewport rather than the full dynamic viewport", async () => {
-    vi.doMock("@/hooks/useAuth", () => ({ useAuth: () => ({ loading: true, user: null }) }));
-    vi.doMock("@/hooks/useAppSettings", () => ({
-      useAppSettings: () => ({ loading: true, settings: null }),
-    }));
-    vi.doMock("@/hooks/useRankedTutorialStatus", () => ({
-      useRankedTutorialStatus: () => ({ loading: true, required: false, error: null }),
-    }));
-    const { default: RequireRankedTutorial } = await import("@/components/RequireRankedTutorial");
-
-    render(<RequireRankedTutorial><div>child</div></RequireRankedTutorial>);
-    const placeholder = screen.getByTestId("ranked-tutorial-guard-loading");
-    expect(placeholder.className).toContain("min-h-[var(--app-viewport-h)]");
-    // `min-h-dvh` here is what added header height on top of a box that was
-    // already full-height — 56px desktop / 112px mobile of phantom scroll.
-    expect(placeholder.className).not.toContain("min-h-dvh");
-    vi.doUnmock("@/hooks/useAuth");
-    vi.doUnmock("@/hooks/useAppSettings");
-    vi.doUnmock("@/hooks/useRankedTutorialStatus");
+describe("TUT1 — Ranked has no route guard left to load", () => {
+  it("ships no tutorial guard module for the Ranked route to wait on", () => {
+    const src = resolve(process.cwd(), "src");
+    for (const rel of [
+      "components/RequireRankedTutorial.tsx",
+      "hooks/useRankedTutorialStatus.ts",
+      "lib/ranked-tutorial/onboarding.ts",
+    ]) {
+      expect(existsSync(resolve(src, rel)), `${rel} should be deleted`).toBe(false);
+    }
+    // And the Ranked route itself mounts nothing in front of the page.
+    const app = readFileSync(resolve(src, "App.tsx"), "utf8");
+    expect(app).toMatch(/path="\/quiz\/ranked" element=\{<Suspense/);
   });
 });
 

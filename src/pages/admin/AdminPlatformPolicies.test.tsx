@@ -79,8 +79,6 @@ beforeEach(() => {
   mocks.selectResult = {
     data: [
       row(POLICY_KEYS.combatSimTokensRequiredForNonPro, true),
-      row(POLICY_KEYS.tutorialAutoPopupEnabled, true),
-      row(POLICY_KEYS.tutorialCompletionRequiredForNewUsers, true),
       row(POLICY_KEYS.globalNavbarVisible, true),
     ],
     error: null,
@@ -94,16 +92,25 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("loading and rendering", () => {
-  it("shows a loading state, then all four switches", async () => {
+  it("shows a loading state, then the access switches", async () => {
     renderPanel();
     expect(screen.getByTestId("policies-loading")).toBeTruthy();
     // While loading, nothing is interactive yet — no switch exists to click.
     expect(screen.queryByRole("switch")).toBeNull();
 
     await waitFor(() => expect(screen.getByTestId("policy-combatSimTokens")).toBeTruthy());
-    expect(screen.getByTestId("policy-tutorialAutoPopup")).toBeTruthy();
-    expect(screen.getByTestId("policy-tutorialCompletionRequired")).toBeTruthy();
     expect(screen.getByTestId("policy-globalNavbar")).toBeTruthy();
+  });
+
+  it("TUT1: offers no tutorial switch at all", async () => {
+    renderPanel();
+    await waitFor(() => expect(screen.getByTestId("policy-combatSimTokens")).toBeTruthy());
+    expect(screen.queryByTestId("policy-tutorialAutoPopup")).toBeNull();
+    expect(screen.queryByTestId("policy-tutorialCompletionRequired")).toBeNull();
+    for (const control of screen.getAllByRole("switch")) {
+      expect(control.getAttribute("aria-label") ?? control.textContent ?? "")
+        .not.toMatch(/tutorial/i);
+    }
   });
 
   /**
@@ -160,14 +167,13 @@ describe("loading and rendering", () => {
   it("shows the warning copy only for a switch that is OFF", async () => {
     mocks.selectResult.data = [
       row(POLICY_KEYS.combatSimTokensRequiredForNonPro, false),
-      row(POLICY_KEYS.tutorialAutoPopupEnabled, true),
-      row(POLICY_KEYS.tutorialCompletionRequiredForNewUsers, true),
+      row(POLICY_KEYS.globalNavbarVisible, true),
     ];
     renderPanel();
     await waitFor(() =>
       expect(screen.getByTestId("policy-warning-combatSimTokens")).toBeTruthy(),
     );
-    expect(screen.queryByTestId("policy-warning-tutorialAutoPopup")).toBeNull();
+    expect(screen.queryByTestId("policy-warning-globalNavbar")).toBeNull();
   });
 
   it("reports a failed read instead of presenting defaults as stored values", async () => {
@@ -179,30 +185,30 @@ describe("loading and rendering", () => {
 
 describe("writes", () => {
   it("sends only the known key with a server-shaped value", async () => {
-    mocks.singleRow = row(POLICY_KEYS.tutorialAutoPopupEnabled, false);
+    mocks.singleRow = row(POLICY_KEYS.combatSimTokensRequiredForNonPro, false);
     renderPanel();
-    await waitFor(() => expect(screen.getByTestId("policy-tutorialAutoPopup")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("policy-combatSimTokens")).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("switch", { name: /Automatic Tutorial Popup/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Combat Sim Token Requirement/i }));
 
     await waitFor(() => expect(mocks.upsertCalls).toHaveLength(1));
     expect(mocks.upsertCalls[0]).toEqual({
-      key: POLICY_KEYS.tutorialAutoPopupEnabled,
+      key: POLICY_KEYS.combatSimTokensRequiredForNonPro,
       value: { enabled: false },
     });
   });
 
   it("confirms success only after re-reading the server value", async () => {
-    mocks.singleRow = row(POLICY_KEYS.tutorialAutoPopupEnabled, false);
+    mocks.singleRow = row(POLICY_KEYS.combatSimTokensRequiredForNonPro, false);
     renderPanel();
-    await waitFor(() => expect(screen.getByTestId("policy-tutorialAutoPopup")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("policy-combatSimTokens")).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("switch", { name: /Automatic Tutorial Popup/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Combat Sim Token Requirement/i }));
     await waitFor(() =>
-      expect(screen.getByTestId("policy-saved-tutorialAutoPopup")).toBeTruthy(),
+      expect(screen.getByTestId("policy-saved-combatSimTokens")).toBeTruthy(),
     );
     expect(
-      screen.getByRole("switch", { name: /Automatic Tutorial Popup/i }).getAttribute("aria-checked"),
+      screen.getByRole("switch", { name: /Combat Sim Token Requirement/i }).getAttribute("aria-checked"),
     ).toBe("false");
   });
 
@@ -238,25 +244,19 @@ describe("writes", () => {
   });
 
   it("changing one setting never rewrites the others", async () => {
-    mocks.singleRow = row(POLICY_KEYS.tutorialAutoPopupEnabled, false);
+    mocks.singleRow = row(POLICY_KEYS.combatSimTokensRequiredForNonPro, false);
     renderPanel();
-    await waitFor(() => expect(screen.getByTestId("policy-tutorialAutoPopup")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("policy-combatSimTokens")).toBeTruthy());
 
-    fireEvent.click(screen.getByRole("switch", { name: /Automatic Tutorial Popup/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Combat Sim Token Requirement/i }));
     await waitFor(() =>
-      expect(screen.getByTestId("policy-saved-tutorialAutoPopup")).toBeTruthy(),
+      expect(screen.getByTestId("policy-saved-combatSimTokens")).toBeTruthy(),
     );
 
     expect(mocks.upsertCalls.map((c) => c.key)).toEqual([
-      POLICY_KEYS.tutorialAutoPopupEnabled,
+      POLICY_KEYS.combatSimTokensRequiredForNonPro,
     ]);
     // The untouched switches keep their loaded values.
-    expect(
-      screen.getByRole("switch", { name: /Combat Sim Token Requirement/i }).getAttribute("aria-checked"),
-    ).toBe("true");
-    expect(
-      screen.getByRole("switch", { name: /Required New-User Tutorial/i }).getAttribute("aria-checked"),
-    ).toBe("true");
     expect(
       screen.getByRole("switch", { name: /Show global navbar/i }).getAttribute("aria-checked"),
     ).toBe("true");
@@ -307,8 +307,6 @@ describe("show global navbar", () => {
   it("defaults to ON when no row has been saved yet", async () => {
     mocks.selectResult.data = [
       row(POLICY_KEYS.combatSimTokensRequiredForNonPro, true),
-      row(POLICY_KEYS.tutorialAutoPopupEnabled, true),
-      row(POLICY_KEYS.tutorialCompletionRequiredForNewUsers, true),
     ];
     renderPanel();
     await waitFor(() => expect(screen.getByTestId("policy-globalNavbar")).toBeTruthy());

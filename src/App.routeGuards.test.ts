@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Assert the App route table gates exactly the routes it should. This is a
-// structural regression guard: if someone unwraps a gated quiz route or wraps
-// the tutorial route in its own guard, these tests fail.
+// Assert the App route table gates exactly the routes it should. Since TUT1
+// that includes the negative case: the scripted Ranked tutorial and its route
+// guard are gone, and no quiz route may reacquire a tutorial gate.
 const appSource = readFileSync(resolve(process.cwd(), "src/App.tsx"), "utf8");
 
 /** First JSX component that the given route path's `element={` opens with. */
@@ -14,52 +14,46 @@ function firstElementFor(path: string): string | null {
   return m ? m[1] : null;
 }
 
-const GATED = ["/quiz", "/quiz/daily", "/quiz/ranked"];
+const UNGATED_QUIZ = ["/quiz", "/quiz/daily", "/quiz/daily-challenge", "/quiz/matchup", "/quiz/ranked"];
 
-describe("App /quiz route classification", () => {
-  it("gates every normal quiz gameplay / hub route with RequireRankedTutorial", () => {
-    for (const path of GATED) {
-      expect(firstElementFor(path), `${path} should be gated`).toBe("<RequireRankedTutorial");
+describe("TUT1 — no Ranked tutorial gate survives", () => {
+  it("opens every normal quiz gameplay / hub route directly, with no tutorial gate", () => {
+    for (const path of UNGATED_QUIZ) {
+      expect(firstElementFor(path), `${path} should not be gated`).toBe("<Suspense");
     }
   });
 
-  it("never guards the tutorial route with itself (no self-redirect loop)", () => {
-    // The onboarding route is auth-gated only, never behind RequireRankedTutorial.
-    expect(firstElementFor("/onboarding/ranked-tutorial")).toBe("<ProtectedRoute");
-    expect(appSource).not.toMatch(
-      /path="\/onboarding\/ranked-tutorial"\s+element=\{<RequireRankedTutorial/,
-    );
+  it("never mentions the removed guard or its modules anywhere in the route table", () => {
+    expect(appSource).not.toContain("RequireRankedTutorial");
+    expect(appSource).not.toContain("RankedTutorialOnboardingPage");
+    expect(appSource).not.toContain("RankedTutorialPage");
+    expect(appSource).not.toContain("lib/ranked-tutorial");
   });
 
   it("keeps the admin quiz route on AdminRoute (admin surface, not a normal bypass)", () => {
     expect(firstElementFor("/quiz/admin")).toBe("<AdminRoute");
   });
-
-  it("leaves diagnostics and legal/auth routes ungated", () => {
-    // Non-gameplay diagnostics readout — not a way to play the quiz.
-    expect(firstElementFor("/quiz/diagnostics")).not.toBe("<RequireRankedTutorial");
-    // Required account / legal routes must never sit behind the tutorial gate.
-    for (const path of ["/auth", "/reset-password", "/terms", "/privacy", "/security", "/contact"]) {
-      expect(firstElementFor(path)).not.toBe("<RequireRankedTutorial");
-    }
-  });
 });
 
-describe("permanent Leaguecraft tutorial route", () => {
-  it("is registered and auth-gated like other authenticated Leaguecraft pages", () => {
-    expect(firstElementFor("/quiz/tutorial")).toBe("<ProtectedRoute");
-  });
-
-  it("is never wrapped in RequireRankedTutorial (no self-redirect loop)", () => {
-    expect(appSource).not.toMatch(
-      /path="\/quiz\/tutorial"\s+element=\{<RequireRankedTutorial/,
+describe("retired tutorial URLs", () => {
+  // Bookmarks and old links must land on Ranked, not on a dead shell. The
+  // redirect is all that is left: no tutorial implementation sits behind it.
+  it("redirects the old onboarding route to Ranked", () => {
+    expect(firstElementFor("/onboarding/ranked-tutorial")).toBe("<Navigate");
+    expect(appSource).toMatch(
+      /path="\/onboarding\/ranked-tutorial"\s+element=\{<Navigate to="\/quiz\/ranked" replace \/>\}/,
     );
   });
 
-  it("keeps the mandatory onboarding route registered alongside it", () => {
-    // Both routes exist: the onboarding target the forced gate redirects to,
-    // and the permanent voluntary entry inside Leaguecraft.
-    expect(firstElementFor("/onboarding/ranked-tutorial")).toBe("<ProtectedRoute");
+  it("redirects the old Leaguecraft tutorial route to Ranked", () => {
+    expect(firstElementFor("/quiz/tutorial")).toBe("<Navigate");
+    expect(appSource).toMatch(
+      /path="\/quiz\/tutorial"\s+element=\{<Navigate to="\/quiz\/ranked" replace \/>\}/,
+    );
+  });
+
+  it("removes the dev tutorial prototype route entirely", () => {
+    expect(appSource).not.toContain('path="/dev/ranked-tutorial"');
   });
 });
 

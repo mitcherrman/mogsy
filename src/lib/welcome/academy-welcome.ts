@@ -8,17 +8,8 @@
 //
 // Deliberately browser-local. The introduction gates nothing and confers no
 // access, so it needs no server round-trip and no Supabase column; the one
-// piece of onboarding state that genuinely must be durable — tutorial
-// completion — already lives in profiles.ranked_tutorial_completed_at and is
-// owned by lib/ranked-tutorial, not here. The cost of local-only state is that
-// a second device shows the introduction again, which is acceptable for a
-// screen that is one tap to leave.
-//
-// This module is also deliberately independent of the legacy
-// `tutorial_auto_popup_enabled` app_settings row. That admin toggle governs the
-// OLD LolWelcomeIntro popup only; HI1 must never inherit it as a master switch,
-// or the new introduction would be silently disabled by a setting that was
-// turned off for a different component.
+// The cost of local-only state is that a second device shows the introduction
+// again, which is acceptable for a screen that is one tap to leave.
 // ---------------------------------------------------------------------------
 
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
@@ -59,6 +50,16 @@ export const ACADEMY_WELCOME_ROUTE = "/welcome";
  * someone who has just told us they are not new.
  */
 export type AcademyWelcomeOutcome = "explored" | "tutorial" | "signed-in";
+
+/**
+ * TUT1 — "tutorial" is now a LEGACY READ-ONLY outcome. The scripted Ranked
+ * tutorial it recorded is retired and nothing writes this value any more, but
+ * it stays in the union and in VALID_OUTCOMES on purpose: a visitor who took
+ * that exit before the removal has `{"outcome":"tutorial"}` in localStorage,
+ * and dropping it from the accepted set would make their stored state invalid
+ * and re-show the introduction to someone who has already been through it.
+ * Erasing those client values is not worth a migration for a dead string.
+ */
 
 export interface AcademyWelcomeState {
   outcome: AcademyWelcomeOutcome;

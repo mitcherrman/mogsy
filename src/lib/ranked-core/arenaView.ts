@@ -39,7 +39,7 @@ import type {
  * renders the same `CombatantPanel` with the same props it always did.
  *
  * `panel` exists so a mode can occupy a flank with its own presentation
- * without the arena learning what a Daily Challenge or a Training Golem is.
+ * without the arena learning what a Daily Challenge or a practice bot is.
  * Nothing in the repo uses it yet; it is the one member here that anticipates
  * a caller, and it is a `ReactNode` slot rather than a component API precisely
  * so it can never grow into one.

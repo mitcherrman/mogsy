@@ -183,17 +183,16 @@ describe("authorization is unchanged by the reorganization", () => {
     expect(appSource).toContain('<Route path="/admin/quiz-broadcast/view"');
   });
 
-  it("does not touch the Ranked tutorial or onboarding routes", () => {
-    expect(appSource).toContain('<Route path="/onboarding/ranked-tutorial"');
-    expect(appSource).toContain('<Route path="/quiz/tutorial"');
+  it("leaves the Ranked route in place (TUT1 retired the tutorial routes)", () => {
     expect(appSource).toContain('<Route path="/quiz/ranked"');
+    expect(appSource).not.toContain("RequireRankedTutorial");
   });
 
   it("leaves normal Ranked and Ranked Bot player access untouched", () => {
-    // /quiz/ranked keeps exactly its existing wrapper: the tutorial gate, and
-    // nothing added by this reorganization.
+    // /quiz/ranked is reached directly — no admin wrapper, and since TUT1 no
+    // tutorial gate either.
     expect(appSource).toMatch(
-      /<Route path="\/quiz\/ranked" element=\{<RequireRankedTutorial>[\s\S]{0,140}?<QuizRankedPage \/>/,
+      /<Route path="\/quiz\/ranked" element=\{<Suspense[\s\S]{0,140}?<QuizRankedPage \/>/,
     );
   });
 });

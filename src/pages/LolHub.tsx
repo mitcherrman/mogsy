@@ -9,13 +9,7 @@ import HexPanelLink from "@/components/lol/HexPanelLink";
 import { useChampionAssets, getChampionSplash } from "@/hooks/useChampionAssets";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  markHubVisited,
-  markTutorialPopupDismissed,
-  hasDismissedTutorialPopup,
-} from "@/lib/quiz/onboarding-gate";
-import LolWelcomeIntro from "@/components/lol/LolWelcomeIntro";
-import { hasHandledAcademyWelcome } from "@/lib/welcome/academy-welcome";
+import { markHubVisited } from "@/lib/quiz/onboarding-gate";
 import MogzyHubGuide from "@/components/lol/MogzyHubGuide";
 import AcademyUpdates from "@/components/lol/AcademyUpdates";
 import {
@@ -24,9 +18,7 @@ import {
   useHubGuideState,
   type HubGuideModeId,
 } from "@/components/lol/hub-guide";
-import { useRankedTutorialStatus } from "@/hooks/useRankedTutorialStatus";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { evaluateTutorialPresentation } from "@/lib/platform-policy/policy";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { usePlaySfx } from "@/lib/audio/usePlaySfx";
 import AcademyCommons from "@/components/lol/AcademyCommons";
@@ -286,52 +278,7 @@ export default function LolHub() {
   const settledHintRef = useRef<HubScreen | null>(null);
 
   const isAnonymous = !user || user.is_anonymous === true;
-  // First-visit tutorial onboarding. Authoritative source is the profile's
-  // tutorial-completion state, NOT localStorage: show the popup to an anonymous
-  // user who has not completed the tutorial, once status has finished loading.
-  // Fail-open on a genuine read error (don't trap the user behind a
-  // non-dismissible popup); loading is distinct from error and simply waits.
-  //
-  // Layered on top: the admin-controlled global policy. `autoPopupEnabled`
-  // suppresses ONLY this automatic overlay — the tutorial itself and its
-  // permanent Leaguecraft route stay available either way — and
-  // `completionRequiredForNewUsers` decides whether the overlay is escapable.
-  const { loading: tutorialLoading, completed: tutorialCompleted, error: tutorialError } =
-    useRankedTutorialStatus();
-  const { settings, loading: settingsLoading } = useAppSettings();
-  const [popupDismissed, setPopupDismissed] = useState(hasDismissedTutorialPopup);
-  // Read once per mount, like popupDismissed above: the value cannot change
-  // while the hub is on screen, and a lazy initializer keeps storage access out
-  // of render.
-  const [academyWelcomeHandled] = useState(hasHandledAcademyWelcome);
-
-  const { showAutoPopup, popupDismissible } = evaluateTutorialPresentation({
-    autoPopupEnabled: settings.policy.tutorial.autoPopupEnabled,
-    completionRequiredForNewUsers: settings.policy.tutorial.completionRequiredForNewUsers,
-    completed: tutorialCompleted,
-    eligibleForFirstVisit: isAnonymous,
-  });
-  // HI1: a visitor who has already been through the Academy introduction has
-  // been onboarded, and must never then be handed the legacy popup on arrival —
-  // that would be two first-run experiences back to back.
-  //
-  // Deliberately the smallest possible change: the popup component, its policy
-  // rows, and this whole evaluation stay exactly as they were, so HI1 can be
-  // reverted by removing one condition. The popup is separately switched off in
-  // production via `tutorial_auto_popup_enabled`; this does not depend on that
-  // and does not alter it.
-  const showWelcome =
-    !tutorialLoading &&
-    !settingsLoading &&
-    !tutorialError &&
-    showAutoPopup &&
-    !popupDismissed &&
-    !academyWelcomeHandled;
-
-  const dismissWelcome = () => {
-    markTutorialPopupDismissed();
-    setPopupDismissed(true);
-  };
+  const { settings } = useAppSettings();
 
   // Mark hub visited (suppresses /quiz → hub redirect this session) and ensure anon session.
   useEffect(() => {
@@ -658,9 +605,6 @@ export default function LolHub() {
 
   return (
     <div>
-      {showWelcome && (
-        <LolWelcomeIntro dismissible={popupDismissible} onDismiss={dismissWelcome} />
-      )}
       <SEOHead
         title="Mogzy LoL Quiz | League of Legends Trivia and Training"
         description="Play League of Legends quizzes about champions, items, abilities, builds, objectives, patch knowledge, and esports history. Test damage in the Combat Lab. Start playing without an account."
@@ -879,9 +823,9 @@ export default function LolHub() {
                   the "hidden region" the dormant contract forbids.
                   See src/lib/lol/academy-updates.ts.
 
-                  WHATSNEW2: the switch comes from the policy object this page
-                  already fetched for the tutorial gate, so the feature costs
-                  the Hall no request of its own while it is off. */}
+                  WHATSNEW2: the switch comes from the global policy object the
+                  page already reads, so the feature costs the Hall no request
+                  of its own while it is off. */}
               <AcademyUpdates enabled={settings.policy.academy.updatesEnabled} />
             </div>
 

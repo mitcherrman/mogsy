@@ -36,12 +36,8 @@ import {
   syncProfilePermanent,
 } from "@/lib/auth/account-upgrade";
 import { computePostConversionDestination } from "@/lib/auth/post-conversion-route";
-import type { RankedTutorialProfileFields } from "@/lib/ranked-tutorial/onboarding";
 
 type Phase = "checking" | "password_required" | "synchronizing" | "error" | "mismatch";
-
-const PROFILE_SELECT =
-  "is_anonymous, onboarding_completed, ranked_tutorial_completed_at, ranked_tutorial_version";
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -70,7 +66,7 @@ export default function AuthCallback() {
   const urlError =
     searchParams.get("error_description") || searchParams.get("error") || null;
 
-  /** Route by authoritative profile/tutorial state, then finish. */
+  /** Sync the profile, then route by AUTH1 precedence and finish. */
   const finishAndRoute = useCallback(
     async (userId: string) => {
       const syncRes = await syncProfilePermanent(userId);
@@ -79,16 +75,8 @@ export default function AuthCallback() {
         setPhase("error");
         return;
       }
-      const { data } = await supabase
-        .from("profiles")
-        .select(PROFILE_SELECT)
-        .eq("user_id", userId)
-        .maybeSingle();
       clearPendingUpgrade();
-      const dest = computePostConversionDestination(
-        (data as RankedTutorialProfileFields | null) ?? null,
-        resolvedReturn,
-      );
+      const dest = computePostConversionDestination(resolvedReturn);
       toast({ title: "Account created!", description: "Your progress has been saved." });
       navigate(dest, { replace: true });
     },

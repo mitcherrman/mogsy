@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Global platform policy — shared contract.
 //
-// Five admin-controlled global toggles stored as rows in the existing
+// A set of admin-controlled global toggles stored as rows in the existing
 // `public.app_settings` key/value table (public SELECT, admin-only writes via
 // the has_role RLS policies). This module is pure: no React, no Supabase, so
 // the parsing and the fail-closed defaults are trivially unit-testable and can
@@ -9,15 +9,18 @@
 //
 // IMPORTANT distinctions this file keeps separate:
 //   - Global POLICY (here) is not user ENTITLEMENT (Pro status).
-//   - Tutorial POLICY (here) is not tutorial COMPLETION state
-//     (profiles.ranked_tutorial_completed_at — see lib/ranked-tutorial).
+//
+// TUT1: the two `tutorial_*` rows this module used to parse are gone. The
+// scripted Ranked tutorial they governed is retired, so there is nothing left
+// for them to switch. The ROWS are deliberately left in app_settings rather
+// than migrated away (see docs/TUT1_RANKED_TUTORIAL_REMOVAL_HANDOFF.md): they
+// are inert once nothing reads them, and dropping admin-owned settings rows is
+// a migration this removal does not need.
 // ---------------------------------------------------------------------------
 
 /** app_settings row keys. Server-validated: only these keys are ever written. */
 export const POLICY_KEYS = {
   combatSimTokensRequiredForNonPro: "combat_sim_tokens_required_for_non_pro",
-  tutorialAutoPopupEnabled: "tutorial_auto_popup_enabled",
-  tutorialCompletionRequiredForNewUsers: "tutorial_completion_required_for_new_users",
   globalNavbarVisible: "global_navbar_visible",
   showBotLabels: "show_bot_labels",
   // PLAY1 — which entries the Ranked lobby's PLAY scroll offers. One row per
@@ -40,12 +43,6 @@ export interface PlatformPolicy {
   combatSim: {
     /** Non-Pro users must possess/spend Combat Sim tokens to run a simulation. */
     tokensRequiredForNonPro: boolean;
-  };
-  tutorial: {
-    /** The tutorial popup appears automatically for new users. */
-    autoPopupEnabled: boolean;
-    /** New users must complete the tutorial before continuing. */
-    completionRequiredForNewUsers: boolean;
   };
   navigation: {
     /**
@@ -169,7 +166,6 @@ export interface PlatformPolicy {
  */
 export const DEFAULT_PLATFORM_POLICY: PlatformPolicy = {
   combatSim: { tokensRequiredForNonPro: true },
-  tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
   navigation: { globalNavbarVisible: true },
   community: { showBotLabels: false },
   // All three PLAY modes default TRUE, and that is what reproduces the
@@ -212,7 +208,6 @@ function readEnabled(value: unknown, fallback: boolean): boolean {
 export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): PlatformPolicy {
   const policy: PlatformPolicy = {
     combatSim: { ...DEFAULT_PLATFORM_POLICY.combatSim },
-    tutorial: { ...DEFAULT_PLATFORM_POLICY.tutorial },
     navigation: { ...DEFAULT_PLATFORM_POLICY.navigation },
     community: { ...DEFAULT_PLATFORM_POLICY.community },
     play: { modes: { ...DEFAULT_PLATFORM_POLICY.play.modes } },
@@ -226,14 +221,6 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
       case POLICY_KEYS.combatSimTokensRequiredForNonPro:
         policy.combatSim.tokensRequiredForNonPro = readEnabled(
           row.value, DEFAULT_PLATFORM_POLICY.combatSim.tokensRequiredForNonPro);
-        break;
-      case POLICY_KEYS.tutorialAutoPopupEnabled:
-        policy.tutorial.autoPopupEnabled = readEnabled(
-          row.value, DEFAULT_PLATFORM_POLICY.tutorial.autoPopupEnabled);
-        break;
-      case POLICY_KEYS.tutorialCompletionRequiredForNewUsers:
-        policy.tutorial.completionRequiredForNewUsers = readEnabled(
-          row.value, DEFAULT_PLATFORM_POLICY.tutorial.completionRequiredForNewUsers);
         break;
       case POLICY_KEYS.globalNavbarVisible:
         policy.navigation.globalNavbarVisible = readEnabled(
@@ -268,59 +255,3 @@ export function parsePlatformPolicy(rows: AppSettingRow[] | null | undefined): P
   return policy;
 }
 
-// ---------------------------------------------------------------------------
-// Tutorial presentation decision
-// ---------------------------------------------------------------------------
-
-export interface TutorialPresentationInput {
-  /** Policy: show the popup automatically to new users. */
-  autoPopupEnabled: boolean;
-  /** Policy: new users must complete the tutorial before continuing. */
-  completionRequiredForNewUsers: boolean;
-  /** User state: the account already has a durable completion stamp. */
-  completed: boolean;
-  /** The visitor is eligible for first-visit onboarding (anonymous guest). */
-  eligibleForFirstVisit: boolean;
-}
-
-export interface TutorialPresentation {
-  /** Render the automatic first-visit popup. */
-  showAutoPopup: boolean;
-  /**
-   * The popup may be dismissed. Only meaningful when `showAutoPopup` is true.
-   * A popup shown while completion is NOT required must be escapable, or it
-   * would be a trap: the route guard would let the user through, but the
-   * overlay would not.
-   */
-  popupDismissible: boolean;
-}
-
-/**
- * Decide the automatic-popup experience from policy + user state.
- *
- * The two toggles stay genuinely independent — all four combinations are
- * distinct and coherent:
- *
- *   popup ON  / forced ON   → non-dismissible popup; the route guard also
- *                             redirects, so onboarding is blocking.
- *   popup ON  / forced OFF  → popup appears but can be dismissed/skipped;
- *                             the route guard lets the user through.
- *   popup OFF / forced ON   → no popup at all, but the route guard still
- *                             redirects an incomplete user straight into the
- *                             tutorial route (forced entry without the
- *                             optional popup). The two are NOT collapsed.
- *   popup OFF / forced OFF  → no popup and no blocking onboarding.
- *
- * A user who already completed the tutorial never sees the popup in any
- * combination.
- */
-export function evaluateTutorialPresentation(
-  input: TutorialPresentationInput,
-): TutorialPresentation {
-  const showAutoPopup =
-    input.autoPopupEnabled && input.eligibleForFirstVisit && !input.completed;
-  return {
-    showAutoPopup,
-    popupDismissible: !input.completionRequiredForNewUsers,
-  };
-}

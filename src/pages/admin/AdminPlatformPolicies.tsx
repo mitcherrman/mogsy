@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Admin · Platform Policies — the global access/tutorial/navigation switches.
+// Admin · Platform Policies — the global access/navigation switches.
 //
 // Registered under AdminRoute in App.tsx and additionally wrapped in the shared
 // AdminAuthGate, exactly like /admin/directory. Neither of those is the real
@@ -32,8 +32,6 @@ export const ADMIN_PLATFORM_POLICIES_PATH = "/admin/platform-policies";
 type PolicyField =
   | "globalPremiumAccess"
   | "combatSimTokens"
-  | "tutorialAutoPopup"
-  | "tutorialCompletionRequired"
   | "globalNavbar"
   | "showBotLabels"
   | "playModeRanked"
@@ -76,24 +74,6 @@ const CONTROLS: {
     warnWhen: "off",
     warning:
       "Non-Premium users get unlimited Combat Sim runs and are not charged tokens. Existing balances and history are preserved, and turning this back on resumes metering from each user's real balance. Premium is unaffected either way.",
-  },
-  {
-    field: "tutorialAutoPopup",
-    settingKey: POLICY_KEYS.tutorialAutoPopupEnabled,
-    label: "Automatic Tutorial Popup",
-    description: "Automatically show the tutorial when a new user enters Mogzy.",
-    warnWhen: "off",
-    warning:
-      "New users see no tutorial popup. The tutorial still exists and stays available at /quiz/tutorial, and the requirement below is unaffected — if it is on, users are still sent into the tutorial, just without the popup.",
-  },
-  {
-    field: "tutorialCompletionRequired",
-    settingKey: POLICY_KEYS.tutorialCompletionRequiredForNewUsers,
-    label: "Required New-User Tutorial",
-    description: "Require new users to complete the tutorial before continuing.",
-    warnWhen: "off",
-    warning:
-      "New users can enter Leaguecraft without completing the tutorial. No completion history is erased — anyone who finishes it is still recorded — so turning this back on immediately uses each account's real completion state.",
   },
   {
     field: "globalNavbar",
@@ -156,8 +136,6 @@ function flatten(policy: PlatformPolicy): Record<PolicyField, boolean> {
   return {
     globalPremiumAccess: policy.premium.globalAccess,
     combatSimTokens: policy.combatSim.tokensRequiredForNonPro,
-    tutorialAutoPopup: policy.tutorial.autoPopupEnabled,
-    tutorialCompletionRequired: policy.tutorial.completionRequiredForNewUsers,
     globalNavbar: policy.navigation.globalNavbarVisible,
     showBotLabels: policy.community.showBotLabels,
     playModeRanked: policy.play.modes.ranked,
@@ -260,7 +238,7 @@ export default function AdminPlatformPolicies() {
     <div className="mx-auto w-full max-w-3xl px-4 py-6">
       <SEOHead
         title="Mogzy Admin · Platform Policies"
-        description="Global platform access and tutorial policies."
+        description="Global platform access and navigation policies."
         path={ADMIN_PLATFORM_POLICIES_PATH}
         noindex
       />

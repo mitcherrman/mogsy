@@ -1,9 +1,8 @@
 /**
  * Meta Reflex — its Leaguecraft entry point, under the Ranked-first redesign.
  *
- * Leaguecraft owns /quiz, /quiz/ranked, /quiz/stat-check and /quiz/mastery
- * (src/lib/ranked-tutorial/onboarding.ts). Meta Reflex (internally League
- * Swipe) was removed from the /lol hub on 2026-07-29 on the stated basis that
+ * Leaguecraft owns /quiz, /quiz/ranked, /quiz/stat-check and /quiz/mastery.
+ * Meta Reflex (internally League Swipe) was removed from the /lol hub on 2026-07-29 on the stated basis that
  * it "now lives inside Leaguecraft"; the Leaguecraft entry was then written as
  * a hub card.
  *

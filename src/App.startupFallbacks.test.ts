@@ -88,9 +88,10 @@ describe("route guards are untouched by the shell work", () => {
     expect(appSource).toContain("<Route element={<Layout />}>");
   });
 
-  it("keeps the ranked tutorial guard on the ranked surfaces", () => {
-    expect(routeLine("/quiz/ranked")).toContain("<RequireRankedTutorial>");
-    expect(routeLine("/quiz/daily")).toContain("<RequireRankedTutorial>");
+  it("leaves the ranked surfaces ungated — TUT1 removed the tutorial guard", () => {
+    expect(routeLine("/quiz/ranked")).not.toContain("RequireRankedTutorial");
+    expect(routeLine("/quiz/daily")).not.toContain("RequireRankedTutorial");
+    expect(routeLine("/quiz/ranked")).toContain("<Suspense");
   });
 
   it("keeps admin surfaces behind AdminRoute", () => {

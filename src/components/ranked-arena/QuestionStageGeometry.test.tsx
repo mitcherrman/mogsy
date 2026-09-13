@@ -28,8 +28,7 @@
  * surface is checked to still emit the three regions the reserves land on, and
  * the mode layer is checked to declare no geometry of its own.
  */
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { cleanup, render, screen } from "@testing-library/react";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -45,7 +44,6 @@ import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import type { InteractionPermissions, QuestionView } from "@/lib/ranked-core/viewTypes";
 import { CanonicalArena } from "./CanonicalArena";
 import { QuizRankedMatch } from "@/pages/quiz-ranked/QuizRankedMatch";
-import RankedTutorialPage from "@/pages/dev/ranked-tutorial/RankedTutorialPage";
 import { dailyArenaView } from "@/pages/quiz-daily-challenge/dailyArenaView";
 import { parseRun, rawRun } from "@/pages/quiz-daily-challenge/testFixtures";
 import {
@@ -382,7 +380,6 @@ describe("the arena owns the footprint, and it owns it once", () => {
     // card height re-forks the arena in the one dimension this phase fixed.
     const MODE_DIRS = [
       join(ROOT, "pages", "quiz-ranked"),
-      join(ROOT, "pages", "dev", "ranked-tutorial"),
       join(ROOT, "pages", "quiz-daily-challenge"),
       join(ROOT, "lib", "daily-challenge"),
     ];
@@ -448,27 +445,6 @@ describe("Ranked inherits the stage", () => {
     await screen.findByTestId("ranked-match");
     await screen.findByTestId("ranked-question");
     stageSection();
-  });
-});
-
-describe("the Tutorial inherits the stage", () => {
-  afterEach(cleanup);
-
-  it("draws its first scripted question on the canonical stage", async () => {
-    render(
-      <MemoryRouter initialEntries={["/dev/ranked-tutorial"]}>
-        <RankedTutorialPage />
-      </MemoryRouter>,
-    );
-    // Step 1 is the timer lesson and has no round at all; the first question
-    // arrives on the step after it.
-    await act(async () => {
-      fireEvent.click(await screen.findByRole("button", { name: /continue/i }));
-    });
-    await screen.findByTestId("ranked-question");
-    stageSection();
-    // And no tutorial-only height anywhere near it.
-    expect(screen.getByTestId("ranked-question").getAttribute("style")).toBeNull();
   });
 });
 

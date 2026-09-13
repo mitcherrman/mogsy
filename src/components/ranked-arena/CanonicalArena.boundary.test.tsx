@@ -2,7 +2,7 @@
  * THE CANONICAL ARENA IS THE ONLY ARENA (ARENA1 Step 3).
  *
  * Step 1 found three arena shells, three progress strips and three result
- * presentations across Ranked, the Tutorial and the Daily Challenge — none of
+ * presentations across Ranked and the Daily Challenge — none of
  * them forked deliberately. Each began as a small, reasonable local decision:
  * a layout file here, a grid that needed one extra state there. Nothing failed,
  * nothing warned, and by the time it was visible there were three.
@@ -197,7 +197,7 @@ describe("the arena knows about no mode", () => {
     // branch on WHICH mode is rendering would be the fork starting again.
     for (const mode of [
       "@/pages/quiz-ranked", "@/pages/quiz-daily-challenge",
-      "@/pages/dev/ranked-tutorial", "useRankedMatch", "useDailyChallengeRun",
+      "useRankedMatch", "useDailyChallengeRun",
       "tutorialMachine", "ranked-public/client",
     ]) {
       expect(arena, `CanonicalArena must not know about ${mode}`).not.toContain(mode);
@@ -219,8 +219,8 @@ describe("the arena knows about no mode", () => {
  * because today's modes do not use it.
  *
  * What is asserted instead is the thing that matters: no PLAYER-FACING route
- * can reach it. If it ever appears in the arena, in Ranked's adapter, in the
- * Daily or in the Tutorial, this fails and the conversation happens before the
+ * can reach it. If it ever appears in the arena, in Ranked's adapter or in the
+ * Daily, this fails and the conversation happens before the
  * merge rather than after a player is asked to click twice.
  */
 describe("no production mode offers a confirm step", () => {
@@ -234,7 +234,7 @@ describe("no production mode offers a confirm step", () => {
     ]);
   });
 
-  it("the arena and all three modes name no confirm control", () => {
+  it("the arena and every production mode name no confirm control", () => {
     for (const file of [
       "components/ranked-arena/CanonicalArena.tsx",
       "components/ranked-arena/AnswerGrid.tsx",
@@ -242,7 +242,6 @@ describe("no production mode offers a confirm step", () => {
       "pages/quiz-ranked/QuizRankedMatch.tsx",
       "pages/quiz-daily-challenge/QuizDailyChallengePage.tsx",
       "pages/quiz-daily-challenge/dailyArenaView.ts",
-      "pages/dev/ranked-tutorial/RankedTutorialPage.tsx",
     ]) {
       const src = read(file);
       expect(src, `${file} reached for the confirm strip`)
@@ -254,8 +253,8 @@ describe("no production mode offers a confirm step", () => {
 
   it("every mode withholds canChangeAnswer — there is no mind to change", () => {
     // The permission that a select→confirm flow would need. Ranked's projection
-    // and the Daily's adapter both state it false explicitly; the Tutorial's
-    // director inherits NO_INTERACTIONS. A mode that flipped it would be
+    // and the Daily's adapter both state it false explicitly. A mode that
+    // flipped it would be
     // introducing the second click this guard exists to prevent.
     expect(read("pages/quiz-daily-challenge/dailyArenaView.ts"))
       .toContain("canChangeAnswer: false");

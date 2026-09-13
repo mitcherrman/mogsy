@@ -41,7 +41,7 @@ export interface CombatantView {
   playerId: string;
   /** Display name; controllers supply it (backend sends ids only). */
   name: string;
-  /** Optional short descriptor line (class title, "Training Golem", …). */
+  /** Optional short descriptor line (class title, role title, …). */
   tag?: string;
   /**
    * R1 League role id (`top` | `jungle` | `mid` | `adc` | `support`) when the

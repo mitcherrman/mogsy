@@ -7,7 +7,7 @@
  * the provider special-cased their paths — an arrangement that had already
  * failed once (Meta Reflex was missing from the path list and rendered in a
  * general Mogsy theme), and that left the Academy entrance, /welcome, the
- * Ranked tutorial, the blog and the admin console with no protection at all.
+ * blog and the admin console with no protection at all.
  *
  * This suite pins the replacement: Layout is the ONLY writer of a root theme
  * class, it writes exactly one class, and what it writes is a function of the
@@ -81,7 +81,6 @@ const PREVIOUSLY_RECOLOURED = [
   "/user/abc",
   "/blog",
   "/settings",
-  "/onboarding/ranked-tutorial",
 ];
 
 beforeEach(() => {

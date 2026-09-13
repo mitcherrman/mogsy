@@ -867,24 +867,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
       "DEFERRED — STILL ACCESSIBLE. Documented with its exact contract rather than given a one-click button; a new production-write form is beyond a navigation reorganization.",
   },
   {
-    id: "ranked-tutorial-replay",
-    title: "Launch Ranked Tutorial",
-    description:
-      "Opens the shipped Ranked Tutorial from its first step as an admin testing run that records nothing.",
-    area: "ranked",
-    section: "matches",
-    kind: "route",
-    path: "/quiz/tutorial?adminReplay=1",
-    oldLocation: "No admin surface — the tutorial could only be reached as a player",
-    disposition: "KEEP",
-    dangerLevel: "none",
-    status: "Production",
-    authorization:
-      "Server-side has_role (admin / master_admin), the same security-definer RPC AdminRoute uses. The query parameter authorizes nothing on its own: for a non-admin it is ignored and the ordinary tutorial runs.",
-    notes:
-      "The REAL /quiz/tutorial route and the real tutorial controller — not a preview or a fixture bench. The run mode is forced to 'replay', so no completion is written and none is cleared; an admin who has not completed the tutorial is still required to complete it normally. Ordinary users are unaffected and gain no replay eligibility.",
-  },
-  {
     id: "ranked-bot-matches",
     title: "Ranked Bot Matches",
     description:
@@ -1529,7 +1511,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     id: "platform-policies",
     title: "Platform Policies",
     description:
-      "The four global switches: Combat Sim token requirement, tutorial auto-popup, required new-user tutorial, global navbar.",
+      "The global platform switches: Combat Sim token requirement, global navbar, bot labels, PLAY modes, Academy updates, global Premium access.",
     area: "operations",
     section: "configuration",
     kind: "route",
@@ -1594,7 +1576,7 @@ export const ADMIN_TOOLS: AdminTool[] = [
     status: "Production",
     authorization: "AdminRoute (admin, master_admin) — unchanged.",
     notes:
-      "Tutorial TIP CONTENT only. The Ranked tutorial and onboarding flows are out of scope and untouched.",
+      "Tutorial TIP CONTENT only — the contextual coach-marks. Unrelated to the retired scripted Ranked tutorial (removed in TUT1).",
   },
   {
     id: "banners",
@@ -1807,24 +1789,6 @@ export const ADMIN_TOOLS: AdminTool[] = [
     authorization: "UNCHANGED — no route gate.",
     notes:
       "Fixture mode is a prototype; the same route's Live mode is production administration and is listed under Ranked › Matches.",
-  },
-  {
-    id: "dev-ranked-tutorial",
-    title: "Ranked Tutorial Prototype",
-    description: "A design prototype of the ranked tutorial. The shipped tutorial is a different route.",
-    area: "developer",
-    section: "prototypes",
-    kind: "route",
-    path: "/dev/ranked-tutorial",
-    oldLocation: "/dev/ranked-tutorial — unlisted",
-    disposition: "DEVELOPER-ONLY",
-    legacyRoutes: ["/dev/ranked-tutorial"],
-    dangerLevel: "none",
-    status: "Prototype",
-    developerOnly: true,
-    authorization: "UNCHANGED — no route gate, no auth, no API, no persistence.",
-    notes:
-      "Classification only. /quiz/tutorial and /onboarding/ranked-tutorial are out of scope and untouched.",
   },
   {
     id: "dev-stat-check",

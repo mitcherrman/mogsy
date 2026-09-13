@@ -46,8 +46,8 @@ import { listPublishedUpdates } from "@/lib/lol/academy-updates-store";
  * are read from.
  *
  * The switch is PASSED IN by LolHub rather than read here, because LolHub
- * already holds it: `useAppSettings()` fetches the whole policy object for the
- * tutorial gate, and reading it again here would put a second identical
+ * already holds it: `useAppSettings()` fetches the whole policy object once,
+ * and reading it again here would put a second identical
  * `app_settings` request on every Hall load — including loads where the feature
  * is off. And the notices are fetched only AFTER that switch reads true, so
  * with the feature off the Hall makes NO query on this feature's behalf at all.

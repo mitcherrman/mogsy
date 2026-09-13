@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PLATFORM_POLICY,
   POLICY_KEYS,
-  evaluateTutorialPresentation,
   parsePlatformPolicy,
 } from "./policy";
 
@@ -17,7 +16,6 @@ describe("defaults reproduce current production behaviour", () => {
     // production and cannot be a regression.
     expect(DEFAULT_PLATFORM_POLICY).toEqual({
       combatSim: { tokensRequiredForNonPro: true },
-      tutorial: { autoPopupEnabled: true, completionRequiredForNewUsers: true },
       navigation: { globalNavbarVisible: true },
       community: { showBotLabels: false },
       // PLAY1: all three match-entry options visible, which is the intended
@@ -82,7 +80,6 @@ describe("the Academy Updates master switch", () => {
     // else by sharing a parse path with them.
     const parsed = parsePlatformPolicy(rows({ enabled: true }));
     expect(parsed.combatSim).toEqual(DEFAULT_PLATFORM_POLICY.combatSim);
-    expect(parsed.tutorial).toEqual(DEFAULT_PLATFORM_POLICY.tutorial);
     expect(parsed.navigation).toEqual(DEFAULT_PLATFORM_POLICY.navigation);
     expect(parsed.community).toEqual(DEFAULT_PLATFORM_POLICY.community);
     expect(parsed.play).toEqual(DEFAULT_PLATFORM_POLICY.play);
@@ -90,30 +87,40 @@ describe("the Academy Updates master switch", () => {
 });
 
 describe("parsePlatformPolicy", () => {
-  it("reads all five settings", () => {
+  it("reads the access settings", () => {
     const policy = parsePlatformPolicy([
       { key: KEY.combatSimTokensRequiredForNonPro, value: { enabled: false } },
-      { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
-      { key: KEY.tutorialCompletionRequiredForNewUsers, value: { enabled: false } },
       { key: KEY.globalNavbarVisible, value: { enabled: false } },
       { key: KEY.showBotLabels, value: { enabled: true } },
     ]);
     expect(policy.combatSim.tokensRequiredForNonPro).toBe(false);
-    expect(policy.tutorial.autoPopupEnabled).toBe(false);
-    expect(policy.tutorial.completionRequiredForNewUsers).toBe(false);
     expect(policy.navigation.globalNavbarVisible).toBe(false);
     expect(policy.community.showBotLabels).toBe(true);
   });
 
   it("keeps the settings independent of one another", () => {
     const policy = parsePlatformPolicy([
-      { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
+      { key: KEY.combatSimTokensRequiredForNonPro, value: { enabled: false } },
     ]);
-    // Only the popup was changed; the others keep their fail-closed defaults.
-    expect(policy.tutorial.autoPopupEnabled).toBe(false);
-    expect(policy.tutorial.completionRequiredForNewUsers).toBe(true);
-    expect(policy.combatSim.tokensRequiredForNonPro).toBe(true);
+    // Only Combat Sim was changed; the others keep their fail-closed defaults.
+    expect(policy.combatSim.tokensRequiredForNonPro).toBe(false);
     expect(policy.navigation.globalNavbarVisible).toBe(true);
+    expect(policy.community.showBotLabels).toBe(false);
+  });
+
+  it("TUT1: the retired tutorial rows are inert — reading them changes nothing", () => {
+    // The rows are deliberately left in app_settings rather than migrated
+    // away. Nothing parses them any more, so their presence (in any state)
+    // must produce exactly the default policy.
+    for (const enabled of [true, false]) {
+      expect(parsePlatformPolicy([
+        { key: "tutorial_auto_popup_enabled", value: { enabled } },
+        { key: "tutorial_completion_required_for_new_users", value: { enabled } },
+      ])).toEqual(DEFAULT_PLATFORM_POLICY);
+    }
+    expect(Object.values(KEY)).not.toContain("tutorial_auto_popup_enabled");
+    expect(Object.values(KEY))
+      .not.toContain("tutorial_completion_required_for_new_users");
   });
 
   it("ignores unrelated app_settings rows", () => {
@@ -168,7 +175,7 @@ describe("global navbar visibility", () => {
 
   it("defaults to visible when the row is missing entirely", () => {
     const policy = parsePlatformPolicy([
-      { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
+      { key: KEY.combatSimTokensRequiredForNonPro, value: { enabled: false } },
     ]);
     expect(policy.navigation.globalNavbarVisible).toBe(true);
   });
@@ -201,76 +208,17 @@ describe("global navbar visibility", () => {
     ]);
     expect(policy.navigation.globalNavbarVisible).toBe(false);
     expect(policy.combatSim).toEqual(DEFAULT_PLATFORM_POLICY.combatSim);
-    expect(policy.tutorial).toEqual(DEFAULT_PLATFORM_POLICY.tutorial);
+    expect(policy.community).toEqual(DEFAULT_PLATFORM_POLICY.community);
   });
 
   it("a malformed navbar row does not weaken the other keys' parsing", () => {
     const policy = parsePlatformPolicy([
       { key: KEY.globalNavbarVisible, value: "nonsense" },
       { key: KEY.combatSimTokensRequiredForNonPro, value: { enabled: false } },
-      { key: KEY.tutorialAutoPopupEnabled, value: { enabled: false } },
+      { key: KEY.showBotLabels, value: { enabled: true } },
     ]);
     expect(policy.navigation.globalNavbarVisible).toBe(true);
     expect(policy.combatSim.tokensRequiredForNonPro).toBe(false);
-    expect(policy.tutorial.autoPopupEnabled).toBe(false);
-    expect(policy.tutorial.completionRequiredForNewUsers).toBe(true);
-  });
-});
-
-describe("evaluateTutorialPresentation — all four toggle combinations", () => {
-  const newUser = { completed: false, eligibleForFirstVisit: true };
-
-  it("popup ON + forced ON → popup appears and is not dismissible", () => {
-    const r = evaluateTutorialPresentation({
-      ...newUser, autoPopupEnabled: true, completionRequiredForNewUsers: true,
-    });
-    expect(r.showAutoPopup).toBe(true);
-    expect(r.popupDismissible).toBe(false);
-  });
-
-  it("popup ON + forced OFF → popup appears but can be skipped", () => {
-    const r = evaluateTutorialPresentation({
-      ...newUser, autoPopupEnabled: true, completionRequiredForNewUsers: false,
-    });
-    expect(r.showAutoPopup).toBe(true);
-    expect(r.popupDismissible).toBe(true);
-  });
-
-  it("popup OFF + forced ON → no popup (the route guard still forces entry)", () => {
-    const r = evaluateTutorialPresentation({
-      ...newUser, autoPopupEnabled: false, completionRequiredForNewUsers: true,
-    });
-    expect(r.showAutoPopup).toBe(false);
-  });
-
-  it("popup OFF + forced OFF → no popup at all", () => {
-    const r = evaluateTutorialPresentation({
-      ...newUser, autoPopupEnabled: false, completionRequiredForNewUsers: false,
-    });
-    expect(r.showAutoPopup).toBe(false);
-  });
-
-  it("never shows the popup to a user who already completed the tutorial", () => {
-    for (const autoPopupEnabled of [true, false]) {
-      for (const completionRequiredForNewUsers of [true, false]) {
-        const r = evaluateTutorialPresentation({
-          autoPopupEnabled,
-          completionRequiredForNewUsers,
-          completed: true,
-          eligibleForFirstVisit: true,
-        });
-        expect(r.showAutoPopup).toBe(false);
-      }
-    }
-  });
-
-  it("never shows the popup to an ineligible (non-first-visit) user", () => {
-    const r = evaluateTutorialPresentation({
-      autoPopupEnabled: true,
-      completionRequiredForNewUsers: true,
-      completed: false,
-      eligibleForFirstVisit: false,
-    });
-    expect(r.showAutoPopup).toBe(false);
+    expect(policy.community.showBotLabels).toBe(true);
   });
 });

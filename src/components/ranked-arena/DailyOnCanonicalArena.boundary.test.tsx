@@ -1,8 +1,8 @@
 /**
  * THE DAILY CHALLENGE RENDERS THE PRODUCTION ARENA (ARENA1 Step 5).
  *
- * Step 3 extracted `CanonicalArena`. Step 4 proved a SCRIPTED mode could use
- * it. This file is the third and hardest case: a mode with its own transport,
+ * Step 3 extracted `CanonicalArena`. This file is the hardest case: a mode
+ * with its own transport,
  * its own rules, its own finite plan and NO OPPONENT.
  *
  * It is written as standing rules rather than a one-time observation, because
@@ -10,9 +10,9 @@
  * arena — its own 23/54/23 grid, its own answer grid, its own card stage, its
  * own timeline and its own player column — and none of that was wrong when it
  * was written, because `CanonicalArena` did not exist yet. What was wrong was
- * leaving it there once it did: two of the guards below (`AnswerGrid.elimination`
- * and `TutorialOnCanonicalArena`) began FAILING the moment the two lines of
- * work were put in one tree, which is precisely what a guard is for.
+ * leaving it there once it did: the guards below began FAILING the moment the
+ * two lines of work were put in one tree, which is precisely what a guard is
+ * for.
  *
  * Every assertion here names something that was ACTUALLY true before this
  * step, and a failure is that thing coming back.
@@ -59,7 +59,7 @@ const DAILY_FILES = () => [
 const dailySource = () =>
   DAILY_FILES().map((f) => `\n@@ ${f} @@\n` + codeOnly(read(f))).join("");
 
-// ── A/B/C · all three modes reach the one arena ────────────────────────────
+// ── A/B/C · every production mode reaches the one arena ───────────────────
 
 describe("every mode's route reaches CanonicalArena", () => {
   it("Ranked does", () => {
@@ -67,12 +67,6 @@ describe("every mode's route reaches CanonicalArena", () => {
     expect(read("pages/quiz-ranked/QuizRankedMatch.tsx"))
       .toContain('from "@/components/ranked-arena/CanonicalArena"');
     expect(read("pages/quiz-ranked/QuizRankedMatch.tsx")).toContain("<CanonicalArena");
-  });
-
-  it("the Tutorial does", () => {
-    expect(read("pages/dev/ranked-tutorial/RankedTutorialPage.tsx"))
-      .toContain('from "@/components/ranked-arena/CanonicalArena"');
-    expect(read("pages/dev/ranked-tutorial/RankedTutorialPage.tsx")).toContain("<CanonicalArena");
   });
 
   it("the Daily does", () => {

@@ -4,9 +4,10 @@
  * Two things are being protected here, and they pull in different directions.
  *
  * The FIRST is HI1's contract, which the cinematic redesign was not allowed to
- * touch: both exits record an outcome before handing off, the tutorial keeps its
- * own completion state, and the route still renders in full on replay. Those
- * assertions are carried over from HI1-1 deliberately unchanged.
+ * touch: the exit records an outcome before handing off, and the route still
+ * renders in full on replay. Those assertions are carried over from HI1-1
+ * deliberately unchanged, less the second exit — TUT1 retired the scripted
+ * Ranked tutorial it started.
  *
  * The SECOND is the interaction model, in its HI1-C2 form: one dual-purpose
  * control; a chapter that writes ITSELF but never turns itself — the finished
@@ -45,7 +46,6 @@ import {
   saveAcademyRegistration,
 } from "@/lib/welcome/academy-registration";
 import { LEAGUE_HOME_ROUTE } from "@/lib/site-config";
-import { RANKED_TUTORIAL_ROUTE } from "@/lib/ranked-tutorial/onboarding";
 
 import { installLocalStorageStub } from "@/test/localStorageStub";
 
@@ -548,11 +548,10 @@ describe("reduced motion", () => {
     expect(page()).toHaveAttribute("data-complete", "true");
   });
 
-  it("still reaches both exits, one press per chapter", () => {
+  it("still reaches the exit, one press per chapter", () => {
     render(<AcademyWelcomePage />);
     for (let i = 0; i < ACADEMY_CHAPTERS.length - 1; i += 1) nextChapter();
     expect(screen.getByTestId("academy-welcome-explore")).toBeTruthy();
-    expect(screen.getByTestId("academy-welcome-tutorial")).toBeTruthy();
   });
 });
 
@@ -566,30 +565,24 @@ describe("exits", () => {
     expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 
-  it("Start Tutorial records the outcome and hands off to the real tutorial route", () => {
+  it("TUT1: offers no tutorial exit, and never navigates to one", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
-    fireEvent.click(screen.getByTestId("academy-welcome-tutorial"));
-
-    expect(readAcademyWelcomeState()?.outcome).toBe("tutorial");
-    expect(mocks.navigate).toHaveBeenCalledWith(RANKED_TUTORIAL_ROUTE, { replace: true });
+    expect(screen.queryByTestId("academy-welcome-tutorial")).toBeNull();
+    expect(screen.queryByText(/tutorial/i)).toBeNull();
+    fireEvent.click(screen.getByTestId("academy-welcome-explore"));
+    expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 
-  it("labels the two paths as approved, and gives neither the air of a penalty", () => {
+  it("labels the one path as approved, with no air of a penalty", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
     expect(screen.getByTestId("academy-welcome-explore").textContent).toContain(
       "Enter the Academy",
     );
-    // "Start the tutorial", not "Take the tutorial" — the tutorial must never
-    // read as the price of entry.
-    expect(screen.getByTestId("academy-welcome-tutorial").textContent).toContain(
-      "Start the tutorial",
-    );
-    expect(screen.queryByText(/Take the tutorial/)).toBeNull();
   });
 
-  it("carries two labels and no explanation — this page closes, it does not brief", () => {
+  it("carries its label and no explanation — this page closes, it does not brief", () => {
     // The exits used to carry a line of description each and a footnote under
     // them. On a page whose whole job is to end the book that reads as a
     // dashboard, and it was most of what made the spread overflow.
@@ -627,10 +620,10 @@ describe("exits", () => {
     expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 
-  it("never writes tutorial completion — that stays the tutorial's own business", () => {
+  it("never writes completion state of any kind — it gates nothing", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
-    fireEvent.click(screen.getByTestId("academy-welcome-tutorial"));
+    fireEvent.click(screen.getByTestId("academy-welcome-explore"));
     expect(JSON.stringify(readAcademyWelcomeState())).not.toMatch(/completed/i);
   });
 });
@@ -1468,7 +1461,7 @@ describe("the last spread", () => {
   it("adds no copy of its own beyond the approved three blocks", () => {
     render(<AcademyWelcomePage />);
     goToFinale();
-    // The heading, the three blocks, the eyebrow, and the two button labels.
+    // The heading, the three blocks, the eyebrow, and the button label.
     // Nothing else is written anywhere on this spread — no captions under the
     // symbols, no label on the graph, no line under the picture.
     const spoken = [
@@ -1476,7 +1469,6 @@ describe("the last spread", () => {
       LIBRARY.heading,
       ...LIBRARY.lines,
       "Enter the Academy",
-      "Start the tutorial",
     ];
     let left = flat(verso()) + " " + flat(recto());
     for (const phrase of spoken) left = left.replace(phrase, "");

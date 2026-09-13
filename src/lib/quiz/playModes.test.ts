@@ -111,7 +111,6 @@ describe("visibility comes from the global policy", () => {
       { key: POLICY_KEYS.playModeRankedVisible, value: { enabled: false } },
     ]);
     expect(policy.combatSim).toEqual(DEFAULT_PLATFORM_POLICY.combatSim);
-    expect(policy.tutorial).toEqual(DEFAULT_PLATFORM_POLICY.tutorial);
     expect(policy.navigation).toEqual(DEFAULT_PLATFORM_POLICY.navigation);
     expect(policy.community).toEqual(DEFAULT_PLATFORM_POLICY.community);
   });
