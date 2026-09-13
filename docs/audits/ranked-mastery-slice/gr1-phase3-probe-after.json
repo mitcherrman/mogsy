@@ -1,0 +1,2563 @@
+{
+ "applied_chain": {
+  "n14": {
+   "distinct_answer_option_tasks": 14,
+   "identical_task_groups": [],
+   "items": [
+    "Axiom Arc",
+    "Last Whisper",
+    "Bastionbreaker",
+    "Lord Dominik's Regards",
+    "Edge of Night",
+    "Mortal Reminder",
+    "Serpent's Fang",
+    "Ohmwrecker (Turret Item)",
+    "Serrated Dirk",
+    "Serylda's Grudge",
+    "The Brutalizer",
+    "The Collector",
+    "Umbral Glaive",
+    "Voltaic Cyclosword"
+   ],
+   "prompt0": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc (55 AD, 18 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+   "steps": 14
+  },
+  "n17": {
+   "error": "InsufficientQuestionsError: canonical penetration items: requested 17 question(s) but only 14 distinct publishable question(s) are available"
+  },
+  "n2": {
+   "distinct_answer_option_tasks": 2,
+   "identical_task_groups": [],
+   "items": [
+    "Axiom Arc",
+    "Last Whisper"
+   ],
+   "prompt0": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc (55 AD, 18 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+   "steps": 2
+  },
+  "n4": {
+   "distinct_answer_option_tasks": 4,
+   "identical_task_groups": [],
+   "items": [
+    "Axiom Arc",
+    "Last Whisper",
+    "Bastionbreaker",
+    "Lord Dominik's Regards"
+   ],
+   "prompt0": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc (55 AD, 18 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+   "steps": 4
+  }
+ },
+ "champion": [
+  {
+   "champion": "ahri",
+   "eligible": 35,
+   "eligible_by_category": {
+    "ability_cooldown": 10,
+    "ability_cost": 5,
+    "champion_level_stat": 20
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cost_rank:Ahri:Q:r4",
+      "champion_stat_level:Ahri:hp:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_af2d08b630bc6b5fdf40e0c91dc55c81c5e815e230f5a8ed2e4e66c25406cb94"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cost_rank:Ahri:Q:r5",
+      "champion_stat_level:Ahri:hp:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_58988970769a2bb4f14e1179398a6eb705e2944151598c1f3acfbcb2527857b9"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r3",
+      "ability_cost_rank:Ahri:Q:r3",
+      "champion_stat_level:Ahri:mp:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_4427d2780ceda7e7deafd5194f262d72aeb56a32d6b0b6042fcfedab2ba96e8d"
+    },
+    "n5/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cost_rank:Ahri:Q:r4",
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cost_rank:Ahri:Q:r5",
+      "champion_stat_level:Ahri:hp:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_58734ec5ae6374c53bffdfe33ad45eaced0a66794c6b0e23182b343649b46375"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cost_rank:Ahri:Q:r5",
+      "champion_stat_level:Ahri:hp:lvl18",
+      "ability_cost_rank:Ahri:Q:r1"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost"
+     ],
+     "set_id": "mset_deada76d74d2528b96b6e41189ebbc7c06950fb867484502bae141c12d004112"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r3",
+      "ability_cost_rank:Ahri:Q:r3",
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cost_rank:Ahri:Q:r4",
+      "champion_stat_level:Ahri:mp:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_515992936cef9458f013e7de15132ff73bc90956cf33c25755077b00a738b5d7"
+    },
+    "n8/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cost_rank:Ahri:Q:r4",
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cost_rank:Ahri:Q:r5",
+      "champion_stat_level:Ahri:hp:lvl11",
+      "ability_cost_rank:Ahri:Q:r1",
+      "champion_stat_level:Ahri:hp:lvl18"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_905f38628a4f4d0cc13cfb292b9b9f4cbbdbcfe0b496cb499370cb1218169d5c"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cost_rank:Ahri:Q:r5",
+      "ability_cooldown_flat:Ahri:Q",
+      "ability_cost_rank:Ahri:Q:r1",
+      "champion_stat_level:Ahri:hp:lvl18",
+      "ability_cost_rank:Ahri:Q:r2",
+      "champion_stat_level:Ahri:hp:lvl6"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_53335472a4c4aeab47619cef761801cbdaf02019d9512c62577676eaa5b2b749"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r3",
+      "ability_cost_rank:Ahri:Q:r3",
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cost_rank:Ahri:Q:r4",
+      "ability_cooldown_rank:Ahri:W:r5",
+      "champion_stat_level:Ahri:mp:lvl18",
+      "ability_cost_rank:Ahri:Q:r5",
+      "champion_stat_level:Ahri:mp:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_7c3ae9b0d9d542450068495c3ee8b9b514be450f21874c3a90d94058baa0bb84"
+    }
+   }
+  },
+  {
+   "champion": "zed",
+   "eligible": 42,
+   "eligible_by_category": {
+    "ability_cooldown": 14,
+    "ability_cost": 10,
+    "champion_level_stat": 18
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cost_rank:Zed:Q:r4",
+      "champion_stat_level:Zed:armor:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_31c0846f8d52ba726de824540411ee979a53e5681cc2c8459f0b13319b2c0477"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_flat:Zed:Q",
+      "ability_cost_rank:Zed:Q:r5",
+      "champion_stat_level:Zed:ad:lvl6"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_12d4f6d04cb24ec20f3b59e0f18e53b08dafea3ca7f387dc654fc13e9fc28ac0"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Zed:W:r1",
+      "ability_cost_rank:Zed:Q:r2",
+      "champion_stat_level:Zed:magic_resist:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_7497647ef324fc263c250ac0870358a29a06c15cac232851879a4ab1fb8cbffe"
+    },
+    "n5/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cost_rank:Zed:Q:r4",
+      "ability_cooldown_rank:Zed:E:r4",
+      "ability_cost_rank:Zed:Q:r5",
+      "champion_stat_level:Zed:armor:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_f9b8943312e5855526881a8b21f213fbab1415cc8579fa7b45bf03900456a063"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_flat:Zed:Q",
+      "ability_cooldown_rank:Zed:E:r1",
+      "ability_cost_rank:Zed:Q:r5",
+      "ability_cost_rank:Zed:W:r1",
+      "champion_stat_level:Zed:ad:lvl6"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_072af1ba1c5c2e891dbbc396347a45811a8ee63e25ffe004799ea44f05f8f27c"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Zed:W:r1",
+      "ability_cost_rank:Zed:Q:r2",
+      "ability_cooldown_rank:Zed:W:r2",
+      "ability_cost_rank:Zed:Q:r3",
+      "champion_stat_level:Zed:magic_resist:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_40a8901db623ecd06c7429a4beb723c600ba5881bfb31e52a41fd3a589f68364"
+    },
+    "n8/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cost_rank:Zed:Q:r4",
+      "ability_cooldown_rank:Zed:E:r4",
+      "ability_cost_rank:Zed:Q:r5",
+      "ability_cooldown_rank:Zed:E:r5",
+      "champion_stat_level:Zed:armor:lvl18",
+      "ability_cost_rank:Zed:W:r1",
+      "champion_stat_level:Zed:armor:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_e8a1c41f5119d2e09e4c48e5c4f789bca9e32336b6fbd8e347566ca5e62d5b1f"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_flat:Zed:Q",
+      "ability_cooldown_rank:Zed:E:r1",
+      "ability_cost_rank:Zed:Q:r5",
+      "ability_cooldown_rank:Zed:E:r2",
+      "ability_cost_rank:Zed:W:r1",
+      "champion_stat_level:Zed:ad:lvl6",
+      "ability_cost_rank:Zed:W:r2",
+      "champion_stat_level:Zed:armor:lvl11"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_a5e545ab8c913d283d2bc4b0c1076501359b7a7735b2b33d92bd547c8ca50eb2"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Zed:W:r1",
+      "ability_cost_rank:Zed:Q:r2",
+      "ability_cooldown_rank:Zed:W:r2",
+      "ability_cost_rank:Zed:Q:r3",
+      "ability_cooldown_rank:Zed:W:r3",
+      "champion_stat_level:Zed:magic_resist:lvl6",
+      "ability_cost_rank:Zed:Q:r4",
+      "champion_stat_level:Zed:magic_resist:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_6d80f0da045e107871d46245e283e6548a960b9f40b2fb2d9b8e6658242b7a96"
+    }
+   }
+  },
+  {
+   "champion": "olaf",
+   "eligible": 40,
+   "eligible_by_category": {
+    "ability_cooldown": 14,
+    "ability_cost": 5,
+    "champion_level_stat": 21
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cost_rank:Olaf:Q:r1",
+      "champion_stat_level:Olaf:magic_resist:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_9e7bdd7c92abafb3bf788072f4202ccbe11b20431bee6edf749a397efc1e30ad"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Olaf:W:r5",
+      "ability_cost_rank:Olaf:Q:r2",
+      "champion_stat_level:Olaf:hp5:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_1b6ccbd09d31ffed6232df6b17578bd9563530b09192245016fe94120424e08c"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cost_rank:Olaf:Q:r5",
+      "champion_stat_level:Olaf:hp5:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_d903105d7f60412df58ba2054bf2ec3dc22afbf209f6da72d923d30791b2ef9b"
+    },
+    "n5/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cost_rank:Olaf:Q:r1",
+      "ability_cooldown_rank:Olaf:R:r2",
+      "ability_cost_rank:Olaf:Q:r2",
+      "champion_stat_level:Olaf:magic_resist:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_3a46b54b1da58682556c1551ca99b2ecb03d183c5bd8d90f348801b25a61d6b9"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Olaf:W:r5",
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cost_rank:Olaf:Q:r2",
+      "champion_stat_level:Olaf:hp5:lvl11",
+      "ability_cost_rank:Olaf:Q:r3"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost"
+     ],
+     "set_id": "mset_c6919ee1b1fb73590b8f92f933a824a2d95d5289e6b90b4769c167922d97991f"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cost_rank:Olaf:Q:r5",
+      "champion_stat_level:Olaf:hp5:lvl18",
+      "ability_cost_rank:Olaf:Q:r1"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost"
+     ],
+     "set_id": "mset_232b68ef4bf10b888ddc58dad1022532dd2159c3c0026f9be9c7f7b9b530aec6"
+    },
+    "n8/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 7,
+     "keys": [
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cost_rank:Olaf:Q:r1",
+      "ability_cooldown_rank:Olaf:R:r2",
+      "ability_cost_rank:Olaf:Q:r2",
+      "ability_cooldown_rank:Olaf:R:r3",
+      "champion_stat_level:Olaf:magic_resist:lvl6",
+      "ability_cost_rank:Olaf:Q:r3",
+      "champion_stat_level:Olaf:magic_resist:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_55c70a5b69981ec8d95f64ef6770b0c90a09ceb1ecc1de3945b95a5efe459ec3"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Olaf:W:r5",
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cost_rank:Olaf:Q:r2",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cost_rank:Olaf:Q:r3",
+      "champion_stat_level:Olaf:hp5:lvl11",
+      "ability_cost_rank:Olaf:Q:r4",
+      "champion_stat_level:Olaf:hp5:lvl18"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_d4dd3e6b2eada73cde687abbf1a325ad29e0d42d30b301d3e3dc7ef56089c92f"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cost_rank:Olaf:Q:r5",
+      "ability_cooldown_rank:Olaf:E:r2",
+      "ability_cost_rank:Olaf:Q:r1",
+      "champion_stat_level:Olaf:hp5:lvl18",
+      "ability_cost_rank:Olaf:Q:r2",
+      "champion_stat_level:Olaf:hp5:lvl6"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_2542185870894171fe71a727d0206fcbce5aec0bbb10ddb8ce56d65209b7ca8c"
+    }
+   }
+  },
+  {
+   "champion": "jarvan",
+   "eligible": 40,
+   "eligible_by_category": {
+    "ability_cooldown": 14,
+    "ability_cost": 5,
+    "champion_level_stat": 21
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cost_rank:Jarvan IV:Q:r1",
+      "champion_stat_level:Jarvan IV:mp:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_97678227a51ab8eced57b1b3580b19ba025f21a6ccb51aea67c6288379d2e7b0"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r4",
+      "ability_cost_rank:Jarvan IV:Q:r5",
+      "champion_stat_level:Jarvan IV:armor:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_35deaad9250b4200b117d98e7f3596db484b480dd35ab95464bd711d96e85954"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:R:r3",
+      "ability_cost_rank:Jarvan IV:Q:r5",
+      "champion_stat_level:Jarvan IV:magic_resist:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_be6abe9c62144ccb3422536575c2506cecc69e2e1025ac6bf8eda7b05c87a425"
+    },
+    "n5/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cost_rank:Jarvan IV:Q:r1",
+      "champion_stat_level:Jarvan IV:mp:lvl18",
+      "ability_cost_rank:Jarvan IV:Q:r2"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost"
+     ],
+     "set_id": "mset_6fdb8ab25ad1de93f5f6b8581dc5139eae8750ec6980ebd699049bd27974873f"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r4",
+      "ability_cost_rank:Jarvan IV:Q:r5",
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cost_rank:Jarvan IV:Q:r1",
+      "champion_stat_level:Jarvan IV:armor:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_6dabc2f9d3fd2821692ee42c401db126e974300041eee8ea39558fac1a6f2b4e"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:R:r3",
+      "ability_cooldown_flat:Jarvan IV:W",
+      "ability_cost_rank:Jarvan IV:Q:r5",
+      "champion_stat_level:Jarvan IV:magic_resist:lvl18",
+      "ability_cost_rank:Jarvan IV:Q:r1"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost"
+     ],
+     "set_id": "mset_6b25d8a6ba30c1934bbba4443c92c2020aa38e4244358439c5589162a0d6b33b"
+    },
+    "n8/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cost_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:Q:r2",
+      "ability_cost_rank:Jarvan IV:Q:r2",
+      "champion_stat_level:Jarvan IV:mp:lvl18",
+      "ability_cost_rank:Jarvan IV:Q:r3",
+      "champion_stat_level:Jarvan IV:mp:lvl6"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_5d0d482b437af027643c299cf36c7acf597036ecde40c239d8488c1c36d09144"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r4",
+      "ability_cost_rank:Jarvan IV:Q:r5",
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cost_rank:Jarvan IV:Q:r1",
+      "champion_stat_level:Jarvan IV:armor:lvl18",
+      "ability_cost_rank:Jarvan IV:Q:r2",
+      "champion_stat_level:Jarvan IV:armor:lvl6"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_1d3d1265d06810c70ef3ed5cda5b318b70ec6a3e4e6fc6ffe18a8fadd4d0cb57"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:R:r3",
+      "ability_cooldown_flat:Jarvan IV:W",
+      "ability_cost_rank:Jarvan IV:Q:r5",
+      "ability_cooldown_rank:Jarvan IV:E:r1",
+      "ability_cost_rank:Jarvan IV:Q:r1",
+      "champion_stat_level:Jarvan IV:magic_resist:lvl18",
+      "ability_cost_rank:Jarvan IV:Q:r2",
+      "champion_stat_level:Jarvan IV:magic_resist:lvl6"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_769cc899a2371c06c905877f485fa0e718d836331bc8c00b4417d6c2e10362cf"
+    }
+   }
+  },
+  {
+   "champion": "soraka",
+   "eligible": 49,
+   "eligible_by_category": {
+    "ability_cooldown": 18,
+    "ability_cost": 10,
+    "champion_level_stat": 21
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Soraka:E:r4",
+      "ability_cost_rank:Soraka:Q:r1",
+      "champion_stat_level:Soraka:hp:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_97d8468330db470ce1fddaf11e24c2d37418be50a69fa9af81e1f1cc9fab2a8a"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Soraka:W:r4",
+      "ability_cost_rank:Soraka:E:r3",
+      "champion_stat_level:Soraka:hp:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_b575081f718fc45736b6478cdd9f0c412f76ef4f6fb48e9a1308c0e9b5f4c709"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cost_rank:Soraka:E:r2",
+      "champion_stat_level:Soraka:mp:lvl6"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_23faa7e7a3e535759f28fe560f45cbb6196b1e0af2bf569c47e83d5a168ff1d3"
+    },
+    "n5/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Soraka:E:r4",
+      "ability_cost_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:E:r5",
+      "ability_cost_rank:Soraka:Q:r2",
+      "champion_stat_level:Soraka:hp:lvl11"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_226a26f464d4c8abd8931dc8fa114cd098885d4d70548937b971d1acf63912c6"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Soraka:W:r4",
+      "ability_cost_rank:Soraka:E:r3",
+      "ability_cooldown_rank:Soraka:W:r5",
+      "ability_cost_rank:Soraka:E:r4",
+      "champion_stat_level:Soraka:hp:lvl18"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_845b9712bed5dc130041b3ba8f2ed27efe5b71d44344f1ffa6f87fcf5cadd1c9"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cost_rank:Soraka:E:r2",
+      "ability_cooldown_rank:Soraka:Q:r2",
+      "ability_cost_rank:Soraka:E:r3",
+      "champion_stat_level:Soraka:mp:lvl6"
+     ],
+     "longest_run": 1,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_8c11b63696401fda7fbaa2a4621913f3362607085dbc7948ed018384d1ec3c30"
+    },
+    "n8/salt=None": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Soraka:E:r4",
+      "ability_cost_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:E:r5",
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cost_rank:Soraka:Q:r2",
+      "champion_stat_level:Soraka:hp:lvl11",
+      "ability_cost_rank:Soraka:Q:r3",
+      "champion_stat_level:Soraka:hp:lvl18"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_88b9b4f379319bd0aa4082b2c5dc637dab1ebe8eba58895c40ddcf0dc746c94a"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Soraka:W:r4",
+      "ability_cost_rank:Soraka:E:r3",
+      "ability_cooldown_rank:Soraka:W:r5",
+      "ability_cooldown_rank:Soraka:E:r1",
+      "ability_cost_rank:Soraka:E:r4",
+      "champion_stat_level:Soraka:hp:lvl18",
+      "ability_cost_rank:Soraka:E:r5",
+      "champion_stat_level:Soraka:hp:lvl6"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_2f7c0b2949d2e5c3973e97bca2454e064b18f540adeb9be7f6943781a05eb0a4"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 3,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cost_rank:Soraka:E:r2",
+      "ability_cooldown_rank:Soraka:Q:r2",
+      "ability_cost_rank:Soraka:E:r3",
+      "ability_cooldown_rank:Soraka:Q:r3",
+      "ability_cost_rank:Soraka:E:r4",
+      "champion_stat_level:Soraka:mp:lvl6",
+      "champion_stat_level:Soraka:ad:lvl11"
+     ],
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_7da0f55ba82d6b36e3bffa7d95e747c0912b83fc4c4d1a0d6a84e410e209d2c0"
+    }
+   }
+  }
+ ],
+ "matchup": [
+  {
+   "eligible": 87,
+   "eligible_atomic": {
+    "ability_cooldown": 19,
+    "ability_cost": 15,
+    "champion_level_stat": 41
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 3,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "ahri",
+    "syndra"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_4a2438ca1a694107d0f85ed379e9ec7d45079b66416f8db0d4edf180f2096950"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_74433b91da230df2c90514e1fe047404566555f69cbdb62cd82c2bf776353da2"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7599a43bf797832563eb2f8559d7ae408d49dc65b3e49ec5f79528a8365aa004"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_6b6dbae89abb79736f1cfc472ec2cb2429d4e8573f7adca84dc5fa1c7600127d"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_f76a11229a491bac6b2ca35ce6ba3ac85e119378e59498449d2bd5166d29ffde"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_cc9e939a803ec9e6c1c829ace02ac20d6e59b32f52c491706c1ed46e842853e6"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_6620c0b455a1ba44766e0720c8685a5a255a8ebe9fe9c1c607ea4442c189a2e8"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_9c7e5d171040c3931fb6d82d8a333f99db3773cb88a9f06dc6b24730f7f6d2dd"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_75892be7c232669253629bb198422b570acbe26532ffb2b4855631f6698c7195"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_ea0859e56428dfd119b64cb727f2e5931a801707911f97f50a53bc7237dedde4"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_7bc1b5b9eade280abfada17acbd0396aed88ef4bf52f70a959c85d139444675f"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_8c4a8f752718a9b64708d41944c1fcea5eb0bdc7ca0204e43e3c60845797696c"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_645dc3da9d5083406925d83fb790d4fcfa97e7ba9cde9b9fa95157fb0c0cbfc0"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_09123c202d44ad6b380d208693b2b0ee798aec4334c5a237c7ae04cb03dabf0a"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_ce289e76f19e62a6b4d29adee6e6505a189f71decc072c4b54b7bb4af6780efc"
+    }
+   }
+  },
+  {
+   "eligible": 76,
+   "eligible_atomic": {
+    "ability_cooldown": 22,
+    "ability_cost": 10,
+    "champion_level_stat": 34
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 2,
+    "champion_base_stat": 8
+   },
+   "pair": [
+    "zed",
+    "yasuo"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 3,
+     "comparison_steps": 10,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_cb5737a4b72622c15cbc64149245a4aba7d82786885887ecf794a5ad2aa80f05"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 3,
+     "comparison_steps": 10,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_40b93525f25100416950a0220bc75d35dca22110a6cea946f14c8e2fc1dfc45f"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 3,
+     "comparison_steps": 10,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_1815b4a5b19d9a8a9f46fcd29efe2337224cdcf586d1777a010d28153bc8b61e"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 6,
+     "comparison_steps": 10,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_00f72d4b7d761cc1d36cf02457fa1c96c6be794adba9a499bac5165edfd587b9"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 6,
+     "comparison_steps": 10,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cost",
+      "champion_level_stat",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_b08924925a22118fec9cf979dc03553c80d3a4e0b72a6826779eba075991430d"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 6,
+     "comparison_steps": 10,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_f0f7901d61e877386854cbe563c16d199876f99ec6c4af63b3b54cbc2996168c"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_711d16463546f5eeb76e8921d65f427fee78bd68291745eec6f28524e7081d0a"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_afa3a1395cb786236fa6eb957c3df24987694d13225331b1ca814e75c453f55b"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_7500038b3b3dbb7c3773afa61d97b2c70e5a31461712079d49ba7d8f7c501a91"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_1c9ba06bb578d30c8a4a5ea8f0ff015aa2ccf2e83d26bb03b96fb22c134eeb13"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_e3f8f6ea995724da4a6fe1198504e492c47a5324ce29270aae864ce884053185"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_7dba4a0b822a30b153a6e2c1a798ad39849467f65c486fc3d2ccbed78426ce51"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 6,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_a771f450bb2da78a3a5fb688faca521017cf51003252cb78c6b1047bca4ff1cb"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 6,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_0157616d153bab4399805dae137030932f5f3cf0d7ceee3c94e86d8332183bcf"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 6,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_7d76a93eb46c9bea33c64f65eeaf0288d2226faadb563c4f87544a4ef82c1cad"
+    }
+   }
+  },
+  {
+   "eligible": 102,
+   "eligible_atomic": {
+    "ability_cooldown": 32,
+    "ability_cost": 15,
+    "champion_level_stat": 42
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 4,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "olaf",
+    "soraka"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c66025e88b36affc94dba0f5f4880eb3699f8195d18a2f76faad052047c5c708"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_685e2310bda474e7638ab003899c7f0779e5de0b5d7ce7ba6f0f0aa7d8fd4cc7"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_6319d839b37341d08e381bcf5b409a26afc13a240b177f120d48cf013174566e"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_5d155ff93a5a8887c65ad0f255bdf272ac6bfade3d70d4b4179a45034f1b5784"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_e5ee6b1ab34d6333fb3d2f417f950e1b11fd5e4cc5086556c04a8c6601a25114"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_9e352a8304af0996cf1e32dccdfd192c58439c01c77a3a98ecfb21a1c21d9185"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c0764a14a080f874678c92d225878104061961d79811bcf4830cee72b20def9f"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_7d9f9271a53808d1ab55f23375a1bd58186363c3e52cfa97d4df064c1f2d765e"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_025530900c9ce53cf5a82156bf01d7c601f70ffd4876344fd56bf5be21f94491"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_8f07b83369cde531eac461a25f4b3c7519c3ea7a3f8f0915c274879b560cb80b"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_683ef71bdec2819adf7624152ddc3facc96f237e1e7c5fee961508b119600613"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_bf8cabcb32ce2d320f3eaa5441e130c941508eaf57a9b253c57a71d0360fc3e4"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_9333e8d6bcefb259324d4c22cd967699025815800edd1da22b612b2a037dc286"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_a18c1e9aa56613c3ec24fc0013981642fa83ca6003514625535c6cf3bf61b250"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_01796706ac3880e355c79f13774bfebabdadd98d1ed696151a9a2b7d7c480767"
+    }
+   }
+  },
+  {
+   "eligible": 88,
+   "eligible_atomic": {
+    "ability_cooldown": 24,
+    "ability_cost": 10,
+    "champion_level_stat": 41
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 4,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "jarvan",
+    "ahri"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_6f778732c034121c0b932a016b58732360d19dbd17567fed70d1bab685a194df"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_aee17f79f555667afd52fa94eeeb2cf4b72eb7c4007cabc2b3aa6174f1071917"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_9d9b9ac4ac1102e9c5c15a56eef37ae7d0bf0a3e32f2e4be61d8aad3bd2223df"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_10688d771fcd0bbfe60954be5246703e15626b0640b44d2bdd90b73fd531e6af"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_0eead6b62028670c257f9afa4a31245dd3ee8c7d76a3aa9bc3b0317b7b473090"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_2fc57e73a882b3f7d51bb193b1d8266945477af3967a99b898b8de92e0f897d0"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_6ea2fe7f1aaae916c37621d3a697f8fd19485e21e75eeaac72ae38fca216cc74"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c10a2c41615f727b553137aa7fcd4a41097119f0c92f3a1f00040a6a366eb125"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_d0cf9111db97f0c9644d353467a75baf2b25dd3ce1da9510f814a35675d38751"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_aa53328d8e44705277d233cf6e299b64672a6e9f71f10711bbd022a6e7245ad2"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_f1bdd664a41579fc02e7d26ba33ff01f84d266d039d6ede9044471a44272322f"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_662812f85e0a22f5012507495f44c1ee265373d0d9c8af15d02b0eef155ce7db"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_b6bdb4c35140861b48d3ae23b4ab100591a8603e5cad5eb1546e0d2e6c28995c"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_d1e243c990ef88411ce74e662e946482cc69a0447874f27ed31004d35fa28ec0"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_642a2a1c91d25bb05fb893dc038f26dcc4e193c70846ec793840a209924fbd25"
+    }
+   }
+  },
+  {
+   "eligible": 87,
+   "eligible_atomic": {
+    "ability_cooldown": 19,
+    "ability_cost": 15,
+    "champion_level_stat": 41
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 3,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "syndra",
+    "ahri"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_4a2438ca1a694107d0f85ed379e9ec7d45079b66416f8db0d4edf180f2096950"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_74433b91da230df2c90514e1fe047404566555f69cbdb62cd82c2bf776353da2"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7599a43bf797832563eb2f8559d7ae408d49dc65b3e49ec5f79528a8365aa004"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cost",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_6b6dbae89abb79736f1cfc472ec2cb2429d4e8573f7adca84dc5fa1c7600127d"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_f76a11229a491bac6b2ca35ce6ba3ac85e119378e59498449d2bd5166d29ffde"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": true,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "ability_cooldown",
+      "ability_cost",
+      "ability_cooldown",
+      "champion_level_stat"
+     ],
+     "set_id": "mset_cc9e939a803ec9e6c1c829ace02ac20d6e59b32f52c491706c1ed46e842853e6"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_6620c0b455a1ba44766e0720c8685a5a255a8ebe9fe9c1c607ea4442c189a2e8"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_9c7e5d171040c3931fb6d82d8a333f99db3773cb88a9f06dc6b24730f7f6d2dd"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_75892be7c232669253629bb198422b570acbe26532ffb2b4855631f6698c7195"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_ea0859e56428dfd119b64cb727f2e5931a801707911f97f50a53bc7237dedde4"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_7bc1b5b9eade280abfada17acbd0396aed88ef4bf52f70a959c85d139444675f"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_8c4a8f752718a9b64708d41944c1fcea5eb0bdc7ca0204e43e3c60845797696c"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_645dc3da9d5083406925d83fb790d4fcfa97e7ba9cde9b9fa95157fb0c0cbfc0"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_09123c202d44ad6b380d208693b2b0ee798aec4334c5a237c7ae04cb03dabf0a"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_ce289e76f19e62a6b4d29adee6e6505a189f71decc072c4b54b7bb4af6780efc"
+    }
+   }
+  }
+ ],
+ "roster": {
+  "champions": 173,
+  "first_three_by_category": {
+   "ability_cooldown": 211,
+   "ability_cost": 125,
+   "champion_level_stat": 183
+  }
+ }
+}

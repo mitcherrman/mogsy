@@ -1,0 +1,2605 @@
+{
+ "applied_chain": {
+  "n14": {
+   "distinct_answer_option_tasks": 12,
+   "identical_task_groups": [
+    [
+     "214",
+     [
+      "145",
+      "192",
+      "214",
+      "330"
+     ]
+    ]
+   ],
+   "items": [
+    "Axiom Arc",
+    "Last Whisper",
+    "Bastionbreaker",
+    "Lord Dominik's Regards",
+    "Edge of Night",
+    "Mortal Reminder",
+    "Hubris",
+    "Ohmwrecker (Turret Item)",
+    "Profane Hydra",
+    "Serylda's Grudge",
+    "Serpent's Fang",
+    "Serrated Dirk",
+    "The Brutalizer",
+    "The Collector"
+   ],
+   "prompt0": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc (18 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+   "steps": 14
+  },
+  "n17": {
+   "distinct_answer_option_tasks": 14,
+   "identical_task_groups": [
+    [
+     "214",
+     [
+      "145",
+      "192",
+      "214",
+      "330"
+     ]
+    ]
+   ],
+   "items": [
+    "Axiom Arc",
+    "Last Whisper",
+    "Bastionbreaker",
+    "Lord Dominik's Regards",
+    "Edge of Night",
+    "Mortal Reminder",
+    "Hubris",
+    "Ohmwrecker (Turret Item)",
+    "Profane Hydra",
+    "Serylda's Grudge",
+    "Serpent's Fang",
+    "Serrated Dirk",
+    "The Brutalizer",
+    "The Collector",
+    "Umbral Glaive",
+    "Voltaic Cyclosword",
+    "Youmuu's Ghostblade"
+   ],
+   "prompt0": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc (18 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+   "steps": 17
+  },
+  "n2": {
+   "distinct_answer_option_tasks": 2,
+   "identical_task_groups": [],
+   "items": [
+    "Axiom Arc",
+    "Last Whisper"
+   ],
+   "prompt0": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc (18 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+   "steps": 2
+  },
+  "n4": {
+   "distinct_answer_option_tasks": 4,
+   "identical_task_groups": [],
+   "items": [
+    "Axiom Arc",
+    "Last Whisper",
+    "Bastionbreaker",
+    "Lord Dominik's Regards"
+   ],
+   "prompt0": "Jarvan IV is level 11 with Dragon Strike rank 5 and an Axiom Arc (18 lethality). Jarvan IV hits a level-11 Olaf (71.855 Armor) with Dragon Strike. How much damage does Olaf take after Armor and penetration?",
+   "steps": 4
+  }
+ },
+ "champion": [
+  {
+   "champion": "ahri",
+   "eligible": 35,
+   "eligible_by_category": {
+    "ability_cooldown": 10,
+    "ability_cost": 5,
+    "champion_level_stat": 20
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_rank:Ahri:W:r5"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_257d9ae608fd9153e7d5c02f14c3e0892c2b07182310f8c06bd26d13de8a2298"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_flat:Ahri:Q"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_e305cc4e9f62c729e658dbc62b8cb7e6efc6d882f64cb1f595fafc586f21f3c7"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r3",
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cooldown_rank:Ahri:W:r5"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_aafabd839c2cfaab77197d5cac2fa917fd7f5262d01070cf00406fa2635f451e"
+    },
+    "n5/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:Q",
+      "ability_cooldown_rank:Ahri:R:r1"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_fa37a1015be6c9a78f0c256c94d86a55ea708d67cb1106df31dfe799129a77a3"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_flat:Ahri:Q",
+      "ability_cooldown_rank:Ahri:R:r1",
+      "ability_cooldown_rank:Ahri:R:r2"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_cc5f9ff5623fee8136a07b648401343048c33074c27711b3fc022d447827f49f"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r3",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cooldown_flat:Ahri:Q",
+      "ability_cooldown_rank:Ahri:W:r5"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_87d02a296e7c45770fed44dbb77e6667838ad4d99bf579fa6c12473c04ff9035"
+    },
+    "n8/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:Q",
+      "ability_cooldown_rank:Ahri:R:r1",
+      "ability_cooldown_rank:Ahri:W:r1",
+      "ability_cooldown_rank:Ahri:R:r2",
+      "ability_cooldown_rank:Ahri:R:r3"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_07d11aa7c29cc256f450864c1d633d987e76c073571d087c5af004e662284fcd"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_flat:Ahri:Q",
+      "ability_cooldown_rank:Ahri:R:r1",
+      "ability_cooldown_rank:Ahri:W:r1",
+      "ability_cooldown_rank:Ahri:R:r2",
+      "ability_cooldown_rank:Ahri:W:r2",
+      "ability_cooldown_rank:Ahri:R:r3"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_3f407ed313e6f303c99ea8ad84a807261199dcdd5691a3233e68a24ef3818831"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Ahri:W:r3",
+      "ability_cooldown_flat:Ahri:E",
+      "ability_cooldown_rank:Ahri:W:r4",
+      "ability_cooldown_flat:Ahri:Q",
+      "ability_cooldown_rank:Ahri:W:r5",
+      "ability_cooldown_rank:Ahri:R:r1",
+      "ability_cooldown_rank:Ahri:R:r2",
+      "ability_cooldown_rank:Ahri:R:r3"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_806fd970236390a37809c4fab5f7f45c8bbbf6a0bc4f6bc3eaf282ce11a98d61"
+    }
+   }
+  },
+  {
+   "champion": "zed",
+   "eligible": 42,
+   "eligible_by_category": {
+    "ability_cooldown": 14,
+    "ability_cost": 10,
+    "champion_level_stat": 18
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cooldown_rank:Zed:E:r4",
+      "ability_cooldown_rank:Zed:E:r5"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_240e0c3c9c0812e16dc556415a6bfa06fd841469fb03502c2de9a5c2ce96bf16"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_flat:Zed:Q",
+      "ability_cooldown_rank:Zed:E:r1",
+      "ability_cooldown_rank:Zed:E:r2"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_b5dd46f319aad9888fdf936c373f233223a3808aa8b56ec8d66073a0ef16bc19"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Zed:W:r1",
+      "ability_cooldown_rank:Zed:W:r2",
+      "ability_cooldown_rank:Zed:W:r3"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_2317210ed820bc4f6198a0490f155deb6a5bf56cd287b30bbbce061f84f56b0e"
+    },
+    "n5/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cooldown_rank:Zed:R:r1",
+      "ability_cooldown_rank:Zed:E:r4",
+      "ability_cooldown_rank:Zed:R:r2",
+      "ability_cooldown_rank:Zed:E:r5"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_b24b8d739388f0af0955942e25f4e281b94a296b5069f79ebbd290b0e71889a5"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_flat:Zed:Q",
+      "ability_cooldown_rank:Zed:E:r1",
+      "ability_cooldown_rank:Zed:E:r2",
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cooldown_rank:Zed:E:r4"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_74dcce003c925b985b7aa84a30698c934e1c68bcae4757747cf522ecc48e145f"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Zed:W:r1",
+      "ability_cooldown_rank:Zed:W:r2",
+      "ability_cooldown_rank:Zed:W:r3",
+      "ability_cooldown_rank:Zed:W:r4",
+      "ability_cooldown_rank:Zed:W:r5"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_650f1f387a702677ee2ff380c7c7ca5ae881b3fed4e6b5bcd778aebabada5ba0"
+    },
+    "n8/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cooldown_rank:Zed:R:r1",
+      "ability_cooldown_rank:Zed:E:r4",
+      "ability_cooldown_rank:Zed:R:r2",
+      "ability_cooldown_rank:Zed:E:r5",
+      "ability_cooldown_rank:Zed:R:r3",
+      "ability_cooldown_rank:Zed:W:r1",
+      "ability_cooldown_rank:Zed:W:r2"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_96330b6b94a5f267d00d6981d6da5b48b639ad6aaaf5503abf8ee03fcd733df6"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_flat:Zed:Q",
+      "ability_cooldown_rank:Zed:E:r1",
+      "ability_cooldown_rank:Zed:R:r1",
+      "ability_cooldown_rank:Zed:E:r2",
+      "ability_cooldown_rank:Zed:R:r2",
+      "ability_cooldown_rank:Zed:E:r3",
+      "ability_cooldown_rank:Zed:E:r4",
+      "ability_cooldown_rank:Zed:E:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_5d2ee30cd9abb0c3ec60932b677e9ece37fabb8cda8f1ab9d2172ef9ad604330"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Zed:W:r1",
+      "ability_cooldown_flat:Zed:Q",
+      "ability_cooldown_rank:Zed:W:r2",
+      "ability_cooldown_rank:Zed:E:r1",
+      "ability_cooldown_rank:Zed:W:r3",
+      "ability_cooldown_rank:Zed:E:r2",
+      "ability_cooldown_rank:Zed:W:r4",
+      "ability_cooldown_rank:Zed:W:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_2032a0cff6bd61d5df32e977695a2f9089131a57284ee461096cb399b8eff6eb"
+    }
+   }
+  },
+  {
+   "champion": "olaf",
+   "eligible": 40,
+   "eligible_by_category": {
+    "ability_cooldown": 14,
+    "ability_cost": 5,
+    "champion_level_stat": 21
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 2,
+     "keys": [
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cooldown_rank:Olaf:R:r2",
+      "ability_cooldown_rank:Olaf:R:r3"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_04041fc39fb2ba13e4a0e5fe763817eafc1900bf77bf3cf7c27a029ce4dbe247"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Olaf:W:r5",
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_1f8eb5ef9984eb6d0df521fee2af4c26ad457002ef6739ad2e5aeda1263686e2"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cooldown_rank:Olaf:E:r2"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_18b42609aa633bc6a7f4645e60b70c76f6e017754498020b6f258258cfc1ddf4"
+    },
+    "n5/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 4,
+     "keys": [
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cooldown_rank:Olaf:W:r1",
+      "ability_cooldown_rank:Olaf:R:r2",
+      "ability_cooldown_rank:Olaf:W:r2",
+      "ability_cooldown_rank:Olaf:R:r3"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_61538766df096f62f958577f76b1d748c37e464e7df83825ccd22bc264d5ca9b"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Olaf:W:r5",
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cooldown_rank:Olaf:E:r2",
+      "ability_cooldown_rank:Olaf:E:r3"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_16bf7e6e254cc32302a6d963995bf1591a886052b6c4b989b16e322dc26a6bbb"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cooldown_rank:Olaf:E:r2",
+      "ability_cooldown_rank:Olaf:E:r3",
+      "ability_cooldown_rank:Olaf:E:r4"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_08a1767dbec97517121c085f83e3ac36d86073a6adc55352a7cc2e286e0015e2"
+    },
+    "n8/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 7,
+     "keys": [
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cooldown_rank:Olaf:W:r1",
+      "ability_cooldown_rank:Olaf:R:r2",
+      "ability_cooldown_rank:Olaf:W:r2",
+      "ability_cooldown_rank:Olaf:R:r3",
+      "ability_cooldown_rank:Olaf:W:r3",
+      "ability_cooldown_rank:Olaf:W:r4",
+      "ability_cooldown_rank:Olaf:W:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_153655a581cdb8b465c24fbc9dd28de1d1c4c9b641bbbf34501f8a32e893a0ce"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Olaf:W:r5",
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cooldown_rank:Olaf:E:r2",
+      "ability_cooldown_rank:Olaf:E:r3",
+      "ability_cooldown_rank:Olaf:E:r4",
+      "ability_cooldown_rank:Olaf:E:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_3bf9a5113500c7930f8478de5b354a97946a4feb27c76bf8c0d7f55831bfc436"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_flat:Olaf:Q",
+      "ability_cooldown_rank:Olaf:E:r1",
+      "ability_cooldown_rank:Olaf:R:r1",
+      "ability_cooldown_rank:Olaf:E:r2",
+      "ability_cooldown_rank:Olaf:R:r2",
+      "ability_cooldown_rank:Olaf:E:r3",
+      "ability_cooldown_rank:Olaf:E:r4",
+      "ability_cooldown_rank:Olaf:E:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_ca93227a6f8a702646c27bde50382374224d798b48e7f58a5725d111a89565f9"
+    }
+   }
+  },
+  {
+   "champion": "jarvan",
+   "eligible": 40,
+   "eligible_by_category": {
+    "ability_cooldown": 14,
+    "ability_cost": 5,
+    "champion_level_stat": 21
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:Q:r2"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7df7f5c190a29183bcda745c4915bbe283094b55fc92072df0c6a1c3d90a573e"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r4",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:E:r5"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_96bd10b787dd4e87e022d0a137ee3fe5bf245e7373a302ddc541406cef234a3f"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:R:r3",
+      "ability_cooldown_flat:Jarvan IV:W",
+      "ability_cooldown_rank:Jarvan IV:E:r1"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_a3e56b2af0ec86056f7f848f9d21ebf80f3013e28a98a5c622c026dc015e12b7"
+    },
+    "n5/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:Q:r2",
+      "ability_cooldown_rank:Jarvan IV:Q:r3",
+      "ability_cooldown_rank:Jarvan IV:Q:r4"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_5d5e0fd721fd23ad21b5d83eba504e820dc15e09bd245cdf4a8784dbe97b1fb0"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r4",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r2",
+      "ability_cooldown_rank:Jarvan IV:Q:r3"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_e9f9d710dfca28d4872a4856129cfc3f5de9270b07ac57a8bf46a6a238d2e31f"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:R:r3",
+      "ability_cooldown_flat:Jarvan IV:W",
+      "ability_cooldown_rank:Jarvan IV:E:r1",
+      "ability_cooldown_rank:Jarvan IV:E:r2",
+      "ability_cooldown_rank:Jarvan IV:E:r3"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_f679e32e167ec50f1dae02ddff08fbffd9eb6fe6155f6683b8c431476b5626fe"
+    },
+    "n8/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:R:r1",
+      "ability_cooldown_rank:Jarvan IV:Q:r2",
+      "ability_cooldown_rank:Jarvan IV:R:r2",
+      "ability_cooldown_rank:Jarvan IV:Q:r3",
+      "ability_cooldown_rank:Jarvan IV:Q:r4",
+      "ability_cooldown_rank:Jarvan IV:Q:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_070f62ad1680d6701a44228882d0cbb4633d0e7060741b8edf335648dde96c52"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:E:r4",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:E:r5",
+      "ability_cooldown_rank:Jarvan IV:Q:r2",
+      "ability_cooldown_rank:Jarvan IV:R:r1",
+      "ability_cooldown_rank:Jarvan IV:Q:r3",
+      "ability_cooldown_rank:Jarvan IV:Q:r4",
+      "ability_cooldown_rank:Jarvan IV:Q:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7050c2bf99f750abfe0ca4a978c1aa608e4a9a6949709c0462a54aac41675b59"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Jarvan IV:R:r3",
+      "ability_cooldown_flat:Jarvan IV:W",
+      "ability_cooldown_rank:Jarvan IV:E:r1",
+      "ability_cooldown_rank:Jarvan IV:Q:r1",
+      "ability_cooldown_rank:Jarvan IV:E:r2",
+      "ability_cooldown_rank:Jarvan IV:E:r3",
+      "ability_cooldown_rank:Jarvan IV:E:r4",
+      "ability_cooldown_rank:Jarvan IV:E:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_f43b063778093bbc24b92f44eb93f32e04cd2348a905bede7074606329284d24"
+    }
+   }
+  },
+  {
+   "champion": "soraka",
+   "eligible": 49,
+   "eligible_by_category": {
+    "ability_cooldown": 18,
+    "ability_cost": 10,
+    "champion_level_stat": 21
+   },
+   "slices": {
+    "n3/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Soraka:E:r4",
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:E:r5"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_fea3e37df5f654911e8ce6907c4bdba4380a9b25e7914e105a51a5632b7fbca9"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Soraka:W:r4",
+      "ability_cooldown_rank:Soraka:E:r1",
+      "ability_cooldown_rank:Soraka:W:r5"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_15671e20ac61e88e35ec5b2803c4ecb2a4f6c9793818b5b75cb153c5828709bf"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 3,
+     "keys": [
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:Q:r2",
+      "ability_cooldown_rank:Soraka:Q:r3"
+     ],
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_218e5ac39a9a743f88637e58882056bc7c7f8105f4fe8e9bd126200c8c64e682"
+    },
+    "n5/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Soraka:E:r4",
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:E:r5",
+      "ability_cooldown_rank:Soraka:Q:r2",
+      "ability_cooldown_rank:Soraka:Q:r3"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_983dfd0f1ef28dc6cbb71b515c0e51bc4e91523bae2a791c4b3536524b445397"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Soraka:W:r4",
+      "ability_cooldown_rank:Soraka:E:r1",
+      "ability_cooldown_rank:Soraka:W:r5",
+      "ability_cooldown_rank:Soraka:E:r2",
+      "ability_cooldown_rank:Soraka:E:r3"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_be431b4228827daa522455a33fe6b51265d4e3c2a533a5691c210c2e9473c204"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 5,
+     "keys": [
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:Q:r2",
+      "ability_cooldown_rank:Soraka:Q:r3",
+      "ability_cooldown_rank:Soraka:Q:r4",
+      "ability_cooldown_rank:Soraka:Q:r5"
+     ],
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_2877c8eec259ce49b80d5399e29f17d6858c6c1ac901e603ca9d2ee150bcbde2"
+    },
+    "n8/salt=None": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Soraka:E:r4",
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:E:r5",
+      "ability_cooldown_rank:Soraka:Q:r2",
+      "ability_cooldown_rank:Soraka:R:r1",
+      "ability_cooldown_rank:Soraka:Q:r3",
+      "ability_cooldown_rank:Soraka:Q:r4",
+      "ability_cooldown_rank:Soraka:Q:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_c6c86fd2e5c63308e6fa28d104967d4678392c41237768e1e492fe00f02d9698"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Soraka:W:r4",
+      "ability_cooldown_rank:Soraka:E:r1",
+      "ability_cooldown_rank:Soraka:W:r5",
+      "ability_cooldown_rank:Soraka:E:r2",
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:E:r3",
+      "ability_cooldown_rank:Soraka:E:r4",
+      "ability_cooldown_rank:Soraka:E:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_e18bc540441af74df970e07ab9f2255e17435bc784e35f6b097daa6257ab0c94"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "categories_used": 1,
+     "distinct_semantic": 8,
+     "keys": [
+      "ability_cooldown_rank:Soraka:Q:r1",
+      "ability_cooldown_rank:Soraka:R:r1",
+      "ability_cooldown_rank:Soraka:Q:r2",
+      "ability_cooldown_rank:Soraka:R:r2",
+      "ability_cooldown_rank:Soraka:Q:r3",
+      "ability_cooldown_rank:Soraka:R:r3",
+      "ability_cooldown_rank:Soraka:Q:r4",
+      "ability_cooldown_rank:Soraka:Q:r5"
+     ],
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_4c3da2f64602a6d539b67b9808917f59bd88b0d5b9062deee1d3d7422daf851c"
+    }
+   }
+  }
+ ],
+ "matchup": [
+  {
+   "eligible": 87,
+   "eligible_atomic": {
+    "ability_cooldown": 19,
+    "ability_cost": 15,
+    "champion_level_stat": 41
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 3,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "ahri",
+    "syndra"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_3eddb341a74188d053314f04842478993c0829da08660d842ca1784e00ab0035"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c8865ec225538629edb56a2a84e210fcdc3c3014ed73d07639202017ec8f0269"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_bd7f53894dff077bd02b16d5b28941fddbfeeb5995104f4139079e91d65ec52b"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_8c12707396aec9a06a3dec60d8b0b58d63614d794d814003fa7e2b3bd151406f"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c6b8be73d89560facb2f363a9b476fb0724773848ea7a47446e01e9ec196a68f"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c270049019ae79c3db5bce37d44a1943d6e52f02f350162780470e29c985166c"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_504cb44e6fecb44a985414faf782692fa9829a7fadd4d6c3ddf487da8e6cac5c"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7a7e05f18d741b0802d19c0e9522f78fe55a460b4d68250ca029e1db1db6066a"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7a7e05f18d741b0802d19c0e9522f78fe55a460b4d68250ca029e1db1db6066a"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_eea870b69ef8e690f173b5e0e6f71cff856e4dc44fadf2387054e8aa05d2f315"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_26d1a1aa37e453cb9c42d6ce68a0f04375bc6c916fc3df3713d8960f46f55f61"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_da6b8100eeecffdc178689a27f17a2bbc29835a2d600a9f9ee92c14a82d79e2f"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_735e908f6137823ba30126861cd124b6146b52a694fcff77646c42e7974ba2ac"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_90eb30ee9437384a199d65de7903b54264cf8955fdd01e9391b5ed8cbeb31ad5"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_87702d32dcaf89ec2581e9f2a579223ecffbe97b88450cb508f985bdab5ee2e0"
+    }
+   }
+  },
+  {
+   "eligible": 76,
+   "eligible_atomic": {
+    "ability_cooldown": 22,
+    "ability_cost": 10,
+    "champion_level_stat": 34
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 2,
+    "champion_base_stat": 8
+   },
+   "pair": [
+    "zed",
+    "yasuo"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 3,
+     "comparison_steps": 10,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_030cf4667472c0b5ad37f8f559859b812f2e2f165c94db86e4729c06473e1863"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 3,
+     "comparison_steps": 10,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c07041549740b33a0d7436ecabefdd207188b54dc7d47d8aa14a93b8ecf1bd0d"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 3,
+     "comparison_steps": 10,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_dc1925a261e05c2adb8e76126b3dc15dc53158dba6fdadf350b38485f0b1fee1"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 6,
+     "comparison_steps": 10,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_e97ae3209f85c71c59cc5bc0937164f3f3718a3a5bda24aa5a7bf6183d85ade5"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 6,
+     "comparison_steps": 10,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_502b0530974c2ea2dae779825398ae1f5b1281459537156ae1195530321fe278"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 6,
+     "comparison_steps": 10,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 8,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_5eefbc238fe59ee4376bac16b9ba3e714505e7bfde47537323e4097cad62ca5a"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_d69737d10958c5fec0a77b9b3e2ece071825287bfeadefead7a25a52cc4145f9"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_ccdcb4d09fc3ecb8520441021d612880f672680270913e5af82e7ba14f54d8e0"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 2,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_a5736a120ed17c80a9467eb21f05f5be57e798a69f308df9e19dd78b0d14d3d2"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_015ff9303efb2437a837cbe356358d50e6547ee197a8fca38b6f2feb4ee3d550"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_87448ee80fbd0000858d9e574d8217a3e6637c25c8b2b6e56839d334b2185042"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_6309581c575769d3090c1a1220565e484c8d1cc0f9fab925be8c17032fc9aff8"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 6,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_38ed9ee8dceb20ca8e3ceb3c455d07d1ea499b2a230ed7a862c1b260506e8061"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 6,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_7211044b87e08ddd5e9003ee4c70b44dff3d9f9cda6a433437f8379645e17dde"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 6,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_452fb0e413911934dadb73477edc44a587bc5d9d9706107be182355d53bb0a25"
+    }
+   }
+  },
+  {
+   "eligible": 102,
+   "eligible_atomic": {
+    "ability_cooldown": 32,
+    "ability_cost": 15,
+    "champion_level_stat": 42
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 4,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "olaf",
+    "soraka"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_187708c50c7e795e544129c83e9f78effb91b4ddaca0434fd8b0a3ff419dab2b"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_5897f7e04497897de99f732382bcde59c275a2ec68d315e04745d377bbf8488e"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_dccb070579de0e9a4d81f342d79df1787f487900f9c6ae28cbb8c04cde8828e9"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_57b524813a5b03543ff96918e4f95f7d66597b98d1b62be04055da374e03286d"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": false,
+     "distinct_semantic": 15,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_f6361afb797d4a0c379945e51d0fc4ee648c87c97108dfd21a59bace2c63e7f7"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_5bbc0174d4aa7be7567bef8b93a81668177f662bb771ae9caef9cc36185754b1"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_d1605d3e617eb9b5567695b003939b426440440e07ec65b8db41ea05e9afce32"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_d589c47517a3d43a46c15affccdc6ce5ba521bea60ffb7a84c925a91471de3e5"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_d589c47517a3d43a46c15affccdc6ce5ba521bea60ffb7a84c925a91471de3e5"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_a7c4ceaa096a160213ce19df110ba1b6001dd82921063f0fc27a554c4fa19f00"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_f6b0d17734972fb38bb7aebcee84c99c2eb47d9c6f0d743cc9ea8da335c64887"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_f97191bef80713c90cfadc0929e3e0d32e45dc5a5352020394d5da4a7739ad73"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_50793cb66367f9454e0175fbe000b2fc3ec79b2ac59656354a2c099f13720a8a"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c1384bab0a3a4c903743e810875cc88a73fd0313894cb017498f7bf1664cb299"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_b1983d3d418e4ef16d6a25c9e0663c0d009fe78144d6523237a0d373ab050ba4"
+    }
+   }
+  },
+  {
+   "eligible": 88,
+   "eligible_atomic": {
+    "ability_cooldown": 24,
+    "ability_cost": 10,
+    "champion_level_stat": 41
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 4,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "jarvan",
+    "ahri"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_362b758b1925f177876c2c54c8fc4d3a8205d64322295b0de2dff5a405dd1374"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_bc20ac4bfb51c91a282c141082455f1fe77c0ae04c51972fd03631832f1a61f6"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 13,
+     "comparisons_lead": true,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_a09bc80a23b7190ad3a879c09cf1fb0228e96bb8d486d4ebd820daa7c25bd8c8"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_eee720f49ada8dfeafcf168d5e9e42a9a66ceadd185eb3e83b40ed873d5539d5"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_a9b0acbd67e26119380c414e9e536dcd7c90af4e6ce8dfa9c18f4a4f2cf3da50"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 3,
+     "comparison_steps": 13,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_f5ac735675e8433ef9a4cd4e4096b6b8fa14937a81171f3caf133bfd5673561d"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_d36119772269cd3d58c0d4f19d56d5c99172104597a1143541a782f0351ac356"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_41de1c675c63856f06b78134ff6e0ac05b9676c43bb94702bfa57e7a09a61276"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_0e1d95567946f3cd005ee11366cc067453bd594700d2650d556c2592b02c4d0f"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_698f734f80ed7259a749b136d1498426aabda9a4aef3fc4b10b9f18050aad379"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_ede6722d0712b04e8354e981d97c0d2733f0d342124c9b50a3f1aca246a1a273"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_577d03397d9ce6d54cc268b1ca729ed5d6b99a79c79197f6ae571365095dfaca"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_d82427472713a00a9e85ee735b1fff6b5b983bf47678d0bbf1cca93e1d08321e"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_1b99d05253d56503f4fb1328c3bd4f405035ff433a8cd2256ddf196bcf5d5a09"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 4,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_39cfaeb1d7b7209e2d674610322666708a60d87c5066942b842e80489bce675f"
+    }
+   }
+  },
+  {
+   "eligible": 87,
+   "eligible_atomic": {
+    "ability_cooldown": 19,
+    "ability_cost": 15,
+    "champion_level_stat": 41
+   },
+   "eligible_comparison": {
+    "ability_cooldown": 3,
+    "champion_base_stat": 9
+   },
+   "pair": [
+    "syndra",
+    "ahri"
+   ],
+   "slices": {
+    "n13/salt=None": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_3eddb341a74188d053314f04842478993c0829da08660d842ca1784e00ab0035"
+    },
+    "n13/salt=gr1p3-seedA": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c8865ec225538629edb56a2a84e210fcdc3c3014ed73d07639202017ec8f0269"
+    },
+    "n13/salt=gr1p3-seedB": {
+     "atomic_steps": 1,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 13,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_bd7f53894dff077bd02b16d5b28941fddbfeeb5995104f4139079e91d65ec52b"
+    },
+    "n16/salt=None": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_8c12707396aec9a06a3dec60d8b0b58d63614d794d814003fa7e2b3bd151406f"
+    },
+    "n16/salt=gr1p3-seedA": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c6b8be73d89560facb2f363a9b476fb0724773848ea7a47446e01e9ec196a68f"
+    },
+    "n16/salt=gr1p3-seedB": {
+     "atomic_steps": 4,
+     "comparison_steps": 12,
+     "comparisons_lead": false,
+     "distinct_semantic": 16,
+     "longest_run": 9,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_c270049019ae79c3db5bce37d44a1943d6e52f02f350162780470e29c985166c"
+    },
+    "n3/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_504cb44e6fecb44a985414faf782692fa9829a7fadd4d6c3ddf487da8e6cac5c"
+    },
+    "n3/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7a7e05f18d741b0802d19c0e9522f78fe55a460b4d68250ca029e1db1db6066a"
+    },
+    "n3/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 3,
+     "comparisons_lead": true,
+     "distinct_semantic": 3,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown"
+     ],
+     "set_id": "mset_7a7e05f18d741b0802d19c0e9522f78fe55a460b4d68250ca029e1db1db6066a"
+    },
+    "n5/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_eea870b69ef8e690f173b5e0e6f71cff856e4dc44fadf2387054e8aa05d2f315"
+    },
+    "n5/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_26d1a1aa37e453cb9c42d6ce68a0f04375bc6c916fc3df3713d8960f46f55f61"
+    },
+    "n5/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 5,
+     "comparisons_lead": true,
+     "distinct_semantic": 5,
+     "longest_run": 3,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_da6b8100eeecffdc178689a27f17a2bbc29835a2d600a9f9ee92c14a82d79e2f"
+    },
+    "n8/salt=None": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_735e908f6137823ba30126861cd124b6146b52a694fcff77646c42e7974ba2ac"
+    },
+    "n8/salt=gr1p3-seedA": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_90eb30ee9437384a199d65de7903b54264cf8955fdd01e9391b5ed8cbeb31ad5"
+    },
+    "n8/salt=gr1p3-seedB": {
+     "atomic_steps": 0,
+     "comparison_steps": 8,
+     "comparisons_lead": true,
+     "distinct_semantic": 8,
+     "longest_run": 5,
+     "seq": [
+      "ability_cooldown",
+      "ability_cooldown",
+      "ability_cooldown",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat",
+      "champion_base_stat"
+     ],
+     "set_id": "mset_87702d32dcaf89ec2581e9f2a579223ecffbe97b88450cb508f985bdab5ee2e0"
+    }
+   }
+  }
+ ],
+ "roster": {
+  "champions": 173,
+  "first_three_by_category": {
+   "ability_cooldown": 503,
+   "ability_cost": 1,
+   "champion_level_stat": 15
+  }
+ }
+}
