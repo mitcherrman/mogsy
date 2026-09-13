@@ -613,6 +613,72 @@ comparative cost/level-stat families; manaless mana regen (deliberately untouche
 dual-form split (why 1,480 pairs are base-stat-only); the Lab coverage headline; and no fresh
 screenshot.
 
+## Matchup rank diversity — SHIPPED to branch (2026-09-13)
+
+Full evidence: [`gr1-matchup-mastery-rank-diversity.md`](./gr1-matchup-mastery-rank-diversity.md).
+Backend `gr1/matchup-rank-diversity` @ **`1f8f1de9`** on base **`b9f7cd73`** — one commit, a
+clean fast-forward, **not pushed**. **The frontend did not change**, and did not need to: the
+previous pass already put the rank clause on the wire and already renders whatever value it
+holds, so this pass changes *which* rank arrives, not its shape.
+
+```bash
+git -C /Users/macmoney/lcs-wt-gr1-rankdiv push origin gr1/matchup-rank-diversity:master
+```
+
+**The defect, and why it was not a weighting.** Selection sorts a pool by `candidate_key` and
+rotates it once by a seed offset; the rank is the LAST segment of a comparison's key, so a
+fact's five variants sort as one contiguous block. One rotation of the whole pool moves the
+boundary past **at most one** block — every other fact is entered at `:r1`, `used_patterns`
+marks it met, and its higher ranks are deferred forever. The measurement says so without
+inference: over 5,040 real slices the **raw count** of non-rank-1 draws was *identical* at
+n=3, n=5 and n=8 (334 at rank 2 in each), which a weighting cannot produce, and **no slice
+ever drew three distinct ranks**. The pool rotation was never wrong; it simply never reached
+the axis *inside* a fact.
+
+**The fix.** `resolver._context_diverse_order` applies the same mechanism one level down: each
+pattern's variants are rotated by an offset hashed from `(seed, pattern key)`. It is a
+reordering only — every candidate appears exactly once, and pattern ORDER is untouched — so no
+request's count or fill can move, and a single-variant fact (a flat cooldown, any base stat)
+provably does not move at all. It names no rank: "context variants of one fact" is
+`_pattern_group`, the same notion of same-fact selection and adjacency already use, so the
+level axis is handled by the identical code with no branch.
+
+**Opt-in.** `RepetitionPolicy.diversify_context_within_pattern`, default `False`, additive in
+`to_dict()`. `synthesize_matchup_manifest` sets it; `synthesize_champion_manifest` does not,
+and a test asserts that. A hand-authored request that pins `ability_rank` still resolves to
+exactly that rank, because `_matches` filters before any of this runs.
+
+**Measured, same 420-pair stratified sample run twice — once at the base SHA, once on the
+branch.** Rank-1 share at n=8 **76.2% → 24.0%**, tracking the pool's own 23.6%; slices drawing
+**only** rank 1 **24.2% → 3.4%**; slices spanning ≥3 ranks **0.0% → 51.3%** and ≥4 **0.0% →
+9.8%**. Per slot: E 67.5→21.1, Q 70.7→19.8, W 65.2→19.3, R 77.8→34.6 (three ranks, even share
+33.3).
+
+**Ties fell as a consequence and were never suppressed** — nothing on the branch reads an
+outcome. n=8 **13.53% → 13.29%**; cooldown family **14.30% → 13.69%**; slices with ≥1 tie
+61.0% → 58.9%. **That is ~0.24 points, and it is the honest end of this lever.** After the
+rank fix the remaining tie rate is not a rank artefact: it is shared base constants, led by
+`base_magic_resist` at 38.5%, which contributes ~2.5 of the 13.2 points on its own. **Tie
+policy is now a decision about base stats.**
+
+**Unchanged and re-verified:** the candidate universe is byte-identical over all 14,878 pairs
+(322,026 comparisons / 1,150,680 atomic, 0 pairs differ); 14,878/14,878 generatable, 0 errors;
+cooldown comparisons drawn per slice identical; 0 repeated `(subject, slot, metric)`; 0
+repeated slot; max metric run 2; 0 atomic fallback at n ≤ 8; 0 order violations; 4 salts ⇒ 4
+distinct slices for all 420 pairs; same seed ⇒ same slice across processes and hash seeds;
+`(a,b)` ≡ `(b,a)`.
+
+**Tests.** New `mastery/tests/test_gr1_matchup_rank_diversity.py`, **15 tests**, and the suite
+**fails at the defect** — with the one policy line flipped off, 5 of 15 fail. Regression arms
+run serially against base `b9f7cd73`: `mastery/tests` 3 failed / 1,677 → 1,692 passed; 7
+integration files 2 failed / 200 passed; 8 presentation-media suites 7 failed / 411 passed;
+footprint guards 15 passed against the real commit. **Every failure set is byte-identical
+between the arms; zero introduced, none repaired.** No footprint list changed — all three
+runtime files were already inside `SLICE_FOOTPRINT`.
+
+**Still open for Matchup:** unchanged from the list above, except that tie policy is now
+scoped to shared base constants and **rank diversity is spent**.
+
 ## Screenshots / artifacts
 
 `docs/audits/gr1-matchup-mastery/` — **2 PNGs (Matchup Mastery capability audit).** Both are
