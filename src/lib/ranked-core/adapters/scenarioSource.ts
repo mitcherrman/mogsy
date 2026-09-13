@@ -6,8 +6,8 @@
  * `QuizQuestion`) that `InteractiveScenarioSurface` already consumes via
  * `selectScenario`. This is the SINGLE Ranked→surface visual adapter — no
  * BroadcastRenderer, no copied Broadcast logic, no backend fixture schema, and
- * no mode flags. Ranked Tutorial keeps using the same surface with no
- * `scenarioSource` (text-only), so it is unaffected.
+ * no mode flags. A mode that passes no `scenarioSource` gets the same surface,
+ * text-only, and is unaffected.
  *
  * Hidden-information: the backend only ever transports question-safe metadata
  * (pre-reveal, no correct answer), and the contract reader drops anything

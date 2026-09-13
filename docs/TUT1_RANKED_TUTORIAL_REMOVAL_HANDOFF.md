@@ -1,5 +1,12 @@
 # TUT1 — Ranked Tutorial removal
 
+> **Status: complete, in two passes.** Pass 1 (`33d27b2f`) removed the feature
+> and left its storage dormant for hypothetical existing users. The owner then
+> confirmed there are none, so the hard-cleanup pass removed the compatibility
+> residue as well: the redirect routes, the legacy welcome outcome, the two
+> profile columns, the two inert `app_settings` rows and the tutorial surface
+> variant. Sections below reflect the FINAL state.
+
 ## Objective
 
 Remove the obsolete scripted Ranked tutorial from the product end-to-end.
@@ -44,13 +51,15 @@ directly.
 | Route | Before | After |
 | --- | --- | --- |
 | `/quiz/ranked`, `/quiz`, `/quiz/daily`, `/quiz/daily-challenge`, `/quiz/matchup` | `<RequireRankedTutorial>` | opens directly |
-| `/onboarding/ranked-tutorial` | the mandatory tutorial page | `<Navigate to="/quiz/ranked" replace />` |
-| `/quiz/tutorial` | the voluntary/replay tutorial page | `<Navigate to="/quiz/ranked" replace />` |
-| `/dev/ranked-tutorial` | dev prototype page | removed entirely |
+| `/onboarding/ranked-tutorial` | the mandatory tutorial page | **not declared** |
+| `/quiz/tutorial` | the voluntary/replay tutorial page | **not declared** |
+| `/dev/ranked-tutorial` | dev prototype page | **not declared** |
 
-The two redirects are all that is left of the old URLs: a bookmark lands on
-Ranked instead of a dead shell, and no tutorial implementation sits behind
-either one.
+Pass 1 kept the first two as `<Navigate to="/quiz/ranked" replace />` for old
+bookmarks. With no users there is no bookmark to honour, so the hard-cleanup
+pass removed the route declarations outright — they now fall through to
+`NotFound` like any other unknown path. `src/App.tsx` contains the string
+"tutorial" zero times, which a test asserts.
 
 ## Deleted
 
@@ -99,30 +108,62 @@ either one.
   and the `tutorial_tips` / `tutorial_tip_dismissals` tables. A different
   feature: admin-authored contextual coach-marks on legacy Mogsy routes. Sharing
   the word "tutorial" is not a reason to delete it.
-- **`SurfaceVariant "tutorial"`** in `lib/question-surface/contract.ts` — a
-  presentation density preset on a shared contract, exercised only by the dev
-  arena inspector. Removing it would touch shared code for no product reason.
+(`SurfaceVariant "tutorial"` was preserved in pass 1 and removed in the
+hard-cleanup pass — see below.)
 
-## Persistence left dormant
+## Persistence — deleted, not dormant
 
-Per the conservative policy for historical data:
+Pass 1 left the storage in place on the assumption that existing accounts'
+completion state might matter. It does not. Migration
+`supabase/migrations/20260912120000_tut1_drop_ranked_tutorial_residue.sql`:
 
-- `profiles.ranked_tutorial_completed_at` and `profiles.ranked_tutorial_version`
-  are **left in the database**, with their migration
-  (`20260718120000_ranked_tutorial_completion.sql`) intact. No application code
-  reads or writes them any more, which is what makes any account's old
-  completion state irrelevant to Ranked access. They remain in the generated
-  Supabase types. Dropping columns is a migration this removal does not need.
-- The `app_settings` rows `tutorial_auto_popup_enabled` and
-  `tutorial_completion_required_for_new_users` are **left in place** and are now
-  inert: `POLICY_KEYS` no longer names them and `parsePlatformPolicy` no longer
-  parses them, so their value in any state produces the default policy.
-- The `quiz:gate:tutorial_popup_dismissed` sessionStorage key is removed from
-  active logic. No migration machinery was built to erase old client values.
-- `AcademyWelcomeOutcome` keeps `"tutorial"` as a **legacy read-only** value.
-  Nothing writes it, but a visitor who took that exit before the removal has
-  `{"outcome":"tutorial"}` in localStorage, and rejecting it would re-show the
-  Academy introduction to someone who has already been through it.
+```sql
+ALTER TABLE public.profiles
+  DROP COLUMN IF EXISTS ranked_tutorial_completed_at,
+  DROP COLUMN IF EXISTS ranked_tutorial_version;
+
+DELETE FROM public.app_settings
+  WHERE key IN ('tutorial_auto_popup_enabled',
+                'tutorial_completion_required_for_new_users');
+```
+
+**Why the column drop is safe and isolated.** Nothing depends on either column
+BY NAME — no index, constraint, RLS policy, view, trigger or function
+signature. `handle_new_user()` (current definition in
+`20260822120000_auth3_canonical_username.sql`) inserts only
+`(user_id, display_name, is_anonymous)` and never referenced them.
+`admin_list_profiles()` is `RETURNS SETOF public.profiles` with `SELECT *` —
+a dependency on the table's ROW TYPE, not on these columns, so it follows the
+new shape automatically and is deliberately not redefined here. The generated
+types in `src/integrations/supabase/types.ts` were updated to match, in all
+four places they appeared (profiles Row/Insert/Update and the
+`admin_list_profiles` return shape).
+
+**Why the `app_settings` rows are safe to delete.** They are rows in a
+key/value store with no reader on either side: since `33d27b2f` the frontend's
+`POLICY_KEYS` has not named them and `parsePlatformPolicy` has not parsed them,
+and the backend never enforced them (`services/platform_policy.py` enforces only
+Combat Sim tokens and Global Premium Access). Deleting them removes two dead
+keys from the admin's view of that table and changes no behaviour.
+
+The two migrations that created this residue
+(`20260718120000_ranked_tutorial_completion.sql`,
+`20260730120000_platform_access_tutorial_policies.sql`) are **not edited**.
+They are applied history; the new migration is the correction on top of them.
+A fresh database therefore creates the columns and rows and then drops them,
+and an existing one simply drops them — both converge on the same schema.
+
+Also removed in this pass:
+
+- `AcademyWelcomeOutcome` is now `"explored" | "signed-in"`. The legacy
+  `"tutorial"` value is no longer accepted: a stored outcome of `"tutorial"`
+  fails `VALID_OUTCOMES` and reads as "never seen the introduction", which is
+  the correct answer when nobody is carrying one.
+- `SurfaceVariant "tutorial"` and its `VARIANT_DEFAULTS` entry. Traced first:
+  its only consumer was one demo row in the dev arena inspector, which is
+  deleted with it. It was a density preset created for and named after the
+  scripted tutorial — residue, not a generic rendering mode. `standard`,
+  `competitive` and `speed` are untouched.
 
 ## Bot Ranked
 
@@ -165,11 +206,15 @@ Results, all from the worktree:
 - `eslint` on the changed files: 19 errors / 3 warnings, byte-identical to the
   same files on `origin/main` — all pre-existing `no-explicit-any`.
 
-## Remaining cleanup (none blocking)
+## Remaining cleanup
 
-- The dormant DB columns and the two inert `app_settings` rows, if a future
-  schema pass wants them gone.
-- Backend prose in `ranked_public/queue.py`, `services/platform_policy.py`,
-  `docs/ranked-public-service.md` still mentions a tutorial requirement as
-  "out of scope"; harmless, and not worth a backend deploy on its own.
-- `SurfaceVariant "tutorial"`, if the surface contract is ever revised.
+None in the frontend. Searching the repo for Ranked tutorial concepts returns
+only: this handoff, the historical migrations that created the residue, the
+migration that removes it, explicit "this was deleted" notes in older audit
+docs, and the tests that assert the absence.
+
+Backend (`League_Combat_Simulator`) still carries three prose mentions —
+`ranked_public/queue.py`, `services/platform_policy.py`,
+`docs/ranked-public-service.md` — all describing a tutorial requirement as
+"out of scope". No backend code, table, endpoint or gate was ever involved, so
+nothing there needs a deploy.

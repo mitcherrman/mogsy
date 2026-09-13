@@ -1,6 +1,6 @@
 /**
  * InteractiveScenarioSurface (F1) — premium interactive question surface for
- * Base Ranked and the Ranked Tutorial.
+ * Base Ranked.
  *
  * "The original League Quiz evolved into a premium competitive battle."
  *

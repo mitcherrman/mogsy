@@ -1,12 +1,11 @@
 // ---------------------------------------------------------------------------
 // Neutral Ranked view contracts (F1 canonical arena, Phase A).
 //
-// These types are DISPLAY DATA ONLY. They carry values the backend (or a
-// mode controller, e.g. the tutorial director) already resolved; nothing in
-// this module computes damage, correctness, XP, levels, charges, or timer
-// pressure. They deliberately contain no transport, tutorial, or staff-tool
-// concepts, so live Ranked, the Ranked tutorial, and a future Daily Boss can
-// all render through them.
+// These types are DISPLAY DATA ONLY. They carry values the backend (or a mode
+// controller) already resolved; nothing in this module computes damage,
+// correctness, XP, levels, charges, or timer pressure. They deliberately
+// contain no transport, mode, or staff-tool concepts, so live Ranked, the
+// Daily Challenge, and a future Daily Boss can all render through them.
 //
 // Hidden-information rule: pre-reveal types never carry opponent answer or
 // ability CONTENT — only neutral status flags. Revealed facts exist solely on

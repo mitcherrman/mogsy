@@ -8,11 +8,12 @@
 // local flag, a query parameter, or a profile column — is what an
 // admin-restricted BEHAVIOUR must be gated on.
 //
-// This hook grants nothing. It reports. It exists because there is one thing
-// in the product that is admin-only without being a whole admin ROUTE (the
-// Ranked Tutorial's admin replay), and gating that on anything weaker than the
-// gate every admin page already uses would be inventing a second, softer
-// notion of "admin".
+// This hook grants nothing. It reports. It exists for the case of something
+// admin-only that is not a whole admin ROUTE: gating that on anything weaker
+// than the gate every admin page already uses would be inventing a second,
+// softer notion of "admin". (Its original caller, the Ranked Tutorial's admin
+// replay, was deleted in TUT1; the hook remains the right answer for the next
+// one.)
 //
 // It fails CLOSED: a loading state, a signed-out viewer, an RPC error and a
 // negative answer all read `isAdmin: false`.

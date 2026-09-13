@@ -30,9 +30,9 @@ import type {
 export type { AnswerOptionView, InteractionPermissions, QuestionView };
 
 /** Layout/density presets. Variants affect PRESENTATION only, never behaviour. */
-export type SurfaceVariant = "standard" | "competitive" | "tutorial" | "speed";
+export type SurfaceVariant = "standard" | "competitive" | "speed";
 
-/** Neutral presentation settings — never mode identity (no isTutorial/isBot). */
+/** Neutral presentation settings — never mode identity (no isRanked/isBot). */
 export interface SurfaceSettings {
   density: "comfortable" | "compact";
   emphasis: "question" | "balanced";
@@ -46,7 +46,6 @@ export interface SurfaceSettings {
 export const VARIANT_DEFAULTS: Record<SurfaceVariant, SurfaceSettings> = {
   standard: { density: "comfortable", emphasis: "balanced", showExplanation: true, mediaScale: "hero", motionLevel: "full" },
   competitive: { density: "compact", emphasis: "question", showExplanation: false, mediaScale: "band", motionLevel: "restrained" },
-  tutorial: { density: "comfortable", emphasis: "question", showExplanation: false, mediaScale: "band", motionLevel: "restrained" },
   speed: { density: "compact", emphasis: "question", showExplanation: true, mediaScale: "none", motionLevel: "restrained" },
 };
 

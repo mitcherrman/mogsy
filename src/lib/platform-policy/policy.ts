@@ -10,12 +10,10 @@
 // IMPORTANT distinctions this file keeps separate:
 //   - Global POLICY (here) is not user ENTITLEMENT (Pro status).
 //
-// TUT1: the two `tutorial_*` rows this module used to parse are gone. The
-// scripted Ranked tutorial they governed is retired, so there is nothing left
-// for them to switch. The ROWS are deliberately left in app_settings rather
-// than migrated away (see docs/TUT1_RANKED_TUTORIAL_REMOVAL_HANDOFF.md): they
-// are inert once nothing reads them, and dropping admin-owned settings rows is
-// a migration this removal does not need.
+// TUT1: the two `tutorial_*` rows this module used to parse are gone, in the
+// code AND in the database — the scripted Ranked tutorial they governed is
+// retired, and 20260912120000_tut1_drop_ranked_tutorial_residue.sql deletes
+// the rows themselves. There is no tutorial policy.
 // ---------------------------------------------------------------------------
 
 /** app_settings row keys. Server-validated: only these keys are ever written. */

@@ -31,8 +31,8 @@ export interface SubmissionReviewProps {
   confirmLabel?: string;
   /**
    * Interaction shape (presentation only — NOT mode identity):
-   *  - "review" (default): explicit select → Review → confirm (used by the
-   *    Ranked Tutorial, which teaches the atomic-lock step, and staff tooling).
+   *  - "review" (default): explicit select → Review → confirm (used by staff
+   *    tooling and the dev fixtures; no player-facing mode offers it).
    *  - "direct": one-shot streamlined lock — an inline selection summary plus a
    *    single primary "Lock in" CTA, no separate review step. The hidden
    *    simultaneous-lock semantics are identical (answer + ability submit

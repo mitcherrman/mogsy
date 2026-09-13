@@ -206,8 +206,13 @@ it can never buy precedence over onboarding.
 | `/quiz/stat-check/room/AB12?spectate=1` → auth → | same URL, query intact |
 | `/auth?mode=signup` (no intent) → | `/lol` |
 | `/auth?returnTo=//evil.com` → | `/lol` |
-| guest conversion, tutorial owed, explicit `/quiz/ranked` → | `/quiz/ranked` |
-| guest conversion, tutorial owed, no `returnTo` → | `/onboarding/ranked-tutorial` |
+| guest conversion, explicit `/quiz/ranked` → | `/quiz/ranked` |
+| guest conversion, no `returnTo` → | the fallback hub |
+
+> **TUT1 update.** The two rows above originally read "tutorial owed" and sent a
+> destination-less conversion to `/onboarding/ranked-tutorial`. The scripted
+> Ranked tutorial is deleted; `computePostConversionDestination` no longer takes
+> a profile and no onboarding destination can outrank a `returnTo`.
 | any page → notification menu → Sign In → | back to that page |
 | authenticated → Sign Out → | `/` |
 

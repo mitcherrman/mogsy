@@ -146,7 +146,7 @@ Lost:                          0
 | Ranked Arena Inspector | /dev/ranked-arena-inspector | Developer › inspectors — `/dev/ranked-arena-inspector` | DEVELOPER-ONLY | `/dev/ranked-arena-inspector` | Yes — Refuses outside DEV builds — unchanged. | Cross-linked from Ranked; a test asserts it imports no engine or service module. |
 | Broadcast Developer Tools | Nested inside /admin/quiz-broadcast with no separate route or label | Developer › harnesses — `/admin/quiz-broadcast` | DEVELOPER-ONLY | n/a | Yes — Inherits the Broadcast Studio gate — unchanged. | Classified as developer tooling and labelled as such. Left mounted where it is: extracting it would be a refactor of the studio, not a navigation change. |
 | Ranked Duel Prototype (fixture) | /dev/ranked-duel — fixture mode | Developer › prototypes — `/dev/ranked-duel` | DEVELOPER-ONLY | `/dev/ranked-duel` | Yes — UNCHANGED — no route gate. | Fixture mode is a prototype; the same route's Live mode is production administration and is listed under Ranked › Matches. |
-| Ranked Tutorial Prototype | /dev/ranked-tutorial — unlisted | Developer › prototypes — `/dev/ranked-tutorial` | DEVELOPER-ONLY | `/dev/ranked-tutorial` | Yes — UNCHANGED — no route gate, no auth, no API, no persistence. | Classification only. /quiz/tutorial and /onboarding/ranked-tutorial are out of scope and untouched. |
+| Ranked Tutorial Prototype | /dev/ranked-tutorial — unlisted | **REMOVED in TUT1** — the route, the page and the registry entry are all deleted | DELETED | n/a | n/a | The scripted Ranked tutorial was retired; see `docs/TUT1_RANKED_TUTORIAL_REMOVAL_HANDOFF.md`. |
 | Stat Check Prototype | /dev/stat-check — unlisted | Developer › prototypes — `/dev/stat-check` | DEVELOPER-ONLY | `/dev/stat-check` | Yes — UNCHANGED — no route gate. | Ambiguous case (Atlas §M): its online rooms touch real state. Classified dev; flagged for owner review. |
 | Daily Score Attack Prototype | /dev/daily-score-attack — unlisted | Developer › prototypes — `/dev/daily-score-attack` | DEVELOPER-ONLY | `/dev/daily-score-attack` | Yes — UNCHANGED — no route gate. | Ambiguous case (Atlas §M). Classified dev; flagged for owner review. |
 | Mastery Progression Prototypes | /dev/mastery/… ×10 — unlisted | Developer › prototypes — `/dev/mastery/ahri-vs-syndra` | DEVELOPER-ONLY | n/a | Yes — ProtectedRoute — any signed-in user. UNCHANGED. | All ten remain registered and reachable; the index links each one. |
@@ -206,7 +206,7 @@ Lost:                          0
 | `/admin/data` | KEEP | /admin/data |
 | `/admin/about` | KEEP | /admin/about |
 | `/dev/ranked-duel` | DEVELOPER-ONLY | /dev/ranked-duel |
-| `/dev/ranked-tutorial` | DEVELOPER-ONLY | /dev/ranked-tutorial |
+| `/dev/ranked-tutorial` | DELETED (TUT1) | n/a |
 | `/dev/stat-check` | DEVELOPER-ONLY | /dev/stat-check |
 | `/dev/daily-score-attack` | DEVELOPER-ONLY | /dev/daily-score-attack |
 | `/dev/legacy-entry` | DEVELOPER-ONLY | /dev/legacy-entry |

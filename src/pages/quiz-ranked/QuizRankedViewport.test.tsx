@@ -96,6 +96,8 @@ describe("TUT1 — Ranked has no route guard left to load", () => {
     // And the Ranked route itself mounts nothing in front of the page.
     const app = readFileSync(resolve(src, "App.tsx"), "utf8");
     expect(app).toMatch(/path="\/quiz\/ranked" element=\{<Suspense/);
+    // No tutorial route survives to redirect INTO Ranked either.
+    expect(app).not.toContain('path="/quiz/tutorial"');
   });
 });
 

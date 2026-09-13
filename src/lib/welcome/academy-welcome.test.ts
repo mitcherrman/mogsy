@@ -43,9 +43,20 @@ describe("first-run state", () => {
     expect(readAcademyWelcomeState()).toMatchObject({ outcome: "explored" });
   });
 
-  it("keeps explore and tutorial distinct", () => {
-    markAcademyWelcomeHandled("tutorial");
-    expect(readAcademyWelcomeState()?.outcome).toBe("tutorial");
+  it("keeps explore and signed-in distinct", () => {
+    markAcademyWelcomeHandled("signed-in");
+    expect(readAcademyWelcomeState()?.outcome).toBe("signed-in");
+  });
+
+  it("TUT1: rejects the retired \"tutorial\" outcome as unrecognised state", () => {
+    // There are no users carrying it, so it is not accepted for compatibility:
+    // an unknown outcome reads as "never seen the introduction".
+    localStorage.setItem(
+      ACADEMY_WELCOME_STORAGE_KEY,
+      JSON.stringify({ outcome: "tutorial", at: new Date().toISOString() }),
+    );
+    expect(readAcademyWelcomeState()).toBeNull();
+    expect(hasHandledAcademyWelcome()).toBe(false);
   });
 
   it("stamps an ISO timestamp", () => {
@@ -56,8 +67,8 @@ describe("first-run state", () => {
 
   it("lets a later choice supersede an earlier one (replay)", () => {
     markAcademyWelcomeHandled("explored");
-    markAcademyWelcomeHandled("tutorial");
-    expect(readAcademyWelcomeState()?.outcome).toBe("tutorial");
+    markAcademyWelcomeHandled("signed-in");
+    expect(readAcademyWelcomeState()?.outcome).toBe("signed-in");
   });
 
   it("can be cleared for QA", () => {
@@ -81,8 +92,8 @@ describe("entry destination", () => {
     expect(resolveEntryDestination()).toBe(LEAGUE_HOME_ROUTE);
   });
 
-  it("sends a visitor who chose the tutorial straight to the hub", () => {
-    markAcademyWelcomeHandled("tutorial");
+  it("sends a visitor who signed in straight to the hub", () => {
+    markAcademyWelcomeHandled("signed-in");
     expect(resolveEntryDestination()).toBe(LEAGUE_HOME_ROUTE);
   });
 });

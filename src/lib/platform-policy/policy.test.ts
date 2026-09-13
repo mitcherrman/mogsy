@@ -109,9 +109,10 @@ describe("parsePlatformPolicy", () => {
   });
 
   it("TUT1: the retired tutorial rows are inert — reading them changes nothing", () => {
-    // The rows are deliberately left in app_settings rather than migrated
-    // away. Nothing parses them any more, so their presence (in any state)
-    // must produce exactly the default policy.
+    // The rows are DELETED from app_settings by
+    // 20260912120000_tut1_drop_ranked_tutorial_residue.sql. This guards the
+    // parser against a stale copy of the table anyway: if the rows turn up in
+    // any state, they must produce exactly the default policy.
     for (const enabled of [true, false]) {
       expect(parsePlatformPolicy([
         { key: "tutorial_auto_popup_enabled", value: { enabled } },

@@ -36,24 +36,23 @@ describe("TUT1 — no Ranked tutorial gate survives", () => {
 });
 
 describe("retired tutorial URLs", () => {
-  // Bookmarks and old links must land on Ranked, not on a dead shell. The
-  // redirect is all that is left: no tutorial implementation sits behind it.
-  it("redirects the old onboarding route to Ranked", () => {
-    expect(firstElementFor("/onboarding/ranked-tutorial")).toBe("<Navigate");
-    expect(appSource).toMatch(
-      /path="\/onboarding\/ranked-tutorial"\s+element=\{<Navigate to="\/quiz\/ranked" replace \/>\}/,
-    );
+  // There are no users, so there is no bookmark to honour and no reason to
+  // carry a redirect. The routes are simply not declared: they fall through to
+  // NotFound like any other unknown path.
+  it("declares no tutorial route at all — not even a redirect", () => {
+    for (const path of [
+      "/onboarding/ranked-tutorial",
+      "/quiz/tutorial",
+      "/dev/ranked-tutorial",
+    ]) {
+      expect(firstElementFor(path), `${path} is still routed`).toBeNull();
+      expect(appSource, `${path} is still declared`)
+        .not.toContain(`path="${path}"`);
+    }
   });
 
-  it("redirects the old Leaguecraft tutorial route to Ranked", () => {
-    expect(firstElementFor("/quiz/tutorial")).toBe("<Navigate");
-    expect(appSource).toMatch(
-      /path="\/quiz\/tutorial"\s+element=\{<Navigate to="\/quiz\/ranked" replace \/>\}/,
-    );
-  });
-
-  it("removes the dev tutorial prototype route entirely", () => {
-    expect(appSource).not.toContain('path="/dev/ranked-tutorial"');
+  it("leaves no tutorial string anywhere in the route table", () => {
+    expect(appSource.toLowerCase()).not.toContain("tutorial");
   });
 });
 

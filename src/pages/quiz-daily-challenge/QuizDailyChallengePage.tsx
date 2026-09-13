@@ -6,8 +6,8 @@
  * ─────────────────────
  * A CONTROLLER and a router of states. It reads the run, decides which of the
  * mode's five entry states it is in, projects the playing ones into an
- * `ArenaViewModel`, and hands that to the same `CanonicalArena` Ranked and the
- * Ranked Tutorial render. It draws no shell, no header, no timer, no question,
+ * `ArenaViewModel`, and hands that to the same `CanonicalArena` Ranked
+ * renders. It draws no shell, no header, no timer, no question,
  * no answer grid, no timeline and no result frame — every one of those is the
  * arena's, and this page cannot tell you what any of them look like.
  *

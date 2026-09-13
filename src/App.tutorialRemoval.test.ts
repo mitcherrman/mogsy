@@ -6,16 +6,16 @@
  * protected is an ABSENCE: no gate, no route, no replay entry, no state read,
  * and no surface still teaching the retired HP/damage combat model.
  *
- * What it deliberately does NOT assert:
- *  - that `profiles.ranked_tutorial_completed_at` / `ranked_tutorial_version`
- *    are gone from the database. They are left DORMANT on purpose (see
- *    docs/TUT1_RANKED_TUTORIAL_REMOVAL_HANDOFF.md) — dropping columns is a
- *    migration this removal does not need. What IS asserted is that no
- *    application code reads or writes them any more, which is what makes any
- *    account's old completion state irrelevant to Ranked access;
- *  - anything about Tutorial TIPS (`tutorial_tips`, `TutorialTipPopup`,
- *    `AdminTutorialTips`). That is a different feature — admin-authored
- *    contextual coach-marks — and was never part of this workstream.
+ * The hard-cleanup pass made the removal total: there are no users whose old
+ * tutorial state needs preserving, so the compatibility residue went too — the
+ * redirect routes, the legacy welcome outcome, the two profile columns, the two
+ * inert app_settings rows and the tutorial surface variant.
+ *
+ * What it deliberately does NOT assert anything against: Tutorial TIPS
+ * (`tutorial_tips`, `TutorialTipPopup`, `AdminTutorialTips`). That is a
+ * different feature — admin-authored contextual coach-marks on legacy Mogsy
+ * routes — and was never part of this workstream. The final section below
+ * asserts it SURVIVED, so an over-eager "tutorial" sweep fails here.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -66,26 +66,32 @@ describe("the tutorial implementation is gone", () => {
   });
 });
 
-describe("old tutorial-completion state is irrelevant to Ranked access", () => {
-  it("no application code reads or writes the dormant profile columns", () => {
-    // The columns stay in the database and in the generated types; nothing
-    // may consult them, so an account that never completed the tutorial and
-    // one that did are indistinguishable to every route.
-    for (const file of PRODUCTION_FILES) {
+describe("the tutorial's stored state is gone, not merely unread", () => {
+  it("no file — production, test or generated — names the profile columns", () => {
+    for (const file of sourceFiles(ROOT)) {
+      if (file.endsWith("App.tutorialRemoval.test.ts")) continue;
       const src = readFileSync(file, "utf8");
-      expect(src, `${rel(file)} still reads a tutorial completion column`)
+      expect(src, `${rel(file)} still names a tutorial completion column`)
         .not.toContain("ranked_tutorial_completed_at");
-      expect(src, `${rel(file)} still reads a tutorial version column`)
+      expect(src, `${rel(file)} still names a tutorial version column`)
         .not.toContain("ranked_tutorial_version");
     }
   });
 
-  it("the generated Supabase types still carry them, dormant and untouched", () => {
-    // Proof the removal did NOT quietly drop columns: the schema is unchanged,
-    // it simply has no reader.
-    const types = read(join("integrations", "supabase", "types.ts"));
-    expect(types).toContain("ranked_tutorial_completed_at");
-    expect(types).toContain("ranked_tutorial_version");
+  it("a migration actually drops the columns and the inert settings rows", () => {
+    // The generated types no longer declare them (asserted above), which would
+    // also be true of a types file that had simply drifted from the schema.
+    // This is what makes it a real schema change.
+    const sql = readFileSync(
+      resolve(process.cwd(), "supabase", "migrations",
+        "20260912120000_tut1_drop_ranked_tutorial_residue.sql"),
+      "utf8",
+    );
+    expect(sql).toMatch(/DROP COLUMN IF EXISTS ranked_tutorial_completed_at/);
+    expect(sql).toMatch(/DROP COLUMN IF EXISTS ranked_tutorial_version/);
+    expect(sql).toMatch(/DELETE FROM public\.app_settings/);
+    expect(sql).toContain("tutorial_auto_popup_enabled");
+    expect(sql).toContain("tutorial_completion_required_for_new_users");
   });
 
   it("keeps no tutorial key in browser storage logic", () => {
@@ -94,18 +100,29 @@ describe("old tutorial-completion state is irrelevant to Ranked access", () => {
         .not.toContain("tutorial_popup_dismissed");
     }
   });
+
+  it("the Academy welcome keeps no legacy tutorial outcome", () => {
+    const welcome = read(join("lib", "welcome", "academy-welcome.ts"));
+    expect(welcome).not.toContain('"tutorial"');
+    expect(welcome).toContain('export type AcademyWelcomeOutcome = "explored" | "signed-in"');
+  });
 });
 
 describe("no user-facing entry point survives", () => {
-  it("no production surface links to a tutorial route", () => {
+  it("no production file names a tutorial route — the routes do not exist", () => {
     for (const file of PRODUCTION_FILES) {
       const src = readFileSync(file, "utf8");
-      if (rel(file) === "App.tsx") continue; // the redirects themselves
-      expect(src, `${rel(file)} still links to /quiz/tutorial`)
-        .not.toContain("/quiz/tutorial");
-      expect(src, `${rel(file)} still links to the onboarding tutorial`)
-        .not.toContain("/onboarding/ranked-tutorial");
+      for (const route of [
+        "/quiz/tutorial", "/onboarding/ranked-tutorial", "/dev/ranked-tutorial",
+      ]) {
+        expect(src, `${rel(file)} still names ${route}`).not.toContain(route);
+      }
     }
+  });
+
+  it("the route table carries no tutorial route, redirect included", () => {
+    // No users means no bookmark to honour: a redirect would be residue too.
+    expect(read("App.tsx").toLowerCase()).not.toContain("tutorial");
   });
 
   it("the admin replay entry is gone", () => {
@@ -120,9 +137,24 @@ describe("no user-facing entry point survives", () => {
 
   it("the global tutorial policy switches are gone from the policy layer", () => {
     const policy = read(join("lib", "platform-policy", "policy.ts"));
-    expect(policy).not.toContain("tutorial_auto_popup_enabled");
-    expect(policy).not.toContain("tutorial_completion_required_for_new_users");
+    expect(policy).not.toContain("POLICY_KEYS.tutorial");
     expect(policy).not.toContain("evaluateTutorialPresentation");
+    // The keys survive only inside the comment explaining that they are gone.
+    expect(policy).not.toMatch(/^\s*tutorial\w*:/m);
+  });
+
+  it("the tutorial surface variant is gone with its only consumer", () => {
+    // `SurfaceVariant "tutorial"` was a density preset created for, and named
+    // after, the scripted tutorial. Its only remaining caller was one demo row
+    // in the dev arena inspector — residue, not a generic rendering mode.
+    const contract = read(join("lib", "question-surface", "contract.ts"));
+    expect(contract).toContain(
+      'export type SurfaceVariant = "standard" | "competitive" | "speed"',
+    );
+    for (const file of PRODUCTION_FILES) {
+      expect(readFileSync(file, "utf8"), `${rel(file)} still asks for the variant`)
+        .not.toContain('variant="tutorial"');
+    }
   });
 });
 
@@ -173,7 +205,35 @@ describe("what was deliberately preserved", () => {
   });
 
   it("keeps Tutorial TIPS, a different feature entirely", () => {
+    // Admin-authored contextual coach-marks on legacy Mogsy routes, backed by
+    // the `tutorial_tips` / `tutorial_tip_dismissals` tables. It shares a word
+    // with the deleted feature and nothing else. A "tutorial" sweep that took
+    // this with it would fail here.
     expect(() => read(join("components", "TutorialTipPopup.tsx"))).not.toThrow();
     expect(() => read(join("hooks", "useTutorialTips.ts"))).not.toThrow();
+    expect(() => read(join("components", "admin", "AdminTutorialTips.tsx")))
+      .not.toThrow();
+    expect(read(join("hooks", "useTutorialTips.ts"))).toContain("tutorial_tips");
+    expect(read(join("hooks", "useTutorialTips.ts")))
+      .toContain("tutorial_tip_dismissals");
+    // Still mounted, and still listed in the admin registry.
+    expect(read(join("components", "Layout.tsx"))).toContain("<TutorialTipPopup />");
+    expect(read(join("lib", "admin", "admin-registry.ts")))
+      .toContain('id: "tutorial-tips"');
+  });
+
+  it("keeps Bot Ranked reachable and unmodified by this workstream", () => {
+    // The real learn-by-doing path. Nothing here gates it, and nothing in it
+    // ever consulted tutorial state.
+    const client = read(join("lib", "ranked-public", "client.ts"));
+    expect(client.toLowerCase()).not.toContain("tutorial");
+    expect(read("App.tsx")).toContain('path="/quiz/ranked"');
+  });
+
+  it("keeps the other surface variants — only the tutorial one was removed", () => {
+    const contract = read(join("lib", "question-surface", "contract.ts"));
+    for (const variant of ["standard", "competitive", "speed"]) {
+      expect(contract, `${variant} variant must survive`).toContain(`${variant}:`);
+    }
   });
 });

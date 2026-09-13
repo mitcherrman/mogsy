@@ -42,7 +42,9 @@ unchanged), `AbilityTray`, `SubmissionReview`, `RevealPanel`,
   through the shared arena via the pure `staffDuelProjection.ts` controller
   layer. The canonical review-before-confirm flow produces exactly one
   atomic backend submission per round.
-- **E2 Ranked Tutorial** (`src/pages/dev/ranked-tutorial/`): second
+- **E2 Ranked Tutorial** (`src/pages/dev/ranked-tutorial/`) — **DELETED in
+  TUT1; the paragraph below is a historical record of a consumer that no longer
+  exists.** Second
   validated consumer. The tutorial director (local step machine) drives the
   full arena set through a pure adapter (`adapters.ts`) that projects
   tutorial state and AUTHORED resolved fixtures into the canonical view
@@ -78,7 +80,8 @@ in the landing audit.
 - **E1 (Time Trial / Daily)**: no shared code consumed or changed;
   `QuizAnswerOptions` untouched. Timer skew discipline reimplemented in
   `timerMath` (no E1 import).
-- **E2 (Ranked tutorial)**: presentation on `ranked-tutorial-prototype` is
+- **E2 (Ranked tutorial)** — **MOOT: the tutorial was deleted in TUT1, so none
+  of this migration is owed.** Presentation on `ranked-tutorial-prototype` was
   now materially stale — canonical equivalents exist for its combatant
   panel, ability panel, answer/lock flow, Level 2 choice, and reveal.
   Migration (rebase + adopt `ranked-arena` components driven by the

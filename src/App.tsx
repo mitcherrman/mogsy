@@ -554,13 +554,6 @@ const App = () => (
                   ) : null}
                   <Route path="/lol/combat-battles" element={<Suspense fallback={<RouteFallback />}><CombatBattlesIndex /></Suspense>} />
                   <Route path="/lol/combat-battles/:slug" element={<Suspense fallback={<RouteFallback />}><CombatBattleDetail /></Suspense>} />
-                  {/* TUT1 — the scripted Ranked tutorial is retired. Both of its
-                      old routes are kept ONLY as redirects so a bookmark or an
-                      old link lands on Ranked instead of a blank 404 shell; no
-                      tutorial implementation survives behind either of them.
-                      Learn-by-doing now lives in Bot Ranked / practice. */}
-                  <Route path="/onboarding/ranked-tutorial" element={<Navigate to="/quiz/ranked" replace />} />
-                  <Route path="/quiz/tutorial" element={<Navigate to="/quiz/ranked" replace />} />
                   <Route path="/quiz" element={<Suspense fallback={<RouteFallback />}><Quiz /></Suspense>} />
                   <Route path="/quiz/matchup" element={<Suspense fallback={<RouteFallback />}><QuizMatchupPage /></Suspense>} />
                   <Route path="/quiz/daily" element={<Suspense fallback={<RouteFallback />}><QuizDailyScoreAttack /></Suspense>} />

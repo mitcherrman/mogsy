@@ -74,8 +74,8 @@ describe("entry destination", () => {
     expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });
   });
 
-  it("treats someone who chose the tutorial as handled too", () => {
-    markAcademyWelcomeHandled("tutorial");
+  it("treats someone who signed in as handled too", () => {
+    markAcademyWelcomeHandled("signed-in");
     render(<MogzyEntryV2 />);
     enterMogzy();
     expect(mocks.navigate).toHaveBeenCalledWith(LEAGUE_HOME_ROUTE, { replace: true });

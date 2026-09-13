@@ -128,9 +128,9 @@ export function LevelUpPanel({
           </button>
         ))}
       </div>
-      {/* R3: no confirmation button. A director that still wants an explicit
-          confirm step (the Ranked Tutorial teaches one) passes onConfirmOption;
-          the live arena does not, and the choice applies on the first click. */}
+      {/* R3: no confirmation button. A director that wants an explicit confirm
+          step passes onConfirmOption; the live arena does not, and the choice
+          applies on the first click. */}
       {onConfirmOption && (
         <Button
           type="button"

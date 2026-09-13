@@ -149,10 +149,11 @@ POINT1 is no longer an architecture project. The architecture exists; what is
 left is bringing the remaining surfaces onto it.
 
 * **Meta Reflex per-card presentation** — **SHIPPED. See §5.**
-* **Ranked tutorial** (`src/pages/dev/ranked-tutorial/`) still teaches the
-  legacy model — "Correct answers deal damage", "Zero HP ends the match". It is
-  now the only active surface teaching a model normal Ranked no longer uses.
-  Content decision, deliberately out of scope here.
+* **Ranked tutorial** — **RESOLVED by deletion (TUT1).** It was the only active
+  surface still teaching the legacy model ("Correct answers deal damage", "Zero
+  HP ends the match"). It was not migrated to points: the whole scripted
+  tutorial was removed, along with its gate, routes, state and policy rows. See
+  `docs/TUT1_RANKED_TUTORIAL_REMOVAL_HANDOFF.md`.
 * **Backend cleanup, non-blocking:** retire the damage-shaped fields from the
   v2 wire once no client reads them (`damage{}`, `hp_before`/`hp_after`,
   `reached_zero_hp` are meaningless in a points match); rename

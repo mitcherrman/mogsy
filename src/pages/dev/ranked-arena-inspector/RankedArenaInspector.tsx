@@ -1371,8 +1371,6 @@ const STATES: InspectorState[] = [
         explanation: "Blasting Wand gives only 45 AP." }} /> },
   { key: "surface-standard-hero", label: "Surface — standard (hero)",
     render: () => <Surface variant="standard" question={CHAMP_Q} scenarioSource={CHAMP_SCENARIO} /> },
-  { key: "surface-tutorial", label: "Surface — tutorial variant",
-    render: () => <Surface variant="tutorial" scenarioSource={ITEM_SCENARIO} /> },
   { key: "surface-speed", label: "Surface — speed (no media)",
     render: () => <Surface variant="speed" /> },
   { key: "ai1-mascots", label: "AI1 — role mascots",

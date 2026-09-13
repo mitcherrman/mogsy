@@ -32,8 +32,8 @@ export const ACADEMY_WELCOME_ROUTE = "/welcome";
  *
  * Both outcomes mean "handled" for routing purposes — neither one re-interrupts
  * a later visit. They are kept distinct because they answer different product
- * questions later (did people want guidance, or did they want to browse?), and
- * because collapsing them to a bare boolean would throw that away irreversibly.
+ * questions later, and because collapsing them to a bare boolean would throw
+ * that away irreversibly.
  *
  * There is deliberately no "skipped" outcome: leaving early via Enter the Academy
  * IS the skip, and inventing a state would imply a distinction the UI does not
@@ -49,17 +49,7 @@ export const ACADEMY_WELCOME_ROUTE = "/welcome";
  * the cost is that abandoning /auth also counts, which is the correct trade for
  * someone who has just told us they are not new.
  */
-export type AcademyWelcomeOutcome = "explored" | "tutorial" | "signed-in";
-
-/**
- * TUT1 — "tutorial" is now a LEGACY READ-ONLY outcome. The scripted Ranked
- * tutorial it recorded is retired and nothing writes this value any more, but
- * it stays in the union and in VALID_OUTCOMES on purpose: a visitor who took
- * that exit before the removal has `{"outcome":"tutorial"}` in localStorage,
- * and dropping it from the accepted set would make their stored state invalid
- * and re-show the introduction to someone who has already been through it.
- * Erasing those client values is not worth a migration for a dead string.
- */
+export type AcademyWelcomeOutcome = "explored" | "signed-in";
 
 export interface AcademyWelcomeState {
   outcome: AcademyWelcomeOutcome;
@@ -67,7 +57,7 @@ export interface AcademyWelcomeState {
   at: string;
 }
 
-const VALID_OUTCOMES: readonly string[] = ["explored", "tutorial", "signed-in"];
+const VALID_OUTCOMES: readonly string[] = ["explored", "signed-in"];
 
 function readRaw(): string | null {
   try {

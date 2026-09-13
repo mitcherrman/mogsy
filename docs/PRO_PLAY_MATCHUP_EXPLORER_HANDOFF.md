@@ -3996,10 +3996,14 @@ rather than merely unlikely.
   `/quiz` siblings**. A contextual study is ordinary free practice and
   inherits the policy rather than stepping around it. Nothing about the gate
   was changed.
-* **A guest is never gated.** `evaluateRankedTutorial` returns
-  `required: false` without a user, so the deep link works for a signed-out
+* **A guest is never gated.** `evaluateRankedTutorial` returned
+  `required: false` without a user, so the deep link worked for a signed-out
   visitor — verified in a browser.
-* **KNOWN GAP, deliberately not fixed.** A signed-in account with no
+* **KNOWN GAP — CLOSED BY TUT1, no fix needed.** The gap below was real while
+  the forced-tutorial guard existed. That guard, the setting and the profile
+  column are all deleted, so `/quiz/matchup` is now reached directly and no
+  redirect can drop the query string. The original text follows as a record.
+  A signed-in account with no
   `ranked_tutorial_completed_at`, while the admin setting
   `tutorial_completion_required_for_new_users` is on, is redirected by
   `<Navigate replace>` — which **drops the query string, and with it the
