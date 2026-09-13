@@ -502,6 +502,22 @@ export interface SegmentStateView {
   ownCardDeadline: string | null;
   /** Per-card expiry flags for the viewer, or null on a block-clocked segment. */
   ownTimedOutChallenges: boolean[] | null;
+  /**
+   * POINT1 — THE CARD BEING REVEALED, or null when the viewer is answering.
+   *
+   * Non-null means the card it names has settled, its answer is being shown,
+   * and the next card has NOT opened: `ownCardStartedAt` above is when it
+   * will. Both are server-derived from the segment's frozen reveal window, so
+   * a client that refreshes mid-reveal reconstructs the same phase instead of
+   * losing a local timer — and a client that ignored them could still not
+   * answer early, because the same schedule gates the submission.
+   *
+   * Null on every block-clocked segment and on every block frozen before the
+   * reveal window existed, which is what keeps those rendering as they did.
+   */
+  ownRevealingCardIndex: number | null;
+  /** Server instant the current card reveal ends; null when none is running. */
+  ownRevealUntil: string | null;
   /** Present only in the challenge phase. */
   prompt: string | null;
   /** Present only in the challenge phase; discriminated by card contract. */
@@ -1360,6 +1376,11 @@ function readSegmentState(v: unknown): SegmentStateView | null {
       ? o.own_timed_out_challenges.map((f, i) =>
         bool(f, `own_timed_out_challenges[${i}]`))
       : null,
+    // Optional on the wire: a backend without per-card reveals sends neither,
+    // and absence must read as "no reveal running", never as a parse failure.
+    ownRevealingCardIndex: nnum(o.own_revealing_card_index,
+      "own_revealing_card_index"),
+    ownRevealUntil: nstr(o.own_reveal_until, "own_reveal_until"),
     prompt: challengeBlock ? nstr(challengeBlock.prompt, "challenges.prompt") : null,
     block: readSegmentBlock(o.challenges, moduleId, moduleVersion),
     ownCardReveals: readSettledCardReveals(

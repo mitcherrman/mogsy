@@ -207,9 +207,15 @@ describe("Meta Reflex — the card clock", () => {
 describe("Meta Reflex — end of block", () => {
   it("stops offering cards once the server says the block is finished", () => {
     renderBlock(parse(metaReflexState(5)));
-    expect(screen.queryByTestId("mr-choice-left")).toBeNull();
     expect(screen.getByTestId("mr-waiting")).toBeInTheDocument();
     expect(screen.getByTestId("mr-progress")).toHaveTextContent("5 / 5");
+    // POINT1 — the last card is HELD, revealed, while the block scores. Its
+    // rectangles are on screen and every one of them is unanswerable: the
+    // block is over, so there is nothing left to offer.
+    for (const side of ["left", "right"]) {
+      const rect = screen.queryByTestId(`mr-choice-${side}`);
+      if (rect) expect(rect).toBeDisabled();
+    }
   });
 
   it("refuses to render a v4 block that did not arrive as Meta Reflex cards", () => {

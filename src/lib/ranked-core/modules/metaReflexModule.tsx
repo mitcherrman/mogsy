@@ -25,7 +25,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
-import { MetaReflexCardResult } from "@/components/ranked-arena/MetaReflexCardResult";
+import { BeatPlate } from "@/components/ranked-arena/RoundResultBeat";
 import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
@@ -34,6 +34,7 @@ import type {
   MetaReflexCard,
   PublicRoundView,
   SegmentStateView,
+  SettledCardReveal,
 } from "@/lib/ranked-public/contracts";
 import { META_REFLEX_MIXED_VERSION } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleViewportProps } from "./types";
@@ -157,12 +158,24 @@ type Side = "left" | "right";
  *    ("left option"), because any real description would be the answer. The
  *    media URL is never parsed for a name either.
  */
-function ChoiceCard({ card, side, selected, disabled, onPick }: {
+function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null }: {
   card: MetaReflexCard;
   side: Side;
   selected: boolean;
   disabled: boolean;
   onPick: () => void;
+  /**
+   * POINT1 — this side's settled state, or null while the card is live.
+   *
+   * `"correct"` is the option the SERVER named (`correctCardId`) and is drawn
+   * green whether or not the player picked it: the whole point of holding the
+   * card through its reveal is that a player who got it wrong can see what the
+   * answer was, in the place they were already looking.
+   *
+   * `"wrong"` is the player's own losing pick. It is the only other state,
+   * because the two untaken sides of a settled card have nothing to say.
+   */
+  reveal?: "correct" | "wrong" | null;
 }) {
   const recognition = card.kind === "recognition";
   const entity = card[side];
@@ -178,14 +191,27 @@ function ChoiceCard({ card, side, selected, disabled, onPick }: {
       onClick={onPick}
       disabled={disabled}
       aria-pressed={selected}
-      aria-label={accessibleName}
+      // The verdict is stated in WORDS to a screen reader, never by colour
+      // alone — the same rule the arena's verdict chips follow.
+      aria-label={reveal === "correct" ? `${accessibleName}, correct answer`
+        : reveal === "wrong" ? `${accessibleName}, your answer, incorrect`
+          : accessibleName}
       data-testid={`mr-choice-${side}`}
       data-card-id={side === "left" ? card.leftCardId : card.rightCardId}
+      data-reveal={reveal ?? undefined}
+      // The border is ALREADY 2px in every state, so switching its colour
+      // cannot reflow the row: a reveal changes what the rectangle says and
+      // never how large it is.
       className={`flex min-h-[7.5rem] flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 p-3 text-center lg:min-h-[12rem] lg:gap-3 lg:p-5
-        transition-[border-color,transform] duration-150 motion-reduce:transition-none
-        disabled:cursor-not-allowed disabled:opacity-70
+        transition-[border-color,background-color,transform] duration-150 motion-reduce:transition-none
+        disabled:cursor-not-allowed
         enabled:hover:border-[#e8c97a]/70 enabled:active:scale-[0.99]
-        ${selected ? "border-[#e8c97a] bg-[#e8c97a]/10" : "border-[#b9934c]/30 bg-black/20"}`}
+        ${reveal === "correct"
+        ? "border-emerald-400 bg-emerald-500/15 ring-2 ring-emerald-400/40 disabled:opacity-100"
+        : reveal === "wrong"
+          ? "border-destructive bg-destructive/10 disabled:opacity-100"
+          : `disabled:opacity-70 ${selected
+            ? "border-[#e8c97a] bg-[#e8c97a]/10" : "border-[#b9934c]/30 bg-black/20"}`}`}
     >
       <CardArt src={src} alt={`${accessibleName} artwork`} large={recognition} />
       {label !== null && (
@@ -197,6 +223,52 @@ function ChoiceCard({ card, side, selected, disabled, onPick }: {
       {/* Nothing else. The compared value, the champion's class and the
           answer are not client-side facts until the segment settles. */}
     </button>
+  );
+}
+
+/**
+ * THE PER-CARD RESULT NOTIFICATION (POINT1).
+ *
+ * The same plate the arena states a settled ROUND with — `BeatPlate`, imported
+ * rather than re-drawn, so a card result and a round result cannot drift into
+ * two visual languages. It sits at the top of the module's own viewport rather
+ * than in the arena header, because the header has ONE result slot and the
+ * module-level `SegmentResultBeat` owns it: a block that replaced its own
+ * summary with a card's would lose the scoreline the block exists to produce.
+ *
+ * "+1 POINT" / "+0 POINTS" IS A PROJECTION, NOT A SECOND SCORER. Meta Reflex
+ * pays exactly one point per correct card — `item_cost_duel.block_damage` is
+ * `damage = correct_count`, plus module-level bonuses — and the backend
+ * publishes no per-card award to read, so the only honest thing a card can
+ * state is that rule applied to the server's own verdict. Nothing here adds,
+ * compares or accumulates: the module summary remains the authority on the
+ * block's total, and the perfect/first bonus is stated ONLY there, because it
+ * is a property of the block and belongs to no single card.
+ *
+ * There is deliberately no opponent clause. A Meta Reflex card is not zero-sum
+ * — both players can be correct on the same card — so "OPPONENT +1 POINT"
+ * would be inventing a transfer the rules do not contain.
+ */
+function CardResultBeat({ reveal, cardNumber }: {
+  reveal: SettledCardReveal;
+  cardNumber: number;
+}) {
+  const correct = reveal.outcome === "correct";
+  return (
+    <BeatPlate
+      kind={correct ? "correct" : "incorrect"}
+      mode="round"
+      ariaLabel={`Card ${cardNumber} result: ${
+        correct ? "correct, plus one point" : "incorrect, no points"}`}
+      marker={`C${cardNumber}`}
+      dataAttributes={{
+        "data-testid": "mr-card-beat",
+        "data-outcome": reveal.outcome,
+        "data-challenge-index": String(reveal.challengeIndex),
+      }}
+      primary={correct ? "CORRECT" : "INCORRECT"}
+      secondary={correct ? "+1 POINT" : "+0 POINTS"}
+    />
   );
 }
 
@@ -223,16 +295,19 @@ function BlockPhase({ state, cards, actions, skewMs }: {
     ? state.ownCardReveals[state.ownCardReveals.length - 1] : null;
 
   if (state.ownFinished || !current) {
+    const finalCard = lastSettled ? cards[lastSettled.challengeIndex] : null;
     return (
-      <div className="space-y-2" data-testid="mr-waiting">
+      <div className="space-y-3" data-testid="mr-waiting">
         <MetaReflexHeader progress={`${state.challengeCount} / ${state.challengeCount}`} />
-        {/* The block is over, so the last card's resolution has the surface to
-            itself — nothing is competing with it for the player's clock. */}
-        <MetaReflexCardResult
-          key={lastSettled?.challengeIndex ?? "none"}
-          reveal={lastSettled}
-          cardNumber={lastSettled ? lastSettled.challengeIndex + 1 : null}
-        />
+        {/* THE LAST CARD'S REVEAL, on the card, with the surface to itself.
+            Card five has no successor waiting on a clock, so it is held until
+            the module summary replaces it — the block's own result is what
+            ends this, not a timer. */}
+        {lastSettled && finalCard && (<>
+          <CardResultBeat key={lastSettled.challengeIndex} reveal={lastSettled}
+            cardNumber={lastSettled.challengeIndex + 1} />
+          <SettledCard card={finalCard} reveal={lastSettled} />
+        </>)}
         <p className="text-sm text-muted-foreground" role="status">
           {state.opponentFinished
             ? "Both players are done — scoring the block…"
@@ -256,8 +331,49 @@ function BlockPhase({ state, cards, actions, skewMs }: {
     actions.submitChallenge(index, { cardId });
   };
 
+  /**
+   * THE REVEAL PHASE (POINT1), and the whole reason it can exist.
+   *
+   * `ownRevealingCardIndex` is server-derived from the segment's own frozen
+   * reveal window: the card it names has settled, the NEXT card has not opened
+   * (the backend's schedule refuses a submission to it), and the answer is
+   * being shown on the card the player was looking at. Before this window
+   * existed the two events arrived on the same snapshot and the settled card
+   * was gone before its answer was known — which is why the resolution used to
+   * be a strip laid beside live play instead of the card itself.
+   *
+   * Read, never timed. There is no local `setTimeout` deciding the phase, so a
+   * refresh mid-reveal reconstructs exactly this state from the same rows.
+   */
+  const revealing = state.ownRevealingCardIndex !== null
+    ? state.ownCardReveals.find(
+      (r) => r.challengeIndex === state.ownRevealingCardIndex) ?? null
+    : null;
+  const revealedCard = revealing ? cards[revealing.challengeIndex] : null;
+
+  if (revealing && revealedCard) {
+    return (
+      <div className="space-y-3" data-testid="mr-block" data-phase="reveal">
+        <MetaReflexHeader
+          progress={`${revealing.challengeIndex + 1} / ${state.challengeCount}`}
+        />
+        <CardResultBeat key={revealing.challengeIndex} reveal={revealing}
+          cardNumber={revealing.challengeIndex + 1} />
+        <p className="text-center text-base font-semibold sm:text-lg lg:text-xl"
+           data-testid="mr-prompt">
+          {revealedCard.prompt}
+        </p>
+        <SettledCard card={revealedCard} reveal={revealing} />
+        <p className="min-h-[1.25rem] text-center text-xs text-muted-foreground"
+           role="status" data-testid="mr-status">
+          Next card…
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3" data-testid="mr-block">
+    <div className="space-y-3" data-testid="mr-block" data-phase="answer">
       <MetaReflexHeader
         progress={`${index + 1} / ${state.challengeCount}`}
         clock={<Countdown deadline={state.ownCardDeadline} skewMs={skewMs}
@@ -283,15 +399,37 @@ function BlockPhase({ state, cards, actions, skewMs }: {
           : expired ? "Time's up — next card…"
             : `Opponent: ${state.opponentChallengesCompleted} of ${state.challengeCount} done`}
       </p>
+    </div>
+  );
+}
 
-      {/* RG3 — the previous card's resolution, BESIDE the live one. See
-          MetaReflexCardResult for why it cannot be laid over the card it
-          describes: that card's successor is already on the clock. */}
-      <MetaReflexCardResult
-        key={lastSettled?.challengeIndex ?? "none"}
-        reveal={lastSettled}
-        cardNumber={lastSettled ? lastSettled.challengeIndex + 1 : null}
-      />
+/**
+ * The two rectangles of a card that has SETTLED, in the same geometry they had
+ * while live.
+ *
+ * The correct side is green whether the player chose it or not — that is the
+ * learning the reveal exists for — and the player's own losing pick is marked
+ * as theirs. Both come from the server's `correctCardId` / `selectedCardId`;
+ * nothing here decides which side was right, and there is no `onPick`, because
+ * a settled card cannot be answered.
+ */
+function SettledCard({ card, reveal }: {
+  card: MetaReflexCard; reveal: SettledCardReveal;
+}) {
+  const sideOf = (side: Side) =>
+    (side === "left" ? card.leftCardId : card.rightCardId);
+  const stateFor = (side: Side): "correct" | "wrong" | null => {
+    const id = sideOf(side);
+    if (id === reveal.correctCardId) return "correct";
+    if (id === reveal.selectedCardId) return "wrong";
+    return null;
+  };
+  return (
+    <div className="flex gap-2 sm:gap-3" data-testid="mr-settled-card">
+      {(["left", "right"] as Side[]).map((side) => (
+        <ChoiceCard key={side} card={card} side={side} selected={false}
+          disabled onPick={() => {}} reveal={stateFor(side)} />
+      ))}
     </div>
   );
 }
