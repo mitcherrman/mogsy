@@ -79,10 +79,9 @@ export interface DailyArenaInput {
  *                        role is claimed, because the Daily freezes none, and
  *                        the crest draws its neutral emblem in exactly the box
  *                        a role would have taken.
- *   the primary meter    the run's SCORE against the day's frozen maximum. It
- *                        fills the same bar, at the same thresholds, and it is
- *                        labelled what it is (see `meterLabel`) rather than
- *                        being passed off as health.
+ *   the primary meter    the run's SCORE, on the same score path Ranked v2
+ *                        uses — the tally, not a bar, because a score has no
+ *                        maximum a player plays toward. `meterLabel` names it.
  *   the recent record    one row per settled card — the verdict and what it
  *                        awarded. Under retry-until-correct this is the only
  *                        thing that distinguishes a day, so it is the part of
@@ -108,9 +107,31 @@ function dailyCombatant(
     identityMode: "role",
     side: "player",
     classId: "",
-    hp: run.score,
-    maxHp: run.maxScore > 0 ? run.maxScore : null,
+    // POINT1 — THE RUN'S SCORE, on RP1's score path.
+    //
+    // It used to ride in `hp`/`maxHp` with `meterLabel: "Score"` over the top:
+    // a health bar, at health thresholds, in the health palette, wearing the
+    // right word. That is why a fresh run opened on a RED meter and turned
+    // green as the player succeeded, and why the column below it went on
+    // announcing awards as "100 DMG" — the label was the only thing that had
+    // been changed, and nothing branched on it.
+    //
+    // `score` is what the arena branches on (`CombatantPanel`: a non-null
+    // score draws the tally, the ledger states awards, the verdict row states
+    // points). `meterLabel` still supplies the noun, which is exactly what RP1
+    // keeps it for.
+    //
+    // NO MAXIMUM IS PUBLISHED, deliberately. The day has one — `run.maxScore`,
+    // the frozen best — but RP1's tally has no max-score field and must not
+    // grow one: a denominator turns the number back into "how much is left",
+    // which is the metaphor being removed. The run's target belongs in the
+    // Daily's own panel, not in the arena's primary meter.
+    score: run.score,
     meterLabel: "Score",
+    // Unread while `score` is set, and stated as absence rather than as a
+    // quantity: a solo quiz run has no health.
+    hp: 0,
+    maxHp: null,
     xp: 0,
     level: 1,
     nextLevelThreshold: null,
@@ -259,10 +280,10 @@ export function dailyArenaView(input: DailyArenaInput): ArenaViewModel {
     /**
      * THE SHOUTED VERDICT FIRES ONLY ON A SCORED CARD.
      *
-     * In Ranked this plate accompanies damage: it resolves the round that just
-     * moved an HP bar. The Daily's meter is score, and only a first-attempt
-     * correct card moves it — so that is the card with a beat to shout, and
-     * "CORRECT · 100 DMG" is exactly what happened.
+     * In Ranked this plate accompanies the award: it resolves the module that
+     * just moved the score. The Daily's meter is score too, and only a
+     * first-attempt correct card moves it — so that is the card with a beat to
+     * shout, and "CORRECT +100" is exactly what happened.
      *
      * The other two resolutions are NOT silent; they are delivered in the
      * mode's own words, in the mode's own slots — the status line and the
@@ -272,7 +293,30 @@ export function dailyArenaView(input: DailyArenaInput): ArenaViewModel {
      * first attempt exactly as it went: those are records, not shouts.
      */
     outcome: verdict?.outcome === "correct" ? "correct" : null,
-    damageDealt: verdict?.outcome === "correct" ? verdict.awarded : null,
+    // A solo run deals no damage and never did; this carried `awardedScore`
+    // and the verdict row printed it as "100 DMG".
+    damageDealt: null,
+    /**
+     * RP1's award row, which the Daily fills with its own authoritative
+     * `awarded_score`.
+     *
+     * `speed` is null and `baseLabel` is the verdict, because the Daily's
+     * backend publishes ONE figure: `awarded_score` is already
+     * (base + speed bonus) × combo multiplier by the time it leaves
+     * `daily_score_attack.scoring`, and the parsed card carries no split. A
+     * decomposition invented here would be this client re-deriving a rule the
+     * server already applied — so the row states the total it was given and
+     * claims no breakdown it cannot prove.
+     */
+    feedback: verdict?.outcome === "correct"
+      ? {
+        baseLabel: "CORRECT",
+        basePoints: verdict.awarded,
+        speed: null,
+        pointsAwarded: verdict.awarded,
+        scoreAfter: run.score,
+      }
+      : null,
     // The mascot reacts to every resolution — motion, not a word.
     reaction: verdict
       ? { action: verdict.outcome === "correct" ? "attack" : "hit",

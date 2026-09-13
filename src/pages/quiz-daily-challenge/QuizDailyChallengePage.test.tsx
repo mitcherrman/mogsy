@@ -225,7 +225,7 @@ describe("standard cards", () => {
 
     // The click WAS the submission: one POST, and the score moved.
     await waitFor(() =>
-      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+      expect(screen.getByTestId("score-daily-player")).toHaveTextContent("100"));
     expect(calls.filter((c) => c.url.includes("/answers"))).toHaveLength(1);
     noManualProgressionControls();
   });
@@ -241,7 +241,7 @@ describe("standard cards", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
 
     await waitFor(() =>
-      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+      expect(screen.getByTestId("score-daily-player")).toHaveTextContent("100"));
     // THE BEAT: still card 1, resolved, verdict on screen — and nothing to press.
     showingCard(1);
     expect(screen.getByTestId("answer-grid")).toHaveAttribute("data-answers-state", "revealed");
@@ -266,7 +266,7 @@ describe("standard cards", () => {
     fireEvent.click(option);
 
     await waitFor(() =>
-      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+      expect(screen.getByTestId("score-daily-player")).toHaveTextContent("100"));
     // ONE submission reached the server, for a card that has exactly one
     // scored attempt to spend.
     expect(calls.filter((c) => c.url.includes("/answers"))).toHaveLength(1);
@@ -281,7 +281,7 @@ describe("standard cards", () => {
     fireEvent.click(await screen.findByTestId("dc-start"));
     fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
     await waitFor(() =>
-      expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("100"));
+      expect(screen.getByTestId("score-daily-player")).toHaveTextContent("100"));
 
     for (const tablet of screen.getAllByRole("button", { name: /Option [A-D]/, hidden: true })) {
       expect(tablet).toBeDisabled();
@@ -406,7 +406,7 @@ describe("standard cards", () => {
     await waitFor(() => showingCard(2), { timeout: BEAT_TIMEOUT });
     // No score was recovered by solving it late, and none was invented by
     // moving on automatically.
-    expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("0");
+    expect(screen.getByTestId("score-daily-player")).toHaveTextContent("0");
   });
 
   it("solving after a miss is LEARNED, and visibly not a first-try win", async () => {
@@ -432,7 +432,7 @@ describe("standard cards", () => {
     expect(feedback()).not.toHaveTextContent("Incorrect");
     expect(feedback()).toHaveAttribute("data-verdict-tone", "neutral");
     // No score was recovered, and nothing on screen pretends otherwise.
-    expect(screen.getByTestId("hp-daily-player")).toHaveTextContent("0");
+    expect(screen.getByTestId("score-daily-player")).toHaveTextContent("0");
     expect(screen.queryByTestId("outcome-daily-player")).not.toBeInTheDocument();
   });
 });
@@ -747,17 +747,108 @@ describe("the arena columns", () => {
 
     const panel = await screen.findByTestId("combatant-daily-player");
     expect(within(panel).getByText("Mogzy")).toBeInTheDocument();
-    // The primary meter is the SCORE, and it is labelled what it is rather
-    // than being passed off as health in a mode with no combat.
-    expect(within(panel).getByTestId("hp-daily-player")).toHaveTextContent("100");
+    // POINT1 — the primary meter is the SCORE on RP1's own score path, not a
+    // health bar wearing the right word: the panel says so itself, there is no
+    // `hp-` meter in the column at all, and no proportional fill is drawn.
+    expect(panel).toHaveAttribute("data-scoring", "points");
+    expect(within(panel).getByTestId("score-daily-player")).toHaveTextContent("100");
     expect(within(panel).getByText("Score")).toBeInTheDocument();
+    expect(within(panel).queryByTestId("hp-daily-player")).not.toBeInTheDocument();
     expect(within(panel).queryByText("HP")).not.toBeInTheDocument();
+    expect(within(panel).queryByRole("meter")).not.toBeInTheDocument();
     // The record is the canonical recent-round ledger, one row per settled card.
     expect(within(panel).getByTestId("ledger-row-daily-player-1"))
       .toHaveAttribute("data-outcome", "correct");
     // A Daily has no level or XP layer, so neither is drawn — not even empty.
     expect(panel).toHaveAttribute("data-progression", "false");
     expect(within(panel).queryByTestId("xp-daily-player")).not.toBeInTheDocument();
+  });
+
+  /**
+   * POINT1 — THE SCORING VOCABULARY, asserted on the rendered column.
+   *
+   * This has to be read off the DOM rather than the adapter, because the
+   * previous shape was already labelled "Score" at the meter and still printed
+   * "100 DMG" two rows below it: the label and the award came from different
+   * places, and only one of them had been changed. Reading the whole column —
+   * screen-reader text included, which is where "dealt 100 … HP 100" lived
+   * unseen — is the only assertion that catches that.
+   *
+   * Scoped to the arena's SCORING column on purpose. It does not ban the word
+   * "damage" from the page: a Daily question about champion damage is ordinary
+   * content and always was.
+   */
+  it("states awards as POINTS — no combat-scoring vocabulary in the column", async () => {
+    routes = [onToday(rawToday()), onStart(rawRun({
+      cards: [
+        { sequence: 1, resolved: true, firstAttemptCorrect: true, awardedScore: 100 },
+        { sequence: 2, resolved: true, firstAttemptCorrect: false,
+          scoreOutcome: "wrong_answer", awardedScore: 0 },
+        { sequence: 3 },
+      ],
+      currentSequence: 3, resolvedCount: 2, score: 100, maxScore: 1250,
+    }))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+
+    const panel = await screen.findByTestId("combatant-daily-player");
+    const words = panel.textContent ?? "";
+    for (const banned of [
+      "DMG", "dmg", "DAMAGE", "Damage", "damage",
+      "ABSORBED", "absorbed", "TAKEN", "dealt", "took", "HP", "Max HP",
+    ]) {
+      expect(words).not.toContain(banned);
+    }
+    // The award is stated, from the backend's own `awarded_score`, and the
+    // description is points-native.
+    expect(words).toContain("Score");
+    const scored = within(panel).getByTestId("ledger-row-daily-player-1");
+    expect(scored).toHaveTextContent("+100");
+    expect(scored.textContent ?? "").toContain("100 points");
+    // A card that awarded nothing shows an em dash, not a zero and not "-0".
+    expect(within(panel).getByTestId("ledger-row-daily-player-2"))
+      .toHaveTextContent("—");
+  });
+
+  /**
+   * THE INVERSION, pinned. The old meter was a proportion painted with the
+   * health palette — `pct > 50` emerald, `pct > 25` amber, below that
+   * `bg-destructive` — which is right for HP draining and exactly backwards
+   * for a score counting up. A fresh run therefore opened on a RED bar that
+   * turned green as the player succeeded. RP1's tally has no fill at all, so
+   * the treatment cannot come back.
+   */
+  it("does not paint a fresh run's score as critical", async () => {
+    routes = [onToday(rawToday()), onStart(rawRun({
+      cards: [{ sequence: 1 }], cardCount: 12, score: 0, maxScore: 1250,
+    }))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+
+    const panel = await screen.findByTestId("combatant-daily-player");
+    expect(within(panel).getByTestId("score-daily-player")).toHaveTextContent("0");
+    expect(panel.querySelector(".bg-destructive")).toBeNull();
+    expect(panel.querySelector(".bg-amber-500")).toBeNull();
+  });
+
+  /** The verdict row states the award, on RP1's own feedback path. */
+  it("announces a scored card as points beside the verdict", async () => {
+    const scored = rawRun({
+      cards: [{ sequence: 1, resolved: true, firstAttemptCorrect: true,
+        correctIndex: 0, awardedScore: 100, attemptCount: 1 }, { sequence: 2 }],
+      currentSequence: 2, resolvedCount: 1, score: 100,
+    });
+    routes = [onToday(rawToday()),
+      onStart(rawRun({ cards: [{ sequence: 1 }], cardCount: 12 })),
+      onAnswer(rawAnswer({ score_delta: 100 }, scored))];
+    renderPage();
+    fireEvent.click(await screen.findByTestId("dc-start"));
+    fireEvent.click(await screen.findByRole("button", { name: /Option A/ }));
+
+    const chip = await screen.findByTestId("outcome-points-daily-player");
+    expect(chip).toHaveTextContent("+100");
+    expect(screen.queryByTestId("outcome-damage-daily-player"))
+      .not.toBeInTheDocument();
   });
 
   it("puts NO combatant in the right column — it is the day", async () => {

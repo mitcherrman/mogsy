@@ -316,13 +316,15 @@ describe("the player column", () => {
     }));
     const rows = roundHistoryFromRun(run);
     expect(rows.map((r) => r.outcome)).toEqual(["correct", "incorrect", "timed_out"]);
-    // Only a first-attempt correct card awarded anything, and the running
-    // total is the SCORE the meter above the ledger is showing.
-    expect(rows.map((r) => r.dealt)).toEqual([100, 0, 0]);
-    expect(rows.map((r) => r.hpAfter)).toEqual([100, 100, 100]);
-    // A solo run has nothing that damages the player. Nothing is invented to
-    // fill a combat field.
-    expect(rows.every((r) => r.taken === 0 && r.absorbed === 0)).toBe(true);
+    // POINT1 — the award rides RP1's `pointsAwarded`, which is the field the
+    // ledger states for a scoring match. Only a first-attempt correct card
+    // awarded anything.
+    expect(rows.map((r) => r.pointsAwarded)).toEqual([100, 0, 0]);
+    // And NOTHING is packed into a combat field any more. `dealt` used to
+    // carry the award and `hpBefore`/`hpAfter` the running total, which is
+    // what made a solved card read as "dealt 100 … HP 100".
+    expect(rows.every((r) => r.dealt === 0 && r.taken === 0
+      && r.absorbed === 0 && r.hpBefore === 0 && r.hpAfter === 0)).toBe(true);
   });
 
   it("numbers each ledger row by its CARD, not by an array position", () => {

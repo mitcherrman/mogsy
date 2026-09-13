@@ -511,35 +511,38 @@ export function dailySegmentKinds(
  *
  * The same `RoundHistoryEntry` rows Ranked's duelist column reads, because the
  * questions they answer are the same ones: what happened on that card, and what
- * it did to the meter above. Nothing is invented to fill a combat field —
- * `taken` and `absorbed` are zero because a solo run has nothing that damages
- * the player, and `hpBefore`/`hpAfter` are the running score, which is what the
- * meter is showing.
+ * it awarded. `pointsAwarded` is the card's AUTHORITATIVE `awarded_score`,
+ * straight off the backend's pure-points contract, and is the field the ledger
+ * states for a scoring match. A learned card awarded nothing and shows nothing,
+ * which is the honest reading: it cost the player the card's points.
  *
- * `dealt` is the card's AWARDED score, straight off the backend. A learned card
- * awarded nothing and shows nothing, which is the honest reading: it cost the
- * player the card's points.
+ * The combat fields are zero rather than repurposed. A solo run deals nothing,
+ * takes nothing and absorbs nothing, and the running total is no longer needed
+ * here — the score lives on the tally above, where the column reads it.
  */
 export function roundHistoryFromRun(run: DcRun): RoundHistoryEntry[] {
   const settled = run.cards
     .filter((c): c is DcResolvedCard => c.resolved === true)
     .sort((a, b) => a.sequence - b.sequence);
-  let running = 0;
-  return settled.map((card) => {
-    const before = running;
-    running += card.awardedScore;
-    return {
-      roundNumber: card.sequence,
-      outcome: card.firstAttemptCorrect ? "correct" as const
-        : card.scoreOutcome === "timeout" ? "timed_out" as const : "incorrect" as const,
-      dealt: card.awardedScore,
-      taken: 0,
-      absorbed: 0,
-      hpBefore: before,
-      hpAfter: running,
-      timeExpired: card.scoreOutcome === "timeout",
-    };
-  });
+  return settled.map((card) => ({
+    roundNumber: card.sequence,
+    outcome: card.firstAttemptCorrect ? "correct" as const
+      : card.scoreOutcome === "timeout" ? "timed_out" as const : "incorrect" as const,
+    // POINT1 — the card's AWARD, on RP1's own field. It used to ride in
+    // `dealt` with the running total in `hpBefore`/`hpAfter`, which is what
+    // made the row describe a solved card as "dealt 100 … HP 100" to a screen
+    // reader. The ledger states points when this is present.
+    pointsAwarded: card.awardedScore,
+    // Unread while `pointsAwarded` is present, and zero rather than
+    // repurposed: a solo run deals nothing, takes nothing, absorbs nothing,
+    // and has no health either side of a card.
+    dealt: 0,
+    taken: 0,
+    absorbed: 0,
+    hpBefore: 0,
+    hpAfter: 0,
+    timeExpired: card.scoreOutcome === "timeout",
+  }));
 }
 
 // ── reveal ─────────────────────────────────────────────────────────────────
