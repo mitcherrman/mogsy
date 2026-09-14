@@ -94,6 +94,14 @@ ALTER TABLE public.feedback
 COMMENT ON COLUMN public.feedback.report_context IS
   'FB1-4 structured context captured automatically by the in-product reporters: the question snapshot (prompt, choices, identity, mode, session) or the page snapshot (route, allow-listed query). Empty object for every /feedback submission. Admin-visible only: excluded from list_my_feedback(), like client_meta.';
 
+-- Dropped first so the whole migration is re-runnable. It runs in ONE
+-- transaction, so a failed apply rolls back cleanly either way — but a
+-- SUCCESSFUL apply run twice by hand in the SQL editor would otherwise abort
+-- on "constraint already exists", which reads like a real failure and is not.
+ALTER TABLE public.feedback
+  DROP CONSTRAINT IF EXISTS feedback_report_context_is_object,
+  DROP CONSTRAINT IF EXISTS feedback_report_context_size;
+
 ALTER TABLE public.feedback
   -- An object, never a scalar or an array: every consumer reads it by key.
   ADD CONSTRAINT feedback_report_context_is_object

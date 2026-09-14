@@ -71,12 +71,20 @@ select prosrc from pg_proc where proname = 'normalize_feedback_submission';
 ### 3. Regenerate `src/integrations/supabase/types.ts`
 
 Only now does the live database match. Regenerating earlier describes a
-database that does not exist.
+database that does not exist — which is also why the regeneration was NOT done
+in advance as part of the RFB branch: `types.ts` is required to describe the
+live database, and until step 2 runs, the live database has no
+`report_context`.
 
-This also clears one deliberate wart: `AdminFeedback.tsx` currently maps its
-rows with `as unknown as FeedbackRow` because `report_context` is not in the
-generated types. After regeneration that can go back to a plain assertion. It
-is confined to one mapping so the clean-up is a one-line edit.
+This clears one deliberate wart: `AdminFeedback.tsx` maps its rows with
+`as unknown as FeedbackRow` because `report_context` is not in the generated
+types. After regeneration that can go back to a plain assertion. It is confined
+to one mapping, so the clean-up is a one-line edit.
+
+Note the project rule this obeys: migrations here are applied by hand in the
+Lovable Cloud SQL Editor and **the Supabase CLI is deliberately not linked**,
+so regeneration is an owner step rather than something this branch could have
+done safely on its own.
 
 ### 4. Deploy the frontend
 
@@ -124,15 +132,39 @@ Fingerprint it rather than trusting the clock:
   stay readable in the admin list, because `admin_list_feedback()` returns
   every column regardless.
 
-## Known overlap to settle separately
+## Practice's second reporter — resolved
 
-Practice (`/quiz`) now has **two** question reporters: the new dock control and
-the pre-existing "Report issue" button under the answer feedback, which posts
-to `POST /api/quiz/reports` in the FastAPI backend and lands in the
-`question_reports` table with its own admin resolution flow.
+Practice used to carry **two** report buttons. The older one has been removed;
+the shared Report tab is now the only user-facing path on every mode.
 
-That path is left running on purpose — it feeds the question-override pipeline,
-and retiring it silently would drop reports. But `question_reports` is keyed on
-a `quiz_questions.id`, so it cannot accept a report from Ranked, Mastery, Time
-Trial, Pro Play or Matchup at all. Deciding which of the two survives is an
-owner call, not a deploy step.
+What was audited before removing it:
+
+| | writes | read by | applied where |
+|---|---|---|---|
+| `question_reports` | `POST /api/quiz/reports` (unauthenticated; the client never sent a `reporter_id`) | the `/quiz/admin` inbox only | nowhere |
+| `question_overrides` | `POST /api/quiz/admin/override-question` (admin) | five endpoints in `routes/quiz.py` | serve **and** grade |
+
+`question_overrides` is the capability worth keeping, and it survives intact:
+it is keyed on `question_id` **or** `question_key`, has no foreign key to a
+report, and never required one. The endpoint, the `question_reports` table, its
+rows and the `/quiz/admin` inbox are all still in place — only the second
+user-facing door is closed, and `quizApi.reportQuestion` is retained (with no
+caller) so re-opening it needs no new contract.
+
+No dual-write was added. One click files one report.
+
+### Two pre-existing defects found in that audit — NOT fixed here
+
+Both are in the legacy admin surface, predate RFB, and are out of this
+workstream's scope. Flagged so they are not mistaken for RFB regressions:
+
+1. **`/quiz/admin` "Apply override" is broken.** `src/lib/quiz/api.ts` sends
+   `new_correct_answer` / `new_explanation` / `report_id`; `QuizOverrideIn` in
+   `schemas/quiz_schemas.py` requires `correct_answer` and declares none of
+   those names. Every click is a 422.
+2. **"Mark invalid" silently marks resolved.** `QuizAdmin.tsx` sends
+   `{ resolution }`; the endpoint reads `{ status, admin_notes }` with `status`
+   defaulting to `'resolved'`.
+
+Neither is load-bearing today: locally `question_reports` held one smoke-test
+row and `question_overrides` held none.

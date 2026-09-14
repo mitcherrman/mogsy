@@ -113,7 +113,20 @@ export default function PageReportControl() {
   }, [submitting, user, comment, pathname, search]);
 
   return (
-    <div ref={wrapperRef} className="relative">
+    /* NOT `relative`, deliberately.
+     *
+     * The panel below is `absolute right-0`, and its positioned ancestor is
+     * therefore the HUD CLUSTER, which is where `relative` already lives
+     * (GlobalHud's chip box) and which is what `MogzyIdentityMenu` anchors its
+     * own panel to. Giving this wrapper its own `relative` anchors the panel
+     * to the 40px trigger instead — and since this control sits in the MIDDLE
+     * of the cluster with the identity compound to its right, a 320px panel
+     * right-aligned on a 40px button starts 47px off the left edge of a 375px
+     * screen. Measured, not theorised.
+     *
+     * The wrapper still exists: outside-click dismissal needs a node to test
+     * containment against, and that works regardless of positioning. */
+    <div ref={wrapperRef}>
       <button
         ref={triggerRef}
         type="button"
@@ -140,8 +153,9 @@ export default function PageReportControl() {
           aria-label="Report an issue with this page"
           data-testid="hud-page-report-panel"
           /* Same anchor geometry as the notifications panel next door:
-             right-aligned, below the cluster, and viewport-bounded so it can
-             never run off the right edge of a 375px screen. */
+             right-aligned on the HUD CLUSTER (see the wrapper above), below
+             it, and viewport-bounded so it can run off neither edge of a
+             375px screen. */
           className="absolute right-0 top-full z-50 mt-1 flex w-[calc(100vw-1.5rem)] max-w-80
             flex-col gap-2 rounded-xl border border-border bg-card p-3 shadow-xl"
         >
