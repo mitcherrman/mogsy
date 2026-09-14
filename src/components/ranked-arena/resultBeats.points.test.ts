@@ -44,6 +44,28 @@ describe("the round plate's consequence line", () => {
       ...viewer, finalDamageDealt: 0,
     } as ResolvedCombatantView)).toBe("NO DAMAGE");
   });
+
+  /**
+   * POINT1 — THE SURVIVING DAMAGE HEADER.
+   *
+   * `feedback` alone was the guard, and it is projected per settlement: a
+   * points settlement that published no `module_points` fell through to the
+   * clauses above and shouted "12 DAMAGE" over a live Meta Reflex block. The
+   * mode's own answer makes them unreachable instead.
+   */
+  it("states NOTHING rather than damage on a points match with no award", () => {
+    expect(resultConsequence(viewer, null, true)).toBe("");
+    expect(resultConsequence({
+      ...viewer, finalDamageDealt: 0, finalDamageReceived: 3,
+    } as ResolvedCombatantView, null, true)).toBe("");
+    expect(resultConsequence({
+      ...viewer, finalDamageDealt: 2, finalDamageReceived: 3,
+    } as ResolvedCombatantView, null, true)).toBe("");
+  });
+
+  it("keeps the award when there IS one, points match or not", () => {
+    expect(resultConsequence(viewer, award(2, 1), true)).toBe("FIRST +1");
+  });
 });
 
 describe("the block plate's scoreline", () => {
@@ -68,5 +90,11 @@ describe("the block plate's scoreline", () => {
   it("is the unchanged DMG scoreline on an hp match", () => {
     expect(segmentScoreline(settlement, "you", "them"))
       .toBe("YOU 5/5 · OPP 3/5 · 7 DMG");
+  });
+
+  /** The same guard as the round plate's, for the same reason. */
+  it("drops the DMG clause on a points match with no award", () => {
+    expect(segmentScoreline(settlement, "you", "them", null, true))
+      .toBe("YOU 5/5 · OPP 3/5");
   });
 });

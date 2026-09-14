@@ -83,12 +83,21 @@ describe("a correct card", () => {
     expect(screen.getByTestId("mr-progress")).toHaveTextContent("1 / 5");
   });
 
-  it("says CORRECT and +1 POINT in the top notification", () => {
+  /**
+   * POINT1 corrective — the verdict is NOT stated here. It resolves in the
+   * arena's one result slot, the top header strip, from `ArenaViewModel
+   * .cardBeat`; see `components/ranked-arena/CardResultBeat`. A plate here as
+   * well would be a second textual result surface for the same card.
+   */
+  it("states no verdict of its own inside the viewport", () => {
     renderBlock(revealing(0));
-    const beat = screen.getByTestId("mr-card-beat");
-    expect(beat).toHaveAttribute("data-outcome", "correct");
-    expect(beat).toHaveTextContent("CORRECT");
-    expect(beat).toHaveTextContent("+1 POINT");
+    expect(screen.queryByTestId("mr-card-beat")).toBeNull();
+    expect(screen.queryByTestId("ranked-card-beat")).toBeNull();
+    expect(screen.queryByTestId("ranked-last-result")).toBeNull();
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("CORRECT");
+    expect(text).not.toContain("INCORRECT");
+    expect(text).not.toContain("POINT");
   });
 
   it("marks the correct rectangle green", () => {
@@ -98,10 +107,16 @@ describe("a correct card", () => {
       .toHaveAttribute("data-reveal", "correct");
   });
 
-  it("renders no below-card feedback strip", () => {
+  it("renders no feedback strip of any kind — beside or above the card", () => {
     renderBlock(revealing(0));
     expect(screen.queryByTestId("mr-card-result")).toBeNull();
     expect(screen.queryByTestId("mr-card-result-pick")).toBeNull();
+    expect(screen.queryByTestId("mr-card-beat")).toBeNull();
+  });
+
+  it("keeps \"Next card…\" as the viewport's own transition line", () => {
+    renderBlock(revealing(0));
+    expect(screen.getByTestId("mr-status")).toHaveTextContent("Next card…");
   });
 });
 
@@ -109,15 +124,14 @@ describe("an incorrect card", () => {
   const wrong = { outcome: "incorrect", selected_card_id: "c0:right",
     correct_card_id: "c0:left" };
 
-  it("says INCORRECT and +0 POINTS, and never mentions the opponent", () => {
+  it("states no verdict inside the viewport for a wrong card either", () => {
     renderBlock(revealing(0, wrong));
-    const beat = screen.getByTestId("mr-card-beat");
-    expect(beat).toHaveAttribute("data-outcome", "incorrect");
-    expect(beat).toHaveTextContent("INCORRECT");
-    expect(beat).toHaveTextContent("+0 POINTS");
-    // A Meta Reflex card is not zero-sum: both players can be right on the
-    // same card, so there is no award to transfer and nothing to say.
-    expect(beat.textContent ?? "").not.toContain("OPPONENT");
+    expect(screen.queryByTestId("mr-card-beat")).toBeNull();
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("INCORRECT");
+    expect(text).not.toContain("OPPONENT");
+    // The card BODY is still what it was: the answer is marked, in place.
+    expect(screen.getByTestId("mr-settled-card")).toBeInTheDocument();
   });
 
   it("still marks the ACTUAL correct rectangle green", () => {
@@ -137,6 +151,7 @@ describe("an incorrect card", () => {
   it("renders no below-card feedback strip", () => {
     renderBlock(revealing(0, wrong));
     expect(screen.queryByTestId("mr-card-result")).toBeNull();
+    expect(screen.queryByTestId("mr-card-beat")).toBeNull();
   });
 
   /** THE LEARNING RULE: the green side is the server's, not the player's. */
@@ -175,7 +190,6 @@ describe("the phase is the SERVER's", () => {
     renderBlock(answering(0));
     expect(screen.getByTestId("mr-block")).toHaveAttribute("data-phase", "answer");
     expect(screen.queryByTestId("mr-settled-card")).toBeNull();
-    expect(screen.queryByTestId("mr-card-beat")).toBeNull();
     expect(screen.getByTestId("mr-progress")).toHaveTextContent("2 / 5");
   });
 
@@ -187,11 +201,13 @@ describe("the phase is the SERVER's", () => {
   it("reconstructs the same reveal after a remount", () => {
     const { unmount } = renderBlock(revealing(2, { outcome: "incorrect",
       selected_card_id: "c2:right", correct_card_id: "c2:left" }));
-    const before = screen.getByTestId("mr-card-beat").textContent;
+    const before = screen.getByTestId("mr-settled-card").textContent;
+    const progress = screen.getByTestId("mr-progress").textContent;
     unmount();
     renderBlock(revealing(2, { outcome: "incorrect",
       selected_card_id: "c2:right", correct_card_id: "c2:left" }));
-    expect(screen.getByTestId("mr-card-beat").textContent).toBe(before);
+    expect(screen.getByTestId("mr-settled-card").textContent).toBe(before);
+    expect(screen.getByTestId("mr-progress").textContent).toBe(progress);
     expect(within(screen.getByTestId("mr-settled-card"))
       .getByTestId("mr-choice-left")).toHaveAttribute("data-reveal", "correct");
   });
@@ -199,8 +215,9 @@ describe("the phase is the SERVER's", () => {
   it("reveals every one of the five cards", () => {
     for (let i = 0; i < 5; i += 1) {
       const { unmount } = renderBlock(revealing(i));
-      expect(screen.getByTestId("mr-card-beat"))
-        .toHaveAttribute("data-challenge-index", String(i));
+      // Card five's hold is the `ownFinished` branch — it has no successor to
+      // wait on — but every card's ANSWER is shown on the card either way.
+      expect(screen.getByTestId("mr-settled-card")).toBeInTheDocument();
       expect(screen.getByTestId("mr-progress"))
         .toHaveTextContent(`${i + 1} / 5`);
       unmount();
@@ -214,12 +231,11 @@ describe("the module bonus belongs to the block, not to a card", () => {
    * properties of the WHOLE block and are stated by the module summary. A card
    * that happened to complete a perfect block must not claim them.
    */
-  it("never shows more than +1 POINT on a card, even the last one", () => {
+  it("states no award and no bonus on a card, even the last one", () => {
     renderBlock(revealing(4));
-    const beat = screen.getByTestId("mr-card-beat");
-    expect(beat).toHaveTextContent("+1 POINT");
-    for (const banned of ["+2", "PERFECT", "BONUS", "FIRST"]) {
-      expect(beat.textContent ?? "").not.toContain(banned);
+    const text = document.body.textContent ?? "";
+    for (const banned of ["+1", "+2", "POINT", "PERFECT", "BONUS", "FIRST"]) {
+      expect(text).not.toContain(banned);
     }
   });
 
@@ -231,10 +247,10 @@ describe("the module bonus belongs to the block, not to a card", () => {
     }));
     renderBlock(state);
     expect(screen.getByTestId("mr-waiting")).toBeInTheDocument();
-    // Card five is still on screen, revealed, with its result above it — the
-    // module summary is what replaces it, not a timer.
+    // Card five is still on screen, revealed — the module summary is what
+    // replaces it, not a timer. Its VERDICT is in the header's plate, which
+    // this viewport does not own; see `cardBeat.test.ts`.
     expect(screen.getByTestId("mr-settled-card")).toBeInTheDocument();
-    expect(screen.getByTestId("mr-card-beat"))
-      .toHaveAttribute("data-challenge-index", "4");
+    expect(screen.queryByTestId("mr-card-beat")).toBeNull();
   });
 });

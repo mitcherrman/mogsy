@@ -129,11 +129,24 @@ export function resultConsequence(
    * base figure in a quieter font.
    */
   feedback: PointsFeedbackView | null = null,
+  /**
+   * POINT1 — the match scores in POINTS.
+   *
+   * `feedback` was the only guard, and it is projected per settlement: a
+   * points settlement that published no `module_points` fell straight through
+   * to the damage clauses below and printed "2 DEALT · 3 TAKEN" on a match
+   * with no damage mechanic. That is the surviving legacy header Meta Reflex
+   * was seen rendering. The mode's own answer closes it — under a points match
+   * the clauses are unreachable, and the line is simply empty when there is no
+   * award to state, which the plate's fixed height already allows for.
+   */
+  pointsMatch = false,
 ): string {
   if (feedback !== null) {
     return feedback.speed
       ? `${feedback.speed.label} +${feedback.speed.points}` : "";
   }
+  if (pointsMatch) return "";
   const { finalDamageDealt: dealt, finalDamageReceived: taken,
     shieldAbsorbed: absorbed } = viewer;
   // One clause reads as a headline; two must stay labelled or the numbers are
@@ -267,12 +280,15 @@ export function RoundResultBeat({
   settlement,
   viewerSlot,
   feedback = null,
+  pointsMatch = false,
   className = "",
 }: {
   settlement: ResolvedRoundView;
   viewerSlot: PlayerSlot;
   /** RP1 — the viewer's award for this module, and why; null = an hp match. */
   feedback?: PointsFeedbackView | null;
+  /** POINT1 — a points match never renders a damage consequence. */
+  pointsMatch?: boolean;
   className?: string;
 }) {
   const opponentSlot: PlayerSlot = viewerSlot === "p1" ? "p2" : "p1";
@@ -282,7 +298,7 @@ export function RoundResultBeat({
   // any other result surface can never disagree about what a round was called.
   const { verdict } = resultHeadline(viewer, opponent);
   const kind = resultKind(viewer, opponent);
-  const consequence = resultConsequence(viewer, feedback);
+  const consequence = resultConsequence(viewer, feedback, pointsMatch);
   /**
    * THE LOUD LINE. In a points match it is the verdict AND what that verdict
    * earned — "CORRECT +2" — because those two facts are one sentence and

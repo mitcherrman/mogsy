@@ -379,6 +379,7 @@ export function dailyArenaView(input: DailyArenaInput): ArenaViewModel {
     // row and on its own answer tablets, which is where it belongs.
     roundBeat: null,
     segmentBeat: null,
+    cardBeat: null,
     left,
     right: { kind: "panel", node: input.targetPanel },
     surface: {

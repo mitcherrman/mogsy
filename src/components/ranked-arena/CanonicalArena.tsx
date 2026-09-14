@@ -29,6 +29,7 @@ import { CombatantPanel } from "./CombatantPanel";
 import { LevelUpPanel } from "./LevelUpPanel";
 import { MatchOverFrame } from "./MatchOverFrame";
 import { RevealPanel } from "./RevealPanel";
+import { CardResultBeat } from "./CardResultBeat";
 import { RoundResultBeat } from "./RoundResultBeat";
 import { RoundTimeline } from "./RoundTimeline";
 import { SegmentResultBeat } from "./SegmentResultBeat";
@@ -253,23 +254,43 @@ export function CanonicalArena({
             take (the duelist ledgers carry the history at every width). The
             plate is a fixed 2.5rem and never wraps, so it cannot grow the
             strip past its reserved min-height or crowd the timer. */}
-        {segmentSettlement ? (
+        {/* POINT1 — a settled block outranks a CARD only when it is that
+            card's own block. `lastSegmentSettlement` survives into later
+            rounds as the previous-block summary, and without this test it
+            outranked every card of the block now in play, so the per-card
+            beat never reached the slot at all. */}
+        {segmentSettlement && (view.cardBeat === null
+          || segmentSettlement.roundNumber === view.cardBeat.roundNumber) ? (
           // A settled block wins the slot: it describes the same round the
           // arena settlement does, and two plates would be two answers to one
           // question. It also says strictly more — a round beat cannot report
-          // a 5-card scoreline.
+          // a 5-card scoreline. It also outranks a CARD of that block, because
+          // it exists only once every card of it has resolved.
           <SegmentResultBeat key={`segment-${segmentSettlement.roundNumber ?? "?"}`}
             settlement={segmentSettlement.settlement}
             viewerUserId={segmentSettlement.viewerUserId}
             opponentUserId={segmentSettlement.opponentUserId}
             roundNumber={segmentSettlement.roundNumber}
             feedback={segmentSettlement.feedback ?? null}
+            pointsMatch={segmentSettlement.pointsMatch === true}
             detailsOpen={detailsOpen} onToggleDetails={setDetailsOpen}
             className="hidden md:flex" />
+        ) : view.cardBeat ? (
+          // POINT1 — ONE card of a block still in flight. It outranks the
+          // previous ROUND's plate, which is the stale thing on screen for the
+          // whole of a live block, and it is the module's only textual result
+          // surface: nothing is drawn inside the viewport for the same card.
+          //
+          // `key` on the challenge index makes this a beat rather than a
+          // static summary, the same way the round number does above — a card
+          // settles exactly once, so its index is a stable event id.
+          <CardResultBeat key={`card-${view.cardBeat.challengeIndex}`}
+            beat={view.cardBeat} className="hidden md:flex" />
         ) : view.roundBeat ? (
           <RoundResultBeat key={view.roundBeat.settlement.roundNumber}
             settlement={view.roundBeat.settlement} viewerSlot={view.roundBeat.viewerSlot}
             feedback={view.roundBeat.feedback ?? null}
+            pointsMatch={view.roundBeat.pointsMatch === true}
             className="hidden md:flex" />
         ) : null}
         {/* RA10: the timer block sits behind a brass hairline, scoreboard-style,

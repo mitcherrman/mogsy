@@ -110,7 +110,28 @@ export function projectRevealFeedback(
   revealing: boolean,
   segment?: { settlement: SegmentSettlementView; roundNumber: number | null } | null,
 ): Record<string, PointsFeedbackView> {
-  if (!settlement || !revealing || !settlement.modulePoints) return {};
+  if (!revealing) return {};
+  return projectSettlementFeedback(settlement, segment);
+}
+
+/**
+ * POINT1 — the same projection with NO reveal gate, for the header plate.
+ *
+ * The gate above exists for the RAILS: a duelist column animates its award on
+ * the beat and must not carry a stale one into the next module. The header's
+ * plate is the opposite thing. It deliberately stays after its beat as the
+ * previous-module summary, so gating its feedback on the beat meant that after
+ * ~1.5s the award vanished and the plate fell back to the damage clauses —
+ * "2 DEALT · 3 TAKEN" on a match with no damage mechanic, sitting above a live
+ * Meta Reflex block for the whole of it. Same numbers, same rows, one
+ * projection; only the gate differs, and only the surface that must not decay
+ * uses this one.
+ */
+export function projectSettlementFeedback(
+  settlement: ResolvedRoundView | null,
+  segment?: { settlement: SegmentSettlementView; roundNumber: number | null } | null,
+): Record<string, PointsFeedbackView> {
+  if (!settlement || !settlement.modulePoints) return {};
   const reveal = segment && segment.roundNumber === settlement.roundNumber
     ? segment.settlement.reveal : null;
   const out: Record<string, PointsFeedbackView> = {};

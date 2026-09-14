@@ -854,10 +854,20 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
         } catch (e) {
           // A stale phase/index means the server already moved on — re-poll
           // rather than surfacing a transient race as an error.
+          //
+          // POINT1 — `RANKED_CARD_NOT_OPEN` is the SAME class of race and was
+          // the one member of it missing from this list, which is why it alone
+          // painted a red line under a live Meta Reflex block. The per-card
+          // reveal window leaves card N+1 as the active index while card N's
+          // answer is still being shown, so a click landing in the gap between
+          // the client seeing the next card and the server's frozen schedule
+          // opening it is refused with a 409 — a normal-flow timing outcome
+          // the next poll resolves on its own, not a failure to report.
           const stale = e instanceof RankedApiError && (
             e.code === "RANKED_STALE_ROUND" ||
             e.code === "RANKED_WRONG_SEGMENT_PHASE" ||
             e.code === "RANKED_WRONG_CHALLENGE_INDEX" ||
+            e.code === "RANKED_CARD_NOT_OPEN" ||
             e.code === "RANKED_SEGMENT_COMPLETE");
           if (!stale) {
             setActionError(e instanceof Error ? e.message : "action failed");

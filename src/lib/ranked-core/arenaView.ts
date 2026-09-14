@@ -22,6 +22,11 @@ import type {
   PublicRoundView, SegmentSettlementView, SegmentStateView,
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleSegmentActions } from "./modules/types";
+import type { ArenaCardBeat } from "./cardBeat";
+// Re-exported so a component that renders one part of this view model has a
+// single import home for its types, the way `ResultKind` is re-exported from
+// `RoundResultBeat`.
+export type { ArenaCardBeat };
 import type { PointsFeedbackView } from "./pointsFeedback";
 import type {
   AbilityView, CombatantView, InteractionPermissions, LevelUpOptionView,
@@ -121,6 +126,8 @@ export interface ArenaSegmentBeat {
    * multi-challenge block prints instead ("YOU 5/5 · OPP 3/5 · …").
    */
   feedback?: PointsFeedbackView | null;
+  /** POINT1 — see `roundBeat.pointsMatch`; the same guard, the same reason. */
+  pointsMatch?: boolean;
   /** The round the block settled on, for the beat's remount key. */
   roundNumber: number | null;
   viewerUserId: string;
@@ -225,8 +232,21 @@ export interface ArenaStatusLine {
 export interface ArenaViewModel {
   header: ArenaHeaderView;
   /**
-   * The header's result plate. A settled block WINS the slot when both are
-   * present: it describes the same round and says strictly more.
+   * THE HEADER'S ONE RESULT PLATE, in precedence order. Exactly one of these
+   * is ever drawn, because the strip has ONE result slot and two plates would
+   * be two answers to one question:
+   *
+   *   1. `segmentBeat` — a settled multi-challenge block. It describes the
+   *      same round as `roundBeat` and says strictly more (a 5-card
+   *      scoreline), and it exists only once every card of its block has
+   *      resolved, so it also supersedes that block's last card.
+   *   2. `cardBeat`    — one card of a block that is still running. The block
+   *      it belongs to has no settlement yet, by construction.
+   *   3. `roundBeat`   — an ordinary settled round.
+   *
+   * POINT1 — `cardBeat` is why a module must not draw a result plate of its
+   * own inside its viewport. A per-card CORRECT/INCORRECT strip down there
+   * plus this plate up here is two textual result surfaces for one card.
    */
   roundBeat: {
     settlement: ResolvedRoundView;
@@ -237,8 +257,25 @@ export interface ArenaViewModel {
      * place a settled Ranked round still shouted a damage number.
      */
     feedback?: PointsFeedbackView | null;
+    /**
+     * POINT1 — this match scores in POINTS, so the plate's damage clauses are
+     * not merely unused here, they are wrong.
+     *
+     * `feedback` alone was not enough to keep them off screen. It is projected
+     * per settlement, and a settlement that published no `module_points` — an
+     * older row, a module the engine banked nothing for — left the plate to
+     * fall through to "2 DEALT · 3 TAKEN" on a match that has no damage
+     * mechanic. This is the mode's own answer, so the fallback is unreachable
+     * rather than merely unlikely.
+     */
+    pointsMatch?: boolean;
   } | null;
   segmentBeat: ArenaSegmentBeat | null;
+  /**
+   * POINT1 — the per-card result for a multi-challenge block in flight, or
+   * null. Points-native by construction: see `CardResultBeat`.
+   */
+  cardBeat: ArenaCardBeat | null;
   left: ArenaRail;
   right: ArenaRail;
   surface: ArenaSurfaceView;

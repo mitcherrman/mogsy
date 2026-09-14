@@ -41,8 +41,9 @@ import {
   projectMascotReactions, projectRevealDamage, projectRevealOutcomes,
   projectRoundHistory, projectSurfaceReveal,
 } from "@/lib/ranked-core/settlementViews";
+import { projectCardBeat } from "@/lib/ranked-core/cardBeat";
 import {
-  projectPointsMascotReactions, projectRevealFeedback,
+  projectPointsMascotReactions, projectRevealFeedback, projectSettlementFeedback,
 } from "@/lib/ranked-core/pointsFeedback";
 import { RankedScoreline } from "./RankedScoreline";
 import { useRankedMatchHistory } from "./useRankedMatchHistory";
@@ -307,6 +308,19 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
         ? { settlement: m.lastSegmentSettlement, roundNumber: m.lastSegmentRoundNumber }
         : null),
     [m.lastResolved, m.revealHold, m.lastSegmentSettlement, m.lastSegmentRoundNumber]);
+  /**
+   * POINT1 — the SAME awards, ungated, for the header's result plate.
+   *
+   * The plate stays after its beat as the previous-module summary; the rails
+   * do not. Gating it on `revealHold` therefore let it decay into the legacy
+   * damage line ~1.5s after every settlement. Nothing else differs.
+   */
+  const headerFeedback = useMemo(
+    () => projectSettlementFeedback(m.lastResolved,
+      m.lastSegmentSettlement
+        ? { settlement: m.lastSegmentSettlement, roundNumber: m.lastSegmentRoundNumber }
+        : null),
+    [m.lastResolved, m.lastSegmentSettlement, m.lastSegmentRoundNumber]);
   // AI1 Phase 2 — the two duelist mascots' reactions to the settled round.
   // Same settlement, same reveal gate as the verdicts above: the attacker's
   // mascot lunges and the damaged mascot recoils on the beat the round
@@ -712,16 +726,27 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       // The viewer's own award, by id, from the SAME settlement the plate is
       // describing. Null on an hp match, which leaves the plate's damage
       // consequence line exactly as it has always been.
-      feedback: revealFeedback[viewerUserId] ?? null,
+      feedback: headerFeedback[viewerUserId] ?? null,
+      // POINT1 — the mode's own answer, so the plate's damage clauses are
+      // unreachable on a points match rather than merely unlikely.
+      pointsMatch,
     } : null,
     segmentBeat: m.lastSegmentSettlement ? {
       settlement: m.lastSegmentSettlement,
       roundNumber: m.lastSegmentRoundNumber,
       feedback: m.lastResolved?.roundNumber === m.lastSegmentRoundNumber
-        ? revealFeedback[viewerUserId] ?? null : null,
+        ? headerFeedback[viewerUserId] ?? null : null,
+      pointsMatch,
       viewerUserId,
       opponentUserId: m.opponentUserId,
     } : null,
+    /**
+     * POINT1 — the per-card result of a block in flight, in the arena's ONE
+     * result slot. Read off the live segment state, so it is the same card the
+     * viewport is holding, and it is why the module draws no plate of its own.
+     */
+    cardBeat: projectCardBeat(surfaceRound?.segmentState ?? null,
+      surfaceRound?.activeRound?.roundNumber ?? null),
     left: rail("player"),
     right: rail("opponent"),
     surface: {

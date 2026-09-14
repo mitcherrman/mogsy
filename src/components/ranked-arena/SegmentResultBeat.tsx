@@ -90,6 +90,15 @@ export function segmentScoreline(
    * is the two-line base/bonus split instead — see the component below.
    */
   feedback: PointsFeedbackView | null = null,
+  /**
+   * POINT1 — the match scores in POINTS, so the DMG clause below is wrong
+   * here for the same reason the round plate's damage clauses are: it is the
+   * award travelling through the engine's damage channel, labelled as a
+   * mechanic this match does not have. Same guard, same reason — a points
+   * settlement that published no `module_points` must print no damage figure
+   * rather than fall back to one.
+   */
+  pointsMatch = false,
 ): string {
   const { reveal } = settlement;
   const total = reveal.challengeCount;
@@ -105,7 +114,7 @@ export function segmentScoreline(
     return parts.join(" · ");
   }
   const damage = settlement.damageByPlayerId[viewerUserId] ?? 0;
-  if (damage > 0) parts.push(`${damage} DMG`);
+  if (!pointsMatch && damage > 0) parts.push(`${damage} DMG`);
   return parts.join(" · ");
 }
 
@@ -151,6 +160,7 @@ export function SegmentResultBeat({
   opponentUserId,
   roundNumber,
   feedback = null,
+  pointsMatch = false,
   detailsOpen,
   onToggleDetails,
   className = "",
@@ -160,6 +170,8 @@ export function SegmentResultBeat({
   opponentUserId: string | null;
   /** RP1 — the viewer's award for the block, and why; null = an hp match. */
   feedback?: PointsFeedbackView | null;
+  /** POINT1 — a points match never renders a damage figure. */
+  pointsMatch?: boolean;
   /** The round the block settled on; null before one is known. */
   roundNumber: number | null;
   /**
@@ -182,7 +194,7 @@ export function SegmentResultBeat({
   const kind = result ? KIND_FOR_RESULT[result] : "both-correct";
   const word = result ? RESULT_WORD[result] : "Resolved";
   const scoreline = segmentScoreline(settlement, viewerUserId, opponentUserId,
-    feedback);
+    feedback, pointsMatch);
   return (
     <BeatPlate
       kind={kind}

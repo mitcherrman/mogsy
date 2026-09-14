@@ -25,7 +25,6 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
-import { BeatPlate } from "@/components/ranked-arena/RoundResultBeat";
 import { MetaReflexSting, useEntrySting } from "@/components/ranked-arena/MetaReflexSting";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import { remainingMs, remainingSeconds } from "@/lib/ranked-core/timerMath";
@@ -226,51 +225,23 @@ function ChoiceCard({ card, side, selected, disabled, onPick, reveal = null }: {
   );
 }
 
-/**
- * THE PER-CARD RESULT NOTIFICATION (POINT1).
- *
- * The same plate the arena states a settled ROUND with — `BeatPlate`, imported
- * rather than re-drawn, so a card result and a round result cannot drift into
- * two visual languages. It sits at the top of the module's own viewport rather
- * than in the arena header, because the header has ONE result slot and the
- * module-level `SegmentResultBeat` owns it: a block that replaced its own
- * summary with a card's would lose the scoreline the block exists to produce.
- *
- * "+1 POINT" / "+0 POINTS" IS A PROJECTION, NOT A SECOND SCORER. Meta Reflex
- * pays exactly one point per correct card — `item_cost_duel.block_damage` is
- * `damage = correct_count`, plus module-level bonuses — and the backend
- * publishes no per-card award to read, so the only honest thing a card can
- * state is that rule applied to the server's own verdict. Nothing here adds,
- * compares or accumulates: the module summary remains the authority on the
- * block's total, and the perfect/first bonus is stated ONLY there, because it
- * is a property of the block and belongs to no single card.
- *
- * There is deliberately no opponent clause. A Meta Reflex card is not zero-sum
- * — both players can be correct on the same card — so "OPPONENT +1 POINT"
- * would be inventing a transfer the rules do not contain.
- */
-function CardResultBeat({ reveal, cardNumber }: {
-  reveal: SettledCardReveal;
-  cardNumber: number;
-}) {
-  const correct = reveal.outcome === "correct";
-  return (
-    <BeatPlate
-      kind={correct ? "correct" : "incorrect"}
-      mode="round"
-      ariaLabel={`Card ${cardNumber} result: ${
-        correct ? "correct, plus one point" : "incorrect, no points"}`}
-      marker={`C${cardNumber}`}
-      dataAttributes={{
-        "data-testid": "mr-card-beat",
-        "data-outcome": reveal.outcome,
-        "data-challenge-index": String(reveal.challengeIndex),
-      }}
-      primary={correct ? "CORRECT" : "INCORRECT"}
-      secondary={correct ? "+1 POINT" : "+0 POINTS"}
-    />
-  );
-}
+// ---------------------------------------------------------------------------
+// NO RESULT PLATE IS DRAWN HERE (POINT1 corrective).
+//
+// A card's CORRECT / INCORRECT verdict and its +1 / +0 belong to the arena's
+// ONE result slot — the top header strip — and are rendered there by
+// `components/ranked-arena/CardResultBeat` from `ArenaViewModel.cardBeat`.
+//
+// The first POINT1 pass put a `BeatPlate` at the top of this viewport instead,
+// reasoning that the header slot was owned by the module-level
+// `SegmentResultBeat`. It is — but only once the block has SETTLED, which by
+// construction cannot happen while one of its cards is being revealed. The
+// result was two textual result surfaces on screen for the same card, with the
+// header one showing the stale previous ROUND through the legacy damage branch.
+//
+// What this viewport still owns is the card BODY: the settled card held in
+// place, the server's correct side marked green, and "Next card...".
+// ---------------------------------------------------------------------------
 
 function BlockPhase({ state, cards, actions, skewMs }: {
   state: SegmentStateView;
@@ -303,11 +274,9 @@ function BlockPhase({ state, cards, actions, skewMs }: {
             Card five has no successor waiting on a clock, so it is held until
             the module summary replaces it — the block's own result is what
             ends this, not a timer. */}
-        {lastSettled && finalCard && (<>
-          <CardResultBeat key={lastSettled.challengeIndex} reveal={lastSettled}
-            cardNumber={lastSettled.challengeIndex + 1} />
+        {lastSettled && finalCard && (
           <SettledCard card={finalCard} reveal={lastSettled} />
-        </>)}
+        )}
         <p className="text-sm text-muted-foreground" role="status">
           {state.opponentFinished
             ? "Both players are done — scoring the block…"
@@ -357,8 +326,6 @@ function BlockPhase({ state, cards, actions, skewMs }: {
         <MetaReflexHeader
           progress={`${revealing.challengeIndex + 1} / ${state.challengeCount}`}
         />
-        <CardResultBeat key={revealing.challengeIndex} reveal={revealing}
-          cardNumber={revealing.challengeIndex + 1} />
         <p className="text-center text-base font-semibold sm:text-lg lg:text-xl"
            data-testid="mr-prompt">
           {revealedCard.prompt}
