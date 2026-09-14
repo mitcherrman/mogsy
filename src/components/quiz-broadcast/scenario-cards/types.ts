@@ -109,6 +109,33 @@ export type SummonerSpellSubject = {
 /** Back-compatible alias for the SSM-era name. */
 export type SummonerSpellHasteSubject = SummonerSpellSubject;
 
+/**
+ * Parsed payload for an ENVIRONMENT subject — a Summoner's Rift entity that is
+ * neither a champion, an item, a rune nor a spell: today the four lane-minion
+ * classes, and any `objective` the backend resolves a portrait for.
+ *
+ * ONE SHAPE, BECAUSE IT IS ONE QUESTION SHAPE
+ * "This round is about this piece of the map." Exactly the argument the
+ * summoner-spell reader already makes for its two backend types: the card is
+ * chosen by what the premise IS, not by which generator family wrote it.
+ *
+ * Carries identity and NOTHING measured. Every one of these families asks for
+ * a number the picture must not state — a melee minion's starting health, how
+ * many minions a cannon wave holds — so there is deliberately no field a value
+ * could arrive in. The single-unit portrait rule from MAA1 Phase 4 survives
+ * intact: `kindLabel` names the CLASS, and nothing here may assemble a wave.
+ */
+export type EnvironmentSubject = {
+  /** Backend subject id, e.g. "caster" / "siege". Identity only. */
+  id?: string;
+  /** Display name, e.g. "Caster Minion". */
+  name: string;
+  /** The subject's own portrait, resolved through the shared asset resolver. */
+  icon?: string | null;
+  /** Which environment family this is — drives the caption's kind line only. */
+  kind: "minion" | "objective";
+};
+
 /** Parsed payload for combat cooldown calculation questions. */
 export type CombatCooldownSubject = {
   champion: string;
@@ -181,6 +208,7 @@ export type ScenarioSelection =
   | { card: "combat_calculation"; key: string; combat: CombatCooldownSubject }
   | { card: "matchup"; key: string; matchup: MatchupSubject }
   | { card: "summoner_spell"; key: string; spell: SummonerSpellSubject }
+  | { card: "environment"; key: string; environment: EnvironmentSubject }
   | { card: "item_analysis"; key: string; item: ItemAnalysisSubject }
   | { card: "champion_profile"; key: string; champion: string }
   | { card: "collectible"; key: string; iconUrl: string; label?: string; kind: SubjectKind }

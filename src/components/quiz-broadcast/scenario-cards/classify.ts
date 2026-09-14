@@ -18,6 +18,7 @@ import { getQuestionMediaEntities } from "./questionMediaEntities";
 import type {
   ClassifiedSubject,
   CombatCooldownSubject,
+  EnvironmentSubject,
   ItemAnalysisSubject,
   MatchupSubject,
   SummonerSpellSubject,
@@ -442,6 +443,56 @@ export function getSummonerSpellSubject(
   };
 }
 
+/**
+ * Parse an ENVIRONMENT subject, or null.
+ *
+ * WHY THIS READER EXISTS
+ * `classifySubject` already resolves these rows — it returns `kind: "minion"`
+ * or `kind: "objective"` with the portrait the backend sent. What it could not
+ * do is get them a CARD: both fell through to `collectible`, which draws one
+ * small framed tile and nothing else. That is a complete card for "which rune
+ * is this?" and it is the same empty-box problem RIV2 fixed for the item and
+ * the summoner-spell pass fixed for the spell — a 128x128 portrait alone in a
+ * ~700x310 panel.
+ *
+ * So this is a SELECTION reader, not a new classification. It reads the same
+ * `assets.subject` the classifier reads and narrows it to the environment
+ * types, so the selector can hand those rows the shared subject-media
+ * composition instead.
+ *
+ * THE ICON IS REQUIRED, deliberately. The whole composition — the focal
+ * subject, the oversized echo, the medallion the echo is lit against — is
+ * driven by the subject's own art. With no portrait there is no picture to
+ * build and the honest answer is the compact band, which is exactly where a
+ * media-free environment row already goes today. A card assembled around a "?"
+ * tile would be the giant empty rectangle wearing a gold frame.
+ *
+ * Matched by an EXPLICIT type set for the same reason the summoner-spell
+ * reader uses one: a future backend type must not acquire this card by being
+ * named plausibly.
+ */
+const ENVIRONMENT_SUBJECT_TYPES = new Set(["minion", "objective"]);
+
+export function getEnvironmentSubject(question: QuizQuestion): EnvironmentSubject | null {
+  const meta = (question.metadata ?? {}) as Record<string, unknown>;
+  const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
+    | Record<string, unknown>
+    | undefined;
+  if (!subject || typeof subject.type !== "string") return null;
+  if (!ENVIRONMENT_SUBJECT_TYPES.has(subject.type)) return null;
+
+  const name = subject.name as string | undefined;
+  const icon = resolveQuizAssetUrl(subject.icon as string | undefined);
+  if (!name || !icon) return null;
+
+  return {
+    id: typeof subject.id === "string" ? subject.id : undefined,
+    name,
+    icon,
+    kind: subject.type === "minion" ? "minion" : "objective",
+  };
+}
+
 export function getItemAnalysisSubject(question: QuizQuestion): ItemAnalysisSubject | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
   const subject = (meta.assets as Record<string, unknown> | undefined)?.subject as
@@ -533,6 +584,7 @@ export function selectScenario(
   const matchup = getMatchupSubject(question);
   const spell = getSummonerSpellSubject(question);
   const item = getItemAnalysisSubject(question);
+  const environment = getEnvironmentSubject(question);
   const explicit = getExplicitScenarioType(question);
 
   // Tier 1: explicit scenario_type (falls through when the payload is missing)
@@ -563,6 +615,12 @@ export function selectScenario(
   }
   if (item && !shouldHide) {
     return { card: "item_analysis", key: `item-${question.id}`, item };
+  }
+  // Environment sits at the END of tier 2, after every reader that owns a
+  // richer premise. It can only be reached by a payload none of them claimed,
+  // so adding it cannot divert an item, a spell or a combat row.
+  if (environment && !shouldHide) {
+    return { card: "environment", key: `env-${question.id}`, environment };
   }
 
   // Tier 3: legacy SubjectPanel order, unchanged

@@ -1,0 +1,368 @@
+/**
+ * ENV1 — the environment subject joins the shared subject-media composition.
+ *
+ * WHAT THIS FILE HOLDS
+ * The claim of this pass is not "the minion card looks nicer". It is that the
+ * environment family is drawn by the SAME SYSTEM as the item and the summoner
+ * spell, rather than by a third composition that happens to resemble them. So
+ * the assertions are mostly structural identity claims — this card calls the
+ * shared parts, the echo is the subject's own art, the subject appears exactly
+ * once — plus the two regression clauses the owner named: the item-primary
+ * path and the summoner-spell path must be untouched.
+ *
+ * Payloads come from `scripts/quiz-screenshots/visual-qa-fixture.json`, the
+ * same verbatim backend output the contract file reads, so a presentation
+ * change fails here rather than silently degrading the card.
+ *
+ * NOT asserted: computed pixel sizes. jsdom has no layout engine, so the
+ * `cqmin` / `--sc-fit` behaviour is held by the class contract below and
+ * proved by the browser evidence in the ENV1 report.
+ */
+import { render } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+import type { QuizQuestion } from "@/lib/quiz/api";
+import { selectScenario } from "./classify";
+import { ScenarioCard } from "./ScenarioCard";
+import { resolveBandProfile } from "@/lib/question-surface/bandProfile";
+import {
+  ATMOSPHERE_DIM_SCENE,
+  ATMOSPHERE_TALL_CUTOUT,
+  ATMOSPHERE_WIDE_SCENE,
+} from "./SubjectMediaComposition";
+
+type FixtureRow = {
+  id: string;
+  question_key: string;
+  category: string;
+  question_text: string;
+  choices: string[];
+  presentation?: Record<string, unknown>;
+};
+
+const FIXTURES = (
+  JSON.parse(
+    readFileSync(resolve("scripts/quiz-screenshots/visual-qa-fixture.json"), "utf8"),
+  ) as { questions: FixtureRow[] }
+).questions;
+
+function source(id: string): QuizQuestion {
+  const row = FIXTURES.find((q) => q.id === id);
+  if (!row) throw new Error(`fixture ${id} missing`);
+  return {
+    id: row.id,
+    category: row.category,
+    question_text: row.question_text,
+    format: "multiple_choice",
+    choices: row.choices,
+    metadata: row.presentation as QuizQuestion["metadata"],
+  };
+}
+
+function renderCard(q: QuizQuestion, revealed = false, answer: string | null = null) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <ScenarioCard question={q} revealActive={revealed} correctAnswer={answer} />
+    </QueryClientProvider>,
+  );
+}
+
+/** The caster minion — the owner's first reported case. */
+const CASTER = "vq-20";
+/** The structure row — the owner's second reported case. */
+const TURRETS = "vq-24";
+
+// ───────────────────────────────────── the card is the SHARED composition
+
+describe("ENV1 — environment subjects use the shared subject-media system", () => {
+  it.each(["vq-19", "vq-20", "vq-21", "vq-22"])(
+    "%s reaches the environment card, not the single-tile collectible",
+    (id) => {
+      const selection = selectScenario(source(id), false, null);
+      expect(selection.card).toBe("environment");
+      // The regression this pass exists to remove. `collectible` draws ONE
+      // small framed tile in an otherwise empty panel — the pre-RIV2 item card.
+      expect(selection.card).not.toBe("collectible");
+    },
+  );
+
+  it("keeps the cinematic band it needs to draw a hero subject in", () => {
+    expect(resolveBandProfile(source(CASTER), "band", null)).toBe("cinematic");
+  });
+
+  it("draws the focal subject through the shared composition, not a tile", () => {
+    const { container } = renderCard(source(CASTER));
+    // `data-subject-hero-icon` is set by SubjectMediaComposition's FocalIcon and
+    // by nothing else, so its presence IS the proof this card is composed by
+    // the shared system rather than by a look-alike of it.
+    const hero = container.querySelector("[data-subject-hero-icon]");
+    expect(hero).not.toBeNull();
+    expect(hero?.getAttribute("src")).toContain("assets/minions/caster.png");
+  });
+
+  it("brings the whole composition, not just the big icon", () => {
+    const { container } = renderCard(source(CASTER));
+    // Both halves of the composition declare the sizing tokens; they are
+    // SIBLINGS (backdrop + focal zone), which is why there are two.
+    expect(container.querySelectorAll("[data-subject-media]").length).toBe(2);
+  });
+
+  it("derives the echo from the SAME art as the focal subject", () => {
+    const { container } = renderCard(source(CASTER));
+    const imgs = [...container.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? "");
+    const portrait = imgs.filter((src) => src.includes("assets/minions/caster.png"));
+    // Exactly two: the focal icon and its oversized echo. The RIV2/RIV4
+    // principle — the atmosphere is the only layer NOT driven by the subject.
+    expect(portrait).toHaveLength(2);
+  });
+
+  it("never duplicates the foreground subject", () => {
+    const { container } = renderCard(source(CASTER));
+    expect(container.querySelectorAll("[data-subject-hero-icon]")).toHaveLength(1);
+  });
+
+  it("seats the atmosphere art in the panel, under the readability gradient", () => {
+    const { container } = renderCard(source(CASTER));
+    const imgs = [...container.querySelectorAll("img")].map((i) => i.getAttribute("src") ?? "");
+    expect(imgs.some((src) => src.includes("academy-hall"))).toBe(true);
+  });
+
+  it("takes the item card's centred focal geometry, not the spell's beside one", () => {
+    // `beside` exists for the SSM slice's source-row column. This caption is a
+    // title and a kind line — a footer — so the zone must stay centred, which
+    // is what makes this card and the item card the same picture.
+    const { container } = renderCard(source(CASTER));
+    expect(container.querySelector('[data-subject-focal="beside"]')).toBeNull();
+  });
+});
+
+// ───────────────────────────────────── what the card is allowed to say
+
+describe("ENV1 — the caption states identity and nothing measured", () => {
+  it("names the class and the family", () => {
+    const text = renderCard(source(CASTER)).container.textContent ?? "";
+    expect(text).toContain("Caster Minion");
+    expect(text.toUpperCase()).toContain("MINION");
+  });
+
+  it("does not print the kind line twice for a self-naming subject", () => {
+    // "Caster Minion" already ends in the kind; only the badge states it.
+    const text = renderCard(source(CASTER)).container.textContent ?? "";
+    expect(text.toUpperCase().match(/MINION/g) ?? []).toHaveLength(2); // badge + name
+  });
+
+  it.each([
+    ["vq-19", "430"],
+    ["vq-20", "19.5"],
+    ["vq-21", "7"],
+    ["vq-22", "8"],
+  ])("%s never prints its answer, before or at the reveal", (id, answer) => {
+    for (const reveal of [false, true]) {
+      const { container, unmount } = renderCard(source(id), reveal, answer);
+      expect(container.textContent ?? "").not.toContain(answer);
+      unmount();
+    }
+  });
+
+  it("keeps the single-unit portrait, so a wave can never be counted from it", () => {
+    // vq-21 asks how many minions a cannon wave holds. One portrait, one image
+    // of it, one echo — the MAA1 Phase 4 rule, re-held at the new card.
+    const { container } = renderCard(source("vq-21"));
+    const portraits = [...container.querySelectorAll("img")].filter((i) =>
+      (i.getAttribute("src") ?? "").includes("assets/minions/"),
+    );
+    expect(portraits).toHaveLength(2);
+  });
+});
+
+// ───────────────────────────────────── the fallback is still honest
+
+describe("ENV1 — an environment row with no art does not get a hero panel", () => {
+  it("a structure row stays compact rather than reserving an empty hero", () => {
+    // vq-24 ("How many turrets does each team have?") carries no subject: the
+    // backend resolves no structure art, and none exists in either repo. The
+    // composition is DRIVEN by the subject's own portrait, so with no portrait
+    // there is no picture to build — a card assembled around a "?" tile would
+    // be the giant empty rectangle wearing a gold frame.
+    expect(source(TURRETS).metadata).toBeUndefined();
+    expect(selectScenario(source(TURRETS), false, null).card).toBe("empty");
+    expect(resolveBandProfile(source(TURRETS), "band", null)).toBe("compact");
+  });
+
+  it("a subject with a name but no icon is refused the card", () => {
+    // Belt and braces on the reader's icon requirement: the card must never be
+    // reachable in a state where its every layer has no input.
+    const iconless: QuizQuestion = {
+      ...source(CASTER),
+      id: "env-no-icon",
+      metadata: {
+        assets: { subject: { type: "minion", id: "caster", name: "Caster Minion" } },
+        presentation: { role: "context", timing: "question", spoiler: false },
+      } as QuizQuestion["metadata"],
+    };
+    expect(selectScenario(iconless, false, null).card).toBe("empty");
+    expect(resolveBandProfile(iconless, "band", null)).toBe("compact");
+  });
+
+  it("already accepts an OBJECTIVE payload, so the art workstream needs no frontend change", () => {
+    // The forward half of the contract. No structure or objective art exists
+    // today — assets/structures/*, assets/objectives/* and assets/monsters/*
+    // all 404 on the live backend, and neither repo holds turret, dragon,
+    // Baron, inhibitor or Nexus art — so `objective` is currently unreachable
+    // in production. It is in the reader's type set anyway: the moment the
+    // backend emits one, it takes this card with no edit here.
+    const turret: QuizQuestion = {
+      id: "env-objective",
+      category: "Objectives",
+      question_text: "How far from a turret does it stop protecting a champion?",
+      format: "multiple_choice",
+      choices: ["775", "875", "925", "1000"],
+      metadata: {
+        assets: {
+          subject: {
+            type: "objective",
+            id: "turret_outer",
+            name: "Outer Turret",
+            icon: "assets/structures/turret_outer.png",
+          },
+        },
+        presentation: { role: "context", timing: "question", spoiler: false },
+      } as QuizQuestion["metadata"],
+    };
+    const selection = selectScenario(turret, false, null);
+    expect(selection.card).toBe("environment");
+    if (selection.card !== "environment") return;
+    expect(selection.environment.kind).toBe("objective");
+    expect(resolveBandProfile(turret, "band", null)).toBe("cinematic");
+
+    const { container } = renderCard(turret);
+    // The same composition, driven by the turret's own art: focal subject plus
+    // its echo, and the OBJECTIVE kind line — "Outer Turret" does not end in
+    // the kind, so unlike "Caster Minion" it keeps that line.
+    expect(container.querySelector("[data-subject-hero-icon]")).not.toBeNull();
+    const art = [...container.querySelectorAll("img")].filter((i) =>
+      (i.getAttribute("src") ?? "").includes("assets/structures/turret_outer.png"),
+    );
+    expect(art).toHaveLength(2);
+    const text = container.textContent ?? "";
+    expect(text).toContain("Outer Turret");
+    expect(text.toUpperCase()).toContain("OBJECTIVE");
+    // The range is the answer; a generic diamond glyph is not a subject.
+    expect(text).not.toContain("775");
+  });
+
+  it("does not claim a type it was not given", () => {
+    // The reader matches an explicit set, so a plausibly-named future backend
+    // type cannot acquire this card by accident.
+    const other: QuizQuestion = {
+      ...source(CASTER),
+      id: "env-other",
+      metadata: {
+        assets: { subject: { type: "minion_wave", name: "Wave", icon: "assets/x.png" } },
+      } as QuizQuestion["metadata"],
+    };
+    expect(selectScenario(other, false, null).card).not.toBe("environment");
+  });
+});
+
+// ───────────────────────────────────── regression: items and spells
+
+describe("ENV1 — the approved cards are untouched", () => {
+  it("item-primary still renders its own card", () => {
+    expect(selectScenario(source("vq-15"), false, null).card).toBe("item_analysis");
+  });
+
+  it("the item recipe / build-path question is untouched", () => {
+    // Same payload shape RIV1's own scale test builds — the fixture's vq-04
+    // row predates the presentation contract and carries no metadata, so the
+    // recipe path has to be stated here to be asserted at all.
+    const recipe: QuizQuestion = {
+      id: "env1-recipe",
+      category: "items",
+      question_text: "Trinity Force builds from Sheen, Phage, and which other component?",
+      format: "multiple_choice",
+      choices: ["Kindlegem", "Ruby Crystal", "Cloth Armor", "Null-Magic Mantle"],
+      metadata: {
+        assets: { subject: { type: "item", name: "Trinity Force", icon: "assets/items/3078.png" } },
+        presentation: { scenario_type: "item", role: "context", timing: "question", spoiler: false },
+        known_components: ["Sheen", "Phage"],
+        known_component_icons: [
+          { name: "Sheen", icon: "assets/items/3057.png" },
+          { name: "Phage", icon: "assets/items/3058.png" },
+        ],
+        missing_component_item_name: "Kindlegem",
+        missing_component_icon: "assets/items/3067.png",
+      } as QuizQuestion["metadata"],
+    };
+    const selection = selectScenario(recipe, false, null);
+    expect(selection.card).toBe("item_analysis");
+    if (selection.card !== "item_analysis") return;
+    // The recipe tree's inputs, which this pass must not have altered.
+    expect(selection.item.knownComponents.map((c) => c.name)).toEqual(["Sheen", "Phage"]);
+    expect(selection.item.missingComponent?.name).toBe("Kindlegem");
+  });
+
+  it("the summoner spell still renders its own card", () => {
+    expect(selectScenario(source("vq-17"), false, null).card).toBe("summoner_spell");
+  });
+
+  it("the combat-calculation control group has not moved", () => {
+    expect(selectScenario(source("vq-14"), false, null).card).toBe("combat_calculation");
+  });
+
+  it("leaves both approved atmosphere presets exactly as they were", () => {
+    // Prefer ADDING a preset over editing one: these two are what the item and
+    // the spell are approved AT, so a change here is a change to shipped art.
+    expect(ATMOSPHERE_TALL_CUTOUT).toEqual({
+      className: "absolute bottom-[-8%] right-[-6%] h-[160%] w-auto max-w-none object-contain",
+      filter: "saturate(0.85)",
+      opacity: 0.64,
+    });
+    expect(ATMOSPHERE_WIDE_SCENE).toEqual({
+      className: "absolute inset-y-0 right-0 h-full w-[54%] object-cover",
+      filter: "brightness(0.38) saturate(0.8)",
+      opacity: 0.58,
+    });
+  });
+
+  it("the new preset shares the wide-scene GEOMETRY and differs only in exposure", () => {
+    // The pairing the AtmosphereSeating type exists to keep together: same
+    // crop, different tone normalisation, because the sources differ in
+    // luminance (102.0 vs 27.5) and not in shape.
+    expect(ATMOSPHERE_DIM_SCENE.className).toBe(ATMOSPHERE_WIDE_SCENE.className);
+    expect(ATMOSPHERE_DIM_SCENE.filter).not.toBe(ATMOSPHERE_WIDE_SCENE.filter);
+  });
+});
+
+// ───────────────────────────────────── responsive / short-band contract
+
+describe("ENV1 — the short-band sizing contract", () => {
+  it("sizes every layer off the shared height-aware tokens", () => {
+    // The RIV1 lesson: raw `cqmin` collapses in the live Ranked band (cqmin is
+    // ~1.8px there). This card must not introduce a single raw-cqmin size of
+    // its own — it inherits `--subject-hero-icon` and friends, which step with
+    // the BAND'S HEIGHT, by rendering the shared components.
+    const { container } = renderCard(source(CASTER));
+    const hero = container.querySelector("[data-subject-hero-icon]");
+    expect(hero?.className).toContain("h-[var(--subject-hero-icon)]");
+    expect(hero?.className).toContain("w-[var(--subject-hero-icon)]");
+
+    const echo = [...container.querySelectorAll("img")].find((i) =>
+      (i.className ?? "").includes("--subject-echo"),
+    );
+    expect(echo).toBeDefined();
+    expect(echo?.getAttribute("src")).toContain("assets/minions/caster.png");
+  });
+
+  it("floors its caption type on --sc-fit rather than on cqmin alone", () => {
+    const { container } = renderCard(source("vq-19"));
+    const html = container.innerHTML;
+    expect(html).toContain("var(--sc-fit)");
+    // No bare `text-[Ncqmin]` anywhere: every type size in this card must carry
+    // the `max(…, calc(M * var(--sc-fit)))` floor.
+    expect(html).not.toMatch(/text-\[\d+(\.\d+)?cqmin\]/);
+  });
+});

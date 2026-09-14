@@ -46,13 +46,47 @@
  */
 
 import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
+import type { CompactDensity } from "@/lib/question-surface/compactDensity";
+import academyHall from "@/assets/ranked/academy-hall.jpg";
 
 export interface CompactScenarioBandProps {
   /** Question category (already question-safe). Shown as the band label. */
   category: string | null;
+  /**
+   * ENV1 — how much of the reserved region this plate takes. Optional and
+   * defaulting to the RR1 presentation, so every caller and every family that
+   * does not opt in is byte-identical to what it was. See
+   * `@/lib/question-surface/compactDensity` for who opts in and why.
+   */
+  density?: CompactDensity;
 }
 
-export function CompactScenarioBand({ category }: CompactScenarioBandProps) {
+export function CompactScenarioBand({ category, density = "plate" }: CompactScenarioBandProps) {
+  /**
+   * ENV1 — the CONTEXT strip.
+   *
+   * RR1 grew this plate into the arena's 256px reserve because a fixed 72px
+   * strip left ~184px of bare parchment and read as a failed load. That was
+   * the right call for a plate with nothing to show; it is the wrong one for
+   * the environment families, where it produced a ~256px near-empty black
+   * rectangle carrying one hextech diamond — which reads as a subject the
+   * question does not have.
+   *
+   * The context strip takes the third option neither of those two is: it
+   * stops growing (≈7rem against the 16rem reserve, 44%) AND it earns the
+   * height it does take, by seating the same academy hall the environment
+   * card's atmosphere layer uses. The residual region stays reserved, because
+   * that reserve is what pins the answer tablets between rounds — this pass
+   * changes what the BAND draws, never the stage's geometry.
+   *
+   * The large watermark diamond is suppressed here on purpose. At plate
+   * density it is chrome filling a region; at this height it would be the
+   * single dominant mark on the band, i.e. exactly the generic glyph standing
+   * in for a turret that this fallback exists to remove. The small emblem
+   * beside the label stays: it is secondary decoration at label scale, sized
+   * and positioned as a bullet, and it is asset-free so it can never 404.
+   */
+  const context = density === "context";
   // Same formatter the cinematic header uses — the rule moved out of this file
   // unchanged so both presentations of the category read identically.
   const label = formatCategoryLabel(category, "Ranked");
@@ -70,8 +104,37 @@ export function CompactScenarioBand({ category }: CompactScenarioBandProps) {
       // needed. Flex free space is defined for exactly this case: with no
       // reserve there is none and the plate keeps its intrinsic 64/72px, and
       // with a 256px reserve the 184px of free space goes to this item.
-      className="relative flex min-h-16 w-full grow items-center gap-3 overflow-hidden rounded-xl border border-[#d4b35a]/30 bg-gradient-to-r from-black/55 via-black/35 to-black/55 px-4 sm:min-h-[4.5rem]"
+      data-compact-density={density}
+      className={`relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-[#d4b35a]/30 bg-gradient-to-r from-black/55 via-black/35 to-black/55 px-4 ${
+        context
+          ? // No `grow`: the strip keeps this height whatever the region
+            // reserves, which is the entire point of the variant.
+            "min-h-16 sm:min-h-[7rem]"
+          : "min-h-16 grow sm:min-h-[4.5rem]"
+      }`}
     >
+      {/* Context ground — the academy hall, the same asset the environment
+          card seats as its atmosphere layer, so a media-free environment round
+          and one WITH a subject read as the same place. Heavily dimmed and
+          masked to the right so the two label lines keep their contrast; it is
+          a ground, never a subject, and it is decorative rather than a claim
+          about the question. */}
+      {context && (
+        <img
+          src={academyHall}
+          alt=""
+          aria-hidden
+          data-testid="scenario-compact-ground"
+          className="pointer-events-none absolute inset-y-0 right-0 h-full w-[62%] object-cover opacity-40"
+          style={{
+            filter: "brightness(0.9) saturate(0.9)",
+            maskImage:
+              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.5) 34%, #000 78%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.5) 34%, #000 78%)",
+          }}
+        />
+      )}
       {/* gold inner hairline ring — echoes the cinematic frame at a smaller scale */}
       <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-inset ring-[#d4b35a]/15" />
       {/* faint diagonal sheen for a premium (not flat) feel; purely decorative */}
@@ -91,6 +154,7 @@ export function CompactScenarioBand({ category }: CompactScenarioBandProps) {
           absolute wrapper takes a definite height from `inset-y-0`, so the 40%
           below is 40% of the plate: a ~28px mark on the original strip, and a
           ~102px one in the arena's 256px region. Decorative and asset-free. */}
+      {!context && (
       <div
         aria-hidden
         data-testid="scenario-compact-watermark"
@@ -98,9 +162,10 @@ export function CompactScenarioBand({ category }: CompactScenarioBandProps) {
       >
         <span className="block aspect-square h-[40%] max-h-24 rotate-45 rounded-[12%] border border-[#d4b35a]/20 bg-gradient-to-br from-[#f3dca0]/[0.07] to-[#d4b35a]/[0.02]" />
       </div>
+      )}
 
       {/* left accent bar */}
-      <div className="h-8 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#f3dca0] to-[#d4b35a]/30" />
+      <div className="relative h-8 w-1 shrink-0 rounded-full bg-gradient-to-b from-[#f3dca0] to-[#d4b35a]/30" />
 
       {/* emblem — a gold hextech diamond, asset-free so it can never 404 */}
       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#d4b35a]/35 bg-black/40">
@@ -110,7 +175,7 @@ export function CompactScenarioBand({ category }: CompactScenarioBandProps) {
         />
       </div>
 
-      <div className="min-w-0">
+      <div className="relative min-w-0">
         <div className="truncate text-sm font-bold uppercase tracking-[0.26em] text-[#e8c97a]">
           {label}
         </div>

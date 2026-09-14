@@ -28,6 +28,7 @@ import type { ResolvedFeedback } from "@/lib/question-feedback/model";
 import { AnswerGrid } from "@/components/ranked-arena/AnswerGrid";
 import { ScenarioMediaBand } from "./ScenarioMediaBand";
 import { CompactScenarioBand } from "./CompactScenarioBand";
+import { resolveCompactDensity } from "@/lib/question-surface/compactDensity";
 import { FamilyScenarioBand } from "./family/FamilyScenarioBand";
 import { formatCategoryLabel } from "@/lib/question-surface/categoryLabel";
 import { selectFamilyLayout, type FamilyLayout } from "@/lib/question-surface/familyLayout";
@@ -128,7 +129,19 @@ function HeroBand({
   if (profile === "family" && familyLayout) {
     return <FamilyScenarioBand layout={familyLayout} />;
   }
-  if (profile === "compact") return <CompactScenarioBand category={question.category} />;
+  if (profile === "compact") {
+    // ENV1 — resolved from the CATEGORY, which is the only question-safe
+    // family signal that survives transport: these rounds carry no
+    // `presentation`, so `scenarioSourceFromPublicQuestion` returns null and
+    // `scenarioSource` is null here. The plate's inputs are unchanged — it
+    // still receives only the category, plus a layout token derived from it.
+    return (
+      <CompactScenarioBand
+        category={question.category}
+        density={resolveCompactDensity(question.category)}
+      />
+    );
+  }
 
   const revealed = reveal?.revealed === true;
   // Correct answer is passed to the scenario visual ONLY post-reveal; pre-reveal

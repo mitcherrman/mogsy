@@ -597,12 +597,14 @@ describe("MinionScenarioSubject — MAA1 Phase 4", () => {
     ["vq-21", "Cannon Minion", "assets/minions/siege.png"],
     ["vq-22", "Super Minion", "assets/minions/super.png"],
   ])("%s classifies as a minion and resolves its portrait", (id, label, icon) => {
+    // ENV1 moved this family off `collectible` — see the ENV1 block at the end
+    // of this file for why, and for the assertions that hold the new card.
     const selection = selectScenario(source(id), false, null);
-    expect(selection.card).toBe("collectible");
-    if (selection.card !== "collectible") return;
-    expect(selection.kind).toBe("minion");
-    expect(selection.label).toBe(label);
-    expect(selection.iconUrl).toContain(icon);
+    expect(selection.card).toBe("environment");
+    if (selection.card !== "environment") return;
+    expect(selection.environment.kind).toBe("minion");
+    expect(selection.environment.name).toBe(label);
+    expect(selection.environment.icon).toContain(icon);
   });
 
   it.each([
@@ -610,7 +612,7 @@ describe("MinionScenarioSubject — MAA1 Phase 4", () => {
     ["vq-20", "Caster Minion"],
     ["vq-21", "Cannon Minion"],
     ["vq-22", "Super Minion"],
-  ])("%s renders the shared collectible frame labelled MINION", (id, label) => {
+  ])("%s renders a frame labelled MINION around its own portrait", (id, label) => {
     const { container } = renderCard(fixture(id));
     const text = container.textContent ?? "";
     expect(text.toUpperCase()).toContain("MINION");
@@ -637,7 +639,7 @@ describe("MinionScenarioSubject — MAA1 Phase 4", () => {
     // any of its text heuristics run — which matters here, because "how many
     // total minions…" would otherwise meet the identification-intent pattern.
     for (const id of ["vq-19", "vq-21", "vq-22"]) {
-      expect(selectScenario(source(id), false, "7").card).toBe("collectible");
+      expect(selectScenario(source(id), false, "7").card).toBe("environment");
     }
   });
 

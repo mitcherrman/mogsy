@@ -80,6 +80,37 @@ export const ATMOSPHERE_WIDE_SCENE: AtmosphereSeating = {
 };
 
 /**
+ * ENV1 — the Academy hall, for the environment subjects (lane minions, and any
+ * objective the backend resolves a portrait for).
+ *
+ * Geometrically this is a WIDE_SCENE: an opaque 480x270 landscape, seated and
+ * cropped exactly like `Spellcaster.jpg` for exactly the same reason. It is a
+ * separate preset ONLY because of the exposure half of the pairing, which the
+ * type deliberately binds to the crop so a caller cannot mix them:
+ *
+ *   mean luminance  Spellcaster.jpg 102.0   academy-hall.jpg 27.5
+ *
+ * The hall is a night interior and arrives already four times darker than the
+ * spellbook. WIDE_SCENE's `brightness(0.38)` exists to pull a high-key source
+ * DOWN to the cut-out's weight; applied here it would have taken a source that
+ * is already under-weight and erased it — the layer measured as effectively
+ * absent, which is the one failure this whole composition exists to prevent.
+ *
+ * So the correction runs the other way. Perceived weight is luminance x
+ * brightness x opacity: the shopkeeper lands at ~38.7 and the spellbook at
+ * ~22.5, and 1.45/0.62 puts the hall at ~24.7 — inside the band the two
+ * approved atmospheres already span, rather than at a number chosen by eye.
+ *
+ * Saturation is left at 1: the source is blue-and-candlelight and desaturating
+ * it would flatten the one thing separating it from the panel's own warm wash.
+ */
+export const ATMOSPHERE_DIM_SCENE: AtmosphereSeating = {
+  className: "absolute inset-y-0 right-0 h-full w-[54%] object-cover",
+  filter: "brightness(1.45)",
+  opacity: 0.62,
+};
+
+/**
  * Fades the atmosphere art into the panel's dark left and bottom rather than
  * letting it end on a cut-out edge. Two ramps intersected, so a corner gets
  * both. Shared by every subject: it is what makes the layer read as presence
