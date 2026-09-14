@@ -1239,6 +1239,7 @@ export type Database = {
           page_url: string | null
           priority: string
           profile_id: string | null
+          report_context: Json
           reproducibility: string | null
           screenshot_path: string | null
           severity: string | null
@@ -1266,6 +1267,7 @@ export type Database = {
           page_url?: string | null
           priority?: string
           profile_id?: string | null
+          report_context?: Json
           reproducibility?: string | null
           screenshot_path?: string | null
           severity?: string | null
@@ -1293,6 +1295,7 @@ export type Database = {
           page_url?: string | null
           priority?: string
           profile_id?: string | null
+          report_context?: Json
           reproducibility?: string | null
           screenshot_path?: string | null
           severity?: string | null
@@ -3604,6 +3607,7 @@ export type Database = {
           page_url: string | null
           priority: string
           profile_id: string | null
+          report_context: Json
           reproducibility: string | null
           screenshot_path: string | null
           severity: string | null
