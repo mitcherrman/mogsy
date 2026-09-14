@@ -31,7 +31,9 @@ export function CollectibleCard({ iconUrl, label, kind }: { iconUrl: string; lab
               ? "Objective"
               : kind === "minion"
                 ? "Minion"
-                : "Subject";
+                : kind === "structure"
+                  ? "Structure"
+                  : "Subject";
   const [errored, setErrored] = useState(false);
   return (
     <motion.div
@@ -105,7 +107,9 @@ export function SubjectPlaceholderCard({ kind, category }: { kind: SubjectKind; 
               ? { ring: "ring-rose-300/30", glow: "bg-rose-400/15", label: "Objective" }
               : kind === "minion"
                 ? { ring: "ring-emerald-300/30", glow: "bg-emerald-400/15", label: "Minion" }
-                : { ring: "ring-white/15", glow: "bg-white/10", label: "Mystery" };
+                : kind === "structure"
+                  ? { ring: "ring-amber-300/30", glow: "bg-amber-400/15", label: "Structure" }
+                  : { ring: "ring-white/15", glow: "bg-white/10", label: "Mystery" };
 
   return (
     <motion.div

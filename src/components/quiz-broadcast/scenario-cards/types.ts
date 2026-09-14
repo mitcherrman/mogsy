@@ -10,8 +10,22 @@ import type { QuestionMediaEntities } from "./questionMediaEntities";
  * single-unit 128x128 portrait; several of these questions ask how many
  * minions a wave holds, so the art must stay a class portrait and nothing
  * here may assemble one into a group.
+ *
+ * `structure` is MAA1 Phase 5 — one Summoner's Rift STRUCTURE (a turret, an
+ * inhibitor, the Nexus), resolved by the backend from `quiz.structure_assets`
+ * and emitted as `assets.subject.type === "structure"`. There is exactly one
+ * turret subject, not four tiers: the approved wiki has one current turret
+ * render and the tier is stated by the PROMPT. Nothing here may re-tier it.
  */
-export type SubjectKind = "champion" | "item" | "rune" | "spell" | "objective" | "minion" | "none";
+export type SubjectKind =
+  | "champion"
+  | "item"
+  | "rune"
+  | "spell"
+  | "objective"
+  | "minion"
+  | "structure"
+  | "none";
 
 export type ClassifiedSubject = {
   kind: SubjectKind;
@@ -132,8 +146,16 @@ export type EnvironmentSubject = {
   name: string;
   /** The subject's own portrait, resolved through the shared asset resolver. */
   icon?: string | null;
-  /** Which environment family this is — drives the caption's kind line only. */
-  kind: "minion" | "objective";
+  /**
+   * Which environment family this is — drives the caption's kind line only.
+   *
+   * A FAMILY, never an entity. `structure` covers the turret, the inhibitor
+   * and the Nexus with one value precisely so this file never learns their
+   * names: the backend owns entity identity and the art path it resolves to,
+   * and a `kind === "nexus"` branch here would be the frontend re-deciding
+   * something it is not the authority on.
+   */
+  kind: "minion" | "objective" | "structure";
 };
 
 /** Parsed payload for combat cooldown calculation questions. */

@@ -70,6 +70,15 @@ function renderCard(q: QuizQuestion, revealed = false, answer: string | null = n
   );
 }
 
+/**
+ * Comments legitimately DISCUSS the three structures — that is how the rule is
+ * documented. The absence claim is about code, so comments are removed before
+ * the scan rather than the claim being weakened to fit them.
+ */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+}
+
 /** The caster minion — the owner's first reported case. */
 const CASTER = "vq-20";
 /** The structure row — the owner's second reported case. */
@@ -181,12 +190,16 @@ describe("ENV1 — the caption states identity and nothing measured", () => {
 // ───────────────────────────────────── the fallback is still honest
 
 describe("ENV1 — an environment row with no art does not get a hero panel", () => {
-  it("a structure row stays compact rather than reserving an empty hero", () => {
-    // vq-24 ("How many turrets does each team have?") carries no subject: the
-    // backend resolves no structure art, and none exists in either repo. The
-    // composition is DRIVEN by the subject's own portrait, so with no portrait
-    // there is no picture to build — a card assembled around a "?" tile would
-    // be the giant empty rectangle wearing a gold frame.
+  it("a SUBJECTLESS row stays compact rather than reserving an empty hero", () => {
+    // vq-24 ("How many turrets does each team have?") carries no subject at
+    // all — the fixture is a pre-MAA1-Phase-5 capture, from before the backend
+    // had a reviewed structure map to resolve one from. It is kept exactly as
+    // it is because it still proves the thing it was written to prove, which
+    // was never "structures are undepictable": the composition is DRIVEN by
+    // the subject's own portrait, so a row that arrives without one has no
+    // picture to build, and a card assembled around a "?" tile would be the
+    // giant empty rectangle wearing a gold frame. The same row WITH a Phase 5
+    // structure subject is asserted in the structure describe block below.
     expect(source(TURRETS).metadata).toBeUndefined();
     expect(selectScenario(source(TURRETS), false, null).card).toBe("empty");
     expect(resolveBandProfile(source(TURRETS), "band", null)).toBe("compact");
@@ -208,12 +221,14 @@ describe("ENV1 — an environment row with no art does not get a hero panel", ()
   });
 
   it("already accepts an OBJECTIVE payload, so the art workstream needs no frontend change", () => {
-    // The forward half of the contract. No structure or objective art exists
-    // today — assets/structures/*, assets/objectives/* and assets/monsters/*
-    // all 404 on the live backend, and neither repo holds turret, dragon,
-    // Baron, inhibitor or Nexus art — so `objective` is currently unreachable
-    // in production. It is in the reader's type set anyway: the moment the
-    // backend emits one, it takes this card with no edit here.
+    // The forward half of the contract, and MAA1 Phase 5 is the proof it was
+    // worth writing: `structure` art now exists and took this same card by
+    // adding one member to the reader's type set. `objective` art does not yet
+    // — assets/objectives/* and assets/monsters/* still 404 on the live
+    // backend — so the kind stays in the set for the same reason it always
+    // was: the moment the backend emits one, it takes this card with no edit
+    // here. (The turret payload below is deliberately still typed `objective`;
+    // the Phase 5 `structure` payloads are asserted in their own block.)
     const turret: QuizQuestion = {
       id: "env-objective",
       category: "Objectives",
@@ -265,6 +280,258 @@ describe("ENV1 — an environment row with no art does not get a hero panel", ()
       } as QuizQuestion["metadata"],
     };
     expect(selectScenario(other, false, null).card).not.toBe("environment");
+  });
+});
+
+
+// ───────────────────────────────────── MAA1 Phase 5: structures
+
+/**
+ * The backend (`env1/subject-art`, `quiz/structure_assets.py`) resolves a
+ * reviewed `(generation_family, entity_id)` table to one of three structures
+ * and emits them in the SAME four fields `minion` and `objective` already use.
+ *
+ * Payloads are written out verbatim rather than taken from the visual-QA
+ * fixture, because that fixture is a capture of the backend as it was BEFORE
+ * this pass — vq-24 is the pre-Phase-5 shape of the very first row below, and
+ * rewriting it would destroy the subjectless-row coverage it still carries.
+ */
+const STRUCTURE_PAYLOADS = [
+  {
+    entity: "turret",
+    icon: "assets/structures/turret.png",
+    name: "Turret",
+    question_text: "How many turrets does each team have on Summoner's Rift?",
+    choices: ["1", "2", "3", "11"],
+    answer: "11",
+  },
+  {
+    entity: "inhibitor",
+    icon: "assets/structures/inhibitor.png",
+    name: "Inhibitor",
+    question_text: "How long does a destroyed inhibitor take to respawn?",
+    choices: ["3 minutes", "4 minutes", "5 minutes", "6 minutes"],
+    answer: "5 minutes",
+  },
+  {
+    entity: "nexus",
+    icon: "assets/structures/nexus.png",
+    name: "Nexus",
+    question_text: "How much health does the Nexus have?",
+    choices: ["4000", "5500", "5000", "6000"],
+    answer: "5500",
+  },
+] as const;
+
+function structureQuestion(p: (typeof STRUCTURE_PAYLOADS)[number]): QuizQuestion {
+  return {
+    id: `env-structure-${p.entity}`,
+    category: "Game Fundamentals",
+    question_text: p.question_text,
+    format: "multiple_choice",
+    choices: [...p.choices],
+    metadata: {
+      assets: {
+        subject: { type: "structure", id: p.entity, name: p.name, icon: p.icon },
+      },
+      presentation: { role: "context", timing: "question", spoiler: false },
+    } as QuizQuestion["metadata"],
+  };
+}
+
+describe("ENV1 — a structure subject takes the same cinematic card", () => {
+  it.each(STRUCTURE_PAYLOADS.map((p) => [p.entity, p] as const))(
+    "%s selects the environment card",
+    (_entity, p) => {
+      const selection = selectScenario(structureQuestion(p), false, null);
+      expect(selection.card).toBe("environment");
+      // Not the single-tile collectible, and not the compact strip: this is
+      // the regression the pass exists to remove.
+      expect(selection.card).not.toBe("collectible");
+      expect(resolveBandProfile(structureQuestion(p), "band", null)).toBe("cinematic");
+    },
+  );
+
+  it.each(STRUCTURE_PAYLOADS.map((p) => [p.entity, p] as const))(
+    "%s draws the BACKEND-PROVIDED icon url and nothing derived from its id",
+    (_entity, p) => {
+      const { container } = renderCard(structureQuestion(p));
+      const hero = container.querySelector("[data-subject-hero-icon]");
+      expect(hero).not.toBeNull();
+      // The exact path the backend sent, passed through the shared asset
+      // resolver (which only prefixes the API base) and not reconstructed.
+      expect(hero?.getAttribute("src")).toContain(p.icon);
+      // Focal subject + echo, both from that one url: the composition is
+      // driven by the subject's own art, as it is for every other subject.
+      const art = [...container.querySelectorAll("img")].filter((i) =>
+        (i.getAttribute("src") ?? "").includes(p.icon),
+      );
+      expect(art).toHaveLength(2);
+    },
+  );
+
+  it("labels the FAMILY generically and takes the entity name from the payload", () => {
+    for (const p of STRUCTURE_PAYLOADS) {
+      const { container, unmount } = renderCard(structureQuestion(p));
+      const text = container.textContent ?? "";
+      expect(text).toContain(p.name);
+      expect(text.toUpperCase()).toContain("STRUCTURE");
+      unmount();
+    }
+  });
+
+  it("never prints the answer, before or at the reveal", () => {
+    for (const p of STRUCTURE_PAYLOADS) {
+      for (const reveal of [false, true]) {
+        const { container, unmount } = renderCard(structureQuestion(p), reveal, p.answer);
+        expect(container.textContent ?? "").not.toContain(p.answer);
+        unmount();
+      }
+    }
+  });
+
+  it("holds one generic turret subject, never a per-tier one", () => {
+    // The backend's own rule: the approved wiki has ONE current turret render,
+    // so outer/inner/inhibitor/nexus turret rows share the `turret` subject and
+    // the PROMPT states the tier. If this repo ever grew a tier branch, it
+    // would be asserting a distinction the source does not make.
+    const outer = structureQuestion(STRUCTURE_PAYLOADS[0]);
+    const nexusTurret: QuizQuestion = {
+      ...outer,
+      id: "env-structure-turret-nexus",
+      question_text: "How much health does a Nexus turret have?",
+      choices: ["2700", "3300", "4000", "4500"],
+    };
+    for (const q of [outer, nexusTurret]) {
+      const selection = selectScenario(q, false, null);
+      expect(selection.card).toBe("environment");
+      if (selection.card !== "environment") return;
+      expect(selection.environment.kind).toBe("structure");
+      expect(selection.environment.name).toBe("Turret");
+      expect(selection.environment.icon).toContain("assets/structures/turret.png");
+    }
+  });
+
+  it("carries NO entity-to-art map anywhere in the frontend", () => {
+    // The load-bearing claim of this pass. The backend owns entity identity ->
+    // canonical art path; this repo must not hold a second, drifting copy. A
+    // source scan is the only assertion that can actually prove an ABSENCE.
+    const sources = [
+      "classify.ts",
+      "types.ts",
+      "EnvironmentScenarioCard.tsx",
+      "SubjectMediaComposition.tsx",
+      "DefaultScenarioCard.tsx",
+    ].map((f) =>
+      readFileSync(resolve("src/components/quiz-broadcast/scenario-cards", f), "utf8"),
+    );
+
+    for (const src of sources) {
+      // No hardcoded backend asset path.
+      expect(src).not.toMatch(/assets\/structures\//);
+      // No entity name used as a VALUE or a branch — the family name
+      // "structure" is fine, the three entity names are not.
+      for (const entity of ["turret", "inhibitor", "nexus"]) {
+        expect(stripComments(src).toLowerCase()).not.toContain(entity);
+      }
+    }
+  });
+
+  it("an unsupported subject kind still fails closed", () => {
+    // A plausibly-named neighbour of the new member must not inherit the card.
+    for (const type of ["structure_tier", "building", "tower", "minion_wave"]) {
+      const q: QuizQuestion = {
+        ...structureQuestion(STRUCTURE_PAYLOADS[0]),
+        id: `env-unsupported-${type}`,
+        metadata: {
+          assets: { subject: { type, id: "x", name: "X", icon: "assets/structures/turret.png" } },
+        } as QuizQuestion["metadata"],
+      };
+      expect(selectScenario(q, false, null).card).not.toBe("environment");
+    }
+  });
+
+  it("a structure with no icon is refused the card, like every other family", () => {
+    const iconless: QuizQuestion = {
+      ...structureQuestion(STRUCTURE_PAYLOADS[2]),
+      id: "env-structure-no-icon",
+      metadata: {
+        assets: { subject: { type: "structure", id: "nexus", name: "Nexus" } },
+      } as QuizQuestion["metadata"],
+    };
+    expect(selectScenario(iconless, false, null).card).toBe("empty");
+    expect(resolveBandProfile(iconless, "band", null)).toBe("compact");
+  });
+
+  it("classifies a structure, so a structure-answer row can still be caught as a spoiler", () => {
+    // The four rows whose ANSWER is a structure are refused a subject by the
+    // backend. This is the frontend's independent lock: with `structure` in
+    // `classifySubject`, the subject has a LABEL, so the generic
+    // label-matches-a-choice rule sees it and hides the art.
+    const spoiler: QuizQuestion = {
+      ...structureQuestion(STRUCTURE_PAYLOADS[2]),
+      id: "env-structure-spoiler",
+      question_text: "Which structure must be destroyed to win the game?",
+      choices: ["Nexus", "Inhibitor", "Outer Turret", "Fountain"],
+      // No `presentation` block on purpose. Where the backend DOES declare one
+      // it is the source of truth and this heuristic never runs — which is the
+      // contract, not a gap. This asserts the fallback for a row that arrives
+      // undeclared, which is the only case the frontend has to judge.
+      metadata: {
+        assets: {
+          subject: {
+            type: "structure",
+            id: "nexus",
+            name: "Nexus",
+            icon: "assets/structures/nexus.png",
+          },
+        },
+      } as QuizQuestion["metadata"],
+    };
+    expect(selectScenario(spoiler, false, "Nexus").card).not.toBe("environment");
+  });
+});
+
+// ───────────────────────────────────── non-square art
+
+describe("ENV1 — the focal subject preserves its aspect ratio", () => {
+  it("fits the focal icon inside its square box instead of cropping it", () => {
+    // Structure renders are the first non-square subjects this composition has
+    // ever been handed: turret 485x992 (object-cover would remove 51.1% of its
+    // height), nexus 978x799 (18.3% of its width). `object-contain` is the
+    // generic fix — it preserves the ratio of ANY subject and singles out no
+    // entity — and the box stays square because the medallion, rings, glow,
+    // specks and pedestal are all laid out off that one length.
+    const { container } = renderCard(structureQuestion(STRUCTURE_PAYLOADS[0]));
+    const hero = container.querySelector("[data-subject-hero-icon]");
+    expect(hero?.className).toContain("object-contain");
+    expect(hero?.className).not.toContain("object-cover");
+    expect(hero?.className).toContain("h-[var(--subject-hero-icon)]");
+    expect(hero?.className).toContain("w-[var(--subject-hero-icon)]");
+  });
+
+  it("applies the same fit to every subject — it is not structure-specific", () => {
+    // For a square source `contain` and `cover` are the identical rendering
+    // (items 64x64, spells 64x64, minions 128x128), which is why this change
+    // is a no-op for the approved cards rather than a re-approval of them.
+    for (const id of [CASTER, "vq-15", "vq-17"]) {
+      const { container, unmount } = renderCard(source(id));
+      const hero = container.querySelector("[data-subject-hero-icon]");
+      if (hero) expect(hero.className).not.toContain("object-cover");
+      unmount();
+    }
+  });
+
+  it("leaves the background echo on cover, deliberately", () => {
+    // The echo is an oversized blurred wash anchored off the panel's corner —
+    // cropped by the panel itself long before object-fit crops anything, and
+    // `cover` preserves the ratio of what it does show. Contain would shrink a
+    // tall subject's wash to a column and leave the panel's left flat.
+    const { container } = renderCard(structureQuestion(STRUCTURE_PAYLOADS[0]));
+    const echo = [...container.querySelectorAll("img")].find((i) =>
+      (i.className ?? "").includes("--subject-echo"),
+    );
+    expect(echo?.className).toContain("object-cover");
   });
 });
 

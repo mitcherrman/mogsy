@@ -50,7 +50,19 @@ export function EnvironmentScenarioCard({ subject }: { subject: EnvironmentSubje
   // the family is the context, which is the same order the item card states
   // its own name and kind in. The chip is never the whole card any more, so it
   // no longer has to carry meaning it cannot hold.
-  const kindLabel = subject.kind === "minion" ? "Minion" : "Objective";
+  //
+  // One entry per FAMILY the reader admits, and the table is exhaustive by
+  // construction (`Record<EnvironmentSubject["kind"], string>`), so a future
+  // family cannot reach this card without a deliberate line here. What must
+  // never appear is a row per ENTITY: "Turret", "Inhibitor" and "Nexus" all
+  // land on STRUCTURE, and their own names arrive in `subject.name` from the
+  // backend, which is the only thing that knows them.
+  const KIND_LABELS: Record<EnvironmentSubject["kind"], string> = {
+    minion: "Minion",
+    objective: "Objective",
+    structure: "Structure",
+  };
+  const kindLabel = KIND_LABELS[subject.kind];
 
   return (
     <ScenarioCardFrame

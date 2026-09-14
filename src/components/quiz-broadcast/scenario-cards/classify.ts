@@ -105,6 +105,20 @@ export function classifySubject(question: QuizQuestion): ClassifiedSubject {
           label: subject.name as string | undefined,
           iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
         };
+
+      // MAA1 Phase 5. Read here, and not only by the environment reader
+      // below, because this is the function `isSpoilerSubject` is handed: a
+      // row whose answer IS a structure ("which turret type has the least
+      // health?") can only be caught by comparing the subject's LABEL against
+      // the choices, and an unclassified subject has no label to compare. The
+      // backend already refuses those four rows a subject, so this is the
+      // second lock on the same door rather than the first.
+      case "structure":
+        return {
+          kind: "structure",
+          label: subject.name as string | undefined,
+          iconUrl: resolveQuizAssetUrl(subject.icon as string | undefined),
+        };
     }
   }
 
@@ -471,7 +485,15 @@ export function getSummonerSpellSubject(
  * reader uses one: a future backend type must not acquire this card by being
  * named plausibly.
  */
-const ENVIRONMENT_SUBJECT_TYPES = new Set(["minion", "objective"]);
+/**
+ * MAA1 Phase 5 added `structure`. It is admitted by ADDING one member to this
+ * set and nothing else: the payload already carries identity and a canonical
+ * art path in the same three fields `minion` and `objective` use, so the card
+ * it selects, the composition that card calls, and the asset resolution are
+ * all unchanged. That is the whole point of a generic reader — the frontend
+ * learns that structures are depictable, not what a turret looks like.
+ */
+const ENVIRONMENT_SUBJECT_TYPES = new Set(["minion", "objective", "structure"]);
 
 export function getEnvironmentSubject(question: QuizQuestion): EnvironmentSubject | null {
   const meta = (question.metadata ?? {}) as Record<string, unknown>;
@@ -485,11 +507,16 @@ export function getEnvironmentSubject(question: QuizQuestion): EnvironmentSubjec
   const icon = resolveQuizAssetUrl(subject.icon as string | undefined);
   if (!name || !icon) return null;
 
+  // The declared type IS the family: the set above is the allow-list, so the
+  // value reaching `kind` can only be one of its members. Deliberately not a
+  // per-entity branch — "turret" / "inhibitor" / "nexus" never appear in this
+  // repo, because the backend owns entity identity and the art path it maps
+  // to, and the card needs only the family to write one caption line.
   return {
     id: typeof subject.id === "string" ? subject.id : undefined,
     name,
     icon,
-    kind: subject.type === "minion" ? "minion" : "objective",
+    kind: subject.type as EnvironmentSubject["kind"],
   };
 }
 

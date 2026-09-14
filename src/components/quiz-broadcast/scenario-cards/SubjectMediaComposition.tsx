@@ -155,6 +155,14 @@ export function SubjectMediaBackdrop({
     <div data-subject-media aria-hidden className="absolute inset-0 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(125%_150%_at_46%_36%,#241a12_0%,#150f0a_46%,#070505_100%)]" />
 
+      {/* The echo keeps `object-cover`, and that is a decision rather than an
+          oversight. It is a 4x-oversized, 3px-blurred, 22%-opacity WASH that is
+          already anchored off the top-left corner of the panel and bleeds past
+          three of its edges — it is cropped by the panel itself long before
+          `object-cover` crops anything, and `cover` preserves the aspect ratio
+          of what it does show. Switching it to `contain` would shrink a tall
+          subject's wash to a narrow column and leave the panel's left flat,
+          which is the empty-ground problem this layer exists to solve. */}
       {echoIcon && (
         <motion.img
           src={echoIcon}
@@ -196,6 +204,32 @@ export function SubjectMediaBackdrop({
  * a glance. Sized off `--subject-hero-icon` (index.css), which steps with the
  * BAND'S HEIGHT, so a phone and a desktop each get the largest icon their band
  * can actually seat.
+ *
+ * ── WHY `object-contain` AND NOT `object-cover` ────────────────────────────
+ * The box is deliberately still SQUARE: the medallion, its rings, the glow,
+ * the specks and the pedestal shadow are all laid out off the single
+ * `--subject-hero-icon` length, so a box that changed shape with the art would
+ * move every layer around it. Only the FIT inside that box changed.
+ *
+ * Every subject this composition had until MAA1 Phase 5 was square — item
+ * icons 64x64, summoner spells 64x64, minion portraits 128x128 — and for a
+ * square source `contain` and `cover` are the identical rendering, which is
+ * why this is a no-op for the item, the spell and the minion rather than a
+ * re-approval of them.
+ *
+ * Structures are not square, and `cover` fills the box by CROPPING the long
+ * axis from both ends:
+ *
+ *   turret     485x992   would lose 51.1% of its height — the spire and base
+ *   nexus      978x799   would lose 18.3% of its width
+ *   inhibitor  774x781   ~0.9%, effectively square
+ *
+ * A turret drawn as the middle half of a turret is not a turret, and the one
+ * job of this layer is that the subject reads at a glance. `contain` is the
+ * generic answer — it preserves the intrinsic ratio of ANY subject and treats
+ * no entity specially — and it is preferred over sizing the box to the art
+ * because an `w-auto` image has no width until it loads, which is the class of
+ * bug that collapses a band on first paint.
  */
 function FocalIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
   const [errored, setErrored] = useState(false);
@@ -216,7 +250,7 @@ function FocalIcon({ iconUrl, alt }: { iconUrl?: string | null; alt: string }) {
       alt={alt}
       data-subject-hero-icon
       onError={() => setErrored(true)}
-      className={`${box} rounded-[18%] border-2 border-[#d4b35a]/70 object-cover shadow-[0_22px_52px_-6px_rgba(0,0,0,0.95),0_0_0_1px_rgba(0,0,0,0.5)] ring-1 ring-[#f3dca0]/35`}
+      className={`${box} rounded-[18%] border-2 border-[#d4b35a]/70 object-contain shadow-[0_22px_52px_-6px_rgba(0,0,0,0.95),0_0_0_1px_rgba(0,0,0,0.5)] ring-1 ring-[#f3dca0]/35`}
     />
   );
 }
