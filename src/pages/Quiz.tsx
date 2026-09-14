@@ -50,6 +50,8 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import { useRankedMatchHistory } from "@/pages/quiz-ranked/useRankedMatchHistory";
 import { useProfileIdentity } from "@/hooks/useProfileIdentity";
 import AdSlot from "@/components/ads/AdSlot";
+import { GameResultsShell } from "@/components/game-results/GameResultsShell";
+import { buildSessionResults } from "@/lib/quiz/sessionResults";
 import {
   getRankedState,
   recordRecentXpGain,
@@ -1147,6 +1149,60 @@ export default function Quiz() {
     }
   }, [currentCategoryId, currentSet, handleSelectCategory, handleSelectSet]);
 
+  /**
+   * THE FINISHED SESSION, in the shared result model.
+   *
+   * The adapter is pure and lives in `@/lib/quiz/sessionResults`; this only
+   * hands it the run's own authorities and hangs the actions and the review
+   * content on the result.
+   *
+   * PT1.7A's remediation loop is preserved and is the REVIEW action: working
+   * the questions you just missed is what "review" means for a practice run,
+   * and it keeps a prominent button. `Play again` leads, as it does in every
+   * other mode, so the three weights are the same everywhere.
+   */
+  const sessionResultsModel = useMemo(() => {
+    const model = buildSessionResults({
+      answers: sessionAnswers.map((a) => ({
+        category: a.question.category,
+        questionText: a.question.question_text,
+        selected: a.selected,
+        isCorrect: a.isCorrect,
+        correctAnswer: a.correctAnswer,
+        explanation: a.explanation,
+      })),
+      score,
+      total: questions.length,
+      setName: currentSet?.name ?? null,
+      currentXp: typeof answerResult?.current_xp === "number"
+        ? answerResult.current_xp : null,
+      currentStreak: typeof answerResult?.current_streak === "number"
+        ? answerResult.current_streak : null,
+    });
+    model.review = <SessionReviewList answers={sessionAnswers} />;
+    model.actions = {
+      primary: { label: "Play again", onClick: handlePlayAgain },
+      secondary: missedQuestions.length > 0
+        ? {
+          label: `Practise the ${missedQuestions.length} you missed`,
+          onClick: handlePracticeMissed,
+          // PT1.7A's own id: the remediation loop has to stay findable as
+          // itself, not as "whatever occupies the secondary slot".
+          testId: "practice-missed-cta",
+        }
+        : {
+          label: "Review your questions",
+          onClick: () => { window.location.assign("/quiz#review"); },
+        },
+      tertiary: {
+        label: currentCategoryId ? "Back to Leaguecraft" : "Choose another set",
+        onClick: () => { setPhase("sets"); },
+      },
+    };
+    return model;
+  }, [sessionAnswers, score, questions.length, currentSet, answerResult,
+    missedQuestions, handlePlayAgain, handlePracticeMissed, currentCategoryId]);
+
   const handleRetry = useCallback(() => {
     setPhase("sets");
     setErrorMsg("");
@@ -2184,7 +2240,12 @@ export default function Quiz() {
           </motion.div>
         )}
 
-        {/* Final results */}
+        {/* Final results — the SHARED end screen (see `buildSessionResults`).
+            The three stacked cards this used to be are gone: the score card,
+            the Session Breakdown and the Questions to Review list are now the
+            hero, the snapshot and the timeline every other mode renders.
+            `SessionReviewList` stays, as the model's REVIEW content, because
+            working your misses is the practice loop's payload. */}
         {phase === "result" && (
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
@@ -2192,67 +2253,7 @@ export default function Quiz() {
             transition={{ duration: 0.3 }}
             className="space-y-4"
           >
-            <Card className="bg-card/80 backdrop-blur-sm text-center">
-              <CardHeader>
-                <CardTitle className="text-xl md:text-2xl font-bold">Quiz Complete</CardTitle>
-                <CardDescription className="text-sm">
-                  {currentSet?.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-5xl font-extrabold text-primary">
-                    {score}
-                    <span className="text-xl text-muted-foreground font-medium"> / {questions.length}</span>
-                  </div>
-                  <Badge
-                    variant={score / questions.length >= 0.7 ? "default" : "secondary"}
-                    className="text-xs"
-                  >
-                    {score === questions.length
-                      ? "Perfect Score"
-                      : score / questions.length >= 0.7
-                      ? "Great Job"
-                      : score / questions.length >= 0.4
-                      ? "Keep Practicing"
-                      : "Study Up"}
-                  </Badge>
-                </div>
-
-                <Progress
-                  value={(score / Math.max(questions.length, 1)) * 100}
-                  className="h-3 w-full max-w-xs mx-auto"
-                />
-
-                <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="outline" onClick={() => setPhase("sets")}>
-                    {currentCategoryId ? "Back to Leaguecraft" : "Choose another set"}
-                  </Button>
-                  {/* PT1.7A: the remediation loop, offered only when there is
-                      something to remediate. It leads the row on a run that
-                      went badly, because working the misses is the better
-                      next move than another random ten. */}
-                  {missedQuestions.length > 0 && (
-                    <Button
-                      onClick={handlePracticeMissed}
-                      data-testid="practice-missed-cta"
-                    >
-                      <Target className="h-4 w-4 mr-2" />
-                      Practise the {missedQuestions.length} you missed
-                    </Button>
-                  )}
-                  <Button
-                    variant={missedQuestions.length > 0 ? "outline" : "default"}
-                    onClick={handlePlayAgain}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Play again
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            <SessionBreakdown answers={sessionAnswers} />
-            <SessionReviewList answers={sessionAnswers} />
+            <GameResultsShell model={sessionResultsModel} />
             <AdSlot placement="quiz_results" isActiveQuizQuestion={phase !== "result"} />
           </motion.div>
         )}
@@ -2445,93 +2446,6 @@ function QuizModeCard({
         </CardContent>
       </Card>
     </motion.button>
-  );
-}
-
-function SessionBreakdown({ answers }: { answers: SessionAnswer[] }) {
-  const rows = useMemo(() => {
-    const map = new Map<string, { category: string; correct: number; total: number }>();
-    for (const a of answers) {
-      const cat = a.question.category || "Uncategorized";
-      const entry = map.get(cat) || { category: cat, correct: 0, total: 0 };
-      entry.total += 1;
-      if (a.isCorrect) entry.correct += 1;
-      map.set(cat, entry);
-    }
-    return Array.from(map.values()).map((r) => ({
-      ...r,
-      accuracy: r.total > 0 ? (r.correct / r.total) * 100 : 0,
-    }));
-  }, [answers]);
-
-  if (rows.length === 0) return null;
-
-  const sorted = [...rows].sort((a, b) => b.accuracy - a.accuracy);
-  const best = sorted[0];
-  const weakest = sorted[sorted.length - 1];
-
-  return (
-    <Card className="bg-card/80 backdrop-blur-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-primary/80">
-          <BookOpen className="h-4 w-4" />
-          Session Breakdown
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {rows.length > 1 && best && weakest && best.category !== weakest.category && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-emerald-300">
-                <Trophy className="h-3 w-3" />
-                Best category
-              </div>
-              <div className="mt-0.5 text-sm font-semibold text-emerald-200">{best.category}</div>
-              <div className="text-[11px] text-emerald-200/80">
-                {best.correct}/{best.total} · {best.accuracy.toFixed(0)}%
-              </div>
-            </div>
-            <div className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-rose-300">
-                <AlertCircle className="h-3 w-3" />
-                Needs work
-              </div>
-              <div className="mt-0.5 text-sm font-semibold text-rose-200">{weakest.category}</div>
-              <div className="text-[11px] text-rose-200/80">
-                {weakest.correct}/{weakest.total} · {weakest.accuracy.toFixed(0)}%
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {rows.map((r) => {
-            const style = getCategoryStyle(r.category);
-            const Icon = style.icon;
-            return (
-              <div
-                key={r.category}
-                className="rounded-md border border-border/40 bg-background/40 px-3 py-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`text-[10px] font-medium gap-1 ${style.className}`}
-                  >
-                    <Icon className="h-3 w-3" />
-                    {style.label}
-                  </Badge>
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
-                    {r.correct}/{r.total} · {r.accuracy.toFixed(0)}%
-                  </span>
-                </div>
-                <Progress value={r.accuracy} className="mt-2 h-1.5" />
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 

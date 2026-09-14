@@ -341,6 +341,15 @@ export interface ArenaTerminalView {
    */
   scoreline?: ReactNode;
   /**
+   * WHO PLAYED, in the mode's own composition — or absent, and the frame draws
+   * its two full duelist columns exactly as it always has.
+   *
+   * Ranked fills it with a compact identity strip so the modules, discoveries
+   * and actions below it are on screen without a scroll. Every other mode
+   * passes nothing and its terminal frame is byte-identical.
+   */
+  identity?: ReactNode;
+  /**
    * Extra content INSIDE the frame, under the two duelists.
    *
    * `MatchOverFrame` has always had this slot; the view model simply did not
@@ -354,7 +363,17 @@ export interface ArenaTerminalView {
    */
   summary?: ReactNode;
   progressionEnabled: boolean;
-  primaryAction: { label: string; onClick: () => void };
+  /**
+   * The frame's own primary button, or ABSENT when the mode renders its own
+   * action row inside `summary`.
+   *
+   * Ranked does the latter: `ResultActions` states the product's three-weight
+   * ordering (Play Again / Review Match / Back to Leaguecraft) and every mode
+   * gets the same one, so a second full-width primary drawn by the frame
+   * directly beneath it would be one question with two answers. Every other
+   * caller passes this and its frame is unchanged.
+   */
+  primaryAction?: { label: string; onClick: () => void };
   /**
    * The quieter second action, or absent.
    *

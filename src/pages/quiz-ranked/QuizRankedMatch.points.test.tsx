@@ -252,9 +252,13 @@ describe("the terminal frame carries the final scoreline", () => {
     finished = { finalScores: { userA: 24, userB: 19 }, winner: "userA" };
     render(<QuizRankedMatch matchId="m1" viewerUserId="userA" />);
     await screen.findByTestId("ranked-match-over");
+    // The terminal frame's two duelist COLUMNS became one compact identity
+    // strip, and the scoreline directly under the result word is where the
+    // final numbers are read. Same authority (`result.scoring.final_scores`),
+    // same claim — one place on screen instead of two.
     await waitFor(() =>
-      expect(screen.getByTestId("score-userA")).toHaveTextContent("24"));
-    expect(screen.getByTestId("score-userB")).toHaveTextContent("19");
+      expect(screen.getByTestId("final-score-you")).toHaveTextContent("24"));
+    expect(screen.getByTestId("final-score-opponent")).toHaveTextContent("19");
     // The winner is still the backend's, never a comparison of those two.
     expect(screen.getByTestId("ranked-match-over").textContent ?? "")
       .toMatch(/victory/i);

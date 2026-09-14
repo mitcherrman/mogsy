@@ -1,10 +1,24 @@
 /**
- * Terminal results (official and practice). Renders only server values;
- * accuracy is derived from authoritative counts alone. History failures
- * degrade gracefully — results stay usable without them.
+ * Time Trial's terminal screen — now the SHARED one.
+ *
+ * This used to be a whole end screen of its own: its own heading, its own
+ * badge, its own score card, its own `<dl>` of figures, its own rewards box,
+ * its own history list, its own `<details>` breakdown and its own button. None
+ * of that was Time-Trial-specific except the values in it, so the layout is
+ * gone and an ADAPTER is what is left: it reads the server's results into the
+ * shared `GameResultsModel` and `GameResultsShell` renders it, exactly as it
+ * renders Ranked's and the practice quiz's.
+ *
+ * Every number is still the server's. Accuracy remains the one derived value
+ * and it is still derived from the authoritative counts alone.
  */
 
 import { useEffect, useRef } from "react";
+import { GameResultsShell } from "@/components/game-results/GameResultsShell";
+import { buildMatchReport } from "@/components/game-results/matchReport";
+import type {
+  GameResultsModel, ResultProgressItem, ResultStat, ResultTimelineEntry,
+} from "@/components/game-results/model";
 import { DsaHistory, DsaResults, dsaChoiceLabel } from "./dailyScoreAttackTypes";
 
 type Props = {
@@ -14,156 +28,141 @@ type Props = {
   practiceAllowed: boolean;
 };
 
+export function buildTimeTrialResults(
+  results: DsaResults, history: DsaHistory | null,
+): GameResultsModel {
+  const accuracy = results.answered_count > 0
+    ? Math.round((results.correct_count / results.answered_count) * 100)
+    : null;
+
+  const snapshot: ResultStat[] = [
+    {
+      key: "correct", label: "Correct",
+      value: `${results.correct_count} / ${results.answered_count}`,
+      hint: "answered",
+      tone: accuracy !== null && accuracy >= 70 ? "good" : "plain",
+    },
+    {
+      key: "accuracy", label: "Accuracy", testId: "dsa-accuracy",
+      value: accuracy === null ? "—" : `${accuracy}%`,
+    },
+    { key: "combo", label: "Best combo", value: `×${results.highest_combo}` },
+    { key: "seen", label: "Seen", value: `${results.presented_count} / 30` },
+  ];
+
+  const progress: ResultProgressItem[] = [];
+  if (results.official) {
+    progress.push({
+      key: "bonus", label: "Daily completion bonus", icon: "xp",
+      testId: "dsa-rewards",
+      value: results.bonus_xp_awarded ? "+250 XP awarded" : "not awarded",
+      delta: results.bonus_xp_awarded ? 250 : null,
+      hint: results.participated
+        ? undefined
+        : "No answers were submitted, so this run earned no bonus XP or streak credit.",
+    });
+    progress.push({
+      key: "streak", label: "Daily streak", icon: "streak",
+      value: history ? `${history.daily_streak}` : results.streak_awarded ? "Advanced" : "Unchanged",
+      hint: results.streak_awarded ? "Advanced by this run." : "Unchanged by this run.",
+    });
+    if (history?.personal_best) {
+      progress.push({
+        key: "best", label: "Personal best", icon: "rating", testId: "dsa-history",
+        value: history.personal_best.score.toLocaleString(),
+        hint: history.personal_best.challenge_date,
+      });
+    }
+  }
+
+  // The breakdown IS the timeline: one entry per presented question, with the
+  // subject it asked about and what it awarded. It was a collapsed `<details>`
+  // list before, which is where a study product hides its own payload.
+  const timeline: ResultTimelineEntry[] = results.breakdown.map((item) => ({
+    index: item.sequence,
+    label: item.category ?? "Question",
+    outcome: item.resolution_reason === "run_expired"
+      ? "unanswered" : item.is_correct ? "correct" : "incorrect",
+    points: item.is_correct ? item.awarded_score : 0,
+    detail: item.question_text,
+    detailHint: `Answer: ${dsaChoiceLabel(item.choices[item.correct_index])}`,
+  }));
+
+  return {
+    state: "complete",
+    mode: "Time Trial",
+    standing: results.official ? "official" : "practice",
+    standingTestId: "dsa-results-badge",
+    headline: results.official ? "Time Trial complete" : "Practice run complete",
+    subheading: results.completion_reason === "pool_exhausted"
+      ? "All 30 questions cleared" : "Time expired",
+    score: {
+      you: results.total_score, label: "Final score", testId: "dsa-final-score",
+    },
+    snapshot,
+    progress,
+    report: buildMatchReport({
+      entries: timeline,
+      timeoutCount: timeline.filter((e) => e.outcome === "unanswered").length,
+    }),
+    timeline: timeline.length > 0 ? { unitLabel: "Questions", entries: timeline } : null,
+  };
+}
+
 export default function DailyScoreAttackResults({
   results,
   history,
   onPracticeAgain,
   practiceAllowed,
 }: Props) {
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
 
-  const accuracy =
-    results.answered_count > 0
-      ? Math.round((results.correct_count / results.answered_count) * 100)
-      : null;
+  const model = buildTimeTrialResults(results, history);
+  if (practiceAllowed) {
+    model.actions = {
+      primary: {
+        label: results.official ? "Try a practice run" : "Practice again",
+        onClick: onPracticeAgain,
+      },
+      secondary: {
+        label: "Review Questions",
+        onClick: () => { window.location.assign("/quiz#review"); },
+      },
+      tertiary: {
+        label: "Back to Leaguecraft",
+        onClick: () => { window.location.assign("/quiz"); },
+      },
+    };
+  } else {
+    // A run with no practice left still needs a way onward; it just has no
+    // "again". The remaining two keep their weights rather than promoting the
+    // exit into a primary.
+    model.actions = {
+      secondary: {
+        label: "Review Questions",
+        onClick: () => { window.location.assign("/quiz#review"); },
+      },
+      tertiary: {
+        label: "Back to Leaguecraft",
+        onClick: () => { window.location.assign("/quiz"); },
+      },
+    };
+  }
+
+  if (!results.official) {
+    model.progress = [{
+      key: "practice", label: "Practice run", icon: "unrated",
+      testId: "dsa-practice-note", value: "Unscored",
+      hint: "No XP, no Daily streak, and no official record or personal best.",
+    }];
+  }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-3">
-      <h2 ref={headingRef} tabIndex={-1} className="text-xl font-bold outline-none">
-        {results.official ? "Time Trial complete" : "Practice run complete"}
-      </h2>
-      <span
-        data-testid="dsa-results-badge"
-        className={`w-fit rounded-full border px-3 py-0.5 text-xs font-semibold uppercase tracking-wide ${
-          results.official
-            ? "border-amber-500 text-amber-400"
-            : "border-sky-500 text-sky-400"
-        }`}
-      >
-        {results.official ? "Official" : "Practice"}
-      </span>
-
-      <div className="rounded-xl border border-border bg-card p-5 text-center">
-        <div className="text-5xl font-black tabular-nums" data-testid="dsa-final-score">
-          {results.total_score.toLocaleString()}
-        </div>
-        <div className="mt-1 text-sm text-muted-foreground">
-          {results.completion_reason === "pool_exhausted"
-            ? "All 30 questions cleared"
-            : "Time expired"}
-        </div>
-      </div>
-
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div>
-          <dt className="text-muted-foreground">Correct</dt>
-          <dd className="font-semibold tabular-nums">
-            {results.correct_count} / {results.answered_count} answered
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Accuracy</dt>
-          <dd className="font-semibold tabular-nums" data-testid="dsa-accuracy">
-            {accuracy === null ? "—" : `${accuracy}%`}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Best combo</dt>
-          <dd className="font-semibold tabular-nums">×{results.highest_combo}</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Seen</dt>
-          <dd className="font-semibold tabular-nums">{results.presented_count} / 30</dd>
-        </div>
-      </dl>
-
-      {results.official ? (
-        <div className="rounded-lg border border-border bg-card p-3 text-sm" data-testid="dsa-rewards">
-          <p>
-            Daily completion bonus:{" "}
-            <strong>{results.bonus_xp_awarded ? "+250 XP awarded" : "not awarded"}</strong>
-          </p>
-          <p>
-            Daily streak: <strong>{results.streak_awarded ? "advanced" : "unchanged"}</strong>
-            {history ? ` — current streak ${history.daily_streak}` : ""}
-          </p>
-          {!results.participated && (
-            <p className="mt-1 text-muted-foreground">
-              No answers were submitted, so this run earned no bonus XP or streak credit.
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-border bg-card p-3 text-sm" data-testid="dsa-practice-note">
-          <p className="font-medium">Practice runs are unscored for progression:</p>
-          <ul className="mt-1 list-inside list-disc text-muted-foreground">
-            <li>No XP</li>
-            <li>No Daily streak</li>
-            <li>No official record or personal best</li>
-          </ul>
-        </div>
-      )}
-
-      {results.official && history && (
-        <div className="rounded-lg border border-border bg-card p-3 text-sm" data-testid="dsa-history">
-          <p className="font-medium">Your recent Time Trial runs</p>
-          {history.personal_best && (
-            <p className="text-muted-foreground">
-              Personal best: {history.personal_best.score.toLocaleString()} (
-              {history.personal_best.challenge_date})
-            </p>
-          )}
-          <ul className="mt-1 space-y-0.5 text-muted-foreground">
-            {history.entries.slice(0, 5).map((entry) => (
-              <li key={entry.challenge_date} className="tabular-nums">
-                {entry.challenge_date}: {entry.score.toLocaleString()} ({entry.correct_count}✓)
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {results.breakdown.length > 0 && (
-        <details className="rounded-lg border border-border bg-card p-3 text-sm">
-          <summary className="cursor-pointer font-medium">
-            Question breakdown ({results.breakdown.length} presented)
-          </summary>
-          <ol className="mt-2 space-y-2">
-            {results.breakdown.map((item) => (
-              <li key={item.sequence} className="border-t border-border pt-2">
-                <p className="font-medium">
-                  {item.sequence}. {item.question_text}
-                </p>
-                <p className="text-muted-foreground">
-                  {item.resolution_reason === "run_expired"
-                    ? "Unanswered (time expired)"
-                    : item.is_correct
-                      ? `Correct — +${item.awarded_score}`
-                      : "Incorrect — +0"}
-                  {" · Answer: "}
-                  {dsaChoiceLabel(item.choices[item.correct_index])}
-                </p>
-                {item.explanation && (
-                  <p className="text-xs text-muted-foreground">{item.explanation}</p>
-                )}
-              </li>
-            ))}
-          </ol>
-        </details>
-      )}
-
-      {practiceAllowed && (
-        <button
-          type="button"
-          onClick={onPracticeAgain}
-          className="min-h-11 rounded-lg border border-border bg-primary px-4 font-semibold text-primary-foreground hover:opacity-90"
-        >
-          {results.official ? "Try a practice run" : "Practice again"}
-        </button>
-      )}
+    <div ref={headingRef} tabIndex={-1} className="w-full px-3 outline-none">
+      <GameResultsShell model={model} />
     </div>
   );
 }

@@ -144,13 +144,17 @@ describe("both flows render the SAME Ranked components", () => {
   });
 
   it("puts BOTH duelists on the end screen, whoever the opponent is", async () => {
-    // A bot match is a duel. One column would read as a solo run.
+    // A bot match is a duel. One side would read as a solo run.
+    //
+    // The two full combatant COLUMNS became one compact identity strip (see
+    // `ResultContestants`); what this test has always been about — that a bot
+    // match shows two duelists, exactly as a human match does — is unchanged.
     for (const isBot of [false, true]) {
       bot = isBot;
       const { unmount } = mount();
       const frame = await screen.findByTestId("match-over-frame");
-      expect(within(frame).getByTestId("combatant-userA")).toBeTruthy();
-      expect(within(frame).getByTestId("combatant-userB")).toBeTruthy();
+      expect(within(frame).getByTestId("result-contestant")).toBeTruthy();
+      expect(within(frame).getByTestId("result-contestant-opponent")).toBeTruthy();
       unmount();
     }
   });
@@ -223,13 +227,18 @@ describe("the bot reads as a legitimate opponent", () => {
 // ══════════════════════════════════════════════════════ the actions
 
 describe("the end screen is not a dead end", () => {
-  it("offers Play Again first and the exit second, for BOTH flows", async () => {
+  it("offers Play Again first, Review second and the exit last, for BOTH flows", async () => {
+    // Three weights now, shared with every other mode (`ResultActions`):
+    // playing again leads, reviewing is a real button rather than a footnote,
+    // and only the exit is quiet. Play Again and the exit are the same two
+    // controls, doing the same two things, as before.
     for (const isBot of [true, false]) {
       bot = isBot;
       const { unmount } = mount();
       await screen.findByTestId("match-over-frame");
-      expect(screen.getByTestId("match-over-primary")).toHaveTextContent("Play Again");
-      expect(screen.getByTestId("match-over-secondary"))
+      expect(screen.getByTestId("result-primary")).toHaveTextContent("Play Again");
+      expect(screen.getByTestId("result-secondary")).toHaveTextContent("Review Match");
+      expect(screen.getByTestId("result-tertiary"))
         .toHaveTextContent("Back to Leaguecraft");
       unmount();
     }
@@ -238,7 +247,7 @@ describe("the end screen is not a dead end", () => {
   it("sends Play Again to the lobby with the match-entry record OPEN", async () => {
     bot = true;
     mount();
-    (await screen.findByTestId("match-over-primary")).click();
+    (await screen.findByTestId("result-primary")).click();
     // The existing entry path with one navigation removed — not a rematch
     // endpoint, and not a second creation call.
     expect(assignedUrls).toEqual(["/quiz?play=1"]);
@@ -247,7 +256,7 @@ describe("the end screen is not a dead end", () => {
   it("sends the exit to the lobby, unchanged", async () => {
     bot = true;
     mount();
-    (await screen.findByTestId("match-over-secondary")).click();
+    (await screen.findByTestId("result-tertiary")).click();
     expect(assignedUrls).toEqual(["/quiz"]);
   });
 
@@ -257,7 +266,7 @@ describe("the end screen is not a dead end", () => {
     // the only place authorization is decided.
     bot = true;
     mount();
-    (await screen.findByTestId("match-over-primary")).click();
+    (await screen.findByTestId("result-primary")).click();
     const urls = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls
       .map((c) => String(c[0]));
     expect(urls.filter((u) => u.includes("/api/ranked/queue"))).toEqual([]);
@@ -273,18 +282,23 @@ describe("nothing done for the bot changed a human match", () => {
     const { unmount: unmountAll } = mount();
     const frame = await screen.findByTestId("match-over-frame");
     expect(frame.getAttribute("data-result")).toBe("victory");
-    expect(within(frame).getByTestId("combatant-userA")).toBeTruthy();
-    expect(within(frame).getByTestId("combatant-userB")).toBeTruthy();
+    expect(within(frame).getByTestId("result-contestant")).toBeTruthy();
+    expect(within(frame).getByTestId("result-contestant-opponent")).toBeTruthy();
     // PT1.3's collection status still fills the frame's summary slot — and
     // fills it for a BOT match too, because the human in one really does add
     // to their permanent library (`ranked_public/discovery.py` excludes only
     // the bot's own submissions).
-    const human = screen.getByTestId("match-over-summary").textContent;
+    //
+    // The DISCOVERY content is what has to be identical, and it is compared as
+    // itself rather than as the whole summary slot: the slot now also carries
+    // the Progress section, and a bot match's "Unrated" row is a REAL and
+    // intended difference between the two screens.
+    const human = screen.getByTestId("discovery-quiet").textContent;
     unmountAll();
     bot = true;
     mount();
     await screen.findByTestId("match-over-frame");
-    expect(screen.getByTestId("match-over-summary").textContent).toBe(human);
+    expect(screen.getByTestId("discovery-quiet").textContent).toBe(human);
   });
 
   it("still reads the ordinary Ranked eyebrow while the match is LIVE", async () => {

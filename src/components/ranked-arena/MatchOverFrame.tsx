@@ -48,6 +48,22 @@ export interface MatchOverFrameProps {
    * again. The frame reserves the position and the mode writes the sentence.
    */
   scoreline?: ReactNode;
+  /**
+   * The two duelists, REPLACED.
+   *
+   * The frame's own answer is two full `CombatantPanel` columns, and it stays
+   * the answer for every caller that passes nothing here — the tutorial, the
+   * staff duel, the inspector and the playtest host are byte-identical.
+   *
+   * Ranked passes a compact identity strip instead. Its terminal frame already
+   * shouts the result and prints the scoreline, so a pair of poster-height
+   * columns repeating the same two numbers a third time was pushing the
+   * discoveries, the module breakdown and the way back in below the fold. This
+   * is a SLOT rather than a `compact` boolean for the reason `scoreline` is
+   * one: what a mode shows about who played is the mode's sentence, and the
+   * frame must not learn a second layout to hold it.
+   */
+  identity?: ReactNode;
   /** Optional statistics/summary content slot. */
   summary?: ReactNode;
   primaryAction?: MatchOverAction;
@@ -85,6 +101,7 @@ export function MatchOverFrame({
   heading,
   subheading,
   scoreline,
+  identity,
   summary,
   primaryAction,
   secondaryAction,
@@ -127,15 +144,17 @@ export function MatchOverFrame({
           height of a small poster. Capping it at roughly the width it would
           have had beside a second duelist keeps the panel the same OBJECT the
           arena has been showing all match. */}
-      <div className={`grid gap-3 ${
-        opponent ? "md:grid-cols-2" : "mx-auto w-full max-w-sm"}`}>
-        <CombatantPanel combatant={player} showRoundStatus={false}
-          progressionEnabled={progressionEnabled} />
-        {opponent && (
-          <CombatantPanel combatant={opponent} showRoundStatus={false}
+      {identity ?? (
+        <div className={`grid gap-3 ${
+          opponent ? "md:grid-cols-2" : "mx-auto w-full max-w-sm"}`}>
+          <CombatantPanel combatant={player} showRoundStatus={false}
             progressionEnabled={progressionEnabled} />
-        )}
-      </div>
+          {opponent && (
+            <CombatantPanel combatant={opponent} showRoundStatus={false}
+              progressionEnabled={progressionEnabled} />
+          )}
+        </div>
+      )}
 
       {summary && <div data-testid="match-over-summary">{summary}</div>}
 

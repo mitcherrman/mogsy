@@ -234,7 +234,9 @@ describe("the result is the canonical one", () => {
     over = true;
     completedRounds = 7;
     mount("m1");
-    const primary = await screen.findByTestId("match-over-primary");
+    // The shared `ResultActions` row (Play Again / Review / exit) — a session
+    // preset still owns the primary and still calls it "Continue".
+    const primary = await screen.findByTestId("result-primary");
     expect(primary.textContent).toContain("Continue");
     primary.click();
     const outro = await screen.findByTestId("playtest-interstitial");
@@ -245,7 +247,9 @@ describe("the result is the canonical one", () => {
     over = true;
     completedRounds = 7;
     mount("m1");
-    expect((await screen.findByTestId("match-over-secondary")).textContent)
+    // The exit is the quiet, third weight now; it is the same control, in the
+    // same place relative to the result, and it still leaves.
+    expect((await screen.findByTestId("result-tertiary")).textContent)
       .toContain("Back to Leaguecraft");
   });
 });

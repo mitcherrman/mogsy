@@ -130,11 +130,13 @@ describe("the Ranked terminal frame with new discoveries", () => {
     await screen.findByTestId("ranked-match-over");
     // Everything the terminal frame already carried is untouched.
     expect(screen.getByTestId("match-over-heading")).toBeInTheDocument();
-    // RB2 moved the exit to the SECONDARY slot and put Play Again in front of
-    // it; the frame's ordering — outcome, then reward, then the actions — is
-    // what this case is about and is unchanged.
-    expect(screen.getByTestId("match-over-primary")).toHaveTextContent("Play Again");
-    expect(screen.getByTestId("match-over-secondary"))
+    // The three shared action weights: Play Again leads, Review Match is the
+    // prominent secondary, and only the exit is quiet. The frame's ordering —
+    // outcome, then reward, then the actions — is what this case is about and
+    // is unchanged.
+    expect(screen.getByTestId("result-primary")).toHaveTextContent("Play Again");
+    expect(screen.getByTestId("result-secondary")).toHaveTextContent("Review Match");
+    expect(screen.getByTestId("result-tertiary"))
       .toHaveTextContent("Back to Leaguecraft");
     // ...and the reveal is INSIDE the frame's own summary slot, below them.
     const reveal = await screen.findByTestId("discovery-reveal");
@@ -175,7 +177,7 @@ describe("the Ranked terminal frame without new discoveries", () => {
     expect(screen.queryByTestId("discovery-reveal")).toBeNull();
   });
 
-  it("adds NOTHING to the frame for a first-match player with no collection", async () => {
+  it("adds NO discovery panel for a first-match player with no collection", async () => {
     discoveryResponse = () => json(discoveriesBody({
       new_discoveries: [], new_count: 0,
       collection_total: 0, collection_total_before: 0,
@@ -183,7 +185,11 @@ describe("the Ranked terminal frame without new discoveries", () => {
     mount();
     await screen.findByTestId("ranked-match-over");
     await waitFor(() => expect(discoveryCalls).toHaveLength(1));
-    expect(screen.queryByTestId("match-over-summary")).toBeNull();
+    // The summary slot now carries the shared result body for every match, so
+    // "nothing added" is asserted where PT1.3's content actually lives: there
+    // is no celebration AND no quiet collection line.
+    expect(screen.queryByTestId("discovery-reveal")).toBeNull();
+    expect(screen.queryByTestId("discovery-quiet")).toBeNull();
   });
 
   it("degrades to the pre-PT1.3 frame when the read fails", async () => {
@@ -192,8 +198,8 @@ describe("the Ranked terminal frame without new discoveries", () => {
     await screen.findByTestId("ranked-match-over");
     await waitFor(() => expect(discoveryCalls).toHaveLength(1));
     expect(screen.getByTestId("match-over-heading")).toBeInTheDocument();
-    expect(screen.queryByTestId("match-over-summary")).toBeNull();
     expect(screen.queryByTestId("discovery-reveal")).toBeNull();
+    expect(screen.queryByTestId("discovery-quiet")).toBeNull();
   });
 });
 

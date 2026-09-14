@@ -18,6 +18,16 @@ import { CombatantPanel } from "@/components/ranked-arena/CombatantPanel";
 import { LevelUpPanel } from "@/components/ranked-arena/LevelUpPanel";
 import { DiscoveryReveal } from "@/components/ranked-arena/DiscoveryReveal";
 import { MatchOverFrame } from "@/components/ranked-arena/MatchOverFrame";
+import { GameResultsBody } from "@/components/game-results/GameResultsBody";
+import { GameResultsShell } from "@/components/game-results/GameResultsShell";
+import { buildTimeTrialResults } from "@/pages/dev/daily-score-attack/DailyScoreAttackResults";
+import { buildSessionResults } from "@/lib/quiz/sessionResults";
+import {
+  historyFixture, resultsFixture,
+} from "@/pages/dev/daily-score-attack/testFixtures";
+import { ResultContestants } from "@/components/game-results/ResultContestants";
+import { buildRankedResults } from "@/pages/quiz-ranked/rankedResultsModel";
+import type { MatchReviewView } from "@/lib/ranked-public/contracts";
 import { QuestionPanel } from "@/components/ranked-arena/QuestionPanel";
 import { RevealBanner } from "@/components/ranked-arena/RevealBanner";
 import { RoundTimeline } from "@/components/ranked-arena/RoundTimeline";
@@ -957,6 +967,151 @@ const DISCOVERY_FIXTURE = {
   truncated: false,
 };
 
+/**
+ * THE PRODUCTION RANKED RESULT, assembled from fixtures through the real
+ * adapter (`buildRankedResults`) and the real components.
+ *
+ * Ten modules, a review shaped like the backend's own payload, and a
+ * settlement log that is deliberately INCOMPLETE — module 7 has no award — so
+ * the scene shows what a reconnecting player's timeline really looks like: a
+ * verdict with no points chip, never a fabricated zero.
+ */
+const RESULT_SUBJECTS = [
+  "Summoner Spells", "Item Costs", "Champion Abilities", "Runes",
+  "Item Costs", "Champion Abilities", "Summoner Spells", "Runes",
+  "Champion Abilities", "Item Costs",
+];
+
+function resultReviewFixture(wins: readonly boolean[]): MatchReviewView {
+  return {
+    schemaVersion: "ranked_duel.match_review.v1",
+    serverTime: "2026-09-03T12:05:00Z",
+    matchId: "rkb_demo",
+    finalRoundNumber: wins.length,
+    roundCount: wins.length,
+    rounds: wins.map((won, i) => ({
+      roundNumber: i + 1,
+      kind: "quiz",
+      moduleId: "quiz.v1",
+      category: RESULT_SUBJECTS[i],
+      canonicalQuestionRef: `ranked:v2-${i + 30}`,
+      revealed: true,
+      iconHint: { kind: "category", key: RESULT_SUBJECTS[i], icon: null },
+      topic: null,
+      question: {
+        prompt: `Module ${i + 1} — a ${RESULT_SUBJECTS[i]} question.`,
+      },
+      challenges: null,
+      masteryChallenges: null,
+      viewerSubmission: {
+        answerIndex: 0, isCorrect: won, correctCount: null,
+        answeredCount: null, challengeCount: null,
+      },
+    })),
+  } as unknown as MatchReviewView;
+}
+
+function RankedResultScene({ rated }: { rated: boolean }) {
+  const wins = rated
+    ? [true, true, false, true, true, false, true, true, false, true]
+    : [false, true, false, false, true, false, false, true, false, false];
+  const review = resultReviewFixture(wins);
+  const roundHistory = wins.map((won, i) => ({
+    roundNumber: i + 1,
+    outcome: (won ? "correct" : "incorrect") as "correct" | "incorrect",
+    // Module 7 is deliberately absent from the award map: a reconnecting
+    // client legitimately has a verdict and no points for a module.
+    pointsAwarded: i === 6 ? null : won ? 3 : 0,
+    dealt: 0, taken: 0, absorbed: 0, hpBefore: 0, hpAfter: 0,
+    timeExpired: i === 5,
+  }));
+  const you = wins.filter(Boolean).length * 3;
+  const them = (wins.length - wins.filter(Boolean).length) * 3;
+  const model = buildRankedResults({
+    player: scoredPlayer(you),
+    opponent: scoredOpponent(them, rated ? {} : { name: "Bot", tag: "Duelist" }),
+    result: rated ? "victory" : "defeat",
+    finalScores: { p1: you, p2: them },
+    modulesPlayed: wins.length,
+    subheading: null,
+    isBotMatch: !rated,
+    ratingDelta: rated ? 18 : null,
+    ratingAfter: rated ? 1218 : null,
+    progressionEnabled: true,
+    review,
+    roundHistory,
+    discoveries: DISCOVERY_FIXTURE as never,
+    opponentLabel: rated ? "Opponent" : "Bot",
+  });
+  model.actions = {
+    primary: { label: "Play Again", onClick: () => {} },
+    secondary: { label: "Review Match", onClick: () => {} },
+    tertiary: { label: "Back to Leaguecraft", onClick: () => {} },
+  };
+  model.review = <DiscoveryReveal view={DISCOVERY_FIXTURE as never} onReview={() => {}} />;
+  return (
+    <MatchOverFrame
+      result={rated ? "victory" : "defeat"}
+      player={scoredPlayer(you)}
+      opponent={scoredOpponent(them, rated ? {} : { name: "Bot", tag: "Duelist" })}
+      eyebrow={rated ? undefined : "Match Complete · Unrated"}
+      scoreline={<RankedScoreline you={you} opponent={them}
+        result={rated ? "victory" : "defeat"} modulesPlayed={wins.length}
+        ratingDelta={rated ? 18 : null} />}
+      identity={model.contestants ? (
+        <ResultContestants you={model.contestants.you}
+          opponent={model.contestants.opponent ?? null} showScores={false} />
+      ) : undefined}
+      summary={<GameResultsBody model={model} />}
+    />
+  );
+}
+
+/**
+ * THE TWO NON-ARENA MODES' RESULT SCREENS, on the same fixtures QA already
+ * has. `GameResultsShell` is what Time Trial and the practice quiz render, so
+ * they are visually checkable here — dark-academy skin, responsive behaviour,
+ * three action weights — without a backend and without playing a run.
+ */
+function TimeTrialResultScene() {
+  const model = buildTimeTrialResults(resultsFixture(), historyFixture);
+  model.actions = {
+    primary: { label: "Try a practice run", onClick: () => {} },
+    secondary: { label: "Review Questions", onClick: () => {} },
+    tertiary: { label: "Back to Leaguecraft", onClick: () => {} },
+  };
+  return <GameResultsShell model={model} />;
+}
+
+const PRACTICE_ANSWERS = [
+  ["Runes", true], ["Runes", true], ["Item Costs", false],
+  ["Item Costs", true], ["Champion Abilities", false],
+  ["Champion Abilities", false], ["Summoner Spells", true],
+].map(([category, isCorrect], i) => ({
+  category: category as string,
+  questionText: `Question ${i + 1} — a ${category} question.`,
+  selected: isCorrect ? "Right" : "Wrong",
+  isCorrect: isCorrect as boolean,
+  correctAnswer: "Right",
+}));
+
+function PracticeResultScene() {
+  const model = buildSessionResults({
+    answers: PRACTICE_ANSWERS,
+    score: PRACTICE_ANSWERS.filter((a) => a.isCorrect).length,
+    total: PRACTICE_ANSWERS.length,
+    setName: "Rune Recognition",
+    currentXp: 4820,
+    currentStreak: 2,
+  });
+  model.actions = {
+    primary: { label: "Play again", onClick: () => {} },
+    secondary: { label: "Practise the 3 you missed", onClick: () => {} },
+    tertiary: { label: "Back to Leaguecraft", onClick: () => {} },
+  };
+  return <GameResultsShell model={model} />;
+}
+
 // ---- RR1 slice pass fixtures -------------------------------------------
 // Fed through the PRODUCTION adapter, from payloads copied VERBATIM out of
 // `ranked_public.presentation_render.presentation_for_question` for the
@@ -1224,6 +1379,27 @@ const STATES: InspectorState[] = [
       opponent={opponent({ hp: 30, name: "Bot", tag: "Duelist" })}
       eyebrow="Match Complete · Unrated"
       {...END_ACTIONS} /> },
+  /**
+   * THE PRODUCTION RANKED RESULT, whole.
+   *
+   * The scenes above each isolate one part of the terminal frame. This is what
+   * a player actually sees: the result word, the scoreline, the compact
+   * identity strip that replaced the two duelist columns, and then the shared
+   * result body — performance, progression, Mogzy's report, the ten modules,
+   * the discovery reveal and the three actions.
+   *
+   * Built through `buildRankedResults` from fixture inputs, so the scene is
+   * exercised by the SAME adapter production runs; a change to what Ranked is
+   * willing to claim shows up here without anyone editing this file.
+   */
+  { key: "results-full-rated", label: "RESULT — full Ranked composition (rated win)",
+    render: () => <RankedResultScene rated /> },
+  { key: "results-full-bot", label: "RESULT — full composition vs Bot (unrated loss)",
+    render: () => <RankedResultScene rated={false} /> },
+  { key: "results-time-trial", label: "RESULT — Time Trial (shared shell)",
+    render: () => <TimeTrialResultScene /> },
+  { key: "results-practice", label: "RESULT — practice quiz (shared shell)",
+    render: () => <PracticeResultScene /> },
   { key: "discovery-reveal", label: "Match over — new questions discovered",
     render: () => <MatchOverFrame result="victory" player={player({ hp: 40 })} opponent={opponent({ hp: 0 })}
       summary={<DiscoveryReveal view={DISCOVERY_FIXTURE} onReview={() => {}} />}

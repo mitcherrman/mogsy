@@ -46,6 +46,10 @@ import {
   projectPointsMascotReactions, projectRevealFeedback, projectSettlementFeedback,
 } from "@/lib/ranked-core/pointsFeedback";
 import { RankedScoreline } from "./RankedScoreline";
+import { GameResultsBody } from "@/components/game-results/GameResultsBody";
+import { ResultContestants } from "@/components/game-results/ResultContestants";
+import { buildRankedResults } from "./rankedResultsModel";
+import { useMatchTimeline } from "./useMatchTimeline";
 import { useRankedMatchHistory } from "./useRankedMatchHistory";
 import {
   abilityTrayIsUseful, isPointsMatch, moduleProgressLabel,
@@ -228,9 +232,19 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
    * with `ratingDelta: null` and the scoreline simply has no rating chip. The
    * one number this can show is a number the backend applied.
    */
+  /**
+   * The finished match's MODULES — one read of the existing review endpoint,
+   * gated to the terminal phase exactly like the two reads above it, so a live
+   * match never spends the request. See `useMatchTimeline`.
+   */
+  const matchReview = useMatchTimeline(matchId, m.phase === "match_over");
   const history = useRankedMatchHistory(5, { enabled: m.phase === "match_over" });
-  const ratingDelta = history.entries
-    .find((e) => e.matchId === matchId)?.ratingDelta ?? null;
+  const historyRow = history.entries.find((e) => e.matchId === matchId) ?? null;
+  const ratingDelta = historyRow?.ratingDelta ?? null;
+  /** The standing this match left the account on, when the row stated one. A
+   *  rating AFTER is a fact; the TIER it falls in is not — the client holds no
+   *  thresholds, so no tier is derived from it anywhere. */
+  const ratingAfter = historyRow?.ratingAfter ?? null;
   const [tick, setTick] = useState(0);
   const [pendingLevel2, setPendingLevel2] = useState<string | null>(null);
 
@@ -557,15 +571,70 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
         ? { ...c, score: finalScores[c.playerId] } : c);
     const result: "victory" | "defeat" | "draw" =
       draw ? "draw" : won ? "victory" : "defeat";
+    /**
+     * THE SHARED RESULT MODEL, built from authorities this controller already
+     * holds. See `buildRankedResults` — nothing is decided there either.
+     */
+    const results = buildRankedResults({
+      player: withFinalScore(combatants.player),
+      opponent: withFinalScore(combatants.opponent),
+      result,
+      finalScores,
+      modulesPlayed: m.result?.scoring?.modulesPlayed ?? null,
+      subheading: reason === "forfeit"
+        ? (won ? `${otherLabel} forfeited.` : "You forfeited.")
+        : reason === "no_contest" ? "No contest — both players left." : null,
+      isBotMatch,
+      ratingDelta,
+      ratingAfter,
+      progressionEnabled,
+      review: matchReview,
+      roundHistory: roundHistory.player,
+      discoveries: discoveries.view,
+      opponentLabel: otherLabel,
+    });
+    /**
+     * RB2/RB3 — playing again is the PRIMARY action and leaving is the quiet
+     * one, with REVIEW between them. A session preset still owns what comes
+     * after its own result; the exit stays where it was so a player who wants
+     * out is never trapped.
+     *
+     * They live on the model rather than on the frame's own action row,
+     * because `ResultActions` is what states the product's three-weight
+     * ordering and every mode now gets the same one.
+     */
+    results.actions = {
+      primary: onSessionComplete
+        ? { label: "Continue", onClick: onSessionComplete }
+        : {
+          label: "Play Again",
+          onClick: () => { window.location.assign(AGAIN_HREF); },
+        },
+      // Into the Record's History pane, which is where this match's full
+      // question-by-question timeline — answers included — already lives.
+      secondary: {
+        label: "Review Match",
+        onClick: () => { window.location.assign("/quiz#history"); },
+      },
+      tertiary: {
+        label: "Back to Leaguecraft",
+        onClick: () => { window.location.assign(LOBBY_HREF); },
+      },
+    };
+    // PT1.3's reveal keeps its position under the progression it follows: it
+    // is the mode's own reward content, so it rides the model's REVIEW slot.
+    results.review = discoveryRevealHasContent(discoveries.view)
+      ? (<DiscoveryReveal view={discoveries.view}
+          onReview={() => { window.location.assign("/quiz#review"); }} />)
+      : undefined;
+
     const terminal: ArenaTerminalView = {
       result,
       player: withFinalScore(combatants.player),
       opponent: withFinalScore(combatants.opponent),
       /**
        * RP1 Step 4 — a scored match ends on a SCORELINE, and says so directly
-       * under the result word. An hp match passes none and its frame is
-       * unchanged: it ends on a knockout, and "170 — 0" is not the sentence
-       * that match was about.
+       * under the result word.
        */
       scoreline: finalScores ? (
         <RankedScoreline
@@ -576,65 +645,38 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
           ratingDelta={ratingDelta} />
       ) : undefined,
       /**
-       * RB2 — the ONE thing the end screen says differently about a bot match.
+       * The two duelist COLUMNS, replaced by one row.
        *
-       * A bot match is unrated, and until now the end screen said nothing at
-       * all about it: the frame carries no rating figure for ANY match, so
-       * there was no misleading Elo to remove — but there was also nothing
-       * telling a player who had just fought twelve rounds that the ladder had
-       * not moved. One word in the eyebrow the frame already draws. No banner,
-       * no explanation, no second layout: the player chose Match with Bot and
-       * only needs the consequence confirmed.
-       *
-       * A human match keeps the frame's own default and is untouched.
+       * The scoreline directly above already prints both numbers, so the strip
+       * carries identity only — see `ResultContestants`.
        */
+      identity: results.contestants ? (
+        <ResultContestants you={results.contestants.you}
+          opponent={results.contestants.opponent ?? null}
+          showScores={finalScores === null} />
+      ) : undefined,
+      /** RB2 — the one thing the end screen says differently about a bot. */
       eyebrow: isBotMatch ? "Match Complete · Unrated" : undefined,
-      subheading: reason === "forfeit"
-        ? (won ? `${otherLabel} forfeited.` : "You forfeited.")
-        : reason === "no_contest" ? "No contest — both players left." : undefined,
+      subheading: results.subheading ?? undefined,
       progressionEnabled,
       /**
-       * RB2 — playing again is the PRIMARY action, and leaving is the quiet
-       * one. Both matches end here and both used to offer only the exit, which
-       * made every duel a dead end: the player was returned to the hub with
-       * the record closed and had to re-open it before they could do the thing
-       * they had just chosen to do. That was always wrong; RB1 sharpened it,
-       * because a Premium player using Bot Ranked as their Ranked substitute
-       * pays the whole cost again on every match.
-       *
-       * Identical for a human and a bot match — the record they land on is the
-       * one that knows which of the two they may start.
+       * Performance, progression, Mogzy's report, the ten modules, the
+       * discovery reveal and the three actions — the shared body every mode
+       * renders, in the frame's existing summary slot.
        */
-      primaryAction: onSessionComplete
-        // RB3 — a session preset owns what comes after the result. One
-        // button, because a guided playtest has one next step; the exit stays
-        // where it was so a player who wants out is never trapped.
-        ? { label: "Continue", onClick: onSessionComplete }
-        : {
-          label: "Play Again",
-          onClick: () => { window.location.assign(AGAIN_HREF); },
-        },
-      secondaryAction: {
-        label: "Back to Leaguecraft",
-        onClick: () => { window.location.assign(LOBBY_HREF); },
-      },
-      // PT1.3 rides the frame's EXISTING summary slot, so the outcome, the
-      // combatant panels and any progression this match carried are all read
-      // first and the reward follows them. Left undefined — and the frame
-      // renders no summary block, and therefore no stray flex gap — whenever
-      // there is nothing honest to say. The CTA goes to `/quiz#review`, which
-      // opens REVIEW on OWNED already (PT1.2); there is no second collection
-      // surface and no Library route.
-      summary: discoveryRevealHasContent(discoveries.view)
-        ? (<DiscoveryReveal view={discoveries.view}
-            onReview={() => { window.location.assign("/quiz#review"); }} />)
-        : undefined,
-      reveal: m.lastResolved ? {
-        settlement: m.lastResolved,
-        viewerSlot: "p1",
-        namesByPlayerId: revealNames(m.lastResolved, otherLabel),
-        showAbilities: progressionEnabled,
-      } : null,
+      summary: <GameResultsBody model={results} />,
+      /**
+       * NO SETTLEMENT PANEL.
+       *
+       * This used to mount `RevealPanel`, which prints "Damage dealt",
+       * "Mitigation" and "HP 170 → 150" — the vocabulary of the hp match
+       * Ranked has not been since RP1. On a points match those fields are the
+       * engine's internal transport for the award, so the panel was restating
+       * the module's points under the wrong name, for ONE round, on a screen
+       * that said nothing about the other nine. The module timeline above says
+       * the true thing about all ten.
+       */
+      reveal: null,
     };
     return <CanonicalArena view={null} terminal={terminal} chrome={chrome} />;
   }
