@@ -45,7 +45,8 @@
 | **GR1 Matchup rank identity** | **COMPLETE and verified, 2026-09-13.** Blockers 1, 2, 4 and 5 of that audit. Backend branch `gr1/matchup-rank-identity` @ **`52f5564a`** (base `c4f08761`), frontend @ **`756b6b41`** (base `3ce50045`) — one commit each, both clean fast-forwards. **Neither pushed** (both targets auto-deploy). See [`gr1-matchup-mastery-rank-fix.md`](./gr1-matchup-mastery-rank-fix.md) and the summary below. |
 | **GR1 Matchup rank diversity** | **COMPLETE and MERGED.** `origin/master` contains **`825e2db2`** — the seed now chooses which rank a comparison is asked at. See [`gr1-matchup-mastery-rank-diversity.md`](./gr1-matchup-mastery-rank-diversity.md). |
 | **GR1 Matchup tie policy — design** | **DESIGN + MEASUREMENT COMPLETE, 2026-09-13. Superseded by the implementation row below.** Audited backend `origin/master` **`825e2db2`**; frontend `origin/main` **`756b6b41`** read only. Four policies simulated in a throwaway probe layer over **45,144 real generated slices**. Recommendation: **tie deprioritization + a per-slice tie cap; do NOT adopt metric-level suppression.** See [`gr1-matchup-mastery-tie-policy.md`](./gr1-matchup-mastery-tie-policy.md) and the summary below. |
-| **GR1 Matchup tie policy — implementation** | **COMPLETE and verified, 2026-09-13.** The approved hybrid — tie deprioritization + a per-slice cap of `max(1, n // 4)` — on branch `gr1/matchup-tie-policy` @ **`afb55d1e`**, base `origin/master` **`087f9a78`**. One commit, clean fast-forward, **not pushed**. **No frontend change.** See [`gr1-matchup-mastery-tie-policy-implementation.md`](./gr1-matchup-mastery-tie-policy-implementation.md) and the summary below. |
+| **GR1 Matchup tie policy — implementation** | **COMPLETE and verified, 2026-09-13.** The approved hybrid — tie deprioritization + a per-slice cap of `max(1, n // 4)` — on branch `gr1/matchup-tie-policy` @ **`afb55d1e`**, base `origin/master` **`087f9a78`**. One commit, clean fast-forward. **NOW INTEGRATED** — `origin/master` is **`16db3690`** and `git diff afb55d1e 16db3690` is one documentation file. **No frontend change.** See [`gr1-matchup-mastery-tie-policy-implementation.md`](./gr1-matchup-mastery-tie-policy-implementation.md) and the summary below. |
+| **GR1 Matchup Mastery structural audit** | **COMPLETE, 2026-09-13. AUDIT ONLY — nothing implemented, nothing pushed.** Audited backend `origin/master` **`16db3690`** (which contains the tie policy: `git diff afb55d1e 16db3690` is one doc file), frontend `origin/main` **`756b6b41`** read only, docs base `origin/gr1/docs-snapshot` **`decc49b6`**. Full structural picture of what Matchup generates, what it holds, what dominates, and what the owner may eventually have to decide. See [`gr1-matchup-mastery-structural-audit.md`](./gr1-matchup-mastery-structural-audit.md) and the summary below. |
 | GR1 Phase 6+ | Not started. Public Ranked rotation and the rollout decision are still untouched. Difficulty as a composition input, and the Applied-chain generalization decision, remain the open generator items. |
 
 ## Commits
@@ -884,8 +885,71 @@ untouched per the brief.
 
 **Still open for Matchup:** unchanged, minus tie policy — the cost and level-stat families;
 `base_magic_resist` as a comparison metric at all; manaless mana regeneration; the dual-form
-row split; the Lab coverage headline. **The broader Matchup structural review was NOT
-started.**
+row split; the Lab coverage headline. ~~**The broader Matchup structural review was NOT
+started.**~~ — **it has now been done, audit-only: see the structural-audit section below.**
+
+## Matchup Mastery structural audit — AUDIT ONLY (2026-09-13)
+
+Full evidence: [`gr1-matchup-mastery-structural-audit.md`](./gr1-matchup-mastery-structural-audit.md).
+Backend `origin/master` **`16db3690`**, frontend `origin/main` **`756b6b41`** (read only),
+docs base `origin/gr1/docs-snapshot` **`decc49b6`**. **No runtime code changed, nothing
+implemented, nothing pushed.** The tie policy IS integrated — `git diff afb55d1e 16db3690` is one
+documentation file — so this audit measures the generator the previous pass shipped.
+
+**Instruments.** A 14,878-pair sweep through the real pipeline (0 errors), 5,040 real generated
+slices over a 420-pair stratified sample × n={3,5,8} × 4 salts (0 errors, 0 under-filled), a
+1,200-pair quality probe rendering every served comparison through the real adapter and a faithful
+transcription of the shipped `formatComparisonSemantics.ts`, and a fallback probe generating five
+pairs at every length from 1 upward.
+
+**The universe.** 726,049 raw → 322,026 policy-accepted → **322,026 servable** (dedupe now removes
+nothing) + 1,150,680 atomic. `ability_cooldown` **59.8%** / `champion_base_stat` **40.2%**.
+404,023 candidates held at `family_unmapped`: `champion_level_stat` 299,124, `ability_cost`
+104,899 — **both have canonical data, a complete identity and a live renderer branch**; the
+blocker is `quiz/family_contract.py` in both cases. A third metric, `base_attack_speed`, is held
+one layer earlier — `MetricSpec` gives it no `dimension`, so it has no comparison key at all.
+
+**Slices.** 100% comparisons and **0 atomic at n=3/5/8**. The family mix **inverts with length** —
+cooldown 55.6% → 47.4% → **34.8%**, base stat 44.4% → 52.6% → **65.2%** — because the distinct-fact
+allocator meets a ceiling of **4 ability facts against up to 10 base-stat facts**. An 8-question
+slice averages 2.78 ability comparisons and 5.22 base-stat comparisons. Rank draw tracks pool
+availability to within 3.1 points (rank 5 is the one consistently under-drawn axis, 12.9% vs 16.0%).
+
+**The new content finding: near-miss, not ties.** Both servable families publish under a
+`FamilyContract` that **declares exclusions the Mastery path does not apply** — `exclusions` is
+prose read by one report script, never a gate. Measured: **91.5% of served `movement_speed`
+comparisons are a tie or differ by under 5%**, the band `champion_stat_compare` itself calls "a
+guess in the quiz". `base_health` 46.5%, `base_magic_resist` 41.6%, `base_attack_damage` 30.2%,
+`ability_cooldown` 17.6% against its own 10% band. **`movement_speed` is worse than
+`base_magic_resist`, and no tie-rate table could have surfaced it.**
+
+**Pair health.** 14,878/14,878 generatable, 0 with no comparison. **Rich (≥21) 10,655 (71.6%) ·
+normal (13–20) 2,743 (18.4%) · thin (≤12) 1,480 (9.9%)**, of which **880 are base-stat-only**.
+The cause is **84 of 692 QWER slots held upstream across FIVE reason codes** — `secondary_gate`
+27, `dual_form_row` 26, `no_cooldown` 11, `cooldown_shape_unsupported` 10, `nonstandard_rank_count`
+10. This **refines the earlier record**: only **5** champions are fully ability-comparison-incapable
+(`aphelios` `elise` `jayce` `nidalee` `udyr`), 3 publish one slot, 9 publish two — and
+`dual_form_row` is the second-largest cause, not the only one.
+
+**Atomic fallback.** Not a fallback mechanism — the second half of a two-plan recipe that is
+usually allocated zero. The first atomic step appears at exactly **n = (that pair's comparison
+count) + 1**, verified at 9/9/10/23/28 on five pairs. Roster minimum is **n=9** (166 pairs); the
+median pair reaches it at **n=23**. 78.1% of the pair universe is unreachable at every length in use.
+
+**Strengths, re-verified not assumed.** Total pair coverage · fail-closed source integrity · rank
+identity (0 collapsed groups) · rank diversity · tie control (≥3 ties **0.0/0.0/0.7%** on the
+random stratum) · 0 repeated facts and 0 repeated slots across 5,040 slices · determinism ·
+pair-order symmetry · 4 salts ⇒ 4 distinct slices for **420/420** pairs · all ten metrics now draw
+a media band · all 29 `ranked_format_configs` rows still `target='admin_bot'`.
+
+**Limitations, observed only**, split into data/source (4), policy (3), family-contract (3),
+composition (6) and presentation (4). **16 owner questions** are listed at the end of the document
+— including whether `movement_speed` and `base_magic_resist` belong in the product at all, whether
+Mastery should honour its families' declared exclusions, whether the held families should be
+requested, whether a 65% base-stat 8-question slice is the intended shape, and whether the
+1,150,680 unreachable atomic candidates belong in the matchup universe.
+
+**Nothing was turned into an implementation plan, and no redesign was proposed.**
 
 ## Screenshots / artifacts
 
