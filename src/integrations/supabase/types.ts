@@ -3778,6 +3778,7 @@ export type Database = {
         Returns: {
           avatar_url: string
           created_at: string
+          custom_theme: string
           display_name: string
           id: string
           is_anonymous: boolean
@@ -3929,6 +3930,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      may_equip_profile_theme: {
+        Args: {
+          _grant_expires_at: string
+          _grant_kind: string
+          _stripe_pro: boolean
+          _theme: string
+        }
+        Returns: boolean
+      }
       my_pro_entitlement: {
         Args: never
         Returns: {
@@ -3955,6 +3965,10 @@ export type Database = {
       }
       profile_frame_requires_premium: {
         Args: { _frame: string }
+        Returns: boolean
+      }
+      profile_theme_requires_premium: {
+        Args: { _theme: string }
         Returns: boolean
       }
       purchase_powerup: {
