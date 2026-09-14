@@ -30,6 +30,7 @@ const SRC_DIR = join(process.cwd(), "src");
 const HARDENING = "20260812140000_fb1_feedback_privilege_hardening.sql";
 const FOUNDATION = "20260812120000_fb1_feedback_foundation.sql";
 const STORAGE = "20260812130000_fb1_feedback_evidence_storage.sql";
+const IN_PRODUCT = "20260913120000_fb1_in_product_reporting.sql";
 
 const readMigration = (f: string) => readFileSync(join(MIGRATIONS_DIR, f), "utf8");
 
@@ -43,10 +44,18 @@ const sql = (f: string) =>
 const hardening = () => sql(HARDENING);
 
 describe("ordering", () => {
-  it("is the last FB1 migration, after foundation and storage", () => {
+  it("hardens only after the foundation and the storage bucket exist", () => {
+    // Originally "is the last FB1 migration". It is not any more, and it does
+    // not need to be: FB1-4 is additive and applies AFTER hardening, so the
+    // invariant that actually matters is that hardening comes after the two
+    // migrations it depends on. Pinning "nothing may follow" would only make
+    // every future additive FB1 migration fail a test about privileges it
+    // does not change.
     const files = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith(".sql")).sort();
     const fb1Files = files.filter(f => /_fb1_/.test(f));
-    expect(fb1Files).toEqual([FOUNDATION, STORAGE, HARDENING]);
+    expect(fb1Files.slice(0, 3)).toEqual([FOUNDATION, STORAGE, HARDENING]);
+    expect(fb1Files.indexOf(HARDENING)).toBeGreaterThan(fb1Files.indexOf(FOUNDATION));
+    expect(fb1Files.indexOf(HARDENING)).toBeGreaterThan(fb1Files.indexOf(STORAGE));
   });
 
   it("refuses to run before the safe read path exists", () => {
@@ -100,15 +109,30 @@ describe("direct table reads are closed", () => {
 });
 
 describe("shipped operations still work", () => {
-  /** The column list on GRANT INSERT (...) ON public.feedback. */
+  /**
+   * Every column granted for INSERT on public.feedback, across ALL migrations.
+   *
+   * A column-level GRANT is additive, so the live privilege is the UNION of
+   * every such statement — the hardening migration's original twelve plus
+   * whatever a later additive migration names. Reading only the hardening
+   * migration would have made this test pass while production rejected every
+   * insert that touched a newer column, which is exactly the failure mode the
+   * assertion below exists to catch.
+   */
   const grantedInsertColumns = () => {
-    const m = hardening().match(/GRANT INSERT \(([\s\S]*?)\) ON public\.feedback TO authenticated;/);
-    expect(m, "GRANT INSERT column list not found").not.toBeNull();
-    return m![1]
-      .split(",")
-      .map(c => c.trim())
-      .filter(Boolean)
-      .sort();
+    const columns = new Set<string>();
+    for (const file of readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith(".sql")).sort()) {
+      for (const m of sql(file).matchAll(
+        /GRANT INSERT \(([\s\S]*?)\) ON public\.feedback TO authenticated;/g,
+      )) {
+        for (const column of m[1].split(",")) {
+          const name = column.trim();
+          if (name) columns.add(name);
+        }
+      }
+    }
+    expect(columns.size, "no GRANT INSERT column list found").toBeGreaterThan(0);
+    return [...columns].sort();
   };
 
   /** The keys client.ts actually sends in its insert payload. */
@@ -122,7 +146,19 @@ describe("shipped operations still work", () => {
   it("the INSERT grant exactly covers what the client sends — no more, no less", () => {
     // Too narrow breaks submission; too wide lets a reporter set their own
     // status or pre-fill admin_notes.
+    //
+    // "Too narrow" is not hypothetical: FB1-4 added report_context to the
+    // insert payload and this assertion caught the missing grant, which would
+    // have failed nowhere except production, on every report.
     expect(grantedInsertColumns()).toEqual(clientInsertKeys());
+  });
+
+  it("grants INSERT on report_context but never UPDATE", () => {
+    // The captured snapshot is a record of what the client observed at submit
+    // time. A submitter able to edit it afterwards could rewrite the evidence
+    // their own report rests on.
+    expect(grantedInsertColumns()).toContain("report_context");
+    expect(sql(IN_PRODUCT)).not.toMatch(/GRANT UPDATE\s*\(/);
   });
 
   it("withholds admin-owned and derived columns from INSERT", () => {

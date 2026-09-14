@@ -183,6 +183,7 @@ const LEAGUECRAFT_BG_VEIL =
 import QuizAnswerOptions, {
   choicesHaveImages as computeChoicesHaveImages,
 } from "@/components/quiz/QuizAnswerOptions";
+import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
 
 /**
@@ -890,6 +891,44 @@ export default function Quiz() {
 
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
+
+  /**
+   * FB1-4 — publish the practice question for the shared report dock.
+   *
+   * This is the one mode that already HAS a question reporter: the "Report
+   * issue" button below the answer feedback, which posts to
+   * `POST /api/quiz/reports` in the FastAPI backend and lands in the
+   * `question_reports` table with its own admin resolution flow. That path is
+   * deliberately left running and untouched — it feeds the question-override
+   * pipeline, and silently retiring it would drop reports on the floor.
+   *
+   * The two now overlap on this surface, which is a decision for the owner
+   * rather than something to resolve by deletion here. What the dock adds is
+   * reach: `question_reports` is keyed on a `quiz_questions.id`, so it cannot
+   * accept a report from Ranked, Mastery, Time Trial or Pro Play at all. This
+   * publish exists so Practice is not the one mode missing from the unified
+   * inbox.
+   *
+   * Practice is the one place BOTH identities exist, so both are published.
+   */
+  usePublishReportableQuestion(
+    phase === "active" && currentQuestion
+      ? {
+        category: "Leaguecraft",
+        mode: "Practice",
+        questionKey: currentQuestion.question_key ?? null,
+        staticQuestionId: currentQuestion.id,
+        prompt: currentQuestion.question_text ?? null,
+        choices: (currentQuestion.choices ?? []).map(choice =>
+          typeof choice === "string" ? choice : choice.label),
+        selectedAnswer: selectedAnswer ?? fillBlankValue ?? null,
+        canonicalAnswer: answerResult?.correct_answer ?? null,
+        questionType: currentQuestion.format,
+        difficulty: currentQuestion.difficulty ?? null,
+        roundNumber: currentIndex + 1,
+      }
+      : null,
+  );
 
   const openReportDialog = useCallback(() => {
     setReportType("wrong_answer");

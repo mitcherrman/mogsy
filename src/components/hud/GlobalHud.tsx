@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import AcademyRadioControls from "@/components/audio/AcademyRadioControls";
 import MogzyIdentityMenu from "@/components/hud/MogzyIdentityMenu";
+import PageReportControl from "@/components/report/PageReportControl";
 import { useAuth } from "@/hooks/useAuth";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { isGuestUser, signupHrefFor } from "@/lib/hud/identity";
@@ -166,9 +167,18 @@ export default function GlobalHud() {
               Sign up
             </Link>
           )}
-          {/* Fixed order: music → Mogzy (profile) → notifications chevron.
-              DOM order IS the tab order — keep them matched. */}
+          {/* Fixed order: music → report → Mogzy (profile) → notifications
+              chevron. DOM order IS the tab order — keep them matched.
+
+              The report flag sits BEFORE the identity compound, not after: the
+              compound's two halves (portrait and chevron) are one control the
+              user reads as a unit, and inserting anything between them or
+              after them breaks that reading. It is also the quietest chip in
+              the cluster by design — utility styling, no pop — because it is
+              the one control here nobody is looking for until something is
+              already wrong. */}
           <AcademyRadioControls variant="hud" />
+          <PageReportControl />
           <MogzyIdentityMenu />
         </div>
       </div>

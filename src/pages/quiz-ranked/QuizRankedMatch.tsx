@@ -750,6 +750,9 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
   };
 
   const view: ArenaViewModel = {
+    // FB1-4. See dailyArenaView for the same two words: the arena does the
+    // publishing, the mode only says who it is.
+    report: { mode: "Ranked", category: "Ranked" },
     header: {
       eyebrow: `Ranked Duel${m.publicRound.playtest?.isBotMatch ? " · vs Bot" : ""}`,
       // RP1 — a points match names its MODULE and its length, both read off

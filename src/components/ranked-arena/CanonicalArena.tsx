@@ -22,7 +22,7 @@
  * which mode produced one, and adding a branch that could would be the
  * beginning of the fork this file exists to prevent.
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AbilityTray } from "./AbilityTray";
 import { ArenaShell } from "./ArenaShell";
 import { CombatantPanel } from "./CombatantPanel";
@@ -36,6 +36,8 @@ import { SegmentResultBeat } from "./SegmentResultBeat";
 import { SegmentTranscript } from "./SegmentTranscript";
 import { TimerDisplay } from "./TimerDisplay";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
+import { arenaReportSnapshot } from "@/lib/ranked-core/reportSnapshot";
+import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import type {
   ArenaRail, ArenaTerminalView, ArenaViewModel,
 } from "@/lib/ranked-core/arenaView";
@@ -106,6 +108,31 @@ export function CanonicalArena({
     setSeenSegment(segmentSettlement?.settlement ?? null);
     setDetailsOpen(false);
   }
+
+  /**
+   * FB1-4 — publish the round for the question reporter.
+   *
+   * Above the early returns because hooks must be, and gated on `!terminal`
+   * because a match-over frame has no live question to report — the reporter
+   * disappears with the arena rather than lingering over a results screen.
+   *
+   * This is where both Ranked and Daily Challenge get the feature: they are
+   * the two callers of this component, and neither had to be touched beyond
+   * naming itself in `view.report`. Publishing costs the arena no re-render —
+   * the store the snapshot lands in is subscribed to only by the report
+   * control (see reportable-question.tsx).
+   */
+  const reportSnapshot = useMemo(() => {
+    if (terminal || !view?.report) return null;
+    return arenaReportSnapshot({
+      identity: view.report,
+      publicRound: view.surface.publicRound,
+      selection: view.surface.selection,
+      reveal: view.surface.reveal,
+    });
+  }, [terminal, view?.report, view?.surface.publicRound, view?.surface.selection,
+      view?.surface.reveal]);
+  usePublishReportableQuestion(reportSnapshot);
 
   if (terminal) {
     // Ordinary flow, like the live arena: the terminal frame and the final

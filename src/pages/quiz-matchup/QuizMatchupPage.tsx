@@ -4,6 +4,7 @@ import { ArrowLeft, Swords } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import QuizAnswerOptions from "@/components/quiz/QuizAnswerOptions";
+import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
 import { resolveQuizAssetUrl } from "@/lib/quiz/api";
 import {
@@ -51,6 +52,28 @@ export default function QuizMatchupPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /* FB1-4. Same story as Pro Play: a server-frozen, on-demand question whose
+     `question_id` is a session-scoped runtime id rather than a bank row, so it
+     is published as one. The correct answer exists only once the turn has been
+     graded. */
+  usePublishReportableQuestion(
+    question
+      ? {
+        category: "Leaguecraft",
+        mode: "Matchup",
+        runtimeQuestionId: question.question_id,
+        prompt: question.question_text,
+        choices: question.choices,
+        selectedAnswer: selected,
+        canonicalAnswer: result?.correct_answer ?? null,
+        questionType: question.champions.join(" vs ") || null,
+        difficulty: question.tier,
+        sessionId: session?.session_id ?? null,
+        roundNumber: question.number,
+      }
+      : null,
+  );
 
   const begin = useCallback(async () => {
     setResult(null);

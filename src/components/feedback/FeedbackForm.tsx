@@ -21,7 +21,7 @@ import {
   FEEDBACK_SEVERITIES,
   FEEDBACK_SEVERITY_LABELS,
   type FeedbackCategory,
-  type FeedbackEntryIntent,
+  type FeedbackCenterIntent,
   type FeedbackReproducibility,
   type FeedbackSeverity,
 } from "@/lib/feedback/contract";
@@ -48,7 +48,7 @@ export interface FeedbackFormValues {
 }
 
 interface Props {
-  intent: FeedbackEntryIntent;
+  intent: FeedbackCenterIntent;
   defaultCategory: FeedbackCategory;
   submitting: boolean;
   onSubmit: (values: FeedbackFormValues) => void;
@@ -59,7 +59,7 @@ interface Props {
  * Copy is per entry point rather than generic. "Describe your feedback" gets
  * you a shrug; "What went wrong?" gets you a bug report.
  */
-const BODY_COPY: Record<FeedbackEntryIntent, { label: string; placeholder: string }> = {
+const BODY_COPY: Record<FeedbackCenterIntent, { label: string; placeholder: string }> = {
   bug: {
     label: "What happened?",
     placeholder: "Describe the problem and what you were doing when it happened…",

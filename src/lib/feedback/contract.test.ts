@@ -22,10 +22,17 @@ import {
 
 const MIGRATIONS_DIR = join(process.cwd(), "supabase", "migrations");
 
-const MIGRATION = readFileSync(
-  join(MIGRATIONS_DIR, "20260812120000_fb1_feedback_foundation.sql"),
-  "utf8",
-);
+/**
+ * Every .sql in migration order. A constraint's authority is the LAST
+ * migration that defines it, not the first: FB1-4 widens
+ * feedback_entry_intent_check in its own file, and pinning this test to the
+ * foundation migration would make it assert a vocabulary the database no
+ * longer has. Same reasoning the category assertion below already used.
+ */
+const MIGRATIONS: string[] = readdirSync(MIGRATIONS_DIR)
+  .filter(file => file.endsWith(".sql"))
+  .sort()
+  .map(file => readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
 
 /**
  * The category list is seeded, not CHECK-constrained, so the authority is the
@@ -47,12 +54,19 @@ function latestSeededCategories(): string[] {
   return JSON.parse(seeds[seeds.length - 1][1]);
 }
 
-/** The value list inside a named CHECK constraint, e.g. ('bug', 'feature'). */
+/**
+ * The value list inside a named CHECK constraint, e.g. ('bug', 'feature'),
+ * taken from the newest migration that adds it.
+ */
 function checkValues(constraint: string): string[] {
   const re = new RegExp(`ADD CONSTRAINT ${constraint}\\s*\\n?\\s*CHECK \\(([\\s\\S]*?)\\),?\\n`);
-  const body = MIGRATION.match(re);
-  expect(body, `constraint ${constraint} not found in migration`).not.toBeNull();
-  return [...body![1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+  let latest: string | null = null;
+  for (const sql of MIGRATIONS) {
+    const body = sql.match(re);
+    if (body) latest = body[1];
+  }
+  expect(latest, `constraint ${constraint} not found in any migration`).not.toBeNull();
+  return [...latest!.matchAll(/'([^']+)'/g)].map(m => m[1]);
 }
 
 describe("feedback contract mirrors the database CHECK constraints", () => {
@@ -81,20 +95,49 @@ describe("feedback contract mirrors the database CHECK constraints", () => {
   });
 });
 
+/**
+ * The `CASE NEW.entry_intent WHEN ... THEN ... ELSE ... END` arms of the
+ * newest normalize_feedback_submission(), as an intent -> type map. Reading
+ * the SQL rather than restating it is what makes the assertion below a
+ * mirror test instead of a duplicate of contract.ts.
+ */
+function normalizeTriggerMapping(): Record<string, string> {
+  let latest: string | null = null;
+  for (const sql of MIGRATIONS) {
+    if (sql.includes("FUNCTION public.normalize_feedback_submission()")) latest = sql;
+  }
+  expect(latest, "no migration defines normalize_feedback_submission()").not.toBeNull();
+
+  const body = latest!.match(/NEW\.type := CASE NEW\.entry_intent([\s\S]*?)END;/);
+  expect(body, "type-derivation CASE not found").not.toBeNull();
+
+  const mapping: Record<string, string> = {};
+  for (const arm of body![1].matchAll(/WHEN\s+'([^']+)'\s+THEN\s+'([^']+)'/g)) {
+    mapping[arm[1]] = arm[2];
+  }
+  const fallback = body![1].match(/ELSE\s+'([^']+)'/);
+  expect(fallback, "type-derivation CASE has no ELSE").not.toBeNull();
+
+  // Every intent the CHECK allows, resolved the way the trigger would.
+  const resolved: Record<string, string> = {};
+  for (const intent of checkValues("feedback_entry_intent_check")) {
+    resolved[intent] = mapping[intent] ?? fallback![1];
+  }
+  return resolved;
+}
+
 describe("entry intent to type mapping", () => {
   it("mirrors normalize_feedback_submission()", () => {
-    expect(ENTRY_INTENT_TO_TYPE).toEqual({
-      bug: "bug",
-      feature: "feature",
-      gameplay: "feedback",
-      other: "feedback",
-    });
+    expect(ENTRY_INTENT_TO_TYPE).toEqual(normalizeTriggerMapping());
   });
 
-  it("keeps four user-facing doors over three triage workflows", () => {
+  it("keeps more user-facing doors than triage workflows", () => {
     // The point of the split: collapsing at the UI would lose which door the
-    // user walked through.
-    expect(FEEDBACK_ENTRY_INTENTS).toHaveLength(4);
+    // user walked through. FB1-4 added two in-product doors, so the ratio is
+    // six to three; what matters is that it is never one to one.
+    expect(FEEDBACK_ENTRY_INTENTS.length).toBeGreaterThan(
+      new Set(Object.values(ENTRY_INTENT_TO_TYPE)).size,
+    );
     expect(new Set(Object.values(ENTRY_INTENT_TO_TYPE)).size).toBe(3);
   });
 
