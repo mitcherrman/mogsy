@@ -519,15 +519,22 @@ describe("an ordinary round resolves in the top strip, never at the bottom", () 
 });
 
 /**
- * WHERE THE FULL BREAKDOWN LIVES NOW.
+ * WHERE THE BREAKDOWN LIVES NOW — AND WHAT IT IS NO LONGER ALLOWED TO SAY.
  *
  * The retired bottom bar owned a `Details` expansion onto the complete
- * `RevealPanel` — the per-player damage audit. That surface is not gone: the
- * terminal frame has always mounted `RevealPanel` in full, unconditionally and
- * with no expansion to find, and that path is untouched by this phase.
+ * `RevealPanel` — a per-player DAMAGE audit with HP transitions. The terminal
+ * frame mounted that panel in full for a while afterwards, and on a points
+ * match it was restating the module's award under the wrong name: "Damage
+ * dealt" and "HP 170 → 150" are the vocabulary of the hp match Ranked has not
+ * been since RP1, and the engine's damage channel is only the transport the
+ * award travels through.
+ *
+ * So the terminal frame carries no settlement panel at all now. The module
+ * timeline says the true thing about all ten modules instead of one round's
+ * internals, and `RevealPanel` keeps its live home inside `RevealBanner`.
  */
-describe("match over — the terminal frame keeps the full breakdown", () => {
-  it("renders the final settlement in full, with no bar during play", async () => {
+describe("match over — no HP or damage vocabulary survives on the end screen", () => {
+  it("mounts no settlement panel, during play or after it", async () => {
     await mount();
     await screen.findByTestId("answer-grid");
     advanceRound();
@@ -538,13 +545,24 @@ describe("match over — the terminal frame keeps the full breakdown", () => {
     backend.matchOver = true;
     const over = await screen.findByTestId("ranked-match-over", undefined, { timeout: 6000 });
     expect(over).toBeInTheDocument();
-    // The complete panel, not a banner and not an expansion: every value the
-    // Details toggle used to defer is here, already open.
-    const panel = await screen.findByTestId("reveal-panel", undefined, { timeout: 4000 });
-    expect(panel).toBeInTheDocument();
-    expect(screen.getByTestId("reveal-userA")).toHaveTextContent("You");
-    expect(screen.getByTestId("reveal-userB")).toHaveTextContent("Opponent");
-    // No Details control — there is nothing left to expand.
-    expect(screen.queryByTestId("reveal-details-toggle")).toBeNull();
+    await screen.findByTestId("match-over-frame");
+    expect(screen.queryByTestId("reveal-panel")).toBeNull();
+    expect(screen.queryByTestId("reveal-userA")).toBeNull();
+    expect(screen.queryByTestId("reveal-userB")).toBeNull();
+  });
+
+  it("prints no HP transition and no damage figure anywhere on the result", async () => {
+    await mount();
+    await screen.findByTestId("answer-grid");
+    advanceRound();
+    backend.matchOver = true;
+    const over = await screen.findByTestId("ranked-match-over", undefined, { timeout: 6000 });
+    await screen.findByTestId("match-over-frame");
+    const text = over.textContent ?? "";
+    expect(text).not.toMatch(/damage dealt/i);
+    expect(text).not.toMatch(/mitigation/i);
+    // "HP" as a word of its own — not as a substring of something innocent.
+    expect(text).not.toMatch(/\bHP\b/);
+    expect(text).not.toMatch(/\bDMG\b/);
   });
 })

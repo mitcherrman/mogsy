@@ -121,6 +121,7 @@ export function CanonicalArena({
             heading={terminal.heading}
             subheading={terminal.subheading}
             scoreline={terminal.scoreline}
+            identity={terminal.identity}
             summary={terminal.summary}
             progressionEnabled={terminal.progressionEnabled}
             primaryAction={terminal.primaryAction}

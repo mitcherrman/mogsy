@@ -1,25 +1,29 @@
 /**
- * THE FINISHED DAY'S NUMBERS (DC1 Phase 5, ARENA1 Step 5).
+ * THE FINISHED DAY'S NUMBERS (DC1 Phase 5, ARENA1 Step 5) — through the
+ * shared result model.
  *
- * Mounted in `MatchOverFrame`'s existing `summary` slot, through the arena's
- * terminal surface — so the shell, the skin, the mascot, the frame, the
- * headline and the way back are all the production ones, and this component is
- * only the part that is genuinely the Daily's: a grade, and the figures behind
- * it. It was a whole result SCREEN before, with its own frame, its own heading
- * and its own back link, none of which it needed to own.
+ * It began as a whole result SCREEN with its own frame, heading and back link;
+ * ARENA1 reduced it to the part that was genuinely the Daily's and mounted it
+ * in `MatchOverFrame`'s summary slot. This finishes that move: the grade is
+ * still the Daily's own and is still drawn here, and everything around it —
+ * the figures, the rewards, Mogzy's report, the actions — is now the same
+ * `GameResultsBody` Ranked and Time Trial render.
  *
- * The question it answers is HOW WELL DID I DO TODAY — never "you got them all
- * right eventually", which is true of every completed run by design and
- * therefore says nothing. So the grade and the first-attempt figures lead, and
- * the fact that every card ended solved is left implicit.
+ * The question it answers is unchanged: HOW WELL DID I DO TODAY, never "you
+ * got them all right eventually", which is true of every completed run by
+ * design. So the grade and the first-attempt figures lead.
  *
  * Every number is READ from the backend's `result` and `summary`. Nothing is
- * recomputed here — a grade the player was shown this morning must not move
- * because a threshold was retuned this afternoon, and the only way to
- * guarantee that on the client is to never derive it.
+ * recomputed — a grade the player was shown this morning must not move because
+ * a threshold was retuned this afternoon.
  */
 
-import { Award, Flame, Sparkles, Target, Timer, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
+import { GameResultsBody } from "@/components/game-results/GameResultsBody";
+import { buildMatchReport } from "@/components/game-results/matchReport";
+import type {
+  GameResultsModel, ResultProgressItem, ResultStat,
+} from "@/components/game-results/model";
 import type { DcResult, DcSummary } from "@/lib/daily-challenge/contracts";
 
 const GRADE_TONE: Record<string, string> = {
@@ -30,24 +34,78 @@ const GRADE_TONE: Record<string, string> = {
   D: "from-stone-400 to-stone-500 text-stone-900",
 };
 
-function Stat({
-  label, value, hint, testId, Icon,
-}: {
-  label: string; value: string; hint?: string; testId: string; Icon: typeof Target;
-}) {
-  return (
-    <div className="rounded-md border border-white/10 bg-black/20 p-3">
-      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase
-                    tracking-wider text-muted-foreground">
-        <Icon className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
-        {label}
-      </p>
-      <p data-testid={testId} className="mt-1 text-lg font-bold tabular-nums leading-none">
-        {value}
-      </p>
-      {hint && <p className="mt-1 text-[10px] text-muted-foreground">{hint}</p>}
-    </div>
-  );
+export function buildDailyResults(
+  result: DcResult, summary: DcSummary, score: number, maxScore: number,
+): GameResultsModel {
+  const accuracy = summary.firstAttemptAccuracyBp === null
+    ? "—" : `${(summary.firstAttemptAccuracyBp / 100).toFixed(0)}%`;
+
+  const snapshot: ResultStat[] = [
+    {
+      key: "first-try", label: "First try", testId: "dc-result-first-try",
+      value: `${summary.firstAttemptCorrectCount}/${summary.cardCount}`,
+      hint: `${summary.firstAttemptMissCount} missed for score`,
+      tone: summary.firstAttemptMissCount === 0 ? "good" : "plain",
+    },
+    { key: "accuracy", label: "Accuracy", value: accuracy, testId: "dc-result-accuracy" },
+  ];
+  if (summary.reflexCardCount > 0) {
+    snapshot.push({
+      key: "reflex", label: "Meta Reflex", testId: "dc-result-reflex",
+      value: `${summary.reflexFirstAttemptCorrect}/${summary.reflexCardCount}`,
+      hint: summary.perfectReflexBlocks > 0 ? "Perfect block" : undefined,
+      tone: summary.perfectReflexBlocks > 0 ? "good" : "plain",
+    });
+  }
+  if (summary.timeoutCount > 0) {
+    snapshot.push({
+      key: "timeouts", label: "Timed out", testId: "dc-result-timeouts",
+      value: String(summary.timeoutCount), tone: "bad",
+    });
+  }
+
+  const { rewards } = result;
+  const progress: ResultProgressItem[] = [
+    {
+      key: "xp-answers", label: "XP from answers", icon: "xp",
+      testId: "dc-result-xp-answers",
+      value: String(rewards.xpFromAnswers),
+    },
+    {
+      key: "xp-bonus", label: "Completion bonus", icon: "xp",
+      testId: "dc-result-xp-bonus",
+      value: String(rewards.completionBonusXp),
+    },
+    {
+      key: "xp-total", label: "Total XP", icon: "xp", testId: "dc-result-xp-total",
+      value: String(rewards.totalXp), delta: rewards.totalXp,
+    },
+    {
+      key: "streak", label: "Daily streak", icon: "streak", testId: "dc-result-streak",
+      value: rewards.streakAfter === 1 ? "1 day" : `${rewards.streakAfter} days`,
+    },
+  ];
+
+  // The Daily publishes per-card figures in aggregate only — a count of
+  // first-attempt misses and of timeouts, never which CARD each belonged to —
+  // so there is no per-card timeline to draw and none is invented. The report
+  // therefore speaks only to what the summary actually states.
+  const report = buildMatchReport({ entries: [], timeoutCount: summary.timeoutCount });
+  if (summary.firstAttemptMissCount === 0) {
+    report.unshift("Every card solved on the first attempt.");
+  }
+
+  return {
+    state: "complete",
+    mode: "Daily Challenge",
+    standing: "official",
+    headline: "Challenge complete",
+    score: { you: score, outOf: maxScore, label: `${result.scorePercent}% of today's best` },
+    snapshot,
+    progress,
+    report,
+    timeline: null,
+  };
 }
 
 export function DailyResultSummary({
@@ -58,17 +116,17 @@ export function DailyResultSummary({
   score: number;
   maxScore: number;
 }) {
-  const { rewards } = result;
-  const accuracy = summary.firstAttemptAccuracyBp === null
-    ? "—" : `${(summary.firstAttemptAccuracyBp / 100).toFixed(0)}%`;
-
+  const model = buildDailyResults(result, summary, score, maxScore);
   return (
     <section
       aria-label="Daily Challenge result"
       data-testid="dc-result"
-      className="ranked-panel space-y-5 p-4 sm:p-6"
+      className="space-y-4"
     >
-      <header className="flex items-center gap-4">
+      {/* THE GRADE is the Daily's own object and stays drawn here: no other
+          mode has one, and folding it into a shared stat tile would turn the
+          day's verdict into a figure among four. */}
+      <header className="ranked-panel flex items-center gap-4 p-4">
         <div
           data-testid="dc-result-grade"
           data-grade={result.grade ?? "none"}
@@ -80,8 +138,6 @@ export function DailyResultSummary({
           {result.grade ?? "—"}
         </div>
         <div className="min-w-0">
-          {/* The frame above already names the day and says what happened, so
-              this block leads with the SCORE instead of repeating either. */}
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Score
           </p>
@@ -97,34 +153,9 @@ export function DailyResultSummary({
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat
-          label="First try"
-          value={`${summary.firstAttemptCorrectCount}/${summary.cardCount}`}
-          hint={`${summary.firstAttemptMissCount} missed for score`}
-          testId="dc-result-first-try"
-          Icon={Target}
-        />
-        <Stat label="Accuracy" value={accuracy} testId="dc-result-accuracy" Icon={Sparkles} />
-        {summary.reflexCardCount > 0 && (
-          <Stat
-            label="Meta Reflex"
-            value={`${summary.reflexFirstAttemptCorrect}/${summary.reflexCardCount}`}
-            hint={summary.perfectReflexBlocks > 0 ? "Perfect block" : undefined}
-            testId="dc-result-reflex"
-            Icon={Zap}
-          />
-        )}
-        {summary.timeoutCount > 0 && (
-          <Stat
-            label="Timed out"
-            value={String(summary.timeoutCount)}
-            testId="dc-result-timeouts"
-            Icon={Timer}
-          />
-        )}
-      </div>
-
+      {/* The perfect-block banner is the Daily's own celebration, like the
+          grade, and stays an element rather than a report line: it is a
+          named surface the mode has always had. */}
       {summary.perfectReflexBlocks > 0 && (
         <p
           data-testid="dc-result-perfect-reflex"
@@ -136,43 +167,7 @@ export function DailyResultSummary({
         </p>
       )}
 
-      <div className="space-y-2 rounded-md border border-white/10 bg-black/20 p-3">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase
-                      tracking-wider text-muted-foreground">
-          <Award className="h-3 w-3 shrink-0 opacity-70" aria-hidden="true" />
-          Rewards
-        </p>
-        <dl className="space-y-1 text-sm">
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">XP from answers</dt>
-            <dd data-testid="dc-result-xp-answers" className="font-medium tabular-nums">
-              {rewards.xpFromAnswers}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Completion bonus</dt>
-            <dd data-testid="dc-result-xp-bonus" className="font-medium tabular-nums">
-              {rewards.completionBonusXp}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-2 border-t border-white/10 pt-1">
-            <dt className="font-semibold">Total XP</dt>
-            <dd data-testid="dc-result-xp-total" className="font-bold tabular-nums">
-              {rewards.totalXp}
-            </dd>
-          </div>
-        </dl>
-        <p
-          data-testid="dc-result-streak"
-          className="flex items-center gap-1.5 border-t border-white/10 pt-2 text-xs"
-        >
-          <Flame className="h-3.5 w-3.5 shrink-0 text-orange-400" aria-hidden="true" />
-          <span className="font-semibold tabular-nums">
-            {rewards.streakAfter === 1 ? "1 day" : `${rewards.streakAfter} days`}
-          </span>
-          <span className="text-muted-foreground">daily streak</span>
-        </p>
-      </div>
+      <GameResultsBody model={model} />
 
       {/* No "back" control here: the terminal frame's own primary action is
           the way out, and two of them would be two answers to one question. */}
