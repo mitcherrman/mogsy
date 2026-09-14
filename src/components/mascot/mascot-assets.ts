@@ -246,11 +246,11 @@ export const MOGZY_COMPANION_METADATA = {
  * `RANKED_ROLE_LABELS`.
  */
 export const MOGZY_ROLE_ASSETS: Record<RankedRole, string> = {
-  top: "/mascot/family/top.png",
-  jungle: "/mascot/family/jg.png",
-  mid: "/mascot/family/mid.png",
-  adc: "/mascot/family/bot.png",
-  support: "/mascot/family/sup.png",
+  top: "/mascot/ranked/topmogzy.png",
+  jungle: "/mascot/ranked/jgmogzy.png",
+  mid: "/mascot/ranked/midmogzy.png",
+  adc: "/mascot/ranked/botmogzy.png",
+  support: "/mascot/ranked/supmogzy.png",
 };
 
 /** Path to the mascot art for a role. Total over the five canonical roles, so
@@ -267,25 +267,29 @@ export function getRankedRoleMascotPath(role: RankedRole): string {
  * lunges. Read off the artwork, by the directional prop each character leads
  * with:
  *
- *   top      sword extended to the viewer's right, orb hand trailing left  -> right
- *   jungle   lead dagger low and forward on the right, rear dagger behind  -> right
- *   mid      staff held forward on the viewer's LEFT, hood sweeping right  -> LEFT
+ *   top      axe head extended to the viewer's LEFT, plume trailing right  -> LEFT
+ *   jungle   dagger led low and forward on the LEFT, cape trailing right   -> LEFT
+ *   mid      staff held forward on the viewer's LEFT, hat sweeping right   -> LEFT
  *   adc      bow drawn with the arrow pointing right                       -> right
- *   support  shield forward on the viewer's right, body leaning off it     -> right
+ *   support  star wand extended to the viewer's right                      -> right
  *
- * `mid` is the odd one out, and treating all five as right-facing is what made
- * a Mid duelist turn its back on the arena: `facing="right"` left the plate
- * untouched, so the mage kept facing out of the column, and the mirrored
- * opponent column pointed it the other way out. Both columns were "wrong in
- * the same way", which is why it read as the opponent panel not mirroring.
+ * The split is three/two, and it is read off the ARTWORK every time the plates
+ * are redrawn — it is not a property of the role. Treating all five as
+ * right-facing is what made a Mid duelist turn its back on the arena:
+ * `facing="right"` left the plate untouched, so the mage kept facing out of
+ * the column, and the mirrored opponent column pointed it the other way out.
+ * Both columns were "wrong in the same way", which is why it read as the
+ * opponent panel not mirroring. When the Ranked role art was replaced, `top`
+ * and `jungle` came back drawn the other way round, so their entries moved
+ * with the art rather than the art being re-cut to fit a stale map.
  *
  * A surface still says only which way it wants the mascot to FACE.
  * `RoleMascot` reconciles that with the plate; nothing outside this module
  * needs to know a plate ever had a native direction.
  */
 export const MOGZY_ROLE_ART_FACING: Record<RankedRole, "left" | "right"> = {
-  top: "right",
-  jungle: "right",
+  top: "left",
+  jungle: "left",
   mid: "left",
   adc: "right",
   support: "right",

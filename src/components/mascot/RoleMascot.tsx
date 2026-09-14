@@ -28,11 +28,11 @@
  * ────────────────────────────────
  * `facing` is a statement about the CHARACTER, not about the image: it says
  * which way this mascot is looking, and the component works out whether that
- * needs a mirror. The five plates were not drawn to one convention — four lead
- * with their weapon on the viewer's right, `mid` leads with its staff on the
- * left (see `MOGZY_ROLE_ART_FACING`) — so "untouched" and "facing right" are
- * not the same thing, and assuming they were pointed a Mid duelist out of the
- * arena on BOTH columns.
+ * needs a mirror. The five plates were not drawn to one convention — `adc` and
+ * `support` lead with their weapon on the viewer's right, while `top`,
+ * `jungle` and `mid` lead on the left (see `MOGZY_ROLE_ART_FACING`) — so
+ * "untouched" and "facing right" are not the same thing, and assuming they
+ * were pointed a Mid duelist out of the arena on BOTH columns.
  *
  * `attack` lunges FORWARD and `hit` recoils BACKWARD in the mascot's own
  * terms, and the mirror on the ancestor facing layer turns those into screen
