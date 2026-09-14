@@ -690,12 +690,23 @@ newLoser  = round(loserElo  + 32 * (0 - (1 - expected)))`}
             Questions are sourced from league data and answered head-to-head style.
           </li>
           <li>
-            <strong>Report issue</strong> button appears after a question is answered. Opens a dialog with
-            report type dropdown (<Tag>wrong_answer</Tag>, <Tag>confusing_question</Tag>,{" "}
-            <Tag>wrong_image</Tag>, <Tag>typo</Tag>, <Tag>other</Tag>), optional "what you chose",
-            "what it should be", and free-form notes. Submits to <Tag>quizApi.reportQuestion()</Tag> →
-            <Tag>POST /api/quiz/reports</Tag>. Pre-fills <Tag>question_id</Tag> and the user's selected
-            answer. Reports never mutate the live answer.
+            <strong>Reporting a question</strong> now goes through the shared{" "}
+            <strong>Report</strong> tab in the bottom-right dock, the same control every
+            other mode uses — reason (doesn't make sense / incorrect answer / typo /
+            other) plus an optional comment, filed into FB1 as a{" "}
+            <Tag>question_report</Tag> and reviewed in{" "}
+            <Tag>/admin</Tag> → Feedback. It captures the prompt, choices, canonical
+            answer, the player's selection, and both{" "}
+            <Tag>question_key</Tag> and <Tag>quiz_questions.id</Tag>.
+          </li>
+          <li>
+            The older post-answer <strong>Report issue</strong> dialog{" "}
+            (<Tag>quizApi.reportQuestion()</Tag> → <Tag>POST /api/quiz/reports</Tag> →{" "}
+            <Tag>question_reports</Tag>) was removed: Practice was the only mode with two
+            report buttons. The endpoint, the table and the <Tag>/quiz/admin</Tag> inbox
+            are all still in place and still hold their rows — only the second
+            user-facing door is closed. Reports never mutated the live answer; that is{" "}
+            <Tag>question_overrides</Tag>, below, which is unaffected.
           </li>
         </UL>
 

@@ -750,6 +750,21 @@ export const quizApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  /**
+   * RFB — NO USER SURFACE CALLS THIS ANY MORE.
+   *
+   * Practice's "Report issue" button was the only caller; it was removed when
+   * RFB made the shared Report tab the single user-facing report path, so that
+   * one click files one report instead of two.
+   *
+   * Kept rather than deleted because the endpoint, `question_reports` and the
+   * `/quiz/admin` inbox that reads them all still exist and still hold their
+   * rows. Nothing downstream consumes a report — `question_overrides`, which
+   * IS load-bearing (it patches the live answer at serve and grade time), is
+   * written by `overrideQuestion` below, keyed on question_id or question_key,
+   * with no link to a report row. So this is a door that is closed, not a
+   * capability that was removed, and re-opening it needs no new contract.
+   */
   reportQuestion: (payload: {
     question_id: number | string;
     reporter_id?: string;
