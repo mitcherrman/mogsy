@@ -209,7 +209,7 @@ describe("every row reflects, and reflects the right way", () => {
     // why the two columns can disagree here while both face the centre.
     expect(m(L).dataset.role).toBe("top");
     expect(m(R).dataset.role).toBe("mid");
-    expect(m(L).dataset.plateFlipped).toBeUndefined();  // top is drawn facing right
+    expect(m(L).dataset.plateFlipped).toBe("true");    // top is drawn facing left
     expect(m(R).dataset.plateFlipped).toBeUndefined();  // mid is drawn facing left
   });
 });

@@ -101,7 +101,10 @@ describe("RoleMascot — layers", () => {
 
   it("leaves a plate alone when it already looks the right way", () => {
     stubReducedMotion(false);
-    const { container } = render(<RoleMascot role="top" facing="right" />);
+    // `adc` is one of the plates drawn facing right, so asking it to face
+    // right is the no-op case. Which ROLE that is follows the art, not the
+    // role list — see `MOGZY_ROLE_ART_FACING`.
+    const { container } = render(<RoleMascot role="adc" facing="right" />);
     expect((container.querySelector(".role-mascot-plate") as HTMLElement)
       .style.getPropertyValue("--role-mascot-plate")).toBe("1");
     expect((container.querySelector(".role-mascot") as HTMLElement)
@@ -148,12 +151,12 @@ describe("RoleMascot — facing", () => {
 });
 
 describe("RoleMascot — the artwork's own direction", () => {
-  it("records a native direction for every role, and only mid faces left", () => {
+  it("records a native direction for every role, read off the current art", () => {
     // Not a style choice: this map is what makes `facing` mean the same thing
-    // for all five. Four plates lead with their weapon on the viewer's right;
-    // `mid` leads with its staff on the left.
+    // for all five. `adc` and `support` lead with their weapon on the viewer's
+    // right; `top`, `jungle` and `mid` lead on the left.
     expect(MOGZY_ROLE_ART_FACING).toEqual({
-      top: "right", jungle: "right", mid: "left", adc: "right", support: "right",
+      top: "left", jungle: "left", mid: "left", adc: "right", support: "right",
     });
     for (const role of RANKED_ROLES) {
       expect(getRankedRoleArtFacing(role), role).toBe(MOGZY_ROLE_ART_FACING[role]);
