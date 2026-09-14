@@ -217,7 +217,26 @@ describe("nothing inside the card was made smaller to fit it", () => {
     const grid = read("components/quiz/QuizAnswerOptions.tsx");
     // The tablet's padding and text size are what its height IS. A fixed card
     // must never be paid for out of these.
-    expect(grid).toContain('"w-full justify-start text-left h-auto py-3 px-4 whitespace-normal font-medium text-sm leading-relaxed"');
+    // Asserted as the individual tokens rather than one frozen class string:
+    // the answer-geometry pass added `h-full min-h-full` (sibling stretch) to
+    // this list, which is precisely NOT a fixed card — it is the cell's own
+    // content-derived height. What may never change is what follows.
+    expect(grid).toContain("py-3 px-4");
+    expect(grid).toContain("whitespace-normal");
+    expect(grid).toContain("text-sm leading-relaxed");
+    expect(grid).toContain("justify-start text-left");
+    // No fixed tablet height — a wrapped answer must still grow. Asserted on
+    // the tablet's OWN class expression, because the picture-choice branch of
+    // this same file legitimately pins its ART (`h-20 w-20 md:h-24`), which is
+    // media inside the tablet and not the tablet's box.
+    const tabletBox = grid.slice(grid.indexOf('imgUrl\n                  ? "w-full'));
+    const [imgBranch, textBranch] = tabletBox.split("\n").filter((l) => l.includes('"w-full'));
+    for (const branch of [imgBranch, textBranch]) {
+      expect(branch).toContain("h-full min-h-full");
+      // `h-full`/`min-h-full` only; nothing numeric, nothing arbitrary.
+      expect(branch).not.toMatch(/\bh-\[/);
+      expect(branch).not.toMatch(/\bh-\d/);
+    }
     expect(grid).toContain("gap-2.5");
     // And the border lock that pins every tablet STATE to one box.
     expect(CSS).toMatch(/\[data-answers-state\] \[data-quiz-choice\] \{[^}]*border-width: 1px/);

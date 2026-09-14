@@ -149,10 +149,28 @@ export default function QuizAnswerOptions({
     <div
       data-quiz-answer-options
       data-columns={columns}
+      /**
+       * SIBLING GEOMETRY (answer-geometry pass).
+       *
+       * `auto-rows-fr` is applied at EXACTLY the breakpoints where the grid is
+       * more than one column wide, and nowhere else. In an auto-height grid
+       * `grid-auto-rows: 1fr` resolves to `minmax(auto, 1fr)`, which sizes
+       * every row to the tallest row's content — so a 2x2 whose longest answer
+       * wraps to two lines gives all four tablets that height instead of
+       * leaving the short ones stranded a line shorter (the masonry effect).
+       * It is a FLOOR derived from content, never a fixed height: an answer
+       * that legitimately needs three lines still gets three, and grows its
+       * siblings with it rather than being clipped.
+       *
+       * Single-column mode is deliberately left alone. There, each answer is
+       * its own row, so equalising rows would inflate every stacked answer to
+       * the longest one and burn mobile viewport height for no coherence gain
+       * — a stacked list reads as a set from its full-bleed width already.
+       */
       className={hasImages
-        ? "grid grid-cols-2 gap-2.5"
-        : `grid grid-cols-1 gap-2.5 [@media(max-height:480px)_and_(orientation:landscape)]:grid-cols-2 [@media(max-height:480px)]:gap-2${
-          columns === "wide-2" ? " lg:grid-cols-2" : ""}`}
+        ? "grid grid-cols-2 auto-rows-fr gap-2.5"
+        : `grid grid-cols-1 gap-2.5 [@media(max-height:480px)_and_(orientation:landscape)]:grid-cols-2 [@media(max-height:480px)_and_(orientation:landscape)]:auto-rows-fr [@media(max-height:480px)]:gap-2${
+          columns === "wide-2" ? " lg:grid-cols-2 lg:auto-rows-fr" : ""}`}
     >
       {(choices || []).map((choice, idx) => {
         const label = getChoiceLabel(choice);
@@ -201,7 +219,20 @@ export default function QuizAnswerOptions({
           // arrives leaves an enabled, labelled, keyboard-reachable answer at
           // `opacity: 0`. This wrapper's RESTING style is visible; the stagger
           // is the only thing supplied from here, because it is per-index.
-          <div key={idx} style={{ animationDelay: `${150 + idx * 70}ms` }}>
+          // `flex` + `min-w-0` is the load-bearing half of the geometry fix.
+          // This wrapper is the grid ITEM, so it already stretched to the row
+          // height; the tablet inside it did not, because the shared Button is
+          // an `inline-flex` box sized to its own content. The row therefore
+          // grew for the longest answer and the short tablets sat inside tall,
+          // empty cells. As a flex container the wrapper stretches its single
+          // child to its own height, so the tablet IS the cell. `min-w-0` lets
+          // a long label wrap instead of forcing the column wider.
+          <div
+            key={idx}
+            data-quiz-choice-cell
+            className="flex min-w-0"
+            style={{ animationDelay: `${150 + idx * 70}ms` }}
+          >
             <Button
               variant={btnVariant}
               data-quiz-choice={idx}
@@ -215,9 +246,15 @@ export default function QuizAnswerOptions({
               // say WHY, so it is explained rather than silently gone.
               aria-disabled={isEliminated || undefined}
               className={[
+                // `h-full` alongside `h-auto`: the intrinsic content height is
+                // the FLOOR (Tailwind's `h-auto` is `height:auto`, overridden
+                // here by `h-full` = `height:100%` of the stretched cell), so a
+                // tablet is never shorter than its own text and never shorter
+                // than its siblings. `min-h-full` rather than a fixed value is
+                // why long answers still wrap freely instead of clipping.
                 imgUrl
-                  ? "w-full h-auto flex-col items-center gap-2 py-3 px-3 whitespace-normal font-medium text-sm leading-relaxed"
-                  : "w-full justify-start text-left h-auto py-3 px-4 whitespace-normal font-medium text-sm leading-relaxed",
+                  ? "w-full h-full min-h-full flex-col items-center justify-center gap-2 py-3 px-3 whitespace-normal font-medium text-sm leading-relaxed"
+                  : "w-full h-full min-h-full justify-start text-left py-3 px-4 whitespace-normal font-medium text-sm leading-relaxed",
                 // `line-through` + opacity rather than a colour swap: the
                 // tablet keeps its size and its place in the grid, so striking
                 // one out never reflows the others.
@@ -264,7 +301,7 @@ export default function QuizAnswerOptions({
                     {String.fromCharCode(65 + idx)}.
                   </span>
                   {media && <OptionMediaIcon media={media[idx] ?? null} />}
-                  <span className="flex-1">{label}</span>
+                  <span className="min-w-0 flex-1 break-words">{label}</span>
                   {answerResult && isCorrect && (
                     <CheckCircle2 className="h-4 w-4 text-primary-foreground ml-2 shrink-0" />
                   )}
