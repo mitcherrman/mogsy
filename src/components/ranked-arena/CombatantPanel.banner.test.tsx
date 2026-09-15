@@ -168,25 +168,34 @@ describe("the duel banner is mounted from the approved asset", () => {
     CSS.indexOf("/* RP1 Step 4 — THE CUMULATIVE SCORE MOVING."));
 
   it("draws the cloth from the PNG, in two layers of the same file", () => {
-    expect(rules).toContain('url("/assets/ranked/navy-banner.png")');
-    // Two layers, not one: a single stretched background would stretch the
-    // POINT with the column, and the point's angle is the banner's character.
-    expect(rules).toMatch(/\.ranked-banner::before \{[^}]*inset: 0 0 var\(--banner-point\) 0/);
+    expect(rules).toContain('url("/assets/ranked/navy-banner2.png")');
+    // THREE layers, because the asset has three zones and two of them are
+    // rigid: a stretched rod and a stretched point both look wrong, so only
+    // the cloth may give.
+    expect(rules).toMatch(/\.ranked-banner::before \{[^}]*height: var\(--banner-rod\)/);
     expect(rules).toMatch(/\.ranked-banner::after \{[^}]*height: var\(--banner-point\)/);
     expect(rules).toContain("background-repeat: no-repeat");
+    // The cloth rides on the element itself, clipped to the content box — the
+    // one declaration that both confines the cloth to its band and seats the
+    // column's content on cloth instead of over the hardware.
+    expect(rules).toContain("background-clip: content-box");
+    expect(rules).toContain("padding: var(--banner-rod) 0 var(--banner-point)");
   });
 
-  it("maps the banner's sub-rects out of the untrimmed 992x1586 file", () => {
+  it("maps the banner's sub-rects out of the untrimmed 959x1641 file", () => {
     // The asset is NOT cropped — its transparent margins are handled by this
     // arithmetic, so the file on disk stays exactly the one that was approved.
-    // Body sub-rect y 73..1256, point sub-rect the last 234px, both 650 wide
-    // at x 170. `offset / (imageSize - subRectSize)` is the position formula.
-    expect(rules).toContain("background-position-x: 49.7076%");   // 170 / (992-650)
-    expect(rules).toContain("background-position-y: 18.1141%");   //  73 / (1586-1183)
-    expect(rules).toContain("background-position-y: 92.8994%");   // 1256 / (1586-234)
-    expect(rules).toContain("calc(100% * 992 / 650)");
-    expect(rules).toContain("calc(100% * 1586 / 1183)");
-    expect(rules).toContain("calc(100% * 1586 / 234)");
+    // Rod y 25..209, cloth y 210..1333, point y 1334..1591, all mapped to the
+    // rod's 667px span at x 146 — which is exactly centred, hence a clean 50%.
+    // `offset / (imageSize - subRectSize)` is the position formula.
+    expect(rules).toContain("background-position-x: 50%");        // 146 / (959-667)
+    expect(rules).toContain("background-position-y: 1.7170%");    //   25 / (1641-185)
+    expect(rules).toContain("50% 40.6190%");                      //  210 / (1641-1124)
+    expect(rules).toContain("background-position-y: 96.4570%");   // 1334 / (1641-258)
+    expect(rules).toContain("calc(100% * 959 / 667)");
+    expect(rules).toContain("calc(100% * 1641 / 185)");
+    expect(rules).toContain("calc(100% * 1641 / 1124)");
+    expect(rules).toContain("calc(100% * 1641 / 258)");
   });
 
   it("no longer draws a silhouette, an edge, a weave or a sigil in CSS", () => {
@@ -218,8 +227,12 @@ describe("the duel banner is mounted from the approved asset", () => {
     expect(rules).toContain("border: 0;");
   });
 
-  it("still reserves the point, so no content is seated in the taper", () => {
-    expect(rules).toContain("padding-bottom: calc(var(--banner-point) + 0.25rem)");
+  it("seats content on cloth, clear of the rod, the taper and the trim", () => {
+    // The padding IS the three zones, so content cannot be seated over the rod
+    // or inside the taper; and the side inset clears the embroidery.
+    expect(rules).toContain("padding: var(--banner-rod) 0 var(--banner-point)");
+    expect(rules).toContain("margin-inline: var(--banner-inset)");
+    expect(rules).toMatch(/--banner-inset:\s*14%/);
   });
 });
 
