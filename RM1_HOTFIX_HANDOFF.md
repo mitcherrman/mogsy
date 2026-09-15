@@ -6,7 +6,8 @@ the post-merge hotfix only.
 - **Branch:** `rm1/viewport-fit-hotfix`
 - **Worktree:** `/Users/macmoney/mogsy-wt-rm1-fit`
 - **Based on:** `origin/main` `58656c35`
-- **Status:** implemented, focused tests green, NOT pushed.
+- **Commit:** `c93045e8` (one commit, NOT pushed)
+- **Status:** implemented; focused tests green; typecheck clean of new errors.
 
 ## Objective
 
@@ -120,7 +121,10 @@ points, module-history bubbles and the state pill all untouched.
 - `QuestionStageGeometry.test.tsx` — **45/45 pass**, including the pre-existing
   MEASURED stage identities (unchanged at a tall viewport) and the new fit
   assertions at 1280×800, 1280×760, 1440×800, 1512×820, 1512×900, 1920×1080.
-- `src/components/ranked-arena` + `src/pages/quiz-ranked` — see below.
+- `src/components/ranked-arena` + `src/pages/quiz-ranked`, run serially
+  (`--no-file-parallelism`) — **74 files / 873 tests, all pass.**
+- `tsc --noEmit` — 13 pre-existing errors, **none in any file this branch
+  touches** (admin, combat-lab team-sim, community, feedback, pglite).
 
 ## Risks / manual verification
 
