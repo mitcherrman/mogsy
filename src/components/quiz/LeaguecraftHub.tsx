@@ -28,6 +28,9 @@ import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { DailyStatusView } from "@/lib/daily-challenge/status";
 import type { PlayModeVisibility } from "@/lib/quiz/playModes";
 import type { RankedRole } from "@/lib/ranked-public/roles";
+import type { ChampionKnowledgeSource } from "@/lib/quiz/championKnowledge";
+import type { TrendsSource } from "@/components/quiz/trends/usePerformanceTrends";
+import type { TrendReport } from "@/lib/quiz/analyticsApi";
 import type {
   RankedProgressionView,
   MatchHistoryEntryView,
@@ -198,6 +201,9 @@ export default function LeaguecraftHub({
   avatarUrl = null,
   signedIn = false,
   demoRoleMastery = null,
+  championKnowledge,
+  analyticsSource,
+  demoAnalyticsRoleDimension,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -227,6 +233,14 @@ export default function LeaguecraftHub({
    * score. See `DemoRoleMastery` in `RankedLobbyHero`.
    */
   demoRoleMastery?: Partial<Record<RankedRole, DemoRoleMastery>> | null;
+  /** RL2 — pass-through to the lobby's centre champion-knowledge row. Only
+   *  `/dev/lobby-preview` supplies one; everywhere else the hero's production
+   *  default renders the absent state. */
+  championKnowledge?: ChampionKnowledgeSource;
+  /** RL2 — pass-through to the Academy analytics carousel. */
+  analyticsSource?: TrendsSource;
+  /** RL2, DEMO ONLY — pass-through for the carousel's Role control. */
+  demoAnalyticsRoleDimension?: (report: TrendReport, role: RankedRole | null) => TrendReport;
   /**
    * PLAY — the lobby's ONE commit point, kept from the MALT lobby flow.
    *
@@ -595,6 +609,9 @@ export default function LeaguecraftHub({
           avatarUrl={avatarUrl}
           signedIn={signedIn}
           demoRoleMastery={demoRoleMastery}
+          championKnowledge={championKnowledge}
+          analyticsSource={analyticsSource}
+          demoAnalyticsRoleDimension={demoAnalyticsRoleDimension}
         />
       </section>
 
