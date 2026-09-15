@@ -285,7 +285,7 @@ export function CanonicalArena({
           `min-h` still reserves the tallest state, so nothing in the arena
           below moves when a face turns. */}
       <section data-testid="ranked-header"
-        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
+        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1">
         {/* LEFT — who this is and what kind of match it is. Both quiet. */}
         <div className="flex min-w-0 flex-col justify-center">
           <div className="ranked-eyebrow">{header.eyebrow}</div>
@@ -618,7 +618,7 @@ export function CanonicalArena({
                 arena allows. */}
             <div className="flex items-start justify-between gap-3 px-1">
               <p role={status?.isError ? "alert" : "status"} data-testid="submission-status"
-                className={`line-clamp-2 min-h-[2.25rem] text-xs ${
+                className={`line-clamp-2 min-h-[2rem] text-xs ${
                   status?.isError ? "text-destructive" : "text-muted-foreground"}`}>
                 {status?.text ?? ""}
               </p>

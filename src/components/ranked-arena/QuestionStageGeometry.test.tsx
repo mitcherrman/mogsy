@@ -78,8 +78,13 @@ function stageRules(): { minWidth: number; body: string }[] {
 
 /** The tokens in force at `width`, applied in source order the way the cascade
  *  would apply them. */
-function tokensAt(width: number): Record<string, string> {
-  const tokens: Record<string, string> = {};
+function tokensAt(width: number, viewportH: number = 1600): Record<string, string> {
+  // `--qs-avail` is inherited from `.ranked-shell`, not declared here, and it
+  // is what the media reserve answers to. Supplying it is what lets this file
+  // ask the question the RM1 hotfix exists for: does the Match Shell fit?
+  const tokens: Record<string, string> = {
+    "--qs-avail": `${viewportH - 4 - chromeHeightPx()}px`,
+  };
   for (const rule of stageRules()) {
     if (rule.minWidth > width) continue;
     for (const decl of rule.body.split(";")) {
@@ -98,30 +103,116 @@ function stageExpression(): string {
   return m[1];
 }
 
-/** rem/px arithmetic, with `var(--qs-*, fallback)` resolved from `tokens`. */
-function evaluatePx(expression: string, tokens: Record<string, string>): number {
-  const resolved = expression.replace(
-    /var\(\s*(--qs-[a-z-]+)\s*,\s*([^)]*)\)/g,
-    (_all, name: string, fallback: string) => tokens[name] ?? fallback,
-  );
-  if (/var\(/.test(resolved)) throw new Error(`unresolved var() in "${resolved}"`);
-  let total = 0;
-  for (const term of resolved.split("+")) {
-    const t = term.trim();
-    if (!t) continue;
-    const rem = /^([\d.]+)rem$/.exec(t);
-    const px = /^([\d.]+)px$/.exec(t);
-    if (rem) { total += Number(rem[1]) * 16; continue; }
-    if (px) { total += Number(px[1]); continue; }
+/**
+ * A LENGTH EVALUATOR, not a regex.
+ *
+ * The stage's tokens stopped being sums of constants when the RM1 hotfix gave
+ * the media reserve a viewport budget to answer to: it is now
+ * `clamp(9rem, <what the viewport can pay>, 16rem)`. A parser that only knew
+ * how to add rem terms would have had to be replaced by a weaker assertion,
+ * and the arithmetic identity below is the whole value of this file — so the
+ * evaluator grew instead. It understands `calc`/`min`/`max`/`clamp`, `+ - * /`,
+ * `rem` and `px`, and `var(--name, fallback)` resolved from `tokens`.
+ */
+function px(expression: string, tokens: Record<string, string>): number {
+  let depth = 0;
+  const resolve = (expr: string): string => {
+    if (depth++ > 32) throw new Error(`var() cycle in "${expression}"`);
+    const out = expr.replace(
+      /var\(\s*(--[a-z-]+)\s*(?:,\s*([^()]*(?:\([^()]*\))?[^()]*))?\)/g,
+      (_all, name: string, fallback: string | undefined) => {
+        const v = tokens[name] ?? fallback;
+        if (v === undefined) throw new Error(`unresolved ${name} in "${expression}"`);
+        return `(${resolve(v)})`;
+      },
+    );
+    depth--;
+    return out;
+  };
+
+  // A tiny recursive-descent pass over the resolved string: the INNERMOST
+  // bracket group each time round, function or plain, reduced to a px number
+  // and substituted back. That is what keeps nesting honest — an earlier draft
+  // stripped plain parentheses first and quietly tore the `(…)` off a
+  // `calc(…)` it had not looked at yet.
+  const reduce = (src: string): number => {
+    let s = src.trim();
+    for (;;) {
+      const m = /(calc|min|max|clamp)?\(([^()]*)\)/.exec(s);
+      if (!m) break;
+      const fn = m[1];
+      const args = m[2].split(",").map((a) => plain(a));
+      const value = !fn || fn === "calc" ? args[0]
+        : fn === "min" ? Math.min(...args)
+        : fn === "max" ? Math.max(...args)
+        : Math.min(Math.max(args[0], args[1]), args[2]); // clamp(min, val, max)
+      s = s.slice(0, m.index) + `${value}px` + s.slice(m.index + m[0].length);
+    }
+    return plain(s);
+  };
+
+  /** Infix `+`/`-` over bracket-free terms. */
+  const plain = (src: string): number => {
+    // Split on the `+`/`-` that separate terms. Never a sign inside a number:
+    // a separator is spaced on both sides, and the stylesheet writes it so.
+    const terms = src.trim().split(/(?<=[\dA-Za-z%])\s+([+-])\s+/);
+    let total = term(terms[0]);
+    for (let i = 1; i < terms.length; i += 2) {
+      total += terms[i] === "-" ? -term(terms[i + 1]) : term(terms[i + 1]);
+    }
+    return total;
+  };
+
+  const term = (src: string): number => {
+    const t = src.trim();
+    const mul = /^(.+?)\s*([*/])\s*([\d.]+)$/.exec(t);
+    if (mul) {
+      const base = term(mul[1]);
+      return mul[2] === "*" ? base * Number(mul[3]) : base / Number(mul[3]);
+    }
+    const rem = /^(-?[\d.]+)rem$/.exec(t);
+    if (rem) return Number(rem[1]) * 16;
+    const pxm = /^(-?[\d.]+)px$/.exec(t);
+    if (pxm) return Number(pxm[1]);
+    const bare = /^(-?[\d.]+)$/.exec(t);
+    if (bare) return Number(bare[1]);
     throw new Error(`unexpected term "${t}" in the stage expression`);
-  }
-  return total;
+  };
+
+  return reduce(resolve(expression));
 }
 
-const stageHeightAt = (width: number) => evaluatePx(stageExpression(), tokensAt(width));
-const tokenPx = (width: number, name: string) => {
-  const v = tokensAt(width)[name];
-  return v === undefined ? null : evaluatePx(v, {});
+/**
+ * THE ARENA'S CHROME BUDGET — every band of the Match Shell that is NOT the
+ * Question Stage, as `.ranked-shell` declares it. Parsed rather than restated,
+ * because the point of the token is that one place says what the chrome costs.
+ */
+function chromeHeightPx(): number {
+  const css = stripComments(CSS);
+  const m = /--ranked-chrome-h:\s*(calc\([\s\S]*?\));/.exec(css);
+  if (!m) throw new Error("`.ranked-shell` declares no --ranked-chrome-h");
+  return px(m[1], {});
+}
+
+/**
+ * The height the stage is offered on a viewport `viewportH` tall.
+ * `--ranked-stage-h` is `100dvh - 0.25rem - --bottom-nav-clearance`, and the
+ * clearance is `0px` on this route.
+ */
+const availAt = (viewportH: number) => viewportH - 4 - chromeHeightPx();
+
+/**
+ * A viewport comfortably taller than any reserve, so `min()` always picks the
+ * declared maximum. Every assertion written before the hotfix runs at this
+ * height and therefore still asserts exactly what it always did.
+ */
+const TALL = 1600;
+
+const stageHeightAt = (width: number, viewportH: number = TALL) =>
+  px(stageExpression(), tokensAt(width, viewportH));
+const tokenPx = (width: number, name: string, viewportH: number = TALL) => {
+  const v = tokensAt(width, viewportH)[name];
+  return v === undefined ? null : px(v, tokensAt(width, viewportH));
 };
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -190,6 +281,82 @@ describe("every reserve covers the tallest content of its kind", () => {
   it("matches the stage height measured in the browser", () => {
     for (const [width, measured] of Object.entries(MEASURED)) {
       expect(stageHeightAt(Number(width)), `stage at ${width}px`).toBe(measured.stage);
+    }
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// RM1 HOTFIX — THE MATCH SHELL FITS ONE VIEWPORT.
+//
+// A Ranked match must never require document scrolling. That is not a property
+// of the Question Stage alone: it is the Stage PLUS every fixed band around it
+// — the Match Header, the arena grid's gaps, the HUD row and the Module Rail —
+// measured against the viewport. `--ranked-chrome-h` is where the arena writes
+// down what that chrome costs, and the stage's media reserve is what answers
+// to what is left. This block asserts the two actually add up, which is the
+// arithmetic nobody was doing when the shell shipped ~900px tall.
+// ───────────────────────────────────────────────────────────────────────────
+describe("the whole Match Shell fits the viewport it is given", () => {
+  /** Every band of the shell, at `width` x `viewportH`. */
+  const shellHeight = (width: number, viewportH: number) =>
+    chromeHeightPx() + stageHeightAt(width, viewportH);
+
+  it.each([
+    [1280, 800], [1280, 760], [1440, 800], [1512, 820], [1512, 900], [1920, 1080],
+  ])("at %ipx x %ipx nothing is pushed below the fold", (width, viewportH) => {
+    expect(
+      shellHeight(width, viewportH),
+      "the Match Header, both Player Columns, the Question Stage and the"
+      + " Module Rail no longer fit one viewport — a Ranked match has started"
+      + " scrolling the document again",
+    ).toBeLessThanOrEqual(viewportH - 4);
+  });
+
+  it("spends the whole viewport and no more — the stage takes the surplus", () => {
+    // Not merely "fits": on a short viewport the stage is exactly what is
+    // left, so the arena is as large as the screen allows. A stage that came
+    // in well under would be leaving the question room it could have had.
+    expect(stageHeightAt(1280, 800)).toBe(availAt(800));
+    expect(stageHeightAt(1440, 800)).toBe(availAt(800));
+  });
+
+  it("changes nothing at all on a viewport tall enough to pay", () => {
+    // The clamp is a floor-of-last-resort, not a new look. At any height that
+    // could already seat the shell, the reserve is the declared 16rem maximum
+    // and every measured stage height above is reproduced exactly.
+    for (const [width, measured] of Object.entries(MEASURED)) {
+      expect(tokenPx(Number(width), "--qs-media-h", 1400)).toBe(16 * 16);
+      expect(stageHeightAt(Number(width), 1400)).toBe(measured.stage);
+    }
+  });
+
+  it("never squeezes the prompt or the answers, at any viewport height", () => {
+    // The media band is art with a declared aspect and a cap it already
+    // honours. The other two regions are TEXT: shrinking them wraps a question
+    // or moves the tablets' origin, which is the one coordinate the whole
+    // stage exists to pin. They must be height-independent.
+    for (const width of [1024, 1280, 1512]) {
+      for (const h of [640, 800, 1400]) {
+        expect(tokenPx(width, "--qs-prompt-h", h)).toBe(tokenPx(width, "--qs-prompt-h", 1400));
+        expect(tokenPx(width, "--qs-answers-h", h)).toBe(tokenPx(width, "--qs-answers-h", 1400));
+      }
+    }
+  });
+
+  it("floors the band rather than collapsing it on a very short viewport", () => {
+    // 7.5rem, and the compact plate's own 72px content is still clear of it,
+    // so even here the shortest shipped band is not the thing being squeezed.
+    expect(tokenPx(1280, "--qs-media-h", 500)).toBe(7.5 * 16);
+    expect(tokenPx(1280, "--qs-media-h", 500)!).toBeGreaterThan(72);
+  });
+
+  it("still tells the band exactly one thing, and the same thing", () => {
+    // The cap and the reserve stay the same expression at every height — a
+    // band capped below its region would be shrunk art inside an empty box.
+    for (const width of [1024, 1280, 1512]) {
+      for (const h of [640, 800, 1400]) {
+        expect(tokenPx(width, "--qs-media-max", h)).toBe(tokenPx(width, "--qs-media-h", h));
+      }
     }
   });
 });
@@ -585,7 +752,12 @@ describe("every term between the card and the timeline is still reserved", () =>
   });
 
   it("the status line keeps its reserved line box", () => {
-    expect(arena()).toContain("line-clamp-2 min-h-[2.25rem]");
+    // 2rem, not the 2.25rem it reserved before the RM1 hotfix: the box is a
+    // `line-clamp-2` of `text-xs`, which is exactly two 16px lines, so the
+    // extra 4px was air a status string could never reach into. The RESERVE
+    // is what matters and it is still here — the line box cannot change height
+    // when one status replaces another.
+    expect(arena()).toContain("line-clamp-2 min-h-[2rem]");
   });
 
   it("the round-resolution beat still cannot grow the strip", () => {
