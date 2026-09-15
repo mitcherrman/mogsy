@@ -1093,70 +1093,70 @@
   .ranked-award-pop--bonus { transform: none; }
 }
 
-/* ===== RM1 Pass 2 — THE DUEL BANNER ========================================
-   The Ranked duelist column as a CEREMONIAL STANDARD rather than a navy
-   rectangle: a floating velvet field with chamfered heraldic shoulders, a gold
-   stroke that brightens into a long spear-point, and the role mascot seated on
-   a heraldic roundel as the standard's device.
+/* ===== RM1 — THE DUEL BANNER, AS THE PAINTED ASSET =======================
+   The Ranked Player Column's shell is now `public/assets/ranked/navy-banner.png`
+   — real navy cloth with its own gold embroidered edge, a flat top and a
+   pointed bottom — instead of the CSS that used to imitate one.
 
-   RM1 HOTFIX Pass 3 pushed it from "pointed panel" to "banner": the taper went
-   from 2rem to 3.25rem, the head gained its chamfer, the trim went from 2px to
-   3px and now lights toward the tip, and the face gained a centre fold, a
-   drape and a sigil field. NOTHING was added that says anything — no rod, no
-   crest, no slogan, no ornament. Every layer is material, not decoration.
-
-   NO HANGING HARDWARE. There is no rod, no rings and no cord. The banner
-   floats on its own shadow, which is the whole of the "hanging" reading the
-   reference asks for — a drawn rod would be furniture the arena has to keep
-   aligned at four breakpoints for no information. Nor is there an academy
-   crest: the only device on the field is the role mascot the column already
-   had, and the roundel under it is a FIELD for that mascot, not a second
-   emblem competing with it.
+   EVERYTHING THE CSS USED TO DRAW IS GONE, because the asset already draws it:
+   the clip-path silhouette, the two clipped layers that faked an even stroke
+   around it, the gold edge gradient, the woven-stripe and centre-fold
+   gradients, and the heraldic roundel behind the mascot. Keeping any of them
+   would print a second edge next to the painted one.
 
    ─────────────────────────────────────────────────────────────────────────
-   WHY TWO CLIPPED LAYERS AND NOT A BORDER
+   HOW THE ASSET IS MOUNTED, AND WHY IT IS TWO LAYERS AND NOT ONE
    ─────────────────────────────────────────────────────────────────────────
-   `clip-path` cuts the element's border away with everything else outside the
-   polygon, so a pointed shape simply cannot carry a CSS border — the sides
-   would be drawn and the two diagonals of the point would not. So the edge is
-   a layer of its own:
+   The PNG is 992x1586 with the banner itself occupying x 170..819, y 73..1490
+   (650 x 1418) and genuine transparency around it. Within that, the straight-
+   sided BODY is y 73..1256 and the POINT is the last 234px.
 
-     * `::before` is the EDGE — the accent colour, clipped to the silhouette;
-     * `::after` is the FACE — the navy fill, inset by the edge's width and
-       clipped to the same silhouette.
+   A Player Column is not that shape. Its width is a share of the arena's
+   centre track and its height is whatever the viewport lock left, so the ratio
+   moves — and a single stretched background would stretch the POINT with it,
+   which is the one part of a banner whose angle is its character. At a short
+   viewport that is a visibly blunt point.
 
-   The result is a stroke of even width along all SEVEN sides INCLUDING the
-   two chamfered shoulders and the two diagonals of the point, which is the
-   one thing the border it replaces could not do.
+   So the body and the point are drawn as two layers of the SAME file:
 
-   NO OVERFLOW IS RELIED ON. `.ranked-panel` is `overflow: hidden` and this is
-   deliberately not that: the banner clips its own decoration by geometry, so
-   nothing a column hangs off itself later can be silently shaved by it.
+     * `::before` takes the element minus `--banner-point` and shows the body
+       sub-rect, stretched vertically. Cloth stretching is what cloth does.
+     * `::after` takes exactly `--banner-point` at the foot and shows the point
+       sub-rect. Its height is a fixed length, so the point's angle is a
+       constant of the design rather than a function of the viewport.
+
+   Both layers use the same horizontal mapping, so the gold side edges are
+   continuous across the seam; and the body sub-rect ends on exactly the row
+   the point sub-rect begins, so there is no seam to see.
+
+   THE MAGIC NUMBERS ARE NOT MAGIC. `background-position` percentages align the
+   P% point of the image with the P% point of the box, so placing a sub-rect is
+   `offset / (imageSize - subRectSize)`:
+
+     x        170 / (992 - 650)  = 49.7076%   (both layers)
+     body y    73 / (1586 - 1183) = 18.1141%
+     point y 1256 / (1586 -  234) = 92.8994%
+
+   and `background-size` scales the file so the sub-rect lands at 100% of the
+   box: `100% * 992/650` wide, `100% * 1586/<sub-rect height>` tall.
+
+   THE ASSET IS NOT MODIFIED. Its transparent margins are handled by the
+   arithmetic above rather than by a crop, so the file on disk is exactly the
+   one that was approved.
 
    THE POINT IS RESERVED, NOT OVERLAID. `--banner-point` is added to the
-   column's bottom padding, so no content can ever be seated inside the taper.
-   It is measured in rem and shrinks on narrow viewports, where the stacked
-   columns are short and a full-size taper would be most of the card.
+   column's bottom padding, so no content is ever seated inside the taper.
 
-   The shadow is a `filter: drop-shadow`, not `box-shadow`: a box shadow traces
-   the element's BOX and would print a rectangle's shadow under a pointed
-   object. `drop-shadow` traces the clipped alpha, so the point casts a point.
-   Filter on the element covers its own pseudo-elements, which is why one
-   declaration lights the whole silhouette.
+   `filter: drop-shadow` and not `box-shadow`: it traces the rendered alpha, so
+   the point casts a point. It is also the ONLY place a side or outcome colour
+   is expressed now — as light around the banner, never as a border through it.
+   The asset's gold trim is the trim.
    ========================================================================= */
 .ranked-banner {
   position: relative;
-  /* RM1 HOTFIX Pass 3 — THE CEREMONIAL STANDARD.
-     The silhouette is now a banner's, not a panel's with a nick taken out of
-     the bottom: chamfered heraldic shoulders at the head, a long spear-point
-     at the foot, and a gold stroke that brightens all the way down into the
-     tip the way a metal-shod standard does. */
-  --banner-point: 3.25rem;   /* the lower taper — assertive, not a notch */
-  --banner-head: 0.85rem;    /* how far the chamfered top corners cut in */
-  --banner-shoulder: 1.15rem;
-  /* The edge's width. One value, read by both layers below. */
-  --banner-edge-w: 3px;
-  --banner-edge: rgba(201,168,76,0.5);
+  --banner-point: 6.5rem;
+  /* The banner's own proportion: the point is 234 of its 1418px, so at the
+     ~290px column an `lg` arena produces, a true point is ~104px. */
   --banner-glow: rgba(201,168,76,0.22);
   border: 0;
   border-radius: 0;
@@ -1167,126 +1167,57 @@
     drop-shadow(0 0 18px var(--banner-glow))
     drop-shadow(0 16px 26px rgba(0,0,0,0.55));
 }
-/* The seven-sided silhouette. Declared ONCE, for both layers together, so the
-   edge and the face can never disagree about the shape — a half-pixel of drift
-   between them prints as a ragged stroke down the taper, which is exactly
-   where the eye is. */
 .ranked-banner::before,
 .ranked-banner::after {
   content: "";
   position: absolute;
   pointer-events: none;
-  clip-path: polygon(
-    0 var(--banner-head),
-    var(--banner-shoulder) 0,
-    calc(100% - var(--banner-shoulder)) 0,
-    100% var(--banner-head),
-    100% calc(100% - var(--banner-point)),
-    50% 100%,
-    0 calc(100% - var(--banner-point))
-  );
+  z-index: 0;
+  background-image: url("/assets/ranked/navy-banner.png");
+  background-repeat: no-repeat;
+  /* One horizontal mapping for both layers — this is what keeps the gold side
+     edges continuous where the body meets the point. */
+  background-size: calc(100% * 992 / 650) auto;
+  background-position-x: 49.7076%;
 }
-/* THE EDGE — gold trim, brightest at the point. */
+/* THE BODY — everything above the taper. */
 .ranked-banner::before {
-  inset: 0;
-  z-index: 0;
-  background: linear-gradient(180deg,
-    rgba(232,201,122,0.85) 0%,
-    var(--banner-edge) 14%,
-    var(--banner-edge) 58%,
-    rgba(201,168,76,0.82) 88%,
-    rgba(245,222,160,0.95) 100%);
+  inset: 0 0 var(--banner-point) 0;
+  background-size: calc(100% * 992 / 650) calc(100% * 1586 / 1183);
+  background-position-y: 18.1141%;
 }
-/* THE FACE — dark-navy velvet, inset so the edge reads as a stroke.
-
-   FOUR LAYERS, IN PAINT ORDER, and each is one cue and no ornament:
-     1. the fold — a soft vertical highlight down the banner's centre line, so
-        the cloth reads as hung from a centre seam rather than printed flat;
-     2. the drape — wide, very low-contrast vertical bands, the shading a
-        hanging tapestry gets from its own weight. Repeating, so it tracks the
-        column's width instead of being right at one and wrong at the next;
-     3. the halo — the cool light the arena throws on the banner's head;
-     4. the field itself, deepening toward the point, which is what stops a
-        tall banner reading as a flat swatch.
-   Nothing here is an emblem, a crest, a rod or a slogan. */
+/* THE POINT — the foot, at a fixed height so its angle never moves. */
 .ranked-banner::after {
-  inset: var(--banner-edge-w);
-  z-index: 0;
-  background:
-    linear-gradient(90deg,
-      transparent 42%, rgba(150,190,235,0.055) 50%, transparent 58%),
-    repeating-linear-gradient(90deg,
-      rgba(255,255,255,0.018) 0 14%,
-      rgba(0,0,0,0.055) 14% 28%),
-    radial-gradient(75% 40% at 50% 0%, rgba(80,170,220,0.12) 0%, transparent 70%),
-    linear-gradient(170deg,
-      rgba(16,29,53,0.99) 0%,
-      rgba(8,17,34,0.99) 46%,
-      rgba(3,7,16,1) 100%);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--banner-point);
+  background-size: calc(100% * 992 / 650) calc(100% * 1586 / 234);
+  background-position-y: 92.8994%;
 }
-/* Content sits above both decorative layers — the same rule `.ranked-panel`
-   keeps, for the same reason. */
+/* Content sits above both layers — the same rule `.ranked-panel` keeps, for
+   the same reason. */
 .ranked-banner > * {
   position: relative;
   z-index: 1;
 }
-/* THE MASCOT AS SIGIL.
-   A heraldic roundel — a dark charge field inside one thin gold ring — painted
-   BEHIND the role mascot, in the crest's own background layer so it needs no
-   markup and cannot intercept a click or clip the lunge the crest reserves
-   room for. The mascot stays the dominant element; this only gives it a field
-   to sit on, which is the difference between a character on a panel and a
-   device on a standard. Sized and placed in percentages so it tracks the
-   mascot as the column narrows. */
-.ranked-banner [data-testid="role-crest"] {
-  background-repeat: no-repeat;
-  background-position: 50% 62%;
-  background-size: 78% 78%;
-  background-image:
-    radial-gradient(closest-side circle at 50% 50%,
-      transparent 0 88%,
-      var(--banner-sigil-ring, rgba(201,168,76,0.34)) 88% 94%,
-      transparent 94%),
-    radial-gradient(closest-side circle at 50% 50%,
-      rgba(12,24,45,0.62) 0 88%,
-      transparent 88%);
-}
-/* WHICH BANNER THIS IS. The two columns differ in KIND, not in direction, so
-   this is keyed off the side and is NOT mirrored (see `isMirroredSide`). */
-.ranked-banner[data-side="player"] {
-  --banner-edge: hsl(var(--primary) / 0.55);
-  --banner-glow: hsl(var(--primary) / 0.20);
-}
-.ranked-banner[data-side="opponent"] {
-  --banner-edge: hsl(var(--destructive) / 0.5);
-  --banner-glow: hsl(var(--destructive) / 0.18);
-}
-/* The settled round lights the banner's own edge, replacing the ring the card
-   used to grow — a ring traces a rounded rectangle and would miss the point. */
-.ranked-banner[data-outcome="correct"] {
-  --banner-edge: rgba(52,211,153,0.75);
-  --banner-glow: rgba(52,211,153,0.26);
-  --banner-sigil-ring: rgba(52,211,153,0.4);
-}
-.ranked-banner[data-outcome="incorrect"] {
-  --banner-edge: hsl(var(--destructive) / 0.8);
-  --banner-glow: hsl(var(--destructive) / 0.26);
-  --banner-sigil-ring: hsl(var(--destructive) / 0.45);
-}
+/* WHICH BANNER THIS IS. Both columns carry the same painted cloth and the same
+   gold trim, because they are the same object; the side and the settled round
+   are said in the LIGHT around it, which is the one channel that can carry
+   them without arguing with the asset. */
+.ranked-banner[data-side="player"] { --banner-glow: hsl(var(--primary) / 0.22); }
+.ranked-banner[data-side="opponent"] { --banner-glow: hsl(var(--destructive) / 0.20); }
+.ranked-banner[data-outcome="correct"] { --banner-glow: rgba(52,211,153,0.30); }
+.ranked-banner[data-outcome="incorrect"] { --banner-glow: hsl(var(--destructive) / 0.30); }
 /* Narrow viewports stack the columns into short cards; a full-size taper there
-   is most of the card. The silhouette is kept and its scale is not. */
+   is most of the card. The asset is kept and its scale is not. */
 @media (max-width: 1023px) {
-  .ranked-banner {
-    --banner-point: 1.35rem;
-    --banner-head: 0.5rem;
-    --banner-shoulder: 0.7rem;
-    --banner-edge-w: 2px;
-  }
+  .ranked-banner { --banner-point: 2.75rem; }
 }
-/* The edge colour transition is the banner's only motion. */
-.ranked-banner::before { transition: background 300ms ease; }
+/* The glow is the banner's only motion. */
+.ranked-banner { transition: filter 300ms ease; }
 @media (prefers-reduced-motion: reduce) {
-  .ranked-banner::before { transition: none; }
+  .ranked-banner { transition: none; }
 }
 
 /* RP1 Step 4 — THE CUMULATIVE SCORE MOVING.

@@ -788,10 +788,13 @@ export function CombatantPanel({
   // RP1 — does this match score points? One question, asked once, off the view
   // the panel was handed. See `CombatantView.score`.
   const scored = combatant.score !== null && combatant.score !== undefined;
-  // RM1 Pass 2 — the banner is the Ranked skin. The card's border, ring and
-  // shadow are the CARD's way of saying side and outcome; the banner says both
-  // through its own edge (see `.ranked-banner` in index.css), so the two sets
-  // of classes are alternatives and never both applied.
+  // RM1 — the banner is the Ranked skin, and it is now a painted asset
+  // (`public/assets/ranked/navy-banner.png`, mounted by `.ranked-banner` in
+  // index.css). The card's border, ring and shadow are the CARD's way of
+  // saying side and outcome; the banner says both in the LIGHT around it,
+  // because the asset carries its own gold trim and a second border drawn
+  // through it would simply be a second edge. The two sets of classes are
+  // alternatives and never both applied.
   const banner = presentation === "banner";
   return (
     <section
