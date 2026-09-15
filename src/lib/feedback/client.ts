@@ -19,7 +19,7 @@ import type { PreparedScreenshot } from "./screenshot";
  * The shipped page read submissions with
  *     supabase.from("feedback").select("*")
  * which returns every column on the row, including admin_notes and — once FB1
- * added them — client_meta and duplicate_of. RLS was never the problem: it
+ * added them — client_meta, duplicate_of and report_context. RLS was never the problem: it
  * correctly limits a user to their own rows. The problem is column reach
  * *within* those rows, and the column-level REVOKE that is supposed to hide
  * admin_notes is a no-op on this project, because ALTER DEFAULT PRIVILEGES
@@ -58,6 +58,13 @@ export interface SubmitFeedbackInput {
   evidenceUrl?: string | null;
   pageUrl?: string | null;
   clientMeta?: Record<string, string>;
+  /**
+   * FB1-4 structured context for an in-product report. Built by
+   * report-context.ts, which owns the shape and the size budget; this module
+   * only carries it. Omitted entirely by the /feedback forms, which have no
+   * context to capture beyond what their own fields already say.
+   */
+  reportContext?: Record<string, unknown> | null;
 }
 
 export class FeedbackRateLimitError extends Error {
@@ -122,6 +129,7 @@ export async function submitFeedback(input: SubmitFeedbackInput): Promise<string
       evidence_url: input.evidenceUrl ?? null,
       page_url: input.pageUrl ?? null,
       client_meta: input.clientMeta ?? {},
+      report_context: input.reportContext ?? {},
     } as never)
     .select("id")
     .single();

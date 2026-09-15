@@ -22,15 +22,25 @@
  * mode learning what the other explains, but no other mode is converted by
  * this change and none should be converted speculatively.
  *
- * PLACEMENT. Bottom-right, `fixed`. The bottom-LEFT slot on this route is
- * already owned by the Community trigger (`FloatingFriendsButton`), and both
- * top corners are `GlobalHud`'s chips. Bottom-right is free on every route:
+ * PLACEMENT. Bottom-right. The bottom-LEFT slot on this route is already owned
+ * by the Community trigger (`FloatingFriendsButton`), and both top corners are
+ * `GlobalHud`'s chips. Bottom-right was free on every route:
  * `FloatingThemeSwitcher`, the theme FAB that used to sit there outside the
  * League section, was deleted with the sitewide theme system (PT2E).
+ *
+ * It is no longer free, and no longer this component's to own. FB1-4 added a
+ * question reporter that belongs in the same corner beside the same live
+ * match, so the corner is now `MogzyDock` — one anchor with a panel stack and
+ * a tab row, which sorts its occupants and keeps one panel open at a time.
+ * This component PORTALS into it when it is mounted, and falls back to its
+ * original private `fixed` anchor when it is not, so a panel rendered outside
+ * the app shell (every test that renders one, for instance) is unchanged.
  */
 import { useCallback, useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { MogzyMascot } from "@/components/mascot/MogzyMascot";
+import { DOCK_ORDER, useMogzyDockSlot } from "@/components/mogzy-dock/MogzyDock";
 
 export interface MogzyExplainsPanelProps {
   /** Whether the scroll is currently unrolled. Owned by the caller. */
@@ -62,11 +72,33 @@ export interface MogzyExplainsPanelProps {
   children: ReactNode;
   /** Hook prefix, so a mode's tests can address its own instance. */
   testId?: string;
+  /**
+   * Label on the panel's own dismiss button. "Got it" is right under an
+   * explanation and wrong under a form, which is the only reason this is a
+   * prop — the button's role (dismiss, and the panel's initial focus target)
+   * is identical either way.
+   */
+  acknowledgeLabel?: string;
+  /**
+   * Where this panel sits among the dock's occupants. See `DOCK_ORDER`.
+   * Defaults to the rules slot, which is what the only pre-dock caller was.
+   */
+  dockOrder?: number;
+  /**
+   * The dock asked this panel to step aside because the player opened another
+   * one. Defaults to `onClose`.
+   *
+   * Callers whose close carries a MEANING — Ranked Rules, where dismissal is
+   * the acknowledgement — must pass a collapse that does not carry it. Being
+   * shoved aside is not the player saying they have read anything.
+   */
+  onCollapse?: () => void;
 }
 
 export function MogzyExplainsPanel({
   open, onOpen, onClose, title, tabLabel, openLabel, children,
   prominent = false, testId = "mogzy-explains",
+  dockOrder = DOCK_ORDER.rules, onCollapse, acknowledgeLabel = "Got it",
 }: MogzyExplainsPanelProps) {
   const headingId = useId();
   const tabRef = useRef<HTMLButtonElement | null>(null);
@@ -107,6 +139,17 @@ export function MogzyExplainsPanel({
     onClose();
   }, [onClose]);
 
+  /* A collapse is NOT a close: it never sets `focusWasInside`, so stepping
+     aside for another panel does not yank focus back to this tab, and it calls
+     the caller's own `onCollapse` so a meaning attached to closing (Ranked's
+     acknowledgement) is not spent by a control the player never opened. */
+  const collapse = useCallback(() => {
+    if (onCollapse) onCollapse();
+    else onClose();
+  }, [onCollapse, onClose]);
+
+  const { panelSlot, tabSlot } = useMogzyDockSlot({ id: testId, open, onCollapse: collapse });
+
   /* Returning focus to the tab after a player-driven close. Without it a
      keyboard player is dropped at the top of the document every time they
      read the rules. */
@@ -116,106 +159,123 @@ export function MogzyExplainsPanel({
     tabRef.current?.focus();
   }, [open]);
 
+  const panel = open ? (
+    <section
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby={headingId}
+      data-testid={`${testId}-panel`}
+      style={{ order: dockOrder }}
+      /* Phone: an edge-to-edge sheet, clear of both screen edges. Desktop:
+         a column beside the arena. `max-h` + `overflow-y-auto` keeps the
+         sheet on one screen at 375px without the content having to be
+         shorter than the rules actually are. */
+      className="pointer-events-auto mogzy-scroll
+        w-[calc(100vw-1.5rem)] max-w-[21rem] sm:w-[21rem]
+        max-h-[min(72vh,34rem)] overscroll-contain
+        px-4 pb-4 pt-3 text-left shadow-2xl
+        motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
+    >
+      <header className="flex items-start gap-3">
+        {/* Mogzy holds the scroll rather than standing over the arena: he
+            is INSIDE the panel's own header, so he cannot reach the
+            question, the timer or either score at any width. */}
+        <span className="mogzy-scroll-portrait -mt-0.5 block h-14 w-14 shrink-0">
+          <MogzyMascot
+            pose="explaining"
+            decorative
+            loading="eager"
+            className="h-full w-full object-contain"
+          />
+        </span>
+        <div className="min-w-0 flex-1 pt-1">
+          <h2 id={headingId} className="ranked-eyebrow !text-[#6b5220]">{title}</h2>
+        </div>
+        <button
+          type="button"
+          onClick={close}
+          data-testid={`${testId}-close`}
+          aria-label={`Close ${title}`}
+          className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full
+            text-lg leading-none text-[#6b5220]/70 transition-colors
+            hover:bg-[#6b5220]/10 hover:text-[#3f3014]
+            focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+            focus-visible:outline-[#8a6a26]"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+      </header>
+
+      <div className="mt-2">{children}</div>
+
+      <button
+        type="button"
+        ref={acknowledgeRef}
+        onClick={close}
+        data-testid={`${testId}-acknowledge`}
+        className="mt-3 min-h-11 w-full rounded-md border border-[#8a6a26]/55
+          bg-[#6b5220]/10 px-3 text-[11px] font-bold uppercase tracking-[0.22em]
+          text-[#4a3818] transition-colors hover:bg-[#6b5220]/20
+          focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+          focus-visible:outline-[#8a6a26]"
+      >
+        {acknowledgeLabel}
+      </button>
+    </section>
+  ) : null;
+
+  /* The tab is ALWAYS mounted, open or not — it is the thing the panel unrolls
+     from, it keeps the corner's shape stable, and leaving it present is what
+     lets focus return to it on close. */
+  const tab = (
+    <button
+      type="button"
+      ref={tabRef}
+      onClick={open ? close : onOpen}
+      aria-label={open ? `Close ${title}` : openLabel}
+      aria-expanded={open}
+      data-testid={`${testId}-tab`}
+      data-open={open ? "true" : undefined}
+      data-prominent={prominent ? "true" : undefined}
+      style={{ order: dockOrder }}
+      className={`mogzy-scroll-tab pointer-events-auto flex min-h-11 items-center gap-1.5
+        rounded-full py-1 pl-1 pr-3 ${prominent ? "mogzy-scroll-tab--calling" : ""}
+        focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+        focus-visible:outline-[#c9a84c]`}
+    >
+      <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full">
+        <MogzyMascot
+          pose={open ? "explaining" : prominent ? "raisingHand" : "peeking"}
+          decorative
+          className="h-full w-full object-cover"
+        />
+      </span>
+      <span className="ranked-eyebrow">{tabLabel}</span>
+    </button>
+  );
+
+  /* Docked: the panel and the tab live in the dock's two slots, which is what
+     lets a second control share the corner without either knowing about the
+     other. The portals are separate because the slots are separate boxes —
+     panels stack in a column, tabs sit in a row. */
+  if (panelSlot && tabSlot) {
+    return (
+      <>
+        {panel && createPortal(panel, panelSlot)}
+        {createPortal(tab, tabSlot)}
+      </>
+    );
+  }
+
+  /* Undocked fallback: the component's original private anchor, unchanged. */
   return (
-    /* The one fixed anchor both states share, so the scroll unrolls from
-       exactly where the tab sits. `pointer-events-none` on the anchor and
-       `auto` on the two live boxes means the empty column between them never
-       eats a click meant for the arena underneath. */
     <div
       data-testid={`${testId}-dock`}
       className="pointer-events-none fixed bottom-4 right-3 z-40 flex flex-col items-end
         gap-2 sm:bottom-5 sm:right-4"
     >
-      {open && (
-        <section
-          role="dialog"
-          aria-modal="false"
-          aria-labelledby={headingId}
-          data-testid={`${testId}-panel`}
-          /* Phone: an edge-to-edge sheet, clear of both screen edges. Desktop:
-             a column beside the arena. `max-h` + `overflow-y-auto` keeps the
-             sheet on one screen at 375px without the content having to be
-             shorter than the rules actually are. */
-          className="pointer-events-auto mogzy-scroll
-            w-[calc(100vw-1.5rem)] max-w-[21rem] sm:w-[21rem]
-            max-h-[min(72vh,34rem)] overscroll-contain
-            px-4 pb-4 pt-3 text-left shadow-2xl
-            motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
-        >
-          <header className="flex items-start gap-3">
-            {/* Mogzy holds the scroll rather than standing over the arena: he
-                is INSIDE the panel's own header, so he cannot reach the
-                question, the timer or either score at any width. */}
-            <span className="mogzy-scroll-portrait -mt-0.5 block h-14 w-14 shrink-0">
-              <MogzyMascot
-                pose="explaining"
-                decorative
-                loading="eager"
-                className="h-full w-full object-contain"
-              />
-            </span>
-            <div className="min-w-0 flex-1 pt-1">
-              <h2 id={headingId} className="ranked-eyebrow !text-[#6b5220]">{title}</h2>
-            </div>
-            <button
-              type="button"
-              onClick={close}
-              data-testid={`${testId}-close`}
-              aria-label={`Close ${title}`}
-              className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full
-                text-lg leading-none text-[#6b5220]/70 transition-colors
-                hover:bg-[#6b5220]/10 hover:text-[#3f3014]
-                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-                focus-visible:outline-[#8a6a26]"
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-          </header>
-
-          <div className="mt-2">{children}</div>
-
-          <button
-            type="button"
-            ref={acknowledgeRef}
-            onClick={close}
-            data-testid={`${testId}-acknowledge`}
-            className="mt-3 min-h-11 w-full rounded-md border border-[#8a6a26]/55
-              bg-[#6b5220]/10 px-3 text-[11px] font-bold uppercase tracking-[0.22em]
-              text-[#4a3818] transition-colors hover:bg-[#6b5220]/20
-              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-              focus-visible:outline-[#8a6a26]"
-          >
-            Got it
-          </button>
-        </section>
-      )}
-
-      {/* The tab is ALWAYS mounted, open or not — it is the thing the panel
-          unrolls from, it keeps the anchor's height stable, and leaving it
-          present is what lets focus return to it on close. */}
-      <button
-        type="button"
-        ref={tabRef}
-        onClick={open ? close : onOpen}
-        aria-label={open ? `Close ${title}` : openLabel}
-        aria-expanded={open}
-        data-testid={`${testId}-tab`}
-        data-open={open ? "true" : undefined}
-        data-prominent={prominent ? "true" : undefined}
-        className={`mogzy-scroll-tab pointer-events-auto flex min-h-11 items-center gap-1.5
-          rounded-full py-1 pl-1 pr-3 ${prominent ? "mogzy-scroll-tab--calling" : ""}
-          focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
-          focus-visible:outline-[#c9a84c]`}
-      >
-        <span className="block h-9 w-9 shrink-0 overflow-hidden rounded-full">
-          <MogzyMascot
-            pose={open ? "explaining" : prominent ? "raisingHand" : "peeking"}
-            decorative
-            className="h-full w-full object-cover"
-          />
-        </span>
-        <span className="ranked-eyebrow">{tabLabel}</span>
-      </button>
+      {panel}
+      {tab}
     </div>
   );
 }

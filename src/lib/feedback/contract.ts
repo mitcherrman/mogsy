@@ -16,8 +16,38 @@
  * instead. Keeping the two apart is what lets us answer "is gameplay feedback
  * actually arriving?" after a report has been retriaged.
  */
-export const FEEDBACK_ENTRY_INTENTS = ["bug", "feature", "gameplay", "other"] as const;
+export const FEEDBACK_ENTRY_INTENTS = [
+  "bug",
+  "feature",
+  "gameplay",
+  "other",
+  // FB1-4. Two doors that are not on /feedback at all: they are opened from
+  // inside the product, by a control that sits beside the thing being
+  // reported. They are separate intents rather than a flavour of "bug"
+  // because entry_intent's whole job is to record WHICH DOOR — and "how many
+  // question reports arrived, and for which reason" is a question the owner
+  // will ask constantly, while "how many bugs turned out to be question
+  // reports" is one nobody will ever ask.
+  "question_report",
+  "page_report",
+] as const;
 export type FeedbackEntryIntent = (typeof FEEDBACK_ENTRY_INTENTS)[number];
+
+/**
+ * The four doors that live ON /feedback. The Feedback Center's own form is
+ * typed over these rather than over every intent, so adding an in-product
+ * door can never silently oblige that page to grow a fifth card.
+ */
+export const FEEDBACK_CENTER_INTENTS = ["bug", "feature", "gameplay", "other"] as const;
+export type FeedbackCenterIntent = (typeof FEEDBACK_CENTER_INTENTS)[number];
+
+/** The two in-product doors, for surfaces that only care about those. */
+export const IN_PRODUCT_ENTRY_INTENTS = ["question_report", "page_report"] as const;
+export type InProductEntryIntent = (typeof IN_PRODUCT_ENTRY_INTENTS)[number];
+
+export function isInProductIntent(intent: string): intent is InProductEntryIntent {
+  return (IN_PRODUCT_ENTRY_INTENTS as readonly string[]).includes(intent);
+}
 
 /**
  * The triage workflow: reproduce it, weigh it, or read it. Derived from the
@@ -36,6 +66,14 @@ export const ENTRY_INTENT_TO_TYPE: Record<FeedbackEntryIntent, FeedbackType> = {
   feature: "feature",
   gameplay: "feedback",
   other: "feedback",
+  // Both in-product doors triage as bugs: the submitter is asserting that
+  // something in front of them is WRONG, which is work to reproduce and fix
+  // rather than an opinion to weigh. That is true even of the "Doesn't make
+  // sense" and "Other" reasons — an unintelligible question is a content
+  // defect. `type` stays admin-owned, so a report that turns out to be a
+  // comment is reclassified without falsifying which door it came through.
+  question_report: "bug",
+  page_report: "bug",
 };
 
 /** User-facing labels for the four entry points. */
@@ -44,6 +82,8 @@ export const ENTRY_INTENT_LABELS: Record<FeedbackEntryIntent, string> = {
   feature: "Request a Feature",
   gameplay: "Gameplay Feedback",
   other: "Other Feedback",
+  question_report: "Question Report",
+  page_report: "Page Issue",
 };
 
 /**
@@ -190,6 +230,13 @@ export const FEEDBACK_ADMIN_ONLY_FIELDS = [
   "admin_notes",
   "client_meta",
   "duplicate_of",
+  // FB1-4. Structured context captured automatically by the in-product
+  // reporters. It follows client_meta exactly: it is the submitter's own
+  // data, RLS already confines it to their own row, and it is nonetheless
+  // kept out of list_my_feedback() — widening a RETURNS TABLE contract is the
+  // one move that can never be un-made, and nothing in the product asks a
+  // user to re-read the answer choices they just reported.
+  "report_context",
 ] as const;
 
 /**
@@ -232,6 +279,15 @@ export const FEEDBACK_LIMITS = {
   evidenceUrl: 2040,
   screenshotPath: 512,
   pageUrl: 512,
+  /** Free-text explanation on an in-product report. Short on purpose: the
+   *  structured context is doing the work, and a report control beside a live
+   *  question is not the place for an essay. */
+  reportComment: 1000,
+  /** Serialized `report_context`, mirrored by the migration's CHECK. Every
+   *  field the builders capture is individually truncated well below this;
+   *  the cap exists so a pathological question (a 40-option matrix, say)
+   *  cannot write an unbounded row. */
+  reportContextJson: 16384,
 } as const;
 
 /** The submitter-visible shape returned by list_my_feedback(). */

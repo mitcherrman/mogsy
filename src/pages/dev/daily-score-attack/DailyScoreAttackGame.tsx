@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { DsaQuestion, DsaResolution, DsaRun, dsaChoiceLabel } from "./dailyScoreAttackTypes";
 import DailyScoreAttackTimer from "./DailyScoreAttackTimer";
 import { fetchQuestionImageObjectUrl } from "./dailyScoreAttackClient";
+import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 
 /**
  * Renders the current question's media, fetched from the opaque auth-scoped
@@ -77,6 +78,13 @@ function QuestionMedia({ imageUrl }: { imageUrl: string }) {
   );
 }
 
+/** Label at an index, or null. An out-of-range index is a real possibility on
+ *  a frozen snapshot and must not become "undefined" in a stored report. */
+function choiceLabelAt(question: DsaQuestion, index: number): string | null {
+  const choice = question.choices[index];
+  return choice === undefined ? null : dsaChoiceLabel(choice);
+}
+
 type GameProps = {
   run: DsaRun;
   phase: "active-question" | "submitting-answer" | "reveal" | "transitioning";
@@ -116,6 +124,38 @@ export default function DailyScoreAttackGame({
   }, [phase, question?.sequence]);
 
   const locked = phase !== "active-question";
+
+  /* FB1-4. Time Trial carries a real bank id (`question_id`) but no
+     question_key on the wire, and its difficulty is a BAND LABEL rather than a
+     number — both published as-is rather than coerced into a shape the mode
+     does not have.
+
+     The correct answer is taken from the resolution, so it exists only during
+     the reveal hold. `resolution.correct_index` indexes the ANSWERED
+     question's choices, which is why the reveal branch renders
+     `answeredQuestion`: reading the live `run.question` there would label the
+     answer from the wrong question's choice list. */
+  usePublishReportableQuestion(
+    question
+      ? {
+        category: "Time Trial",
+        mode: "Time Trial",
+        staticQuestionId: question.question_id,
+        prompt: question.question_text,
+        choices: question.choices.map(dsaChoiceLabel),
+        selectedAnswer: selectedIndex === null
+          ? null
+          : choiceLabelAt(question, selectedIndex),
+        canonicalAnswer: inReveal && resolution
+          ? choiceLabelAt(question, resolution.correct_index)
+          : null,
+        questionType: question.category,
+        difficulty: question.difficulty_label,
+        sessionId: run.run_id,
+        roundNumber: question.sequence,
+      }
+      : null,
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-3">

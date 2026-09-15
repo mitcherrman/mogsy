@@ -23,6 +23,8 @@ import type {
 } from "@/lib/ranked-public/contracts";
 import type { ModuleRenderer, ModuleSegmentActions } from "./modules/types";
 import type { ArenaCardBeat } from "./cardBeat";
+import type { ArenaReportIdentity } from "./reportSnapshot";
+export type { ArenaReportIdentity };
 // Re-exported so a component that renders one part of this view model has a
 // single import home for its types, the way `ResultKind` is re-exported from
 // `RoundResultBeat`.
@@ -230,6 +232,17 @@ export interface ArenaStatusLine {
 
 /** Everything the live arena renders. */
 export interface ArenaViewModel {
+  /**
+   * FB1-4 — who this mode is, so the arena's round can be reported.
+   *
+   * The arena is mode-neutral and must stay that way, so it does not infer
+   * "Ranked" from anything: the mode names itself here and the arena publishes
+   * a snapshot of the round it is already rendering. Absent or null means the
+   * mode has not opted in, and no report control appears — which is the right
+   * default for a preview, a dev harness or a scripted tutorial, where there
+   * is no live question to report.
+   */
+  report?: ArenaReportIdentity | null;
   header: ArenaHeaderView;
   /**
    * THE HEADER'S ONE RESULT PLATE, in precedence order. Exactly one of these

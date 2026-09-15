@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { trackFunnelEvent } from "@/lib/funnel-analytics";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Flag, Sparkles, Package, Swords, Target, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
+import { BrainCircuit, ArrowLeft, ArrowRight, RotateCcw, AlertTriangle, HelpCircle, Stethoscope, Sparkles, Package, Swords, Target, Timer, Wand2, GitBranch, Layers, BookOpen, Trophy, AlertCircle, Flame, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +11,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { quizApi, categoryLabel, type QuizSet, type QuizQuestion, type QuizAnswerResult, type QuizProgress, type QuizCategoryStat, type QuizAchievement, type QuizHistoryResponse, resolveQuizAssetUrl } from "@/lib/quiz/api";
@@ -183,6 +180,7 @@ const LEAGUECRAFT_BG_VEIL =
 import QuizAnswerOptions, {
   choicesHaveImages as computeChoicesHaveImages,
 } from "@/components/quiz/QuizAnswerOptions";
+import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import QuizAnswerFeedback from "@/components/quiz/QuizAnswerFeedback";
 
 /**
@@ -578,12 +576,6 @@ export default function Quiz() {
   const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [setsLoading, setSetsLoading] = useState(true);
-  const [reportOpen, setReportOpen] = useState(false);
-  const [reportType, setReportType] = useState<string>("wrong_answer");
-  const [reportChosen, setReportChosen] = useState("");
-  const [reportExpected, setReportExpected] = useState("");
-  const [reportReason, setReportReason] = useState("");
-  const [reportSubmitting, setReportSubmitting] = useState(false);
 
   const [userProgress, setUserProgress] = useState<QuizProgress | null>(null);
   const [progressLoading, setProgressLoading] = useState(true);
@@ -891,33 +883,43 @@ export default function Quiz() {
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((currentIndex + (answerResult ? 1 : 0)) / questions.length) * 100 : 0;
 
-  const openReportDialog = useCallback(() => {
-    setReportType("wrong_answer");
-    setReportChosen(selectedAnswer || fillBlankValue || "");
-    setReportExpected(answerResult?.correct_answer || "");
-    setReportReason("");
-    setReportOpen(true);
-  }, [selectedAnswer, fillBlankValue, answerResult]);
-
-  const handleSubmitReport = useCallback(async () => {
-    if (!currentQuestion) return;
-    setReportSubmitting(true);
-    try {
-      await quizApi.reportQuestion({
-        question_id: currentQuestion.id,
-        report_type: reportType,
-        reported_answer: reportChosen || undefined,
-        expected_answer: reportExpected || undefined,
-        reason: reportReason || undefined,
-      });
-      toast.success("Report submitted.");
-      setReportOpen(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to submit report.");
-    } finally {
-      setReportSubmitting(false);
-    }
-  }, [currentQuestion, reportType, reportChosen, reportExpected, reportReason]);
+  /**
+   * FB1-4 — publish the practice question for the shared report dock.
+   *
+   * This is the one mode that already HAS a question reporter: the "Report
+   * issue" button below the answer feedback, which posts to
+   * `POST /api/quiz/reports` in the FastAPI backend and lands in the
+   * `question_reports` table with its own admin resolution flow. That path is
+   * deliberately left running and untouched — it feeds the question-override
+   * pipeline, and silently retiring it would drop reports on the floor.
+   *
+   * The two now overlap on this surface, which is a decision for the owner
+   * rather than something to resolve by deletion here. What the dock adds is
+   * reach: `question_reports` is keyed on a `quiz_questions.id`, so it cannot
+   * accept a report from Ranked, Mastery, Time Trial or Pro Play at all. This
+   * publish exists so Practice is not the one mode missing from the unified
+   * inbox.
+   *
+   * Practice is the one place BOTH identities exist, so both are published.
+   */
+  usePublishReportableQuestion(
+    phase === "active" && currentQuestion
+      ? {
+        category: "Leaguecraft",
+        mode: "Practice",
+        questionKey: currentQuestion.question_key ?? null,
+        staticQuestionId: currentQuestion.id,
+        prompt: currentQuestion.question_text ?? null,
+        choices: (currentQuestion.choices ?? []).map(choice =>
+          typeof choice === "string" ? choice : choice.label),
+        selectedAnswer: selectedAnswer ?? fillBlankValue ?? null,
+        canonicalAnswer: answerResult?.correct_answer ?? null,
+        questionType: currentQuestion.format,
+        difficulty: currentQuestion.difficulty ?? null,
+        roundNumber: currentIndex + 1,
+      }
+      : null,
+  );
 
   const handleSelectAnswer = useCallback(async (choice: string) => {
     if (!currentQuestion || answerResult) return;
@@ -2214,16 +2216,29 @@ export default function Quiz() {
                         </motion.div>
                       )}
 
-                      <div className="flex justify-between items-center mt-3 gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={openReportDialog}
-                          className="text-xs text-muted-foreground hover:text-foreground gap-1"
-                        >
-                          <Flag className="h-3.5 w-3.5" />
-                          Report issue
-                        </Button>
+                      {/* RFB — the "Report issue" button that used to sit at the
+                          start of this row is gone, and Practice now reports
+                          through the same Report tab every other mode uses (see
+                          the usePublishReportableQuestion call above).
+
+                          It was the only mode with two report buttons, and the
+                          older one was the narrower of the two: it posted to
+                          `POST /api/quiz/reports`, unauthenticated and with no
+                          reporter_id, into `question_reports` — an inbox table
+                          nothing downstream reads. The capability worth keeping
+                          is `question_overrides`, which patches the live answer
+                          at serve AND grade time, and that is written by
+                          `/api/quiz/admin/override-question` keyed on
+                          question_id OR question_key, with no link to a report
+                          row. So it is untouched by this removal, and the RFB
+                          report captures both of those identities.
+
+                          The endpoint, the table and the /quiz/admin inbox are
+                          all left in place; only this second user-facing door
+                          is closed. `justify-end` and not `justify-between`,
+                          because a lone Next button in a `justify-between` row
+                          would drift to the left edge. */}
+                      <div className="flex justify-end items-center mt-3 gap-2">
                         <Button onClick={handleNext}>
                           {currentIndex + 1 >= questions.length ? "See results" : "Next question"}
                           <ArrowRight className="h-4 w-4 ml-2" />
@@ -2260,64 +2275,6 @@ export default function Quiz() {
       </div>
       </div>
 
-      <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Report an issue</DialogTitle>
-            <DialogDescription>
-              Help us improve the quiz. Your report will be reviewed by a moderator.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Issue type</Label>
-              <Select value={reportType} onValueChange={setReportType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="wrong_answer">Wrong answer</SelectItem>
-                  <SelectItem value="confusing_question">Confusing question</SelectItem>
-                  <SelectItem value="wrong_image">Wrong image</SelectItem>
-                  <SelectItem value="typo">Typo</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">What answer did you choose?</Label>
-              <Input
-                value={reportChosen}
-                onChange={(e) => setReportChosen(e.target.value)}
-                placeholder="Optional"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">What should the answer be?</Label>
-              <Input
-                value={reportExpected}
-                onChange={(e) => setReportExpected(e.target.value)}
-                placeholder="Optional"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Notes / reason</Label>
-              <Textarea
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                placeholder="Optional"
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReportOpen(false)} disabled={reportSubmitting}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmitReport} disabled={reportSubmitting}>
-              {reportSubmitting ? "Submitting..." : "Submit report"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

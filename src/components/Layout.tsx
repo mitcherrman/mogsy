@@ -1,6 +1,9 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { Suspense, useEffect, useLayoutEffect } from "react";
 import GlobalHud from "./hud/GlobalHud";
+import { MogzyDockProvider } from "./mogzy-dock/MogzyDock";
+import { QuestionReportScroll } from "./report/QuestionReportScroll";
+import { ReportableQuestionProvider } from "@/lib/feedback/reportable-question";
 import FloatingFriendsButton from "./FloatingFriendsButton";
 import HextechAmbience from "./HextechAmbience";
 import TutorialTipPopup from "./TutorialTipPopup";
@@ -136,6 +139,18 @@ export default function Layout() {
   // Rendered geometry is unchanged for every existing route: the padding was
   // already inside this box, just declared one level down.
   return (
+    /* FB1-4. Two providers, both above <Outlet/> and both deliberately
+       re-render-free at this level:
+        - ReportableQuestionProvider hands modes a place to publish the
+          question currently on screen. Its context value is created once and
+          a publish moves a subscribable store, NOT provider state — otherwise
+          every question change in a live Ranked match would re-render the
+          entire app below this point.
+        - MogzyDockProvider owns the bottom-right corner, which Ranked Rules
+          and the question reporter now share. It renders the dock anchor
+          itself, so no route can forget it or add a second one. */
+    <ReportableQuestionProvider>
+    <MogzyDockProvider>
     <div
       className="min-h-dvh relative animate-page-fade-in pt-[var(--app-header-h)] pb-bottom-nav"
       style={{ background: baseBackgroundForPath(pathname) }}
@@ -199,7 +214,13 @@ export default function Layout() {
           Home/End and the browser's own scrollbar. Ordinary page scrolling is
           untouched — nothing about it was custom. */}
       <TutorialTipPopup />
+      {/* Renders nothing at all unless a mode is publishing a question, so
+          every non-quiz route is untouched. It is a sibling of <main> and
+          portals into the dock, so it is inside no mode's layout. */}
+      <QuestionReportScroll />
     </div>
+    </MogzyDockProvider>
+    </ReportableQuestionProvider>
   );
 }
 

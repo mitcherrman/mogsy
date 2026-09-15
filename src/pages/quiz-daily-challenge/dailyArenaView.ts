@@ -353,6 +353,10 @@ export function dailyArenaView(input: DailyArenaInput): ArenaViewModel {
   const permissions = dailyPermissions(phase, held, input.busy);
 
   return {
+    // FB1-4. Naming the mode is the whole opt-in: the arena publishes the
+    // round it is already rendering, so Daily Challenge gets the question
+    // reporter without a line of reporting code of its own.
+    report: { mode: "Daily Challenge", category: "Daily Challenge" },
     header: {
       eyebrow: "Daily Challenge",
       title: card ? `Card ${card.sequence} of ${run.cardCount}`
