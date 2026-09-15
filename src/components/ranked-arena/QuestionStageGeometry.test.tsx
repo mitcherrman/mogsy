@@ -485,10 +485,22 @@ describe("nothing inside the card was made smaller to fit it", () => {
 
   it("keeps the answers where they were — no per-question placement", () => {
     const surface = read("components/question-surface/InteractiveScenarioSurface.tsx");
-    // The 2-up rule and its 44-character threshold are unchanged: the stage
-    // reserves room for the grid, it does not rearrange it.
-    expect(surface).toContain("o.label.length <= 44");
+    // The 2-up rule is a statement about CONTENT SHAPE, and that is what this
+    // pins: a label-length bound every option must satisfy, plus a minimum
+    // option count. The stage reserves room for the grid; it does not
+    // rearrange it, and it never selects a layout per question id or family.
+    //
+    // QV1 Step 2B moved the bound 44 -> 56. It is not frozen here as a number
+    // for its own sake — the number is measured, and the measurement is in the
+    // component's own note — but the SHAPE of the rule is frozen: one
+    // `every(...)` over label length, and nothing question-specific.
+    expect(surface).toMatch(/o\.label\.length <= \d+/);
+    expect(surface).toContain("o.label.length <= 56");
     expect(surface).toContain("question.options.length >= 4");
+    // No identity may reach this decision.
+    const rule = surface.slice(surface.indexOf("const wideTwoColumn"),
+      surface.indexOf("return (", surface.indexOf("const wideTwoColumn")));
+    expect(rule).not.toMatch(/questionId|category|question_key|family/);
   });
 });
 
