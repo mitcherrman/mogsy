@@ -20,10 +20,10 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ENTRY_INTENT_LABELS,
   FEEDBACK_CATEGORIES,
-  FEEDBACK_ENTRY_INTENTS,
+  FEEDBACK_CENTER_INTENTS,
   FEEDBACK_STATUS_PUBLIC_LABELS,
   type FeedbackCategory,
-  type FeedbackEntryIntent,
+  type FeedbackCenterIntent,
   type FeedbackStatus,
   type MyFeedbackRow,
   categoryForRoute,
@@ -52,8 +52,15 @@ const GOLD = "#c9a84c";
  * column REVOKE.
  */
 
+/**
+ * The doors this page offers. FB1-4 added two more entry intents
+ * (`question_report`, `page_report`), and they are deliberately absent here:
+ * they are in-product controls, filed from beside the thing being reported,
+ * and a card on /feedback that said "Question Report" would have nothing to
+ * attach a question to.
+ */
 const ENTRY_CHOICES: {
-  intent: FeedbackEntryIntent;
+  intent: FeedbackCenterIntent;
   Icon: LucideIcon;
   blurb: string;
 }[] = [
@@ -65,8 +72,8 @@ const ENTRY_CHOICES: {
 
 type View =
   | { kind: "choose" }
-  | { kind: "form"; intent: FeedbackEntryIntent }
-  | { kind: "sent"; reference: string; intent: FeedbackEntryIntent };
+  | { kind: "form"; intent: FeedbackCenterIntent }
+  | { kind: "sent"; reference: string; intent: FeedbackCenterIntent };
 
 /** Short, readable reference the user can quote back to us. */
 function referenceCode(id: string): string {
@@ -85,8 +92,8 @@ export default function Feedback() {
   // must never yank the user back after they navigate within the page.
   const [view, setView] = useState<View>(() => {
     const requested = new URLSearchParams(location.search).get("intent");
-    return requested && (FEEDBACK_ENTRY_INTENTS as readonly string[]).includes(requested)
-      ? { kind: "form", intent: requested as FeedbackEntryIntent }
+    return requested && (FEEDBACK_CENTER_INTENTS as readonly string[]).includes(requested)
+      ? { kind: "form", intent: requested as FeedbackCenterIntent }
       : { kind: "choose" };
   });
   const [submitting, setSubmitting] = useState(false);
@@ -135,7 +142,7 @@ export default function Feedback() {
     void refresh();
   }, [user, refresh]);
 
-  const handleSubmit = async (intent: FeedbackEntryIntent, values: FeedbackFormValues) => {
+  const handleSubmit = async (intent: FeedbackCenterIntent, values: FeedbackFormValues) => {
     if (!user) return;
     setSubmitting(true);
     try {

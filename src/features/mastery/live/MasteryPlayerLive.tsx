@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MasteryPlayerQuestion, MasteryPlayerReveal } from "../contracts";
+import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import { MasteryAssetsProvider } from "./MasteryAssetsProvider";
 import { MasteryQuestionDispatch, MasteryRevealDispatch } from "../interactions/registry";
 import { toQuestionReveal } from "../interactions/toQuestionReveal";
@@ -189,6 +190,39 @@ export function MasteryPlayerLive({
   useRevealAutoAdvance(
     modernReveal ? modernReveal.sequenceIndex : null,
     onNext,
+  );
+
+  /* FB1-4. Mastery has NO database question row and no question_key, so its
+     durable identity is the one the backend actually freezes: the session, the
+     mastery set, the artifact digest and the step index. `staticQuestionId` is
+     deliberately left unset rather than filled with a session-scoped value
+     that would look like a `quiz_questions.id` and resolve to nothing.
+
+     The correct answer comes only from a reveal, which by construction exists
+     only after the player has answered — so an unanswered Mastery step reports
+     with no answer in it. `correctAnswerDisplay` is preferred over
+     `correctAnswer` because it is the backend's own formatting at the
+     precision it grades at; re-formatting locally would put a different number
+     in the report than the one the grader accepts. */
+  const reportable = s.question;
+  usePublishReportableQuestion(
+    reportable
+      ? {
+        category: "Mastery",
+        mode: "Mastery",
+        runtimeQuestionId: `${reportable.masterySetId}#${reportable.sequenceIndex}`,
+        prompt: reportable.prompt,
+        choices: reportable.answerOptions.length ? [...reportable.answerOptions] : null,
+        selectedAnswer: s.submittedAnswer === null ? null : String(s.submittedAnswer),
+        canonicalAnswer: s.reveal
+          ? s.reveal.correctAnswerDisplay ?? String(s.reveal.correctAnswer)
+          : null,
+        questionType: reportable.questionFamily,
+        moduleType: reportable.interactionKind,
+        sessionId: reportable.sessionId,
+        roundNumber: reportable.sequenceIndex,
+      }
+      : null,
   );
 
   const restart = () => { const c = new AbortController(); abortRef.current = c; boot(c.signal); };

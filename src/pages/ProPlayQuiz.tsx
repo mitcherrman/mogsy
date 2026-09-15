@@ -15,6 +15,7 @@ import {
   type ProPlayQuestion,
   type ProPlaySessionState,
 } from "@/lib/pro-play/api";
+import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
 import { PRO_PLAY_QUIZ_ROUTE, PRO_PLAY_ROUTE } from "./ProPlayHub";
 
 /**
@@ -38,6 +39,29 @@ export default function ProPlayQuiz() {
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /* FB1-4. `question_id` here is an OPAQUE digest, not the stable
+     question_key — that key is prefixed with the internal family id and never
+     leaves the server (lib/pro-play/api.ts). So it is published as a runtime
+     id, and the session id is what ties a report back to the frozen copy the
+     server graded against. The correct answer rides along only once `result`
+     exists, which is the reveal the player is already looking at. */
+  usePublishReportableQuestion(
+    question
+      ? {
+        category: "Leaguecraft",
+        mode: "Pro Play Quiz",
+        runtimeQuestionId: question.question_id,
+        prompt: question.question_text,
+        choices: question.choices,
+        selectedAnswer: selected,
+        canonicalAnswer: result?.correct_answer ?? null,
+        questionType: question.topic,
+        sessionId: session?.session_id ?? null,
+        roundNumber: question.number,
+      }
+      : null,
+  );
 
   const begin = useCallback(async () => {
     setBusy(true);

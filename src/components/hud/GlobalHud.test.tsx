@@ -21,6 +21,14 @@ vi.mock("@/components/audio/AcademyRadioControls", () => ({
     <div data-testid={`radio-controls-${variant}`} />
   ),
 }));
+// Same reasoning as the identity compound above: the page reporter owns a
+// Supabase submit path and has its own suite (PageReportControl.test.tsx).
+// Here it is a placeholder, so these tests speak only about the cluster's
+// composition and ordering — and so importing the HUD does not drag the
+// Supabase client into a jsdom run that has no storage for it.
+vi.mock("@/components/report/PageReportControl", () => ({
+  default: () => <div data-testid="hud-page-report" />,
+}));
 vi.mock("@/lib/route-prefetch", () => ({ prefetchRoute: vi.fn() }));
 vi.mock("@/lib/ui-sfx", () => ({ playUiSfx: vi.fn() }));
 

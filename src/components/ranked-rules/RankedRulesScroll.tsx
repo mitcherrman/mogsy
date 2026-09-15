@@ -39,6 +39,7 @@
  * corner.
  */
 import { useCallback, useState } from "react";
+import { DOCK_ORDER } from "@/components/mogzy-dock/MogzyDock";
 import { MogzyExplainsPanel } from "./MogzyExplainsPanel";
 import { RankedRulesContent } from "./RankedRulesContent";
 import {
@@ -72,11 +73,20 @@ export function RankedRulesScroll() {
 
   const openScroll = useCallback(() => setOpen(true), []);
 
+  /* Stepping aside for another dock occupant — today the question reporter —
+     is NOT an acknowledgement. It closes the scroll and writes nothing, so a
+     player who reached for "Report" while the rules were open still gets the
+     prominent tab next time. Anything else would spend this feature's one
+     showing on a control the player never opened. */
+  const collapse = useCallback(() => setOpen(false), []);
+
   return (
     <MogzyExplainsPanel
       open={open}
       onOpen={openScroll}
       onClose={close}
+      onCollapse={collapse}
+      dockOrder={DOCK_ORDER.rules}
       // Only while there is something unread to find. A player who has
       // acknowledged these rules gets the quiet tab, on every layout.
       prominent={unseen && !open}
