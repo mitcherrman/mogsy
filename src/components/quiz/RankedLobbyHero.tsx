@@ -102,6 +102,17 @@ import {
   tallyRoleMastery,
   type RoleMastery,
 } from "@/lib/ranked-public/roleRecords";
+import RoleQueueRecord from "@/components/quiz/lobby-queue-context/RoleQueueRecord";
+import RoleChampionKnowledge from "@/components/quiz/lobby-queue-context/RoleChampionKnowledge";
+import AcademyAnalyticsCarousel, {
+  RESERVED_BOX,
+} from "@/components/quiz/lobby-analytics/AcademyAnalyticsCarousel";
+import {
+  productionChampionKnowledge,
+  type ChampionKnowledgeSource,
+} from "@/lib/quiz/championKnowledge";
+import type { TrendsSource } from "@/components/quiz/trends/usePerformanceTrends";
+import type { TrendReport } from "@/lib/quiz/analyticsApi";
 
 const PLACEMENT_TOTAL = 5;
 
@@ -230,6 +241,9 @@ export default function RankedLobbyHero({
   avatarUrl = null,
   signedIn = false,
   demoRoleMastery = null,
+  championKnowledge = productionChampionKnowledge,
+  analyticsSource,
+  demoAnalyticsRoleDimension,
 }: {
   progress: QuizProgress | null;
   ranked: RankedState;
@@ -262,6 +276,24 @@ export default function RankedLobbyHero({
    * never persisted.
    */
   demoRoleMastery?: Partial<Record<RankedRole, DemoRoleMastery>> | null;
+  /**
+   * RL2 — where the centre's champion-knowledge row gets its answer.
+   *
+   * Defaults to the PRODUCTION reader, which returns `{ state: "absent" }`
+   * unconditionally: neither per-champion correct-answer totals nor the
+   * champion-to-role eligibility authority is reachable from the client, so
+   * the lobby draws the absent state rather than a number it cannot stand
+   * behind. `/dev/lobby-preview` is the only caller that passes a demo
+   * reader, exactly as it is for `demoRoleMastery`.
+   */
+  championKnowledge?: ChampionKnowledgeSource;
+  /** RL2 — where the Academy carousel reads its record. Defaults, inside the
+   *  shipped `usePerformanceTrends`, to the real self-scoped analytics API. */
+  analyticsSource?: TrendsSource;
+  /** RL2, DEMO ONLY — narrows an analytics report to a role. Its presence is
+   *  what enables the carousel's Role control; production passes nothing and
+   *  the control is inert, because the contract has no role dimension. */
+  demoAnalyticsRoleDimension?: (report: TrendReport, role: RankedRole | null) => TrendReport;
 }) {
   // ── Competitive identity (RE1-owned values, rendered as given) ──────────
   const tier = rankedProgression?.tier ?? null;
@@ -504,13 +536,38 @@ export default function RankedLobbyHero({
         />
 
         {/* IMMEDIATELY below the mascot. Nothing may be inserted between the
-            stage and the seal: the adjacency IS the instruction. */}
-        <RankedPlayGem
-          className="mt-2"
-          onClick={onPlayRanked}
-          disabled={playDisabled}
-          buttonRef={playButtonRef}
-        />
+            stage and the seal: the adjacency IS the instruction — so the RL2
+            queue context is placed BESIDE the seal, on its own row, and never
+            above it. The seal keeps the centre of the row and its full size;
+            the two flanks are deliberately smaller, quieter and equal, so the
+            eye still lands on the one thing this column exists for.
+
+            On a narrow screen the row wraps to seal-then-context rather than
+            stacking context above the seal, for the same reason. */}
+        <div
+          className="mt-2 flex w-full flex-wrap items-center justify-center gap-x-2 gap-y-2 lg:flex-nowrap"
+          data-testid="play-row"
+        >
+          <div className="order-2 min-w-0 flex-1 basis-[38%] lg:order-1 lg:basis-0">
+            <RoleQueueRecord
+              role={browsedRole}
+              mastery={roleMastery[browsedRole]}
+              loading={matchHistoryLoading}
+            />
+          </div>
+
+          <div className="order-1 w-full shrink-0 lg:order-2 lg:w-auto">
+            <RankedPlayGem
+              onClick={onPlayRanked}
+              disabled={playDisabled}
+              buttonRef={playButtonRef}
+            />
+          </div>
+
+          <div className="order-3 min-w-0 flex-1 basis-[38%] lg:basis-0">
+            <RoleChampionKnowledge role={browsedRole} result={championKnowledge(browsedRole)} />
+          </div>
+        </div>
         </LobbyPanel>
       </motion.div>
 
@@ -536,11 +593,23 @@ export default function RankedLobbyHero({
 
            `aria-hidden` on an empty inert box: there is nothing here to
            announce, and the removed image was decorative in the first place. */}
+        {/* RL2 — THE RESERVED SPACE IS NOW THE ACADEMY'S ANALYTICS.
+
+           The carousel takes the box at the SAME three heights the portrait
+           held, so the name, the crown and the personal records below it land
+           exactly where they always did and nothing in this column re-flows.
+           `hero-portrait-space` is kept as the wrapper's id because it names
+           the reserved region, not the thing inside it, and the `aria-hidden`
+           is gone — there is real content here now. */}
         <div
-          aria-hidden="true"
           data-testid="hero-portrait-space"
-          className="relative mt-0.5 h-[210px] sm:h-[248px] lg:h-[280px]"
-        />
+          className={`relative mt-0.5 ${RESERVED_BOX}`}
+        >
+          <AcademyAnalyticsCarousel
+            source={analyticsSource}
+            demoRoleDimension={demoAnalyticsRoleDimension}
+          />
+        </div>
 
         {/* mt-1, not mt-0.5. This is the ONE gap in the compacted column that
             measured too tight — the name landed 2px under the portrait's box.

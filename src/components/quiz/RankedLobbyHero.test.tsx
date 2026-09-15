@@ -170,32 +170,49 @@ describe("RankedLobbyHero — three-column composition", () => {
   /* RL1 — the swap, stated as the one thing a reader must be able to do.
      The centre is the sentence "choose your Mogzy role → press Play", and
      nothing may be inserted between the two halves of it. */
-  it("reads role stage → PLAY seal in the centre, with nothing between them", () => {
+  it("reads role stage → PLAY row in the centre, with nothing between them", () => {
     renderHero();
     const centre = screen.getByTestId("hero-play-column");
     const stage = centre.querySelector('[data-testid="ranked-class-carousel"]')!;
+    const row = centre.querySelector('[data-testid="play-row"]')!;
     const seal = centre.querySelector('[data-testid="ranked-play-gem"]')!;
     expect(stage).toBeTruthy();
     expect(
       stage.compareDocumentPosition(seal) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    // IMMEDIATELY below: the seal is the stage's very next sibling on the
-    // sheet. An emblem, a rating or a ledger slipped in here would break the
-    // adjacency that IS the instruction.
-    expect(stage.nextElementSibling).toBe(seal);
+    // RL2 kept the adjacency and widened what it applies to. The stage's very
+    // next sibling is the PLAY ROW, and the seal is in it: the queue context
+    // sits BESIDE the seal, never between the stage and the seal. A ledger or
+    // an emblem slipped in above the row would still break the instruction.
+    expect(stage.nextElementSibling).toBe(row);
+    expect(row.contains(seal)).toBe(true);
+  });
+
+  it("flanks the seal with the role record and champion knowledge, in that order", () => {
+    // Left, seal, right — the approved RL2 composition. The seal keeps the
+    // middle slot, so the two flanks can never be read as the call to action.
+    renderHero();
+    const row = screen.getByTestId("play-row");
+    const kids = Array.from(row.children);
+    const at = (testId: string) =>
+      kids.findIndex((kid) => kid.querySelector(`[data-testid="${testId}"]`));
+    expect(at("role-queue-record")).toBe(0);
+    expect(at("ranked-play-gem")).toBe(1);
+    expect(at("role-champion-knowledge")).toBe(2);
   });
 
   /* RL1 — the Academy portrait is REMOVED and its space is KEPT.
      Both halves are the requirement: no mascot, and no re-flow of the column
      that held it. A future pass may decide what belongs there; until then the
      box is blank on purpose and must not be collapsed or filled. */
-  it("draws no Academy portrait, and no replacement visual in its place", () => {
+  it("draws no Academy portrait, and gives the space to the analytics carousel", () => {
+    // RL1 kept this box blank "awaiting a decision". RL2 is that decision: the
+    // Academy's own analytics, and NOT a replacement picture — the portrait
+    // stays gone, and nothing here is decorative.
     renderHero();
     expect(screen.queryByTestId("hero-personal-portrait")).toBeNull();
     const space = screen.getByTestId("hero-portrait-space");
-    expect(space.querySelector("img")).toBeNull();
-    expect(space.querySelector("svg")).toBeNull();
-    expect(space.textContent).toBe("");
+    expect(space.querySelector('[data-testid="academy-analytics-carousel"]')).toBeTruthy();
   });
 
   // MALT compaction pass. The Academy column was the tallest of the three and

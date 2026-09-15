@@ -33,6 +33,13 @@ import {
   TIMMY_RANKED_RECORD_PREVIEW,
   type LobbyPreviewProfile,
 } from "./lobbyPreviewFixtures";
+import {
+  demoAnalyticsSource,
+  demoAnalyticsSourceEmpty,
+  demoChampionKnowledge,
+  demoChampionKnowledgeEmpty,
+  demoRoleDimension,
+} from "./demoLobbyAnalytics";
 
 const PROFILES: LobbyPreviewProfile[] = ["timmy", "newcomer"];
 
@@ -176,6 +183,18 @@ export default function LobbyPreviewPage() {
           displayName={state.displayName}
           signedIn={state.signedIn}
           demoRoleMastery={state.demoRoleMastery}
+          /* RL2, demo only. Timmy has champion knowledge; the newcomer has a
+             real, empty one — which is NOT production's absent state, and the
+             two must be visibly different here. */
+          championKnowledge={
+            profile === "timmy" ? demoChampionKnowledge : demoChampionKnowledgeEmpty
+          }
+          /* RL2, demo only. An offline analytics source, in the Premium shape
+             so all three Time options can be exercised. */
+          analyticsSource={profile === "timmy" ? demoAnalyticsSource : demoAnalyticsSourceEmpty}
+          /* RL2, demo only. The one role dimension in the product; passing it
+             is what makes the carousel's Role control operable. */
+          demoAnalyticsRoleDimension={demoRoleDimension}
         />
       </div>
     </div>
