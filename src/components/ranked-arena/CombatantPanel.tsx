@@ -363,9 +363,25 @@ const OUTCOME_STATE: Record<
  * inferred here, and no XP, level or ability information appears — those
  * layers do not exist on an R1 match and the ledger must not resurrect them.
  *
- * It never scrolls. The list is bounded upstream by `DAMAGE_LOG_LIMIT`, so
+ * It never scrolls. The list is bounded HERE by `LEDGER_VISIBLE_ROWS`, so
  * "recent" stays recent and the column keeps its own height.
  */
+/**
+ * How many ledger rows this column draws, newest first.
+ *
+ * EIGHT — exactly the number the upstream buffer used to supply, which is why
+ * this constant exists at all. RM1 Pass 1 raised `DAMAGE_LOG_LIMIT` to twelve
+ * so a complete ten-module points match is RETAINED for the module-history
+ * bubbles and the end screen, and without a cap here that would have silently
+ * grown every duelist column by four rows mid-match.
+ *
+ * So the two bounds were separated: the buffer decides what is KEPT, this
+ * decides what this column DRAWS, and the visible ledger is byte-for-byte the
+ * one Ranked has been shipping. It is not a redesign and it is not the bubble
+ * strip — that is Pass 2, and it will replace these rows rather than cap them.
+ */
+export const LEDGER_VISIBLE_ROWS = 8;
+
 export function RoundLedger({
   entries,
   playerId,
@@ -387,7 +403,12 @@ export function RoundLedger({
 }) {
   // Newest first. `slice()` because the projection's array is shared with the
   // other column's render and `reverse()` mutates in place.
-  const rows = entries.slice().reverse();
+  //
+  // The trailing `slice` keeps the DRAWN row count at what it has always been
+  // while the buffer upstream retains more (see `LEDGER_VISIBLE_ROWS`). It is
+  // applied AFTER the reverse, so what is dropped is the oldest rounds and the
+  // newest stays adjacent to the meter it explains.
+  const rows = entries.slice().reverse().slice(0, LEDGER_VISIBLE_ROWS);
   const newest = rows.length > 0 ? rows[0] : null;
   return (
     <div

@@ -52,13 +52,25 @@ export function projectRoundHistory(
     const player = Object.values(settlement.players)
       .find((p) => p.playerId === playerId);
     if (!player) continue;
+    // RM1 Pass 1 — the award is read ONCE and its halves are carried through
+    // intact. It is keyed by player id on the settlement, so the projection is
+    // symmetric by construction: the viewer's column and the opponent's are
+    // the same call with a different id, and neither can end up with a base
+    // figure the other lacks.
+    const award = settlement.modulePoints?.[playerId] ?? null;
     out.push({
       roundNumber: settlement.roundNumber,
       outcome: player.outcome,
       // RP1 — null whenever the settlement published no award, which is every
       // hp round and every round settled by a backend that predates RP1. The
       // ledger renders points ONLY where the backend stated them.
-      pointsAwarded: settlement.modulePoints?.[playerId]?.pointsAwarded ?? null,
+      pointsAwarded: award?.pointsAwarded ?? null,
+      // RM1 Pass 1 — preserved, not summed and not inferred. `?? null` and NOT
+      // `?? 0`: a module that published no award did not award zero, it said
+      // nothing, and a bubble reading "+0" in green-or-red about a round the
+      // backend never scored would be the one claim this layer must not make.
+      basePoints: award?.basePoints ?? null,
+      speedBonusPoints: award?.speedBonusPoints ?? null,
       dealt: player.finalDamageDealt,
       taken: player.finalDamageReceived,
       absorbed: player.shieldAbsorbed,

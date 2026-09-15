@@ -33,6 +33,29 @@ function resumePublic() {
   return body;
 }
 
+/**
+ * RM1 Pass 1 — the award this harness publishes for round `n`, per player.
+ *
+ * A RULE rather than a table, so a test can assert the same expectation for
+ * round 1 and round 10 without a fixture list to keep in step. The two sides
+ * differ deliberately (and in the bonus as well as the base) so a projection
+ * that read one player's award for both would fail rather than pass by
+ * coincidence.
+ */
+export const awardFor = (n: number, playerId: string) => (
+  playerId === "userA"
+    ? { base: n % 4, speed: n % 2 === 0 ? 1 : 0 }
+    : { base: (n + 2) % 4, speed: n % 2 === 1 ? 1 : 0 });
+
+const modulePointsFor = (n: number) => Object.fromEntries(
+  ["userA", "userB"].map((id) => {
+    const { base, speed } = awardFor(n, id);
+    return [id, {
+      base_points: base, speed_bonus_points: speed,
+      points_awarded: base + speed, score_before: 0, score_after: base + speed,
+    }];
+  }));
+
 /** A minimal, adaptable settlement for round `n`. */
 function resolvedBody(n: number) {
   const player = (id: string) => ({
@@ -62,6 +85,9 @@ function resolvedBody(n: number) {
       players: [player("userA"), player("userB")],
       next_round_duration_seconds: 30, next_round_duration_delta: 0,
       match_over: false, winner_id: null, completion_reason: null,
+      // RM1 Pass 1 — a points match's settlements carry `module_points`, and
+      // the buffer/backfill tests below are about preserving them.
+      module_points: modulePointsFor(n),
     },
   };
 }
@@ -274,6 +300,69 @@ describe("useRankedMatch — recent-round ledger buffer", () => {
     expect(result.current.damageLog[DAMAGE_LOG_LIMIT - 1].roundNumber)
       .toBe(DAMAGE_LOG_LIMIT + 5);
     expect(Math.min(...backend.resolvedRequests)).toBe(6);
+  });
+
+  /**
+   * RM1 Pass 1 — A COMPLETE TEN-MODULE MATCH IS RETAINED.
+   *
+   * The buffer used to hold eight, which silently dropped the first two modules
+   * of every ten-module points match. These fix that the whole match survives,
+   * and that the awards survive with it — that is the data the module-history
+   * bubbles and the end screen's two stacked rows are drawn from.
+   */
+  describe("a complete 10-module points match", () => {
+    const TEN = 10;
+
+    it("retains all ten modules on resume, oldest first, with no gaps", async () => {
+      backend.completedRounds = TEN;
+      const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+      await settle();
+      expect(result.current.damageLog).toHaveLength(TEN);
+      expect(result.current.damageLog.map((s) => s.roundNumber))
+        .toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      // Module 1 in particular: at the old bound of eight it was the first
+      // thing the buffer dropped.
+      expect(result.current.damageLog[0].roundNumber).toBe(1);
+    });
+
+    it("asks the backend for every one of the ten rounds", async () => {
+      backend.completedRounds = TEN;
+      renderHook(() => useRankedMatch("m1", "userA"));
+      await settle();
+      expect([...backend.resolvedRequests].sort((a, b) => a - b))
+        .toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    });
+
+    it("the backfill path preserves base and speed for BOTH players", async () => {
+      backend.completedRounds = TEN;
+      const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+      await settle();
+      // Recovered settlements, not placeholders: every module's award matches
+      // the rule the harness published it under, for each side independently.
+      for (const settlement of result.current.damageLog) {
+        const n = settlement.roundNumber;
+        for (const id of ["userA", "userB"]) {
+          const expected = awardFor(n, id);
+          const got = settlement.modulePoints?.[id];
+          expect(got, `round ${n} / ${id}`).toBeTruthy();
+          expect(got!.basePoints).toBe(expected.base);
+          expect(got!.speedBonusPoints).toBe(expected.speed);
+          // The total is the engine's, and the client does not recompute it.
+          expect(got!.pointsAwarded).toBe(expected.base + expected.speed);
+        }
+      }
+    });
+
+    it("stays BOUNDED: an hp match that outruns the format still trims", async () => {
+      // The buffer is a fixed window, not a combat log. An HP match ends on
+      // health and may run indefinitely, so nothing here became unbounded.
+      backend.completedRounds = DAMAGE_LOG_LIMIT + 4;
+      const { result } = renderHook(() => useRankedMatch("m1", "userA"));
+      await settle();
+      expect(result.current.damageLog).toHaveLength(DAMAGE_LOG_LIMIT);
+      expect(result.current.damageLog[DAMAGE_LOG_LIMIT - 1].roundNumber)
+        .toBe(DAMAGE_LOG_LIMIT + 4);
+    });
   });
 
   it("does not disturb the reveal: a backfill starts no beat and sets no lastResolved", async () => {

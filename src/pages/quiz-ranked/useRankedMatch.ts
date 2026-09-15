@@ -51,8 +51,27 @@ export const HEARTBEAT_MS = 10000;
  * stretched column empty, which is the dead space the ledger exists to fill.
  * Eight is still "recent" — bounded so the column keeps its own height and the
  * ledger never needs to scroll — not a combat log.
+ *
+ * RM1 PASS 1 — RAISED TO TWELVE, AND WHY IT IS NOT "UNBOUNDED HISTORY"
+ * ───────────────────────────────────────────────────────────────────
+ * A points Ranked match is a TEN-module format (`scoring.matchLength`), and at
+ * eight the buffer silently dropped the first two modules of every completed
+ * one. That was invisible while the buffer only fed a "recent rounds" strip;
+ * it is not invisible for the module-history bubbles, whose whole claim is that
+ * the row IS the match — and it is the one thing that blocks the end screen
+ * from putting the viewer's ten modules over the opponent's ten.
+ *
+ * Twelve, not `Infinity`: an HP match still ends on health rather than on a
+ * round count and may run indefinitely, so the buffer stays BOUNDED and this
+ * stays a fixed-size window. Twelve is the ten-module format plus two rounds of
+ * headroom, which is the smallest bound that holds a complete points match.
+ *
+ * The VISIBLE ledger is unchanged. `RoundLedger` now caps its own rows at
+ * `LEDGER_VISIBLE_ROWS` (8 — exactly what this constant used to supply), so
+ * raising the buffer preserves every column's current height and row count and
+ * changes only what is RETAINED. See `CombatantPanel`.
  */
-export const DAMAGE_LOG_LIMIT = 8;
+export const DAMAGE_LOG_LIMIT = 12;
 
 /**
  * Merge settlements into the bounded ledger buffer: deduplicated on round
@@ -467,7 +486,9 @@ export function useRankedMatch(matchId: string | null, viewerUserId: string,
    * resolve — a refresh, or a reconnect into a match already in progress.
    *
    * Read-only and best effort. It fetches at most `DAMAGE_LOG_LIMIT` already
-   * SETTLED rounds (the backend refuses to build a resolved projection for a
+   * SETTLED rounds — the SAME bound the buffer keeps, so a resume recovers a
+   * complete ten-module history rather than the tail of one (RM1 Pass 1 raised
+   * both together by raising the one constant they share) (the backend refuses to build a resolved projection for a
    * round that has not settled, so nothing here can see a live answer), never
    * touches `lastResolved` or `resolvedRef`, and never starts a reveal hold —
    * this is history the player has already lived through, not a reveal.
