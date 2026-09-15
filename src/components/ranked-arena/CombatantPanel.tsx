@@ -35,6 +35,7 @@ import type {
   CombatantView, MascotReaction, ResolvedCombatantView, RoundHistoryEntry,
 } from "@/lib/ranked-core/viewTypes";
 import { ClassIdentity, classIdentityFor } from "./classIdentity";
+import { ModuleBubble } from "./ModuleBubble";
 import { RoleCrest, roleIdentityFor } from "./roleIdentity";
 
 /**
@@ -345,6 +346,70 @@ const OUTCOME_STATE: Record<
 };
 
 /**
+ * THE MODULE-HISTORY STRIP — the banner column's match history.
+ *
+ * The same rows the ledger draws, said in the approved bubble language: one
+ * token per settled module, carrying the BASE award and flagging the speed
+ * bonus. It replaces the ledger in banner presentation and nowhere else.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * CHRONOLOGICAL, ON BOTH SIDES, AND DELIBERATELY NOT REVERSED
+ * ─────────────────────────────────────────────────────────────────────────
+ * The ledger it replaces is newest-first, because a row of PROSE is read from
+ * the top and the newest round belongs next to the meter it explains. A strip
+ * of bubbles is not read that way — it is COMPARED, across the arena and
+ * later across two stacked rows on the end screen — and a comparison only
+ * works if the nth token means the nth module on both sides.
+ *
+ * So the order is oldest-first and identical in both columns. The strip's
+ * POSITION mirrors with everything else (`mirrorAlign`), which moves the group
+ * to the other end of the column without turning the sequence round — exactly
+ * the rule the status chips and the damage trail already follow.
+ *
+ * It never scrolls and it never grows the column: the tokens are a fixed size
+ * and wrap, and the buffer upstream is bounded (`DAMAGE_LOG_LIMIT`), so a long
+ * hp match cannot run the strip off the end of the banner.
+ */
+export function ModuleHistoryStrip({
+  entries, playerId, mirrored,
+}: {
+  entries: RoundHistoryEntry[];
+  playerId: string;
+  mirrored: boolean;
+}) {
+  return (
+    <div
+      data-testid={`module-history-${playerId}`}
+      aria-label="Module history"
+      className="flex min-h-[1.5rem] flex-col gap-1.5"
+    >
+      <div className={`flex ${mirrorAlign(mirrored)}`}>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/60">
+          {entries.length === 0 ? "No modules yet" : "Modules"}
+        </span>
+      </div>
+      {/* `content-start` so a half-filled strip stacks from the top of the
+          space the banner gives it rather than spreading through it — the
+          tokens must sit at the same height in both columns whatever either
+          player has played. */}
+      <div className={`flex flex-wrap content-start gap-1.5 ${mirrorAlign(mirrored)}`}>
+        {entries.map((e) => (
+          <ModuleBubble
+            key={e.roundNumber}
+            testId={`module-bubble-${playerId}-${e.roundNumber}`}
+            // Straight pass-through of the projection. `?? null` covers a row
+            // from a settlement that published no award — the bubble draws
+            // that neutrally and says "not scored", which is not a zero.
+            basePoints={e.basePoints ?? null}
+            speedBonusPoints={e.speedBonusPoints ?? null}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
  * THE RECENT-ROUND LEDGER — the duelist column's combat history.
  *
  * This replaces the row of tiny damage chips that used to sit under the HP
@@ -609,6 +674,7 @@ export function CombatantPanel({
   combatant,
   showRoundStatus = true,
   progressionEnabled = true,
+  presentation = "card",
   damage,
   outcome = null,
   damageDealt = null,
@@ -616,6 +682,25 @@ export function CombatantPanel({
   reaction = null,
 }: {
   combatant: CombatantView;
+  /**
+   * RM1 Pass 2 — WHICH OBJECT THIS COLUMN IS. Opt-in, and defaulted to the
+   * panel every existing caller already has.
+   *
+   * `card` is the bordered navy rectangle with the recent-round ledger, and it
+   * stays byte-identical: the Daily Challenge, the staff duel, the arena
+   * inspector, the playtest host and the match-over frame pass nothing and see
+   * no change whatsoever.
+   *
+   * `banner` is the Ranked duel banner — a floating pointed silhouette whose
+   * history is the module-bubble strip. It is a PRESENTATION, not a mode: the
+   * content, the rows, the mirroring and the reserved verdict row are the
+   * same, and this switches the skin and the history's language, nothing else.
+   *
+   * A prop rather than a class the caller adds, because the two differ in DOM
+   * (ledger vs strip) and not only in paint — a class could not have made that
+   * swap, and a caller assembling it by hand is how two columns drift apart.
+   */
+  presentation?: "card" | "banner";
   /** Controllers may hide status chips (e.g. between rounds). */
   showRoundStatus?: boolean;
   /**
@@ -690,18 +775,31 @@ export function CombatantPanel({
   // RP1 — does this match score points? One question, asked once, off the view
   // the panel was handed. See `CombatantView.score`.
   const scored = combatant.score !== null && combatant.score !== undefined;
+  // RM1 Pass 2 — the banner is the Ranked skin. The card's border, ring and
+  // shadow are the CARD's way of saying side and outcome; the banner says both
+  // through its own edge (see `.ranked-banner` in index.css), so the two sets
+  // of classes are alternatives and never both applied.
+  const banner = presentation === "banner";
   return (
     <section
       aria-label={`${name} panel`}
       data-scoring={scored ? "points" : "hp"}
       data-testid={`combatant-${combatant.playerId}`}
       data-progression={progressionEnabled ? "true" : "false"}
-      className={`relative flex h-full flex-col gap-2 rounded-xl border-2 bg-card p-3 ring-1 ring-inset ring-white/5 transition-shadow duration-300 motion-reduce:transition-none ${
-        side === "player"
-          ? "border-primary/60 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.55)]"
-          : "border-destructive/50 shadow-[0_0_24px_-12px_hsl(var(--destructive)/0.45)]"
-      } ${outcome === "correct" ? "ring-2 ring-emerald-400/40"
-        : outcome === "incorrect" ? "ring-2 ring-destructive/40" : ""}`}
+      data-presentation={presentation}
+      // Read by the banner's CSS, which colours the edge by side and lights it
+      // on a settled round. Emitted in both presentations so the attribute
+      // means one thing; the card simply does not style them.
+      data-side={side}
+      data-outcome={outcome ?? "none"}
+      className={banner
+        ? "ranked-banner flex h-full flex-col gap-2 px-3 pt-3"
+        : `relative flex h-full flex-col gap-2 rounded-xl border-2 bg-card p-3 ring-1 ring-inset ring-white/5 transition-shadow duration-300 motion-reduce:transition-none ${
+          side === "player"
+            ? "border-primary/60 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.55)]"
+            : "border-destructive/50 shadow-[0_0_24px_-12px_hsl(var(--destructive)/0.45)]"
+        } ${outcome === "correct" ? "ring-2 ring-emerald-400/40"
+          : outcome === "incorrect" ? "ring-2 ring-destructive/40" : ""}`}
     >
       {/* AI1 Phase 2B — the role mascot gets the top of the column to itself.
           It used to ride inside the 56px crest at the head of the identity
@@ -785,10 +883,18 @@ export function CombatantPanel({
       {damage && (
         // `flex-1` is what routes the column's surplus height — the Phase 11
         // grid stretches both rails to the question board's height — into the
-        // ledger rather than leaving it dead under the HP bar.
+        // history rather than leaving it dead under the meter.
         <div className="flex-1">
-          <RoundLedger entries={damage} playerId={combatant.playerId} mirrored={mirrored}
-            scored={scored} />
+          {banner ? (
+            // RM1 Pass 2 — the banner's history is the bubble strip. Same
+            // rows, same bound, same projection; the language is the one the
+            // end screen will later compare two of.
+            <ModuleHistoryStrip entries={damage} playerId={combatant.playerId}
+              mirrored={mirrored} />
+          ) : (
+            <RoundLedger entries={damage} playerId={combatant.playerId} mirrored={mirrored}
+              scored={scored} />
+          )}
         </div>
       )}
       {progressionEnabled && <ExperienceMeter combatant={combatant} />}

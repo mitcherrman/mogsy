@@ -987,6 +987,133 @@
   }
 }
 
+/* ===== RM1 Pass 2 — THE DUEL BANNER ========================================
+   The Ranked duelist column, as a hanging academy banner rather than a navy
+   rectangle: a floating dark-navy field that comes to a POINT at the bottom.
+
+   NO HANGING HARDWARE. There is no rod, no rings, no cord and no crest. The
+   banner floats on its own shadow, which is the whole of the "hanging" reading
+   the reference asks for — a drawn rod would be furniture the arena has to
+   keep aligned at four breakpoints for no information.
+
+   ─────────────────────────────────────────────────────────────────────────
+   WHY TWO CLIPPED LAYERS AND NOT A BORDER
+   ─────────────────────────────────────────────────────────────────────────
+   `clip-path` cuts the element's border away with everything else outside the
+   polygon, so a pointed shape simply cannot carry a CSS border — the sides
+   would be drawn and the two diagonals of the point would not. So the edge is
+   a layer of its own:
+
+     * `::before` is the EDGE — the accent colour, clipped to the silhouette;
+     * `::after` is the FACE — the navy fill, inset by the edge's width and
+       clipped to the same silhouette.
+
+   The result is a stroke of even width along all five sides INCLUDING the two
+   diagonals, which is the one thing the border it replaces could not do.
+
+   NO OVERFLOW IS RELIED ON. `.ranked-panel` is `overflow: hidden` and this is
+   deliberately not that: the banner clips its own decoration by geometry, so
+   nothing a column hangs off itself later can be silently shaved by it.
+
+   THE POINT IS RESERVED, NOT OVERLAID. `--banner-point` is added to the
+   column's bottom padding, so no content can ever be seated inside the taper.
+   It is measured in rem and shrinks on narrow viewports, where the stacked
+   columns are short and a full-size taper would be most of the card.
+
+   The shadow is a `filter: drop-shadow`, not `box-shadow`: a box shadow traces
+   the element's BOX and would print a rectangle's shadow under a pointed
+   object. `drop-shadow` traces the clipped alpha, so the point casts a point.
+   Filter on the element covers its own pseudo-elements, which is why one
+   declaration lights the whole silhouette.
+   ========================================================================= */
+.ranked-banner {
+  position: relative;
+  --banner-point: 2rem;
+  /* The edge's width. One value, read by both layers below. */
+  --banner-edge-w: 2px;
+  --banner-edge: rgba(201,168,76,0.5);
+  --banner-glow: rgba(201,168,76,0.22);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  padding-bottom: calc(var(--banner-point) + 0.25rem);
+  filter:
+    drop-shadow(0 0 18px var(--banner-glow))
+    drop-shadow(0 16px 26px rgba(0,0,0,0.55));
+}
+/* The five-sided silhouette, shared by both layers so the stroke stays even. */
+.ranked-banner::before,
+.ranked-banner::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  clip-path: polygon(
+    0 0, 100% 0,
+    100% calc(100% - var(--banner-point)),
+    50% 100%,
+    0 calc(100% - var(--banner-point))
+  );
+}
+/* THE EDGE. */
+.ranked-banner::before {
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(180deg,
+    var(--banner-edge) 0%,
+    var(--banner-edge) 62%,
+    rgba(201,168,76,0.72) 100%);
+}
+/* THE FACE — the dark-navy field, inset so the edge reads as a stroke.
+   The vertical gradient deepens toward the point, which is what stops a tall
+   banner reading as a flat swatch without adding any ornament to it. */
+.ranked-banner::after {
+  inset: var(--banner-edge-w);
+  z-index: 0;
+  background:
+    linear-gradient(170deg,
+      rgba(14,26,48,0.99) 0%,
+      rgba(8,17,34,0.99) 46%,
+      rgba(4,9,20,1) 100%),
+    radial-gradient(75% 40% at 50% 0%, rgba(80,170,220,0.10) 0%, transparent 70%);
+}
+/* Content sits above both decorative layers — the same rule `.ranked-panel`
+   keeps, for the same reason. */
+.ranked-banner > * {
+  position: relative;
+  z-index: 1;
+}
+/* WHICH BANNER THIS IS. The two columns differ in KIND, not in direction, so
+   this is keyed off the side and is NOT mirrored (see `isMirroredSide`). */
+.ranked-banner[data-side="player"] {
+  --banner-edge: hsl(var(--primary) / 0.55);
+  --banner-glow: hsl(var(--primary) / 0.20);
+}
+.ranked-banner[data-side="opponent"] {
+  --banner-edge: hsl(var(--destructive) / 0.5);
+  --banner-glow: hsl(var(--destructive) / 0.18);
+}
+/* The settled round lights the banner's own edge, replacing the ring the card
+   used to grow — a ring traces a rounded rectangle and would miss the point. */
+.ranked-banner[data-outcome="correct"] {
+  --banner-edge: rgba(52,211,153,0.75);
+  --banner-glow: rgba(52,211,153,0.26);
+}
+.ranked-banner[data-outcome="incorrect"] {
+  --banner-edge: hsl(var(--destructive) / 0.8);
+  --banner-glow: hsl(var(--destructive) / 0.26);
+}
+/* Narrow viewports stack the columns into short cards; a 2rem taper there is
+   most of the card. The silhouette is kept and its scale is not. */
+@media (max-width: 1023px) {
+  .ranked-banner { --banner-point: 1.1rem; }
+}
+/* The edge colour transition is the banner's only motion. */
+.ranked-banner::before { transition: background 300ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  .ranked-banner::before { transition: none; }
+}
+
 /* RP1 Step 4 — THE CUMULATIVE SCORE MOVING.
    11 -> 14 has to be noticed without becoming a ceremony: one short swell on
    the digits themselves, and nothing else on the page. The span is remounted

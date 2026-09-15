@@ -76,6 +76,9 @@ function Rail({ rail, progressionEnabled }:
   return (
     <CombatantPanel combatant={rail.combatant}
       progressionEnabled={progressionEnabled}
+      // Relayed, never chosen: absent leaves the arena drawing the card it
+      // always drew, which is what the Daily and every dev harness still get.
+      presentation={rail.presentation}
       damage={rail.damage}
       outcome={rail.outcome}
       damageDealt={rail.damageDealt}

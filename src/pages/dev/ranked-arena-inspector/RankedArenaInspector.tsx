@@ -61,7 +61,7 @@ import {
 } from "@/lib/ranked-core/backend/backendSettlementFixtures";
 import {
   AbilityView, CombatantView, InteractionPermissions, NO_INTERACTIONS,
-  QuestionView, TimerView,
+  QuestionView, RoundHistoryEntry, TimerView,
 } from "@/lib/ranked-core/viewTypes";
 // AI1 Phase 2B — the mascot bench drives the SAME projection the live match
 // does, so nothing on it is a bench-only animation trigger.
@@ -152,6 +152,67 @@ const scoredPlayer = (score: number, over: Partial<CombatantView> = {}) =>
   player({ score, roleId: "top", identityMode: "role", tag: "Top", ...over });
 const scoredOpponent = (score: number, over: Partial<CombatantView> = {}) =>
   opponent({ score, roleId: "jungle", identityMode: "role", tag: "Jungle", ...over });
+
+// ---------------------------------------------------- RM1 Pass 2 (the banner)
+//
+// The duel banner and its module-history strip, from a static ten-module
+// fixture. Presentation only: no engine, no controller, and every award below
+// is a fixture of something the backend published.
+
+/**
+ * Ten settled modules for one side, as the history projection would deliver
+ * them — oldest first, each carrying its own base and its own bonus.
+ *
+ * The two sides are deliberately different matches of the same length, so the
+ * bench shows what a real comparison looks like rather than two copies of one
+ * row: every bubble state in the approved vocabulary appears at least once
+ * across the pair, including a `+0` and an unscored module.
+ */
+const bannerHistory = (
+  bases: readonly (number | null)[], bonuses: readonly number[],
+): RoundHistoryEntry[] => bases.map((base, i) => ({
+  roundNumber: i + 1,
+  outcome: base === null ? "timed_out" : base > 0 ? "correct" : "incorrect",
+  basePoints: base,
+  speedBonusPoints: base === null ? null : (bonuses[i] ?? 0),
+  pointsAwarded: base === null ? null : base + (bonuses[i] ?? 0),
+  dealt: 0, taken: 0, absorbed: 0, hpBefore: 150, hpAfter: 150,
+  timeExpired: base === null,
+}));
+
+const VIEWER_HISTORY = bannerHistory(
+  [2, 1, 0, 3, 2, 1, 2, 0, 3, 1],
+  [1, 0, 0, 1, 0, 0, 1, 0, 1, 0]);
+const OPPONENT_HISTORY = bannerHistory(
+  [1, 2, 2, 0, 3, 1, 0, 2, 1, null],
+  [0, 1, 0, 0, 1, 0, 0, 0, 0, 0]);
+
+/**
+ * THE BANNER BENCH — both flanks, at the height the live arena stretches them
+ * to, so the silhouette's taper is seen against a realistic column extent.
+ *
+ * `min-h` stands in for the Phase 11 three-track grid's `items-stretch`, which
+ * is what gives a rail the question board's height in the real arena. Without
+ * it the bench would show a short banner whose point is most of the object,
+ * which is the one thing about this shape that has to be checked at scale.
+ */
+function BannerBench({
+  outcome = null, feedback = null,
+}: {
+  outcome?: "correct" | "incorrect" | "timed_out" | null;
+  feedback?: PointsFeedbackView | null;
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:min-h-[34rem] lg:items-stretch">
+      <CombatantPanel combatant={scoredPlayer(14)} progressionEnabled={false}
+        presentation="banner" damage={VIEWER_HISTORY}
+        outcome={outcome} feedback={feedback} />
+      <CombatantPanel combatant={scoredOpponent(11)} progressionEnabled={false}
+        presentation="banner" damage={OPPONENT_HISTORY}
+        outcome={outcome} feedback={feedback} />
+    </div>
+  );
+}
 
 /**
  * A SETTLED MODULE, as a player meets it: the header plate above, the two
@@ -1227,6 +1288,23 @@ const SPELL_COOLDOWN_SCENARIO = {
 const STATES: InspectorState[] = [
   { key: "level1", label: "Level 1 — initial",
     render: () => <Combatants p={player()} o={opponent()} /> },
+  // RM1 Pass 2 — the duel banner. Three states, because the silhouette has to
+  // be checked at rest AND with its edge lit by a settlement.
+  //
+  // Deliberately NOT first: the inspector's default state is asserted by its
+  // own test, and a bench that quietly reassigns "what this page opens on"
+  // would have made that a maintenance chore for every future bench.
+  { key: "rm1-banner", label: "RM1 — duel banners (rest)",
+    render: () => <BannerBench /> },
+  { key: "rm1-banner-correct", label: "RM1 — banners (settled correct)",
+    render: () => (
+      <BannerBench outcome="correct"
+        feedback={pointsFeedback("CORRECT", 2, { label: "FIRST", points: 1 }, 16)} />
+    ) },
+  { key: "rm1-banner-incorrect", label: "RM1 — banners (settled +0)",
+    render: () => (
+      <BannerBench outcome="incorrect" feedback={pointsFeedback("INCORRECT", 0, null, 14)} />
+    ) },
   { key: "answer-unselected", label: "Answer — unselected",
     render: () => (
       <QuestionPanel question={QUESTION}>

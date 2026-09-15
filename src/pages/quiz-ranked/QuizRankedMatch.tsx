@@ -737,6 +737,9 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
     return {
       kind: "combatant",
       combatant: c,
+      // RM1 Pass 2 — Ranked's duelists are BANNERS. Named here, by the mode
+      // that owns the flank, so no other caller of the arena is affected.
+      presentation: "banner",
       damage: roundHistory[which],
       outcome: revealOutcomes[c.playerId] ?? null,
       damageDealt: revealDamage[c.playerId] ?? null,

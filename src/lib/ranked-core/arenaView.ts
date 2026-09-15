@@ -76,6 +76,17 @@ export type ArenaRail =
     feedback?: PointsFeedbackView | null;
     /** Mascot reaction for the settled round, else null. */
     reaction: MascotReaction | null;
+    /**
+     * RM1 Pass 2 — HOW this flank is drawn. Absent is the card every caller
+     * already has; Ranked asks for its duel banner.
+     *
+     * A mode's choice and not the arena's, for the same reason `meterLabel` is:
+     * what a flank looks LIKE belongs to the mode that owns the flank, and an
+     * arena that decided it would have to learn which mode it was rendering —
+     * which is the branch this whole file exists to prevent. The arena relays
+     * it and knows nothing about what either value means.
+     */
+    presentation?: "card" | "banner";
   }
   | { kind: "panel"; node: ReactNode };
 
