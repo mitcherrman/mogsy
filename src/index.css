@@ -1998,9 +1998,27 @@
        on a short one it is whatever the region actually got. */
     --qs-media-max: min(16rem, 100%);
     /* 152px — the category line (19px) plus FIVE prompt lines at 18px/1.45.
-       Five, not four, because the centre track is at its narrowest here and the
-       longest prompt in the playtest bank (202 characters) wraps to five; at
-       1280 and up the same prompt takes four. */
+
+       QV1 Step 2C — RE-DERIVED, AND DELIBERATELY UNCHANGED.
+       The provenance above was stale: it cites "the playtest bank (202
+       characters)", and the live bank has no such prompt. Re-measured against
+       the shipped corpus (58,153 active multiple-choice rows: prompt p50 104 ·
+       p95 135 · p99 148 · MAX 188 — id 120604), in a real browser, on a
+       cinematic round, which is the shape that puts the category line in this
+       header rather than in the band:
+
+           longest real prompt (188 chars) at 1024 -> 4 lines
+           4 x 26.1 + 19 (category + its space-y-1) = 123.4px of content
+
+       The reserve is 152px, so the 28.6px above that content is ONE WRAPPED
+       LINE (26.1px) plus 2.5px. That is not spare room — it is the safety
+       margin, and it is the whole reason a prompt one character longer than
+       anything in the bank, or a fallback font that measures wider, still
+       leaves the answer tablets where they were. QV1 Step 2 measured it
+       precisely in order NOT to spend it.
+
+       Sized for five lines because four is the real maximum here. Same rule at
+       the two breakpoints below: real maximum + exactly one line. */
     --qs-prompt-h: 9.5rem;
     /* 136px — two rows of tablets with option media AND one wrapped label,
        which is the tallest ordinary answer block at this width. */
@@ -2012,7 +2030,12 @@
   /* The centre track is wide enough here that the longest prompt in the bank
      drops to four lines and option-media labels stop wrapping, so both reserves
      step down and the stage is 2px + 35.25rem (566px). The media region and the
-     card's own padding are unchanged. */
+     card's own padding are unchanged.
+
+     QV1 Step 2C — re-derived, unchanged. The longest real prompt (188 chars)
+     takes THREE lines here, not four: 3 x 26.1 + 19 = 97.3px of content inside
+     a 124px reserve. The 26.7px above it is one wrapped line, to within 0.6px
+     — the same one-line safety margin as the breakpoint above. */
   .ranked-question-stage {
     --qs-prompt-h: 7.75rem;
     --qs-answers-h: 7.5rem;
@@ -2021,7 +2044,11 @@
 @media (min-width: 1500px) {
   /* The RA11 wide stage takes the prompt up a type step (1.25rem/1.45 — see
      "Question prompt weight" below), so four lines is 116px rather than 104px
-     and the reserve follows it. Stage: 2px + 36rem (578px). */
+     and the reserve follows it. Stage: 2px + 36rem (578px).
+
+     QV1 Step 2C — re-derived, unchanged. At 20px/1.45 the longest real prompt
+     (188 chars) takes three lines: 3 x 29 + 19 = 106px inside a 136px reserve,
+     leaving one 29px line of margin plus 1px. */
   .ranked-question-stage { --qs-prompt-h: 8.5rem; }
 }
 
@@ -8583,6 +8610,14 @@ html.high-contrast * { text-shadow: none !important; }
    characters, options to 63 — see the probe's own note. The synthetic stress
    probe is 4.4x that and is not what this is sized for.)
 
+   QV1 Step 2 re-audited that bound against the WHOLE active bank rather than
+   the servable sample, and it is bigger than 108/63: 58,153 active
+   multiple-choice rows run prompts to 188 characters (id 120604) and option
+   labels to 76 (id 171239). The reserves still cover it — see the prompt
+   reserve's own note, which now carries the re-derivation — but the figure
+   quoted here is the sample's, not the bank's, and should not be re-used as if
+   it were the bank's.)
+
    So this reclaims ~64px of SPACING at heights where the arena is short, and
    deliberately reclaims none of the things that make the card good:
 
@@ -8609,9 +8644,27 @@ html.high-contrast * { text-shadow: none !important; }
 
   /* 2. The surface's own stack rhythm: band → prompt → answers. 12px to 8px,
         twice. This is the "slightly tighter spacing between prompt and
-        answers" allowance and it is the cheapest 8px in the card. */
-  .ranked-academy [data-testid="scenario-surface"] > * + * {
-    margin-top: 0.5rem;
+        answers" allowance and it is the cheapest 8px in the card.
+
+        QV1 Step 2A — SAID AS A GAP, BECAUSE THE STACK IS A GAP.
+        This was written as a `> * + *` sibling selector setting `margin-top`
+        to 0.5rem, which is how you tighten a `space-y-*` stack — and
+        `space-y-3` is exactly what this surface carried when the rule was
+        written. ARENA1 Phase 1 then replaced
+        that stack with `.question-surface-stack`, a flex column with
+        `gap: 0.75rem`. A flex gap and a sibling margin do not override one
+        another: they ADD. So from the moment ARENA1 landed, this rule stopped
+        reclaiming 4px per seam and started SPENDING 8px per seam — measured
+        20px of effective seam at 860px tall and below, against 12px on a tall
+        screen, on the one card that had no height to give.
+
+        Expressed as the gap it always meant, there is ONE spacing authority
+        for this stack at every viewport height: 12px normally, 8px here. The
+        regions keep their order, their reserves and their contents, and the
+        seam after the answer grid (evidence, verdict) follows the same rhythm
+        it did before, which the `> * + *` form also covered. */
+  .ranked-academy [data-testid="scenario-surface"] {
+    gap: 0.5rem;
   }
 
   /* 3. The COMPACT category band, on a text-only question. 4rem of plate to

@@ -89,25 +89,19 @@ for (const vp of LOCKED) {
 
     for (const q of QUESTIONS) {
       test(`seats every answer of ${q.what}`, async ({ page }) => {
-        // ONE DOCUMENTED RESIDUE, declared rather than hidden.
-        // `realMax` is the probe's upper bound — the longest prompt the bank
-        // can serve paired with its longest option labels, a pairing no single
-        // row actually reaches. At 1024 wide those labels wrap to two lines
-        // each, so the answer block is 284px; the media region has already
-        // yielded to 0 and the card is still ~24px short.
+        // `realMax` at 1024 wide was the one residue this file shipped with,
+        // marked expected-to-fail. It was never a defect in the shrink chain:
+        // the constraint reached the art and the art gave everything it had —
+        // the media region was already at 0 and the card was still ~24px short,
+        // because the longest prompt the bank can serve paired with its longest
+        // option labels wraps to a 284px answer block, and the lock's own rule
+        // forbids shrinking text.
         //
-        // It is not a defect in this chain: the constraint reaches the art, the
-        // art gives everything it has, and what is left is text that the lock's
-        // own rule forbids shrinking. The 24px is the double-charged seam QV1
-        // Step 2 removes (`fde70135` — a flex `gap` and a sibling `margin-top`
-        // were adding, so this stage pays 20px per seam where it should pay 8),
-        // and with that commit present this case lands exactly on the card's
-        // inner edge. Marked expected-to-fail so the suite is honest today AND
-        // turns red the moment it starts passing, which is the signal to delete
-        // these six lines.
-        test.fail(vp.w === 1024 && q.id === "realMax",
-          "known: needs QV1 Step 2's seam fix (fde70135); ~24px short at 1024 wide");
-
+        // The 24px turned out to be a seam charged twice, and QV1 Step 2 removed
+        // it: a flex `gap` and a sibling `margin-top` do not override one
+        // another, so this stage was paying 20px per seam where it should pay 8.
+        // The case now lands exactly on the card's inner edge, so the marker is
+        // gone and every combination in this file is a required pass.
         await page.goto(`/dev/ranked-shell-probe?q=${q.id}`);
         await page.waitForSelector('[data-testid="ranked-question"]');
         await page.waitForTimeout(900);
@@ -173,11 +167,13 @@ test.describe("390x844 — below `lg`, nothing is locked", () => {
  * every conceivable viewport seats every conceivable round, because that is not
  * true and pretending otherwise in a test would only hide it: once the media
  * region has yielded to zero, the prompt and the answers are what is left, and
- * they are `flex: 0 0 auto` on purpose. Below roughly 700px of viewport height
- * at 1280 wide, the longest four-stacked-answer rounds in the bank need more
- * room than the lock has to give, and the card clips rather than scrolls.
+ * they are `flex: 0 0 auto` on purpose. Below roughly 660px of viewport height
+ * at 1280 wide — measured with QV1 Step 2's seam correction in place — the
+ * longest four-stacked-answer rounds in the bank need more room than the lock
+ * has to give, and the card clips rather than scrolls.
  *
  * That residue is a product decision (accept a minimum supported height, or let
  * the page scroll again in that one case), not a layout defect, and it is
- * recorded rather than encoded.
+ * recorded rather than encoded. Every height this file DOES test is a required
+ * pass — there are no expected failures left in it.
  */

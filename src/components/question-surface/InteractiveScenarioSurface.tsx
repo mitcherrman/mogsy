@@ -200,10 +200,37 @@ export function InteractiveScenarioSurface({
   // 2-up answers on desktop for compact surfaces, but only when every label is
   // short enough to stay readable side by side; long-form answers keep the
   // single column. Image choices already manage their own 2-up grid.
+  //
+  // QV1 Step 2B — THE THRESHOLD IS MEASURED, AND 1024 IS WHAT MEASURES IT.
+  // 44 was conservative to the point of costing height: one label of 45
+  // characters sent all four tablets into a single column, and four stacked
+  // tablets are 193–261px against an answer region reserving 120–136px, so the
+  // card overran its own reserve and grew the page.
+  //
+  // The new number is the largest that satisfies BOTH tests at 1024px — the
+  // narrowest width where the 2-up grid exists at all, and therefore the one
+  // that decides it (`lg:grid-cols-2`; below `lg` the grid is one column and
+  // this flag changes nothing, so phones are untouched either way):
+  //
+  //   1. NO TABLET EXCEEDS THREE LINES. In a 226.7px column, measured on the
+  //      real corpus: 56-character labels wrap to 3 (including id=112099, the
+  //      most adversarial real row — 56 characters carrying a 12-character
+  //      unbreakable "Penetration"), and 60-character labels wrap to 4.
+  //   2. 2-UP IS NEVER TALLER THAN THE COLUMN IT REPLACES. Also measured at
+  //      1024: at 56 the grid is 182.5px against the single column's 215.8px,
+  //      a 33px saving — but at 60 it is 228px against 215.8px, i.e. going
+  //      2-up would COST 12px. The two tests fail at the same place, which is
+  //      why 56 is a boundary and not a preference.
+  //
+  // It stays a statement about CONTENT SHAPE — a label length every option
+  // must satisfy — so no question id, family or category can qualify for the
+  // 2-up grid by name. 49 of the 62 four-option rows above 44 characters now
+  // qualify; the 13 that do not are genuinely long-form prose and keep the
+  // single column, which is the presentation they should have.
   const wideTwoColumn =
     settings.density === "compact"
     && question.options.length >= 4
-    && question.options.every((o) => o.label.length <= 44);
+    && question.options.every((o) => o.label.length <= 56);
 
   return (
     <section
