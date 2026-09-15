@@ -1703,6 +1703,83 @@
 @media (prefers-reduced-motion: reduce) {
   .ranked-academy [data-answers-state] [data-quiz-choice] { transition: none; }
 }
+
+/* ---- QV1 Step 3B: the answer tablet's type, and its air --------------------
+   Deliberately its OWN block. The rule above promises in writing that it
+   touches no geometry, and that promise is worth more than the four lines it
+   would save to fold these in beside the colours.
+
+   THE CONTRACT THIS BLOCK IMPLEMENTS — read this before changing a number.
+
+   1. PROMPT AND ANSWER READABILITY COME FIRST. The question and its options
+      are what the player actually has to read under a clock. When something
+      has to give, it is not the text.
+   2. THE QUESTION STAGE DOES NOT GROW. Under the RM1 viewport lock the stage
+      is exactly one viewport tall, and QV1 does not move its outer footprint
+      by a pixel — measured identical at every viewport, on stage height,
+      stage origin and Module Rail position alike.
+   3. SO THE RICH MEDIA REGION IS THE ELASTIC TERM, AND IT MAY YIELD. It is the
+      one region the lock permits to absorb the difference, and a bigger answer
+      label is a real claim on that budget whenever the label wraps.
+
+   THE TYPE STEP IS NOT FREE, AND THE MEASUREMENTS SAY SO. On an ordinary round
+   a 15px label takes a 2-up tablet from 49px to 54px and grows INSIDE the
+   answer region's reserve, so nothing moves. But a long label that gains a
+   wrapped line costs far more than 5px, and the media region pays it. Measured
+   baseline -> shipped, on the p99 option row:
+
+       1440x900   media 256.00 -> 206.97   (-49)
+       1366x768   media 227.95 -> 172.70   (-55)
+       1024x900   media 196.72 -> 130.22   (-66)
+
+   Every one of those still seats 4/4 answers with zero page scroll, and that
+   is the trade being made deliberately: legible text, an unmoved stage, and a
+   smaller picture on the rounds whose answers are genuinely long. This is
+   intentional responsive budgeting, not a zero-cost change. A future edit that
+   grows this type further is spending the same budget again, out of the same
+   region, and should re-measure rather than assume headroom.
+
+   WHERE THE BUDGET RUNS OUT, THE STEP IS WITHHELD. 1024x768 is the one
+   supported desktop that is both the narrowest stage AND a short one, so a
+   60-character answer wraps to a single column of four tall tablets at the
+   same moment the media region is the only term still yielding. Measured
+   there, the extra pixel of label alone — with the padding step already gated
+   off — took the cinematic band from 51px to 38px, and the 2-up boundary case
+   from 153px to 94px. That is not a smaller picture; it is the card quietly
+   ceasing to have one, and no test catches it because nothing clips and
+   nothing scrolls.
+
+   So the step is spent only where there is room for it, by EITHER measure: a
+   stage wide enough that a long answer still goes 2-up (>= 1200px), or a stage
+   tall enough that media is not the last thing paying (>= 861px, the same seam
+   the padding step uses). 1366x768, 1280x720 and 1440x900 clear the width arm;
+   1024x900 clears the height arm; only 1024x768 clears neither, and only
+   1024x768 needed to be excluded — it keeps its 14px label and its full
+   baseline media height exactly.
+
+   THE AIR IS GATED ON HEIGHT, AND THE GATE IS THE POINT. `min-height: 861px`
+   is the same seam the RG1 short-viewport compaction uses from the other side
+   (it takes the tablet to 8px below 860px), so the two are mutually exclusive
+   by construction and neither has to know about the other. Above the seam a
+   tablet gets 14px of padding; below it, 8px, exactly as today. Padding is
+   charged to the media region the same way the type is, which is why a short
+   screen — where the art has least to give — does not get it.
+
+   Both steps are width-gated to `lg`, so a phone keeps the 14px/12px tablet it
+   has: below `lg` the arena stacks into a column that already scrolls, where
+   bigger type buys nothing and costs scroll length. */
+@media (min-width: 1200px),
+       (min-width: 1024px) and (min-height: 861px) {
+  .ranked-academy [data-answers-state] [data-quiz-choice] {
+    font-size: 0.9375rem; /* 15px */
+  }
+}
+@media (min-width: 1024px) and (min-height: 861px) {
+  .ranked-academy [data-answers-state] [data-quiz-choice] {
+    padding-top: 0.875rem;    /* 14px */
+    padding-bottom: 0.875rem;
+  }
+}
 .ranked-academy [data-answers-state] [data-quiz-choice] .text-muted-foreground {
   color: rgba(213,182,111,0.78);
 }
@@ -2155,18 +2232,95 @@
   }
 }
 
+/* ---- QV1 Step 3B: a taller region for the RICH bands, and only those -------
+   The reserve above is one number for every kind of round, which is exactly
+   right for a FOOTPRINT — it is what makes a media round and a text round the
+   same size, and none of that changes here. What it is not right for is asking
+   the art to be bigger, because the same number also sizes the box a sparse
+   compact plate grows into. Measured on a global `16rem -> 17.28rem`: the
+   sparse plate gained 20px at both 1920 and 1440, while the cinematic band at
+   1440 gained NOTHING (it is aspect-bound there, not cap-bound). A global token
+   is the one lever that reliably enlarges the empty cards and not the rich
+   ones.
+
+   So the extra height is addressed to the band PROFILE instead. `data-band` is
+   already on the surface — `InteractiveScenarioSurface` sets it from
+   `resolveBandProfile`, the same decision that chooses which band renders — so
+   `cinematic` and `family` can be named directly and `compact` simply is not
+   in the selector. A sparse round keeps the 16rem region it has today, at
+   every viewport, and the negative control measures +0px.
+
+   GATED ON HEIGHT, because that is the only place it can be spent. At 1366 and
+   below the region is already shrunk well under 16rem to make the question fit,
+   so a larger preference is inert there (measured: 0px change at 1366, 1280 and
+   1024 from any token value tried). `min-height: 861px` is the same seam the
+   answer padding uses, so the two steps arrive together or not at all.
+
+   THE FOOTPRINT DOES NOT MOVE. The stage is `min(reserve, 100%)` with
+   `max-height: 100%` under the lock, and on a tall desktop it is already at
+   100% — 781px against a 578px reserve at 1920. The extra region height is
+   taken from the free room the card was centring in, not from the card's outer
+   box: measured, stage height and Module Rail position are identical before and
+   after at every viewport. */
+/* The competitive band's ratio, widened for the desktop stage only. 16/7.5
+   instead of 16/7 is ~7% more height for the same track width, which is what
+   takes the 1440 band from 248px to the 256px its region already reserved.
+
+   Width-gated, and that is the whole reason it lives here rather than in the
+   component's constant: below `lg` the arena stacks into a column that already
+   scrolls, so a taller band there buys nothing and costs scroll length
+   (measured +10px of band and +10px of page on a phone). The band reads this
+   through `var()` in its inline style, because an inline `aspect-ratio` would
+   outrank a stylesheet rule outright. */
+@media (min-width: 1024px) {
+  .ranked-question-stage { --qs-band-aspect-band: 16 / 7.5; }
+}
+
+@media (min-width: 1024px) and (min-height: 861px) {
+  .ranked-question-stage .question-surface-stack[data-band="cinematic"] > [data-surface-region="media"],
+  .ranked-question-stage .question-surface-stack[data-band="family"] > [data-surface-region="media"] {
+    height: var(--qs-media-rich, 17.25rem);
+  }
+  /* The band reads its own ceiling from the custom property, so the rich
+     profiles have to raise it too or the taller region would simply hold a
+     band still capped at 16rem. Declared on the SURFACE, which is where
+     `data-band` lives, and inherited down to the band inside it. */
+  .ranked-question-stage .question-surface-stack[data-band="cinematic"],
+  .ranked-question-stage .question-surface-stack[data-band="family"] {
+    --qs-media-max: min(var(--qs-media-rich, 17.25rem), 100%);
+  }
+}
+
 /* ---- Question prompt weight -----------------------------------------------
    The folio is the gameplay board; its prompt reads a step larger than the
    surface's compact default so the question anchors the whole arena. On the
    RA11 wide stage (frame at 90rem) the centre track grows ~150px, so the
-   prompt takes one more step to keep anchoring it. */
+   prompt takes one more step to keep anchoring it.
+
+   QV1 Step 3B — ONE MORE PIXEL, ON THE DESKTOP ONLY.
+   The base size below is the PHONE's as well as the desktop's, because this
+   rule is scoped to `.ranked-academy` and not to a width. So the step up is
+   declared separately from `lg` rather than by editing that number: a phone
+   stacks the arena into a column that already scrolls, and making its type
+   bigger buys nothing while costing scroll length (measured +25 to +73px).
+
+   `line-height` stays the unitless 1.45 it has always been, so the leading
+   grows WITH the type (26.1px -> 27.55px) instead of tightening against it.
+   Measured cost of the step: nothing at all on an ordinary round, because the
+   prompt reserve already carries a line of safety margin; on the longest
+   prompt in the bank it is one 5px line, which the media region absorbs. */
 .ranked-academy .ranked-folio [data-testid="scenario-surface"] > header h2 {
   font-size: 1.125rem;
   line-height: 1.45;
 }
+@media (min-width: 1024px) {
+  .ranked-academy .ranked-folio [data-testid="scenario-surface"] > header h2 {
+    font-size: 1.1875rem; /* 19px */
+  }
+}
 @media (min-width: 1500px) {
   .ranked-academy .ranked-folio [data-testid="scenario-surface"] > header h2 {
-    font-size: 1.25rem;
+    font-size: 1.3125rem; /* 21px */
   }
 }
 

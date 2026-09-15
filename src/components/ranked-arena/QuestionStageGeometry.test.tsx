@@ -427,7 +427,14 @@ describe("transient state cannot change Match Shell geometry", () => {
     // bounds — never from the intrinsic size of what it is showing. A 64x64
     // and a 1920x1080 asset produce the same box, and it exists before either
     // has loaded.
-    expect(band).toContain("aspectRatio: BAND_ASPECT[aspect]");
+    //
+    // QV1 Step 3B made the ratio a TOKEN with the preset as its fallback, so
+    // the Ranked desktop can widen the competitive band without widening it on
+    // a phone. The PROPERTY this asserts is unchanged and is the one that
+    // matters: the box is declared, it names this preset, and nothing about it
+    // is derived from the asset. A caller that sets no token still gets
+    // `BAND_ASPECT[aspect]` exactly.
+    expect(band).toContain("aspectRatio: `var(--qs-band-aspect-${aspect}, ${BAND_ASPECT[aspect]})`");
     expect(band).toContain("containerType: \"size\"");
     expect(band).toContain("overflow-hidden");
   });
@@ -447,11 +454,28 @@ describe("nothing inside the card was made smaller to fit it", () => {
     }
   });
 
-  it("keeps the prompt's own type scale", () => {
-    // The reserve is a box; it never restyles what goes in it.
+  it("keeps the prompt's own type scale, and steps it only by width", () => {
+    // THE INVARIANT: the reserve is a box, and it never restyles what goes in
+    // it. The prompt's size is declared here, on its own, by WIDTH — never
+    // derived from a reserve, a viewport height, or what the round contains.
+    //
+    // QV1 Step 3B added one step to that ladder (19px from `lg`, 21px on the
+    // wide stage) and left the base alone, which is why the base assertion is
+    // untouched: the base is the PHONE's size as well, and a phone must keep
+    // the type it had. `line-height` stays the unitless ratio so the leading
+    // follows the type instead of being re-declared per step.
     expect(CSS).toMatch(
       /\[data-testid="scenario-surface"\] > header h2 \{\s*font-size: 1\.125rem;\s*line-height: 1\.45;/);
-    expect(CSS).toMatch(/min-width: 1500px[\s\S]{0,220}> header h2 \{\s*font-size: 1\.25rem;/);
+    expect(CSS).toMatch(
+      /min-width: 1024px\)\s*\{[\s\S]{0,220}> header h2 \{\s*font-size: 1\.1875rem;/);
+    expect(CSS).toMatch(/min-width: 1500px[\s\S]{0,220}> header h2 \{\s*font-size: 1\.3125rem;/);
+    // And no step may be keyed on HEIGHT: a prompt that changed size when the
+    // window got shorter would be the arena re-flowing the question to fit,
+    // which is the one thing the lock's compression order forbids.
+    const ladder = [...CSS.matchAll(
+      /@media ([^{]*)\{\s*\.ranked-academy \.ranked-folio \[data-testid="scenario-surface"\] > header h2/g)];
+    expect(ladder.length).toBeGreaterThan(0);
+    for (const m of ladder) expect(m[1]).not.toMatch(/height/);
   });
 
   it("keeps the answer tablet's own box", () => {
@@ -969,5 +993,148 @@ describe("the lock's constraint reaches the region that yields", () => {
     const text = /\.ranked-question-stage \.question-surface-stack > \[data-surface-region="prompt"\],\s*\.ranked-question-stage \.question-surface-stack > \[data-surface-region="answers"\]\s*\{([^}]*)\}/
       .exec(block)?.[1] ?? "";
     expect(text, "the prompt and the answers must not be shrinkable").toMatch(/flex:\s*0\s+0\s+auto/);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// QV1 Step 3B — the enlargement, and the two things that keep it honest.
+//
+// The card was made modestly larger: a wider cinematic ratio, one more pixel
+// on the prompt and the answer label, and two more on the tablet's padding.
+// Two properties make that safe rather than merely bigger, and neither is
+// visible in a screenshot, so both are pinned here.
+//
+//   1. IT CANNOT REACH A SPARSE CARD. The extra media height is addressed to
+//      `data-band` — cinematic and family — and never to the reserve, because
+//      the reserve is also the box a compact plate grows into. Measured on a
+//      global token instead: the sparse plate gained 20px at 1920 AND 1440
+//      while the cinematic band at 1440 gained nothing at all.
+//   2. THE AIR IS GATED ON HEIGHT. Padding costs the media region directly, and
+//      on a short screen the region is already the thing paying for the fit.
+//      Measured at 1024x768 on the tallest real answer block, ungated padding
+//      drove the band from 68px to 19px — no clipping, no scroll, just a card
+//      that quietly stopped having a picture.
+// ───────────────────────────────────────────────────────────────────────────
+
+// A media PRELUDE, evaluated. The rules below are not all `min-width and up`
+// any more, so a regex can pin the text but cannot pin the BEHAVIOUR — and the
+// behaviour is what the product decision was about. This is the smallest
+// evaluator that covers the two features these rules use (`min-width`,
+// `min-height`) and the comma that ORs a list together.
+function mediaListMatches(prelude: string, width: number, height: number): boolean {
+  return prelude.split(",").some((arm) => {
+    const features = [...arm.matchAll(/\(\s*(min-width|min-height)\s*:\s*(\d+)px\s*\)/g)];
+    if (features.length === 0) return false;
+    return features.every(([, feature, px]) =>
+      feature === "min-width" ? width >= Number(px) : height >= Number(px));
+  });
+}
+
+/** The prelude guarding the Ranked answer label's font-size step, or null. */
+function answerFontPrelude(): string | null {
+  const m = /@media ([^{]*)\{\s*\.ranked-academy \[data-answers-state\] \[data-quiz-choice\]\s*\{\s*font-size:\s*0\.9375rem/
+    .exec(stripComments(CSS));
+  return m ? m[1] : null;
+}
+
+/** Every prelude guarding a QV1 type step — the prompt's and the answer's. */
+function typeStepPreludes(): string[] {
+  const css = stripComments(CSS);
+  const re = /@media ([^{]*)\{\s*\.ranked-academy (?:\.ranked-folio \[data-testid="scenario-surface"\] > header h2|\[data-answers-state\] \[data-quiz-choice\]\s*\{\s*font-size)/g;
+  return [...css.matchAll(re)].map((m) => m[1]);
+}
+
+describe("QV1 Step 3B — the enlargement reaches rich cards only", () => {
+  const css = () => stripComments(CSS);
+
+  it("addresses the extra media height to the band profile, never the reserve", () => {
+    // The reserve stays exactly what it was — that is what keeps the footprint.
+    for (const width of [1024, 1280, 1512]) {
+      expect(tokensAt(width)["--qs-media-h"], `at ${width}px`).toBe("16rem");
+    }
+    // And the rich allocation names the two profiles that draw real art.
+    const rich = /\.question-surface-stack\[data-band="cinematic"\] > \[data-surface-region="media"\],\s*\.ranked-question-stage \.question-surface-stack\[data-band="family"\] > \[data-surface-region="media"\]\s*\{([^}]*)\}/
+      .exec(css());
+    expect(rich, "the rich media allocation is gone").not.toBeNull();
+    expect(rich![1]).toMatch(/height:\s*var\(--qs-media-rich/);
+  });
+
+  it("never names the compact profile in a sizing rule", () => {
+    // The negative half of the same rule, and the one a future edit would get
+    // wrong: a sparse plate must not be enlarged by anything QV1 does.
+    const sizing = [...css().matchAll(/\[data-band="compact"\][^{]*\{([^}]*)\}/g)];
+    for (const m of sizing) {
+      expect(m[1], "a compact band is being sized by a QV1 rule")
+        .not.toMatch(/height|font-size|padding/);
+    }
+  });
+
+  it("gates the rich media step and the answer padding on the same height seam", () => {
+    // Both steps are spent out of the same budget, so they arrive together or
+    // not at all — and 861px is the far side of the RG1 compaction's own
+    // `max-height: 860px`, so the two can never both apply.
+    const rich = /@media \(min-width: 1024px\) and \(min-height: 861px\)\s*\{[\s\S]*?--qs-media-rich/
+      .exec(css());
+    expect(rich, "the rich media step is not height-gated").not.toBeNull();
+    const pad = /@media \(min-width: 1024px\) and \(min-height: 861px\)\s*\{\s*\.ranked-academy \[data-answers-state\] \[data-quiz-choice\]\s*\{([^}]*)\}/
+      .exec(css());
+    expect(pad, "the answer padding step is not height-gated").not.toBeNull();
+    expect(pad![1]).toMatch(/padding-top:\s*0\.875rem/);
+    expect(pad![1]).toMatch(/padding-bottom:\s*0\.875rem/);
+  });
+
+  it("keeps every type step behind `lg`, so a phone is untouched", () => {
+    // Below `lg` the arena stacks into a column that already scrolls; growing
+    // its type buys nothing and costs scroll length. Measured ungated: +10px of
+    // band and +25 to +73px of page on a phone.
+    //
+    // The answer label's own gate is stricter than `lg` and is pinned in the
+    // test below; all that is asserted here is the floor every step shares.
+    for (const prelude of typeStepPreludes()) {
+      expect(prelude, "a QV1 type step reaches below `lg`").toMatch(/min-width:\s*(?:10[2-9]\d|1[1-9]\d\d|[2-9]\d{3})px/);
+    }
+    // The band's ratio override likewise.
+    expect(css()).toMatch(
+      /@media \(min-width: 1024px\)\s*\{\s*\.ranked-question-stage \{ --qs-band-aspect-band: 16 \/ 7\.5; \}/);
+  });
+
+  it("spends the answer label's extra pixel only where a stage can afford it", () => {
+    // THE RULE, EXACTLY. 15px is not simply `lg and up`. 1024x768 is the one
+    // supported desktop that is both the narrowest stage AND a short one, so
+    // a 60-character answer goes single-column — four tall tablets — at the
+    // same moment the media region is the only term still yielding. Measured
+    // there, the pixel alone (padding already gated off) took the cinematic
+    // band from 68px to 35px. So the step is spent on a stage wide enough to
+    // keep a long answer 2-up, OR tall enough that media is not paying last.
+    const prelude = answerFontPrelude();
+    expect(prelude, "the answer type rule is gone").not.toBeNull();
+    // Two arms, comma-joined: a width arm, and the same height seam the
+    // padding step uses. Neither arm may drop below `lg`.
+    expect(prelude!.replace(/\s+/g, " ").trim())
+      .toBe("(min-width: 1200px), (min-width: 1024px) and (min-height: 861px)");
+
+    // And the behaviour that rule is FOR, evaluated at the measured matrix.
+    // 1024x768 is the only entry that must come back to the 14px it had.
+    const at = (w: number, h: number) => (mediaListMatches(prelude!, w, h) ? 15 : 14);
+    expect(at(1920, 1080)).toBe(15);
+    expect(at(1440, 900)).toBe(15);
+    expect(at(1366, 768)).toBe(15);   // width arm
+    expect(at(1280, 720)).toBe(15);   // width arm
+    expect(at(1280, 600)).toBe(15);   // width arm
+    expect(at(1024, 900)).toBe(15);   // height arm
+    expect(at(1024, 768)).toBe(14);   // neither arm — the picture keeps its 68px
+    expect(at(390, 844)).toBe(14);    // a phone is never in scope
+  });
+
+  it("leaves the tablet's own box in the component, unchanged", () => {
+    // The Ranked-only steps are stylesheet-side on purpose: the shared grid is
+    // still the plain quiz grid for every other caller, and QV1 must not have
+    // reached into it.
+    const grid = read("components/quiz/QuizAnswerOptions.tsx");
+    expect(grid).toContain("py-3 px-4");
+    expect(grid).toContain("whitespace-normal");
+    expect(grid).toContain("text-sm leading-relaxed");
+    // Nothing Ranked-shaped leaked into the shared component.
+    expect(grid).not.toMatch(/ranked-academy|--qs-/);
   });
 });
