@@ -576,7 +576,12 @@ describe("every term between the card and the timeline is still reserved", () =>
   const arena = () => codeOnly(read("components/ranked-arena/CanonicalArena.tsx"));
 
   it("the header strip keeps its reserved minimum", () => {
-    expect(arena()).toContain("min-h-[3.5rem]");
+    // RM1 Pass 2B raised it from 3.5rem: the strip's centre now carries the
+    // focal display, which is deliberately the largest thing in the header.
+    // The INVARIANT is unchanged and is the only thing this asserts — the
+    // strip reserves a fixed minimum, so a face turning inside it (clock →
+    // result → module name) cannot move the timeline below.
+    expect(arena()).toContain("min-h-[4.25rem]");
   });
 
   it("the status line keeps its reserved line box", () => {

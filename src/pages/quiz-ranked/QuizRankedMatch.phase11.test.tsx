@@ -143,12 +143,36 @@ describe("Phase 11 — mirrored role columns", () => {
     expect(document.body.textContent).not.toMatch(/\bTANK\b|\bMAGE\b|\bMARKSMAN\b/);
   });
 
-  it("mirrors the two columns: identical structure, both with a round ledger", async () => {
+  it("mirrors the two columns: identical structure, both with a module history",
+    async () => {
+      await mount();
+      // RM1 Pass 2 — Ranked's columns are BANNERS, and a banner's history is
+      // the module-bubble strip rather than the card's recent-round ledger.
+      // The invariant under test is unchanged and is the reason this assertion
+      // is a pair: whatever the history is called, BOTH columns have one, so
+      // the two flanks stay each other's mirror.
+      expect(screen.getByTestId("module-history-userA")).toBeInTheDocument();
+      expect(screen.getByTestId("module-history-userB")).toBeInTheDocument();
+      expect(screen.queryByTestId("combat-ledger-userA")).toBeNull();
+      expect(screen.getByTestId("hp-userA")).toBeInTheDocument();
+      expect(screen.getByTestId("hp-userB")).toBeInTheDocument();
+    });
+
+  it("draws both duelists as banners, and says so in the DOM", async () => {
     await mount();
-    expect(screen.getByTestId("combat-ledger-userA")).toBeInTheDocument();
-    expect(screen.getByTestId("combat-ledger-userB")).toBeInTheDocument();
-    expect(screen.getByTestId("hp-userA")).toBeInTheDocument();
-    expect(screen.getByTestId("hp-userB")).toBeInTheDocument();
+    for (const id of ["userA", "userB"]) {
+      const column = screen.getByTestId(`combatant-${id}`);
+      expect(column).toHaveAttribute("data-presentation", "banner");
+      expect(column.className).toContain("ranked-banner");
+      // The card's border/ring vocabulary is REPLACED, not layered under the
+      // banner: a rounded-rectangle ring cannot trace a pointed silhouette.
+      expect(column.className).not.toContain("rounded-xl");
+      expect(column.className).not.toContain("border-2");
+    }
+    // The side is on the element the banner CSS reads it from, and it is NOT
+    // mirrored — the two columns differ in kind, not in direction.
+    expect(screen.getByTestId("combatant-userA")).toHaveAttribute("data-side", "player");
+    expect(screen.getByTestId("combatant-userB")).toHaveAttribute("data-side", "opponent");
   });
 
   it("gives a BOT opponent the neutral role identity, never its combat class", async () => {

@@ -18,7 +18,7 @@
  * authoritative pass-through; no combat value is computed here, and none is
  * computed in the arena either.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ArenaShell } from "@/components/ranked-arena/ArenaShell";
 import { CanonicalArena } from "@/components/ranked-arena/CanonicalArena";
@@ -42,6 +42,10 @@ import {
   projectRoundHistory, projectSurfaceReveal,
 } from "@/lib/ranked-core/settlementViews";
 import { projectCardBeat } from "@/lib/ranked-core/cardBeat";
+import {
+  centralCardResult, centralResult, liveModuleTitle,
+} from "@/lib/ranked-core/centralStage";
+import type { AwardEvent } from "@/components/ranked-arena/AwardPops";
 import {
   projectPointsMascotReactions, projectRevealFeedback, projectSettlementFeedback,
 } from "@/lib/ranked-core/pointsFeedback";
@@ -335,6 +339,69 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
         ? { settlement: m.lastSegmentSettlement, roundNumber: m.lastSegmentRoundNumber }
         : null),
     [m.lastResolved, m.lastSegmentSettlement, m.lastSegmentRoundNumber]);
+  /**
+   * RM1 Pass 2B — THE TRANSIENT PAYOUTS, one per column.
+   *
+   * Two streams reach a banner's pop layer through one prop, and they are
+   * distinguished by the id each carries, never by a mode branch:
+   *
+   *   * `card:<round>:<index>` — ONE card of a Meta Reflex block, viewer only
+   *     (see below);
+   *   * `award:<playerId>:<round>` — the module's settlement, both columns.
+   *
+   * ─────────────────────────────────────────────────────────────────────
+   * WHAT THE BACKEND ACTUALLY PUBLISHES DURING A BLOCK — the audit
+   * ─────────────────────────────────────────────────────────────────────
+   * A Meta Reflex block settles ONCE. `feed_engine_outcomes` runs at the
+   * block's resolution, so neither player's authoritative SCORE moves while
+   * the block is in play: the score the columns show is correct throughout
+   * and simply does not change until the module settles.
+   *
+   * What IS live is `segmentState.ownCardReveals` — the viewer's own cards,
+   * with a server-decided outcome each. That is the only per-card correctness
+   * this client has, and it is the viewer's alone: the opponent publishes
+   * `opponentChallengesCompleted` and `opponentFinished`, i.e. PROGRESS and
+   * never correctness. So the opponent gets no per-card pops, because the only
+   * way to draw them would be to invent the one fact the backend withholds.
+   *
+   * ─────────────────────────────────────────────────────────────────────
+   * WHY THE PER-CARD `+1` CANNOT DOUBLE-COUNT THE BLOCK'S BASE
+   * ─────────────────────────────────────────────────────────────────────
+   * `slice_points` is `points = correct_count` (plus the bonus only when
+   * perfect AND first), so one correct card is worth exactly one base point
+   * and five `+1`s sum to the block's base. The settlement would then pop that
+   * same base again — the same points, twice.
+   *
+   * So the settlement's base pop is suppressed for a column that has ALREADY
+   * been paid it out card by card, and the suppression is RECONCILED rather
+   * than assumed: it applies only when the number of cards this client
+   * actually popped equals the base the backend published. If they disagree —
+   * a reconnect mid-block, a module whose scoring this client does not model —
+   * the authoritative base pops instead. There is no path on which a wrong
+   * number is shown, and none on which one number is shown twice.
+   */
+  const cardPopsRef = useRef<{ round: number; count: number } | null>(null);
+  const cardPopKeyRef = useRef<string | null>(null);
+  const settlementAwards = useMemo((): Record<string, AwardEvent> => {
+    const round = m.lastResolved?.roundNumber ?? null;
+    if (round === null) return {};
+    const out: Record<string, AwardEvent> = {};
+    for (const [playerId, fb] of Object.entries(revealFeedback)) {
+      const popped = cardPopsRef.current;
+      out[playerId] = {
+        id: `award:${playerId}:${round}`,
+        basePoints: fb.basePoints,
+        // The SERVER's bonus figure, already zero for everything that did not
+        // earn one. No timing comparison is made anywhere in this client.
+        speedBonusPoints: fb.speed?.points ?? 0,
+        baseAlreadyShown: playerId === viewerUserId
+          && popped !== null && popped.round === round
+          && popped.count === fb.basePoints,
+      };
+    }
+    return out;
+  }, [revealFeedback, m.lastResolved, viewerUserId]);
+
   // AI1 Phase 2 — the two duelist mascots' reactions to the settled round.
   // Same settlement, same reveal gate as the verdicts above: the attacker's
   // mascot lunges and the damaged mascot recoils on the beat the round
@@ -731,12 +798,49 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
   // the check that keeps the two answers from ever disagreeing.
   const isProgression = m.phase === "progression" && progressionEnabled;
 
+  /**
+   * POINT1 — the per-card result of a block in flight. Hoisted out of the view
+   * object because RM1 Pass 2B reads it twice: the arena's result slot, and the
+   * viewer's per-card payout below.
+   */
+  const cardBeat = projectCardBeat(surfaceRound?.segmentState ?? null,
+    surfaceRound?.activeRound?.roundNumber ?? null);
+
+  /**
+   * RM1 Pass 2B — ONE card of a Meta Reflex block, for the viewer's column.
+   *
+   * A correct card only: a `+0` pop for a wrong card is noise in a surface
+   * whose whole job is to make a payout feel like one. Server-decided — the
+   * outcome comes from `ownCardReveals`, never from comparing the viewer's
+   * choice here.
+   */
+  const cardAward: AwardEvent | null =
+    cardBeat && cardBeat.outcome === "correct" && cardBeat.roundNumber !== null
+      ? {
+        id: `card:${cardBeat.roundNumber}:${cardBeat.challengeIndex}`,
+        basePoints: 1, speedBonusPoints: 0,
+      }
+      : null;
+  // Recorded at render, deliberately: the pop layer plays an id exactly once,
+  // so counting the DISTINCT ids handed to it counts what it actually showed.
+  // This is the number the settlement's suppression is reconciled against.
+  if (cardAward && cardPopKeyRef.current !== cardAward.id) {
+    cardPopKeyRef.current = cardAward.id;
+    const round = cardBeat!.roundNumber!;
+    const seen = cardPopsRef.current;
+    cardPopsRef.current = seen && seen.round === round
+      ? { round, count: seen.count + 1 } : { round, count: 1 };
+  }
+
   /** Ranked fills both flanks with a duelist. */
   const rail = (which: "player" | "opponent"): ArenaRail => {
     const c = combatants[which];
     return {
       kind: "combatant",
       combatant: c,
+      // RM1 Pass 2 — Ranked's duelists are BANNERS. Named here, by the mode
+      // that owns the flank, so no other caller of the arena is affected.
+      presentation: "banner",
       damage: roundHistory[which],
       outcome: revealOutcomes[c.playerId] ?? null,
       damageDealt: revealDamage[c.playerId] ?? null,
@@ -746,6 +850,12 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       // without either side learning a mode flag.
       feedback: revealFeedback[c.playerId] ?? null,
       reaction: mascotReactions[c.playerId] ?? null,
+      // RM1 Pass 2B — the transient payout. The viewer's column takes a live
+      // card's `+1` while a block is running and the module's award otherwise;
+      // the opponent's only ever takes the module's award, because per-card
+      // correctness is not published for the other seat.
+      award: (which === "player" ? cardAward : null)
+        ?? settlementAwards[c.playerId] ?? null,
     };
   };
 
@@ -764,6 +874,32 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       presenceNote: opponentLabel,
       timer,
       timerLabel: "Shared round timer",
+      /**
+       * RM1 Pass 2B — THE VIEWER'S RESULT, in the header's focal display.
+       *
+       * Built from `revealFeedback`, the REVEAL-GATED award, so it exists for
+       * exactly the settlement beat and cannot decay into a stale result over
+       * a live question the way the header's old plate did.
+       *
+       * The figure is the BASE. The speed bonus is not folded into it, for the
+       * same reason the history bubble does not fold it in: `+3` erases which
+       * half the player earned, and the bonus gets its own transient mark in
+       * the column that won it.
+       */
+      //
+      // POINT1's precedence, unchanged and now applied to the display instead
+      // of to a plate: a CARD of a block in flight outranks the previous
+      // module's settlement, because that settlement is the stale thing on
+      // screen for the whole of a live block.
+      centralResult: centralCardResult(cardBeat)
+        ?? centralResult(revealFeedback[viewerUserId] ?? null,
+          revealOutcomes[viewerUserId] ?? null),
+      // The round NOW IN PLAY, by its existing name. There is no way to name
+      // the next one first — the backend publishes nothing about a question it
+      // has not generated, which is the same fact that makes every future node
+      // on the round rail neutral — so this face runs as the new round arrives.
+      moduleTitle: liveModuleTitle(m.publicRound),
+      moduleEventId: m.roundNumber,
     },
     roundBeat: m.lastResolved ? {
       settlement: m.lastResolved,
@@ -790,8 +926,7 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
      * result slot. Read off the live segment state, so it is the same card the
      * viewport is holding, and it is why the module draws no plate of its own.
      */
-    cardBeat: projectCardBeat(surfaceRound?.segmentState ?? null,
-      surfaceRound?.activeRound?.roundNumber ?? null),
+    cardBeat,
     left: rail("player"),
     right: rail("opponent"),
     surface: {

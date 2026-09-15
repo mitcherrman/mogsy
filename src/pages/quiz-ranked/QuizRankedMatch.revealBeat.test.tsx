@@ -496,7 +496,11 @@ describe("an ordinary round resolves in the top strip, never at the bottom", () 
     // strip keeps its reserved min-height, and the plate that arrived inside
     // it is a FIXED height that never wraps.
     expect(strip.className).toBe(before);
-    expect(strip.className).toContain("min-h-[3.5rem]");
+    // RM1 Pass 2B raised the reserved minimum (3.5rem → 4.25rem) because the
+    // strip's centre now carries the focal display. The INVARIANT is the
+    // assertion above — the className does not change when a result arrives —
+    // and this only pins the constant that invariant is expressed with.
+    expect(strip.className).toContain("min-h-[4.25rem]");
     const beat = screen.getByTestId("ranked-last-result");
     expect(beat.className).toContain("h-10");
     expect(beat.className).toContain("whitespace-nowrap");
@@ -512,7 +516,10 @@ describe("an ordinary round resolves in the top strip, never at the bottom", () 
     await waitFor(() => expect(holdActive()).toBe(true), { timeout: 4000 });
     await waitFor(() => expect(holdActive()).toBe(false),
       { timeout: REVEAL_HOLD_MS + 2000 });
-    for (const id of ["combat-ledger-userA", "combat-ledger-userB", "ranked-last-result"]) {
+    // RM1 Pass 2 renamed the columns' history surface (the banner's module
+    // bubbles replaced the card's ledger); the rule it is checked against is
+    // untouched — no progression vocabulary anywhere, whatever draws it.
+    for (const id of ["module-history-userA", "module-history-userB", "ranked-last-result"]) {
       expect(screen.getByTestId(id).textContent).not.toMatch(/xp|level|lv |abilit/i);
     }
   });

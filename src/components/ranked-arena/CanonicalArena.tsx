@@ -29,12 +29,12 @@ import { CombatantPanel } from "./CombatantPanel";
 import { LevelUpPanel } from "./LevelUpPanel";
 import { MatchOverFrame } from "./MatchOverFrame";
 import { RevealPanel } from "./RevealPanel";
-import { CardResultBeat } from "./CardResultBeat";
-import { RoundResultBeat } from "./RoundResultBeat";
 import { RoundTimeline } from "./RoundTimeline";
 import { SegmentResultBeat } from "./SegmentResultBeat";
 import { SegmentTranscript } from "./SegmentTranscript";
-import { TimerDisplay } from "./TimerDisplay";
+import { CardResultBeat } from "./CardResultBeat";
+import { CentralStage } from "./CentralStage";
+import { RoundResultBeat } from "./RoundResultBeat";
 import { NO_INTERACTIONS } from "@/lib/ranked-core/viewTypes";
 import { arenaReportSnapshot } from "@/lib/ranked-core/reportSnapshot";
 import { usePublishReportableQuestion } from "@/lib/feedback/reportable-question";
@@ -76,6 +76,12 @@ function Rail({ rail, progressionEnabled }:
   return (
     <CombatantPanel combatant={rail.combatant}
       progressionEnabled={progressionEnabled}
+      // Relayed, never chosen: absent leaves the arena drawing the card it
+      // always drew, which is what the Daily and every dev harness still get.
+      presentation={rail.presentation}
+      // RM1 Pass 2B — relayed, like the presentation above. A mode that
+      // supplies no award draws no payout at all.
+      award={rail.award}
       damage={rail.damage}
       outcome={rail.outcome}
       damageDealt={rail.damageDealt}
@@ -198,18 +204,27 @@ export function CanonicalArena({
    * rounds still put a full-width bar in the region the round timeline needs
    * to hold continuously. "Rarely" is not "never", and the invariant is never.
    *
-   * Both results now resolve in the TOP strip, in one shared plate:
+   * Both results resolve in the TOP strip, in one shared plate:
    *   * an ordinary round → `RoundResultBeat`
-   *   * a settled block   → `SegmentResultBeat`, whose vocabulary is extended
+   *   * a card of a block in flight → `CardResultBeat`
+   *   * a settled block → `SegmentResultBeat`, whose vocabulary is extended
    *     exactly far enough to carry the one thing a round cannot say — each
    *     player's N/5 — and no further.
    *
+   * RM1 Pass 2B DEMOTED that plate rather than replacing it, and the
+   * distinction is worth stating because it looks like duplication and is not.
+   * The plate PERSISTS after its beat, deliberately (POINT1): it is the
+   * previous-module summary, and a player who looked away still reads what the
+   * last module was worth. The header's new focal display is the other half of
+   * the pair — the loud, MOMENTARY headline, which hands the centre back to
+   * the clock so the next module can start. Two lifetimes, two weights, one
+   * fact; and only one of them is still on screen a second later.
+   *
    * Settlement feedback for an ordinary round is otherwise carried, in full, by
-   * the answer tablets' reveal and each duelist column's verdict row and
-   * recent-round ledger. `RevealBanner` survives as the arena inspector's
-   * fixture; the segment banner had no other caller and is deleted outright —
-   * its one irreplaceable part, the card-by-card transcript, is disclosed from
-   * the block's own beat instead.
+   * the answer tablets' reveal, each duelist column's verdict row and module
+   * history, and the transient award that rises through the column that won
+   * it. `RevealBanner` survives as the arena inspector's fixture; the segment
+   * banner had no other caller and is deleted outright.
    */
   return (
     <ArenaShell size="wide" header={chrome}>
@@ -249,101 +264,118 @@ export function CanonicalArena({
           It is applied ONLY while open, so nothing about the resting page
           changes. */}
       <div className="relative lg:shrink-0" style={detailsOpen ? { zIndex: 30 } : undefined}>
-      {/* Condensed top strip — mode · round · timer in one compact row.
-          `min-h` reserves the tallest state this strip ever reaches, so the
-          transition pill appearing or the timer gaining a notice line cannot
-          push the arena below it. */}
+      {/* RM1 Pass 2B — THE SIMPLIFIED HEADER: three zones, one focus.
+          left · WHO AND WHAT  |  centre · THE DISPLAY  |  right · WHERE
+
+          The strip used to run five things at one weight — eyebrow, round
+          title, a result plate, two note lines and a clock — and the clock was
+          the smallest of them. It is now the only large thing in the strip;
+          everything else is a label around it.
+
+          THE RESULT PLATE IS GONE from here for an ordinary round and for a
+          card of a block. Its content — the verdict and the award — is what
+          the centre now shows, and a plate beside a display saying the same
+          thing is two answers to one question. That is POINT1's own rule about
+          the strip's single result slot, applied to the slot that replaced it.
+
+          `SegmentResultBeat` stays, demoted to the right, because it says one
+          thing the centre cannot — a block's 5-card scoreline — and because it
+          carries the transcript disclosure, which has no other home.
+
+          `min-h` still reserves the tallest state, so nothing in the arena
+          below moves when a face turns. */}
       <section data-testid="ranked-header"
-        className="ranked-panel ranked-header-plate flex min-h-[3.5rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
-        <div className="flex items-baseline gap-3">
-          <div>
-            <div className="ranked-eyebrow">{header.eyebrow}</div>
-            <h3 data-testid="ranked-header-title"
-              className="ranked-title text-lg font-bold leading-tight">{header.title}</h3>
-          </div>
-          {header.transitionNote && (
+        className="ranked-panel ranked-header-plate flex min-h-[4.25rem] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-1.5">
+        {/* LEFT — who this is and what kind of match it is. Both quiet. */}
+        <div className="flex min-w-0 flex-col justify-center">
+          <div className="ranked-eyebrow">{header.eyebrow}</div>
+          {header.presenceNote && (
+            <p data-testid="ranked-presence"
+              className="truncate text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
+              {header.presenceNote}
+            </p>
+          )}
+        </div>
+
+        {/* CENTRE — the display. `order` and not a grid: the strip wraps at
+            narrow widths, and on a wrapped strip the display belongs on its
+            own line between the two labels rather than squeezed beside one. */}
+        <div className="order-last flex w-full justify-center sm:order-none sm:w-auto sm:flex-1">
+          {header.timer || header.centralResult ? (
+            <CentralStage timer={header.timer} label={header.timerLabel}
+              // Absent on every Ranked and Tutorial clock, which is why both
+              // still read "of M:SS shared round".
+              durationNote={header.timerNotes?.duration}
+              expiredNote={header.timerNotes?.expired}
+              result={header.centralResult ?? null}
+              moduleTitle={header.moduleTitle ?? null}
+              moduleEventId={header.moduleEventId ?? null} />
+          ) : (
+            // No clock and no result: a phased segment's ability window, or the
+            // gap before the first round. The transition note is the honest
+            // thing to show, and it keeps the reserved height filled.
+            <p data-testid="ranked-round-transition"
+              className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
+              {header.transitionNote ?? ""}
+            </p>
+          )}
+        </div>
+
+        {/* RIGHT — where in the match this is, plus the one result surface the
+            centre cannot carry. */}
+        <div className="flex min-w-0 flex-col items-end justify-center gap-0.5">
+          <h3 data-testid="ranked-header-title"
+            className="ranked-title text-xs font-bold uppercase tracking-[0.16em] leading-tight">
+            {header.title}
+          </h3>
+          {/* THE PERSISTENT SUMMARY — demoted, not deleted.
+              This is the plate the strip has always carried, in the same
+              precedence POINT1 wrote for it (a settled block, else a card of a
+              block in flight, else an ordinary round). It is deliberately the
+              thing that STAYS: it survives its beat as the previous-module
+              summary, so a player who looked away still sees what the last
+              module was worth.
+              The display in the centre is the other half of that pair — the
+              loud, momentary headline that hands the centre back to the clock.
+              Two surfaces with two lifetimes; this is the record. */}
+          {segmentSettlement && (view.cardBeat === null
+            || segmentSettlement.roundNumber === view.cardBeat.roundNumber) ? (
+            <SegmentResultBeat key={`segment-${segmentSettlement.roundNumber ?? "?"}`}
+              settlement={segmentSettlement.settlement}
+              viewerUserId={segmentSettlement.viewerUserId}
+              opponentUserId={segmentSettlement.opponentUserId}
+              roundNumber={segmentSettlement.roundNumber}
+              feedback={segmentSettlement.feedback ?? null}
+              pointsMatch={segmentSettlement.pointsMatch === true}
+              detailsOpen={detailsOpen} onToggleDetails={setDetailsOpen}
+              className="hidden md:flex" />
+          ) : view.cardBeat ? (
+            <CardResultBeat key={`card-${view.cardBeat.challengeIndex}`}
+              beat={view.cardBeat} className="hidden md:flex" />
+          ) : view.roundBeat ? (
+            <RoundResultBeat key={view.roundBeat.settlement.roundNumber}
+              settlement={view.roundBeat.settlement} viewerSlot={view.roundBeat.viewerSlot}
+              feedback={view.roundBeat.feedback ?? null}
+              pointsMatch={view.roundBeat.pointsMatch === true}
+              className="hidden md:flex" />
+          ) : null}
+          {/* DEMOTED. A placeholder-bank notice is a build-state fact, not
+              match news, so it is the quietest text in the strip — present
+              because it must be, at a weight that does not compete. */}
+          {header.playtestNote && (
+            <p data-testid="ranked-playtest-label"
+              className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50">
+              {header.playtestNote}
+            </p>
+          )}
+          {/* The transition note keeps a home beside the title while a clock is
+              still running — it says the NEXT round is being opened, which is
+              not what the display in the centre is about. */}
+          {header.transitionNote && (header.timer || header.centralResult) && (
             <span data-testid="ranked-round-transition"
               className="ranked-eyebrow ranked-eyebrow--cyan animate-pulse motion-reduce:animate-none">
               {header.transitionNote}
             </span>
-          )}
-        </div>
-        {/* THE ROUND-RESOLUTION BEAT. Third child of a `justify-between` row,
-            so it takes the gap the strip already had between the round title
-            and the clock — the left group and the timer keep their ends, and
-            neither moves when it appears.
-
-            `key` on the ROUND is what makes this a beat rather than a static
-            summary: a new settlement remounts the plate and replays its
-            entrance. A round settles exactly once, so the round number is a
-            stable, monotonic event id.
-
-            `hidden md:flex` because below that width the strip has no gap to
-            take (the duelist ledgers carry the history at every width). The
-            plate is a fixed 2.5rem and never wraps, so it cannot grow the
-            strip past its reserved min-height or crowd the timer. */}
-        {/* POINT1 — a settled block outranks a CARD only when it is that
-            card's own block. `lastSegmentSettlement` survives into later
-            rounds as the previous-block summary, and without this test it
-            outranked every card of the block now in play, so the per-card
-            beat never reached the slot at all. */}
-        {segmentSettlement && (view.cardBeat === null
-          || segmentSettlement.roundNumber === view.cardBeat.roundNumber) ? (
-          // A settled block wins the slot: it describes the same round the
-          // arena settlement does, and two plates would be two answers to one
-          // question. It also says strictly more — a round beat cannot report
-          // a 5-card scoreline. It also outranks a CARD of that block, because
-          // it exists only once every card of it has resolved.
-          <SegmentResultBeat key={`segment-${segmentSettlement.roundNumber ?? "?"}`}
-            settlement={segmentSettlement.settlement}
-            viewerUserId={segmentSettlement.viewerUserId}
-            opponentUserId={segmentSettlement.opponentUserId}
-            roundNumber={segmentSettlement.roundNumber}
-            feedback={segmentSettlement.feedback ?? null}
-            pointsMatch={segmentSettlement.pointsMatch === true}
-            detailsOpen={detailsOpen} onToggleDetails={setDetailsOpen}
-            className="hidden md:flex" />
-        ) : view.cardBeat ? (
-          // POINT1 — ONE card of a block still in flight. It outranks the
-          // previous ROUND's plate, which is the stale thing on screen for the
-          // whole of a live block, and it is the module's only textual result
-          // surface: nothing is drawn inside the viewport for the same card.
-          //
-          // `key` on the challenge index makes this a beat rather than a
-          // static summary, the same way the round number does above — a card
-          // settles exactly once, so its index is a stable event id.
-          <CardResultBeat key={`card-${view.cardBeat.challengeIndex}`}
-            beat={view.cardBeat} className="hidden md:flex" />
-        ) : view.roundBeat ? (
-          <RoundResultBeat key={view.roundBeat.settlement.roundNumber}
-            settlement={view.roundBeat.settlement} viewerSlot={view.roundBeat.viewerSlot}
-            feedback={view.roundBeat.feedback ?? null}
-            pointsMatch={view.roundBeat.pointsMatch === true}
-            className="hidden md:flex" />
-        ) : null}
-        {/* RA10: the timer block sits behind a brass hairline, scoreboard-style,
-            so the clock reads as its own instrument. Border only — the strip's
-            reserved min-height is untouched. */}
-        <div className="flex items-center gap-3 sm:border-l sm:border-[#b9934c]/30 sm:pl-4">
-          {(header.playtestNote || header.presenceNote) && (
-            <div className="hidden text-right sm:block">
-              {header.playtestNote && (
-                <p data-testid="ranked-playtest-label"
-                  className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {header.playtestNote}
-                </p>
-              )}
-              {header.presenceNote && (
-                <p data-testid="ranked-presence" className="text-[11px] text-muted-foreground">{header.presenceNote}</p>
-              )}
-            </div>
-          )}
-          {header.timer && (
-            <TimerDisplay timer={header.timer} label={header.timerLabel}
-              // Absent on every Ranked and Tutorial clock, which is why
-              // both still read "of M:SS shared round".
-              durationNote={header.timerNotes?.duration}
-              expiredNote={header.timerNotes?.expired} />
           )}
         </div>
       </section>
@@ -376,18 +408,6 @@ export function CanonicalArena({
         </div>
       )}
       </div>
-
-      {/* Mobile-only presence/playtest line (hidden in the strip on <sm). */}
-      {(header.playtestNote || header.presenceNote) && (
-        <div className="flex flex-wrap gap-x-3 px-1 sm:hidden">
-          {header.playtestNote && (
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              {header.playtestNote}
-            </span>
-          )}
-          {header.presenceNote && <span className="text-[11px] text-muted-foreground">{header.presenceNote}</span>}
-        </div>
-      )}
 
       {/* Arena body: You ⚔ focus ⚔ Opponent. Ordinary flow — the centre column
           is NOT a scroll container; the page scrolls. `items-start` keeps the

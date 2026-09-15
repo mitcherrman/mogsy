@@ -313,6 +313,26 @@ export interface RoundHistoryEntry {
    * would put the award on screen twice under the wrong name.
    */
   pointsAwarded?: number | null;
+  /**
+   * RM1 Pass 1 — the award's TWO HALVES, preserved rather than merged.
+   *
+   * `pointsAwarded` above is the engine's banked total, and a total cannot be
+   * unmade: `+3` is `3 base` on one module and `2 base + 1 speed` on another,
+   * and the module-history bubble has to tell those apart — it prints the BASE
+   * figure and flags the bonus as a separate mark, never as part of the number.
+   *
+   * Both are `null` for exactly the same reasons `pointsAwarded` is: an hp
+   * round, or a settlement from a backend that predates `module_points`. Null
+   * is "the settlement did not say", which is a different statement from `0`,
+   * and nothing here substitutes one for the other.
+   *
+   * Straight pass-through of `ModulePointsAward.basePoints` and
+   * `.speedBonusPoints`. NO scoring rule is applied, restated or re-derived
+   * here — in particular "did this earn a bonus" is `speedBonusPoints > 0`,
+   * the server's own answer, and never a timing comparison of our own.
+   */
+  basePoints?: number | null;
+  speedBonusPoints?: number | null;
   /** Damage this player DEALT. 0 = none. */
   dealt: number;
   /** Damage this player TOOK. 0 = none. */
