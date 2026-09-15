@@ -3,7 +3,9 @@
 - **Audit:** complete (read-only).
 - **Pass 1 — module scoring/history plumbing:** COMPLETE. Branch `rm1/pass1-module-history`,
   worktree `/Users/macmoney/mogsy-wt-rm1-pass1`, based on `origin/main` (`a3a35921`). Uncommitted.
-- **Pass 2 — banner + Match Header redesign:** NOT STARTED. Awaiting review of Pass 1.
+- **Pass 2A — duel banner + bubble integration:** COMPLETE, committed `8144d5c0`, visually verified.
+- **Pass 2B — Match Header, central timer/result, score animations, Meta Reflex `+1`:** NOT STARTED.
+  Paused for review of 2A, as instructed.
 
 Audited: `mogsy` frontend. Backend repo `League_Combat_Simulator` inspected for payload
 availability only — **no backend change was made or is needed.**
@@ -245,3 +247,97 @@ which is already in the history rows. Per-card `+1` animation is Pass 2.
 
 ES1 remains the conflict surface: `MatchOverFrame` and `CombatantPanel` are shared, and the
 end-screen rows belong in the `game-results` stack consuming this same `ModuleBubble`.
+
+
+---
+
+# Pass 2A — duel banner + module-history integration (COMPLETE)
+
+Committed `8144d5c0` on `rm1/pass1-module-history`. Visually verified at 1500px and 375px.
+
+## Files changed
+
+| File | Change |
+| --- | --- |
+| `src/index.css` | New `.ranked-banner` block: two clipped layers (edge + navy face), `drop-shadow` float, per-side and per-outcome edge colour, narrow-viewport taper. |
+| `src/components/ranked-arena/CombatantPanel.tsx` | New opt-in `presentation?: "card" \| "banner"` (default `card`); new `ModuleHistoryStrip`; emits `data-presentation` / `data-side` / `data-outcome`. |
+| `src/lib/ranked-core/arenaView.ts` | `ArenaRail` (combatant) gains optional `presentation`. |
+| `src/components/ranked-arena/CanonicalArena.tsx` | Relays it. Chooses nothing. |
+| `src/pages/quiz-ranked/QuizRankedMatch.tsx` | Ranked names `presentation: "banner"` — the only caller that does. |
+| `src/pages/dev/ranked-arena-inspector/RankedArenaInspector.tsx` | Three-state banner bench (rest / settled correct / settled +0) with a ten-module fixture per side. |
+| `src/components/ranked-arena/CombatantPanel.banner.test.tsx` | **NEW** — 10 tests. |
+| `QuizRankedMatch.phase11.test.tsx`, `QuizRankedMatch.revealBeat.test.tsx` | Renamed onto the new history surface; invariants unchanged. |
+
+## Why the edge is a layer and not a border
+
+`clip-path` removes an element's border along with everything outside the polygon, so a
+pointed shape **cannot** carry a CSS border — the three straight sides would draw and the two
+diagonals of the point would not. So `::before` is the edge (side colour, clipped) and
+`::after` is the navy face (inset by the edge width, same clip). Even stroke on all five sides.
+The shadow is `filter: drop-shadow` for the same class of reason: `box-shadow` traces the
+element's box and would print a rectangle's shadow under a pointed object.
+
+The taper is **reserved** in `padding-bottom`, never overlaid, so no content can be seated
+inside it. `--banner-point` drops from 2rem to 1.1rem below `lg`.
+
+## Approved-direction checklist
+
+| Item | Status |
+| --- | --- |
+| Floating dark-navy banner, pointed bottom | Done |
+| No hanging rod / hardware | Done — floats on its own drop-shadow |
+| No large academy crest | Done |
+| No bottom slogans | Done |
+| Mascot, identity/role, points, answer/result state, history preserved | Done, same order |
+| Reads as a duel banner, not a navy rectangle | Confirmed visually at both widths |
+| No decorative clutter | Only the silhouette, the edge and the shadow were added |
+| Bubbles integrated as permanent history language | Done |
+| Chronological, comparable across both columns | Done — oldest-first on **both** sides |
+| Banner opt-in for non-Ranked consumers | Done — `presentation` defaults to `card`, tested |
+| No internal scroller | Tested |
+| Responsive preserved | Verified at 375px: bubbles wrap, rows stay aligned across columns |
+| Module Rail unchanged | Untouched |
+| Question Stage unchanged | Untouched |
+
+## The one deliberate reversal from the ledger
+
+The strip is **oldest-first**; the ledger it replaces was newest-first. A ledger is prose read
+from the top, so its newest row belongs next to the meter it explains. A strip of bubbles is
+*compared* — across the arena now, across two stacked rows on the end screen later — and that
+only works if the nth token is the nth module on both sides. Position still mirrors
+(`mirrorAlign`); the sequence does not.
+
+## Test results — Pass 2A
+
+| Suite | Result |
+| --- | --- |
+| `CombatantPanel.banner.test.tsx` | 10 passed |
+| Ranked + Daily + game-results + inspector + staff duel + playtest host | **119 files / 1588 tests passed** |
+| `tsc --noEmit` | no new errors in any touched file |
+
+One pre-existing failure exists on `origin/main` and is unrelated: `LobbyPreviewPage.test.tsx`
+> "is imported by the preview page ALONE" (confirmed failing with Pass 2A stashed).
+
+## Visual QA harness
+
+`/dev/ranked-arena-inspector` → states `RM1 — duel banners (rest)` /
+`(settled correct)` / `(settled +0)`. Dev server config `rm1-banner-fe` (port 5998) registered
+in the **primary cwd's** `.claude/launch.json` — `preview_start` resolves launch configs against
+the primary checkout, never the worktree, so a worktree-local config is silently ignored.
+
+## Next implementation step — Pass 2B (awaiting review)
+
+1. `CanonicalArena.tsx` — simplify the header strip; demote playtest/presence notes; move the
+   timer toward the centre as the dominant element. Keep the reserved `min-h` and the single
+   result slot (no second permanent result box).
+2. `TimerDisplay.tsx` — large central variant plus a prop-driven state machine:
+   `timer → result (CORRECT / +2 POINTS) → next module title → timer`. Driven by the existing
+   `revealHold` window; no second timing system.
+3. `CombatantPanel.tsx` — floating award pops (`+2`, then `+1` if a bonus) over `ScoreTally`,
+   from `feedback` (already carries the base/bonus split, for both players).
+4. `index.css` — rotation and pop keyframes, transform/opacity only, reduced-motion guarded.
+5. Meta Reflex per-card `+1` pop from `cardBeat`; the permanent bubble stays the module's final
+   base total.
+
+Not in scope, still: the ES1 end-screen comparison UI. `mogsy-es1` is a separate checkout
+(`es1-isolated-fe`), so `MatchOverFrame` / `game-results` remain the conflict surface.
