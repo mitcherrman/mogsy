@@ -6,6 +6,8 @@
 - **Pass 2A — duel banner + bubble integration:** COMPLETE, committed `8144d5c0`, visually verified.
 - **Pass 2B — Match Header, central timer/result, score animations, Meta Reflex `+1`:** COMPLETE.
   Paused for review, as instructed.
+- **Integration verification:** PASSED. Rebased onto `origin/main` `ac2f5745`.
+- **RM1 is IMPLEMENTATION-COMPLETE and ready for merge.**
 - **ES1 end-screen bubble comparison:** NOT STARTED, deliberately.
 
 Audited: `mogsy` frontend. Backend repo `League_Combat_Simulator` inspected for payload
@@ -507,3 +509,75 @@ stashing: `LobbyPreviewPage.test.tsx` › "is imported by the preview page ALONE
 The end-screen comparison: viewer's ten bubbles over the opponent's ten, from
 `projectRoundHistory` (proved feasible in Pass 1). `mogsy-es1` is a separate checkout
 (`es1-isolated-fe`), so `MatchOverFrame` and `game-results` remain the conflict surface.
+
+
+---
+
+# RM1 integration verification — PASSED
+
+Branch `rm1/pass1-module-history`, rebased onto `origin/main` `ac2f5745` (which gained FB1's
+`reportSnapshot`; one adjacent-import conflict in `arenaView.ts`, both sides kept).
+
+## Change surface — 25 files, 4 commits
+
+Nine product files, one stylesheet, nine test files, one dev harness, this document.
+**Nothing outside `ranked-arena` / `ranked-core` / `quiz-ranked` is touched.**
+
+## Scenario matrix
+
+| Scenario | Verified by |
+| --- | --- |
+| standard correct module | `rm1Feedback`, `rm1Integration`, inspector |
+| incorrect / `+0` | `rm1Feedback`, inspector (`settled +0`: both edges red, `INCORRECT +0`) |
+| base + speed bonus | `AwardPops`, `rm1Feedback`, live DOM sampling |
+| asymmetric viewer/opponent awards | `rm1Feedback`, `rm1Integration`, live DOM (`+2` vs `+3`) |
+| timeout | `rm1Feedback` (`TIMED OUT` / `+0 POINTS`) |
+| Meta Reflex | `rm1Feedback` (4/5, 5/5 + bonus, final bubble at base total) |
+| Bot / unrated | `rm1Feedback`, inspector header (`RANKED DUEL · VS BOT` / `UNRATED`) |
+| desktop | Inspector at 1500px |
+| narrow / mobile | Inspector at 375px and 390px — **no horizontal scroll** (`scrollWidth == clientWidth`) |
+| reconnect / backfill | `rm1Feedback` — 3 backfilled modules → 3 bubbles, **0** payouts, centre on a clock |
+
+## Confirmations
+
+- **Module-history bubbles correct.** 10 per column at 1500px and 390px; live DOM count is
+  10 bubbles + 4 speed dots (viewer) and 10 + 2 (opponent), matching the fixtures exactly.
+  Index *i* is module *i* in both rows; the unscored module renders neutral, not a red zero.
+- **Payouts do not duplicate.** Sampled live in the browser: t=100ms viewer `+2` and opponent
+  `+3`; t=500ms the viewer's `+1` bonus has joined and the opponent still has none; t=1500ms all
+  cleared. Plus the replay guards under test — same event re-delivered 5×: silent; backfill:
+  silent.
+- **Central sequence correct.** `rm1Integration` drives the real arena: it opens on the module's
+  NAME (`Items`), then hands the centre to a running `0:08`. The result face outranks both
+  during the beat.
+- **Quiet previous-module record persists.** `rm1Integration` asserts the loud
+  `central-result-*` and the persistent `ranked-last-result-*` simultaneously — two surfaces,
+  two lifetimes, two ids.
+- **Question Stage unchanged.** `git diff` over all four commits shows **zero** changes to
+  `AnswerGrid`, `QuestionPanel`, `question-surface/`, or any `ranked-question-stage` /
+  `ranked-folio` CSS. Pinned by `rm1Integration`.
+- **Module Rail unchanged.** **Zero** changes to `RoundTimeline.tsx`, `roundTimeline.ts` or
+  `components/quiz/timeline`. No coexistence adjustment was needed. `rm1Integration` asserts it
+  is still the shell's last child.
+- **Non-Ranked consumers unchanged.** `presentation` and `award` both default to absent, so the
+  Daily, staff duel, inspector and playtest host keep the card, the ledger and no payout layer —
+  asserted in `rm1Integration` and `CombatantPanel.banner.test`, and confirmed visually.
+
+## Final test results
+
+**209 files / 3458 tests passed**, 4 skipped. `tsc --noEmit` clean.
+
+One failure, pre-existing on `origin/main` and unrelated: `LobbyPreviewPage.test.tsx` › "is
+imported by the preview page ALONE". Its cause is `src/test/security/pt14EntitlementSources.test.ts`
+referencing `lobbyPreviewFixtures`; RM1 touches no lobby-preview file.
+
+## Merge readiness
+
+Ready. Rebased, linear on `ac2f5745`, no conflicts outstanding.
+Note that `origin/main` moves often — re-fetch and re-run before merging.
+
+## Not started, deliberately
+
+The ES1 end-screen comparison (viewer's ten bubbles over the opponent's ten). The data and the
+`ModuleBubble` component are in place and proved feasible in Pass 1. `mogsy-es1` is a separate
+checkout (`es1-isolated-fe`), so `MatchOverFrame` and `game-results` remain the conflict surface.
