@@ -126,6 +126,58 @@ points, module-history bubbles and the state pill all untouched.
 - `tsc --noEmit` — 13 pre-existing errors, **none in any file this branch
   touches** (admin, combat-lab team-sim, community, feedback, pglite).
 
+## Follow-up pass — the fit invariant closed below 1280
+
+The first pass left two gaps the owner rejected: `<760px` height fell back to
+page scrolling, and ~1024×800 still overflowed by ~30px. Causes:
+
+1. **The budget was wrong, not merely tight.** `--ranked-chrome-h` charged a
+   flat 82px for the ability dock. The arena mounts that dock only for a mode
+   that publishes an `abilityHud` — which Ranked does only on a **progression**
+   match. A Ranked points match (the RM1 banner shell) was being billed for a
+   band that is not on its screen. That alone was most of the 1024 shortfall.
+2. **Chrome air.** The chrome title row reserved `lg:min-h-8` for one 28px text
+   line; the band gaps were `gap-2`; the central display's reserved box was
+   `3.25rem` around 48px digits.
+3. **The media floor was arbitrary.** 7.5rem was picked for its arithmetic, not
+   measured against anything.
+
+Corrections, all taken from chrome and reserved air — **zero from question
+content**, and the banner geometry untouched:
+
+| | change | recovers |
+| --- | --- | --- |
+| dock term | `--ranked-dock-h`, 0 by default, 5.125rem only under `.ranked-shell[data-ability-dock="true"]`; `CanonicalArena` publishes the `abilityHud` fact it already branches on | **82px** on a points match |
+| title row | `lg:min-h-8` → `lg:min-h-7` (the row holds one 28px line — this is the geometry the row was always documented as having) | 4px |
+| band gaps | `lg:gap-2` → `lg:gap-1.5`, ×3 | 6px |
+| display box | `CentralStage` `min-h-[3.25rem]` → `min-h-[3rem]`. **The timer's own scale is untouched** (`text-4xl`/`sm:text-5xl`/`min-[1500px]:text-6xl`, `leading-none`) and is now asserted | 4px |
+| media floor | 7.5rem → **4.5rem = 72px, the compact plate's own intrinsic height** — the shortest band the corpus actually ships, so at the floor the region is a real band, not cropped art | 24px |
+
+**Resulting chrome:** 230px without the dock, 312px with it.
+
+**Fit envelope** (minimum viewport height at which the shell seats whole):
+
+| width | Ranked points match | progression match |
+| --- | --- | --- |
+| 1024–1152 | **660px** | 742px |
+| 1280–1440 | **616px** | 698px |
+| 1512–2560 | **628px** | 710px |
+
+Covered by geometry tests as a **grid**, not a handful of laptops: widths
+1024 · 1152 · 1280 · 1366 · 1440 · 1512 · 1680 · 1920 · 2560 × heights
+660 · 678 · 700 · 720 · 768 · 800 · 864 · 900 · 1080 · 1440 (points), and
+746 · 768 · 800 · 864 · 900 · 1080 · 1440 (progression).
+
+Also asserted: the prompt and answer reserves are **height- and dock-
+independent at every combination**, the dock term is exactly 82px and is
+charged only when mounted, and every pre-existing MEASURED stage height is
+reproduced exactly on a tall viewport.
+
+**Honest limit:** below those heights the page scrolls rather than cropping.
+The floor is arithmetic, not a choice — at 1024 wide the prompt and answer
+reserves alone are 288px of the 426px minimum stage, and cutting those is the
+one thing that would crush question content.
+
 ## Risks / manual verification
 
 1. **The chrome budget is a measured constant.** If a band's height changes, the
@@ -137,7 +189,9 @@ points, module-history bubbles and the state pill all untouched.
 3. **The Daily Challenge shares this arena** and has slightly different chrome,
    so its budget estimate is conservative rather than exact. Effect is limited
    to the media band's height on short viewports.
-4. **The banner is CSS-only and unverified visually by Claude** (per the brief).
+4. Below the fit envelope above, the shell still grows the page. Closing that
+   would mean cutting the prompt/answer reserves below their measured content.
+5. **The banner is CSS-only and unverified visually by Claude** (per the brief).
    Worth an eye: the chamfered shoulders at the narrowest column width, the
    sigil roundel's scale against each role mascot, and the 3.25rem point at
    `lg` where the columns are shortest.

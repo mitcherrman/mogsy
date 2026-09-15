@@ -673,20 +673,34 @@
    ======================================================================== */
 @media (min-width: 1024px) {
   .ranked-shell {
+    /* The ability dock is the ONE band that is not always mounted: the arena
+       renders it only when the mode publishes an `abilityHud`, which Ranked
+       does only on a progression match. Charging for it unconditionally is
+       simply a wrong budget — it billed a points match 82px for a dock that is
+       not on its screen, which is most of why the shell still did not fit at
+       1024. So the term is a token, zero by default, and the arena turns it on
+       by stating the fact it already knows. */
+    --ranked-dock-h: 0rem;
     --ranked-chrome-h: calc(
         0.25rem     /* shell pt-1 */
-      + 2rem        /* chrome title row — arenaHeaderRowClass, lg:min-h-8 */
+      + 1.75rem     /* chrome title row — arenaHeaderRowClass, lg:min-h-7 */
       + 0.25rem     /* shell lg:gap-1, chrome row -> arena column */
-      + 4.875rem    /* Match Header strip: 68px of display + py-1 + 2px border */
-      + 0.5rem      /* lg:gap-2, header -> arena grid */
-      + 0.5rem      /* lg:gap-2, arena grid -> HUD row */
-      + 7.125rem    /* HUD row: ability dock 76px + gap-1.5 + 32px status line */
-      + 0.5rem      /* lg:gap-2, HUD row -> Module Rail */
+      + 4.625rem    /* Match Header strip: 64px of display + py-1 + 2px border */
+      + 0.375rem    /* lg:gap-1.5, header -> arena grid */
+      + 0.375rem    /* lg:gap-1.5, arena grid -> HUD row */
+      + var(--ranked-dock-h)  /* ability dock + its gap, when mounted */
+      + 2rem        /* HUD status line, which also seats the quiet control */
+      + 0.375rem    /* lg:gap-1.5, HUD row -> Module Rail */
       + 3.875rem    /* Module Rail: 1px rule + 0.4rem + 3.4rem viewport */
       + 0.5rem      /* shell pb-2 */
     );
     --qs-avail: calc(var(--ranked-stage-h) - var(--ranked-chrome-h));
   }
+  /* 82px = the dock's 76px (label row + one 56px slot row) plus the HUD
+     column's own `gap-1.5` above the status line. Declared on the same
+     selector, so the arena's inner shell — the element that carries the
+     attribute — recomputes the whole budget for itself. */
+  .ranked-shell[data-ability-dock="true"] { --ranked-dock-h: 5.125rem; }
 }
 .ranked-shell::before {
   content: "";
@@ -2081,14 +2095,14 @@
       - 0.75rem - var(--qs-prompt-h, 0px)  /* gap-3 + the prompt reserve */
       - 0.75rem - var(--qs-answers-h, 0px) /* gap-3 + the answer reserve */
     );
-    /* 7.5rem — the floor. Still well clear of the compact plate's own 72px,
-       so the shortest shipped band is never the thing being squeezed; and low
-       enough that the whole Match Shell seats itself down to a ~760px viewport
-       at 1280 and up, which covers a 13" laptop in an ordinary browser window.
-       Below that the page scrolls, which is the browser's job — the arena does
-       not clip a question to avoid it. */
-    --qs-media-h: clamp(7.5rem, var(--qs-media-fit), 16rem);
-    --qs-media-max: clamp(7.5rem, var(--qs-media-fit), 16rem);
+    /* 4.5rem — the floor, and it is a MEASURED one: 72px is the compact
+       plate's own intrinsic height, the shortest band the shipped corpus
+       contains. At the floor the region is exactly the smallest real band, so
+       the reserve has stopped reserving air and has not started cropping
+       anything — a taller band still grows the card, as every reserve here
+       does. This is what lets the shell seat itself at 1024 wide. */
+    --qs-media-h: clamp(4.5rem, var(--qs-media-fit), 16rem);
+    --qs-media-max: clamp(4.5rem, var(--qs-media-fit), 16rem);
     /* 152px — the category line (19px) plus FIVE prompt lines at 18px/1.45.
        Five, not four, because the centre track is at its narrowest here and the
        longest prompt in the playtest bank (202 characters) wraps to five; at

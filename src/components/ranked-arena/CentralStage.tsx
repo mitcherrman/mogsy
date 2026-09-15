@@ -147,7 +147,7 @@ export function CentralStage({
       // one face, and which face is up is observable without reading text.
       data-testid="timer-display"
       data-stage={stage.kind}
-      className="relative flex min-h-[3.25rem] min-w-[9rem] flex-col items-center
+      className="relative flex min-h-[3rem] min-w-[9rem] flex-col items-center
         justify-center text-center sm:min-w-[11rem]"
     >
       {/* `key` on the FACE is the whole of the turn: a new face remounts this

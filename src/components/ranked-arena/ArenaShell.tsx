@@ -124,5 +124,5 @@ export function ArenaShell({
 export function arenaHeaderRowClass(_size: "default" | "wide" = "default"): string {
   void _size;
   return "flex min-h-7 shrink-0 items-center justify-between gap-3"
-    + " lg:min-h-8 lg:pl-14 lg:pr-56";
+    + " lg:min-h-7 lg:pl-14 lg:pr-56";
 }

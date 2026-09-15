@@ -106,7 +106,13 @@ describe("the stage budget", () => {
     // Filling `--app-header-h` here held a full-width strip open for chrome
     // that is `position: fixed` and does not need it. Those 24px are the
     // question's now; the INSETS are what keep this row clear of the chips.
-    expect(header.className).toContain("lg:min-h-8");
+    //
+    // 1.75rem, down from 2rem: the row holds ONE 28px text line, which is what
+    // this test is named for, so `min-h-8` was 4px of band the row was sized
+    // to rather than to its text. The RM1 fit pass took that back for the
+    // question and paid for it in `--ranked-chrome-h`.
+    expect(header.className).toContain("lg:min-h-7");
+    expect(header.className).not.toContain("lg:min-h-8");
     expect(header.className).not.toContain("lg:min-h-[var(--app-header-h)]");
   });
 

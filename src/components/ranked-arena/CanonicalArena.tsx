@@ -252,8 +252,16 @@ export function CanonicalArena({
 
        Below `lg` this is the ordinary flow column it has always been: the
        arena stacks there and its natural height exceeds any narrow viewport. */}
-    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-2"
-      data-testid="ranked-match" data-reveal-hold={view.revealHold ? "true" : "false"}>
+    <div className="ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5"
+      data-testid="ranked-match" data-reveal-hold={view.revealHold ? "true" : "false"}
+      // THE ONE BAND THAT IS NOT ALWAYS THERE, stated rather than assumed.
+      // `--ranked-chrome-h` has to know whether the ability dock is mounted,
+      // and CSS cannot see a sibling. This is not a new fact and not a new
+      // decision — it is the same `abilityHud` the HUD row below branches on,
+      // published so the budget can read it. A budget that charged for a dock
+      // a points match never mounts is most of why the shell still did not
+      // fit at 1024.
+      data-ability-dock={abilityHud ? "true" : "false"}>
       {/* The strip, plus the one thing that hangs BENEATH it.
           `.ranked-panel` is `overflow: hidden`, so the transcript cannot live
           inside the strip — it would be clipped by it. This wrapper is the
