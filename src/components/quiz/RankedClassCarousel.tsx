@@ -4,7 +4,7 @@
  * An RPG character-select stage for the five canonical League roles: the
  * selected role stands large and centred, its two neighbours sit smaller and
  * dimmer to either side, and moving left/right slides the ring around. The
- * roles, their order, their labels and their blurbs all come from the ONE
+ * roles, their order and their labels all come from the ONE
  * frontend definition in `@/lib/ranked-public/roles` — this file never lists
  * them itself.
  *
@@ -51,7 +51,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import {
   RANKED_ROLES,
-  RANKED_ROLE_BLURBS,
   RANKED_ROLE_LABELS,
   type RankedRole,
 } from "@/lib/ranked-public/roles";
@@ -118,7 +117,6 @@ const SURFACE = {
     offStageLabel: "rgba(233,220,190,0.7)",
     /** How present the two neighbours are. */
     flankOpacity: 0.42,
-    blurb: "text-muted-foreground",
     dot: "rgba(233,220,190,0.25)",
     control:
       "border-[#c9a84c]/30 bg-[#060d1a]/70 text-[#e2c877] hover:border-[#c9a84c]/70 hover:bg-[#c9a84c]/10 focus-visible:ring-[#f0d78c]",
@@ -162,11 +160,6 @@ const SURFACE = {
        plainly readable (that is the label's). */
     offStageLabel: "#241708",
     flankOpacity: 0.72,
-    /* The role blurb is the longest run of small copy on the sheet, so it is
-       the line that decides whether the parchment reads as written or as
-       washed out. Darkened a step and taken to `font-medium`: at 400 weight
-       on a textured beige the stems were thin enough to shimmer. */
-    blurb: "text-[#3f2c14] font-medium",
     dot: "rgba(74,52,20,0.42)",
     control:
       "border-[#5c401c7a] bg-[#5c401c24] text-[#533808] hover:border-[#5c401cd9] hover:bg-[#5c401c33] focus-visible:ring-[#533808]",
@@ -496,16 +489,26 @@ export default function RankedClassCarousel({
                   width: isCentre ? "72%" : "60%",
                 }}
               />
-              {/* The NAME is the identity. Nothing above it may replace it —
-                  which is why the selected one is marked by SIZE and by a
-                  ruled underline rather than by colour alone. */}
+              {/* The NAME is the identity, and it is ALWAYS in the slide —
+                  a role option must be named by its role, so this span is the
+                  button's accessible name and may never be deleted.
+
+                  RL1: the SELECTED role's name is no longer drawn here. It is
+                  printed in the stage-control row below, clear of the mascot,
+                  in the slot the role blurb used to occupy; drawn in both
+                  places it would state the role twice. So the centre slide
+                  keeps the name for assistive tech and paints nothing, while
+                  the flanks — which have no second home — still show theirs.
+                  `sr-only` and not `hidden`: hidden would take the name out of
+                  the accessibility tree along with the ink. */}
               <span
-                className={`absolute bottom-0 whitespace-nowrap font-extrabold uppercase ${
-                  isCentre ? "text-[15px] tracking-[0.3em]" : "text-[10px] tracking-[0.1em]"
+                className={`whitespace-nowrap font-extrabold uppercase ${
+                  isCentre
+                    ? "sr-only"
+                    : "absolute bottom-0 text-[10px] tracking-[0.1em]"
                 }`}
                 style={{
-                  color: isCentre ? accent : skin.offStageLabel,
-                  textShadow: isCentre ? skin.press : undefined,
+                  color: skin.offStageLabel,
                   /* The name is counter-scaled out of the slide's own
                      transform. A role must be identifiable by TEXT and never
                      by its picture alone, and a label that inherits a 0.46
@@ -514,15 +517,6 @@ export default function RankedClassCarousel({
                      labelled with does not. */
                   transform: isCentre ? undefined : `scale(${1 / FLANK_SCALE})`,
                   transformOrigin: isCentre ? undefined : "50% 100%",
-                  /* The selected role's name is underscored the way a
-                     manuscript marks an entry — the rule is drawn in the
-                     role's own ink and fades at both ends, so it reads as
-                     penned under the word rather than as a UI underline. */
-                  paddingBottom: isCentre ? 4 : undefined,
-                  borderBottom: isCentre ? `1.5px solid ${accent}` : undefined,
-                  borderImage: isCentre
-                    ? `linear-gradient(90deg, transparent 0%, ${accent} 22%, ${accent} 78%, transparent 100%) 1`
-                    : undefined,
                 }}
               >
                 {RANKED_ROLE_LABELS[roleId]}
@@ -588,8 +582,26 @@ export default function RankedClassCarousel({
           onClick={() => moveTo(viewIndex - 1, false)}
           tone={skin.control}
         />
-        <p className={`min-w-0 flex-1 text-center text-[12px] leading-snug ${skin.blurb}`}>
-          {busyRole === activeRole ? "Saving…" : RANKED_ROLE_BLURBS[activeRole]}
+        {/* RL1 — the selected role's NAME, where its description used to be.
+            The row is unchanged otherwise: the same two arrows, the same
+            slot between them. The descriptive line ("The centre lane.") is
+            gone and nothing replaces it; the only copy here is the role's own
+            label, moved down out of the mascot's feet. `Saving…` still takes
+            the slot while a write is in flight — it is state, not flavour. */}
+        <p
+          data-testid="ranked-class-active-label"
+          className="min-w-0 flex-1 whitespace-nowrap text-center text-[15px] font-extrabold uppercase tracking-[0.3em]"
+          style={{
+            color: activeAccent,
+            textShadow: skin.press,
+            /* The manuscript rule that used to be penned under the name in
+               the slide travels with it. Same ink, same fade at both ends. */
+            paddingBottom: 4,
+            borderBottom: `1.5px solid ${activeAccent}`,
+            borderImage: `linear-gradient(90deg, transparent 0%, ${activeAccent} 22%, ${activeAccent} 78%, transparent 100%) 1`,
+          }}
+        >
+          {busyRole === activeRole ? "Saving…" : RANKED_ROLE_LABELS[activeRole]}
         </p>
         <StageArrow direction="next" onClick={() => moveTo(viewIndex + 1, false)} tone={skin.control} />
       </div>

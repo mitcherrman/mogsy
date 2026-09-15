@@ -5,25 +5,41 @@
  * — three SINGLE responsibilities, one per scroll. The whole point of the
  * restructure is that a reader can name what each sheet is for at a glance:
  *
- *   LEFT    ROLE.    "What am I playing, and how strong am I at it?"
- *                    The five-role stage, and the selected role's own MASTERY
- *                    RECORD — games, win rate, rating movement, last played —
- *                    counted from the account's real match rows.
- *   CENTRE  RANKED.  "Where do I stand, and what just happened?"
- *                    The LEAGUECRAFT wordmark, the Ranked emblem, the tier and
- *                    its progression, the one PLAY seal, and beneath it the
- *                    RECENT RANKED ledger.
+ *   LEFT    RANKED STANDING.  "Where do I stand in Ranked?"
+ *                    The Ranked emblem, the tier, the rating and its
+ *                    progression, the placement state, and the Ranked record
+ *                    that standing was earned with — recent results, and the
+ *                    mastery record for the role the centre stage is pointing
+ *                    at. Counted from the account's real match rows.
+ *   CENTRE  CHOOSE ROLE + PLAY.  "What am I playing, and shall we go?"
+ *                    ONE heading — CHOOSE YOUR ROLE — the five-role stage
+ *                    with the selected role's mascot and name, and the one
+ *                    PLAY seal immediately beneath it. Nothing else: no
+ *                    wordmark, no eyebrow, no role blurb, no stakes footer.
+ *                    The page's one decision, said once.
  *   RIGHT   ACADEMY. "Who am I overall, and what are my long-term records?"
- *                    The player's portrait and Academy standing, and their
- *                    lifetime personal records.
+ *                    The player's Academy standing and lifetime personal
+ *                    records. The Mogzy portrait that stood at the head of
+ *                    this sheet is REMOVED and its space is deliberately held
+ *                    open — see `hero-portrait-space`.
  *
- * WHAT MOVED, AND WHY
- * ───────────────────
- * Recent Ranked history was on the RIGHT. It is Ranked, and the right sheet is
- * the Academy sheet, so it moved under PLAY where the rest of the competitive
- * identity already lives — a result ledger belongs beside the thing that
- * produced it. The right sheet's Ranked standing chip went with it: two sheets
- * naming the same ladder was the exact confusion this pass exists to end.
+ * WHAT MOVED, AND WHY (RL1)
+ * ──────────────────────────
+ * The left and centre RESPONSIBILITIES were swapped. Standing used to be the
+ * centre and role selection the left flank, which put a ceremonial emblem,
+ * a rating and a progress bar between the reader and the seal they came to
+ * press. The centre is the page's one DECISION; standing is the context you
+ * read before making one, and context belongs on a flank.
+ *
+ * So: emblem, tier, rating, progression, placements and the Ranked result
+ * ledgers went LEFT, whole. The role stage, its mascot and the PLAY seal came
+ * to the CENTRE, in that reading order. The Academy sheet on the right is
+ * untouched, and still carries no Ranked identity — the standing chip and the
+ * recent results it once held live on the standing sheet now.
+ *
+ * NOTHING BEHIND THE GLASS MOVED. No rating, placement, history, role or
+ * matchmaking logic changed in this pass: the same props, the same callbacks,
+ * the same derivations, rendered in different columns.
  *
  * PLACEMENTS ARE A STATE, NOT A SCREEN
  * ────────────────────────────────────
@@ -65,7 +81,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { History, Shield, TrendingDown, TrendingUp } from "lucide-react";
+import { History, Shield } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import RankCrown from "@/components/ranked/RankCrown";
@@ -74,7 +90,6 @@ import RankedClassCarousel from "@/components/quiz/RankedClassCarousel";
 import RankedPlayGem from "@/components/quiz/RankedPlayGem";
 import LobbyPanel from "@/components/quiz/LobbyPanel";
 import { LEAGUECRAFT_INK } from "@/components/quiz/leaguecraft-ink";
-import { MOGZY_MASCOT_ASSETS } from "@/components/mascot/mascot-assets";
 import { progressAttempts, resolveQuizAssetUrl, type QuizProgress } from "@/lib/quiz/api";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import { RANKED_ROLE_LABELS, type RankedRole } from "@/lib/ranked-public/roles";
@@ -233,6 +248,11 @@ export default function RankedLobbyHero({
   matchHistory?: readonly MatchHistoryEntryView[];
   matchHistoryLoading?: boolean;
   displayName?: string | null;
+  /** RL1: NO LONGER RENDERED. The Academy portrait was removed and its space
+   *  held open, so nothing on this surface paints an avatar. The prop stays
+   *  on the contract — the host still supplies it, and changing the host is
+   *  not part of this pass — deliberately unread until that space is given a
+   *  decision. */
   avatarUrl?: string | null;
   signedIn?: boolean;
   /**
@@ -285,85 +305,34 @@ export default function RankedLobbyHero({
 
   const recentMatches = matchHistory.slice(0, RECENT_LEDGER_ROWS);
 
-  const portrait = avatarUrl || MOGZY_MASCOT_ASSETS.base;
-
   return (
     <section
       data-testid="ranked-hero"
-      className="relative grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.05fr)_minmax(0,0.9fr)] lg:gap-4 xl:gap-6"
+      className="relative grid grid-cols-1 items-stretch gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.9fr)] lg:gap-4 xl:gap-6"
     >
-      {/* ══ LEFT — ROLE: the choice, and the record for it ═════════════════ */}
-      <div className="order-2 flex min-w-0 flex-col lg:order-1" data-testid="hero-role-column">
-        <LobbyPanel variant="scroll" order="left">
-        {/* The lobby's one genuine pre-match DECISION. `ceremonial` gives it
-            display size and — deliberately — no rule at all, so it reads as
-            the title OF the selection below it rather than as a caption with
-            a widget underneath. See `ColumnHeading`. */}
-        <ColumnHeading ceremonial>Choose your role</ColumnHeading>
-        <RankedClassCarousel
-          /* Sits directly under the title with no divider between them: the
-             two are one composed thing, and any gap here re-creates exactly
-             the separation the title was enlarged to break. */
-          className="mt-0.5"
-          value={rankedRole}
-          onSelect={(role) => onSelectRole?.(role)}
-          onViewChange={setBrowsedRole}
-          disabled={roleSelectDisabled || !onSelectRole}
-          busyRole={roleSaving}
-          /* The stage's own strip is off: the ledger below is the same tally
-             at more depth, and two records stacked would state the W-L twice
-             and disagree about which one is the summary. */
-          showRecord={false}
-          surface="parchment"
-        />
-        <RoleMasteryLedger
-          role={browsedRole}
-          mastery={roleMastery[browsedRole] ?? null}
-          demoScore={demoRoleMastery?.[browsedRole] ?? null}
-          loading={matchHistoryLoading}
-        />
-        </LobbyPanel>
-      </div>
+      {/* ══ LEFT — RANKED STANDING: "Where do I stand in Ranked?" ═════════
+          RL1: the competitive identity moved here from the centre, whole —
+          the emblem, the tier, the rating and its progression, the placement
+          state, and the Ranked record that state produced. Nothing about it
+          was recomputed on the way across: every figure is still the
+          backend's own, rendered as given.
 
-      {/* ══ CENTRE — RANKED: standing, the action, and what just happened ══ */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="order-1 flex min-w-0 flex-col lg:order-2"
-        data-testid="hero-play-column"
-      >
-        <LobbyPanel variant="scroll" order="centre" emphasis className="items-center text-center">
-        {/* The wordmark is sized against the SCROLL, not the viewport —
-            `.lc-scroll-wordmark` measures it in container units, so it can
-            never overhang its own sheet at any width. Struck brass on the
-            sheet rather than a gold glow over it. */}
-        <h1
-          className="lc-scroll-wordmark bg-gradient-to-b from-[#8a6414] via-[#63450c] to-[#3f2b05] bg-clip-text font-black leading-none tracking-[0.14em]"
-          style={{
-            // `.theme-lol h1` sets a flat gold `color` and outranks Tailwind's
-            // single-class `.text-transparent`, so the clip-to-text gradient
-            // was being painted over by the theme and never reached the
-            // glyphs. Stated inline, where nothing outranks it.
-            color: "transparent",
-            WebkitTextFillColor: "transparent",
-            filter: "drop-shadow(0 1px 0 rgba(255,246,222,0.65))",
-          }}
-        >
-          LEAGUECRAFT
-        </h1>
-        <p
-          className="mt-1 text-[11px] font-extrabold uppercase tracking-[0.52em] sm:text-xs"
-          style={{ color: INK.accent, textShadow: INK.press }}
-        >
-          Ranked
-        </p>
+          The centre gave it up because the centre is the page's one DECISION
+          (choose a role, press Play) and standing is not a decision — it is
+          the context you read before making one. A column that held both put
+          a ceremonial emblem between the reader and the seal. */}
+      <div className="order-2 flex min-w-0 flex-col lg:order-1" data-testid="hero-standing-column">
+        <LobbyPanel variant="scroll" order="left">
+        <ColumnHeading>Ranked standing</ColumnHeading>
 
         {/* The Ranked emblem. One component owns the art, the halo, the
             baseline treatment, the glint and the fallback. This column states
             only WHICH tier and WHETHER it has been earned. */}
         <RankEmblem
-          className="mt-2"
+          /* `mx-auto`, not a centring wrapper: the panel's content column is
+             a flex column and `.lc-emblem` is a fixed-width item in it, so
+             auto side margins are what centre it here. */
+          className="mx-auto mt-1"
           variant="hero"
           emphasis="ceremonial"
           tier={emblemTier}
@@ -388,13 +357,13 @@ export default function RankedLobbyHero({
             system label like "Placement Series". */}
         <h2
           data-testid="hub-ranked-tier"
-          className="mt-1 text-xl font-extrabold uppercase tracking-[0.12em] sm:text-2xl"
+          className="mt-1 text-center text-xl font-extrabold uppercase tracking-[0.12em] sm:text-2xl"
           style={{ color: INK.strong, textShadow: INK.press }}
         >
           {showCompetitive ? tierLabel : rankedTierLabel(BASELINE_TIER)}
         </h2>
 
-        <div className="mt-0.5 w-full max-w-[17rem]">
+        <div className="mx-auto mt-0.5 w-full max-w-[17rem] text-center">
           {showCompetitive ? (
             <>
               <p
@@ -463,87 +432,115 @@ export default function RankedLobbyHero({
             </p>
           )}
         </div>
-
-        <RankedPlayGem
-          className="mt-3"
-          onClick={onPlayRanked}
-          disabled={playDisabled}
-          buttonRef={playButtonRef}
-        />
-
-        {/* Stakes, directly under the action they belong to. Wraps and carries
-            a tighter gap: stacked at 768 the sheet's own margin leaves ~206px
-            of writing area, and a fixed `gap-4` row overran it at both ends. */}
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-semibold uppercase tracking-wider">
-          <span className="flex items-center gap-1 text-[#0d3f28]">
-            <TrendingUp className="h-3 w-3" />
-            Win
-            <span className="tabular-nums text-[#0a3220]">+{ranked.estimatedGain}</span>
-            {/* No opacity here: on navy the suffix could be faded to sit back,
-                on parchment the same 0.7 took it to ~3:1. It is held back by
-                size and weight instead, which cost no contrast. */}
-            <span className="text-[9px] font-medium">XP</span>
-          </span>
-          <span aria-hidden className="h-3 w-px" style={{ background: INK.rule }} />
-          <span className="flex items-center gap-1 text-[#6c1a21]">
-            <TrendingDown className="h-3 w-3" />
-            Loss
-            <span className="tabular-nums text-[#571219]">−{ranked.estimatedLoss}</span>
-            <span className="text-[9px] font-medium">XP</span>
-          </span>
-        </div>
-
-        {/* ── Recent Ranked, moved here from the Academy sheet ───────────── */}
+        {/* ── The Ranked record this standing was earned with ──────────────
+            Results belong beside the standing they moved, which is now this
+            sheet. Both ledgers are the account's real match rows and neither
+            is recomputed here; the mastery ledger follows the role the CENTRE
+            stage is pointing at, so spinning the ring across the page updates
+            the record under the standing. */}
         <RecentRankedLedger
           entries={recentMatches}
           loading={matchHistoryLoading}
           className="mt-3"
+        />
+        <RoleMasteryLedger
+          role={browsedRole}
+          mastery={roleMastery[browsedRole] ?? null}
+          demoScore={demoRoleMastery?.[browsedRole] ?? null}
+          loading={matchHistoryLoading}
+        />
+        </LobbyPanel>
+      </div>
+
+      {/* ══ CENTRE — CHOOSE ROLE + PLAY: the page's one decision ═══════════
+          RL1: the primary interactive surface. It reads top to bottom as the
+          sentence the lobby is actually asking — Ranked → choose your Mogzy
+          role → press Play — with nothing ceremonial between the mascot and
+          the seal. The role mascots come from the ONE role→art map
+          (`getRankedRoleMascotPath`, inside `RankedClassCarousel`); this file
+          creates no second mapping and reads no role meaning out of the art.
+
+          RL1 ends the sheet at the seal: the Win/Loss XP footer, the role
+          blurb and the wordmark are removed and nothing replaces them. No
+          role, queue or matchmaking BEHAVIOUR changed — the same callbacks,
+          in a different column. */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="order-1 flex min-w-0 flex-col lg:order-2"
+        data-testid="hero-play-column"
+      >
+        <LobbyPanel variant="scroll" order="centre" emphasis className="items-center text-center">
+        {/* The lobby's one genuine pre-match DECISION, and since RL1 the only
+            heading on this sheet — the LEAGUECRAFT wordmark and the RANKED
+            eyebrow above it are gone and nothing replaces them. `ceremonial`
+            gives it display size and — deliberately — no rule at all, so it
+            reads as the title OF the selection below it rather than as a
+            caption with a widget underneath. See `ColumnHeading`. */}
+        <ColumnHeading ceremonial>Choose your role</ColumnHeading>
+        <RankedClassCarousel
+          /* Sits directly under the title with no divider between them: the
+             two are one composed thing, and any gap here re-creates exactly
+             the separation the title was enlarged to break.
+
+             `w-full` is load-bearing on THIS sheet. The stage is a
+             `flex flex-col items-center` box with no width of its own, so
+             inside the centre scroll's `items-center` content column it
+             shrank to its own slides — 181px of a 295px writing area — and
+             the mascot the column exists to present was rendered at the width
+             of a flank. Told to take the sheet, the figure takes the sheet. */
+          className="mt-0.5 w-full"
+          value={rankedRole}
+          onSelect={(role) => onSelectRole?.(role)}
+          onViewChange={setBrowsedRole}
+          disabled={roleSelectDisabled || !onSelectRole}
+          busyRole={roleSaving}
+          /* The stage's own strip is off: the standing sheet's mastery ledger
+             is the same tally at more depth, and two records would state the
+             W-L twice and disagree about which one is the summary. */
+          showRecord={false}
+          surface="parchment"
+        />
+
+        {/* IMMEDIATELY below the mascot. Nothing may be inserted between the
+            stage and the seal: the adjacency IS the instruction. */}
+        <RankedPlayGem
+          className="mt-2"
+          onClick={onPlayRanked}
+          disabled={playDisabled}
+          buttonRef={playButtonRef}
         />
         </LobbyPanel>
       </motion.div>
 
       {/* ══ RIGHT — ACADEMY: who I am, and my long-term records ════════════
           No Ranked identity on this sheet. The standing chip and the recent
-          results that used to sit here belong to the centre column and now
-          live there, so the Academy crown is the only rank art in this
-          column and cannot be misread as the competitive tier. */}
+          results that used to sit here belong with the competitive identity
+          and now live on the LEFT standing sheet, so the Academy crown is the
+          only rank art in this column and cannot be misread as the
+          competitive tier. */}
       <div className="order-3 flex min-w-0 flex-col" data-testid="hero-profile-column">
         <LobbyPanel variant="scroll" order="right">
         <ColumnHeading align="right">Academy record</ColumnHeading>
 
-        {/* Portrait mirrors the left stage: same height, facing inward. The
-            RENDERED MASCOT IS THE APPROVED SIZE AND IS UNCHANGED — 279px tall
-            at `lg`, exactly as before. What changed is the BOX around it.
+        {/* RL1 — THE PORTRAIT IS REMOVED AND ITS SPACE IS DELIBERATELY KEPT.
 
-            The stage used to be `h-[324px]` holding an image sized `h-[86%]`,
-            which is 279px — so 45px of the box was empty air above the
-            mascot's head, bought and paid for in column height and doing
-            nothing. The box is now the mascot's own height and the image
-            fills it, so the picture is identical and the 45px is returned to
-            the sheet. Keep the two in step: the box IS the portrait height at
-            each step, and the image is `h-full`. */}
-        <div className="relative mt-0.5 flex h-[210px] items-end justify-center sm:h-[248px] lg:h-[280px]">
-          {/* On navy this was a glow behind the portrait. On parchment a glow
-              is invisible, so the same slot does the opposite job: a soft warm
-              shade that seats the figure on the sheet instead of lifting it
-              off one. */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-6 bottom-10 top-4 rounded-[999px] blur-xl"
-            style={{
-              background:
-                "radial-gradient(58% 50% at 50% 82%, rgba(84,56,20,0.32) 0%, transparent 70%)",
-            }}
-          />
-          <img
-            src={portrait}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            data-testid="hero-personal-portrait"
-            className="relative h-full w-auto max-w-full -scale-x-100 object-contain drop-shadow-[0_14px_28px_rgba(0,0,0,0.6)]"
-          />
-        </div>
+           The box below is empty on purpose. It holds the same heights the
+           Mogzy portrait held — 210 / 248 / 280 — so the Academy sheet's
+           layout, spacing and rhythm are untouched and the name below it
+           lands exactly where it always did. Collapsing this box would
+           re-flow the whole column, which is explicitly NOT part of this
+           pass; filling it with a replacement visual is explicitly not
+           either. It is reserved, blank space awaiting a decision.
+
+           `aria-hidden` on an empty inert box: there is nothing here to
+           announce, and the removed image was decorative in the first place. */}
+        <div
+          aria-hidden="true"
+          data-testid="hero-portrait-space"
+          className="relative mt-0.5 h-[210px] sm:h-[248px] lg:h-[280px]"
+        />
 
         {/* mt-1, not mt-0.5. This is the ONE gap in the compacted column that
             measured too tight — the name landed 2px under the portrait's box.
@@ -569,7 +566,7 @@ export default function RankedLobbyHero({
               belongs to: emblem, then rank, then the climb.
 
               This is the ONE rank statement on the sheet. The competitive
-              tier is the centre column's, and the two must never be read as
+              tier is the standing column's, and the two must never be read as
               the same ladder — which is why the wording here always comes
               from `academyTierLabel`, the one helper that prefixes "Academy". */}
           {academyTier && (
