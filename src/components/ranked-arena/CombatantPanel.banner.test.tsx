@@ -8,6 +8,8 @@
  * pointed banner is exactly the regression nobody would look for.
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import { CombatantPanel } from "./CombatantPanel";
 import type { CombatantView, RoundHistoryEntry } from "@/lib/ranked-core/viewTypes";
@@ -151,3 +153,73 @@ describe("every other caller still gets the card", () => {
     expect(screen.queryByTestId("module-history-you")).toBeNull();
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// RM1 — THE BANNER IS A PAINTED ASSET NOW, AND THE CSS STOPPED IMITATING ONE.
+//
+// The PNG carries the cloth, the gold embroidered edge, the flat top and the
+// point. Every rule that used to draw those is therefore a SECOND edge printed
+// next to the real one, which is why their absence is asserted here and not
+// just their replacement.
+// ───────────────────────────────────────────────────────────────────────────
+describe("the duel banner is mounted from the approved asset", () => {
+  const CSS = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+  const rules = CSS.slice(CSS.indexOf(".ranked-banner {"),
+    CSS.indexOf("/* RP1 Step 4 — THE CUMULATIVE SCORE MOVING."));
+
+  it("draws the cloth from the PNG, in two layers of the same file", () => {
+    expect(rules).toContain('url("/assets/ranked/navy-banner.png")');
+    // Two layers, not one: a single stretched background would stretch the
+    // POINT with the column, and the point's angle is the banner's character.
+    expect(rules).toMatch(/\.ranked-banner::before \{[^}]*inset: 0 0 var\(--banner-point\) 0/);
+    expect(rules).toMatch(/\.ranked-banner::after \{[^}]*height: var\(--banner-point\)/);
+    expect(rules).toContain("background-repeat: no-repeat");
+  });
+
+  it("maps the banner's sub-rects out of the untrimmed 992x1586 file", () => {
+    // The asset is NOT cropped — its transparent margins are handled by this
+    // arithmetic, so the file on disk stays exactly the one that was approved.
+    // Body sub-rect y 73..1256, point sub-rect the last 234px, both 650 wide
+    // at x 170. `offset / (imageSize - subRectSize)` is the position formula.
+    expect(rules).toContain("background-position-x: 49.7076%");   // 170 / (992-650)
+    expect(rules).toContain("background-position-y: 18.1141%");   //  73 / (1586-1183)
+    expect(rules).toContain("background-position-y: 92.8994%");   // 1256 / (1586-234)
+    expect(rules).toContain("calc(100% * 992 / 650)");
+    expect(rules).toContain("calc(100% * 1586 / 1183)");
+    expect(rules).toContain("calc(100% * 1586 / 234)");
+  });
+
+  it("no longer draws a silhouette, an edge, a weave or a sigil in CSS", () => {
+    // Each of these existed only to imitate what the PNG now contains.
+    for (const dead of [
+      "clip-path",          // the five/seven-sided silhouette
+      "--banner-edge",      // the gold stroke and its width
+      "--banner-head",      // the chamfered shoulders
+      "--banner-shoulder",
+      "--banner-sigil",     // the roundel behind the mascot
+      "repeating-linear-gradient", // the woven drape
+    ]) {
+      expect(rules, `dead banner rule still present: ${dead}`).not.toContain(dead);
+    }
+    // And the roundel is gone from the whole stylesheet, not just this block —
+    // it was scoped to the crest, which lives outside these rules.
+    expect(CSS).not.toContain('.ranked-banner [data-testid="role-crest"]');
+  });
+
+  it("says side and outcome in light, never as a border through the asset", () => {
+    // The asset's gold trim IS the trim. A red opponent outline drawn over it
+    // would fight the embroidery; the same fact reads fine as a glow.
+    expect(rules).toContain("filter:");
+    expect(rules).toContain("drop-shadow(0 0 18px var(--banner-glow))");
+    for (const state of ['[data-side="opponent"]', '[data-outcome="correct"]',
+      '[data-outcome="incorrect"]']) {
+      expect(rules).toContain(`.ranked-banner${state} { --banner-glow:`);
+    }
+    expect(rules).toContain("border: 0;");
+  });
+
+  it("still reserves the point, so no content is seated in the taper", () => {
+    expect(rules).toContain("padding-bottom: calc(var(--banner-point) + 0.25rem)");
+  });
+});
+

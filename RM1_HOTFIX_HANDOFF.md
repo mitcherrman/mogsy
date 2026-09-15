@@ -244,6 +244,68 @@ declared `aspectRatio`, so the box exists before the asset loads.
 The **ceremonial banner geometry is untouched** — `git diff` on the banner
 block is empty.
 
+## Pass 4 — the painted banner asset
+
+Branch `rm1/navy-banner-asset`, worktree `/Users/macmoney/mogsy-wt-rm1-banner`,
+from `origin/main` `ae7c63ed` (unmoved).
+
+### The asset
+
+`public/assets/ranked/navy-banner.png` — **992x1586, RGBA, genuine
+transparency** (45.6% fully transparent, 51.8% opaque, 2.6% edge antialiasing;
+all four corners `rgba(0,0,0,0)`). **No baked-in background.** Measured:
+
+| | |
+| --- | --- |
+| banner bbox | x 170..819, y 73..1490 → **650 x 1418** |
+| transparent margins | L170 R172 T73 B95 |
+| straight-sided body | y 73..1256 (1183px) |
+| point | last **234px** (16.5% of the banner) |
+| gold edge | ~16px side, ~20px top, of 650 width |
+
+**The file is NOT modified** — byte-identical to the approved asset. Its
+margins are handled by CSS arithmetic rather than a crop.
+
+### Mounting
+
+Two layers of the same file, both decorative (`::before` / `::after`,
+`pointer-events: none`, `z-index: 0`); all content stays normal DOM above them.
+
+- `::before` — the element minus `--banner-point`, showing the **body**
+  sub-rect, stretched vertically (cloth stretching is what cloth does).
+- `::after` — exactly `--banner-point` at the foot, showing the **point**
+  sub-rect at a **fixed height**, so the point's angle is a constant of the
+  design and never a function of the viewport.
+
+A single stretched background was rejected deliberately: the column's aspect
+moves from ~0.46 at full height to ~0.66 on a short viewport under the lock,
+which would have blunted the point by ~30%.
+
+Sub-rect placement is `offset / (imageSize - subRectSize)`:
+x `170/(992-650)` = **49.7076%**; body y `73/(1586-1183)` = **18.1141%**;
+point y `1256/(1586-234)` = **92.8994%**. Both layers share the horizontal
+mapping, so the gold side edges stay continuous, and the body sub-rect ends on
+exactly the row the point begins — no visible seam. No document height added;
+`--banner-point` is still reserved in `padding-bottom`.
+
+### Removed
+
+`clip-path` silhouette · the two clipped layers that faked an even stroke ·
+`--banner-edge` / `--banner-edge-w` gold gradient · `--banner-head` /
+`--banner-shoulder` chamfers · the centre-fold and `repeating-linear-gradient`
+weave · **the `--banner-sigil` roundel behind the role mascot** (the rule
+`.ranked-banner [data-testid="role-crest"]` is gone from the stylesheet).
+
+The mascot is back to its pre-roundel presentation: `RoleCrest` directly over
+the banner at its existing size and role positioning, with only its own
+long-standing seating glow. No circle, crest field, badge or ornament.
+
+### Opponent / outcome colour
+
+Kept as an **external glow only** — `--banner-glow` feeding the existing
+`filter: drop-shadow`. `border: 0`. The asset's gold trim is the trim; no red
+border is forced through the embroidery.
+
 ## Risks / manual verification
 
 1. **The chrome budget is a measured constant.** If a band's height changes, the
