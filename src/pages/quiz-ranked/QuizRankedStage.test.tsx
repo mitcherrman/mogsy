@@ -80,14 +80,17 @@ describe("the reclaimed HUD band", () => {
 });
 
 describe("the stage budget", () => {
-  it("gives the frame a FLOOR from lg up, never a cap", () => {
+  it("LOCKS the frame to the viewport from lg up — a height, not a floor", () => {
     const { frame } = renderFrame();
-    // A CAP is what forced the first draft's scrollbar into the parchment: the
-    // stage could not grow, so the question had to shrink. A floor makes the
-    // arena as large as the viewport allows and lets the rare oversized round
-    // grow the page instead.
-    expect(frame.className).toContain("lg:min-h-[var(--ranked-stage-h)]");
-    expect(frame.className).not.toMatch(/lg:h-\[var\(--ranked-stage-h\)\]/);
+    // THE INVARIANT REVERSED, deliberately. This used to be a `min-h` floor on
+    // the reasoning that a round the viewport cannot seat should grow the page
+    // rather than be clipped. In a Ranked match that trade is wrong: a match
+    // that scrolls is a match whose Module Rail and banner points are off
+    // screen while the player is answering. So the frame takes EXACTLY the
+    // viewport and the arena spends it — and the art inside yields instead of
+    // the page growing (see the media region in QuestionStageGeometry).
+    expect(frame.className).toContain("lg:h-[var(--ranked-stage-h)]");
+    expect(frame.className).not.toContain("lg:min-h-[var(--ranked-stage-h)]");
     expect(frame.className).toContain("flex");
     expect(frame.className).toContain("flex-col");
   });
@@ -140,15 +143,17 @@ describe("the stage budget", () => {
     expect(header.className).toContain("shrink-0");
   });
 
-  it("hands the match ONE region that grows, and never one that clips", () => {
+  it("hands the match ONE region that grows, and that may also yield", () => {
     const { frame } = renderFrame();
     const region = screen.getByTestId("child").parentElement!;
     expect(region.parentElement).toBe(frame);
     expect(region.className).toContain("flex-1");
-    // `min-h-0` must NOT be here, and its absence is load-bearing: it is the
-    // switch that lets a flex child be shorter than its content. With it, an
-    // oversized round is clipped or handed a scrollbar; without it, the
-    // automatic minimum size holds and the round grows the page instead.
-    expect(region.className).not.toContain("min-h-0");
+    // `lg:min-h-0` IS here now, and it is load-bearing in the other direction:
+    // it is the switch that lets a flex child be shorter than its content.
+    // Without it the automatic minimum size holds, the region refuses to go
+    // below what the round contains, and the locked frame is overflowed by a
+    // few pixels — which is precisely the residual scroll this pass closed.
+    // It is `lg:` only: the narrow layout still stacks and still scrolls.
+    expect(region.className).toContain("lg:min-h-0");
   });
 });

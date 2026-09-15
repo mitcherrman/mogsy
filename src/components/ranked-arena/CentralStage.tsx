@@ -147,15 +147,29 @@ export function CentralStage({
       // one face, and which face is up is observable without reading text.
       data-testid="timer-display"
       data-stage={stage.kind}
-      className="relative flex min-h-[3rem] min-w-[9rem] flex-col items-center
-        justify-center text-center sm:min-w-[11rem]"
+      className="relative flex h-[4.25rem] min-w-[9rem] flex-col items-center
+        justify-center text-center sm:min-w-[11rem] min-[1500px]:h-[5rem]"
     >
       {/* `key` on the FACE is the whole of the turn: a new face remounts this
           node, which replays the one-shot flip keyframes in
           `.ranked-stage-face`. No transition group, no animation engine, and
           nothing that can be left half-played by a state change mid-flight. */}
+      {/* THE RESERVED FACE BOX — a FIXED height, not a minimum.
+          Every face is a different shape of text: the clock is one 48px line
+          (60px at 1500), the result is a 30px verdict stacked on a 20px award,
+          the module name is one 20px line. Under a `min-height` the tallest of
+          those set the strip's height and the others did not, so the header
+          grew ~4px the instant a round settled and shrank again when the clock
+          came back — the "timer -> result -> title -> timer" jitter, exactly.
+
+          So the box is `h-`, sized to the tallest face at each step, and every
+          face centres inside it. Turning a face can no longer move the header,
+          the arena grid below it, or anything in either. The `key` still
+          remounts the face to replay `.ranked-stage-face`'s flip keyframes —
+          which are transform and opacity, and do not lay out. */}
       <div key={stage.kind === "result" ? `result:${stage.verdict}` : stage.kind}
-        className="ranked-stage-face flex flex-col items-center leading-none">
+        className="ranked-stage-face flex h-[3.25rem] flex-col items-center
+          justify-center leading-none min-[1500px]:h-[4rem]">
         {stage.kind === "timer" && timer && (
           <>
             <div

@@ -157,7 +157,7 @@ describe("the live arena's scroll ownership", () => {
     expect(screen.queryByTestId("ranked-question-scroll")).toBeNull();
   });
 
-  it("gives the stage a FLOOR and lets exactly one band flex", async () => {
+  it("LOCKS the stage and lets exactly one band flex", async () => {
     await mountArena();
     const root = screen.getByTestId("ranked-match");
     // The four bands: strip, arena, HUD row, timeline. Only the arena flexes,
@@ -165,11 +165,14 @@ describe("the live arena's scroll ownership", () => {
     expect(root.className).toContain("lg:flex-1");
     const grid = root.querySelector<HTMLElement>(".grid")!;
     expect(grid.className).toContain("lg:flex-1");
-    // `min-h-0` must NOT be here. It is the switch that lets a flex child be
-    // shorter than its content — i.e. the switch that clips a question — and
-    // removing it is what lets oversized content grow the page instead.
-    expect(root.className).not.toContain("min-h-0");
-    expect(grid.className).not.toContain("min-h-0");
+    // `lg:min-h-0` MUST be here, and the reversal is deliberate. It is the
+    // switch that lets a flex child be shorter than its content; without it a
+    // band refuses to go below what the round contains and the locked frame is
+    // overflowed, which is a document scrollbar in an active match. With it,
+    // the flexible ART inside the stage yields instead — the question's own
+    // text regions are `flex: 0 0 auto` and never shrink (see index.css).
+    expect(root.className).toContain("lg:min-h-0");
+    expect(grid.className).toContain("lg:min-h-0");
     // Every stage class is breakpoint-scoped: below lg the arena stacks into
     // one column that legitimately exceeds a narrow viewport.
     for (const el of [root, grid, screen.getByTestId("ranked-question-body")]) {

@@ -648,60 +648,28 @@
 }
 
 /* ===========================================================================
-   RM1 HOTFIX — THE ARENA'S VERTICAL BUDGET.
+   RM1 — THE ARENA IS VIEWPORT-LOCKED, NOT VIEWPORT-ESTIMATED.
 
-   THE RULE A RANKED MATCH HAS: the Match Shell fits in one viewport. A player
-   answering a question must never scroll the document to see the Module Rail,
-   the pointed foot of a Player Column, or the answer tablets.
+   The first hotfix wrote the chrome's cost down as a measured constant and had
+   the Question Stage subtract it. That closed most of the overrun and could
+   not close all of it, because a constant is a GUESS about a height only the
+   browser knows: the title row is a `min-h` around real text, the header strip
+   wraps, the quiet control sets its own line box — and, decisively, the media
+   band carries its own `min-height: 8rem` that the stage's reserve could not
+   see. A budget that is a few pixels optimistic is a shell that is a few
+   pixels too tall, every time, and no amount of re-measuring fixes the kind of
+   error it is.
 
-   Until now nothing in the arena stated a budget. `--ranked-stage-h` was a
-   FLOOR (`ArenaShell`'s `lg:min-h-[…]`), the Question Stage reserved a fixed
-   height derived only from its own tallest content, and the two were never
-   compared. On a tall screen that is invisible; on a 13" laptop the four bands
-   plus a 566px stage reserve add up to ~900px of shell inside a ~780px
-   viewport, and the page scrolls. RM1's larger header made it worse, but it
-   did not introduce it — it made an existing arithmetic gap visible.
+   So the constant is GONE and the height is real. `ArenaShell` takes exactly
+   `--ranked-stage-h` (a definite height, not a floor), every band between it
+   and the Question Stage carries `min-h-0` so a flex child may actually
+   shrink, and the stage inherits whatever the chrome truly left. Nothing
+   subtracts anything; the browser measures the chrome, as it always could.
 
-   So the budget is written down once, here, and the stage reads it.
-
-   `--ranked-chrome-h` is the measured sum of every band that is NOT the
-   Question Stage. Each term is its own line, named, so a band that changes
-   height is changed here too rather than silently eating the question's room.
-   `--qs-avail` is what is left for the stage. Both are `lg`-only: below `lg`
-   the arena deliberately stacks into a column taller than any phone viewport,
-   and a budget there would be a cap on a layout that is meant to scroll.
+   That definite chain is also what makes the percentages below resolve — and
+   it is why the arena stopped jittering. A stage whose height is settled by
+   the VIEWPORT cannot be resized by what a round happens to contain.
    ======================================================================== */
-@media (min-width: 1024px) {
-  .ranked-shell {
-    /* The ability dock is the ONE band that is not always mounted: the arena
-       renders it only when the mode publishes an `abilityHud`, which Ranked
-       does only on a progression match. Charging for it unconditionally is
-       simply a wrong budget — it billed a points match 82px for a dock that is
-       not on its screen, which is most of why the shell still did not fit at
-       1024. So the term is a token, zero by default, and the arena turns it on
-       by stating the fact it already knows. */
-    --ranked-dock-h: 0rem;
-    --ranked-chrome-h: calc(
-        0.25rem     /* shell pt-1 */
-      + 1.75rem     /* chrome title row — arenaHeaderRowClass, lg:min-h-7 */
-      + 0.25rem     /* shell lg:gap-1, chrome row -> arena column */
-      + 4.625rem    /* Match Header strip: 64px of display + py-1 + 2px border */
-      + 0.375rem    /* lg:gap-1.5, header -> arena grid */
-      + 0.375rem    /* lg:gap-1.5, arena grid -> HUD row */
-      + var(--ranked-dock-h)  /* ability dock + its gap, when mounted */
-      + 2rem        /* HUD status line, which also seats the quiet control */
-      + 0.375rem    /* lg:gap-1.5, HUD row -> Module Rail */
-      + 3.875rem    /* Module Rail: 1px rule + 0.4rem + 3.4rem viewport */
-      + 0.5rem      /* shell pb-2 */
-    );
-    --qs-avail: calc(var(--ranked-stage-h) - var(--ranked-chrome-h));
-  }
-  /* 82px = the dock's 76px (label row + one 56px slot row) plus the HUD
-     column's own `gap-1.5` above the status line. Declared on the same
-     selector, so the arena's inner shell — the element that carries the
-     attribute — recomputes the whole budget for itself. */
-  .ranked-shell[data-ability-dock="true"] { --ranked-dock-h: 5.125rem; }
-}
 .ranked-shell::before {
   content: "";
   position: absolute;
@@ -2062,47 +2030,42 @@
     + var(--qs-prompt-h, 0px) + 0.75rem /* prompt region + gap-3 */
     + var(--qs-answers-h, 0px));        /* answer region */
 }
+/* THE LOCK. From `lg` the arena owns a definite height, so the reserve above
+   becomes a PREFERENCE and the box the viewport actually left becomes the
+   answer. `min()` is what keeps both true at once: the stage is its full
+   reserved self whenever the screen can pay, and exactly the remaining height
+   when it cannot — with no constant in between to be wrong about.
+
+   `.ranked-panel` is `overflow: hidden`, so this only works because the
+   regions inside genuinely yield (see the media region below). It is the
+   flexible ART that gives, never the prompt or the answers. */
+@media (min-width: 1024px) {
+  .ranked-question-stage {
+    min-height: min(calc(
+        2px + 2.5rem
+      + var(--qs-media-h, 0px) + 0.75rem
+      + var(--qs-prompt-h, 0px) + 0.75rem
+      + var(--qs-answers-h, 0px)), 100%);
+    max-height: 100%;
+  }
+}
 @media (min-width: 1024px) {
   .ranked-question-stage {
     /* 256px — the tallest the 16/7 cinematic band reaches at ANY supported
        width (measured 193px at 1024, 247–256px from 1280 up). Reserving the
        maximum is what keeps `--qs-media-max` from ever shrinking a band.
 
-       RM1 HOTFIX — THE ONE REGION THAT YIELDS.
-       The reserve is now `min(that maximum, what the viewport can actually
-       pay)`, floored so it can never collapse. Measured at 1280 and up:
-
-         * from ~900px of viewport the shell fitted already, `--qs-media-fit`
-           exceeds 16rem, `min()` picks 16rem, and the stage renders at exactly
-           the height it has always rendered at — the clamp is inert;
-         * from ~760px to ~900px the band gives back precisely the shortfall,
-           and the shell fills the viewport exactly;
-         * below ~760px the floor holds and the page scrolls, which is the
-           browser's job. The arena does not clip a question to avoid it.
-
-       So the clamp only ever engages where the alternative was a scrolling
-       match, never where a taller band was affordable.
-
-       IT IS THE MEDIA BAND AND ONLY THE MEDIA BAND. The prompt and answer
-       reserves are text — squeezing those wraps a question or moves the
-       tablets' origin, which is the coordinate the whole stage exists to pin.
-       The band is art with a declared aspect and an existing cap the band
-       already honours (`--qs-media-max`), so it is the one region that can
-       give height back without changing what anything says. */
-    --qs-media-fit: calc(var(--qs-avail, 100rem)
-      - 2px                                /* .ranked-panel's two borders */
-      - 2.5rem                             /* sm:p-5, top + bottom */
-      - 0.75rem - var(--qs-prompt-h, 0px)  /* gap-3 + the prompt reserve */
-      - 0.75rem - var(--qs-answers-h, 0px) /* gap-3 + the answer reserve */
-    );
-    /* 4.5rem — the floor, and it is a MEASURED one: 72px is the compact
-       plate's own intrinsic height, the shortest band the shipped corpus
-       contains. At the floor the region is exactly the smallest real band, so
-       the reserve has stopped reserving air and has not started cropping
-       anything — a taller band still grows the card, as every reserve here
-       does. This is what lets the shell seat itself at 1024 wide. */
-    --qs-media-h: clamp(4.5rem, var(--qs-media-fit), 16rem);
-    --qs-media-max: clamp(4.5rem, var(--qs-media-fit), 16rem);
+       It is the RESERVE, unchanged at 16rem. What yields on a short viewport
+       is not this number but the REGION, which the lock lets shrink below it
+       (see the flex rules under the three region reserves). The distinction
+       matters: the stage still asks for the same band it always did, and only
+       the box it actually got decides how much of that it gets. */
+    --qs-media-h: 16rem;
+    /* THE BAND IS CAPPED BY ITS REGION, AND THE REGION BY THE STAGE.
+       `100%` resolves because the arena's height chain is definite from the
+       viewport down, so on a tall screen this is 16rem exactly as before and
+       on a short one it is whatever the region actually got. */
+    --qs-media-max: min(16rem, 100%);
     /* 152px — the category line (19px) plus FIVE prompt lines at 18px/1.45.
        Five, not four, because the centre track is at its narrowest here and the
        longest prompt in the playtest bank (202 characters) wraps to five; at
@@ -2167,6 +2130,32 @@
 }
 .question-surface-stack > [data-surface-region="answers"] {
   min-height: var(--qs-answers-h, 0px);
+}
+
+/* THE ONE REGION THAT YIELDS — and the compression order, written as CSS.
+   Under the lock the stack is a flex column with a definite height, so someone
+   has to absorb the difference. It is the ART: the band has a declared aspect
+   and scales inside its box, where the prompt and the answers are TEXT whose
+   height IS their legibility. So the media region may shrink to nothing and
+   the other two may not shrink at all.
+
+   `min-height: 0` is the switch. Without it a flex item refuses to go below
+   its content's automatic minimum, which is precisely how a 128px band floor
+   kept the whole stage 56px taller than the arithmetic said it was. */
+@media (min-width: 1024px) {
+  .ranked-question-stage .question-surface-stack {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .ranked-question-stage .question-surface-stack > [data-surface-region="media"] {
+    flex: 0 1 auto;
+    height: var(--qs-media-h, 0px);
+    min-height: 0;
+  }
+  .ranked-question-stage .question-surface-stack > [data-surface-region="prompt"],
+  .ranked-question-stage .question-surface-stack > [data-surface-region="answers"] {
+    flex: 0 0 auto;
+  }
 }
 
 /* ---- Question prompt weight -----------------------------------------------

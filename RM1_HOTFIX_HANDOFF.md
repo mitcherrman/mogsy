@@ -178,6 +178,72 @@ The floor is arithmetic, not a choice — at 1024 wide the prompt and answer
 reserves alone are 288px of the 426px minimum stage, and cutting those is the
 one thing that would crush question content.
 
+## Pass 3 — the viewport LOCK, the header cleanup and the jitter
+
+Branch `rm1/viewport-lock`, worktree `/Users/macmoney/mogsy-wt-rm1-lock`, from
+`origin/main` `2c043a5f` (unmoved). The previous two passes narrowed the
+overrun; this one removes its cause.
+
+### The remaining scroll, and why the constant could never close it
+
+`--ranked-chrome-h` was a **measured constant** standing in for a height only
+the browser knows. Two errors it could not see:
+
+1. **`ScenarioMediaBand` carries its own `minHeight: 8rem`.** A 128px floor
+   inside a region the budget had sized to 72px made the stage **56px taller
+   than the arithmetic said it was**, on every media round. This is the bulk of
+   the residual scroll.
+2. Every other chrome term is a `min-h` around real text (title row, header
+   strip, quiet control), so the constant was optimistic by a few more pixels
+   in ways that change with content.
+
+A budget that is a few pixels optimistic is a shell that is a few pixels too
+tall, every time. Re-measuring does not fix the kind of error it is.
+
+### The lock
+
+The constant is **deleted** (`--ranked-chrome-h`, `--ranked-dock-h`,
+`--qs-avail`, `--qs-media-fit` — all gone; grep count 0). In its place:
+
+| layer | change |
+| --- | --- |
+| `ArenaShell` | `lg:min-h-[var(--ranked-stage-h)]` → **`lg:h-[…]`** — a definite height, not a floor |
+| the whole flex chain | `lg:min-h-0` on the shell region, match column, arena grid, centre column, stage and question body — a flex item refuses to shrink below its content without it |
+| `.ranked-question-stage` (lg) | `min-height: min(<reserve>, 100%)` + `max-height: 100%` — the reserve became a preference, the box it got is the answer |
+| media region (lg) | `flex: 0 1 auto; height: var(--qs-media-h); min-height: 0` — **the one region that yields** |
+| prompt + answers (lg) | `flex: 0 0 auto` — text never shrinks |
+| `ScenarioMediaBand` | `minHeight: min(8rem, 100%)`, `maxHeight: min(var(--qs-media-max), 100%)` |
+
+Nothing subtracts anything. The browser measures the chrome, as it always
+could, and the stage inherits what is truly left. There is no lower viewport
+limit built in and no arbitrary floor left: the art scales to whatever the
+smallest supported non-stacked layout gives it.
+
+### `PLAYTEST · PLACEHOLDER`
+
+Removed at its **source**: `QuizRankedMatch.tsx` now publishes
+`playtestNote: null`. The conditional slot in `CanonicalArena` survives because
+the **Daily Challenge** uses it for its theme (`dailyArenaView.ts`) — deleting
+the slot would have taken a real line off another mode's header. With Ranked
+publishing none, the slot renders nothing and costs no height, so the header's
+right side is now title + the quiet previous-module record only.
+
+### Jitter — causes found
+
+| cause | fix |
+| --- | --- |
+| `CentralStage` reserved `min-h-[3rem]`; the result face (30px verdict + 20px award + gap = 52px) is taller than the clock (48px), so the header **grew ~4px on settle and shrank on the next tick** | the display and the face box are **`h-`, fixed**, stepped at 1500 where the clock steps to `text-6xl`; every face centres inside |
+| every Meta Reflex phase was exactly as tall as its content — "Starting…" (2 lines) → live card (~296px) → waiting state | one reserved `mr-surface` box, `lg:min-h-[18.5rem]`, every phase centred inside it |
+| the stage itself resized with what the round contained | the lock: a stage sized by the **viewport** cannot be resized by content |
+
+Already sound and left alone: Meta Reflex `CardArt` is a fixed square per
+breakpoint with `object-contain` and an in-slot error fallback, so intrinsic
+asset dimensions never reach layout; `ScenarioMediaBand` derives height from a
+declared `aspectRatio`, so the box exists before the asset loads.
+
+The **ceremonial banner geometry is untouched** — `git diff` on the banner
+block is empty.
+
 ## Risks / manual verification
 
 1. **The chrome budget is a measured constant.** If a band's height changes, the

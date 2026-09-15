@@ -450,7 +450,20 @@ function MetaReflexViewport({ publicRound, segmentState, actions, skewMs }: Modu
     );
   }
   return (
-    <div className="relative space-y-3">
+    // ONE RESERVED PRESENTATION BOX FOR THE WHOLE BLOCK.
+    // Every phase below is a different amount of content — "Starting…" is two
+    // lines, a live card is a header, a prompt, a 12rem card row and a note,
+    // the waiting state is a settled card and a sentence — and each one used
+    // to be exactly as tall as it happened to be. So the intro snapped into
+    // the first card, and the last card snapped into the wait.
+    //
+    // The box is reserved once, here, at the height of the tallest phase (the
+    // live card), and every phase centres inside it. Nothing below changed
+    // shape; what changed is that they now all render into the same one. The
+    // reserve is `lg` only, because the stacked narrow layout is a scrolling
+    // column where a desktop-derived reserve would just be a large empty box.
+    <div className="relative flex flex-col justify-center space-y-3 lg:min-h-[18.5rem]"
+      data-testid="mr-surface">
       {/* Laid OVER a live, clickable card — never in front of it. See
           MetaReflexSting for why a blocking curtain would spend the player's
           own answer window. */}

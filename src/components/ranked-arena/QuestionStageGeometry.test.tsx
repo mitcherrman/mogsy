@@ -78,15 +78,8 @@ function stageRules(): { minWidth: number; body: string }[] {
 
 /** The tokens in force at `width`, applied in source order the way the cascade
  *  would apply them. */
-function tokensAt(
-  width: number, viewportH: number = 1600, dock = false,
-): Record<string, string> {
-  // `--qs-avail` is inherited from `.ranked-shell`, not declared here, and it
-  // is what the media reserve answers to. Supplying it is what lets this file
-  // ask the question the RM1 hotfix exists for: does the Match Shell fit?
-  const tokens: Record<string, string> = {
-    "--qs-avail": `${viewportH - 4 - chromeHeightPx(dock)}px`,
-  };
+function tokensAt(width: number): Record<string, string> {
+  const tokens: Record<string, string> = {};
   for (const rule of stageRules()) {
     if (rule.minWidth > width) continue;
     for (const decl of rule.body.split(";")) {
@@ -185,41 +178,27 @@ function px(expression: string, tokens: Record<string, string>): number {
 }
 
 /**
- * THE ARENA'S CHROME BUDGET — every band of the Match Shell that is NOT the
- * Question Stage, as `.ranked-shell` declares it. Parsed rather than restated,
- * because the point of the token is that one place says what the chrome costs.
+ * THE BUDGET IS GONE, AND THAT IS THE POINT.
  *
- * `dock` is the ability dock, the one band that is not always mounted: the
- * arena renders it only for a mode that publishes an `abilityHud`, and states
- * which it is on `data-ability-dock`. A budget that charged for it either way
- * was wrong for whichever match it guessed against.
+ * This file used to parse `--ranked-chrome-h` — a measured CONSTANT standing
+ * in for the height of every band that is not the Question Stage — and check
+ * that the stage's reserve plus that constant fitted the viewport. It closed
+ * most of the overrun and could not close the rest, because a constant is a
+ * guess about a height only the browser knows, and the media band's own
+ * `min-height: 8rem` was a 56px error the arithmetic could not see.
+ *
+ * The arena is now LOCKED rather than estimated: the frame takes exactly
+ * `--ranked-stage-h`, every band between it and the stage carries `min-h-0`,
+ * and the stage takes what is actually left. There is no sum left to check —
+ * so what this file checks instead is the mechanism, below.
  */
-function chromeHeightPx(dock = false): number {
-  const css = stripComments(CSS);
-  const m = /--ranked-chrome-h:\s*(calc\([\s\S]*?\));/.exec(css);
-  if (!m) throw new Error("`.ranked-shell` declares no --ranked-chrome-h");
-  const base = /\.ranked-shell\s*\{[^}]*?--ranked-dock-h:\s*([^;]+);/.exec(css);
-  const on = /\.ranked-shell\[data-ability-dock="true"\]\s*\{\s*--ranked-dock-h:\s*([^;]+);/
-    .exec(css);
-  if (!base || !on) throw new Error("the ability dock's budget term is not declared");
-  return px(m[1], { "--ranked-dock-h": dock ? on[1] : base[1] });
-}
-
-/**
- * The height the stage is offered on a viewport `viewportH` tall.
- * `--ranked-stage-h` is `100dvh - 0.25rem - --bottom-nav-clearance`, and the
- * clearance is `0px` on this route.
- */
-const availAt = (viewportH: number, dock = false) =>
-  viewportH - 4 - chromeHeightPx(dock);
 
 const TALL = 1600;
 
-const stageHeightAt = (width: number, viewportH: number = TALL, dock = false) =>
-  px(stageExpression(), tokensAt(width, viewportH, dock));
-const tokenPx = (width: number, name: string, viewportH: number = TALL, dock = false) => {
-  const v = tokensAt(width, viewportH, dock)[name];
-  return v === undefined ? null : px(v, tokensAt(width, viewportH, dock));
+const stageHeightAt = (width: number) => px(stageExpression(), tokensAt(width));
+const tokenPx = (width: number, name: string) => {
+  const v = tokensAt(width)[name];
+  return v === undefined ? null : px(v, tokensAt(width));
 };
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -303,151 +282,168 @@ describe("every reserve covers the tallest content of its kind", () => {
 // to what is left. This block asserts the two actually add up, which is the
 // arithmetic nobody was doing when the shell shipped ~900px tall.
 // ───────────────────────────────────────────────────────────────────────────
-describe("the whole Match Shell fits the viewport it is given", () => {
-  /** Every band of the shell, at `width` x `viewportH`. */
-  const shellHeight = (width: number, viewportH: number, dock = false) =>
-    chromeHeightPx(dock) + stageHeightAt(width, viewportH, dock);
+// ───────────────────────────────────────────────────────────────────────────
+// RM1 — THE ARENA IS LOCKED TO THE VIEWPORT.
+//
+// No arithmetic here, because the fix removed the arithmetic. What makes the
+// Ranked shell unable to scroll the document is a MECHANISM, and these are its
+// four parts: a definite height at the top, `min-h-0` all the way down so a
+// flex child may actually shrink, a stage capped by the box it was given, and
+// exactly one region inside it that yields. Remove any one and the shell can
+// grow past the viewport again, which is what each of these fails on.
+// ───────────────────────────────────────────────────────────────────────────
+describe("the Ranked shell is locked to the viewport, not estimated", () => {
+  const lgStageRule = () => {
+    const css = stripComments(CSS);
+    const re = /@media\s*\(min-width:\s*1024px\)\s*\{\s*\.ranked-question-stage\s*\{([^}]*)\}/g;
+    const bodies: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(css)) !== null) bodies.push(m[1]);
+    return bodies.join("\n");
+  };
 
-  /**
-   * THE SUPPORTED RANGE, and it is deliberately a GRID rather than a handful
-   * of laptops. Picking a few popular resolutions is how you end up with a
-   * layout tuned to those and broken between them — every `lg` width the
-   * arena supports has to hold, at every height a desktop or tablet browser
-   * actually reports.
-   *
-   * Width starts at 1024 because that is where the arena enters its `lg`
-   * three-column layout; below it the columns stack deliberately into a page
-   * taller than any phone, and a fit rule there would be a cap on a layout
-   * meant to scroll.
-   */
-  const WIDTHS = [1024, 1152, 1280, 1366, 1440, 1512, 1680, 1920, 2560];
-  const POINTS_HEIGHTS = [660, 678, 700, 720, 768, 800, 864, 900, 1080, 1440];
-  const DOCK_HEIGHTS = [746, 768, 800, 864, 900, 1080, 1440];
-
-  describe("a Ranked points match — the RM1 shell, no ability dock", () => {
-    it.each(WIDTHS)("at %ipx wide, every supported height fits", (width) => {
-      for (const viewportH of POINTS_HEIGHTS) {
-        expect(
-          shellHeight(width, viewportH),
-          `at ${width}x${viewportH} the Match Header, both Player Columns, the`
-          + " Question Stage and the Module Rail no longer fit one viewport —"
-          + " a Ranked match has started scrolling the document again",
-        ).toBeLessThanOrEqual(viewportH - 4);
-      }
-    });
-  });
-
-  describe("a progression match — the same shell plus the ability dock", () => {
-    it.each(WIDTHS)("at %ipx wide, every supported height fits", (width) => {
-      for (const viewportH of DOCK_HEIGHTS) {
-        expect(
-          shellHeight(width, viewportH, true),
-          `at ${width}x${viewportH} with the ability dock mounted the shell`
-          + " overflows — the dock's term in --ranked-chrome-h and what the"
-          + " stage yields have drifted apart",
-        ).toBeLessThanOrEqual(viewportH - 4);
-      }
-    });
-  });
-
-  it("charges for the ability dock only when it is actually mounted", () => {
-    // The bug this closes: the budget billed a Ranked points match 82px for a
-    // dock that is not on its screen, which is most of why the shell still did
-    // not fit at 1024. The arena states the fact on `data-ability-dock`.
-    expect(chromeHeightPx(true) - chromeHeightPx(false)).toBe(82);
-    const arena = read("components/ranked-arena/CanonicalArena.tsx");
-    expect(arena).toContain('data-ability-dock={abilityHud ? "true" : "false"}');
-  });
-
-  it("spends the whole viewport and no more — the stage takes the surplus", () => {
-    // Not merely "fits". The stage is always the SMALLER of what it wants and
-    // what is left: below the cross-over it is exactly the remaining height,
-    // so the arena is as large as the screen allows and no question room is
-    // left unspent; above it the stage is at its full declared size and the
-    // surplus goes to the flanks, which is the pre-existing behaviour.
-    for (const width of WIDTHS) {
-      const full = stageHeightAt(width, TALL);
-      for (const viewportH of [660, 720, 800, 864, 1080]) {
-        expect(stageHeightAt(width, viewportH), `${width}x${viewportH}`)
-          .toBe(Math.min(full, availAt(viewportH)));
-      }
-    }
-  });
-
-  it("changes nothing at all on a viewport tall enough to pay", () => {
-    // The clamp is a floor-of-last-resort, not a new look. At any height that
-    // could already seat the shell, the reserve is the declared 16rem maximum
-    // and every measured stage height above is reproduced exactly.
-    for (const [width, measured] of Object.entries(MEASURED)) {
-      expect(tokenPx(Number(width), "--qs-media-h", 1400)).toBe(16 * 16);
-      expect(stageHeightAt(Number(width), 1400)).toBe(measured.stage);
-    }
-  });
-
-  it("never squeezes the prompt or the answers, at any viewport height", () => {
-    // The media band is art with a declared aspect and a cap it already
-    // honours. The other two regions are TEXT: shrinking them wraps a question
-    // or moves the tablets' origin, which is the one coordinate the whole
-    // stage exists to pin. They must be height-independent — every pixel this
-    // fix recovered came from chrome or from reserved air, never from these.
-    for (const width of [1024, 1280, 1512]) {
-      for (const h of [640, 720, 800, 1400]) {
-        for (const dock of [false, true]) {
-          expect(tokenPx(width, "--qs-prompt-h", h, dock))
-            .toBe(tokenPx(width, "--qs-prompt-h", 1400));
-          expect(tokenPx(width, "--qs-answers-h", h, dock))
-            .toBe(tokenPx(width, "--qs-answers-h", 1400));
-        }
-      }
-    }
-  });
-
-  it("floors the band at the shortest band the corpus actually ships", () => {
-    // 4.5rem = 72px = the compact plate's own intrinsic height. At the floor
-    // the region is exactly the smallest REAL band, so it has stopped
-    // reserving air without starting to crop anything — a taller band still
-    // grows the card, the way every reserve in this block does.
-    expect(tokenPx(1024, "--qs-media-h", 400)).toBe(72);
-    expect(tokenPx(1920, "--qs-media-h", 400)).toBe(72);
-  });
-
-  it("still tells the band exactly one thing, and the same thing", () => {
-    // The cap and the reserve stay the same expression at every height — a
-    // band capped below its region would be shrunk art inside an empty box.
-    for (const width of [1024, 1280, 1512]) {
-      for (const h of [640, 800, 1400]) {
-        expect(tokenPx(width, "--qs-media-max", h)).toBe(tokenPx(width, "--qs-media-h", h));
-      }
-    }
-  });
-
-  it("keeps the chrome budget honest about each band it charges for", () => {
-    // The budget is a set of MEASURED constants, so a band that changes height
-    // has to be paid for here. These are the two the fit pass moved, plus the
-    // reserves that are the budget's biggest single terms.
+  it("takes a definite height at the top of the chain", () => {
     const shell = read("components/ranked-arena/ArenaShell.tsx");
-    expect(shell).toContain("lg:min-h-7 lg:pl-14 lg:pr-56");      // 1.75rem term
+    expect(shell).toContain("lg:h-[var(--ranked-stage-h)]");
+    // The floor is GONE. While it was a `min-h` the frame could be taller than
+    // the viewport by however much its content wanted, which is a document
+    // scrollbar by definition.
+    expect(shell).not.toContain("lg:min-h-[var(--ranked-stage-h)]");
+  });
+
+  it("lets every band between the frame and the stage actually shrink", () => {
+    // `min-height: auto` is a flex item's default and it refuses to go below
+    // its content. One band without `min-h-0` pins the whole column open, so
+    // this is asserted at every link rather than at the ends.
+    const shell = read("components/ranked-arena/ArenaShell.tsx");
+    expect(shell).toContain('className="flex flex-1 flex-col lg:min-h-0"');
     const arena = read("components/ranked-arena/CanonicalArena.tsx");
-    expect(arena).toContain("ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5");
-    const central = read("components/ranked-arena/CentralStage.tsx");
-    // The display's reserved box. The TIMER's own scale is untouched and is
-    // asserted alongside it, because shrinking the clock is the one way of
-    // paying for this that was explicitly ruled out.
-    expect(central).toContain("min-h-[3rem] min-w-[9rem]");
-    expect(central).toContain("text-4xl font-black tabular-nums leading-none");
-    expect(central).toContain("sm:text-5xl min-[1500px]:text-6xl");
+    for (const link of [
+      "ranked-shell flex flex-col gap-3 lg:flex-1 lg:gap-1.5 lg:min-h-0", // match column
+      "grid grid-cols-2 gap-3 lg:min-h-0 lg:flex-1",                      // arena grid
+      "lg:col-start-2 lg:row-start-1 lg:min-h-0",                         // centre column
+      "lg:flex lg:flex-1 lg:flex-col lg:min-h-0",                         // stage + body
+    ]) {
+      expect(arena, `missing min-h-0 link: ${link}`).toContain(link);
+    }
+  });
+
+  it("caps the stage at the box the lock actually left it", () => {
+    const lg = lgStageRule();
+    // The reserve became a PREFERENCE: `min()` of what the stage wants and
+    // 100% of what it was given. The percentage resolves only because the
+    // height chain above is definite — which is the previous two tests.
+    expect(lg).toMatch(/min-height:\s*min\(calc\([\s\S]*?\),\s*100%\)/);
+    expect(lg).toMatch(/max-height:\s*100%/);
+    // And no constant survives anywhere: a budget that has to be re-measured
+    // whenever a band changes is the thing this replaced.
+    const css = stripComments(CSS);
+    expect(css).not.toContain("--ranked-chrome-h");
+    expect(css).not.toContain("--qs-avail");
+    expect(css).not.toContain("--ranked-dock-h");
+  });
+
+  it("yields ART, and only art — never the prompt or the answers", () => {
+    // The compression order, as CSS. The media region may shrink to nothing;
+    // the two text regions may not shrink at all. A test that only checked
+    // "the stage fits" would pass just as happily on a stage that had crushed
+    // the question, which is the one outcome that is not allowed.
+    const css = stripComments(CSS);
+    const media = /\.ranked-question-stage \.question-surface-stack > \[data-surface-region="media"\] \{([^}]*)\}/
+      .exec(css)?.[1] ?? "";
+    expect(media).toMatch(/flex:\s*0 1 auto/);
+    expect(media).toMatch(/min-height:\s*0/);
+    const text = /\[data-surface-region="prompt"\],\s*\.ranked-question-stage \.question-surface-stack > \[data-surface-region="answers"\] \{([^}]*)\}/
+      .exec(css)?.[1] ?? "";
+    expect(text).toMatch(/flex:\s*0 0 auto/);
+  });
+
+  it("stops the band's own floor from outranking the box it sits in", () => {
+    // THE LAST FEW PIXELS. `ScenarioMediaBand` carries `minHeight: 8rem` as a
+    // legibility floor, and as a bare minimum it also outranked the stage's
+    // reserved media region — a 128px floor inside a region the lock had sized
+    // smaller is a shell that is taller than the viewport no matter what the
+    // stage reserved. Both bounds are now clamped to the region.
+    const band = read("components/question-surface/ScenarioMediaBand.tsx");
+    expect(band).toContain("minHeight: `min(${bandMinHeight}, 100%)`");
+    expect(band).toContain("maxHeight: `min(var(--qs-media-max, ${bandMaxHeight}), 100%)`");
+  });
+
+  it("keeps the Module Rail mounted and out of the flex distribution", () => {
+    const arena = read("components/ranked-arena/CanonicalArena.tsx");
+    expect(arena).toContain('<RoundTimeline timeline={timeline} className="lg:shrink-0" />');
+    // Unconditional on the timeline's presence, never on the viewport's size:
+    // "it fits because the rail is gone" is not fitting.
+    expect(arena).toContain("{timeline && <RoundTimeline");
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// RM1 — STATE MAY ANIMATE, GEOMETRY MAY NOT MOVE.
+// ───────────────────────────────────────────────────────────────────────────
+describe("transient state cannot change Match Shell geometry", () => {
+  it("has retired the PLAYTEST · PLACEHOLDER notice from Ranked", () => {
+    const mode = read("pages/quiz-ranked/QuizRankedMatch.tsx");
+    // A build-state fact about the content pipeline, not match news, and the
+    // only thing in the strip a player could do nothing with. Ranked publishes
+    // none, so the conditional slot renders nothing and costs no height.
+    expect(mode).not.toContain("Playtest · Placeholder");
+    expect(mode).toContain("playtestNote: null");
+    // The SLOT survives, because the Daily Challenge uses it for its theme —
+    // deleting it would have taken a real line off another mode's header.
+    const arena = read("components/ranked-arena/CanonicalArena.tsx");
+    expect(arena).toContain("header.playtestNote");
+    expect(read("pages/quiz-daily-challenge/dailyArenaView.ts")).toContain("playtestNote:");
+  });
+
+  it("gives Meta Reflex ONE reserved box for every phase of a block", () => {
+    const mr = read("lib/ranked-core/modules/metaReflexModule.tsx");
+    // "Starting…" is two lines, a live card is a header + prompt + a 12rem
+    // card row + a note, the wait is a settled card and a sentence. Each used
+    // to be exactly as tall as it happened to be, so the intro snapped into
+    // the first card and the last card snapped into the wait. One reserve,
+    // sized to the tallest phase, and every phase centres inside it.
+    expect(mr).toContain('data-testid="mr-surface"');
+    expect(mr).toContain("flex flex-col justify-center space-y-3 lg:min-h-[18.5rem]");
+  });
+
+  it("sizes Meta Reflex card art by its slot, never by the asset", () => {
+    const mr = read("lib/ranked-core/modules/metaReflexModule.tsx");
+    // A 64x64 icon and a 512x512 render must produce the same box. The slot is
+    // a fixed square per breakpoint and the image fills it with `object-contain`,
+    // so intrinsic dimensions never reach layout and a late-loading asset
+    // cannot move what is around it.
+    expect(mr).toContain("h-24 w-24 sm:h-28 sm:w-28 lg:h-36 lg:w-36");
+    expect(mr).toContain("h-14 w-14 sm:h-16 sm:w-16 lg:h-20 lg:w-20");
+    expect(mr).toContain('className="h-full w-full object-contain"');
+    // The error fallback renders INSIDE the same slot, so a broken asset is
+    // the same size as a working one.
+    expect(mr).toContain('data-testid="mr-card-art-fallback"');
+  });
+
+  it("reserves the media band's box before the asset decides anything", () => {
+    const band = read("components/question-surface/ScenarioMediaBand.tsx");
+    // The band's height comes from a declared aspect ratio plus explicit
+    // bounds — never from the intrinsic size of what it is showing. A 64x64
+    // and a 1920x1080 asset produce the same box, and it exists before either
+    // has loaded.
+    expect(band).toContain("aspectRatio: BAND_ASPECT[aspect]");
+    expect(band).toContain("containerType: \"size\"");
+    expect(band).toContain("overflow-hidden");
   });
 });
 
 describe("nothing inside the card was made smaller to fit it", () => {
-  it("caps the cinematic band at exactly the region it already fits", () => {
-    // `--qs-media-max` is the ONLY thing the stage says to the band, and it
-    // says the region's own height — which is the tallest that band reaches at
-    // any supported width. Setting it lower would shrink shipped media, which
-    // is the one thing this phase may not do.
+  it("caps the cinematic band at the region, bounded by the region's box", () => {
+    // `--qs-media-max` is still the ONLY thing the stage says to the band, and
+    // it still says the region's own reserved height — 16rem, the tallest that
+    // band reaches at any supported width, unchanged. What it now also says is
+    // "and never more than the box you are in", which is what lets the band
+    // scale down with the locked region instead of pinning it open.
     for (const width of [1024, 1280, 1512]) {
+      expect(tokensAt(width)["--qs-media-h"], `at ${width}px`).toBe("16rem");
       expect(tokensAt(width)["--qs-media-max"], `at ${width}px`)
-        .toBe(tokensAt(width)["--qs-media-h"]);
+        .toBe("min(16rem, 100%)");
     }
   });
 
@@ -504,17 +500,26 @@ describe("the stage reserves, and never clips or scrolls", () => {
     return css.slice(start, css.indexOf("}", end) + 1);
   };
 
-  it("uses min-height everywhere, so oversized content extends the card", () => {
+  it("keeps the three regions as reserves, and never scrolls one", () => {
     // The arena's standing rule is that no surface inside it scrolls
-    // internally, and `.ranked-panel` is `overflow: hidden` — so a hard
-    // `height` here would CUT a question off rather than let it overflow the
-    // reserve. Content that does overflow is a content-review candidate.
+    // internally. That is unchanged and is what `overflow` is checked for.
+    //
+    // What DID change: the media region now also declares a `height` under the
+    // lock, and that is not the hard `height` this test was written against.
+    // It is paired with `min-height: 0`, which is what makes it a SHRINKABLE
+    // preferred size rather than a fixed box — the region gives its height
+    // back to the locked stage instead of pinning it open. The two text
+    // regions keep their floors and are not shrinkable at all.
     const src = block();
     expect(src).toContain("min-height: var(--qs-media-h, 0px)");
     expect(src).toContain("min-height: var(--qs-prompt-h, 0px)");
     expect(src).toContain("min-height: var(--qs-answers-h, 0px)");
-    expect(src).not.toMatch(/(^|[\s;{])height:/);
     expect(src).not.toMatch(/overflow/);
+    const css = stripComments(CSS);
+    const media = /\.ranked-question-stage \.question-surface-stack > \[data-surface-region="media"\] \{([^}]*)\}/
+      .exec(css)?.[1] ?? "";
+    expect(media).toMatch(/height:\s*var\(--qs-media-h, 0px\)/);
+    expect(media).toMatch(/min-height:\s*0/);
   });
 });
 
