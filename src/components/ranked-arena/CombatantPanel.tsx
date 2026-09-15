@@ -384,7 +384,11 @@ export function ModuleHistoryStrip({
       aria-label="Module history"
       className="flex min-h-[1.5rem] flex-col gap-1.5"
     >
-      <div className={`flex ${mirrorAlign(mirrored)}`}>
+      {/* The label centres with the tokens it labels — one group on the cloth.
+          `mirrored` is still the strip's contract and still drives everything
+          the strip hands downstream; it simply no longer decides THIS row's
+          alignment, because a centred group is its own mirror. */}
+      <div className="flex justify-center">
         <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/60">
           {entries.length === 0 ? "No modules yet" : "Modules"}
         </span>
@@ -392,8 +396,15 @@ export function ModuleHistoryStrip({
       {/* `content-start` so a half-filled strip stacks from the top of the
           space the banner gives it rather than spreading through it — the
           tokens must sit at the same height in both columns whatever either
-          player has played. */}
-      <div className={`flex flex-wrap content-start gap-1.5 ${mirrorAlign(mirrored)}`}>
+          player has played.
+
+          CENTRED, not edge-aligned, on the painted banner. The cloth is
+          narrower than the column and its embroidery runs down both sides, so
+          a strip pinned to the outer edge walked its last token into the trim
+          as the row filled. Centring reads the bubbles as one group on the
+          cloth — and it is still a true mirror of the other column, because a
+          centred row is its own reflection. */}
+      <div className="flex flex-wrap content-start justify-center gap-1.5">
         {entries.map((e) => (
           <ModuleBubble
             key={e.roundNumber}
@@ -789,7 +800,7 @@ export function CombatantPanel({
   // the panel was handed. See `CombatantView.score`.
   const scored = combatant.score !== null && combatant.score !== undefined;
   // RM1 — the banner is the Ranked skin, and it is now a painted asset
-  // (`public/assets/ranked/navy-banner.png`, mounted by `.ranked-banner` in
+  // (`public/assets/ranked/navy-banner2.png`, mounted by `.ranked-banner` in
   // index.css). The card's border, ring and shadow are the CARD's way of
   // saying side and outcome; the banner says both in the LIGHT around it,
   // because the asset carries its own gold trim and a second border drawn
@@ -809,7 +820,7 @@ export function CombatantPanel({
       data-side={side}
       data-outcome={outcome ?? "none"}
       className={banner
-        ? "ranked-banner flex h-full flex-col gap-2 px-3 pt-3"
+        ? "ranked-banner flex h-full flex-col gap-2"
         : `relative flex h-full flex-col gap-2 rounded-xl border-2 bg-card p-3 ring-1 ring-inset ring-white/5 transition-shadow duration-300 motion-reduce:transition-none ${
           side === "player"
             ? "border-primary/60 shadow-[0_0_24px_-12px_hsl(var(--primary)/0.55)]"

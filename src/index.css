@@ -1094,75 +1094,83 @@
 }
 
 /* ===== RM1 — THE DUEL BANNER, AS THE PAINTED ASSET =======================
-   The Ranked Player Column's shell is now `public/assets/ranked/navy-banner.png`
-   — real navy cloth with its own gold embroidered edge, a flat top and a
-   pointed bottom — instead of the CSS that used to imitate one.
-
-   EVERYTHING THE CSS USED TO DRAW IS GONE, because the asset already draws it:
-   the clip-path silhouette, the two clipped layers that faked an even stroke
-   around it, the gold edge gradient, the woven-stripe and centre-fold
-   gradients, and the heraldic roundel behind the mascot. Keeping any of them
-   would print a second edge next to the painted one.
+   The Ranked Player Column's shell is `public/assets/ranked/navy-banner2.png`
+   — navy cloth with a gold embroidered edge, hung from a rod, coming to a
+   point. All of that is painted; none of it is drawn in CSS.
 
    ─────────────────────────────────────────────────────────────────────────
-   HOW THE ASSET IS MOUNTED, AND WHY IT IS TWO LAYERS AND NOT ONE
+   THE ASSET HAS THREE ZONES, AND TWO OF THEM ARE RIGID
    ─────────────────────────────────────────────────────────────────────────
-   The PNG is 992x1586 with the banner itself occupying x 170..819, y 73..1490
-   (650 x 1418) and genuine transparency around it. Within that, the straight-
-   sided BODY is y 73..1256 and the POINT is the last 234px.
+   959x1586 RGBA, banner at x 145..813, y 25..1591, and unlike the previous
+   asset it is not one continuous shape:
 
-   A Player Column is not that shape. Its width is a share of the arena's
-   centre track and its height is whatever the viewport lock left, so the ratio
-   moves — and a single stretched background would stretch the POINT with it,
-   which is the one part of a banner whose angle is its character. At a short
-   viewport that is a visibly blunt point.
+     * y   25..209  the RING AND ROD — and the rod is WIDER than the cloth
+                    (667px against 553px), so it, not the cloth, sets the
+                    element's width;
+     * y  210..1333 the CLOTH BODY, x 203..757, gold trim ~17px a side;
+     * y 1334..1591 the POINT.
 
-   So the body and the point are drawn as two layers of the SAME file:
+   A rod that stretches is a rod that looks wrong, and so is a stretched
+   point. Only the cloth may give. So the asset is mounted as three layers of
+   one file, each addressing its own zone:
 
-     * `::before` takes the element minus `--banner-point` and shows the body
-       sub-rect, stretched vertically. Cloth stretching is what cloth does.
-     * `::after` takes exactly `--banner-point` at the foot and shows the point
-       sub-rect. Its height is a fixed length, so the point's angle is a
-       constant of the design rather than a function of the viewport.
+     ::before  the rod   — top, fixed height
+     element   the cloth — the content box, which is exactly the band between
+                           them, courtesy of `background-clip: content-box`
+     ::after   the point — foot, fixed height
 
-   Both layers use the same horizontal mapping, so the gold side edges are
-   continuous across the seam; and the body sub-rect ends on exactly the row
-   the point sub-rect begins, so there is no seam to see.
+   THE PADDING IS THE LAYOUT. `padding-block` is the rod and point heights, so
+   the element's CONTENT BOX is the cloth band — which makes one declaration
+   do two jobs: it clips the cloth layer to exactly its zone, and it seats the
+   column's content on cloth rather than over the hardware. `padding-inline`
+   stays 0 on purpose, so the content box is the full element width and the
+   cloth layer's horizontal scale matches the two pseudo-elements'. The
+   content's side inset is a margin on the children instead (see below).
 
-   THE MAGIC NUMBERS ARE NOT MAGIC. `background-position` percentages align the
-   P% point of the image with the P% point of the box, so placing a sub-rect is
+   PLACING A SUB-RECT. `background-position` percentages align the P% point of
+   the image with the P% point of the box, so a sub-rect is
    `offset / (imageSize - subRectSize)`:
 
-     x        170 / (992 - 650)  = 49.7076%   (both layers)
-     body y    73 / (1586 - 1183) = 18.1141%
-     point y 1256 / (1586 -  234) = 92.8994%
+     x      146 / (959 -  667) = 50%      — the banner is exactly centred
+     rod     25 / (1641 - 185) =  1.7170%
+     cloth  210 / (1641 - 1124) = 40.6190%
+     point 1334 / (1641 - 258) = 96.4570%
 
-   and `background-size` scales the file so the sub-rect lands at 100% of the
-   box: `100% * 992/650` wide, `100% * 1586/<sub-rect height>` tall.
+   and `background-size` scales the file so the sub-rect lands at 100% of its
+   box: `100% * 959/667` wide, `100% * 1641/<zone height>` tall.
 
    THE ASSET IS NOT MODIFIED. Its transparent margins are handled by the
-   arithmetic above rather than by a crop, so the file on disk is exactly the
-   one that was approved.
-
-   THE POINT IS RESERVED, NOT OVERLAID. `--banner-point` is added to the
-   column's bottom padding, so no content is ever seated inside the taper.
+   arithmetic above rather than by a crop.
 
    `filter: drop-shadow` and not `box-shadow`: it traces the rendered alpha, so
-   the point casts a point. It is also the ONLY place a side or outcome colour
-   is expressed now — as light around the banner, never as a border through it.
-   The asset's gold trim is the trim.
+   the point casts a point and the rod casts a rod. It is also the ONLY place a
+   side or outcome colour is expressed — as light around the banner, never as a
+   border through it. The asset's gold trim is the trim.
    ========================================================================= */
 .ranked-banner {
   position: relative;
-  --banner-point: 6.5rem;
-  /* The banner's own proportion: the point is 234 of its 1418px, so at the
-     ~290px column an `lg` arena produces, a true point is ~104px. */
+  /* The two rigid zones, at their natural proportion for the ~290px column an
+     `lg` arena produces: 185/667 and 258/667 of the width. Fixed lengths, so
+     the hardware and the point are constants of the design rather than
+     functions of the viewport. */
+  --banner-rod: 5rem;
+  --banner-point: 7rem;
+  /* The cloth's usable interior. Its trim sits 11.5% in from the rod's span,
+     so this clears the embroidery with room to spare. */
+  --banner-inset: 14%;
   --banner-glow: rgba(201,168,76,0.22);
   border: 0;
   border-radius: 0;
   background: none;
   box-shadow: none;
-  padding-bottom: calc(var(--banner-point) + 0.25rem);
+  /* Inline padding stays 0 — see the note above about the horizontal scale. */
+  padding: var(--banner-rod) 0 var(--banner-point);
+  background-image: url("/assets/ranked/navy-banner2.png");
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  background-clip: content-box;
+  background-size: calc(100% * 959 / 667) calc(100% * 1641 / 1124);
+  background-position: 50% 40.6190%;
   filter:
     drop-shadow(0 0 18px var(--banner-glow))
     drop-shadow(0 16px 26px rgba(0,0,0,0.55));
@@ -1171,36 +1179,43 @@
 .ranked-banner::after {
   content: "";
   position: absolute;
-  pointer-events: none;
-  z-index: 0;
-  background-image: url("/assets/ranked/navy-banner.png");
-  background-repeat: no-repeat;
-  /* One horizontal mapping for both layers — this is what keeps the gold side
-     edges continuous where the body meets the point. */
-  background-size: calc(100% * 992 / 650) auto;
-  background-position-x: 49.7076%;
-}
-/* THE BODY — everything above the taper. */
-.ranked-banner::before {
-  inset: 0 0 var(--banner-point) 0;
-  background-size: calc(100% * 992 / 650) calc(100% * 1586 / 1183);
-  background-position-y: 18.1141%;
-}
-/* THE POINT — the foot, at a fixed height so its angle never moves. */
-.ranked-banner::after {
   left: 0;
   right: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("/assets/ranked/navy-banner2.png");
+  background-repeat: no-repeat;
+  /* One horizontal mapping for all three layers — this is what keeps the rod,
+     the trim and the point on the same vertical axis. */
+  background-position-x: 50%;
+}
+/* THE RING AND ROD. */
+.ranked-banner::before {
+  top: 0;
+  height: var(--banner-rod);
+  background-size: calc(100% * 959 / 667) calc(100% * 1641 / 185);
+  background-position-y: 1.7170%;
+}
+/* THE POINT. */
+.ranked-banner::after {
   bottom: 0;
   height: var(--banner-point);
-  background-size: calc(100% * 992 / 650) calc(100% * 1586 / 234);
-  background-position-y: 92.8994%;
+  background-size: calc(100% * 959 / 667) calc(100% * 1641 / 258);
+  background-position-y: 96.4570%;
 }
-/* Content sits above both layers — the same rule `.ranked-panel` keeps, for
-   the same reason. */
+/* THE CONTENT, SEATED ON CLOTH.
+   Above both decorative layers, and inset from the embroidery. The inset is a
+   margin rather than the element's padding because the padding is already
+   spoken for by the three zones — and a percentage margin resolves against the
+   container's width, which is exactly what "clear the side trim" means. */
 .ranked-banner > * {
   position: relative;
   z-index: 1;
+  margin-inline: var(--banner-inset);
 }
+/* A little air off the top and bottom trim, without moving the cloth band. */
+.ranked-banner > *:first-child { margin-block-start: 0.5rem; }
+.ranked-banner > *:last-child { margin-block-end: 0.5rem; }
 /* WHICH BANNER THIS IS. Both columns carry the same painted cloth and the same
    gold trim, because they are the same object; the side and the settled round
    are said in the LIGHT around it, which is the one channel that can carry
@@ -1209,10 +1224,14 @@
 .ranked-banner[data-side="opponent"] { --banner-glow: hsl(var(--destructive) / 0.20); }
 .ranked-banner[data-outcome="correct"] { --banner-glow: rgba(52,211,153,0.30); }
 .ranked-banner[data-outcome="incorrect"] { --banner-glow: hsl(var(--destructive) / 0.30); }
-/* Narrow viewports stack the columns into short cards; a full-size taper there
-   is most of the card. The asset is kept and its scale is not. */
+/* Narrow viewports stack the columns into short cards; full-size hardware
+   there is most of the card. The asset is kept and its scale is not. */
 @media (max-width: 1023px) {
-  .ranked-banner { --banner-point: 2.75rem; }
+  .ranked-banner {
+    --banner-rod: 2.25rem;
+    --banner-point: 3rem;
+    --banner-inset: 11%;
+  }
 }
 /* The glow is the banner's only motion. */
 .ranked-banner { transition: filter 300ms ease; }
