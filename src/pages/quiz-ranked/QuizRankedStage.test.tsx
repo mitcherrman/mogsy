@@ -66,14 +66,22 @@ describe("the reclaimed HUD band", () => {
     expect(frame.className).not.toMatch(/(^|\s)-mt-\[var\(--app-header-h\)\]/);
   });
 
-  it("keeps the title row clear of BOTH chips at the widths it moves up", () => {
-    const header = renderFrame().frame.querySelector("header")!;
-    // Left: the hat chip is a 44px target at a 12px gutter → 3.5rem clears it.
-    expect(header.className).toContain("lg:pl-14");
-    // Right: the identity cluster measured 224px at a 12px gutter → 14rem.
-    expect(header.className).toContain("lg:pr-56");
-    // And the chips are still what those numbers describe, so a redesigned HUD
-    // fails here rather than silently colliding with the title.
+  it("seats the way back beside the hat, clear of the chip itself", () => {
+    // THE TITLE ROW IS GONE. "Ranked Duel · Competitive Mode" was a heading
+    // over a screen that is already, unmistakably, a ranked duel — and it cost
+    // a full row at the top of a shell locked to the viewport, which is height
+    // taken from the question. What is left is the way back, moved to the
+    // corner a player already looks at to leave.
+    renderFrame();
+    const back = screen.getByRole("link", { name: "Back to Quiz" });
+    // Left: the hat chip is a 44px target at a 12px gutter → 3.5rem clears it,
+    // so the link sits just beside the hat rather than under it.
+    expect(back.className).toContain("lg:left-14");
+    expect(back.className).toContain("absolute");
+    // Quiet, and still quiet.
+    expect(back.className).toContain("text-muted-foreground/70");
+    // And the chips are still what that number describes, so a redesigned HUD
+    // fails here rather than silently colliding with the link.
     expect(hudSource).toContain("h-[var(--app-header-h)]");
     expect(hudSource).toContain("pointer-events-none fixed inset-x-0 top-0");
   });
@@ -104,19 +112,18 @@ describe("the stage budget", () => {
     expect(decl).not.toContain("app-header-h");
   });
 
-  it("keeps the title row sized to its text, not to the band it sits in", () => {
-    const header = renderFrame().frame.querySelector("header")!;
-    // Filling `--app-header-h` here held a full-width strip open for chrome
-    // that is `position: fixed` and does not need it. Those 24px are the
-    // question's now; the INSETS are what keep this row clear of the chips.
-    //
-    // 1.75rem, down from 2rem: the row holds ONE 28px text line, which is what
-    // this test is named for, so `min-h-8` was 4px of band the row was sized
-    // to rather than to its text. The RM1 fit pass took that back for the
-    // question and paid for it in `--ranked-chrome-h`.
-    expect(header.className).toContain("lg:min-h-7");
-    expect(header.className).not.toContain("lg:min-h-8");
-    expect(header.className).not.toContain("lg:min-h-[var(--app-header-h)]");
+  it("collapses the chrome row entirely and gives the height to the arena", () => {
+    const { frame } = renderFrame();
+    const row = frame.firstElementChild as HTMLElement;
+    // `h-0`, not "short": the row used to reserve one 28px text line for a
+    // heading, and a shell locked to the viewport spends every one of those
+    // pixels on the question instead. The slot still exists — `ArenaShell`
+    // renders it — but it contributes no height, and the way back is
+    // absolutely positioned inside it so it costs none either.
+    expect(row.className).toContain("h-0");
+    expect(row.className).toContain("shrink-0");
+    expect(row.querySelector("h1")).toBeNull();
+    expect(frame.textContent).not.toContain("Competitive Mode");
   });
 
   it("compacts only on a SHORT desktop, and never by changing type size", () => {
@@ -136,11 +143,12 @@ describe("the stage budget", () => {
     }
   });
 
-  it("holds the title row out of the flex distribution", () => {
-    const header = renderFrame().frame.querySelector("header")!;
+  it("holds the chrome row out of the flex distribution", () => {
+    const row = renderFrame().frame.firstElementChild as HTMLElement;
     // The row is chrome. If it could flex, the match's region — and with it
-    // every anchor below — would depend on how long the heading wrapped.
-    expect(header.className).toContain("shrink-0");
+    // every anchor below — would depend on it. It is `h-0 shrink-0`: no
+    // height to give, and none to take.
+    expect(row.className).toContain("shrink-0");
   });
 
   it("hands the match ONE region that grows, and that may also yield", () => {

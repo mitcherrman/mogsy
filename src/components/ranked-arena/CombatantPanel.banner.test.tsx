@@ -219,7 +219,7 @@ describe("the duel banner is mounted from the approved asset", () => {
     // The asset's gold trim IS the trim. A red opponent outline drawn over it
     // would fight the embroidery; the same fact reads fine as a glow.
     expect(rules).toContain("filter:");
-    expect(rules).toContain("drop-shadow(0 0 18px var(--banner-glow))");
+    expect(rules).toContain("drop-shadow(0 0 14px var(--banner-glow))");
     for (const state of ['[data-side="opponent"]', '[data-outcome="correct"]',
       '[data-outcome="incorrect"]']) {
       expect(rules).toContain(`.ranked-banner${state} { --banner-glow:`);
@@ -232,7 +232,39 @@ describe("the duel banner is mounted from the approved asset", () => {
     // or inside the taper; and the side inset clears the embroidery.
     expect(rules).toContain("padding: var(--banner-rod) 0 var(--banner-point)");
     expect(rules).toContain("margin-inline: var(--banner-inset)");
-    expect(rules).toMatch(/--banner-inset:\s*14%/);
+    // 18%, against embroidery that sits 11.5% in: real air, where the earlier
+    // 14% read as content touching the trim at every column width.
+    expect(rules).toMatch(/--banner-inset:\s*18%/);
+  });
+
+  it("dims the banner without dimming what sits on it", () => {
+    // The cloth rides on the ELEMENT's background and the element also carries
+    // the column's content, so a `filter` there would dim the name, the score
+    // and the bubbles along with the banner — the opposite of the point. The
+    // cloth is veiled by a background layer instead; only the two pseudo-
+    // elements, which carry no content, take the filter.
+    expect(rules).toContain("linear-gradient(rgba(5,10,20,0.30), rgba(5,10,20,0.30))");
+    expect(rules).toContain("filter: brightness(0.80) saturate(0.90) contrast(0.97)");
+    // The veil is sized to the CLOTH (553 of the rod's 667), not the element —
+    // full width would paint a dark rectangle out over the transparent margin.
+    expect(rules).toContain("calc(100% * 553 / 667) 100%");
+    // And the element's own filter stays shadows only, so content is untouched.
+    expect(rules).not.toMatch(/\.ranked-banner \{[^}]*filter:[^;]*brightness/);
+  });
+
+  it("reserves every zone, so a state change moves nothing", () => {
+    // A score ticking, a bubble arriving, "Thinking…" becoming a verdict —
+    // each used to be only as tall as its current contents, and each moved the
+    // rows beneath it. Now each zone reserves its tallest state.
+    for (const [zone, rule] of [
+      ["identity", /\.ranked-banner > header \{ min-height: 1\.75rem/],
+      ["points", /\[data-testid\^="score-"\] \{ min-height: 3\.5rem/],
+      ["bubbles", /\[data-testid\^="module-history-"\] \{ min-height: 4\.5rem/],
+    ] as const) {
+      expect(rules, `${zone} zone is not reserved`).toMatch(rule);
+    }
+    // The verdict and the neutral chips share ONE reserved slot.
+    expect(rules).toMatch(/\[data-testid\^="outcome-"\] \{ min-height: 2\.25rem/);
   });
 });
 

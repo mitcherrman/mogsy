@@ -975,10 +975,18 @@ function RankedMatchArena({ matchId, viewerUserId, chrome,
       noAbilityLabel: "Clear ability",
     } : null,
     status: {
+      // THE IDLE LINE IS GONE. "Choose an answer to lock it in." was an
+      // instruction for a board that already says it: the tablets are the only
+      // interactive thing on screen and clicking one submits it. It occupied
+      // the status row for the whole of every round a player was thinking —
+      // which is most of the match — to tell them what they were already
+      // doing. What is left is the row's real job: the transient states.
+      // Empty string, not a removed row: the box stays reserved, so a
+      // submission or an error still appears without moving the arena.
       text: m.actionError ? m.actionError
         : m.submitting ? "Submitting…"
           : m.phase === "locked" ? "Answer locked — waiting for opponent…"
-            : "Choose an answer to lock it in.",
+            : "",
       isError: m.actionError !== null,
     },
     // RG1 — the arena's quiet control. Ranked's is Forfeit Match: the ONE

@@ -1155,24 +1155,40 @@
      functions of the viewport. */
   --banner-rod: 5rem;
   --banner-point: 7rem;
-  /* The cloth's usable interior. Its trim sits 11.5% in from the rod's span,
-     so this clears the embroidery with room to spare. */
-  --banner-inset: 14%;
-  --banner-glow: rgba(201,168,76,0.22);
+  /* The cloth's usable interior. The embroidery sits 11.5% in from the rod's
+     span; 18% clears it with real air rather than the hairline 14% left, which
+     read as "content touching the trim" at every column width. */
+  --banner-inset: 18%;
+  --banner-glow: rgba(201,168,76,0.14);
   border: 0;
   border-radius: 0;
   background: none;
   box-shadow: none;
   /* Inline padding stays 0 — see the note above about the horizontal scale. */
   padding: var(--banner-rod) 0 var(--banner-point);
-  background-image: url("/assets/ranked/navy-banner2.png");
-  background-repeat: no-repeat;
+  /* THE VEIL, AND WHY IT IS A BACKGROUND LAYER AND NOT A FILTER.
+     The cloth rides on the ELEMENT's background, and the element also carries
+     the column's content — so `filter` here would dim the name, the score and
+     the bubbles along with the banner, which is the opposite of the point. A
+     background layer painted over the cloth dims only the cloth.
+
+     It is sized to the CLOTH's width (553 of the rod's 667), not to the
+     element, because the cloth is narrower than the box: a full-width veil
+     would paint a dark rectangle out over the transparent margin beside it.
+     In this band the cloth's sides are straight, so a rectangle matches the
+     silhouette exactly. */
+  background-image:
+    linear-gradient(rgba(5,10,20,0.30), rgba(5,10,20,0.30)),
+    url("/assets/ranked/navy-banner2.png");
+  background-repeat: no-repeat, no-repeat;
   background-origin: content-box;
   background-clip: content-box;
-  background-size: calc(100% * 959 / 667) calc(100% * 1641 / 1124);
-  background-position: 50% 40.6190%;
+  background-size:
+    calc(100% * 553 / 667) 100%,
+    calc(100% * 959 / 667) calc(100% * 1641 / 1124);
+  background-position: 50% 0, 50% 40.6190%;
   filter:
-    drop-shadow(0 0 18px var(--banner-glow))
+    drop-shadow(0 0 14px var(--banner-glow))
     drop-shadow(0 16px 26px rgba(0,0,0,0.55));
 }
 .ranked-banner::before,
@@ -1188,6 +1204,10 @@
   /* One horizontal mapping for all three layers — this is what keeps the rod,
      the trim and the point on the same vertical axis. */
   background-position-x: 50%;
+  /* The hardware and the point carry no content, so they CAN take a filter —
+     and it is tuned to land where the cloth's veil lands, so the three zones
+     dim together and the banner still reads as one object. */
+  filter: brightness(0.80) saturate(0.90) contrast(0.97);
 }
 /* THE RING AND ROD. */
 .ranked-banner::before {
@@ -1213,17 +1233,56 @@
   z-index: 1;
   margin-inline: var(--banner-inset);
 }
-/* A little air off the top and bottom trim, without moving the cloth band. */
-.ranked-banner > *:first-child { margin-block-start: 0.5rem; }
-.ranked-banner > *:last-child { margin-block-end: 0.5rem; }
+/* Air off the top and bottom trim, without moving the cloth band. The bottom
+   is the larger of the two on purpose: the last row is the outcome/status
+   strip, and it sits directly above the taper's decorative border zone. */
+.ranked-banner > *:first-child { margin-block-start: 0.75rem; }
+.ranked-banner > *:last-child { margin-block-end: 1rem; }
+/* THE STRIPS THAT WRAP, CENTRED ON THE CLOTH.
+   The bubble strip, the status chips and the settled verdict all grow along
+   the row, and pinned to a column edge they walked their last element into the
+   side embroidery as they filled. Centred, each reads as one group seated on
+   the cloth — and it stays a true mirror of the other column, because a
+   centred row is its own reflection. Scoped to the banner, so the card variant
+   the Daily and the inspector render is untouched. */
+.ranked-banner [data-testid^="status-"],
+.ranked-banner [data-testid^="outcome-"] { justify-content: center; }
+/* ===== THE COLUMN'S ZONES ARE RESERVED, NOT DISCOVERED ===================
+   A Player Column's rows appear and change all match — a score ticks, a
+   bubble is added, "Thinking…" becomes a settled verdict — and while each row
+   was only as tall as its current contents, every one of those moved the rows
+   beneath it. The column drifted under the player's eye for the whole duel.
+
+   So each zone reserves the tallest state it can reach and its contents change
+   INSIDE that box. Nothing here restyles a row; it fixes the height of the
+   slot the row sits in, which is the difference between a state change that
+   animates and one that relayouts.
+
+   The history strip keeps `flex: 1` — it is deliberately the ONE elastic zone,
+   so all the column's surplus height collects in a single place instead of
+   being shared out among rows that would each move when it changed. */
+.ranked-banner [data-testid^="role-crest"],
+.ranked-banner > header { flex: 0 0 auto; }
+/* Identity: name and role, one line, whether or not a role is published. */
+.ranked-banner > header { min-height: 1.75rem; }
+/* Points: a 4xl numeral over its label, reserved so a 9 -> 10 cannot move it. */
+.ranked-banner [data-testid^="score-"] { min-height: 3.5rem; }
+/* The bubble strip: label row plus two rows of tokens, which is the most a
+   ten-module match reaches at any supported column width. */
+.ranked-banner [data-testid^="module-history-"] { min-height: 4.5rem; }
+/* The verdict and the neutral chips share ONE slot, so settling a round
+   replaces the contents and moves nothing. Both are already `min-h-7`; this
+   reserves the same box on the wrapper so a wrapped chip set cannot grow it. */
+.ranked-banner [data-testid^="status-"],
+.ranked-banner [data-testid^="outcome-"] { min-height: 2.25rem; }
 /* WHICH BANNER THIS IS. Both columns carry the same painted cloth and the same
    gold trim, because they are the same object; the side and the settled round
    are said in the LIGHT around it, which is the one channel that can carry
    them without arguing with the asset. */
-.ranked-banner[data-side="player"] { --banner-glow: hsl(var(--primary) / 0.22); }
-.ranked-banner[data-side="opponent"] { --banner-glow: hsl(var(--destructive) / 0.20); }
-.ranked-banner[data-outcome="correct"] { --banner-glow: rgba(52,211,153,0.30); }
-.ranked-banner[data-outcome="incorrect"] { --banner-glow: hsl(var(--destructive) / 0.30); }
+.ranked-banner[data-side="player"] { --banner-glow: hsl(var(--primary) / 0.14); }
+.ranked-banner[data-side="opponent"] { --banner-glow: hsl(var(--destructive) / 0.13); }
+.ranked-banner[data-outcome="correct"] { --banner-glow: rgba(52,211,153,0.22); }
+.ranked-banner[data-outcome="incorrect"] { --banner-glow: hsl(var(--destructive) / 0.22); }
 /* Narrow viewports stack the columns into short cards; full-size hardware
    there is most of the card. The asset is kept and its scale is not. */
 @media (max-width: 1023px) {
