@@ -73,10 +73,18 @@ const OPPONENT = history([
   [1, 0], [2, 1], [2, 0], [0, 0], [3, 1], [1, 0], [0, 0], [2, 0], [1, 0], [null, 0],
 ]);
 
+/**
+ * A one-node rail. The Module Rail's own model is exercised by
+ * `roundTimeline.test`; all this needs to state is that the rail is MOUNTED,
+ * is the shell's last child, and was not touched.
+ */
 const timeline: RoundTimelineView = {
-  nodes: [{ roundNumber: 7, state: "current", tag: null, segment: "standard",
-    topic: null, outcome: null }],
-  anchorIndex: 0, currentRoundNumber: 7,
+  visibleNodes: 1, anchorIndex: 0, windowStart: 7,
+  currentIndex: 0, currentRoundNumber: 7, anchored: true,
+  nodes: [{
+    roundNumber: 7, index: 0, visible: true, state: "current",
+    segmentKind: null, outcome: null, tag: null, topic: null,
+  }],
 };
 
 const rail = (
