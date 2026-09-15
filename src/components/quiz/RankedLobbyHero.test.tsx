@@ -33,6 +33,7 @@ import RankedLobbyHero from "./RankedLobbyHero";
 import { LOBBY_PANEL_WASH } from "./LobbyPanel";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { RANKED_ROLE_BLURBS } from "@/lib/ranked-public/roles";
 import type { RankedState } from "@/lib/quiz/featured-mock";
 import type { MatchHistoryEntryView, RankedProgressionView } from "@/lib/ranked-public/contracts";
 
@@ -99,16 +100,16 @@ function renderHero(over: Partial<React.ComponentProps<typeof RankedLobbyHero>> 
 }
 
 describe("RankedLobbyHero — three-column composition", () => {
-  it("renders the role column, the play column and the profile column", () => {
+  it("renders the standing column, the play column and the profile column", () => {
     renderHero();
-    expect(screen.getByTestId("hero-role-column")).toBeTruthy();
+    expect(screen.getByTestId("hero-standing-column")).toBeTruthy();
     expect(screen.getByTestId("hero-play-column")).toBeTruthy();
     expect(screen.getByTestId("hero-profile-column")).toBeTruthy();
   });
 
   it("keeps the columns in left → centre → right document order", () => {
     const { container } = renderHero();
-    const left = container.querySelector('[data-testid="hero-role-column"]')!;
+    const left = container.querySelector('[data-testid="hero-standing-column"]')!;
     const centre = container.querySelector('[data-testid="hero-play-column"]')!;
     const right = container.querySelector('[data-testid="hero-profile-column"]')!;
     const follows = (a: Element, b: Element) =>
@@ -117,20 +118,84 @@ describe("RankedLobbyHero — three-column composition", () => {
     expect(follows(centre, right)).toBeTruthy();
   });
 
-  it("puts the LEAGUECRAFT / RANKED hierarchy and the PLAY gem in the centre", () => {
+  /* RL1 — the centre sheet says ONE thing. The LEAGUECRAFT wordmark, the
+     RANKED eyebrow, the role blurb and the Win/Loss stakes footer were all
+     removed and NOTHING replaced them, so this is the guard that no slogan,
+     subtitle or helper line creeps back into the column. */
+  it("carries one heading and the PLAY gem, and no wordmark or eyebrow", () => {
     renderHero();
     const centre = screen.getByTestId("hero-play-column");
-    expect(centre.querySelector("h1")!.textContent).toBe("LEAGUECRAFT");
-    expect(centre.textContent).toContain("Ranked");
+    expect(centre.querySelector("h1")).toBeNull();
+    expect(centre.textContent).not.toContain("LEAGUECRAFT");
+    const headings = centre.querySelectorAll(
+      '[data-testid="column-heading-ceremonial"]',
+    );
+    expect(headings).toHaveLength(1);
+    expect(headings[0].textContent).toContain("Choose your role");
     expect(centre.querySelector('[data-testid="ranked-play-gem"]')).not.toBeNull();
   });
 
-  it("mirrors the left stage with a personal portrait on the right", () => {
+  it("prints no stakes footer, no role blurb and no other copy under the seal", () => {
     renderHero();
-    expect(screen.getByTestId("ranked-class-carousel")).toBeTruthy();
-    const portrait = screen.getByTestId("hero-personal-portrait");
-    // Aspect ratio is preserved — the portrait is contained, never stretched.
-    expect(portrait.className).toContain("object-contain");
+    const centre = screen.getByTestId("hero-play-column");
+    // The stakes row and its two icons.
+    expect(centre.textContent).not.toMatch(/Win/i);
+    expect(centre.textContent).not.toMatch(/Loss/i);
+    expect(centre.textContent).not.toContain("XP");
+    // Every role blurb, not only the one the fixture happens to select.
+    for (const blurb of Object.values(RANKED_ROLE_BLURBS)) {
+      expect(centre.textContent).not.toContain(blurb);
+    }
+    // The seal is the LAST thing in the column.
+    const seal = centre.querySelector('[data-testid="ranked-play-gem"]')!;
+    expect(seal.nextElementSibling).toBeNull();
+  });
+
+  it("names the selected role BELOW the stage, where its blurb used to sit", () => {
+    renderHero({ rankedRole: "support" });
+    const label = screen.getByTestId("ranked-class-active-label");
+    expect(label.textContent).toBe("Support");
+    // In the stage-control row, between the two arrows — not at the mascot's
+    // feet, which is the whole point of moving it.
+    const row = label.parentElement!;
+    expect(row.querySelectorAll("button")).toHaveLength(2);
+    const stage = screen
+      .getByTestId("hero-play-column")
+      .querySelector('[data-testid="ranked-class-slide-support"]')!;
+    expect(
+      stage.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  /* RL1 — the swap, stated as the one thing a reader must be able to do.
+     The centre is the sentence "choose your Mogzy role → press Play", and
+     nothing may be inserted between the two halves of it. */
+  it("reads role stage → PLAY seal in the centre, with nothing between them", () => {
+    renderHero();
+    const centre = screen.getByTestId("hero-play-column");
+    const stage = centre.querySelector('[data-testid="ranked-class-carousel"]')!;
+    const seal = centre.querySelector('[data-testid="ranked-play-gem"]')!;
+    expect(stage).toBeTruthy();
+    expect(
+      stage.compareDocumentPosition(seal) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // IMMEDIATELY below: the seal is the stage's very next sibling on the
+    // sheet. An emblem, a rating or a ledger slipped in here would break the
+    // adjacency that IS the instruction.
+    expect(stage.nextElementSibling).toBe(seal);
+  });
+
+  /* RL1 — the Academy portrait is REMOVED and its space is KEPT.
+     Both halves are the requirement: no mascot, and no re-flow of the column
+     that held it. A future pass may decide what belongs there; until then the
+     box is blank on purpose and must not be collapsed or filled. */
+  it("draws no Academy portrait, and no replacement visual in its place", () => {
+    renderHero();
+    expect(screen.queryByTestId("hero-personal-portrait")).toBeNull();
+    const space = screen.getByTestId("hero-portrait-space");
+    expect(space.querySelector("img")).toBeNull();
+    expect(space.querySelector("svg")).toBeNull();
+    expect(space.textContent).toBe("");
   });
 
   // MALT compaction pass. The Academy column was the tallest of the three and
@@ -138,17 +203,13 @@ describe("RankedLobbyHero — three-column composition", () => {
   // off the first viewport at 1825x832. It was compacted by removing SPACING,
   // and these are the guards that it stays spacing which is removed and not
   // the picture.
-  it("gives the portrait the whole stage, so the box holds no dead column of air", () => {
+  it("holds the portrait's space open at exactly the heights it had", () => {
     renderHero();
-    const portrait = screen.getByTestId("hero-personal-portrait");
-    const stage = portrait.parentElement!;
-    // The stage used to be h-[324px] holding an h-[86%] image — 279px of
-    // mascot and 45px of nothing above its head. The RENDERED MASCOT IS
-    // UNCHANGED at every step; the box is now its own height and the image
-    // fills it. If the image ever goes back to a percentage, the two can
-    // drift apart again and the air comes back.
-    expect(portrait.className).toContain("h-full");
-    expect(portrait.className).not.toMatch(/h-\[\d+%\]/);
+    // The reserved box keeps the 210 / 248 / 280 steps the portrait set, so
+    // the name, the crown and the ledger below it land where they always did.
+    // Collapsing this box would re-flow the Academy column, which this pass
+    // deliberately does not do.
+    const stage = screen.getByTestId("hero-portrait-space");
     expect(stage.className).toContain("h-[210px]");
     expect(stage.className).toContain("sm:h-[248px]");
     expect(stage.className).toContain("lg:h-[280px]");
@@ -179,7 +240,7 @@ describe("RankedLobbyHero — three-column composition", () => {
 
   it("stands each column on its own backing panel, with the centre emphasised", () => {
     renderHero();
-    for (const column of ["hero-role-column", "hero-play-column", "hero-profile-column"]) {
+    for (const column of ["hero-standing-column", "hero-play-column", "hero-profile-column"]) {
       const panel = screen.getByTestId(column).querySelector('[data-testid="hero-panel"]');
       expect(panel, `${column} has no backing panel`).not.toBeNull();
     }
@@ -237,7 +298,7 @@ describe("RankedLobbyHero — three-column composition", () => {
     const order = (column: string) =>
       screen.getByTestId(column).querySelector('[data-testid="hero-panel"]')!.getAttribute("data-order");
     expect(order("hero-play-column")).toBe("centre");
-    expect(order("hero-role-column")).toBe("left");
+    expect(order("hero-standing-column")).toBe("left");
     expect(order("hero-profile-column")).toBe("right");
   });
 
@@ -248,7 +309,7 @@ describe("RankedLobbyHero — three-column composition", () => {
     expect(screen.getByTestId("ranked-class-carousel").dataset.surface).toBe("parchment");
   });
 
-  it("lets the wordmark's gradient reach the glyphs", () => {
+  it("carries no wordmark for the theme to paint over", () => {
     // `.theme-lol h1` sets a flat gold colour and outranks Tailwind's
     // single-class `.text-transparent`, which painted over the clip-to-text
     // gradient. On parchment that flat gold lands near 1.25:1 — invisible.
@@ -256,9 +317,10 @@ describe("RankedLobbyHero — three-column composition", () => {
     // Asserted on the INLINE declaration, which is what outranks the theme.
     // (`-webkit-text-fill-color` rides along in the same style object; jsdom
     // does not model the prefixed property, so `color` is the checkable half.)
-    const wordmark = screen.getByRole("heading", { name: "LEAGUECRAFT", level: 1 });
-    expect(wordmark.style.color).toBe("transparent");
-    expect(wordmark.className).toContain("bg-clip-text");
+    // RL1: the wordmark is gone from this surface, so the defect it guarded
+    // cannot recur here. The guard becomes the removal itself — there is no
+    // level-1 heading on the hero at all.
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 
   it("the PLAY gem still drives the host's Ranked action", () => {
@@ -271,9 +333,9 @@ describe("RankedLobbyHero — three-column composition", () => {
 describe("RankedLobbyHero — Ranked identity (RE1-owned values, rendered as given)", () => {
   it("shows the tier, the rating and the distance to the next tier", () => {
     renderHero();
-    // MALT: the heading is the TIER NAME. The word "Ranked" is already said
-    // once, by the subtitle under the wordmark, and saying it again in the
-    // heading was what made the tier read as a label rather than as a rank.
+    // MALT: the heading is the TIER NAME. Saying "Ranked" in it was what made
+    // the tier read as a label rather than as a rank; the standing sheet's own
+    // column heading already names the track.
     expect(screen.getByRole("heading", { name: "Diamond", level: 2 })).toBeTruthy();
     expect(screen.getByTestId("hub-ranked-rating").textContent).toContain("1320 Ranked rating");
     expect(screen.getByTestId("rank-progress").textContent).toContain("130 rating to Challenger");
@@ -396,13 +458,15 @@ describe("RankedLobbyHero — the Bronze baseline (presentation only)", () => {
     }
   });
 
-  it("draws the Ranked emblem exactly once, ceremonially, in the centre", () => {
+  it("draws the Ranked emblem exactly once, ceremonially, on the standing sheet", () => {
     const { container } = renderHero({ ranked: UNPLACED, rankedProgression: null });
     const wrappers = Array.from(container.querySelectorAll<HTMLElement>(".lc-emblem"));
     expect(wrappers.map((w) => w.dataset.emphasis)).toEqual(["ceremonial"]);
     expect(wrappers.map((w) => w.dataset.variant)).toEqual(["hero"]);
-    // And it is in the CENTRE column, not merely somewhere on the page.
-    expect(screen.getByTestId("hero-play-column").querySelector(".lc-emblem")).toBeTruthy();
+    // And it is on the STANDING sheet, not merely somewhere on the page.
+    expect(screen.getByTestId("hero-standing-column").querySelector(".lc-emblem")).toBeTruthy();
+    // Never in the centre: the decision column carries no ceremonial rank art.
+    expect(screen.getByTestId("hero-play-column").querySelector(".lc-emblem")).toBeNull();
     const moving = (w: HTMLElement) =>
       w.querySelectorAll(".lc-emblem__glint, .lc-emblem__spark").length;
     expect(moving(wrappers[0])).toBeGreaterThan(0);
@@ -455,12 +519,16 @@ describe("MALT — one responsibility per parchment", () => {
     match({ viewerRole: "mid", viewerOutcome: "loss", ratingDelta: -14 }),
   ];
 
-  it("puts Ranked identity in the CENTRE and nowhere else", () => {
+  it("puts Ranked identity on the LEFT standing sheet and nowhere else", () => {
     renderHero({ matchHistory: HISTORY });
+    const standing = screen.getByTestId("hero-standing-column");
     const centre = screen.getByTestId("hero-play-column");
     const academy = screen.getByTestId("hero-profile-column");
-    expect(centre.textContent).toContain("Diamond");
-    expect(centre.textContent).toContain("1320 Ranked rating");
+    expect(standing.textContent).toContain("Diamond");
+    expect(standing.textContent).toContain("1320 Ranked rating");
+    // The decision column states no tier and no rating.
+    expect(centre.textContent).not.toContain("Diamond");
+    expect(centre.textContent).not.toContain("1320 Ranked rating");
     // The Academy sheet names no Ranked tier and carries no rank emblem: the
     // standing chip that used to live there was the exact confusion between
     // the two ladders that this architecture exists to end.
@@ -469,23 +537,31 @@ describe("MALT — one responsibility per parchment", () => {
     expect(academy.querySelector(".lc-emblem")).toBeNull();
   });
 
-  it("puts recent Ranked results in the CENTRE, under PLAY", () => {
+  it("puts recent Ranked results on the LEFT, under the standing they made", () => {
     renderHero({ matchHistory: HISTORY });
-    const centre = screen.getByTestId("hero-play-column");
+    const standing = screen.getByTestId("hero-standing-column");
     const ledger = screen.getByTestId("hero-recent-matches");
-    expect(centre.contains(ledger)).toBe(true);
+    expect(standing.contains(ledger)).toBe(true);
     expect(screen.getByTestId("hero-profile-column").contains(ledger)).toBe(false);
-    // Under the seal in document order, which is the reading order too.
-    const html = centre.innerHTML;
-    expect(html.indexOf("ranked-play-gem")).toBeLessThan(html.indexOf("hero-recent-matches"));
+    expect(screen.getByTestId("hero-play-column").contains(ledger)).toBe(false);
+    // Under the standing block in document order, which is the reading order.
+    const html = standing.innerHTML;
+    expect(html.indexOf("hub-ranked-tier")).toBeLessThan(html.indexOf("hero-recent-matches"));
   });
 
-  it("puts role identity and the role's record on the LEFT", () => {
+  it("puts role SELECTION in the CENTRE, and its record with the standing", () => {
     renderHero({ rankedRole: "jungle", matchHistory: HISTORY });
-    const left = screen.getByTestId("hero-role-column");
-    expect(left.querySelector('[data-testid="ranked-class-carousel"]')).toBeTruthy();
+    const centre = screen.getByTestId("hero-play-column");
+    expect(centre.querySelector('[data-testid="ranked-class-carousel"]')).toBeTruthy();
+    expect(
+      screen.getByTestId("hero-standing-column").querySelector(
+        '[data-testid="ranked-class-carousel"]',
+      ),
+    ).toBeNull();
+    // The role's own record is a RECORD, so it reads on the record sheet —
+    // and it still follows the role the centre stage is pointing at.
     const ledger = screen.getByTestId("role-mastery-ledger");
-    expect(left.contains(ledger)).toBe(true);
+    expect(screen.getByTestId("hero-standing-column").contains(ledger)).toBe(true);
     expect(ledger.getAttribute("data-role")).toBe("jungle");
   });
 
@@ -493,7 +569,7 @@ describe("MALT — one responsibility per parchment", () => {
     const { container } = renderHero();
     const ceremonial = container.querySelectorAll('[data-testid="column-heading-ceremonial"]');
     expect(ceremonial).toHaveLength(1);
-    expect(screen.getByTestId("hero-role-column").contains(ceremonial[0])).toBe(true);
+    expect(screen.getByTestId("hero-play-column").contains(ceremonial[0])).toBe(true);
     expect(ceremonial[0].textContent).toContain("Choose your role");
   });
 
@@ -736,10 +812,12 @@ describe("RankedLobbyHero — role selection", () => {
 
   it("names the account's role in words on the sheet that owns role identity", () => {
     renderHero({ rankedRole: "support" });
-    const left = screen.getByTestId("hero-role-column");
-    expect(left.textContent).toContain("Support");
-    // MALT: the Academy sheet no longer restates it — the left sheet owns
-    // role identity, and one owner per fact is the whole architecture.
+    // RL1: role identity is the CENTRE sheet's now. A role is never
+    // communicated by mascot alone, so the name is printed beside it.
+    const centre = screen.getByTestId("hero-play-column");
+    expect(centre.textContent).toContain("Support");
+    // The Academy sheet does not restate it — one owner per fact is the
+    // whole architecture.
     expect(screen.queryByTestId("hub-ranked-role")).toBeNull();
   });
 });

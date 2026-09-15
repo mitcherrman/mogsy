@@ -202,9 +202,11 @@ describe("MALT — the workspace exists, below the approved first screen", () =>
     expect(firstScreen.contains(container.querySelector('[data-testid="hub-record-section"]'))).toBe(
       false,
     );
-    // Exactly one seal, one wordmark.
+    // Exactly one seal — and, since RL1, no wordmark at all: the LEAGUECRAFT
+    // h1 was removed from the lobby's centre scroll and nothing replaced it.
+    // The guard is still "never more than one", counted from zero.
     expect(screen.getAllByRole("button", { name: /^Play$/ }).length).toBe(1);
-    expect(container.querySelectorAll("h1").length).toBe(1);
+    expect(container.querySelectorAll("h1").length).toBe(0);
   });
 });
 
