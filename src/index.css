@@ -2087,6 +2087,26 @@
   .ranked-question-stage .question-surface-stack > [data-surface-region="answers"] {
     flex: 0 0 auto;
   }
+  /* AND THE PLATE'S OWN FLOOR IS BOUNDED BY ITS REGION — the same correction
+     this pass made to `ScenarioMediaBand`'s 8rem floor, applied to the sibling
+     it missed. A legibility minimum that outranks the box containing it is not
+     a minimum, it is an overflow: measured at 1024x768 on the longest round the
+     bank can serve, the media region had yielded all the way to 0px and
+     `CompactScenarioBand` was still drawing 72px inside it, which put the last
+     answer tablet 10px outside a card that clips.
+
+     Bounded, not removed. `min()` keeps the whole floor at every height that
+     can pay for it — the plate and the context strip render exactly as they
+     always did wherever there is room, which is every viewport in the fit
+     envelope — and only a screen that would otherwise cut off the question
+     takes it below that. Scoped to the locked stage, so the admin preview, the
+     screenshot harness and Mastery keep the plate they have always had. */
+  .ranked-question-stage [data-testid="scenario-compact"] {
+    min-height: min(4.5rem, 100%);
+  }
+  .ranked-question-stage [data-testid="scenario-compact"][data-compact-density="context"] {
+    min-height: min(7rem, 100%);
+  }
 }
 
 /* ---- Question prompt weight -----------------------------------------------

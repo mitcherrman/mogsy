@@ -861,3 +861,101 @@ describe("every term between the card and the timeline is still reserved", () =>
       '{timeline && <RoundTimeline timeline={timeline} className="lg:shrink-0" />}');
   });
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// THE SHRINK CHAIN — the lock's constraint has to REACH the art.
+//
+// The viewport lock gives `.ranked-question-stage` a definite height and asks
+// one region, the media, to absorb whatever the screen cannot pay for. That is
+// a chain, and a chain is only as good as its weakest link: every element
+// between the stage and the surface has to pass the constraint down.
+//
+// It broke exactly once, and silently. The `my-auto` centring wrapper was a
+// plain block with `min-height: auto`, so (a) the surface inside it was not a
+// flex item and the `flex: 1 1 auto; min-height: 0` the stylesheet gives
+// `.question-surface-stack` was inert, and (b) as a flex item itself it refused
+// to shrink below its content's automatic minimum — which, because the prompt
+// and answers are deliberately `flex: 0 0 auto`, was the whole un-shrunk card.
+// The wrapper therefore held its intrinsic height inside a stage that had
+// already been locked shorter, and `.ranked-panel`'s `overflow: hidden` cut the
+// difference off the bottom. Measured at 1280x720: stage 433px, wrapper 540px,
+// and all four answer tablets outside the card. `pageScroll` was 0 throughout,
+// which is why nothing that watched for scrolling noticed.
+//
+// jsdom performs no layout, so this cannot be asserted as a pixel here (the
+// real-browser measurement lives in `e2e/ranked-arena-fit.spec.ts`). What CAN
+// be asserted, and is the thing a future edit would actually get wrong, is the
+// STRUCTURE: no element on the path from the stage to the question may be a
+// plain block, and none may keep its automatic minimum height.
+// ───────────────────────────────────────────────────────────────────────────
+
+describe("the lock's constraint reaches the region that yields", () => {
+  const arenaSrc = () => read("components/ranked-arena/CanonicalArena.tsx");
+
+  /** Every `className` on the path from the locked stage down to `<Viewport`. */
+  function wrappersBetweenStageAndQuestion(): string[] {
+    const src = arenaSrc();
+    const start = src.indexOf("ranked-question-stage");
+    expect(start, "the stage class is gone from CanonicalArena").toBeGreaterThan(-1);
+    const end = src.indexOf("<Viewport", start);
+    expect(end, "the Viewport is no longer inside the stage").toBeGreaterThan(start);
+    const slice = src.slice(start, end);
+    // Both spellings the file uses: className="…" and className={`…`}.
+    return [
+      ...[...slice.matchAll(/className="([^"]*)"/g)].map((m) => m[1]),
+      ...[...slice.matchAll(/className=\{`([^`]*)`/g)].map((m) => m[1]),
+    ];
+  }
+
+  it("gives every wrapper between the stage and the question a flex display", () => {
+    // A plain block in this chain is not a flex CONTAINER, so whatever it
+    // holds stops being a flex item — and the stylesheet's instruction to the
+    // surface stops applying. This is half of the original defect.
+    for (const cls of wrappersBetweenStageAndQuestion()) {
+      expect(cls, `a wrapper inside the locked stage is not a flex container: "${cls}"`)
+        .toMatch(/\blg:(flex|grid)\b/);
+    }
+  });
+
+  it("lets every wrapper between the stage and the question shrink", () => {
+    // `min-height: auto` is a flex item's automatic minimum size — its content's
+    // min-content height. The prompt and the answers are `flex: 0 0 auto` by
+    // design, so that minimum is the entire un-shrunk card and the item simply
+    // refuses to yield. This is the other half.
+    for (const cls of wrappersBetweenStageAndQuestion()) {
+      expect(cls, `a wrapper inside the locked stage cannot shrink: "${cls}"`)
+        .toMatch(/\blg:min-h-0\b/);
+    }
+  });
+
+  it("keeps the centring an auto MARGIN, not a grown box", () => {
+    // `my-auto` is what centres a question in a card taller than it, and it is
+    // load-bearing precisely because auto margins resolve to zero the instant
+    // there is no free space — which is the state a short viewport is in. A
+    // wrapper that GREW instead (`flex-1`) would fill the card and strand the
+    // question at the top of it, and `justify-center` would push the first
+    // lines of a long prompt out of the top of the card rather than the last
+    // answers out of the bottom. Neither is an improvement on the other.
+    const chain = wrappersBetweenStageAndQuestion();
+    const centring = chain.filter((c) => /\blg:my-auto\b/.test(c));
+    expect(centring, "nothing centres the question inside the card any more")
+      .toHaveLength(1);
+    expect(centring[0]).not.toMatch(/\blg:flex-1\b/);
+    expect(centring[0]).not.toMatch(/justify-center/);
+  });
+
+  it("still asks the MEDIA to yield, and only the media", () => {
+    // The compression order, restated where the chain is checked: if a future
+    // edit made the prompt or the answers shrinkable, the chain would "work"
+    // and the question would get smaller instead of the art. That is the one
+    // outcome the lock exists to prevent.
+    const block = stripComments(CSS);
+    const media = /\.ranked-question-stage \.question-surface-stack > \[data-surface-region="media"\]\s*\{([^}]*)\}/
+      .exec(block)?.[1] ?? "";
+    expect(media).toMatch(/flex:\s*0\s+1\s+auto/);
+    expect(media).toMatch(/min-height:\s*0/);
+    const text = /\.ranked-question-stage \.question-surface-stack > \[data-surface-region="prompt"\],\s*\.ranked-question-stage \.question-surface-stack > \[data-surface-region="answers"\]\s*\{([^}]*)\}/
+      .exec(block)?.[1] ?? "";
+    expect(text, "the prompt and the answers must not be shrinkable").toMatch(/flex:\s*0\s+0\s+auto/);
+  });
+});

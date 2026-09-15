@@ -530,8 +530,37 @@ export function CanonicalArena({
                   one degrades correctly when the content is TALLER than the
                   card, because auto margins resolve to zero the moment there
                   is no free space left, while `justify-content: center` would
-                  push the first lines of a long prompt off the top. */}
-              <div className="lg:my-auto lg:w-full">
+                  push the first lines of a long prompt off the top.
+
+                  AND IT MUST PARTICIPATE IN THE LOCK. The viewport lock gives
+                  the stage a definite height and asks the media region — the
+                  art — to absorb whatever the screen cannot pay for. That only
+                  works if the constraint REACHES the art, and this wrapper was
+                  where it stopped, in two separate ways:
+
+                    * as a plain block it was not a flex CONTAINER, so the
+                      surface inside it was not a flex item and the
+                      `flex: 1 1 auto; min-height: 0` the stylesheet gives
+                      `.question-surface-stack` was inert;
+                    * as a flex ITEM it kept `min-height: auto`, whose automatic
+                      minimum is the content's min-content height — and the
+                      prompt and answers are deliberately `flex: 0 0 auto`, so
+                      that minimum was the whole un-shrunk card.
+
+                  So the wrapper held its intrinsic height inside a stage that
+                  had already been locked shorter, and `.ranked-panel`'s
+                  `overflow: hidden` cut the difference off the bottom. Measured
+                  on a 1280x720 desktop: the stage was 433px, this wrapper was
+                  540px, and all four answer tablets were outside the card.
+
+                  `lg:flex lg:flex-col` makes the surface a flex item again;
+                  `lg:min-h-0` lets this box shrink below its content so the
+                  shrink can reach the one region that is allowed to yield.
+                  `my-auto` is untouched and still does exactly what it did —
+                  it centres while there is free space and resolves to zero when
+                  there is not — which is now the ONLY thing deciding placement,
+                  because the flex basis stays `auto` and nothing here grows. */}
+              <div className="lg:my-auto lg:w-full lg:flex lg:min-h-0 lg:flex-col">
               <Viewport
                 // The FROZEN snapshot: the surface keeps rendering the round the
                 // player was looking at until the next one is genuinely ready.
