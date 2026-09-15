@@ -7,7 +7,8 @@
 - **Pass 2B — Match Header, central timer/result, score animations, Meta Reflex `+1`:** COMPLETE.
   Paused for review, as instructed.
 - **Integration verification:** PASSED. Rebased onto `origin/main` `ac2f5745`.
-- **RM1 is IMPLEMENTATION-COMPLETE and ready for merge.**
+- **MERGED into `main` as `a61b3c4f`** (2026-09-14). Pushed to remote.
+- **Awaiting the owner's Lovable Publish** — a push to `main` does not deploy mogzy.lol.
 - **ES1 end-screen bubble comparison:** NOT STARTED, deliberately.
 
 Audited: `mogsy` frontend. Backend repo `League_Combat_Simulator` inspected for payload
@@ -571,10 +572,27 @@ One failure, pre-existing on `origin/main` and unrelated: `LobbyPreviewPage.test
 imported by the preview page ALONE". Its cause is `src/test/security/pt14EntitlementSources.test.ts`
 referencing `lobbyPreviewFixtures`; RM1 touches no lobby-preview file.
 
-## Merge readiness
+## Merge — DONE
 
-Ready. Rebased, linear on `ac2f5745`, no conflicts outstanding.
-Note that `origin/main` moves often — re-fetch and re-run before merging.
+| | |
+| --- | --- |
+| `origin/main` at start | `ac2f5745` |
+| `origin/main` when reconciled | `19a60ddd` (RL2 lobby analytics landed mid-run) |
+| RM1 tip after reconciliation | `1132ff0c` |
+| **Merge commit** | **`a61b3c4f`** — `merge(main): integrate the RM1 Ranked match shell refinement` |
+| `origin/main` final | `a61b3c4f` |
+
+Reconciled by rebase onto `19a60ddd`; RL2 touched no RM1 file, so there were no conflicts.
+Merged `--no-ff`, matching the repo's `merge(main): integrate the …` convention.
+
+Post-merge verification on the merged tree: `tsc` clean; **212 files / 3484 tests passed**;
+banner silhouette, bubble glyph + speed dot, large timer, module-title face, payout layer and
+the retained persistent plate all present; Question Stage and Module Rail untouched across the
+whole merge range; both banners confirmed live in the browser with 10 bubbles each
+(`2,1,0,3,2,1,2,0,3,1` / `1,2,2,0,3,1,0,2,1,none`) and 4 / 2 speed dots.
+
+**Deployment: a push to `main` does NOT deploy mogzy.lol.** The owner must press Publish in
+Lovable. Until then the merge is on remote `main` and not live.
 
 ## Not started, deliberately
 
